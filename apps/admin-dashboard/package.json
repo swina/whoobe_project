@@ -1,0 +1,33 @@
+{
+  "name": "@pimcore-custom/admin-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@lucide/vue": "^1.1.0",
+    "@pimcore-custom/core": "workspace:*",
+    "jszip": "^3.10.1",
+    "pinia": "^3.0.1",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.7",
+    "@types/jszip": "^3.4.1",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "tailwindcss": "^4.0.7",
+    "typescript": "^5.4.0",
+    "vite": "^6.1.1",
+    "vue-tsc": "^2.2.0"
+  },
+  "optionalDependencies": {
+    "@esbuild/linux-x64": "^0.25.0",
+    "@rollup/rollup-linux-x64-gnu": "^4.34.8"
+  }
+}
