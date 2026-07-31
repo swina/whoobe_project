@@ -1,0 +1,3 @@
+https://github.com/swina/whoobe-studio-alpha-0122 
+
+integrate Whoobe Studio repository as the visual block/WYSIWYG editor for your CMS module. Since Whoobe is already a visual, block-driven builder designed to generate structured layouts, it fits perfectly into the headless CMS architecture we discussed.However, because your repo is built with Vue.js (85.8%) and your new enterprise backend is TypeScript/Node.js, you need a clean bridge to connect them.
