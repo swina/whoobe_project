@@ -15,36 +15,52 @@ import { registerAreabrickConverter, resolveMediaUrl } from '../pimcore-document
  *     </hgroup></div></header>
  *   </section>
  *
- * `cssClass` on every node is Tailwind utility classes, ported by hand from
- * the real assets/scss/components/_hero-generico.scss (plus .sb-wrapper
- * from assets/scss/base/_global.scss) - not the original semantic class
- * names, since the CSS itself isn't shipped/imported here (deliberate
- * choice, see docs/plans/cms/pimcore-areablock-import-plan.md's Preview
- * Styling section). Breakpoint tokens (tablet-l:, tablet-p:, desktop-md:)
+ * `cssClass` on every node is Tailwind utility classes, hand-ported from
+ * the real CSS - not the original semantic class names, since the CSS
+ * itself isn't shipped/imported here (deliberate choice, see
+ * docs/plans/cms/pimcore-areablock-import-plan.md's Preview Styling
+ * section). Breakpoint tokens (tablet-l:, tablet-p:, desktop-md:, etc.)
  * and font-tenor come from site-theme.css, which mirrors the real
- * _variables.scss/_mediaquery.scss values exactly, so they're not
- * approximations - only the *technique* (utility classes vs
- * grid-area/place-self) differs from the source, not the resulting
- * dimensions/breakpoints.
+ * _variables.scss/_mediaquery.scss values exactly.
  *
- * Known simplifications, worth revisiting if this brick's visual output
- * is checked pixel-for-pixel against the live site:
- * - The source uses `grid-area: content` on both `aside` and `header` to
- *   stack the video and text as layers, but `.hero-generico` itself never
- *   declares `display:grid` in this file (likely relies on a rule this
- *   pass didn't chase down, or is vestigial). Reproduced the same visual
- *   *effect* (video as a full-bleed background layer, text overlaid) via
- *   plain absolute positioning instead, which needs no unresolved grid
- *   context to work.
- * - `h1`/`p`'s fluid type (the `fluid-type` mixin, a two-breakpoint linear
- *   interpolation) is collapsed into a single CSS `clamp()` each - clamp's
- *   own min/max bounds reproduce the same flat-below/fluid-between/flat-
- *   above behavior as the mixin's two `@media` blocks did, without needing
- *   the extra breakpoint gate the source had (it becomes redundant once
- *   expressed as clamp).
- * - Line-height's exact per-breakpoint transition (1 -> 1.1em internally
- *   -> 1.3) is simplified to a two-state leading-none/leading-[1.3] toggle
- *   at tablet-l, not a fully fluid transition.
+ * The layering mechanism (revised - see below) is now a faithful port,
+ * not an approximation:
+ *
+ * `.hero-generico` is a `<section>` inside `<main>`, which inherits a
+ * GLOBAL rule from assets/scss/base/_global.scss (`main section { display:
+ * grid; grid-template-columns: auto minmax(auto,1440px) auto;
+ * grid-template-areas: ". content ."; } .sb-wrapper { grid-area: content; }`)
+ * - initially missed on the first pass through this file alone, since
+ * `.hero-generico` itself never declares `display:grid` and that's easy
+ * to read as "this must be approximated." It isn't: both `aside` and
+ * `header` in `_hero-generico.scss` set `grid-area: content`, which -
+ * combined with the inherited global grid - places them in the SAME
+ * grid cell (the middle "content" column), so they stack by DOM order
+ * (video painted first, text overlay on top) via ordinary CSS Grid
+ * stacking, not absolute positioning. Reproduced here with Tailwind's
+ * `col-start-2 row-start-1` on both `aside` and `header`, sharing the
+ * outer section's `grid-cols-[auto_minmax(auto,1440px)_auto]` - the
+ * actual technique, not a substitute for one.
+ *
+ * `.sb-wrapper` (from _global.scss, overridden per-component in
+ * _hero-generico.scss) is itself a nested grid, `height:100%` of its
+ * `header` parent, with responsive `grid-template-columns` (2fr 1fr /
+ * 3fr 1fr / 4fr 1fr at increasing breakpoints - only one column is
+ * populated by this brick's single `hgroup` child, but the columns are
+ * kept for fidelity). `hgroup`'s `place-self: end stretch` (self-align to
+ * the bottom of that grid, stretch horizontally) is Tailwind's
+ * `self-end justify-self-stretch` - built-in utilities, no arbitrary
+ * value needed.
+ *
+ * Remaining known simplification: `h1`/`p`'s fluid type (the SCSS
+ * `fluid-type` mixin, a two-breakpoint linear interpolation) is collapsed
+ * into a single CSS `clamp()` each - clamp's own min/max bounds reproduce
+ * the same flat-below/fluid-between/flat-above behavior the mixin's two
+ * `@media` blocks did, without needing the extra breakpoint gate (it
+ * becomes redundant once expressed as clamp). Line-height's exact
+ * per-breakpoint transition (1 -> 1.1em internally -> 1.3) is simplified
+ * to a two-state leading-none/leading-[1.3] toggle at tablet-l, not a
+ * fully fluid transition.
  *
  * Other notes:
  * - The image is a CSS background (via Pimcore's own "THUMBNAIL_GENERICO"
@@ -80,7 +96,9 @@ registerAreabrickConverter('header-brick', (brickIndex, brick, s3Prefix) => {
       type: 'container',
       name: 'header_video',
       tag: 'aside',
-      props: { cssClass: 'absolute inset-0 overflow-hidden' },
+      // col-start-2/row-start-1: same grid cell as `header` below, so
+      // they stack (video behind, text in front, matching DOM order).
+      props: { cssClass: 'col-start-2 row-start-1 relative overflow-hidden h-full self-start justify-self-stretch' },
       children: [
         {
           id: `${idPrefix}_video`,
@@ -105,21 +123,24 @@ registerAreabrickConverter('header-brick', (brickIndex, brick, s3Prefix) => {
     type: 'container',
     name: 'hero_content',
     tag: 'header',
-    props: { cssClass: 'relative h-[400px] tablet-l:h-[520px] w-full bg-gradient-to-b from-black/0 to-black/70 pb-[45px] flex items-end' },
+    props: { cssClass: 'col-start-2 row-start-1 h-[400px] tablet-l:h-[520px] w-full bg-gradient-to-b from-black/0 to-black/70 pb-[45px]' },
     children: [
       {
         id: `${idPrefix}_wrapper`,
         type: 'container',
         name: 'sb_wrapper',
         tag: 'div',
-        props: { cssClass: 'w-full max-w-[1440px] mx-auto px-[5%] desktop-md:px-[5.6%]' },
+        props: {
+          cssClass:
+            'grid h-full text-center mx-[5%] desktop-md:mx-[5.6%] tablet-p:grid-cols-[2fr_1fr] tablet-l:grid-cols-[3fr_1fr] desktop-sm:grid-cols-[4fr_1fr]',
+        },
         children: [
           {
             id: `${idPrefix}_hgroup`,
             type: 'container',
             name: 'hgroup',
             tag: 'hgroup',
-            props: { cssClass: 'text-left' },
+            props: { cssClass: 'text-left self-end justify-self-stretch' },
             children: [
               {
                 id: `${idPrefix}_title`,
@@ -165,7 +186,7 @@ registerAreabrickConverter('header-brick', (brickIndex, brick, s3Prefix) => {
     name: 'Header (Hero Generico)',
     tag: 'section',
     props: {
-      cssClass: 'relative w-screen h-[400px] tablet-l:h-[520px] bg-cover bg-no-repeat bg-top',
+      cssClass: 'relative w-screen h-[400px] tablet-l:h-[520px] bg-cover bg-no-repeat bg-top grid grid-cols-[auto_minmax(auto,1440px)_auto]',
       backgroundImageSrc: imagePath ? resolveMediaUrl(imagePath, s3Prefix) : undefined,
     },
     style: imagePath ? { backgroundImage: `url(${resolveMediaUrl(imagePath, s3Prefix)})` } : undefined,

@@ -106,6 +106,16 @@ The user pointed out something worth keeping in mind for the rest of the brick-m
 
 Confirmed as part of this: the center pane already renders each brick through its migrated Vue+Tailwind conversion (`StudioBlockPreview.vue` + the brick's registered converter, e.g. `header-brick.ts`) rather than a schematic view - exact visual/CSS fidelity to the original SCSS is *not* the bar for calling a brick's mapping done, matching how `header-brick` itself was scoped (structure and field-editability first, pixel-matching later if ever).
 
+### header-brick's CSS, redone properly (not approximated)
+
+Immediately followed by the user asking to actually get `header-brick` pixel-faithful, since it's the one real proof point available. The first pass (§ above) had flagged one open question explicitly: `.hero-generico` never declares `display:grid` in its own SCSS file, so `aside`/`header`'s `grid-area: content` looked unresolvable, and that pass substituted plain absolute positioning to get the same *visual effect*.
+
+Chased it down this time: `assets/scss/base/_global.scss` has a global rule - `main section { display: grid; grid-template-columns: auto minmax(auto,1440px) auto; grid-template-areas: ". content ."; } .sb-wrapper { grid-area: content; }`. Since `.hero-generico` is itself a `<section>` inside `<main>`, it inherits this automatically. Both `aside` and `header` sharing `grid-area: content` means they land in the *same grid cell* and stack by DOM order (video painted first, text overlay on top) - genuine CSS Grid stacking, not a trick needing an absolute-positioning substitute.
+
+Rewrote `header-brick.ts` to use the real technique: the outer `section` gets `grid grid-cols-[auto_minmax(auto,1440px)_auto]`, both `aside` and `header` get `col-start-2 row-start-1` (placing them in the same cell), `.sb-wrapper`'s own nested responsive grid (`tablet-p:grid-cols-[2fr_1fr]` / `tablet-l:grid-cols-[3fr_1fr]` / `desktop-sm:grid-cols-[4fr_1fr]`) is modeled as its own node rather than folded into `header`, and `hgroup`'s `place-self: end stretch` becomes Tailwind's built-in `self-end justify-self-stretch` (no arbitrary value needed - these are standard utilities). Verified this isn't just "no typecheck errors" the same way as the earlier `@source` gotchas: pulled the compiled CSS from both dev servers directly and confirmed `grid-template-columns: auto minmax(auto,1440px) auto`, `col-start-2`/`row-start-1`, `self-end`/`justify-self-stretch`, and the responsive `sb-wrapper` grid-column values are all genuinely present, not just referenced.
+
+Re-ran `migrate-documents` (real write) so document 10's stored `cms_documents` row reflects the corrected mapping - the earlier absolute-positioning version is gone from the database, not just the source file.
+
 **Still explicitly NOT done**:
 - Brick-specific converters for the remaining 42 discovered brick types (generic fallback only, so far) - `header-brick` is the first of 43.
 - The deferred ~110-file `blocks/editor/`/`blocks/actions/`/`blocks/preview/` core from whoobe-studio-alpha-01 (the actual visual tree editor and Tailwind style-control panels) - not started, and a materially larger undertaking than this pass given the Vuex/FeathersJS coupling throughout.
