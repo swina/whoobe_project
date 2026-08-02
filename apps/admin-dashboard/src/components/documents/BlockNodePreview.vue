@@ -20,28 +20,28 @@
        invalid nested <video><video/></video> markup. -->
   <img
     v-else-if="node.type === 'media' && node.tag !== 'video'"
-    :src="node.props?.src"
+    :src="resolveDisplayUrl(node.props?.src)"
     :alt="node.props?.alt || node.name"
     :class="node.props?.cssClass"
-    :style="node.style"
+    :style="resolveStyleBackgroundImage(node.style)"
   />
 
   <video
     v-else-if="node.type === 'media' && node.tag === 'video'"
-    :src="typeof node.props?.src === 'string' ? node.props.src : node.props?.src?.path"
+    :src="resolveDisplayUrl(typeof node.props?.src === 'string' ? node.props.src : node.props?.src?.path)"
     :autoplay="node.props?.autoplay"
     :loop="node.props?.loop"
     :muted="node.props?.muted"
     :playsinline="node.props?.playsinline"
     :controls="node.props?.controls ?? true"
     :class="node.props?.cssClass"
-    :style="node.style"
+    :style="resolveStyleBackgroundImage(node.style)"
   />
 
   <component
     v-else
     :is="node.tag || defaultTag"
-    :style="node.style"
+    :style="resolveStyleBackgroundImage(node.style)"
     :class="node.props?.cssClass"
     :href="node.tag === 'a' ? node.props?.href : undefined"
   >
@@ -61,6 +61,7 @@
 import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import type { WhoobeBlockNode } from '@pimcore-custom/core'
+import { resolveDisplayUrl, resolveStyleBackgroundImage } from '../../utils/resolve-display-url'
 
 defineOptions({ name: 'BlockNodePreview' })
 

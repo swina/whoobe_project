@@ -126,6 +126,20 @@ The user then asked for a UX change: opening a document should land directly in 
 
 Verified: all 6 packages/apps typecheck clean; `MasterDocumentTab.vue`/`WhoobeStudioEmbed.vue`/`tabsStore.ts` confirmed compiling via the dev server; no remaining references to the old `WhoobeStudioEmbedModal` name anywhere in the codebase.
 
+### Image references resolved fresh at render time, not baked in at migration time
+
+The user asked how a brick's image reference (`header-brick`'s `backgroundImageSrc`/`src`, e.g. `/communication/Visore-campagna-25.jpg`) actually gets turned into something the browser can load, since the asset genuinely exists in the DAM (confirmed via `assets` table lookup - real S3 key, `is_public: true`).
+
+**Diagnosis**: it didn't resolve to anything, because nothing was resolving it. `header-brick.ts`'s `resolveMediaUrl(imagePath, s3Prefix)` needs an `s3Prefix` to produce a real URL, but `cli.ts`'s call to `PimcoreDocumentConverter.convertDocument(rawDoc)` never passes one - `s3BucketPrefix` silently defaults to `''`, so the stored value has only ever been a bare relative path, never a URL.
+
+The fix is **not** "pass a real `s3Prefix` at migration time and store the resolved URL" - presigned URLs for private-by-current-folderRules assets expire in ~1h (confirmed: this specific asset resolves to a *presigned* URL right now, `isPublic: false` per the caller's folderRules at resolution time, even though the DB's own `assets.is_public` column says `true` - the two are independently derived, see the earlier bucket-policy incident in the DAM implementation history for why). Baking either into `cms_documents.root_block`'s stored JSON would go stale, the exact reason `dam-schema.ts`'s own asset records never store URLs either - only stable paths, always resolved fresh.
+
+**Fix**: added `resolve-display-url.ts` to both apps - a small, reactively-cached resolver that recognizes a raw Pimcore-style path (`/foo/bar.jpg`, not `http://`/`data:`) and resolves it via asset-processor's existing `/api/v1/dam/asset-urls` endpoint on demand, purely at render time, without ever mutating the node's own `props`/`style` (mutating them would let a resolved-but-expiring URL get autosaved back into storage on the next edit - checked for and deliberately avoided). Wired into both `BlockNodePreview.vue` (admin-dashboard) and `StudioBlockPreview.vue` (whoobe-studio, which had no asset-processor connection at all before this - added a minimal client) for `img`/`video` `src` and any `style.backgroundImage: url(...)`.
+
+Verified end-to-end: confirmed the exact call pattern the new resolver uses (no `folderRules` param) against the real asset-processor, resolves successfully, and the resulting URL genuinely loads the image (HTTP 200); both apps typecheck clean; all changed/new files confirmed compiling via their dev servers.
+
+**Known gap, not yet covered by this fix**: the ported `MokaAudioElement`/`MokaIframeElement`/`MokaSvgElement` components (whoobe-studio only) still read `node.props?.src` directly, unresolved - deferred since nothing currently exercises those tags with real unresolved paths; same fix would apply there once one does.
+
 **Still explicitly NOT done**:
 - Brick-specific converters for the remaining 42 discovered brick types (generic fallback only, so far) - `header-brick` is the first of 43.
 - The deferred ~110-file `blocks/editor/`/`blocks/actions/`/`blocks/preview/` core from whoobe-studio-alpha-01 (the actual visual tree editor and Tailwind style-control panels) - not started, and a materially larger undertaking than this pass given the Vuex/FeathersJS coupling throughout.
