@@ -23,7 +23,11 @@ export interface MysqlPimcoreSourceConfig {
 
 const DEFAULT_TABLES = {
   documentsTable: 'documents',
-  documentsElementsTable: 'documents_elements',
+  // Renamed from "documents_elements" in older Pimcore versions to
+  // "documents_editables" in this instance (confirmed 2026-08-02 against a
+  // live Pimcore/sanbenedetto DB) - overridable via config for instances
+  // still on the older name.
+  documentsElementsTable: 'documents_editables',
   assetsTable: 'assets',
 };
 

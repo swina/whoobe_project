@@ -54,19 +54,22 @@ describe('Pimcore ETL pipeline (fixture adapter -> converter)', () => {
             documentId: 1,
             name: 'content',
             type: 'areablock',
+            // Real slot shape confirmed against a live Pimcore instance:
+            // {key, type, hidden} - sibling fields are named by `key`, not
+            // array position or brick type (see pimcore-serialized-data.ts).
             data: phpSerialize([
-              { type: 'herobanner', hidden: false },
-              { type: 'customwidget', hidden: false },
+              { key: '9', type: 'herobanner', hidden: false },
+              { key: '8', type: 'customwidget', hidden: false },
             ]),
           },
-          { documentId: 1, name: 'content:0:herobanner.headline', type: 'input', data: 'Big Hero' },
+          { documentId: 1, name: 'content:9.headline', type: 'input', data: 'Big Hero' },
           {
             documentId: 1,
-            name: 'content:0:herobanner.image',
+            name: 'content:9.image',
             type: 'image',
             data: phpSerialize({ id: 42, alt: 'Hero Alt' }),
           },
-          { documentId: 1, name: 'content:1:customwidget.label', type: 'input', data: 'Custom Label' },
+          { documentId: 1, name: 'content:8.label', type: 'input', data: 'Custom Label' },
         ],
       },
     };
