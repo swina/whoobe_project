@@ -6,6 +6,29 @@ Confirmed with the user before writing this: Whoobe Studio is to be **designed a
 
 ---
 
+## 0. Status (updated after the first implementation pass, branch `dev/08-02/pimcore-documents-import`)
+
+Being explicit here on purpose, having just finished correcting a doc that claimed phases were done when they weren't (§1) — real status:
+
+**Built and verified (typecheck + tests passing)**:
+- Phase 2 (persistence): `cms_documents` table (`packages/core/src/db/cms-schema.ts`/`cms-records.ts`), migrated into the live `whoobe_db`.
+- Phase 1 (extractor), built as a **plugin architecture** rather than a single hardcoded extractor, per the explicit "make it repeatable" instruction:
+  - `source-adapter.ts` — the `PimcoreSourceAdapter` interface + a name-based registry (`registerPimcoreSourceAdapter`/`createPimcoreSourceAdapter`). Adding support for a different Pimcore version or a non-MySQL source is a new file + one registration call, no changes to the CLI/converter.
+  - `adapters/mysql-adapter.ts` — a real adapter (`mysql2`), with table/column names as config overrides rather than hardcoded, since Phase 0 (below) hasn't confirmed them against a real instance yet.
+  - `adapters/fixture-adapter.ts` — an in-memory adapter for tests, doubling as the template for a future export-file adapter.
+  - `php-unserialize.ts` — a from-scratch, tested PHP `serialize()` decoder (Pimcore stores Areablock slot lists and Image/Video references this way).
+  - `pimcore-serialized-data.ts` — bridges raw `documents_elements` rows to `PimcoreEditableElement`s: resolves Image/Video asset IDs to paths, reassembles Areablock brick instances from sibling rows.
+  - `pimcore-document-converter.ts` extended with `registerAreabrickConverter` — a brick-type → `WhoobeBlockNode` mapping registry. Unregistered brick types still convert (a generic fallback container, fields preserved), so migration never silently drops content while brick-specific mappings are still being written. Verified end-to-end in `pimcore-etl-pipeline.test.ts`: a registered brick and an unregistered brick side by side, in the same document, both converting correctly.
+- Phase 3 (CLI wiring): `cli.ts`'s `migrate-documents` no longer uses a hardcoded sample document — it drives the adapter interface, converts via `PimcoreDocumentConverter`, and persists via `upsertDocumentRecord` (idempotent by `pimcoreId`). Supports `--dry-run` and `--source=<mysql|fixture>`.
+
+**Explicitly NOT done, and why**:
+- **Phase 0 (the live-schema spike) has not run.** There is no live Pimcore MySQL connection available in the environment this was built in. The MySQL adapter's table/column assumptions (`documents`/`documents_elements`/`assets`, the specific key names inside a serialized Areablock slot entry, the naming convention for a brick's sibling sub-field rows) are built against documented/historically-stable Pimcore behavior, **not confirmed against a real instance**. Every one of those assumptions is isolated behind a small, named, overridable piece (config overrides on the adapter, `parseAreablockSlotList`, `matchesAreablockSlot`) specifically so that confirming/correcting them against real data is a small, contained change, not a rewrite — but they are still assumptions until Phase 0 actually runs.
+- Phases 4 (Documents admin UI) and 5 (Whoobe Studio editor app) are unstarted.
+
+**To actually run this against a real Pimcore instance**: set `PIMCORE_DB_HOST`/`PIMCORE_DB_PORT`/`PIMCORE_DB_USER`/`PIMCORE_DB_PASSWORD`/`PIMCORE_DB_NAME` (via env or `packages/migration-tool/.env`), then `pnpm --filter @pimcore-custom/migration-tool exec tsx src/cli.ts migrate-documents --dry-run --limit=5` first. Treat the first real run as Phase 0 by another name — read its output against a few pages you know the content of, and fix whichever of the assumptions above turns out wrong before dropping `--dry-run`.
+
+---
+
 ## 1. Correcting the Existing Documentation First
 
 `docs/WhoobeStudio-Integration.md` checks off Phases 1–6 as done and describes `apps/admin-dashboard` as React/Next.js. Neither is accurate, and planning on top of it as-is would misdirect the work:

@@ -14,7 +14,7 @@ function resolveDatabaseUrl(): string {
 }
 
 export default defineConfig({
-  schema: ['./src/db/auth-schema.ts', './src/db/dam-schema.ts'],
+  schema: ['./src/db/auth-schema.ts', './src/db/dam-schema.ts', './src/db/cms-schema.ts'],
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
