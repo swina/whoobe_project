@@ -79,8 +79,30 @@ The user asked to evaluate their own existing repo, `github.com/swina/whoobe-stu
 
 Verified: `@iconify/vue` installed in both apps; all 6 packages/apps typecheck clean; Iconify's search API confirmed reachable and returning real results; all new files confirmed compiling via both dev servers.
 
+### Porting whoobe-studio-alpha-01's blocks/elements and common (21 of 31 candidate files)
+
+Follow-up to the cherry-pick above: the user asked for `src/components/blocks` and `src/components/common` to be ported wholesale. Inventoried the real size first via the GitHub API before starting - **140 files / ~650KB in `blocks/`, 17 files / ~30KB in `common/`** - this is the source app's entire editor+preview engine (tree editor, a full visual Tailwind style-control system, drag-drop, sliders/carousels/popups/forms), not a peripheral feature. Presented this to the user with three scoping options; **chosen: port only `blocks/elements/` (14 files) + `common/` (17 files) now**, deferring the ~110-file `editor/`/`actions/`/`preview/` core (the actual block-tree editor and Tailwind control panels) to a later, separately-scoped pass - that core is where the deep Vuex/FeathersJS coupling really lives, and is a materially different size of undertaking.
+
+**Ported (21 of the 31 files in scope), all converted from Vue 2 Options API + untyped `$attrs` access to Vue 3 `<script setup lang="ts">` with typed props, under `apps/whoobe-studio/src/ported/`:**
+
+- `elements/`: `MokaAudioElement`, `MokaDownloadElement`, `FontIconElement` (Material/Bootstrap font glyphs - distinct from the Iconify-based `props.icon` already wired in), `MokaIframeElement`, `MokaInputElement`, `MokaTextareaElement`, `MokaSvgElement`, `MokaLinkElement` (external-link `target="_blank"` detection kept, the source's Vuex-dispatched `#popup?` link convention dropped - no popup state exists here), `WhoobeResponsiveMenu` (a *simplified* nav menu - the source's `moka.menu.responsive.vue`, not the separate, much larger `menu.vue` mega-menu, which recurses through `<moka-element>`/block trees and is really part of the deferred preview engine, not a self-contained element).
+- `common/`: `BootstrapIcon`, `MaterialIconButton`, `WhoobeChip`, `LoadingOverlay`, `ToggleSwitch` (converted to a proper `v-model`, replacing the source's Vue-2-only mutate-a-prop-in-a-click-handler pattern), `RadioGroup`, `NavigationArrows`, `Modal` (draggable, slotted, configurable button rows - kept faithfully, no Vuex/Feathers coupling in the source), `ModalFullscreen`, `ConfirmDialog`, `DoubleRangeSlider` (dropped the source's `eventBus` global-event-bus import, a removed-in-Vue-3 pattern with no equivalent anywhere in this app - the component's own `@range` emit already carries the same payload), `ColorPalette` (uses Tailwind's own standard color names rather than porting the source's custom `tw.classes.js` data file).
+
+**Skipped, and why** (the other 10 of 31): `img.vue`/`moka.video.vue`/`text.vue` (redundant - already covered by this app's existing type-based dispatch), `menu.vue`/`simple.svg.vue`/`Plugins.Wrapper.vue`/`plugin.wrapper.vue`/`supericon.vue` (not actually self-contained - deeply wired into the deferred ~110-file editor/preview engine via Vuex state and dynamic plugin imports), `login.vue` (redundant - this app has its own real auth already), `actions.vue` (core editor-engine glue, `editor.action`/`editor.subaction` Vuex-driven).
+
+**Two real things found and fixed while porting, not just translated:**
+- `ConfirmDialog`'s source (`confirm.vue`) never actually passed a `buttons` prop to its `Modal`, and `Modal`'s default (`buttons: 'none'`) renders no button row at all - the original dialog had no visible way to confirm or cancel. Fixed by passing `buttons="standard"`.
+- `ColorPalette.vue` constructs classes via runtime string interpolation (`` `bg-${colour}-${shade}` ``) - a *different* Tailwind-scanning gap than the `@source` fix from the previous pass: this isn't a literal string anywhere for `@source` to find via file-scanning, since it's built at runtime. Fixed with Tailwind v4's `@source inline("bg-{...}-{100,...,900}")`, its explicit mechanism for classes that can never be found by scanning source text. Verified directly in compiled CSS output again, not assumed from "no errors."
+
+Also added, needed for these ports to render actual glyphs: `bootstrap-icons` (npm, self-hosted font+CSS) in both apps; Material Icons via the same Google Fonts CDN pattern `admin-dashboard`'s `index.html` already used for the Inter font.
+
+Wired into the live editor: `MokaAudioElement`/`MokaIframeElement`/`MokaSvgElement` extend `StudioBlockPreview.vue`'s existing tag-based dispatch (alongside the pre-existing `img`/`video`), following the exact pattern already established. The rest (download link, styled link, responsive menu, all `common/` UI atoms) are ready-to-use standalone components, not yet force-wired into any dispatch or brick mapping, since no current brick mapping produces the tags/data they'd need (e.g. nothing emits `tag: 'audio'` yet) - real when the next brick that needs one is mapped, not speculative scaffolding.
+
+Verified: all 6 packages/apps typecheck clean; all 21 new files individually confirmed compiling via the running dev server; migration-tool's 14 tests still pass.
+
 **Still explicitly NOT done**:
 - Brick-specific converters for the remaining 42 discovered brick types (generic fallback only, so far) - `header-brick` is the first of 43.
+- The deferred ~110-file `blocks/editor/`/`blocks/actions/`/`blocks/preview/` core from whoobe-studio-alpha-01 (the actual visual tree editor and Tailwind style-control panels) - not started, and a materially larger undertaking than this pass given the Vuex/FeathersJS coupling throughout.
 
 ---
 

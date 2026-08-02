@@ -26,6 +26,9 @@ importers:
       '@pimcore-custom/core':
         specifier: workspace:*
         version: link:../../packages/core
+      bootstrap-icons:
+        specifier: ^1.11.3
+        version: 1.13.1
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
@@ -156,6 +159,9 @@ importers:
       '@pimcore-custom/core':
         specifier: workspace:*
         version: link:../../packages/core
+      bootstrap-icons:
+        specifier: ^1.11.3
+        version: 1.13.1
       vue:
         specifier: ^3.5.13
         version: 3.5.40(typescript@5.9.3)
@@ -1735,6 +1741,9 @@ packages:
   body-parser@1.20.6:
     resolution: {integrity: sha512-p5tAzS57i5MV9fZFDj9LeIiTZEufbSe2eDozP+ElheSUq1m74CRq1jI4mYNDdVs9vQztXFLuk/Gd6BWTdwRJ5g==}
     engines: {node: '>= 0.8', npm: 1.2.8000 || >= 1.4.16}
+
+  bootstrap-icons@1.13.1:
+    resolution: {integrity: sha512-ijombt4v6bv5CLeXvRWKy7CuM3TRTuPEuGaGKvTV5cz65rQSY8RQ2JcHt6b90cBBAC7s8fsf2EkQDldzCoXUjw==}
 
   bowser@2.14.1:
     resolution: {integrity: sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg==}
@@ -4049,6 +4058,8 @@ snapshots:
       unpipe: 1.0.0
     transitivePeerDependencies:
       - supports-color
+
+  bootstrap-icons@1.13.1: {}
 
   bowser@2.14.1: {}
 
