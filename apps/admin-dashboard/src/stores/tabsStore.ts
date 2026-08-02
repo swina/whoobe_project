@@ -5,15 +5,17 @@ import { ref } from 'vue'
 // Data Objects, Assets, Documents, Settings) and any opened master item
 // (an asset or document, and later a data object) each get exactly one tab
 // in a single flat strip. Item-specific views (an asset's Preview/Editor/
-// Metadata) are NOT separate main tabs - they are a sub-tab subsystem
-// nested inside that one master-item tab (see MasterAssetTab.vue). Document
-// tabs don't have a sub-tab system yet (MasterDocumentTab.vue) - there's
-// only a read-only Preview so far, since editing needs the not-yet-built
-// Whoobe Studio (see docs/plans/cms/pimcore-areablock-import-plan.md).
+// Metadata, a document's Editor/Preview) are NOT separate main tabs - they
+// are a sub-tab subsystem nested inside that one master-item tab (see
+// MasterAssetTab.vue/MasterDocumentTab.vue). A document tab opens straight
+// into its Editor sub-tab (Whoobe Studio, embedded inline - not a modal),
+// with Preview (the read-only rendered HTML) as a second sub-tab, mirroring
+// how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
 export type SectionKind = 'overview' | 'objects' | 'assets' | 'documents' | 'settings'
 export type MasterItemKind = 'asset' | 'document'
 export type AssetSubTab = 'preview' | 'editor' | 'metadata' | 'thumbnails'
+export type DocumentSubTab = 'editor' | 'preview'
 
 export interface MainTab {
   id: string
@@ -22,6 +24,7 @@ export interface MainTab {
   itemKind?: MasterItemKind
   itemId?: string
   assetSubTab?: AssetSubTab
+  documentSubTab?: DocumentSubTab
 }
 
 export function sectionTabId(section: SectionKind): string {
@@ -68,9 +71,14 @@ export const useTabsStore = defineStore('tabs', () => {
   function openDocument(documentId: string) {
     const id = documentTabId(documentId)
     if (findIndex(id) === -1) {
-      tabs.value.push({ id, type: 'item', itemKind: 'document', itemId: documentId })
+      tabs.value.push({ id, type: 'item', itemKind: 'document', itemId: documentId, documentSubTab: 'editor' })
     }
     activeTabId.value = id
+  }
+
+  function setDocumentSubTab(documentId: string, subTab: DocumentSubTab) {
+    const tab = tabs.value.find((t) => t.id === documentTabId(documentId))
+    if (tab) tab.documentSubTab = subTab
   }
 
   function closeTab(id: string) {
@@ -103,6 +111,7 @@ export const useTabsStore = defineStore('tabs', () => {
     openAsset,
     setAssetSubTab,
     openDocument,
+    setDocumentSubTab,
     closeTab,
     closeAssetTab,
     closeDocumentTab

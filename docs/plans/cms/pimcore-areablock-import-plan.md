@@ -116,6 +116,16 @@ Rewrote `header-brick.ts` to use the real technique: the outer `section` gets `g
 
 Re-ran `migrate-documents` (real write) so document 10's stored `cms_documents` row reflects the corrected mapping - the earlier absolute-positioning version is gone from the database, not just the source file.
 
+### Editor becomes the default document tab, not a modal
+
+The user then asked for a UX change: opening a document should land directly in the Whoobe Studio editor, with the read-only rendered-HTML view as a *sub-tab* named Preview - not a button that opens a modal. This is exactly the sub-tab pattern `MasterAssetTab.vue` already established for assets (Preview/Edit Image/Metadata/Thumbnails, all mounted via `v-show` inside one master tab) - documents were the odd one out, with editing behind a separate modal instead of being a sibling sub-tab.
+
+- `tabsStore.ts`: added `DocumentSubTab = 'editor' | 'preview'` and a `documentSubTab` field on `MainTab`, mirroring `AssetSubTab`/`assetSubTab` exactly. `openDocument()` now defaults to `documentSubTab: 'editor'` - opening a document lands in the editor immediately, matching how opening an asset lands in Preview immediately (no extra click to get to the primary view either way).
+- `WhoobeStudioEmbedModal.vue` → renamed `WhoobeStudioEmbed.vue` and stripped of all modal chrome (fixed overlay, backdrop, close button, its own header) - it's a plain panel now, always mounted inside the Editor sub-tab's content area, sized to fill it. Emits `saved` with the updated document record on every autosave (previously this only mattered for a close-triggered refetch; now `MasterDocumentTab.vue` listens and updates its own copy live, so switching to the Preview sub-tab always reflects the latest edit without a re-fetch).
+- `MasterDocumentTab.vue`: added the Editor/Preview sub-tab nav bar (visually identical to `MasterAssetTab.vue`'s), both panels mounted via `v-show` rather than `v-if` - critical for the Editor specifically, since `v-if` would tear down and rebuild the iframe/bridge connection (and lose the `WhoobeHostBridge` listener) every time the user switched to Preview and back, not just hide it.
+
+Verified: all 6 packages/apps typecheck clean; `MasterDocumentTab.vue`/`WhoobeStudioEmbed.vue`/`tabsStore.ts` confirmed compiling via the dev server; no remaining references to the old `WhoobeStudioEmbedModal` name anywhere in the codebase.
+
 **Still explicitly NOT done**:
 - Brick-specific converters for the remaining 42 discovered brick types (generic fallback only, so far) - `header-brick` is the first of 43.
 - The deferred ~110-file `blocks/editor/`/`blocks/actions/`/`blocks/preview/` core from whoobe-studio-alpha-01 (the actual visual tree editor and Tailwind style-control panels) - not started, and a materially larger undertaking than this pass given the Vuex/FeathersJS coupling throughout.
