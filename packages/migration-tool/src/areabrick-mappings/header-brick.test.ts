@@ -65,4 +65,16 @@ describe('header-brick mapping (mirrors templates/areas/header-brick/view.html.t
     expect(result!.children).toHaveLength(1);
     expect(result!.children![0].tag).toBe('header');
   });
+
+  it('preserves the leading slash with no s3Prefix (the real production case - cli.ts never passes one)', () => {
+    const result = PimcoreDocumentConverter.convertAreablockBrick(0, brick, '');
+    // Without this, admin-dashboard/whoobe-studio's resolve-display-url.ts
+    // can't recognize this as a stable path needing resolution at render
+    // time - it requires the leading slash to distinguish "not yet
+    // resolved" from "already a full URL". Regression test for a real bug:
+    // resolveMediaUrl used to strip the leading slash unconditionally,
+    // producing a value that was neither a working URL nor recognizable
+    // as one still needing resolution.
+    expect(result!.style?.backgroundImage).toBe('url(/communication/hero.jpg)');
+  });
 });

@@ -38,7 +38,8 @@ export function resolveDisplayUrl(value: unknown): string | undefined {
       .then((urls) => {
         cache[value] = urls.url
       })
-      .catch(() => {
+      .catch((e) => {
+        console.warn(`resolveDisplayUrl: failed to resolve "${value}":`, e)
         cache[value] = null
       })
       .finally(() => inFlight.delete(value))

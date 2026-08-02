@@ -51,10 +51,22 @@ export function getRegisteredAreabrickTypes(): string[] {
  * by per-brick Areabrick converters (packages/migration-tool/src/
  * areabrick-mappings/) that build their own media references - e.g. a
  * background-image style, which the generic conversion has no case for.
+ *
+ * With no s3Prefix (the actual case every migration run has hit so far -
+ * cli.ts never passes one), this must return `path` unchanged, leading
+ * slash included: the admin-dashboard/whoobe-studio render layer
+ * (resolve-display-url.ts in both apps) recognizes "/foo/bar.jpg" as a
+ * stable Pimcore-style reference to resolve into a real URL at display
+ * time, specifically by checking for that leading slash. Previously this
+ * stripped it unconditionally (needed only for the with-prefix
+ * concatenation case below), silently producing a value
+ * ("communication/x.jpg") that both looked unresolved and couldn't be
+ * resolved - not a URL, and not recognizable as a path needing one either.
  */
 export function resolveMediaUrl(path: string, s3Prefix: string = ''): string {
+  if (!s3Prefix) return path;
   const cleanPath = path.replace(/^\/+/, '');
-  return s3Prefix ? `${s3Prefix.replace(/\/+$/, '')}/${cleanPath}` : cleanPath;
+  return `${s3Prefix.replace(/\/+$/, '')}/${cleanPath}`;
 }
 
 export interface PimcoreRawDocument {
