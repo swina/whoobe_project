@@ -19,18 +19,26 @@ describe('header-brick mapping (mirrors templates/areas/header-brick/view.html.t
     expect(result).not.toBeNull();
     expect(result!.tag).toBe('section');
     expect(result!.props?.cssClass).toContain('bg-cover');
+    expect(result!.props?.cssClass).toContain('grid-cols-[auto_minmax(auto,1440px)_auto]');
     expect(result!.style?.backgroundImage).toBe('url(https://cdn.example.com/communication/hero.jpg)');
 
+    // aside and header share the same grid cell (col-start-2/row-start-1)
+    // so they stack - the real _global.scss/_hero-generico.scss layering
+    // mechanism, not an absolute-positioning approximation.
     const [videoWrap, content] = result!.children!;
     expect(videoWrap.tag).toBe('aside');
+    expect(videoWrap.props?.cssClass).toContain('col-start-2 row-start-1');
     expect(videoWrap.children![0].props?.src).toBe('https://cdn.example.com/communication/hero.mp4');
     expect(videoWrap.children![0].props?.autoplay).toBe(true);
 
     expect(content.tag).toBe('header');
+    expect(content.props?.cssClass).toContain('col-start-2 row-start-1');
     const wrapper = content.children![0];
     expect(wrapper.name).toBe('sb_wrapper');
+    expect(wrapper.props?.cssClass).toContain('grid');
     const hgroup = wrapper.children![0];
     expect(hgroup.tag).toBe('hgroup');
+    expect(hgroup.props?.cssClass).toContain('self-end');
 
     const [title, text, cta] = hgroup.children!;
     expect(title.tag).toBe('h1');
