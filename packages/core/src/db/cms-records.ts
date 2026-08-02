@@ -27,6 +27,12 @@ export async function getDocumentBySlug(slug: string): Promise<CmsDocumentRecord
   return row ?? null;
 }
 
+export async function getDocumentById(id: string): Promise<CmsDocumentRecord | null> {
+  const db = getDb();
+  const [row] = await db.select().from(cmsDocuments).where(eq(cmsDocuments.id, id)).limit(1);
+  return row ?? null;
+}
+
 export async function getDocumentByPimcoreId(pimcoreId: string): Promise<CmsDocumentRecord | null> {
   const db = getDb();
   const [row] = await db.select().from(cmsDocuments).where(eq(cmsDocuments.pimcoreId, pimcoreId)).limit(1);

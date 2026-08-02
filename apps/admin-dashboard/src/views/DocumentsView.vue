@@ -1,37 +1,68 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <h2 class="text-xl font-bold text-slate-100">Documents & Pages</h2>
-        <p class="text-xs text-slate-400">Content pages, navigation structures, and snippet documents.</p>
-      </div>
-      <button class="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition">
-        + New Document
-      </button>
+    <div>
+      <h2 class="text-xl font-bold text-slate-100">Documents & Pages</h2>
+      <p class="text-xs text-slate-400">Pages migrated from Pimcore (or authored directly). Click a row to preview its content tree.</p>
     </div>
 
-    <div class="rounded-2xl bg-slate-900/60 border border-slate-800 p-4 space-y-3">
-      <div v-for="doc in docs" :key="doc.id" class="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:bg-slate-800/40 transition">
-        <div class="flex items-center space-x-3">
-          <FileText class="w-5 h-5 text-indigo-400" />
-          <div>
-            <div class="text-sm font-medium text-slate-200">{{ doc.title }}</div>
-            <div class="text-xs text-slate-500">{{ doc.path }}</div>
-          </div>
-        </div>
-        <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">Published</span>
-      </div>
+    <div v-if="documentsStore.isLoading && documentsStore.documents.length === 0" class="p-12 text-center text-xs text-slate-500">
+      Loading documents…
+    </div>
+
+    <div v-else-if="documentsStore.documents.length === 0" class="rounded-2xl bg-slate-900/40 border border-slate-800/80 p-12 text-center text-xs text-slate-500">
+      No documents yet. Run the migration tool's `migrate-documents` command to import from Pimcore.
+    </div>
+
+    <div v-else class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60 shadow-xl">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-950/80 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          <tr>
+            <th class="py-3 px-4 w-8"></th>
+            <th class="py-3 px-4">Title</th>
+            <th class="py-3 px-4">Slug</th>
+            <th class="py-3 px-4">Locale</th>
+            <th class="py-3 px-4">Status</th>
+            <th class="py-3 px-4">Pimcore ID</th>
+            <th class="py-3 px-4">Updated</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/60">
+          <tr
+            v-for="doc in documentsStore.documents"
+            :key="doc.id"
+            @click="tabsStore.openDocument(doc.id)"
+            class="cursor-pointer hover:bg-slate-800/50 transition"
+          >
+            <td class="py-2.5 px-4 text-center">
+              <FileText class="w-4 h-4 text-indigo-400 inline" />
+            </td>
+            <td class="py-2.5 px-4 font-semibold text-slate-100">{{ doc.title }}</td>
+            <td class="py-2.5 px-4 font-mono text-indigo-300">{{ doc.slug }}</td>
+            <td class="py-2.5 px-4 text-slate-400">{{ doc.locale }}</td>
+            <td class="py-2.5 px-4">
+              <span
+                :class="[
+                  'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
+                  doc.status === 'published' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                ]"
+              >
+                {{ doc.status }}
+              </span>
+            </td>
+            <td class="py-2.5 px-4 text-slate-500 font-mono">{{ doc.pimcoreId ?? '—' }}</td>
+            <td class="py-2.5 px-4 text-slate-400">{{ new Date(doc.updatedAt).toLocaleString() }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import { FileText } from '@lucide/vue'
+import { useDocumentsStore } from '../stores/documentsStore'
+import { useTabsStore } from '../stores/tabsStore'
 
-const docs = ref([
-  { id: 1, title: 'Homepage Main Template', path: '/en/home' },
-  { id: 2, title: 'Privacy Policy & Terms', path: '/en/legal/privacy' },
-  { id: 3, title: 'Contact Us Landing Page', path: '/en/contact' }
-])
+const documentsStore = useDocumentsStore()
+const tabsStore = useTabsStore()
 </script>

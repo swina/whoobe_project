@@ -204,6 +204,7 @@
               <component :is="sectionComponent(tab.section)" />
             </div>
             <MasterAssetTab v-else-if="tab.type === 'item' && tab.itemKind === 'asset' && tab.itemId" :asset-id="tab.itemId" />
+            <MasterDocumentTab v-else-if="tab.type === 'item' && tab.itemKind === 'document' && tab.itemId" :document-id="tab.itemId" />
           </div>
         </template>
       </main>
@@ -230,12 +231,14 @@ import {
   LogOut
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
+import { useDocumentsStore } from '../stores/documentsStore'
 import { useTabsStore, sectionTabId, SectionKind, MainTab } from '../stores/tabsStore'
 import { useToastStore } from '../stores/toastStore'
 import { useAuthStore } from '../stores/authStore'
 import { getIconForFileType } from '../utils/asset-file-icons'
 import SidebarFolderNode from '../components/dam/SidebarFolderNode.vue'
 import MasterAssetTab from '../components/dam/MasterAssetTab.vue'
+import MasterDocumentTab from '../components/documents/MasterDocumentTab.vue'
 import OverviewView from '../views/OverviewView.vue'
 import ObjectsView from '../views/ObjectsView.vue'
 import AssetsView from '../views/AssetsView.vue'
@@ -243,6 +246,7 @@ import DocumentsView from '../views/DocumentsView.vue'
 import SettingsView from '../views/SettingsView.vue'
 
 const damStore = useDamStore()
+const documentsStore = useDocumentsStore()
 const tabsStore = useTabsStore()
 const toastStore = useToastStore()
 const authStore = useAuthStore()
@@ -316,6 +320,10 @@ function tabLabel(tab: MainTab): string {
   if (tab.type === 'item' && tab.itemKind === 'asset' && tab.itemId) {
     const asset = damStore.assets.find((a) => a.id === tab.itemId)
     return asset?.filename || 'Asset'
+  }
+  if (tab.type === 'item' && tab.itemKind === 'document' && tab.itemId) {
+    const document = documentsStore.documents.find((d) => d.id === tab.itemId)
+    return document?.title || 'Document'
   }
   return 'Untitled'
 }
