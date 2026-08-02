@@ -21,11 +21,20 @@ Being explicit here on purpose, having just finished correcting a doc that claim
   - `pimcore-document-converter.ts` extended with `registerAreabrickConverter` — a brick-type → `WhoobeBlockNode` mapping registry. Unregistered brick types still convert (a generic fallback container, fields preserved), so migration never silently drops content while brick-specific mappings are still being written. Verified end-to-end in `pimcore-etl-pipeline.test.ts`: a registered brick and an unregistered brick side by side, in the same document, both converting correctly.
 - Phase 3 (CLI wiring): `cli.ts`'s `migrate-documents` no longer uses a hardcoded sample document — it drives the adapter interface, converts via `PimcoreDocumentConverter`, and persists via `upsertDocumentRecord` (idempotent by `pimcoreId`). Supports `--dry-run` and `--source=<mysql|fixture>`.
 
-**Explicitly NOT done, and why**:
-- **Phase 0 (the live-schema spike) has not run.** There is no live Pimcore MySQL connection available in the environment this was built in. The MySQL adapter's table/column assumptions (`documents`/`documents_elements`/`assets`, the specific key names inside a serialized Areablock slot entry, the naming convention for a brick's sibling sub-field rows) are built against documented/historically-stable Pimcore behavior, **not confirmed against a real instance**. Every one of those assumptions is isolated behind a small, named, overridable piece (config overrides on the adapter, `parseAreablockSlotList`, `matchesAreablockSlot`) specifically so that confirming/correcting them against real data is a small, contained change, not a rewrite — but they are still assumptions until Phase 0 actually runs.
-- Phases 4 (Documents admin UI) and 5 (Whoobe Studio editor app) are unstarted.
+**Phase 0 (updated 2026-08-02): run against a real instance, assumptions corrected.**
 
-**To actually run this against a real Pimcore instance**: set `PIMCORE_DB_HOST`/`PIMCORE_DB_PORT`/`PIMCORE_DB_USER`/`PIMCORE_DB_PASSWORD`/`PIMCORE_DB_NAME` (via env or `packages/migration-tool/.env`), then `pnpm --filter @pimcore-custom/migration-tool exec tsx src/cli.ts migrate-documents --dry-run --limit=5` first. Treat the first real run as Phase 0 by another name — read its output against a few pages you know the content of, and fix whichever of the assumptions above turns out wrong before dropping `--dry-run`.
+Ran `migrate-documents --dry-run` against a live Pimcore MySQL database. Two assumptions were wrong and have been fixed in code:
+
+- The table is `documents_editables`, not `documents_elements` (renamed in this Pimcore version) — `adapters/mysql-adapter.ts`'s default updated, still overridable via `PIMCORE_DOCUMENTS_ELEMENTS_TABLE` for instances still on the older name.
+- An Areablock slot entry is `{key, type, hidden}`, and a brick instance's sibling fields are named `{areablockName}:{key}.{fieldName}` (e.g. `content:5.classe`) — keyed by the slot's `key` string, **not** by array index or brick type name as originally assumed. Fixed in `parseAreablockSlotList`/`matchesAreablockSlot` in `pimcore-serialized-data.ts`.
+
+After the fix: **all 117 documents in the real instance converted successfully, 0 failures**, in dry-run mode (no writes performed). Real content converted correctly end to end - resolved asset paths (e.g. an Image editable's asset ID → `communication/Visore_2023.jpg`), real page text, and 43 distinct real Areabrick type names discovered (`header-brick`, `banner-brick`, `content-two-columns-brick`, `hero`, `products-showcase`, and 38 others) — all currently going through the generic unmapped-brick fallback (content preserved, not yet given brick-specific `WhoobeBlockNode` shaping). Registering `registerAreabrickConverter` mappings for these 43 real brick types, prioritized by how often each appears across the 117 documents, is the natural next increment - not done yet.
+
+Not yet run: an actual (non-dry-run) write into `cms_documents` against real data - only dry-run has been exercised so far.
+
+**Still explicitly NOT done**:
+- Brick-specific converters for the 43 discovered brick types (generic fallback only, so far).
+- Phases 4 (Documents admin UI) and 5 (Whoobe Studio editor app) are unstarted.
 
 ---
 

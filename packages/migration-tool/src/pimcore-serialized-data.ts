@@ -54,44 +54,46 @@ async function resolveImageLikeData(
 }
 
 /**
- * An Areablock's own `data` column holds only the ORDERED SLOT LIST (which
- * brick type sits in each position, and whether it's hidden) - each brick's
- * own fields are separate sibling `documents_elements` rows, matched below
- * by name rather than nested inside this column. The exact key names PHP
- * uses per slot ("type"/"hidden" here) are the part of this file most
- * likely to need adjusting once Phase 0's live-schema spike (see
- * docs/plans/cms/pimcore-areablock-import-plan.md) confirms them against a
- * real instance - isolated to this one function for that reason.
+ * An Areablock's own `data` column holds only the ORDERED SLOT LIST - which
+ * brick type sits in each position, its instance `key`, and whether it's
+ * hidden - each brick's own fields are separate sibling `documents_elements`
+ * rows, matched below by name rather than nested inside this column.
+ *
+ * Confirmed against a real Pimcore instance (2026-08-02): each slot entry is
+ * `{key, type, hidden}` (a real sample: `{"key":"5","type":"content-two-
+ * columns-brick","hidden":false}`) - `key` is the brick *instance*
+ * identifier used in sibling row names, not the array index.
  */
-function parseAreablockSlotList(raw: string): Array<{ index: number; brickType: string; hidden: boolean }> {
+function parseAreablockSlotList(raw: string): Array<{ key: string; brickType: string; hidden: boolean }> {
   const parsed = phpUnserialize(raw);
   if (!Array.isArray(parsed)) return [];
 
   return parsed
-    .map((entry, index) => {
+    .map((entry) => {
+      const key = asString(extractField(entry, 'key'));
       const type = asString(extractField(entry, 'type'));
-      if (!type) return null;
+      if (!key || !type) return null;
       const hidden = extractField(entry, 'hidden') === true;
-      return { index, brickType: type, hidden };
+      return { key, brickType: type, hidden };
     })
-    .filter((slot): slot is { index: number; brickType: string; hidden: boolean } => slot !== null);
+    .filter((slot): slot is { key: string; brickType: string; hidden: boolean } => slot !== null);
 }
 
 /**
  * Matches a sibling documents_elements row name to a given areablock slot.
- * Pimcore prefixes a brick's own editable names with the areablock's name,
- * slot index, and brick type (e.g. "content:0:herobanner.headline") - the
- * exact separator/format is an assumption pending Phase 0 confirmation,
- * kept isolated here so it's a one-function fix if reality differs.
+ * Confirmed against real data: a brick instance's own fields are named
+ * `{areablockName}:{key}.{fieldName}` (real sample: "content:5.classe" -
+ * areablock "content", instance key "5", field "classe") - keyed by the
+ * slot's `key`, not its type name or array position.
  */
-export function matchesAreablockSlot(elementName: string, areablockName: string, slotIndex: number, brickType: string): boolean {
-  const prefix = `${areablockName}:${slotIndex}:${brickType}.`;
+export function matchesAreablockSlot(elementName: string, areablockName: string, slotKey: string): boolean {
+  const prefix = `${areablockName}:${slotKey}.`;
   return elementName.startsWith(prefix);
 }
 
-/** Strips the areablock/slot/brick prefix, leaving the brick's own field name (e.g. "headline"). */
-function areablockFieldName(elementName: string, areablockName: string, slotIndex: number, brickType: string): string {
-  const prefix = `${areablockName}:${slotIndex}:${brickType}.`;
+/** Strips the areablock/key prefix, leaving the brick's own field name (e.g. "classe"). */
+function areablockFieldName(elementName: string, areablockName: string, slotKey: string): string {
+  const prefix = `${areablockName}:${slotKey}.`;
   return elementName.slice(prefix.length);
 }
 
@@ -117,7 +119,7 @@ export function collectConsumedAreablockFieldNames(rows: RawDocumentElementRow[]
     const slots = parseAreablockSlotList(row.data);
     for (const slot of slots) {
       for (const sibling of rows) {
-        if (matchesAreablockSlot(sibling.name, row.name, slot.index, slot.brickType)) {
+        if (matchesAreablockSlot(sibling.name, row.name, slot.key)) {
           consumed.add(sibling.name);
         }
       }
@@ -188,14 +190,14 @@ export async function normalizeDocumentElementRow(
         if (slot.hidden) continue;
 
         const brickFieldRows = context.siblingRows.filter((sibling) =>
-          matchesAreablockSlot(sibling.name, row.name, slot.index, slot.brickType)
+          matchesAreablockSlot(sibling.name, row.name, slot.key)
         );
 
         const fields: Record<string, PimcoreEditableElement> = {};
         for (const fieldRow of brickFieldRows) {
           const normalized = await normalizeDocumentElementRow(fieldRow, context);
           if (normalized) {
-            const fieldName = areablockFieldName(fieldRow.name, row.name, slot.index, slot.brickType);
+            const fieldName = areablockFieldName(fieldRow.name, row.name, slot.key);
             fields[fieldName] = { ...normalized, name: fieldName };
           }
         }
