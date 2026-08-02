@@ -10,6 +10,7 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@iconify/vue": "^4.1.2",
     "@lucide/vue": "^1.1.0",
     "@pimcore-custom/core": "workspace:*",
     "jszip": "^3.10.1",

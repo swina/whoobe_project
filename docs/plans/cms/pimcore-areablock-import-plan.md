@@ -64,6 +64,21 @@ Corrected course after landing the above: the user flagged that Whoobe Studio wa
 
 Verified: compiled CSS inspected directly (not just "no errors") to confirm the custom breakpoints/clamp/gradient utilities are actually present; both apps typecheck clean; migration-tool's 14 tests pass, including the updated `header-brick.test.ts` (`props.cssClass` assertions now check for Tailwind class substrings, and the CTA's `hidden` class).
 
+### Whoobe Studio Alpha (github.com/swina/whoobe-studio-alpha-01): evaluated, partially adopted
+
+The user asked to evaluate their own existing repo, `github.com/swina/whoobe-studio-alpha-01`, as a possible replacement for building Whoobe Studio from scratch - a real reversal of the earlier "design/build fresh" decision, worth taking seriously rather than dismissing. Investigated the actual code (not just the README), found via the public GitHub API and raw file contents:
+
+- **Real capability**: a substantially more mature visual editor than this plan's from-scratch MVP - drag-drop placement, inline editing, animation config, responsive breakpoint switching, a floating toolbar, an 80,000+ icon library (Iconify), Pixabay/Cloudinary/URL media import, a reusable saved-block gallery. Not vaporware - genuinely more capable.
+- **Real costs**: Vue 2.6 (EOL Dec 2023), Vue CLI/webpack (not Vite, despite the README claiming it), Tailwind 1.8, and - the biggest one - deep FeathersJS backend coupling: components call `this.$api.service('components').find(...)` directly with Socket.io event listeners wired into lifecycle hooks throughout, not behind one swappable layer. Using it for real would mean either standing up a real FeathersJS backend implementing matching services, or rewriting its data layer across many files. Plus real scope mismatch: Shopify Buy SDK, Snipcart, its own auth/project management - all irrelevant to editing CMS editables.
+- Not actually abandoned despite the "Alpha 0.0.1 / May 2021" tag - confirmed via the GitHub API that it was pushed to as recently as 2026-02-14.
+
+**Decision**: don't adopt the whole app or its backend - cherry-pick two small, genuinely self-contained pieces instead, ported to Vue 3:
+- **Icon picker** (`IconPicker.vue`, new): a search box + grid against Iconify's public search API (`api.iconify.design/search`, no API key needed, 200,000+ icons) using `@iconify/vue`'s Vue-3-compatible `<Icon>` component. Ported the *pattern* from their `block.iconify.vue` (~35 lines, trivially portable), not the code itself (theirs was Vue 2 Options API tied to a Vuex-stored "current" node).
+- **Media URL importer** (`MediaUrlImporter.vue`, new): paste a URL, get a live preview + dimensions via a native `Image()` load, confirm to use it. Matches what their `media.url.vue` actually does - it never fetches/re-hosts the image either, just references the external URL directly, which conveniently sidesteps any CORS concern about reading external image bytes.
+- Both write into the selected node's `props` (`icon`/`src`) rather than introducing a new `WhoobeBlockNode` type - `props.icon` is checked as an explicit render signal (takes precedence over the normal type/tag dispatch) in both `StudioBlockPreview.vue` and `BlockNodePreview.vue`, so a chosen icon renders identically in the live editor preview and the dashboard's read-only Preview tab.
+
+Verified: `@iconify/vue` installed in both apps; all 6 packages/apps typecheck clean; Iconify's search API confirmed reachable and returning real results; all new files confirmed compiling via both dev servers.
+
 **Still explicitly NOT done**:
 - Brick-specific converters for the remaining 42 discovered brick types (generic fallback only, so far) - `header-brick` is the first of 43.
 
