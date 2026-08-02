@@ -6,6 +6,45 @@ export interface PimcoreEditableElement {
   data: any;
 }
 
+/**
+ * One placed Areabrick instance inside an Areablock: a named brick type
+ * (e.g. "herobanner", instance-specific - there is no fixed enum, every
+ * Pimcore installation defines its own) plus its own typed sub-fields,
+ * each already a normalized PimcoreEditableElement. Distinct from a bare
+ * PimcoreEditableElement because a brick is a *template* with several
+ * fields, not a single value - see registerAreabrickConverter below.
+ */
+export interface PimcoreAreablockBrickInstance {
+  brickType: string;
+  fields: Record<string, PimcoreEditableElement>;
+}
+
+export type AreabrickConverter = (
+  brickIndex: number,
+  brick: PimcoreAreablockBrickInstance,
+  s3Prefix: string
+) => WhoobeBlockNode | null;
+
+const areabrickRegistry = new Map<string, AreabrickConverter>();
+
+/**
+ * Registers how a specific Areabrick type (as it exists in one particular
+ * Pimcore installation) becomes a WhoobeBlockNode. There is no fixed list
+ * of brick types to support up front - every installation defines its own
+ * Areabricks with its own fields, discovered by inspecting real content
+ * (see docs/plans/cms/pimcore-areablock-import-plan.md, Phase 0). Bricks
+ * with no registered converter still convert, via convertUnmappedBrick's
+ * generic fallback, so importing never silently drops content while a
+ * brick's specific mapping is still being written.
+ */
+export function registerAreabrickConverter(brickType: string, converter: AreabrickConverter): void {
+  areabrickRegistry.set(brickType, converter);
+}
+
+export function getRegisteredAreabrickTypes(): string[] {
+  return [...areabrickRegistry.keys()];
+}
+
 export interface PimcoreRawDocument {
   id: number;
   parentId: number;
@@ -155,16 +194,23 @@ export class PimcoreDocumentConverter {
       case 'areablock': {
         const children: WhoobeBlockNode[] = [];
         if (Array.isArray(element.data)) {
-          for (const subItem of element.data) {
-            if (subItem.type && subItem.data) {
-              const subBlock = this.convertEditableToBlockNode(
-                `${name}_${subItem.type}`,
-                subItem,
-                s3Prefix
-              );
+          element.data.forEach((subItem: any, index: number) => {
+            // Real Areabrick instance: a named brick type with its own
+            // typed field set (see PimcoreAreablockBrickInstance).
+            if (subItem && typeof subItem === 'object' && typeof subItem.brickType === 'string' && subItem.fields) {
+              const brickBlock = this.convertAreablockBrick(index, subItem as PimcoreAreablockBrickInstance, s3Prefix);
+              if (brickBlock) children.push(brickBlock);
+              return;
+            }
+
+            // Simpler shape: a bare editable placed directly in the area
+            // (no brick grouping) - supported for callers that don't need
+            // full Areabrick field semantics.
+            if (subItem?.type && subItem?.data !== undefined) {
+              const subBlock = this.convertEditableToBlockNode(`${name}_${subItem.type}`, subItem, s3Prefix);
               if (subBlock) children.push(subBlock);
             }
-          }
+          });
         }
 
         return {
@@ -184,5 +230,52 @@ export class PimcoreDocumentConverter {
       default:
         return null;
     }
+  }
+
+  /**
+   * Converts one Areabrick instance to a WhoobeBlockNode via whatever
+   * converter was registered for its brickType (registerAreabrickConverter
+   * above). Unregistered brick types (nothing has been discovered/mapped
+   * for them yet) fall back to a generic container of their raw fields
+   * rather than dropping the content.
+   */
+  public static convertAreablockBrick(
+    brickIndex: number,
+    brick: PimcoreAreablockBrickInstance,
+    s3Prefix: string = ''
+  ): WhoobeBlockNode | null {
+    const converter = areabrickRegistry.get(brick.brickType);
+    if (converter) {
+      return converter(brickIndex, brick, s3Prefix);
+    }
+    return this.convertUnmappedBrick(brickIndex, brick, s3Prefix);
+  }
+
+  private static convertUnmappedBrick(
+    brickIndex: number,
+    brick: PimcoreAreablockBrickInstance,
+    s3Prefix: string
+  ): WhoobeBlockNode {
+    const blockId = `block_brick_${brick.brickType.replace(/[^a-zA-Z0-9_]/g, '_')}_${brickIndex}_${Math.random().toString(36).slice(2, 6)}`;
+
+    const children: WhoobeBlockNode[] = [];
+    for (const [fieldName, fieldElement] of Object.entries(brick.fields)) {
+      const fieldBlock = this.convertEditableToBlockNode(fieldName, fieldElement, s3Prefix);
+      if (fieldBlock) children.push(fieldBlock);
+    }
+
+    return {
+      id: blockId,
+      type: 'container',
+      name: `Unmapped Brick: ${brick.brickType}`,
+      tag: 'div',
+      props: { unmappedBrickType: brick.brickType },
+      style: {
+        padding: '1rem',
+        border: '1px dashed #f59e0b',
+        borderRadius: '0.5rem',
+      },
+      children,
+    };
   }
 }
