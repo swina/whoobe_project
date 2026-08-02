@@ -100,6 +100,12 @@ Wired into the live editor: `MokaAudioElement`/`MokaIframeElement`/`MokaSvgEleme
 
 Verified: all 6 packages/apps typecheck clean; all 21 new files individually confirmed compiling via the running dev server; migration-tool's 14 tests still pass.
 
+### Bricks-in-document outline (right pane)
+
+The user pointed out something worth keeping in mind for the rest of the brick-mapping work: in Pimcore itself, each Areabrick is edited *in place* in the page - there's no separate "list of bricks" UI there, because `templates/areas/<brick>/view.html.twig`'s `{% if editmode %}` block *is* the editing surface, right where the brick renders. That's a different UX shape than a side-panel list, but a per-document outline is still useful here for navigation, so added one: a "Bricks in this Document" panel in Whoobe Studio's right column, above the field inspector - walks the tree for `areablock`-type nodes and lists their direct children (the actual brick instances, e.g. "Header (Hero Generico)", "Unmapped Brick: banner-brick"), clicking one sets the same `selectedNodeId` the tree and live preview already share. Deliberately coarser than the full node tree on the left, which includes every nested typography/media leaf too - this is brick-instance-level only, matching the granularity that's actually relevant when the question is "which bricks does this page have."
+
+Confirmed as part of this: the center pane already renders each brick through its migrated Vue+Tailwind conversion (`StudioBlockPreview.vue` + the brick's registered converter, e.g. `header-brick.ts`) rather than a schematic view - exact visual/CSS fidelity to the original SCSS is *not* the bar for calling a brick's mapping done, matching how `header-brick` itself was scoped (structure and field-editability first, pixel-matching later if ever).
+
 **Still explicitly NOT done**:
 - Brick-specific converters for the remaining 42 discovered brick types (generic fallback only, so far) - `header-brick` is the first of 43.
 - The deferred ~110-file `blocks/editor/`/`blocks/actions/`/`blocks/preview/` core from whoobe-studio-alpha-01 (the actual visual tree editor and Tailwind style-control panels) - not started, and a materially larger undertaking than this pass given the Vuex/FeathersJS coupling throughout.
