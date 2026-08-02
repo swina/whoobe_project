@@ -11,7 +11,7 @@
           </div>
           <div>
             <h3 class="text-lg font-bold text-slate-100">DAM Storage & S3/MinIO Configuration</h3>
-            <p class="text-xs text-slate-400">Manage S3 bucket credentials, root path settings, and public/private folder visibility rules.</p>
+            <p class="text-xs text-slate-400">Configure the DAM backend connection and public/private folder visibility rules. Bucket credentials are managed server-side only.</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -46,95 +46,52 @@
         <span class="font-medium">{{ damStore.statusMessage }}</span>
       </div>
 
-      <!-- S3 Connection Settings Grid -->
+      <!-- Asset Processor API Connection -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">S3 Bucket Name</label>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-medium text-slate-300 mb-1">DAM Asset Processor API URL</label>
           <input
-            v-model="damStore.config.bucket"
+            v-model="damStore.config.assetProcessorUrl"
             type="text"
-            placeholder="e.g. whoobe-assets"
-            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">S3 / MinIO Endpoint URL</label>
-          <input
-            v-model="damStore.config.endpoint"
-            type="text"
-            placeholder="http://localhost:9000"
-            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">AWS Region</label>
-          <input
-            v-model="damStore.config.region"
-            type="text"
-            placeholder="us-east-1"
-            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">
-            Key Prefix (Folder Path in Bucket)
-          </label>
-          <input
-            v-model="damStore.config.keyPrefix"
-            type="text"
-            placeholder="Leave empty for Root Bucket (e.g. logos/file.png)"
-            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500"
+            placeholder="http://localhost:3002"
+            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
           />
           <p class="text-[10px] text-slate-500 mt-1">
-            <span v-if="!damStore.config.keyPrefix" class="text-indigo-400 font-semibold">Root Bucket Storage Enabled:</span>
-            <span v-else class="text-slate-400">Prefix: "{{ damStore.config.keyPrefix }}"</span>
-            Assets will map directly to <code class="font-mono text-slate-300">{{ damStore.config.keyPrefix ? damStore.config.keyPrefix + '/' : '' }}path/to/asset.png</code>
+            The admin dashboard never holds S3/MinIO credentials directly. All uploads, deletes, and URL signing are
+            performed by this backend service, which reads its own bucket/credentials from server-side environment
+            variables.
           </p>
         </div>
+      </div>
+
+      <!-- Backend-Owned Storage Info (read-only) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-800/80">
+        <div>
+          <span class="block text-xs font-medium text-slate-400 mb-1">S3 Bucket (server-configured)</span>
+          <div class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950/60 border border-slate-800/60 text-slate-300 font-mono">
+            {{ damStore.damInfo.bucket || '—' }}
+          </div>
+        </div>
 
         <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Access Key ID</label>
-          <input
-            v-model="damStore.config.accessKeyId"
-            type="text"
-            placeholder="minioadmin"
-            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
-          />
+          <span class="block text-xs font-medium text-slate-400 mb-1">S3 / MinIO Endpoint (server-configured)</span>
+          <div class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950/60 border border-slate-800/60 text-slate-300 font-mono">
+            {{ damStore.damInfo.endpoint || '—' }}
+          </div>
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Secret Access Key</label>
-          <input
-            v-model="damStore.config.secretAccessKey"
-            type="password"
-            placeholder="••••••••••••"
-            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
-          />
+          <span class="block text-xs font-medium text-slate-400 mb-1">Key Prefix (server-configured)</span>
+          <div class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950/60 border border-slate-800/60 text-slate-300 font-mono">
+            {{ damStore.damInfo.keyPrefix || 'Root Bucket Storage' }}
+          </div>
         </div>
 
-        <div class="md:col-span-2">
-          <label class="block text-xs font-medium text-slate-300 mb-1">Public Base URL / CDN URL (Optional)</label>
-          <input
-            v-model="damStore.config.publicBaseUrl"
-            type="text"
-            placeholder="https://cdn.example.com (Leave empty to construct from S3 Endpoint)"
-            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500"
-          />
-        </div>
-
-        <div class="md:col-span-2 flex items-center gap-2 pt-2 border-t border-slate-800/80">
-          <input
-            v-model="damStore.config.forcePathStyle"
-            type="checkbox"
-            id="forcePathStyle"
-            class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 border-slate-800"
-          />
-          <label for="forcePathStyle" class="text-xs text-slate-300 font-medium">
-            Force Path Style URLs (Required for MinIO compatibility)
-          </label>
+        <div>
+          <span class="block text-xs font-medium text-slate-400 mb-1">Public Base URL / CDN (server-configured)</span>
+          <div class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950/60 border border-slate-800/60 text-slate-300 font-mono">
+            {{ damStore.damInfo.publicBaseUrl || '—' }}
+          </div>
         </div>
       </div>
     </div>
@@ -225,7 +182,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useDamStore } from '../stores/damStore'
+import { useDamStore } from '../../stores/damStore'
 
 const damStore = useDamStore()
 const newRulePath = ref('')

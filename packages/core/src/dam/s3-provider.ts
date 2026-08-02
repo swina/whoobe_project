@@ -83,7 +83,11 @@ export class S3AssetStorageProvider implements AssetStorageProvider {
       }
     }
 
-    await this.updateBucketPolicy();
+    try {
+      await this.updateBucketPolicy();
+    } catch (e) {
+      console.warn(`Could not update bucket policy on ${this.bucket}:`, e);
+    }
   }
 
   public async updateBucketPolicy(): Promise<void> {

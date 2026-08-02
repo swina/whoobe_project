@@ -1,0 +1,280 @@
+import type { FolderVisibilityRule, ThumbnailPreset, ExtractedAssetMetadata, SupportedImageFormat } from '@pimcore-custom/core'
+
+// Thin HTTP client for the asset-processor DAM endpoints. S3/MinIO
+// credentials never touch the browser: the backend owns them via its
+// own environment variables and only ever hands back URLs/keys.
+//
+// Every function takes the DAM backend's base URL explicitly (sourced
+// from the user-editable damStore.config.assetProcessorUrl) rather than
+// reading import.meta.env directly, so the Settings UI field actually
+// takes effect without a rebuild.
+//
+// These endpoints require an authenticated session (see authStore /
+// auth-api.ts) - `credentials: 'include'` sends the httpOnly session
+// cookie set by core-api's /auth/login, which the browser would
+// otherwise withhold on a cross-origin request to a different port/host.
+
+export interface DamBackendInfo {
+  bucket: string
+  endpoint: string
+  publicBaseUrl: string
+  keyPrefix: string
+}
+
+export interface DamAssetUrls {
+  isPublic: boolean
+  url: string
+  thumbnailUrl: string
+  thumbnails: Record<ThumbnailPreset, string>
+}
+
+// Multi-user source of truth for what folders/assets exist - persisted in
+// Postgres (see packages/core/src/db/dam-schema.ts), not browser
+// localStorage. Dates arrive as ISO strings over JSON.
+export interface DamFolderRecord {
+  id: string
+  path: string
+  name: string
+  parentPath: string
+  isPublic: boolean | null
+  createdAt: string
+}
+
+export interface DamAssetRecord {
+  id: string
+  pimcorePath: string
+  filename: string
+  folderPath: string
+  sizeBytes: number
+  mimeType: string
+  fileType: string
+  version: number
+  s3Key: string
+  isPublic: boolean
+  metadata: ExtractedAssetMetadata | null
+  uploadedAt: string
+  updatedAt: string
+}
+
+// Asset record plus freshly-resolved (public or presigned) URLs - never
+// persisted server-side (presigned URLs expire), always computed at
+// response time. Returned by upload and list, but not by the metadata
+// PATCH (which doesn't need to touch URLs at all).
+export interface DamAssetRecordWithUrls extends DamAssetRecord {
+  url: string
+  thumbnailUrl: string
+  thumbnails: Record<ThumbnailPreset, string>
+}
+
+export interface DamUploadResult {
+  s3Key: string
+  url: string
+  thumbnailUrl: string
+  thumbnails: Record<ThumbnailPreset, string>
+  asset: DamAssetRecordWithUrls
+}
+
+// "localhost" only ever means the browser's own machine, which is wrong
+// whenever the SPA is loaded from a LAN hostname/IP (e.g. develop.local)
+// and the backend runs elsewhere on that same host. Default to whatever
+// hostname the page itself was loaded from instead of hardcoding one.
+export function getDefaultAssetProcessorUrl(): string {
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    return `${window.location.protocol}//${window.location.hostname}:3002`
+  }
+  return 'http://localhost:3002'
+}
+
+function normalizeBaseUrl(baseUrl: string): string {
+  return (baseUrl || getDefaultAssetProcessorUrl()).replace(/\/+$/, '')
+}
+
+async function parseJsonOrThrow(res: Response): Promise<any> {
+  if (!res.ok) {
+    let message = `Request failed with status ${res.status}`
+    try {
+      const body = await res.json()
+      if (body?.error) message = body.error
+    } catch {
+      // Ignore body parse failures; use the generic message above.
+    }
+    throw new Error(message)
+  }
+  return res.json()
+}
+
+export async function fetchDamInfo(baseUrl: string): Promise<DamBackendInfo> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/info`, { credentials: 'include' })
+  return parseJsonOrThrow(res)
+}
+
+export async function uploadAssetToDam(
+  baseUrl: string,
+  fileOrBlob: Blob,
+  filename: string,
+  pimcorePath: string,
+  isPublic: boolean,
+  folderRules: FolderVisibilityRule[],
+  metadata?: ExtractedAssetMetadata | null
+): Promise<DamUploadResult> {
+  const form = new FormData()
+  form.append('file', fileOrBlob, filename)
+  form.append('pimcorePath', pimcorePath)
+  form.append('isPublic', String(isPublic))
+  form.append('folderRules', JSON.stringify(folderRules))
+  if (metadata) {
+    form.append('metadata', JSON.stringify(metadata))
+  }
+
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/upload`, {
+    method: 'POST',
+    body: form,
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
+export async function deleteAssetFromDam(
+  baseUrl: string,
+  pimcorePath: string,
+  folderRules: FolderVisibilityRule[]
+): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/asset`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pimcorePath, folderRules }),
+    credentials: 'include',
+  })
+  await parseJsonOrThrow(res)
+}
+
+export async function fetchAssetUrls(
+  baseUrl: string,
+  pimcorePath: string,
+  folderRules: FolderVisibilityRule[],
+  expiresIn?: number
+): Promise<DamAssetUrls> {
+  const params = new URLSearchParams({ pimcorePath, folderRules: JSON.stringify(folderRules) })
+  if (expiresIn) params.set('expiresIn', String(expiresIn))
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/asset-urls?${params.toString()}`, {
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
+export async function checkAssetExists(
+  baseUrl: string,
+  pimcorePath: string,
+  folderRules: FolderVisibilityRule[]
+): Promise<boolean> {
+  const params = new URLSearchParams({ pimcorePath, folderRules: JSON.stringify(folderRules) })
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/exists?${params.toString()}`, {
+    credentials: 'include',
+  })
+  const data = await parseJsonOrThrow(res)
+  return !!data.exists
+}
+
+export async function ensureDamBucket(baseUrl: string, folderRules: FolderVisibilityRule[]): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/ensure-bucket`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ folderRules }),
+    credentials: 'include',
+  })
+  await parseJsonOrThrow(res)
+}
+
+export async function fetchFolders(baseUrl: string): Promise<DamFolderRecord[]> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/folders`, { credentials: 'include' })
+  const data = await parseJsonOrThrow(res)
+  return data.folders
+}
+
+export async function createFolderApi(
+  baseUrl: string,
+  input: { path: string; name: string; parentPath: string; isPublic?: boolean }
+): Promise<DamFolderRecord> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/folders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const data = await parseJsonOrThrow(res)
+  return data.folder
+}
+
+export async function deleteFolderApi(
+  baseUrl: string,
+  path: string,
+  folderRules: FolderVisibilityRule[]
+): Promise<{ deletedAssetCount: number }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/folders`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, folderRules }),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
+export async function fetchAssets(
+  baseUrl: string,
+  folderRules: FolderVisibilityRule[],
+  folderPath?: string
+): Promise<DamAssetRecordWithUrls[]> {
+  const params = new URLSearchParams({ folderRules: JSON.stringify(folderRules) })
+  if (folderPath) params.set('folderPath', folderPath)
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/assets?${params.toString()}`, { credentials: 'include' })
+  const data = await parseJsonOrThrow(res)
+  return data.assets
+}
+
+export async function updateAssetMetadataApi(
+  baseUrl: string,
+  pimcorePath: string,
+  metadata: ExtractedAssetMetadata
+): Promise<DamAssetRecord> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/assets/metadata`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pimcorePath, metadata }),
+    credentials: 'include',
+  })
+  const data = await parseJsonOrThrow(res)
+  return data.asset
+}
+
+export interface TransformOptions {
+  width?: number
+  height?: number
+  fit?: 'cover' | 'contain' | 'inside' | 'fill'
+  format: SupportedImageFormat
+  quality?: number
+  rotate?: number
+  grayscale?: boolean
+  blur?: number
+  watermarkText?: string
+  watermarkPosition?: 'southeast' | 'southwest' | 'center' | 'northeast' | 'northwest'
+  watermarkOpacity?: number
+}
+
+// Re-transforms an already-uploaded image through sharp on the backend -
+// the browser has no way to run sharp itself, so this always goes through
+// asset-processor rather than doing anything client-side.
+export async function transformAssetOnDam(
+  baseUrl: string,
+  pimcorePath: string,
+  asNewVersion: boolean,
+  options: TransformOptions,
+  folderRules: FolderVisibilityRule[]
+): Promise<DamUploadResult> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/transform`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pimcorePath, asNewVersion, options, folderRules }),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}

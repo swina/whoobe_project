@@ -48,9 +48,9 @@
             <h3 class="font-semibold text-slate-100">Recent Data Objects</h3>
             <p class="text-xs text-slate-400">Latest modified Whoobe CMS objects and entities</p>
           </div>
-          <router-link to="/objects" class="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition">
+          <button @click="tabsStore.openSection('objects')" class="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition">
             View All →
-          </router-link>
+          </button>
         </div>
 
         <div class="overflow-x-auto mt-4">
@@ -139,6 +139,9 @@ import {
   RefreshCw,
   CheckCircle2
 } from '@lucide/vue'
+import { useTabsStore } from '../stores/tabsStore'
+
+const tabsStore = useTabsStore()
 
 const metrics = ref([
   {

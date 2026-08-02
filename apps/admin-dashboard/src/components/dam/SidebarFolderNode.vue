@@ -62,7 +62,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Folder, FolderOpen, ChevronRight, ChevronDown } from '@lucide/vue'
-import { FolderItem } from '../stores/damStore'
+import { FolderItem } from '../../stores/damStore'
 
 const props = withDefaults(
   defineProps<{
