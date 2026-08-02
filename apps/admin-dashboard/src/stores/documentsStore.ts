@@ -36,6 +36,24 @@ export const useDocumentsStore = defineStore('documents', () => {
     return updated
   }
 
+  // Explicit Save as Draft/Save and Publish actions (MasterDocumentTab.vue) -
+  // distinct from updateDocument's autosave path, which never sends status
+  // so a keystroke can't accidentally flip a published document back to
+  // draft (or vice versa). Resends the current title/rootBlock alongside
+  // status since the PATCH route requires both on every call.
+  async function setDocumentStatus(
+    id: string,
+    title: string,
+    rootBlock: WhoobeBlockNode,
+    status: string
+  ): Promise<CmsDocumentRecord> {
+    const authStore = useAuthStore()
+    const updated = await updateDocumentContent(authStore.config.coreApiUrl, id, { title, rootBlock, status })
+    const index = documents.value.findIndex((d) => d.id === id)
+    if (index >= 0) documents.value[index] = updated
+    return updated
+  }
+
   refreshDocuments()
 
   return {
@@ -44,5 +62,6 @@ export const useDocumentsStore = defineStore('documents', () => {
     refreshDocuments,
     getDocument,
     updateDocument,
+    setDocumentStatus,
   }
 })

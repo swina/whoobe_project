@@ -92,17 +92,25 @@ export async function deleteDocumentRecord(slug: string): Promise<void> {
  * Updates an existing document's editable content by id - what Whoobe
  * Studio's save flow calls, as opposed to upsertDocumentRecord's
  * insert-or-update-by-pimcoreId (the migration importer's re-run path).
- * Only rootBlock/title are ever edited here; slug/locale/pimcoreId aren't
- * exposed to the editor.
+ * Only rootBlock/title/status are ever edited here; slug/locale/pimcoreId
+ * aren't exposed to the editor. `status` is optional and left untouched
+ * when omitted - the editor's autosave loop never sends it, only the
+ * explicit Save as Draft/Save and Publish actions do (see
+ * apps/core-api/src/server.ts's PATCH /documents/:id).
  */
 export async function updateDocumentContent(
   id: string,
-  input: { title: string; rootBlock: WhoobeBlockNode }
+  input: { title: string; rootBlock: WhoobeBlockNode; status?: string }
 ): Promise<CmsDocumentRecord | null> {
   const db = getDb();
   const [row] = await db
     .update(cmsDocuments)
-    .set({ title: input.title, rootBlock: input.rootBlock, updatedAt: new Date() })
+    .set({
+      title: input.title,
+      rootBlock: input.rootBlock,
+      updatedAt: new Date(),
+      ...(input.status !== undefined ? { status: input.status } : {}),
+    })
     .where(eq(cmsDocuments.id, id))
     .returning();
   return row ?? null;
