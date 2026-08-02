@@ -3,6 +3,7 @@ import { PimcoreDocumentConverter, PimcoreRawDocument, PimcoreEditableElement } 
 import { createPimcoreSourceAdapter } from './source-adapter.js';
 import './adapters/mysql-adapter.js';
 import './adapters/fixture-adapter.js';
+import './areabrick-mappings/index.js';
 
 // Load packages/migration-tool/.env (if present), matching the pattern
 // already used by apps/asset-processor/apps/core-api.

@@ -30,10 +30,18 @@ Ran `migrate-documents --dry-run` against a live Pimcore MySQL database. Two ass
 
 After the fix: **all 117 documents in the real instance converted successfully, 0 failures**, in dry-run mode (no writes performed). Real content converted correctly end to end - resolved asset paths (e.g. an Image editable's asset ID → `communication/Visore_2023.jpg`), real page text, and 43 distinct real Areabrick type names discovered (`header-brick`, `banner-brick`, `content-two-columns-brick`, `hero`, `products-showcase`, and 38 others) — all currently going through the generic unmapped-brick fallback (content preserved, not yet given brick-specific `WhoobeBlockNode` shaping). Registering `registerAreabrickConverter` mappings for these 43 real brick types, prioritized by how often each appears across the 117 documents, is the natural next increment - not done yet.
 
-Not yet run: an actual (non-dry-run) write into `cms_documents` against real data - only dry-run has been exercised so far.
+**Real (non-dry-run) writes have now happened**: documents 1 and 10 (`/` and `/it/`) are persisted in `cms_documents` and confirmed reachable through `apps/core-api`'s `/documents` endpoints and the admin-dashboard's read-only Preview tab (see the dashboard-integration commit).
+
+**First real brick mapping is done: `header-brick`** (`areabrick-mappings/header-brick.ts`), built directly from the real Twig source (`templates/areas/header-brick/view.html.twig` → `templates/components/hero-generico.html.twig`), not guessed from field names. Worth internalizing before mapping the remaining 42, since the same two gotchas will very likely recur:
+- The brick's own `view.html.twig` is often not where the real layout lives - it delegates to a shared component template for the actual (non-editmode) HTML. Read both.
+- Not every field passed into an include is actually used by it (`header_color`, a document-level property here, turned out to be dead in the target template) - worth confirming a field is actually rendered before modeling it.
+
+Also fixed while mapping this brick: the generic Video editable conversion never applied `s3Prefix` to its URL (Image did) - inconsistent, now both go through a shared `resolveMediaUrl` helper that brick-specific mappings reuse too (e.g. for a background-image style, which the generic conversion has no case for).
+
+Verified against real data: re-ran `migrate-documents` (real write, not dry-run) for documents 1 and 10 - document 10's stored `cms_documents` row now has the correctly-mapped `header-brick` (real background image path, real Italian title/text, and the mapping correctly omits the video wrapper when that field is empty, which it is for this real instance).
 
 **Still explicitly NOT done**:
-- Brick-specific converters for the 43 discovered brick types (generic fallback only, so far).
+- Brick-specific converters for the remaining 42 discovered brick types (generic fallback only, so far) - `header-brick` is the first of 43.
 - Phases 4 (Documents admin UI) and 5 (Whoobe Studio editor app) are unstarted.
 
 ---
