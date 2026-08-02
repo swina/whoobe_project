@@ -4,12 +4,22 @@
     <span>unmapped brick: {{ node.props.unmappedBrickType }}</span>
   </div>
 
+  <!-- props.icon (set via Whoobe Studio's Insert Icon picker) takes
+       precedence over the type-based dispatch below - it's an explicit,
+       deliberate signal independent of node.type/tag. -->
+  <Icon
+    v-if="node.props?.icon"
+    :icon="node.props.icon"
+    :class="node.props?.cssClass"
+    :style="node.style"
+  />
+
   <!-- Media nodes render as a single flat element - node.tag IS the media
        tag itself (img/video), so wrapping it in a generic <component :is>
        (as the container/typography/etc. branch below does) would produce
        invalid nested <video><video/></video> markup. -->
   <img
-    v-if="node.type === 'media' && node.tag !== 'video'"
+    v-else-if="node.type === 'media' && node.tag !== 'video'"
     :src="node.props?.src"
     :alt="node.props?.alt || node.name"
     :class="node.props?.cssClass"
@@ -49,6 +59,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Icon } from '@iconify/vue'
 import type { WhoobeBlockNode } from '@pimcore-custom/core'
 
 defineOptions({ name: 'BlockNodePreview' })
