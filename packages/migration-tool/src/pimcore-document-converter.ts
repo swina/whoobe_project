@@ -45,6 +45,18 @@ export function getRegisteredAreabrickTypes(): string[] {
   return [...areabrickRegistry.keys()];
 }
 
+/**
+ * Builds a full URL from a resolved asset path, prefixing with s3Prefix if
+ * given. Shared by the generic Image/Video editable conversion below and
+ * by per-brick Areabrick converters (packages/migration-tool/src/
+ * areabrick-mappings/) that build their own media references - e.g. a
+ * background-image style, which the generic conversion has no case for.
+ */
+export function resolveMediaUrl(path: string, s3Prefix: string = ''): string {
+  const cleanPath = path.replace(/^\/+/, '');
+  return s3Prefix ? `${s3Prefix.replace(/\/+$/, '')}/${cleanPath}` : cleanPath;
+}
+
 export interface PimcoreRawDocument {
   id: number;
   parentId: number;
@@ -128,7 +140,7 @@ export class PimcoreDocumentConverter {
       case 'image': {
         const imagePath = element.data?.path || element.data;
         const s3Key = typeof imagePath === 'string' ? imagePath.replace(/^\/+/, '') : '';
-        const fullUrl = s3Prefix ? `${s3Prefix.replace(/\/+$/, '')}/${s3Key}` : s3Key;
+        const fullUrl = resolveMediaUrl(s3Key, s3Prefix);
 
         return {
           id: blockId,
@@ -150,13 +162,14 @@ export class PimcoreDocumentConverter {
 
       case 'video': {
         const videoPath = element.data?.path || element.data;
+        const fullUrl = typeof videoPath === 'string' ? resolveMediaUrl(videoPath, s3Prefix) : videoPath;
         return {
           id: blockId,
           type: 'media',
           name: name,
           tag: 'video',
           props: {
-            src: videoPath,
+            src: fullUrl,
             controls: true,
           },
         };

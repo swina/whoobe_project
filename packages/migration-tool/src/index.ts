@@ -5,3 +5,4 @@ export * from './pimcore-serialized-data.js';
 export * from './source-adapter.js';
 export * from './adapters/mysql-adapter.js';
 export * from './adapters/fixture-adapter.js';
+export * from './areabrick-mappings/index.js';
