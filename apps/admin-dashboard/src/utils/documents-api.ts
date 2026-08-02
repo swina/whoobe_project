@@ -22,6 +22,16 @@ function normalizeBaseUrl(baseUrl: string): string {
   return (baseUrl || getDefaultCoreApiUrl()).replace(/\/+$/, '')
 }
 
+// Mirrors getDefaultCoreApiUrl()/getDefaultAssetProcessorUrl(): default to
+// whatever hostname the page itself was loaded from, never a hardcoded
+// "localhost" - see apps/whoobe-studio's vite.config.ts for the port.
+export function getDefaultWhoobeStudioUrl(): string {
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    return `${window.location.protocol}//${window.location.hostname}:3004`
+  }
+  return 'http://localhost:3004'
+}
+
 async function parseJsonOrThrow(res: Response): Promise<any> {
   if (!res.ok) {
     let message = `Request failed with status ${res.status}`
@@ -44,6 +54,21 @@ export async function fetchDocuments(baseUrl: string): Promise<CmsDocumentRecord
 
 export async function fetchDocumentById(baseUrl: string, id: string): Promise<CmsDocumentRecord> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/documents/${id}`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.document
+}
+
+export async function updateDocumentContent(
+  baseUrl: string,
+  id: string,
+  input: { title: string; rootBlock: WhoobeBlockNode }
+): Promise<CmsDocumentRecord> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/documents/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
   const body = await parseJsonOrThrow(res)
   return body.document
 }

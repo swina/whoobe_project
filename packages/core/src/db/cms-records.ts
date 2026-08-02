@@ -87,3 +87,23 @@ export async function deleteDocumentRecord(slug: string): Promise<void> {
   const db = getDb();
   await db.delete(cmsDocuments).where(eq(cmsDocuments.slug, slug));
 }
+
+/**
+ * Updates an existing document's editable content by id - what Whoobe
+ * Studio's save flow calls, as opposed to upsertDocumentRecord's
+ * insert-or-update-by-pimcoreId (the migration importer's re-run path).
+ * Only rootBlock/title are ever edited here; slug/locale/pimcoreId aren't
+ * exposed to the editor.
+ */
+export async function updateDocumentContent(
+  id: string,
+  input: { title: string; rootBlock: WhoobeBlockNode }
+): Promise<CmsDocumentRecord | null> {
+  const db = getDb();
+  const [row] = await db
+    .update(cmsDocuments)
+    .set({ title: input.title, rootBlock: input.rootBlock, updatedAt: new Date() })
+    .where(eq(cmsDocuments.id, id))
+    .returning();
+  return row ?? null;
+}

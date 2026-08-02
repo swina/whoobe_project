@@ -40,9 +40,18 @@ Also fixed while mapping this brick: the generic Video editable conversion never
 
 Verified against real data: re-ran `migrate-documents` (real write, not dry-run) for documents 1 and 10 - document 10's stored `cms_documents` row now has the correctly-mapped `header-brick` (real background image path, real Italian title/text, and the mapping correctly omits the video wrapper when that field is empty, which it is for this real instance).
 
+**Phases 4 and 5 are now both done, MVP-scoped, as originally planned in §7/§8:**
+
+- **Phase 4 (Documents admin UI)**: real (non-mock) list + read-only Preview, wired to `GET /documents`/`GET /documents/:id`. `BlockNodePreview.vue` was upgraded after first landing - it originally only showed schematic type/name badges, ignoring `node.style`/`props.cssClass` entirely, so `header-brick`'s real background-image/layout never actually showed. It now renders each node with its real tag/style/class, so the preview visually matches the migrated Twig layout instead of a debug tree.
+- **Phase 5 (Whoobe Studio)**: `apps/whoobe-studio` converted from a `tsc`-only stub into a real Vite + Vue 3 app (port 3004) - the MVP scoped in §8: a tree view (select/reorder-via-up-down-buttons/delete) and an inspector panel (name/tag/content fields, raw-JSON editing for `props`/`style`), syncing via the already-written postMessage bridge, autosaving (debounced 500ms) to `PATCH /documents/:id` rather than needing an explicit Save button. Wired into the dashboard via an "Edit in Whoobe Studio" button on `MasterDocumentTab.vue`, opening `WhoobeStudioEmbedModal.vue` (moved from `components/dam/` to `components/documents/` - it was misplaced there from before Documents existed as its own feature).
+- **The postMessage origin-validation gap flagged in §8 is fixed** on both sides: `WhoobeStudioBridge` (studio) now requires an explicit `expectedOrigin` and refuses to default to `"*"`; `WhoobeHostBridge` (dashboard) derives the studio's origin from `studioUrl` and validates every incoming `event.origin` against it. The studio learns the dashboard's origin via a `?parentOrigin=` query param on the iframe `src`, since it has no other way to know who's allowed to embed it.
+
+Verified end-to-end: `PATCH /documents/:id` tested via curl (success, 401 unauthenticated, 404 unknown id); all 6 packages/apps typecheck clean; all new/changed files confirmed compiling via both dev servers (admin-dashboard on 3000, whoobe-studio on 3004).
+
+**Deliberately deferred from the Whoobe Studio MVP** (per §8's original scope): drag-and-drop reordering, a Tailwind visual style inspector, the reusable snippet library, multi-locale switching UI, and adding brand-new nodes (only editing/reordering/deleting existing imported content is supported - matches the actual near-term need, which is fixing up migrated content, not authoring from scratch).
+
 **Still explicitly NOT done**:
 - Brick-specific converters for the remaining 42 discovered brick types (generic fallback only, so far) - `header-brick` is the first of 43.
-- Phases 4 (Documents admin UI) and 5 (Whoobe Studio editor app) are unstarted.
 
 ---
 

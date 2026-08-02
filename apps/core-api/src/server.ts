@@ -14,6 +14,7 @@ import {
   bootstrapDatabase,
   listDocuments,
   getDocumentById,
+  updateDocumentContent,
   SESSION_COOKIE_NAME,
   type AuthenticatedRequest,
 } from '@pimcore-custom/core/server';
@@ -155,6 +156,28 @@ app.get('/documents/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (re
   } catch (error: any) {
     console.error('Get document error:', error);
     res.status(500).json({ error: error.message || 'Failed to get document' });
+  }
+});
+
+// Saves edits made in Whoobe Studio. Only title/rootBlock are writable here
+// - slug/locale/pimcoreId aren't exposed to the editor.
+app.patch('/documents/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { title, rootBlock } = req.body ?? {};
+    if (typeof title !== 'string' || !rootBlock) {
+      res.status(400).json({ error: 'title and rootBlock are required' });
+      return;
+    }
+
+    const document = await updateDocumentContent(req.params.id, { title, rootBlock });
+    if (!document) {
+      res.status(404).json({ error: 'Document not found' });
+      return;
+    }
+    res.json({ document });
+  } catch (error: any) {
+    console.error('Update document error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update document' });
   }
 });
 
