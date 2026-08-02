@@ -103,7 +103,12 @@ export class WhoobeHostBridge {
 
   public sendMessage(type: WhoobeHostMessageType, payload?: any, requestId?: string) {
     if (!this.iframeWindow) return
-    const msg: WhoobeHostMessage = { type, payload, requestId }
+    // Callers here typically pass a Vue reactive ref's .value (or a
+    // property of one) - the resulting Proxy isn't structured-clone-able
+    // as-is (DataCloneError). Payloads are always plain JSON-safe CMS
+    // data, so a JSON round-trip both strips reactivity and deep-clones it.
+    const safePayload = payload !== undefined ? JSON.parse(JSON.stringify(payload)) : payload
+    const msg: WhoobeHostMessage = { type, payload: safePayload, requestId }
     this.iframeWindow.postMessage(msg, this.studioOrigin)
   }
 
