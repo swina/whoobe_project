@@ -9,7 +9,11 @@ import {
   getEffectivePermissions,
   verifyPassword,
   requireAuth,
+  requirePermission,
+  PERMISSIONS,
   bootstrapDatabase,
+  listDocuments,
+  getDocumentById,
   SESSION_COOKIE_NAME,
   type AuthenticatedRequest,
 } from '@pimcore-custom/core/server';
@@ -124,6 +128,34 @@ app.post('/auth/logout', async (req: Request, res: Response): Promise<void> => {
 
 app.get('/auth/me', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   res.json(req.user);
+});
+
+// Documents migrated from Pimcore (or authored fresh) - see
+// docs/plans/cms/pimcore-areablock-import-plan.md. Reuses the objects:read
+// permission rather than introducing a separate documents:* domain, since
+// no distinct access-control need has come up yet.
+app.get('/documents', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const documents = await listDocuments();
+    res.json({ documents });
+  } catch (error: any) {
+    console.error('List documents error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list documents' });
+  }
+});
+
+app.get('/documents/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const document = await getDocumentById(req.params.id);
+    if (!document) {
+      res.status(404).json({ error: 'Document not found' });
+      return;
+    }
+    res.json({ document });
+  } catch (error: any) {
+    console.error('Get document error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get document' });
+  }
 });
 
 // On-the-fly bootstrap: create the database if it doesn't exist, apply any
