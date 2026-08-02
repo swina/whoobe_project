@@ -10,22 +10,37 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
     }
   },
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.700.0",
     "@aws-sdk/s3-request-presigner": "^3.700.0",
+    "argon2": "^0.41.1",
+    "drizzle-orm": "^0.36.4",
+    "pg": "^8.13.1",
     "sharp": "^0.35.3",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/express": "^4.17.21",
     "@types/node": "^20.11.0",
+    "@types/pg": "^8.11.10",
     "@types/sharp": "^0.32.0",
+    "drizzle-kit": "^0.28.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   }

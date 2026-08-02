@@ -33,5 +33,5 @@
 </template>
 
 <script setup lang="ts">
-import DamConfigManager from '../components/DamConfigManager.vue'
+import DamConfigManager from '../components/dam/DamConfigManager.vue'
 </script>

@@ -4,25 +4,43 @@ import JSZip from 'jszip'
 import {
   FolderVisibilityManager,
   FolderVisibilityRule,
-  formatS3ObjectKey,
-  formatThumbnailS3Key,
   ThumbnailPreset,
-  S3AssetStorageProvider
+  ExtractedAssetMetadata,
+  AssetMetadataExtractor,
+  getFileTypeFromFilename
 } from '@pimcore-custom/core'
+import {
+  fetchDamInfo,
+  uploadAssetToDam,
+  deleteAssetFromDam,
+  fetchAssetUrls,
+  ensureDamBucket,
+  fetchFolders,
+  createFolderApi,
+  deleteFolderApi,
+  fetchAssets,
+  updateAssetMetadataApi,
+  transformAssetOnDam,
+  DamBackendInfo,
+  DamFolderRecord,
+  DamAssetRecordWithUrls,
+  TransformOptions,
+  getDefaultAssetProcessorUrl
+} from '../utils/dam-api'
 
 const CONFIG_STORAGE_KEY = 'whoobe_custom_dam_config'
-const ASSETS_STORAGE_KEY = 'whoobe_custom_dam_assets'
-const FOLDERS_STORAGE_KEY = 'whoobe_custom_dam_folders'
 
+// Only non-secret, client-relevant settings live here. Bucket, endpoint,
+// and S3 credentials are owned exclusively by the asset-processor backend
+// (its own environment variables) and are never sent to or stored by the
+// browser - see dam-api.ts and apps/asset-processor/src/server.ts.
+//
+// Folders and assets themselves are NOT persisted here (see folders/assets
+// refs below) - this is a multi-user system, so the browser's localStorage
+// can no longer be the source of truth for what exists. Postgres is - see
+// packages/core/src/db/dam-schema.ts.
 export interface DamConfigState {
-  bucket: string
-  endpoint: string
-  region: string
-  accessKeyId: string
-  secretAccessKey: string
-  publicBaseUrl: string
-  keyPrefix: string
-  forcePathStyle: boolean
+  assetProcessorUrl: string
   folderRules: FolderVisibilityRule[]
 }
 
@@ -49,99 +67,30 @@ export interface AssetItem {
   s3Key: string
   isPublic: boolean
   url?: string
+  // Ephemeral, in-memory-only immediate preview right after upload - never
+  // sent to or persisted by the backend (too large for a DB column; the S3
+  // thumbnails already serve this purpose for anything beyond the current
+  // browser session).
   dataUrl?: string
   thumbnailUrl?: string
   thumbnails?: Record<ThumbnailPreset, string>
+  metadata?: ExtractedAssetMetadata
 }
 
 const defaultConfig: DamConfigState = {
-  bucket: 'whoobe-cms',
-  endpoint: 'http://localhost:9000',
-  region: 'us-east-1',
-  accessKeyId: 'minioadmin',
-  secretAccessKey: 'minioadminpassword',
-  publicBaseUrl: '',
-  keyPrefix: '', // Root bucket by default
-  forcePathStyle: true,
+  assetProcessorUrl: import.meta.env.VITE_ASSET_PROCESSOR_URL || getDefaultAssetProcessorUrl(),
   folderRules: [
     { pathPrefix: '/public/**', isPublic: true },
     { pathPrefix: '/uploads/marketing/**', isPublic: true }
   ]
 }
 
-const defaultFolders: FolderItem[] = [
-  { name: 'logos', path: '/logos', parentPath: '/', createdAt: new Date().toISOString() },
-  { name: 'documents', path: '/documents', parentPath: '/', createdAt: new Date().toISOString() },
-  { name: 'videos', path: '/videos', parentPath: '/', createdAt: new Date().toISOString() }
-]
-
-const defaultAssets: AssetItem[] = [
-  {
-    id: 'asset_1',
-    pimcorePath: '/logos/hero_banner_homepage.png',
-    filename: 'hero_banner_homepage.png',
-    folderPath: '/logos',
-    sizeBytes: 2516582,
-    sizeFormatted: '2.4 MB',
-    mimeType: 'image/png',
-    fileType: 'PNG',
-    version: 1,
-    uploadedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    s3Key: 'logos/hero_banner_homepage.png',
-    isPublic: true,
-    url: 'http://localhost:9000/whoobe-assets/logos/hero_banner_homepage.png',
-    dataUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'asset_2',
-    pimcorePath: '/documents/q3_financial_report.pdf',
-    filename: 'q3_financial_report.pdf',
-    folderPath: '/documents',
-    sizeBytes: 1153433,
-    sizeFormatted: '1.1 MB',
-    mimeType: 'application/pdf',
-    fileType: 'PDF',
-    version: 1,
-    uploadedAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-    s3Key: 'documents/q3_financial_report.pdf',
-    isPublic: false,
-    url: 'http://localhost:9000/whoobe-assets/documents/q3_financial_report.pdf?X-Amz-Signature=demo'
-  },
-  {
-    id: 'asset_3',
-    pimcorePath: '/videos/brand_video_intro.mp4',
-    filename: 'brand_video_intro.mp4',
-    folderPath: '/videos',
-    sizeBytes: 19398656,
-    sizeFormatted: '18.5 MB',
-    mimeType: 'video/mp4',
-    fileType: 'MP4',
-    version: 2,
-    uploadedAt: new Date(Date.now() - 86400000 * 10).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 1).toISOString(),
-    s3Key: 'videos/brand_video_intro.mp4',
-    isPublic: true,
-    url: 'http://localhost:9000/whoobe-assets/videos/brand_video_intro.mp4'
-  },
-  {
-    id: 'asset_4',
-    pimcorePath: '/export_backup_2026.zip',
-    filename: 'export_backup_2026.zip',
-    folderPath: '/',
-    sizeBytes: 148897792,
-    sizeFormatted: '142.0 MB',
-    mimeType: 'application/zip',
-    fileType: 'ZIP',
-    version: 1,
-    uploadedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-    s3Key: 'export_backup_2026.zip',
-    isPublic: false,
-    url: 'http://localhost:9000/whoobe-assets/export_backup_2026.zip?X-Amz-Signature=demo'
-  }
-]
+const defaultDamInfo: DamBackendInfo = {
+  bucket: '',
+  endpoint: '',
+  publicBaseUrl: '',
+  keyPrefix: ''
+}
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
@@ -151,20 +100,61 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
-function getFileTypeFromFilename(filename: string): { fileType: string; mimeType: string } {
-  const ext = filename.split('.').pop()?.toLowerCase() || ''
-  switch (ext) {
-    case 'png': return { fileType: 'PNG', mimeType: 'image/png' }
-    case 'jpg':
-    case 'jpeg': return { fileType: 'JPG', mimeType: 'image/jpeg' }
-    case 'gif': return { fileType: 'GIF', mimeType: 'image/gif' }
-    case 'svg': return { fileType: 'SVG', mimeType: 'image/svg+xml' }
-    case 'webp': return { fileType: 'WEBP', mimeType: 'image/webp' }
-    case 'pdf': return { fileType: 'PDF', mimeType: 'application/pdf' }
-    case 'zip': return { fileType: 'ZIP', mimeType: 'application/zip' }
-    case 'mp4': return { fileType: 'MP4', mimeType: 'video/mp4' }
-    case 'json': return { fileType: 'JSON', mimeType: 'application/json' }
-    default: return { fileType: ext.toUpperCase() || 'FILE', mimeType: 'application/octet-stream' }
+function readFileAsDataUrl(file: File | Blob): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (e) => resolve((e.target?.result as string) || '')
+    reader.onerror = () => resolve('')
+    reader.readAsDataURL(file)
+  })
+}
+
+function toFolderItem(record: DamFolderRecord): FolderItem {
+  return {
+    name: record.name,
+    path: record.path,
+    parentPath: record.parentPath,
+    isPublic: record.isPublic ?? undefined,
+    createdAt: record.createdAt
+  }
+}
+
+function toAssetItem(record: DamAssetRecordWithUrls, dataUrl?: string): AssetItem {
+  return {
+    id: record.id,
+    pimcorePath: record.pimcorePath,
+    filename: record.filename,
+    folderPath: record.folderPath,
+    sizeBytes: record.sizeBytes,
+    sizeFormatted: formatBytes(record.sizeBytes),
+    mimeType: record.mimeType,
+    fileType: record.fileType,
+    version: record.version,
+    uploadedAt: record.uploadedAt,
+    updatedAt: record.updatedAt,
+    s3Key: record.s3Key,
+    isPublic: record.isPublic,
+    url: record.url,
+    dataUrl,
+    thumbnailUrl: record.thumbnailUrl,
+    thumbnails: record.thumbnails,
+    metadata: record.metadata ?? undefined
+  }
+}
+
+// "localhost" in a persisted assetProcessorUrl only ever meant "whatever
+// machine the browser happened to be on when it was saved" - if the page
+// is now loaded from a different hostname (e.g. a LAN host like
+// develop.local), that stale value can never be reachable, so discard it
+// in favor of a fresh same-host default instead of getting stuck on it.
+function isStaleLocalhostUrl(url: string): boolean {
+  try {
+    const parsedHost = new URL(url).hostname
+    const isLocalhostUrl = parsedHost === 'localhost' || parsedHost === '127.0.0.1'
+    const pageIsLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    return isLocalhostUrl && !pageIsLocalhost
+  } catch {
+    return false
   }
 }
 
@@ -173,83 +163,87 @@ function loadInitialConfig(): DamConfigState {
     const stored = localStorage.getItem(CONFIG_STORAGE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
-      if (parsed.bucket === 'whoobe-assets' || parsed.bucket === 'pimcore-assets') {
-        parsed.bucket = 'whoobe-cms'
+      // Reconstruct explicitly (rather than spreading `parsed`) so any
+      // legacy accessKeyId/secretAccessKey persisted by older versions of
+      // this store is dropped instead of being carried forward.
+      const storedUrl = typeof parsed.assetProcessorUrl === 'string' ? parsed.assetProcessorUrl : ''
+      return {
+        assetProcessorUrl: storedUrl && !isStaleLocalhostUrl(storedUrl)
+          ? storedUrl
+          : defaultConfig.assetProcessorUrl,
+        folderRules: Array.isArray(parsed.folderRules) ? parsed.folderRules : [...defaultConfig.folderRules]
       }
-      return { ...defaultConfig, ...parsed }
     }
   } catch (e) {
     console.error('Failed to load DAM config:', e)
   }
-  return { ...defaultConfig }
-}
-
-function loadInitialFolders(): FolderItem[] {
-  try {
-    const stored = localStorage.getItem(FOLDERS_STORAGE_KEY)
-    if (stored) return JSON.parse(stored)
-  } catch (e) {
-    console.error('Failed to load DAM folders:', e)
-  }
-  return [...defaultFolders]
-}
-
-function loadInitialAssets(): AssetItem[] {
-  try {
-    // Clear legacy storage keys if present
-    localStorage.removeItem('pimcore_custom_dam_assets')
-    localStorage.removeItem('pimcore_custom_dam_config')
-    localStorage.removeItem('pimcore_custom_dam_folders')
-
-    const stored = localStorage.getItem(ASSETS_STORAGE_KEY)
-    if (stored) {
-      const parsed: AssetItem[] = JSON.parse(stored)
-      return parsed.map((asset) => {
-        if (asset.url?.includes('emulator-x3.png') || asset.url?.includes('whoobe-cms')) {
-          return {
-            ...asset,
-            url: asset.url?.replace('whoobe-cms', 'whoobe-assets'),
-            thumbnailUrl: asset.thumbnailUrl?.replace('whoobe-cms', 'whoobe-assets'),
-            dataUrl: asset.dataUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80'
-          }
-        }
-        return asset
-      })
-    }
-  } catch (e) {
-    console.error('Failed to load DAM assets:', e)
-  }
-  return [...defaultAssets]
+  return { ...defaultConfig, folderRules: [...defaultConfig.folderRules] }
 }
 
 export const useDamStore = defineStore('dam', () => {
-  // Config state
+  // Config state (per-browser UI settings only - see DamConfigState doc comment)
   const config = ref<DamConfigState>(loadInitialConfig())
+  // Overwrite storage immediately so any plaintext secret persisted by an
+  // older version of this store is purged from localStorage right away.
+  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config.value))
+  watch(config, (newVal) => localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(newVal)), { deep: true })
 
-  // Folders state
-  const folders = ref<FolderItem[]>(loadInitialFolders())
+  // Backend-owned, non-secret storage info (bucket/endpoint/publicBaseUrl),
+  // fetched from the asset-processor service - never held as client config.
+  const damInfo = ref<DamBackendInfo>({ ...defaultDamInfo })
 
-  // Assets state
-  const assets = ref<AssetItem[]>(loadInitialAssets())
+  // Folders & assets: fetched from Postgres via asset-processor - the
+  // multi-user source of truth. Not persisted to localStorage.
+  const folders = ref<FolderItem[]>([])
+  const assets = ref<AssetItem[]>([])
+  const isLoadingAssets = ref(false)
 
   const currentFolderPath = ref<string>('/')
   const connectionStatus = ref<'idle' | 'testing' | 'success' | 'error'>('idle')
   const statusMessage = ref<string>('')
 
-  // Watch & persist state changes (strip heavy dataUrls to prevent localStorage QuotaExceededError)
-  watch(config, (newVal) => localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(newVal)), { deep: true })
-  watch(folders, (newVal) => localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(newVal)), { deep: true })
+  async function refreshDamInfo(): Promise<void> {
+    try {
+      damInfo.value = await fetchDamInfo(config.value.assetProcessorUrl)
+    } catch (e) {
+      console.warn('Could not load DAM backend info:', e)
+    }
+  }
+
+  async function refreshFolders(): Promise<void> {
+    try {
+      const records = await fetchFolders(config.value.assetProcessorUrl)
+      folders.value = records.map(toFolderItem)
+    } catch (e) {
+      console.warn('Could not load folders:', e)
+    }
+  }
+
+  async function refreshAssets(): Promise<void> {
+    isLoadingAssets.value = true
+    try {
+      const records = await fetchAssets(config.value.assetProcessorUrl, config.value.folderRules)
+      // Keep any in-memory dataUrl previews already attached this session.
+      const dataUrlByPath = new Map(assets.value.map((a) => [a.pimcorePath, a.dataUrl]))
+      assets.value = records.map((r) => toAssetItem(r, dataUrlByPath.get(r.pimcorePath)))
+    } catch (e) {
+      console.warn('Could not load assets:', e)
+    } finally {
+      isLoadingAssets.value = false
+    }
+  }
+
+  refreshDamInfo()
+  refreshFolders()
+  refreshAssets()
+
   watch(
-    assets,
-    (newVal) => {
-      try {
-        const cleanAssets = newVal.map(({ dataUrl, ...rest }) => rest)
-        localStorage.setItem(ASSETS_STORAGE_KEY, JSON.stringify(cleanAssets))
-      } catch (e) {
-        console.warn('Could not save assets to localStorage:', e)
-      }
-    },
-    { deep: true }
+    () => config.value.assetProcessorUrl,
+    () => {
+      refreshDamInfo()
+      refreshFolders()
+      refreshAssets()
+    }
   )
 
   const visibilityManager = computed(() => {
@@ -279,47 +273,18 @@ export const useDamStore = defineStore('dam', () => {
     return assets.value.filter((a) => a.folderPath === currentFolderPath.value)
   })
 
-  function generateAssetUrl(pimcorePath: string): {
+  // Resolves real (public or freshly-presigned) URLs from the DAM backend.
+  async function generateAssetUrl(pimcorePath: string): Promise<{
     isPublic: boolean
     url: string
     thumbnailUrl: string
     thumbnails: Record<ThumbnailPreset, string>
-  } {
-    const isPub = isPathPublic(pimcorePath)
-    const s3Key = formatS3ObjectKey(pimcorePath, config.value.keyPrefix)
-    const thumbKey = formatThumbnailS3Key(pimcorePath, 'thumb', config.value.keyPrefix)
-    const medKey = formatThumbnailS3Key(pimcorePath, 'medium', config.value.keyPrefix)
-    const lrgKey = formatThumbnailS3Key(pimcorePath, 'large', config.value.keyPrefix)
-    const base = config.value.publicBaseUrl ? config.value.publicBaseUrl.replace(/\/+$/, '') : `${config.value.endpoint}/${config.value.bucket}`
-
-    if (isPub) {
-      return {
-        isPublic: true,
-        url: `${base}/${s3Key}`,
-        thumbnailUrl: `${base}/${thumbKey}`,
-        thumbnails: {
-          thumb: `${base}/${thumbKey}`,
-          medium: `${base}/${medKey}`,
-          large: `${base}/${lrgKey}`
-        }
-      }
-    } else {
-      const endpointBucket = `${config.value.endpoint}/${config.value.bucket}`
-      return {
-        isPublic: false,
-        url: `${endpointBucket}/${s3Key}?X-Amz-Signature=signed`,
-        thumbnailUrl: `${endpointBucket}/${thumbKey}?X-Amz-Signature=signed`,
-        thumbnails: {
-          thumb: `${endpointBucket}/${thumbKey}?X-Amz-Signature=signed`,
-          medium: `${endpointBucket}/${medKey}?X-Amz-Signature=signed`,
-          large: `${endpointBucket}/${lrgKey}?X-Amz-Signature=signed`
-        }
-      }
-    }
+  }> {
+    return fetchAssetUrls(config.value.assetProcessorUrl, pimcorePath, config.value.folderRules)
   }
 
   // --- Folder Management ---
-  function createFolder(folderName: string, isPublic: boolean = false, parentPath?: string) {
+  async function createFolder(folderName: string, isPublic: boolean = false, parentPath?: string): Promise<void> {
     const cleanName = folderName.trim().replace(/[\/\\]/g, '')
     if (!cleanName) return
 
@@ -330,13 +295,13 @@ export const useDamStore = defineStore('dam', () => {
       throw new Error(`Folder "${folderPath}" already exists.`)
     }
 
-    folders.value.push({
-      name: cleanName,
+    const record = await createFolderApi(config.value.assetProcessorUrl, {
       path: folderPath,
+      name: cleanName,
       parentPath: parent,
-      isPublic,
-      createdAt: new Date().toISOString()
+      isPublic
     })
+    folders.value.push(toFolderItem(record))
 
     // Automatically register folder visibility rule
     addFolderRule(`${folderPath}/**`, isPublic)
@@ -355,12 +320,13 @@ export const useDamStore = defineStore('dam', () => {
     return uploaded
   }
 
-  function deleteFolder(folderPath: string) {
+  async function deleteFolder(folderPath: string): Promise<void> {
     if (folderPath === '/') return
 
-    // Find parent path before deletion
     const targetFolder = folders.value.find((f) => f.path === folderPath)
     const parentPath = targetFolder?.parentPath ?? '/'
+
+    await deleteFolderApi(config.value.assetProcessorUrl, folderPath, config.value.folderRules)
 
     // Remove folder and subfolders
     folders.value = folders.value.filter((f) => f.path !== folderPath && !f.path.startsWith(folderPath + '/'))
@@ -373,68 +339,33 @@ export const useDamStore = defineStore('dam', () => {
     }
   }
 
-  const storageProvider = computed(() => {
-    return new S3AssetStorageProvider({
-      bucket: config.value.bucket,
-      endpoint: config.value.endpoint,
-      region: config.value.region,
-      accessKeyId: config.value.accessKeyId,
-      secretAccessKey: config.value.secretAccessKey,
-      forcePathStyle: config.value.forcePathStyle,
-      publicBaseUrl: config.value.publicBaseUrl,
-      keyPrefix: config.value.keyPrefix,
-      visibilityManager: visibilityManager.value
-    })
-  })
-
   async function uploadAsset(file: File, folderPath?: string): Promise<AssetItem> {
     const targetFolder = folderPath ?? currentFolderPath.value
     const pimcorePath = targetFolder === '/' ? `/${file.name}` : `${targetFolder}/${file.name}`
-    const s3Key = formatS3ObjectKey(pimcorePath, config.value.keyPrefix)
-    const { fileType, mimeType } = getFileTypeFromFilename(file.name)
-    const { isPublic, url, thumbnailUrl, thumbnails } = generateAssetUrl(pimcorePath)
+    const { mimeType } = getFileTypeFromFilename(file.name)
+    const isPublic = isPathPublic(pimcorePath)
 
     let dataUrl: string | undefined
     if (file.type.startsWith('image/')) {
-      dataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader()
-        reader.onload = (e) => resolve((e.target?.result as string) || '')
-        reader.onerror = () => resolve('')
-        reader.readAsDataURL(file)
-      })
+      dataUrl = await readFileAsDataUrl(file)
     }
 
-    // Upload binary file directly using S3 Storage Provider with SigV4 credentials
+    // Extract technical & EXIF metadata via Core or Microservice worker
+    let metadata: ExtractedAssetMetadata | undefined
     try {
       const arrayBuffer = await file.arrayBuffer()
       const uint8 = new Uint8Array(arrayBuffer)
-      await storageProvider.value.uploadAsset(pimcorePath, uint8 as any, file.type || mimeType, { isPublic })
+      metadata = await AssetMetadataExtractor.extractMetadata(uint8, file.type || mimeType)
     } catch (e) {
-      console.warn(`S3 Storage Provider upload for ${s3Key}:`, e)
+      console.warn('Metadata extraction warning:', e)
     }
 
-    // Replace asset if exists or create new
+    // Upload binary file + persist its DB record in one call via the DAM
+    // backend, which alone holds S3 credentials.
+    const result = await uploadAssetToDam(config.value.assetProcessorUrl, file, file.name, pimcorePath, isPublic, config.value.folderRules, metadata)
+    const newAsset = toAssetItem(result.asset, dataUrl)
+
     const existingIndex = assets.value.findIndex((a) => a.pimcorePath === pimcorePath)
-    const newAsset: AssetItem = {
-      id: existingIndex >= 0 ? assets.value[existingIndex].id : 'asset_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-      pimcorePath,
-      filename: file.name,
-      folderPath: targetFolder,
-      sizeBytes: file.size,
-      sizeFormatted: formatBytes(file.size),
-      mimeType: file.type || mimeType,
-      fileType,
-      version: existingIndex >= 0 ? assets.value[existingIndex].version + 1 : 1,
-      uploadedAt: existingIndex >= 0 ? assets.value[existingIndex].uploadedAt : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      s3Key,
-      isPublic,
-      url,
-      dataUrl: dataUrl || undefined,
-      thumbnailUrl,
-      thumbnails
-    }
-
     if (existingIndex >= 0) {
       assets.value[existingIndex] = newAsset
     } else {
@@ -464,7 +395,7 @@ export const useDamStore = defineStore('dam', () => {
 
     // Ensure folder exists
     try {
-      createFolder(extractedFolder, false, targetFolder)
+      await createFolder(extractedFolder, false, targetFolder)
     } catch {
       // Ignore if folder already exists
     }
@@ -481,13 +412,11 @@ export const useDamStore = defineStore('dam', () => {
         for (const dirName of dirParts) {
           const newPath = currPath === '/' ? `/${dirName}` : `${currPath}/${dirName}`
           if (!folders.value.some((f) => f.path === newPath)) {
-            const parent = currPath
-            folders.value.push({
-              name: dirName,
-              path: newPath,
-              parentPath: parent,
-              createdAt: new Date().toISOString()
-            })
+            try {
+              await createFolder(dirName, false, currPath)
+            } catch {
+              // Ignore if folder already exists
+            }
           }
           currPath = newPath
         }
@@ -514,36 +443,67 @@ export const useDamStore = defineStore('dam', () => {
       throw new Error(`Asset ID "${assetId}" not found.`)
     }
 
-    const { fileType, mimeType } = getFileTypeFromFilename(newFile.name)
-    const { isPublic, url } = generateAssetUrl(targetAsset.pimcorePath)
+    const isPublic = isPathPublic(targetAsset.pimcorePath)
 
     let dataUrl: string | undefined
     if (newFile.type.startsWith('image/')) {
-      dataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader()
-        reader.onload = (e) => resolve((e.target?.result as string) || '')
-        reader.onerror = () => resolve('')
-        reader.readAsDataURL(newFile)
-      })
+      dataUrl = await readFileAsDataUrl(newFile)
     }
 
-    targetAsset.filename = newFile.name
-    targetAsset.sizeBytes = newFile.size
-    targetAsset.sizeFormatted = formatBytes(newFile.size)
-    targetAsset.mimeType = newFile.type || mimeType
-    targetAsset.fileType = fileType
-    targetAsset.version += 1
-    targetAsset.updatedAt = new Date().toISOString()
-    targetAsset.isPublic = isPublic
-    targetAsset.url = url
-    targetAsset.dataUrl = dataUrl || targetAsset.dataUrl
+    const result = await uploadAssetToDam(config.value.assetProcessorUrl, newFile, newFile.name, targetAsset.pimcorePath, isPublic, config.value.folderRules)
+    const updated = toAssetItem(result.asset, dataUrl || targetAsset.dataUrl)
 
-    return { ...targetAsset }
+    const index = assets.value.findIndex((a) => a.id === assetId)
+    if (index >= 0) {
+      assets.value[index] = updated
+    }
+
+    return updated
   }
 
   // --- Delete Asset ---
-  function deleteAsset(assetId: string) {
+  async function deleteAsset(assetId: string): Promise<void> {
+    const target = assets.value.find((a) => a.id === assetId)
+    if (target) {
+      try {
+        await deleteAssetFromDam(config.value.assetProcessorUrl, target.pimcorePath, config.value.folderRules)
+      } catch (e) {
+        console.warn(`DAM backend delete failed for ${target.pimcorePath}:`, e)
+      }
+    }
     assets.value = assets.value.filter((a) => a.id !== assetId)
+  }
+
+  // --- Update Metadata (EXIF/technical/camera/gps/rights editor) ---
+  async function updateAssetMetadata(assetId: string, metadata: ExtractedAssetMetadata): Promise<void> {
+    const target = assets.value.find((a) => a.id === assetId)
+    if (!target) return
+    const updated = await updateAssetMetadataApi(config.value.assetProcessorUrl, target.pimcorePath, metadata)
+    target.metadata = updated.metadata ?? undefined
+    target.updatedAt = updated.updatedAt
+  }
+
+  // --- Image Editor: re-transform through sharp on the backend ---
+  // asNewVersion=true replaces the same asset (version+1); false creates a
+  // new "_edited" copy alongside it. Either way the transform itself always
+  // runs server-side - the browser can't run sharp.
+  async function transformAsset(assetId: string, asNewVersion: boolean, options: TransformOptions): Promise<AssetItem> {
+    const target = assets.value.find((a) => a.id === assetId)
+    if (!target) {
+      throw new Error(`Asset ID "${assetId}" not found.`)
+    }
+
+    const result = await transformAssetOnDam(config.value.assetProcessorUrl, target.pimcorePath, asNewVersion, options, config.value.folderRules)
+    const updated = toAssetItem(result.asset)
+
+    if (asNewVersion) {
+      const index = assets.value.findIndex((a) => a.id === assetId)
+      if (index >= 0) assets.value[index] = updated
+    } else {
+      assets.value.unshift(updated)
+    }
+
+    return updated
   }
 
   // Config helpers
@@ -567,90 +527,59 @@ export const useDamStore = defineStore('dam', () => {
   }
 
   function resetToDefaults() {
-    config.value = { ...defaultConfig }
-    folders.value = [...defaultFolders]
-    assets.value = [...defaultAssets]
+    config.value = { ...defaultConfig, folderRules: [...defaultConfig.folderRules] }
     currentFolderPath.value = '/'
     connectionStatus.value = 'idle'
-    statusMessage.value = 'Configuration & demo data reset to defaults'
-  }
-
-function dataUrlToUint8Array(dataUrl: string): { data: Uint8Array; mimeType: string } {
-  try {
-    const parts = dataUrl.split(',')
-    const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/png'
-    const bstr = atob(parts[1])
-    let n = bstr.length
-    const u8arr = new Uint8Array(n)
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n)
-    }
-    return { data: u8arr, mimeType: mime }
-  } catch {
-    const encoder = new TextEncoder()
-    return { data: encoder.encode('Sample binary image'), mimeType: 'image/png' }
-  }
-}
-
-  async function syncAssetsToMinIO(): Promise<number> {
-    let count = 0
-    await storageProvider.value.ensureBucket()
-    for (const asset of assets.value) {
-      try {
-        const exists = await storageProvider.value.existsAsset(asset.pimcorePath)
-        if (!exists) {
-          let uint8Payload: Uint8Array
-          let payloadMime = asset.mimeType || 'application/octet-stream'
-
-          if (asset.dataUrl && asset.dataUrl.startsWith('data:')) {
-            const parsed = dataUrlToUint8Array(asset.dataUrl)
-            uint8Payload = parsed.data
-            payloadMime = parsed.mimeType
-          } else {
-            const encoder = new TextEncoder()
-            uint8Payload = encoder.encode(`Sample content for ${asset.filename}`)
-          }
-
-          await storageProvider.value.uploadAsset(
-            asset.pimcorePath,
-            uint8Payload as any,
-            payloadMime,
-            { isPublic: asset.isPublic }
-          )
-          count++
-        }
-      } catch (e) {
-        console.warn(`Could not sync ${asset.s3Key} to MinIO:`, e)
-      }
-    }
-    return count
+    statusMessage.value = 'Configuration reset to defaults'
+    refreshDamInfo()
+    refreshFolders()
+    refreshAssets()
   }
 
   function testConnection() {
     connectionStatus.value = 'testing'
-    statusMessage.value = 'Validating S3/MinIO configuration & syncing storage keys...'
-    setTimeout(async () => {
-      if (config.value.bucket && config.value.endpoint) {
-        const synced = await syncAssetsToMinIO()
+    statusMessage.value = 'Validating DAM backend connection...'
+    ;(async () => {
+      try {
+        const info = await fetchDamInfo(config.value.assetProcessorUrl)
+        damInfo.value = info
+        await ensureDamBucket(config.value.assetProcessorUrl, config.value.folderRules)
+        await refreshFolders()
+        await refreshAssets()
         connectionStatus.value = 'success'
-        statusMessage.value = `Successfully connected to S3/MinIO bucket "${config.value.bucket}" (Synced ${synced} missing keys)`
-      } else {
+        statusMessage.value = `Successfully connected to S3/MinIO bucket "${info.bucket}" via DAM backend`
+      } catch (e: any) {
         connectionStatus.value = 'error'
-        statusMessage.value = 'Connection failed: Bucket and Endpoint are required.'
+        statusMessage.value = `Connection failed: ${e?.message || 'Could not reach the DAM asset-processor backend.'}`
       }
-    }, 600)
+    })()
   }
 
-  function getAssetUrl(asset: AssetItem | string): string {
-    const path = typeof asset === 'string' ? asset : asset.pimcorePath
-    const { url } = generateAssetUrl(path)
-    return url
+  // For PUBLIC assets the stored URL never expires, so it's returned as-is.
+  // PRIVATE assets use short-lived presigned URLs, so a fresh one is fetched.
+  async function getAssetUrl(asset: AssetItem | string): Promise<string> {
+    if (typeof asset === 'string') {
+      const { url } = await generateAssetUrl(asset)
+      return url
+    }
+    if (asset.isPublic && asset.url) {
+      return asset.url
+    }
+    try {
+      const { url } = await generateAssetUrl(asset.pimcorePath)
+      return url
+    } catch (e) {
+      console.warn('Failed to refresh signed URL, falling back to cached value:', e)
+      return asset.url || ''
+    }
   }
 
   return {
     config,
+    damInfo,
     folders,
     assets,
+    isLoadingAssets,
     currentFolderPath,
     currentSubfolders,
     currentAssets,
@@ -659,7 +588,8 @@ function dataUrlToUint8Array(dataUrl: string): { data: Uint8Array; mimeType: str
     visibilityManager,
     generateAssetUrl,
     getAssetUrl,
-    syncAssetsToMinIO,
+    refreshFolders,
+    refreshAssets,
     createFolder,
     deleteFolder,
     uploadAsset,
@@ -667,6 +597,8 @@ function dataUrlToUint8Array(dataUrl: string): { data: Uint8Array; mimeType: str
     uploadMultipleAssets,
     uploadNewVersion,
     deleteAsset,
+    updateAssetMetadata,
+    transformAsset,
     addFolderRule,
     removeFolderRule,
     toggleRuleVisibility,

@@ -29,49 +29,43 @@
           <span>Upload Assets</span>
         </button>
 
-        <router-link
-          to="/settings"
+        <button
+          @click="tabsStore.openSection('settings')"
           class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition"
           title="DAM S3 Settings"
         >
           ⚙
-        </router-link>
+        </button>
       </div>
     </div>
 
     <!-- Active S3 Bucket Status Bar -->
-    <div class="rounded-xl bg-slate-900/80 border border-slate-800 p-4 flex flex-wrap items-center justify-between gap-4">
+    <!--<div class="rounded-xl bg-slate-900/80 border border-slate-800 p-4 flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-xs">
           S3
         </div>
         <div>
           <div class="text-xs font-semibold text-slate-200 flex items-center gap-2">
-            <span>Bucket: {{ damStore.config.bucket }}</span>
+            <span>Bucket: {{ damStore.damInfo.bucket || '—' }}</span>
             <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 text-indigo-400 border border-slate-800">
-              {{ damStore.config.keyPrefix ? 'Prefix: ' + damStore.config.keyPrefix : 'Root Bucket Storage' }}
+              {{ damStore.damInfo.keyPrefix ? 'Prefix: ' + damStore.damInfo.keyPrefix : 'Root Bucket Storage' }}
             </span>
           </div>
           <div class="text-[11px] text-slate-500 font-mono">
-            {{ damStore.config.endpoint }}
+            {{ damStore.damInfo.endpoint || 'Not connected to DAM backend' }}
           </div>
         </div>
-      </div>
-
-      <!-- Notification Toast Message -->
-      <div v-if="toastMessage" class="px-3 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs flex items-center gap-2 animate-fade-in">
-        <Check class="w-3.5 h-3.5" />
-        <span>{{ toastMessage }}</span>
-      </div>
+      </div>-->
 
       <!-- Current Folder Path Indicator -->
-      <div class="flex items-center gap-2 text-xs">
+      <!--<div class="flex items-center gap-2 text-xs">
         <span class="text-slate-500">Current Folder:</span>
         <span class="font-mono text-xs font-bold text-indigo-300 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
           {{ damStore.currentFolderPath }}
         </span>
       </div>
-    </div>
+    </div>-->
 
     <!-- Breadcrumb Navigation -->
     <div class="flex items-center gap-1.5 text-xs text-slate-400 overflow-x-auto py-1">
@@ -306,14 +300,14 @@
         <div
           v-for="asset in paginatedAssets"
           :key="asset.id"
-          @click="openPreviewModal(asset)"
+          @click="tabsStore.openAsset(asset.id)"
           class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/50 transition group flex flex-col justify-between space-y-3 cursor-pointer"
         >
           <div class="aspect-video w-full rounded-lg bg-slate-950 flex items-center justify-center border border-slate-800/80 overflow-hidden relative group-hover:bg-slate-900/80 transition">
             <img
-              v-if="['PNG', 'JPG', 'GIF', 'SVG', 'WEBP'].includes(asset.fileType)"
+              v-if="PREVIEWABLE_IMAGE_TYPES.includes(asset.fileType)"
               :src="asset.dataUrl || asset.thumbnailUrl || asset.url"
-              @error="handleImageError"
+              @error="handleImageError($event, asset)"
               :alt="asset.filename"
               class="w-full h-full object-cover rounded-lg"
             />
@@ -356,6 +350,9 @@
             <div class="font-medium text-slate-200 text-sm truncate" :title="asset.filename">{{ asset.filename }}</div>
             <div class="flex items-center justify-between text-xs text-slate-500 mt-1">
               <span>{{ asset.sizeFormatted }}</span>
+              <span v-if="asset.metadata?.technical?.width && asset.metadata?.technical?.height" class="font-mono">
+                {{ asset.metadata.technical.width }} × {{ asset.metadata.technical.height }}
+              </span>
               <span class="font-mono text-[11px] text-indigo-300 truncate max-w-[120px]">{{ asset.pimcorePath }}</span>
             </div>
           </div>
@@ -373,9 +370,9 @@
 
             <div class="flex items-center gap-1">
               <button
-                @click="openPreviewModal(asset)"
+                @click="tabsStore.openAsset(asset.id)"
                 class="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition"
-                title="Preview Asset"
+                title="Open Asset"
               >
                 <Eye class="w-3.5 h-3.5 text-indigo-400" />
               </button>
@@ -448,6 +445,8 @@
                 </div>
               </th>
 
+              <th v-if="visibleColumns.dimensions" class="py-3 px-4">Dimensions</th>
+
               <th v-if="visibleColumns.size" @click="toggleSort('sizeBytes')" class="py-3 px-4 cursor-pointer hover:text-slate-200 transition">
                 <div class="flex items-center gap-1">
                   <span>Size</span>
@@ -509,7 +508,7 @@
             <tr
               v-for="asset in paginatedAssets"
               :key="asset.id"
-              @click="openPreviewModal(asset)"
+              @click="tabsStore.openAsset(asset.id)"
               :class="[
                 'transition cursor-pointer',
                 selectedAssetIds.includes(asset.id) ? 'bg-indigo-950/40 hover:bg-indigo-900/50' : 'hover:bg-slate-800/50'
@@ -527,9 +526,9 @@
               <td v-if="visibleColumns.thumbnail" class="py-2.5 px-4 text-center">
                 <div class="w-9 h-9 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center overflow-hidden mx-auto">
                   <img
-                    v-if="['PNG', 'JPG', 'GIF', 'SVG', 'WEBP'].includes(asset.fileType)"
+                    v-if="PREVIEWABLE_IMAGE_TYPES.includes(asset.fileType)"
                     :src="asset.dataUrl || asset.thumbnailUrl || asset.url"
-                    @error="handleImageError"
+                    @error="handleImageError($event, asset)"
                     class="w-full h-full object-cover"
                   />
                   <component v-else :is="getIconForFileType(asset.fileType)" class="w-4 h-4 text-slate-400" />
@@ -545,6 +544,12 @@
                 <span class="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-slate-950 text-slate-300 border border-slate-800">
                   {{ asset.fileType }}
                 </span>
+              </td>
+              <td v-if="visibleColumns.dimensions" class="py-2.5 px-4 text-slate-400 font-mono">
+                <span v-if="asset.metadata?.technical?.width && asset.metadata?.technical?.height">
+                  {{ asset.metadata.technical.width }} × {{ asset.metadata.technical.height }}
+                </span>
+                <span v-else class="text-slate-600">—</span>
               </td>
               <td v-if="visibleColumns.size" class="py-2.5 px-4 text-slate-400 font-mono">
                 {{ asset.sizeFormatted }}
@@ -574,9 +579,9 @@
               <td v-if="visibleColumns.actions" class="py-2.5 px-4 text-right" @click.stop>
                 <div class="flex items-center justify-end gap-1">
                   <button
-                    @click="openPreviewModal(asset)"
+                    @click="tabsStore.openAsset(asset.id)"
                     class="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition"
-                    title="Preview Asset"
+                    title="Open Asset"
                   >
                     <Eye class="w-3.5 h-3.5 text-indigo-400" />
                   </button>
@@ -910,177 +915,11 @@
     </div>
 
     <!-- Modal 3: Upload New Version -->
-    <div v-if="showVersionModal && selectedAssetForVersion" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-        <div class="flex items-center justify-between">
-          <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
-            <RefreshCw class="w-4 h-4 text-indigo-400" />
-            Upload New Version (v{{ selectedAssetForVersion.version + 1 }})
-          </h3>
-          <button @click="showVersionModal = false" class="text-slate-400 hover:text-slate-200 transition text-sm">✕</button>
-        </div>
-
-        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
-          <div class="text-slate-400">Target Asset: <strong class="text-slate-200 font-mono">{{ selectedAssetForVersion.filename }}</strong></div>
-          <div class="flex items-center justify-between text-[11px] text-slate-500">
-            <span>Current Version: v{{ selectedAssetForVersion.version }}</span>
-            <span>Path: {{ selectedAssetForVersion.pimcorePath }}</span>
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Select Replacement File</label>
-          <input
-            type="file"
-            @change="handleVersionFileSelect"
-            class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-indigo-300 hover:file:bg-slate-700"
-          />
-        </div>
-
-        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
-          <button
-            @click="showVersionModal = false"
-            class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 hover:text-slate-200 transition"
-          >
-            Cancel
-          </button>
-          <button
-            @click="submitUploadNewVersion"
-            :disabled="!versionFile || isUploading"
-            class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition disabled:opacity-50"
-          >
-            Upload Version v{{ selectedAssetForVersion.version + 1 }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal 4: Full Asset Preview Modal -->
-    <div v-if="showPreviewModal && previewAsset" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2.5 truncate">
-            <component :is="getIconForFileType(previewAsset.fileType)" class="w-5 h-5 text-indigo-400 shrink-0" />
-            <h3 class="text-base font-bold text-slate-100 truncate" :title="previewAsset.filename">{{ previewAsset.filename }}</h3>
-            <span class="px-2 py-0.5 text-[10px] font-mono font-bold rounded-full bg-slate-950 text-indigo-300 border border-slate-800">
-              v{{ previewAsset.version }}
-            </span>
-          </div>
-          <button @click="showPreviewModal = false" class="text-slate-400 hover:text-slate-200 transition text-sm">✕</button>
-        </div>
-
-        <!-- Asset Preview Viewer Stage -->
-        <div class="aspect-video w-full rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center overflow-hidden relative p-4">
-          <!-- Image File Preview -->
-          <img
-            v-if="['PNG', 'JPG', 'GIF', 'SVG', 'WEBP'].includes(previewAsset.fileType)"
-            :src="previewAsset.dataUrl || previewAsset.url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80'"
-            @error="handleImageError"
-            :alt="previewAsset.filename"
-            class="max-h-full max-w-full object-contain rounded-lg shadow-lg"
-          />
-
-          <!-- Video File Preview -->
-          <video
-            v-else-if="previewAsset.fileType === 'MP4'"
-            controls
-            class="max-h-full max-w-full rounded-lg"
-          >
-            <source :src="previewAsset.url" type="video/mp4" />
-            Your browser does not support HTML5 video preview.
-          </video>
-
-          <!-- Fallback Icon Preview -->
-          <div v-else class="text-center space-y-3">
-            <component :is="getIconForFileType(previewAsset.fileType)" class="w-16 h-16 text-indigo-400/80 mx-auto" />
-            <p class="text-xs text-slate-400 font-mono">{{ previewAsset.filename }}</p>
-          </div>
-        </div>
-
-        <!-- Metadata & Details Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-          <div>
-            <span class="text-slate-500 block">Asset Path</span>
-            <span class="font-mono text-slate-200 font-medium truncate block">{{ previewAsset.pimcorePath }}</span>
-          </div>
-
-          <div>
-            <span class="text-slate-500 block">S3 Object Key</span>
-            <span class="font-mono text-slate-200 font-medium truncate block">{{ previewAsset.s3Key }}</span>
-          </div>
-
-          <div>
-            <span class="text-slate-500 block">File Size & Mime</span>
-            <span class="text-slate-200 font-medium">{{ previewAsset.sizeFormatted }} ({{ previewAsset.mimeType }})</span>
-          </div>
-
-          <div>
-            <span class="text-slate-500 block">Visibility Access</span>
-            <span
-              :class="[
-                'inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border mt-0.5',
-                previewAsset.isPublic ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-              ]"
-            >
-              {{ previewAsset.isPublic ? 'PUBLIC (Direct CDN)' : 'PRIVATE (Presigned Signed URL)' }}
-            </span>
-          </div>
-
-          <div>
-            <span class="text-slate-500 block">Uploaded At</span>
-            <span class="text-slate-300">{{ new Date(previewAsset.uploadedAt).toLocaleString() }}</span>
-          </div>
-
-          <div>
-            <span class="text-slate-500 block">Last Updated</span>
-            <span class="text-slate-300">{{ new Date(previewAsset.updatedAt).toLocaleString() }}</span>
-          </div>
-        </div>
-
-        <!-- Preview Modal Action Footer -->
-        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800 text-xs">
-          <div class="flex items-center gap-2">
-            <button
-              @click="openAssetInNewTab(previewAsset)"
-              class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow transition flex items-center gap-1.5"
-              title="Open Asset URL in New Tab"
-            >
-              <ExternalLink class="w-3.5 h-3.5" />
-              <span>Open in New Tab</span>
-            </button>
-            <button
-              @click="openVersionModal(previewAsset); showPreviewModal = false;"
-              class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 font-semibold transition flex items-center gap-1.5"
-            >
-              <RefreshCw class="w-3.5 h-3.5" />
-              <span>Upload New Version (v{{ previewAsset.version + 1 }})</span>
-            </button>
-            <button
-              @click="copyAssetUrl(previewAsset)"
-              class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition flex items-center gap-1.5"
-            >
-              <Link class="w-3.5 h-3.5" />
-              <span>Copy URL</span>
-            </button>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <button
-              @click="deleteAsset(previewAsset.id); showPreviewModal = false;"
-              class="px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 font-medium border border-rose-800/60 transition"
-            >
-              Delete
-            </button>
-            <button
-              @click="showPreviewModal = false"
-              class="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold transition"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <DamVersionUploadModal
+      :is-open="showVersionModal"
+      :asset="selectedAssetForVersion"
+      @close="showVersionModal = false"
+    />
   </div>
 </template>
 
@@ -1093,11 +932,6 @@ import {
   Trash2,
   RefreshCw,
   FileArchive,
-  Image,
-  FileText,
-  Film,
-  Archive,
-  Check,
   ChevronRight,
   ChevronLeft,
   ChevronsLeft,
@@ -1111,27 +945,30 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Filter,
   X,
   ExternalLink,
   Download,
-  CheckSquare,
-  Square
+  CheckSquare
 } from '@lucide/vue'
 import JSZip from 'jszip'
 import { useDamStore, AssetItem } from '../stores/damStore'
+import { useTabsStore } from '../stores/tabsStore'
+import { useToastStore } from '../stores/toastStore'
+import DamVersionUploadModal from '../components/dam/DamVersionUploadModal.vue'
+import { getIconForFileType, getIconForFilename, PREVIEWABLE_IMAGE_TYPES } from '../utils/asset-file-icons'
+import { handleAssetImageError } from '../utils/asset-image-heal'
 
 const damStore = useDamStore()
+const tabsStore = useTabsStore()
+const toastStore = useToastStore()
 
-const toastMessage = ref('')
 const showUploadModal = ref(false)
 const showCreateFolderModal = ref(false)
 const showVersionModal = ref(false)
-const showPreviewModal = ref(false)
 const showColumnConfig = ref(false)
 
-function openAssetInNewTab(asset: AssetItem) {
-  const targetUrl = damStore.getAssetUrl(asset) || asset.url || asset.pimcorePath
+async function openAssetInNewTab(asset: AssetItem) {
+  const targetUrl = (await damStore.getAssetUrl(asset)) || asset.url || asset.pimcorePath
   if (!targetUrl) return
   window.open(targetUrl, '_blank', 'noopener,noreferrer')
 }
@@ -1153,6 +990,7 @@ export interface ColumnConfig {
   filename: boolean
   path: boolean
   fileType: boolean
+  dimensions: boolean
   size: boolean
   visibility: boolean
   version: boolean
@@ -1167,6 +1005,7 @@ const defaultColumns: ColumnConfig = {
   filename: true,
   path: true,
   fileType: true,
+  dimensions: true,
   size: true,
   visibility: true,
   version: true,
@@ -1238,7 +1077,7 @@ const filteredAndSortedAssets = computed(() => {
   // 2. File Type Filter
   if (filterType.value !== 'ALL') {
     if (filterType.value === 'IMAGE') {
-      list = list.filter((a) => ['PNG', 'JPG', 'GIF', 'SVG', 'WEBP'].includes(a.fileType))
+      list = list.filter((a) => PREVIEWABLE_IMAGE_TYPES.includes(a.fileType))
     } else if (filterType.value === 'VIDEO') {
       list = list.filter((a) => a.fileType === 'MP4')
     } else if (filterType.value === 'DOCUMENT') {
@@ -1399,14 +1238,15 @@ function toggleSelectAsset(id: string) {
   }
 }
 
-function deleteSelectedAssets() {
+async function deleteSelectedAssets() {
   const count = selectedAssetIds.value.length
   if (count === 0) return
   if (confirm(`Are you sure you want to delete ${count} selected asset(s) from DAM storage?`)) {
     for (const id of selectedAssetIds.value) {
-      damStore.deleteAsset(id)
+      await damStore.deleteAsset(id)
+      tabsStore.closeAssetTab(id)
     }
-    triggerToast(`Deleted ${count} asset(s) from DAM storage.`)
+    toastStore.show(`Deleted ${count} asset(s) from DAM storage.`)
     selectedAssetIds.value = []
   }
 }
@@ -1419,7 +1259,7 @@ async function downloadSelectedAssets() {
 
   if (selectedItems.length === 1) {
     const asset = selectedItems[0]
-    const url = damStore.getAssetUrl(asset) || asset.url || asset.pimcorePath
+    const url = (await damStore.getAssetUrl(asset)) || asset.url || asset.pimcorePath
     const link = document.createElement('a')
     link.href = url
     link.download = asset.filename
@@ -1427,19 +1267,19 @@ async function downloadSelectedAssets() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    triggerToast(`Downloading ${asset.filename}...`)
+    toastStore.show(`Downloading ${asset.filename}...`)
     return
   }
 
   isDownloadingZip.value = true
-  triggerToast(`Preparing ZIP archive for ${selectedItems.length} assets...`)
+  toastStore.show(`Preparing ZIP archive for ${selectedItems.length} assets...`)
 
   try {
     const zip = new JSZip()
     const folder = zip.folder('dam_assets')
 
     for (const asset of selectedItems) {
-      const url = damStore.getAssetUrl(asset) || asset.url || asset.pimcorePath
+      const url = (await damStore.getAssetUrl(asset)) || asset.url || asset.pimcorePath
       try {
         if (asset.dataUrl && asset.dataUrl.startsWith('data:')) {
           const parts = asset.dataUrl.split(',')
@@ -1475,7 +1315,7 @@ async function downloadSelectedAssets() {
     document.body.removeChild(link)
     URL.revokeObjectURL(zipUrl)
 
-    triggerToast(`Downloaded ZIP archive with ${selectedItems.length} assets!`)
+    toastStore.show(`Downloaded ZIP archive with ${selectedItems.length} assets!`)
   } catch (err: any) {
     alert(`Failed to create ZIP download: ${err.message}`)
   } finally {
@@ -1484,9 +1324,7 @@ async function downloadSelectedAssets() {
 }
 
 const selectedFiles = ref<File[]>([])
-const versionFile = ref<File | null>(null)
 const selectedAssetForVersion = ref<AssetItem | null>(null)
-const previewAsset = ref<AssetItem | null>(null)
 const newFolderName = ref('')
 const newFolderIsPublic = ref(false)
 const autoExtractZip = ref(true)
@@ -1511,38 +1349,8 @@ const hasZipInBatch = computed(() => {
   return selectedFiles.value.some((f) => f.name.toLowerCase().endsWith('.zip'))
 })
 
-function triggerToast(msg: string) {
-  toastMessage.value = msg
-  setTimeout(() => {
-    toastMessage.value = ''
-  }, 3500)
-}
-
 function navigateToFolder(path: string) {
   damStore.currentFolderPath = path
-}
-
-function getIconForFileType(type: string) {
-  switch (type) {
-    case 'PNG':
-    case 'JPG':
-    case 'GIF':
-    case 'SVG':
-    case 'WEBP': return Image
-    case 'PDF': return FileText
-    case 'MP4': return Film
-    case 'ZIP': return FileArchive
-    default: return Archive
-  }
-}
-
-function getIconForFilename(filename: string) {
-  const ext = filename.split('.').pop()?.toLowerCase() || ''
-  if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) return Image
-  if (ext === 'pdf') return FileText
-  if (ext === 'mp4') return Film
-  if (ext === 'zip') return FileArchive
-  return Archive
 }
 
 function openUploadModal() {
@@ -1573,8 +1381,8 @@ async function submitUploadBatch() {
   isUploading.value = true
 
   try {
-    const res = await damStore.uploadMultipleAssets(selectedFiles.value, damStore.currentFolderPath)
-    triggerToast(`Uploaded ${selectedFiles.value.length} files to ${damStore.currentFolderPath}`)
+    await damStore.uploadMultipleAssets(selectedFiles.value, damStore.currentFolderPath)
+    toastStore.show(`Uploaded ${selectedFiles.value.length} files to ${damStore.currentFolderPath}`)
     selectedFiles.value = []
     showUploadModal.value = false
   } catch (err: any) {
@@ -1590,11 +1398,11 @@ function openCreateFolderModal() {
   showCreateFolderModal.value = true
 }
 
-function submitCreateFolder() {
+async function submitCreateFolder() {
   if (!newFolderName.value.trim()) return
   try {
-    damStore.createFolder(newFolderName.value, newFolderIsPublic.value)
-    triggerToast(`Created ${newFolderIsPublic.value ? 'PUBLIC' : 'PRIVATE'} folder "${newFolderName.value}"`)
+    await damStore.createFolder(newFolderName.value, newFolderIsPublic.value)
+    toastStore.show(`Created ${newFolderIsPublic.value ? 'PUBLIC' : 'PRIVATE'} folder "${newFolderName.value}"`)
     newFolderName.value = ''
     showCreateFolderModal.value = false
   } catch (err: any) {
@@ -1602,63 +1410,33 @@ function submitCreateFolder() {
   }
 }
 
-function confirmDeleteFolder(path: string) {
+async function confirmDeleteFolder(path: string) {
   if (confirm(`Are you sure you want to delete folder "${path}" and all its contents?`)) {
-    damStore.deleteFolder(path)
-    triggerToast(`Deleted folder "${path}"`)
+    await damStore.deleteFolder(path)
+    toastStore.show(`Deleted folder "${path}"`)
   }
-}
-
-function openPreviewModal(asset: AssetItem) {
-  previewAsset.value = asset
-  showPreviewModal.value = true
 }
 
 function openVersionModal(asset: AssetItem) {
   selectedAssetForVersion.value = asset
-  versionFile.value = null
   showVersionModal.value = true
 }
 
-function handleVersionFileSelect(e: Event) {
-  const files = (e.target as HTMLInputElement).files
-  if (files && files.length > 0) {
-    versionFile.value = files[0]
-  }
-}
-
-async function submitUploadNewVersion() {
-  if (!selectedAssetForVersion.value || !versionFile.value) return
-  isUploading.value = true
-  try {
-    const updated = await damStore.uploadNewVersion(selectedAssetForVersion.value.id, versionFile.value)
-    triggerToast(`Uploaded version v${updated.version} for ${updated.filename}`)
-    showVersionModal.value = false
-  } catch (err: any) {
-    alert(err.message)
-  } finally {
-    isUploading.value = false
-  }
-}
-
-function deleteAsset(id: string) {
+async function deleteAsset(id: string) {
   if (confirm('Are you sure you want to delete this asset from DAM storage?')) {
-    damStore.deleteAsset(id)
-    triggerToast('Asset deleted from DAM storage.')
+    await damStore.deleteAsset(id)
+    tabsStore.closeAssetTab(id)
+    toastStore.show('Asset deleted from DAM storage.')
   }
 }
 
-function copyAssetUrl(asset: AssetItem) {
-  const url = damStore.getAssetUrl(asset) || asset.url || asset.pimcorePath
-  navigator.clipboard.writeText(url)
-  triggerToast('Asset URL copied to clipboard!')
+async function copyAssetUrl(asset: AssetItem) {
+  const url = (await damStore.getAssetUrl(asset)) || asset.url || asset.pimcorePath
+  await navigator.clipboard.writeText(url)
+  toastStore.show('Asset URL copied to clipboard!')
 }
 
-function handleImageError(e: Event) {
-  const target = e.target as HTMLImageElement
-  const fallback = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80'
-  if (target && target.src !== fallback) {
-    target.src = fallback
-  }
+function handleImageError(e: Event, asset: AssetItem) {
+  handleAssetImageError(e, asset)
 }
 </script>
