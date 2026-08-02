@@ -61,7 +61,7 @@ export async function fetchDocumentById(baseUrl: string, id: string): Promise<Cm
 export async function updateDocumentContent(
   baseUrl: string,
   id: string,
-  input: { title: string; rootBlock: WhoobeBlockNode }
+  input: { title: string; rootBlock: WhoobeBlockNode; status?: string }
 ): Promise<CmsDocumentRecord> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/documents/${id}`, {
     method: 'PATCH',

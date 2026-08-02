@@ -15,6 +15,9 @@ import {
   listDocuments,
   getDocumentById,
   updateDocumentContent,
+  listSnippets,
+  createSnippet,
+  deleteSnippet,
   SESSION_COOKIE_NAME,
   type AuthenticatedRequest,
 } from '@pimcore-custom/core/server';
@@ -159,17 +162,31 @@ app.get('/documents/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (re
   }
 });
 
-// Saves edits made in Whoobe Studio. Only title/rootBlock are writable here
-// - slug/locale/pimcoreId aren't exposed to the editor.
-app.patch('/documents/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+// Saves edits made in Whoobe Studio. Only title/rootBlock are writable by
+// the autosave loop; `status` is optional and only ever sent by the
+// explicit Save as Draft/Save and Publish actions (MasterDocumentTab.vue) -
+// transitioning to 'published' additionally requires objects:publish, kept
+// separate from the base objects:write gate on this route since editors can
+// autosave drafts without necessarily being allowed to publish.
+app.patch('/documents/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { title, rootBlock } = req.body ?? {};
+    const { title, rootBlock, status } = req.body ?? {};
     if (typeof title !== 'string' || !rootBlock) {
       res.status(400).json({ error: 'title and rootBlock are required' });
       return;
     }
+    if (status !== undefined) {
+      if (typeof status !== 'string') {
+        res.status(400).json({ error: 'status must be a string' });
+        return;
+      }
+      if (status === 'published' && !req.user?.permissions.includes(PERMISSIONS.OBJECTS_PUBLISH)) {
+        res.status(403).json({ error: `Missing permission: ${PERMISSIONS.OBJECTS_PUBLISH}` });
+        return;
+      }
+    }
 
-    const document = await updateDocumentContent(req.params.id, { title, rootBlock });
+    const document = await updateDocumentContent(req.params.id, { title, rootBlock, status });
     if (!document) {
       res.status(404).json({ error: 'Document not found' });
       return;
@@ -178,6 +195,46 @@ app.patch('/documents/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async 
   } catch (error: any) {
     console.error('Update document error:', error);
     res.status(500).json({ error: error.message || 'Failed to update document' });
+  }
+});
+
+// Reusable content fragments saved from Whoobe Studio's "Save as Snippet"
+// action (a full WhoobeBlockNode subtree, not a whole document) - see
+// packages/core/src/db/snippet-schema.ts. Reuses the same objects:read/write
+// permissions as documents, same rationale as that route's comment above.
+app.get('/snippets', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const snippets = await listSnippets();
+    res.json({ snippets });
+  } catch (error: any) {
+    console.error('List snippets error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list snippets' });
+  }
+});
+
+app.post('/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, icon, node } = req.body ?? {};
+    if (typeof name !== 'string' || !name.trim() || !node) {
+      res.status(400).json({ error: 'name and node are required' });
+      return;
+    }
+
+    const snippet = await createSnippet({ name: name.trim(), icon: typeof icon === 'string' ? icon : null, node });
+    res.status(201).json({ snippet });
+  } catch (error: any) {
+    console.error('Create snippet error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create snippet' });
+  }
+});
+
+app.delete('/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteSnippet(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete snippet error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete snippet' });
   }
 });
 

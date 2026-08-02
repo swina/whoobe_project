@@ -11,6 +11,21 @@
         >
           {{ document.status }}
         </span>
+        <div class="flex-1"></div>
+        <button
+          @click="saveStatus('draft')"
+          :disabled="isSavingStatus !== null"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-50"
+        >
+          {{ isSavingStatus === 'draft' ? 'Saving…' : 'Save as Draft' }}
+        </button>
+        <button
+          @click="saveStatus('published')"
+          :disabled="isSavingStatus !== null"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
+        >
+          {{ isSavingStatus === 'published' ? 'Publishing…' : 'Save and Publish' }}
+        </button>
       </div>
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 font-mono">
         <span>{{ document.slug }}</span>
@@ -66,6 +81,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { Eye } from '@lucide/vue'
 import { useDocumentsStore } from '../../stores/documentsStore'
 import { useTabsStore, DocumentSubTab } from '../../stores/tabsStore'
+import { useToastStore } from '../../stores/toastStore'
 import type { CmsDocumentRecord } from '../../utils/documents-api'
 import BlockNodePreview from './BlockNodePreview.vue'
 import WhoobeStudioEmbed from './WhoobeStudioEmbed.vue'
@@ -76,8 +92,10 @@ const props = defineProps<{
 
 const documentsStore = useDocumentsStore()
 const tabsStore = useTabsStore()
+const toastStore = useToastStore()
 const document = ref<CmsDocumentRecord | null>(null)
 const isLoading = ref(true)
+const isSavingStatus = ref<'draft' | 'published' | null>(null)
 
 const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'document' && t.itemId === props.documentId))
 const activeSubTab = computed<DocumentSubTab>(() => currentTab.value?.documentSubTab ?? 'editor')
@@ -103,6 +121,27 @@ async function load() {
 // content without needing a re-fetch.
 function onSaved(updated: CmsDocumentRecord) {
   document.value = updated
+}
+
+// Explicit status transition, distinct from the editor's continuous
+// autosave - resends the current title/rootBlock (kept live-accurate by
+// onSaved above) alongside the new status, since the PATCH route requires
+// both on every call.
+async function saveStatus(status: 'draft' | 'published') {
+  if (!document.value) return
+  isSavingStatus.value = status
+  try {
+    document.value = await documentsStore.setDocumentStatus(
+      props.documentId,
+      document.value.title,
+      document.value.rootBlock,
+      status
+    )
+  } catch (e: any) {
+    toastStore.show(e?.message || `Failed to save as ${status}`)
+  } finally {
+    isSavingStatus.value = null
+  }
 }
 
 onMounted(load)
