@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchDocuments, fetchDocumentById, type CmsDocumentRecord } from '../utils/documents-api'
+import { fetchDocuments, fetchDocumentById, updateDocumentContent, type CmsDocumentRecord } from '../utils/documents-api'
+import type { WhoobeBlockNode } from '@pimcore-custom/core'
 import { useAuthStore } from './authStore'
 
 export const useDocumentsStore = defineStore('documents', () => {
@@ -27,6 +28,14 @@ export const useDocumentsStore = defineStore('documents', () => {
     return fetchDocumentById(authStore.config.coreApiUrl, id)
   }
 
+  async function updateDocument(id: string, title: string, rootBlock: WhoobeBlockNode): Promise<CmsDocumentRecord> {
+    const authStore = useAuthStore()
+    const updated = await updateDocumentContent(authStore.config.coreApiUrl, id, { title, rootBlock })
+    const index = documents.value.findIndex((d) => d.id === id)
+    if (index >= 0) documents.value[index] = updated
+    return updated
+  }
+
   refreshDocuments()
 
   return {
@@ -34,5 +43,6 @@ export const useDocumentsStore = defineStore('documents', () => {
     isLoading,
     refreshDocuments,
     getDocument,
+    updateDocument,
   }
 })

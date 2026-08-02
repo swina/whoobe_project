@@ -1,16 +1,25 @@
 <template>
   <div v-if="document" class="h-full flex flex-col">
     <div class="shrink-0 px-6 pt-6 pb-3 space-y-3">
-      <div class="flex items-center gap-2">
-        <h3 class="text-lg font-bold text-slate-100">{{ document.title }}</h3>
-        <span
-          :class="[
-            'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
-            document.status === 'published' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-          ]"
+      <div class="flex items-center gap-2 justify-between">
+        <div class="flex items-center gap-2">
+          <h3 class="text-lg font-bold text-slate-100">{{ document.title }}</h3>
+          <span
+            :class="[
+              'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
+              document.status === 'published' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+            ]"
+          >
+            {{ document.status }}
+          </span>
+        </div>
+        <button
+          @click="showEditor = true"
+          class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5"
         >
-          {{ document.status }}
-        </span>
+          <span>🎨</span>
+          <span>Edit in Whoobe Studio</span>
+        </button>
       </div>
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 font-mono">
         <span>{{ document.slug }}</span>
@@ -25,6 +34,12 @@
         <BlockNodePreview :node="document.rootBlock" />
       </div>
     </div>
+
+    <WhoobeStudioEmbedModal
+      :is-open="showEditor"
+      :document-id="props.documentId"
+      @close="closeEditor"
+    />
   </div>
 
   <div v-else-if="isLoading" class="p-6 text-center text-xs text-slate-500">Loading document…</div>
@@ -41,6 +56,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useDocumentsStore } from '../../stores/documentsStore'
 import type { CmsDocumentRecord } from '../../utils/documents-api'
 import BlockNodePreview from './BlockNodePreview.vue'
+import WhoobeStudioEmbedModal from './WhoobeStudioEmbedModal.vue'
 
 const props = defineProps<{
   documentId: string
@@ -49,6 +65,7 @@ const props = defineProps<{
 const documentsStore = useDocumentsStore()
 const document = ref<CmsDocumentRecord | null>(null)
 const isLoading = ref(true)
+const showEditor = ref(false)
 
 async function load() {
   isLoading.value = true
@@ -60,6 +77,14 @@ async function load() {
   } finally {
     isLoading.value = false
   }
+}
+
+// Re-fetch on close so the read-only Preview reflects whatever was
+// autosaved while Whoobe Studio was open (the modal persists on every
+// edit, not just on close - see WhoobeStudioEmbedModal.vue).
+async function closeEditor() {
+  showEditor.value = false
+  await load()
 }
 
 onMounted(load)
