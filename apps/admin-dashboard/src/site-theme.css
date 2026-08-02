@@ -1,0 +1,34 @@
+/*
+ * Design tokens ported from the real site's assets/scss/utils/_variables.scss
+ * and _mediaquery.scss, so brick-specific Tailwind classes (see
+ * packages/migration-tool/src/areabrick-mappings/) read like real site
+ * styling (tablet-l:, font-tenor, etc.) instead of one-off arbitrary values
+ * everywhere. Breakpoint names match the site's own mixin names
+ * (for-tablet-landscape-up -> tablet-l), not Tailwind's default sm/md/lg,
+ * since they're different pixel values and reusing Tailwind's names would
+ * be misleading.
+ */
+@theme {
+  --breakpoint-tablet-p: 600px;
+  --breakpoint-tablet-l: 900px;
+  --breakpoint-desktop-sm: 1024px;
+  --breakpoint-desktop: 1200px;
+  --breakpoint-desktop-md: 1366px;
+  --breakpoint-desktop-lg: 1440px;
+  --breakpoint-desktop-xl: 1920px;
+
+  --color-sb-dark-blue: #091e49;
+  --color-sb-blue: #123274;
+  --color-sb-light-blue: #a1daf8;
+  --color-sb-pink: #e1a7c2;
+  --color-sb-green: #bdd285;
+  --color-sb-orange: #fa964c;
+  --color-sb-darkest-grey: #333;
+  --color-sb-dark-grey: #4f4f4f;
+  --color-sb-grey: #828282;
+  --color-sb-grey2: #b1b1b1;
+  --color-sb-light-grey: #f2f2f2;
+
+  --font-tenor: 'Tenor Sans', Helvetica, Arial, sans-serif;
+  --font-poppins: 'Poppins', Helvetica, Arial, sans-serif;
+}

@@ -18,7 +18,7 @@ describe('header-brick mapping (mirrors templates/areas/header-brick/view.html.t
     const result = PimcoreDocumentConverter.convertAreablockBrick(0, brick, 'https://cdn.example.com');
     expect(result).not.toBeNull();
     expect(result!.tag).toBe('section');
-    expect(result!.props?.cssClass).toBe('hero-generico');
+    expect(result!.props?.cssClass).toContain('bg-cover');
     expect(result!.style?.backgroundImage).toBe('url(https://cdn.example.com/communication/hero.jpg)');
 
     const [videoWrap, content] = result!.children!;
@@ -27,13 +27,20 @@ describe('header-brick mapping (mirrors templates/areas/header-brick/view.html.t
     expect(videoWrap.children![0].props?.autoplay).toBe(true);
 
     expect(content.tag).toBe('header');
-    const [title, text, cta] = content.children!;
+    const wrapper = content.children![0];
+    expect(wrapper.name).toBe('sb_wrapper');
+    const hgroup = wrapper.children![0];
+    expect(hgroup.tag).toBe('hgroup');
+
+    const [title, text, cta] = hgroup.children!;
     expect(title.tag).toBe('h1');
     expect(title.content).toBe('Area Comunicazione');
+    expect(title.props?.cssClass).toContain('font-tenor');
     expect(text.tag).toBe('p');
     expect(text.content).toBe('La nostra comunicazione...');
     expect(cta.tag).toBe('a');
     expect(cta.props?.href).toBe('#');
+    expect(cta.props?.cssClass).toBe('hidden');
   });
 
   it('omits the video aside entirely when header_video is not set', () => {

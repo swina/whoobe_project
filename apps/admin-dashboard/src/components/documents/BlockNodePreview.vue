@@ -4,31 +4,38 @@
     <span>unmapped brick: {{ node.props.unmappedBrickType }}</span>
   </div>
 
+  <!-- Media nodes render as a single flat element - node.tag IS the media
+       tag itself (img/video), so wrapping it in a generic <component :is>
+       (as the container/typography/etc. branch below does) would produce
+       invalid nested <video><video/></video> markup. -->
+  <img
+    v-if="node.type === 'media' && node.tag !== 'video'"
+    :src="node.props?.src"
+    :alt="node.props?.alt || node.name"
+    :class="node.props?.cssClass"
+    :style="node.style"
+  />
+
+  <video
+    v-else-if="node.type === 'media' && node.tag === 'video'"
+    :src="typeof node.props?.src === 'string' ? node.props.src : node.props?.src?.path"
+    :autoplay="node.props?.autoplay"
+    :loop="node.props?.loop"
+    :muted="node.props?.muted"
+    :playsinline="node.props?.playsinline"
+    :controls="node.props?.controls ?? true"
+    :class="node.props?.cssClass"
+    :style="node.style"
+  />
+
   <component
+    v-else
     :is="node.tag || defaultTag"
     :style="node.style"
     :class="node.props?.cssClass"
     :href="node.tag === 'a' ? node.props?.href : undefined"
   >
     <span v-if="node.type === 'typography'" v-html="node.content" />
-
-    <img
-      v-else-if="node.type === 'media' && node.tag !== 'video'"
-      :src="node.props?.src"
-      :alt="node.props?.alt || node.name"
-      style="max-width: 100%"
-    />
-
-    <video
-      v-else-if="node.type === 'media' && node.tag === 'video'"
-      :src="typeof node.props?.src === 'string' ? node.props.src : node.props?.src?.path"
-      :autoplay="node.props?.autoplay"
-      :loop="node.props?.loop"
-      :muted="node.props?.muted"
-      :playsinline="node.props?.playsinline"
-      :controls="node.props?.controls ?? true"
-      style="max-width: 100%"
-    />
 
     <span v-else-if="node.type === 'widget'" class="text-xs text-slate-400 font-mono">
       Relation → {{ node.dataBinding?.objectId || node.props?.relationIds?.join(', ') || 'unknown' }}

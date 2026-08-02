@@ -1,4 +1,15 @@
 @import "tailwindcss";
+@import "./site-theme.css";
+
+/*
+ * The brick-specific Tailwind classes documents render with (e.g.
+ * "tablet-l:h-[520px]") are string literals inside
+ * packages/migration-tool/src/areabrick-mappings/*.ts, fetched at runtime
+ * from the API - Tailwind's default content scan only looks at this app's
+ * own source tree, so without this it would never generate the CSS for
+ * classes it never statically saw referenced anywhere.
+ */
+@source "../../../packages/migration-tool/src/**/*.ts";
 
 @layer base {
   body {
