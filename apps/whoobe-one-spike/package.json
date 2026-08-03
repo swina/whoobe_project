@@ -1,0 +1,36 @@
+{
+  "name": "@pimcore-custom/whoobe-one-spike",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 3006",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@tailwindcss/browser": "^4.3.3",
+    "@tiptap/extension-image": "^2.11.5",
+    "@tiptap/starter-kit": "^2.11.5",
+    "@tiptap/vue-3": "^2.11.5",
+    "dexie": "^3.2.7",
+    "dragula": "^3.7.3",
+    "file-saver": "^2.0.5",
+    "gsap": "^3.12.5",
+    "jsonpath": "^1.1.1",
+    "mitt": "^3.0.1",
+    "pinia": "^2.3.1",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/dragula": "^3.7.5",
+    "@types/file-saver": "^2.0.7",
+    "@types/jsonpath": "^0.2.4",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.4.0",
+    "vite": "^6.1.1",
+    "vue-tsc": "^2.2.0"
+  }
+}

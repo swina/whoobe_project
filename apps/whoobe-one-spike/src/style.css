@@ -1,0 +1,20 @@
+/*
+ * No `@import "tailwindcss"` here anymore, and no `@source`/`@source
+ * inline()` declarations either - Tailwind now runs entirely at runtime,
+ * in the browser (@tailwindcss/browser, wired up in main.ts), not as a
+ * build-time PostCSS/Vite pipeline. The whole point of that switch was to
+ * stop needing to predeclare which classes will ever be used at all - see
+ * vite.config.ts's header comment and this app's README for the full
+ * story (a real bug: p-8 silently did nothing because Tailwind's
+ * build-time model only generates CSS for classes it can find literally
+ * written out somewhere; arbitrary bracket-value classes like p-[12px]
+ * couldn't work under that model at all, for any amount of extra
+ * declarations). Every `@source inline()` list this app accumulated
+ * (the border-color swatch grid's dynamic classes, then the ~1000-token
+ * dump from tw.classes.js) is now unnecessary and was removed, not kept
+ * around unused.
+ */
+
+html, body, #app {
+  height: 100%;
+}
