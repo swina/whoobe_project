@@ -24,6 +24,16 @@ export async function getDataClass(id: string): Promise<DataClassRecord | null> 
   return row ?? null;
 }
 
+/** Looked up by name rather than id wherever the caller only knows the
+ * class by its human name - packages/migration-tool's `migrate-objects`
+ * (given `--class=<Name>`) and its own relation resolver (a relation
+ * field's `relationTarget` is a class name, not an id). */
+export async function getDataClassByName(name: string): Promise<DataClassRecord | null> {
+  const db = getDb();
+  const [row] = await db.select().from(dataClasses).where(eq(dataClasses.name, name)).limit(1);
+  return row ?? null;
+}
+
 export async function createDataClass(input: {
   name: string;
   label: string;

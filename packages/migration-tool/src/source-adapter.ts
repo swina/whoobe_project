@@ -23,6 +23,53 @@ export interface PimcoreDocumentSummary {
  * what makes the tool reusable across Pimcore instances instead of tied to
  * whichever schema was true for the first one it was pointed at.
  */
+/**
+ * Data Object types - see docs/plans/datamodel/advanced-data-modeling-
+ * plan.md §5.2/§8 Phase 3. Optional on `PimcoreSourceAdapter` (not every
+ * adapter needs to support Data Object migration - the fixture adapter
+ * used by the Document pipeline's own tests doesn't, and shouldn't need
+ * dummy stubs just to keep satisfying the interface).
+ */
+export interface PimcoreObjectClassSummary {
+  id: number;
+  name: string;
+}
+
+export interface PimcoreObjectSummary {
+  id: number;
+  classId: number;
+  className: string;
+  key: string;
+  path: string;
+}
+
+/** One `object_relations_<classId>` edge - `type` is Pimcore's own real
+ * relation-target kind ('asset'/'object'/'document'), `destId` is that
+ * target's id in its own table (not resolved to a path/object here -
+ * PimcoreObjectConverter resolves it, the same division of labor
+ * getDocumentElements already uses for image/video editables). */
+export interface PimcoreObjectRelationEdge {
+  fieldname: string;
+  type: string;
+  destId: number;
+}
+
+/**
+ * The raw material for one object, joined from up to three real Pimcore
+ * tables (see the plan's §3.2/§3.4) - `columns`/`localizedByLocale` are
+ * intentionally untyped raw column dumps (`SELECT *`), not a filtered
+ * subset: which columns are real class fields vs. Pimcore tree/meta
+ * columns is `data_classes.fields` and the calling converter's own
+ * business, not this adapter's - the same "return everything, let the
+ * converter decide" shape `getDocumentElements` already normalizes into,
+ * just at the raw-row level instead of already-typed editables.
+ */
+export interface RawPimcoreObjectAttributes {
+  columns: Record<string, unknown>;
+  localizedByLocale: Record<string, Record<string, unknown>>;
+  relations: PimcoreObjectRelationEdge[];
+}
+
 export interface PimcoreSourceAdapter {
   connect(): Promise<void>;
   disconnect(): Promise<void>;
@@ -37,6 +84,10 @@ export interface PimcoreSourceAdapter {
   getDocumentElements(documentId: number): Promise<PimcoreEditableElement[]>;
   /** Looks up an asset's full path (e.g. "/logos/hero.png") by its Pimcore asset ID. */
   resolveAssetPath(assetId: number): Promise<string | null>;
+
+  listObjectClasses?(): Promise<PimcoreObjectClassSummary[]>;
+  listObjects?(classId: number): Promise<PimcoreObjectSummary[]>;
+  getObjectAttributes?(classId: number, objectId: number): Promise<RawPimcoreObjectAttributes>;
 }
 
 export type PimcoreSourceAdapterFactory = (config: Record<string, unknown>) => PimcoreSourceAdapter;

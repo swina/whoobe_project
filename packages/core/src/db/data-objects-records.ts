@@ -41,6 +41,17 @@ export async function listDataObjectTranslations(translationGroupId: string): Pr
   return db.select().from(dataObjects).where(eq(dataObjects.translationGroupId, translationGroupId));
 }
 
+/** Looked up by `pimcoreId` alone (globally unique across every class,
+ * not just within one - real Pimcore object ids are one global sequence
+ * across the whole `objects` tree, confirmed against a live install) -
+ * packages/migration-tool's own relation resolver uses this to find
+ * whether a relation's target has already been migrated. */
+export async function getDataObjectByPimcoreId(pimcoreId: string): Promise<DataObjectRecord | null> {
+  const db = getDb();
+  const [row] = await db.select().from(dataObjects).where(eq(dataObjects.pimcoreId, pimcoreId)).limit(1);
+  return row ?? null;
+}
+
 export async function createDataObject(input: {
   classId: string;
   key: string;
