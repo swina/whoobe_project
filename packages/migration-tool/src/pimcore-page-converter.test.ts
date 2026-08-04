@@ -9,7 +9,7 @@ describe('PimcorePageConverter (whoobe_pages target - integration plan Phase 2)'
       parentId: 1,
       type: 'page',
       key: 'homepage',
-      path: '/homepage',
+      path: '/',
       title: 'Company Homepage',
       elements: {
         headline: { name: 'headline', type: 'input', data: 'Welcome to Enterprise CMS' },
@@ -21,7 +21,11 @@ describe('PimcorePageConverter (whoobe_pages target - integration plan Phase 2)'
     const result = PimcorePageConverter.convertDocument(rawDoc, 'http://localhost:9000/whoobe-cms');
 
     expect(result.title).toBe('Company Homepage');
-    expect(result.slug).toBe('/homepage');
+    // `path` is the PARENT's path in real Pimcore ('/' here, the root) -
+    // the document's own slug is `path` + its own `key`, not `path` alone
+    // (see resolveDocumentSlug's own comment - a real bug this pipeline
+    // had until Phase 5's pilot against a live install surfaced it).
+    expect(result.slug).toBe('/homepage/');
     expect(result.locale).toBe('en');
     expect(result.pimcoreId).toBe('42');
 
@@ -51,7 +55,7 @@ describe('PimcorePageConverter (whoobe_pages target - integration plan Phase 2)'
       parentId: 0,
       type: 'page',
       key: 'x',
-      path: '/x',
+      path: '/',
       elements: {
         img: { name: 'img', type: 'image', data: { path: '/communication/hero.jpg' } },
       },
@@ -66,7 +70,7 @@ describe('PimcorePageConverter (whoobe_pages target - integration plan Phase 2)'
       parentId: 1,
       type: 'page',
       key: 'features',
-      path: '/features',
+      path: '/',
       title: 'Features Page',
       elements: {
         contentArea: {
@@ -95,7 +99,7 @@ describe('PimcorePageConverter (whoobe_pages target - integration plan Phase 2)'
       parentId: 1,
       type: 'page',
       key: 'promo',
-      path: '/promo',
+      path: '/',
       elements: {
         area: {
           name: 'area',
@@ -119,13 +123,40 @@ describe('PimcorePageConverter (whoobe_pages target - integration plan Phase 2)'
     expect(brickNode.blocks[0].content).toBe('Unmapped Headline');
   });
 
+  it('composes the slug from the parent path plus this document\'s own key, not the parent path alone - regression for a real collision Phase 5\'s pilot hit against a live multi-level Pimcore site', () => {
+    // Real shape observed: document 13 (key 'it') has path '/', and its
+    // children (e.g. document 10, key 'area-comunicazione') all report
+    // path '/it/' - `path` is where the parent lives, not this document's
+    // own slug. Using `path` alone previously gave every child of the same
+    // parent an identical, colliding slug ('/it/').
+    const child = PimcorePageConverter.convertDocument({
+      id: 10,
+      parentId: 13,
+      type: 'page',
+      key: 'area-comunicazione',
+      path: '/it/',
+      elements: {},
+    });
+    expect(child.slug).toBe('/it/area-comunicazione/');
+
+    const root = PimcorePageConverter.convertDocument({
+      id: 1,
+      parentId: 0,
+      type: 'page',
+      key: '',
+      path: '/',
+      elements: {},
+    });
+    expect(root.slug).toBe('/');
+  });
+
   it('represents a Pimcore data-object relation (href/multihref) as a labeled placeholder, not a silent drop or a fake binding', () => {
     const rawDoc: PimcoreRawDocument = {
       id: 7,
       parentId: 1,
       type: 'page',
       key: 'related',
-      path: '/related',
+      path: '/',
       elements: {
         relatedProduct: { name: 'relatedProduct', type: 'href', data: { id: 999 } },
       },

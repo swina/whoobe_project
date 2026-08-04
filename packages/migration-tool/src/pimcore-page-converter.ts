@@ -117,6 +117,22 @@ function placeholderElement(id: string, message: string): WhoobeOneElementNode {
   });
 }
 
+// Real Pimcore schema finding from Phase 5's pilot against a live install
+// (docs/plans/cms/whoobe-one-editor-integration-plan.md §8): `documents.path`
+// is the PARENT's path, not this document's own - e.g. document 10
+// (key: 'area-comunicazione') has `path: '/it/'`, and its own real URL is
+// '/it/area-comunicazione/'. Both this converter and the old, now-inert
+// `pimcore-document-converter.ts` originally used `pimcoreDoc.path` alone
+// as the slug (copied from that file's own pre-existing logic, never
+// caught before because `cms_documents` had no unique-slug constraint to
+// surface it) - against a real multi-level site this collapsed every
+// document under the same parent onto one identical, colliding slug.
+function resolveDocumentSlug(path: string, key: string): string {
+  const parent = path.replace(/\/+$/, '');
+  if (!key) return parent || '/';
+  return `${parent}/${key}/`;
+}
+
 export class PimcorePageConverter {
   public static convertDocument(pimcoreDoc: PimcoreRawDocument, s3BucketPrefix: string = ''): PimcoreConvertedPage {
     const root: WhoobeOneElementNode = baseElement({
@@ -135,7 +151,7 @@ export class PimcorePageConverter {
 
     return {
       title: pimcoreDoc.title || pimcoreDoc.key || 'Migrated Page',
-      slug: pimcoreDoc.path || `/${pimcoreDoc.key}`,
+      slug: resolveDocumentSlug(pimcoreDoc.path, pimcoreDoc.key),
       locale: 'en',
       content: root,
       pimcoreId: String(pimcoreDoc.id),
