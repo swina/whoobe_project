@@ -17,6 +17,8 @@ export * from './db/whoobe-one-template-schema.js';
 export * from './db/whoobe-one-template-records.js';
 export * from './db/whoobe-one-kit-schema.js';
 export * from './db/whoobe-one-kit-records.js';
+export * from './db/whoobe-pages-schema.js';
+export * from './db/whoobe-pages-records.js';
 export * from './db/bootstrap.js';
 export * from './auth/password.js';
 export * from './auth/permissions.js';

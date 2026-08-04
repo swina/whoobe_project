@@ -11,22 +11,43 @@
 // Phase 0 through Phase 2, just in reverse this time (dormant *after*
 // being used, not before).
 //
-// "Template" is the user-facing name for what this app's UI called a
-// "page" until now - a whole document built by putting saved snippets (a
+// "Template" was the user-facing name for what this app's UI called a
+// "page" before that - a whole document built by putting saved snippets (a
 // subset of elements) together - see SaveSnippetModal.vue's own header
 // comment for the snippet half of that distinction.
+//
+// As of the CMS integration plan (docs/plans/cms/whoobe-one-editor-
+// integration-plan.md §4/Phase 1), the functions below (savePage/listPages/
+// loadPage/getTemplateGallery/saveAsNewTemplate/deleteSavedPage) talk to
+// the new real page store (pages-api.ts, whoobe_pages) instead of the old
+// templates-api.ts/whoobe_one_templates - "Template" stopped being the
+// right word once this is the CMS's actual, publishable page content, not
+// a reusable starting-point document. whoobe_one_templates itself is left
+// in place, untouched, unaffected - a real, separate, unmigrated table
+// (Phase 0's own decision), just no longer what this file's own functions
+// read/write. `editor.page` (a `Block` instance) keeps its existing
+// `name`/`category`/`path` fields exactly as before - this is a data-layer
+// swap only (Phase 1's own scope), not a UI/editor-model change, so
+// `path` maps onto the new schema's `slug` field at the API boundary
+// here, rather than renaming anything BlockEditor.vue itself touches.
+// `editor.page.description` is no longer sent at all - the new schema has
+// no equivalent field (superseded by `seo.metaDescription`, a more
+// purpose-built "describe this page" concept - see pages-api.ts), and
+// nothing in this app's own UI ever prompts for or displays it today, so
+// this drops a field that was already inert in practice, not a visible
+// regression.
 import Block from './BlocksClass.js'
 import type Element from './ElementsClass.js'
 import type { useEditorStore } from '../store/editor'
 import { randomID } from '../helpers'
 import { cloneWithFreshIds } from './editor-actions'
 import {
-  listTemplates as apiListTemplates,
-  getTemplate as apiGetTemplate,
-  createTemplate as apiCreateTemplate,
-  updateTemplate as apiUpdateTemplate,
-  deleteTemplate as apiDeleteTemplate,
-} from '../templates-api'
+  listPages as apiListPages,
+  getPage as apiGetPage,
+  createPage as apiCreatePage,
+  updatePage as apiUpdatePage,
+  deletePage as apiDeletePage,
+} from '../pages-api'
 import {
   listKits as apiListKits,
   getKit as apiGetKit,
@@ -58,31 +79,29 @@ export interface SavedTemplateSummary {
 export async function savePage(editor: EditorStore, path?: string): Promise<void> {
   if (!editor.page || !editor.document) return
   editor.page.json.blocks = editor.document
-  const node = JSON.parse(JSON.stringify(editor.document))
+  const content = JSON.parse(JSON.stringify(editor.document))
 
   if (!editor.page.id) {
-    const created = await apiCreateTemplate({
-      name: editor.page.name || 'Untitled',
+    const created = await apiCreatePage({
+      title: editor.page.name || 'Untitled',
       category: editor.page.category || '',
-      path: path || '',
-      description: editor.page.description || null,
-      node,
+      slug: path || '',
+      content,
     })
     editor.page.id = created.id
-    ;(editor.page as any).path = created.path
+    ;(editor.page as any).path = created.slug
   } else {
-    await apiUpdateTemplate(String(editor.page.id), {
-      name: editor.page.name || 'Untitled',
+    await apiUpdatePage(String(editor.page.id), {
+      title: editor.page.name || 'Untitled',
       category: editor.page.category || '',
-      description: editor.page.description || null,
-      node,
+      content,
     })
   }
 }
 
 export async function listPages(): Promise<SavedTemplateSummary[]> {
-  const templates = await apiListTemplates()
-  return templates.map((t) => ({ id: t.id, name: t.name, category: t.category, path: t.path }))
+  const pages = await apiListPages()
+  return pages.map((p) => ({ id: p.id, name: p.title, category: p.category, path: p.slug }))
 }
 
 export interface TemplateGalleryItem {
@@ -95,36 +114,34 @@ export interface TemplateGalleryItem {
 
 /** For TemplateGalleryModal.vue - unlike listPages() above (name/category/
  * path only, for the old compact dropdown), the gallery needs every saved
- * template's actual root node up front to render a live thumbnail for each
- * one. Still a single network call, not one-per-template: GET /whoobe-one/
- * templates already selects every column (confirmed from its own real
- * implementation, listWhoobeOneTemplates() in packages/core - a plain
- * `db.select().from(whoobeOneTemplates)`, not a narrowed column list), so
- * `node` is already sitting right there in the same response listPages()
- * itself just throws away. Same pattern as getKitWithTemplates(). */
+ * page's actual content tree up front to render a live thumbnail for each
+ * one. Still a single network call, not one-per-page: GET /whoobe-one/
+ * pages selects every column (same pattern getWhoobeOneTemplate's own
+ * unnarrowed `db.select().from(...)` already established), so `content`
+ * is already sitting right there in the same response listPages() itself
+ * just throws away. Same pattern as getKitWithTemplates(). */
 export async function getTemplateGallery(): Promise<TemplateGalleryItem[]> {
-  const templates = await apiListTemplates()
-  return templates.map((t) => ({ id: t.id, name: t.name, category: t.category, path: t.path, node: t.node }))
+  const pages = await apiListPages()
+  return pages.map((p) => ({ id: p.id, name: p.title, category: p.category, path: p.slug, node: p.content }))
 }
 
 export async function loadPage(editor: EditorStore, id: string): Promise<void> {
-  const template = await apiGetTemplate(id)
+  const saved = await apiGetPage(id)
 
   const page = new Block()
-  page.id = template.id as any
-  page.name = template.name
-  page.category = template.category
-  page.description = template.description || ''
-  ;(page as any).path = template.path
-  page.json.blocks = template.node
+  page.id = saved.id as any
+  page.name = saved.title
+  page.category = saved.category
+  ;(page as any).path = saved.slug
+  page.json.blocks = saved.content
 
   editor.setPage(page)
-  editor.setDocument(template.node as any)
+  editor.setDocument(saved.content as any)
   editor.setCurrent(null)
 }
 
 export async function deleteSavedPage(id: string): Promise<void> {
-  await apiDeleteTemplate(id)
+  await apiDeletePage(id)
 }
 
 /** "Save As" - always creates a brand new template, regardless of whether
@@ -142,22 +159,20 @@ export async function deleteSavedPage(id: string): Promise<void> {
  * export that leaves the original document "current". */
 export async function saveAsNewTemplate(editor: EditorStore, name: string, path: string): Promise<void> {
   if (!editor.document) return
-  const node = JSON.parse(JSON.stringify(editor.document))
+  const content = JSON.parse(JSON.stringify(editor.document))
 
-  const created = await apiCreateTemplate({
-    name,
+  const created = await apiCreatePage({
+    title: name,
     category: editor.page?.category || '',
-    path,
-    description: editor.page?.description || null,
-    node,
+    slug: path,
+    content,
   })
 
   const page = new Block()
   page.id = created.id as any
-  page.name = created.name
+  page.name = created.title
   page.category = created.category
-  page.description = created.description || ''
-  ;(page as any).path = created.path
+  ;(page as any).path = created.slug
   page.json.blocks = editor.document
 
   editor.setPage(page)

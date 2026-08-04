@@ -34,6 +34,12 @@ import {
   createWhoobeOneKit,
   addTemplateToWhoobeOneKit,
   deleteWhoobeOneKit,
+  listWhoobePages,
+  getWhoobePage,
+  listWhoobePageTranslations,
+  createWhoobePage,
+  updateWhoobePage,
+  deleteWhoobePage,
   SESSION_COOKIE_NAME,
   generateTotpSecret,
   totpKeyUri,
@@ -691,6 +697,127 @@ app.delete('/whoobe-one/kits/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE),
   } catch (error: any) {
     console.error('Delete whoobe-one kit error:', error);
     res.status(500).json({ error: error.message || 'Failed to delete kit' });
+  }
+});
+
+// whoobe-one-spike's own real, published website pages - see docs/plans/
+// cms/whoobe-one-editor-integration-plan.md §4. Distinct from the
+// `/whoobe-one/templates` routes above: templates stay a reusable
+// starting-point library, pages are the CMS's actual content.
+app.get('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const pages = await listWhoobePages();
+    res.json({ pages });
+  } catch (error: any) {
+    console.error('List whoobe-one pages error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list pages' });
+  }
+});
+
+app.get('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page = await getWhoobePage(req.params.id);
+    if (!page) {
+      res.status(404).json({ error: 'Page not found' });
+      return;
+    }
+    res.json({ page });
+  } catch (error: any) {
+    console.error('Get whoobe-one page error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get page' });
+  }
+});
+
+// Every locale variant of the same logical page (see the integration
+// plan §4 on `translationGroupId`) - for a translations picker/switcher,
+// not part of the plain CRUD set above.
+app.get(
+  '/whoobe-one/pages/:id/translations',
+  requirePermission(PERMISSIONS.OBJECTS_READ),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const page = await getWhoobePage(req.params.id);
+      if (!page) {
+        res.status(404).json({ error: 'Page not found' });
+        return;
+      }
+      const translations = await listWhoobePageTranslations(page.translationGroupId);
+      res.json({ translations });
+    } catch (error: any) {
+      console.error('List whoobe-one page translations error:', error);
+      res.status(500).json({ error: error.message || 'Failed to list page translations' });
+    }
+  }
+);
+
+app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { translationGroupId, locale, slug, title, category, content, seo, sitemap, search, pimcoreId } = req.body ?? {};
+    if (typeof slug !== 'string' || !slug.trim() || typeof title !== 'string' || !title.trim() || content == null) {
+      res.status(400).json({ error: 'slug, title, and content are required' });
+      return;
+    }
+
+    const page = await createWhoobePage({
+      translationGroupId: typeof translationGroupId === 'string' ? translationGroupId : undefined,
+      locale: typeof locale === 'string' ? locale : undefined,
+      slug: slug.trim(),
+      title: title.trim(),
+      category: typeof category === 'string' ? category : undefined,
+      content,
+      seo: seo ?? null,
+      sitemap: sitemap ?? null,
+      search: search ?? null,
+      pimcoreId: typeof pimcoreId === 'string' ? pimcoreId : null,
+    });
+    res.status(201).json({ page });
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      res.status(409).json({ error: `A page with slug "${req.body?.slug}" already exists for this locale` });
+      return;
+    }
+    console.error('Create whoobe-one page error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create page' });
+  }
+});
+
+app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { slug, title, category, published, workflowState, content, seo, sitemap, search } = req.body ?? {};
+
+    const page = await updateWhoobePage(req.params.id, {
+      slug: typeof slug === 'string' ? slug : undefined,
+      title: typeof title === 'string' ? title : undefined,
+      category: typeof category === 'string' ? category : undefined,
+      published: typeof published === 'boolean' ? published : undefined,
+      workflowState: workflowState === null || typeof workflowState === 'string' ? workflowState : undefined,
+      content: content !== undefined ? content : undefined,
+      seo: seo !== undefined ? seo : undefined,
+      sitemap: sitemap !== undefined ? sitemap : undefined,
+      search: search !== undefined ? search : undefined,
+    });
+    if (!page) {
+      res.status(404).json({ error: 'Page not found' });
+      return;
+    }
+    res.json({ page });
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      res.status(409).json({ error: `A page with slug "${req.body?.slug}" already exists for this locale` });
+      return;
+    }
+    console.error('Update whoobe-one page error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update page' });
+  }
+});
+
+app.delete('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteWhoobePage(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete whoobe-one page error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete page' });
   }
 });
 

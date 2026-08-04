@@ -22,6 +22,7 @@ export default defineConfig({
     './src/db/whoobe-one-snippet-schema.ts',
     './src/db/whoobe-one-template-schema.ts',
     './src/db/whoobe-one-kit-schema.ts',
+    './src/db/whoobe-pages-schema.ts',
   ],
   out: './drizzle',
   dialect: 'postgresql',
