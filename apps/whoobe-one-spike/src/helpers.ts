@@ -30,6 +30,87 @@ export function randomID(prefix = 'whoobe'): string {
   return prefix + '-' + Math.random().toString(36).slice(2, 7)
 }
 
+/** Maps a live Element instance back to the builder name it was created
+ * from (e.g. "Heading", "Paragraph", "Image") - the same canonical names
+ * ElementsClass.js's own Groups() uses for the add-element palette
+ * (BlockElementsPalette.vue), and createElement()'s own dispatch switches
+ * on. Not stored on the node itself (createElement(name) discards `name`
+ * once it's built the instance), so this reconstructs it from the
+ * combination of fields that actually vary builder-to-builder - `tag` is
+ * the primary discriminator (checked first) since most distinct builders
+ * set a distinct tag; `level`/`type`/`element` break the remaining ties
+ * (several builders share tag: 'element', the base constructor's own
+ * default, e.g. Heading/Paragraph/InlineText/Span/Blockquote/Code all
+ * leave `tag` untouched). Used by DocumentTreeNode.vue's own label and
+ * FloatingToolbar.vue's selection badge - both previously showed either
+ * the generic `tag` value ("element", true for six different builders at
+ * once) or the raw HTML tag name, neither of which told these two builders
+ * apart from each other. */
+export function friendlyElementName(el: any): string {
+  if (el.level) return 'Heading'
+
+  switch (el.tag) {
+    case 'grid':
+      return 'Grid'
+    case 'flex':
+      return el.type === 'slider' ? 'Slider' : 'Flexbox'
+    case 'youtube':
+      return 'Youtube'
+    case 'vimeo':
+      return 'Vimeo'
+    case 'micon':
+      return 'MIcon'
+    case 'iconify':
+      return 'Iconify'
+    case 'file':
+      return 'Download'
+    case 'form':
+      return 'Form'
+    case 'select':
+      return 'Select'
+    case 'submit':
+      return 'Submit'
+    case 'reset':
+      return 'Reset'
+    case 'button':
+      return 'Button'
+    case 'input':
+      switch (el.type) {
+        case 'email':
+          return 'Email'
+        case 'number':
+          return 'Number'
+        case 'hidden':
+          return 'Hidden'
+        case 'checkbox':
+          return 'Checkbox'
+        case 'textarea':
+          return 'Textarea'
+        default:
+          return 'Input Text'
+      }
+  }
+
+  switch (el.element) {
+    case 'p':
+      return 'Paragraph'
+    case 'span':
+      return 'Span'
+    case 'blockquote':
+      return 'Blockquote'
+    case 'pre':
+      return 'Code'
+    case 'img':
+      return 'Image'
+    case 'video':
+      return 'Video'
+    case 'div':
+      return 'Inline Text'
+  }
+
+  return el.semantic || el.element || 'Element'
+}
+
 export function findNodeById(root: WhoobeElement, id: string): WhoobeElement | null {
   if (root.id === id) return root
   for (const child of root.blocks ?? []) {

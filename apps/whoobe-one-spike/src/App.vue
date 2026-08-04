@@ -23,5 +23,9 @@ const editor = useEditorStore()
 onMounted(() => {
   editor.setElements(new Element().Groups())
   setupHotkeys()
+  // Kits no longer need a client-side import step - the repo's own
+  // reference kits are seeded server-side now (packages/core/src/db/
+  // seed.ts's seedWhoobeOneKits()), so they're already there by the time
+  // KitsPanel.vue asks for them.
 })
 </script>

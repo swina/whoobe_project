@@ -3,7 +3,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { getConnectionConfig, getDb } from './client.js';
-import { seedDefaults } from './seed.js';
+import { seedDefaults, seedWhoobeOneKits } from './seed.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Compiled location is dist/db/bootstrap.js -> packages/core/drizzle.
@@ -53,4 +53,5 @@ export async function bootstrapDatabase(): Promise<void> {
   await ensureDatabaseExists();
   await runMigrations();
   await seedDefaults();
+  await seedWhoobeOneKits();
 }

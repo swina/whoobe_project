@@ -1,6 +1,18 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as apiLogin, logout as apiLogout, fetchCurrentUser, getDefaultCoreApiUrl, type AuthenticatedUser } from '../utils/auth-api'
+import {
+  login as apiLogin,
+  logout as apiLogout,
+  fetchCurrentUser,
+  mfaChallenge as apiMfaChallenge,
+  getDefaultCoreApiUrl,
+  type AuthenticatedUser,
+  type MfaRequired,
+} from '../utils/auth-api'
+
+function isMfaRequired(result: AuthenticatedUser | MfaRequired): result is MfaRequired {
+  return (result as MfaRequired).mfaRequired === true
+}
 
 const CONFIG_STORAGE_KEY = 'whoobe_custom_auth_config'
 
@@ -31,6 +43,11 @@ export const useAuthStore = defineStore('auth', () => {
   // flash a login screen before redirecting into the app.
   const isLoading = ref(true)
   const errorMessage = ref('')
+  // Set when login() gets `mfaRequired` back instead of a session - a
+  // password was already verified, LoginView.vue switches to its "enter
+  // your code" step while this is non-null, and verifyMfa() below is what
+  // actually completes the login.
+  const mfaToken = ref<string | null>(null)
 
   const permissions = computed(() => new Set(currentUser.value?.permissions ?? []))
 
@@ -50,14 +67,45 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(email: string, password: string): Promise<void> {
+  // Returns true if MFA is now required (LoginView.vue should show its code
+  // step next) - false means login is already fully complete.
+  async function login(email: string, password: string): Promise<boolean> {
     errorMessage.value = ''
     try {
-      currentUser.value = await apiLogin(config.value.coreApiUrl, email, password)
+      const result = await apiLogin(config.value.coreApiUrl, email, password)
+      if (isMfaRequired(result)) {
+        mfaToken.value = result.mfaToken
+        return true
+      }
+      currentUser.value = result
+      return false
     } catch (e: any) {
       errorMessage.value = e?.message || 'Login failed'
       throw e
     }
+  }
+
+  async function verifyMfa(credentials: { code?: string; recoveryCode?: string }): Promise<void> {
+    errorMessage.value = ''
+    if (!mfaToken.value) {
+      errorMessage.value = 'MFA challenge expired - please log in again'
+      throw new Error(errorMessage.value)
+    }
+    try {
+      currentUser.value = await apiMfaChallenge(config.value.coreApiUrl, mfaToken.value, credentials)
+      mfaToken.value = null
+    } catch (e: any) {
+      errorMessage.value = e?.message || 'Invalid code'
+      throw e
+    }
+  }
+
+  // Abandon the in-progress MFA step and go back to the email/password
+  // form - the server-side challenge just expires unused (see core-api's
+  // own MFA_CHALLENGE_TTL_MS), nothing to explicitly revoke here.
+  function cancelMfa(): void {
+    mfaToken.value = null
+    errorMessage.value = ''
   }
 
   async function logout(): Promise<void> {
@@ -75,10 +123,13 @@ export const useAuthStore = defineStore('auth', () => {
     currentUser,
     isLoading,
     errorMessage,
+    mfaToken,
     permissions,
     can,
     fetchMe,
     login,
+    verifyMfa,
+    cancelMfa,
     logout,
   }
 })

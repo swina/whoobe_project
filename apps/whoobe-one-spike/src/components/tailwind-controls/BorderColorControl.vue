@@ -11,8 +11,8 @@
         :class="swatch.previewClass"
         @click="pick(swatch.value)"
       ></button>
-      <button type="button" title="Clear" class="w-5 h-5 rounded-full border flex items-center justify-center text-[8px] text-gray-400" @click="pick('')">
-        ✕
+      <button type="button" title="Clear" class="w-5 h-5 rounded-full border flex items-center justify-center text-gray-400" @click="pick('')">
+        <X class="w-2.5 h-2.5" />
       </button>
     </div>
   </div>
@@ -37,6 +37,7 @@
 // since this app switched to Tailwind's runtime/browser build (see main.
 // ts): it watches the live DOM directly and generates CSS for whatever
 // classes actually appear, dynamically-constructed or not.
+import { X } from '@lucide/vue'
 import { useEditorStore } from '../../store/editor'
 import twclasses from '../../scripts/tw.classes.js'
 import { clean } from '../../helpers'

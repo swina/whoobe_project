@@ -1,8 +1,10 @@
+import { randomBytes } from 'node:crypto';
 import express, { Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import {
   findUserByEmail,
+  findUserById,
   touchLastLogin,
   createSession,
   revokeSession,
@@ -18,7 +20,32 @@ import {
   listSnippets,
   createSnippet,
   deleteSnippet,
+  listWhoobeOneSnippets,
+  createWhoobeOneSnippet,
+  updateWhoobeOneSnippet,
+  deleteWhoobeOneSnippet,
+  listWhoobeOneTemplates,
+  getWhoobeOneTemplate,
+  createWhoobeOneTemplate,
+  updateWhoobeOneTemplate,
+  deleteWhoobeOneTemplate,
+  listWhoobeOneKits,
+  getWhoobeOneKit,
+  createWhoobeOneKit,
+  addTemplateToWhoobeOneKit,
+  deleteWhoobeOneKit,
   SESSION_COOKIE_NAME,
+  generateTotpSecret,
+  totpKeyUri,
+  totpQrCodeDataUrl,
+  verifyTotpToken,
+  generateRecoveryCodes,
+  hashRecoveryCodes,
+  consumeRecoveryCode,
+  setPendingTotpSecret,
+  enableTotp,
+  disableTotp,
+  updateMfaRecoveryCodes,
   type AuthenticatedRequest,
 } from '@pimcore-custom/core/server';
 
@@ -82,6 +109,62 @@ function setSessionCookie(res: Response, token: string, expiresAt: Date): void {
   });
 }
 
+// --- Pending MFA challenges: password already verified, waiting on a TOTP/
+// recovery code. Same "in-memory, single-process, dev/small-deployment
+// scale" tradeoff as the login-attempt guard above - a multi-instance
+// deployment would need this shared (e.g. a short-lived DB row) instead.
+// Kept out of the session table entirely: a pending challenge is not a
+// session (it grants nothing on its own), so it shouldn't be reachable by
+// anything that trusts SESSION_COOKIE_NAME/validateSessionToken.
+const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
+const MFA_CHALLENGE_MAX_ATTEMPTS = 5;
+const pendingMfaChallenges = new Map<string, { userId: string; expiresAt: number; attempts: number }>();
+
+function createMfaChallenge(userId: string): string {
+  const token = randomBytes(24).toString('hex');
+  pendingMfaChallenges.set(token, { userId, expiresAt: Date.now() + MFA_CHALLENGE_TTL_MS, attempts: 0 });
+  return token;
+}
+
+// Read-only lookup - a wrong code shouldn't force the user to re-enter
+// their password and start over, so the challenge itself is only removed
+// on success, expiry, or hitting MFA_CHALLENGE_MAX_ATTEMPTS (see
+// recordMfaFailure()/resolveMfaChallenge() below), not on every call.
+function peekMfaChallenge(token: string): string | null {
+  const entry = pendingMfaChallenges.get(token);
+  if (!entry || entry.expiresAt < Date.now()) {
+    pendingMfaChallenges.delete(token);
+    return null;
+  }
+  return entry.userId;
+}
+
+function recordMfaFailure(token: string): void {
+  const entry = pendingMfaChallenges.get(token);
+  if (!entry) return;
+  entry.attempts += 1;
+  if (entry.attempts >= MFA_CHALLENGE_MAX_ATTEMPTS) {
+    pendingMfaChallenges.delete(token);
+  }
+}
+
+function resolveMfaChallenge(token: string): void {
+  pendingMfaChallenges.delete(token);
+}
+
+async function completeLogin(res: Response, userId: string, req: Request): Promise<void> {
+  const { token, expiresAt } = await createSession(userId, {
+    ip: req.ip,
+    userAgent: req.headers['user-agent'],
+  });
+  await touchLastLogin(userId);
+  setSessionCookie(res, token, expiresAt);
+
+  const user = await findUserById(userId);
+  const permissions = await getEffectivePermissions(userId);
+  res.json({ id: userId, email: user?.email, displayName: user?.displayName, permissions });
+}
+
 app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body ?? {};
   if (typeof email !== 'string' || typeof password !== 'string') {
@@ -106,18 +189,137 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
 
     clearFailedAttempts(rateLimitKey);
 
-    const { token, expiresAt } = await createSession(user.id, {
-      ip: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
-    await touchLastLogin(user.id);
-    setSessionCookie(res, token, expiresAt);
+    if (user.totpEnabledAt) {
+      const mfaToken = createMfaChallenge(user.id);
+      res.json({ mfaRequired: true, mfaToken });
+      return;
+    }
 
-    const permissions = await getEffectivePermissions(user.id);
-    res.json({ id: user.id, email: user.email, displayName: user.displayName, permissions });
+    await completeLogin(res, user.id, req);
   } catch (error: any) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Step 2 of login when the account has MFA enabled - password was already
+// verified by /auth/login (that's what mfaToken proves), this only checks
+// the TOTP/recovery code before actually creating a session.
+app.post('/auth/mfa/challenge', async (req: Request, res: Response): Promise<void> => {
+  const { mfaToken, code, recoveryCode } = req.body ?? {};
+  if (typeof mfaToken !== 'string') {
+    res.status(400).json({ error: 'mfaToken is required' });
+    return;
+  }
+
+  const userId = peekMfaChallenge(mfaToken);
+  if (!userId) {
+    res.status(401).json({ error: 'MFA challenge expired - please log in again' });
+    return;
+  }
+
+  try {
+    const user = await findUserById(userId);
+    if (!user || !user.isActive || !user.totpEnabledAt) {
+      resolveMfaChallenge(mfaToken);
+      res.status(401).json({ error: 'Invalid session - please log in again' });
+      return;
+    }
+
+    if (typeof code === 'string' && user.totpSecret && verifyTotpToken(user.totpSecret, code)) {
+      resolveMfaChallenge(mfaToken);
+      await completeLogin(res, user.id, req);
+      return;
+    }
+
+    if (typeof recoveryCode === 'string' && user.mfaRecoveryCodes) {
+      const updated = await consumeRecoveryCode(user.mfaRecoveryCodes, recoveryCode);
+      if (updated) {
+        resolveMfaChallenge(mfaToken);
+        await updateMfaRecoveryCodes(user.id, updated);
+        await completeLogin(res, user.id, req);
+        return;
+      }
+    }
+
+    recordMfaFailure(mfaToken);
+    res.status(401).json({ error: 'Invalid code' });
+  } catch (error: any) {
+    console.error('MFA challenge error:', error);
+    res.status(500).json({ error: 'MFA verification failed' });
+  }
+});
+
+app.get('/auth/mfa/status', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const user = await findUserById(req.user!.id);
+  res.json({ enabled: !!user?.totpEnabledAt });
+});
+
+// Step 1 of enrollment: generate a new secret and return it as both a QR
+// code (scan) and a plain string (manual entry) - nothing is enforced yet,
+// see setPendingTotpSecret()'s own comment.
+app.post('/auth/mfa/setup', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const secret = generateTotpSecret();
+    await setPendingTotpSecret(req.user!.id, secret);
+    const otpauthUrl = totpKeyUri(req.user!.email, secret);
+    const qrCodeDataUrl = await totpQrCodeDataUrl(otpauthUrl);
+    res.json({ secret, otpauthUrl, qrCodeDataUrl });
+  } catch (error: any) {
+    console.error('MFA setup error:', error);
+    res.status(500).json({ error: 'Failed to start MFA setup' });
+  }
+});
+
+// Step 2 of enrollment: prove the authenticator app actually works before
+// MFA starts being enforced on this account. Recovery codes are generated
+// and returned here, once, in plaintext - only their argon2 hash is ever
+// persisted (see hashRecoveryCodes()).
+app.post('/auth/mfa/verify-setup', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const { code } = req.body ?? {};
+  if (typeof code !== 'string') {
+    res.status(400).json({ error: 'code is required' });
+    return;
+  }
+
+  try {
+    const user = await findUserById(req.user!.id);
+    if (!user?.totpSecret) {
+      res.status(400).json({ error: 'No MFA setup in progress - call /auth/mfa/setup first' });
+      return;
+    }
+    if (!verifyTotpToken(user.totpSecret, code)) {
+      res.status(401).json({ error: 'Invalid code' });
+      return;
+    }
+
+    const recoveryCodes = generateRecoveryCodes();
+    await enableTotp(user.id, await hashRecoveryCodes(recoveryCodes));
+    res.json({ success: true, recoveryCodes });
+  } catch (error: any) {
+    console.error('MFA verify-setup error:', error);
+    res.status(500).json({ error: 'Failed to verify MFA setup' });
+  }
+});
+
+app.post('/auth/mfa/disable', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const { password } = req.body ?? {};
+  if (typeof password !== 'string') {
+    res.status(400).json({ error: 'password is required' });
+    return;
+  }
+
+  try {
+    const user = await findUserById(req.user!.id);
+    if (!user || !(await verifyPassword(user.passwordHash, password))) {
+      res.status(401).json({ error: 'Invalid password' });
+      return;
+    }
+    await disableTotp(user.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('MFA disable error:', error);
+    res.status(500).json({ error: 'Failed to disable MFA' });
   }
 });
 
@@ -235,6 +437,260 @@ app.delete('/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async 
   } catch (error: any) {
     console.error('Delete snippet error:', error);
     res.status(500).json({ error: error.message || 'Failed to delete snippet' });
+  }
+});
+
+// Same idea as /snippets above, but for apps/whoobe-one-spike's own,
+// incompatible node format (an ElementsClass.js `Element` subtree, not a
+// WhoobeBlockNode) - see packages/core/src/db/whoobe-one-snippet-schema.ts.
+// whoobe-one-spike has no login flow of its own (same situation as
+// dam-api.ts's callers), so these routes work for it exactly like the DAM
+// ones do - as long as there's already a session cookie for the current
+// hostname.
+app.get('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const snippets = await listWhoobeOneSnippets();
+    res.json({ snippets });
+  } catch (error: any) {
+    console.error('List whoobe-one snippets error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list snippets' });
+  }
+});
+
+app.post('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, category, icon, node } = req.body ?? {};
+    if (typeof name !== 'string' || !name.trim() || typeof category !== 'string' || !category.trim() || node == null) {
+      res.status(400).json({ error: 'name, category, and node are required' });
+      return;
+    }
+
+    const snippet = await createWhoobeOneSnippet({
+      name: name.trim(),
+      category: category.trim(),
+      icon: typeof icon === 'string' ? icon : null,
+      node,
+    });
+    res.status(201).json({ snippet });
+  } catch (error: any) {
+    console.error('Create whoobe-one snippet error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create snippet' });
+  }
+});
+
+// Overwrites an existing snippet in place - lets a minor tweak get saved
+// back onto the snippet it came from instead of always creating a new,
+// near-duplicate one (see SaveSnippetModal.vue's "Update existing" mode).
+app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, category, icon, node } = req.body ?? {};
+    if (typeof name !== 'string' || !name.trim() || typeof category !== 'string' || !category.trim() || node == null) {
+      res.status(400).json({ error: 'name, category, and node are required' });
+      return;
+    }
+
+    const snippet = await updateWhoobeOneSnippet(req.params.id, {
+      name: name.trim(),
+      category: category.trim(),
+      icon: typeof icon === 'string' ? icon : null,
+      node,
+    });
+    if (!snippet) {
+      res.status(404).json({ error: 'Snippet not found' });
+      return;
+    }
+    res.json({ snippet });
+  } catch (error: any) {
+    console.error('Update whoobe-one snippet error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update snippet' });
+  }
+});
+
+app.delete('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteWhoobeOneSnippet(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete whoobe-one snippet error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete snippet' });
+  }
+});
+
+// whoobe-one-spike's own "templates" (whole documents, see that app's
+// README) - previously local-only, browser-IndexedDB storage; moved here
+// so this editor's data lives in the same real database as everything
+// else in this monorepo, ahead of integrating it for real. `path` is
+// unique (whoobe-one-template-schema.ts's own index) - Postgres error code
+// 23505 (unique_violation) is what a path collision actually looks like,
+// surfaced as a 409 rather than a generic 500 so the UI can tell the user
+// to pick a different path instead of just failing.
+app.get('/whoobe-one/templates', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const templates = await listWhoobeOneTemplates();
+    res.json({ templates });
+  } catch (error: any) {
+    console.error('List whoobe-one templates error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list templates' });
+  }
+});
+
+app.get('/whoobe-one/templates/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const template = await getWhoobeOneTemplate(req.params.id);
+    if (!template) {
+      res.status(404).json({ error: 'Template not found' });
+      return;
+    }
+    res.json({ template });
+  } catch (error: any) {
+    console.error('Get whoobe-one template error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get template' });
+  }
+});
+
+app.post('/whoobe-one/templates', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, category, path, description, node } = req.body ?? {};
+    if (typeof name !== 'string' || !name.trim() || typeof path !== 'string' || !path.trim() || node == null) {
+      res.status(400).json({ error: 'name, path, and node are required' });
+      return;
+    }
+
+    const template = await createWhoobeOneTemplate({
+      name: name.trim(),
+      category: typeof category === 'string' ? category : '',
+      path: path.trim(),
+      description: typeof description === 'string' ? description : null,
+      node,
+    });
+    res.status(201).json({ template });
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      res.status(409).json({ error: `A template with path "${req.body?.path}" already exists` });
+      return;
+    }
+    console.error('Create whoobe-one template error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create template' });
+  }
+});
+
+app.patch('/whoobe-one/templates/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, category, description, node } = req.body ?? {};
+    if (typeof name !== 'string' || !name.trim() || node == null) {
+      res.status(400).json({ error: 'name and node are required' });
+      return;
+    }
+
+    const template = await updateWhoobeOneTemplate(req.params.id, {
+      name: name.trim(),
+      category: typeof category === 'string' ? category : '',
+      description: typeof description === 'string' ? description : null,
+      node,
+    });
+    if (!template) {
+      res.status(404).json({ error: 'Template not found' });
+      return;
+    }
+    res.json({ template });
+  } catch (error: any) {
+    console.error('Update whoobe-one template error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update template' });
+  }
+});
+
+app.delete('/whoobe-one/templates/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteWhoobeOneTemplate(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete whoobe-one template error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete template' });
+  }
+});
+
+// whoobe-one-spike's own "kits" (named, categorized template collections -
+// see that app's README's Kits section) - same "moved from local
+// IndexedDB to this real database" motivation as templates above. The
+// repo's own reference kits are seeded server-side now (packages/core/src/
+// db/seed.ts's seedWhoobeOneKits(), see bootstrapDatabase()) rather than
+// fetched-and-imported from the client, so there's no client-facing
+// "import" endpoint here at all - only real CRUD.
+app.get('/whoobe-one/kits', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const kits = await listWhoobeOneKits();
+    res.json({ kits });
+  } catch (error: any) {
+    console.error('List whoobe-one kits error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list kits' });
+  }
+});
+
+app.get('/whoobe-one/kits/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const kit = await getWhoobeOneKit(req.params.id);
+    if (!kit) {
+      res.status(404).json({ error: 'Kit not found' });
+      return;
+    }
+    res.json({ kit });
+  } catch (error: any) {
+    console.error('Get whoobe-one kit error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get kit' });
+  }
+});
+
+app.post('/whoobe-one/kits', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, description, category, templates } = req.body ?? {};
+    if (typeof name !== 'string' || !name.trim()) {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+
+    const kit = await createWhoobeOneKit({
+      name: name.trim(),
+      description: typeof description === 'string' ? description : null,
+      category: typeof category === 'string' ? category : '',
+      templates: Array.isArray(templates) ? templates : [],
+    });
+    res.status(201).json({ kit });
+  } catch (error: any) {
+    console.error('Create whoobe-one kit error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create kit' });
+  }
+});
+
+// Appends one template entry to an existing kit - a dedicated endpoint
+// (rather than a generic PATCH the client would have to fetch-modify-
+// write through) so the read-modify-write on `templates` happens exactly
+// once, at the DB layer, not racily from the client.
+app.post('/whoobe-one/kits/:id/templates', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { template } = req.body ?? {};
+    if (template == null) {
+      res.status(400).json({ error: 'template is required' });
+      return;
+    }
+    const kit = await addTemplateToWhoobeOneKit(req.params.id, template);
+    if (!kit) {
+      res.status(404).json({ error: 'Kit not found' });
+      return;
+    }
+    res.json({ kit });
+  } catch (error: any) {
+    console.error('Add template to whoobe-one kit error:', error);
+    res.status(500).json({ error: error.message || 'Failed to add template to kit' });
+  }
+});
+
+app.delete('/whoobe-one/kits/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteWhoobeOneKit(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete whoobe-one kit error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete kit' });
   }
 });
 

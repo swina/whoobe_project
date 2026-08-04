@@ -4,6 +4,7 @@
     :class="classe"
     :style="stile"
     :src="element.element === 'img' ? resolveDisplayUrl(imageURL(element.image)) : undefined"
+    :alt="element.element === 'img' ? element.image?.alt || undefined : undefined"
     :placeholder="element.placeholder"
     v-html="element.content"
   ></component>
@@ -18,6 +19,13 @@
 // Same rendering computeds as the editing version, minus everything that
 // only makes sense while editing: no contenteditable, no click-to-select,
 // no data-id/data-type markers, no selection ring.
+//
+// `alt` (real `<img>` elements only) is set from FloatingToolbar.vue's
+// Image popover - unlike the source's own fallback (`element.image.alt ||
+// element.element`, i.e. falling back to the literal string "img"), this
+// just omits the attribute entirely when unset. A fallback of the literal
+// tag name isn't meaningfully more accessible than no alt attribute at
+// all, so it wasn't worth carrying over.
 import { computed } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
 import { imageURL } from '../../helpers'

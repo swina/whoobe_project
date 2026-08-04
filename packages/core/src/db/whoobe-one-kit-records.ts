@@ -1,0 +1,75 @@
+import { eq, desc } from 'drizzle-orm';
+import { getDb } from './client.js';
+import { whoobeOneKits } from './whoobe-one-kit-schema.js';
+
+export interface WhoobeOneKitRecord {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  templates: any[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export async function listWhoobeOneKits(): Promise<WhoobeOneKitRecord[]> {
+  const db = getDb();
+  return db.select().from(whoobeOneKits).orderBy(desc(whoobeOneKits.createdAt));
+}
+
+export async function getWhoobeOneKit(id: string): Promise<WhoobeOneKitRecord | null> {
+  const db = getDb();
+  const [row] = await db.select().from(whoobeOneKits).where(eq(whoobeOneKits.id, id)).limit(1);
+  return row ?? null;
+}
+
+/** Idempotency key for the repo-seeded kits (see seed.ts's own
+ * seedWhoobeOneKits()) - looked up by name rather than a stable id, since
+ * a kit created this way has no equivalent of whoobe-one-snippet-records.
+ * ts's caller-supplied ids to key off of. */
+export async function getWhoobeOneKitByName(name: string): Promise<WhoobeOneKitRecord | null> {
+  const db = getDb();
+  const [row] = await db.select().from(whoobeOneKits).where(eq(whoobeOneKits.name, name)).limit(1);
+  return row ?? null;
+}
+
+export async function createWhoobeOneKit(input: {
+  name: string;
+  description?: string | null;
+  category: string;
+  templates: any[];
+}): Promise<WhoobeOneKitRecord> {
+  const db = getDb();
+  const [row] = await db
+    .insert(whoobeOneKits)
+    .values({
+      name: input.name,
+      description: input.description ?? null,
+      category: input.category,
+      templates: input.templates,
+    })
+    .returning();
+  return row;
+}
+
+/** Appends one template entry to an existing kit's `templates` array -
+ * read-modify-write at the DB layer (not the client's problem to fetch,
+ * mutate, and PATCH the whole array back) since this is the one place
+ * that can actually see the current array right before writing it. */
+export async function addTemplateToWhoobeOneKit(kitId: string, template: any): Promise<WhoobeOneKitRecord | null> {
+  const db = getDb();
+  const kit = await getWhoobeOneKit(kitId);
+  if (!kit) return null;
+
+  const [row] = await db
+    .update(whoobeOneKits)
+    .set({ templates: [...kit.templates, template], updatedAt: new Date() })
+    .where(eq(whoobeOneKits.id, kitId))
+    .returning();
+  return row ?? null;
+}
+
+export async function deleteWhoobeOneKit(id: string): Promise<void> {
+  const db = getDb();
+  await db.delete(whoobeOneKits).where(eq(whoobeOneKits.id, id));
+}

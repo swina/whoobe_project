@@ -22,11 +22,31 @@ export class Database extends Dexie {
       settings: 'id'
     });
 
+    // Not in the source at all - a new object store, added here rather
+    // than as a dynamically-assigned field (the way `path`/`linkTarget`/
+    // `image.alt` were elsewhere in this port) because Dexie has no
+    // equivalent of "just set a property and it's persisted" for a whole
+    // new *collection*: a new table can only ever come from an explicit,
+    // versioned `stores()` declaration. `this.version(3)` is Dexie's own
+    // documented way to evolve a schema without breaking anyone's already-
+    // existing local `pages`/`settings` data - additive only, matching
+    // every other genuine feature-addition exception in this port
+    // (documented here, not silently reproduced or silently skipped).
+    // Stores "Kits" (whoobe-one-studio's own public/kits/*.json UI-Kit
+    // format - a named, categorized collection of templates) - see
+    // database-actions.ts's importRepoKitsIfNeeded()/addTemplateToKit().
+    this.version(3).stores({
+      pages: '++id,name,category,description,*tags',
+      settings: 'id',
+      kits: '++id,name,category'
+    });
+
     // we can retrieve our todos store with Dexie.table, and then use it as a
     // field on our Database class for convenience; we can now write code such
     // as "this.todos.add(...)" rather than "this.table('todos').add(...)"
     this.pages = this.table('pages');
     this.settings = this.table('settings')
+    this.kits = this.table('kits')
   }
 
   // getTodos retrieves all todos from the todos object store in a defined
@@ -87,6 +107,25 @@ export class Database extends Dexie {
   deletePage(pageID) {
     // delete a todo by passing in the ID of that todo.
     return this.pages.delete(pageID);
+  }
+
+  // Not in the source - mirrors the pages methods above exactly (same
+  // shape of convenience wrapper around the Dexie table), for the new
+  // `kits` store.
+  async getKits(){
+    return await this.table('kits').toArray();
+  }
+
+  addKit(kit) {
+    return this.kits.add(kit)
+  }
+
+  updateKit(id, kit) {
+    return this.kits.update(id, kit)
+  }
+
+  deleteKit(kitID) {
+    return this.kits.delete(kitID);
   }
 
   async getSettings(){

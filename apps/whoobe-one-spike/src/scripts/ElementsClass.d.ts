@@ -20,6 +20,14 @@ export interface ElementCss {
 
 export interface ElementImage {
   url?: string | null
+  // Not in the source's own image shape at all (its `<img>` there sets
+  // `alt="element.image && element.image.alt?element.image.alt:element.
+  // element"` - reading a field its own ElementsClass.js constructor never
+  // actually declares either, so this app isn't unique in adding it
+  // dynamically). Only meaningful for `element === 'img'`; harmless and
+  // simply unused on a background-image element, since CSS backgrounds
+  // have no `alt` concept in HTML at all.
+  alt?: string | null
 }
 
 export interface ElementGroup {
@@ -33,6 +41,55 @@ export interface ElementGsap {
   duration: number
   delay: number
   trigger?: boolean
+}
+
+// Only present on nodes built via .Slider() - a full redesign, not a port
+// (see that method's own comment in ElementsClass.js). Read by preview/
+// BlockSliderPreview.vue and set via FloatingToolbar.vue's slider settings
+// popover.
+export interface ElementSlider {
+  autoplay: boolean
+  interval: number
+  loop: boolean
+  showNav: boolean
+  showHome: boolean
+  // 'standard' (the original arrows/home nav) or 'tabs' (a row of user-
+  // named tabs, one per slide - see BlockSlider.vue/BlockSliderPreview.vue
+  // for how each mode renders). Added later, so this is `?` rather than
+  // required - a slider saved before this existed simply has no `mode` at
+  // all, and both components default a missing one to 'standard'.
+  mode?: 'standard' | 'tabs'
+  // 'tabs' mode only: whether the named tab row sits above or below the
+  // slide viewport, in normal document flow (not an overlay, unlike the
+  // arrows/home in 'standard' mode - a full tab row would obscure too much
+  // of the slide content sitting on top of it). Defaults to 'below'.
+  tabsPosition?: 'above' | 'below'
+  // Preview-only styling knobs, all free-text Tailwind classes - each one's
+  // default (set in ElementsClass.js's Slider() builder) is the full class
+  // list that part used to have hardcoded, and the component applies ONLY
+  // whatever this field currently holds, never a hardcoded string alongside
+  // it. Deliberately NOT additive (an earlier version layered a custom
+  // class string over hardcoded defaults, the same pattern
+  // CustomClassesControl.vue uses for an arbitrary node) - a real, reported
+  // bug: two Tailwind utilities that set the *same* CSS property resolve by
+  // Tailwind's own internal generated-stylesheet order, not by which class
+  // appears later in the `class` attribute, so some custom overrides
+  // silently won (by accident of Tailwind's internal sort) while others
+  // silently lost - see Slider()'s own comment for the concrete example
+  // that surfaced this. A single field with a real default sidesteps the
+  // conflict entirely instead of trying to win it.
+  navClass?: string
+  arrowClass?: string
+  homeClass?: string
+  tabClass?: string
+  activeTabClass?: string
+  // 'standard' mode only: which built-in SVG shape (SliderNavIcon.vue)
+  // draws the prev/next buttons (mirrored left/right) and the home button.
+  // Defaults to 'chevron'/'home' respectively - the same visual look this
+  // slider always had, just now a real restyleable icon instead of a fixed
+  // ‹ › ⌂ unicode glyph.
+  arrowIcon?: 'chevron' | 'arrow' | 'triangle'
+  homeIcon?: 'home' | 'dot' | 'circle'
 }
 
 export default class Element {
@@ -50,7 +107,20 @@ export default class Element {
   data: Record<string, any>
   gsap: ElementGsap
   link: string
+  // Not in the source at all - FloatingToolbar.vue's Link popover assigns
+  // this dynamically (same way `image`/`gsap.animation` already are), so
+  // it's genuinely optional/absent until a link with a non-default target
+  // is actually set, unlike the base fields above the constructor always
+  // initializes.
+  linkTarget?: string
   anchor: string
+  slider?: ElementSlider
+  // Not in the source, and not set by any builder - only meaningful on a
+  // node that's a direct child (slide) of a `tag === 'slider'` container
+  // whose own `slider.mode === 'tabs'`. Assigned dynamically by
+  // BlockSlider.vue's rename action, same treatment as `linkTarget`/`alt`
+  // above; falls back to a plain "Slide N" wherever it's read unset.
+  tabLabel?: string
   image: ElementImage
   type: string
   tag: string

@@ -2,11 +2,11 @@
   <div class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="$emit('close')">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl h-[32rem] flex flex-col overflow-hidden">
       <div class="flex items-center gap-2 px-3 py-2 border-b shrink-0">
-        <button v-if="pathStack.length > 1" class="text-gray-400 hover:text-gray-700 text-xs" title="Back" @click="goBack">⬅</button>
+        <button v-if="pathStack.length > 1" class="text-gray-400 hover:text-gray-700" title="Back" @click="goBack"><ChevronLeft class="w-4 h-4" /></button>
         <span class="text-xs font-semibold text-gray-600">Browse assets</span>
         <span class="text-xs text-gray-400 font-mono truncate">{{ currentPath }}</span>
         <div class="flex-1"></div>
-        <button class="text-gray-400 hover:text-gray-700 text-xs" @click="$emit('close')">✕ Close</button>
+        <button class="flex items-center gap-1 text-gray-400 hover:text-gray-700 text-xs" @click="$emit('close')"><X class="w-3.5 h-3.5" /> Close</button>
       </div>
 
       <div class="flex-1 min-h-0 overflow-y-auto p-3">
@@ -28,7 +28,7 @@
               :title="folder.path"
               @click="enterFolder(folder.path)"
             >
-              <span class="text-2xl leading-none">📁</span>
+              <Folder class="w-6 h-6 text-gray-400" />
               <span class="text-[10px] text-gray-500 truncate w-full">{{ folder.name }}</span>
             </button>
           </div>
@@ -77,6 +77,7 @@
 // thumbnail preview - see resolve-display-url.ts for why a resolved URL
 // is never what gets stored on a node.
 import { computed, ref, watch } from 'vue'
+import { ChevronLeft, Folder, X } from '@lucide/vue'
 import { listDamAssets, listDamFolders, type DamAssetRecord, type DamFolderRecord } from '../dam-api'
 
 defineEmits<{

@@ -279,15 +279,93 @@ export default class Element {
         return this
     }
 
+    // Not a byte-for-byte port from here down - a full, deliberate redesign
+    // of Slider(), explicitly requested (the source's own version never
+    // worked in this port: `type: 'slider'` and `element: 'slider'` don't
+    // match anything BlockContainer.vue's/BlockElement.vue's dispatch
+    // logic recognizes, so a dropped Slider silently rendered as a bare,
+    // meaningless `<slider>` tag with no actual carousel behavior at all -
+    // not a small, fixable bug, a fundamentally different, never-finished
+    // design). Now: `type: 'container'` and a real `tag: 'slider'` (was
+    // 'flex', colliding with Flexbox's own tag) - a slider's slides are
+    // just its `.blocks`, exactly like any other container's children, so
+    // dragging a saved snippet or a palette element into one already
+    // works for free through the exact same drop handling every other
+    // container gets (BlockEditor.vue's drop handler doesn't care what
+    // kind of container it's appending into). The new `slider` settings
+    // object (autoplay/interval/loop/showNav/showHome/mode/tabsPosition/
+    // navClass/arrowClass/homeClass/tabClass/activeTabClass/arrowIcon/
+    // homeIcon) is read by the new preview/BlockSliderPreview.vue, which is
+    // where the actual one-at-a-time, cycling carousel behavior lives -
+    // editing (BlockSlider.vue) shows one slide at a time too, switched via
+    // its own nav strip, but never simulates autoplay/cycling live,
+    // matching how this app already treats GSAP animations/video playback
+    // as preview-time-only concerns. `mode` ('standard' | 'tabs') picks
+    // between the original arrows+home nav and a row of user-named tabs;
+    // `tabsPosition` places that row above or below the slides;
+    // `arrowIcon`/`homeIcon` pick a real SVG shape (SliderNavIcon.vue,
+    // backed by @lucide/vue) for 'standard' mode's buttons instead of a
+    // fixed unicode glyph.
+    //
+    // `navClass`/`arrowClass`/`homeClass`/`tabClass`/`activeTabClass` are
+    // free-text Tailwind classes for restyling the nav to match a real
+    // design - each one's *default value* is the exact classes that part
+    // used to have hardcoded in the component itself, and each component
+    // now applies ONLY that field's current value, nothing besides it (plus
+    // positioning classes that never change - absolute placement, not
+    // appearance). This was deliberately NOT built as "hardcoded defaults +
+    // appended custom classes" (the first version of this feature worked
+    // that way, layering a user's classes on top of built-in ones the same
+    // way CustomClassesControl.vue does for an arbitrary node) - a real,
+    // reported bug: setting `bg-transparent`/a lower `hover:bg-black/20`/
+    // `text-black/30` alongside the built-in `bg-black/40`/`hover:bg-black
+    // /60`/`text-white` had NO visible effect at all - the size classes
+    // (`w-40` over the built-in `w-8`) DID take effect, which looked like
+    // "it works for some properties but not others."
+    //
+    // Confirmed the actual mechanism by compiling both class lists through
+    // the real `tailwindcss` v4 `compile()`/`build()` API directly (not
+    // just read about it): when two utility classes set the *same* CSS
+    // property, whichever rule's SELECTOR sorts later in Tailwind's own
+    // generated stylesheet wins the cascade - and Tailwind orders same-
+    // property utilities by its own internal canonical sort (alphabetical/
+    // numeric by class name within each property group), completely
+    // independent of which class appears later in the element's own
+    // `class` attribute. Concretely: `.bg-black\/40` sorts after `.bg-
+    // transparent` ("black" > "transparent"), `.text-white` sorts after
+    // `.text-black\/30` ("white" > "black"), and `.hover\:bg-black\/60`
+    // sorts after `.hover\:bg-black\/20` (60 > 20) - so in every one of
+    // those pairs the BUILT-IN class won, regardless of the user's intent,
+    // while `w-40` only "worked" by the same coincidence running the other
+    // way (40 > 8). None of this is predictable from the class names
+    // themselves. Making each field a full, single source of truth (no
+    // second competing class list fighting it over the same properties)
+    // removes the conflict entirely instead of trying to win it.
     Slider(){
         this.blocks = []
-        this.type = 'slider'
-        this.tag = 'flex'
-        this.element = 'slider'
+        this.type = 'container'
+        this.tag = 'slider'
+        this.element = 'div'
         this.label = 'Slider'
         this.icon = 'video_library'
-        this.css.css = 'w-full h-1/3'
-        this.css.container = 'flex flex-col'
+        this.css.css = ''
+        this.css.container = 'flex flex-col gap-4'
+        this.slider = {
+            autoplay: false,
+            interval: 5000,
+            loop: true,
+            showNav: true,
+            showHome: true,
+            mode: 'standard',
+            tabsPosition: 'below',
+            navClass: 'flex items-center justify-center gap-1.5 flex-wrap px-2 py-2',
+            arrowClass: 'w-8 h-8 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white',
+            homeClass: 'w-7 h-7 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white',
+            tabClass: 'px-2.5 py-1 rounded-full text-xs font-medium truncate max-w-[9rem] transition-colors border bg-white text-gray-600 border-gray-300 hover:border-indigo-400',
+            activeTabClass: 'px-2.5 py-1 rounded-full text-xs font-medium truncate max-w-[9rem] transition-colors border bg-indigo-600 text-white border-indigo-600',
+            arrowIcon: 'chevron',
+            homeIcon: 'home'
+        }
         return this
     }
 

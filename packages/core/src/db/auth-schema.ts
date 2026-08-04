@@ -1,4 +1,14 @@
-import { pgTable, text, boolean, timestamp, primaryKey, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, text, boolean, timestamp, primaryKey, uuid, jsonb } from 'drizzle-orm/pg-core';
+
+// One hashed (argon2, via ../auth/password.ts) one-time recovery code per
+// entry - same shape mfa.ts's hashRecoveryCodes()/consumeRecoveryCode()
+// produce/consume. `usedAt` marks a code as spent without removing it, so
+// "8 codes generated, 3 remaining" stays reconstructable for a future
+// "regenerate codes" UI, rather than only ever shrinking the array.
+export interface MfaRecoveryCode {
+  hash: string;
+  usedAt: string | null;
+}
 
 /**
  * Auth & RBAC schema. See docs/plans/backend/auth-permissions-plan.md.
@@ -16,6 +26,16 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+  // TOTP (Authenticator app) MFA. `totpSecret` is written as soon as setup
+  // starts (see mfa.ts/POST /auth/mfa/setup) but doesn't mean anything is
+  // enforced yet - only `totpEnabledAt` being non-null does that (set once
+  // the user actually confirms a valid code, POST /auth/mfa/verify-setup).
+  // An abandoned, unconfirmed setup just leaves an unused secret sitting
+  // here, which is harmless - simpler than a separate "pending setup"
+  // table/state machine for what's otherwise a two-request flow.
+  totpSecret: text('totp_secret'),
+  totpEnabledAt: timestamp('totp_enabled_at', { withTimezone: true }),
+  mfaRecoveryCodes: jsonb('mfa_recovery_codes').$type<MfaRecoveryCode[]>(),
 });
 
 export const roles = pgTable('roles', {
