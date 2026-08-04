@@ -1,8 +1,17 @@
 <template>
   <div class="space-y-6">
-    <div>
-      <h2 class="text-xl font-bold text-slate-100">Data Objects</h2>
-      <p class="text-xs text-slate-400">Whoobe CMS data objects, backed by admin-defined classes. Migrated from Pimcore or authored directly.</p>
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-bold text-slate-100">Data Objects</h2>
+        <p class="text-xs text-slate-400">Whoobe CMS data objects, backed by admin-defined classes. Migrated from Pimcore or authored directly.</p>
+      </div>
+      <button
+        v-if="selectedClassId"
+        @click="showCreateModal = true"
+        class="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition"
+      >
+        + Create {{ classLabel(selectedClassId) }}
+      </button>
     </div>
 
     <!-- Filter & Search Bar -->
@@ -22,6 +31,7 @@
         <option v-for="dataClass in dataClassesStore.classes" :key="dataClass.id" :value="dataClass.id">{{ dataClass.label }}</option>
       </select>
     </div>
+    <p v-if="!selectedClassId" class="text-xs text-slate-500 -mt-2">Select a class above to create a new object.</p>
 
     <div v-if="dataObjectsStore.isLoading && dataObjectsStore.objects.length === 0" class="p-12 text-center text-xs text-slate-500">
       Loading objects…
@@ -64,28 +74,42 @@
               {{ new Date(obj.updatedAt).toLocaleString() }}
             </td>
             <td class="px-4 py-3.5 text-right">
+              <button @click="editingObject = obj" class="text-xs font-medium text-indigo-400 hover:text-indigo-300 mr-3">Edit</button>
               <button @click="handleDelete(obj)" class="text-xs font-medium text-rose-400 hover:text-rose-300">Delete</button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <DataObjectEditModal
+      v-if="showCreateModal && selectedClassId"
+      :data-class="dataClassesStore.classes.find((c) => c.id === selectedClassId)!"
+      @close="showCreateModal = false"
+      @saved="showCreateModal = false"
+    />
+    <DataObjectEditModal
+      v-if="editingObject"
+      :data-class="dataClassesStore.classes.find((c) => c.id === editingObject!.classId)!"
+      :data-object="editingObject"
+      @close="editingObject = null"
+      @saved="editingObject = null"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 // Retargeted off its previous fully-mocked state onto the real Data
 // Object model (docs/plans/datamodel/advanced-data-modeling-plan.md §6.2,
-// Phase 1). No "+ Create Object"/"Edit" actions yet, matching
-// DocumentsView.vue/PagesView.vue's own precedent of shipping list-only
-// first - a real creation/edit UI needs a class-driven dynamic form,
-// which doesn't exist yet (Phase 2's job). Delete is wired for real since
-// it needs no such form.
+// Phase 1) and now, with the dynamic form built (§6.3, Phase 2), real
+// Create/Edit actions too - Create requires a class to be selected first
+// (the form's shape depends on it; there's no separate class-picker step).
 import { ref, computed } from 'vue'
 import { useDataObjectsStore } from '../stores/dataObjectsStore'
 import { useDataClassesStore } from '../stores/dataClassesStore'
 import { useToastStore } from '../stores/toastStore'
 import type { DataObject } from '../utils/data-objects-api'
+import DataObjectEditModal from '../components/objects/DataObjectEditModal.vue'
 
 const dataObjectsStore = useDataObjectsStore()
 const dataClassesStore = useDataClassesStore()
@@ -93,6 +117,8 @@ const toastStore = useToastStore()
 
 const searchQuery = ref('')
 const selectedClassId = ref('')
+const showCreateModal = ref(false)
+const editingObject = ref<DataObject | null>(null)
 
 function classLabel(classId: string): string {
   return dataClassesStore.classes.find((c) => c.id === classId)?.label || classId

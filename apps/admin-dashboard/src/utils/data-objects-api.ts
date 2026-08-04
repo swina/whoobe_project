@@ -57,3 +57,32 @@ export async function deleteDataObject(baseUrl: string, id: string): Promise<voi
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects/${id}`, { method: 'DELETE', credentials: 'include' })
   await parseJsonOrThrow(res)
 }
+
+export async function createDataObject(
+  baseUrl: string,
+  input: { classId: string; key: string; path?: string; locale?: string; attributes: Record<string, unknown> }
+): Promise<DataObject> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.object
+}
+
+export async function updateDataObject(
+  baseUrl: string,
+  id: string,
+  input: { key?: string; published?: boolean; workflowState?: string | null; attributes?: Record<string, unknown> }
+): Promise<DataObject> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.object
+}
