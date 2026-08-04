@@ -23,8 +23,15 @@ export type AssetPathResolver = (assetId: number) => Promise<string | null>;
  * migration order matters here. Unresolved relations are stored as
  * `{ id: null, pimcoreId }` rather than dropped, so a later re-run (once
  * the target exists) can be reconciled without re-deriving anything.
+ *
+ * Takes the *current locale* being converted too - a real Phase 4 finding
+ * (round-trip-testing the pilot's own migrated data, not assumed):
+ * `data_objects.pimcoreId` is one row per locale (§4.4), so a bare raw
+ * Pimcore id is not by itself a unique lookup key on our side - the
+ * resolver needs to know which locale's sibling row it's pointing a
+ * relation at.
  */
-export type ObjectRelationResolver = (targetClassName: string, pimcoreId: string) => Promise<string | null>;
+export type ObjectRelationResolver = (targetClassName: string, pimcoreId: string, locale: string) => Promise<string | null>;
 
 export interface PimcoreObjectConverterOptions {
   resolveAssetPath: AssetPathResolver;
@@ -34,10 +41,11 @@ export interface PimcoreObjectConverterOptions {
 async function resolveObjectRelationValue(
   targetClassName: string | undefined,
   pimcoreId: string,
+  locale: string,
   resolveRelation: ObjectRelationResolver
 ): Promise<{ id: string } | { id: null; pimcoreId: string }> {
   if (!targetClassName) return { id: null, pimcoreId };
-  const id = await resolveRelation(targetClassName, pimcoreId);
+  const id = await resolveRelation(targetClassName, pimcoreId, locale);
   return id ? { id } : { id: null, pimcoreId };
 }
 
@@ -75,7 +83,7 @@ async function convertFieldValue(
     // relationTarget) just passes the chosen string through.
     case 'select':
       if (rawValue == null) return null;
-      if (field.relationTarget) return resolveObjectRelationValue(field.relationTarget, String(rawValue), options.resolveRelation);
+      if (field.relationTarget) return resolveObjectRelationValue(field.relationTarget, String(rawValue), locale, options.resolveRelation);
       return String(rawValue);
 
     // A delimited-id-string in real Pimcore storage (confirmed: Product's
@@ -88,7 +96,7 @@ async function convertFieldValue(
         .map((s) => s.trim())
         .filter(Boolean);
       if (!field.relationTarget) return ids;
-      return Promise.all(ids.map((id) => resolveObjectRelationValue(field.relationTarget, id, options.resolveRelation)));
+      return Promise.all(ids.map((id) => resolveObjectRelationValue(field.relationTarget, id, locale, options.resolveRelation)));
     }
 
     case 'manyToOneRelation': {
@@ -98,7 +106,7 @@ async function convertFieldValue(
         const path = await options.resolveAssetPath(relation.destId);
         return path ? { assetId: path } : null;
       }
-      return resolveObjectRelationValue(field.relationTarget, String(relation.destId), options.resolveRelation);
+      return resolveObjectRelationValue(field.relationTarget, String(relation.destId), locale, options.resolveRelation);
     }
 
     case 'manyToManyRelation':
@@ -111,7 +119,7 @@ async function convertFieldValue(
           const path = await options.resolveAssetPath(edge.destId);
           if (path) values.push({ assetId: path });
         } else {
-          values.push(await resolveObjectRelationValue(field.relationTarget, String(edge.destId), options.resolveRelation));
+          values.push(await resolveObjectRelationValue(field.relationTarget, String(edge.destId), locale, options.resolveRelation));
         }
       }
       return values;

@@ -30,6 +30,13 @@
         <option value="">All Classes</option>
         <option v-for="dataClass in dataClassesStore.classes" :key="dataClass.id" :value="dataClass.id">{{ dataClass.label }}</option>
       </select>
+      <select
+        v-model="selectedLocale"
+        class="px-3 py-2 text-sm bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none focus:border-indigo-500"
+      >
+        <option value="">All Locales</option>
+        <option v-for="locale in availableLocales" :key="locale" :value="locale">{{ locale }}</option>
+      </select>
     </div>
     <p v-if="!selectedClassId" class="text-xs text-slate-500 -mt-2">Select a class above to create a new object.</p>
 
@@ -47,6 +54,7 @@
         <thead class="text-xs uppercase bg-slate-950/70 text-slate-400 border-b border-slate-800">
           <tr>
             <th class="px-4 py-3 font-semibold">Key / Path</th>
+            <th class="px-4 py-3 font-semibold">Locale</th>
             <th class="px-4 py-3 font-semibold">Class</th>
             <th class="px-4 py-3 font-semibold">Status</th>
             <th class="px-4 py-3 font-semibold">Modification Date</th>
@@ -58,6 +66,9 @@
             <td class="px-4 py-3.5 font-medium text-slate-200">
               <div>{{ obj.key }}</div>
               <div class="text-xs text-slate-500 font-mono">{{ obj.path }}</div>
+            </td>
+            <td class="px-4 py-3.5">
+              <span class="px-2 py-0.5 text-[10px] font-bold rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 uppercase">{{ obj.locale }}</span>
             </td>
             <td class="px-4 py-3.5"><span class="px-2 py-0.5 text-xs bg-slate-800 rounded font-mono text-indigo-300">{{ classLabel(obj.classId) }}</span></td>
             <td class="px-4 py-3.5">
@@ -117,6 +128,7 @@ const toastStore = useToastStore()
 
 const searchQuery = ref('')
 const selectedClassId = ref('')
+const selectedLocale = ref('')
 const showCreateModal = ref(false)
 const editingObject = ref<DataObject | null>(null)
 
@@ -124,12 +136,20 @@ function classLabel(classId: string): string {
   return dataClassesStore.classes.find((c) => c.id === classId)?.label || classId
 }
 
+// A migrated (or hand-authored multi-locale) class real has one row per
+// locale (docs/plans/datamodel/advanced-data-modeling-plan.md §4.4) - a
+// real, concrete gap this exposed once real bilingual data existed
+// (Phase 4): without a locale filter, every object appears twice with no
+// way to tell the rows apart at a glance.
+const availableLocales = computed(() => [...new Set(dataObjectsStore.objects.map((o) => o.locale))].sort())
+
 const filteredObjects = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
-  if (!query) return dataObjectsStore.objects
-  return dataObjectsStore.objects.filter(
-    (o) => o.key.toLowerCase().includes(query) || o.path.toLowerCase().includes(query)
-  )
+  return dataObjectsStore.objects.filter((o) => {
+    const matchesQuery = !query || o.key.toLowerCase().includes(query) || o.path.toLowerCase().includes(query)
+    const matchesLocale = !selectedLocale.value || o.locale === selectedLocale.value
+    return matchesQuery && matchesLocale
+  })
 })
 
 async function handleDelete(obj: DataObject) {

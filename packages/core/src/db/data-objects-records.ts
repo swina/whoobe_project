@@ -133,6 +133,7 @@ export async function upsertDataObjectByPimcoreId(input: {
   key: string;
   path?: string;
   locale?: string;
+  translationGroupId?: string;
   attributes: Record<string, unknown>;
 }): Promise<DataObjectRecord> {
   const db = getDb();
@@ -146,6 +147,11 @@ export async function upsertDataObjectByPimcoreId(input: {
       key: input.key,
       path: input.path ?? '/',
       locale: input.locale ?? 'en',
+      // Omitted entirely (not passed as undefined) when the caller has no
+      // existing group to join - lets the column's own defaultRandom()
+      // generate a fresh id, same convention createDataObject/
+      // createWhoobePage already use.
+      ...(input.translationGroupId ? { translationGroupId: input.translationGroupId } : {}),
       attributes: input.attributes,
       updatedAt: now,
     })
@@ -156,6 +162,7 @@ export async function upsertDataObjectByPimcoreId(input: {
         key: input.key,
         path: input.path ?? '/',
         locale: input.locale ?? 'en',
+        ...(input.translationGroupId ? { translationGroupId: input.translationGroupId } : {}),
         attributes: input.attributes,
         updatedAt: now,
       },
