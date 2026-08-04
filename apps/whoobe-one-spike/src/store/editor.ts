@@ -46,6 +46,21 @@ export const useEditorStore = defineStore('editor', () => {
   const article = ref<any>(null)
   const customizeTab = ref<any>(null)
 
+  // Not from the source - the CMS integration plan's embedding contract
+  // (docs/plans/cms/whoobe-one-editor-integration-plan.md §6): a
+  // `parentOrigin` query param on `/editor` means this is running inside
+  // an <iframe> (apps/admin-dashboard's own WhoobeOneEmbed.vue), not the
+  // standalone app - set once at startup (views/Editor.vue), read by
+  // BlockEditor.vue to hide standalone-only chrome (its own branding, the
+  // Templates gallery entry point - redundant once pages are reached from
+  // the host's own nav instead). `parentOrigin` itself isn't validated or
+  // used for any postMessage security check the way whoobe-studio's own
+  // bridge needs it - nothing is exchanged bidirectionally here that would
+  // need origin verification (see §6 point 3), it's kept only in case a
+  // future need for it arises.
+  const embedded = ref<boolean>(false)
+  const parentOrigin = ref<string | null>(null)
+
   function setMode(v: string) { mode.value = v }
   function setSettings(v: any) { settings.value = v }
   function setElements(v: ElementGroup[] | null) { elements.value = v }
@@ -66,14 +81,18 @@ export const useEditorStore = defineStore('editor', () => {
   function setSave(v: boolean) { save.value = v }
   function setArticle(v: any) { article.value = v }
   function setCustomizeTab(v: any) { customizeTab.value = v }
+  function setEmbedded(v: boolean, origin: string | null = null) {
+    embedded.value = v
+    parentOrigin.value = origin
+  }
 
   return {
     mode, settings, elements, document, project, selected, page, current,
     component, action, subaction, level, parent, startTime, autosave,
-    exportMode, preview, fonts, save, article, customizeTab,
+    exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
     setParent, setStartTime, setAutosave, setExportMode, setPreview, setSave,
-    setArticle, setCustomizeTab,
+    setArticle, setCustomizeTab, setEmbedded,
   }
 })
