@@ -543,6 +543,18 @@ Verified directly: a fresh container (only default `css.container`, empty `css.c
 
 Clean typecheck and production build (2014 modules, unchanged - two edited files, no new ones). Both confirmed transforming through the dev server (HTTP 200).
 
+## Round 39: containers can now render as real semantic HTML tags, not always `<div>`
+
+Surfaced while retargeting the Pimcore migration pipeline at this app (see `docs/plans/cms/whoobe-one-editor-integration-plan.md`, Phase 2): `BlockContainer.vue`/`BlockSlider.vue` always rendered a literal `<div>` for every container, regardless of any field - so a migrated brick's real `<section>`/`<aside>`/`<header>`/`<hgroup>` markup had nowhere to go, and there was no way to give a from-scratch container a real `<nav>`/`<main>`/`<article>` tag either. Requested directly as worth fixing properly, not left as an accepted gap.
+
+Turned out most of the infrastructure already existed from the original port, just unused past one case: `Element.setSemantic()` and the `semantic?: string` field (`ElementsClass.js`/`ElementsClass.d.ts`) were already real, `Form()`'s own builder already set `semantic: 'form'`, and `preview/BlockContainerPreview.vue`/`BlockSliderPreview.vue` already read it (`:is="semantic || 'div'"`) - a form has always correctly rendered as a real `<form>` in preview. Only two real gaps: the *editing* canvas never read `semantic` at all (hence always `<div>`, even for a Form while editing it), and there was no UI anywhere to actually set `semantic` on an arbitrary container - only `Form()`'s own hardcoded builder default ever populated it.
+
+Fixed both: `BlockContainer.vue`/`BlockSlider.vue` now use the exact same `<component :is="semantic || 'div'">` pattern the preview components already established, and `FloatingToolbar.vue` gained a new "🏷 Semantic tag" popover (shown for any selected container) - a plain `<select>` listing `tw.classes.js`'s own existing `semantics` array (the same ported reference list this app's Tailwind customizer already draws other options from elsewhere, not a new parallel list), bound through a small computed so the dropdown always reflects the effective tag (defaulting visibly to "div") rather than showing blank until a value's been explicitly chosen.
+
+Verified directly against Vue's own real server-side renderer (`vue/server-renderer`, not just typechecked): confirmed `semantic: 'section'`/`'aside'`/`'hgroup'`/`'form'` each produce the literal correct HTML tag, and an unset `semantic` correctly falls back to a plain `<div>`.
+
+Clean typecheck and production build (2014 modules, unchanged - three edited files, no new ones). All confirmed transforming through the dev server (HTTP 200). **Not yet interactively confirmed**: clicking through the new Semantic tag control in a real browser - the underlying rendering mechanism was verified directly against Vue's real renderer, same gap as every interactive feature in this file.
+
 ## Verification performed
 
 - `pnpm typecheck` (`vue-tsc --noEmit`) passes clean.

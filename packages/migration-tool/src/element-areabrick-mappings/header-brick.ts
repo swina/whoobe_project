@@ -10,19 +10,19 @@ import { resolveMediaUrl } from '../pimcore-document-converter.js';
  * here - read that file for the "why" behind each Tailwind class; this
  * file only re-derives the *structure* into `Element`'s own shape.
  *
- * One real, honest limitation surfaced porting this, not papered over:
- * apps/whoobe-one-spike's `BlockContainer.vue` always renders a literal
- * `<div>` for every container, regardless of any `tag`/`element` field -
- * there is no way, in the *current* Element/BlockContainer model, to
- * render the semantic `<section>`/`<aside>`/`<header>`/`<hgroup>` tags
- * the real source markup (and the WhoobeBlockNode version of this same
- * brick) uses. The CSS Grid stacking technique itself is unaffected -
- * it's driven entirely by the Tailwind classes below, which apply
- * identically to a `<div>` - only the semantic/accessibility tag names
- * are lost. Flagged here as a real, separate follow-up for whoobe-one-
- * spike's own container model (a `renderTag` field BlockContainer.vue
- * could read), not something this migration-tool package can fix on its
- * own.
+ * Real semantic tags (`section`/`aside`/`header`/`hgroup`, via each
+ * container's own `semantic` field) below, matching the real source markup
+ * exactly - this originally shipped as a known, flagged limitation
+ * (apps/whoobe-one-spike's `BlockContainer.vue`/`BlockSlider.vue` always
+ * rendered a literal `<div>`, regardless of any field, so every container
+ * here was a div too), fixed directly in whoobe-one-spike itself once it
+ * turned out to matter enough to prioritize (`semantic` already existed as
+ * a field/builder method - `Element.setSemantic()` - and preview/
+ * BlockContainerPreview.vue already read it; only the *editing* canvas and
+ * the lack of any UI to actually set it per-container were the real gaps -
+ * see FloatingToolbar.vue's "Semantic tag" control). The CSS Grid stacking
+ * technique itself was never affected either way - it's driven entirely by
+ * the Tailwind classes below, which apply identically regardless of tag.
  *
  * The CTA ("Scarica schede e folder") is modeled as a plain text node
  * with `link: '#'` set on it - not `element: 'a'` directly - because
@@ -49,6 +49,7 @@ registerElementAreabrickConverter('header-brick', (brickIndex, brick, s3Prefix) 
       type: 'container',
       tag: 'flex',
       element: 'div',
+      semantic: 'aside',
       css: {
         css: 'relative overflow-hidden h-full',
         // Same grid cell as the text content block below (col-start-2
@@ -81,6 +82,7 @@ registerElementAreabrickConverter('header-brick', (brickIndex, brick, s3Prefix) 
     type: 'container',
     tag: 'flex',
     element: 'div',
+    semantic: 'header',
     css: {
       css: 'h-[400px] tablet-l:h-[520px] w-full bg-gradient-to-b from-black/0 to-black/70 pb-[45px]',
       container: 'col-start-2 row-start-1',
@@ -101,6 +103,7 @@ registerElementAreabrickConverter('header-brick', (brickIndex, brick, s3Prefix) 
             type: 'container',
             tag: 'flex',
             element: 'div',
+            semantic: 'hgroup',
             css: { css: 'text-left self-end justify-self-stretch', container: 'flex flex-col' },
             blocks: [
               {
@@ -158,6 +161,7 @@ registerElementAreabrickConverter('header-brick', (brickIndex, brick, s3Prefix) 
     type: 'container',
     tag: 'grid',
     element: 'div',
+    semantic: 'section',
     label: 'Header (Hero Generico)',
     css: {
       css: 'relative w-screen h-[400px] tablet-l:h-[520px] bg-cover bg-no-repeat bg-top',

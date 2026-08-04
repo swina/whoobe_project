@@ -11,6 +11,28 @@
       <button title="Add child (Paragraph)" class="toolbar-icon" @click="addChild"><Plus class="w-4 h-4" /></button>
       <button title="Direction: row" class="toolbar-icon" @click="setDirection('row')"><ArrowLeftRight class="w-4 h-4" /></button>
       <button title="Direction: column" class="toolbar-icon" @click="setDirection('col')"><ArrowUpDown class="w-4 h-4" /></button>
+      <div class="relative">
+        <button
+          type="button"
+          title="Semantic HTML tag"
+          class="toolbar-icon"
+          @click="showSemanticPicker = !showSemanticPicker"
+        >
+          <Tag class="w-4 h-4" />
+        </button>
+        <template v-if="showSemanticPicker">
+          <div class="fixed inset-0 z-[10000]" @click="showSemanticPicker = false"></div>
+          <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-40" @click.stop>
+            <span class="block text-[10px] text-gray-500 mb-1">Renders as</span>
+            <select
+              v-model="semanticValue"
+              class="w-full px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+            >
+              <option v-for="tag in semanticTagOptions" :key="tag" :value="tag">&lt;{{ tag }}&gt;</option>
+            </select>
+          </div>
+        </template>
+      </div>
     </template>
     <div v-if="isSlider" class="relative">
       <button type="button" title="Slider settings" class="toolbar-icon" @click="showSliderSettings = !showSliderSettings">
@@ -370,6 +392,7 @@ import {
   Save,
   SlidersHorizontal,
   Sparkles,
+  Tag,
   Trash2,
   Type,
   X,
@@ -393,6 +416,28 @@ const showImagePicker = ref(false)
 const imageUrlDraft = ref('')
 const imageAltDraft = ref('')
 const showSliderSettings = ref(false)
+const showSemanticPicker = ref(false)
+
+// Same `tw.classes.js` list the Tailwind customizer's own controls already
+// reuse elsewhere (e.g. BorderColorControl.vue's colors) - not a new,
+// parallel list invented for this control. Ported verbatim from the
+// source repo, including two entries ('hero'/'product') that aren't real
+// HTML tag names - left as-is rather than silently curated, matching this
+// app's port invariant (see ElementsClass.d.ts's own header on exceptions
+// needing to be deliberate, not just convenient).
+const semanticTagOptions = twclasses.semantics as string[]
+
+// A plain `v-model="editor.current.semantic"` would show blank/unselected
+// whenever `semantic` is unset, even though BlockContainer.vue/BlockSlider
+// .vue both already fall back to rendering a real 'div' in that case - this
+// computed makes the dropdown reflect what's actually rendered (including
+// that default), not just whatever the field happens to literally hold.
+const semanticValue = computed({
+  get: () => (editor.current as any)?.semantic || 'div',
+  set: (value: string) => {
+    if (editor.current) (editor.current as any).semantic = value
+  },
+})
 
 // Standard Tailwind color scheme swatches for the Fill/Text color popovers -
 // same `tw.classes.js` colors list BorderColorControl.vue already uses.
