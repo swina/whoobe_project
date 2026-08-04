@@ -37,31 +37,83 @@ The port plan's §7 was written against Phase 0-3 (partial) - a demo document, n
 - **What's genuinely new work, not free**: the actual Pimcore-brick → `whoobe-one-spike`-`Element` conversion logic doesn't exist yet in this shape - `whoobe-studio`'s own bridge/embed code proved the *editing* loop against migrated content, not a batch conversion function with no live UI involved. Whatever Pimcore-parsing logic already exists inside `packages/migration-tool` (it must have *some* document-shape understanding already, to produce today's `WhoobeBlockNode` output) is the right starting point to retarget, not a from-scratch rewrite - but this plan doesn't assume that retargeting is trivial, and it should be scoped as its own phase (§8, Phase 2) with a real look at that existing code before estimating it.
 - **What happens to the `whoobe-studio` codebase itself**: not deleted by this plan's own authority - that's a separate call - but its ongoing purpose is fully served once the CLI conversion path above covers what it currently proves. Recommend archiving it (stop running/maintaining the live app, keep the git history) once Phase 2/4 (§8) show the CLI path handles real migrated documents at least as well as opening them in `whoobe-studio` did. `cms_documents`/`WhoobeBlockNode` (`packages/core/src/db/cms-schema.ts` / `packages/core/src/cms/block-schema.ts`) likely goes with it, once nothing depends on that schema anymore - not touched by this plan directly, since retiring a schema that other things might still read is its own careful step, not a side effect to wave through here.
 
-## 4. The page/document data model
+## 4. The page/document data model — Phase 0 outcome (confirmed)
 
-This is the part of the plan that most needs to be designed against the CMS's actual goal (§1), not the easiest thing to bolt onto what exists. Proposed as a **concrete starting shape for review, not a locked spec** - exact SEO/sitemap field requirements are a product conversation this document can prompt but shouldn't unilaterally close.
+This is the part of the plan that most needs to be designed against the CMS's actual goal (§1), not the easiest thing to bolt onto what exists. The shape below reflects three decisions confirmed in review (superseding the first draft of this section, kept in git history rather than restated as still-open):
 
-**Table**: a new/evolved table - `whoobe_one_templates` (§2) is the closest existing thing, but "template" stops being the right word once it's the durable store for real, published pages rather than a reusable starting point; recommend renaming to something like `whoobe_pages` at the point this work starts, rather than carrying the old name forward for something it no longer means. (Kits and Snippets keep their own existing tables/names unchanged - they remain genuinely reusable building blocks, a different concept from a page.)
+1. **Status model: `published: boolean` + `workflowState: text | null`**, not a simple status string - deliberately the same shape `docs/plans/backend/object-publish-workflow-plan.md` already designed for Data Objects (§2.1 there: `published` is the hard public-API-visibility gate; `workflowState` is editorial/organizational only, and does not itself gate visibility except through an explicit workflow-transition side-effect). That plan already calls out Documents as "the identical mechanism... treated as a fast-follow" - this adopts that shape directly for pages too, rather than inventing a third, competing status vocabulary alongside `cms_documents.status` (simple text) and the Data Objects plan's own split. A class/page with no workflow configured just gets plain Draft/Published toggling for free (`workflowState` stays `null`) - the common case still doesn't require authoring a workflow.
+2. **Slug uniqueness: per `(locale, slug)`, not global** - two different locales can legitimately reuse the same slug string (a real case for a multi-locale site where slugs aren't always further localized); a single global unique constraint (as `cms_documents.slug` has today) would incorrectly reject that.
+3. **Fresh table, `whoobe_pages`** - not `whoobe_one_templates` renamed in place. Existing rows in `whoobe_one_templates` are this session's own pre-production test/demo data and are left behind, not migrated - `whoobe_one_templates` itself is left as-is (Kits/Snippets are unaffected either way; they remain genuinely reusable building blocks, a different concept from a page).
 
-**Proposed shape**:
+**`seo`/`sitemap`/`search` are real typed interfaces, not untyped `jsonb`** - unlike `content` (which must stay loosely typed, since the `Element` shape it holds lives in a frontend app, not this backend package - same treatment `whoobe_one_templates.node` already gets and for the same reason), none of these three depend on any frontend-only type, so there's no reason not to give them real structure and get type-checking on them:
 
+```ts
+export interface PageSeo {
+  metaTitle?: string | null
+  metaDescription?: string | null
+  canonicalUrl?: string | null
+  robots?: { index: boolean; follow: boolean } | null
+  ogTitle?: string | null
+  ogDescription?: string | null
+  ogImage?: string | null
+  structuredData?: Record<string, unknown> | null // JSON-LD, verbatim
+}
+
+export interface PageSitemapSettings {
+  included: boolean
+  priority?: number | null // 0.0-1.0, sitemap.xml's own convention
+  changefreq?: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never' | null
+}
+
+export interface PageSearchSettings {
+  indexable: boolean
+  keywords?: string[] | null
+}
 ```
-id                uuid, pk
-translationGroupId uuid            -- links sibling-locale pages together as the "same" logical page (see below)
-locale            text             -- e.g. 'en', 'it' - one row IS one language's version
-slug              text             -- unique per locale
-title             text             -- internal/admin title
-status            text             -- draft / published / archived
-content           jsonb            -- the actual page tree, in whoobe-one-spike's own Element shape
-seo               jsonb            -- { metaTitle, metaDescription, canonicalUrl, robots: { index, follow },
-                                        ogTitle, ogDescription, ogImage, structuredData (JSON-LD) }
-sitemap           jsonb            -- { included: boolean, priority, changefreq }
-search            jsonb            -- { indexable: boolean, keywords? } - see note below, this is metadata only
-category          text             -- carried over from whoobe_one_templates, for library/organization purposes
-pimcoreId         text, nullable   -- provenance for pages that arrived via the migration plugin (§3), unique index
-publishedAt       timestamp, nullable
-createdAt / updatedAt  timestamp
+
+**Table** (Drizzle, matching this codebase's existing schema-file conventions - `pgTable`, `jsonb(...).$type<...>()` for the typed columns above, `uniqueIndex` for real constraints):
+
+```ts
+export const whoobePages = pgTable(
+  'whoobe_pages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    translationGroupId: uuid('translation_group_id').notNull().defaultRandom(),
+    locale: text('locale').notNull().default('en'),
+    slug: text('slug').notNull(),
+    title: text('title').notNull(),
+    category: text('category').notNull().default(''),
+    published: boolean('published').notNull().default(false),
+    workflowState: text('workflow_state'),
+    content: jsonb('content').notNull(),
+    seo: jsonb('seo').$type<PageSeo>(),
+    sitemap: jsonb('sitemap').$type<PageSitemapSettings>(),
+    search: jsonb('search').$type<PageSearchSettings>(),
+    pimcoreId: text('pimcore_id'),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    // (locale, slug), not slug alone - decision 2 above.
+    localeSlugIdx: uniqueIndex('whoobe_pages_locale_slug_idx').on(table.locale, table.slug),
+    // Doubles as the "all translations of this page" lookup index (leading
+    // column), so no separate plain index on translationGroupId alone.
+    translationGroupLocaleIdx: uniqueIndex('whoobe_pages_translation_group_locale_idx').on(
+      table.translationGroupId,
+      table.locale
+    ),
+    // Nullable-unique, same pattern cms-schema.ts's own pimcoreId already
+    // uses - Postgres allows multiple NULLs through a unique index, which is
+    // exactly right here (most pages won't have one at all).
+    pimcoreIdIdx: uniqueIndex('whoobe_pages_pimcore_id_idx').on(table.pimcoreId),
+  })
+)
 ```
+
+`translationGroupId` defaults to a fresh random UUID at insert time (same mechanism as `id`), never left `null` - a page with no translations yet still gets a real group id so a later translation can attach to it without a backfill migration.
+
+**A natural future fit, not scope added now**: the Data Objects plan's own `object_preview_tokens` mechanism (a public, scoped, temporary preview link for sharing an unpublished draft) is designed to generalize - `whoobe_pages` should plan to reuse that same mechanism once it exists, rather than growing a second, page-specific preview-link system. Not built here; noted so Phase 1 doesn't accidentally reinvent it.
 
 Notes on the specific requirements §1 named, each addressed directly rather than folded into a vague `metadata: jsonb` catch-all (which is what `WhoobeBlockNode` does today, and part of why it doesn't validate or communicate what's actually expected):
 
@@ -103,7 +155,7 @@ Lighter than `whoobe-studio`'s own mechanism, and deliberately so - not because 
 
 Mirroring the port plan's own phase-tracking convention (status inline, not a separate tracker):
 
-- **Phase 0 - Schema review** (not started): confirm §4's proposed page schema (or amend it) against real SEO/sitemap/search requirements before building anything on top of it - the one genuine "needs product input" gate in this plan.
+- **Phase 0 - Schema review: DONE**, see §4 - status model (`published`/`workflowState`, matching the Data Objects publish-workflow plan), slug uniqueness (`(locale, slug)`), and table strategy (fresh `whoobe_pages`, not `whoobe_one_templates` renamed) all confirmed. `seo`/`sitemap`/`search` given real typed interfaces rather than untyped `jsonb`.
 - **Phase 1 - Data model** (not started): build the new page table/schema from Phase 0's confirmed shape; migrate `whoobe-one-spike`'s existing save/load code (`database-actions.ts`) to read/write it instead of `whoobe_one_templates`' current flat shape.
 - **Phase 2 - Migration pipeline retarget** (not started): point `packages/migration-tool`'s `migrate-documents` command at the new schema instead of `cms_documents`/`WhoobeBlockNode` (§3) - review what Pimcore-parsing logic already exists there first, since it's the right starting point, not a rewrite.
 - **Phase 3 - Embedding** (not started): §6's iframe + query-param loading + `parentOrigin` signal, provable in isolation against a real page from Phase 1 before any UI wiring depends on it.
@@ -113,7 +165,7 @@ Mirroring the port plan's own phase-tracking convention (status inline, not a se
 
 ## 9. Open risks, stated rather than hidden
 
-- **§4's schema is the one real "needs a human decision" gate** - everything else in this plan can proceed on engineering judgment; the exact SEO/sitemap/search fields should get real product review before Phase 1 starts, not be treated as settled by this document alone.
+- **§4's schema is confirmed, but only against what §1 named as requirements today** - SEO/sitemap/search/multilanguage/meta. If a real requirement surfaces later that these fields don't cover (a new Open Graph field, a different sitemap extension), that's a normal additive migration, not evidence the schema review was wrong - not every future field needs to be anticipated now.
 - **§3's migration retargeting cost is unknown until someone reads the existing `migrate-documents` conversion code** - this plan assumes it's a reasonable starting point, not a rewrite, but that's an assumption, not a confirmed fact yet.
 - **`whoobe-one-spike`'s own README documents zero interactive-in-browser confirmation for almost every feature it lists** (typecheck/build clean, logic verified directly, but "not yet interactively confirmed" appears throughout its changelog) - Phase 5's pilot is where that finally gets tested against real usage, not before.
 - **Retiring `whoobe-studio` removes the only currently-proven Pimcore-import path before its replacement is proven** - Phase 2/5 need to actually demonstrate the new pipeline handles real migrated content before `whoobe-studio` is archived for good, not just assume the retarget "should" work the same way.
