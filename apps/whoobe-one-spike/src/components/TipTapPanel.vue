@@ -1,28 +1,29 @@
 <template>
   <div class="flex flex-col h-full">
     <div v-if="editor" class="flex items-center gap-1 p-1.5 border-b flex-wrap shrink-0">
-      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('bold') }" @click="editor.chain().focus().toggleBold().run()"><b>B</b></button>
-      <button type="button" class="tt-btn italic" :class="{ 'tt-active': editor.isActive('italic') }" @click="editor.chain().focus().toggleItalic().run()">I</button>
-      <button type="button" class="tt-btn line-through" :class="{ 'tt-active': editor.isActive('strike') }" @click="editor.chain().focus().toggleStrike().run()">S</button>
-      <button type="button" class="tt-btn font-mono" :class="{ 'tt-active': editor.isActive('code') }" @click="editor.chain().focus().toggleCode().run()">{ }</button>
+      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('bold') }" title="Bold" @click="editor.chain().focus().toggleBold().run()"><Bold class="w-3.5 h-3.5" /></button>
+      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('italic') }" title="Italic" @click="editor.chain().focus().toggleItalic().run()"><Italic class="w-3.5 h-3.5" /></button>
+      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('strike') }" title="Strikethrough" @click="editor.chain().focus().toggleStrike().run()"><Strikethrough class="w-3.5 h-3.5" /></button>
+      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('code') }" title="Code" @click="editor.chain().focus().toggleCode().run()"><Code class="w-3.5 h-3.5" /></button>
       <span class="w-px h-4 bg-gray-200 mx-0.5"></span>
-      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('paragraph') }" @click="editor.chain().focus().setParagraph().run()">P</button>
+      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('paragraph') }" title="Paragraph" @click="editor.chain().focus().setParagraph().run()"><Pilcrow class="w-3.5 h-3.5" /></button>
       <button
         v-for="level in [1, 2, 3, 4] as const"
         :key="level"
         type="button"
         class="tt-btn"
         :class="{ 'tt-active': editor.isActive('heading', { level }) }"
+        :title="`Heading ${level}`"
         @click="editor.chain().focus().toggleHeading({ level }).run()"
       >
-        H{{ level }}
+        <component :is="headingIcon(level)" class="w-3.5 h-3.5" />
       </button>
       <span class="w-px h-4 bg-gray-200 mx-0.5"></span>
-      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('bulletList') }" @click="editor.chain().focus().toggleBulletList().run()">• list</button>
-      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('orderedList') }" @click="editor.chain().focus().toggleOrderedList().run()">1. list</button>
-      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('blockquote') }" @click="editor.chain().focus().toggleBlockquote().run()">"</button>
-      <button type="button" class="tt-btn" @click="editor.chain().focus().setHorizontalRule().run()">―</button>
-      <button type="button" class="tt-btn" @click="setImage">🖼</button>
+      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('bulletList') }" title="Bullet list" @click="editor.chain().focus().toggleBulletList().run()"><List class="w-3.5 h-3.5" /></button>
+      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('orderedList') }" title="Numbered list" @click="editor.chain().focus().toggleOrderedList().run()"><ListOrdered class="w-3.5 h-3.5" /></button>
+      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('blockquote') }" title="Blockquote" @click="editor.chain().focus().toggleBlockquote().run()"><Quote class="w-3.5 h-3.5" /></button>
+      <button type="button" class="tt-btn" title="Horizontal rule" @click="editor.chain().focus().setHorizontalRule().run()"><SeparatorHorizontal class="w-3.5 h-3.5" /></button>
+      <button type="button" class="tt-btn" title="Insert image" @click="setImage"><Image class="w-3.5 h-3.5" /></button>
     </div>
     <editor-content :editor="editor" class="flex-1 min-h-0 overflow-y-auto p-3 text-sm prose-sm" />
   </div>
@@ -47,9 +48,21 @@
 // not needed here - the caller always binds v-model to editor.current.
 // content, see FloatingToolbar.vue).
 import { onBeforeUnmount, onMounted, shallowRef, watch } from 'vue'
+import type { Component } from 'vue'
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import TipTapImage from '@tiptap/extension-image'
+import { Bold, Code, Heading1, Heading2, Heading3, Heading4, Image, Italic, List, ListOrdered, Pilcrow, Quote, SeparatorHorizontal, Strikethrough } from '@lucide/vue'
+
+const HEADING_ICONS: Record<1 | 2 | 3 | 4, Component> = {
+  1: Heading1,
+  2: Heading2,
+  3: Heading3,
+  4: Heading4,
+}
+function headingIcon(level: 1 | 2 | 3 | 4): Component {
+  return HEADING_ICONS[level]
+}
 
 const props = defineProps<{ modelValue: string }>()
 const emit = defineEmits<{ (e: 'update:modelValue', value: string): void }>()

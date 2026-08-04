@@ -11,7 +11,7 @@
         </div>
       </div>
 
-      <form @submit.prevent="submit" class="space-y-4 p-6 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl">
+      <form v-if="step === 'credentials'" @submit.prevent="submitCredentials" class="space-y-4 p-6 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl">
         <div>
           <label class="block text-xs font-medium text-slate-300 mb-1">Email</label>
           <input
@@ -47,6 +47,47 @@
           <span>{{ isSubmitting ? 'Signing in...' : 'Sign In' }}</span>
         </button>
       </form>
+
+      <!-- Step 2: password already verified (that's what mfaToken proves) -
+           only the authenticator code, or a one-time recovery code, is
+           still needed. -->
+      <form v-else @submit.prevent="submitMfa" class="space-y-4 p-6 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">
+            {{ useRecoveryCode ? 'Recovery code' : 'Authenticator code' }}
+          </label>
+          <input
+            v-model="code"
+            type="text"
+            :inputmode="useRecoveryCode ? 'text' : 'numeric'"
+            :placeholder="useRecoveryCode ? 'xxxxx-xxxxx' : '123456'"
+            autocomplete="one-time-code"
+            autofocus
+            required
+            class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500 tracking-widest"
+          />
+        </div>
+
+        <div v-if="authStore.errorMessage" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">
+          {{ authStore.errorMessage }}
+        </div>
+
+        <button
+          type="submit"
+          :disabled="isSubmitting"
+          class="w-full px-4 py-2.5 text-sm font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          <span v-if="isSubmitting" class="animate-spin w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+          <span>{{ isSubmitting ? 'Verifying...' : 'Verify' }}</span>
+        </button>
+
+        <div class="flex items-center justify-between text-xs">
+          <button type="button" class="text-slate-400 hover:text-slate-200" @click="toggleRecoveryMode">
+            {{ useRecoveryCode ? 'Use authenticator code instead' : "Use a recovery code instead" }}
+          </button>
+          <button type="button" class="text-slate-500 hover:text-slate-300" @click="backToCredentials">Cancel</button>
+        </div>
+      </form>
     </div>
   </div>
 </template>
@@ -59,16 +100,44 @@ import { useAuthStore } from '../stores/authStore'
 const authStore = useAuthStore()
 const email = ref('')
 const password = ref('')
+const code = ref('')
+const useRecoveryCode = ref(false)
+const step = ref<'credentials' | 'mfa'>('credentials')
 const isSubmitting = ref(false)
 
-async function submit() {
+async function submitCredentials() {
   isSubmitting.value = true
   try {
-    await authStore.login(email.value, password.value)
+    const mfaRequired = await authStore.login(email.value, password.value)
+    if (mfaRequired) step.value = 'mfa'
   } catch {
     // errorMessage is already set on the store; nothing else to do here.
   } finally {
     isSubmitting.value = false
   }
+}
+
+async function submitMfa() {
+  isSubmitting.value = true
+  try {
+    await authStore.verifyMfa(useRecoveryCode.value ? { recoveryCode: code.value } : { code: code.value })
+  } catch {
+    // errorMessage is already set on the store; nothing else to do here.
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+function toggleRecoveryMode() {
+  useRecoveryCode.value = !useRecoveryCode.value
+  code.value = ''
+  authStore.errorMessage = ''
+}
+
+function backToCredentials() {
+  authStore.cancelMfa()
+  step.value = 'credentials'
+  code.value = ''
+  useRecoveryCode.value = false
 }
 </script>

@@ -7,6 +7,7 @@
     :style="stile"
     :contenteditable="element.editable"
     :src="element.element === 'img' ? resolveDisplayUrl(imageURL(element.image)) : undefined"
+    :alt="element.element === 'img' ? element.image?.alt || undefined : undefined"
     :placeholder="element.placeholder"
     :data-id="element.id"
     data-type="element"

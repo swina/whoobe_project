@@ -1,10 +1,19 @@
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import fs from 'node:fs';
 import { eq } from 'drizzle-orm';
 import { getDb, closeDb } from './client.js';
 import { roles, permissions, rolePermissions, users, userRoles } from './auth-schema.js';
 import { ALL_PERMISSION_KEYS, DEFAULT_ROLES, DEFAULT_ROLE_PERMISSIONS } from '../auth/permissions.js';
 import { hashPassword } from '../auth/password.js';
+import { getWhoobeOneKitByName, createWhoobeOneKit } from './whoobe-one-kit-records.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Compiled location is dist/db/seed.js -> packages/core/seed-data - same
+// relative-to-compiled-output pattern bootstrap.ts already uses for its
+// own MIGRATIONS_FOLDER.
+const KITS_SEED_FOLDER = path.join(__dirname, '../../seed-data/kits');
 
 /**
  * Idempotent seed: default roles + permissions + role->permission mapping,
@@ -86,12 +95,58 @@ export async function seedDefaults(): Promise<void> {
   }
 }
 
+/**
+ * Idempotent seed for apps/whoobe-one-spike's own reference "UI Kit" data -
+ * whoobe-one-studio's public/kits/*.json collections, vendored here (see
+ * seed-data/kits/) since a real backend seed step needs to read them off
+ * its own local disk, not fetch a frontend app's static assets. Keyed by
+ * each kit's own `name` (getWhoobeOneKitByName()) rather than a stable id -
+ * skipped for any kit whose name already exists, whether from a previous
+ * run of this seed or because a user created one themselves with the same
+ * name. Runs as part of bootstrapDatabase(), same as seedDefaults() -
+ * matters now that all of this editor's data is meant to live in this
+ * database rather than the browser's own local IndexedDB (see apps/
+ * whoobe-one-spike/README.md's Kits section for the history of that
+ * pivot).
+ */
+export async function seedWhoobeOneKits(): Promise<void> {
+  let filenames: string[];
+  try {
+    filenames = fs.readdirSync(KITS_SEED_FOLDER).filter((f) => f.endsWith('.json'));
+  } catch {
+    console.warn(`seedWhoobeOneKits: seed folder not found (${KITS_SEED_FOLDER}) - skipping.`);
+    return;
+  }
+
+  for (const filename of filenames) {
+    try {
+      const raw = fs.readFileSync(path.join(KITS_SEED_FOLDER, filename), 'utf8');
+      const parsed = JSON.parse(raw);
+
+      const existing = await getWhoobeOneKitByName(parsed.name);
+      if (existing) continue;
+
+      const category = filename.replace(/-UI-Kit\.json$/, '').replace(/-/g, ' ');
+      await createWhoobeOneKit({
+        name: parsed.name,
+        description: parsed.description || null,
+        category,
+        templates: parsed.templates ?? [],
+      });
+      console.log(`Seeded kit: ${parsed.name}`);
+    } catch (err) {
+      console.error(`seedWhoobeOneKits: failed to seed "${filename}":`, err);
+    }
+  }
+}
+
 // CLI entry point: `tsx src/db/seed.ts` (via `pnpm run db:seed`) still works
 // standalone, closing the pool and exiting when run directly. Does nothing
 // when this module is merely imported (e.g. by bootstrap.ts).
 const isMain = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
   seedDefaults()
+    .then(() => seedWhoobeOneKits())
     .then(() => closeDb())
     .catch((err) => {
       console.error('Seed failed:', err);

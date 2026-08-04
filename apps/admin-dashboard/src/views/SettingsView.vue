@@ -8,6 +8,9 @@
     <!-- DAM Storage Manager -->
     <DamConfigManager />
 
+    <!-- Security: two-factor authentication -->
+    <MfaSettingsCard />
+
     <!-- General Options Card -->
     <div class="rounded-2xl bg-slate-900/60 border border-slate-800 p-6 space-y-6">
       <div class="space-y-4">
@@ -34,4 +37,5 @@
 
 <script setup lang="ts">
 import DamConfigManager from '../components/dam/DamConfigManager.vue'
+import MfaSettingsCard from '../components/auth/MfaSettingsCard.vue'
 </script>

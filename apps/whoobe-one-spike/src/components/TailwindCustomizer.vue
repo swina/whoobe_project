@@ -9,7 +9,8 @@
           @click="openGroup = openGroup === group.label ? null : group.label"
         >
           {{ group.label }}
-          <span class="text-gray-400">{{ openGroup === group.label ? '−' : '+' }}</span>
+          <ChevronDown v-if="openGroup === group.label" class="w-3.5 h-3.5 text-gray-400" />
+          <ChevronRight v-else class="w-3.5 h-3.5 text-gray-400" />
         </button>
 
         <div v-if="openGroup === group.label" class="p-2 space-y-3 border-b bg-gray-50">
@@ -51,6 +52,7 @@
 // introduces - both are commented out in tw.groups.js already; only
 // BorderColor is actually wired up there.
 import { computed, ref } from 'vue'
+import { ChevronDown, ChevronRight } from '@lucide/vue'
 import twgroups from '../scripts/tw.groups.js'
 import { useEditorStore } from '../store/editor'
 import OptionsControl from './tailwind-controls/OptionsControl.vue'

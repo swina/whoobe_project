@@ -44,6 +44,16 @@ function traverse<T>(o: T): T {
   return o
 }
 
+/** Same "fresh ids throughout" clone duplicate/paste/import already rely
+ * on (traverse(), above), exported for BlockEditor.vue's own drop handler:
+ * dropping a saved snippet works exactly like pasting one - the stored
+ * node must never be inserted verbatim, or every drop of the same snippet
+ * would collide on id with every other instance of it already in the
+ * document. */
+export function cloneWithFreshIds<T>(node: T): T {
+  return traverse(JSON.parse(JSON.stringify(node)))
+}
+
 // jp.parent (not jp.query) - query() would return a throwaway array
 // containing just the matched *element itself*, not a live reference to
 // the "blocks" array that actually contains it; parent() returns that

@@ -1,7 +1,7 @@
 <template>
   <div class="h-full flex flex-col bg-gray-100 text-black">
     <div class="shrink-0 h-10 px-4 flex items-center gap-2 bg-white border-b shadow-sm text-sm">
-      <span class="font-semibold text-gray-700">Whoobe One - Phase 0 spike</span>
+      <span class="font-semibold text-gray-700 bg-violet-600 text-white px-2 py-1 rounded-md">Whoobe One Spike</span>
       <span class="text-gray-400">|</span>
       <span class="text-gray-500">
         selected: <b>{{ editor.current ? editor.current.element + ' (' + editor.current.id + ')' : 'none' }}</b>
@@ -10,28 +10,15 @@
 
       <span v-if="saveState" class="text-[11px] text-gray-400 mr-1">{{ saveState }}</span>
 
-      <div class="relative">
-        <button :class="topbarBtnClass" @click="toggleLoadMenu">📂 Load</button>
-        <div
-          v-if="showLoadMenu"
-          class="absolute right-0 mt-1 w-56 bg-white border rounded-md shadow-lg z-50 py-1 text-xs"
-        >
-          <div v-if="!savedPages.length" class="px-3 py-2 text-gray-400">No saved pages yet</div>
-          <button
-            v-for="p in savedPages"
-            :key="p.id"
-            class="w-full text-left px-3 py-1.5 hover:bg-gray-100"
-            @click="onLoad(p.id)"
-          >
-            {{ p.name }} <span class="text-gray-400">({{ p.category }})</span>
-          </button>
-        </div>
-      </div>
-      <button :class="topbarBtnClass" @click="onSave">💾 Save</button>
-      <button :class="topbarBtnClass" @click="exportDocument(editor)">⬇ Export</button>
-      <button :class="topbarBtnClass" @click="fileInput?.click()">⬆ Import</button>
+      <button :class="topbarBtnClass" @click="onNew"><FilePlus class="w-3.5 h-3.5" /> New</button>
+      <button :class="topbarBtnClass" @click="showTemplateGallery = true"><FolderOpen class="w-3.5 h-3.5" /> Templates</button>
+      <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> Save Template</button>
+      <button v-if="editor.page?.id" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
+      <button :class="topbarBtnClass" @click="showAddToKit = true"><PackagePlus class="w-3.5 h-3.5" /> Add to Kit</button>
+      <button :class="topbarBtnClass" @click="exportDocument(editor)"><Download class="w-3.5 h-3.5" /> Export</button>
+      <button :class="topbarBtnClass" @click="fileInput?.click()"><Upload class="w-3.5 h-3.5" /> Import</button>
       <input ref="fileInput" type="file" accept="application/json" class="hidden" @change="onImportFile" />
-      <button :class="topbarBtnClass" @click="editor.setPreview('fullscreen')">👁 Preview</button>
+      <button :class="topbarBtnClass" @click="editor.setPreview('fullscreen')"><Eye class="w-3.5 h-3.5" /> Preview</button>
     </div>
 
     <div class="flex-1 min-h-0 flex">
@@ -76,6 +63,13 @@
           >
             Tree
           </button>
+          <button
+            class="flex-1 px-3 py-2 font-semibold"
+            :class="sidebarTab === 'kits' ? 'text-indigo-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
+            @click="sidebarTab = 'kits'"
+          >
+            Kits
+          </button>
         </div>
         <!-- Real BlockElements.vue port (categorized, drag-to-add) - see
              BlockElementsPalette.vue. Dragging out of it works exactly like
@@ -85,7 +79,8 @@
              changes. -->
         <BlockElementsPalette v-if="sidebarTab === 'elements'" />
         <TailwindCustomizer v-else-if="sidebarTab === 'customize'" />
-        <DocumentTree v-else />
+        <DocumentTree v-else-if="sidebarTab === 'tree'" />
+        <KitsPanel v-else @loaded="sidebarTab = 'elements'" />
       </div>
     </div>
 
@@ -93,7 +88,13 @@
 
     <DocumentPreview v-if="editor.preview" :doc="editor.document" @close="editor.setPreview(false)" />
 
-    <div v-if="message" class="shrink-0 px-4 py-1.5 bg-emerald-600 text-white text-xs">{{ message }}</div>
+    <AddToKitModal v-if="showAddToKit" @close="showAddToKit = false" />
+
+    <TemplateGalleryModal v-if="showTemplateGallery" @close="showTemplateGallery = false" @loaded="onTemplateLoaded" />
+
+    <div v-if="message" class="shrink-0 px-4 py-1.5 text-white text-xs" :class="messageKind === 'error' ? 'bg-rose-600' : 'bg-emerald-600'">
+      {{ message }}
+    </div>
   </div>
 </template>
 
@@ -119,57 +120,178 @@
 // new one being created from the palette below.
 import { onMounted, onUnmounted, ref } from 'vue'
 import dragula from 'dragula'
+import { CopyPlus, Download, Eye, FilePlus, FolderOpen, PackagePlus, Save, Upload } from '@lucide/vue'
 import Element from '../scripts/ElementsClass.js'
+import Block from '../scripts/BlocksClass.js'
 import BlockContainer from './BlockContainer.vue'
 import FloatingToolbar from './FloatingToolbar.vue'
 import BlockElementsPalette from './BlockElementsPalette.vue'
 import TailwindCustomizer from './TailwindCustomizer.vue'
 import DocumentTree from './DocumentTree.vue'
 import DocumentPreview from './DocumentPreview.vue'
+import KitsPanel from './KitsPanel.vue'
+import AddToKitModal from './AddToKitModal.vue'
+import TemplateGalleryModal from './TemplateGalleryModal.vue'
 import { useEditorStore } from '../store/editor'
+import { useSnippetsStore } from '../store/snippets'
 import { clean, findNodeById, removeNodeById, applyImagePlaceholder } from '../helpers'
 import { editorBus } from '../bus'
-import { exportDocument, importDocument } from '../scripts/editor-actions'
-import { savePage, listPages, loadPage, type SavedPageSummary } from '../scripts/database-actions'
+import { exportDocument, importDocument, cloneWithFreshIds } from '../scripts/editor-actions'
+import { savePage, saveAsNewTemplate } from '../scripts/database-actions'
+
+type WhoobeElement = InstanceType<typeof Element>
 
 const editor = useEditorStore()
+const snippetsStore = useSnippetsStore()
 const message = ref('')
-const topbarBtnClass = 'px-2 py-1 rounded-md text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-white'
-const sidebarTab = ref<'elements' | 'customize' | 'tree'>('elements')
+const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-white'
+const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'kits'>('elements')
+const showAddToKit = ref(false)
+const showTemplateGallery = ref(false)
 
-function flash(text: string) {
+// A real, reported bug fixed here: `flash()` used to render every message
+// - including genuine failures ("Failed to save", "A path is required...")
+// - in the exact same green success bar (`bg-emerald-600`, unconditional).
+// A save that actually failed server-side still popped up looking like a
+// success confirmation, which is exactly backwards - `messageKind` now
+// picks red (`bg-rose-600`) for errors, so a failed save reads as a
+// failure at a glance instead of being easy to mistake for one that
+// worked (reported as "I don't see Save As even though I saved the
+// template" - the save had very likely never actually succeeded at all).
+const messageKind = ref<'success' | 'error'>('success')
+function flash(text: string, kind: 'success' | 'error' = 'success') {
   message.value = text
+  messageKind.value = kind
   window.setTimeout(() => (message.value = ''), 1500)
 }
 
-// Phase 2: real Dexie-backed save/load (database-actions.ts, wrapping the
-// already-ported-but-dormant-since-Phase-0 DatabaseClass.js) and JSON
-// export/import (editor-actions.ts). `showLoadMenu`/`savedPages` back a
-// tiny dropdown rather than a full gallery UI (Templates.vue/PagesGallery.
-// vue are Phase 3 scope).
+// Phase 2: real save/load (database-actions.ts - originally Dexie-backed,
+// now the real backend, see that file's own header comment) and JSON
+// export/import (editor-actions.ts). Loading now opens TemplateGalleryModal
+// (a real gallery, same as Kits) rather than the plain text dropdown this
+// used to be - see that file's own header comment.
 const saveState = ref('')
-const showLoadMenu = ref(false)
-const savedPages = ref<SavedPageSummary[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 
+// Not a port - BlocksClass.js's own model has no URL-routing concept at
+// all (see BlocksClass.d.ts's comment), so a plain slug guess from the
+// page's name is as good a starting point as this app can offer; the user
+// can still type over it entirely in the prompt below.
+function suggestPathFromName(name: string): string {
+  const slug = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return '/' + slug
+}
+
+// "New" - starts a genuinely empty template: a bare root container with
+// zero children, not the demo content (heading/paragraph/image/button)
+// views/Editor.vue seeds on first load - that seed exists to prove the
+// core editing loop works at all on a cold start, not to be what "New"
+// hands you every time you deliberately ask to start over. Mirrors that
+// same seeding pattern otherwise (a Flexbox tagged 'document' - see
+// ElementsClass.js's Slider() comment and database-actions.ts's
+// unwrapDocumentRoot() for why every document root carries that tag).
+// Resets `editor.page` to a fresh, unsaved Block too (id left at its
+// constructor default, `0`) - "New" must not silently keep pointing at
+// whatever template happened to be open before, or the next "Save Template"
+// would overwrite it instead of creating a genuinely new one. No unsaved-
+// changes confirmation prompt - consistent with every other document-
+// replacing action in this file (Load, Import), none of which warn either.
+function onNew() {
+  const root = new Element().Flexbox({ direction: 'col' }).setIcon('dashboard').setTag('document')
+  root.css.container = clean(root.css.container + ' gap-4 min-h-[600px] bg-white p-6')
+
+  editor.setDocument(root)
+  editor.setCurrent(null)
+
+  const page = new Block()
+  page.name = 'Untitled'
+  page.category = ''
+  page.json.blocks = root
+  editor.setPage(page)
+
+  flash('New empty template')
+}
+
+// "Save Template" - overwrites the current template in place once it
+// already has one; only asks for a path the very first time (a document
+// with no id yet). A real, reported gap this used to have: there was no
+// way to take an already-saved template and branch off a *new*, separate
+// copy of it instead - only ever "create the first time" or "overwrite
+// forever after" existed. `onSaveAs()` below is the other half of that -
+// two always-visible, clearly distinct actions (once there's something to
+// tell them apart from) rather than one button that silently asks a
+// choice via a confirm() popup.
 async function onSave() {
+  if (!editor.page) return
+
+  // Only a brand-new document (no id yet) needs a path - an already-saved
+  // one keeps whatever it was given the first time (changing a document's
+  // path later isn't in scope here).
+  let path: string | undefined
+  if (!editor.page.id) {
+    const suggested = suggestPathFromName(editor.page.name || '')
+    const input = window.prompt('Document path (e.g. /about-us)', suggested)
+    if (input === null) return // cancelled - don't create a half-saved document
+    path = input.trim() ? (input.trim().startsWith('/') ? input.trim() : '/' + input.trim()) : ''
+    if (!path) {
+      flash('A path is required to save a new document', 'error')
+      return
+    }
+  }
+
   saveState.value = 'saving…'
-  await savePage(editor)
-  saveState.value = 'saved ' + new Date().toLocaleTimeString()
+  try {
+    await savePage(editor, path)
+    saveState.value = 'saved ' + new Date().toLocaleTimeString()
+  } catch (e: any) {
+    // A real, expected failure mode now that this is a network call
+    // against a real database, not local storage - most commonly the
+    // path's own unique constraint (see whoobe-one-template-schema.ts),
+    // surfaced by core-api as a 409 with a clear message.
+    saveState.value = ''
+    flash(e?.message || 'Failed to save', 'error')
+  }
 }
 
-async function refreshSavedPages() {
-  savedPages.value = await listPages()
+// Only shown once `editor.page.id` already exists (see the template) -
+// for a brand-new document, "Save" and "Save As" would be the exact same
+// action, so there's nothing for a second button to offer yet. Always
+// creates a genuinely new template (saveAsNewTemplate() in database-
+// actions.ts never overwrites the original) and switches `editor.page` to
+// point at that new one - matching "Save As" in every other editor, where
+// you keep working on the new copy afterward, not the original.
+async function onSaveAs() {
+  if (!editor.page) return
+
+  const suggestedName = `${editor.page.name || 'Untitled'} copy`
+  const name = window.prompt('New template name', suggestedName)
+  if (name === null || !name.trim()) return
+
+  const suggestedPath = suggestPathFromName(name.trim())
+  const pathInput = window.prompt('Document path (e.g. /about-us-copy)', suggestedPath)
+  if (pathInput === null) return
+  const path = pathInput.trim() ? (pathInput.trim().startsWith('/') ? pathInput.trim() : '/' + pathInput.trim()) : ''
+  if (!path) {
+    flash('A path is required to save a new template', 'error')
+    return
+  }
+
+  saveState.value = 'saving…'
+  try {
+    await saveAsNewTemplate(editor, name.trim(), path)
+    saveState.value = 'saved ' + new Date().toLocaleTimeString()
+    flash(`Saved as "${name.trim()}"`)
+  } catch (e: any) {
+    saveState.value = ''
+    flash(e?.message || 'Failed to save as a new template', 'error')
+  }
 }
 
-async function toggleLoadMenu() {
-  showLoadMenu.value = !showLoadMenu.value
-  if (showLoadMenu.value) await refreshSavedPages()
-}
-
-async function onLoad(id: string) {
-  await loadPage(editor, id)
-  showLoadMenu.value = false
+function onTemplateLoaded() {
   flash('Loaded')
 }
 
@@ -228,6 +350,22 @@ onMounted(() => {
     const targetNode = findNodeById(editor.document, targetId)
     if (!targetNode) return
 
+    const snippetId = el.getAttribute('data-snippet-id')
+    if (snippetId) {
+      // Same idea as the templateName branch below: construct a brand new
+      // node, never reuse the stored one directly - cloneWithFreshIds()
+      // regenerates every id in the subtree, so dropping the same snippet
+      // twice (or reusing one that's already elsewhere in the document)
+      // never collides on id with another instance of it.
+      const snippet = snippetsStore.items.find((s) => s.id === snippetId)
+      if (!snippet) return
+      const created = cloneWithFreshIds(snippet.node) as WhoobeElement
+      targetNode.blocks.push(created)
+      editor.setCurrent(created)
+      flash(`Added "${snippet.name}"`)
+      return
+    }
+
     const templateName = el.getAttribute('data-template')
     if (templateName) {
       // A palette drag: construct a brand new node rather than moving an
@@ -235,7 +373,27 @@ onMounted(() => {
       // reasonable Phase 0 simplification, not attempted here since the
       // question this spike exists to answer is "can drag-to-add work at
       // all", not "is the exact drop index pixel-perfect".
-      const created = new Element().createElement(templateName, templateName === 'Flexbox' ? { direction: 'col' } : {})
+      //
+      // A real bug, fixed here: createElement()'s second argument isn't a
+      // generic "options" object for every builder - ElementsClass.js's
+      // own dispatcher forwards it as-is to whichever builder matches
+      // (`this.Heading(options)`, `this.Flexbox(options)`, ...), and
+      // Heading(level=1) expects that argument to literally BE the level
+      // number (its only real source-repo call site, helpers/Heading.vue,
+      // passes `this.level` directly - never an options object). Always
+      // passing `{}` here (as this used to) meant Heading's own default
+      // parameter never kicked in (defaults only apply to `undefined`,
+      // not `{}`) - `this.level` became the object `{}` itself, and
+      // `component`'s `'h' + el.level` computed the literal string
+      // "h[object Object]", which the browser then rejects as an invalid
+      // tag name. Only Flexbox actually needs an options object passed at
+      // all; every other builder either ignores the second argument
+      // entirely or, like Heading, needs it to be genuinely absent so its
+      // own default takes over.
+      const created =
+        templateName === 'Flexbox'
+          ? new Element().createElement(templateName, { direction: 'col' })
+          : new Element().createElement(templateName)
       if (!created) return
       created.css.css = clean(created.css.css)
       applyImagePlaceholder(created)

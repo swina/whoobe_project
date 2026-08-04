@@ -6,20 +6,191 @@
   >
     <span class="px-1.5 py-0.5 rounded bg-blue-500 text-white capitalize font-semibold">{{ label }}</span>
 
-    <button title="Move up" class="toolbar-icon" @click="moveUp">⬆</button>
+    <button title="Move up" class="toolbar-icon" @click="moveUp"><ArrowUp class="w-4 h-4" /></button>
     <template v-if="isContainer">
-      <button title="Add child (Paragraph)" class="toolbar-icon" @click="addChild">➕</button>
-      <button title="Direction: row" class="toolbar-icon" @click="setDirection('row')">⬌</button>
-      <button title="Direction: column" class="toolbar-icon" @click="setDirection('col')">⬍</button>
+      <button title="Add child (Paragraph)" class="toolbar-icon" @click="addChild"><Plus class="w-4 h-4" /></button>
+      <button title="Direction: row" class="toolbar-icon" @click="setDirection('row')"><ArrowLeftRight class="w-4 h-4" /></button>
+      <button title="Direction: column" class="toolbar-icon" @click="setDirection('col')"><ArrowUpDown class="w-4 h-4" /></button>
     </template>
-    <button v-if="isTextEditable || isVideoEmbed" title="Edit content" class="toolbar-icon" @click="onEditContent">✎</button>
-    <button v-if="isVideoEmbed && editor.current?.content" title="Play video" class="toolbar-icon" @click="playVideoEmbed">▶</button>
-    <label v-if="isTextEditable" title="Text color" class="toolbar-icon relative">
-      A
-      <input type="color" class="absolute inset-0 opacity-0 cursor-pointer" @input="pickTextColor" />
-    </label>
+    <div v-if="isSlider" class="relative">
+      <button type="button" title="Slider settings" class="toolbar-icon" @click="showSliderSettings = !showSliderSettings">
+        <SlidersHorizontal class="w-4 h-4" />
+      </button>
+      <template v-if="showSliderSettings && editor.current?.slider">
+        <div class="fixed inset-0 z-[10000]" @click="showSliderSettings = false"></div>
+        <div
+          class="absolute z-[10001] left-0 bg-white border border-gray-200 rounded-md shadow-lg p-3 w-80 space-y-3 text-sm overflow-y-auto"
+          :class="sliderPopoverOpensUpward ? 'bottom-full mb-1' : 'top-full mt-1'"
+          :style="{ maxHeight: sliderPopoverMaxHeight + 'px' }"
+          @click.stop
+        >
+          <div>
+            <span class="block text-xs font-medium text-gray-500 mb-1.5">Navigation style</span>
+            <div class="flex gap-3">
+              <label class="flex items-center gap-1.5">
+                <input type="radio" value="standard" class="w-4 h-4" v-model="editor.current.slider.mode" />
+                Standard (arrows)
+              </label>
+              <label class="flex items-center gap-1.5">
+                <input type="radio" value="tabs" class="w-4 h-4" v-model="editor.current.slider.mode" />
+                Tabs (named)
+              </label>
+            </div>
+          </div>
+          <label class="flex items-center justify-between">
+            Autoplay
+            <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.autoplay" />
+          </label>
+          <label v-if="editor.current.slider.autoplay" class="block">
+            <span class="block text-xs font-medium text-gray-500 mb-1.5">Interval (ms)</span>
+            <input
+              type="number"
+              min="500"
+              step="500"
+              v-model.number="editor.current.slider.interval"
+              class="w-full px-2.5 py-1.5 text-sm rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+            />
+          </label>
+          <label class="flex items-center justify-between">
+            Cycle (loop)
+            <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.loop" />
+          </label>
+
+          <template v-if="(editor.current.slider.mode || 'standard') === 'standard'">
+            <label class="flex items-center justify-between">
+              Back/forward buttons
+              <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.showNav" />
+            </label>
+            <label class="flex items-center justify-between">
+              Home button
+              <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.showHome" />
+            </label>
+            <label class="block">
+              <span class="block text-xs font-medium text-gray-500 mb-1.5">Arrow icon</span>
+              <select
+                v-model="editor.current.slider.arrowIcon"
+                class="w-full px-2.5 py-1.5 text-sm rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="chevron">Chevron ‹ ›</option>
+                <option value="arrow">Arrow ← →</option>
+                <option value="triangle">Triangle ◀ ▶</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="block text-xs font-medium text-gray-500 mb-1.5">Home icon</span>
+              <select
+                v-model="editor.current.slider.homeIcon"
+                class="w-full px-2.5 py-1.5 text-sm rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="home">House</option>
+                <option value="dot">Dot</option>
+                <option value="circle">Circle</option>
+              </select>
+            </label>
+          </template>
+
+          <template v-else>
+            <div>
+              <span class="block text-xs font-medium text-gray-500 mb-1.5">Tab row position</span>
+              <div class="flex gap-3">
+                <label class="flex items-center gap-1.5">
+                  <input type="radio" value="above" class="w-4 h-4" v-model="editor.current.slider.tabsPosition" />
+                  Above
+                </label>
+                <label class="flex items-center gap-1.5">
+                  <input type="radio" value="below" class="w-4 h-4" v-model="editor.current.slider.tabsPosition" />
+                  Below
+                </label>
+              </div>
+            </div>
+            <p class="text-xs text-gray-400">
+              Tab names are set directly on the slider's own nav strip while editing - double-click a tab to rename it.
+            </p>
+          </template>
+
+          <div class="pt-2 border-t border-gray-100 space-y-3">
+            <span class="block text-xs text-gray-500">
+              Full Tailwind classes for each part - edit directly to match your design (this replaces the whole class list for
+              that part, it doesn't add to a hidden default).
+            </span>
+            <label class="block">
+              <span class="block text-xs font-medium text-gray-500 mb-1.5">Nav wrapper classes</span>
+              <ExpandableTextInput
+                v-model="editor.current.slider.navClass"
+                popup-label="Nav wrapper classes"
+                monospace
+              />
+            </label>
+            <template v-if="(editor.current.slider.mode || 'standard') === 'standard'">
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-500 mb-1.5">Arrow button classes</span>
+                <ExpandableTextInput
+                  v-model="editor.current.slider.arrowClass"
+                  popup-label="Arrow button classes"
+                  monospace
+                />
+              </label>
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-500 mb-1.5">Home button classes</span>
+                <ExpandableTextInput
+                  v-model="editor.current.slider.homeClass"
+                  popup-label="Home button classes"
+                  monospace
+                />
+              </label>
+            </template>
+            <template v-else>
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-500 mb-1.5">Tab button classes</span>
+                <ExpandableTextInput
+                  v-model="editor.current.slider.tabClass"
+                  popup-label="Tab button classes"
+                  monospace
+                />
+              </label>
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-500 mb-1.5">Active tab classes</span>
+                <ExpandableTextInput
+                  v-model="editor.current.slider.activeTabClass"
+                  popup-label="Active tab classes"
+                  monospace
+                />
+              </label>
+            </template>
+          </div>
+        </div>
+      </template>
+    </div>
+    <button v-if="isTextEditable || isVideoEmbed" title="Edit content" class="toolbar-icon" @click="onEditContent"><Pencil class="w-4 h-4" /></button>
+    <button v-if="isVideoEmbed && editor.current?.content" title="Play video" class="toolbar-icon" @click="playVideoEmbed"><Play class="w-4 h-4" /></button>
+    <div v-if="isTextEditable" class="relative">
+      <button type="button" title="Text color" class="toolbar-icon" @click="showTextPicker = !showTextPicker"><Type class="w-4 h-4" /></button>
+      <template v-if="showTextPicker">
+        <div class="fixed inset-0 z-[10000]" @click="showTextPicker = false"></div>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-44" @click.stop>
+          <label class="flex items-center gap-1.5 mb-2 cursor-pointer text-[10px] text-gray-500">
+            Custom
+            <input type="color" class="w-5 h-5 border rounded cursor-pointer" @input="pickTextColor" />
+          </label>
+          <div class="grid grid-cols-6 gap-1">
+            <button
+              v-for="swatch in textSwatches"
+              :key="swatch"
+              type="button"
+              :title="swatch"
+              class="w-5 h-5 rounded-full border-2"
+              :class="swatch"
+              @click="pickTextSwatch(swatch)"
+            ></button>
+            <button type="button" title="Clear" class="w-5 h-5 rounded-full border flex items-center justify-center text-gray-400" @click="clearTextColor">
+              <X class="w-2.5 h-2.5" />
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
     <div class="relative">
-      <button type="button" title="Fill color" class="toolbar-icon" @click="showFillPicker = !showFillPicker">⬛</button>
+      <button type="button" title="Fill color" class="toolbar-icon" @click="showFillPicker = !showFillPicker"><PaintBucket class="w-4 h-4" /></button>
       <template v-if="showFillPicker">
         <div class="fixed inset-0 z-[10000]" @click="showFillPicker = false"></div>
         <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-44" @click.stop>
@@ -37,25 +208,95 @@
               :class="swatch"
               @click="pickFillSwatch(swatch)"
             ></button>
-            <button type="button" title="Clear" class="w-5 h-5 rounded-full border flex items-center justify-center text-[8px] text-gray-400" @click="clearFill">
-              ✕
+            <button type="button" title="Clear" class="w-5 h-5 rounded-full border flex items-center justify-center text-gray-400" @click="clearFill">
+              <X class="w-2.5 h-2.5" />
             </button>
           </div>
         </div>
       </template>
     </div>
-    <button title="Image URL (background, unless this is an actual <img>)" class="toolbar-icon" @click="setImage">🖼</button>
-    <button title="Browse assets (backend DAM)" class="toolbar-icon" @click="showMediaPicker = true">🗂</button>
-    <button title="Link URL" class="toolbar-icon" @click="setLink">🔗</button>
+    <div class="relative">
+      <button
+        type="button"
+        title="Image URL (background, unless this is an actual <img>)"
+        class="toolbar-icon"
+        @click="openImagePicker"
+      >
+        <Image class="w-4 h-4" />
+      </button>
+      <template v-if="showImagePicker">
+        <div class="fixed inset-0 z-[10000]" @click="showImagePicker = false"></div>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" @click.stop>
+          <div>
+            <label class="block text-[10px] text-gray-500 mb-1">Image URL</label>
+            <input
+              v-model="imageUrlDraft"
+              type="text"
+              placeholder="https://…"
+              class="w-full px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+          <div v-if="editor.current?.element === 'img'">
+            <label class="block text-[10px] text-gray-500 mb-1">Alt text</label>
+            <input
+              v-model="imageAltDraft"
+              type="text"
+              placeholder="Describes the image for screen readers"
+              class="w-full px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+          <div class="flex justify-between pt-1">
+            <button type="button" class="px-2 py-1 text-[10px] rounded bg-gray-100 hover:bg-gray-200 text-gray-500" @click="clearImage">Clear</button>
+            <button type="button" class="px-2 py-1 text-[10px] rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold" @click="applyImage">
+              Apply
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
+    <button title="Browse assets (backend DAM)" class="toolbar-icon" @click="showMediaPicker = true"><FolderOpen class="w-4 h-4" /></button>
+    <div class="relative">
+      <button type="button" title="Link URL" class="toolbar-icon" @click="openLinkPicker"><Link class="w-4 h-4" /></button>
+      <template v-if="showLinkPicker">
+        <div class="fixed inset-0 z-[10000]" @click="showLinkPicker = false"></div>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" @click.stop>
+          <div>
+            <label class="block text-[10px] text-gray-500 mb-1">URL</label>
+            <input
+              v-model="linkUrlDraft"
+              type="text"
+              placeholder="https://…"
+              class="w-full px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+          <div>
+            <label class="block text-[10px] text-gray-500 mb-1">Opens in</label>
+            <select v-model="linkTargetDraft" class="w-full px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500">
+              <option value="_self">Same tab (_self)</option>
+              <option value="_blank">New tab (_blank)</option>
+              <option value="_parent">Parent frame (_parent)</option>
+              <option value="_top">Top frame (_top)</option>
+            </select>
+          </div>
+          <div class="flex justify-between pt-1">
+            <button type="button" class="px-2 py-1 text-[10px] rounded bg-gray-100 hover:bg-gray-200 text-gray-500" @click="clearLink">Clear</button>
+            <button type="button" class="px-2 py-1 text-[10px] rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold" @click="applyLink">
+              Apply
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
     <label title="Animation (GSAP)" class="toolbar-icon relative">
-      ✨
+      <Sparkles class="w-4 h-4" />
       <select class="absolute inset-0 opacity-0 cursor-pointer" :value="editor.current?.gsap.animation ?? ''" @change="pickAnimation">
         <option value="">None</option>
         <option v-for="name in gsapEffects" :key="name" :value="name">{{ name }}</option>
       </select>
     </label>
-    <button v-if="editor.current?.gsap.animation" title="Preview animation" class="toolbar-icon" @click="replayAnimation">▶</button>
-    <button title="Delete" class="toolbar-icon text-rose-500" :disabled="isRoot" @click="remove">🗑</button>
+    <button v-if="editor.current?.gsap.animation" title="Preview animation" class="toolbar-icon" @click="replayAnimation"><Play class="w-4 h-4" /></button>
+    <button title="Save as snippet" class="toolbar-icon" @click="showSaveSnippet = true"><Save class="w-4 h-4" /></button>
+    <button title="Delete" class="toolbar-icon text-rose-500" :disabled="isRoot" @click="remove"><Trash2 class="w-4 h-4" /></button>
   </div>
 
   <!-- Port of BlockEditContent.vue's TipTap dispatch - the source only
@@ -68,24 +309,35 @@
     <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl h-96 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
         <span class="text-xs font-semibold text-gray-600">Rich text editor</span>
-        <button class="text-gray-400 hover:text-gray-700 text-xs" @click="showTipTap = false">✕ Close</button>
+        <button class="flex items-center gap-1 text-gray-400 hover:text-gray-700 text-xs" @click="showTipTap = false"><X class="w-3.5 h-3.5" /> Close</button>
       </div>
       <TipTapPanel v-model="editor.current.content" />
     </div>
   </div>
 
   <MediaPickerModal v-if="showMediaPicker" @select="onMediaPicked" @close="showMediaPicker = false" />
+
+  <SaveSnippetModal v-if="showSaveSnippet && editor.current" :element="editor.current" @close="showSaveSnippet = false" />
 </template>
 
 <script setup lang="ts">
 // Equivalent of the original app's BlockFloatingAction.vue/BlockFloating.vue
 // - a small contextual action bar anchored at the top-left corner of
 // whatever is currently selected, shown/hidden entirely by `editor.current`.
-// Deliberately scoped down from the reference: real icon fonts (Iconify)
-// are a Phase 2 concern (port plan §5) - plain glyphs stand in here, and
-// Image/Link use a plain window.prompt() rather than the original's own
-// picker dialogs (MediaUrlImporter-equivalent doesn't exist yet in this
-// spike). Font family/size picking is skipped entirely for now.
+// Deliberately scoped down from the reference: Image/Link use a plain
+// window.prompt() rather than the original's own picker dialogs (a
+// MediaUrlImporter-equivalent doesn't exist in this spike). Font family/
+// size picking is skipped entirely for now.
+//
+// Every button here is a real `@lucide/vue` icon (this monorepo's own
+// existing icon library - apps/admin-dashboard already uses it the same
+// way, see SliderNavIcon.vue's own comment for the fuller reasoning), not
+// the plain unicode glyphs this toolbar used originally - real icon
+// rendering didn't exist anywhere in this app until the Slider's own nav
+// icons needed it. Three exceptions, not oversights: the arrow-style
+// `<option>` labels ("Chevron ‹ ›"/"Arrow ← →"/"Triangle ◀ ▶") stay plain
+// text - a native `<option>` can only ever render text content, never a
+// Vue component, so there's no way to put a real icon inside one.
 //
 // Position tracks the selected DOM node's live getBoundingClientRect() on
 // every animation frame while something is selected (cheap - a rect read
@@ -99,9 +351,29 @@ import twclasses from '../scripts/tw.classes.js'
 import { previewAnimation } from '../scripts/gsap-actions'
 import { playYouTubeVideo } from '../scripts/youtube-player'
 import { useEditorStore } from '../store/editor'
-import { clean, findParentAndIndex, removeNodeById } from '../helpers'
+import { clean, findParentAndIndex, removeNodeById, friendlyElementName } from '../helpers'
 import TipTapPanel from './TipTapPanel.vue'
 import MediaPickerModal from './MediaPickerModal.vue'
+import SaveSnippetModal from './SaveSnippetModal.vue'
+import ExpandableTextInput from './ExpandableTextInput.vue'
+import {
+  ArrowLeftRight,
+  ArrowUp,
+  ArrowUpDown,
+  FolderOpen,
+  Image,
+  Link,
+  PaintBucket,
+  Pencil,
+  Play,
+  Plus,
+  Save,
+  SlidersHorizontal,
+  Sparkles,
+  Trash2,
+  Type,
+  X,
+} from '@lucide/vue'
 
 const gsapEffects = animations.gsapEffects
 
@@ -111,27 +383,54 @@ const top = ref(0)
 const left = ref(0)
 const showTipTap = ref(false)
 const showMediaPicker = ref(false)
+const showTextPicker = ref(false)
 const showFillPicker = ref(false)
+const showSaveSnippet = ref(false)
+const showLinkPicker = ref(false)
+const linkUrlDraft = ref('')
+const linkTargetDraft = ref('_self')
+const showImagePicker = ref(false)
+const imageUrlDraft = ref('')
+const imageAltDraft = ref('')
+const showSliderSettings = ref(false)
 
-// Standard Tailwind color scheme swatches for the Fill color popover -
+// Standard Tailwind color scheme swatches for the Fill/Text color popovers -
 // same `tw.classes.js` colors list BorderColorControl.vue already uses.
 // Each swatch's own visual color comes from applying the real `bg-{color}-
-// {shade}` utility class to itself (no hardcoded hex table to keep in
-// sync) - works because this app's Tailwind engine runs live in the
-// browser (see main.ts) and generates real CSS for whatever classes
-// appear, not just ones it can statically scan for.
+// {shade}`/`text-{color}-{shade}` utility class to itself (no hardcoded
+// hex table to keep in sync) - works because this app's Tailwind engine
+// runs live in the browser (see main.ts) and generates real CSS for
+// whatever classes appear, not just ones it can statically scan for.
 const FILL_SHADES = [300, 500, 700]
 const BG_COLOR_CLASS_RE = new RegExp(`^bg-(${(twclasses.colors as string[]).join('|')})-\\d+$`)
 const fillSwatches = (twclasses.colors as string[]).flatMap((color) => FILL_SHADES.map((shade) => `bg-${color}-${shade}`))
+const TEXT_COLOR_CLASS_RE = new RegExp(`^text-(${(twclasses.colors as string[]).join('|')})-\\d+$`)
+const textSwatches = (twclasses.colors as string[]).flatMap((color) => FILL_SHADES.map((shade) => `text-${color}-${shade}`))
 
-const isContainer = computed(() => !!editor.current?.blocks)
+// A real bug, fixed here: was `!!editor.current?.blocks` - every Element,
+// container or leaf, has a `blocks: []` array from the base constructor
+// (and `![]` is truthy), so this was actually `true` for every single
+// element, not just genuine containers - a Paragraph/Heading/Image
+// selection would have shown "Add child"/Direction controls too, silently
+// pushing orphaned nodes into a leaf element's own unused `.blocks` array
+// (never rendered anywhere, since BlockElement.vue never reads it). Fixed
+// to check the same `type === 'container'` discriminator BlockContainer.
+// vue's own dispatch already uses.
+const isContainer = computed(() => (editor.current as any)?.type === 'container')
+const isSlider = computed(() => editor.current?.tag === 'slider')
 const isTextEditable = computed(() => !!editor.current?.editable)
 const isVideoEmbed = computed(() => editor.current?.tag === 'youtube' || editor.current?.tag === 'vimeo')
 const isRoot = computed(() => !editor.document || editor.current?.id === editor.document.id)
 const label = computed(() => {
   const el = editor.current as any
   if (!el) return ''
-  return isContainer.value ? `${el.tag || 'div'} ${el.css?.container?.includes('flex-col') ? 'col' : el.css?.container?.includes('flex') ? 'row' : ''}`.trim() : el.element
+  if (isContainer.value) {
+    return `${el.tag || 'div'} ${el.css?.container?.includes('flex-col') ? 'col' : el.css?.container?.includes('flex') ? 'row' : ''}`.trim()
+  }
+  // Was el.element (the raw HTML tag - "p", "span", "h", ...) - see
+  // DocumentTreeNode.vue's own comment on friendlyElementName() for why
+  // that's not actually distinctive enough to tell several builders apart.
+  return friendlyElementName(el)
 })
 
 function updatePosition() {
@@ -142,6 +441,29 @@ function updatePosition() {
   top.value = Math.max(4, rect.top - 36)
   left.value = rect.left
 }
+
+// The Slider settings popover is tall enough (a dozen-plus controls, five
+// of them free-text inputs) that a plain `top-full` drop - fine for every
+// other, much shorter popover in this file - can run past the bottom of
+// the viewport whenever the toolbar itself is anchored low on screen (the
+// toolbar tracks the *selected element's* position, not a fixed spot, so
+// this isn't an edge case - it happens whenever a Slider lower on the page
+// gets selected). Recomputed continuously (read inside a computed that
+// already re-runs every animation frame off `top.value`, no separate
+// listener needed) rather than measured once, so window resizes and the
+// toolbar's own movement both stay accounted for automatically.
+const TOOLBAR_HEIGHT = 34
+const POPOVER_MARGIN = 12
+const sliderPopoverOpensUpward = computed(() => {
+  const spaceBelow = window.innerHeight - (top.value + TOOLBAR_HEIGHT) - POPOVER_MARGIN
+  return spaceBelow < 320 && top.value > spaceBelow
+})
+const sliderPopoverMaxHeight = computed(() => {
+  const available = sliderPopoverOpensUpward.value
+    ? top.value - POPOVER_MARGIN
+    : window.innerHeight - (top.value + TOOLBAR_HEIGHT) - POPOVER_MARGIN
+  return Math.max(160, available)
+})
 
 let rafId: number | null = null
 function loop() {
@@ -227,10 +549,41 @@ async function playVideoEmbed() {
   await playYouTubeVideo(iframe)
 }
 
+// Same popover pattern as Fill color (custom native picker + standard
+// Tailwind swatch grid + clear), operating on `color:`/`text-{color}-
+// {shade}` instead of `background-color:`/`bg-{color}-{shade}`.
+//
+// A real bug, fixed here: the old plain `/color:[^;]+;?/g` strip matched
+// "color:" as a literal substring - including inside "background-color:",
+// which also contains that substring. Setting a text color while a fill
+// color was already set corrupted the style string (left a dangling,
+// invalid "background-" fragment behind and silently discarded the
+// background-color value in the process). Fixed with a negative lookbehind
+// (`(?<!-)color:`) so a "color:" preceded by "-" (i.e. part of
+// "background-color:") is correctly left alone.
 function pickTextColor(e: Event) {
   if (!editor.current) return
   const value = (e.target as HTMLInputElement).value
-  editor.current.style = `${(editor.current.style ?? '').replace(/color:[^;]+;?/g, '')}color:${value};`
+  const el = editor.current as any
+  el.css.css = clean(el.css.css.split(' ').filter((cl: string) => !TEXT_COLOR_CLASS_RE.test(cl)).join(' '))
+  el.style = `${(el.style ?? '').replace(/(?<!-)color:[^;]+;?/g, '')}color:${value};`
+}
+
+function pickTextSwatch(value: string) {
+  if (!editor.current) return
+  const el = editor.current as any
+  el.style = (el.style ?? '').replace(/(?<!-)color:[^;]+;?/g, '')
+  const withoutOld = el.css.css.split(' ').filter((cl: string) => !TEXT_COLOR_CLASS_RE.test(cl)).join(' ')
+  el.css.css = clean(`${withoutOld} ${value}`)
+  showTextPicker.value = false
+}
+
+function clearTextColor() {
+  if (!editor.current) return
+  const el = editor.current as any
+  el.style = (el.style ?? '').replace(/(?<!-)color:[^;]+;?/g, '')
+  el.css.css = clean(el.css.css.split(' ').filter((cl: string) => !TEXT_COLOR_CLASS_RE.test(cl)).join(' '))
+  showTextPicker.value = false
 }
 
 function pickFillColor(e: Event) {
@@ -261,25 +614,72 @@ function clearFill() {
   showFillPicker.value = false
 }
 
-function setImage() {
+// Port of the source's BlockImageUrl.vue's URL + "Alternative text" fields
+// (its own Caption field isn't ported - no UI here reads element.image.
+// caption anywhere, so it'd be a field with nowhere to show up; Unsplash
+// search isn't ported either, superseded by the real DAM-backed
+// MediaPickerModal.vue). Alt is only shown/meaningful for an actual
+// `<img>` element (`element.element === 'img'`), matching the source's own
+// `v-if="...element==='img'"` gate - a CSS background-image has no `alt`
+// concept in HTML at all.
+function openImagePicker() {
   if (!editor.current) return
-  const url = window.prompt('Image URL', editor.current.image?.url || '')
-  if (url) editor.current.image = { url }
+  imageUrlDraft.value = editor.current.image?.url || ''
+  imageAltDraft.value = editor.current.image?.alt || ''
+  showImagePicker.value = true
+}
+
+function applyImage() {
+  if (!editor.current) return
+  editor.current.image = { url: imageUrlDraft.value, alt: imageAltDraft.value || null }
+  showImagePicker.value = false
+}
+
+function clearImage() {
+  if (!editor.current) return
+  editor.current.image = { url: null, alt: null }
+  imageUrlDraft.value = ''
+  imageAltDraft.value = ''
+  showImagePicker.value = false
 }
 
 // The picker emits a *stable path* (pimcorePath), never a resolved URL -
-// see resolve-display-url.ts/dam-api.ts for why. This is the only real
-// difference from setImage() above (which stores whatever URL string the
-// user pastes, verbatim, unresolved either way).
+// see resolve-display-url.ts/dam-api.ts for why. Preserves any alt text
+// already set - picking a new image from the DAM shouldn't silently wipe
+// out alt text the user already typed.
 function onMediaPicked(pimcorePath: string) {
-  if (editor.current) editor.current.image = { url: pimcorePath }
+  if (editor.current) editor.current.image = { ...editor.current.image, url: pimcorePath }
   showMediaPicker.value = false
 }
 
-function setLink() {
+// Not a port - the source never asks for a target at all (see
+// preview/BlockContainerPreview.vue's own comment: its wrapping <a> has no
+// target attribute anywhere). `linkTarget` is a new field, not in
+// ElementsClass.js's constructor (kept byte-for-byte unmodified) - just
+// assigned dynamically like `image`/`gsap.animation` already are elsewhere
+// in this app, with ElementsClass.d.ts's hand-written shim updated to
+// acknowledge it as an optional field.
+function openLinkPicker() {
   if (!editor.current) return
-  const url = window.prompt('Link URL', editor.current.link || '')
-  if (url !== null) editor.current.link = url
+  linkUrlDraft.value = editor.current.link || ''
+  linkTargetDraft.value = (editor.current as any).linkTarget || '_self'
+  showLinkPicker.value = true
+}
+
+function applyLink() {
+  if (!editor.current) return
+  editor.current.link = linkUrlDraft.value
+  ;(editor.current as any).linkTarget = linkTargetDraft.value
+  showLinkPicker.value = false
+}
+
+function clearLink() {
+  if (!editor.current) return
+  editor.current.link = ''
+  ;(editor.current as any).linkTarget = '_self'
+  linkUrlDraft.value = ''
+  linkTargetDraft.value = '_self'
+  showLinkPicker.value = false
 }
 
 function pickAnimation(e: Event) {

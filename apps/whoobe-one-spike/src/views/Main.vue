@@ -1,6 +1,6 @@
 <template>
   <div class="h-full flex flex-col items-center justify-center gap-4 bg-gray-100 text-black">
-    <h1 class="text-2xl font-bold text-gray-800">Whoobe One Studio - Phase 0/1 spike</h1>
+    <h1 class="text-2xl font-bold text-gray-800 bg-violet-500 text-white py-2 px-4 rounded-md">Whoobe One Studio</h1>
     <p class="text-gray-500 max-w-md text-center text-sm">
       Minimal dashboard stub - the source repo's real Dashboard.vue (New Template / Templates / UI Kit / Settings) is
       Phase 3 scope (blocks/gallery, blocks/desktop). This route only exists to prove Vue Router 4 actually works

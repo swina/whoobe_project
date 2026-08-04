@@ -14,7 +14,15 @@ function resolveDatabaseUrl(): string {
 }
 
 export default defineConfig({
-  schema: ['./src/db/auth-schema.ts', './src/db/dam-schema.ts', './src/db/cms-schema.ts', './src/db/snippet-schema.ts'],
+  schema: [
+    './src/db/auth-schema.ts',
+    './src/db/dam-schema.ts',
+    './src/db/cms-schema.ts',
+    './src/db/snippet-schema.ts',
+    './src/db/whoobe-one-snippet-schema.ts',
+    './src/db/whoobe-one-template-schema.ts',
+    './src/db/whoobe-one-kit-schema.ts',
+  ],
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
