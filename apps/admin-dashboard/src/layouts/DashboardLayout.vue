@@ -205,6 +205,7 @@
             </div>
             <MasterAssetTab v-else-if="tab.type === 'item' && tab.itemKind === 'asset' && tab.itemId" :asset-id="tab.itemId" />
             <MasterDocumentTab v-else-if="tab.type === 'item' && tab.itemKind === 'document' && tab.itemId" :document-id="tab.itemId" />
+            <MasterPageTab v-else-if="tab.type === 'item' && tab.itemKind === 'page' && tab.itemId" :page-id="tab.itemId" />
           </div>
         </template>
       </main>
@@ -220,6 +221,7 @@ import {
   Database,
   FolderArchive,
   FileText,
+  FileStack,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -239,14 +241,18 @@ import { getIconForFileType } from '../utils/asset-file-icons'
 import SidebarFolderNode from '../components/dam/SidebarFolderNode.vue'
 import MasterAssetTab from '../components/dam/MasterAssetTab.vue'
 import MasterDocumentTab from '../components/documents/MasterDocumentTab.vue'
+import MasterPageTab from '../components/pages/MasterPageTab.vue'
 import OverviewView from '../views/OverviewView.vue'
 import ObjectsView from '../views/ObjectsView.vue'
 import AssetsView from '../views/AssetsView.vue'
 import DocumentsView from '../views/DocumentsView.vue'
+import PagesView from '../views/PagesView.vue'
 import SettingsView from '../views/SettingsView.vue'
+import { usePagesStore } from '../stores/pagesStore'
 
 const damStore = useDamStore()
 const documentsStore = useDocumentsStore()
+const pagesStore = usePagesStore()
 const tabsStore = useTabsStore()
 const toastStore = useToastStore()
 const authStore = useAuthStore()
@@ -273,6 +279,7 @@ const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Data Objects', section: 'objects', icon: Database },
   { name: 'Assets', section: 'assets', icon: FolderArchive },
   { name: 'Documents', section: 'documents', icon: FileText },
+  { name: 'Pages', section: 'pages', icon: FileStack },
   { name: 'Settings', section: 'settings', icon: Settings }
 ]
 
@@ -281,6 +288,7 @@ const sectionComponents: Record<SectionKind, any> = {
   objects: ObjectsView,
   assets: AssetsView,
   documents: DocumentsView,
+  pages: PagesView,
   settings: SettingsView
 }
 
@@ -289,6 +297,7 @@ const sectionLabels: Record<SectionKind, string> = {
   objects: 'Data Objects',
   assets: 'Assets',
   documents: 'Documents',
+  pages: 'Pages',
   settings: 'Settings'
 }
 
@@ -297,6 +306,7 @@ const sectionIcons: Record<SectionKind, any> = {
   objects: Database,
   assets: FolderArchive,
   documents: FileText,
+  pages: FileStack,
   settings: Settings
 }
 
@@ -325,6 +335,10 @@ function tabLabel(tab: MainTab): string {
     const document = documentsStore.documents.find((d) => d.id === tab.itemId)
     return document?.title || 'Document'
   }
+  if (tab.type === 'item' && tab.itemKind === 'page' && tab.itemId) {
+    const page = pagesStore.pages.find((p) => p.id === tab.itemId)
+    return page?.title || 'Page'
+  }
   return 'Untitled'
 }
 
@@ -335,6 +349,9 @@ function tabIcon(tab: MainTab) {
   if (tab.type === 'item' && tab.itemKind === 'asset' && tab.itemId) {
     const asset = damStore.assets.find((a) => a.id === tab.itemId)
     return asset ? getIconForFileType(asset.fileType) : FileText
+  }
+  if (tab.type === 'item' && tab.itemKind === 'page' && tab.itemId) {
+    return FileStack
   }
   return FileText
 }
