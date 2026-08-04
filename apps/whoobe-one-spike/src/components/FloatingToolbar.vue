@@ -311,12 +311,12 @@
     </div>
     <label title="Animation (GSAP)" class="toolbar-icon relative">
       <Sparkles class="w-4 h-4" />
-      <select class="absolute inset-0 opacity-0 cursor-pointer" :value="editor.current?.gsap.animation ?? ''" @change="pickAnimation">
+      <select class="absolute inset-0 opacity-0 cursor-pointer" :value="editor.current?.gsap?.animation ?? ''" @change="pickAnimation">
         <option value="">None</option>
         <option v-for="name in gsapEffects" :key="name" :value="name">{{ name }}</option>
       </select>
     </label>
-    <button v-if="editor.current?.gsap.animation" title="Preview animation" class="toolbar-icon" @click="replayAnimation"><Play class="w-4 h-4" /></button>
+    <button v-if="editor.current?.gsap?.animation" title="Preview animation" class="toolbar-icon" @click="replayAnimation"><Play class="w-4 h-4" /></button>
     <button title="Save as snippet" class="toolbar-icon" @click="showSaveSnippet = true"><Save class="w-4 h-4" /></button>
     <button title="Delete" class="toolbar-icon text-rose-500" :disabled="isRoot" @click="remove"><Trash2 class="w-4 h-4" /></button>
   </div>
@@ -730,6 +730,11 @@ function clearLink() {
 function pickAnimation(e: Event) {
   if (!editor.current) return
   const value = (e.target as HTMLSelectElement).value
+  // `gsap` is a real Element default (ElementsClass.js's constructor), but
+  // content that never went through `new Element()` - migrated Pimcore
+  // pages (pimcore-page-converter.ts's baseElement()), or any page
+  // authored directly via the core-api - won't have it.
+  if (!editor.current.gsap) (editor.current as any).gsap = { animation: null, ease: null, duration: 0, delay: 0 }
   editor.current.gsap.animation = value || null
   if (value) previewAnimation(editor.current)
 }
