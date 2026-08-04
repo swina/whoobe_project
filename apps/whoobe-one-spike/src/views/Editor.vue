@@ -21,16 +21,37 @@
 // own actions.js (createEmptyBlock()/openDefaultBlock() both set `page`
 // and `document` from the same object reference). This is what
 // database-actions.ts's savePage()/loadPage() persist to IndexedDB.
+//
+// CMS integration plan (docs/plans/cms/whoobe-one-editor-integration-
+// plan.md §6, Phase 3) addition: two query params this route now
+// recognizes, both read once here rather than needing a whole bridge -
+// `pageId` (open that specific real page instead of seeding the demo
+// document - apps/admin-dashboard's own WhoobeOneEmbed.vue is the one
+// real caller so far) and `parentOrigin` (marks this as running embedded -
+// see store/editor.ts's own `embedded`/`setEmbedded()` comment for what
+// that actually gates).
 import { onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
 import BlockEditor from '../components/BlockEditor.vue'
 import { useEditorStore } from '../store/editor'
+import { loadPage } from '../scripts/database-actions'
 import { clean } from '../helpers'
 
 const editor = useEditorStore()
+const route = useRoute()
 
-onMounted(() => {
+onMounted(async () => {
+  const parentOrigin = typeof route.query.parentOrigin === 'string' ? route.query.parentOrigin : null
+  if (parentOrigin) editor.setEmbedded(true, parentOrigin)
+
+  const pageId = typeof route.query.pageId === 'string' ? route.query.pageId : null
+  if (pageId) {
+    await loadPage(editor, pageId)
+    return
+  }
+
   if (editor.document) return
 
   const root = new Element().Flexbox({ direction: 'col' }).setIcon('dashboard').setTag('document')

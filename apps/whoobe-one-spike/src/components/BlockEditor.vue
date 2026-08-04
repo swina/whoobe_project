@@ -1,17 +1,25 @@
 <template>
   <div class="h-full flex flex-col bg-gray-100 text-black">
     <div class="shrink-0 h-10 px-4 flex items-center gap-2 bg-white border-b shadow-sm text-sm">
-      <span class="font-semibold text-gray-700 bg-violet-600 text-white px-2 py-1 rounded-md">Whoobe One Spike</span>
-      <span class="text-gray-400">|</span>
-      <span class="text-gray-500">
-        selected: <b>{{ editor.current ? editor.current.element + ' (' + editor.current.id + ')' : 'none' }}</b>
-      </span>
+      <template v-if="!editor.embedded">
+        <span class="font-semibold text-gray-700 bg-violet-600 text-white px-2 py-1 rounded-md">Whoobe One Spike</span>
+        <span class="text-gray-400">|</span>
+        <span class="text-gray-500">
+          selected: <b>{{ editor.current ? editor.current.element + ' (' + editor.current.id + ')' : 'none' }}</b>
+        </span>
+      </template>
       <div class="flex-1"></div>
 
       <span v-if="saveState" class="text-[11px] text-gray-400 mr-1">{{ saveState }}</span>
 
       <button :class="topbarBtnClass" @click="onNew"><FilePlus class="w-3.5 h-3.5" /> New</button>
-      <button :class="topbarBtnClass" @click="showTemplateGallery = true"><FolderOpen class="w-3.5 h-3.5" /> Templates</button>
+      <!-- Hidden when embedded (CMS integration plan §6/§7) - the host's
+           own page-listing view is what's reachable in that case, this
+           app's own Templates gallery would be a redundant second way to
+           browse the same content. -->
+      <button v-if="!editor.embedded" :class="topbarBtnClass" @click="showTemplateGallery = true">
+        <FolderOpen class="w-3.5 h-3.5" /> Templates
+      </button>
       <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> Save Template</button>
       <button v-if="editor.page?.id" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
       <button :class="topbarBtnClass" @click="showAddToKit = true"><PackagePlus class="w-3.5 h-3.5" /> Add to Kit</button>

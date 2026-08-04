@@ -565,6 +565,19 @@ Verified directly: replicated `visibleGroups()`'s own gating logic and confirmed
 
 Clean typecheck and production build (2016 modules, up from 2014 for the one new file). Both changed files confirmed transforming through the dev server (HTTP 200).
 
+## Round 41: embeddable in admin-dashboard - `?pageId=`/`?parentOrigin=`, no bridge needed
+
+Phase 3 of `docs/plans/cms/whoobe-one-editor-integration-plan.md`. Unlike `whoobe-studio` (embedded via a full `postMessage` bridge, since it has no way to load/save a document on its own), this app already makes its own real API calls for everything it persists - so embedding it needed no bridge at all, just two query params `/editor` now reads once on mount:
+
+- **`pageId`** - loads that real page (`loadPage()`, already existing) instead of seeding the standalone demo document.
+- **`parentOrigin`** - sets a new `editor.embedded`/`editor.parentOrigin` store state (`store/editor.ts`), read by `BlockEditor.vue` to hide standalone-only chrome (its own branding, the "Templates" gallery button - redundant once pages are reached from the host's own nav instead, per the integration plan's own §7). Not validated or used for any security check the way `whoobe-studio`'s own bridge needs its origin to be - nothing is exchanged bidirectionally here that would need it, it's kept only in case a future need arises.
+
+The actual iframe wrapper lives on the `admin-dashboard` side (`components/pages/WhoobeOneEmbed.vue`, new) - still a real `<iframe>` (this app runs Tailwind entirely at runtime, scanning whatever DOM it's loaded into - mounting its components directly inside `admin-dashboard`'s own document would mean that scanner running against that app's *entire* page), but genuinely just the iframe plus the query string - no bridge class, no save callback to wire up, since this app persists its own content directly against `core-api` already. Not wired into any real view/route yet - that's the next phase's job, once there's an actual page-listing view to open it from.
+
+Verified directly (no headless browser available in this environment): replicated the query-param parsing (including Vue Router's array-on-a-repeated-key edge case, handled safely rather than crashing), `setEmbedded()`'s state update, and the `v-if="!embedded"` conditionals that hide the branding/Templates button - all confirmed correct. The embed URL itself confirmed to round-trip correctly (real port, real path, both params intact) via Node's own `URL`/`URLSearchParams`, and `/editor?pageId=...&parentOrigin=...` confirmed served by the real dev server (HTTP 200).
+
+Clean typecheck and production build for both apps (`whoobe-one-spike`: 2016 modules, unchanged; `admin-dashboard`: clean, one new unused-so-far file).
+
 ## Verification performed
 
 - `pnpm typecheck` (`vue-tsc --noEmit`) passes clean.
