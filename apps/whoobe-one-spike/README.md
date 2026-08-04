@@ -555,6 +555,16 @@ Verified directly against Vue's own real server-side renderer (`vue/server-rende
 
 Clean typecheck and production build (2014 modules, unchanged - three edited files, no new ones). All confirmed transforming through the dev server (HTTP 200). **Not yet interactively confirmed**: clicking through the new Semantic tag control in a real browser - the underlying rendering mechanism was verified directly against Vue's real renderer, same gap as every interactive feature in this file.
 
+## Round 40: the semantic tag control, also in Customize
+
+Requested as a second place to reach Round 39's new setting: `TailwindCustomizer.vue` (the "Customize" sidebar tab) gained its own "semantic" group, a plain `<select>` (`SemanticControl.vue`, new) listing the same `tw.classes.js` `semantics` list `FloatingToolbar.vue`'s own popover already uses. Both controls read/write the identical `editor.current.semantic` field - there's no separate state to keep in sync, picking a tag in one place shows up in the other immediately.
+
+Gated on `type === 'container'`, unlike the always-shown Custom Classes group - a leaf element's own `semantic` would be real, storable data, but nothing renders it (`BlockElement.vue` only ever reads `element`, never `semantic`), so showing this control for one would silently do nothing rather than just "not apply."
+
+Verified directly: replicated `visibleGroups()`'s own gating logic and confirmed a selected container gets the new group while a selected leaf element doesn't, with both still getting Custom Classes either way.
+
+Clean typecheck and production build (2016 modules, up from 2014 for the one new file). Both changed files confirmed transforming through the dev server (HTTP 200).
+
 ## Verification performed
 
 - `pnpm typecheck` (`vue-tsc --noEmit`) passes clean.

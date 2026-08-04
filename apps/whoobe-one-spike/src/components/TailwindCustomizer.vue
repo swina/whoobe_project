@@ -61,6 +61,7 @@ import CheckboxControl from './tailwind-controls/CheckboxControl.vue'
 import ButtonControl from './tailwind-controls/ButtonControl.vue'
 import BorderColorControl from './tailwind-controls/BorderColorControl.vue'
 import CustomClassesControl from './tailwind-controls/CustomClassesControl.vue'
+import SemanticControl from './tailwind-controls/SemanticControl.vue'
 
 interface TwControl {
   name: string
@@ -87,10 +88,25 @@ const CUSTOM_CLASSES_GROUP: TwGroup = {
   components: [{ name: 'CustomClasses', attr: 'css' }],
 }
 
+// Also not from tw.groups.js - a second place to reach the same setting
+// FloatingToolbar.vue's own "Semantic tag" popover already controls (both
+// read/write the identical `editor.current.semantic` field, so there's
+// nothing to keep in sync between them). Gated on `type === 'container'`,
+// unlike Custom Classes above - a leaf element's own `semantic` would be
+// real, storable data, but nothing ever reads it (BlockElement.vue only
+// ever renders its `element` field), so showing this control for one
+// would silently do nothing, not just "not apply to every node" the way
+// e.g. the grid-only ported groups already don't.
+const SEMANTIC_GROUP: TwGroup = {
+  label: 'semantic',
+  components: [{ name: 'Semantic', attr: 'semantic', title: 'Renders as' }],
+}
+
 const visibleGroups = computed(() => {
   if (!editor.current) return []
   const tag = editor.current.tag
-  return [...groups.filter((g) => !g.filter || g.filter.includes(tag)), CUSTOM_CLASSES_GROUP]
+  const isContainer = (editor.current as any).type === 'container'
+  return [...groups.filter((g) => !g.filter || g.filter.includes(tag)), ...(isContainer ? [SEMANTIC_GROUP] : []), CUSTOM_CLASSES_GROUP]
 })
 
 const componentMap: Record<string, unknown> = {
@@ -102,6 +118,7 @@ const componentMap: Record<string, unknown> = {
   Button: ButtonControl,
   BorderColor: BorderColorControl,
   CustomClasses: CustomClassesControl,
+  Semantic: SemanticControl,
 }
 
 function controlComponent(name: string) {
