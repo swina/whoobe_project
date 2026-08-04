@@ -1,5 +1,12 @@
 import mysql from 'mysql2/promise';
-import { registerPimcoreSourceAdapter, type PimcoreSourceAdapter, type PimcoreDocumentSummary } from '../source-adapter.js';
+import {
+  registerPimcoreSourceAdapter,
+  type PimcoreSourceAdapter,
+  type PimcoreDocumentSummary,
+  type PimcoreObjectClassSummary,
+  type PimcoreObjectSummary,
+  type RawPimcoreObjectAttributes,
+} from '../source-adapter.js';
 import { normalizeDocumentElements, type RawDocumentElementRow } from '../pimcore-serialized-data.js';
 
 /**
@@ -113,6 +120,77 @@ export function createMysqlPimcoreSourceAdapter(config: MysqlPimcoreSourceConfig
       }));
 
       return normalizeDocumentElements(rawRows, { resolveAssetPath });
+    },
+
+    // Data Object support - see docs/plans/datamodel/advanced-data-
+    // modeling-plan.md §5.2/§8 Phase 3. Table names derive directly from
+    // the numeric class id (`object_<classId>`, `object_localized_<classId>_
+    // <locale>`, `object_relations_<classId>`) per real Pimcore convention -
+    // confirmed against a live install, not assumed from documentation.
+    async listObjectClasses(): Promise<PimcoreObjectClassSummary[]> {
+      const conn = requireConnection();
+      const [rows] = await conn.query('SELECT id, name FROM `classes`');
+      return (rows as { id: number; name: string }[]).map((row) => ({ id: row.id, name: row.name }));
+    },
+
+    async listObjects(classId: number): Promise<PimcoreObjectSummary[]> {
+      const conn = requireConnection();
+      const [rows] = await conn.query(
+        "SELECT o_id, o_classId, o_className, o_key, o_path FROM `objects` WHERE o_classId = ? AND o_type = 'object'",
+        [classId]
+      );
+      return (rows as { o_id: number; o_classId: number; o_className: string; o_key: string; o_path: string }[]).map((row) => ({
+        id: row.o_id,
+        classId: row.o_classId,
+        className: row.o_className,
+        key: row.o_key,
+        path: row.o_path,
+      }));
+    },
+
+    async getObjectAttributes(classId: number, objectId: number): Promise<RawPimcoreObjectAttributes> {
+      const conn = requireConnection();
+
+      const [columnRows] = await conn.query(`SELECT * FROM \`object_${classId}\` WHERE oo_id = ? LIMIT 1`, [objectId]);
+      const columns = (columnRows as Record<string, unknown>[])[0] ?? {};
+
+      // Discover this class's own localized-field tables rather than
+      // assuming a fixed locale list - a class with no localized fields
+      // at all has none of these tables (Localizedfields is optional per
+      // class, confirmed: not every real class in this install uses it).
+      const [localeTables] = await conn.query(
+        "SHOW TABLES LIKE ?",
+        [`object_localized_${classId}_%`]
+      );
+      const localizedByLocale: Record<string, Record<string, unknown>> = {};
+      for (const tableRow of localeTables as Record<string, string>[]) {
+        const tableName = Object.values(tableRow)[0];
+        const locale = tableName.slice(`object_localized_${classId}_`.length);
+        const [localeRows] = await conn.query(`SELECT * FROM \`${tableName}\` WHERE oo_id = ? LIMIT 1`, [objectId]);
+        const row = (localeRows as Record<string, unknown>[])[0];
+        if (row) localizedByLocale[locale] = row;
+      }
+
+      // The relations table only exists for classes with at least one
+      // relation-shaped field - absence is a real, expected case (a
+      // MySQL "table doesn't exist" error), not something to surface as
+      // a real migration failure.
+      let relations: RawPimcoreObjectAttributes['relations'] = [];
+      try {
+        const [relationRows] = await conn.query(
+          `SELECT fieldname, type, dest_id FROM \`object_relations_${classId}\` WHERE src_id = ? ORDER BY fieldname, position`,
+          [objectId]
+        );
+        relations = (relationRows as { fieldname: string; type: string; dest_id: number }[]).map((row) => ({
+          fieldname: row.fieldname,
+          type: row.type,
+          destId: row.dest_id,
+        }));
+      } catch (err: any) {
+        if (err?.code !== 'ER_NO_SUCH_TABLE') throw err;
+      }
+
+      return { columns, localizedByLocale, relations };
     },
   };
 }
