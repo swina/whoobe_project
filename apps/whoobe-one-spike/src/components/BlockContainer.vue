@@ -1,5 +1,6 @@
 <template>
-  <div
+  <component
+    :is="semantic"
     :id="doc.id"
     :class="[classe, 'dragula-container', groupClass]"
     :style="stile"
@@ -21,7 +22,7 @@
       <BlockIFrame v-else-if="child.tag === 'youtube' || child.tag === 'vimeo'" :element="child" :level="level + 1" />
       <BlockElement v-else :element="child" :level="level + 1" />
     </template>
-  </div>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -96,6 +97,24 @@ const editor = useEditorStore()
 const isSelected = computed(() => editor.current?.id === props.doc.id)
 const groupClass = computed(() => `group/${props.doc.id}`)
 const tagOpacityClass = computed(() => (isSelected.value ? 'opacity-100' : `opacity-0 group-hover/${props.doc.id}:opacity-100`))
+
+// Was a literal <div> - real, reported limitation, surfaced while
+// retargeting the Pimcore migration pipeline at whoobe-one-spike (docs/
+// plans/cms/whoobe-one-editor-integration-plan.md, Phase 2): every
+// container rendered as a div regardless of any tag/element field, so
+// real semantic markup (a migrated brick's own <section>/<aside>/
+// <header>, or just wanting a <nav>/<main>/<article> while building a
+// page from scratch) had nowhere to go. `semantic` itself isn't new -
+// `Element.setSemantic()` (ElementsClass.js) and the `semantic?: string`
+// field (ElementsClass.d.ts) already existed, already used by `Form()`'s
+// own builder, and preview/BlockContainerPreview.vue already reads it
+// (`:is="semantic"`) - only the *editing* canvas here never did, so a
+// form (the one built-in case already using this) always LOOKED like a
+// div while being edited even though it correctly rendered as a real
+// <form> in preview. FloatingToolbar.vue's new "Semantic tag" control is
+// what actually lets a user set this for any container now, not just
+// Form()'s own builder default.
+const semantic = computed(() => (props.doc as any).semantic || 'div')
 
 // Not from the source - a quick "does this container carry any of its own
 // styling" signal, requested directly. `css.container` doesn't qualify on

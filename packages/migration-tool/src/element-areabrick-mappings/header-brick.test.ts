@@ -14,21 +14,26 @@ describe('header-brick Element mapping (Phase 2 retarget of areabrick-mappings/h
     },
   };
 
-  it('produces the same visual structure as the WhoobeBlockNode version, in Element shape', () => {
+  it('produces the same visual structure as the WhoobeBlockNode version, in Element shape, with real semantic tags', () => {
     const result = PimcorePageConverter.convertAreablockBrickToElement(0, brick, 'https://cdn.example.com');
     expect(result).not.toBeNull();
+    expect(result!.semantic).toBe('section');
     expect(result!.css.container).toContain('grid-cols-[auto_minmax(auto,1440px)_auto]');
     expect(result!.style).toBe('background-image:url(https://cdn.example.com/communication/hero.jpg);');
 
     const [videoWrap, content] = result!.blocks;
+    expect(videoWrap.semantic).toBe('aside');
     expect(videoWrap.css.container).toContain('col-start-2 row-start-1');
     expect(videoWrap.blocks[0].src).toBe('https://cdn.example.com/communication/hero.mp4');
     expect(videoWrap.blocks[0].options?.autoplay).toBe(true);
 
+    expect(content.semantic).toBe('header');
     expect(content.css.container).toContain('col-start-2 row-start-1');
     const wrapper = content.blocks[0];
+    expect(wrapper.semantic).toBeUndefined(); // sb_wrapper is a plain div in the real source too
     expect(wrapper.css.container).toContain('grid');
     const hgroup = wrapper.blocks[0];
+    expect(hgroup.semantic).toBe('hgroup');
     expect(hgroup.css.css).toContain('self-end');
 
     const [title, text, cta] = hgroup.blocks;
@@ -60,13 +65,16 @@ describe('header-brick Element mapping (Phase 2 retarget of areabrick-mappings/h
     expect(result!.style).toBe('background-image:url(/communication/hero.jpg);');
   });
 
-  it('every node in the tree is a real container (BlockContainer.vue) - the known, flagged semantic-tag limitation', () => {
-    // Not asserting real <aside>/<header>/<hgroup> tags survive - they
-    // can't, in the current whoobe-one-spike container model (see this
-    // mapping file's own header comment). Asserting instead that the tree
-    // is still structurally sound Element data either way.
+  it('containers still carry a plain `element: "div"` alongside their real `semantic` tag', () => {
+    // For a *container*, `element` itself is inert - whoobe-one-spike's
+    // BlockContainer.vue/BlockSlider.vue only ever read `semantic` (falling
+    // back to 'div') to decide the real rendered tag, never `element`.
+    // Kept here anyway for consistency with every other Element this
+    // converter produces (leaf nodes' `element` IS load-bearing, read
+    // directly by BlockElement.vue), not because a container's own
+    // `element` value does anything.
     const result = PimcorePageConverter.convertAreablockBrickToElement(0, brick, '');
     expect(result!.element).toBe('div');
-    expect(result!.blocks.every((b) => b.element === 'div' || b.blocks.length === 0)).toBe(true);
+    expect([result, ...result!.blocks].every((n) => n!.element === 'div' || n!.blocks.length === 0)).toBe(true);
   });
 });

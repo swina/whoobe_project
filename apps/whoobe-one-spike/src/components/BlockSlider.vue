@@ -1,5 +1,6 @@
 <template>
-  <div
+  <component
+    :is="semantic"
     :id="doc.id"
     :class="[classe, 'dragula-container', groupClass]"
     :style="stile"
@@ -77,7 +78,7 @@
       <BlockElement v-else :element="activeSlide" :level="level + 1" />
     </template>
     <div v-else class="text-xs text-gray-400 italic py-6 text-center">No slides yet - click "+" to add one.</div>
-  </div>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -183,6 +184,12 @@ const tagBgClass = computed(() => {
   const hasCustomCss = !!(doc.css?.css?.trim() || doc.style?.trim())
   return hasCustomCss ? 'bg-violet-500' : 'bg-red-500'
 })
+
+// Same rendering-tag fix as BlockContainer.vue's own `semantic` computed
+// (see that file's comment for the fuller reasoning) - a Slider is a
+// container too (`type: 'container'`), so it had the exact same "always a
+// div, even if `semantic` is set" gap.
+const semantic = computed(() => (props.doc as any).semantic || 'div')
 
 const classe = computed(() => {
   const doc = props.doc as any

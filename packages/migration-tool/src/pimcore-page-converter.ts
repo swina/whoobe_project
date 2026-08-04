@@ -54,6 +54,12 @@ export interface WhoobeOneElementNode {
   src?: string;
   options?: { controls?: boolean; autoplay?: boolean; loop?: boolean };
   level?: number;
+  // Real HTML tag a *container* renders as (BlockContainer.vue/BlockSlider
+  // .vue's own `:is="semantic || 'div'"`) - see element-areabrick-mappings/
+  // header-brick.ts's own comment for why this matters for a faithful
+  // Areablock port specifically (the source's real markup uses <section>/
+  // <aside>/<header>/<hgroup>, not generic <div>s).
+  semantic?: string;
 }
 
 export interface PimcoreConvertedPage {
