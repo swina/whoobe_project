@@ -7,7 +7,7 @@ import type { ClassFieldDefinition } from '@pimcore-custom/core';
 // upsertDataObjectByPimcoreId-backed resolvers would do - see
 // docs/plans/datamodel/advanced-data-modeling-plan.md §5.2/§8 Phase 3.
 const resolveAssetPath = async (assetId: number) => (assetId === 999 ? null : `/assets/${assetId}.jpg`);
-const resolveRelation = async (targetClassName: string, pimcoreId: string) =>
+const resolveRelation = async (targetClassName: string, pimcoreId: string, _locale: string) =>
   targetClassName === 'Category' && pimcoreId === '1524' ? 'real-category-uuid' : null;
 
 describe('PimcoreObjectConverter (docs/plans/datamodel/advanced-data-modeling-plan.md §5.2, Phase 3)', () => {
@@ -49,6 +49,32 @@ describe('PimcoreObjectConverter (docs/plans/datamodel/advanced-data-modeling-pl
     expect(it.attributes.name).toBe('Normale');
     expect(en.attributes.order).toBe(2);
     expect(it.attributes.order).toBe(2);
+  });
+
+  it('passes the current locale into resolveRelation, so a non-localized relation field still points at the target\'s matching-locale sibling row - a real Phase 4 finding (docs/plans/datamodel/advanced-data-modeling-plan.md), not designed in from the start', async () => {
+    // Simulates a real, already-migrated Category whose 'en' and 'it'
+    // rows are different internal uuids (real target's own translation
+    // pair) - a non-localized relation field on the referencing object
+    // (e.g. Product's `category`) should resolve to whichever sibling
+    // matches the row currently being converted, not always the same one.
+    const localeAwareResolve = async (targetClassName: string, pimcoreId: string, locale: string) => {
+      if (targetClassName !== 'Category' || pimcoreId !== '1524') return null;
+      return locale === 'it' ? 'category-it-uuid' : 'category-en-uuid';
+    };
+    const fields: ClassFieldDefinition[] = [
+      { name: 'name', title: 'Name', fieldType: 'input', localized: true },
+      { name: 'category', title: 'Category', fieldType: 'select', relationTarget: 'Category' },
+    ];
+    const raw: RawPimcoreObjectAttributes = {
+      columns: { category: '1524' },
+      localizedByLocale: { en: { name: 'Standard' }, it: { name: 'Normale' } },
+      relations: [],
+    };
+    const results = await PimcoreObjectConverter.convertObject(raw, fields, { resolveAssetPath, resolveRelation: localeAwareResolve });
+    const en = results.find((r) => r.locale === 'en')!;
+    const it = results.find((r) => r.locale === 'it')!;
+    expect(en.attributes.category).toEqual({ id: 'category-en-uuid' });
+    expect(it.attributes.category).toEqual({ id: 'category-it-uuid' });
   });
 
   it('resolves a relation-flavored select to an already-migrated target, or a stated { id: null, pimcoreId } when unresolved', async () => {

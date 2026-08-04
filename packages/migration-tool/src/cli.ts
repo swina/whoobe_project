@@ -200,9 +200,27 @@ async function migrateObjects(flags: CliFlags): Promise<void> {
     const toProcess = flags.limit ? objects.slice(0, flags.limit) : objects;
     console.log(`[ETL] Found ${objects.length} "${flags.class}" object(s)${flags.limit ? `, processing first ${toProcess.length}` : ''}.`);
 
-    const resolveRelation = async (targetClassName: string, pimcoreId: string): Promise<string | null> => {
-      const target = await getDataObjectByPimcoreId(pimcoreId);
-      return target ? target.id : null;
+    // One Pimcore object becomes one *row per locale* (§4.4) - `pimcoreId`
+    // has to be locale-qualified (`<rawId>:<locale>`) so each locale's row
+    // gets its own real upsert-by-pimcoreId key instead of colliding on
+    // the same conflict target. A real Phase 4 finding, not designed in
+    // from the start: the first pilot run used the bare raw id for every
+    // locale, so each object's later locale silently overwrote the
+    // earlier one via the same ON CONFLICT target - caught by round-trip
+    // testing the migrated data, not by the CLI's own success count
+    // (Postgres upserts "succeed" either way).
+    const objectPimcoreId = (rawId: number, locale: string) => `${rawId}:${locale}`;
+
+    const resolveRelation = async (targetClassName: string, pimcoreId: string, locale: string): Promise<string | null> => {
+      const exact = await getDataObjectByPimcoreId(objectPimcoreId(Number(pimcoreId), locale));
+      if (exact) return exact.id;
+      // Fall back to the default locale's sibling row if this exact
+      // locale hasn't been migrated for the target (e.g. the target class
+      // has fewer locales than the referencing one) - a real relation is
+      // still more useful than none, and 'en' is this schema's own
+      // default locale elsewhere (data-objects-schema.ts).
+      const fallback = await getDataObjectByPimcoreId(objectPimcoreId(Number(pimcoreId), 'en'));
+      return fallback ? fallback.id : null;
     };
 
     let succeeded = 0;
@@ -216,19 +234,37 @@ async function migrateObjects(flags: CliFlags): Promise<void> {
           resolveRelation,
         });
 
+        // Every locale row for this one Pimcore object shares one
+        // translationGroupId - reuse an already-migrated sibling's group
+        // (idempotent re-runs) rather than minting a fresh, disconnected
+        // one every time.
+        let translationGroupId: string | undefined;
+        for (const { locale } of converted) {
+          const existing = await getDataObjectByPimcoreId(objectPimcoreId(obj.id, locale));
+          if (existing) {
+            translationGroupId = existing.translationGroupId;
+            break;
+          }
+        }
+
         for (const { locale, attributes } of converted) {
           if (flags.dryRun) {
             console.log(`[dry-run] Object ${obj.id} (${obj.key}, ${locale}) -> ${obj.path}${obj.key}`);
             console.log(JSON.stringify(attributes, null, 2));
           } else {
-            await upsertDataObjectByPimcoreId({
-              pimcoreId: `${obj.id}`,
+            const created = await upsertDataObjectByPimcoreId({
+              pimcoreId: objectPimcoreId(obj.id, locale),
               classId: dataClass.id,
               key: obj.key,
               path: obj.path,
               locale,
+              translationGroupId,
               attributes,
             });
+            // The first locale processed for a brand-new object mints its
+            // own group id (the schema column's own defaultRandom()) -
+            // reuse that same one for this object's remaining locales.
+            translationGroupId = created.translationGroupId;
           }
         }
         if (!flags.dryRun) console.log(`[ETL] Migrated object ${obj.id} -> ${obj.key} (${converted.length} locale row(s))`);
