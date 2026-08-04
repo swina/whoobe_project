@@ -40,6 +40,17 @@ import {
   createWhoobePage,
   updateWhoobePage,
   deleteWhoobePage,
+  listDataClasses,
+  getDataClass,
+  createDataClass,
+  updateDataClass,
+  deleteDataClass,
+  listDataObjects,
+  getDataObject,
+  listDataObjectTranslations,
+  createDataObject,
+  updateDataObject,
+  deleteDataObject,
   SESSION_COOKIE_NAME,
   generateTotpSecret,
   totpKeyUri,
@@ -818,6 +829,212 @@ app.delete('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE)
   } catch (error: any) {
     console.error('Delete whoobe-one page error:', error);
     res.status(500).json({ error: error.message || 'Failed to delete page' });
+  }
+});
+
+// Data Object classes (Pimcore's "Classes" concept) - see docs/plans/
+// datamodel/advanced-data-modeling-plan.md §4.1/§6. Reuses the same
+// PERMISSIONS.OBJECTS_* triad every other resource in this file does
+// (documents/snippets/templates/kits/pages) rather than inventing
+// class-specific permission strings - that's this codebase's own existing
+// convention for "any admin-managed content", not something this plan
+// introduces new permissions for.
+app.get('/data-classes', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const classes = await listDataClasses();
+    res.json({ classes });
+  } catch (error: any) {
+    console.error('List data classes error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list classes' });
+  }
+});
+
+app.get('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const dataClass = await getDataClass(req.params.id);
+    if (!dataClass) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
+    res.json({ class: dataClass });
+  } catch (error: any) {
+    console.error('Get data class error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get class' });
+  }
+});
+
+app.post('/data-classes', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, label, fields, pimcoreId } = req.body ?? {};
+    if (typeof name !== 'string' || !name.trim() || typeof label !== 'string' || !label.trim() || !Array.isArray(fields)) {
+      res.status(400).json({ error: 'name, label, and fields are required' });
+      return;
+    }
+
+    const dataClass = await createDataClass({
+      name: name.trim(),
+      label: label.trim(),
+      fields,
+      pimcoreId: typeof pimcoreId === 'string' ? pimcoreId : null,
+    });
+    res.status(201).json({ class: dataClass });
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      res.status(409).json({ error: `A class named "${req.body?.name}" already exists` });
+      return;
+    }
+    console.error('Create data class error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create class' });
+  }
+});
+
+app.patch('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, label, fields } = req.body ?? {};
+
+    const dataClass = await updateDataClass(req.params.id, {
+      name: typeof name === 'string' ? name : undefined,
+      label: typeof label === 'string' ? label : undefined,
+      fields: Array.isArray(fields) ? fields : undefined,
+    });
+    if (!dataClass) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
+    res.json({ class: dataClass });
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      res.status(409).json({ error: `A class named "${req.body?.name}" already exists` });
+      return;
+    }
+    console.error('Update data class error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update class' });
+  }
+});
+
+app.delete('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteDataClass(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete data class error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete class' });
+  }
+});
+
+// Data Object instances (Pimcore's PIM/MDM "Objects") - see docs/plans/
+// datamodel/advanced-data-modeling-plan.md §4.2/§6. `?classId=` supports
+// ObjectsView.vue's own class filter (§6.2) - a plain query param, not a
+// separate route, since it's an optional narrowing of the same list.
+app.get('/data-objects', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const classId = typeof req.query.classId === 'string' ? req.query.classId : undefined;
+    const objects = await listDataObjects(classId);
+    res.json({ objects });
+  } catch (error: any) {
+    console.error('List data objects error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list objects' });
+  }
+});
+
+app.get('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const dataObject = await getDataObject(req.params.id);
+    if (!dataObject) {
+      res.status(404).json({ error: 'Object not found' });
+      return;
+    }
+    res.json({ object: dataObject });
+  } catch (error: any) {
+    console.error('Get data object error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get object' });
+  }
+});
+
+// Every locale variant of the same logical object - same role
+// /whoobe-one/pages/:id/translations plays for pages.
+app.get(
+  '/data-objects/:id/translations',
+  requirePermission(PERMISSIONS.OBJECTS_READ),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const dataObject = await getDataObject(req.params.id);
+      if (!dataObject) {
+        res.status(404).json({ error: 'Object not found' });
+        return;
+      }
+      const translations = await listDataObjectTranslations(dataObject.translationGroupId);
+      res.json({ translations });
+    } catch (error: any) {
+      console.error('List data object translations error:', error);
+      res.status(500).json({ error: error.message || 'Failed to list object translations' });
+    }
+  }
+);
+
+app.post('/data-objects', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { classId, key, path, parentId, translationGroupId, locale, attributes, pimcoreId } = req.body ?? {};
+    if (typeof classId !== 'string' || !classId.trim() || typeof key !== 'string' || !key.trim() || attributes == null) {
+      res.status(400).json({ error: 'classId, key, and attributes are required' });
+      return;
+    }
+
+    const dataObject = await createDataObject({
+      classId,
+      key: key.trim(),
+      path: typeof path === 'string' ? path : undefined,
+      parentId: typeof parentId === 'string' ? parentId : null,
+      translationGroupId: typeof translationGroupId === 'string' ? translationGroupId : undefined,
+      locale: typeof locale === 'string' ? locale : undefined,
+      attributes,
+      pimcoreId: typeof pimcoreId === 'string' ? pimcoreId : null,
+    });
+    res.status(201).json({ object: dataObject });
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      res.status(409).json({ error: `An object with key "${req.body?.key}" already exists for this class` });
+      return;
+    }
+    console.error('Create data object error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create object' });
+  }
+});
+
+app.patch('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { key, path, parentId, published, workflowState, attributes } = req.body ?? {};
+
+    const dataObject = await updateDataObject(req.params.id, {
+      key: typeof key === 'string' ? key : undefined,
+      path: typeof path === 'string' ? path : undefined,
+      parentId: parentId === null || typeof parentId === 'string' ? parentId : undefined,
+      published: typeof published === 'boolean' ? published : undefined,
+      workflowState: workflowState === null || typeof workflowState === 'string' ? workflowState : undefined,
+      attributes: attributes !== undefined ? attributes : undefined,
+    });
+    if (!dataObject) {
+      res.status(404).json({ error: 'Object not found' });
+      return;
+    }
+    res.json({ object: dataObject });
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      res.status(409).json({ error: `An object with key "${req.body?.key}" already exists for this class` });
+      return;
+    }
+    console.error('Update data object error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update object' });
+  }
+});
+
+app.delete('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteDataObject(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete data object error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete object' });
   }
 });
 
