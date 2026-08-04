@@ -12,8 +12,8 @@ import { ref } from 'vue'
 // with Preview (the read-only rendered HTML) as a second sub-tab, mirroring
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
-export type SectionKind = 'overview' | 'objects' | 'assets' | 'documents' | 'settings'
-export type MasterItemKind = 'asset' | 'document'
+export type SectionKind = 'overview' | 'objects' | 'assets' | 'documents' | 'pages' | 'settings'
+export type MasterItemKind = 'asset' | 'document' | 'page'
 export type AssetSubTab = 'preview' | 'editor' | 'metadata' | 'thumbnails'
 export type DocumentSubTab = 'editor' | 'preview'
 
@@ -37,6 +37,10 @@ export function assetTabId(assetId: string): string {
 
 export function documentTabId(documentId: string): string {
   return `item:document:${documentId}`
+}
+
+export function pageTabId(pageId: string): string {
+  return `item:page:${pageId}`
 }
 
 export const useTabsStore = defineStore('tabs', () => {
@@ -81,6 +85,17 @@ export const useTabsStore = defineStore('tabs', () => {
     if (tab) tab.documentSubTab = subTab
   }
 
+  // No sub-tab state here (unlike documents) - MasterPageTab.vue wraps a
+  // single embedded whoobe-one-spike editor with no Editor/Preview toggle
+  // of its own (the embedded app already has its own Preview mode inline).
+  function openPage(pageId: string) {
+    const id = pageTabId(pageId)
+    if (findIndex(id) === -1) {
+      tabs.value.push({ id, type: 'item', itemKind: 'page', itemId: pageId })
+    }
+    activeTabId.value = id
+  }
+
   function closeTab(id: string) {
     const idx = findIndex(id)
     if (idx === -1) return
@@ -112,6 +127,7 @@ export const useTabsStore = defineStore('tabs', () => {
     setAssetSubTab,
     openDocument,
     setDocumentSubTab,
+    openPage,
     closeTab,
     closeAssetTab,
     closeDocumentTab

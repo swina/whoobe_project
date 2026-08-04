@@ -4,6 +4,7 @@ import OverviewView from '../views/OverviewView.vue'
 import ObjectsView from '../views/ObjectsView.vue'
 import AssetsView from '../views/AssetsView.vue'
 import DocumentsView from '../views/DocumentsView.vue'
+import PagesView from '../views/PagesView.vue'
 import SettingsView from '../views/SettingsView.vue'
 
 const routes: Array<RouteRecordRaw> = [
@@ -34,6 +35,12 @@ const routes: Array<RouteRecordRaw> = [
         name: 'Documents',
         component: DocumentsView,
         meta: { title: 'Documents & Pages' }
+      },
+      {
+        path: 'pages',
+        name: 'Pages',
+        component: PagesView,
+        meta: { title: 'Pages' }
       },
       {
         path: 'settings',
