@@ -1,9 +1,10 @@
-import { upsertDocumentRecord } from '@pimcore-custom/core/server';
-import { PimcoreDocumentConverter, PimcoreRawDocument, PimcoreEditableElement } from './pimcore-document-converter.js';
+import { upsertWhoobePageByPimcoreId } from '@pimcore-custom/core/server';
+import { PimcorePageConverter } from './pimcore-page-converter.js';
+import { PimcoreRawDocument, PimcoreEditableElement } from './pimcore-document-converter.js';
 import { createPimcoreSourceAdapter } from './source-adapter.js';
 import './adapters/mysql-adapter.js';
 import './adapters/fixture-adapter.js';
-import './areabrick-mappings/index.js';
+import './element-areabrick-mappings/index.js';
 
 // Load packages/migration-tool/.env (if present), matching the pattern
 // already used by apps/asset-processor/apps/core-api.
@@ -81,19 +82,18 @@ async function migrateDocuments(flags: CliFlags): Promise<void> {
           elements: elementsByName,
         };
 
-        const converted = PimcoreDocumentConverter.convertDocument(rawDoc);
+        const converted = PimcorePageConverter.convertDocument(rawDoc);
 
         if (flags.dryRun) {
           console.log(`[dry-run] Document ${doc.id} (${doc.path}) -> ${converted.slug}`);
           console.log(JSON.stringify(converted, null, 2));
         } else {
-          await upsertDocumentRecord({
-            pimcoreId: String(doc.id),
+          await upsertWhoobePageByPimcoreId({
+            pimcoreId: converted.pimcoreId,
             title: converted.title,
             slug: converted.slug,
             locale: converted.locale,
-            rootBlock: converted.rootBlock,
-            metadata: converted.metadata,
+            content: converted.content,
           });
           console.log(`[ETL] Migrated document ${doc.id} -> ${converted.slug}`);
         }
@@ -130,7 +130,8 @@ export function runMigrationCli(args: string[] = process.argv.slice(2)): void {
     default:
       console.log('Available Commands:');
       console.log('  migrate-documents  - Import Pimcore Documents (pages/snippets) and their');
-      console.log('                       editables/Areablocks into cms_documents.');
+      console.log('                       editables/Areablocks into whoobe_pages, ready to open');
+      console.log('                       and edit directly in whoobe-one-spike.');
       console.log('                       Flags: --dry-run, --source=<mysql|fixture> (default: mysql),');
       console.log('                              --limit=<N>');
       console.log('  migrate-classes    - Translate Pimcore class JSON definitions to Drizzle/Postgres (not yet built)');

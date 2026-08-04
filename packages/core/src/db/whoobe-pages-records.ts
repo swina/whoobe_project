@@ -121,3 +121,59 @@ export async function deleteWhoobePage(id: string): Promise<void> {
   const db = getDb();
   await db.delete(whoobePages).where(eq(whoobePages.id, id));
 }
+
+/** Insert-or-update-by-`pimcoreId` - the migration importer's own re-run
+ * path (packages/migration-tool), same role `upsertDocumentRecord`
+ * (cms-records.ts) plays for `cms_documents`. Re-importing the same
+ * Pimcore document a second time (content changed at the source, or the
+ * importer is just being re-run) updates the existing page in place
+ * rather than creating a duplicate - relies on `pimcoreIdIdx`'s real
+ * unique constraint (whoobe-pages-schema.ts), not an application-level
+ * "check first" race. `published`/`workflowState` are deliberately never
+ * touched by this path - a re-import must never silently unpublish (or
+ * publish) a page an editor has since made an explicit call about. */
+export async function upsertWhoobePageByPimcoreId(input: {
+  pimcoreId: string;
+  slug: string;
+  title: string;
+  locale?: string;
+  category?: string;
+  content: unknown;
+  seo?: PageSeo | null;
+  sitemap?: PageSitemapSettings | null;
+  search?: PageSearchSettings | null;
+}): Promise<WhoobePageRecord> {
+  const db = getDb();
+  const now = new Date();
+
+  const [row] = await db
+    .insert(whoobePages)
+    .values({
+      pimcoreId: input.pimcoreId,
+      slug: input.slug,
+      title: input.title,
+      locale: input.locale ?? 'en',
+      category: input.category ?? '',
+      content: input.content,
+      seo: input.seo ?? null,
+      sitemap: input.sitemap ?? null,
+      search: input.search ?? null,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: whoobePages.pimcoreId,
+      set: {
+        slug: input.slug,
+        title: input.title,
+        locale: input.locale ?? 'en',
+        category: input.category ?? '',
+        content: input.content,
+        seo: input.seo ?? null,
+        sitemap: input.sitemap ?? null,
+        search: input.search ?? null,
+        updatedAt: now,
+      },
+    })
+    .returning();
+  return row;
+}
