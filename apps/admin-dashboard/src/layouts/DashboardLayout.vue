@@ -151,7 +151,7 @@
       <!-- Top Header -->
       <header class="flex items-center justify-between h-16 px-6 bg-slate-900/60 light:bg-white/60 backdrop-blur-md border-b border-slate-800 light:border-slate-200 z-20 shrink-0">
         <!-- Page Title & Search -->
-        <div class="flex items-center space-x-6 flex-1 max-w-xl">
+        <div class="flex items-center space-x-6 flex-1 max-w-3xl">
           <h1 class="text-lg font-semibold text-slate-100 light:text-slate-900 truncate hidden md:block">
             {{ currentTabTitle }}
           </h1>

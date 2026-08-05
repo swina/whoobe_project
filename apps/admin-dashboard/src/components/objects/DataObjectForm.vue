@@ -1,5 +1,5 @@
 <template>
-  <div v-if="sections.length > 0" class="space-y-4">
+  <div v-if="sections.length > 0" class="space-y-2">
     <div class="flex items-center gap-1 border-b border-slate-800 light:border-slate-200 flex-wrap">
       <button
         v-for="(section, index) in sections"
@@ -7,14 +7,14 @@
         @click="activeSectionIndex = index"
         type="button"
         :class="[
-          'px-3 py-1.5 text-xs font-semibold border-b-2 -mb-px transition',
-          activeSectionIndex === index ? 'border-indigo-500 text-indigo-300' : 'border-transparent text-slate-500 hover:text-slate-300 light:text-slate-700'
+          'px-3 py-1.5 text-xs font-semibold border-b-4 -mb-px transition cursor-pointer',
+          activeSectionIndex === index ? 'border-indigo-500 font-bold text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-500 light:text-slate-700'
         ]"
       >
         {{ section.title }}
       </button>
     </div>
-    <div class="space-y-4">
+    <div :class="activeContainerLayout.class || 'space-y-4'" :style="activeContainerLayout.style">
       <DataObjectFieldControl
         v-for="field in sections[activeSectionIndex]?.fields ?? []"
         :key="field.name"
@@ -58,6 +58,7 @@
 import { ref, computed, watch } from 'vue'
 import type { ClassFieldDefinition, ClassViewConfig } from '@pimcore-custom/core'
 import DataObjectFieldControl from './DataObjectFieldControl.vue'
+import { resolveCustomClasses } from '../../utils/custom-classes'
 
 const props = defineProps<{
   fields: ClassFieldDefinition[]
@@ -73,15 +74,33 @@ const sections = computed(() => {
   const named = props.viewConfig?.detailSections ?? []
   if (named.length === 0) return []
   const assigned = new Set(named.flatMap((s) => s.fields))
+  const byName = new Map(props.fields.map((f) => [f.name, f]))
+  // Field order within a section follows `s.fields`' own order (admin-
+  // reorderable in ClassSettingsCard.vue), not the class's overall field-
+  // definition order - a `.map` over `s.fields`, not a `.filter` over
+  // `props.fields`, so a field's position in the section survives
+  // independently of where it sits in the Fields tab.
   const result = named
-    .map((s) => ({ title: s.title, fields: props.fields.filter((f) => s.fields.includes(f.name)) }))
+    .map((s) => ({
+      title: s.title,
+      fields: s.fields.map((name) => byName.get(name)).filter((f): f is ClassFieldDefinition => !!f),
+      containerClass: s.containerClass,
+    }))
     .filter((s) => s.fields.length > 0)
   const other = props.fields.filter((f) => !assigned.has(f.name))
-  if (other.length > 0) result.push({ title: 'Other fields', fields: other })
+  if (other.length > 0) result.push({ title: 'Other fields', fields: other, containerClass: undefined })
   return result
 })
 
 const activeSectionIndex = ref(0)
+
+// Named utilities (grid, gap-5, bg-slate-100, ...) go through :class as
+// normal - only arbitrary bracket-value tokens (w-[640px], bg-[#fff],
+// ...) get pulled out into real inline style (utils/custom-classes.ts's
+// own comment explains why: Tailwind can't compile a class it never
+// scanned from literal source, and an admin-typed value from the API
+// never is).
+const activeContainerLayout = computed(() => resolveCustomClasses(sections.value[activeSectionIndex.value]?.containerClass))
 
 // Keeps the active tab in range if the class's own section count changes
 // out from under this form (e.g. this component instance is reused for a
