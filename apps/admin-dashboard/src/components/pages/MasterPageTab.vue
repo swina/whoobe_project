@@ -2,7 +2,7 @@
   <div v-if="page" class="h-full flex flex-col">
     <div class="shrink-0 px-6 pt-6 pb-3 space-y-3">
       <div class="flex items-center gap-2">
-        <h3 class="text-lg font-bold text-slate-100">{{ page.title }}</h3>
+        <h3 class="text-lg font-bold text-slate-100 light:text-slate-900">{{ page.title }}</h3>
         <span
           :class="[
             'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
@@ -28,7 +28,7 @@
          Closing and reopening the tab (or navigating back to the Pages
          list, which does re-fetch) picks up the latest values. -->
     <div class="flex-1 min-h-0 px-6 pb-6">
-      <div class="h-full rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
+      <div class="h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6">
         <WhoobeOneEmbed :page-id="props.pageId" />
       </div>
     </div>
@@ -37,7 +37,7 @@
   <div v-else-if="isLoading" class="p-6 text-center text-xs text-slate-500">Loading page…</div>
 
   <div v-else class="p-6">
-    <div class="rounded-2xl bg-slate-900/40 border border-slate-800/80 p-12 text-center text-xs text-slate-500">
+    <div class="rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center text-xs text-slate-500">
       This page is no longer available.
     </div>
   </div>

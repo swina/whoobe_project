@@ -1,16 +1,16 @@
 <template>
-  <div v-if="isOpen && asset" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+  <div v-if="isOpen && asset" class="fixed inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between">
-        <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+        <h3 class="text-base font-bold text-slate-100 light:text-slate-900 flex items-center gap-2">
           <RefreshCw class="w-4 h-4 text-indigo-400" />
           Upload New Version (v{{ asset.version + 1 }})
         </h3>
-        <button @click="emit('close')" class="text-slate-400 hover:text-slate-200 transition text-sm">✕</button>
+        <button @click="emit('close')" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition text-sm">✕</button>
       </div>
 
-      <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
-        <div class="text-slate-400">Target Asset: <strong class="text-slate-200 font-mono">{{ asset.filename }}</strong></div>
+      <div class="p-3 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 space-y-1.5 text-xs">
+        <div class="text-slate-400 light:text-slate-600">Target Asset: <strong class="text-slate-200 light:text-slate-800 font-mono">{{ asset.filename }}</strong></div>
         <div class="flex items-center justify-between text-[11px] text-slate-500">
           <span>Current Version: v{{ asset.version }}</span>
           <span>Path: {{ asset.pimcorePath }}</span>
@@ -18,18 +18,18 @@
       </div>
 
       <div>
-        <label class="block text-xs font-medium text-slate-300 mb-1">Select Replacement File</label>
+        <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Select Replacement File</label>
         <input
           type="file"
           @change="handleVersionFileSelect"
-          class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-indigo-300 hover:file:bg-slate-700"
+          class="w-full text-xs text-slate-400 light:text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 light:bg-slate-100 file:text-indigo-300 hover:file:bg-slate-700 light:bg-slate-200"
         />
       </div>
 
-      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800 light:border-slate-200">
         <button
           @click="emit('close')"
-          class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 hover:text-slate-200 transition"
+          class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
         >
           Cancel
         </button>

@@ -1,13 +1,14 @@
 import { eq } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { dataClasses } from './data-classes-schema.js';
-import type { ClassFieldDefinition } from '../schema/dynamic.js';
+import type { ClassFieldDefinition, ClassViewConfig } from '../schema/dynamic.js';
 
 export interface DataClassRecord {
   id: string;
   name: string;
   label: string;
   fields: ClassFieldDefinition[];
+  viewConfig: ClassViewConfig | null;
   pimcoreId: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -38,6 +39,7 @@ export async function createDataClass(input: {
   name: string;
   label: string;
   fields: ClassFieldDefinition[];
+  viewConfig?: ClassViewConfig | null;
   pimcoreId?: string | null;
 }): Promise<DataClassRecord> {
   const db = getDb();
@@ -47,6 +49,7 @@ export async function createDataClass(input: {
       name: input.name,
       label: input.label,
       fields: input.fields,
+      viewConfig: input.viewConfig ?? null,
       pimcoreId: input.pimcoreId ?? null,
     })
     .returning();
@@ -55,7 +58,7 @@ export async function createDataClass(input: {
 
 export async function updateDataClass(
   id: string,
-  input: { name?: string; label?: string; fields?: ClassFieldDefinition[] }
+  input: { name?: string; label?: string; fields?: ClassFieldDefinition[]; viewConfig?: ClassViewConfig | null }
 ): Promise<DataClassRecord | null> {
   const db = getDb();
 
@@ -63,6 +66,7 @@ export async function updateDataClass(
   if (input.name !== undefined) values.name = input.name;
   if (input.label !== undefined) values.label = input.label;
   if (input.fields !== undefined) values.fields = input.fields;
+  if (input.viewConfig !== undefined) values.viewConfig = input.viewConfig;
 
   const [row] = await db.update(dataClasses).set(values).where(eq(dataClasses.id, id)).returning();
   return row ?? null;

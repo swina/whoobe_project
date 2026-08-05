@@ -164,21 +164,39 @@ function enrichFieldCollectionTypes(fields: ClassFieldDefinition[], classSource:
   }
 }
 
-async function migrateClasses(flags: CliFlags): Promise<void> {
-  const classesDir = process.env.PIMCORE_VAR_CLASSES_PATH;
-  if (!classesDir) {
-    throw new Error(
-      'PIMCORE_VAR_CLASSES_PATH is not set - point it at the source Pimcore install\'s var/classes directory (see help).'
-    );
-  }
-  console.log(`[ETL] Reading class definitions from "${classesDir}"${flags.dryRun ? ' (dry run - no writes)' : ''}`);
+export interface MigrationRunResult {
+  succeeded: number;
+  failed: number;
+  errors: { item: string; message: string }[];
+}
+
+export interface RunClassMigrationOptions {
+  classesDir: string;
+  dryRun?: boolean;
+  className?: string;
+}
+
+/**
+ * The real migrate-classes logic, parameterized rather than reading
+ * PIMCORE_VAR_CLASSES_PATH/argv directly - shared by the CLI (below,
+ * still env-var-driven, unchanged behavior) and apps/core-api's on-demand
+ * admin-triggered import (docs/plans/datamodel/native-class-authoring-
+ * plan.md §3.4/Phase 4), which supplies this same config per-request from
+ * a stored migration source instead of process.env. Wraps the exact same
+ * logic advanced-data-modeling-plan.md's Phase 3 pilot already proved
+ * against real data - not reimplemented, just no longer hard-wired to
+ * process.env/console-only reporting.
+ */
+export async function runClassMigration(options: RunClassMigrationOptions): Promise<MigrationRunResult> {
+  const { classesDir, dryRun = false, className } = options;
+  console.log(`[ETL] Reading class definitions from "${classesDir}"${dryRun ? ' (dry run - no writes)' : ''}`);
 
   const files = readdirSync(classesDir).filter((f) => f.startsWith('definition_') && f.endsWith('.php'));
-  const toProcess = flags.class ? files.filter((f) => f === `definition_${flags.class}.php`) : files;
-  console.log(`[ETL] Found ${files.length} class definition file(s)${flags.class ? `, migrating "${flags.class}"` : ''}.`);
+  const toProcess = className ? files.filter((f) => f === `definition_${className}.php`) : files;
+  console.log(`[ETL] Found ${files.length} class definition file(s)${className ? `, migrating "${className}"` : ''}.`);
 
   let succeeded = 0;
-  let failed = 0;
+  const errors: { item: string; message: string }[] = [];
 
   for (const file of toProcess) {
     try {
@@ -188,7 +206,7 @@ async function migrateClasses(flags: CliFlags): Promise<void> {
       const fields = parsePimcoreClassDefinitionFile(source);
       enrichFieldCollectionTypes(fields, source, classesDir);
 
-      if (flags.dryRun) {
+      if (dryRun) {
         console.log(`[dry-run] Class ${meta.id} (${meta.name}) - ${fields.length} field(s)`);
         console.log(JSON.stringify(fields, null, 2));
       } else {
@@ -197,12 +215,23 @@ async function migrateClasses(flags: CliFlags): Promise<void> {
       }
       succeeded++;
     } catch (err: any) {
-      failed++;
+      errors.push({ item: file, message: err.message });
       console.error(`[ETL] Failed to migrate class from ${file}: ${err.message}`);
     }
   }
 
-  console.log(`[ETL] Done. ${succeeded} succeeded, ${failed} failed.`);
+  console.log(`[ETL] Done. ${succeeded} succeeded, ${errors.length} failed.`);
+  return { succeeded, failed: errors.length, errors };
+}
+
+async function migrateClasses(flags: CliFlags): Promise<void> {
+  const classesDir = process.env.PIMCORE_VAR_CLASSES_PATH;
+  if (!classesDir) {
+    throw new Error(
+      'PIMCORE_VAR_CLASSES_PATH is not set - point it at the source Pimcore install\'s var/classes directory (see help).'
+    );
+  }
+  await runClassMigration({ classesDir, dryRun: flags.dryRun, className: flags.class });
 }
 
 /**
@@ -214,27 +243,42 @@ async function migrateClasses(flags: CliFlags): Promise<void> {
  * were migrated first (a real, stated ordering dependency, not silently
  * assumed away - see the plan's §9).
  */
-async function migrateObjects(flags: CliFlags): Promise<void> {
-  if (!flags.class) throw new Error('--class=<Name> is required (Data Objects migrate one class at a time - see help).');
+export interface RunObjectMigrationOptions {
+  className: string;
+  source?: string;
+  sourceConfig: Record<string, unknown>;
+  dryRun?: boolean;
+  limit?: number;
+}
 
-  const dataClass = await getDataClassByName(flags.class);
-  if (!dataClass) throw new Error(`Class "${flags.class}" hasn't been migrated yet - run migrate-classes first.`);
-  if (!dataClass.pimcoreId) throw new Error(`Class "${flags.class}" has no pimcoreId - it wasn't migrated from Pimcore.`);
+/**
+ * The real migrate-objects logic, parameterized the same way
+ * runClassMigration is above - see that function's own comment. Requires
+ * `className` to already have a migrated `data_classes` row (with a real
+ * `pimcoreId`) exactly as the CLI path does; that ordering dependency
+ * doesn't change just because the trigger is now an HTTP request instead
+ * of a shell command.
+ */
+export async function runObjectMigration(options: RunObjectMigrationOptions): Promise<MigrationRunResult> {
+  const { className, source = 'mysql', sourceConfig, dryRun = false, limit } = options;
 
-  console.log(`[ETL] Source adapter: "${flags.source}"${flags.dryRun ? ' (dry run - no writes)' : ''}`);
-  const config = flags.source === 'mysql' ? buildMysqlSourceConfigFromEnv() : {};
-  const adapter = createPimcoreSourceAdapter(flags.source, config);
+  const dataClass = await getDataClassByName(className);
+  if (!dataClass) throw new Error(`Class "${className}" hasn't been migrated yet - run migrate-classes first.`);
+  if (!dataClass.pimcoreId) throw new Error(`Class "${className}" has no pimcoreId - it wasn't migrated from Pimcore.`);
+
+  console.log(`[ETL] Source adapter: "${source}"${dryRun ? ' (dry run - no writes)' : ''}`);
+  const adapter = createPimcoreSourceAdapter(source, sourceConfig);
   await adapter.connect();
 
   try {
     if (!adapter.listObjects || !adapter.getObjectAttributes) {
-      throw new Error(`Source adapter "${flags.source}" does not support Data Object migration.`);
+      throw new Error(`Source adapter "${source}" does not support Data Object migration.`);
     }
 
     const pimcoreClassId = Number(dataClass.pimcoreId);
     const objects = await adapter.listObjects(pimcoreClassId);
-    const toProcess = flags.limit ? objects.slice(0, flags.limit) : objects;
-    console.log(`[ETL] Found ${objects.length} "${flags.class}" object(s)${flags.limit ? `, processing first ${toProcess.length}` : ''}.`);
+    const toProcess = limit ? objects.slice(0, limit) : objects;
+    console.log(`[ETL] Found ${objects.length} "${className}" object(s)${limit ? `, processing first ${toProcess.length}` : ''}.`);
 
     // One Pimcore object becomes one *row per locale* (§4.4) - `pimcoreId`
     // has to be locale-qualified (`<rawId>:<locale>`) so each locale's row
@@ -260,7 +304,7 @@ async function migrateObjects(flags: CliFlags): Promise<void> {
     };
 
     let succeeded = 0;
-    let failed = 0;
+    const errors: { item: string; message: string }[] = [];
 
     for (const obj of toProcess) {
       try {
@@ -284,7 +328,7 @@ async function migrateObjects(flags: CliFlags): Promise<void> {
         }
 
         for (const { locale, attributes } of converted) {
-          if (flags.dryRun) {
+          if (dryRun) {
             console.log(`[dry-run] Object ${obj.id} (${obj.key}, ${locale}) -> ${obj.path}${obj.key}`);
             console.log(JSON.stringify(attributes, null, 2));
           } else {
@@ -303,18 +347,25 @@ async function migrateObjects(flags: CliFlags): Promise<void> {
             translationGroupId = created.translationGroupId;
           }
         }
-        if (!flags.dryRun) console.log(`[ETL] Migrated object ${obj.id} -> ${obj.key} (${converted.length} locale row(s))`);
+        if (!dryRun) console.log(`[ETL] Migrated object ${obj.id} -> ${obj.key} (${converted.length} locale row(s))`);
         succeeded++;
       } catch (err: any) {
-        failed++;
+        errors.push({ item: `${obj.id} (${obj.key})`, message: err.message });
         console.error(`[ETL] Failed to migrate object ${obj.id} (${obj.key}): ${err.message}`);
       }
     }
 
-    console.log(`[ETL] Done. ${succeeded} succeeded, ${failed} failed.`);
+    console.log(`[ETL] Done. ${succeeded} succeeded, ${errors.length} failed.`);
+    return { succeeded, failed: errors.length, errors };
   } finally {
     await adapter.disconnect();
   }
+}
+
+async function migrateObjects(flags: CliFlags): Promise<void> {
+  if (!flags.class) throw new Error('--class=<Name> is required (Data Objects migrate one class at a time - see help).');
+  const sourceConfig = flags.source === 'mysql' ? buildMysqlSourceConfigFromEnv() : {};
+  await runObjectMigration({ className: flags.class, source: flags.source, sourceConfig, dryRun: flags.dryRun, limit: flags.limit });
 }
 
 export function runMigrationCli(args: string[] = process.argv.slice(2)): void {

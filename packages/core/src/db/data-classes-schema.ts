@@ -1,5 +1,5 @@
 import { pgTable, text, jsonb, uuid, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
-import type { ClassFieldDefinition } from '../schema/dynamic.js';
+import type { ClassFieldDefinition, ClassViewConfig } from '../schema/dynamic.js';
 
 /**
  * Data Object classes (Pimcore's "Classes" concept) - see docs/plans/
@@ -18,6 +18,10 @@ export const dataClasses = pgTable(
     name: text('name').notNull().unique(),
     label: text('label').notNull(),
     fields: jsonb('fields').notNull().$type<ClassFieldDefinition[]>(),
+    // Optional per-class CRUD view layout (native-class-authoring-plan.md
+    // §3.3) - nullable, absent for every class until an admin explicitly
+    // configures one via the Class Builder's "View Layout" section.
+    viewConfig: jsonb('view_config').$type<ClassViewConfig | null>(),
     // Provenance for classes migrated from Pimcore (packages/migration-tool's
     // migrate-classes) - nullable, since a class authored from scratch in
     // this CMS has none. Natural key a re-run of that importer upserts

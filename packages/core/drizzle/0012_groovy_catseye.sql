@@ -1,0 +1,1 @@
+ALTER TABLE "data_classes" ADD COLUMN "view_config" jsonb;

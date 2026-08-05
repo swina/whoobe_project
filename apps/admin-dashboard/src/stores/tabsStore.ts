@@ -16,6 +16,10 @@ export type SectionKind = 'overview' | 'objects' | 'assets' | 'documents' | 'pag
 export type MasterItemKind = 'asset' | 'document' | 'page' | 'object'
 export type AssetSubTab = 'preview' | 'editor' | 'metadata' | 'thumbnails'
 export type DocumentSubTab = 'editor' | 'preview'
+// A fixed, known-upfront set (docs/plans/UI/settings-ui-plan.md) - unlike
+// objectSubTab's free-form string (which varies per class's locales),
+// this is a real enum, matching AssetSubTab/DocumentSubTab's own pattern.
+export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'roles' | 'security' | 'workflows'
 
 export interface MainTab {
   id: string
@@ -29,6 +33,11 @@ export interface MainTab {
   // assets/documents use - see openObject()'s own comment for why the
   // tab itself is keyed by translationGroupId, not one locale row's id.
   objectSubTab?: string
+  // Which card the collapsible Settings submenu (DashboardLayout.vue's
+  // sidebar) currently has selected - only meaningful when
+  // `section === 'settings'`. Defaults to 'general' the first time the
+  // Settings tab is opened (openSection('settings') below).
+  settingsSubSection?: SettingsSubSection
   // The owning data class, captured at open time - MasterObjectTab.vue
   // needs it as a prop and can't reliably derive it from a shared list
   // store (same reasoning as `label` below: the record may be brand new,
@@ -74,9 +83,18 @@ export const useTabsStore = defineStore('tabs', () => {
   function openSection(section: SectionKind) {
     const id = sectionTabId(section)
     if (findIndex(id) === -1) {
-      tabs.value.push({ id, type: 'section', section })
+      tabs.value.push({ id, type: 'section', section, settingsSubSection: section === 'settings' ? 'general' : undefined })
     }
     activeTabId.value = id
+  }
+
+  // Opens (or focuses) the Settings tab and selects one card in its
+  // collapsible submenu - the sidebar's own equivalent of
+  // handleSelectSidebarFolder() for the Assets folder tree.
+  function openSettingsSubSection(subSection: SettingsSubSection) {
+    openSection('settings')
+    const tab = tabs.value.find((t) => t.id === sectionTabId('settings'))
+    if (tab) tab.settingsSubSection = subSection
   }
 
   function openAsset(assetId: string) {
@@ -178,6 +196,7 @@ export const useTabsStore = defineStore('tabs', () => {
     tabs,
     activeTabId,
     openSection,
+    openSettingsSubSection,
     openAsset,
     setAssetSubTab,
     openDocument,

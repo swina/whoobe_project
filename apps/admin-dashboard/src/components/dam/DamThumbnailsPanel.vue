@@ -5,13 +5,13 @@
     </div>
 
     <div v-else class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div v-for="preset in presets" :key="preset.key" class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+      <div v-for="preset in presets" :key="preset.key" class="p-4 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 space-y-3">
         <div class="flex items-center justify-between text-xs">
-          <span class="font-bold text-slate-200 uppercase tracking-wider text-[11px] text-indigo-400">{{ preset.label }}</span>
+          <span class="font-bold text-slate-200 light:text-slate-800 uppercase tracking-wider text-[11px] text-indigo-400">{{ preset.label }}</span>
           <span class="font-mono text-slate-500">{{ preset.dimensions }}</span>
         </div>
 
-        <div class="aspect-square w-full rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center overflow-hidden">
+        <div class="aspect-square w-full rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 flex items-center justify-center overflow-hidden">
           <img
             :src="asset.thumbnails?.[preset.key]"
             @error="(e) => handleAssetImageError(e, asset)"
@@ -23,14 +23,14 @@
         <div class="flex items-center gap-2 text-xs">
           <button
             @click="openThumbnail(preset.key)"
-            class="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-[11px] font-semibold flex items-center justify-center gap-1"
+            class="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-300 light:text-slate-700 transition text-[11px] font-semibold flex items-center justify-center gap-1"
           >
             <ExternalLink class="w-3 h-3" />
             <span>Open</span>
           </button>
           <button
             @click="copyThumbnailUrl(preset.key)"
-            class="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-[11px] font-semibold flex items-center justify-center gap-1"
+            class="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-300 light:text-slate-700 transition text-[11px] font-semibold flex items-center justify-center gap-1"
           >
             <Link class="w-3 h-3" />
             <span>Copy URL</span>

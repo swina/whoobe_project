@@ -37,6 +37,26 @@ export interface ClassDefinition {
   fields: ClassFieldDefinition[];
 }
 
+/**
+ * Optional per-class detail-form layout - docs/plans/datamodel/native-
+ * class-authoring-plan.md §3.3 (Phase 3), reworked per docs/plans/UI/
+ * editing-object-class.md. Nullable/absent by default so every class
+ * keeps rendering with today's flat detail form until an admin explicitly
+ * configures one - additive, not a replacement for the generic renderer.
+ * `detailSections` groups fields (by `name`) into named tabs in
+ * DataObjectForm.vue; any field not assigned to a section still renders,
+ * under a trailing "Other fields" tab - never silently hidden.
+ *
+ * List-view column selection used to live here too (`listColumns`) - moved
+ * out per editing-object-class.md's own explicit instruction ("available
+ * from the list view and not in the settings"): ObjectsView.vue now owns
+ * that as user-saved, named presets in browser localStorage
+ * (object-list-presets.ts), not an admin-authored, server-stored field.
+ */
+export interface ClassViewConfig {
+  detailSections?: { title: string; fields: string[] }[];
+}
+
 const RELATION_ID_SHAPE = z.object({ id: z.string(), classId: z.string().optional() });
 const ASSET_REF_SHAPE = z.object({ assetId: z.string() });
 const LINK_SHAPE = z.object({

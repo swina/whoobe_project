@@ -2,6 +2,21 @@
 @import "./site-theme.css";
 
 /*
+ * Dashboard-only light/light-switch theme (docs/plans/UI, "the switch is
+ * intended only for the dashboard"). The app's existing markup IS the
+ * dark theme - every color utility already in every .vue file (bg-slate-
+ * 950, text-slate-200, etc.) stays completely untouched and keeps working
+ * as the default, always-applied look. `light:` is a custom variant
+ * (Tailwind v4's @custom-variant, the same mechanism Tailwind's own docs
+ * use for a class-based `dark:` strategy - inverted here since dark is
+ * this app's default rather than light) that only activates additional
+ * `light:*` utilities when a `.light` class is present on <html>
+ * (themeStore.ts). Zero risk to the current dark appearance: nothing
+ * needed to change or be removed for this to work.
+ */
+@custom-variant light (&:where(.light, .light *));
+
+/*
  * The brick-specific Tailwind classes documents render with (e.g.
  * "tablet-l:h-[520px]") are string literals inside
  * packages/migration-tool/src/areabrick-mappings/*.ts, fetched at runtime

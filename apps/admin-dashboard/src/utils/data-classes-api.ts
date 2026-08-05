@@ -2,7 +2,7 @@
 // docs/plans/datamodel/advanced-data-modeling-plan.md §4.1/§6 (Phase 1).
 // Mirrors pages-api.ts's shape (baseUrl from authStore.config, not a
 // hardcoded hostname default).
-import type { ClassFieldDefinition, WorkflowPlace, WorkflowTransitionDefinition } from '@pimcore-custom/core'
+import type { ClassFieldDefinition, ClassViewConfig, WorkflowPlace, WorkflowTransitionDefinition } from '@pimcore-custom/core'
 import { getDefaultCoreApiUrl } from './auth-api'
 
 export interface DataClass {
@@ -10,6 +10,7 @@ export interface DataClass {
   name: string
   label: string
   fields: ClassFieldDefinition[]
+  viewConfig: ClassViewConfig | null
   pimcoreId: string | null
   createdAt: string
   updatedAt: string
@@ -43,6 +44,43 @@ export async function fetchDataClassById(baseUrl: string, id: string): Promise<D
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-classes/${id}`, { credentials: 'include' })
   const body = await parseJsonOrThrow(res)
   return body.class
+}
+
+// Class Builder mutations - docs/plans/datamodel/native-class-authoring-
+// plan.md §3.1/Phase 1. The routes themselves have existed since the
+// sibling plan's Phase 1; only the admin-dashboard callers were missing.
+export async function createDataClass(
+  baseUrl: string,
+  input: { name: string; label: string; fields: ClassFieldDefinition[]; viewConfig?: ClassViewConfig | null }
+): Promise<DataClass> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-classes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.class
+}
+
+export async function updateDataClass(
+  baseUrl: string,
+  id: string,
+  input: { name?: string; label?: string; fields?: ClassFieldDefinition[]; viewConfig?: ClassViewConfig | null }
+): Promise<DataClass> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-classes/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.class
+}
+
+export async function deleteDataClass(baseUrl: string, id: string): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-classes/${id}`, { method: 'DELETE', credentials: 'include' })
+  await parseJsonOrThrow(res)
 }
 
 // Workflow definitions - docs/plans/backend/object-publish-workflow-

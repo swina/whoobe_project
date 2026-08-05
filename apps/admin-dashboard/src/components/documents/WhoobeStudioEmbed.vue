@@ -5,7 +5,7 @@
       <span v-else-if="lastSavedAt" class="text-emerald-400">saved {{ lastSavedAt.toLocaleTimeString() }}</span>
     </div>
 
-    <div class="flex-1 min-h-0 rounded-xl bg-slate-950 border border-slate-800 overflow-hidden relative">
+    <div class="flex-1 min-h-0 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 overflow-hidden relative">
       <iframe
         v-if="studioSrc"
         ref="iframeRef"
@@ -14,7 +14,7 @@
         @load="onIframeLoaded"
       ></iframe>
 
-      <div v-if="isConnecting" class="absolute inset-0 bg-slate-950/80 backdrop-blur-xs flex flex-col items-center justify-center space-y-3 text-slate-300">
+      <div v-if="isConnecting" class="absolute inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-xs flex flex-col items-center justify-center space-y-3 text-slate-300 light:text-slate-700">
         <span class="animate-spin text-2xl">⏳</span>
         <span class="text-xs font-semibold">Connecting to Whoobe Studio…</span>
       </div>
