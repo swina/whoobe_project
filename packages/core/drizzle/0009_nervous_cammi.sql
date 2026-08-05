@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS "data_objects_class_key_idx";--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "data_objects_class_locale_key_idx" ON "data_objects" USING btree ("class_id","locale","key");
