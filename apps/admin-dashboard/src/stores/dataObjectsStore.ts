@@ -1,15 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import {
-  fetchDataObjects,
-  fetchDataObjectById,
-  deleteDataObject as apiDeleteDataObject,
-  createDataObject as apiCreateDataObject,
-  updateDataObject as apiUpdateDataObject,
-  type DataObject,
-} from '../utils/data-objects-api'
+import { fetchDataObjects, deleteDataObject as apiDeleteDataObject, type DataObject } from '../utils/data-objects-api'
 import { useAuthStore } from './authStore'
 
+// Backs ObjectsView.vue's list only - create/update now go straight
+// through MasterObjectTab.vue to the API client (see that component's own
+// comment on why it bypasses this store), so this store only needs to
+// list and delete.
 export const useDataObjectsStore = defineStore('dataObjects', () => {
   const objects = ref<DataObject[]>([])
   const isLoading = ref(false)
@@ -26,35 +23,6 @@ export const useDataObjectsStore = defineStore('dataObjects', () => {
     }
   }
 
-  async function getDataObject(id: string): Promise<DataObject> {
-    const authStore = useAuthStore()
-    return fetchDataObjectById(authStore.config.coreApiUrl, id)
-  }
-
-  async function createDataObject(input: {
-    classId: string
-    key: string
-    path?: string
-    locale?: string
-    attributes: Record<string, unknown>
-  }): Promise<DataObject> {
-    const authStore = useAuthStore()
-    const created = await apiCreateDataObject(authStore.config.coreApiUrl, input)
-    objects.value = [created, ...objects.value]
-    return created
-  }
-
-  async function updateDataObject(
-    id: string,
-    input: { key?: string; published?: boolean; workflowState?: string | null; attributes?: Record<string, unknown> }
-  ): Promise<DataObject> {
-    const authStore = useAuthStore()
-    const updated = await apiUpdateDataObject(authStore.config.coreApiUrl, id, input)
-    const index = objects.value.findIndex((o) => o.id === id)
-    if (index >= 0) objects.value[index] = updated
-    return updated
-  }
-
   async function deleteDataObject(id: string): Promise<void> {
     const authStore = useAuthStore()
     await apiDeleteDataObject(authStore.config.coreApiUrl, id)
@@ -67,9 +35,6 @@ export const useDataObjectsStore = defineStore('dataObjects', () => {
     objects,
     isLoading,
     refreshDataObjects,
-    getDataObject,
-    createDataObject,
-    updateDataObject,
     deleteDataObject,
   }
 })
