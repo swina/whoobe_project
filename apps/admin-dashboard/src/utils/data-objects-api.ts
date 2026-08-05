@@ -53,6 +53,16 @@ export async function fetchDataObjectById(baseUrl: string, id: string): Promise<
   return body.object
 }
 
+// Looked up directly by translationGroupId - MasterObjectTab.vue's own
+// need (docs/plans/datamodel/data-objects-views-editing.md), decoupled
+// from ObjectsView.vue's shared list store (which can be re-pointed at a
+// different class while this tab stays open).
+export async function fetchDataObjectTranslationsByGroup(baseUrl: string, translationGroupId: string): Promise<DataObject[]> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects/translations/${translationGroupId}`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.translations
+}
+
 export async function deleteDataObject(baseUrl: string, id: string): Promise<void> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects/${id}`, { method: 'DELETE', credentials: 'include' })
   await parseJsonOrThrow(res)
@@ -60,7 +70,18 @@ export async function deleteDataObject(baseUrl: string, id: string): Promise<voi
 
 export async function createDataObject(
   baseUrl: string,
-  input: { classId: string; key: string; path?: string; locale?: string; attributes: Record<string, unknown> }
+  input: {
+    classId: string
+    key: string
+    path?: string
+    locale?: string
+    // Set when adding a new locale to an *existing* logical record
+    // (docs/plans/datamodel/data-objects-views-editing.md's own "same
+    // Pimcore ID = same record" requirement) - omitted for a genuinely
+    // new record, letting the backend's own column default mint one.
+    translationGroupId?: string
+    attributes: Record<string, unknown>
+  }
 ): Promise<DataObject> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects`, {
     method: 'POST',

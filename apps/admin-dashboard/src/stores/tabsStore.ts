@@ -13,7 +13,7 @@ import { ref } from 'vue'
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
 export type SectionKind = 'overview' | 'objects' | 'assets' | 'documents' | 'pages' | 'settings'
-export type MasterItemKind = 'asset' | 'document' | 'page'
+export type MasterItemKind = 'asset' | 'document' | 'page' | 'object'
 export type AssetSubTab = 'preview' | 'editor' | 'metadata' | 'thumbnails'
 export type DocumentSubTab = 'editor' | 'preview'
 
@@ -25,6 +25,22 @@ export interface MainTab {
   itemId?: string
   assetSubTab?: AssetSubTab
   documentSubTab?: DocumentSubTab
+  // A Data Object tab's sub-tab is a *locale*, not a fixed enum like
+  // assets/documents use - see openObject()'s own comment for why the
+  // tab itself is keyed by translationGroupId, not one locale row's id.
+  objectSubTab?: string
+  // The owning data class, captured at open time - MasterObjectTab.vue
+  // needs it as a prop and can't reliably derive it from a shared list
+  // store (same reasoning as `label` below: the record may be brand new,
+  // or the list's class filter may have moved on while this tab stayed
+  // open).
+  objectClassId?: string
+  // Set by the owning master-tab component once it knows a real label to
+  // show (MasterObjectTab.vue's own key, once loaded/created) - other
+  // item kinds derive their label from a shared store instead
+  // (DashboardLayout.vue's own tabLabel()), which doesn't work for a
+  // brand-new Data Object that isn't in any shared list yet.
+  label?: string
 }
 
 export function sectionTabId(section: SectionKind): string {
@@ -41,6 +57,10 @@ export function documentTabId(documentId: string): string {
 
 export function pageTabId(pageId: string): string {
   return `item:page:${pageId}`
+}
+
+export function objectTabId(translationGroupId: string): string {
+  return `item:object:${translationGroupId}`
 }
 
 export const useTabsStore = defineStore('tabs', () => {
@@ -96,6 +116,37 @@ export const useTabsStore = defineStore('tabs', () => {
     activeTabId.value = id
   }
 
+  // A Data Object tab represents one *logical record* (`translationGroupId`),
+  // not one locale row's own id - Pimcore-imported multi-locale records
+  // (same translationGroupId, one row per language) are "the same record"
+  // per docs/plans/datamodel/data-objects-views-editing.md, so opening
+  // any one locale row opens the whole group as a single tab, with each
+  // locale as a sub-tab inside it (MasterObjectTab.vue). A brand-new,
+  // not-yet-saved object uses a client-generated placeholder id here
+  // (still just a string) - MasterObjectTab.vue tracks its own real
+  // backend ids internally once created, the tab itself never needs to
+  // be re-keyed.
+  function openObject(translationGroupId: string, classId: string, initialLocale: string) {
+    const id = objectTabId(translationGroupId)
+    const existing = tabs.value.find((t) => t.id === id)
+    if (existing) {
+      existing.objectSubTab = initialLocale
+    } else {
+      tabs.value.push({ id, type: 'item', itemKind: 'object', itemId: translationGroupId, objectClassId: classId, objectSubTab: initialLocale })
+    }
+    activeTabId.value = id
+  }
+
+  function setObjectSubTab(translationGroupId: string, locale: string) {
+    const tab = tabs.value.find((t) => t.id === objectTabId(translationGroupId))
+    if (tab) tab.objectSubTab = locale
+  }
+
+  function setTabLabel(id: string, label: string) {
+    const tab = tabs.value.find((t) => t.id === id)
+    if (tab) tab.label = label
+  }
+
   function closeTab(id: string) {
     const idx = findIndex(id)
     if (idx === -1) return
@@ -119,6 +170,10 @@ export const useTabsStore = defineStore('tabs', () => {
     closeTab(documentTabId(documentId))
   }
 
+  function closeObjectTab(translationGroupId: string) {
+    closeTab(objectTabId(translationGroupId))
+  }
+
   return {
     tabs,
     activeTabId,
@@ -128,8 +183,12 @@ export const useTabsStore = defineStore('tabs', () => {
     openDocument,
     setDocumentSubTab,
     openPage,
+    openObject,
+    setObjectSubTab,
+    setTabLabel,
     closeTab,
     closeAssetTab,
-    closeDocumentTab
+    closeDocumentTab,
+    closeObjectTab
   }
 })

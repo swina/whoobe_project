@@ -988,6 +988,28 @@ app.get(
   }
 );
 
+// Same lookup, keyed directly by translationGroupId rather than resolved
+// from one specific locale row's id first - MasterObjectTab.vue (admin-
+// dashboard) opens a tab per logical record (docs/plans/datamodel/
+// data-objects-views-editing.md), and needs this decoupled from
+// ObjectsView.vue's own list-level store state (which can be pointed at
+// a different class entirely while this tab stays open in the
+// background - see that component's own comment on why it doesn't just
+// filter the shared list store instead).
+app.get(
+  '/data-objects/translations/:translationGroupId',
+  requirePermission(PERMISSIONS.OBJECTS_READ),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const translations = await listDataObjectTranslations(req.params.translationGroupId);
+      res.json({ translations });
+    } catch (error: any) {
+      console.error('List data object translations by group error:', error);
+      res.status(500).json({ error: error.message || 'Failed to list object translations' });
+    }
+  }
+);
+
 app.post('/data-objects', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { classId, key, path, parentId, translationGroupId, locale, attributes, pimcoreId } = req.body ?? {};

@@ -206,6 +206,11 @@
             <MasterAssetTab v-else-if="tab.type === 'item' && tab.itemKind === 'asset' && tab.itemId" :asset-id="tab.itemId" />
             <MasterDocumentTab v-else-if="tab.type === 'item' && tab.itemKind === 'document' && tab.itemId" :document-id="tab.itemId" />
             <MasterPageTab v-else-if="tab.type === 'item' && tab.itemKind === 'page' && tab.itemId" :page-id="tab.itemId" />
+            <MasterObjectTab
+              v-else-if="tab.type === 'item' && tab.itemKind === 'object' && tab.itemId && tab.objectClassId"
+              :translation-group-id="tab.itemId"
+              :class-id="tab.objectClassId"
+            />
           </div>
         </template>
       </main>
@@ -242,6 +247,7 @@ import SidebarFolderNode from '../components/dam/SidebarFolderNode.vue'
 import MasterAssetTab from '../components/dam/MasterAssetTab.vue'
 import MasterDocumentTab from '../components/documents/MasterDocumentTab.vue'
 import MasterPageTab from '../components/pages/MasterPageTab.vue'
+import MasterObjectTab from '../components/objects/MasterObjectTab.vue'
 import OverviewView from '../views/OverviewView.vue'
 import ObjectsView from '../views/ObjectsView.vue'
 import AssetsView from '../views/AssetsView.vue'
@@ -339,6 +345,9 @@ function tabLabel(tab: MainTab): string {
     const page = pagesStore.pages.find((p) => p.id === tab.itemId)
     return page?.title || 'Page'
   }
+  if (tab.type === 'item' && tab.itemKind === 'object') {
+    return tab.label || 'New Object'
+  }
   return 'Untitled'
 }
 
@@ -352,6 +361,9 @@ function tabIcon(tab: MainTab) {
   }
   if (tab.type === 'item' && tab.itemKind === 'page' && tab.itemId) {
     return FileStack
+  }
+  if (tab.type === 'item' && tab.itemKind === 'object') {
+    return Database
   }
   return FileText
 }
