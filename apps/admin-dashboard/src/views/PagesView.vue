@@ -1,21 +1,21 @@
 <template>
   <div class="space-y-6">
     <div>
-      <h2 class="text-xl font-bold text-slate-100">Pages</h2>
-      <p class="text-xs text-slate-400">Website pages built with the Whoobe One page composer (authored directly, or migrated from Pimcore). Click a row to open it in the editor.</p>
+      <h2 class="text-xl font-bold text-slate-100 light:text-slate-900">Pages</h2>
+      <p class="text-xs text-slate-400 light:text-slate-600">Website pages built with the Whoobe One page composer (authored directly, or migrated from Pimcore). Click a row to open it in the editor.</p>
     </div>
 
     <div v-if="pagesStore.isLoading && pagesStore.pages.length === 0" class="p-12 text-center text-xs text-slate-500">
       Loading pages…
     </div>
 
-    <div v-else-if="pagesStore.pages.length === 0" class="rounded-2xl bg-slate-900/40 border border-slate-800/80 p-12 text-center text-xs text-slate-500">
+    <div v-else-if="pagesStore.pages.length === 0" class="rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center text-xs text-slate-500">
       No pages yet. Create one in the Whoobe One editor, or run the migration tool's `migrate-documents` command to import from Pimcore.
     </div>
 
-    <div v-else class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60 shadow-xl">
-      <table class="w-full text-left text-xs text-slate-300">
-        <thead class="bg-slate-950/80 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+    <div v-else class="overflow-x-auto rounded-xl border border-slate-800 light:border-slate-200 bg-slate-900/60 light:bg-white/60 shadow-xl">
+      <table class="w-full text-left text-xs text-slate-300 light:text-slate-700">
+        <thead class="bg-slate-950/80 light:bg-white/80 border-b border-slate-800 light:border-slate-200 text-[11px] font-semibold text-slate-400 light:text-slate-600 uppercase tracking-wider">
           <tr>
             <th class="py-3 px-4 w-8"></th>
             <th class="py-3 px-4">Title</th>
@@ -26,19 +26,19 @@
             <th class="py-3 px-4">Updated</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-800/60">
+        <tbody class="divide-y divide-slate-800/60 light:divide-slate-200/60">
           <tr
             v-for="page in pagesStore.pages"
             :key="page.id"
             @click="tabsStore.openPage(page.id)"
-            class="cursor-pointer hover:bg-slate-800/50 transition"
+            class="cursor-pointer hover:bg-slate-800/50 light:bg-slate-100/50 transition"
           >
             <td class="py-2.5 px-4 text-center">
               <FileText class="w-4 h-4 text-indigo-400 inline" />
             </td>
-            <td class="py-2.5 px-4 font-semibold text-slate-100">{{ page.title }}</td>
+            <td class="py-2.5 px-4 font-semibold text-slate-100 light:text-slate-900">{{ page.title }}</td>
             <td class="py-2.5 px-4 font-mono text-indigo-300">{{ page.slug }}</td>
-            <td class="py-2.5 px-4 text-slate-400">{{ page.locale }}</td>
+            <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ page.locale }}</td>
             <td class="py-2.5 px-4">
               <span
                 :class="[
@@ -50,7 +50,7 @@
               </span>
             </td>
             <td class="py-2.5 px-4 text-slate-500 font-mono">{{ page.pimcoreId ?? '—' }}</td>
-            <td class="py-2.5 px-4 text-slate-400">{{ new Date(page.updatedAt).toLocaleString() }}</td>
+            <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ new Date(page.updatedAt).toLocaleString() }}</td>
           </tr>
         </tbody>
       </table>

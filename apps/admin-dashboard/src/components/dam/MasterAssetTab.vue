@@ -4,7 +4,7 @@
     <div class="shrink-0 flex items-center gap-2 text-xs font-semibold px-6 pt-6 pb-3">
       <button
         @click="setSubTab('preview')"
-        :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'preview' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-800']"
+        :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'preview' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200']"
       >
         <Eye class="w-3.5 h-3.5" />
         <span>Preview</span>
@@ -12,14 +12,14 @@
       <button
         v-if="isEditableImage"
         @click="setSubTab('editor')"
-        :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'editor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-800']"
+        :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'editor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200']"
       >
         <span>⚡</span>
         <span>Edit Image</span>
       </button>
       <button
         @click="setSubTab('metadata')"
-        :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'metadata' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-800']"
+        :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'metadata' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200']"
       >
         <span>🏷️</span>
         <span>Metadata</span>
@@ -27,7 +27,7 @@
       <button
         v-if="isEditableImage"
         @click="setSubTab('thumbnails')"
-        :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'thumbnails' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-800']"
+        :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'thumbnails' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200']"
       >
         <ImageIcon class="w-3.5 h-3.5" />
         <span>Thumbnails</span>
@@ -36,7 +36,7 @@
 
     <!-- Sub-tab content: independently scrollable; all mounted (v-show) so unsaved edits survive switching -->
     <div class="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
-      <div class="rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
+      <div class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6">
         <div v-show="activeSubTab === 'preview'">
           <DamAssetPreviewPanel
             :asset="asset"
@@ -76,7 +76,7 @@
   </div>
 
   <div v-else class="p-6">
-    <div class="rounded-2xl bg-slate-900/40 border border-slate-800/80 p-12 text-center text-xs text-slate-500">
+    <div class="rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center text-xs text-slate-500">
       This asset is no longer available.
     </div>
   </div>

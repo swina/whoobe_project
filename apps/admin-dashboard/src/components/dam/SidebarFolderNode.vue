@@ -6,8 +6,8 @@
       :class="[
         'flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none group',
         currentPath === folder.path
-          ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/40 font-bold shadow-sm'
-          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+          ? 'bg-indigo-600/30 text-indigo-200 light:bg-indigo-600/30 light:text-indigo-800 border border-indigo-500/40 font-bold shadow-sm'
+          : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
       ]"
       :style="{ paddingLeft: `${depth * 12 + 8}px` }"
     >
@@ -15,7 +15,7 @@
       <button
         v-if="hasChildren"
         @click.stop="isOpen = !isOpen"
-        class="p-0.5 rounded text-slate-500 hover:text-slate-200 transition mr-1 shrink-0"
+        class="p-0.5 rounded text-slate-500 hover:text-slate-200 light:text-slate-800 transition mr-1 shrink-0"
       >
         <ChevronDown v-if="isOpen" class="w-3 h-3 text-indigo-400" />
         <ChevronRight v-else class="w-3 h-3 text-slate-500" />
@@ -27,7 +27,7 @@
         :is="isOpen && hasChildren ? FolderOpen : Folder"
         :class="[
           'w-3.5 h-3.5 mr-1.5 shrink-0 transition-colors',
-          currentPath === folder.path ? 'text-indigo-400' : 'text-slate-400 group-hover:text-indigo-300'
+          currentPath === folder.path ? 'text-indigo-400' : 'text-slate-400 light:text-slate-600 group-hover:text-indigo-300'
         ]"
       />
 
