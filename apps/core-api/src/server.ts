@@ -67,6 +67,12 @@ import {
   getTransitionDefinition,
   logWorkflowTransition,
   listWorkflowTransitionsForObject,
+  listMigrationSources,
+  getMigrationSource,
+  getMigrationSourceConnectionConfig,
+  createMigrationSource,
+  updateMigrationSource,
+  deleteMigrationSource,
   SESSION_COOKIE_NAME,
   generateTotpSecret,
   totpKeyUri,
@@ -81,6 +87,7 @@ import {
   updateMfaRecoveryCodes,
   type AuthenticatedRequest,
 } from '@pimcore-custom/core/server';
+import { runClassMigration, runObjectMigration } from '@pimcore-custom/migration-tool';
 
 try {
   process.loadEnvFile();
@@ -881,7 +888,7 @@ app.get('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async 
 
 app.post('/data-classes', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, label, fields, pimcoreId } = req.body ?? {};
+    const { name, label, fields, viewConfig, pimcoreId } = req.body ?? {};
     if (typeof name !== 'string' || !name.trim() || typeof label !== 'string' || !label.trim() || !Array.isArray(fields)) {
       res.status(400).json({ error: 'name, label, and fields are required' });
       return;
@@ -891,6 +898,7 @@ app.post('/data-classes', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
       name: name.trim(),
       label: label.trim(),
       fields,
+      viewConfig: viewConfig ?? null,
       pimcoreId: typeof pimcoreId === 'string' ? pimcoreId : null,
     });
     res.status(201).json({ class: dataClass });
@@ -906,12 +914,43 @@ app.post('/data-classes', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
 
 app.patch('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, label, fields } = req.body ?? {};
+    const { name, label, fields, viewConfig } = req.body ?? {};
+
+    // Guardrail (docs/plans/datamodel/native-class-authoring-plan.md §3.1):
+    // once a class has real objects, a field's `name` disappearing or its
+    // `fieldType` changing would silently orphan/invalidate data already
+    // stored in those objects' `attributes` JSONB - blocked outright rather
+    // than allowed to break quietly. Adding new fields, or editing
+    // title/mandatory/localized/options on a surviving same-name-same-type
+    // field, is unrestricted.
+    if (Array.isArray(fields)) {
+      const existing = await getDataClass(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Class not found' });
+        return;
+      }
+      const objects = await listDataObjects(req.params.id);
+      if (objects.length > 0) {
+        const oldFieldsByName = new Map(existing.fields.map((f) => [f.name, f]));
+        const newFieldsByName = new Map(fields.map((f: { name: string }) => [f.name, f]));
+        const removed = [...oldFieldsByName.keys()].filter((name) => !newFieldsByName.has(name));
+        const typeChanged = [...oldFieldsByName.entries()]
+          .filter(([name, old]) => newFieldsByName.has(name) && (newFieldsByName.get(name) as any).fieldType !== old.fieldType)
+          .map(([name]) => name);
+        if (removed.length > 0 || typeChanged.length > 0) {
+          res.status(409).json({
+            error: `Cannot change these fields while ${objects.length} object(s) exist for this class: ${[...removed, ...typeChanged].join(', ')}. Remove the objects first, or leave the field's name/type unchanged.`,
+          });
+          return;
+        }
+      }
+    }
 
     const dataClass = await updateDataClass(req.params.id, {
       name: typeof name === 'string' ? name : undefined,
       label: typeof label === 'string' ? label : undefined,
       fields: Array.isArray(fields) ? fields : undefined,
+      viewConfig: viewConfig !== undefined ? viewConfig : undefined,
     });
     if (!dataClass) {
       res.status(404).json({ error: 'Class not found' });
@@ -930,6 +969,16 @@ app.patch('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
 
 app.delete('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
+    // Guardrail: deleteDataClass has no cascade (data_objects.classId is a
+    // plain uuid, not a real FK - advanced-data-modeling-plan.md §4.2's
+    // Phase 1 note on drizzle-kit's cross-file FK limit), so deleting a
+    // class with existing objects would silently orphan them rather than
+    // erroring - blocked outright instead.
+    const objects = await listDataObjects(req.params.id);
+    if (objects.length > 0) {
+      res.status(409).json({ error: `Cannot delete this class: ${objects.length} object(s) still belong to it. Delete those objects first.` });
+      return;
+    }
     await deleteDataClass(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
@@ -937,6 +986,154 @@ app.delete('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), as
     res.status(500).json({ error: error.message || 'Failed to delete class' });
   }
 });
+
+// Migration sources - configured connections to a source Pimcore install,
+// letting an admin trigger migrate-classes/migrate-objects on demand from
+// the Class Builder instead of needing shell/DB/filesystem access to run
+// packages/migration-tool's CLI directly - docs/plans/datamodel/native-
+// class-authoring-plan.md §3.4/Phase 4. `listMigrationSources`/
+// `getMigrationSource` never return the encrypted password (see that
+// records module's own `toRecord` stripping it) - only
+// `getMigrationSourceConnectionConfig`, used here strictly server-side to
+// build a real DB connection, ever decrypts it.
+app.get('/migration-sources', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const sources = await listMigrationSources();
+    res.json({ sources });
+  } catch (error: any) {
+    console.error('List migration sources error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list migration sources' });
+  }
+});
+
+app.post('/migration-sources', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { label, dbHost, dbPort, dbUser, dbPassword, dbName, classesPath } = req.body ?? {};
+    if (
+      typeof label !== 'string' || !label.trim() ||
+      typeof dbHost !== 'string' || !dbHost.trim() ||
+      typeof dbUser !== 'string' || !dbUser.trim() ||
+      typeof dbPassword !== 'string' || !dbPassword ||
+      typeof dbName !== 'string' || !dbName.trim() ||
+      typeof classesPath !== 'string' || !classesPath.trim()
+    ) {
+      res.status(400).json({ error: 'label, dbHost, dbUser, dbPassword, dbName, and classesPath are required' });
+      return;
+    }
+    const source = await createMigrationSource({
+      label: label.trim(),
+      dbHost: dbHost.trim(),
+      dbPort: typeof dbPort === 'number' ? dbPort : 3306,
+      dbUser: dbUser.trim(),
+      dbPassword,
+      dbName: dbName.trim(),
+      classesPath: classesPath.trim(),
+    });
+    res.status(201).json({ source });
+  } catch (error: any) {
+    console.error('Create migration source error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create migration source' });
+  }
+});
+
+app.patch('/migration-sources/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { label, dbHost, dbPort, dbUser, dbPassword, dbName, classesPath } = req.body ?? {};
+    const source = await updateMigrationSource(req.params.id, {
+      label: typeof label === 'string' ? label : undefined,
+      dbHost: typeof dbHost === 'string' ? dbHost : undefined,
+      dbPort: typeof dbPort === 'number' ? dbPort : undefined,
+      dbUser: typeof dbUser === 'string' ? dbUser : undefined,
+      // Omitted entirely (not just falsy) keeps the currently-stored
+      // password - see updateMigrationSource's own doc comment.
+      dbPassword: typeof dbPassword === 'string' && dbPassword ? dbPassword : undefined,
+      dbName: typeof dbName === 'string' ? dbName : undefined,
+      classesPath: typeof classesPath === 'string' ? classesPath : undefined,
+    });
+    if (!source) {
+      res.status(404).json({ error: 'Migration source not found' });
+      return;
+    }
+    res.json({ source });
+  } catch (error: any) {
+    console.error('Update migration source error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update migration source' });
+  }
+});
+
+app.delete('/migration-sources/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteMigrationSource(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete migration source error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete migration source' });
+  }
+});
+
+// Wraps packages/migration-tool's real migrate-classes/migrate-objects
+// logic (runClassMigration/runObjectMigration, refactored from the CLI-
+// only migrateClasses/migrateObjects to accept per-request config rather
+// than reading process.env - see cli.ts's own comment on those exports)
+// rather than reimplementing it, per this plan's own explicit intent.
+app.post(
+  '/migration-sources/:id/import-classes',
+  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const source = await getMigrationSource(req.params.id);
+      if (!source) {
+        res.status(404).json({ error: 'Migration source not found' });
+        return;
+      }
+      const { dryRun, className } = req.body ?? {};
+      const result = await runClassMigration({
+        classesDir: source.classesPath,
+        dryRun: dryRun === true,
+        className: typeof className === 'string' && className ? className : undefined,
+      });
+      res.json({ result });
+    } catch (error: any) {
+      console.error('Import classes error:', error);
+      res.status(500).json({ error: error.message || 'Failed to import classes' });
+    }
+  }
+);
+
+app.post(
+  '/migration-sources/:id/import-objects',
+  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { className, dryRun, limit } = req.body ?? {};
+      if (typeof className !== 'string' || !className.trim()) {
+        res.status(400).json({ error: 'className is required' });
+        return;
+      }
+      const resolved = await getMigrationSourceConnectionConfig(req.params.id);
+      if (!resolved) {
+        res.status(404).json({ error: 'Migration source not found' });
+        return;
+      }
+      const result = await runObjectMigration({
+        className: className.trim(),
+        source: 'mysql',
+        // runObjectMigration's sourceConfig is a plain Record (it hands
+        // this straight to createPimcoreSourceAdapter, which is adapter-
+        // name-agnostic and so can't know the mysql adapter's own typed
+        // shape) - MigrationSourceConnectionConfig is that same shape,
+        // just named for readability at this call site.
+        sourceConfig: { ...resolved.connection } as Record<string, unknown>,
+        dryRun: dryRun === true,
+        limit: typeof limit === 'number' ? limit : undefined,
+      });
+      res.json({ result });
+    } catch (error: any) {
+      console.error('Import objects error:', error);
+      res.status(500).json({ error: error.message || 'Failed to import objects' });
+    }
+  }
+);
 
 // Data Object instances (Pimcore's PIM/MDM "Objects") - see docs/plans/
 // datamodel/advanced-data-modeling-plan.md §4.2/§6. `?classId=` supports

@@ -28,6 +28,8 @@ export * from './db/class-workflow-definitions-schema.js';
 export * from './db/class-workflow-definitions-records.js';
 export * from './db/workflow-transition-log-schema.js';
 export * from './db/workflow-transition-log-records.js';
+export * from './db/migration-sources-schema.js';
+export * from './db/migration-sources-records.js';
 export * from './workflow/workflow-engine.js';
 export type { ClassFieldDefinition, ClassDefinition } from './schema/dynamic.js';
 export * from './db/bootstrap.js';

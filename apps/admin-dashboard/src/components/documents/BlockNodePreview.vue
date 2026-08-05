@@ -47,7 +47,7 @@
   >
     <span v-if="node.type === 'typography'" v-html="node.content" />
 
-    <span v-else-if="node.type === 'widget'" class="text-xs text-slate-400 font-mono">
+    <span v-else-if="node.type === 'widget'" class="text-xs text-slate-400 light:text-slate-600 font-mono">
       Relation → {{ node.dataBinding?.objectId || node.props?.relationIds?.join(', ') || 'unknown' }}
     </span>
 

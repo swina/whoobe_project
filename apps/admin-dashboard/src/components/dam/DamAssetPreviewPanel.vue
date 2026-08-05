@@ -2,7 +2,7 @@
   <div class="flex flex-col md:flex-row gap-6">
     <!-- Main: Preview Stage -->
     <div class="flex-1 min-w-0">
-      <div class="aspect-video w-full rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center overflow-hidden relative p-4">
+      <div class="aspect-video w-full rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 flex items-center justify-center overflow-hidden relative p-4">
         <!-- Image File Preview -->
         <img
           v-if="PREVIEWABLE_IMAGE_TYPES.includes(asset.fileType)"
@@ -25,7 +25,7 @@
         <!-- Fallback Icon Preview -->
         <div v-else class="text-center space-y-3">
           <component :is="getIconForFileType(asset.fileType)" class="w-16 h-16 text-indigo-400/80 mx-auto" />
-          <p class="text-xs text-slate-400 font-mono">{{ asset.filename }}</p>
+          <p class="text-xs text-slate-400 light:text-slate-600 font-mono">{{ asset.filename }}</p>
         </div>
       </div>
     </div>
@@ -33,26 +33,26 @@
     <!-- Right Pane: Details + Actions (narrow, fixed width) -->
     <div class="md:w-72 shrink-0 space-y-4 text-xs">
       <!-- Details -->
-      <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-        <h4 class="font-bold text-slate-200 uppercase tracking-wider text-[11px] text-indigo-400">Details</h4>
+      <div class="p-4 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 space-y-3">
+        <h4 class="font-bold text-slate-200 light:text-slate-800 uppercase tracking-wider text-[11px] text-indigo-400">Details</h4>
 
         <div v-if="asset.metadata?.technical?.width && asset.metadata?.technical?.height">
           <span class="text-slate-500 block">Asset Dim</span>
-          <span class="font-mono text-slate-200 font-medium break-all block">{{ asset.metadata.technical.width }} × {{ asset.metadata.technical.height }}px</span>
+          <span class="font-mono text-slate-200 light:text-slate-800 font-medium break-all block">{{ asset.metadata.technical.width }} × {{ asset.metadata.technical.height }}px</span>
         </div>
         <div>
           <span class="text-slate-500 block">Asset Path</span>
-          <span class="font-mono text-slate-200 font-medium break-all block">{{ asset.pimcorePath }}</span>
+          <span class="font-mono text-slate-200 light:text-slate-800 font-medium break-all block">{{ asset.pimcorePath }}</span>
         </div>
 
         <div>
           <span class="text-slate-500 block">S3 Object Key</span>
-          <span class="font-mono text-slate-200 font-medium break-all block">{{ asset.s3Key }}</span>
+          <span class="font-mono text-slate-200 light:text-slate-800 font-medium break-all block">{{ asset.s3Key }}</span>
         </div>
 
         <div>
           <span class="text-slate-500 block">File Size & Mime</span>
-          <span class="text-slate-200 font-medium">{{ asset.sizeFormatted }} ({{ asset.mimeType }})</span>
+          <span class="text-slate-200 light:text-slate-800 font-medium">{{ asset.sizeFormatted }} ({{ asset.mimeType }})</span>
         </div>
 
         <div>
@@ -69,18 +69,18 @@
 
         <div>
           <span class="text-slate-500 block">Uploaded At</span>
-          <span class="text-slate-300">{{ new Date(asset.uploadedAt).toLocaleString() }}</span>
+          <span class="text-slate-300 light:text-slate-700">{{ new Date(asset.uploadedAt).toLocaleString() }}</span>
         </div>
 
         <div>
           <span class="text-slate-500 block">Last Updated</span>
-          <span class="text-slate-300">{{ new Date(asset.updatedAt).toLocaleString() }}</span>
+          <span class="text-slate-300 light:text-slate-700">{{ new Date(asset.updatedAt).toLocaleString() }}</span>
         </div>
       </div>
 
       <!-- Actions -->
-      <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-        <h4 class="font-bold text-slate-200 uppercase tracking-wider text-[11px] text-indigo-400 mb-1">Actions</h4>
+      <div class="p-4 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 space-y-2">
+        <h4 class="font-bold text-slate-200 light:text-slate-800 uppercase tracking-wider text-[11px] text-indigo-400 mb-1">Actions</h4>
 
         <button
           v-if="PREVIEWABLE_IMAGE_TYPES.includes(asset.fileType)"
@@ -105,14 +105,14 @@
         </button>
         <button
           @click="emit('open-version')"
-          class="w-full px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 font-semibold transition flex items-center gap-1.5"
+          class="w-full px-3 py-2 rounded-xl bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-indigo-300 font-semibold transition flex items-center gap-1.5"
         >
           <RefreshCw class="w-3.5 h-3.5" />
           <span>Upload New Version (v{{ asset.version + 1 }})</span>
         </button>
         <button
           @click="copyAssetUrl"
-          class="w-full px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition flex items-center gap-1.5"
+          class="w-full px-3 py-2 rounded-xl bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 font-medium transition flex items-center gap-1.5"
         >
           <Link class="w-3.5 h-3.5" />
           <span>Copy URL</span>

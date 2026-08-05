@@ -2,7 +2,7 @@
   <div v-if="document" class="h-full flex flex-col">
     <div class="shrink-0 px-6 pt-6 pb-3 space-y-3">
       <div class="flex items-center gap-2">
-        <h3 class="text-lg font-bold text-slate-100">{{ document.title }}</h3>
+        <h3 class="text-lg font-bold text-slate-100 light:text-slate-900">{{ document.title }}</h3>
         <span
           :class="[
             'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
@@ -15,7 +15,7 @@
         <button
           @click="saveStatus('draft')"
           :disabled="isSavingStatus !== null"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-50"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 disabled:opacity-50"
         >
           {{ isSavingStatus === 'draft' ? 'Saving…' : 'Save as Draft' }}
         </button>
@@ -40,14 +40,14 @@
       <div class="flex items-center gap-2 text-xs font-semibold pt-1">
         <button
           @click="setSubTab('editor')"
-          :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'editor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-800']"
+          :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'editor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200']"
         >
           <span>🎨</span>
           <span>Editor</span>
         </button>
         <button
           @click="setSubTab('preview')"
-          :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'preview' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-800']"
+          :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'preview' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200']"
         >
           <Eye class="w-3.5 h-3.5" />
           <span>Preview</span>
@@ -58,10 +58,10 @@
     <!-- Sub-tab content: both mounted (v-show) so the live editor iframe/
          bridge connection survives switching to Preview and back. -->
     <div class="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
-      <div v-show="activeSubTab === 'editor'" class="h-full rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
+      <div v-show="activeSubTab === 'editor'" class="h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6">
         <WhoobeStudioEmbed :document-id="props.documentId" @saved="onSaved" />
       </div>
-      <div v-show="activeSubTab === 'preview'" class="rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
+      <div v-show="activeSubTab === 'preview'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6">
         <BlockNodePreview :node="document.rootBlock" />
       </div>
     </div>
@@ -70,7 +70,7 @@
   <div v-else-if="isLoading" class="p-6 text-center text-xs text-slate-500">Loading document…</div>
 
   <div v-else class="p-6">
-    <div class="rounded-2xl bg-slate-900/40 border border-slate-800/80 p-12 text-center text-xs text-slate-500">
+    <div class="rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center text-xs text-slate-500">
       This document is no longer available.
     </div>
   </div>

@@ -125,6 +125,9 @@ importers:
       '@pimcore-custom/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@pimcore-custom/migration-tool':
+        specifier: workspace:*
+        version: link:../../packages/migration-tool
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7

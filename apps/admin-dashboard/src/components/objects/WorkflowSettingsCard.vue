@@ -1,7 +1,7 @@
 <template>
-  <div class="rounded-2xl bg-slate-900/60 border border-slate-800 p-6 space-y-4">
+  <div class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-4">
     <div>
-      <h3 class="text-sm font-semibold text-slate-200 uppercase tracking-wider text-xs">Data Object Workflows</h3>
+      <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">Data Object Workflows</h3>
       <p class="text-xs text-slate-500 mt-1">
         Author an admin-defined workflow (places + transitions) for one class - docs/plans/backend/object-publish-workflow-plan.md §2.4. A class
         with no workflow just gets the plain Draft/Published toggle.
@@ -11,7 +11,7 @@
     <select
       v-model="selectedClassId"
       @change="loadWorkflow"
-      class="w-full px-3 py-2 text-sm bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none focus:border-indigo-500"
+      class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
     >
       <option value="">Select a class…</option>
       <option v-for="dataClass in dataClassesStore.classes" :key="dataClass.id" :value="dataClass.id">{{ dataClass.label }}</option>
@@ -24,20 +24,20 @@
         <!-- Places -->
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-slate-400">Places</span>
+            <span class="text-xs font-semibold text-slate-400 light:text-slate-600">Places</span>
             <button @click="addPlace" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">+ Add place</button>
           </div>
           <div v-for="(place, index) in places" :key="index" class="flex items-center gap-2">
-            <input v-model="place.name" type="text" placeholder="name (e.g. draft)" class="flex-1 px-2 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500" />
-            <input v-model="place.label" type="text" placeholder="Label" class="flex-1 px-2 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500" />
+            <input v-model="place.name" type="text" placeholder="name (e.g. draft)" class="flex-1 px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="place.label" type="text" placeholder="Label" class="flex-1 px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
             <button @click="removePlace(index)" type="button" class="text-xs text-rose-400 hover:text-rose-300 shrink-0">Remove</button>
           </div>
         </div>
 
         <!-- Initial place -->
         <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Initial place</label>
-          <select v-model="initialPlace" class="w-full px-3 py-2 text-sm bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none focus:border-indigo-500">
+          <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Initial place</label>
+          <select v-model="initialPlace" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500">
             <option value="">—</option>
             <option v-for="place in places" :key="place.name" :value="place.name">{{ place.name }}</option>
           </select>
@@ -46,22 +46,22 @@
         <!-- Transitions -->
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-slate-400">Transitions</span>
+            <span class="text-xs font-semibold text-slate-400 light:text-slate-600">Transitions</span>
             <button @click="addTransition" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">+ Add transition</button>
           </div>
-          <div v-for="(transition, index) in transitions" :key="index" class="rounded-lg border border-slate-800 p-3 space-y-2">
+          <div v-for="(transition, index) in transitions" :key="index" class="rounded-lg border border-slate-800 light:border-slate-200 p-3 space-y-2">
             <div class="grid grid-cols-3 gap-2">
-              <input v-model="transition.name" type="text" placeholder="name (e.g. approve)" class="px-2 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500" />
-              <input :value="transition.from.join(', ')" @input="transition.from = splitList(($event.target as HTMLInputElement).value)" type="text" placeholder="from (comma-separated places)" class="px-2 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500" />
-              <select v-model="transition.to" class="px-2 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none focus:border-indigo-500">
+              <input v-model="transition.name" type="text" placeholder="name (e.g. approve)" class="px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+              <input :value="transition.from.join(', ')" @input="transition.from = splitList(($event.target as HTMLInputElement).value)" type="text" placeholder="from (comma-separated places)" class="px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+              <select v-model="transition.to" class="px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500">
                 <option value="">to place…</option>
                 <option v-for="place in places" :key="place.name" :value="place.name">{{ place.name }}</option>
               </select>
             </div>
             <div class="grid grid-cols-3 gap-2 items-center">
-              <input :value="(transition.allowedPermissions ?? []).join(', ')" @input="transition.allowedPermissions = splitList(($event.target as HTMLInputElement).value)" type="text" placeholder="allowed permissions (comma-separated)" class="col-span-2 px-2 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500" />
-              <label class="flex items-center gap-1.5 text-xs text-slate-400">
-                <input type="checkbox" :checked="transition.setPublished === true" @change="transition.setPublished = ($event.target as HTMLInputElement).checked" class="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-indigo-600" />
+              <input :value="(transition.allowedPermissions ?? []).join(', ')" @input="transition.allowedPermissions = splitList(($event.target as HTMLInputElement).value)" type="text" placeholder="allowed permissions (comma-separated)" class="col-span-2 px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+              <label class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600">
+                <input type="checkbox" :checked="transition.setPublished === true" @change="transition.setPublished = ($event.target as HTMLInputElement).checked" class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
                 sets Published
               </label>
             </div>

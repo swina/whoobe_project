@@ -2,8 +2,8 @@
   <div v-if="dataClass" class="h-full flex flex-col">
     <div class="shrink-0 px-6 pt-6 pb-3 space-y-3">
       <div class="flex items-center gap-2">
-        <h3 class="text-lg font-bold text-slate-100">{{ key || `New ${dataClass.label}` }}</h3>
-        <span class="px-2 py-0.5 text-xs bg-slate-800 rounded font-mono text-indigo-300">{{ dataClass.label }}</span>
+        <h3 class="text-lg font-bold text-slate-100 light:text-slate-900">{{ key || `New ${dataClass.label}` }}</h3>
+        <span class="px-2 py-0.5 text-xs bg-slate-800 light:bg-slate-100 rounded font-mono text-indigo-300">{{ dataClass.label }}</span>
         <span
           v-if="currentRow"
           :class="[
@@ -17,7 +17,7 @@
         <button
           @click="save(false)"
           :disabled="!!isSaving || !key.trim()"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-50"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 disabled:opacity-50"
         >
           {{ isSaving === 'draft' ? 'Saving…' : 'Save as Draft' }}
         </button>
@@ -40,7 +40,7 @@
           v-for="locale in translations.map((t) => t.locale)"
           :key="locale"
           @click="setLocale(locale)"
-          :class="['px-3 py-1.5 rounded-lg transition uppercase', activeLocale === locale ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-800']"
+          :class="['px-3 py-1.5 rounded-lg transition uppercase', activeLocale === locale ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200']"
         >
           {{ locale }}
         </button>
@@ -51,7 +51,7 @@
           <select
             :value="''"
             @change="setLocale(($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
-            class="px-2 py-1.5 text-xs bg-slate-950 border border-dashed border-slate-700 rounded-lg text-indigo-400 focus:outline-none focus:border-indigo-500"
+            class="px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-dashed border-slate-700 light:border-slate-300 rounded-lg text-indigo-400 focus:outline-none focus:border-indigo-500"
           >
             <option value="" disabled>+ Add locale…</option>
             <option v-for="locale in availableNewLocales" :key="locale" :value="locale">{{ locale }}</option>
@@ -62,24 +62,24 @@
 
     <div class="flex-1 min-h-0 overflow-y-auto px-6 pb-6 space-y-4">
       <div>
-        <label class="block text-xs font-semibold text-slate-400 mb-1">Key<span class="text-rose-400"> *</span></label>
+        <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Key<span class="text-rose-400"> *</span></label>
         <input
           v-model="key"
           type="text"
           placeholder="e.g. san-benedetto"
-          class="w-full max-w-md px-3 py-2 text-sm bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500"
+          class="w-full max-w-md px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
         />
       </div>
 
-      <DataObjectForm :fields="dataClass.fields" v-model="attributes" />
+      <DataObjectForm :fields="dataClass.fields" :view-config="dataClass.viewConfig" v-model="attributes" />
 
       <!-- Workflow (object-publish-workflow-plan.md §2.4/§5) -->
-      <div v-if="currentRow && workflow" class="pt-2 border-t border-slate-800 space-y-2">
+      <div v-if="currentRow && workflow" class="pt-2 border-t border-slate-800 light:border-slate-200 space-y-2">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-semibold text-slate-400">Workflow state:</span>
+          <span class="text-xs font-semibold text-slate-400 light:text-slate-600">Workflow state:</span>
           <span class="px-2 py-0.5 text-[10px] font-bold rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 uppercase">{{ workflowPlace }}</span>
         </div>
-        <div v-if="validTransitions.length === 0" class="text-xs text-slate-600 italic">No transitions available from this place.</div>
+        <div v-if="validTransitions.length === 0" class="text-xs text-slate-600 light:text-slate-400 italic">No transitions available from this place.</div>
         <div v-else class="flex flex-wrap gap-2">
           <button
             v-for="transition in validTransitions"
@@ -95,17 +95,17 @@
       </div>
 
       <!-- Preview links (object-publish-workflow-plan.md §2.3/§5) -->
-      <div v-if="currentRow" class="pt-2 border-t border-slate-800 space-y-2">
+      <div v-if="currentRow" class="pt-2 border-t border-slate-800 light:border-slate-200 space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-semibold text-slate-400">Preview Links</span>
+          <span class="text-xs font-semibold text-slate-400 light:text-slate-600">Preview Links</span>
           <button @click="generateLink" :disabled="isGeneratingLink" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 disabled:opacity-50">
             {{ isGeneratingLink ? 'Generating…' : '+ Generate Preview Link' }}
           </button>
         </div>
-        <div v-if="previewLinks.length === 0" class="text-xs text-slate-600 italic">No preview links yet.</div>
-        <div v-for="link in previewLinks" :key="link.token" class="flex items-center justify-between gap-2 rounded-lg bg-slate-950/40 border border-slate-800 px-3 py-2">
+        <div v-if="previewLinks.length === 0" class="text-xs text-slate-600 light:text-slate-400 italic">No preview links yet.</div>
+        <div v-for="link in previewLinks" :key="link.token" class="flex items-center justify-between gap-2 rounded-lg bg-slate-950/40 light:bg-white/40 border border-slate-800 light:border-slate-200 px-3 py-2">
           <div class="min-w-0">
-            <div class="text-xs font-mono text-slate-300 truncate">{{ previewUrl(link.token) }}</div>
+            <div class="text-xs font-mono text-slate-300 light:text-slate-700 truncate">{{ previewUrl(link.token) }}</div>
             <div class="text-[10px] text-slate-500">
               {{ link.revokedAt ? 'Revoked' : `Expires ${new Date(link.expiresAt).toLocaleString()}` }} · {{ link.viewCount }} view(s)
             </div>

@@ -3,19 +3,19 @@
     <!-- Header & Action Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
-        <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+        <h2 class="text-xl font-bold text-slate-100 light:text-slate-900 flex items-center gap-2">
           <span>Assets Manager</span>
-          <span class="text-xs font-mono font-normal px-2.5 py-0.5 rounded-full bg-slate-900 text-indigo-400 border border-slate-800">
+          <span class="text-xs font-mono font-normal px-2.5 py-0.5 rounded-full bg-slate-900 light:bg-white text-indigo-400 border border-slate-800 light:border-slate-200">
             DAM Storage
           </span>
         </h2>
-        <p class="text-xs text-slate-400">Manage S3/MinIO media assets, virtual folders, visibility strategies, versioning, and ZIP archives.</p>
+        <p class="text-xs text-slate-400 light:text-slate-600">Manage S3/MinIO media assets, virtual folders, visibility strategies, versioning, and ZIP archives.</p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
         <button
           @click="openCreateFolderModal()"
-          class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 transition flex items-center gap-1.5"
+          class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-900 light:bg-white hover:bg-slate-800 light:bg-slate-100 text-slate-200 light:text-slate-800 border border-slate-800 light:border-slate-200 transition flex items-center gap-1.5"
         >
           <FolderPlus class="w-4 h-4 text-indigo-400" />
           <span>New Folder</span>
@@ -31,7 +31,7 @@
 
         <button
           @click="tabsStore.openSection('settings')"
-          class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition"
+          class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 light:bg-white hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 border border-slate-800 light:border-slate-200 transition"
           title="DAM S3 Settings"
         >
           ⚙
@@ -40,15 +40,15 @@
     </div>
 
     <!-- Active S3 Bucket Status Bar -->
-    <!--<div class="rounded-xl bg-slate-900/80 border border-slate-800 p-4 flex flex-wrap items-center justify-between gap-4">
+    <!--<div class="rounded-xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 p-4 flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-xs">
           S3
         </div>
         <div>
-          <div class="text-xs font-semibold text-slate-200 flex items-center gap-2">
+          <div class="text-xs font-semibold text-slate-200 light:text-slate-800 flex items-center gap-2">
             <span>Bucket: {{ damStore.damInfo.bucket || '—' }}</span>
-            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 text-indigo-400 border border-slate-800">
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 light:bg-slate-50 text-indigo-400 border border-slate-800 light:border-slate-200">
               {{ damStore.damInfo.keyPrefix ? 'Prefix: ' + damStore.damInfo.keyPrefix : 'Root Bucket Storage' }}
             </span>
           </div>
@@ -61,14 +61,14 @@
       <!-- Current Folder Path Indicator -->
       <!--<div class="flex items-center gap-2 text-xs">
         <span class="text-slate-500">Current Folder:</span>
-        <span class="font-mono text-xs font-bold text-indigo-300 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
+        <span class="font-mono text-xs font-bold text-indigo-300 bg-slate-950 light:bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-800 light:border-slate-200">
           {{ damStore.currentFolderPath }}
         </span>
       </div>
     </div>-->
 
     <!-- Breadcrumb Navigation -->
-    <div class="flex items-center gap-1.5 text-xs text-slate-400 overflow-x-auto py-1">
+    <div class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600 overflow-x-auto py-1">
       <button
         @click="navigateToFolder('/')"
         :class="['hover:text-indigo-400 font-medium transition flex items-center gap-1', damStore.currentFolderPath === '/' ? 'text-indigo-400 font-bold' : '']"
@@ -78,7 +78,7 @@
       </button>
 
       <template v-for="(crumb, idx) in breadcrumbs" :key="idx">
-        <ChevronRight class="w-3.5 h-3.5 text-slate-600" />
+        <ChevronRight class="w-3.5 h-3.5 text-slate-600 light:text-slate-400" />
         <button
           @click="navigateToFolder(crumb.path)"
           :class="['hover:text-indigo-400 font-medium transition', damStore.currentFolderPath === crumb.path ? 'text-indigo-400 font-bold' : '']"
@@ -90,18 +90,18 @@
 
     <!-- Subfolders Grid -->
     <div v-if="damStore.currentSubfolders.length > 0" class="space-y-2">
-      <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Folders</h3>
+      <h3 class="text-xs font-semibold text-slate-400 light:text-slate-600 uppercase tracking-wider">Folders</h3>
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
         <div
           v-for="folder in damStore.currentSubfolders"
           :key="folder.path"
           @click="navigateToFolder(folder.path)"
-          class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900 transition group cursor-pointer flex items-center justify-between"
+          class="p-3 rounded-xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 hover:border-indigo-500/50 hover:bg-slate-900 light:bg-white transition group cursor-pointer flex items-center justify-between"
         >
           <div class="flex items-center gap-2.5 truncate">
             <Folder class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform shrink-0" />
             <div class="truncate">
-              <span class="text-xs font-medium text-slate-200 block truncate">{{ folder.name }}</span>
+              <span class="text-xs font-medium text-slate-200 light:text-slate-800 block truncate">{{ folder.name }}</span>
               <span
                 :class="[
                   'text-[9px] font-bold uppercase block truncate',
@@ -126,7 +126,7 @@
     <!-- Asset Section Header with View Mode & Column Config Controls -->
     <div class="space-y-3">
       <div class="flex items-center justify-between flex-wrap gap-2">
-        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        <h3 class="text-xs font-semibold text-slate-400 light:text-slate-600 uppercase tracking-wider">
           Assets ({{ filteredAndSortedAssets.length }})
         </h3>
 
@@ -135,30 +135,30 @@
           <div class="relative">
             <button
               @click="showColumnConfig = !showColumnConfig"
-              class="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-slate-100 transition text-xs font-medium flex items-center gap-1.5"
+              class="px-2.5 py-1.5 rounded-xl bg-slate-900 light:bg-white hover:bg-slate-800 light:bg-slate-100 border border-slate-800 light:border-slate-200 text-slate-300 light:text-slate-700 hover:text-slate-100 light:text-slate-900 transition text-xs font-medium flex items-center gap-1.5"
               title="Configure Table Columns"
             >
               <SlidersHorizontal class="w-3.5 h-3.5 text-indigo-400" />
-              <span>Columns</span>
+              <span>Custom view</span>
             </button>
 
             <!-- Column Config Menu Popover -->
             <div
               v-if="showColumnConfig"
-              class="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-2xl z-40 space-y-2 text-xs"
+              class="absolute right-0 mt-2 w-56 bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 rounded-xl p-3 shadow-2xl z-40 space-y-2 text-xs"
             >
-              <div class="flex items-center justify-between pb-1.5 border-b border-slate-800 text-slate-400 font-semibold text-[11px] uppercase">
+              <div class="flex items-center justify-between pb-1.5 border-b border-slate-800 light:border-slate-200 text-slate-400 light:text-slate-600 font-semibold text-[11px] uppercase">
                 <span>Configure Columns</span>
-                <button @click="showColumnConfig = false" class="text-slate-500 hover:text-slate-200">✕</button>
+                <button @click="showColumnConfig = false" class="text-slate-500 hover:text-slate-200 light:text-slate-800">✕</button>
               </div>
 
               <div class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-                <label v-for="(val, key) in visibleColumns" :key="key" class="flex items-center gap-2 cursor-pointer hover:bg-slate-850 p-1 rounded transition text-slate-300">
+                <label v-for="(val, key) in visibleColumns" :key="key" class="flex items-center gap-2 cursor-pointer hover:bg-slate-850 light:bg-slate-100 p-1 rounded transition text-slate-300 light:text-slate-700">
                   <input
                     type="checkbox"
                     :checked="val"
                     @change="toggleColumn(key as keyof ColumnConfig)"
-                    class="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500"
+                    class="rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600 focus:ring-indigo-500"
                   />
                   <span class="capitalize">{{ key === 's3Key' ? 'S3 Object Key' : key === 'fileType' ? 'Type' : key === 'uploadedAt' ? 'Uploaded' : key === 'updatedAt' ? 'Updated' : key }}</span>
                 </label>
@@ -167,10 +167,10 @@
           </div>
 
           <!-- View Mode Toggle Buttons (Grid vs List) -->
-          <div class="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-0.5">
+          <div class="flex items-center bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 rounded-xl p-0.5">
             <button
               @click="setViewMode('grid')"
-              :class="['px-2.5 py-1 rounded-lg transition text-xs flex items-center gap-1 font-semibold', viewMode === 'grid' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200']"
+              :class="['px-2.5 py-1 rounded-lg transition text-xs flex items-center gap-1 font-semibold', viewMode === 'grid' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800']"
               title="Grid View"
             >
               <LayoutGrid class="w-3.5 h-3.5" />
@@ -178,7 +178,7 @@
             </button>
             <button
               @click="setViewMode('list')"
-              :class="['px-2.5 py-1 rounded-lg transition text-xs flex items-center gap-1 font-semibold', viewMode === 'list' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200']"
+              :class="['px-2.5 py-1 rounded-lg transition text-xs flex items-center gap-1 font-semibold', viewMode === 'list' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800']"
               title="List View"
             >
               <List class="w-3.5 h-3.5" />
@@ -189,7 +189,7 @@
       </div>
 
       <!-- Filter Bar (Text Search & Multi-Column Filters) -->
-      <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="p-3 rounded-xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div class="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
           <!-- Text Search Filter -->
           <div class="relative flex-1 min-w-[200px]">
@@ -198,12 +198,12 @@
               v-model="searchQuery"
               type="text"
               placeholder="Filter by filename, path, type, key..."
-              class="w-full pl-8 pr-7 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 transition"
+              class="w-full pl-8 pr-7 py-1.5 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs focus:outline-none focus:border-indigo-500 transition"
             />
             <button
               v-if="searchQuery"
               @click="searchQuery = ''"
-              class="absolute right-2.5 top-2 text-slate-500 hover:text-slate-200 transition"
+              class="absolute right-2.5 top-2 text-slate-500 hover:text-slate-200 light:text-slate-800 transition"
             >
               ✕
             </button>
@@ -211,10 +211,10 @@
 
           <!-- File Type Filter Dropdown -->
           <div class="flex items-center gap-1.5">
-            <label class="text-[11px] text-slate-400 font-medium">Type:</label>
+            <label class="text-[11px] text-slate-400 light:text-slate-600 font-medium">Type:</label>
             <select
               v-model="filterType"
-              class="px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+              class="px-2.5 py-1.5 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
             >
               <option value="ALL">All Types</option>
               <option value="IMAGE">Images (PNG, JPG, WEBP, SVG)</option>
@@ -226,10 +226,10 @@
 
           <!-- Visibility Filter Dropdown -->
           <div class="flex items-center gap-1.5">
-            <label class="text-[11px] text-slate-400 font-medium">Visibility:</label>
+            <label class="text-[11px] text-slate-400 light:text-slate-600 font-medium">Visibility:</label>
             <select
               v-model="filterVisibility"
-              class="px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+              class="px-2.5 py-1.5 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
             >
               <option value="ALL">All Visibilities</option>
               <option value="PUBLIC">PUBLIC (CDN)</option>
@@ -241,14 +241,14 @@
           <button
             v-if="hasActiveFilters"
             @click="resetFilters"
-            class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 hover:text-indigo-200 transition text-[11px] font-semibold flex items-center gap-1"
+            class="px-2.5 py-1.5 rounded-xl bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-indigo-300 hover:text-indigo-200 transition text-[11px] font-semibold flex items-center gap-1"
           >
             <X class="w-3 h-3" />
             <span>Reset Filters</span>
           </button>
         </div>
 
-        <div class="text-[11px] text-slate-400 font-mono">
+        <div class="text-[11px] text-slate-400 light:text-slate-600 font-mono">
           Showing <strong class="text-indigo-300 font-bold">{{ filteredAndSortedAssets.length }}</strong> of {{ damStore.currentAssets.length }} assets
         </div>
       </div>
@@ -270,7 +270,7 @@
           </button>
           <button
             @click="clearSelection"
-            class="text-xs font-medium text-slate-400 hover:text-slate-200 transition"
+            class="text-xs font-medium text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
           >
             Clear selection
           </button>
@@ -301,9 +301,9 @@
           v-for="asset in paginatedAssets"
           :key="asset.id"
           @click="tabsStore.openAsset(asset.id)"
-          class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/50 transition group flex flex-col justify-between space-y-3 cursor-pointer"
+          class="p-4 rounded-xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 hover:border-indigo-500/50 transition group flex flex-col justify-between space-y-3 cursor-pointer"
         >
-          <div class="aspect-video w-full rounded-lg bg-slate-950 flex items-center justify-center border border-slate-800/80 overflow-hidden relative group-hover:bg-slate-900/80 transition">
+          <div class="aspect-video w-full rounded-lg bg-slate-950 light:bg-slate-50 flex items-center justify-center border border-slate-800/80 light:border-slate-200/80 overflow-hidden relative group-hover:bg-slate-900/80 light:bg-white/80 transition">
             <img
               v-if="PREVIEWABLE_IMAGE_TYPES.includes(asset.fileType)"
               :src="asset.dataUrl || asset.thumbnailUrl || asset.url"
@@ -314,7 +314,7 @@
             <component v-else :is="getIconForFileType(asset.fileType)" class="w-8 h-8 text-slate-500 group-hover:text-indigo-400 transition-colors" />
 
             <!-- Quick Eye Preview Indicator -->
-            <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1 text-xs text-white font-medium">
+            <div class="absolute inset-0 bg-slate-950/40 light:bg-white/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1 text-xs text-white font-medium">
               <Eye class="w-4 h-4 text-indigo-400" />
               <span>Preview</span>
             </div>
@@ -326,7 +326,7 @@
                 :value="asset.id"
                 :checked="selectedAssetIds.includes(asset.id)"
                 @change="toggleSelectAsset(asset.id)"
-                class="w-4 h-4 rounded border-slate-700 bg-slate-950/90 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-900 cursor-pointer shadow-md"
+                class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950/90 light:bg-white/90 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-900 cursor-pointer shadow-md"
               />
             </div>
 
@@ -341,13 +341,13 @@
             </span>
 
             <!-- Version Badge -->
-            <span class="absolute top-2 right-2 px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-slate-900 text-indigo-300 border border-slate-800 z-10">
+            <span class="absolute top-2 right-2 px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-slate-900 light:bg-white text-indigo-300 border border-slate-800 light:border-slate-200 z-10">
               v{{ asset.version }}
             </span>
           </div>
 
           <div>
-            <div class="font-medium text-slate-200 text-sm truncate" :title="asset.filename">{{ asset.filename }}</div>
+            <div class="font-medium text-slate-200 light:text-slate-800 text-sm truncate" :title="asset.filename">{{ asset.filename }}</div>
             <div class="flex items-center justify-between text-xs text-slate-500 mt-1">
               <span>{{ asset.sizeFormatted }}</span>
               <span v-if="asset.metadata?.technical?.width && asset.metadata?.technical?.height" class="font-mono">
@@ -358,10 +358,10 @@
           </div>
 
           <!-- Hover Actions Toolbar -->
-          <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs" @click.stop>
+          <div class="pt-2 border-t border-slate-800/80 light:border-slate-200/80 flex items-center justify-between text-xs" @click.stop>
             <button
               @click="openVersionModal(asset)"
-              class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-indigo-300 hover:text-indigo-200 transition text-[11px] font-medium flex items-center gap-1"
+              class="px-2 py-1 rounded bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-indigo-300 hover:text-indigo-200 transition text-[11px] font-medium flex items-center gap-1"
               title="Upload New Version"
             >
               <RefreshCw class="w-3 h-3" />
@@ -371,28 +371,28 @@
             <div class="flex items-center gap-1">
               <button
                 @click="tabsStore.openAsset(asset.id)"
-                class="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition"
+                class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
                 title="Open Asset"
               >
                 <Eye class="w-3.5 h-3.5 text-indigo-400" />
               </button>
               <button
                 @click="openAssetInNewTab(asset)"
-                class="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-indigo-300 transition"
+                class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-indigo-300 transition"
                 title="Open Asset URL in New Tab"
               >
                 <ExternalLink class="w-3.5 h-3.5" />
               </button>
               <button
                 @click="copyAssetUrl(asset)"
-                class="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition"
+                class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
                 title="Copy Asset URL"
               >
                 <Link class="w-3.5 h-3.5" />
               </button>
               <button
                 @click="deleteAsset(asset.id)"
-                class="p-1.5 rounded hover:bg-rose-950 text-slate-400 hover:text-rose-400 transition"
+                class="p-1.5 rounded hover:bg-rose-950 text-slate-400 light:text-slate-600 hover:text-rose-400 transition"
                 title="Delete Asset"
               >
                 <Trash2 class="w-3.5 h-3.5" />
@@ -403,115 +403,115 @@
       </div>
 
       <!-- LIST / TABLE VIEW WITH CLICKABLE SORT HEADERS -->
-      <div v-else-if="viewMode === 'list' && paginatedAssets.length > 0" class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60 shadow-xl">
-        <table class="w-full text-left text-xs text-slate-300">
-          <thead class="bg-slate-950/80 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase tracking-wider select-none">
+      <div v-else-if="viewMode === 'list' && paginatedAssets.length > 0" class="overflow-x-auto rounded-xl border border-slate-800 light:border-slate-200 bg-slate-900/60 light:bg-white/60 shadow-xl">
+        <table class="w-full text-left text-xs text-slate-300 light:text-slate-700">
+          <thead class="bg-slate-950/80 light:bg-white/80 border-b border-slate-800 light:border-slate-200 text-[11px] font-semibold text-slate-400 light:text-slate-600 uppercase tracking-wider select-none">
             <tr>
               <th class="py-3 px-3 w-10 text-center select-none" @click.stop>
                 <input
                   type="checkbox"
                   :checked="isAllPageSelected"
                   @change="toggleSelectAllPage"
-                  class="w-4 h-4 rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
+                  class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
                   title="Select all on this page"
                 />
               </th>
               <th v-if="visibleColumns.thumbnail" class="py-3 px-4 w-12 text-center">Preview</th>
 
-              <th v-if="visibleColumns.filename" @click="toggleSort('filename')" class="py-3 px-4 cursor-pointer hover:text-slate-200 transition">
+              <th v-if="visibleColumns.filename" @click="toggleSort('filename')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Filename</span>
                   <ArrowUp v-if="sortColumn === 'filename' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
                   <ArrowDown v-else-if="sortColumn === 'filename' && sortDirection === 'desc'" class="w-3 h-3 text-indigo-400" />
-                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 opacity-40" />
+                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 light:text-slate-400 opacity-40" />
                 </div>
               </th>
 
-              <th v-if="visibleColumns.path" @click="toggleSort('pimcorePath')" class="py-3 px-4 cursor-pointer hover:text-slate-200 transition">
+              <th v-if="visibleColumns.path" @click="toggleSort('pimcorePath')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Asset Path</span>
                   <ArrowUp v-if="sortColumn === 'pimcorePath' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
                   <ArrowDown v-else-if="sortColumn === 'pimcorePath' && sortDirection === 'desc'" class="w-3 h-3 text-indigo-400" />
-                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 opacity-40" />
+                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 light:text-slate-400 opacity-40" />
                 </div>
               </th>
 
-              <th v-if="visibleColumns.fileType" @click="toggleSort('fileType')" class="py-3 px-4 cursor-pointer hover:text-slate-200 transition">
+              <th v-if="visibleColumns.fileType" @click="toggleSort('fileType')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Type</span>
                   <ArrowUp v-if="sortColumn === 'fileType' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
                   <ArrowDown v-else-if="sortColumn === 'fileType' && sortDirection === 'desc'" class="w-3 h-3 text-indigo-400" />
-                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 opacity-40" />
+                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 light:text-slate-400 opacity-40" />
                 </div>
               </th>
 
               <th v-if="visibleColumns.dimensions" class="py-3 px-4">Dimensions</th>
 
-              <th v-if="visibleColumns.size" @click="toggleSort('sizeBytes')" class="py-3 px-4 cursor-pointer hover:text-slate-200 transition">
+              <th v-if="visibleColumns.size" @click="toggleSort('sizeBytes')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Size</span>
                   <ArrowUp v-if="sortColumn === 'sizeBytes' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
                   <ArrowDown v-else-if="sortColumn === 'sizeBytes' && sortDirection === 'desc'" class="w-3 h-3 text-indigo-400" />
-                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 opacity-40" />
+                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 light:text-slate-400 opacity-40" />
                 </div>
               </th>
 
-              <th v-if="visibleColumns.visibility" @click="toggleSort('isPublic')" class="py-3 px-4 cursor-pointer hover:text-slate-200 transition">
+              <th v-if="visibleColumns.visibility" @click="toggleSort('isPublic')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Visibility</span>
                   <ArrowUp v-if="sortColumn === 'isPublic' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
                   <ArrowDown v-else-if="sortColumn === 'isPublic' && sortDirection === 'desc'" class="w-3 h-3 text-indigo-400" />
-                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 opacity-40" />
+                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 light:text-slate-400 opacity-40" />
                 </div>
               </th>
 
-              <th v-if="visibleColumns.version" @click="toggleSort('version')" class="py-3 px-4 cursor-pointer hover:text-slate-200 transition">
+              <th v-if="visibleColumns.version" @click="toggleSort('version')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Version</span>
                   <ArrowUp v-if="sortColumn === 'version' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
                   <ArrowDown v-else-if="sortColumn === 'version' && sortDirection === 'desc'" class="w-3 h-3 text-indigo-400" />
-                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 opacity-40" />
+                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 light:text-slate-400 opacity-40" />
                 </div>
               </th>
 
-              <th v-if="visibleColumns.uploadedAt" @click="toggleSort('uploadedAt')" class="py-3 px-4 cursor-pointer hover:text-slate-200 transition">
+              <th v-if="visibleColumns.uploadedAt" @click="toggleSort('uploadedAt')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Uploaded</span>
                   <ArrowUp v-if="sortColumn === 'uploadedAt' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
                   <ArrowDown v-else-if="sortColumn === 'uploadedAt' && sortDirection === 'desc'" class="w-3 h-3 text-indigo-400" />
-                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 opacity-40" />
+                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 light:text-slate-400 opacity-40" />
                 </div>
               </th>
 
-              <th v-if="visibleColumns.updatedAt" @click="toggleSort('updatedAt')" class="py-3 px-4 cursor-pointer hover:text-slate-200 transition">
+              <th v-if="visibleColumns.updatedAt" @click="toggleSort('updatedAt')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Updated</span>
                   <ArrowUp v-if="sortColumn === 'updatedAt' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
                   <ArrowDown v-else-if="sortColumn === 'updatedAt' && sortDirection === 'desc'" class="w-3 h-3 text-indigo-400" />
-                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 opacity-40" />
+                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 light:text-slate-400 opacity-40" />
                 </div>
               </th>
 
-              <th v-if="visibleColumns.s3Key" @click="toggleSort('s3Key')" class="py-3 px-4 cursor-pointer hover:text-slate-200 transition">
+              <th v-if="visibleColumns.s3Key" @click="toggleSort('s3Key')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>S3 Key</span>
                   <ArrowUp v-if="sortColumn === 's3Key' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
                   <ArrowDown v-else-if="sortColumn === 's3Key' && sortDirection === 'desc'" class="w-3 h-3 text-indigo-400" />
-                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 opacity-40" />
+                  <ArrowUpDown v-else class="w-3 h-3 text-slate-600 light:text-slate-400 opacity-40" />
                 </div>
               </th>
 
               <th v-if="visibleColumns.actions" class="py-3 px-4 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-800/60">
+          <tbody class="divide-y divide-slate-800/60 light:divide-slate-200/60">
             <tr
               v-for="asset in paginatedAssets"
               :key="asset.id"
               @click="tabsStore.openAsset(asset.id)"
               :class="[
                 'transition cursor-pointer',
-                selectedAssetIds.includes(asset.id) ? 'bg-indigo-950/40 hover:bg-indigo-900/50' : 'hover:bg-slate-800/50'
+                selectedAssetIds.includes(asset.id) ? 'bg-indigo-950/40 hover:bg-indigo-900/50' : 'hover:bg-slate-800/50 light:bg-slate-100/50'
               ]"
             >
               <td class="py-2.5 px-3 text-center" @click.stop>
@@ -520,38 +520,38 @@
                   :value="asset.id"
                   :checked="selectedAssetIds.includes(asset.id)"
                   @change="toggleSelectAsset(asset.id)"
-                  class="w-4 h-4 rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
+                  class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
                 />
               </td>
               <td v-if="visibleColumns.thumbnail" class="py-2.5 px-4 text-center">
-                <div class="w-9 h-9 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center overflow-hidden mx-auto">
+                <div class="w-9 h-9 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 flex items-center justify-center overflow-hidden mx-auto">
                   <img
                     v-if="PREVIEWABLE_IMAGE_TYPES.includes(asset.fileType)"
                     :src="asset.dataUrl || asset.thumbnailUrl || asset.url"
                     @error="handleImageError($event, asset)"
                     class="w-full h-full object-cover"
                   />
-                  <component v-else :is="getIconForFileType(asset.fileType)" class="w-4 h-4 text-slate-400" />
+                  <component v-else :is="getIconForFileType(asset.fileType)" class="w-4 h-4 text-slate-400 light:text-slate-600" />
                 </div>
               </td>
-              <td v-if="visibleColumns.filename" class="py-2.5 px-4 font-semibold text-slate-100 max-w-[200px] truncate" :title="asset.filename">
+              <td v-if="visibleColumns.filename" class="py-2.5 px-4 font-semibold text-slate-100 light:text-slate-900 max-w-[200px] truncate" :title="asset.filename">
                 {{ asset.filename }}
               </td>
               <td v-if="visibleColumns.path" class="py-2.5 px-4 font-mono text-indigo-300 max-w-[180px] truncate" :title="asset.pimcorePath">
                 {{ asset.pimcorePath }}
               </td>
-              <td v-if="visibleColumns.fileType" class="py-2.5 px-4 text-slate-400">
-                <span class="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-slate-950 text-slate-300 border border-slate-800">
+              <td v-if="visibleColumns.fileType" class="py-2.5 px-4 text-slate-400 light:text-slate-600">
+                <span class="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-slate-950 light:bg-slate-50 text-slate-300 light:text-slate-700 border border-slate-800 light:border-slate-200">
                   {{ asset.fileType }}
                 </span>
               </td>
-              <td v-if="visibleColumns.dimensions" class="py-2.5 px-4 text-slate-400 font-mono">
+              <td v-if="visibleColumns.dimensions" class="py-2.5 px-4 text-slate-400 light:text-slate-600 font-mono">
                 <span v-if="asset.metadata?.technical?.width && asset.metadata?.technical?.height">
                   {{ asset.metadata.technical.width }} × {{ asset.metadata.technical.height }}
                 </span>
-                <span v-else class="text-slate-600">—</span>
+                <span v-else class="text-slate-600 light:text-slate-400">—</span>
               </td>
-              <td v-if="visibleColumns.size" class="py-2.5 px-4 text-slate-400 font-mono">
+              <td v-if="visibleColumns.size" class="py-2.5 px-4 text-slate-400 light:text-slate-600 font-mono">
                 {{ asset.sizeFormatted }}
               </td>
               <td v-if="visibleColumns.visibility" class="py-2.5 px-4">
@@ -564,51 +564,51 @@
                   {{ asset.isPublic ? 'PUBLIC' : 'PRIVATE' }}
                 </span>
               </td>
-              <td v-if="visibleColumns.version" class="py-2.5 px-4 font-mono text-slate-400">
+              <td v-if="visibleColumns.version" class="py-2.5 px-4 font-mono text-slate-400 light:text-slate-600">
                 v{{ asset.version }}
               </td>
-              <td v-if="visibleColumns.uploadedAt" class="py-2.5 px-4 text-slate-400 text-[11px]">
+              <td v-if="visibleColumns.uploadedAt" class="py-2.5 px-4 text-slate-400 light:text-slate-600 text-[11px]">
                 {{ new Date(asset.uploadedAt).toLocaleDateString() }}
               </td>
-              <td v-if="visibleColumns.updatedAt" class="py-2.5 px-4 text-slate-400 text-[11px]">
+              <td v-if="visibleColumns.updatedAt" class="py-2.5 px-4 text-slate-400 light:text-slate-600 text-[11px]">
                 {{ new Date(asset.updatedAt).toLocaleDateString() }}
               </td>
-              <td v-if="visibleColumns.s3Key" class="py-2.5 px-4 font-mono text-slate-400 max-w-[160px] truncate" :title="asset.s3Key">
+              <td v-if="visibleColumns.s3Key" class="py-2.5 px-4 font-mono text-slate-400 light:text-slate-600 max-w-[160px] truncate" :title="asset.s3Key">
                 {{ asset.s3Key }}
               </td>
               <td v-if="visibleColumns.actions" class="py-2.5 px-4 text-right" @click.stop>
                 <div class="flex items-center justify-end gap-1">
                   <button
                     @click="tabsStore.openAsset(asset.id)"
-                    class="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition"
+                    class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
                     title="Open Asset"
                   >
                     <Eye class="w-3.5 h-3.5 text-indigo-400" />
                   </button>
                   <button
                     @click="openAssetInNewTab(asset)"
-                    class="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-indigo-300 transition"
+                    class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-indigo-300 transition"
                     title="Open Asset URL in New Tab"
                   >
                     <ExternalLink class="w-3.5 h-3.5" />
                   </button>
                   <button
                     @click="openVersionModal(asset)"
-                    class="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition"
+                    class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
                     title="Upload New Version"
                   >
                     <RefreshCw class="w-3.5 h-3.5" />
                   </button>
                   <button
                     @click="copyAssetUrl(asset)"
-                    class="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition"
+                    class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
                     title="Copy Asset URL"
                   >
                     <Link class="w-3.5 h-3.5" />
                   </button>
                   <button
                     @click="deleteAsset(asset.id)"
-                    class="p-1.5 rounded hover:bg-rose-950 text-slate-400 hover:text-rose-400 transition"
+                    class="p-1.5 rounded hover:bg-rose-950 text-slate-400 light:text-slate-600 hover:text-rose-400 transition"
                     title="Delete Asset"
                   >
                     <Trash2 class="w-3.5 h-3.5" />
@@ -621,14 +621,14 @@
       </div>
 
       <!-- Empty State -->
-      <div v-else class="rounded-2xl bg-slate-900/40 border border-slate-800/80 p-12 text-center space-y-3">
-        <Folder class="w-12 h-12 text-slate-600 mx-auto" />
-        <h4 class="text-sm font-semibold text-slate-300">No assets found</h4>
+      <div v-else class="rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center space-y-3">
+        <Folder class="w-12 h-12 text-slate-600 light:text-slate-400 mx-auto" />
+        <h4 class="text-sm font-semibold text-slate-300 light:text-slate-700">No assets found</h4>
         <p class="text-xs text-slate-500 max-w-sm mx-auto">No assets match your current filters in <code class="font-mono text-indigo-400">{{ damStore.currentFolderPath }}</code>.</p>
         <button
           v-if="hasActiveFilters"
           @click="resetFilters"
-          class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 transition inline-flex items-center gap-1.5 mt-2"
+          class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-indigo-300 transition inline-flex items-center gap-1.5 mt-2"
         >
           <X class="w-3.5 h-3.5" />
           <span>Reset Filters</span>
@@ -646,24 +646,24 @@
       <!-- Pagination Controls Bar -->
       <div
         v-if="filteredAndSortedAssets.length > 0"
-        class="rounded-xl bg-slate-900/80 border border-slate-800 p-3 flex flex-wrap items-center justify-between gap-3 text-xs"
+        class="rounded-xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 p-3 flex flex-wrap items-center justify-between gap-3 text-xs"
       >
         <!-- Summary -->
-        <div class="text-slate-400 font-mono">
+        <div class="text-slate-400 light:text-slate-600 font-mono">
           Showing <strong class="text-indigo-300 font-bold">{{ paginationStartIndex }}</strong> -
           <strong class="text-indigo-300 font-bold">{{ paginationEndIndex }}</strong> of
-          <strong class="text-slate-200 font-bold">{{ filteredAndSortedAssets.length }}</strong> assets
+          <strong class="text-slate-200 light:text-slate-800 font-bold">{{ filteredAndSortedAssets.length }}</strong> assets
         </div>
 
         <!-- Controls: Items Per Page & Page Navigation -->
         <div class="flex flex-wrap items-center gap-3">
           <!-- Items Per Page Selector -->
           <div class="flex items-center gap-1.5">
-            <label class="text-[11px] text-slate-400 font-medium">Per Page:</label>
+            <label class="text-[11px] text-slate-400 light:text-slate-600 font-medium">Per Page:</label>
             <select
               :value="isCustomPerPage ? 'CUSTOM' : perPageSelection"
               @change="handlePerPageChange"
-              class="px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer font-mono"
+              class="px-2.5 py-1.5 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer font-mono"
             >
               <option value="10">10</option>
               <option value="25">25 (Default)</option>
@@ -681,7 +681,7 @@
                 type="number"
                 min="1"
                 max="1000"
-                class="w-16 px-2 py-1 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 font-mono"
+                class="w-16 px-2 py-1 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs focus:outline-none focus:border-indigo-500 font-mono"
                 @keyup.enter="applyCustomPerPage"
               />
               <button
@@ -699,7 +699,7 @@
             <button
               @click="goToPage(1)"
               :disabled="currentPage === 1"
-              class="p-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400 transition"
+              class="p-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30 disabled:hover:text-slate-400 light:text-slate-600 transition"
               title="First Page"
             >
               <ChevronsLeft class="w-3.5 h-3.5" />
@@ -709,7 +709,7 @@
             <button
               @click="goToPage(currentPage - 1)"
               :disabled="currentPage === 1"
-              class="p-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400 transition"
+              class="p-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30 disabled:hover:text-slate-400 light:text-slate-600 transition"
               title="Previous Page"
             >
               <ChevronLeft class="w-3.5 h-3.5" />
@@ -722,7 +722,7 @@
               @click="goToPage(p)"
               :class="[
                 'px-2.5 py-1 rounded-lg border text-xs font-mono font-semibold transition',
-                currentPage === p ? 'bg-indigo-600 text-white border-indigo-500 shadow' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
+                currentPage === p ? 'bg-indigo-600 text-white border-indigo-500 shadow' : 'bg-slate-950 light:bg-slate-50 text-slate-400 light:text-slate-600 border-slate-800 light:border-slate-200 hover:text-slate-200 light:text-slate-800'
               ]"
             >
               {{ p }}
@@ -732,7 +732,7 @@
             <button
               @click="goToPage(currentPage + 1)"
               :disabled="currentPage === totalPages"
-              class="p-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400 transition"
+              class="p-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30 disabled:hover:text-slate-400 light:text-slate-600 transition"
               title="Next Page"
             >
               <ChevronRight class="w-3.5 h-3.5" />
@@ -742,7 +742,7 @@
             <button
               @click="goToPage(totalPages)"
               :disabled="currentPage === totalPages"
-              class="p-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400 transition"
+              class="p-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30 disabled:hover:text-slate-400 light:text-slate-600 transition"
               title="Last Page"
             >
               <ChevronsRight class="w-3.5 h-3.5" />
@@ -753,21 +753,21 @@
     </div>
 
     <!-- Modal 1: Upload Multiple Assets (with ZIP Support) -->
-    <div v-if="showUploadModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+    <div v-if="showUploadModal" class="fixed inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
         <div class="flex items-center justify-between">
-          <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+          <h3 class="text-base font-bold text-slate-100 light:text-slate-900 flex items-center gap-2">
             <Upload class="w-4 h-4 text-indigo-400" />
             Upload Assets to {{ damStore.currentFolderPath }}
           </h3>
-          <button @click="showUploadModal = false" class="text-slate-400 hover:text-slate-200 transition text-sm">✕</button>
+          <button @click="showUploadModal = false" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition text-sm">✕</button>
         </div>
 
         <!-- Dropzone / File Picker (Supports Multiple Files) -->
         <div
           @dragover.prevent
           @drop.prevent="handleFileDrop"
-          class="border-2 border-dashed border-slate-800 hover:border-indigo-500/50 rounded-xl p-6 text-center bg-slate-950/50 transition cursor-pointer"
+          class="border-2 border-dashed border-slate-800 light:border-slate-200 hover:border-indigo-500/50 rounded-xl p-6 text-center bg-slate-950/50 light:bg-white/50 transition cursor-pointer"
           @click="triggerFileInputClick"
         >
           <input
@@ -778,22 +778,22 @@
             @change="handleFileSelect"
           />
           <Upload class="w-8 h-8 text-indigo-400 mx-auto mb-2" />
-          <p class="text-xs font-semibold text-slate-200">Click to choose multiple files or drag and drop</p>
+          <p class="text-xs font-semibold text-slate-200 light:text-slate-800">Click to choose multiple files or drag and drop</p>
           <p class="text-[11px] text-slate-500 mt-1">Select PNG, JPG, SVG, PDF, MP4, or ZIP archives</p>
         </div>
 
         <!-- Selected Batch File Queue -->
         <div v-if="selectedFiles.length > 0" class="space-y-2 max-h-48 overflow-y-auto pr-1">
-          <div class="flex items-center justify-between text-xs text-slate-400 font-medium">
+          <div class="flex items-center justify-between text-xs text-slate-400 light:text-slate-600 font-medium">
             <span>Selected Files ({{ selectedFiles.length }})</span>
             <button @click="selectedFiles = []" class="text-rose-400 hover:underline text-[11px]">Clear All</button>
           </div>
 
-          <div v-for="(file, idx) in selectedFiles" :key="idx" class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+          <div v-for="(file, idx) in selectedFiles" :key="idx" class="p-2.5 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 flex items-center justify-between text-xs">
             <div class="flex items-center gap-2 truncate">
               <FileArchive v-if="file.name.toLowerCase().endsWith('.zip')" class="w-4 h-4 text-amber-400 shrink-0" />
               <component v-else :is="getIconForFilename(file.name)" class="w-4 h-4 text-indigo-400 shrink-0" />
-              <span class="font-medium text-slate-200 truncate">{{ file.name }}</span>
+              <span class="font-medium text-slate-200 light:text-slate-800 truncate">{{ file.name }}</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-slate-500 font-mono text-[10px]">{{ (file.size / 1024 / 1024).toFixed(2) }} MB</span>
@@ -808,7 +808,7 @@
                 v-model="autoExtractZip"
                 type="checkbox"
                 id="autoExtract"
-                class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 border-amber-500/50"
+                class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-amber-500/50"
               />
               Auto-extract ZIP archives into folders
             </label>
@@ -818,10 +818,10 @@
           </div>
         </div>
 
-        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800 light:border-slate-200">
           <button
             @click="showUploadModal = false"
-            class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 hover:text-slate-200 transition"
+            class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
           >
             Cancel
           </button>
@@ -838,23 +838,23 @@
     </div>
 
     <!-- Modal 2: Create Folder (Asks if PUBLIC or PRIVATE) -->
-    <div v-if="showCreateFolderModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+    <div v-if="showCreateFolderModal" class="fixed inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
         <div class="flex items-center justify-between">
-          <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+          <h3 class="text-base font-bold text-slate-100 light:text-slate-900 flex items-center gap-2">
             <FolderPlus class="w-4 h-4 text-indigo-400" />
             Create Virtual Folder
           </h3>
-          <button @click="showCreateFolderModal = false" class="text-slate-400 hover:text-slate-200 transition text-sm">✕</button>
+          <button @click="showCreateFolderModal = false" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition text-sm">✕</button>
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Folder Name</label>
+          <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Folder Name</label>
           <input
             v-model="newFolderName"
             type="text"
             placeholder="e.g. branding-assets"
-            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500"
+            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
             @keyup.enter="submitCreateFolder"
           />
           <p class="text-[11px] text-slate-500 mt-1">
@@ -863,19 +863,19 @@
         </div>
 
         <!-- Folder Visibility Toggle Selection -->
-        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-          <label class="block text-xs font-semibold text-slate-300">Folder Visibility Strategy</label>
+        <div class="p-3 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 space-y-2">
+          <label class="block text-xs font-semibold text-slate-300 light:text-slate-700">Folder Visibility Strategy</label>
           <div class="grid grid-cols-2 gap-2">
             <button
               type="button"
               @click="newFolderIsPublic = false"
               :class="[
                 'p-2.5 rounded-xl border text-left transition',
-                !newFolderIsPublic ? 'bg-amber-500/10 border-amber-500/40 text-amber-300' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                !newFolderIsPublic ? 'bg-amber-500/10 border-amber-500/40 text-amber-300' : 'bg-slate-900 light:bg-white border-slate-800 light:border-slate-200 text-slate-400 light:text-slate-600 hover:border-slate-700 light:border-slate-300'
               ]"
             >
               <div class="font-bold text-xs">PRIVATE</div>
-              <div class="text-[10px] text-slate-400">Signed short-lived URLs</div>
+              <div class="text-[10px] text-slate-400 light:text-slate-600">Signed short-lived URLs</div>
             </button>
 
             <button
@@ -883,11 +883,11 @@
               @click="newFolderIsPublic = true"
               :class="[
                 'p-2.5 rounded-xl border text-left transition',
-                newFolderIsPublic ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                newFolderIsPublic ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' : 'bg-slate-900 light:bg-white border-slate-800 light:border-slate-200 text-slate-400 light:text-slate-600 hover:border-slate-700 light:border-slate-300'
               ]"
             >
               <div class="font-bold text-xs">PUBLIC</div>
-              <div class="text-[10px] text-slate-400">Direct CDN access</div>
+              <div class="text-[10px] text-slate-400 light:text-slate-600">Direct CDN access</div>
             </button>
           </div>
           <p class="text-[11px] text-slate-500 mt-1">
@@ -896,10 +896,10 @@
           </p>
         </div>
 
-        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800 light:border-slate-200">
           <button
             @click="showCreateFolderModal = false"
-            class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 hover:text-slate-200 transition"
+            class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
           >
             Cancel
           </button>

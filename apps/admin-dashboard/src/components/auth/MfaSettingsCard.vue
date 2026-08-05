@@ -1,7 +1,7 @@
 <template>
-  <div class="rounded-2xl bg-slate-900/60 border border-slate-800 p-6 space-y-4">
+  <div class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-4">
     <div>
-      <h3 class="text-sm font-semibold text-slate-200 uppercase tracking-wider text-xs">Two-Factor Authentication</h3>
+      <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">Two-Factor Authentication</h3>
       <p class="text-xs text-slate-500 mt-1">Require a code from an authenticator app (Google Authenticator, Authy, 1Password, ...) in addition to your password.</p>
     </div>
 
@@ -11,10 +11,10 @@
     <div v-else-if="phase === 'enabled'" class="flex items-center justify-between py-2">
       <div class="flex items-center gap-2">
         <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-        <span class="text-sm text-slate-200">Enabled</span>
+        <span class="text-sm text-slate-200 light:text-slate-800">Enabled</span>
       </div>
       <button
-        class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200"
+        class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800"
         @click="phase = 'confirmDisable'"
       >
         Disable
@@ -23,13 +23,13 @@
 
     <!-- Disabling: needs the current password to confirm -->
     <form v-else-if="phase === 'confirmDisable'" @submit.prevent="submitDisable" class="space-y-3">
-      <p class="text-xs text-slate-400">Enter your password to disable two-factor authentication.</p>
+      <p class="text-xs text-slate-400 light:text-slate-600">Enter your password to disable two-factor authentication.</p>
       <input
         v-model="disablePassword"
         type="password"
         autocomplete="current-password"
         required
-        class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500"
+        class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
       />
       <div v-if="error" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">{{ error }}</div>
       <div class="flex gap-2">
@@ -40,7 +40,7 @@
         >
           {{ submitting ? 'Disabling...' : 'Confirm disable' }}
         </button>
-        <button type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200" @click="resetToStatus">
+        <button type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800" @click="resetToStatus">
           Cancel
         </button>
       </div>
@@ -49,8 +49,8 @@
     <!-- Not enabled yet, nothing in progress -->
     <div v-else-if="phase === 'disabled'" class="flex items-center justify-between py-2">
       <div class="flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-slate-600"></span>
-        <span class="text-sm text-slate-200">Not enabled</span>
+        <span class="w-2 h-2 rounded-full bg-slate-600 light:bg-slate-300"></span>
+        <span class="text-sm text-slate-200 light:text-slate-800">Not enabled</span>
       </div>
       <button
         class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white"
@@ -62,12 +62,12 @@
 
     <!-- Setup step 1: scan QR / enter secret, then confirm a live code -->
     <form v-else-if="phase === 'setup'" @submit.prevent="submitVerifySetup" class="space-y-3">
-      <p class="text-xs text-slate-400">Scan this with your authenticator app, then enter the 6-digit code it shows.</p>
+      <p class="text-xs text-slate-400 light:text-slate-600">Scan this with your authenticator app, then enter the 6-digit code it shows.</p>
       <div class="flex items-start gap-4">
         <img v-if="setup" :src="setup.qrCodeDataUrl" alt="MFA QR code" class="w-32 h-32 rounded-lg bg-white p-1" />
         <div class="text-xs text-slate-500 space-y-1">
           <div>Can't scan? Enter this key manually:</div>
-          <code class="block px-2 py-1 rounded bg-slate-950 border border-slate-800 text-slate-300 tracking-wider break-all">{{ setup?.secret }}</code>
+          <code class="block px-2 py-1 rounded bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-300 light:text-slate-700 tracking-wider break-all">{{ setup?.secret }}</code>
         </div>
       </div>
       <input
@@ -77,7 +77,7 @@
         placeholder="123456"
         autocomplete="one-time-code"
         required
-        class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500 tracking-widest"
+        class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 tracking-widest"
       />
       <div v-if="error" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">{{ error }}</div>
       <div class="flex gap-2">
@@ -88,7 +88,7 @@
         >
           {{ submitting ? 'Verifying...' : 'Confirm' }}
         </button>
-        <button type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200" @click="resetToStatus">
+        <button type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800" @click="resetToStatus">
           Cancel
         </button>
       </div>
@@ -96,11 +96,11 @@
 
     <!-- Setup step 2: recovery codes, shown exactly once -->
     <div v-else-if="phase === 'recoveryCodes'" class="space-y-3">
-      <p class="text-xs text-slate-400">
+      <p class="text-xs text-slate-400 light:text-slate-600">
         Save these recovery codes somewhere safe. Each one can be used once to sign in if you lose access to your authenticator app - they will not be shown again.
       </p>
       <div class="grid grid-cols-2 gap-2">
-        <code v-for="rc in recoveryCodes" :key="rc" class="px-2 py-1 rounded bg-slate-950 border border-slate-800 text-slate-300 text-center text-xs tracking-wider">
+        <code v-for="rc in recoveryCodes" :key="rc" class="px-2 py-1 rounded bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-300 light:text-slate-700 text-center text-xs tracking-wider">
           {{ rc }}
         </code>
       </div>

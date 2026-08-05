@@ -1,25 +1,25 @@
 <template>
-  <div class="flex h-screen bg-slate-950 text-slate-100 overflow-hidden">
+  <div class="flex h-screen bg-slate-950 light:bg-slate-50 text-slate-100 light:text-slate-900 overflow-hidden">
     <!-- Sidebar -->
     <aside
       :class="[
-        'flex flex-col border-r border-slate-800 bg-slate-900/80 backdrop-blur-md transition-all duration-300 z-30',
+        'flex flex-col border-r border-slate-800 light:border-slate-200 bg-slate-900/80 light:bg-white/80 backdrop-blur-md transition-all duration-300 z-30',
         isSidebarCollapsed ? 'w-20' : 'w-64'
       ]"
     >
       <!-- Sidebar Header -->
-      <div class="flex items-center justify-between h-16 px-4 border-b border-slate-800">
+      <div class="flex items-center justify-between h-16 px-4 border-b border-slate-800 light:border-slate-200">
         <div class="flex items-center space-x-3 overflow-hidden">
           <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-bold shadow-lg shadow-indigo-500/20 shrink-0">
             <Layers class="w-5 h-5" />
           </div>
-          <span v-if="!isSidebarCollapsed" class="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent truncate">
+          <span v-if="!isSidebarCollapsed" class="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-slate-400 light:from-slate-900 light:to-slate-600 bg-clip-text text-transparent truncate">
             Whoobe CMS
           </span>
         </div>
         <button
           @click="isSidebarCollapsed = !isSidebarCollapsed"
-          class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition"
+          class="p-1.5 rounded-lg text-slate-400 light:text-slate-600 hover:text-white hover:bg-slate-800/60 light:bg-slate-100/60 transition"
           :title="isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'"
         >
           <ChevronLeft v-if="!isSidebarCollapsed" class="w-5 h-5" />
@@ -36,7 +36,7 @@
               'w-full flex items-center px-3 py-2.5 rounded-xl font-medium transition-all group relative text-left',
               isSectionActive(item.section)
                 ? 'bg-gradient-to-r from-indigo-600/90 to-violet-600/90 text-white shadow-md shadow-indigo-500/10'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/50 light:bg-slate-100/50'
             ]"
           >
             <component :is="item.icon" class="w-5 h-5 shrink-0 transition-transform group-hover:scale-110" />
@@ -46,17 +46,28 @@
             <button
               v-if="item.section === 'assets' && !isSidebarCollapsed"
               @click.stop="isAssetsTreeExpanded = !isAssetsTreeExpanded"
-              class="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700/60 transition ml-1 shrink-0"
+              class="p-1 rounded text-slate-400 light:text-slate-600 hover:text-white hover:bg-slate-700/60 light:bg-slate-200/60 transition ml-1 shrink-0"
               title="Toggle Folders Tree"
             >
               <ChevronDown v-if="isAssetsTreeExpanded" class="w-4 h-4 text-indigo-400" />
               <ChevronRight v-else class="w-4 h-4 text-slate-500" />
             </button>
 
+            <!-- Expand/Collapse Settings Submenu Toggle -->
+            <button
+              v-if="item.section === 'settings' && !isSidebarCollapsed"
+              @click.stop="isSettingsMenuExpanded = !isSettingsMenuExpanded"
+              class="p-1 rounded text-slate-400 light:text-slate-600 hover:text-white hover:bg-slate-700/60 light:bg-slate-200/60 transition ml-1 shrink-0"
+              title="Toggle Settings Menu"
+            >
+              <ChevronDown v-if="isSettingsMenuExpanded" class="w-4 h-4 text-indigo-400" />
+              <ChevronRight v-else class="w-4 h-4 text-slate-500" />
+            </button>
+
             <!-- Tooltip on collapsed state -->
             <div
               v-if="isSidebarCollapsed"
-              class="absolute left-full ml-2 px-2.5 py-1 bg-slate-800 text-slate-200 text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50 border border-slate-700 shadow-xl"
+              class="absolute left-full ml-2 px-2.5 py-1 bg-slate-800 light:bg-slate-100 text-slate-200 light:text-slate-800 text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50 border border-slate-700 light:border-slate-300 shadow-xl"
             >
               {{ item.name }}
             </div>
@@ -65,7 +76,7 @@
           <!-- Sidebar DAM Folders Tree -->
           <div
             v-if="item.section === 'assets' && isAssetsTreeExpanded && !isSidebarCollapsed"
-            class="ml-3 pl-2.5 border-l border-slate-800/80 space-y-1 py-1"
+            class="ml-3 pl-2.5 border-l border-slate-800/80 light:border-slate-200/80 space-y-1 py-1"
           >
             <!-- Root Folder Node -->
             <div
@@ -73,8 +84,8 @@
               :class="[
                 'flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none group',
                 damStore.currentFolderPath === '/'
-                  ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/40 font-bold shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
+                  : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
               ]"
             >
               <Folder class="w-3.5 h-3.5 mr-1.5 text-indigo-400 shrink-0" />
@@ -91,11 +102,32 @@
               @select="handleSelectSidebarFolder"
             />
           </div>
+
+          <!-- Settings Submenu - docs/plans/UI/settings-ui-plan.md -->
+          <div
+            v-if="item.section === 'settings' && isSettingsMenuExpanded && !isSidebarCollapsed"
+            class="ml-3 pl-2.5 border-l border-slate-800/80 light:border-slate-200/80 space-y-1 py-1"
+          >
+            <button
+              v-for="sub in settingsSubItems"
+              :key="sub.key"
+              @click="tabsStore.openSettingsSubSection(sub.key)"
+              :class="[
+                'w-full flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none text-left',
+                isSettingsSubSectionActive(sub.key)
+                  ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
+                  : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
+              ]"
+            >
+              <component :is="sub.icon" class="w-3.5 h-3.5 mr-1.5 shrink-0" />
+              <span class="truncate flex-1">{{ sub.name }}</span>
+            </button>
+          </div>
         </div>
       </nav>
 
       <!-- Sidebar Footer / System Health Indicator -->
-      <div class="p-3 border-t border-slate-800">
+      <div class="p-3 border-t border-slate-800 light:border-slate-200">
         <div
           :class="[
             'flex items-center p-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-xs font-medium',
@@ -108,7 +140,7 @@
           </span>
           <div v-if="!isSidebarCollapsed" class="flex-1 truncate">
             <div class="font-semibold text-emerald-300">System Online</div>
-            <div class="text-[10px] text-slate-400 truncate">v1.0.0 • Connected</div>
+            <div class="text-[10px] text-slate-400 light:text-slate-600 truncate">v1.0.0 • Connected</div>
           </div>
         </div>
       </div>
@@ -117,10 +149,10 @@
     <!-- Main Content Area -->
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
       <!-- Top Header -->
-      <header class="flex items-center justify-between h-16 px-6 bg-slate-900/60 backdrop-blur-md border-b border-slate-800 z-20 shrink-0">
+      <header class="flex items-center justify-between h-16 px-6 bg-slate-900/60 light:bg-white/60 backdrop-blur-md border-b border-slate-800 light:border-slate-200 z-20 shrink-0">
         <!-- Page Title & Search -->
         <div class="flex items-center space-x-6 flex-1 max-w-xl">
-          <h1 class="text-lg font-semibold text-slate-100 truncate hidden md:block">
+          <h1 class="text-lg font-semibold text-slate-100 light:text-slate-900 truncate hidden md:block">
             {{ currentTabTitle }}
           </h1>
           <div class="relative w-full max-w-md">
@@ -128,7 +160,7 @@
             <input
               type="text"
               placeholder="Search objects, assets, documents..."
-              class="w-full pl-9 pr-4 py-1.5 text-sm bg-slate-950/60 border border-slate-800 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/80 transition"
+              class="w-full pl-9 pr-4 py-1.5 text-sm bg-slate-950/60 light:bg-white/60 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 placeholder-slate-500 light:placeholder-slate-400 focus:outline-none focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/80 transition"
             />
           </div>
         </div>
@@ -141,28 +173,38 @@
             <span>{{ toastStore.message }}</span>
           </div>
 
-          <!-- Notification Bell -->
-          <button class="relative p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition">
-            <Bell class="w-5 h-5" />
-            <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-slate-900"></span>
+          <!-- Theme toggle - dashboard-only light/dark switch -->
+          <button
+            @click="themeStore.toggleTheme()"
+            class="p-2 rounded-lg text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/60 light:bg-slate-100/60 transition"
+            :title="themeStore.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+          >
+            <Sun v-if="themeStore.theme === 'dark'" class="w-5 h-5" />
+            <Moon v-else class="w-5 h-5" />
           </button>
 
-          <div class="h-6 w-px bg-slate-800"></div>
+          <!-- Notification Bell -->
+          <button class="relative p-2 rounded-lg text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/60 light:bg-slate-100/60 transition">
+            <Bell class="w-5 h-5" />
+            <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-slate-900 light:ring-white"></span>
+          </button>
+
+          <div class="h-6 w-px bg-slate-800 light:bg-slate-100"></div>
 
           <!-- User Menu -->
           <div class="flex items-center space-x-3 group">
             <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 p-0.5 shadow-md shrink-0">
-              <div class="w-full h-full rounded-full bg-slate-900 flex items-center justify-center font-bold text-xs text-indigo-300">
+              <div class="w-full h-full rounded-full bg-slate-900 light:bg-white flex items-center justify-center font-bold text-xs text-indigo-300">
                 {{ userInitials }}
               </div>
             </div>
             <div class="hidden sm:block text-left truncate">
-              <div class="text-sm font-medium text-slate-200 truncate">{{ authStore.currentUser?.displayName }}</div>
+              <div class="text-sm font-medium text-slate-200 light:text-slate-800 truncate">{{ authStore.currentUser?.displayName }}</div>
               <div class="text-xs text-slate-500 truncate">{{ authStore.currentUser?.email }}</div>
             </div>
             <button
               @click="handleLogout"
-              class="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800/60 transition shrink-0"
+              class="p-2 rounded-lg text-slate-400 light:text-slate-600 hover:text-rose-400 hover:bg-slate-800/60 light:bg-slate-100/60 transition shrink-0"
               title="Log out"
             >
               <LogOut class="w-4 h-4" />
@@ -172,14 +214,14 @@
       </header>
 
       <!-- Main Tab Strip: one tab per open section + one per opened master item (asset) -->
-      <div class="flex items-center gap-1 px-4 pt-2 overflow-x-auto bg-slate-950/60 border-b border-slate-800 shrink-0">
+      <div class="flex items-center gap-1 px-4 pt-2 overflow-x-auto bg-slate-950/60 light:bg-white/60 border-b border-slate-800 light:border-slate-200 shrink-0">
         <div
           v-for="tab in tabsStore.tabs"
           :key="tab.id"
           @click="tabsStore.activeTabId = tab.id"
           :class="[
             'group flex items-center gap-1.5 pl-3 pr-2 py-2 text-xs font-semibold rounded-t-xl border border-b-0 transition shrink-0 cursor-pointer',
-            tabsStore.activeTabId === tab.id ? 'bg-slate-900 text-indigo-300 border-slate-800' : 'bg-slate-950/60 text-slate-500 hover:text-slate-300 border-transparent'
+            tabsStore.activeTabId === tab.id ? 'bg-slate-900 light:bg-slate-200 text-indigo-300 light:text-blue-600 border-slate-800 light:border-slate-200' : 'bg-slate-950/60 light:bg-white/60 text-slate-500 hover:text-slate-600 light:text-slate-700 border-transparent'
           ]"
         >
           <component :is="tabIcon(tab)" class="w-3.5 h-3.5 shrink-0" />
@@ -197,7 +239,7 @@
       <!-- Main Content View: all open tabs stay mounted (v-show) so switching preserves state.
            Each tab manages its own scrolling: section views scroll as a whole page, while
            MasterAssetTab keeps its sub-tab nav fixed and scrolls only its sub-tab content. -->
-      <main class="flex-1 min-h-0 overflow-hidden bg-slate-950">
+      <main class="flex-1 min-h-0 overflow-hidden bg-slate-950 light:bg-slate-50">
         <template v-for="tab in tabsStore.tabs" :key="tab.id">
           <div v-show="tabsStore.activeTabId === tab.id" class="h-full">
             <div v-if="tab.type === 'section' && tab.section" class="h-full overflow-y-auto p-6">
@@ -235,11 +277,19 @@ import {
   Search,
   Bell,
   Check,
-  LogOut
+  LogOut,
+  Sliders,
+  HardDrive,
+  Users,
+  Shield,
+  Workflow,
+  Sun,
+  Moon
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
-import { useTabsStore, sectionTabId, SectionKind, MainTab } from '../stores/tabsStore'
+import { useThemeStore } from '../stores/themeStore'
+import { useTabsStore, sectionTabId, SectionKind, MainTab, SettingsSubSection } from '../stores/tabsStore'
 import { useToastStore } from '../stores/toastStore'
 import { useAuthStore } from '../stores/authStore'
 import { getIconForFileType } from '../utils/asset-file-icons'
@@ -262,6 +312,7 @@ const pagesStore = usePagesStore()
 const tabsStore = useTabsStore()
 const toastStore = useToastStore()
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 
 const userInitials = computed(() => {
   const name = authStore.currentUser?.displayName?.trim()
@@ -279,6 +330,30 @@ function handleLogout() {
 
 const isSidebarCollapsed = ref(false)
 const isAssetsTreeExpanded = ref(true)
+const isSettingsMenuExpanded = ref(true)
+
+const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] = [
+  { key: 'general', name: 'General settings', icon: Sliders },
+  { key: 'dam', name: 'DAM configuration', icon: HardDrive },
+  { key: 'classes', name: 'Data Object classes', icon: Database },
+  { key: 'roles', name: 'Roles/Users/Workspaces', icon: Users },
+  { key: 'security', name: 'Security', icon: Shield },
+  { key: 'workflows', name: 'Workflows', icon: Workflow }
+]
+
+const settingsSubLabels: Record<SettingsSubSection, string> = {
+  general: 'General settings',
+  dam: 'DAM configuration',
+  classes: 'Data Object classes',
+  roles: 'Roles/Users/Workspaces',
+  security: 'Security',
+  workflows: 'Workflows'
+}
+
+function isSettingsSubSectionActive(key: SettingsSubSection): boolean {
+  const tab = tabsStore.tabs.find((t) => t.id === sectionTabId('settings'))
+  return isSectionActive('settings') && (tab?.settingsSubSection ?? 'general') === key
+}
 
 const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Overview', section: 'overview', icon: LayoutDashboard },
@@ -330,6 +405,9 @@ function tabLabel(tab: MainTab): string {
       const path = damStore.currentFolderPath
       if (path === '/') return 'Assets'
       return path.split('/').filter(Boolean).pop() || 'Assets'
+    }
+    if (tab.section === 'settings' && tab.settingsSubSection) {
+      return `Settings ‣ ${settingsSubLabels[tab.settingsSubSection]}`
     }
     return sectionLabels[tab.section]
   }
