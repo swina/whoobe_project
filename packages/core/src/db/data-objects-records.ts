@@ -1,4 +1,4 @@
-import { eq, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { dataObjects } from './data-objects-schema.js';
 
@@ -31,6 +31,42 @@ export async function listDataObjects(classId?: string): Promise<DataObjectRecor
 export async function getDataObject(id: string): Promise<DataObjectRecord | null> {
   const db = getDb();
   const [row] = await db.select().from(dataObjects).where(eq(dataObjects.id, id)).limit(1);
+  return row ?? null;
+}
+
+/**
+ * The one, shared place every public-facing query MUST go through - see
+ * docs/plans/backend/object-publish-workflow-plan.md §2.2 ("a
+ * `publicObjectsQuery()` helper... not left to each resolver to remember
+ * individually - a forgotten filter in one resolver is a real data
+ * leak"). Never returns an unpublished object, full stop - `core-api`'s
+ * own `/public/data-objects*` routes (the only real public surface today)
+ * call this and nothing else; any future public-facing consumer of Data
+ * Objects must too, not re-derive its own `WHERE published = true`.
+ */
+export async function listPublishedDataObjects(classId?: string, locale?: string): Promise<DataObjectRecord[]> {
+  const db = getDb();
+  const conditions = [eq(dataObjects.published, true)];
+  if (classId) conditions.push(eq(dataObjects.classId, classId));
+  if (locale) conditions.push(eq(dataObjects.locale, locale));
+  return db
+    .select()
+    .from(dataObjects)
+    .where(and(...conditions))
+    .orderBy(desc(dataObjects.publishedAt));
+}
+
+/** Same `published = true` gate as `listPublishedDataObjects` - a single
+ * object lookup returns `null` identically whether the id doesn't exist
+ * at all or exists but isn't published, so the public API never leaks
+ * "this exists but is a draft" through a different error shape. */
+export async function getPublishedDataObject(id: string): Promise<DataObjectRecord | null> {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(dataObjects)
+    .where(and(eq(dataObjects.id, id), eq(dataObjects.published, true)))
+    .limit(1);
   return row ?? null;
 }
 

@@ -2,7 +2,7 @@
 // docs/plans/datamodel/advanced-data-modeling-plan.md §4.1/§6 (Phase 1).
 // Mirrors pages-api.ts's shape (baseUrl from authStore.config, not a
 // hardcoded hostname default).
-import type { ClassFieldDefinition } from '@pimcore-custom/core'
+import type { ClassFieldDefinition, WorkflowPlace, WorkflowTransitionDefinition } from '@pimcore-custom/core'
 import { getDefaultCoreApiUrl } from './auth-api'
 
 export interface DataClass {
@@ -43,4 +43,40 @@ export async function fetchDataClassById(baseUrl: string, id: string): Promise<D
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-classes/${id}`, { credentials: 'include' })
   const body = await parseJsonOrThrow(res)
   return body.class
+}
+
+// Workflow definitions - docs/plans/backend/object-publish-workflow-
+// plan.md §2.4/§5/§7 Phase 3-4.
+export interface WorkflowDefinition {
+  id: string
+  classId: string
+  initialPlace: string
+  places: WorkflowPlace[]
+  transitions: WorkflowTransitionDefinition[]
+}
+
+export async function fetchWorkflowDefinition(baseUrl: string, classId: string): Promise<WorkflowDefinition | null> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-classes/${classId}/workflow`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.workflow
+}
+
+export async function saveWorkflowDefinition(
+  baseUrl: string,
+  classId: string,
+  input: { initialPlace: string; places: WorkflowPlace[]; transitions: WorkflowTransitionDefinition[] }
+): Promise<WorkflowDefinition> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-classes/${classId}/workflow`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.workflow
+}
+
+export async function deleteWorkflowDefinition(baseUrl: string, classId: string): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-classes/${classId}/workflow`, { method: 'DELETE', credentials: 'include' })
+  await parseJsonOrThrow(res)
 }

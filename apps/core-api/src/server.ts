@@ -51,6 +51,22 @@ import {
   createDataObject,
   updateDataObject,
   deleteDataObject,
+  listPublishedDataObjects,
+  getPublishedDataObject,
+  getDataClassByName,
+  createPreviewToken,
+  getPreviewToken,
+  listPreviewTokensForObject,
+  revokePreviewToken,
+  incrementPreviewTokenViewCount,
+  isPreviewTokenValid,
+  getWorkflowDefinitionByClassId,
+  upsertWorkflowDefinition,
+  deleteWorkflowDefinition,
+  isTransitionValid,
+  getTransitionDefinition,
+  logWorkflowTransition,
+  listWorkflowTransitionsForObject,
   SESSION_COOKIE_NAME,
   generateTotpSecret,
   totpKeyUri,
@@ -1037,6 +1053,264 @@ app.delete('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), as
     res.status(500).json({ error: error.message || 'Failed to delete object' });
   }
 });
+
+// Public Data Object API - see docs/plans/backend/object-publish-
+// workflow-plan.md §2.2/§7 Phase 1. Deliberately no requireAuth/
+// requirePermission here at all (matching /auth/login's own precedent
+// for a genuinely public route in this file) - visibility is enforced by
+// always going through listPublishedDataObjects/getPublishedDataObject
+// (§2.2's "one shared place", packages/core), never by re-deriving a
+// `published = true` filter here. `?class=<Name>` resolves to a classId
+// the same way the admin `/data-objects?classId=` route already expects
+// one, just accepting the human name instead (a public consumer has no
+// reason to know an internal class uuid).
+app.get('/public/data-objects', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const className = typeof req.query.class === 'string' ? req.query.class : undefined;
+    const locale = typeof req.query.locale === 'string' ? req.query.locale : undefined;
+    let classId: string | undefined;
+    if (className) {
+      const dataClass = await getDataClassByName(className);
+      if (!dataClass) {
+        res.json({ objects: [] });
+        return;
+      }
+      classId = dataClass.id;
+    }
+    const objects = await listPublishedDataObjects(classId, locale);
+    res.json({ objects });
+  } catch (error: any) {
+    console.error('List public data objects error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list objects' });
+  }
+});
+
+app.get('/public/data-objects/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const object = await getPublishedDataObject(req.params.id);
+    if (!object) {
+      // Identical response whether the id doesn't exist or exists but
+      // isn't published - never leak "this exists but is a draft" (§2.2).
+      res.status(404).json({ error: 'Object not found' });
+      return;
+    }
+    res.json({ object });
+  } catch (error: any) {
+    console.error('Get public data object error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get object' });
+  }
+});
+
+// Preview links - object-publish-workflow-plan.md §2.3/§7 Phase 2. Issuing
+// one is admin-only (gated on OBJECTS_PUBLISH, the same permission that
+// gates flipping `published` itself - sharing a preview of unpublished
+// content is a publish-adjacent action); *resolving* one is deliberately
+// public with zero auth, same as the public Data Object routes above -
+// the token itself is the only credential, matching the plan's own "a
+// separate route, reachable only by having the exact token" design.
+app.post(
+  '/data-objects/:id/preview-link',
+  requirePermission(PERMISSIONS.OBJECTS_PUBLISH),
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const object = await getDataObject(req.params.id);
+      if (!object) {
+        res.status(404).json({ error: 'Object not found' });
+        return;
+      }
+      const expiresInDays = typeof req.body?.expiresInDays === 'number' ? req.body.expiresInDays : undefined;
+      const previewToken = await createPreviewToken({ objectId: object.id, createdBy: req.user?.id ?? null, expiresInDays });
+      res.status(201).json({ token: previewToken.token, expiresAt: previewToken.expiresAt });
+    } catch (error: any) {
+      console.error('Create preview link error:', error);
+      res.status(500).json({ error: error.message || 'Failed to create preview link' });
+    }
+  }
+);
+
+app.get(
+  '/data-objects/:id/preview-links',
+  requirePermission(PERMISSIONS.OBJECTS_READ),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const tokens = await listPreviewTokensForObject(req.params.id);
+      res.json({ tokens });
+    } catch (error: any) {
+      console.error('List preview links error:', error);
+      res.status(500).json({ error: error.message || 'Failed to list preview links' });
+    }
+  }
+);
+
+app.delete(
+  '/data-objects/preview-links/:token',
+  requirePermission(PERMISSIONS.OBJECTS_PUBLISH),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      await revokePreviewToken(req.params.token);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Revoke preview link error:', error);
+      res.status(500).json({ error: error.message || 'Failed to revoke preview link' });
+    }
+  }
+);
+
+// Resolution - no requireAuth/requirePermission at all, deliberately: the
+// token itself is the credential. Not part of the /data-objects surface
+// (a distinct top-level path), so it can never be reached by anything
+// that also has access to the admin listing/search routes.
+app.get('/preview/objects/:token', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const previewToken = await getPreviewToken(req.params.token);
+    if (!previewToken || !isPreviewTokenValid(previewToken)) {
+      res.status(404).json({ error: 'Preview link not found or expired' });
+      return;
+    }
+    const object = await getDataObject(previewToken.objectId);
+    if (!object) {
+      res.status(404).json({ error: 'Object not found' });
+      return;
+    }
+    await incrementPreviewTokenViewCount(previewToken.token);
+    res.json({ object });
+  } catch (error: any) {
+    console.error('Resolve preview link error:', error);
+    res.status(500).json({ error: error.message || 'Failed to resolve preview link' });
+  }
+});
+
+// Workflow definitions - object-publish-workflow-plan.md §2.4/§3/§7 Phase 3.
+// Authoring (define/replace/remove a class's whole workflow) is gated on
+// WORKFLOWS_MANAGE, a distinct permission from OBJECTS_* - editing what
+// states/transitions *exist* is a different, more structural capability
+// than reading/writing/publishing individual objects.
+app.get(
+  '/data-classes/:id/workflow',
+  requirePermission(PERMISSIONS.OBJECTS_READ),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const definition = await getWorkflowDefinitionByClassId(req.params.id);
+      res.json({ workflow: definition });
+    } catch (error: any) {
+      console.error('Get workflow definition error:', error);
+      res.status(500).json({ error: error.message || 'Failed to get workflow definition' });
+    }
+  }
+);
+
+app.put(
+  '/data-classes/:id/workflow',
+  requirePermission(PERMISSIONS.WORKFLOWS_MANAGE),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { initialPlace, places, transitions } = req.body ?? {};
+      if (typeof initialPlace !== 'string' || !Array.isArray(places) || !Array.isArray(transitions)) {
+        res.status(400).json({ error: 'initialPlace, places, and transitions are required' });
+        return;
+      }
+      if (!places.some((p: any) => p.name === initialPlace)) {
+        res.status(400).json({ error: `initialPlace "${initialPlace}" is not one of this workflow's own places` });
+        return;
+      }
+      const definition = await upsertWorkflowDefinition({ classId: req.params.id, initialPlace, places, transitions });
+      res.json({ workflow: definition });
+    } catch (error: any) {
+      console.error('Save workflow definition error:', error);
+      res.status(500).json({ error: error.message || 'Failed to save workflow definition' });
+    }
+  }
+);
+
+app.delete(
+  '/data-classes/:id/workflow',
+  requirePermission(PERMISSIONS.WORKFLOWS_MANAGE),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      await deleteWorkflowDefinition(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Delete workflow definition error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete workflow definition' });
+    }
+  }
+);
+
+// Transitioning one object through its class's workflow. No single fixed
+// requirePermission() here - each transition declares its own
+// `allowedPermissions` (§2.4), checked against the signed-in identity's
+// real permission set once the object/definition/transition are all
+// known - just `requireAuth` up front so `req.user` exists to check.
+app.post(
+  '/data-objects/:id/transition',
+  requireAuth,
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { transitionName } = req.body ?? {};
+      if (typeof transitionName !== 'string' || !transitionName.trim()) {
+        res.status(400).json({ error: 'transitionName is required' });
+        return;
+      }
+
+      const object = await getDataObject(req.params.id);
+      if (!object) {
+        res.status(404).json({ error: 'Object not found' });
+        return;
+      }
+      const definition = await getWorkflowDefinitionByClassId(object.classId);
+      if (!definition) {
+        res.status(400).json({ error: 'This object\'s class has no workflow defined' });
+        return;
+      }
+
+      const currentPlace = object.workflowState ?? definition.initialPlace;
+      if (!isTransitionValid(definition, currentPlace, transitionName)) {
+        res.status(400).json({ error: `Transition "${transitionName}" is not valid from "${currentPlace}"` });
+        return;
+      }
+      const transition = getTransitionDefinition(definition, transitionName)!;
+
+      if (transition.allowedPermissions && transition.allowedPermissions.length > 0) {
+        const userPermissions = req.user?.permissions ?? [];
+        if (!transition.allowedPermissions.some((p) => userPermissions.includes(p))) {
+          res.status(403).json({ error: `Missing permission for transition "${transitionName}"` });
+          return;
+        }
+      }
+
+      const updated = await updateDataObject(object.id, {
+        workflowState: transition.to,
+        ...(transition.setPublished !== undefined ? { published: transition.setPublished } : {}),
+      });
+      await logWorkflowTransition({
+        objectId: object.id,
+        fromPlace: currentPlace,
+        toPlace: transition.to,
+        transitionName,
+        actorId: req.user?.id ?? null,
+      });
+
+      res.json({ object: updated });
+    } catch (error: any) {
+      console.error('Transition object workflow error:', error);
+      res.status(500).json({ error: error.message || 'Failed to transition object' });
+    }
+  }
+);
+
+app.get(
+  '/data-objects/:id/transitions',
+  requirePermission(PERMISSIONS.OBJECTS_READ),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const transitions = await listWorkflowTransitionsForObject(req.params.id);
+      res.json({ transitions });
+    } catch (error: any) {
+      console.error('List object transitions error:', error);
+      res.status(500).json({ error: error.message || 'Failed to list transitions' });
+    }
+  }
+);
 
 // On-the-fly bootstrap: create the database if it doesn't exist, apply any
 // pending migrations, and seed default roles/permissions/admin user. Runs
