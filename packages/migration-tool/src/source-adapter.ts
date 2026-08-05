@@ -54,8 +54,25 @@ export interface PimcoreObjectRelationEdge {
   destId: number;
 }
 
+/** One Field Collection item - `collectionType` is the Pimcore type name
+ * (e.g. `"ProductBanner"`), discovered from the real
+ * `object_collection_<Type>_<classId>` table name, not assumed from the
+ * class definition (§6, Phase 6) - the adapter returns whatever really
+ * exists in the data. `index` is Pimcore's own real ordering column,
+ * shared *across every type* mixed into one field (confirmed: a real
+ * Product object's `content` field interleaves `ProductVariants` at
+ * index 0 with `ProductBanner` at indexes 1-3) - sorting by `index`
+ * alone (not grouped by type first) reconstructs the true order. */
+export interface PimcoreFieldCollectionItem {
+  fieldname: string;
+  collectionType: string;
+  index: number;
+  columns: Record<string, unknown>;
+  localizedByLocale: Record<string, Record<string, unknown>>;
+}
+
 /**
- * The raw material for one object, joined from up to three real Pimcore
+ * The raw material for one object, joined from up to four real Pimcore
  * tables (see the plan's §3.2/§3.4) - `columns`/`localizedByLocale` are
  * intentionally untyped raw column dumps (`SELECT *`), not a filtered
  * subset: which columns are real class fields vs. Pimcore tree/meta
@@ -68,6 +85,10 @@ export interface RawPimcoreObjectAttributes {
   columns: Record<string, unknown>;
   localizedByLocale: Record<string, Record<string, unknown>>;
   relations: PimcoreObjectRelationEdge[];
+  /** Optional (not every adapter/fixture needs to populate this - a class
+   * with no Field Collection fields at all has none to return) rather
+   * than forcing every existing caller to pass an empty array. */
+  fieldCollections?: PimcoreFieldCollectionItem[];
 }
 
 export interface PimcoreSourceAdapter {

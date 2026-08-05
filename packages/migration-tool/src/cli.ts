@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { ClassFieldDefinition } from '@pimcore-custom/core';
 import {
   upsertWhoobePageByPimcoreId,
   upsertDataClassByPimcoreId,
@@ -10,7 +11,12 @@ import {
 import { PimcorePageConverter } from './pimcore-page-converter.js';
 import { PimcoreRawDocument, PimcoreEditableElement } from './pimcore-document-converter.js';
 import { PimcoreObjectConverter } from './pimcore-object-converter.js';
-import { parsePimcoreClassDefinitionFile, parsePimcoreClassMeta } from './pimcore-class-definition-parser.js';
+import {
+  parsePimcoreClassDefinitionFile,
+  parsePimcoreClassMeta,
+  parseAllowedTypes,
+  parseFieldCollectionTypeFile,
+} from './pimcore-class-definition-parser.js';
 import { createPimcoreSourceAdapter } from './source-adapter.js';
 import './adapters/mysql-adapter.js';
 import './adapters/fixture-adapter.js';
@@ -129,6 +135,35 @@ async function migrateDocuments(flags: CliFlags): Promise<void> {
  * on disk, not in MySQL (confirmed against a live install, §3.1 of that
  * plan), so this reads directly from a filesystem path instead.
  */
+/**
+ * Populates `collectionTypes` on any `fieldcollections` field, by reading
+ * its own `allowedTypes` (from the class's definition file, already in
+ * hand) and then each allowed type's *own* definition file - a real
+ * second read per type, not something derivable from the class file
+ * alone (§6, Phase 6). A missing/unreadable type file is logged and
+ * skipped, not a fatal error for the whole class - a real install could
+ * reference a type whose file was since removed, and the rest of the
+ * class's fields are still worth migrating.
+ */
+function enrichFieldCollectionTypes(fields: ClassFieldDefinition[], classSource: string, classesDir: string): void {
+  for (const field of fields) {
+    if (field.fieldType === 'fieldcollections') {
+      const allowedTypeNames = parseAllowedTypes(classSource, field.name);
+      const collectionTypes: NonNullable<ClassFieldDefinition['collectionTypes']> = [];
+      for (const typeName of allowedTypeNames) {
+        try {
+          const typeSource = readFileSync(join(classesDir, 'DataObject', 'Fieldcollection', 'Data', `${typeName}.php`), 'utf-8');
+          collectionTypes.push({ name: typeName, label: typeName, fields: parseFieldCollectionTypeFile(typeSource) });
+        } catch (err: any) {
+          console.error(`[ETL] Could not read Field Collection type "${typeName}" for field "${field.name}": ${err.message}`);
+        }
+      }
+      if (collectionTypes.length > 0) field.collectionTypes = collectionTypes;
+    }
+    if (field.blockFields) enrichFieldCollectionTypes(field.blockFields, classSource, classesDir);
+  }
+}
+
 async function migrateClasses(flags: CliFlags): Promise<void> {
   const classesDir = process.env.PIMCORE_VAR_CLASSES_PATH;
   if (!classesDir) {
@@ -151,6 +186,7 @@ async function migrateClasses(flags: CliFlags): Promise<void> {
       const meta = parsePimcoreClassMeta(source);
       if (!meta) throw new Error('Could not find the class\'s own id/name near the top of the file');
       const fields = parsePimcoreClassDefinitionFile(source);
+      enrichFieldCollectionTypes(fields, source, classesDir);
 
       if (flags.dryRun) {
         console.log(`[dry-run] Class ${meta.id} (${meta.name}) - ${fields.length} field(s)`);

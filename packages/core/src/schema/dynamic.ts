@@ -9,10 +9,14 @@ import { z, ZodSchema } from 'zod';
  * relation-family fieldtype; `options` is for a plain fixed-choice
  * `select`/`multiselect`; `blockFields` is `block`'s own inline child
  * field list (recursively compiled, see compileFieldSchema below);
- * `collectionFields` is `fieldcollections`' equivalent - deliberately a
- * single shared shape here, not per-collection-type, matching Phase 2's
- * scope (a real multi-collection-type picker is Phase 6's job, see the
- * plan's own phase list).
+ * `collectionFields` is `fieldcollections`' single-shared-shape fallback
+ * (Phase 2/3's own simplification, kept for backward compatibility);
+ * `collectionTypes` is the real thing Phase 6 builds - a `fieldcollections`
+ * field can hold an ordered mix of *several distinct named types* (e.g.
+ * Product's real `content` field allows `ProductBanner`, `ProductTabs`,
+ * `ProductVariants`, ... all mixed in one list, confirmed against real
+ * migrated data), each with its own field list. When both are absent,
+ * `fieldcollections` falls back to `z.record(z.unknown())` per item.
  */
 export interface ClassFieldDefinition {
   name: string;
@@ -24,6 +28,7 @@ export interface ClassFieldDefinition {
   options?: string[];
   blockFields?: ClassFieldDefinition[];
   collectionFields?: ClassFieldDefinition[];
+  collectionTypes?: { name: string; label: string; fields: ClassFieldDefinition[] }[];
 }
 
 export interface ClassDefinition {
@@ -108,10 +113,26 @@ function compileFieldSchema(field: ClassFieldDefinition): ZodSchema {
       fieldSchema = z.array(compileFieldsShape(field.blockFields ?? []));
       break;
     case 'fieldcollections':
-      // One shared shape, not per-collection-type - see this file's own
-      // header comment and the plan's §6.5/Phase 6 for why a real
-      // multi-type picker is deliberately deferred, not built here.
-      fieldSchema = z.array(field.collectionFields ? compileFieldsShape(field.collectionFields) : z.record(z.unknown()));
+      if (field.collectionTypes && field.collectionTypes.length > 0) {
+        // A real, tagged-union repeatable list - each item is one of
+        // several distinct named collection types, discriminated by its
+        // own `collectionType` string (§6, Phase 6 - not the Phase 2/3
+        // single-shape simplification below).
+        const itemSchemas = field.collectionTypes.map((type) =>
+          z.object({ collectionType: z.literal(type.name), ...buildFieldsShapeRecord(type.fields) })
+        );
+        fieldSchema = z.array(
+          itemSchemas.length > 1
+            ? z.union(itemSchemas as unknown as [ZodSchema, ZodSchema, ...ZodSchema[]])
+            : itemSchemas[0]
+        );
+      } else {
+        // One shared shape, not per-collection-type - Phase 2/3's own
+        // simplification, kept as a fallback for when full multi-type
+        // info isn't available (e.g. a hand-authored class with no
+        // migrated `collectionTypes`).
+        fieldSchema = z.array(field.collectionFields ? compileFieldsShape(field.collectionFields) : z.record(z.unknown()));
+      }
       break;
     default:
       // Covers the Newsletter-bundle-specific types (firstname/gender/
@@ -123,10 +144,18 @@ function compileFieldSchema(field: ClassFieldDefinition): ZodSchema {
   return field.mandatory ? fieldSchema : fieldSchema.optional().nullable();
 }
 
-function compileFieldsShape(fields: ClassFieldDefinition[]): ZodSchema {
+/** The plain `{ fieldName: ZodSchema }` record - exposed separately from
+ * `compileFieldsShape` (which wraps it in `z.object(...)`) so the
+ * `fieldcollections` tagged-union case can merge it with its own
+ * `collectionType` literal key instead of re-deriving the shape. */
+function buildFieldsShapeRecord(fields: ClassFieldDefinition[]): Record<string, ZodSchema> {
   const shape: Record<string, ZodSchema> = {};
   for (const field of fields) shape[field.name] = compileFieldSchema(field);
-  return z.object(shape);
+  return shape;
+}
+
+function compileFieldsShape(fields: ClassFieldDefinition[]): ZodSchema {
+  return z.object(buildFieldsShapeRecord(fields));
 }
 
 /**

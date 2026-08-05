@@ -1,5 +1,54 @@
 import type { ClassFieldDefinition } from '@pimcore-custom/core';
-import type { RawPimcoreObjectAttributes } from './source-adapter.js';
+import type { RawPimcoreObjectAttributes, PimcoreFieldCollectionItem } from './source-adapter.js';
+import { phpUnserialize, type PhpValue } from './php-unserialize.js';
+
+/**
+ * Real Pimcore `link` field storage - a PHP-serialized
+ * `Pimcore\Model\DataObject\Data\Link` object (confirmed against real
+ * migrated Field Collection data, section 6/Phase 6 of the datamodel
+ * plan), not JSON. Reuses `php-unserialize.ts` (already built for
+ * Areablock/WYSIWYG data in the Documents pipeline) rather than writing a
+ * second PHP deserializer - `phpUnserialize` already treats a PHP object
+ * as a plain property bag, just with private/protected property names
+ * carrying PHP's own real null-byte visibility-marker prefix (confirmed
+ * directly against real data, not assumed: a protected property
+ * serializes as a null byte, an asterisk, then another null byte before
+ * the real name; a private one uses the class name between the null
+ * bytes instead) that needs stripping to get the plain field name back.
+ */
+const PHP_PROPERTY_VISIBILITY_PREFIX = new RegExp('^\\x00[^\\x00]*\\x00');
+
+function parsePimcoreLinkValue(raw: unknown): { path: string | null; text: string | null; target: string | null } {
+  const empty = { path: null, text: null, target: null };
+  if (typeof raw !== 'string' || !raw.trim()) return empty;
+
+  let parsed: PhpValue;
+  try {
+    parsed = phpUnserialize(raw);
+  } catch {
+    return empty;
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return empty;
+
+  const clean: Record<string, PhpValue> = {};
+  for (const [key, value] of Object.entries(parsed)) {
+    clean[key.replace(PHP_PROPERTY_VISIBILITY_PREFIX, '')] = value;
+  }
+
+  const linktype = typeof clean.linktype === 'string' ? clean.linktype : null;
+  const path =
+    linktype === 'direct' && typeof clean.direct === 'string'
+      ? clean.direct
+      : clean.internal != null
+        ? `[internal ${clean.internalType ?? '?'}:${clean.internal}]`
+        : null;
+
+  return {
+    path,
+    text: typeof clean.text === 'string' && clean.text ? clean.text : null,
+    target: typeof clean.target === 'string' && clean.target ? clean.target : null,
+  };
+}
 
 /** Resolves a Pimcore asset id to its real, current path - same role
  * `PimcoreSourceAdapter.resolveAssetPath` already plays for Document
@@ -48,6 +97,14 @@ async function resolveObjectRelationValue(
   const id = await resolveRelation(targetClassName, pimcoreId, locale);
   return id ? { id } : { id: null, pimcoreId };
 }
+
+/** A Field Collection item has no relations table of its own (confirmed:
+ * only `object_relations_<classId>` exists, scoped to the owning object,
+ * not per-item) - a relation-family field *within* a collection type
+ * (e.g. ProductTabs' real `downloads [advancedManyToManyRelation]`) has
+ * no edge data to resolve against here and always comes back empty. A
+ * real, stated limitation, not a silent wrong answer - see the plan's §9. */
+const NO_ITEM_RELATIONS: RawPimcoreObjectAttributes['relations'] = [];
 
 async function convertFieldValue(
   field: ClassFieldDefinition,
@@ -139,23 +196,66 @@ async function convertFieldValue(
       return path ? { assetId: path } : null;
     }
 
-    // Real Pimcore `link`/`block`/`fieldcollections` storage (PHP-
-    // serialized column data for the first two, a separate
-    // `object_collection_<Type>_<classId>` table for the third) needs its
-    // own real parsing this pilot doesn't build - stated as an explicit
-    // gap rather than faked, matching Phase 0/6's own decision that a
-    // real Field Collection editor is separate, later work, and the
-    // Pages pipeline's own precedent of a labeled placeholder over a
-    // silent drop for anything genuinely out of scope.
     case 'link':
-      return { path: null, text: null, target: null };
+      return parsePimcoreLinkValue(rawValue);
+
+    // Real Pimcore `block` storage - confirmed against real data (§6,
+    // Phase 6), not assumed - is a PHP-serialized array, and when the
+    // block is itself nested *inside* a Field Collection type (e.g.
+    // Product's real `ProductVariants` collection type has its own
+    // `variants [block]` field), each sub-field is wrapped a second time
+    // as `{name, type, data}` (Pimcore's own internal editable-wrapper
+    // convention) rather than a flat `{fieldName: value}` map - a real,
+    // deeper format this pilot doesn't parse. Stated as a genuine gap,
+    // not faked: this specific case only affects `block` fields nested
+    // inside a field collection, not `block` used directly on a class
+    // (no such top-level usage exists in this install's true-PIM scope).
     case 'block':
-    case 'fieldcollections':
       return [];
+
+    case 'fieldcollections':
+      return convertFieldCollectionItems(field, raw.fieldCollections ?? [], locale, options);
 
     default:
       return rawValue ?? null;
   }
+}
+
+/** Converts one field's real Field Collection items (§6, Phase 6) - each
+ * tagged with its own `collectionType`, converted against *that type's
+ * own* field list (`field.collectionTypes`), reusing `convertFieldValue`
+ * recursively so every fieldtype case above (image/relation/date/...)
+ * works identically inside a collection item, not a second copy of the
+ * same switch. An item whose `collectionType` isn't found among
+ * `field.collectionTypes` (a real class-authoring/definition mismatch,
+ * not expected in practice) is skipped rather than guessed at. */
+async function convertFieldCollectionItems(
+  field: ClassFieldDefinition,
+  items: PimcoreFieldCollectionItem[],
+  locale: string,
+  options: PimcoreObjectConverterOptions
+): Promise<Record<string, unknown>[]> {
+  const ownItems = items.filter((item) => item.fieldname === field.name);
+  const results: Record<string, unknown>[] = [];
+
+  for (const item of ownItems) {
+    const collectionType = field.collectionTypes?.find((t) => t.name === item.collectionType);
+    if (!collectionType) continue;
+
+    const itemRaw: RawPimcoreObjectAttributes = {
+      columns: item.columns,
+      localizedByLocale: item.localizedByLocale,
+      relations: NO_ITEM_RELATIONS,
+      fieldCollections: [],
+    };
+    const attributes: Record<string, unknown> = { collectionType: item.collectionType };
+    for (const itemField of collectionType.fields) {
+      attributes[itemField.name] = await convertFieldValue(itemField, itemRaw, locale, options);
+    }
+    results.push(attributes);
+  }
+
+  return results;
 }
 
 export class PimcoreObjectConverter {
