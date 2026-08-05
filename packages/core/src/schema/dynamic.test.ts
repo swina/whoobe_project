@@ -110,6 +110,42 @@ describe('compileDynamicSchema (docs/plans/datamodel/advanced-data-modeling-plan
     expect(schema.safeParse({ content: [{ image: { assetId: 'a1' } }] }).success).toBe(true);
   });
 
+  it('compiles fieldcollections as a real tagged union across multiple named collection types when collectionTypes is provided (§6, Phase 6)', () => {
+    const def: ClassDefinition = {
+      id: '10',
+      name: 'Product',
+      fields: [
+        {
+          name: 'content',
+          title: 'Content',
+          fieldType: 'fieldcollections',
+          collectionTypes: [
+            { name: 'ProductBanner', label: 'ProductBanner', fields: [{ name: 'image', title: 'Image', fieldType: 'video' }] },
+            { name: 'ProductVariants', label: 'ProductVariants', fields: [{ name: 'format', title: 'Format', fieldType: 'input', mandatory: true }] },
+          ],
+        },
+      ],
+    };
+    const schema = compileDynamicSchema(def);
+    // A real Pimcore object mixes multiple collection types in one
+    // ordered list (confirmed against real migrated data) - the union
+    // must accept either type, tagged by its own collectionType.
+    expect(
+      schema.safeParse({
+        content: [
+          { collectionType: 'ProductVariants', format: '0.5L' },
+          { collectionType: 'ProductBanner', image: { assetId: 'a1' } },
+        ],
+      }).success
+    ).toBe(true);
+    // Wrong shape for the tagged type (missing ProductVariants' own
+    // mandatory `format`) is still rejected, not silently accepted just
+    // because *some* union member might match loosely.
+    expect(schema.safeParse({ content: [{ collectionType: 'ProductVariants' }] }).success).toBe(false);
+    // An unknown collectionType tag not in the union at all is rejected.
+    expect(schema.safeParse({ content: [{ collectionType: 'NotARealType' }] }).success).toBe(false);
+  });
+
   it('falls back to z.unknown() for unrecognized/deferred field types (e.g. Newsletter-bundle-specific)', () => {
     const def: ClassDefinition = { id: '9', name: 'Newsletter', fields: [{ name: 'optin', title: 'Opt-in', fieldType: 'consent' }] };
     const schema = compileDynamicSchema(def);

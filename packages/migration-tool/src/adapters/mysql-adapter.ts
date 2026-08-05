@@ -6,6 +6,7 @@ import {
   type PimcoreObjectClassSummary,
   type PimcoreObjectSummary,
   type RawPimcoreObjectAttributes,
+  type PimcoreFieldCollectionItem,
 } from '../source-adapter.js';
 import { normalizeDocumentElements, type RawDocumentElementRow } from '../pimcore-serialized-data.js';
 
@@ -190,7 +191,73 @@ export function createMysqlPimcoreSourceAdapter(config: MysqlPimcoreSourceConfig
         if (err?.code !== 'ER_NO_SUCH_TABLE') throw err;
       }
 
-      return { columns, localizedByLocale, relations };
+      // Field Collections (§6, Phase 6) - discovered the same way locale
+      // tables are (SHOW TABLES LIKE, not a hardcoded/assumed type list),
+      // since which collection types a class actually uses in its real
+      // data isn't knowable without asking the database. Table names
+      // embed the type directly: `object_collection_<Type>_<classId>`
+      // (own columns) and `object_collection_<Type>_localized_<classId>`
+      // (localized columns, one shared table per type across every
+      // locale - a *different* convention than top-level objects' own
+      // per-locale tables, confirmed against real data, not assumed).
+      const [collectionTables] = await conn.query('SHOW TABLES LIKE ?', [`object_collection_%_${classId}`]);
+      const localizedSuffix = new RegExp(`^object_collection_(.+)_localized_${classId}$`);
+      const plainSuffix = new RegExp(`^object_collection_(.+)_${classId}$`);
+      const plainTableByType = new Map<string, string>();
+      const localizedTableByType = new Map<string, string>();
+      for (const tableRow of collectionTables as Record<string, string>[]) {
+        const tableName = Object.values(tableRow)[0];
+        const localizedMatch = localizedSuffix.exec(tableName);
+        if (localizedMatch) {
+          localizedTableByType.set(localizedMatch[1], tableName);
+          continue;
+        }
+        const plainMatch = plainSuffix.exec(tableName);
+        if (plainMatch) plainTableByType.set(plainMatch[1], tableName);
+      }
+
+      // (fieldname, index, collectionType) -> the item being assembled,
+      // since the plain and localized rows for the same item arrive from
+      // two separate queries and need merging back together.
+      const itemsByKey = new Map<string, PimcoreFieldCollectionItem>();
+      function keyFor(fieldname: string, index: number, collectionType: string): string {
+        return `${fieldname} ${index} ${collectionType}`;
+      }
+
+      for (const [collectionType, tableName] of plainTableByType) {
+        const [rows] = await conn.query(`SELECT * FROM \`${tableName}\` WHERE o_id = ?`, [objectId]);
+        for (const row of rows as Record<string, unknown>[]) {
+          const { o_id, fieldname, index, ...rest } = row as any;
+          itemsByKey.set(keyFor(fieldname, index, collectionType), {
+            fieldname,
+            collectionType,
+            index,
+            columns: rest,
+            localizedByLocale: {},
+          });
+        }
+      }
+      for (const [collectionType, tableName] of localizedTableByType) {
+        const [rows] = await conn.query(`SELECT * FROM \`${tableName}\` WHERE ooo_id = ?`, [objectId]);
+        for (const row of rows as Record<string, unknown>[]) {
+          const { ooo_id, fieldname, index, language, ...rest } = row as any;
+          const key = keyFor(fieldname, index, collectionType);
+          let item = itemsByKey.get(key);
+          if (!item) {
+            // A field collection item can be all-localized-fields with no
+            // non-localized columns at all - still a real item, not one
+            // to silently drop just because the plain table pass above
+            // never created an entry for it.
+            item = { fieldname, collectionType, index, columns: {}, localizedByLocale: {} };
+            itemsByKey.set(key, item);
+          }
+          item.localizedByLocale[language as string] = rest;
+        }
+      }
+
+      const fieldCollections = [...itemsByKey.values()].sort((a, b) => a.index - b.index);
+
+      return { columns, localizedByLocale, relations, fieldCollections };
     },
   };
 }

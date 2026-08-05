@@ -10,6 +10,27 @@ const resolveAssetPath = async (assetId: number) => (assetId === 999 ? null : `/
 const resolveRelation = async (targetClassName: string, pimcoreId: string, _locale: string) =>
   targetClassName === 'Category' && pimcoreId === '1524' ? 'real-category-uuid' : null;
 
+/** Builds a real PHP `serialize()` string for a protected-properties-only
+ * object, computing every byte-length prefix from the actual values
+ * rather than hand-counting them (a real, easy-to-get-wrong exercise -
+ * this is deliberately test-only scaffolding, not a general PHP
+ * serializer) - every real Pimcore `Data\Link` property is protected, so
+ * this always uses the `\0*\0name` visibility prefix, matching real
+ * migrated data exactly (confirmed against a live install). */
+function phpSerializeProtectedObject(className: string, props: Record<string, string | number | null>): string {
+  const entries = Object.entries(props);
+  const parts = entries.map(([key, value]) => {
+    const propKey = `\x00*\x00${key}`;
+    const keyPart = `s:${Buffer.byteLength(propKey)}:"${propKey}"`;
+    const valuePart =
+      value === null ? 'N' : typeof value === 'number' ? `i:${value}` : `s:${Buffer.byteLength(value)}:"${value}"`;
+    return `${keyPart};${valuePart}`;
+  });
+  // Every key;value entry ends with its own trailing `;`, including the
+  // last one before the closing `}` - a real, easy off-by-one to miss.
+  return `O:${Buffer.byteLength(className)}:"${className}":${entries.length}:{${parts.map((p) => `${p};`).join('')}}`;
+}
+
 describe('PimcoreObjectConverter (docs/plans/datamodel/advanced-data-modeling-plan.md §5.2, Phase 3)', () => {
   it('converts plain scalar field types (input/numeric/checkbox/date)', async () => {
     const fields: ClassFieldDefinition[] = [
@@ -141,16 +162,128 @@ describe('PimcoreObjectConverter (docs/plans/datamodel/advanced-data-modeling-pl
     expect(result.attributes.technicalSheets).toEqual([{ assetId: '/assets/1.jpg' }, { assetId: '/assets/2.jpg' }]);
   });
 
-  it('states block/fieldcollections/link as explicit, empty gaps rather than fabricating parsed content', async () => {
-    const fields: ClassFieldDefinition[] = [
-      { name: 'content', title: 'Content', fieldType: 'fieldcollections' },
-      { name: 'variants', title: 'Variants', fieldType: 'block' },
-      { name: 'cta', title: 'CTA', fieldType: 'link' },
-    ];
+  it('states block as an explicit, empty gap rather than fabricating parsed content (no block-typed field appears in this install\'s real true-PIM scope)', async () => {
+    const fields: ClassFieldDefinition[] = [{ name: 'variants', title: 'Variants', fieldType: 'block' }];
+    const raw: RawPimcoreObjectAttributes = { columns: {}, localizedByLocale: {}, relations: [] };
+    const [result] = await PimcoreObjectConverter.convertObject(raw, fields, { resolveAssetPath, resolveRelation });
+    expect(result.attributes.variants).toEqual([]);
+  });
+
+  it('returns the empty link shape for un-parseable/empty raw values, without throwing', async () => {
+    const fields: ClassFieldDefinition[] = [{ name: 'cta', title: 'CTA', fieldType: 'link' }];
     const raw: RawPimcoreObjectAttributes = { columns: { cta: 'a:0:{}' }, localizedByLocale: {}, relations: [] };
     const [result] = await PimcoreObjectConverter.convertObject(raw, fields, { resolveAssetPath, resolveRelation });
-    expect(result.attributes.content).toEqual([]);
-    expect(result.attributes.variants).toEqual([]);
     expect(result.attributes.cta).toEqual({ path: null, text: null, target: null });
+  });
+
+  it('parses a real PHP-serialized Pimcore Link object (§6, Phase 6) - a direct link and an internal one', async () => {
+    const linkClassName = 'Pimcore\\Model\\DataObject\\Data\\Link';
+    const directLink = phpSerializeProtectedObject(linkClassName, {
+      text: 'Go here',
+      linktype: 'direct',
+      direct: '/en/page/',
+      target: '_blank',
+    });
+    const internalLink = phpSerializeProtectedObject(linkClassName, {
+      internalType: 'document',
+      internal: 170,
+      linktype: 'internal',
+    });
+
+    const fields: ClassFieldDefinition[] = [
+      { name: 'ctaDirect', title: 'CTA', fieldType: 'link' },
+      { name: 'ctaInternal', title: 'CTA Internal', fieldType: 'link' },
+    ];
+    const raw: RawPimcoreObjectAttributes = {
+      columns: { ctaDirect: directLink, ctaInternal: internalLink },
+      localizedByLocale: {},
+      relations: [],
+    };
+    const [result] = await PimcoreObjectConverter.convertObject(raw, fields, { resolveAssetPath, resolveRelation });
+    expect(result.attributes.ctaDirect).toEqual({ path: '/en/page/', text: 'Go here', target: '_blank' });
+    expect(result.attributes.ctaInternal).toEqual({ path: '[internal document:170]', text: null, target: null });
+  });
+
+  it('converts real Field Collection items (§6, Phase 6) - a tagged mix of two different collection types, in the real interleaved order Pimcore stores', async () => {
+    const fields: ClassFieldDefinition[] = [
+      {
+        name: 'content',
+        title: 'Content',
+        fieldType: 'fieldcollections',
+        collectionTypes: [
+          {
+            name: 'ProductBanner',
+            label: 'ProductBanner',
+            fields: [
+              { name: 'image', title: 'Image', fieldType: 'image' },
+              { name: 'title', title: 'Title', fieldType: 'input', localized: true },
+            ],
+          },
+          {
+            name: 'ProductVariants',
+            label: 'ProductVariants',
+            fields: [{ name: 'format', title: 'Format', fieldType: 'input', mandatory: true }],
+          },
+        ],
+      },
+    ];
+    const raw: RawPimcoreObjectAttributes = {
+      columns: {},
+      // A real Product-shaped object always has top-level localized
+      // fields too (slug/name/abstract) - this is what actually drives
+      // convertObject's own per-locale loop; a class with *only*
+      // field-collection-level localized content and nothing at the top
+      // level isn't a real shape this install has, so this fixture
+      // matches the real one instead of constructing an artificial edge
+      // case the converter was never meant to handle standalone.
+      localizedByLocale: { en: {}, it: {} },
+      relations: [],
+      fieldCollections: [
+        // Real order confirmed against migrated data: types interleave,
+        // sorted by one shared `index` - ProductVariants at index 0,
+        // ProductBanner after it, not grouped by type first.
+        { fieldname: 'content', collectionType: 'ProductVariants', index: 0, columns: { format: '0.5L' }, localizedByLocale: {} },
+        {
+          fieldname: 'content',
+          collectionType: 'ProductBanner',
+          index: 1,
+          columns: { image: 42 },
+          localizedByLocale: { en: { title: 'Banner EN' }, it: { title: 'Banner IT' } },
+        },
+      ],
+    };
+    const results = await PimcoreObjectConverter.convertObject(raw, fields, { resolveAssetPath, resolveRelation });
+    const en = results.find((r) => r.locale === 'en')!;
+    const it = results.find((r) => r.locale === 'it')!;
+
+    const enItems = en.attributes.content as Record<string, unknown>[];
+    expect(enItems).toHaveLength(2);
+    expect(enItems[0]).toMatchObject({ collectionType: 'ProductVariants', format: '0.5L' });
+    expect(enItems[1]).toMatchObject({ collectionType: 'ProductBanner', title: 'Banner EN' });
+    expect((enItems[1] as any).image).toEqual({ assetId: '/assets/42.jpg' });
+
+    const itItems = it.attributes.content as Record<string, unknown>[];
+    expect(itItems[1]).toMatchObject({ collectionType: 'ProductBanner', title: 'Banner IT' });
+  });
+
+  it('skips a Field Collection item whose collectionType isn\'t among the field\'s own collectionTypes, rather than guessing its shape', async () => {
+    const fields: ClassFieldDefinition[] = [
+      { name: 'content', title: 'Content', fieldType: 'fieldcollections', collectionTypes: [] },
+    ];
+    const raw: RawPimcoreObjectAttributes = {
+      columns: {},
+      localizedByLocale: {},
+      relations: [],
+      fieldCollections: [{ fieldname: 'content', collectionType: 'SomeRemovedType', index: 0, columns: {}, localizedByLocale: {} }],
+    };
+    const [result] = await PimcoreObjectConverter.convertObject(raw, fields, { resolveAssetPath, resolveRelation });
+    expect(result.attributes.content).toEqual([]);
+  });
+
+  it('falls back to the Phase 2/3 single-shared-shape behavior for fieldcollections when collectionTypes is absent', async () => {
+    const fields: ClassFieldDefinition[] = [{ name: 'content', title: 'Content', fieldType: 'fieldcollections' }];
+    const raw: RawPimcoreObjectAttributes = { columns: {}, localizedByLocale: {}, relations: [] };
+    const [result] = await PimcoreObjectConverter.convertObject(raw, fields, { resolveAssetPath, resolveRelation });
+    expect(result.attributes.content).toEqual([]);
   });
 });

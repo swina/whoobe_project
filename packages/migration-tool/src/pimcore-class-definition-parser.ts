@@ -178,3 +178,45 @@ export function parsePimcoreClassMeta(source: string): { id: string; name: strin
   const match = CLASS_META_RE.exec(source);
   return match ? { id: match[1], name: match[2] } : null;
 }
+
+const ALLOWED_TYPES_RE = /'allowedTypes'\s*=>\s*\n?\s*array\s*\(([^)]*)\)/;
+const ALLOWED_TYPE_ENTRY_RE = /'([A-Za-z0-9_]+)'/g;
+
+/**
+ * A `fieldcollections` field's own allowed collection type names (e.g.
+ * Product's real `content` field: `['ProductVideoSlider', 'ProductSlider',
+ * 'ProductBanner', ...]`) - confirmed stored as a plain `'allowedTypes' =>
+ * array(0 => 'X', 1 => 'Y', ...)` list (§6, Phase 6), a simpler shape than
+ * the nested `'classes' => array(0 => array('classes' => 'X'))` an object
+ * relation field uses. Uses the same bounded-block scanner as `mandatory`/
+ * `relationTarget` above, for the same reason (this property can land
+ * before or after the field's own `'name'`).
+ */
+export function parseAllowedTypes(source: string, fieldName: string): string[] {
+  const block = findFieldBlocks(source).get(fieldName);
+  if (!block) return [];
+  const match = ALLOWED_TYPES_RE.exec(block);
+  if (!match) return [];
+  const names: string[] = [];
+  let entryMatch: RegExpExecArray | null;
+  ALLOWED_TYPE_ENTRY_RE.lastIndex = 0;
+  while ((entryMatch = ALLOWED_TYPE_ENTRY_RE.exec(match[1]))) names.push(entryMatch[1]);
+  return names;
+}
+
+/**
+ * Parses a Field Collection *type's own* definition file (`var/classes/
+ * DataObject/Fieldcollection/Data/<Type>.php`, e.g. `ProductBanner.php`) -
+ * a genuinely different file format than a class definition (§6, Phase
+ * 6): a real, generated PHP class (getters/setters), not a
+ * `ClassDefinition::__set_state(array(...))` structure at all. It carries
+ * the identical `Fields Summary` doc-comment class definitions do (reused
+ * directly here), but there's no `__set_state()` tree to enrich from -
+ * fields from a Field Collection type never get `mandatory`/
+ * `relationTarget` populated. Stated here as a real, checked limitation
+ * (confirmed by reading a real file, not assumed), not silently patched
+ * over by pretending this file format has data it doesn't.
+ */
+export function parseFieldCollectionTypeFile(source: string): ClassFieldDefinition[] {
+  return flattenSummaryTree(parseFieldsSummaryLines(source));
+}
