@@ -86,3 +86,49 @@ export async function updateDataObject(
   const body = await parseJsonOrThrow(res)
   return body.object
 }
+
+// Preview links - docs/plans/backend/object-publish-workflow-plan.md
+// §2.3/§7 Phase 2.
+export interface PreviewToken {
+  token: string
+  objectId: string
+  expiresAt: string
+  createdBy: string | null
+  createdAt: string
+  revokedAt: string | null
+  viewCount: number
+}
+
+export async function createPreviewLink(baseUrl: string, objectId: string, expiresInDays?: number): Promise<{ token: string; expiresAt: string }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects/${objectId}/preview-link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expiresInDays }),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
+export async function fetchPreviewLinks(baseUrl: string, objectId: string): Promise<PreviewToken[]> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects/${objectId}/preview-links`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.tokens
+}
+
+export async function revokePreviewLink(baseUrl: string, token: string): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects/preview-links/${token}`, { method: 'DELETE', credentials: 'include' })
+  await parseJsonOrThrow(res)
+}
+
+// Workflow transitions - docs/plans/backend/object-publish-workflow-
+// plan.md §2.4/§4/§7 Phase 3-4.
+export async function transitionDataObject(baseUrl: string, id: string, transitionName: string): Promise<DataObject> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects/${id}/transition`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ transitionName }),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.object
+}

@@ -1,4 +1,4 @@
-import { pgTable, text, jsonb, uuid, boolean, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, jsonb, uuid, boolean, integer, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 /**
  * Data Object instances (Pimcore's PIM/MDM "Objects") - see docs/plans/
@@ -70,3 +70,30 @@ export const dataObjects = pgTable(
     pimcoreIdIdx: uniqueIndex('data_objects_pimcore_id_idx').on(table.pimcoreId),
   })
 );
+
+/**
+ * Preview links - docs/plans/backend/object-publish-workflow-plan.md
+ * §2.3/§7 Phase 2. A public, unauthenticated, temporary way to view an
+ * unpublished (or published) object's real current data without a
+ * session - `token` itself is the lookup key (an opaque random string,
+ * not a JWT - that plan's own §6 open question leans this way for cheap,
+ * trivial revocation: flip `revokedAt`, no denylist to maintain).
+ *
+ * Deliberately in this same file, not its own - a real FK to
+ * `dataObjects.id` (with cascade delete, so a removed object's stale
+ * tokens don't linger) only works within one schema file, the same
+ * cross-file-FK limitation `dataObjects.classId` above already
+ * documents. `createdBy` stays a plain uuid (no FK) for the identical
+ * reason - `users` lives in auth-schema.ts, a different file.
+ */
+export const dataObjectPreviewTokens = pgTable('data_object_preview_tokens', {
+  token: text('token').primaryKey(),
+  objectId: uuid('object_id')
+    .notNull()
+    .references(() => dataObjects.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  viewCount: integer('view_count').notNull().default(0),
+});

@@ -72,14 +72,16 @@
             </td>
             <td class="px-4 py-3.5"><span class="px-2 py-0.5 text-xs bg-slate-800 rounded font-mono text-indigo-300">{{ classLabel(obj.classId) }}</span></td>
             <td class="px-4 py-3.5">
-              <span
+              <button
+                @click="handleTogglePublish(obj)"
+                :title="obj.published ? 'Click to unpublish' : 'Click to publish'"
                 :class="[
-                  'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
-                  obj.published ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase transition',
+                  obj.published ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30'
                 ]"
               >
                 {{ obj.published ? 'published' : (obj.workflowState || 'draft') }}
-              </span>
+              </button>
             </td>
             <td class="px-4 py-3.5 text-xs text-slate-400">
               {{ new Date(obj.updatedAt).toLocaleString() }}
@@ -151,6 +153,20 @@ const filteredObjects = computed(() => {
     return matchesQuery && matchesLocale
   })
 })
+
+// A quick row-level Publish/Unpublish toggle - object-publish-workflow-
+// plan.md §5 calls for this alongside the edit modal's own Save as
+// Draft/Save and Publish buttons. Objects whose class has a real
+// workflow can still use this (it's the plain published gate, §2.1 -
+// independent of workflowState), but the workflow's own transition
+// buttons (DataObjectEditModal.vue) are the more meaningful action there.
+async function handleTogglePublish(obj: DataObject) {
+  try {
+    await dataObjectsStore.updateDataObject(obj.id, { published: !obj.published })
+  } catch (e: any) {
+    toastStore.show(e?.message || 'Failed to update publish state')
+  }
+}
 
 async function handleDelete(obj: DataObject) {
   if (!confirm(`Delete "${obj.key}"? This cannot be undone.`)) return
