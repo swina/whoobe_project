@@ -26,6 +26,18 @@
  */
 @source "../../../packages/migration-tool/src/**/*.ts";
 
+/*
+ * Admin-typed "custom classes" (ClassSettingsCard.vue's View Layout tree -
+ * section containerClass and per-field className, docs/plans/UI/editing-
+ * object-class.md) are data fetched at runtime, not literal strings
+ * anywhere in this app's own source - same root cause the areabrick
+ * @source line above already exists for. The actual safelist of named
+ * utilities this force-generates lives in tailwind-safelist.ts (a plain
+ * literal-text file under src/, picked up by this app's own default
+ * source scan - no @source directive needed for it, only for the
+ * migration-tool path above which lives outside this tree).
+ */
+
 @layer base {
   body {
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;

@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-1">
+  <div :class="['space-y-1', fieldLayout.class]" :style="fieldLayout.style">
     <label class="block text-xs font-semibold text-slate-400 light:text-slate-600">
       {{ field.title }}<span v-if="field.mandatory" class="text-rose-400"> *</span>
     </label>
@@ -191,12 +191,22 @@
 import { computed } from 'vue'
 import type { ClassFieldDefinition } from '@pimcore-custom/core'
 import { useRelationOptions } from '../../composables/useRelationOptions'
+import { resolveCustomClasses } from '../../utils/custom-classes'
 import DataObjectForm from './DataObjectForm.vue'
 
 const props = defineProps<{
   field: ClassFieldDefinition
   modelValue: unknown
 }>()
+
+// field.className (docs/plans/UI/editing-object-class.md) - appended
+// alongside the field's own always-on `space-y-1` label/control stacking,
+// not a replacement for it (unlike a section's own containerClass, which
+// genuinely replaces the section's layout mode - a field's internal
+// label-above-control structure isn't something a grid-placement class
+// like col-span-2 should ever remove). Same arbitrary-bracket-value
+// handling as containerClass - see that util's own comment.
+const fieldLayout = computed(() => resolveCustomClasses(props.field.className))
 
 const emit = defineEmits<{
   'update:modelValue': [value: unknown]

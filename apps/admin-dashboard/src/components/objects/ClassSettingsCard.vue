@@ -142,6 +142,13 @@
             <option v-for="dataClass in dataClassesStore.classes" :key="dataClass.id" :value="dataClass.name">{{ dataClass.label }}</option>
           </select>
 
+          <input
+            v-model="field.className"
+            type="text"
+            placeholder="Custom classes for this field's control (e.g. col-span-2, bg-slate-50, p-3) - optional"
+            class="w-full px-2 py-1.5 text-[11px] font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+          />
+
           <div class="flex items-center justify-between pt-1">
             <div class="flex items-center gap-2">
               <button @click="moveField(index, -1)" type="button" :disabled="index === 0" class="text-xs text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30">↑</button>
@@ -205,19 +212,53 @@
                 class="flex-1 px-2 py-1 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
               />
               <span class="text-[10px] text-slate-600 light:text-slate-400 shrink-0">({{ sectionFields(sectionIndex).length }})</span>
+              <button @click="moveSection(sectionIndex, -1)" type="button" :disabled="sectionIndex === 0" class="text-xs text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30 shrink-0">↑</button>
+              <button @click="moveSection(sectionIndex, 1)" type="button" :disabled="sectionIndex === viewConfig.detailSections.length - 1" class="text-xs text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30 shrink-0">↓</button>
               <button @click="removeSection(sectionIndex)" type="button" class="text-xs text-rose-400 hover:text-rose-300 shrink-0">Remove</button>
             </div>
-            <div v-if="isExpanded(sectionIndex)" class="pl-6 pb-2 pr-2 space-y-1 border-t border-slate-800/60 light:border-slate-200/60 pt-1.5">
-              <div v-for="field in sectionFields(sectionIndex)" :key="field.name" class="flex items-center justify-between gap-2 text-xs text-slate-400 light:text-slate-600 py-0.5">
+            <div v-if="isExpanded(sectionIndex)" class="pl-6 pb-2 pr-2 space-y-2 border-t border-slate-800/60 light:border-slate-200/60 pt-1.5">
+              <div class="space-y-1">
+                <input
+                  v-model="section.containerClass"
+                  type="text"
+                  placeholder="Custom container classes (e.g. grid grid-cols-2 gap-4)"
+                  class="w-full px-2 py-1 text-[11px] font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+                />
+                <p class="text-[10px] text-slate-600 light:text-slate-400 italic">
+                  Optional Tailwind classes applied to this section's field container on the object edit form - replaces the default
+                  vertical stack (e.g. for a grid layout). Named utilities work directly: grid, grid-cols-4, gap-5, p-4, bg-slate-100,
+                  rounded-lg, max-w-lg, and most other common Tailwind classes. For an exact value, use bracket syntax -
+                  w-[640px], bg-[#f5f5f5] - not fraction shorthand (max-w-2/3 isn't a real Tailwind utility, only w-2/3 etc. are).
+                </p>
+              </div>
+              <div
+                v-for="(field, fieldIndex) in sectionFields(sectionIndex)"
+                :key="field.name"
+                class="flex items-center justify-between gap-2 text-xs text-slate-400 light:text-slate-600 py-0.5"
+              >
                 <span class="truncate">{{ field.title || field.name }}</span>
-                <select
-                  :value="String(sectionIndex)"
-                  @change="assignFieldToSection(field.name, ($event.target as HTMLSelectElement).value)"
-                  class="px-1.5 py-1 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500 shrink-0"
-                >
-                  <option value="">Ungrouped</option>
-                  <option v-for="(s, i) in viewConfig.detailSections" :key="i" :value="i">→ {{ s.title || `Section ${i + 1}` }}</option>
-                </select>
+                <div class="flex items-center gap-1 shrink-0">
+                  <button
+                    @click="moveFieldInSection(sectionIndex, field.name, -1)"
+                    type="button"
+                    :disabled="fieldIndex === 0"
+                    class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30"
+                  >↑</button>
+                  <button
+                    @click="moveFieldInSection(sectionIndex, field.name, 1)"
+                    type="button"
+                    :disabled="fieldIndex === sectionFields(sectionIndex).length - 1"
+                    class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30"
+                  >↓</button>
+                  <select
+                    :value="String(sectionIndex)"
+                    @change="assignFieldToSection(field.name, ($event.target as HTMLSelectElement).value)"
+                    class="px-1.5 py-1 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="">Ungrouped</option>
+                    <option v-for="(s, i) in viewConfig.detailSections" :key="i" :value="i">→ {{ s.title || `Section ${i + 1}` }}</option>
+                  </select>
+                </div>
               </div>
               <p v-if="sectionFields(sectionIndex).length === 0" class="text-slate-600 light:text-slate-400 italic">No fields yet - move some in from Ungrouped.</p>
             </div>
@@ -294,7 +335,7 @@ const editorTab = ref<'fields' | 'viewLayout'>('fields')
 const name = ref('')
 const label = ref('')
 const fields = ref<ClassFieldDefinition[]>([])
-const viewConfig = ref<{ detailSections: { title: string; fields: string[] }[] }>({
+const viewConfig = ref<{ detailSections: { title: string; fields: string[]; containerClass?: string }[] }>({
   detailSections: [],
 })
 
@@ -328,30 +369,60 @@ const ungroupedFields = computed(() => {
   return namedFields.value.filter((f) => !assigned.has(f.name))
 })
 
+// Order follows the section's own `fields` array (admin-reorderable via
+// moveFieldInSection below), not the class's overall field-definition
+// order - a `.map`, not a `.filter` over `namedFields`.
 function sectionFields(sectionIndex: number): ClassFieldDefinition[] {
-  const names = new Set(viewConfig.value.detailSections[sectionIndex]?.fields ?? [])
-  return namedFields.value.filter((f) => names.has(f.name))
+  const names = viewConfig.value.detailSections[sectionIndex]?.fields ?? []
+  const byName = new Map(namedFields.value.map((f) => [f.name, f]))
+  return names.map((n) => byName.get(n)).filter((f): f is ClassFieldDefinition => !!f)
+}
+
+function moveFieldInSection(sectionIndex: number, fieldName: string, direction: 1 | -1) {
+  const arr = viewConfig.value.detailSections[sectionIndex].fields
+  const index = arr.indexOf(fieldName)
+  const target = index + direction
+  if (index === -1 || target < 0 || target >= arr.length) return
+  const [moved] = arr.splice(index, 1)
+  arr.splice(target, 0, moved)
 }
 
 function addSection() {
-  viewConfig.value.detailSections.push({ title: '', fields: [] })
+  viewConfig.value.detailSections.push({ title: '', fields: [], containerClass: '' })
 }
 
 function removeSection(index: number) {
   viewConfig.value.detailSections.splice(index, 1)
 }
 
+function moveSection(index: number, direction: 1 | -1) {
+  const sections = viewConfig.value.detailSections
+  const target = index + direction
+  if (target < 0 || target >= sections.length) return
+  const [moved] = sections.splice(index, 1)
+  sections.splice(target, 0, moved)
+  // Expand/collapse state is keyed by index, not identity - re-key it
+  // along with the move so a section's own expanded/collapsed state
+  // travels with it instead of staying pinned to its old position.
+  const a = expandedKeys[String(index)]
+  const b = expandedKeys[String(target)]
+  expandedKeys[String(index)] = b ?? true
+  expandedKeys[String(target)] = a ?? true
+}
+
 // Moves a field to the section at `targetValue` (its index as a string),
 // or back to Ungrouped when `targetValue` is empty - the tree's
 // reassignment control (no drag-and-drop, matching this codebase's own
-// recurring precedent for admin editors elsewhere).
+// recurring precedent for admin editors elsewhere). Appends to the end of
+// the target section's own order rather than re-sorting the whole section
+// back to class-field-definition order - that used to happen here, which
+// silently discarded any manual reordering (moveFieldInSection) every
+// time a field was reassigned into an already-ordered section.
 function assignFieldToSection(fieldName: string, targetValue: string) {
   const sections = viewConfig.value.detailSections
   for (const s of sections) s.fields = s.fields.filter((f) => f !== fieldName)
   if (targetValue !== '') {
-    const targetIndex = Number(targetValue)
-    sections[targetIndex].fields.push(fieldName)
-    sections[targetIndex].fields = fields.value.map((f) => f.name).filter((n) => sections[targetIndex].fields.includes(n))
+    sections[Number(targetValue)].fields.push(fieldName)
   }
 }
 
@@ -362,7 +433,10 @@ function assignFieldToSection(fieldName: string, targetValue: string) {
 function buildViewConfigPayload(): ClassViewConfig | null {
   const validNames = new Set(namedFields.value.map((f) => f.name))
   const detailSections = viewConfig.value.detailSections
-    .map((s) => ({ title: s.title.trim(), fields: s.fields.filter((n) => validNames.has(n)) }))
+    .map((s) => {
+      const containerClass = s.containerClass?.trim();
+      return { title: s.title.trim(), fields: s.fields.filter((n) => validNames.has(n)), ...(containerClass ? { containerClass } : {}) };
+    })
     .filter((s) => s.title !== '' && s.fields.length > 0)
   if (detailSections.length === 0) return null
   return { detailSections }
@@ -375,7 +449,7 @@ function openEditor(dataClass: DataClass | null) {
   label.value = dataClass?.label ?? ''
   fields.value = dataClass ? dataClass.fields.map((f) => ({ ...f })) : []
   viewConfig.value = {
-    detailSections: (dataClass?.viewConfig?.detailSections ?? []).map((s) => ({ title: s.title, fields: [...s.fields] })),
+    detailSections: (dataClass?.viewConfig?.detailSections ?? []).map((s) => ({ title: s.title, fields: [...s.fields], containerClass: s.containerClass ?? '' })),
   }
   editorTab.value = 'fields'
   for (const key of Object.keys(expandedKeys)) delete expandedKeys[key]

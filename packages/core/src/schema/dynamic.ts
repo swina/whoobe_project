@@ -29,6 +29,15 @@ export interface ClassFieldDefinition {
   blockFields?: ClassFieldDefinition[];
   collectionFields?: ClassFieldDefinition[];
   collectionTypes?: { name: string; label: string; fields: ClassFieldDefinition[] }[];
+  // Optional Tailwind classes applied to this field's own control wrapper
+  // on the object edit form (DataObjectFieldControl.vue) - docs/plans/UI/
+  // editing-object-class.md. Lives on the field definition itself (not
+  // ClassViewConfig) so it survives a field moving between sections/
+  // Ungrouped and applies consistently even on the flat, no-viewConfig
+  // fallback form. Same admin-dashboard-side arbitrary-bracket-value
+  // handling as a section's own containerClass (utils/container-layout.ts)
+  // applies here too - not re-stated per-field, this is just data.
+  className?: string;
 }
 
 export interface ClassDefinition {
@@ -44,8 +53,15 @@ export interface ClassDefinition {
  * keeps rendering with today's flat detail form until an admin explicitly
  * configures one - additive, not a replacement for the generic renderer.
  * `detailSections` groups fields (by `name`) into named tabs in
- * DataObjectForm.vue; any field not assigned to a section still renders,
- * under a trailing "Other fields" tab - never silently hidden.
+ * DataObjectForm.vue, in authored order (admin-reorderable in
+ * ClassSettingsCard.vue's View Layout tree); any field not assigned to a
+ * section still renders, under a trailing "Other fields" tab - never
+ * silently hidden. `containerClass` is an optional raw Tailwind class
+ * string applied to that section's field-list wrapper on the object edit
+ * form (e.g. "grid grid-cols-2 gap-4" for a two-column layout) - an escape
+ * hatch for admins who want more control than the default vertical stack,
+ * not validated/sanitized beyond a trim (same trust level as every other
+ * admin-authored field in this class editor, not user-generated content).
  *
  * List-view column selection used to live here too (`listColumns`) - moved
  * out per editing-object-class.md's own explicit instruction ("available
@@ -54,7 +70,7 @@ export interface ClassDefinition {
  * (object-list-presets.ts), not an admin-authored, server-stored field.
  */
 export interface ClassViewConfig {
-  detailSections?: { title: string; fields: string[] }[];
+  detailSections?: { title: string; fields: string[]; containerClass?: string }[];
 }
 
 const RELATION_ID_SHAPE = z.object({ id: z.string(), classId: z.string().optional() });
