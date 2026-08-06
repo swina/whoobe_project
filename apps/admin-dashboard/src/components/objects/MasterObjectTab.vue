@@ -212,7 +212,24 @@ watch(
   currentRow,
   (row) => {
     key.value = row?.key ?? translations.value[0]?.key ?? ''
-    attributes.value = { ...(row?.attributes ?? {}) }
+    if (row) {
+      attributes.value = { ...row.attributes }
+    } else {
+      // A brand-new locale for an object that already has sibling locale
+      // rows - seed non-localized fields from an existing sibling so a
+      // "not localized" field (e.g. a shared asset/image) shows up
+      // immediately in this tab too, not just blank until the first save
+      // (data-objects-records.ts's own create/updateDataObject sync
+      // handles the reverse direction - this row's own values propagating
+      // back out to siblings once saved).
+      const sibling = translations.value[0]
+      if (sibling && dataClass.value) {
+        const nonLocalizedNames = new Set(dataClass.value.fields.filter((f) => !f.localized).map((f) => f.name))
+        attributes.value = Object.fromEntries(Object.entries(sibling.attributes).filter(([name]) => nonLocalizedNames.has(name)))
+      } else {
+        attributes.value = {}
+      }
+    }
   },
   { immediate: true }
 )

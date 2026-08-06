@@ -27,7 +27,7 @@
 
   <div v-else class="space-y-4">
     <DataObjectFieldControl
-      v-for="field in fields"
+      v-for="field in resolvedFields"
       :key="field.name"
       :field="field"
       :model-value="modelValue[field.name]"
@@ -59,6 +59,7 @@ import { ref, computed, watch } from 'vue'
 import type { ClassFieldDefinition, ClassViewConfig } from '@pimcore-custom/core'
 import DataObjectFieldControl from './DataObjectFieldControl.vue'
 import { resolveCustomClasses } from '../../utils/custom-classes'
+import { useComponentsStore } from '../../stores/componentsStore'
 
 const props = defineProps<{
   fields: ClassFieldDefinition[]
@@ -70,15 +71,38 @@ const emit = defineEmits<{
   'update:modelValue': [value: Record<string, unknown>]
 }>()
 
+const componentsStore = useComponentsStore()
+
+// Resolves a natively-authored `fieldcollections` field's own
+// `allowedComponentTypes` (names) against the live Components library
+// into the exact `collectionTypes`-shaped array DataObjectFieldControl
+// .vue's existing editor already expects - docs/plans/datamodel/
+// component-fields-plan.md §2.3. Migrated fields (real `collectionTypes`
+// already embedded) pass through completely untouched; this only fills
+// the gap for a field that has none. Everything downstream (`sections`
+// below, the flat `v-else` fallback in the template) reads from this
+// instead of `props.fields` directly, so both rendering paths pick up
+// resolved Components the same way.
+const resolvedFields = computed(() =>
+  props.fields.map((f) => {
+    if (f.fieldType !== 'fieldcollections' || f.collectionTypes || !f.allowedComponentTypes?.length) return f
+    const collectionTypes = f.allowedComponentTypes
+      .map((name) => componentsStore.components.find((c) => c.name === name))
+      .filter((c): c is NonNullable<typeof c> => !!c)
+      .map((c) => ({ name: c.name, label: c.label, fields: c.fields }))
+    return collectionTypes.length > 0 ? { ...f, collectionTypes } : f
+  })
+)
+
 const sections = computed(() => {
   const named = props.viewConfig?.detailSections ?? []
   if (named.length === 0) return []
   const assigned = new Set(named.flatMap((s) => s.fields))
-  const byName = new Map(props.fields.map((f) => [f.name, f]))
+  const byName = new Map(resolvedFields.value.map((f) => [f.name, f]))
   // Field order within a section follows `s.fields`' own order (admin-
   // reorderable in ClassSettingsCard.vue), not the class's overall field-
   // definition order - a `.map` over `s.fields`, not a `.filter` over
-  // `props.fields`, so a field's position in the section survives
+  // `resolvedFields`, so a field's position in the section survives
   // independently of where it sits in the Fields tab.
   const result = named
     .map((s) => ({
@@ -87,7 +111,7 @@ const sections = computed(() => {
       containerClass: s.containerClass,
     }))
     .filter((s) => s.fields.length > 0)
-  const other = props.fields.filter((f) => !assigned.has(f.name))
+  const other = resolvedFields.value.filter((f) => !assigned.has(f.name))
   if (other.length > 0) result.push({ title: 'Other fields', fields: other, containerClass: undefined })
   return result
 })

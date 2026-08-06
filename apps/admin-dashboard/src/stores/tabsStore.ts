@@ -13,13 +13,13 @@ import { ref } from 'vue'
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
 export type SectionKind = 'overview' | 'objects' | 'assets' | 'documents' | 'pages' | 'settings'
-export type MasterItemKind = 'asset' | 'document' | 'page' | 'object'
+export type MasterItemKind = 'asset' | 'document' | 'page' | 'object' | 'class'
 export type AssetSubTab = 'preview' | 'editor' | 'metadata' | 'thumbnails'
 export type DocumentSubTab = 'editor' | 'preview'
 // A fixed, known-upfront set (docs/plans/UI/settings-ui-plan.md) - unlike
 // objectSubTab's free-form string (which varies per class's locales),
 // this is a real enum, matching AssetSubTab/DocumentSubTab's own pattern.
-export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'roles' | 'security' | 'workflows'
+export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'components' | 'roles' | 'security' | 'workflows'
 
 export interface MainTab {
   id: string
@@ -70,6 +70,10 @@ export function pageTabId(pageId: string): string {
 
 export function objectTabId(translationGroupId: string): string {
   return `item:object:${translationGroupId}`
+}
+
+export function classTabId(classId: string): string {
+  return `item:class:${classId}`
 }
 
 export const useTabsStore = defineStore('tabs', () => {
@@ -160,6 +164,23 @@ export const useTabsStore = defineStore('tabs', () => {
     if (tab) tab.objectSubTab = locale
   }
 
+  // A class's own editor (name/label/Fields/View Layout) opens as a real
+  // tab, not the inline expand-in-place list it used to be - matching
+  // openObject()'s own placeholder-id convention: ClassSettingsCard.vue's
+  // "+ New class" mints a client-side `new:<uuid>` id for a not-yet-saved
+  // class, same as ObjectsView.vue's handleCreate() does for objects.
+  function openClass(classId: string) {
+    const id = classTabId(classId)
+    if (findIndex(id) === -1) {
+      tabs.value.push({ id, type: 'item', itemKind: 'class', itemId: classId })
+    }
+    activeTabId.value = id
+  }
+
+  function closeClassTab(classId: string) {
+    closeTab(classTabId(classId))
+  }
+
   function setTabLabel(id: string, label: string) {
     const tab = tabs.value.find((t) => t.id === id)
     if (tab) tab.label = label
@@ -204,10 +225,12 @@ export const useTabsStore = defineStore('tabs', () => {
     openPage,
     openObject,
     setObjectSubTab,
+    openClass,
     setTabLabel,
     closeTab,
     closeAssetTab,
     closeDocumentTab,
-    closeObjectTab
+    closeObjectTab,
+    closeClassTab
   }
 })

@@ -23,14 +23,14 @@
         <div class="flex items-center gap-2 text-xs">
           <button
             @click="openThumbnail(preset.key)"
-            class="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-300 light:text-slate-700 transition text-[11px] font-semibold flex items-center justify-center gap-1"
+            class="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 hover:text-white light:bg-slate-200 text-slate-300 light:text-slate-700 transition text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
           >
             <ExternalLink class="w-3 h-3" />
             <span>Open</span>
           </button>
           <button
             @click="copyThumbnailUrl(preset.key)"
-            class="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-300 light:text-slate-700 transition text-[11px] font-semibold flex items-center justify-center gap-1"
+            class="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 hover:text-white light:bg-slate-200 text-slate-300 light:text-slate-700 transition text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
           >
             <Link class="w-3 h-3" />
             <span>Copy URL</span>

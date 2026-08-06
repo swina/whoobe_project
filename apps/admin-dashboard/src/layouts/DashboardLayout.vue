@@ -253,6 +253,7 @@
               :translation-group-id="tab.itemId"
               :class-id="tab.objectClassId"
             />
+            <MasterClassTab v-else-if="tab.type === 'item' && tab.itemKind === 'class' && tab.itemId" :class-id="tab.itemId" />
           </div>
         </template>
       </main>
@@ -284,10 +285,13 @@ import {
   Shield,
   Workflow,
   Sun,
-  Moon
+  Moon,
+  Blocks,
+  Table2
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
+import { useDataClassesStore } from '../stores/dataClassesStore'
 import { useThemeStore } from '../stores/themeStore'
 import { useTabsStore, sectionTabId, SectionKind, MainTab, SettingsSubSection } from '../stores/tabsStore'
 import { useToastStore } from '../stores/toastStore'
@@ -298,6 +302,7 @@ import MasterAssetTab from '../components/dam/MasterAssetTab.vue'
 import MasterDocumentTab from '../components/documents/MasterDocumentTab.vue'
 import MasterPageTab from '../components/pages/MasterPageTab.vue'
 import MasterObjectTab from '../components/objects/MasterObjectTab.vue'
+import MasterClassTab from '../components/objects/MasterClassTab.vue'
 import OverviewView from '../views/OverviewView.vue'
 import ObjectsView from '../views/ObjectsView.vue'
 import AssetsView from '../views/AssetsView.vue'
@@ -309,6 +314,7 @@ import { usePagesStore } from '../stores/pagesStore'
 const damStore = useDamStore()
 const documentsStore = useDocumentsStore()
 const pagesStore = usePagesStore()
+const dataClassesStore = useDataClassesStore()
 const tabsStore = useTabsStore()
 const toastStore = useToastStore()
 const authStore = useAuthStore()
@@ -336,6 +342,7 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'general', name: 'General settings', icon: Sliders },
   { key: 'dam', name: 'DAM configuration', icon: HardDrive },
   { key: 'classes', name: 'Data Object classes', icon: Database },
+  { key: 'components', name: 'Components', icon: Blocks },
   { key: 'roles', name: 'Roles/Users/Workspaces', icon: Users },
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow }
@@ -345,6 +352,7 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   general: 'General settings',
   dam: 'DAM configuration',
   classes: 'Data Object classes',
+  components: 'Components',
   roles: 'Roles/Users/Workspaces',
   security: 'Security',
   workflows: 'Workflows'
@@ -426,6 +434,18 @@ function tabLabel(tab: MainTab): string {
   if (tab.type === 'item' && tab.itemKind === 'object') {
     return tab.label || 'New Object'
   }
+  if (tab.type === 'item' && tab.itemKind === 'class') {
+    // Existing classes are looked up live from the shared store (like
+    // asset/document/page above) so a save's label change reflects
+    // immediately; a brand-new class's placeholder id (`new:<uuid>`,
+    // tabsStore.ts's openClass()) never matches a real class, so it falls
+    // through to MasterClassTab.vue's own setTabLabel() call instead -
+    // same fallback shape as the 'object' branch above, for the same
+    // "not in any shared list yet" reason (tabsStore.ts's own comment on
+    // MainTab.label).
+    const dataClass = dataClassesStore.classes.find((c) => c.id === tab.itemId)
+    return dataClass?.label ?? tab.label ?? 'New Class'
+  }
   return 'Untitled'
 }
 
@@ -442,6 +462,9 @@ function tabIcon(tab: MainTab) {
   }
   if (tab.type === 'item' && tab.itemKind === 'object') {
     return Database
+  }
+  if (tab.type === 'item' && tab.itemKind === 'class') {
+    return Table2
   }
   return FileText
 }

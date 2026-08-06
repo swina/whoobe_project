@@ -511,7 +511,7 @@
               @click="tabsStore.openAsset(asset.id)"
               :class="[
                 'transition cursor-pointer',
-                selectedAssetIds.includes(asset.id) ? 'bg-indigo-950/40 hover:bg-indigo-900/50' : 'hover:bg-slate-800/50 light:bg-slate-100/50'
+                selectedAssetIds.includes(asset.id) ? 'bg-indigo-950/40 hover:bg-indigo-900/50' : 'hover:bg-slate-800/10 light:bg-slate-100/50'
               ]"
             >
               <td class="py-2.5 px-3 text-center" @click.stop>
@@ -524,7 +524,7 @@
                 />
               </td>
               <td v-if="visibleColumns.thumbnail" class="py-2.5 px-4 text-center">
-                <div class="w-9 h-9 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 flex items-center justify-center overflow-hidden mx-auto">
+                <div class="w-14 h-14 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 flex items-center justify-center overflow-hidden mx-auto">
                   <img
                     v-if="PREVIEWABLE_IMAGE_TYPES.includes(asset.fileType)"
                     :src="asset.dataUrl || asset.thumbnailUrl || asset.url"

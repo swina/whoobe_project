@@ -21,6 +21,8 @@ export * from './db/whoobe-pages-schema.js';
 export * from './db/whoobe-pages-records.js';
 export * from './db/data-classes-schema.js';
 export * from './db/data-classes-records.js';
+export * from './db/data-components-schema.js';
+export * from './db/data-components-records.js';
 export * from './db/data-objects-schema.js';
 export * from './db/data-objects-records.js';
 export * from './db/data-object-preview-tokens-records.js';
