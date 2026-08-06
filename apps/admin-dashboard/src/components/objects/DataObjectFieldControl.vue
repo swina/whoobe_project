@@ -4,9 +4,15 @@
       {{ field.title }}<span v-if="field.mandatory" class="text-rose-400"> *</span>
     </label>
 
+    <!-- Rich text - docs/plans/datamodel/wysiwyg-field-editor-plan.md -->
+    <WysiwygEditor
+      v-if="field.fieldType === 'wysiwyg'"
+      :model-value="(modelValue as string) ?? ''"
+      @update:model-value="emitUpdate"
+    />
     <!-- Plain text-ish types -->
     <textarea
-      v-if="field.fieldType === 'wysiwyg' || field.fieldType === 'textarea'"
+      v-else-if="field.fieldType === 'textarea'"
       :value="(modelValue as string) ?? ''"
       @input="emitUpdate(($event.target as HTMLTextAreaElement).value)"
       rows="4"
@@ -193,6 +199,7 @@ import type { ClassFieldDefinition } from '@pimcore-custom/core'
 import { useRelationOptions } from '../../composables/useRelationOptions'
 import { resolveCustomClasses } from '../../utils/custom-classes'
 import DataObjectForm from './DataObjectForm.vue'
+import WysiwygEditor from './WysiwygEditor.vue'
 
 const props = defineProps<{
   field: ClassFieldDefinition
