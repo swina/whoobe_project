@@ -22,6 +22,9 @@
       <MigrationSourcesCard />
     </template>
 
+    <!-- Component Types - docs/plans/datamodel/component-fields-plan.md -->
+    <ComponentSettingsCard v-if="activeSubSection === 'components'" />
+
     <!-- Roles / Users / Workspaces - listed in the plan, but no backend
          exists for this yet (no /users, /roles, or /workspaces admin
          routes - only the auth tables users/roles/permissions/
@@ -79,6 +82,7 @@ import { computed } from 'vue'
 import DamConfigManager from '../components/dam/DamConfigManager.vue'
 import MfaSettingsCard from '../components/auth/MfaSettingsCard.vue'
 import ClassSettingsCard from '../components/objects/ClassSettingsCard.vue'
+import ComponentSettingsCard from '../components/objects/ComponentSettingsCard.vue'
 import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue'
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
@@ -94,6 +98,7 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   general: { title: 'General Settings', description: 'Sync and logging options for the admin dashboard.' },
   dam: { title: 'DAM Configuration', description: 'Configure DAM S3/MinIO storage, folder visibility rules, and sync options.' },
   classes: { title: 'Data Object Classes', description: 'Define classes and fields, and import them on demand from Pimcore.' },
+  components: { title: 'Components', description: 'Reusable structured field lists a class field can hold a repeatable mix of.' },
   roles: { title: 'Roles / Users / Workspaces', description: 'Manage who can access this dashboard and what they can do.' },
   security: { title: 'Security', description: 'Two-factor authentication and account security.' },
   workflows: { title: 'Workflows', description: 'Author publish/review workflows for Data Object classes.' }

@@ -1,6 +1,7 @@
 import { eq, and, desc } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { dataObjects } from './data-objects-schema.js';
+import { getDataClass } from './data-classes-records.js';
 
 export interface DataObjectRecord {
   id: string;
@@ -88,6 +89,56 @@ export async function getDataObjectByPimcoreId(pimcoreId: string): Promise<DataO
   return row ?? null;
 }
 
+/**
+ * A "not localized" field is supposed to mean one shared value across
+ * every locale of the same logical record - but each locale still lives
+ * as its own full row (§4.4 of advanced-data-modeling-plan.md), edited
+ * and saved independently, so without this a non-localized field's value
+ * only ever actually changes in whichever single locale row happened to
+ * be open when it was edited, silently drifting from its siblings. Called
+ * after a real attribute write (create or update) to push that row's own
+ * non-localized field values out to every other row in the same
+ * `translationGroupId`, so editing one locale's copy of e.g. a shared
+ * `asset`/`image` field is immediately visible in every other locale too.
+ *
+ * Deliberately NOT called from `upsertDataObjectByPimcoreId` (the
+ * migration re-run path) - a real, found-in-practice case documented in
+ * advanced-data-modeling-plan.md's own Phase 4 notes is that a "non-
+ * localized" *relation* field can legitimately resolve to a different
+ * real id per locale during migration (each locale's own resolved
+ * sibling target), which this sync would incorrectly stomp back to one
+ * shared value. That's a property of how Pimcore's source data resolves
+ * through the migration converter, not of what "non-localized" should
+ * mean for ongoing admin edits through this system - scoped accordingly.
+ */
+async function syncNonLocalizedAttributes(row: DataObjectRecord): Promise<void> {
+  const dataClass = await getDataClass(row.classId);
+  if (!dataClass) return;
+  const nonLocalizedNames = dataClass.fields.filter((f) => !f.localized).map((f) => f.name);
+  if (nonLocalizedNames.length === 0) return;
+
+  const db = getDb();
+  const siblings = await db
+    .select()
+    .from(dataObjects)
+    .where(eq(dataObjects.translationGroupId, row.translationGroupId));
+
+  for (const sibling of siblings) {
+    if (sibling.id === row.id) continue;
+    const nextAttributes: Record<string, unknown> = { ...sibling.attributes };
+    let changed = false;
+    for (const name of nonLocalizedNames) {
+      if (JSON.stringify(nextAttributes[name]) !== JSON.stringify(row.attributes[name])) {
+        nextAttributes[name] = row.attributes[name];
+        changed = true;
+      }
+    }
+    if (changed) {
+      await db.update(dataObjects).set({ attributes: nextAttributes, updatedAt: new Date() }).where(eq(dataObjects.id, sibling.id));
+    }
+  }
+}
+
 export async function createDataObject(input: {
   classId: string;
   key: string;
@@ -115,6 +166,12 @@ export async function createDataObject(input: {
       pimcoreId: input.pimcoreId ?? null,
     })
     .returning();
+  // A brand-new locale row for an object that already has sibling locale
+  // rows - push this row's own non-localized values out to them too (the
+  // reverse direction, pre-filling this new row from a sibling, is
+  // MasterObjectTab.vue's own job client-side, so the admin sees the
+  // shared value immediately rather than only after this first save).
+  await syncNonLocalizedAttributes(row);
   return row;
 }
 
@@ -150,6 +207,9 @@ export async function updateDataObject(
   }
 
   const [row] = await db.update(dataObjects).set(values).where(eq(dataObjects.id, id)).returning();
+  if (row && input.attributes !== undefined) {
+    await syncNonLocalizedAttributes(row);
+  }
   return row ?? null;
 }
 

@@ -24,6 +24,7 @@ export default defineConfig({
     './src/db/whoobe-one-kit-schema.ts',
     './src/db/whoobe-pages-schema.ts',
     './src/db/data-classes-schema.ts',
+    './src/db/data-components-schema.ts',
     './src/db/data-objects-schema.ts',
     './src/db/class-workflow-definitions-schema.ts',
     './src/db/workflow-transition-log-schema.ts',

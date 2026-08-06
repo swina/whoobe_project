@@ -35,9 +35,27 @@ export interface ClassFieldDefinition {
   // ClassViewConfig) so it survives a field moving between sections/
   // Ungrouped and applies consistently even on the flat, no-viewConfig
   // fallback form. Same admin-dashboard-side arbitrary-bracket-value
-  // handling as a section's own containerClass (utils/container-layout.ts)
+  // handling as a section's own containerClass (utils/custom-classes.ts)
   // applies here too - not re-stated per-field, this is just data.
   className?: string;
+  // Restricts which DAM assets are pickable for an `asset`-type field.
+  // Purely a UI-side constraint on AssetPickerModal.vue's own browsing
+  // filter (admin-dashboard), the same way
+  // `options`/`relationTarget` already steer other field types without any
+  // enforcement at the schema/validation level (compileFieldSchema below
+  // still just validates the stored `{ assetId }` shape, regardless of
+  // what category of asset it points at). `image`/`video` field types
+  // don't need this - their own name already implies the filter.
+  assetFilter?: 'any' | 'image' | 'video' | 'document' | 'archive';
+  // Which named Component Types (data_components.name) this
+  // `fieldcollections` field allows - docs/plans/datamodel/component-
+  // fields-plan.md. The natively-authored counterpart to `collectionTypes`
+  // above (which stays exactly as migration already populates it,
+  // untouched by this) - the two are resolved into the identical
+  // `collectionTypes`-shaped array client-side (DataObjectForm.vue) before
+  // reaching DataObjectFieldControl.vue's existing fieldcollections
+  // editor, so that editor needs zero changes to render either source.
+  allowedComponentTypes?: string[];
 }
 
 export interface ClassDefinition {
@@ -143,6 +161,13 @@ function compileFieldSchema(field: ClassFieldDefinition): ZodSchema {
       fieldSchema = LINK_SHAPE;
       break;
     case 'video':
+    case 'image':
+    case 'asset':
+      // Same `{ assetId }` shape as manyToOneRelation's own asset-flavored
+      // case above. `image` previously had no case at all (fell through
+      // to the `default: z.unknown()` below) even though it's a real
+      // Pimcore-migrated field type - a real gap, not a deliberate
+      // omission; `asset` is new.
       fieldSchema = ASSET_REF_SHAPE.nullable();
       break;
     case 'block':

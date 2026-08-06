@@ -1,13 +1,28 @@
 <template>
-  <div :class="['space-y-1', fieldLayout.class]" :style="fieldLayout.style">
+  <div class="space-y-1" :class="(field.fieldType != 'image' && field.fieldType != 'video' && field.fieldType != 'asset') ? fieldLayout.class : ''">
     <label class="block text-xs font-semibold text-slate-400 light:text-slate-600">
       {{ field.title }}<span v-if="field.mandatory" class="text-rose-400"> *</span>
     </label>
+
+    <!-- field.className (docs/plans/UI/editing-object-class.md) is applied
+         to the actual control in every branch below - never to the outer
+         label+control wrapper above, which only exists for that vertical
+         stacking. Real consequence, stated rather than glossed over: a
+         grid-placement utility like col-span-2 needs to sit on a real
+         grid *item* to do anything - since that's this wrapper, not the
+         control inside it, col-span-2 typed into a field's className has
+         no effect once applied here. Custom classes/styles - background,
+         padding, borders, sizing - visibly landing on the control itself
+         is what was actually asked for; grid placement for a field within
+         a section's own grid layout doesn't have a supported mechanism
+         right now (a real, separate gap, not silently pretended away). -->
 
     <!-- Rich text - docs/plans/datamodel/wysiwyg-field-editor-plan.md -->
     <WysiwygEditor
       v-if="field.fieldType === 'wysiwyg'"
       :model-value="(modelValue as string) ?? ''"
+      :class="fieldLayout.class"
+      :style="fieldLayout.style"
       @update:model-value="emitUpdate"
     />
     <!-- Plain text-ish types -->
@@ -16,35 +31,40 @@
       :value="(modelValue as string) ?? ''"
       @input="emitUpdate(($event.target as HTMLTextAreaElement).value)"
       rows="4"
-      class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
+      :style="fieldLayout.style"
     />
     <input
       v-else-if="['input', 'urlSlug', 'country', 'email'].includes(field.fieldType)"
       :value="(modelValue as string) ?? ''"
       @input="emitUpdate(($event.target as HTMLInputElement).value)"
       type="text"
-      class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
+      :style="fieldLayout.style"
     />
     <input
       v-else-if="field.fieldType === 'numeric'"
       :value="(modelValue as number) ?? ''"
       @input="emitUpdate(($event.target as HTMLInputElement).value === '' ? null : Number(($event.target as HTMLInputElement).value))"
       type="number"
-      class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
+      :style="fieldLayout.style"
     />
     <input
       v-else-if="field.fieldType === 'checkbox'"
       :checked="!!modelValue"
       @change="emitUpdate(($event.target as HTMLInputElement).checked)"
       type="checkbox"
-      class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600"
+      :class="['w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600', fieldLayout.class]"
+      :style="fieldLayout.style"
     />
     <input
       v-else-if="field.fieldType === 'date'"
       :value="dateInputValue"
       @input="emitUpdate(($event.target as HTMLInputElement).value ? new Date(($event.target as HTMLInputElement).value) : null)"
       type="date"
-      class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
+      :style="fieldLayout.style"
     />
 
     <!-- select: relation-flavored (relationTarget) vs plain fixed options -->
@@ -52,7 +72,8 @@
       v-else-if="field.fieldType === 'select' && field.relationTarget"
       :value="relationSelectedId"
       @change="emitUpdate(relationValueFromId(($event.target as HTMLSelectElement).value))"
-      class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
+      :style="fieldLayout.style"
     >
       <option value="">—</option>
       <option v-for="opt in relationOptions" :key="opt.id" :value="opt.id">{{ opt.key }}</option>
@@ -61,7 +82,8 @@
       v-else-if="field.fieldType === 'select'"
       :value="(modelValue as string) ?? ''"
       @change="emitUpdate(($event.target as HTMLSelectElement).value)"
-      class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
+      :style="fieldLayout.style"
     >
       <option value="">—</option>
       <option v-for="opt in field.options ?? []" :key="opt" :value="opt">{{ opt }}</option>
@@ -74,7 +96,8 @@
       @input="emitUpdate(($event.target as HTMLInputElement).value.split(',').map((s) => s.trim()).filter(Boolean))"
       type="text"
       placeholder="comma, separated, values"
-      class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
+      :style="fieldLayout.style"
     />
 
     <!-- manyToOneRelation: object relation (relationTarget) vs an asset reference -->
@@ -82,18 +105,19 @@
       v-else-if="field.fieldType === 'manyToOneRelation' && field.relationTarget"
       :value="relationSelectedId"
       @change="emitUpdate(relationValueFromId(($event.target as HTMLSelectElement).value))"
-      class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
+      :style="fieldLayout.style"
     >
       <option value="">—</option>
       <option v-for="opt in relationOptions" :key="opt.id" :value="opt.id">{{ opt.key }}</option>
     </select>
-    <input
-      v-else-if="field.fieldType === 'manyToOneRelation' || field.fieldType === 'video'"
-      :value="assetIdValue"
-      @input="emitUpdate(($event.target as HTMLInputElement).value ? { assetId: ($event.target as HTMLInputElement).value } : null)"
-      type="text"
-      placeholder="Asset ID / path"
-      class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+    <AssetFieldPicker
+      v-else-if="['manyToOneRelation', 'video', 'image', 'asset'].includes(field.fieldType)"
+      :model-value="assetRefValue"
+      :filter="assetPickerFilter"
+      :class="fieldLayout.class"
+      :style="fieldLayout.style"
+      @update:model-value="emitUpdate"
     />
 
     <!-- multi-relation family -->
@@ -102,14 +126,17 @@
       multiple
       :value="multiRelationIds"
       @change="emitUpdate(Array.from(($event.target as HTMLSelectElement).selectedOptions).map((o) => ({ id: o.value })))"
-      class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
+      :style="fieldLayout.style"
       size="4"
     >
       <option v-for="opt in relationOptions" :key="opt.id" :value="opt.id">{{ opt.key }}</option>
     </select>
 
-    <!-- link: grouped path/text/target -->
-    <div v-else-if="field.fieldType === 'link'" class="grid grid-cols-3 gap-2">
+    <!-- link: grouped path/text/target - className lands on the group, not
+         one of the three individual inputs, since none of them alone is
+         "the control" for this field type. -->
+    <div v-else-if="field.fieldType === 'link'" :class="['grid grid-cols-3 gap-2', fieldLayout.class]" :style="fieldLayout.style">
       <input
         :value="linkValue.path ?? ''"
         @input="emitUpdate({ ...linkValue, path: ($event.target as HTMLInputElement).value || null })"
@@ -134,7 +161,7 @@
     </div>
 
     <!-- block: a repeatable-row nested form, recursing through DataObjectForm -->
-    <div v-else-if="field.fieldType === 'block'" class="space-y-2 rounded-lg border border-slate-800 light:border-slate-400 p-3 bg-slate-950/40 light:bg-white/40">
+    <div v-else-if="field.fieldType === 'block'" :class="['space-y-2 rounded-lg border border-slate-800 light:border-slate-400 p-3 bg-slate-950/40 light:bg-white/40', fieldLayout.class]" :style="fieldLayout.style">
       <div v-for="(row, index) in blockRows" :key="index" class="rounded-lg border border-slate-800/80 light:border-slate-200/80 p-3 space-y-2 relative">
         <button
           @click="removeBlockRow(index)"
@@ -154,7 +181,11 @@
          Falls back to a plain "not available" note when the class has
          no real collectionTypes info at all (hand-authored, never
          migrated). -->
-    <div v-else-if="field.fieldType === 'fieldcollections' && field.collectionTypes && field.collectionTypes.length > 0" class="space-y-2 rounded-lg border border-slate-800 light:border-slate-200 p-3 bg-slate-950/40 light:bg-white/40">
+    <div
+      v-else-if="field.fieldType === 'fieldcollections' && field.collectionTypes && field.collectionTypes.length > 0"
+      :class="['space-y-2 rounded-lg border border-slate-800 light:border-slate-200 p-3 bg-slate-950/40 light:bg-white/40', fieldLayout.class]"
+      :style="fieldLayout.style"
+    >
       <div v-for="(item, index) in collectionItems" :key="index" class="rounded-lg border border-slate-800/80 light:border-slate-200/80 p-3 space-y-2 relative">
         <div class="flex items-center justify-between">
           <span class="px-2 py-0.5 text-[10px] font-bold rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 uppercase">{{ item.collectionType }}</span>
@@ -181,13 +212,21 @@
         </select>
       </div>
     </div>
-    <div v-else-if="field.fieldType === 'fieldcollections'" class="px-3 py-2 text-xs text-slate-500 italic bg-slate-950/40 light:bg-white/40 border border-slate-800 light:border-slate-200 rounded-lg">
+    <div
+      v-else-if="field.fieldType === 'fieldcollections'"
+      :class="['px-3 py-2 text-xs text-slate-500 italic bg-slate-950/40 light:bg-white/40 border border-slate-800 light:border-slate-200 rounded-lg', fieldLayout.class]"
+      :style="fieldLayout.style"
+    >
       Field Collection editor not available - this class has no real collection-type info (only classes migrated via `migrate-classes` have it).
       ({{ ((modelValue as unknown[]) ?? []).length }} item(s) stored)
     </div>
 
     <!-- Unrecognized field type - shown plainly, not silently dropped -->
-    <div v-else class="px-3 py-2 text-xs text-slate-500 italic bg-slate-950/40 light:bg-white/40 border border-slate-800 light:border-slate-200 rounded-lg">
+    <div
+      v-else
+      :class="['px-3 py-2 text-xs text-slate-500 italic bg-slate-950/40 light:bg-white/40 border border-slate-800 light:border-slate-200 rounded-lg', fieldLayout.class]"
+      :style="fieldLayout.style"
+    >
       Unsupported field type "{{ field.fieldType }}": {{ JSON.stringify(modelValue) }}
     </div>
   </div>
@@ -198,8 +237,10 @@ import { computed } from 'vue'
 import type { ClassFieldDefinition } from '@pimcore-custom/core'
 import { useRelationOptions } from '../../composables/useRelationOptions'
 import { resolveCustomClasses } from '../../utils/custom-classes'
+import type { AssetCategoryFilter } from '../../utils/asset-category'
 import DataObjectForm from './DataObjectForm.vue'
 import WysiwygEditor from './WysiwygEditor.vue'
+import AssetFieldPicker from './AssetFieldPicker.vue'
 
 const props = defineProps<{
   field: ClassFieldDefinition
@@ -238,8 +279,18 @@ function relationValueFromId(id: string): { id: string } | null {
 // not on simpler casts like `as string`/`as string[]`), so any object-
 // shaped cast lives here instead.
 const relationSelectedId = computed(() => (props.modelValue as { id: string } | null)?.id ?? '')
-const assetIdValue = computed(() => (props.modelValue as { assetId: string } | null)?.assetId ?? '')
 const multiRelationIds = computed(() => ((props.modelValue as { id: string }[]) ?? []).map((r) => r.id))
+const assetRefValue = computed(() => (props.modelValue as { assetId: string } | null) ?? null)
+
+// image/video's own name already implies the picker's filter; a plain
+// asset-flavored manyToOneRelation (no relationTarget) has no filter
+// concept at all today, so it stays permissive.
+const assetPickerFilter = computed<AssetCategoryFilter>(() => {
+  if (props.field.fieldType === 'image') return 'image'
+  if (props.field.fieldType === 'video') return 'video'
+  if (props.field.fieldType === 'asset') return props.field.assetFilter ?? 'any'
+  return 'any'
+})
 
 const dateInputValue = computed(() => {
   const value = props.modelValue as Date | string | null

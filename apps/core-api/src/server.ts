@@ -45,6 +45,12 @@ import {
   createDataClass,
   updateDataClass,
   deleteDataClass,
+  listDataComponents,
+  getDataComponent,
+  createDataComponent,
+  updateDataComponent,
+  deleteDataComponent,
+  isDataComponentInUse,
   listDataObjects,
   getDataObject,
   listDataObjectTranslations,
@@ -984,6 +990,149 @@ app.delete('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), as
   } catch (error: any) {
     console.error('Delete data class error:', error);
     res.status(500).json({ error: error.message || 'Failed to delete class' });
+  }
+});
+
+// Component Types - docs/plans/datamodel/component-fields-plan.md. This
+// plan's own name for Pimcore's "Field Collection" concept - a named,
+// reusable field-list definition a `fieldcollections`-type class field can
+// reference by name (`allowedComponentTypes`). Same PERMISSIONS.OBJECTS_*
+// triad as every other resource in this file, per that plan's own §3.
+// Phase 1 scope only: no in-use guardrail on delete yet (component-fields-
+// plan.md §2.5/Phase 4 is real, separate work - deliberately not built
+// here, same as this plan's own stated phase boundary).
+app.get('/data-components', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const components = await listDataComponents();
+    res.json({ components });
+  } catch (error: any) {
+    console.error('List data components error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list components' });
+  }
+});
+
+app.get('/data-components/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const component = await getDataComponent(req.params.id);
+    if (!component) {
+      res.status(404).json({ error: 'Component not found' });
+      return;
+    }
+    res.json({ component });
+  } catch (error: any) {
+    console.error('Get data component error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get component' });
+  }
+});
+
+// Real in-use check - component-fields-plan.md §2.5/Phase 4. Lets
+// ComponentSettingsCard.vue show a live warning the same way
+// ClassSettingsCard.vue's own `objectCount` already does for classes,
+// rather than only surfacing the guardrail reactively via a 409 on save.
+app.get('/data-components/:id/usage', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const component = await getDataComponent(req.params.id);
+    if (!component) {
+      res.status(404).json({ error: 'Component not found' });
+      return;
+    }
+    const inUse = await isDataComponentInUse(component.name);
+    res.json({ inUse });
+  } catch (error: any) {
+    console.error('Get data component usage error:', error);
+    res.status(500).json({ error: error.message || 'Failed to check component usage' });
+  }
+});
+
+app.post('/data-components', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, label, fields } = req.body ?? {};
+    if (typeof name !== 'string' || !name.trim() || typeof label !== 'string' || !label.trim() || !Array.isArray(fields)) {
+      res.status(400).json({ error: 'name, label, and fields are required' });
+      return;
+    }
+
+    const component = await createDataComponent({ name: name.trim(), label: label.trim(), fields });
+    res.status(201).json({ component });
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      res.status(409).json({ error: `A component named "${req.body?.name}" already exists` });
+      return;
+    }
+    console.error('Create data component error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create component' });
+  }
+});
+
+app.patch('/data-components/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, label, fields } = req.body ?? {};
+
+    // Guardrail (component-fields-plan.md §2.5/Phase 4) - mirrors PATCH
+    // /data-classes/:id's own field-rename/type-change block, one level
+    // down: while this Component is referenced by any object's own
+    // fieldcollections item, a field disappearing or changing type would
+    // silently invalidate data already stored under the old shape.
+    if (Array.isArray(fields)) {
+      const existing = await getDataComponent(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Component not found' });
+        return;
+      }
+      const inUse = await isDataComponentInUse(existing.name);
+      if (inUse) {
+        const oldFieldsByName = new Map(existing.fields.map((f) => [f.name, f]));
+        const newFieldsByName = new Map(fields.map((f: { name: string }) => [f.name, f]));
+        const removed = [...oldFieldsByName.keys()].filter((name) => !newFieldsByName.has(name));
+        const typeChanged = [...oldFieldsByName.entries()]
+          .filter(([name, old]) => newFieldsByName.has(name) && (newFieldsByName.get(name) as any).fieldType !== old.fieldType)
+          .map(([name]) => name);
+        if (removed.length > 0 || typeChanged.length > 0) {
+          res.status(409).json({
+            error: `Cannot change these fields while this component is referenced by an existing object: ${[...removed, ...typeChanged].join(', ')}. Leave the field's name/type unchanged, or remove the references first.`,
+          });
+          return;
+        }
+      }
+    }
+
+    const component = await updateDataComponent(req.params.id, {
+      name: typeof name === 'string' ? name : undefined,
+      label: typeof label === 'string' ? label : undefined,
+      fields: Array.isArray(fields) ? fields : undefined,
+    });
+    if (!component) {
+      res.status(404).json({ error: 'Component not found' });
+      return;
+    }
+    res.json({ component });
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      res.status(409).json({ error: `A component named "${req.body?.name}" already exists` });
+      return;
+    }
+    console.error('Update data component error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update component' });
+  }
+});
+
+app.delete('/data-components/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const component = await getDataComponent(req.params.id);
+    if (!component) {
+      res.status(404).json({ error: 'Component not found' });
+      return;
+    }
+    const inUse = await isDataComponentInUse(component.name);
+    if (inUse) {
+      res.status(409).json({ error: 'Cannot delete this component: at least one existing object still references it. Remove those references first.' });
+      return;
+    }
+    await deleteDataComponent(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete data component error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete component' });
   }
 });
 
