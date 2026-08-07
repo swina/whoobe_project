@@ -55,10 +55,10 @@ onMounted(async () => {
   if (editor.document) return
 
   const root = new Element().Flexbox({ direction: 'col' }).setIcon('dashboard').setTag('document')
-  root.css.container = clean(root.css.container + ' gap-4 min-h-[600px] bg-white p-6')
-
+  root.css.container = clean(root.css.container + ' min-h-[600px] bg-white')
+  
   const row = new Element().Flexbox({ direction: 'row' })
-  row.css.container = clean(row.css.container + ' gap-4 items-center')
+  row.css.container = clean(row.css.container + ' items-center')
 
   const heading = new Element().Heading(1)
   heading.content = 'Drag me, edit me'

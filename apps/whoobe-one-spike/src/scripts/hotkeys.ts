@@ -52,6 +52,16 @@ export const shortcuts: Record<string, string> = {
 
 let installed = false
 
+// BlockElement.vue's inline text editing uses real `contenteditable`, and
+// the app has plain text inputs elsewhere (e.g. FloatingToolbar's fields) -
+// Ctrl/Cmd+C/V must not hijack native copy/paste while a user is typing in
+// either, so this listener only steps in outside those targets.
+function isEditableTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  if (!el) return false
+  return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable
+}
+
 export function setupHotkeys(): void {
   if (installed) return
   installed = true
@@ -59,6 +69,28 @@ export function setupHotkeys(): void {
   const editor = useEditorStore()
 
   window.addEventListener('keydown', (e) => {
+    // Ctrl+C/V (Cmd on Mac) - the standard copy/paste chord, alongside the
+    // ported Alt+C/Alt+V below (kept working for anyone already used to
+    // them). Any element in the canvas can be copied; paste targets
+    // whatever's currently selected via pasteClipboardInto's own
+    // container/sibling/root resolution (editor-actions.ts).
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyC' && !isEditableTarget(e.target)) {
+      if (editor.current) {
+        copyCurrentToClipboard(editor)
+        editorBus.emit('editorMessage', 'Block copied')
+      }
+      return
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyV' && !isEditableTarget(e.target)) {
+      if (editor.document) {
+        e.preventDefault()
+        pasteClipboardInto(editor)
+        editorBus.emit('editorMessage', 'Block pasted')
+      }
+      return
+    }
+
     // Remove selected block - the one hotkey with an immediately real
     // effect already in this spike (FloatingToolbar's delete button uses
     // the same removeNodeById; not extracted into a shared helper since
@@ -89,7 +121,7 @@ export function setupHotkeys(): void {
     }
 
     if (e.altKey && e.code === 'KeyV') {
-      if (editor.current) {
+      if (editor.document) {
         pasteClipboardInto(editor)
         editorBus.emit('editorMessage', 'Block pasted')
       }

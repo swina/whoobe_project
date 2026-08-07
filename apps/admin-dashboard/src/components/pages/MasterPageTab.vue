@@ -1,8 +1,8 @@
 <template>
   <div v-if="page" class="h-full flex flex-col">
-    <div class="shrink-0 px-6 pt-6 pb-3 space-y-3">
+    <div class="flex shrink-0 px-6 pt-2 pb-2 space-y-1 gap-6">
       <div class="flex items-center gap-2">
-        <h3 class="text-lg font-bold text-slate-100 light:text-slate-900">{{ page.title }}</h3>
+        <h4 class="text-lg font-bold text-slate-100 light:text-slate-900">{{ page.title }}</h4>
         <span
           :class="[
             'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
@@ -27,8 +27,8 @@
          so title/status here can go stale during a long editing session.
          Closing and reopening the tab (or navigating back to the Pages
          list, which does re-fetch) picks up the latest values. -->
-    <div class="flex-1 min-h-0 px-6 pb-6">
-      <div class="h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6">
+    <div class="flex-1 min-h-0 px-2 pb-2">
+      <div class="h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-2">
         <WhoobeOneEmbed :page-id="props.pageId" />
       </div>
     </div>
