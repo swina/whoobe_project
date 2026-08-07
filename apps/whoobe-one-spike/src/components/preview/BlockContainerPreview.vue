@@ -20,9 +20,9 @@
     <template v-else>
       <template v-for="child in doc.blocks" :key="child.id">
         <a v-if="(child as any).link" :href="(child as any).link" :target="(child as any).linkTarget || undefined">
-          <component :is="childComponent(child)" v-bind="childProps(child)" />
+          <component :is="childComponent(child)" v-bind="childPropsWithContext(child)" />
         </a>
-        <component v-else :is="childComponent(child)" v-bind="childProps(child)" />
+        <component v-else :is="childComponent(child)" v-bind="childPropsWithContext(child)" />
       </template>
     </template>
   </component>
@@ -89,6 +89,18 @@ const collectionResolved = computed<DataObjectRecord[]>(() => {
   return resolved
 })
 
+// A container with a single-object binding (whole object, no field).
+// The resolved object is passed as dataContext to all children, so
+// their relative bindings (no objectId) resolve against it.
+const singleObjectContext = computed<DataObjectRecord | null>(() => {
+  const el = props.doc as any
+  const db = el.dataBinding
+  if (!db || db.field) return null
+  const resolved = editor.resolvedData[el.id]
+  if (!resolved || Array.isArray(resolved)) return null
+  return resolved as DataObjectRecord
+})
+
 function boundChildProps(child: WhoobeElement, obj: DataObjectRecord): Record<string, unknown> {
   const c = child as any
   if (c.tag === 'slider' || c.type === 'container') return { doc: child, dataContext: obj }
@@ -112,6 +124,18 @@ function childProps(child: WhoobeElement): Record<string, unknown> {
   const c = child as any
   if (c.tag === 'slider' || c.type === 'container') return { doc: child }
   return { element: child }
+}
+
+// Same as childProps(), but threads the container's own resolved single
+// object down as dataContext - the mechanism that lets a generated
+// template's relative bindings (children with no objectId) resolve
+// against the object this container is bound to. Falls back to any
+// dataContext the container itself received from its own parent.
+function childPropsWithContext(child: WhoobeElement): Record<string, unknown> {
+  const base = childProps(child)
+  const ctx = singleObjectContext.value ?? props.dataContext ?? undefined
+  if (!ctx) return base
+  return { ...base, dataContext: ctx }
 }
 
 const semantic = computed(() => (props.doc as any).semantic || 'div')
