@@ -318,6 +318,14 @@
     </label>
     <button v-if="editor.current?.gsap?.animation" title="Preview animation" class="toolbar-icon" @click="replayAnimation"><Play class="w-4 h-4" /></button>
     <button title="Save as snippet" class="toolbar-icon" @click="showSaveSnippet = true"><Save class="w-4 h-4" /></button>
+    <button
+      title="Bind to data object"
+      class="toolbar-icon"
+      :class="bindingTarget && editor.current?.dataBinding ? 'text-indigo-600' : ''"
+      @click="showDataPicker = true"
+    >
+      <Database class="w-4 h-4" />
+    </button>
     <button title="Delete" class="toolbar-icon text-rose-500" :disabled="isRoot" @click="remove"><Trash2 class="w-4 h-4" /></button>
   </div>
 
@@ -340,6 +348,15 @@
   <MediaPickerModal v-if="showMediaPicker" @select="onMediaPicked" @close="showMediaPicker = false" />
 
   <SaveSnippetModal v-if="showSaveSnippet && editor.current" :element="editor.current" @close="showSaveSnippet = false" />
+
+  <DataObjectPicker
+    v-if="showDataPicker && editor.current"
+    :target="bindingTarget"
+    :initial="editor.current.dataBinding"
+    @select="onDataBound"
+    @clear="onDataClear"
+    @close="showDataPicker = false"
+  />
 </template>
 
 <script setup lang="ts">
@@ -377,11 +394,14 @@ import { clean, findParentAndIndex, removeNodeById, friendlyElementName } from '
 import TipTapPanel from './TipTapPanel.vue'
 import MediaPickerModal from './MediaPickerModal.vue'
 import SaveSnippetModal from './SaveSnippetModal.vue'
+import DataObjectPicker from './DataObjectPicker.vue'
 import ExpandableTextInput from './ExpandableTextInput.vue'
+import type { ElementDataBinding } from '../scripts/ElementsClass.js'
 import {
   ArrowLeftRight,
   ArrowUp,
   ArrowUpDown,
+  Database,
   FolderOpen,
   Image,
   Link,
@@ -417,6 +437,7 @@ const imageUrlDraft = ref('')
 const imageAltDraft = ref('')
 const showSliderSettings = ref(false)
 const showSemanticPicker = ref(false)
+const showDataPicker = ref(false)
 
 // Same `tw.classes.js` list the Tailwind customizer's own controls already
 // reuse elsewhere (e.g. BorderColorControl.vue's colors) - not a new,
@@ -466,6 +487,30 @@ const isSlider = computed(() => editor.current?.tag === 'slider')
 const isTextEditable = computed(() => !!editor.current?.editable)
 const isVideoEmbed = computed(() => editor.current?.tag === 'youtube' || editor.current?.tag === 'vimeo')
 const isRoot = computed(() => !editor.document || editor.current?.id === editor.document.id)
+
+// Auto-detect the binding target based on the current element's nature.
+// This matches the field compatibility table in DataObjectPicker.vue.
+const bindingTarget = computed(() => {
+  const el = editor.current as any
+  if (!el) return 'content'
+  if (el.type === 'container' || el.tag === 'slider') return 'custom'
+  if (el.element === 'img') return 'src'
+  if (el.tag === 'youtube' || el.tag === 'vimeo') return 'src'
+  if (el.tag === 'micon' || el.tag === 'iconify') return 'icon'
+  if (el.link || el.link === '') return 'href'
+  return 'content'
+})
+
+function onDataBound(binding: ElementDataBinding) {
+  if (editor.current) (editor.current as any).dataBinding = binding
+  showDataPicker.value = false
+}
+
+function onDataClear() {
+  if (editor.current) (editor.current as any).dataBinding = null
+  showDataPicker.value = false
+}
+
 const label = computed(() => {
   const el = editor.current as any
   if (!el) return ''

@@ -3,10 +3,10 @@
     :is="component"
     :class="classe"
     :style="stile"
-    :src="element.element === 'img' ? resolveDisplayUrl(imageURL(element.image)) : undefined"
-    :alt="element.element === 'img' ? element.image?.alt || undefined : undefined"
+    :src="displaySrc"
+    :alt="displayAlt"
     :placeholder="element.placeholder"
-    v-html="element.content"
+    v-html="displayContent"
   ></component>
 </template>
 
@@ -30,12 +30,65 @@ import { computed } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
 import { imageURL } from '../../helpers'
 import { resolveDisplayUrl } from '../../resolve-display-url'
+import { useEditorStore } from '../../store/editor'
+import { resolveFieldValue } from '../../scripts/data-resolver'
+import type { DataObjectRecord } from '../../data-objects-api'
 
 type WhoobeElement = InstanceType<typeof Element>
 
 const props = defineProps<{
   element: WhoobeElement
+  dataContext?: DataObjectRecord | null
 }>()
+
+const editor = useEditorStore()
+
+const resolvedData = computed(() => {
+  const el = props.element as any
+  const db = el.dataBinding
+  if (!db) return null
+  // If the binding has an explicit objectId, use the store's resolved data
+  // (fetched by data-resolver.ts). Otherwise, use the dataContext from the
+  // nearest collection ancestor (for relative bindings inside a repeater).
+  if (db.objectId) {
+    const resolved = editor.resolvedData[el.id]
+    if (!resolved) return null
+    return resolveFieldValue(resolved, db)
+  }
+  // Relative binding: resolve against the dataContext prop.
+  if (props.dataContext && db.field) {
+    return (props.dataContext.attributes as any)?.[db.field]
+  }
+  if (props.dataContext && !db.field) {
+    return props.dataContext
+  }
+  return null
+})
+
+const displayContent = computed(() => {
+  const el = props.element as any
+  if (el.dataBinding && resolvedData.value !== null) {
+    return String(resolvedData.value ?? '')
+  }
+  return el.content
+})
+
+const displaySrc = computed(() => {
+  const el = props.element as any
+  if (el.dataBinding && resolvedData.value !== null) {
+    return String(resolvedData.value)
+  }
+  if (el.element === 'img') return resolveDisplayUrl(imageURL(el.image))
+  return undefined
+})
+
+const displayAlt = computed(() => {
+  const el = props.element as any
+  if (el.dataBinding && resolvedData.value !== null) {
+    return String(resolvedData.value)
+  }
+  return el.element === 'img' ? el.image?.alt || undefined : undefined
+})
 
 const component = computed(() => {
   const el = props.element as any

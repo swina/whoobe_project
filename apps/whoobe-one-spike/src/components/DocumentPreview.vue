@@ -121,9 +121,11 @@
 // string just means "open the preview" - `deviceMode` starts at 'desktop'
 // regardless of how it was opened, since there's no persisted preference
 // for which device mode to reopen into.
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Monitor, RectangleHorizontal, RectangleVertical, Smartphone, Tablet, X } from '@lucide/vue'
 import type Element from '../scripts/ElementsClass.js'
+import { resolveDocumentData } from '../scripts/data-resolver'
+import { useEditorStore } from '../store/editor'
 import BlockContainerPreview from './preview/BlockContainerPreview.vue'
 
 defineProps<{
@@ -133,6 +135,20 @@ defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
 }>()
+
+const editor = useEditorStore()
+
+// Resolve every dataBinding in the tree before rendering, so the preview
+// shows real data object values instead of {Class.field} placeholders.
+// Re-resolves whenever the document reference changes (fresh page opened
+// while this preview is already mounted).
+watch(
+  () => editor.document,
+  async (doc) => {
+    if (doc) await resolveDocumentData(doc)
+  },
+  { immediate: true }
+)
 
 type DeviceMode = 'desktop' | 'tablet' | 'mobile'
 type Orientation = 'portrait' | 'landscape'

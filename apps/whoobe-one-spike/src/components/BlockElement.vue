@@ -1,20 +1,28 @@
 <template>
-  <component
-    :is="component"
-    :id="element.id"
-    :ref="element.id"
-    :class="classe"
-    :style="stile"
-    :contenteditable="element.editable"
-    :src="element.element === 'img' ? resolveDisplayUrl(imageURL(element.image)) : undefined"
-    :alt="element.element === 'img' ? element.image?.alt || undefined : undefined"
-    :placeholder="element.placeholder"
-    :data-id="element.id"
-    data-type="element"
-    v-html="element.content"
-    @click="onClick"
-    @blur="onBlur"
-  ></component>
+  <div class="relative">
+    <component
+      :is="component"
+      :id="element.id"
+      :ref="element.id"
+      :class="classe"
+      :style="stile"
+      :contenteditable="element.editable"
+      :src="element.element === 'img' ? resolveDisplayUrl(imageURL(element.image)) : undefined"
+      :alt="element.element === 'img' ? element.image?.alt || undefined : undefined"
+      :placeholder="element.placeholder"
+      :data-id="element.id"
+      data-type="element"
+      v-html="element.content"
+      @click="onClick"
+      @blur="onBlur"
+    ></component>
+    <div
+      v-if="(element as any).dataBinding"
+      class="absolute inset-0 z-10 flex items-center justify-center bg-indigo-50/80 text-indigo-500 text-[10px] font-mono pointer-events-none select-none rounded"
+    >
+      {{ bindingPlaceholder }}
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -48,6 +56,12 @@ const props = defineProps<{
 const editor = useEditorStore()
 
 const isSelected = computed(() => editor.current?.id === props.element.id)
+
+const bindingPlaceholder = computed(() => {
+  const db = (props.element as any).dataBinding
+  if (!db) return ''
+  return db.field ? `{${db.className}.${db.field}}` : `{${db.className}}`
+})
 
 const component = computed(() => {
   const el = props.element as any

@@ -1,13 +1,29 @@
 <template>
   <!-- Semantic -->
   <component :is="semantic" :class="classe" :style="stile">
-    <!-- Children-->
-    <template v-for="child in doc.blocks" :key="child.id">
-      <a v-if="(child as any).link" :href="(child as any).link" :target="(child as any).linkTarget || undefined">
-        <component :is="childComponent(child)" v-bind="childProps(child)" />
-      </a>
-      <!-- Child-->
-      <component v-else :is="childComponent(child)" v-bind="childProps(child)" />
+    <!-- Collection binding: this container is a repeater template - render
+         its children once per resolved data object, each time providing
+         that object's data to the whole subtree. -->
+    <template v-if="collectionResolved.length">
+      <template v-for="(obj, index) in collectionResolved" :key="index">
+        <template v-for="child in doc.blocks" :key="child.id">
+          <a v-if="(child as any).link" :href="(child as any).link" :target="(child as any).linkTarget || undefined">
+            <component :is="childComponent(child)" v-bind="boundChildProps(child, obj)" />
+          </a>
+          <component v-else :is="childComponent(child)" v-bind="boundChildProps(child, obj)" />
+        </template>
+      </template>
+    </template>
+    <!-- Normal children, or a single-object binding (no field = whole object
+         passed down to the subtree; with a field = only the bound element
+         itself shows the value). -->
+    <template v-else>
+      <template v-for="child in doc.blocks" :key="child.id">
+        <a v-if="(child as any).link" :href="(child as any).link" :target="(child as any).linkTarget || undefined">
+          <component :is="childComponent(child)" v-bind="childProps(child)" />
+        </a>
+        <component v-else :is="childComponent(child)" v-bind="childProps(child)" />
+      </template>
     </template>
   </component>
 </template>
@@ -39,6 +55,8 @@ import { computed } from 'vue'
 import type { Component } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
 import { resolveDisplayUrl } from '../../resolve-display-url'
+import { useEditorStore } from '../../store/editor'
+import type { DataObjectRecord } from '../../data-objects-api'
 import BlockElementPreview from './BlockElementPreview.vue'
 import BlockIFramePreview from './BlockIFramePreview.vue'
 import BlockSliderPreview from './BlockSliderPreview.vue'
@@ -54,7 +72,28 @@ type WhoobeElement = InstanceType<typeof Element>
 
 const props = defineProps<{
   doc: WhoobeElement
+  dataContext?: DataObjectRecord | null
 }>()
+
+const editor = useEditorStore()
+
+// A container with a collection data binding (resolveMode 'query'/'first',
+// no field = bind the whole container to a list). The children are a
+// template, rendered once per resolved object.
+const collectionResolved = computed<DataObjectRecord[]>(() => {
+  const el = props.doc as any
+  const db = el.dataBinding
+  if (!db || db.field) return []
+  const resolved = editor.resolvedData[el.id]
+  if (!Array.isArray(resolved)) return []
+  return resolved
+})
+
+function boundChildProps(child: WhoobeElement, obj: DataObjectRecord): Record<string, unknown> {
+  const c = child as any
+  if (c.tag === 'slider' || c.type === 'container') return { doc: child, dataContext: obj }
+  return { element: child, dataContext: obj }
+}
 
 function childComponent(child: WhoobeElement): Component {
   const c = child as any
