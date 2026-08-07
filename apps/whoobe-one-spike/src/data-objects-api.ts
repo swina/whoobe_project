@@ -81,6 +81,11 @@ export async function getDataClass(id: string): Promise<DataClassRecord> {
   return body.class
 }
 
+export async function getDataClassByName(name: string): Promise<DataClassRecord | null> {
+  const classes = await listDataClasses()
+  return classes.find((c) => c.name === name) ?? null
+}
+
 export async function listDataObjects(classId?: string): Promise<DataObjectRecord[]> {
   const qs = classId ? `?classId=${encodeURIComponent(classId)}` : ''
   const res = await fetch(`${getDefaultCoreApiUrl()}/data-objects${qs}`, { credentials: 'include' })
