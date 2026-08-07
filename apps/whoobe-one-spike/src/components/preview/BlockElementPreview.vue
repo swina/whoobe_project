@@ -68,23 +68,37 @@ const resolvedData = computed(() => {
 const displayContent = computed(() => {
   const el = props.element as any
   if (el.dataBinding && resolvedData.value !== null) {
-    return String(resolvedData.value ?? '')
+    const v = resolvedData.value
+    // Don't render { assetId } / { url } object values as text - only
+    // primitive text values are meaningful as element content.
+    if (typeof v === 'string' || typeof v === 'number') return String(v)
+    return el.content
   }
   return el.content
 })
+
+// A UUID (asset reference) is not a URL - flag it as unresolved so src
+// isn't set to a broken value.
+function isAssetUuid(value: unknown): boolean {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+}
 
 const displaySrc = computed(() => {
   const el = props.element as any
   if (el.dataBinding && resolvedData.value !== null) {
     const v = resolvedData.value
-    // Image/asset field values can be { assetId: '...' } or { url: '...' }
-    // objects, or a plain URL string. Try to extract a displayable URL.
-    if (typeof v === 'string') return v
+    // Image/asset field values can be { assetId: '...' } / { url: '...' }
+    // objects, or a plain URL string. A raw UUID assetId is not resolvable
+    // to a URL without the DAM - don't set a broken src.
+    if (typeof v === 'string') {
+      if (isAssetUuid(v)) return undefined
+      return resolveDisplayUrl(v)
+    }
     if (v && typeof v === 'object') {
       if (typeof (v as any).url === 'string') return (v as any).url
-      if (typeof (v as any).assetId === 'string') return (v as any).assetId
+      if (typeof (v as any).assetId === 'string' && !isAssetUuid((v as any).assetId)) return (v as any).assetId
     }
-    return String(v)
+    return undefined
   }
   if (el.element === 'img') return resolveDisplayUrl(imageURL(el.image))
   return undefined
@@ -93,7 +107,10 @@ const displaySrc = computed(() => {
 const displayAlt = computed(() => {
   const el = props.element as any
   if (el.dataBinding && resolvedData.value !== null) {
-    return String(resolvedData.value)
+    const v = resolvedData.value
+    if (typeof v === 'string') return v
+    if (v && typeof v === 'object' && typeof (v as any).alt === 'string') return (v as any).alt
+    return undefined
   }
   return el.element === 'img' ? el.image?.alt || undefined : undefined
 })
@@ -119,8 +136,14 @@ const classe = computed(() => {
 const stile = computed(() => {
   const el = props.element as any
   let st = ''
-  const bgUrl = resolveDisplayUrl(el.image?.url)
-  if (bgUrl) st += `background-image:url(${bgUrl});`
+  // When this element is data-bound with a resolved src, don't layer the
+  // editor's placeholder SVG on as a background - the real resolved image
+  // (or the broken-image state) is what should show.
+  const showBg = !(el.dataBinding && el.dataBinding.target === 'src' && resolvedData.value !== null)
+  if (showBg) {
+    const bgUrl = resolveDisplayUrl(el.image?.url)
+    if (bgUrl) st += `background-image:url(${bgUrl});`
+  }
   if (el.font) st += `font-family:"${el.font.replace('+', ' ')}";`
   return st + (el.style ?? '')
 })
