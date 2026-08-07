@@ -89,7 +89,10 @@ function createBoundElement(
     className,
     target,
     field: field.name,
-    resolveMode: 'first',
+    // No objectId: this is a relative binding. The child inherits its
+    // data from the nearest container ancestor's resolved object (via
+    // the dataContext prop threaded through BlockContainer/BlockElement).
+    resolveMode: 'explicit',
   }
 
   el.setDataBinding(binding)
