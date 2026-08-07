@@ -537,7 +537,7 @@ const bindingTarget = computed(() => {
   if (el.element === 'img') return 'src'
   if (el.tag === 'youtube' || el.tag === 'vimeo') return 'src'
   if (el.tag === 'micon' || el.tag === 'iconify') return 'icon'
-  if (el.link || el.link === '') return 'href'
+  if (el.link) return 'href'
   return 'content'
 })
 

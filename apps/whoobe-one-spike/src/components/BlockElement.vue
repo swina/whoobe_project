@@ -83,10 +83,6 @@ const bindingPlaceholder = computed(() => {
   return binding.field ? `{${binding.className}.${binding.field}}` : `{${binding.className}}`
 })
 
-function isAssetUuid(value: unknown): boolean {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
-}
-
 const displayContent = computed(() => {
   if (hasResolvedData.value) {
     const v = resolvedDataValue.value
@@ -99,8 +95,9 @@ const displayContent = computed(() => {
 const displaySrc = computed(() => {
   if (hasResolvedData.value && (props.element as any).element === 'img') {
     const v = resolvedDataValue.value
-    if (typeof v === 'string' && !isAssetUuid(v)) return resolveDisplayUrl(v)
+    if (typeof v === 'string') return resolveDisplayUrl(v)
     if (v && typeof v === 'object' && typeof (v as any).url === 'string') return (v as any).url
+    if (v && typeof v === 'object' && typeof (v as any).assetId === 'string') return resolveDisplayUrl((v as any).assetId)
   }
   return resolveDisplayUrl(imageURL((props.element as any).image))
 })

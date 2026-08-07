@@ -20,6 +20,7 @@ import {
   deleteFolderRecord,
   listAssets,
   getAssetByPath,
+  getAssetById,
   upsertAssetRecord,
   deleteAssetRecord,
   updateAssetMetadata,
@@ -494,6 +495,31 @@ app.get('/api/v1/dam/assets', requireAuth, async (req: Request, res: Response): 
   } catch (error: any) {
     console.error('DAM list assets error:', error);
     res.status(500).json({ error: error.message || 'Failed to list assets' });
+  }
+});
+
+// Single asset by record id - used to resolve a data object's asset
+// reference (stored as { assetId: '<uuid>' }) to a real displayable URL
+// at render time. Must be registered BEFORE any more-specific /assets/...
+// routes below that might shadow it.
+app.get('/api/v1/dam/assets/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const record = await getAssetById(req.params.id);
+    if (!record) {
+      res.status(404).json({ error: 'Asset not found' });
+      return;
+    }
+    const provider = createDamProvider(parseFolderRules(req.query.folderRules));
+    const [url, thumb, medium, large] = await Promise.all([
+      provider.getAssetUrl(record.pimcorePath),
+      provider.getThumbnailUrl(record.pimcorePath, { preset: 'thumb' }),
+      provider.getThumbnailUrl(record.pimcorePath, { preset: 'medium' }),
+      provider.getThumbnailUrl(record.pimcorePath, { preset: 'large' }),
+    ]);
+    res.json({ asset: { ...record, url, thumbnailUrl: thumb, thumbnails: { thumb, medium, large } } });
+  } catch (error: any) {
+    console.error('DAM get asset by id error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get asset' });
   }
 });
 
