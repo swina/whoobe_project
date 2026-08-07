@@ -67,12 +67,13 @@ const resolvedData = computed(() => {
 
 const displayContent = computed(() => {
   const el = props.element as any
-  if (el.dataBinding && resolvedData.value !== null) {
+  if (el.dataBinding) {
+    if (resolvedData.value === null) return ''
     const v = resolvedData.value
     // Don't render { assetId } / { url } object values as text - only
     // primitive text values are meaningful as element content.
     if (typeof v === 'string' || typeof v === 'number') return String(v)
-    return el.content
+    return ''
   }
   return el.content
 })
@@ -123,7 +124,9 @@ const component = computed(() => {
 
 const classe = computed(() => {
   const el = props.element as any
-  return `${el.css.css} ${el.css.container}`
+  let cls = `${el.css.css} ${el.css.container}`
+  if (el.dataBinding && !el.content && el.element !== 'img') cls += ' min-h-8'
+  return cls
 })
 
 const stile = computed(() => {
