@@ -377,6 +377,7 @@
     v-if="showDataPicker && editor.current"
     :target="bindingTarget"
     :initial="editor.current.dataBinding"
+    :allow-relative="allowRelativeBinding"
     @select="onDataBound"
     @clear="onDataClear"
     @generate-template="onGenerateTemplate"
@@ -388,6 +389,7 @@
     v-if="showFieldDataPicker && editor.current"
     :target="fieldDataTarget"
     :initial="editor.current.dataBinding"
+    :allow-relative="allowRelativeBinding"
     @select="onFieldDataBound"
     @clear="onFieldDataClear"
     @generate-template="onGenerateTemplate"
@@ -564,6 +566,14 @@ const srcBindingLabel = computed(() => {
 const hrefBindingLabel = computed(() => {
   const db = (editor.current as any)?.dataBinding
   return db?.target === 'href' && db.field ? `{${db.className}.${db.field}}` : ''
+})
+
+// Allow relative bindings (no objectId) when the element already has a
+// binding referencing a data class without a specific object - the object
+// comes from the nearest container ancestor's dataContext instead.
+const allowRelativeBinding = computed(() => {
+  const db = (editor.current as any)?.dataBinding
+  return db && !db.objectId && db.className
 })
 
 function openFieldDataPicker(target: 'src' | 'href') {

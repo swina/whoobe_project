@@ -72,7 +72,10 @@
           <template v-if="mode === 'explicit'">
             <div v-if="loading" class="text-xs text-gray-400 text-center py-10">Loading…</div>
             <div v-else-if="error" class="text-xs text-rose-500 text-center py-10 px-4">{{ error }}</div>
-            <div v-else-if="!objects.length" class="text-xs text-gray-400 text-center py-10">No objects of this class yet.</div>
+            <div v-else-if="!objects.length && !(allowRelative || (initial && !initial.objectId))" class="text-xs text-gray-400 text-center py-10">No objects of this class yet.</div>
+            <div v-if="allowRelative || (initial && !initial.objectId)" class="text-[10px] text-indigo-500 mb-2">
+              Object inherited from parent container — select a specific object to override, or skip to keep it relative.
+            </div>
             <button
               v-for="obj in objects"
               :key="obj.id"
@@ -194,8 +197,9 @@ const props = withDefaults(
   defineProps<{
     target?: string
     initial?: ElementDataBinding | null
+    allowRelative?: boolean
   }>(),
-  { target: 'content', initial: null }
+  { target: 'content', initial: null, allowRelative: false }
 )
 
 const classes = ref<DataClassRecord[]>([])
@@ -212,7 +216,14 @@ const currentClass = computed(() => classes.value.find((c) => c.name === classNa
 const classLabel = computed(() => currentClass.value?.label || className.value)
 const fields = computed(() => currentClass.value?.fields ?? [])
 const bindableFields = computed(() => fields.value.filter((f) => fieldCompatibleWithTarget(f, props.target)))
-const canConfirm = computed(() => Boolean(className.value) && (mode.value === 'explicit' ? Boolean(selectedObjectId.value) : true))
+const canConfirm = computed(() => {
+  if (!className.value) return false
+  if (mode.value === 'query') return true
+  // Relative bindings (child of a bound container): the object comes from
+  // the container's dataContext at render time, so no objectId is needed.
+  if (props.allowRelative || (props.initial && !props.initial.objectId)) return true
+  return Boolean(selectedObjectId.value)
+})
 
 function fieldCompatibleWithTarget(field: ClassFieldDefinition, target: string): boolean {
   const TEXT = ['input', 'textarea', 'wysiwyg', 'numeric', 'urlSlug', 'email', 'country', 'select', 'multiselect']
