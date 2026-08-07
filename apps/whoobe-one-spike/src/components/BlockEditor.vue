@@ -126,7 +126,7 @@
 // re-render is the only thing that ever decides final DOM order - true
 // whether the dropped item is an existing node being reordered or a brand
 // new one being created from the palette below.
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import dragula from 'dragula'
 import { CopyPlus, Download, Eye, FilePlus, FolderOpen, PackagePlus, Save, Upload } from '@lucide/vue'
 import Element from '../scripts/ElementsClass.js'
@@ -146,6 +146,7 @@ import { clean, findNodeById, removeNodeById, applyImagePlaceholder } from '../h
 import { editorBus } from '../bus'
 import { exportDocument, importDocument, cloneWithFreshIds } from '../scripts/editor-actions'
 import { savePage, saveAsNewTemplate } from '../scripts/database-actions'
+import { resolveDocumentData } from '../scripts/data-resolver'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -420,5 +421,26 @@ onMounted(() => {
       flash('Moved')
     }
   })
+})
+
+// Data binding preview in the editor canvas: whenever the document's set of
+// data bindings changes (a binding added/edited/removed, or a new page
+// loaded), re-resolve them and store results in editor.resolvedData so the
+// editing canvas shows real data object values instead of only the
+// {Class.field} placeholder. Tracks a signature of all bindings (not the
+// node tree) so normal text edits don't trigger refetches.
+const bindingSignature = computed(() => {
+  if (!editor.document) return ''
+  const parts: string[] = []
+  const walk = (node: any) => {
+    if (node?.dataBinding) parts.push(`${node.id}:${JSON.stringify(node.dataBinding)}`)
+    for (const child of node?.blocks ?? []) walk(child)
+  }
+  walk(editor.document)
+  return parts.join('|')
+})
+
+watch(bindingSignature, async () => {
+  if (editor.document) await resolveDocumentData(editor.document)
 })
 </script>
