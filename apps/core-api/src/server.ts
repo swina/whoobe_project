@@ -59,6 +59,8 @@ import {
   deleteDataObject,
   listPublishedDataObjects,
   getPublishedDataObject,
+  getDataObjectsByIds,
+  getPublishedDataObjectsByIds,
   getDataClassByName,
   createPreviewToken,
   getPreviewToken,
@@ -1299,6 +1301,28 @@ app.get('/data-objects', requirePermission(PERMISSIONS.OBJECTS_READ), async (req
   }
 });
 
+// Batch-fetch multiple objects by id - one round-trip for the editor's
+// data-binding resolution instead of N single-object requests. Must be
+// registered BEFORE the `/:id` route below (Express matches in order, and
+// "batch" would otherwise be captured as an :id).
+app.get(
+  '/data-objects/batch',
+  requirePermission(PERMISSIONS.OBJECTS_READ),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const ids = (typeof req.query.ids === 'string' ? req.query.ids : '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const objects = await getDataObjectsByIds(ids);
+      res.json({ objects });
+    } catch (error: any) {
+      console.error('Batch get data objects error:', error);
+      res.status(500).json({ error: error.message || 'Failed to batch get objects' });
+    }
+  }
+);
+
 app.get('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const dataObject = await getDataObject(req.params.id);
@@ -1450,6 +1474,22 @@ app.get('/public/data-objects', async (req: Request, res: Response): Promise<voi
   } catch (error: any) {
     console.error('List public data objects error:', error);
     res.status(500).json({ error: error.message || 'Failed to list objects' });
+  }
+});
+
+// Public batch-fetch by id - same published-only gate as the single-object
+// endpoint. Must be registered BEFORE the `/:id` route below.
+app.get('/public/data-objects/batch', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const ids = (typeof req.query.ids === 'string' ? req.query.ids : '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const objects = await getPublishedDataObjectsByIds(ids);
+    res.json({ objects });
+  } catch (error: any) {
+    console.error('Batch get public data objects error:', error);
+    res.status(500).json({ error: error.message || 'Failed to batch get objects' });
   }
 });
 

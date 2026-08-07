@@ -25,12 +25,20 @@
             v-for="cls in classes"
             :key="cls.id"
             type="button"
-            class="flex flex-col gap-1 border rounded-md p-3 hover:border-indigo-400 text-left"
+            class="flex flex-col gap-1 border rounded-md p-3 hover:border-indigo-400 text-left relative"
             @click="selectClass(cls)"
           >
             <span class="text-sm font-medium text-gray-700">{{ cls.label || cls.name }}</span>
             <span class="text-[10px] text-gray-400 font-mono">{{ cls.name }}</span>
             <span class="text-[10px] text-gray-400">{{ cls.fields.length }} fields</span>
+            <button
+              type="button"
+              title="Generate template from this class"
+              class="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-500 hover:bg-indigo-100 border border-indigo-200"
+              @click.stop="emit('generateTemplate', cls.id)"
+            >
+              <Layers class="w-3 h-3 inline-block" /> Template
+            </button>
           </button>
         </div>
       </div>
@@ -171,12 +179,13 @@
 // pick → field pick, all on one screen with the class step as the only
 // "back" transition.
 import { computed, ref, watch } from 'vue'
-import { ChevronLeft, Plus, Trash2, Unlink, X } from '@lucide/vue'
+import { ChevronLeft, Layers, Plus, Trash2, Unlink, X } from '@lucide/vue'
 import { listDataClasses, listDataObjects, type ClassFieldDefinition, type DataClassRecord, type DataObjectRecord } from '../data-objects-api'
 import type { DataBindingFilter, ElementDataBinding } from '../scripts/ElementsClass.js'
 
 const emit = defineEmits<{
   (e: 'select', binding: ElementDataBinding): void
+  (e: 'generateTemplate', classId: string): void
   (e: 'clear'): void
   (e: 'close'): void
 }>()
