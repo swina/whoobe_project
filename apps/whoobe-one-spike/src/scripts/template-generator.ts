@@ -97,8 +97,15 @@ function createBoundElement(
 
   el.setDataBinding(binding)
 
-  // Set a placeholder label so the element has visible content in the editor
-  el.content = field.title || field.name
+  // Remove any field label placeholder - the element shows data or nothing.
+  el.content = ''
+  // Give bound elements a minimum height so they're visible and selectable
+  // in the editor canvas even when their content is empty (data not yet
+  // resolved, or resolves to an empty/null value).
+  const minHeight = elementName === 'Image' ? '' : 'min-h-8'
+  if (minHeight) {
+    el.css.css = `${el.css.css ?? ''} ${minHeight}`.trim()
+  }
   if (elementName === 'Image') {
     // Give the Image a visible placeholder (grey box with a mountain icon,
     // the same one helpers.ts applies to freshly-created images) - without
