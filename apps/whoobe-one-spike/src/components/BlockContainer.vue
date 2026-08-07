@@ -18,10 +18,10 @@
       <span v-if="(doc as any).dataBinding" class="text-[9px] opacity-80 ml-1">{{ ((doc as any).dataBinding?.className || '?') }}</span>
     </button>
     <template v-for="child in doc.blocks" :key="child.id">
-      <BlockSlider v-if="child.tag === 'slider'" :doc="child" :level="level + 1" />
-      <BlockContainer v-else-if="child.type === 'container'" :doc="child" :level="level + 1" />
+      <BlockSlider v-if="child.tag === 'slider'" :doc="child" :level="level + 1" :data-context="childContext" />
+      <BlockContainer v-else-if="child.type === 'container'" :doc="child" :level="level + 1" :data-context="childContext" />
       <BlockIFrame v-else-if="child.tag === 'youtube' || child.tag === 'vimeo'" :element="child" :level="level + 1" />
-      <BlockElement v-else :element="child" :level="level + 1" />
+      <BlockElement v-else :element="child" :level="level + 1" :data-context="childContext" />
     </template>
   </component>
 </template>
@@ -82,6 +82,7 @@ import { computed } from 'vue'
 import type Element from '../scripts/ElementsClass.js'
 import { useEditorStore } from '../store/editor'
 import { resolveDisplayUrl } from '../resolve-display-url'
+import type { DataObjectRecord } from '../data-objects-api'
 import BlockElement from './BlockElement.vue'
 import BlockIFrame from './BlockIFrame.vue'
 import BlockSlider from './BlockSlider.vue'
@@ -91,7 +92,22 @@ type WhoobeElement = InstanceType<typeof Element>
 const props = defineProps<{
   doc: WhoobeElement
   level: number
+  dataContext?: DataObjectRecord | null
 }>()
+
+// If this container has a whole-object binding (no field), its resolved
+// object becomes the dataContext for all children - they inherit it
+// instead of resolving independently.
+const resolvedContext = computed<DataObjectRecord | null>(() => {
+  const editor = useEditorStore()
+  const db = (props.doc as any).dataBinding
+  if (!db || db.field) return null
+  const resolved = editor.resolvedData[props.doc.id]
+  if (!resolved || Array.isArray(resolved)) return null
+  return resolved as DataObjectRecord
+})
+
+const childContext = computed(() => props.dataContext ?? resolvedContext.value)
 
 const editor = useEditorStore()
 

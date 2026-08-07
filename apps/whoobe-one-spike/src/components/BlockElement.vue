@@ -45,6 +45,7 @@ import { useEditorStore } from '../store/editor'
 import { imageURL } from '../helpers'
 import { resolveDisplayUrl } from '../resolve-display-url'
 import { resolveFieldValue } from '../scripts/data-resolver'
+import type { DataObjectRecord } from '../data-objects-api'
 import { editorBus } from '../bus'
 
 type WhoobeElement = InstanceType<typeof Element>
@@ -52,6 +53,7 @@ type WhoobeElement = InstanceType<typeof Element>
 const props = defineProps<{
   element: WhoobeElement
   level: number
+  dataContext?: DataObjectRecord | null
 }>()
 
 const editor = useEditorStore()
@@ -60,14 +62,25 @@ const isSelected = computed(() => editor.current?.id === props.element.id)
 
 const db = computed(() => (props.element as any).dataBinding)
 
-// Resolved data value from the store, populated by data-resolver.ts which
-// runs whenever the document's binding structure changes (BlockEditor.vue).
+// Resolved data value: explicit bindings (with objectId) use the store's
+// resolved data. Relative bindings (no objectId, e.g. generated template
+// fields) resolve against the nearest container's dataContext.
 const resolvedDataValue = computed(() => {
   const binding = db.value
   if (!binding) return null
-  const resolved = editor.resolvedData[props.element.id]
-  if (!resolved) return null
-  return resolveFieldValue(resolved, binding)
+  if (binding.objectId) {
+    const resolved = editor.resolvedData[props.element.id]
+    if (!resolved) return null
+    return resolveFieldValue(resolved, binding)
+  }
+  // Relative binding: inherit from container's dataContext.
+  if (props.dataContext && binding.field) {
+    return (props.dataContext.attributes as any)?.[binding.field]
+  }
+  if (props.dataContext && !binding.field) {
+    return props.dataContext
+  }
+  return null
 })
 
 const hasResolvedData = computed(() => db.value && resolvedDataValue.value !== null)

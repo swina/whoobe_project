@@ -73,10 +73,10 @@
     </div>
 
     <template v-if="activeSlide">
-      <BlockSlider v-if="activeSlide.tag === 'slider'" :doc="activeSlide" :level="level + 1" />
-      <BlockContainer v-else-if="(activeSlide as any).type === 'container'" :doc="activeSlide" :level="level + 1" />
+      <BlockSlider v-if="activeSlide.tag === 'slider'" :doc="activeSlide" :level="level + 1" :data-context="dataContext" />
+      <BlockContainer v-else-if="(activeSlide as any).type === 'container'" :doc="activeSlide" :level="level + 1" :data-context="dataContext" />
       <BlockIFrame v-else-if="activeSlide.tag === 'youtube' || activeSlide.tag === 'vimeo'" :element="activeSlide" :level="level + 1" />
-      <BlockElement v-else :element="activeSlide" :level="level + 1" />
+      <BlockElement v-else :element="activeSlide" :level="level + 1" :data-context="dataContext" />
     </template>
     <div v-else class="text-xs text-gray-400 italic py-6 text-center">No slides yet - click "+" to add one.</div>
   </component>
@@ -125,6 +125,7 @@ import { useEditorStore } from '../store/editor'
 import { resolveDisplayUrl } from '../resolve-display-url'
 import { clean } from '../helpers'
 import { cloneWithFreshIds } from '../scripts/editor-actions'
+import type { DataObjectRecord } from '../data-objects-api'
 import BlockElement from './BlockElement.vue'
 import BlockIFrame from './BlockIFrame.vue'
 import BlockContainer from './BlockContainer.vue'
@@ -134,6 +135,7 @@ type WhoobeElement = InstanceType<typeof Element>
 const props = defineProps<{
   doc: WhoobeElement
   level: number
+  dataContext?: DataObjectRecord | null
 }>()
 
 const editor = useEditorStore()
