@@ -24,7 +24,7 @@ import FileSaver from 'file-saver'
 import Block from './BlocksClass.js'
 import type Element from './ElementsClass.js'
 import type { useEditorStore } from '../store/editor'
-import { randomID } from '../helpers'
+import { randomID, findParentAndIndex } from '../helpers'
 
 type WhoobeElement = InstanceType<typeof Element>
 type EditorStore = ReturnType<typeof useEditorStore>
@@ -89,14 +89,38 @@ export function copyCurrentToClipboard(editor: EditorStore): void {
   window.localStorage.setItem(CLIPBOARD_KEY, JSON.stringify(editor.current))
 }
 
-/** Port of $pasteBlock (the more complete of the source's two paste
- * variants - $block_paste checks `current.hasOwnProperty('blocks')`
- * first; this one doesn't, matching the source's own actual behavior). */
+/** Port of $pasteBlock, fixed rather than ported verbatim: the source (and
+ * this file's own first pass) gated on `current?.blocks` truthiness, but
+ * every Element - leaf or container - gets `blocks: []` from the base
+ * constructor (ElementsClass.js), so that guard was always true and pasting
+ * onto a selected leaf silently pushed into a `.blocks` array nothing ever
+ * renders (the same bug FloatingToolbar.vue's `isContainer` computed had to
+ * fix for its own container-only actions). Real behavior now: paste into
+ * the selected element if it's an actual container (`type === 'container'`,
+ * the same discriminator BlockContainer.vue's own render dispatch uses);
+ * otherwise insert as a sibling right after the selected element, in its
+ * own parent - the same "insert after original" placement duplicateCurrent()
+ * already uses. Nothing selected falls back to appending at the document
+ * root, so the shortcut/menu action always does something rather than
+ * silently no-op. */
 export function pasteClipboardInto(editor: EditorStore): void {
   const raw = window.localStorage.getItem(CLIPBOARD_KEY)
-  if (!raw || !editor.current?.blocks) return
+  if (!raw || !editor.document) return
   const clone = traverse(JSON.parse(raw))
-  editor.current.blocks.push(clone)
+
+  const current = editor.current as (WhoobeElement & { type?: string }) | null
+  if (current && current.type === 'container') {
+    current.blocks.push(clone)
+    return
+  }
+  if (current) {
+    const found = findParentAndIndex(editor.document, current.id)
+    if (found) {
+      found.parent.blocks.splice(found.index + 1, 0, clone)
+      return
+    }
+  }
+  editor.document.blocks.push(clone)
 }
 
 /** Port of $exportBlock - downloads just the selected node as JSON. */

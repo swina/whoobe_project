@@ -51,7 +51,17 @@ const isSelected = computed(() => editor.current?.id === props.element.id)
 
 const component = computed(() => {
   const el = props.element as any
-  if ('level' in el && el.level) return 'h' + el.level
+  if ('level' in el && el.level) {
+    // A pre-fix palette bug (see BlockEditor.vue's createElement call) used
+    // to bake `level` in as `{}` instead of a number for headings dropped
+    // from the palette - any snippet saved from a document that still had
+    // one of those broken nodes carries the corrupted shape forward
+    // (cloneWithFreshIds only rewrites `id` keys, not `level`). Coercing
+    // and clamping here means a bad `level` renders as h1 instead of
+    // crashing document.createElement() with an InvalidCharacterError.
+    const level = Number(el.level)
+    return 'h' + (Number.isInteger(level) && level >= 1 && level <= 6 ? level : 1)
+  }
   return el.element === 'grid' ? 'div' : el.element
 })
 

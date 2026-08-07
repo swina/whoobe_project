@@ -1,9 +1,12 @@
 <template>
+  <!-- Semantic -->
   <component :is="semantic" :class="classe" :style="stile">
+    <!-- Children-->
     <template v-for="child in doc.blocks" :key="child.id">
       <a v-if="(child as any).link" :href="(child as any).link" :target="(child as any).linkTarget || undefined">
         <component :is="childComponent(child)" v-bind="childProps(child)" />
       </a>
+      <!-- Child-->
       <component v-else :is="childComponent(child)" v-bind="childProps(child)" />
     </template>
   </component>

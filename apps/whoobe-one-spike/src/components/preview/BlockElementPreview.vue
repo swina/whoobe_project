@@ -39,7 +39,14 @@ const props = defineProps<{
 
 const component = computed(() => {
   const el = props.element as any
-  if ('level' in el && el.level) return 'h' + el.level
+  if ('level' in el && el.level) {
+    // Same corrupted-snippet-data guard as BlockElement.vue's own
+    // `component` computed - a bad `level` (e.g. `{}` from a pre-fix
+    // palette bug baked into an old saved snippet) renders as h1 instead
+    // of crashing document.createElement().
+    const level = Number(el.level)
+    return 'h' + (Number.isInteger(level) && level >= 1 && level <= 6 ? level : 1)
+  }
   return el.element === 'grid' ? 'div' : el.element
 })
 
