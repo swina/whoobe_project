@@ -8,6 +8,19 @@ import type { ClassFieldDefinition, DataClassRecord } from '../data-objects-api'
 
 type WhoobeElement = InstanceType<typeof Element>
 
+// Same SVG placeholder the editor uses for freshly-created Image elements
+// (helpers.ts) - a gray box with a mountain icon, so the element is visible
+// and selectable in the canvas even before its binding is resolved.
+const PLACEHOLDER_IMAGE =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">' +
+      '<rect width="320" height="180" fill="#e5e7eb"/>' +
+      '<path d="M40 130 L110 70 L150 105 L200 55 L280 130 Z" fill="#9ca3af"/>' +
+      '<circle cx="100" cy="50" r="18" fill="#9ca3af"/>' +
+      '</svg>'
+  )
+
 /** Field types that map to text content elements (Paragraph, Heading). */
 const TEXT_FIELDS = ['input', 'textarea', 'wysiwyg', 'urlSlug', 'email', 'country', 'select', 'multiselect']
 
@@ -84,7 +97,11 @@ function createBoundElement(
   // Set a placeholder label so the element has visible content in the editor
   el.content = field.title || field.name
   if (elementName === 'Image') {
-    el.image = { url: null }
+    // Give the Image a visible placeholder (grey box with a mountain icon,
+    // the same one helpers.ts applies to freshly-created images) - without
+    // it, an <img> with no src renders at 0x0 and is impossible to see or
+    // select in the canvas.
+    el.image = { url: PLACEHOLDER_IMAGE }
   }
 
   return el

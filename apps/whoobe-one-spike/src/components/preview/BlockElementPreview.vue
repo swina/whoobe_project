@@ -76,7 +76,15 @@ const displayContent = computed(() => {
 const displaySrc = computed(() => {
   const el = props.element as any
   if (el.dataBinding && resolvedData.value !== null) {
-    return String(resolvedData.value)
+    const v = resolvedData.value
+    // Image/asset field values can be { assetId: '...' } or { url: '...' }
+    // objects, or a plain URL string. Try to extract a displayable URL.
+    if (typeof v === 'string') return v
+    if (v && typeof v === 'object') {
+      if (typeof (v as any).url === 'string') return (v as any).url
+      if (typeof (v as any).assetId === 'string') return (v as any).assetId
+    }
+    return String(v)
   }
   if (el.element === 'img') return resolveDisplayUrl(imageURL(el.image))
   return undefined
