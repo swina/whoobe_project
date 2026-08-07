@@ -61,6 +61,12 @@ export const useEditorStore = defineStore('editor', () => {
   const embedded = ref<boolean>(false)
   const parentOrigin = ref<string | null>(null)
 
+  // Populated by data-resolver.ts at preview/render time - maps element ids
+  // to their resolved data object records (DataObjectRecord or
+  // DataObjectRecord[] for collection bindings). Cleared at the start of
+  // each resolution pass.
+  const resolvedData = ref<Record<string, any>>({})
+
   function setMode(v: string) { mode.value = v }
   function setSettings(v: any) { settings.value = v }
   function setElements(v: ElementGroup[] | null) { elements.value = v }
@@ -93,6 +99,6 @@ export const useEditorStore = defineStore('editor', () => {
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
     setParent, setStartTime, setAutosave, setExportMode, setPreview, setSave,
-    setArticle, setCustomizeTab, setEmbedded,
+    setArticle, setCustomizeTab, setEmbedded, resolvedData,
   }
 })

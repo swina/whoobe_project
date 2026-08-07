@@ -44,6 +44,7 @@ export default class Element {
         this.icon = 'highlight_alt'
         this.helper = null
         this.dialog = null
+        this.dataBinding = null
     }
 
     randomID(){
@@ -242,6 +243,11 @@ export default class Element {
 
     setSemantic(semantic){
         this.semantic = semantic
+        return this
+    }
+
+    setDataBinding(dataBinding){
+        this.dataBinding = dataBinding
         return this
     }
 

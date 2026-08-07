@@ -43,6 +43,24 @@ export interface ElementGsap {
   trigger?: boolean
 }
 
+export interface DataBindingFilter {
+  field: string
+  operator: 'eq' | 'neq' | 'in' | 'contains' | 'gt' | 'lt'
+  value: unknown
+  valueIsBinding?: boolean
+}
+
+export interface ElementDataBinding {
+  className: string
+  objectId?: string | null
+  field?: string | null
+  target: string
+  dataKey?: string | null
+  resolveMode: 'explicit' | 'first' | 'query' | 'parent' | 'currentPage'
+  filters?: DataBindingFilter[]
+  locale?: string | null
+}
+
 // Only present on nodes built via .Slider() - a full redesign, not a port
 // (see that method's own comment in ElementsClass.js). Read by preview/
 // BlockSliderPreview.vue and set via FloatingToolbar.vue's slider settings
@@ -128,6 +146,7 @@ export default class Element {
   icon: string
   helper: string | null
   dialog: string | null
+  dataBinding?: ElementDataBinding | null
 
   // Only present on nodes built via .Heading()/.Video()/input-family
   // builders - not part of the base shape, hence optional here.
@@ -152,6 +171,7 @@ export default class Element {
   setContent(content: string): this
   setImage(image: ElementImage): this
   setSemantic(semantic: string): this
+  setDataBinding(dataBinding: ElementDataBinding | null): this
 
   Grid(): this
   Cols(cols?: number): this

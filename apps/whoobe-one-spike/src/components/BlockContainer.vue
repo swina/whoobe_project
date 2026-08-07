@@ -15,6 +15,7 @@
       @click.stop="onSelect"
     >
       {{ doc.tag || 'container' }}
+      <span v-if="(doc as any).dataBinding" class="text-[9px] opacity-80 ml-1">{{ ((doc as any).dataBinding?.className || '?') }}</span>
     </button>
     <template v-for="child in doc.blocks" :key="child.id">
       <BlockSlider v-if="child.tag === 'slider'" :doc="child" :level="level + 1" />
