@@ -8,8 +8,9 @@
 // resolved object, then use resolveFieldValue() to extract the target field.
 import type { DataBindingFilter, ElementDataBinding } from './ElementsClass.js'
 import {
-  getPublishedDataObject,
-  listPublishedDataObjects,
+  getDataObject,
+  getDataClassByName,
+  listDataObjects,
   type DataObjectRecord,
 } from '../data-objects-api'
 import { useEditorStore } from '../store/editor'
@@ -43,20 +44,19 @@ async function resolveBinding(db: ElementDataBinding, locale?: string): Promise<
     case 'explicit':
       if (!db.objectId) return null
       try {
-        return await getPublishedDataObject(db.objectId)
+        return await getDataObject(db.objectId)
       } catch {
         return null
       }
-    case 'query': {
-      const objects = await listPublishedDataObjects(db.className, locale)
-      if (db.filters && db.filters.length > 0) {
-        return applyFilters(objects, db.filters)
-      }
-      return objects
-    }
+    case 'query':
     case 'first': {
-      const objects = await listPublishedDataObjects(db.className, locale)
-      return objects[0] ?? null
+      const all = await listDataObjects()
+      const dataClass = await getDataClassByName(db.className)
+      const filtered = dataClass ? all.filter((o) => o.classId === dataClass.id) : all
+      if (db.filters && db.filters.length > 0) {
+        return applyFilters(filtered, db.filters)
+      }
+      return db.resolveMode === 'first' ? (filtered[0] ?? null) : filtered
     }
     default:
       return null
