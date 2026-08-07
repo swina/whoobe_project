@@ -94,6 +94,12 @@ export async function getAssetByPath(pimcorePath: string): Promise<AssetRecord |
   return row ?? null;
 }
 
+export async function getAssetById(id: string): Promise<AssetRecord | null> {
+  const db = getDb();
+  const [row] = await db.select().from(assets).where(eq(assets.id, id)).limit(1);
+  return row ?? null;
+}
+
 /**
  * Insert-or-update by pimcorePath: a re-upload to the same path is treated
  * as a new version (incrementing `version`, keeping the original

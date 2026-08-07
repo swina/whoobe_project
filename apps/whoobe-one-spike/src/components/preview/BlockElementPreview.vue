@@ -77,26 +77,19 @@ const displayContent = computed(() => {
   return el.content
 })
 
-// A UUID (asset reference) is not a URL - flag it as unresolved so src
-// isn't set to a broken value.
-function isAssetUuid(value: unknown): boolean {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
-}
+// A UUID (asset reference) is not a URL - resolved via resolveDisplayUrl.
 
 const displaySrc = computed(() => {
   const el = props.element as any
   if (el.dataBinding && resolvedData.value !== null) {
     const v = resolvedData.value
     // Image/asset field values can be { assetId: '...' } / { url: '...' }
-    // objects, or a plain URL string. A raw UUID assetId is not resolvable
-    // to a URL without the DAM - don't set a broken src.
-    if (typeof v === 'string') {
-      if (isAssetUuid(v)) return undefined
-      return resolveDisplayUrl(v)
-    }
+    // objects, or a plain URL string. Pass through resolveDisplayUrl which
+    // handles both Pimcore paths and asset-record UUIDs via the DAM API.
+    if (typeof v === 'string') return resolveDisplayUrl(v)
     if (v && typeof v === 'object') {
       if (typeof (v as any).url === 'string') return (v as any).url
-      if (typeof (v as any).assetId === 'string' && !isAssetUuid((v as any).assetId)) return (v as any).assetId
+      if (typeof (v as any).assetId === 'string') return resolveDisplayUrl((v as any).assetId)
     }
     return undefined
   }
