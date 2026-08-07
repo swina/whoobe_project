@@ -251,12 +251,24 @@
         <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" @click.stop>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">Image URL</label>
-            <input
-              v-model="imageUrlDraft"
-              type="text"
-              placeholder="https://…"
-              class="w-full px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
-            />
+            <div class="flex items-center gap-1">
+              <input
+                v-model="imageUrlDraft"
+                type="text"
+                placeholder="https://…"
+                class="flex-1 px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+              />
+              <button
+                type="button"
+                title="Bind to data field"
+                class="shrink-0 px-1.5 py-1 text-[10px] rounded font-semibold"
+                :class="hasSrcBinding ? 'text-indigo-600 bg-indigo-50 border border-indigo-200' : 'text-gray-400 hover:text-indigo-500 bg-gray-50 hover:bg-indigo-50 border border-gray-200 hover:border-indigo-200'"
+                @click.stop="openFieldDataPicker('src')"
+              >
+                <Database class="w-3 h-3" />
+              </button>
+            </div>
+            <div v-if="srcBindingLabel" class="text-[9px] text-indigo-500 font-mono mt-0.5">{{ srcBindingLabel }}</div>
           </div>
           <div v-if="editor.current?.element === 'img'">
             <label class="block text-[10px] text-gray-500 mb-1">Alt text</label>
@@ -284,12 +296,24 @@
         <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" @click.stop>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">URL</label>
-            <input
-              v-model="linkUrlDraft"
-              type="text"
-              placeholder="https://…"
-              class="w-full px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
-            />
+            <div class="flex items-center gap-1">
+              <input
+                v-model="linkUrlDraft"
+                type="text"
+                placeholder="https://…"
+                class="flex-1 px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+              />
+              <button
+                type="button"
+                title="Bind to data field"
+                class="shrink-0 px-1.5 py-1 text-[10px] rounded font-semibold"
+                :class="hasHrefBinding ? 'text-indigo-600 bg-indigo-50 border border-indigo-200' : 'text-gray-400 hover:text-indigo-500 bg-gray-50 hover:bg-indigo-50 border border-gray-200 hover:border-indigo-200'"
+                @click.stop="openFieldDataPicker('href')"
+              >
+                <Database class="w-3 h-3" />
+              </button>
+            </div>
+            <div v-if="hrefBindingLabel" class="text-[9px] text-indigo-500 font-mono mt-0.5">{{ hrefBindingLabel }}</div>
           </div>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">Opens in</label>
@@ -355,7 +379,19 @@
     :initial="editor.current.dataBinding"
     @select="onDataBound"
     @clear="onDataClear"
+    @generate-template="onGenerateTemplate"
     @close="showDataPicker = false"
+  />
+
+  <!-- Field-level binding picker (opens from Image/Link popovers) -->
+  <DataObjectPicker
+    v-if="showFieldDataPicker && editor.current"
+    :target="fieldDataTarget"
+    :initial="editor.current.dataBinding"
+    @select="onFieldDataBound"
+    @clear="onFieldDataClear"
+    @generate-template="onGenerateTemplate"
+    @close="showFieldDataPicker = false"
   />
 </template>
 
@@ -397,6 +433,8 @@ import SaveSnippetModal from './SaveSnippetModal.vue'
 import DataObjectPicker from './DataObjectPicker.vue'
 import ExpandableTextInput from './ExpandableTextInput.vue'
 import type { ElementDataBinding } from '../scripts/ElementsClass.js'
+import { generateTemplateFromClass } from '../scripts/template-generator'
+import { getDataClass } from '../data-objects-api'
 import {
   ArrowLeftRight,
   ArrowUp,
@@ -438,6 +476,8 @@ const imageAltDraft = ref('')
 const showSliderSettings = ref(false)
 const showSemanticPicker = ref(false)
 const showDataPicker = ref(false)
+const showFieldDataPicker = ref(false)
+const fieldDataTarget = ref<'src' | 'href'>('src')
 
 // Same `tw.classes.js` list the Tailwind customizer's own controls already
 // reuse elsewhere (e.g. BorderColorControl.vue's colors) - not a new,
@@ -509,6 +549,57 @@ function onDataBound(binding: ElementDataBinding) {
 function onDataClear() {
   if (editor.current) (editor.current as any).dataBinding = null
   showDataPicker.value = false
+}
+
+// --- Field-level binding (Image src / Link href) ---
+
+// Whether the current element's existing dataBinding targets this field.
+const hasSrcBinding = computed(() => (editor.current as any)?.dataBinding?.target === 'src')
+const hasHrefBinding = computed(() => (editor.current as any)?.dataBinding?.target === 'href')
+
+const srcBindingLabel = computed(() => {
+  const db = (editor.current as any)?.dataBinding
+  return db?.target === 'src' && db.field ? `{${db.className}.${db.field}}` : ''
+})
+const hrefBindingLabel = computed(() => {
+  const db = (editor.current as any)?.dataBinding
+  return db?.target === 'href' && db.field ? `{${db.className}.${db.field}}` : ''
+})
+
+function openFieldDataPicker(target: 'src' | 'href') {
+  fieldDataTarget.value = target
+  showFieldDataPicker.value = true
+}
+
+function onFieldDataBound(binding: ElementDataBinding) {
+  if (editor.current) (editor.current as any).dataBinding = binding
+  showFieldDataPicker.value = false
+}
+
+function onFieldDataClear() {
+  if (editor.current) (editor.current as any).dataBinding = null
+  showFieldDataPicker.value = false
+}
+
+async function onGenerateTemplate(classId: string) {
+  try {
+    const dataClass = await getDataClass(classId)
+    const template = generateTemplateFromClass(dataClass)
+    if (!editor.document) {
+      editor.setDocument(template)
+      editor.setCurrent(template)
+    } else if (editor.current && (editor.current as any).type === 'container') {
+      editor.current.blocks.push(template)
+      editor.setCurrent(template)
+    } else {
+      editor.document.blocks.push(template)
+      editor.setCurrent(template)
+    }
+  } catch (e: any) {
+    console.error('Failed to generate template:', e)
+  }
+  showDataPicker.value = false
+  showFieldDataPicker.value = false
 }
 
 const label = computed(() => {

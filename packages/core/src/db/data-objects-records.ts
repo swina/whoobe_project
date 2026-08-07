@@ -1,4 +1,4 @@
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { dataObjects } from './data-objects-schema.js';
 import { getDataClass } from './data-classes-records.js';
@@ -69,6 +69,32 @@ export async function getPublishedDataObject(id: string): Promise<DataObjectReco
     .where(and(eq(dataObjects.id, id), eq(dataObjects.published, true)))
     .limit(1);
   return row ?? null;
+}
+
+/** Batch-fetch multiple data objects by id (authenticated, returns
+ *  regardless of published status). Used by the batch API endpoint
+ *  for efficient multi-binding resolution. */
+export async function getDataObjectsByIds(ids: string[]): Promise<DataObjectRecord[]> {
+  if (ids.length === 0) return [];
+  const db = getDb();
+  return db
+    .select()
+    .from(dataObjects)
+    .where(inArray(dataObjects.id, ids))
+    .orderBy(desc(dataObjects.createdAt));
+}
+
+/** Batch-fetch published data objects by id. Returns only published
+ *  objects; missing or unpublished ids are silently omitted (no error,
+ *  same policy as getPublishedDataObject). */
+export async function getPublishedDataObjectsByIds(ids: string[]): Promise<DataObjectRecord[]> {
+  if (ids.length === 0) return [];
+  const db = getDb();
+  return db
+    .select()
+    .from(dataObjects)
+    .where(and(inArray(dataObjects.id, ids), eq(dataObjects.published, true)))
+    .orderBy(desc(dataObjects.publishedAt));
 }
 
 /** Every locale variant of the same logical object, for a translations
