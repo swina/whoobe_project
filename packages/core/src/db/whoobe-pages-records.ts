@@ -84,6 +84,7 @@ export async function updateWhoobePage(
     published?: boolean;
     workflowState?: string | null;
     content?: unknown;
+    locale?: string;
     seo?: PageSeo | null;
     sitemap?: PageSitemapSettings | null;
     search?: PageSearchSettings | null;
@@ -100,6 +101,7 @@ export async function updateWhoobePage(
   if (input.seo !== undefined) values.seo = input.seo;
   if (input.sitemap !== undefined) values.sitemap = input.sitemap;
   if (input.search !== undefined) values.search = input.search;
+  if (input.locale !== undefined) values.locale = input.locale;
 
   if (input.published !== undefined) {
     values.published = input.published;
