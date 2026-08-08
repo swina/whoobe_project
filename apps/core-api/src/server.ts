@@ -20,6 +20,17 @@ import {
   listSnippets,
   createSnippet,
   deleteSnippet,
+  listWebsites,
+  getWebsite,
+  getWebsiteByDomain,
+  createWebsite,
+  updateWebsite,
+  deleteWebsite,
+  listMenus,
+  getMenu,
+  createMenu,
+  updateMenu,
+  deleteMenu,
   listWhoobeOneSnippets,
   createWhoobeOneSnippet,
   updateWhoobeOneSnippet,
@@ -40,6 +51,8 @@ import {
   createWhoobePage,
   updateWhoobePage,
   deleteWhoobePage,
+  getPublishedWhoobePageBySlug,
+  listPublishedWhoobePages,
   listDataClasses,
   getDataClass,
   createDataClass,
@@ -96,6 +109,11 @@ import {
   type AuthenticatedRequest,
 } from '@pimcore-custom/core/server';
 import { runClassMigration, runObjectMigration } from '@pimcore-custom/migration-tool';
+
+
+function escapeXml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
 
 try {
   process.loadEnvFile();
@@ -862,6 +880,224 @@ app.delete('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE)
     console.error('Delete whoobe-one page error:', error);
     res.status(500).json({ error: error.message || 'Failed to delete page' });
   }
+});
+
+// --- Websites ---
+app.get('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await listWebsites();
+    res.json({ websites: result });
+  } catch (error: any) {
+    console.error('List websites error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list websites' });
+  }
+});
+
+app.post('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, domains, defaultLocale, supportedLocales, settings } = req.body ?? {};
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    const website = await createWebsite({
+      name,
+      domains: Array.isArray(domains) ? domains : undefined,
+      defaultLocale: typeof defaultLocale === 'string' ? defaultLocale : undefined,
+      supportedLocales: Array.isArray(supportedLocales) ? supportedLocales : undefined,
+      settings: settings !== undefined ? settings : undefined,
+    });
+    res.status(201).json({ website });
+  } catch (error: any) {
+    console.error('Create website error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create website' });
+  }
+});
+
+app.get('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const website = await getWebsite(req.params.id);
+    if (!website) {
+      res.status(404).json({ error: 'Website not found' });
+      return;
+    }
+    res.json({ website });
+  } catch (error: any) {
+    console.error('Get website error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get website' });
+  }
+});
+
+app.patch('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, domains, defaultLocale, supportedLocales, settings } = req.body ?? {};
+    const website = await updateWebsite(req.params.id, {
+      name: typeof name === 'string' ? name : undefined,
+      domains: Array.isArray(domains) ? domains : undefined,
+      defaultLocale: typeof defaultLocale === 'string' ? defaultLocale : undefined,
+      supportedLocales: Array.isArray(supportedLocales) ? supportedLocales : undefined,
+      settings: settings !== undefined ? settings : undefined,
+    });
+    if (!website) {
+      res.status(404).json({ error: 'Website not found' });
+      return;
+    }
+    res.json({ website });
+  } catch (error: any) {
+    console.error('Update website error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update website' });
+  }
+});
+
+app.delete('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteWebsite(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete website error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete website' });
+  }
+});
+
+// --- Menus ---
+app.get('/whoobe-one/menus', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : undefined;
+    const result = await listMenus(websiteId);
+    res.json({ menus: result });
+  } catch (error: any) {
+    console.error('List menus error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list menus' });
+  }
+});
+
+app.post('/whoobe-one/menus', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { websiteId, name, items } = req.body ?? {};
+    if (!websiteId || typeof websiteId !== 'string') {
+      res.status(400).json({ error: 'websiteId is required' });
+      return;
+    }
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    const menu = await createMenu({
+      websiteId,
+      name,
+      items: Array.isArray(items) ? items : undefined,
+    });
+    res.status(201).json({ menu });
+  } catch (error: any) {
+    console.error('Create menu error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create menu' });
+  }
+});
+
+app.get('/whoobe-one/menus/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const menu = await getMenu(req.params.id);
+    if (!menu) {
+      res.status(404).json({ error: 'Menu not found' });
+      return;
+    }
+    res.json({ menu });
+  } catch (error: any) {
+    console.error('Get menu error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get menu' });
+  }
+});
+
+app.patch('/whoobe-one/menus/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, items } = req.body ?? {};
+    const menu = await updateMenu(req.params.id, {
+      name: typeof name === 'string' ? name : undefined,
+      items: Array.isArray(items) ? items : undefined,
+    });
+    if (!menu) {
+      res.status(404).json({ error: 'Menu not found' });
+      return;
+    }
+    res.json({ menu });
+  } catch (error: any) {
+    console.error('Update menu error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update menu' });
+  }
+});
+
+app.delete('/whoobe-one/menus/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteMenu(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete menu error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete menu' });
+  }
+});
+
+// Public page endpoints (no auth required)
+app.get('/public/pages/:locale/:slug', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
+    const page = await getPublishedWhoobePageBySlug(req.params.locale, req.params.slug, websiteId);
+    if (!page) {
+      res.status(404).json({ error: 'Page not found' });
+      return;
+    }
+    res.json({ page });
+  } catch (error: any) {
+    console.error('Public page lookup error:', error);
+    res.status(500).json({ error: error.message || 'Failed to look up page' });
+  }
+});
+
+app.get('/public/sitemap.xml', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
+    const pages = await listPublishedWhoobePages(websiteId);
+    const sitemapPages = pages.filter((p) => p.sitemap?.included !== false);
+
+    const baseUrl = process.env.PUBLIC_SITE_URL || 'https://example.com';
+
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+    for (const page of sitemapPages) {
+      const loc = `${baseUrl}${page.slug}`;
+      const lastmod = page.updatedAt instanceof Date ? page.updatedAt.toISOString() : new Date(page.updatedAt).toISOString();
+      xml += '  <url>\n';
+      xml += `    <loc>${escapeXml(loc)}</loc>\n`;
+      xml += `    <lastmod>${lastmod}</lastmod>\n`;
+      if (page.sitemap?.changefreq) {
+        xml += `    <changefreq>${page.sitemap.changefreq}</changefreq>\n`;
+      }
+      if (page.sitemap?.priority !== null && page.sitemap?.priority !== undefined) {
+        xml += `    <priority>${page.sitemap.priority.toFixed(1)}</priority>\n`;
+      }
+      xml += '  </url>\n';
+    }
+    xml += '</urlset>';
+
+    res.set('Content-Type', 'application/xml');
+    res.send(xml);
+  } catch (error: any) {
+    console.error('Sitemap generation error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate sitemap' });
+  }
+});
+
+app.get('/public/robots.txt', async (_req: Request, res: Response): Promise<void> => {
+  const baseUrl = process.env.PUBLIC_SITE_URL || 'https://example.com';
+  const content = [
+    'User-agent: *',
+    `Allow: /`,
+    '',
+    `Sitemap: ${baseUrl}/public/sitemap.xml`,
+    '',
+  ].join('\n');
+
+  res.set('Content-Type', 'text/plain');
+  res.send(content);
 });
 
 // Data Object classes (Pimcore's "Classes" concept) - see docs/plans/

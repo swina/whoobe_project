@@ -8,6 +8,7 @@ import { roles, permissions, rolePermissions, users, userRoles } from './auth-sc
 import { ALL_PERMISSION_KEYS, DEFAULT_ROLES, DEFAULT_ROLE_PERMISSIONS } from '../auth/permissions.js';
 import { hashPassword } from '../auth/password.js';
 import { getWhoobeOneKitByName, createWhoobeOneKit } from './whoobe-one-kit-records.js';
+import { listWebsites, createWebsite } from './websites-records.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Compiled location is dist/db/seed.js -> packages/core/seed-data - same
@@ -93,6 +94,26 @@ export async function seedDefaults(): Promise<void> {
   } else {
     console.log('Users already exist - skipping admin seed.');
   }
+}
+
+/**
+ * Idempotent seed: creates a default website if none exists, for single-site
+ * mode. Multi-site setups can configure additional websites through the API.
+ */
+export async function seedDefaultWebsite(): Promise<void> {
+  const existing = await listWebsites();
+  if (existing.length > 0) {
+    console.log('Websites already exist - skipping default website seed.');
+    return;
+  }
+  await createWebsite({
+    name: 'Default Website',
+    domains: [],
+    defaultLocale: 'en',
+    supportedLocales: ['en'],
+    settings: {},
+  });
+  console.log('Created default website.');
 }
 
 /**
