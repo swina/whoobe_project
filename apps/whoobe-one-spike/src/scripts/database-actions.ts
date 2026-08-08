@@ -90,7 +90,6 @@ export async function savePage(editor: EditorStore, path?: string): Promise<void
     })
     editor.page.id = created.id
     ;(editor.page as any).path = created.slug
-    editor.setPageMeta(created)
   } else {
     await apiUpdatePage(String(editor.page.id), {
       title: editor.page.name || 'Untitled',
@@ -139,7 +138,6 @@ export async function loadPage(editor: EditorStore, id: string): Promise<void> {
   editor.setPage(page)
   editor.setDocument(saved.content as any)
   editor.setCurrent(null)
-  editor.setPageMeta(saved)
 }
 
 export async function deleteSavedPage(id: string): Promise<void> {
@@ -178,23 +176,6 @@ export async function saveAsNewTemplate(editor: EditorStore, name: string, path:
   page.json.blocks = editor.document
 
   editor.setPage(page)
-  editor.setPageMeta(created)
-}
-
-export async function updatePageMeta(
-  id: string,
-  input: {
-    title?: string
-    slug?: string
-    category?: string
-    published?: boolean
-    workflowState?: string | null
-    seo?: import('../pages-api').PageSeo | null
-    sitemap?: import('../pages-api').PageSitemapSettings | null
-    search?: import('../pages-api').PageSearchSettings | null
-  }
-): Promise<void> {
-  await apiUpdatePage(id, input)
 }
 
 // --- Kits: named, categorized collections of templates ---
