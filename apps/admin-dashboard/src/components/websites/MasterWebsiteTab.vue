@@ -76,7 +76,7 @@
               :website-locale="website?.defaultLocale ?? 'en'"
               @update="updateItem(pg, $event)"
               @remove="removeItem(pg, i)"
-              @add-child="addChildItem(pg, i)"
+              @insert-below="onInsertBelow(pg, $event)"
               @link-page="(path: number[]) => openPagePicker(pg, path)"
             />
           </div>
@@ -288,18 +288,24 @@ function addRootItem(pathGroup: WebsitePathRecord) {
   updatePathItems(pathGroup, items, true)
 }
 
-function addChildItem(pathGroup: WebsitePathRecord, parentIndex: number) {
-  const items = [...pathGroup.items]
-  if (parentIndex >= 0 && parentIndex < items.length) {
-    const parent = { ...items[parentIndex] }
-    const label = 'New Item'
-    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    const childPath = parent.path ? `${parent.path}/${slug}` : `/${slug}`
-    const children = [...(parent.children || [])]
-    children.unshift({ label, path: childPath, children: [] })
-    parent.children = children
-    items[parentIndex] = parent
+function onInsertBelow(pathGroup: WebsitePathRecord, itemPath: number[]) {
+  if (itemPath.length === 0) return
+  const items = JSON.parse(JSON.stringify(pathGroup.items))
+  let current = items
+  for (let i = 0; i < itemPath.length - 1; i++) {
+    const node = current[itemPath[i]]
+    if (!node) return
+    current = node.children || []
   }
+  const insertIdx = itemPath[itemPath.length - 1]
+  if (insertIdx < 0 || insertIdx > current.length) return
+
+  const clickedItem = current[insertIdx]
+  const label = 'New Item'
+  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const newPath = clickedItem.path ? `${clickedItem.path}/${slug}` : `/${slug}`
+
+  current.splice(insertIdx + 1, 0, { label, path: newPath, children: [] })
   updatePathItems(pathGroup, items, true)
 }
 
