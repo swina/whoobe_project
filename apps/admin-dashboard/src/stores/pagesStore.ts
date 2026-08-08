@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchPages, fetchPageById, updatePageById, type WhoobeOnePage, type PageSeo, type PageSitemapSettings, type PageSearchSettings } from '../utils/pages-api'
+import { fetchPages, fetchPageById, updatePageById, createPageById, type WhoobeOnePage, type PageSeo, type PageSitemapSettings, type PageSearchSettings } from '../utils/pages-api'
 import { useAuthStore } from './authStore'
 
 export const usePagesStore = defineStore('pages', () => {
@@ -46,6 +46,18 @@ export const usePagesStore = defineStore('pages', () => {
     return updated
   }
 
+  async function createPage(input: {
+    slug: string
+    title: string
+    category?: string
+    content: unknown
+  }): Promise<WhoobeOnePage> {
+    const authStore = useAuthStore()
+    const created = await createPageById(authStore.config.coreApiUrl, input)
+    pages.value.unshift(created)
+    return created
+  }
+
   refreshPages()
 
   return {
@@ -54,5 +66,6 @@ export const usePagesStore = defineStore('pages', () => {
     refreshPages,
     getPage,
     updatePage,
+    createPage,
   }
 })

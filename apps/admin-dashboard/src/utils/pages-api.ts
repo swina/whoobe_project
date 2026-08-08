@@ -107,3 +107,22 @@ export async function updatePageById(
   const body = await parseJsonOrThrow(res)
   return body.page
 }
+
+export async function createPageById(
+  baseUrl: string,
+  input: {
+    slug: string
+    title: string
+    category?: string
+    content: unknown
+  }
+): Promise<WhoobeOnePage> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/pages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.page
+}
