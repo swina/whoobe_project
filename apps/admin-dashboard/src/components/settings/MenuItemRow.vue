@@ -27,7 +27,7 @@
         <button @click="openLinkPage" class="text-[16px] text-indigo-400 hover:text-indigo-300 px-0.5" title="Link a page">🔗</button>
         <button @click="moveUp" :disabled="index === 0" class="text-[16px] text-slate-500 hover:text-slate-300 disabled:opacity-30 px-0.5">▲</button>
         <button @click="moveDown" :disabled="index === items.length - 1" class="text-[16px] text-slate-500 hover:text-slate-300 disabled:opacity-30 px-0.5">▼</button>
-        <button @click="$emit('add-child')" class="text-[16px] text-indigo-400 hover:text-indigo-300 px-0.5">+</button>
+        <button @click="emitInsertBelow" class="text-[16px] text-indigo-400 hover:text-indigo-300 px-0.5">+</button>
         <button @click="$emit('remove')" class="text-[16px] text-rose-400 hover:text-rose-300 px-0.5">✕</button>
       </div>
     </div>
@@ -76,7 +76,7 @@
         :website-locale="websiteLocale"
         @update="handleChildUpdate"
         @remove="handleChildRemove(ci)"
-        @add-child="handleAddChild"
+        @insert-below="(path: number[]) => emit('insert-below', path)"
         @link-page="(path: number[]) => emit('link-page', path)"
       />
     </div>
@@ -105,8 +105,8 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'update', payload: { index: number; item: MenuItem }): void
   (e: 'remove'): void
-  (e: 'add-child'): void
   (e: 'link-page', path: number[]): void
+  (e: 'insert-below', path: number[]): void
 }>()
 
 const pagesStore = usePagesStore()
@@ -127,6 +127,10 @@ const pageTitle = computed(() => {
   const page = pagesStore.pages.find((p) => p.id === props.item.pageId)
   return page?.title || ''
 })
+
+function emitInsertBelow() {
+  emit('insert-below', [...props.itemPath, props.index])
+}
 
 function openLinkPage() {
   emit('link-page', [...props.itemPath, props.index])
@@ -187,16 +191,6 @@ function handleChildUpdate(payload: { index: number; item: MenuItem }) {
 function handleChildRemove(index: number) {
   const children = [...(editItem.value.children || [])]
   children.splice(index, 1)
-  editItem.value = { ...editItem.value, children }
-  emit('update', { index: props.index, item: editItem.value })
-}
-
-function handleAddChild() {
-  const label = 'New Item'
-  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  const childPath = editItem.value.path ? `${editItem.value.path}/${slug}` : `/${slug}`
-  const children = [...(editItem.value.children || [])]
-  children.unshift({ label, path: childPath, children: [] })
   editItem.value = { ...editItem.value, children }
   emit('update', { index: props.index, item: editItem.value })
 }
