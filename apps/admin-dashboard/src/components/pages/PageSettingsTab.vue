@@ -1,0 +1,310 @@
+<template>
+  <div class="space-y-6">
+    <div>
+      <h3 class="text-lg font-bold text-slate-100 light:text-slate-900">Page Settings</h3>
+      <p class="text-xs text-slate-500">Metadata, SEO, sitemap, and search configuration for this page.</p>
+    </div>
+
+    <div class="flex gap-1 border-b border-slate-800 light:border-slate-200">
+      <button
+        v-for="tab in settingsTabs" :key="tab.key"
+        class="px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition"
+        :class="activeTab === tab.key ? 'border-indigo-500 text-indigo-300' : 'border-transparent text-slate-500 hover:text-slate-300 light:text-slate-700'"
+        @click="activeTab = tab.key"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <form class="space-y-5" @submit.prevent="save">
+      <template v-if="activeTab === 'general'">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Title</label>
+          <input v-model="form.title" type="text" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Slug</label>
+          <input v-model="form.slug" type="text" class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Category</label>
+          <input v-model="form.category" type="text" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+        </div>
+        <div class="flex items-center gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" v-model="form.published" class="rounded border-slate-700 bg-slate-900" />
+            <span class="text-xs font-semibold text-slate-300 light:text-slate-700">Published</span>
+          </label>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Workflow State</label>
+          <input v-model="form.workflowState" type="text" placeholder="e.g. draft, review, approved" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Locale</label>
+            <input :value="page?.locale ?? ''" type="text" disabled class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-500 disabled:opacity-50" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Translation Group</label>
+            <input :value="page?.translationGroupId ?? ''" type="text" disabled class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-500 disabled:opacity-50 text-[11px]" />
+          </div>
+        </div>
+      </template>
+
+      <template v-if="activeTab === 'seo'">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Meta Title</label>
+          <input v-model="form.seo.metaTitle" type="text" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Meta Description</label>
+          <textarea v-model="form.seo.metaDescription" rows="3" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Canonical URL</label>
+          <input v-model="form.seo.canonicalUrl" type="text" class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+        </div>
+        <div class="flex items-center gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" :checked="form.seo.robots?.index ?? true" @change="form.seo.robots = { ...(form.seo.robots ?? { index: true, follow: true }), index: ($event.target as HTMLInputElement).checked }" class="rounded border-slate-700 bg-slate-900" />
+            <span class="text-xs font-semibold text-slate-300 light:text-slate-700">Allow indexing</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" :checked="form.seo.robots?.follow ?? true" @change="form.seo.robots = { ...(form.seo.robots ?? { index: true, follow: true }), follow: ($event.target as HTMLInputElement).checked }" class="rounded border-slate-700 bg-slate-900" />
+            <span class="text-xs font-semibold text-slate-300 light:text-slate-700">Follow links</span>
+          </label>
+        </div>
+        <div class="space-y-4 pt-2 border-t border-slate-800 light:border-slate-200">
+          <span class="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Open Graph</span>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">OG Title</label>
+            <input v-model="form.seo.ogTitle" type="text" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">OG Description</label>
+            <textarea v-model="form.seo.ogDescription" rows="2" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">OG Image URL</label>
+            <input v-model="form.seo.ogImage" type="text" class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Structured Data (JSON-LD)</label>
+          <textarea v-model="structuredDataText" rows="5" class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 resize-none" placeholder="{}"></textarea>
+        </div>
+      </template>
+
+      <template v-if="activeTab === 'sitemap'">
+        <div class="flex items-center gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" v-model="form.sitemap.included" class="rounded border-slate-700 bg-slate-900" />
+            <span class="text-xs font-semibold text-slate-300 light:text-slate-700">Include in sitemap</span>
+          </label>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Priority</label>
+          <select v-model="form.sitemap.priority" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500">
+            <option :value="null">Auto</option>
+            <option v-for="p in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]" :key="p" :value="p">{{ p.toFixed(1) }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Change Frequency</label>
+          <select v-model="form.sitemap.changefreq" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500">
+            <option :value="null">Auto</option>
+            <option value="always">Always</option>
+            <option value="hourly">Hourly</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+            <option value="never">Never</option>
+          </select>
+        </div>
+      </template>
+
+      <template v-if="activeTab === 'search'">
+        <div class="flex items-center gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" v-model="form.search.indexable" class="rounded border-slate-700 bg-slate-900" />
+            <span class="text-xs font-semibold text-slate-300 light:text-slate-700">Indexable by search engines</span>
+          </label>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Keywords</label>
+          <div class="flex flex-wrap gap-1.5 mb-2">
+            <span
+              v-for="(kw, i) in form.search.keywords ?? []"
+              :key="i"
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-semibold"
+            >
+              {{ kw }}
+              <button type="button" class="hover:text-indigo-100 leading-none" @click="removeKeyword(i)">&times;</button>
+            </span>
+          </div>
+          <div class="flex gap-2">
+            <input
+              v-model="newKeyword"
+              type="text"
+              placeholder="Type a keyword and press Enter"
+              class="flex-1 px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+              @keydown.enter.prevent="addKeyword"
+            />
+            <button type="button" class="px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="!newKeyword.trim()" @click="addKeyword">Add</button>
+          </div>
+        </div>
+      </template>
+
+      <div v-if="error" class="px-3 py-2 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs">{{ error }}</div>
+      <div v-if="success" class="px-3 py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs">{{ success }}</div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="submit" :disabled="saving" class="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50">
+          {{ saving ? 'Saving…' : 'Save Settings' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { onMounted, reactive, ref } from 'vue'
+import { usePagesStore } from '../../stores/pagesStore'
+import type { WhoobeOnePage, PageSeo, PageSitemapSettings, PageSearchSettings } from '../../utils/pages-api'
+
+const props = defineProps<{
+  pageId: string
+}>()
+
+const emit = defineEmits<{
+  (e: 'saved', page: WhoobeOnePage): void
+}>()
+
+const pagesStore = usePagesStore()
+
+const settingsTabs = [
+  { key: 'general', label: 'General' },
+  { key: 'seo', label: 'SEO' },
+  { key: 'sitemap', label: 'Sitemap' },
+  { key: 'search', label: 'Search' },
+]
+
+const activeTab = ref('general')
+const error = ref('')
+const success = ref('')
+const saving = ref(false)
+const newKeyword = ref('')
+const page = ref<WhoobeOnePage | null>(null)
+
+function emptySeo(): PageSeo {
+  return { metaTitle: null, metaDescription: null, canonicalUrl: null, robots: { index: true, follow: true }, ogTitle: null, ogDescription: null, ogImage: null, structuredData: null }
+}
+
+function emptySitemap(): PageSitemapSettings {
+  return { included: true, priority: null, changefreq: null }
+}
+
+function emptySearch(): PageSearchSettings {
+  return { indexable: true, keywords: [] }
+}
+
+const form = reactive({
+  title: '',
+  slug: '',
+  category: '',
+  published: false,
+  workflowState: '',
+  seo: emptySeo(),
+  sitemap: emptySitemap(),
+  search: emptySearch(),
+})
+
+const structuredDataText = ref('')
+
+onMounted(async () => {
+  try {
+    page.value = await pagesStore.getPage(props.pageId)
+    if (page.value) {
+      form.title = page.value.title
+      form.slug = page.value.slug
+      form.category = page.value.category
+      form.published = page.value.published
+      form.workflowState = page.value.workflowState ?? ''
+      form.seo = page.value.seo ? { ...emptySeo(), ...page.value.seo, robots: { index: true, follow: true, ...(page.value.seo.robots ?? {}) } } : emptySeo()
+      form.sitemap = page.value.sitemap ? { ...emptySitemap(), ...page.value.sitemap } : emptySitemap()
+      form.search = page.value.search ? { ...emptySearch(), ...page.value.search, keywords: page.value.search.keywords ?? [] } : emptySearch()
+      structuredDataText.value = form.seo.structuredData ? JSON.stringify(form.seo.structuredData, null, 2) : ''
+    }
+  } catch (e) {
+    error.value = 'Failed to load page data'
+  }
+})
+
+function addKeyword() {
+  const kw = newKeyword.value.trim()
+  if (!form.search.keywords) form.search.keywords = []
+  if (kw && !form.search.keywords.includes(kw)) {
+    form.search.keywords.push(kw)
+  }
+  newKeyword.value = ''
+}
+
+function removeKeyword(index: number) {
+  if (form.search.keywords) form.search.keywords.splice(index, 1)
+}
+
+function parseStructuredData(): Record<string, unknown> | null {
+  const text = structuredDataText.value.trim()
+  if (!text) return null
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+async function save() {
+  error.value = ''
+  success.value = ''
+
+  const slug = form.slug.startsWith('/') ? form.slug : '/' + form.slug
+
+  const structuredData = parseStructuredData()
+  if (structuredDataText.value.trim() && !structuredData) {
+    error.value = 'Invalid JSON in Structured Data'
+    return
+  }
+
+  saving.value = true
+  try {
+    const updated = await pagesStore.updatePage(props.pageId, {
+      title: form.title,
+      slug,
+      category: form.category,
+      published: form.published,
+      workflowState: form.workflowState || null,
+      seo: {
+        metaTitle: form.seo.metaTitle || null,
+        metaDescription: form.seo.metaDescription || null,
+        canonicalUrl: form.seo.canonicalUrl || null,
+        robots: form.seo.robots ?? { index: true, follow: true },
+        ogTitle: form.seo.ogTitle || null,
+        ogDescription: form.seo.ogDescription || null,
+        ogImage: form.seo.ogImage || null,
+        structuredData: structuredData,
+      },
+      sitemap: form.sitemap,
+      search: { ...form.search, keywords: form.search.keywords ?? [] },
+    })
+    page.value = updated
+    success.value = 'Settings saved'
+    emit('saved', updated)
+  } catch (e: any) {
+    error.value = e?.message || 'Failed to save page settings'
+  } finally {
+    saving.value = false
+  }
+}
+</script>

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchPages, fetchPageById, type WhoobeOnePage } from '../utils/pages-api'
+import { fetchPages, fetchPageById, updatePageById, type WhoobeOnePage, type PageSeo, type PageSitemapSettings, type PageSearchSettings } from '../utils/pages-api'
 import { useAuthStore } from './authStore'
 
 export const usePagesStore = defineStore('pages', () => {
@@ -19,13 +19,31 @@ export const usePagesStore = defineStore('pages', () => {
     }
   }
 
-  // Full content isn't kept in `pages` - the list view only needs summary
-  // fields, and this is used for the tab header's snapshot at open-time
-  // (see MasterPageTab.vue - it does not stay in sync with edits made
-  // inside the embedded editor, since there is no bridge here to notify it).
   async function getPage(id: string): Promise<WhoobeOnePage> {
     const authStore = useAuthStore()
     return fetchPageById(authStore.config.coreApiUrl, id)
+  }
+
+  async function updatePage(
+    id: string,
+    input: {
+      title?: string
+      slug?: string
+      category?: string
+      published?: boolean
+      workflowState?: string | null
+      seo?: PageSeo | null
+      sitemap?: PageSitemapSettings | null
+      search?: PageSearchSettings | null
+    }
+  ): Promise<WhoobeOnePage> {
+    const authStore = useAuthStore()
+    const updated = await updatePageById(authStore.config.coreApiUrl, id, input)
+    const idx = pages.value.findIndex((p) => p.id === id)
+    if (idx !== -1) {
+      pages.value[idx] = { ...pages.value[idx], ...updated }
+    }
+    return updated
   }
 
   refreshPages()
@@ -35,5 +53,6 @@ export const usePagesStore = defineStore('pages', () => {
     isLoading,
     refreshPages,
     getPage,
+    updatePage,
   }
 })
