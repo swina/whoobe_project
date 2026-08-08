@@ -22,6 +22,7 @@
       </button>
       <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> Save Template</button>
       <button v-if="editor.page?.id" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
+      <button v-if="editor.page?.id" :class="topbarBtnClass" @click="showPageSettings = true"><Settings class="w-3.5 h-3.5" /> Page Settings</button>
       <button :class="topbarBtnClass" @click="showAddToKit = true"><PackagePlus class="w-3.5 h-3.5" /> Add to Kit</button>
       <button :class="topbarBtnClass" @click="exportDocument(editor)"><Download class="w-3.5 h-3.5" /> Export</button>
       <button :class="topbarBtnClass" @click="fileInput?.click()"><Upload class="w-3.5 h-3.5" /> Import</button>
@@ -100,6 +101,8 @@
 
     <TemplateGalleryModal v-if="showTemplateGallery" @close="showTemplateGallery = false" @loaded="onTemplateLoaded" />
 
+    <PageSettingsModal v-if="showPageSettings" @close="showPageSettings = false" />
+
     <div v-if="message" class="shrink-0 px-4 py-1.5 text-white text-xs" :class="messageKind === 'error' ? 'bg-rose-600' : 'bg-emerald-600'">
       {{ message }}
     </div>
@@ -128,7 +131,7 @@
 // new one being created from the palette below.
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import dragula from 'dragula'
-import { CopyPlus, Download, Eye, FilePlus, FolderOpen, PackagePlus, Save, Upload } from '@lucide/vue'
+import { CopyPlus, Download, Eye, FilePlus, FolderOpen, PackagePlus, Save, Settings, Upload } from '@lucide/vue'
 import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
 import BlockContainer from './BlockContainer.vue'
@@ -140,6 +143,7 @@ import DocumentPreview from './DocumentPreview.vue'
 import KitsPanel from './KitsPanel.vue'
 import AddToKitModal from './AddToKitModal.vue'
 import TemplateGalleryModal from './TemplateGalleryModal.vue'
+import PageSettingsModal from './PageSettingsModal.vue'
 import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
 import { clean, findNodeById, removeNodeById, applyImagePlaceholder } from '../helpers'
@@ -157,6 +161,7 @@ const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text
 const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'kits'>('elements')
 const showAddToKit = ref(false)
 const showTemplateGallery = ref(false)
+const showPageSettings = ref(false)
 
 // A real, reported bug fixed here: `flash()` used to render every message
 // - including genuine failures ("Failed to save", "A path is required...")

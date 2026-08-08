@@ -20,6 +20,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type Element from '../scripts/ElementsClass.js'
 import type { ElementGroup } from '../scripts/ElementsClass.js'
+import type { WhoobeOnePage } from '../pages-api'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -67,6 +68,8 @@ export const useEditorStore = defineStore('editor', () => {
   // each resolution pass.
   const resolvedData = ref<Record<string, any>>({})
 
+  const pageMeta = ref<WhoobeOnePage | null>(null)
+
   function setMode(v: string) { mode.value = v }
   function setSettings(v: any) { settings.value = v }
   function setElements(v: ElementGroup[] | null) { elements.value = v }
@@ -92,6 +95,8 @@ export const useEditorStore = defineStore('editor', () => {
     parentOrigin.value = origin
   }
 
+  function setPageMeta(v: WhoobeOnePage | null) { pageMeta.value = v }
+
   return {
     mode, settings, elements, document, project, selected, page, current,
     component, action, subaction, level, parent, startTime, autosave,
@@ -99,6 +104,6 @@ export const useEditorStore = defineStore('editor', () => {
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
     setParent, setStartTime, setAutosave, setExportMode, setPreview, setSave,
-    setArticle, setCustomizeTab, setEmbedded, resolvedData,
+    setArticle, setCustomizeTab, setEmbedded, resolvedData, pageMeta, setPageMeta,
   }
 })
