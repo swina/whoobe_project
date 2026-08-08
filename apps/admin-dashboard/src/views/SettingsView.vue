@@ -46,6 +46,9 @@
     <!-- Data Object workflows -->
     <WorkflowSettingsCard v-if="activeSubSection === 'workflows'" />
 
+    <!-- Websites -->
+    <WebsiteSettingsCard v-if="activeSubSection === 'websites'" />
+
     <!-- General Options -->
     <div v-if="activeSubSection === 'general'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-6">
       <div class="space-y-4">
@@ -85,6 +88,7 @@ import ClassSettingsCard from '../components/objects/ClassSettingsCard.vue'
 import ComponentSettingsCard from '../components/objects/ComponentSettingsCard.vue'
 import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue'
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'
+import WebsiteSettingsCard from '../components/settings/WebsiteSettingsCard.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
 
 const tabsStore = useTabsStore()
@@ -101,7 +105,8 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   components: { title: 'Components', description: 'Reusable structured field lists a class field can hold a repeatable mix of.' },
   roles: { title: 'Roles / Users / Workspaces', description: 'Manage who can access this dashboard and what they can do.' },
   security: { title: 'Security', description: 'Two-factor authentication and account security.' },
-  workflows: { title: 'Workflows', description: 'Author publish/review workflows for Data Object classes.' }
+  workflows: { title: 'Workflows', description: 'Author publish/review workflows for Data Object classes.' },
+  websites: { title: 'Websites', description: 'Manage websites, their domains, locales, and navigation menus.' }
 }
 
 const sectionTitle = computed(() => sectionTitles[activeSubSection.value].title)

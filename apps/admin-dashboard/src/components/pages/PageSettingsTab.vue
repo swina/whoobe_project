@@ -46,8 +46,11 @@
             <input v-model="form.locale" type="text" placeholder="e.g. en, it, de" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Translation Group</label>
-            <input :value="page?.translationGroupId ?? ''" type="text" disabled class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-500 disabled:opacity-50 text-[11px]" />
+            <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Website</label>
+            <select v-model="form.websiteId" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500">
+              <option value="">None (single-site)</option>
+              <option v-for="w in websites" :key="w.id" :value="w.id">{{ w.name }}</option>
+            </select>
           </div>
         </div>
       </template>
@@ -172,7 +175,9 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { usePagesStore } from '../../stores/pagesStore'
+import { useWebsitesStore } from '../../stores/websitesStore'
 import type { WhoobeOnePage, PageSeo, PageSitemapSettings, PageSearchSettings } from '../../utils/pages-api'
+import type { WebsiteRecord } from '../../utils/websites-api'
 
 const props = defineProps<{
   pageId: string
@@ -183,6 +188,7 @@ const emit = defineEmits<{
 }>()
 
 const pagesStore = usePagesStore()
+const websitesStore = useWebsitesStore()
 
 const settingsTabs = [
   { key: 'general', label: 'General' },
@@ -197,6 +203,7 @@ const success = ref('')
 const saving = ref(false)
 const newKeyword = ref('')
 const page = ref<WhoobeOnePage | null>(null)
+const websites = ref<WebsiteRecord[]>([])
 
 function emptySeo(): PageSeo {
   return { metaTitle: null, metaDescription: null, canonicalUrl: null, robots: { index: true, follow: true }, ogTitle: null, ogDescription: null, ogImage: null, structuredData: null }
@@ -217,6 +224,7 @@ const form = reactive({
   published: false,
   workflowState: '',
   locale: '',
+  websiteId: '',
   seo: emptySeo(),
   sitemap: emptySitemap(),
   search: emptySearch(),
@@ -226,17 +234,23 @@ const structuredDataText = ref('')
 
 onMounted(async () => {
   try {
-    page.value = await pagesStore.getPage(props.pageId)
-    if (page.value) {
-      form.title = page.value.title
-      form.slug = page.value.slug
-      form.category = page.value.category
-      form.published = page.value.published
-      form.workflowState = page.value.workflowState ?? ''
-      form.locale = page.value.locale
-      form.seo = page.value.seo ? { ...emptySeo(), ...page.value.seo, robots: { index: true, follow: true, ...(page.value.seo.robots ?? {}) } } : emptySeo()
-      form.sitemap = page.value.sitemap ? { ...emptySitemap(), ...page.value.sitemap } : emptySitemap()
-      form.search = page.value.search ? { ...emptySearch(), ...page.value.search, keywords: page.value.search.keywords ?? [] } : emptySearch()
+    const [pageData, websiteList] = await Promise.all([
+      pagesStore.getPage(props.pageId),
+      websitesStore.refreshWebsites(),
+    ])
+    websites.value = websitesStore.websites
+    if (pageData) {
+      page.value = pageData
+      form.title = pageData.title
+      form.slug = pageData.slug
+      form.category = pageData.category
+      form.published = pageData.published
+      form.workflowState = pageData.workflowState ?? ''
+      form.locale = pageData.locale
+      form.websiteId = (pageData as any).websiteId ?? ''
+      form.seo = pageData.seo ? { ...emptySeo(), ...pageData.seo, robots: { index: true, follow: true, ...(pageData.seo.robots ?? {}) } } : emptySeo()
+      form.sitemap = pageData.sitemap ? { ...emptySitemap(), ...pageData.sitemap } : emptySitemap()
+      form.search = pageData.search ? { ...emptySearch(), ...pageData.search, keywords: pageData.search.keywords ?? [] } : emptySearch()
       structuredDataText.value = form.seo.structuredData ? JSON.stringify(form.seo.structuredData, null, 2) : ''
     }
   } catch (e) {
@@ -288,6 +302,7 @@ async function save() {
       published: form.published,
       workflowState: form.workflowState || null,
       locale: form.locale || undefined,
+      websiteId: form.websiteId || undefined,
       seo: {
         metaTitle: form.seo.metaTitle || null,
         metaDescription: form.seo.metaDescription || null,
