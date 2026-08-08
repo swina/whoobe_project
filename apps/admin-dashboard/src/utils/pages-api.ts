@@ -83,3 +83,27 @@ export async function fetchPageById(baseUrl: string, id: string): Promise<Whoobe
   const body = await parseJsonOrThrow(res)
   return body.page
 }
+
+export async function updatePageById(
+  baseUrl: string,
+  id: string,
+  input: {
+    slug?: string
+    title?: string
+    category?: string
+    published?: boolean
+    workflowState?: string | null
+    seo?: PageSeo | null
+    sitemap?: PageSitemapSettings | null
+    search?: PageSearchSettings | null
+  }
+): Promise<WhoobeOnePage> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/pages/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.page
+}

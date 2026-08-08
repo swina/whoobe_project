@@ -16,6 +16,7 @@ export type SectionKind = 'overview' | 'objects' | 'assets' | 'documents' | 'pag
 export type MasterItemKind = 'asset' | 'document' | 'page' | 'object' | 'class'
 export type AssetSubTab = 'preview' | 'editor' | 'metadata' | 'thumbnails'
 export type DocumentSubTab = 'editor' | 'preview'
+export type PageSubTab = 'editor' | 'settings' | 'preview'
 // A fixed, known-upfront set (docs/plans/UI/settings-ui-plan.md) - unlike
 // objectSubTab's free-form string (which varies per class's locales),
 // this is a real enum, matching AssetSubTab/DocumentSubTab's own pattern.
@@ -29,6 +30,7 @@ export interface MainTab {
   itemId?: string
   assetSubTab?: AssetSubTab
   documentSubTab?: DocumentSubTab
+  pageSubTab?: PageSubTab
   // A Data Object tab's sub-tab is a *locale*, not a fixed enum like
   // assets/documents use - see openObject()'s own comment for why the
   // tab itself is keyed by translationGroupId, not one locale row's id.
@@ -130,12 +132,17 @@ export const useTabsStore = defineStore('tabs', () => {
   // No sub-tab state here (unlike documents) - MasterPageTab.vue wraps a
   // single embedded whoobe-one-spike editor with no Editor/Preview toggle
   // of its own (the embedded app already has its own Preview mode inline).
-  function openPage(pageId: string) {
+  function openPage(pageId: string, subTab?: PageSubTab) {
     const id = pageTabId(pageId)
     if (findIndex(id) === -1) {
-      tabs.value.push({ id, type: 'item', itemKind: 'page', itemId: pageId })
+      tabs.value.push({ id, type: 'item', itemKind: 'page', itemId: pageId, pageSubTab: subTab ?? 'editor' })
     }
     activeTabId.value = id
+  }
+
+  function setPageSubTab(pageId: string, subTab: PageSubTab) {
+    const tab = tabs.value.find((t) => t.id === pageTabId(pageId))
+    if (tab) tab.pageSubTab = subTab
   }
 
   // A Data Object tab represents one *logical record* (`translationGroupId`),
@@ -223,6 +230,7 @@ export const useTabsStore = defineStore('tabs', () => {
     openDocument,
     setDocumentSubTab,
     openPage,
+    setPageSubTab,
     openObject,
     setObjectSubTab,
     openClass,

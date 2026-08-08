@@ -20,16 +20,26 @@
       </div>
     </div>
 
-    <!-- This header is a snapshot taken when the tab opened - unlike
-         MasterDocumentTab.vue/WhoobeStudioEmbed.vue, there is no bridge here
-         to notify us of edits made inside the embedded editor (see
-         WhoobeOneEmbed.vue's own header comment for why one isn't needed),
-         so title/status here can go stale during a long editing session.
-         Closing and reopening the tab (or navigating back to the Pages
-         list, which does re-fetch) picks up the latest values. -->
-    <div class="flex-1 min-h-0 px-2 pb-2">
-      <div class="h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-2">
+    <div class="flex shrink-0 items-center gap-2 px-6 text-xs font-semibold">
+      <button
+        v-for="tab in subTabs" :key="tab.key"
+        @click="setSubTab(tab.key)"
+        :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === tab.key ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200']"
+      >
+        <span>{{ tab.icon }}</span>
+        <span>{{ tab.label }}</span>
+      </button>
+    </div>
+
+    <div class="flex-1 min-h-0 px-2 pb-2 pt-2">
+      <div v-show="activeSubTab === 'editor'" class="h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-2">
         <WhoobeOneEmbed :page-id="props.pageId" />
+      </div>
+      <div v-show="activeSubTab === 'settings'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 px-6 py-4">
+        <PageSettingsTab :page-id="props.pageId" @saved="onSettingsSaved" />
+      </div>
+      <div v-show="activeSubTab === 'preview'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6">
+        <PagePreviewTab :page-id="props.pageId" />
       </div>
     </div>
   </div>
@@ -44,18 +54,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { usePagesStore } from '../../stores/pagesStore'
+import { useTabsStore, type PageSubTab } from '../../stores/tabsStore'
 import type { WhoobeOnePage } from '../../utils/pages-api'
 import WhoobeOneEmbed from './WhoobeOneEmbed.vue'
+import PageSettingsTab from './PageSettingsTab.vue'
+import PagePreviewTab from './PagePreviewTab.vue'
 
 const props = defineProps<{
   pageId: string
 }>()
 
 const pagesStore = usePagesStore()
+const tabsStore = useTabsStore()
 const page = ref<WhoobeOnePage | null>(null)
 const isLoading = ref(true)
+
+const subTabs: { key: PageSubTab; label: string; icon: string }[] = [
+  { key: 'editor', label: 'Editor', icon: '🎨' },
+  { key: 'settings', label: 'Settings', icon: '⚙️' },
+  { key: 'preview', label: 'Preview', icon: '👁️' },
+]
+
+const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'page' && t.itemId === props.pageId))
+const activeSubTab = computed<PageSubTab>(() => currentTab.value?.pageSubTab ?? 'editor')
+
+function setSubTab(tab: PageSubTab) {
+  tabsStore.setPageSubTab(props.pageId, tab)
+}
 
 async function load() {
   isLoading.value = true
@@ -67,6 +94,10 @@ async function load() {
   } finally {
     isLoading.value = false
   }
+}
+
+function onSettingsSaved(updated: WhoobeOnePage) {
+  page.value = updated
 }
 
 onMounted(load)
