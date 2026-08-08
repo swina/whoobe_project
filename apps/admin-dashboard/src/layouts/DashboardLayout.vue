@@ -108,10 +108,9 @@
             v-if="item.section === 'settings' && isSettingsMenuExpanded && !isSidebarCollapsed"
             class="ml-3 pl-2.5 border-l border-slate-800/80 light:border-slate-200/80 space-y-1 py-1"
           >
+            <template v-for="sub in settingsSubItems" :key="sub.key">
             <button
-              v-for="sub in settingsSubItems"
-              :key="sub.key"
-              @click="tabsStore.openSettingsSubSection(sub.key)"
+              @click="sub.key === 'websites' ? toggleWebsites() : tabsStore.openSettingsSubSection(sub.key)"
               :class="[
                 'w-full flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none text-left',
                 isSettingsSubSectionActive(sub.key)
@@ -121,7 +120,28 @@
             >
               <component :is="sub.icon" class="w-3.5 h-3.5 mr-1.5 shrink-0" />
               <span class="truncate flex-1">{{ sub.name }}</span>
+              <ChevronDown v-if="sub.key === 'websites' && isWebsitesExpanded" class="w-3 h-3 text-indigo-400" />
+              <ChevronRight v-else-if="sub.key === 'websites'" class="w-3 h-3 text-slate-500" />
             </button>
+
+            <!-- Website list under Websites sub-section -->
+            <div v-if="sub.key === 'websites' && isWebsitesExpanded" class="ml-3 pl-2 border-l border-slate-800/80 light:border-slate-200/80 space-y-1">
+              <div
+                v-for="website in websitesStore.websites"
+                :key="website.id"
+                @click="tabsStore.openWebsite(website.id)"
+                :class="[
+                  'flex items-center px-2 py-1.5 rounded-lg text-xs cursor-pointer transition select-none',
+                  tabsStore.activeTabId === ('item:website:' + website.id)
+                    ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
+                    : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
+                ]"
+              >
+                <Globe class="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                <span class="truncate flex-1">{{ website.name }}</span>
+              </div>
+            </div>
+            </template>
           </div>
         </div>
       </nav>
@@ -254,6 +274,7 @@
               :class-id="tab.objectClassId"
             />
             <MasterClassTab v-else-if="tab.type === 'item' && tab.itemKind === 'class' && tab.itemId" :class-id="tab.itemId" />
+            <MasterWebsiteTab v-else-if="tab.type === 'item' && tab.itemKind === 'website' && tab.itemId" :website-id="tab.itemId" />
           </div>
         </template>
       </main>
@@ -262,7 +283,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   Layers,
   LayoutDashboard,
@@ -304,6 +325,7 @@ import MasterDocumentTab from '../components/documents/MasterDocumentTab.vue'
 import MasterPageTab from '../components/pages/MasterPageTab.vue'
 import MasterObjectTab from '../components/objects/MasterObjectTab.vue'
 import MasterClassTab from '../components/objects/MasterClassTab.vue'
+import MasterWebsiteTab from '../components/websites/MasterWebsiteTab.vue'
 import OverviewView from '../views/OverviewView.vue'
 import ObjectsView from '../views/ObjectsView.vue'
 import AssetsView from '../views/AssetsView.vue'
@@ -311,10 +333,12 @@ import DocumentsView from '../views/DocumentsView.vue'
 import PagesView from '../views/PagesView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import { usePagesStore } from '../stores/pagesStore'
+import { useWebsitesStore } from '../stores/websitesStore'
 
 const damStore = useDamStore()
 const documentsStore = useDocumentsStore()
 const pagesStore = usePagesStore()
+const websitesStore = useWebsitesStore()
 const dataClassesStore = useDataClassesStore()
 const tabsStore = useTabsStore()
 const toastStore = useToastStore()
@@ -338,6 +362,12 @@ function handleLogout() {
 const isSidebarCollapsed = ref(false)
 const isAssetsTreeExpanded = ref(true)
 const isSettingsMenuExpanded = ref(true)
+const isWebsitesExpanded = ref(true)
+
+function toggleWebsites() {
+  isWebsitesExpanded.value = !isWebsitesExpanded.value
+  tabsStore.openSettingsSubSection('websites')
+}
 
 const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'general', name: 'General settings', icon: Sliders },
@@ -449,6 +479,10 @@ function tabLabel(tab: MainTab): string {
     const dataClass = dataClassesStore.classes.find((c) => c.id === tab.itemId)
     return dataClass?.label ?? tab.label ?? 'New Class'
   }
+  if (tab.type === 'item' && tab.itemKind === 'website' && tab.itemId) {
+    const website = websitesStore.websites.find((w) => w.id === tab.itemId)
+    return website?.name || 'Website'
+  }
   return 'Untitled'
 }
 
@@ -469,6 +503,9 @@ function tabIcon(tab: MainTab) {
   if (tab.type === 'item' && tab.itemKind === 'class') {
     return Table2
   }
+  if (tab.type === 'item' && tab.itemKind === 'website') {
+    return Globe
+  }
   return FileText
 }
 
@@ -485,4 +522,8 @@ function handleSelectSidebarFolder(path: string) {
   damStore.currentFolderPath = path
   tabsStore.openSection('assets')
 }
+
+onMounted(() => {
+  websitesStore.refreshWebsites()
+})
 </script>

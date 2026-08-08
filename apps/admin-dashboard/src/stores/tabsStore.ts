@@ -13,10 +13,11 @@ import { ref } from 'vue'
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
 export type SectionKind = 'overview' | 'objects' | 'assets' | 'documents' | 'pages' | 'settings'
-export type MasterItemKind = 'asset' | 'document' | 'page' | 'object' | 'class'
+export type MasterItemKind = 'asset' | 'document' | 'page' | 'object' | 'class' | 'website'
 export type AssetSubTab = 'preview' | 'editor' | 'metadata' | 'thumbnails'
 export type DocumentSubTab = 'editor' | 'preview'
 export type PageSubTab = 'editor' | 'settings' | 'preview'
+export type WebsiteSubTab = 'settings' | 'menus'
 // A fixed, known-upfront set (docs/plans/UI/settings-ui-plan.md) - unlike
 // objectSubTab's free-form string (which varies per class's locales),
 // this is a real enum, matching AssetSubTab/DocumentSubTab's own pattern.
@@ -31,6 +32,7 @@ export interface MainTab {
   assetSubTab?: AssetSubTab
   documentSubTab?: DocumentSubTab
   pageSubTab?: PageSubTab
+  websiteSubTab?: WebsiteSubTab
   // A Data Object tab's sub-tab is a *locale*, not a fixed enum like
   // assets/documents use - see openObject()'s own comment for why the
   // tab itself is keyed by translationGroupId, not one locale row's id.
@@ -76,6 +78,10 @@ export function objectTabId(translationGroupId: string): string {
 
 export function classTabId(classId: string): string {
   return `item:class:${classId}`
+}
+
+export function websiteTabId(websiteId: string): string {
+  return `item:website:${websiteId}`
 }
 
 export const useTabsStore = defineStore('tabs', () => {
@@ -188,6 +194,23 @@ export const useTabsStore = defineStore('tabs', () => {
     closeTab(classTabId(classId))
   }
 
+  function openWebsite(websiteId: string, subTab: WebsiteSubTab = 'settings') {
+    const id = websiteTabId(websiteId)
+    if (findIndex(id) === -1) {
+      tabs.value.push({ id, type: 'item', itemKind: 'website', itemId: websiteId, websiteSubTab: subTab })
+    }
+    activeTabId.value = id
+  }
+
+  function setWebsiteSubTab(websiteId: string, subTab: WebsiteSubTab) {
+    const tab = tabs.value.find((t) => t.id === websiteTabId(websiteId))
+    if (tab) tab.websiteSubTab = subTab
+  }
+
+  function closeWebsiteTab(websiteId: string) {
+    closeTab(websiteTabId(websiteId))
+  }
+
   function setTabLabel(id: string, label: string) {
     const tab = tabs.value.find((t) => t.id === id)
     if (tab) tab.label = label
@@ -239,6 +262,9 @@ export const useTabsStore = defineStore('tabs', () => {
     closeAssetTab,
     closeDocumentTab,
     closeObjectTab,
-    closeClassTab
+    closeClassTab,
+    openWebsite,
+    setWebsiteSubTab,
+    closeWebsiteTab
   }
 })
