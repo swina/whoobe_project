@@ -192,7 +192,11 @@ function handleChildRemove(index: number) {
 }
 
 function handleAddChild() {
-  const children = [...(editItem.value.children || []), { label: 'New Item', children: [] }]
+  const label = 'New Item'
+  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const childPath = editItem.value.path ? `${editItem.value.path}/${slug}` : `/${slug}`
+  const children = [...(editItem.value.children || [])]
+  children.unshift({ label, path: childPath, children: [] })
   editItem.value = { ...editItem.value, children }
   emit('update', { index: props.index, item: editItem.value })
 }

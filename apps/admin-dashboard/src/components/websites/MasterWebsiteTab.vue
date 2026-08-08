@@ -282,7 +282,9 @@ async function deletePathGroup(pathGroup: WebsitePathRecord) {
 }
 
 function addRootItem(pathGroup: WebsitePathRecord) {
-  const items = [...pathGroup.items, { label: 'New Item', children: [] }]
+  const label = 'New Item'
+  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const items = [...pathGroup.items, { label, path: `/${slug}`, children: [] }]
   updatePathItems(pathGroup, items, true)
 }
 
@@ -290,7 +292,12 @@ function addChildItem(pathGroup: WebsitePathRecord, parentIndex: number) {
   const items = [...pathGroup.items]
   if (parentIndex >= 0 && parentIndex < items.length) {
     const parent = { ...items[parentIndex] }
-    parent.children = [...(parent.children || []), { label: 'New Item', children: [] }]
+    const label = 'New Item'
+    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    const childPath = parent.path ? `${parent.path}/${slug}` : `/${slug}`
+    const children = [...(parent.children || [])]
+    children.unshift({ label, path: childPath, children: [] })
+    parent.children = children
     items[parentIndex] = parent
   }
   updatePathItems(pathGroup, items, true)
