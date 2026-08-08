@@ -26,11 +26,11 @@ import {
   createWebsite,
   updateWebsite,
   deleteWebsite,
-  listMenus,
-  getMenu,
-  createMenu,
-  updateMenu,
-  deleteMenu,
+  listWebsitePaths,
+  getWebsitePath,
+  createWebsitePath,
+  updateWebsitePath,
+  deleteWebsitePath,
   listWhoobeOneSnippets,
   createWhoobeOneSnippet,
   updateWhoobeOneSnippet,
@@ -764,9 +764,10 @@ app.delete('/whoobe-one/kits/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE),
 // cms/whoobe-one-editor-integration-plan.md §4. Distinct from the
 // `/whoobe-one/templates` routes above: templates stay a reusable
 // starting-point library, pages are the CMS's actual content.
-app.get('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
-    const pages = await listWhoobePages();
+    const websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : undefined;
+    const pages = await listWhoobePages(websiteId);
     res.json({ pages });
   } catch (error: any) {
     console.error('List whoobe-one pages error:', error);
@@ -812,7 +813,7 @@ app.get(
 
 app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { translationGroupId, locale, slug, title, category, content, seo, sitemap, search, pimcoreId } = req.body ?? {};
+    const { translationGroupId, locale, slug, title, category, content, seo, sitemap, search, pimcoreId, path, websiteId } = req.body ?? {};
     if (typeof slug !== 'string' || !slug.trim() || typeof title !== 'string' || !title.trim() || content == null) {
       res.status(400).json({ error: 'slug, title, and content are required' });
       return;
@@ -829,6 +830,8 @@ app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
       sitemap: sitemap ?? null,
       search: search ?? null,
       pimcoreId: typeof pimcoreId === 'string' ? pimcoreId : null,
+      path: typeof path === 'string' ? path : null,
+      websiteId: typeof websiteId === 'string' ? websiteId : null,
     });
     res.status(201).json({ page });
   } catch (error: any) {
@@ -843,7 +846,7 @@ app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
 
 app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { slug, title, category, published, workflowState, content, locale, websiteId, seo, sitemap, search } = req.body ?? {};
+    const { slug, title, category, published, workflowState, content, locale, path, websiteId, seo, sitemap, search } = req.body ?? {};
 
     const page = await updateWhoobePage(req.params.id, {
       slug: typeof slug === 'string' ? slug : undefined,
@@ -853,6 +856,7 @@ app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE),
       workflowState: workflowState === null || typeof workflowState === 'string' ? workflowState : undefined,
       content: content !== undefined ? content : undefined,
       locale: typeof locale === 'string' ? locale : undefined,
+      path: path === null || typeof path === 'string' ? path : undefined,
       websiteId: websiteId === null || typeof websiteId === 'string' ? websiteId : undefined,
       seo: seo !== undefined ? seo : undefined,
       sitemap: sitemap !== undefined ? sitemap : undefined,
@@ -960,19 +964,19 @@ app.delete('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRI
   }
 });
 
-// --- Menus ---
-app.get('/whoobe-one/menus', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+// --- Website Paths ---
+app.get('/whoobe-one/website-paths', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : undefined;
-    const result = await listMenus(websiteId);
-    res.json({ menus: result });
+    const result = await listWebsitePaths(websiteId);
+    res.json({ paths: result });
   } catch (error: any) {
-    console.error('List menus error:', error);
-    res.status(500).json({ error: error.message || 'Failed to list menus' });
+    console.error('List website paths error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list website paths' });
   }
 });
 
-app.post('/whoobe-one/menus', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/website-paths', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { websiteId, name, items } = req.body ?? {};
     if (!websiteId || typeof websiteId !== 'string') {
@@ -983,56 +987,56 @@ app.post('/whoobe-one/menus', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
       res.status(400).json({ error: 'name is required' });
       return;
     }
-    const menu = await createMenu({
+    const path = await createWebsitePath({
       websiteId,
       name,
       items: Array.isArray(items) ? items : undefined,
     });
-    res.status(201).json({ menu });
+    res.status(201).json({ path });
   } catch (error: any) {
-    console.error('Create menu error:', error);
-    res.status(500).json({ error: error.message || 'Failed to create menu' });
+    console.error('Create website path error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create website path' });
   }
 });
 
-app.get('/whoobe-one/menus/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
-    const menu = await getMenu(req.params.id);
-    if (!menu) {
-      res.status(404).json({ error: 'Menu not found' });
+    const path = await getWebsitePath(req.params.id);
+    if (!path) {
+      res.status(404).json({ error: 'Website path not found' });
       return;
     }
-    res.json({ menu });
+    res.json({ path });
   } catch (error: any) {
-    console.error('Get menu error:', error);
-    res.status(500).json({ error: error.message || 'Failed to get menu' });
+    console.error('Get website path error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get website path' });
   }
 });
 
-app.patch('/whoobe-one/menus/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, items } = req.body ?? {};
-    const menu = await updateMenu(req.params.id, {
+    const path = await updateWebsitePath(req.params.id, {
       name: typeof name === 'string' ? name : undefined,
       items: Array.isArray(items) ? items : undefined,
     });
-    if (!menu) {
-      res.status(404).json({ error: 'Menu not found' });
+    if (!path) {
+      res.status(404).json({ error: 'Website path not found' });
       return;
     }
-    res.json({ menu });
+    res.json({ path });
   } catch (error: any) {
-    console.error('Update menu error:', error);
-    res.status(500).json({ error: error.message || 'Failed to update menu' });
+    console.error('Update website path error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update website path' });
   }
 });
 
-app.delete('/whoobe-one/menus/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    await deleteMenu(req.params.id);
+    await deleteWebsitePath(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete menu error:', error);
+    console.error('Delete website path error:', error);
     res.status(500).json({ error: error.message || 'Failed to delete menu' });
   }
 });

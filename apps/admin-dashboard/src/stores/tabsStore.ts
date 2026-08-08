@@ -12,16 +12,16 @@ import { ref } from 'vue'
 // with Preview (the read-only rendered HTML) as a second sub-tab, mirroring
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
-export type SectionKind = 'overview' | 'objects' | 'assets' | 'documents' | 'pages' | 'settings'
+export type SectionKind = 'overview' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'settings'
 export type MasterItemKind = 'asset' | 'document' | 'page' | 'object' | 'class' | 'website'
 export type AssetSubTab = 'preview' | 'editor' | 'metadata' | 'thumbnails'
 export type DocumentSubTab = 'editor' | 'preview'
 export type PageSubTab = 'editor' | 'settings' | 'preview'
-export type WebsiteSubTab = 'settings' | 'menus'
+export type WebsiteSubTab = 'settings' | 'paths'
 // A fixed, known-upfront set (docs/plans/UI/settings-ui-plan.md) - unlike
 // objectSubTab's free-form string (which varies per class's locales),
 // this is a real enum, matching AssetSubTab/DocumentSubTab's own pattern.
-export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'components' | 'roles' | 'security' | 'workflows' | 'websites'
+export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'components' | 'roles' | 'security' | 'workflows'
 
 export interface MainTab {
   id: string

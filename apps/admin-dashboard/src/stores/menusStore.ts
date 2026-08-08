@@ -1,37 +1,37 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchMenus, fetchMenuById, createMenu, updateMenu, deleteMenu, type MenuRecord, type MenuItem } from '../utils/menus-api'
+import { fetchWebsitePaths, fetchWebsitePathById, createWebsitePath, updateWebsitePath, deleteWebsitePath, type WebsitePathRecord, type MenuItem } from '../utils/menus-api'
 import { useAuthStore } from './authStore'
 
-export const useMenusStore = defineStore('menus', () => {
-  const menus = ref<MenuRecord[]>([])
+export const usePathStore = defineStore('paths', () => {
+  const paths = ref<WebsitePathRecord[]>([])
   const isLoading = ref(false)
 
-  async function refreshMenus(websiteId?: string): Promise<void> {
+  async function refreshPaths(websiteId?: string): Promise<void> {
     const authStore = useAuthStore()
     isLoading.value = true
     try {
-      menus.value = await fetchMenus(authStore.config.coreApiUrl, websiteId)
+      paths.value = await fetchWebsitePaths(authStore.config.coreApiUrl, websiteId)
     } catch (e) {
-      console.warn('Could not load menus:', e)
+      console.warn('Could not load website paths:', e)
     } finally {
       isLoading.value = false
     }
   }
 
-  async function getMenu(id: string): Promise<MenuRecord> {
+  async function getPath(id: string): Promise<WebsitePathRecord> {
     const authStore = useAuthStore()
-    return fetchMenuById(authStore.config.coreApiUrl, id)
+    return fetchWebsitePathById(authStore.config.coreApiUrl, id)
   }
 
   async function create(input: {
     websiteId: string
     name: string
     items?: MenuItem[]
-  }): Promise<MenuRecord> {
+  }): Promise<WebsitePathRecord> {
     const authStore = useAuthStore()
-    const created = await createMenu(authStore.config.coreApiUrl, input)
-    menus.value.push(created)
+    const created = await createWebsitePath(authStore.config.coreApiUrl, input)
+    paths.value.push(created)
     return created
   }
 
@@ -41,25 +41,25 @@ export const useMenusStore = defineStore('menus', () => {
       name?: string
       items?: MenuItem[]
     }
-  ): Promise<MenuRecord> {
+  ): Promise<WebsitePathRecord> {
     const authStore = useAuthStore()
-    const updated = await updateMenu(authStore.config.coreApiUrl, id, input)
-    const idx = menus.value.findIndex((m) => m.id === id)
-    if (idx !== -1) menus.value[idx] = updated
+    const updated = await updateWebsitePath(authStore.config.coreApiUrl, id, input)
+    const idx = paths.value.findIndex((p) => p.id === id)
+    if (idx !== -1) paths.value[idx] = updated
     return updated
   }
 
   async function remove(id: string): Promise<void> {
     const authStore = useAuthStore()
-    await deleteMenu(authStore.config.coreApiUrl, id)
-    menus.value = menus.value.filter((m) => m.id !== id)
+    await deleteWebsitePath(authStore.config.coreApiUrl, id)
+    paths.value = paths.value.filter((p) => p.id !== id)
   }
 
   return {
-    menus,
+    paths,
     isLoading,
-    refreshMenus,
-    getMenu,
+    refreshPaths,
+    getPath,
     create,
     update,
     remove,

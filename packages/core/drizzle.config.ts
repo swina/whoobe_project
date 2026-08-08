@@ -30,7 +30,7 @@ export default defineConfig({
     './src/db/workflow-transition-log-schema.ts',
     './src/db/migration-sources-schema.ts',
     './src/db/websites-schema.ts',
-    './src/db/menus-schema.ts',
+    './src/db/website-paths-schema.ts',
   ],
   out: './drizzle',
   dialect: 'postgresql',

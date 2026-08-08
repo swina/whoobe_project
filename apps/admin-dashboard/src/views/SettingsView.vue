@@ -40,8 +40,6 @@
 
         <WorkflowSettingsCard v-if="activeSubSection === 'workflows'" />
 
-        <WebsiteSettingsCard v-if="activeSubSection === 'websites'" />
-
         <div v-if="activeSubSection === 'general'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-6">
           <div class="space-y-4">
             <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">General Options</h3>
@@ -75,7 +73,6 @@ import ClassSettingsCard from '../components/objects/ClassSettingsCard.vue'
 import ComponentSettingsCard from '../components/objects/ComponentSettingsCard.vue'
 import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue'
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'
-import WebsiteSettingsCard from '../components/settings/WebsiteSettingsCard.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
 import {
   Sliders,
@@ -85,7 +82,6 @@ import {
   Users,
   Shield,
   Workflow,
-  Globe
 } from '@lucide/vue'
 
 const tabsStore = useTabsStore()
@@ -98,7 +94,6 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'roles', name: 'Roles', icon: Users },
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
-  { key: 'websites', name: 'Websites', icon: Globe },
 ]
 
 const activeSubSection = computed<SettingsSubSection>(() => {
@@ -118,7 +113,6 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   roles: { title: 'Roles / Users / Workspaces', description: 'Manage who can access this dashboard and what they can do.' },
   security: { title: 'Security', description: 'Two-factor authentication and account security.' },
   workflows: { title: 'Workflows', description: 'Author publish/review workflows for Data Object classes.' },
-  websites: { title: 'Websites', description: 'Manage websites, their domains, locales, and navigation menus.' }
 }
 
 const sectionTitle = computed(() => sectionTitles[activeSubSection.value].title)

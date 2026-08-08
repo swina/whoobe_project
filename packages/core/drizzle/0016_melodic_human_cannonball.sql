@@ -1,0 +1,1 @@
+ALTER TABLE "whoobe_pages" ADD COLUMN "path" text;

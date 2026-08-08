@@ -69,6 +69,11 @@ export const whoobePages = pgTable(
     // have one; the natural key a re-run of the migration importer would
     // upsert against, same role cms_documents.pimcoreId already plays.
     pimcoreId: text('pimcore_id'),
+    // Full hierarchical URL path derived from the menu tree association
+    // (e.g. "/about/team"). Null when the page hasn't been placed in a menu
+    // tree yet — the flat `slug` column is the single-segment identifier,
+    // `path` is the full navigation path set by menu association.
+    path: text('path'),
     // Optional website association for multi-site setups. Null for single-site mode
     // or pages not yet assigned to a specific website.
     websiteId: uuid('website_id'),

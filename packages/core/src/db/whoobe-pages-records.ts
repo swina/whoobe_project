@@ -16,14 +16,22 @@ export interface WhoobePageRecord {
   sitemap: PageSitemapSettings | null;
   search: PageSearchSettings | null;
   pimcoreId: string | null;
+  path: string | null;
   websiteId: string | null;
   publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export async function listWhoobePages(): Promise<WhoobePageRecord[]> {
+export async function listWhoobePages(websiteId?: string | null): Promise<WhoobePageRecord[]> {
   const db = getDb();
+  const conditions: any[] = [];
+  if (websiteId) {
+    conditions.push(eq(whoobePages.websiteId, websiteId));
+  }
+  if (conditions.length) {
+    return db.select().from(whoobePages).where(and(...conditions)).orderBy(desc(whoobePages.createdAt));
+  }
   return db.select().from(whoobePages).orderBy(desc(whoobePages.createdAt));
 }
 
@@ -52,6 +60,7 @@ export async function createWhoobePage(input: {
   sitemap?: PageSitemapSettings | null;
   search?: PageSearchSettings | null;
   pimcoreId?: string | null;
+  path?: string | null;
   websiteId?: string | null;
 }): Promise<WhoobePageRecord> {
   const db = getDb();
@@ -72,6 +81,7 @@ export async function createWhoobePage(input: {
       sitemap: input.sitemap ?? null,
       search: input.search ?? null,
       pimcoreId: input.pimcoreId ?? null,
+      path: input.path ?? null,
       websiteId: input.websiteId ?? null,
     })
     .returning();
@@ -88,6 +98,7 @@ export async function updateWhoobePage(
     workflowState?: string | null;
     content?: unknown;
     locale?: string;
+    path?: string | null;
     websiteId?: string | null;
     seo?: PageSeo | null;
     sitemap?: PageSitemapSettings | null;
@@ -106,6 +117,7 @@ export async function updateWhoobePage(
   if (input.sitemap !== undefined) values.sitemap = input.sitemap;
   if (input.search !== undefined) values.search = input.search;
   if (input.locale !== undefined) values.locale = input.locale;
+  if (input.path !== undefined) values.path = input.path;
   if (input.websiteId !== undefined) values.websiteId = input.websiteId;
 
   if (input.published !== undefined) {

@@ -1,0 +1,1 @@
+ALTER TABLE "menus" RENAME TO "website_paths";
