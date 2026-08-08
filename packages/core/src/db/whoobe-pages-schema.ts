@@ -69,6 +69,9 @@ export const whoobePages = pgTable(
     // have one; the natural key a re-run of the migration importer would
     // upsert against, same role cms_documents.pimcoreId already plays.
     pimcoreId: text('pimcore_id'),
+    // Optional website association for multi-site setups. Null for single-site mode
+    // or pages not yet assigned to a specific website.
+    websiteId: uuid('website_id'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

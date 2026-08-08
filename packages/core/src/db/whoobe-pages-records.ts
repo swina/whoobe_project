@@ -1,4 +1,4 @@
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { whoobePages, type PageSeo, type PageSitemapSettings, type PageSearchSettings } from './whoobe-pages-schema.js';
 
@@ -16,6 +16,7 @@ export interface WhoobePageRecord {
   sitemap: PageSitemapSettings | null;
   search: PageSearchSettings | null;
   pimcoreId: string | null;
+  websiteId: string | null;
   publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -51,6 +52,7 @@ export async function createWhoobePage(input: {
   sitemap?: PageSitemapSettings | null;
   search?: PageSearchSettings | null;
   pimcoreId?: string | null;
+  websiteId?: string | null;
 }): Promise<WhoobePageRecord> {
   const db = getDb();
   const [row] = await db
@@ -70,6 +72,7 @@ export async function createWhoobePage(input: {
       sitemap: input.sitemap ?? null,
       search: input.search ?? null,
       pimcoreId: input.pimcoreId ?? null,
+      websiteId: input.websiteId ?? null,
     })
     .returning();
   return row;
@@ -85,6 +88,7 @@ export async function updateWhoobePage(
     workflowState?: string | null;
     content?: unknown;
     locale?: string;
+    websiteId?: string | null;
     seo?: PageSeo | null;
     sitemap?: PageSitemapSettings | null;
     search?: PageSearchSettings | null;
@@ -102,6 +106,7 @@ export async function updateWhoobePage(
   if (input.sitemap !== undefined) values.sitemap = input.sitemap;
   if (input.search !== undefined) values.search = input.search;
   if (input.locale !== undefined) values.locale = input.locale;
+  if (input.websiteId !== undefined) values.websiteId = input.websiteId;
 
   if (input.published !== undefined) {
     values.published = input.published;
@@ -124,6 +129,37 @@ export async function deleteWhoobePage(id: string): Promise<void> {
   await db.delete(whoobePages).where(eq(whoobePages.id, id));
 }
 
+/**
+ * Public lookup: returns a single published page by locale + slug. Respects
+ * the `published` gate - unpublished pages are never returned through this
+ * function, regardless of workflowState.
+ */
+export async function getPublishedWhoobePageBySlug(
+  locale: string,
+  slug: string,
+  websiteId?: string | null
+): Promise<WhoobePageRecord | null> {
+  const db = getDb();
+  const conditions = [eq(whoobePages.locale, locale), eq(whoobePages.slug, slug), eq(whoobePages.published, true)];
+  if (websiteId) {
+    conditions.push(eq(whoobePages.websiteId, websiteId));
+  }
+  const [row] = await db.select().from(whoobePages).where(and(...conditions)).limit(1);
+  return row ?? null;
+}
+
+/**
+ * List all published pages. Used for sitemap generation and public listing.
+ */
+export async function listPublishedWhoobePages(websiteId?: string | null): Promise<WhoobePageRecord[]> {
+  const db = getDb();
+  const conditions = [eq(whoobePages.published, true)];
+  if (websiteId) {
+    conditions.push(eq(whoobePages.websiteId, websiteId));
+  }
+  return db.select().from(whoobePages).where(and(...conditions)).orderBy(desc(whoobePages.updatedAt));
+}
+
 /** Insert-or-update-by-`pimcoreId` - the migration importer's own re-run
  * path (packages/migration-tool), same role `upsertDocumentRecord`
  * (cms-records.ts) plays for `cms_documents`. Re-importing the same
@@ -144,6 +180,7 @@ export async function upsertWhoobePageByPimcoreId(input: {
   seo?: PageSeo | null;
   sitemap?: PageSitemapSettings | null;
   search?: PageSearchSettings | null;
+  websiteId?: string | null;
 }): Promise<WhoobePageRecord> {
   const db = getDb();
   const now = new Date();
