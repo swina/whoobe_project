@@ -33,6 +33,7 @@ export const usePagesStore = defineStore('pages', () => {
       published?: boolean
       workflowState?: string | null
       locale?: string
+      websiteId?: string | null
       seo?: PageSeo | null
       sitemap?: PageSitemapSettings | null
       search?: PageSearchSettings | null

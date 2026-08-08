@@ -287,6 +287,7 @@ import {
   Sun,
   Moon,
   Blocks,
+  Globe,
   Table2
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
@@ -345,7 +346,8 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'components', name: 'Components', icon: Blocks },
   { key: 'roles', name: 'Roles/Users/Workspaces', icon: Users },
   { key: 'security', name: 'Security', icon: Shield },
-  { key: 'workflows', name: 'Workflows', icon: Workflow }
+  { key: 'workflows', name: 'Workflows', icon: Workflow },
+  { key: 'websites', name: 'Websites', icon: Globe }
 ]
 
 const settingsSubLabels: Record<SettingsSubSection, string> = {
@@ -355,7 +357,8 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   components: 'Components',
   roles: 'Roles/Users/Workspaces',
   security: 'Security',
-  workflows: 'Workflows'
+  workflows: 'Workflows',
+  websites: 'Websites'
 }
 
 function isSettingsSubSectionActive(key: SettingsSubSection): boolean {

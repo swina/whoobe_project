@@ -843,7 +843,7 @@ app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
 
 app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { slug, title, category, published, workflowState, content, locale, seo, sitemap, search } = req.body ?? {};
+    const { slug, title, category, published, workflowState, content, locale, websiteId, seo, sitemap, search } = req.body ?? {};
 
     const page = await updateWhoobePage(req.params.id, {
       slug: typeof slug === 'string' ? slug : undefined,
@@ -853,6 +853,7 @@ app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE),
       workflowState: workflowState === null || typeof workflowState === 'string' ? workflowState : undefined,
       content: content !== undefined ? content : undefined,
       locale: typeof locale === 'string' ? locale : undefined,
+      websiteId: websiteId === null || typeof websiteId === 'string' ? websiteId : undefined,
       seo: seo !== undefined ? seo : undefined,
       sitemap: sitemap !== undefined ? sitemap : undefined,
       search: search !== undefined ? search : undefined,
