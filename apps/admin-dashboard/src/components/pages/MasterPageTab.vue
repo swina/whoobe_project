@@ -1,9 +1,11 @@
 <template>
-  <div v-if="page" class="h-full flex flex-col">
+  <div v-if="page || isNewPage" class="h-full flex flex-col">
     <div class="flex shrink-0 px-6 pt-2 pb-2 space-y-1 gap-6">
       <div class="flex items-center gap-2">
-        <h4 class="text-lg font-bold text-slate-100 light:text-slate-900">{{ page.title }}</h4>
+        <h4 v-if="page" class="text-lg font-bold text-slate-100 light:text-slate-900">{{ page.title }}</h4>
+        <h4 v-else class="text-lg font-bold text-slate-100 light:text-slate-900">New Page</h4>
         <span
+          v-if="page"
           :class="[
             'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
             page.published ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
@@ -11,8 +13,9 @@
         >
           {{ page.published ? 'published' : (page.workflowState || 'draft') }}
         </span>
+        <span v-else class="px-2 py-0.5 text-[10px] font-bold rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 uppercase">new</span>
       </div>
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 font-mono">
+      <div v-if="page" class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 font-mono">
         <span>{{ page.slug }}</span>
         <span>locale: {{ page.locale }}</span>
         <span v-if="page.pimcoreId">pimcore id: {{ page.pimcoreId }}</span>
@@ -33,13 +36,16 @@
 
     <div class="flex-1 min-h-0 px-2 pb-2 pt-2">
       <div v-show="activeSubTab === 'editor'" class="h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-2">
-        <WhoobeOneEmbed :page-id="props.pageId" />
+        <WhoobeOneEmbed v-if="!isNewPage" :page-id="props.pageId" />
+        <div v-else class="h-full flex items-center justify-center text-xs text-slate-500">Save this page first to open the editor.</div>
       </div>
       <div v-show="activeSubTab === 'settings'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 px-6 py-4">
-        <PageSettingsTab :page-id="props.pageId" @saved="onSettingsSaved" />
+        <PageSettingsTab v-if="!isNewPage" :page-id="props.pageId" @saved="onSettingsSaved" />
+        <PageCreateForm v-else @created="onPageCreated" @cancel="closeTab" />
       </div>
       <div v-show="activeSubTab === 'preview'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6">
-        <PagePreviewTab :page-id="props.pageId" />
+        <PagePreviewTab v-if="!isNewPage" :page-id="props.pageId" />
+        <div v-else class="h-full flex items-center justify-center text-xs text-slate-500">Save this page first to preview it.</div>
       </div>
     </div>
   </div>
@@ -56,11 +62,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { usePagesStore } from '../../stores/pagesStore'
-import { useTabsStore, type PageSubTab } from '../../stores/tabsStore'
+import { useTabsStore, type PageSubTab, pageTabId } from '../../stores/tabsStore'
 import type { WhoobeOnePage } from '../../utils/pages-api'
 import WhoobeOneEmbed from './WhoobeOneEmbed.vue'
 import PageSettingsTab from './PageSettingsTab.vue'
 import PagePreviewTab from './PagePreviewTab.vue'
+import PageCreateForm from './PageCreateForm.vue'
 
 const props = defineProps<{
   pageId: string
@@ -71,6 +78,8 @@ const tabsStore = useTabsStore()
 const page = ref<WhoobeOnePage | null>(null)
 const isLoading = ref(true)
 
+const isNewPage = computed(() => props.pageId.startsWith('new:'))
+
 const subTabs: { key: PageSubTab; label: string; icon: string }[] = [
   { key: 'editor', label: 'Editor', icon: '🎨' },
   { key: 'settings', label: 'Settings', icon: '⚙️' },
@@ -78,13 +87,14 @@ const subTabs: { key: PageSubTab; label: string; icon: string }[] = [
 ]
 
 const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'page' && t.itemId === props.pageId))
-const activeSubTab = computed<PageSubTab>(() => currentTab.value?.pageSubTab ?? 'editor')
+const activeSubTab = computed<PageSubTab>(() => currentTab.value?.pageSubTab ?? (isNewPage.value ? 'settings' : 'editor'))
 
 function setSubTab(tab: PageSubTab) {
   tabsStore.setPageSubTab(props.pageId, tab)
 }
 
 async function load() {
+  if (isNewPage.value) return
   isLoading.value = true
   try {
     page.value = await pagesStore.getPage(props.pageId)
@@ -98,6 +108,21 @@ async function load() {
 
 function onSettingsSaved(updated: WhoobeOnePage) {
   page.value = updated
+}
+
+function onPageCreated(created: WhoobeOnePage) {
+  page.value = created
+  const oldId = props.pageId
+  const tab = tabsStore.tabs.find((t) => t.itemKind === 'page' && t.itemId === oldId)
+  if (tab) {
+    tab.id = pageTabId(created.id)
+    tab.itemId = created.id
+    tab.pageSubTab = 'editor'
+  }
+}
+
+function closeTab() {
+  tabsStore.closeTab(pageTabId(props.pageId))
 }
 
 onMounted(load)
