@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { usePagesStore } from '../../stores/pagesStore'
 import type { MenuItem } from '../../utils/menus-api'
 
@@ -115,6 +115,12 @@ const editItem = ref<MenuItem>({ ...props.item, path: props.item.path ?? '', chi
 const isDragOver = ref(false)
 const dragSourceIndex = ref<number | null>(null)
 const pathConflict = ref(false)
+
+watch(() => props.item, (newItem) => {
+  if (!editing.value) {
+    editItem.value = { ...newItem, path: newItem.path ?? '', children: [...(newItem.children || [])] }
+  }
+}, { deep: true })
 
 const pagePublished = computed(() => {
   if (!props.item.pageId) return false
