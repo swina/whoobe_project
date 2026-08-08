@@ -49,41 +49,54 @@
           </div>
         </form>
       </div>
-      <div v-show="activeSubTab === 'menus'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-4">
-        <div v-if="menusStore.isLoading && menusStore.menus.length === 0" class="text-xs text-slate-500 text-center py-4">Loading menus…</div>
+      <div v-show="activeSubTab === 'paths'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-4">
+        <div v-if="pathsStore.isLoading && pathsStore.paths.length === 0" class="text-xs text-slate-500 text-center py-4">Loading paths…</div>
 
-        <div v-else-if="menusStore.menus.length === 0" class="text-xs text-slate-500 text-center py-4 italic">No menus yet for this website.</div>
+        <div v-else-if="pathsStore.paths.length === 0" class="text-xs text-slate-500 text-center py-4 italic">No path groups yet for this website.</div>
 
-        <div v-for="menu in menusStore.menus" :key="menu.id" class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-white/40 overflow-hidden mb-4">
+        <div v-for="pg in pathsStore.paths" :key="pg.id" class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-white/40 overflow-hidden mb-4">
           <div class="flex items-center justify-between px-3 py-2 border-b border-slate-800/60 light:border-slate-200/60 bg-slate-950/60 light:bg-white/60">
-            <span class="text-xs font-semibold text-slate-200 light:text-slate-800">{{ menu.name }}</span>
+            <span class="text-xs font-semibold text-slate-200 light:text-slate-800">{{ pg.name }}</span>
             <div class="flex items-center gap-2">
-              <button @click="addRootItem(menu)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">+ Add item</button>
-              <button @click="renameMenu(menu)" class="text-xs text-slate-400 hover:text-slate-200">Rename</button>
-              <button @click="deleteMenu(menu)" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Delete</button>
+              <button @click="addRootItem(pg)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">+ Add item</button>
+              <button @click="renamePathGroup(pg)" class="text-xs text-slate-400 hover:text-slate-200">Rename</button>
+              <button @click="deletePathGroup(pg)" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Delete</button>
             </div>
           </div>
-          <div v-if="menu.items.length" class="p-2 space-y-1">
+          <div v-if="pg.items.length" class="p-2 space-y-1">
             <MenuItemRow
-              v-for="(item, i) in menu.items"
+              v-for="(item, i) in pg.items"
               :key="i"
               :item="item"
               :depth="0"
               :index="i"
-              :items="menu.items"
-              @update="updateItem(menu, $event)"
-              @remove="removeItem(menu, i)"
-              @add-child="addChildItem(menu, i)"
+              :items="pg.items"
+              :item-path="[]"
+              :website-id="websiteId"
+              :website-locale="website?.defaultLocale ?? 'en'"
+              @update="updateItem(pg, $event)"
+              @remove="removeItem(pg, i)"
+              @add-child="addChildItem(pg, i)"
+              @link-page="(path: number[]) => openPagePicker(pg, path)"
             />
           </div>
           <div v-else class="p-4 text-center text-[10px] text-slate-600 italic">No items. Click "+ Add item" to create one.</div>
         </div>
 
         <div class="flex justify-center pt-2">
-          <button @click="createMenuAction" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">+ New Menu</button>
+          <button @click="createPathGroup" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">+ New Path Group</button>
         </div>
       </div>
     </div>
+
+    <!-- Page Picker Drawer -->
+    <PagePickerDrawer
+      v-if="showPagePicker"
+      :website-id="websiteId"
+      :locale="website?.defaultLocale ?? 'en'"
+      @select="onPageSelected"
+      @close="showPagePicker = false"
+    />
   </div>
 
   <div v-else-if="isLoading" class="p-6 text-center text-xs text-slate-500">Loading website…</div>
@@ -98,18 +111,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useWebsitesStore } from '../../stores/websitesStore'
-import { useMenusStore } from '../../stores/menusStore'
+import { usePathStore } from '../../stores/menusStore'
+import { usePagesStore } from '../../stores/pagesStore'
 import { useTabsStore, type WebsiteSubTab, websiteTabId } from '../../stores/tabsStore'
 import type { WebsiteRecord } from '../../utils/websites-api'
-import type { MenuItem, MenuRecord } from '../../utils/menus-api'
+import type { MenuItem, WebsitePathRecord } from '../../utils/menus-api'
+import type { WhoobeOnePage } from '../../utils/pages-api'
 import MenuItemRow from '../settings/MenuItemRow.vue'
+import PagePickerDrawer from './PagePickerDrawer.vue'
 
 const props = defineProps<{
   websiteId: string
 }>()
 
 const websitesStore = useWebsitesStore()
-const menusStore = useMenusStore()
+const pathsStore = usePathStore()
+const pagesStore = usePagesStore()
 const tabsStore = useTabsStore()
 const website = ref<WebsiteRecord | null>(null)
 const isLoading = ref(true)
@@ -125,11 +142,14 @@ const form = ref({
 
 const subTabs: { key: WebsiteSubTab; label: string }[] = [
   { key: 'settings', label: 'Settings' },
-  { key: 'menus', label: 'Menus' },
+  { key: 'paths', label: 'Paths' },
 ]
 
 const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'website' && t.itemId === props.websiteId))
 const activeSubTab = computed<WebsiteSubTab>(() => currentTab.value?.websiteSubTab ?? 'settings')
+
+const showPagePicker = ref(false)
+const pendingPagePicker = ref<{ pathGroup: WebsitePathRecord; itemPath: number[] } | null>(null)
 
 function setSubTab(tab: WebsiteSubTab) {
   tabsStore.setWebsiteSubTab(props.websiteId, tab)
@@ -172,91 +192,146 @@ async function save() {
   }
 }
 
-// Menu functions (adapted from MenuEditor.vue)
-async function createMenuAction() {
-  const name = prompt('Menu name:', 'Main Menu')
+// --- Page Picker ---
+
+function openPagePicker(pathGroup: WebsitePathRecord, itemPath: number[]) {
+  pendingPagePicker.value = { pathGroup, itemPath }
+  showPagePicker.value = true
+}
+
+function getItemByPath(items: MenuItem[], path: number[]): MenuItem | null {
+  let node: MenuItem | undefined
+  let current = items
+  for (const idx of path) {
+    node = current[idx]
+    if (!node) return null
+    current = node.children || []
+  }
+  return node ?? null
+}
+
+function setItemByPath(items: MenuItem[], path: number[], updater: (item: MenuItem) => MenuItem): boolean {
+  if (path.length === 0) return false
+  let current = items
+  for (let i = 0; i < path.length - 1; i++) {
+    const node = current[path[i]]
+    if (!node) return false
+    current = node.children || []
+  }
+  const lastIdx = path[path.length - 1]
+  if (lastIdx < 0 || lastIdx >= current.length) return false
+  current[lastIdx] = updater(current[lastIdx])
+  return true
+}
+
+async function onPageSelected(page: WhoobeOnePage) {
+  if (!pendingPagePicker.value) return
+  const { pathGroup, itemPath } = pendingPagePicker.value
+  const fresh = pathsStore.paths.find((p) => p.id === pathGroup.id)
+  if (!fresh) {
+    showPagePicker.value = false
+    pendingPagePicker.value = null
+    return
+  }
+  const items = JSON.parse(JSON.stringify(fresh.items))
+  const updated = setItemByPath(items, itemPath, (item) => ({
+    ...item,
+    pageId: page.id,
+    label: page.title,
+  }))
+  if (!updated) {
+    console.warn('Could not find item at path', itemPath)
+    showPagePicker.value = false
+    pendingPagePicker.value = null
+    return
+  }
+  await updatePathItems(fresh, items)
+  showPagePicker.value = false
+  pendingPagePicker.value = null
+}
+
+// --- Path Group CRUD ---
+
+async function createPathGroup() {
+  const name = prompt('Path group name:', 'Main Navigation')
   if (!name?.trim()) return
   try {
-    await menusStore.create({ websiteId: props.websiteId, name: name.trim() })
+    await pathsStore.create({ websiteId: props.websiteId, name: name.trim() })
   } catch (e: any) {
-    alert(e?.message || 'Failed to create menu')
+    alert(e?.message || 'Failed to create path group')
   }
 }
 
-async function renameMenu(menu: MenuRecord) {
-  const name = prompt('Rename menu:', menu.name)
-  if (!name?.trim() || name.trim() === menu.name) return
+async function renamePathGroup(pathGroup: WebsitePathRecord) {
+  const name = prompt('Rename path group:', pathGroup.name)
+  if (!name?.trim() || name.trim() === pathGroup.name) return
   try {
-    await menusStore.update(menu.id, { name: name.trim() })
+    await pathsStore.update(pathGroup.id, { name: name.trim() })
   } catch (e: any) {
-    alert(e?.message || 'Failed to rename menu')
+    alert(e?.message || 'Failed to rename path group')
   }
 }
 
-async function deleteMenu(menu: MenuRecord) {
-  if (!confirm(`Delete menu "${menu.name}"?`)) return
+async function deletePathGroup(pathGroup: WebsitePathRecord) {
+  if (!confirm(`Delete path group "${pathGroup.name}"?`)) return
   try {
-    await menusStore.remove(menu.id)
+    await pathsStore.remove(pathGroup.id)
   } catch (e: any) {
-    alert(e?.message || 'Failed to delete menu')
+    alert(e?.message || 'Failed to delete path group')
   }
 }
 
-function addRootItem(menu: MenuRecord) {
-  const items = [...menu.items, { label: 'New Item', children: [] }]
-  updateMenuItems(menu, items)
+function addRootItem(pathGroup: WebsitePathRecord) {
+  const items = [...pathGroup.items, { label: 'New Item', children: [] }]
+  updatePathItems(pathGroup, items, true)
 }
 
-function addChildItem(menu: MenuRecord, parentIndex: number) {
-  const items = [...menu.items]
-  const addChild = (nodes: MenuItem[], idx: number): boolean => {
-    if (idx === 0) {
-      nodes.push({ label: 'New Item', children: [] })
-      return true
-    }
-    const [head, ...rest] = nodes
-    if (rest.length > 0) return addChild(rest, idx - 1)
-    return false
+function addChildItem(pathGroup: WebsitePathRecord, parentIndex: number) {
+  const items = [...pathGroup.items]
+  if (parentIndex >= 0 && parentIndex < items.length) {
+    const parent = { ...items[parentIndex] }
+    parent.children = [...(parent.children || []), { label: 'New Item', children: [] }]
+    items[parentIndex] = parent
   }
-  addChild(items, parentIndex)
-  updateMenuItems(menu, items)
+  updatePathItems(pathGroup, items, true)
 }
 
-function updateItem(menu: MenuRecord, payload: { index: number; item: MenuItem }) {
-  const items = [...menu.items]
-  const updateRecursive = (nodes: MenuItem[], idx: number): boolean => {
-    if (idx === 0) {
-      nodes.splice(0, 1, payload.item)
-      return true
-    }
-    const [head, ...rest] = nodes
-    if (rest.length > 0) return updateRecursive(rest, idx - 1)
-    return false
+function updateItem(pathGroup: WebsitePathRecord, payload: { index: number; item: MenuItem }) {
+  const items = [...pathGroup.items]
+  if (payload.index >= 0 && payload.index < items.length) {
+    items[payload.index] = payload.item
   }
-  updateRecursive(items, payload.index)
-  updateMenuItems(menu, items)
+  updatePathItems(pathGroup, items, true)
 }
 
-function removeItem(menu: MenuRecord, index: number) {
-  const items = [...menu.items]
-  items.splice(index, 1)
-  updateMenuItems(menu, items)
+function removeItem(pathGroup: WebsitePathRecord, index: number) {
+  const items = [...pathGroup.items]
+  if (index >= 0 && index < items.length) {
+    items.splice(index, 1)
+  }
+  updatePathItems(pathGroup, items, true)
 }
 
-async function updateMenuItems(menu: MenuRecord, items: MenuItem[]) {
+async function updatePathItems(pathGroup: WebsitePathRecord, items: MenuItem[], optimistic = false) {
+  if (optimistic) {
+    const pg = pathsStore.paths.find((p) => p.id === pathGroup.id)
+    if (pg) pg.items = items
+  }
   try {
-    await menusStore.update(menu.id, { items })
+    await pathsStore.update(pathGroup.id, { items })
   } catch (e: any) {
-    alert(e?.message || 'Failed to update menu')
+    alert(e?.message || 'Failed to update path group')
+    if (optimistic) pathsStore.refreshPaths(props.websiteId)
   }
 }
 
 onMounted(() => {
   load()
-  menusStore.refreshMenus(props.websiteId)
+  pathsStore.refreshPaths(props.websiteId)
 })
+
 watch(() => props.websiteId, () => {
   load()
-  menusStore.refreshMenus(props.websiteId)
+  pathsStore.refreshPaths(props.websiteId)
 })
 </script>

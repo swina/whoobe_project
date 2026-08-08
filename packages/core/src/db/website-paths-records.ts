@@ -1,8 +1,8 @@
 import { eq, desc } from 'drizzle-orm';
 import { getDb } from './client.js';
-import { menus, type MenuItem } from './menus-schema.js';
+import { websitePaths, type MenuItem } from './website-paths-schema.js';
 
-export interface MenuRecord {
+export interface WebsitePathRecord {
   id: string;
   websiteId: string;
   name: string;
@@ -11,9 +11,9 @@ export interface MenuRecord {
   updatedAt: Date;
 }
 
-export async function listMenus(websiteId?: string): Promise<MenuRecord[]> {
+export async function listWebsitePaths(websiteId?: string): Promise<WebsitePathRecord[]> {
   const db = getDb();
-  const query = db.select().from(menus).orderBy(desc(menus.createdAt));
+  const query = db.select().from(websitePaths).orderBy(desc(websitePaths.createdAt));
   if (websiteId) {
     const rows = await query;
     return rows.filter((m) => m.websiteId === websiteId);
@@ -21,20 +21,20 @@ export async function listMenus(websiteId?: string): Promise<MenuRecord[]> {
   return query;
 }
 
-export async function getMenu(id: string): Promise<MenuRecord | null> {
+export async function getWebsitePath(id: string): Promise<WebsitePathRecord | null> {
   const db = getDb();
-  const [row] = await db.select().from(menus).where(eq(menus.id, id)).limit(1);
+  const [row] = await db.select().from(websitePaths).where(eq(websitePaths.id, id)).limit(1);
   return row ?? null;
 }
 
-export async function createMenu(input: {
+export async function createWebsitePath(input: {
   websiteId: string;
   name: string;
   items?: MenuItem[];
-}): Promise<MenuRecord> {
+}): Promise<WebsitePathRecord> {
   const db = getDb();
   const [row] = await db
-    .insert(menus)
+    .insert(websitePaths)
     .values({
       websiteId: input.websiteId,
       name: input.name,
@@ -44,22 +44,22 @@ export async function createMenu(input: {
   return row;
 }
 
-export async function updateMenu(
+export async function updateWebsitePath(
   id: string,
   input: {
     name?: string;
     items?: MenuItem[];
   }
-): Promise<MenuRecord | null> {
+): Promise<WebsitePathRecord | null> {
   const db = getDb();
   const values: Record<string, unknown> = { updatedAt: new Date() };
   if (input.name !== undefined) values.name = input.name;
   if (input.items !== undefined) values.items = input.items;
-  const [row] = await db.update(menus).set(values).where(eq(menus.id, id)).returning();
+  const [row] = await db.update(websitePaths).set(values).where(eq(websitePaths.id, id)).returning();
   return row ?? null;
 }
 
-export async function deleteMenu(id: string): Promise<void> {
+export async function deleteWebsitePath(id: string): Promise<void> {
   const db = getDb();
-  await db.delete(menus).where(eq(menus.id, id));
+  await db.delete(websitePaths).where(eq(websitePaths.id, id));
 }

@@ -49,6 +49,8 @@ export interface WhoobeOnePage {
   sitemap: PageSitemapSettings | null
   search: PageSearchSettings | null
   pimcoreId: string | null
+  path: string | null
+  websiteId: string | null
   publishedAt: string | null
   createdAt: string
   updatedAt: string
@@ -72,8 +74,9 @@ async function parseJsonOrThrow(res: Response): Promise<any> {
   return res.json()
 }
 
-export async function fetchPages(baseUrl: string): Promise<WhoobeOnePage[]> {
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/pages`, { credentials: 'include' })
+export async function fetchPages(baseUrl: string, websiteId?: string): Promise<WhoobeOnePage[]> {
+  const params = websiteId ? `?websiteId=${encodeURIComponent(websiteId)}` : ''
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/pages${params}`, { credentials: 'include' })
   const body = await parseJsonOrThrow(res)
   return body.pages
 }
@@ -94,6 +97,7 @@ export async function updatePageById(
     published?: boolean
     workflowState?: string | null
     locale?: string
+    path?: string | null
     websiteId?: string | null
     seo?: PageSeo | null
     sitemap?: PageSitemapSettings | null
@@ -117,6 +121,7 @@ export async function createPageById(
     title: string
     category?: string
     content: unknown
+    websiteId?: string | null
   }
 ): Promise<WhoobeOnePage> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/pages`, {

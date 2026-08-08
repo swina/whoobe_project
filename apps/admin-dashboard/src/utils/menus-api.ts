@@ -4,10 +4,11 @@ export interface MenuItem {
   label: string
   pageId?: string | null
   url?: string | null
+  path?: string | null
   children?: MenuItem[]
 }
 
-export interface MenuRecord {
+export interface WebsitePathRecord {
   id: string
   websiteId: string
   name: string
@@ -34,57 +35,57 @@ async function parseJsonOrThrow(res: Response): Promise<any> {
   return res.json()
 }
 
-export async function fetchMenus(baseUrl: string, websiteId?: string): Promise<MenuRecord[]> {
+export async function fetchWebsitePaths(baseUrl: string, websiteId?: string): Promise<WebsitePathRecord[]> {
   const params = websiteId ? `?websiteId=${encodeURIComponent(websiteId)}` : ''
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/menus${params}`, { credentials: 'include' })
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/website-paths${params}`, { credentials: 'include' })
   const body = await parseJsonOrThrow(res)
-  return body.menus
+  return body.paths
 }
 
-export async function fetchMenuById(baseUrl: string, id: string): Promise<MenuRecord> {
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/menus/${id}`, { credentials: 'include' })
+export async function fetchWebsitePathById(baseUrl: string, id: string): Promise<WebsitePathRecord> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/website-paths/${id}`, { credentials: 'include' })
   const body = await parseJsonOrThrow(res)
-  return body.menu
+  return body.path
 }
 
-export async function createMenu(
+export async function createWebsitePath(
   baseUrl: string,
   input: {
     websiteId: string
     name: string
     items?: MenuItem[]
   }
-): Promise<MenuRecord> {
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/menus`, {
+): Promise<WebsitePathRecord> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/website-paths`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
     credentials: 'include',
   })
   const body = await parseJsonOrThrow(res)
-  return body.menu
+  return body.path
 }
 
-export async function updateMenu(
+export async function updateWebsitePath(
   baseUrl: string,
   id: string,
   input: {
     name?: string
     items?: MenuItem[]
   }
-): Promise<MenuRecord> {
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/menus/${id}`, {
+): Promise<WebsitePathRecord> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/website-paths/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
     credentials: 'include',
   })
   const body = await parseJsonOrThrow(res)
-  return body.menu
+  return body.path
 }
 
-export async function deleteMenu(baseUrl: string, id: string): Promise<void> {
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/menus/${id}`, {
+export async function deleteWebsitePath(baseUrl: string, id: string): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/website-paths/${id}`, {
     method: 'DELETE',
     credentials: 'include',
   })

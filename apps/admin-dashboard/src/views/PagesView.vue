@@ -90,13 +90,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { FileText } from '@lucide/vue'
 import { usePagesStore } from '../stores/pagesStore'
 import { useTabsStore } from '../stores/tabsStore'
 
 const pagesStore = usePagesStore()
 const tabsStore = useTabsStore()
+
+onMounted(() => {
+  pagesStore.refreshPages()
+})
 
 const searchQuery = ref('')
 const pageSize = ref(25)

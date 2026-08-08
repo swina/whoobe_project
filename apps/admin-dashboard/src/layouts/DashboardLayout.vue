@@ -108,9 +108,9 @@
             v-if="item.section === 'settings' && isSettingsMenuExpanded && !isSidebarCollapsed"
             class="ml-3 pl-2.5 border-l border-slate-800/80 light:border-slate-200/80 space-y-1 py-1"
           >
-            <template v-for="sub in settingsSubItems" :key="sub.key">
             <button
-              @click="sub.key === 'websites' ? toggleWebsites() : tabsStore.openSettingsSubSection(sub.key)"
+              v-for="sub in settingsSubItems" :key="sub.key"
+              @click="tabsStore.openSettingsSubSection(sub.key)"
               :class="[
                 'w-full flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none text-left',
                 isSettingsSubSectionActive(sub.key)
@@ -120,28 +120,7 @@
             >
               <component :is="sub.icon" class="w-3.5 h-3.5 mr-1.5 shrink-0" />
               <span class="truncate flex-1">{{ sub.name }}</span>
-              <ChevronDown v-if="sub.key === 'websites' && isWebsitesExpanded" class="w-3 h-3 text-indigo-400" />
-              <ChevronRight v-else-if="sub.key === 'websites'" class="w-3 h-3 text-slate-500" />
             </button>
-
-            <!-- Website list under Websites sub-section -->
-            <div v-if="sub.key === 'websites' && isWebsitesExpanded" class="ml-3 pl-2 border-l border-slate-800/80 light:border-slate-200/80 space-y-1">
-              <div
-                v-for="website in websitesStore.websites"
-                :key="website.id"
-                @click="tabsStore.openWebsite(website.id)"
-                :class="[
-                  'flex items-center px-2 py-1.5 rounded-lg text-xs cursor-pointer transition select-none',
-                  tabsStore.activeTabId === ('item:website:' + website.id)
-                    ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
-                    : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
-                ]"
-              >
-                <Globe class="w-3.5 h-3.5 mr-1.5 shrink-0" />
-                <span class="truncate flex-1">{{ website.name }}</span>
-              </div>
-            </div>
-            </template>
           </div>
         </div>
       </nav>
@@ -327,6 +306,7 @@ import MasterObjectTab from '../components/objects/MasterObjectTab.vue'
 import MasterClassTab from '../components/objects/MasterClassTab.vue'
 import MasterWebsiteTab from '../components/websites/MasterWebsiteTab.vue'
 import OverviewView from '../views/OverviewView.vue'
+import WebsitesView from '../views/WebsitesView.vue'
 import ObjectsView from '../views/ObjectsView.vue'
 import AssetsView from '../views/AssetsView.vue'
 import DocumentsView from '../views/DocumentsView.vue'
@@ -362,12 +342,6 @@ function handleLogout() {
 const isSidebarCollapsed = ref(false)
 const isAssetsTreeExpanded = ref(true)
 const isSettingsMenuExpanded = ref(true)
-const isWebsitesExpanded = ref(true)
-
-function toggleWebsites() {
-  isWebsitesExpanded.value = !isWebsitesExpanded.value
-  tabsStore.openSettingsSubSection('websites')
-}
 
 const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'general', name: 'General settings', icon: Sliders },
@@ -377,7 +351,6 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'roles', name: 'Roles/Users/Workspaces', icon: Users },
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
-  { key: 'websites', name: 'Websites', icon: Globe }
 ]
 
 const settingsSubLabels: Record<SettingsSubSection, string> = {
@@ -388,7 +361,6 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   roles: 'Roles/Users/Workspaces',
   security: 'Security',
   workflows: 'Workflows',
-  websites: 'Websites'
 }
 
 function isSettingsSubSectionActive(key: SettingsSubSection): boolean {
@@ -398,15 +370,17 @@ function isSettingsSubSectionActive(key: SettingsSubSection): boolean {
 
 const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Overview', section: 'overview', icon: LayoutDashboard },
-  { name: 'Data Objects', section: 'objects', icon: Database },
-  { name: 'Assets', section: 'assets', icon: FolderArchive },
-  { name: 'Documents', section: 'documents', icon: FileText },
+  { name: 'Websites', section: 'websites', icon: Globe },
   { name: 'Pages', section: 'pages', icon: FileStack },
+  { name: 'Assets', section: 'assets', icon: FolderArchive },
+  { name: 'Data Objects', section: 'objects', icon: Database },
+  { name: 'Documents', section: 'documents', icon: FileText },
   { name: 'Settings', section: 'settings', icon: Settings }
 ]
 
 const sectionComponents: Record<SectionKind, any> = {
   overview: OverviewView,
+  websites: WebsitesView,
   objects: ObjectsView,
   assets: AssetsView,
   documents: DocumentsView,
@@ -416,6 +390,7 @@ const sectionComponents: Record<SectionKind, any> = {
 
 const sectionLabels: Record<SectionKind, string> = {
   overview: 'Overview',
+  websites: 'Websites',
   objects: 'Data Objects',
   assets: 'Assets',
   documents: 'Documents',
@@ -425,6 +400,7 @@ const sectionLabels: Record<SectionKind, string> = {
 
 const sectionIcons: Record<SectionKind, any> = {
   overview: LayoutDashboard,
+  websites: Globe,
   objects: Database,
   assets: FolderArchive,
   documents: FileText,
