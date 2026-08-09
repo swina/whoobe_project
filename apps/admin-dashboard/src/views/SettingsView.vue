@@ -23,8 +23,26 @@
         <MfaSettingsCard v-if="activeSubSection === 'security'" />
 
         <template v-if="activeSubSection === 'classes'">
-          <ClassSettingsCard />
-          <MigrationSourcesCard />
+          <!-- Inner tabs for Classes section -->
+          <div class="flex items-center gap-2 pb-2 border-b border-slate-800 light:border-slate-200">
+            <button
+              v-for="tab in classesSubTabs" :key="tab.key"
+              @click="setClassesSubTab(tab.key)"
+              :class="['px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5', classesActiveTab === tab.key ? 'bg-slate-800 light:bg-slate-200 text-slate-100 light:text-slate-900' : 'text-slate-500 light:text-slate-600 hover:text-slate-300 light:hover:text-slate-700']"
+            >
+              <component :is="tab.icon" class="w-3.5 h-3.5" />
+              <span>{{ tab.name }}</span>
+            </button>
+          </div>
+
+          <ClassSettingsCard v-if="classesActiveTab === 'classes'" />
+          <MigrationSourcesCard v-else-if="classesActiveTab === 'pimcore'" />
+          <div v-else-if="classesActiveTab === 'file'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-3">
+            <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">File Migration</h3>
+            <p class="text-xs text-slate-500">
+              Import data objects from structured files (JSON, XLSX, CSV). Not yet implemented — this tab is a placeholder for future development.
+            </p>
+          </div>
         </template>
 
         <ComponentSettingsCard v-if="activeSubSection === 'components'" />
@@ -66,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import DamConfigManager from '../components/dam/DamConfigManager.vue'
 import MfaSettingsCard from '../components/auth/MfaSettingsCard.vue'
 import ClassSettingsCard from '../components/objects/ClassSettingsCard.vue'
@@ -82,6 +100,8 @@ import {
   Users,
   Shield,
   Workflow,
+  Upload,
+  FileJson,
 } from '@lucide/vue'
 
 const tabsStore = useTabsStore()
@@ -96,6 +116,28 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'workflows', name: 'Workflows', icon: Workflow },
 ]
 
+type ClassesSubTab = 'classes' | 'pimcore' | 'file'
+
+const CLASSES_SUB_KEY = 'whoobe:settings-classes-subtab'
+const classesActiveTab = ref<ClassesSubTab>('classes')
+
+// Restore last active tab from localStorage
+try {
+  const saved = localStorage.getItem(CLASSES_SUB_KEY) as ClassesSubTab | null
+  if (saved) classesActiveTab.value = saved
+} catch { /* ignore */ }
+
+const classesSubTabs: { key: ClassesSubTab; name: string; icon: any }[] = [
+  { key: 'classes', name: 'Classes', icon: Database },
+  { key: 'pimcore', name: 'PIMCORE MIGRATION SOURCE', icon: Upload },
+  { key: 'file', name: 'FILE MIGRATION', icon: FileJson },
+]
+
+function setClassesSubTab(key: ClassesSubTab) {
+  classesActiveTab.value = key
+  try { localStorage.setItem(CLASSES_SUB_KEY, key) } catch { /* ignore */ }
+}
+
 const activeSubSection = computed<SettingsSubSection>(() => {
   const tab = tabsStore.tabs.find((t) => t.id === sectionTabId('settings'))
   return tab?.settingsSubSection ?? 'general'
@@ -108,7 +150,7 @@ function setSubTab(key: SettingsSubSection) {
 const sectionTitles: Record<SettingsSubSection, { title: string; description: string }> = {
   general: { title: 'General Settings', description: 'Sync and logging options for the admin dashboard.' },
   dam: { title: 'DAM Configuration', description: 'Configure DAM S3/MinIO storage, folder visibility rules, and sync options.' },
-  classes: { title: 'Data Object Classes', description: 'Define classes and fields, and import them on demand from Pimcore.' },
+  classes: { title: 'Data Object Classes', description: 'Define classes and fields, and import them on demand from Pimcore or structured files.' },
   components: { title: 'Components', description: 'Reusable structured field lists a class field can hold a repeatable mix of.' },
   roles: { title: 'Roles / Users / Workspaces', description: 'Manage who can access this dashboard and what they can do.' },
   security: { title: 'Security', description: 'Two-factor authentication and account security.' },
