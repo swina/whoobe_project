@@ -7,6 +7,7 @@ import {
   getDataClassByName,
   upsertDataObjectByPimcoreId,
   getDataObjectByPimcoreId,
+  deleteDataObjectsByClassId,
 } from '@pimcore-custom/core/server';
 import { PimcorePageConverter } from './pimcore-page-converter.js';
 import { PimcoreRawDocument, PimcoreEditableElement } from './pimcore-document-converter.js';
@@ -249,6 +250,7 @@ export interface RunObjectMigrationOptions {
   sourceConfig: Record<string, unknown>;
   dryRun?: boolean;
   limit?: number;
+  clear?: boolean;
 }
 
 /**
@@ -260,11 +262,16 @@ export interface RunObjectMigrationOptions {
  * of a shell command.
  */
 export async function runObjectMigration(options: RunObjectMigrationOptions): Promise<MigrationRunResult> {
-  const { className, source = 'mysql', sourceConfig, dryRun = false, limit } = options;
+  const { className, source = 'mysql', sourceConfig, dryRun = false, limit, clear } = options;
 
   const dataClass = await getDataClassByName(className);
   if (!dataClass) throw new Error(`Class "${className}" hasn't been migrated yet - run migrate-classes first.`);
   if (!dataClass.pimcoreId) throw new Error(`Class "${className}" has no pimcoreId - it wasn't migrated from Pimcore.`);
+
+  if (clear && !dryRun) {
+    console.log(`[ETL] Clearing existing objects for class "${className}"...`);
+    await deleteDataObjectsByClassId(dataClass.id);
+  }
 
   console.log(`[ETL] Source adapter: "${source}"${dryRun ? ' (dry run - no writes)' : ''}`);
   const adapter = createPimcoreSourceAdapter(source, sourceConfig);

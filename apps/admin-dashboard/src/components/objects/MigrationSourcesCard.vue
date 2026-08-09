@@ -68,6 +68,10 @@
             <input type="checkbox" v-model="dryRunObjects[source.id]" class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
             dry-run
           </label>
+          <label class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600">
+            <input type="checkbox" v-model="clearObjects[source.id]" class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-rose-600" />
+            clear
+          </label>
           <button
             @click="handleImportObjects(source)"
             :disabled="runningObjects === source.id || !objectClassName[source.id]"
@@ -156,6 +160,7 @@ const dryRunClasses = reactive<Record<string, boolean>>({})
 const objectClassName = reactive<Record<string, string>>({})
 const limitByClass = reactive<Record<string, number | undefined>>({})
 const dryRunObjects = reactive<Record<string, boolean>>({})
+const clearObjects = reactive<Record<string, boolean>>({})
 const results = reactive<Record<string, MigrationRunResult>>({})
 const runningClasses = ref<string | null>(null)
 const runningObjects = ref<string | null>(null)
@@ -185,6 +190,7 @@ async function handleImportObjects(source: MigrationSource) {
     const result = await importObjectsFromPimcore(authStore.config.coreApiUrl, source.id, {
       className,
       dryRun: !!dryRunObjects[source.id],
+      clear: !!clearObjects[source.id],
       limit: limitByClass[source.id],
     })
     results[source.id] = result

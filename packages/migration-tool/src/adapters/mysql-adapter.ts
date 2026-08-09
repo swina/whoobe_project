@@ -83,6 +83,7 @@ export function createMysqlPimcoreSourceAdapter(config: MysqlPimcoreSourceConfig
         user: config.user,
         password: config.password,
         database: config.database,
+        charset: 'utf8mb4',
       });
     },
 
