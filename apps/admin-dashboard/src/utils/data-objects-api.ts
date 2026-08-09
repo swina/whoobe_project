@@ -20,6 +20,12 @@ export interface DataObject {
   updatedAt: string
 }
 
+export interface DataObjectQueryFilter {
+  field: string
+  operator: 'eq' | 'neq' | 'contains' | 'gt' | 'lt'
+  value: unknown
+}
+
 function normalizeBaseUrl(baseUrl: string): string {
   return (baseUrl || getDefaultCoreApiUrl()).replace(/\/+$/, '')
 }
@@ -152,4 +158,38 @@ export async function transitionDataObject(baseUrl: string, id: string, transiti
   })
   const body = await parseJsonOrThrow(res)
   return body.object
+}
+
+export interface BatchActionResult {
+  succeeded: number
+  failed: number
+  errors: { id: string; message: string }[]
+}
+
+export async function batchActionDataObjects(
+  baseUrl: string,
+  ids: string[],
+  action: 'publish' | 'unpublish' | 'delete'
+): Promise<BatchActionResult> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects/batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids, action }),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
+export async function batchResolveAssets(
+  baseUrl: string,
+  ids: string[]
+): Promise<Record<string, Record<string, unknown>>> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects/batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids, action: 'resolve-assets' }),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.results
 }
