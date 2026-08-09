@@ -1498,7 +1498,7 @@ app.post(
   requirePermission(PERMISSIONS.OBJECTS_WRITE),
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const { className, dryRun, limit } = req.body ?? {};
+      const { className, dryRun, limit, clear } = req.body ?? {};
       if (typeof className !== 'string' || !className.trim()) {
         res.status(400).json({ error: 'className is required' });
         return;
@@ -1519,6 +1519,7 @@ app.post(
         sourceConfig: { ...resolved.connection } as Record<string, unknown>,
         dryRun: dryRun === true,
         limit: typeof limit === 'number' ? limit : undefined,
+        clear: clear === true,
       });
       res.json({ result });
     } catch (error: any) {

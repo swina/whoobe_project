@@ -99,7 +99,7 @@ export async function importClassesFromPimcore(
 export async function importObjectsFromPimcore(
   baseUrl: string,
   id: string,
-  input: { className: string; dryRun?: boolean; limit?: number }
+  input: { className: string; dryRun?: boolean; limit?: number; clear?: boolean }
 ): Promise<MigrationRunResult> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/migration-sources/${id}/import-objects`, {
     method: 'POST',

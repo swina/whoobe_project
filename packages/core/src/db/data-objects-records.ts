@@ -239,6 +239,13 @@ export async function updateDataObject(
   return row ?? null;
 }
 
+/** Delete all data objects belonging to a class - used by the migration
+ * clear-before-import option to reset a class's objects before retrying. */
+export async function deleteDataObjectsByClassId(classId: string): Promise<void> {
+  const db = getDb();
+  await db.delete(dataObjects).where(eq(dataObjects.classId, classId));
+}
+
 export async function deleteDataObject(id: string): Promise<void> {
   const db = getDb();
   await db.delete(dataObjects).where(eq(dataObjects.id, id));
