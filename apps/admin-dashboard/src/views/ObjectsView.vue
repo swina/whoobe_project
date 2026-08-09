@@ -295,7 +295,6 @@ import { batchActionDataObjects, batchResolveAssets } from '../utils/data-object
 import type { DataObjectQueryFilter } from '../utils/data-objects-api'
 import { exportRowsAsCsv, exportRowsAsJson, exportRowsAsXlsx } from '../utils/data-export'
 import { loadObjectListPresets, upsertObjectListPreset, deleteObjectListPreset, setDefaultPreset, getDefaultPreset, type ObjectListPreset } from '../utils/object-list-presets'
-import { resolveDisplayUrl } from '../utils/resolve-display-url'
 import type { ClassFieldDefinition } from '@pimcore-custom/core'
 
 const dataObjectsStore = useDataObjectsStore()
@@ -512,23 +511,43 @@ function isAssetField(field: ClassFieldDefinition): boolean {
 function recordAssetUrl(record: ObjectRecord, fieldName: string): string | undefined {
   const value = record.primary.attributes?.[fieldName]
   if (value == null) return undefined
-  // Asset reference object { assetId: "..." } — assetId can be a UUID or a
-  // Pimcore-style path string (e.g. "/logos/brand.png") depending on whether
-  // the asset was migrated with a real DAM record or is still a raw path ref.
+  // Asset reference object { assetId: "..." }
   if (typeof value === 'object') {
     const assetId = (value as Record<string, unknown>).assetId
     if (typeof assetId === 'string') {
-      // UUID → look up in DAM store for the resolved URL
+      // UUID → look up the pimcorePath from the DAM store and resolve fresh
       if (assetId.includes('-')) {
         const asset = damStore.assets.find((a) => a.id === assetId)
-        return asset?.thumbnailUrl || asset?.url || undefined
+        if (asset) return resolveAssetPathUrl(asset.pimcorePath)
+        return undefined
       }
       // Raw path → resolve via DAM API
-      return resolveDisplayUrl(assetId)
+      return resolveAssetPathUrl(assetId)
     }
   }
   // Plain string path → resolve via DAM API
-  if (typeof value === 'string') return resolveDisplayUrl(value)
+  if (typeof value === 'string') return resolveAssetPathUrl(value)
+  return undefined
+}
+
+// Reactive cache for asset path → URL resolution, shared across the view.
+// Refreshed on each call if the cache is stale (avoids the module-level
+// resolveDisplayUrl cache which may have stale null entries from restarts).
+const _assetUrlCache = new Map<string, string | undefined>()
+const _assetUrlInFlight = new Set<string>()
+
+function resolveAssetPathUrl(path: string): string | undefined {
+  if (_assetUrlCache.has(path)) return _assetUrlCache.get(path)
+  if (!_assetUrlInFlight.has(path)) {
+    _assetUrlInFlight.add(path)
+    damStore.generateAssetUrl(path).then((fresh) => {
+      _assetUrlCache.set(path, fresh.url)
+    }).catch(() => {
+      _assetUrlCache.set(path, undefined)
+    }).finally(() => {
+      _assetUrlInFlight.delete(path)
+    })
+  }
   return undefined
 }
 

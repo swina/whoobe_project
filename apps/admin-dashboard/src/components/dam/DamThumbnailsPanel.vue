@@ -42,9 +42,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { ExternalLink, Link } from '@lucide/vue'
-import { AssetItem } from '../../stores/damStore'
+import { AssetItem, useDamStore } from '../../stores/damStore'
 import { handleAssetImageError } from '../../utils/asset-image-heal'
 
 const props = defineProps<{
@@ -55,11 +55,28 @@ const emit = defineEmits<{
   (e: 'toast', message: string): void
 }>()
 
+const damStore = useDamStore()
+
 const presets: { key: 'thumb' | 'medium' | 'large'; label: string; dimensions: string }[] = [
   { key: 'thumb', label: 'Thumb', dimensions: '150 × 150' },
   { key: 'medium', label: 'Medium', dimensions: '400 × 400' },
   { key: 'large', label: 'Large', dimensions: '1024 × 1024' }
 ]
+
+// Refresh thumbnail URLs on mount if they're stale (direct S3 URLs instead
+// of proxy URLs). The old S3 URLs were resolved before S3_PUBLIC_BASE_URL
+// was configured and may fail with 403/network errors.
+onMounted(() => {
+  const thumb = props.asset.thumbnails?.thumb
+  if (thumb && !thumb.startsWith('http://develop.local:3002/dam-asset')) {
+    damStore.generateAssetUrl(props.asset.pimcorePath).then((fresh) => {
+      props.asset.thumbnailUrl = fresh.thumbnailUrl
+      props.asset.thumbnails = fresh.thumbnails
+    }).catch(() => {
+      // Silently ignore — the @error handler on each <img> will retry.
+    })
+  }
+})
 
 const hasThumbnails = computed(() => {
   const thumbnails = props.asset.thumbnails

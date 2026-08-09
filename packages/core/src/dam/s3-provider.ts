@@ -253,6 +253,63 @@ export class S3AssetStorageProvider implements AssetStorageProvider {
       return false;
     }
   }
+
+  public async downloadAsset(pimcorePath: string): Promise<Buffer | null> {
+    const s3Key = this.getS3Key(pimcorePath);
+    try {
+      const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: s3Key }));
+      if (!response.Body) return null;
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of response.Body as any) {
+        chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk));
+      }
+      return Buffer.concat(chunks);
+    } catch {
+      return null;
+    }
+  }
+
+  public async regenerateThumbnails(pimcorePath: string): Promise<Record<ThumbnailPreset, string> | null> {
+    const buffer = await this.downloadAsset(pimcorePath);
+    if (!buffer) return null;
+    const mimeType = this.getMimeType(pimcorePath);
+    if (!ThumbnailGenerator.isSupportedMimeType(mimeType)) return null;
+
+    const isPublic = this.visibilityManager.isPathPublic(pimcorePath);
+    const thumbnails: Partial<Record<ThumbnailPreset, string>> = {};
+
+    try {
+      const thumbBuffers = await ThumbnailGenerator.generateAllPresets(buffer);
+      const presets: ThumbnailPreset[] = ['thumb', 'medium', 'large'];
+      for (const preset of presets) {
+        const thumbKey = this.getThumbnailS3Key(pimcorePath, preset);
+        await this.client.send(
+          new PutObjectCommand({
+            Bucket: this.bucket,
+            Key: thumbKey,
+            Body: thumbBuffers[preset],
+            ContentType: 'image/webp',
+            ACL: isPublic ? 'public-read' : 'private',
+          })
+        );
+        thumbnails[preset] = await this.getThumbnailUrl(pimcorePath, { preset });
+      }
+      return thumbnails as Record<ThumbnailPreset, string>;
+    } catch (err) {
+      console.warn(`Failed to regenerate thumbnails for "${pimcorePath}":`, err);
+      return null;
+    }
+  }
+
+  private getMimeType(pimcorePath: string): string {
+    const ext = pimcorePath.split('.').pop()?.toLowerCase() || '';
+    const map: Record<string, string> = {
+      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+      gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+      avif: 'image/avif', bmp: 'image/bmp', tiff: 'image/tiff', tif: 'image/tiff',
+    };
+    return map[ext] || 'application/octet-stream';
+  }
 }
 
 /**

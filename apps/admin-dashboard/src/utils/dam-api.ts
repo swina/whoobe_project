@@ -66,6 +66,20 @@ export interface DamAssetRecordWithUrls extends DamAssetRecord {
   thumbnails: Record<ThumbnailPreset, string>
 }
 
+export async function regenerateThumbnailsApi(
+  baseUrl: string,
+  paths: string[],
+  folderRules: FolderVisibilityRule[]
+): Promise<{ succeeded: number; failed: number; results: { pimcorePath: string; success: boolean; error?: string }[] }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/regenerate-thumbnails`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths, folderRules }),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
 export interface DamUploadResult {
   s3Key: string
   url: string
@@ -154,9 +168,12 @@ export async function fetchAssetUrls(
   folderRules: FolderVisibilityRule[],
   expiresIn?: number
 ): Promise<DamAssetUrls> {
-  const params = new URLSearchParams({ pimcorePath, folderRules: JSON.stringify(folderRules) })
-  if (expiresIn) params.set('expiresIn', String(expiresIn))
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/asset-urls?${params.toString()}`, {
+  const body: Record<string, unknown> = { pimcorePath, folderRules }
+  if (expiresIn) body.expiresIn = expiresIn
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/asset-urls`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
     credentials: 'include',
   })
   return parseJsonOrThrow(res)
@@ -167,8 +184,11 @@ export async function checkAssetExists(
   pimcorePath: string,
   folderRules: FolderVisibilityRule[]
 ): Promise<boolean> {
-  const params = new URLSearchParams({ pimcorePath, folderRules: JSON.stringify(folderRules) })
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/exists?${params.toString()}`, {
+  const body: Record<string, unknown> = { pimcorePath, folderRules }
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/exists`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
     credentials: 'include',
   })
   const data = await parseJsonOrThrow(res)
@@ -224,9 +244,14 @@ export async function fetchAssets(
   folderRules: FolderVisibilityRule[],
   folderPath?: string
 ): Promise<DamAssetRecordWithUrls[]> {
-  const params = new URLSearchParams({ folderRules: JSON.stringify(folderRules) })
-  if (folderPath) params.set('folderPath', folderPath)
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/assets?${params.toString()}`, { credentials: 'include' })
+  const body: Record<string, unknown> = { folderRules }
+  if (folderPath) body.folderPath = folderPath
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/assets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    credentials: 'include',
+  })
   const data = await parseJsonOrThrow(res)
   return data.assets
 }
