@@ -56,7 +56,7 @@
             </td>
             <td class="py-2.5 px-4 font-semibold text-slate-100 light:text-slate-900">{{ page.title }}</td>
             <td class="py-2.5 px-4 font-mono text-indigo-300">{{ page.slug }}</td>
-            <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ page.website }}</td>
+            <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ page.website_id }}</td>
             <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ page.locale }}</td>
             <td class="py-2.5 px-4">
               <span

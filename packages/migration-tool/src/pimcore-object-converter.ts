@@ -3,6 +3,21 @@ import type { RawPimcoreObjectAttributes, PimcoreFieldCollectionItem } from './s
 import { phpUnserialize, type PhpValue } from './php-unserialize.js';
 
 /**
+ * Resolve a Pimcore asset path to the best available identifier: the DAM
+ * asset UUID if the asset has been migrated, otherwise the raw path string.
+ */
+async function resolveAssetValue(
+  path: string,
+  options: PimcoreObjectConverterOptions
+): Promise<{ assetId: string } | null> {
+  if (options.resolveAssetUuid) {
+    const uuid = await options.resolveAssetUuid(path);
+    if (uuid) return { assetId: uuid };
+  }
+  return { assetId: path };
+}
+
+/**
  * Real Pimcore `link` field storage - a PHP-serialized
  * `Pimcore\Model\DataObject\Data\Link` object (confirmed against real
  * migrated Field Collection data, section 6/Phase 6 of the datamodel
@@ -57,6 +72,13 @@ function parsePimcoreLinkValue(raw: unknown): { path: string | null; text: strin
 export type AssetPathResolver = (assetId: number) => Promise<string | null>;
 
 /**
+ * Resolves a Pimcore asset path to its DAM asset UUID - checks the
+ * `assets` table by `pimcorePath` and returns the UUID if the asset
+ * has been migrated to DAM storage, or `null` if not yet imported.
+ */
+export type AssetUuidResolver = (path: string) => Promise<string | null>;
+
+/**
  * Resolves a relation's Pimcore target (a class *name* + that class's own
  * raw Pimcore object id) to the already-migrated `data_objects.id`
  * (a real internal uuid) - or `null` if that target hasn't been migrated
@@ -85,6 +107,12 @@ export type ObjectRelationResolver = (targetClassName: string, pimcoreId: string
 export interface PimcoreObjectConverterOptions {
   resolveAssetPath: AssetPathResolver;
   resolveRelation: ObjectRelationResolver;
+  /** Optional: resolve a Pimcore asset path (e.g. "/images/hero.jpg") to
+   *  its DAM asset UUID. When provided, asset field values are stored as
+   *  `{ assetId: "<uuid>" }` instead of `{ assetId: "/path/string" }`,
+   *  so the admin dashboard can show thumbnails directly from the DAM
+   *  store rather than needing a second path-to-UUID resolution step. */
+  resolveAssetUuid?: AssetUuidResolver;
 }
 
 async function resolveObjectRelationValue(
@@ -161,7 +189,7 @@ async function convertFieldValue(
       if (!relation) return null;
       if (relation.type === 'asset') {
         const path = await options.resolveAssetPath(relation.destId);
-        return path ? { assetId: path } : null;
+        return path ? resolveAssetValue(path, options) : null;
       }
       return resolveObjectRelationValue(field.relationTarget, String(relation.destId), locale, options.resolveRelation);
     }
@@ -174,7 +202,7 @@ async function convertFieldValue(
       for (const edge of edges) {
         if (edge.type === 'asset') {
           const path = await options.resolveAssetPath(edge.destId);
-          if (path) values.push({ assetId: path });
+          if (path) values.push(await resolveAssetValue(path, options));
         } else {
           values.push(await resolveObjectRelationValue(field.relationTarget, String(edge.destId), locale, options.resolveRelation));
         }
@@ -193,7 +221,7 @@ async function convertFieldValue(
       const assetId = relation ? relation.destId : Number(rawValue);
       if (!Number.isFinite(assetId)) return null;
       const path = await options.resolveAssetPath(assetId);
-      return path ? { assetId: path } : null;
+      return path ? resolveAssetValue(path, options) : null;
     }
 
     case 'link':
