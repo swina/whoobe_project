@@ -88,38 +88,56 @@
       </template>
     </div>
 
-    <!-- Subfolders Grid -->
-    <div v-if="damStore.currentSubfolders.length > 0" class="space-y-2">
-      <h3 class="text-xs font-semibold text-slate-400 light:text-slate-600 uppercase tracking-wider">Folders</h3>
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        <div
-          v-for="folder in damStore.currentSubfolders"
-          :key="folder.path"
-          @click="navigateToFolder(folder.path)"
-          class="p-3 rounded-xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 hover:border-indigo-500/50 hover:bg-slate-900 light:bg-white transition group cursor-pointer flex items-center justify-between"
+    <!-- Subfolders list — shown inline in the asset listing, not as separate buttons -->
+    <div v-if="damStore.currentSubfolders.length > 0 && viewMode === 'list'" class="space-y-1 mb-4">
+      <div
+        v-for="folder in damStore.currentSubfolders"
+        :key="folder.path"
+        @click="navigateToFolder(folder.path)"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-800/40 light:hover:bg-slate-100/40 cursor-pointer transition text-xs text-slate-300 light:text-slate-700 group"
+      >
+        <Folder class="w-4 h-4 text-indigo-400 shrink-0" />
+        <span class="truncate flex-1 font-medium">{{ folder.name }}</span>
+        <span
+          class="text-[9px] font-bold uppercase"
+          :class="folder.isPublic ? 'text-emerald-400' : 'text-slate-500'"
         >
-          <div class="flex items-center gap-2.5 truncate">
-            <Folder class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform shrink-0" />
-            <div class="truncate">
-              <span class="text-xs font-medium text-slate-200 light:text-slate-800 block truncate">{{ folder.name }}</span>
-              <span
-                :class="[
-                  'text-[9px] font-bold uppercase block truncate',
-                  folder.isPublic ? 'text-emerald-400' : 'text-slate-500'
-                ]"
-              >
-                {{ folder.isPublic ? 'PUBLIC' : 'PRIVATE' }}
-              </span>
-            </div>
+          {{ folder.isPublic ? 'PUBLIC' : 'PRIVATE' }}
+        </span>
+        <button
+          @click.stop="confirmDeleteFolder(folder.path)"
+          class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 transition p-1"
+          title="Delete Folder"
+        >
+          <Trash2 class="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Subfolders grid (grid view mode) -->
+    <div v-else-if="damStore.currentSubfolders.length > 0 && viewMode === 'grid'" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
+      <div
+        v-for="folder in damStore.currentSubfolders"
+        :key="folder.path"
+        @click="navigateToFolder(folder.path)"
+        class="p-3 rounded-xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 hover:border-indigo-500/50 hover:bg-slate-900 light:bg-white transition group cursor-pointer flex items-center justify-between"
+      >
+        <div class="flex items-center gap-2.5 truncate">
+          <Folder class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform shrink-0" />
+          <div class="truncate">
+            <span class="text-xs font-medium text-slate-200 light:text-slate-800 block truncate">{{ folder.name }}</span>
+            <span :class="['text-[9px] font-bold uppercase block truncate', folder.isPublic ? 'text-emerald-400' : 'text-slate-500']">
+              {{ folder.isPublic ? 'PUBLIC' : 'PRIVATE' }}
+            </span>
           </div>
-          <button
-            @click.stop="confirmDeleteFolder(folder.path)"
-            class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 transition text-xs p-1"
-            title="Delete Folder"
-          >
-            <Trash2 class="w-3.5 h-3.5" />
-          </button>
         </div>
+        <button
+          @click.stop="confirmDeleteFolder(folder.path)"
+          class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 transition text-xs p-1"
+          title="Delete Folder"
+        >
+          <Trash2 class="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>
 
@@ -802,7 +820,7 @@
           </div>
 
           <!-- ZIP Option if any ZIP file in batch -->
-          <div v-if="hasZipInBatch" class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-1 mt-2">
+          <div v-if="hasZipInBatch" class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-2 mt-2">
             <label for="autoExtract" class="text-xs font-semibold text-amber-300 flex items-center gap-1.5 cursor-pointer">
               <input
                 v-model="autoExtractZip"
@@ -815,6 +833,21 @@
             <p class="text-[11px] text-amber-300/80 pl-5">
               Extracts archive contents into relative subfolders during upload.
             </p>
+            <div v-if="autoExtractZip" class="pl-5 pt-1 space-y-1.5">
+              <span class="text-[10px] font-semibold text-slate-400 uppercase">Extracted assets visibility</span>
+              <div class="flex items-center gap-4">
+                <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+                  <input type="radio" v-model="zipVisibility" value="public"
+                    class="w-3.5 h-3.5 text-indigo-600 border-slate-700 bg-slate-950" />
+                  Public
+                </label>
+                <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+                  <input type="radio" v-model="zipVisibility" value="private"
+                    class="w-3.5 h-3.5 text-indigo-600 border-slate-700 bg-slate-950" />
+                  Private
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1328,6 +1361,7 @@ const selectedAssetForVersion = ref<AssetItem | null>(null)
 const newFolderName = ref('')
 const newFolderIsPublic = ref(false)
 const autoExtractZip = ref(true)
+const zipVisibility = ref<'public' | 'private'>('public')
 const isUploading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 
@@ -1381,7 +1415,9 @@ async function submitUploadBatch() {
   isUploading.value = true
 
   try {
-    await damStore.uploadMultipleAssets(selectedFiles.value, damStore.currentFolderPath)
+    const hasZip = selectedFiles.value.some((f) => f.name.toLowerCase().endsWith('.zip'))
+    const isPublicOverride = hasZip && autoExtractZip.value ? zipVisibility.value === 'public' : undefined
+    await damStore.uploadMultipleAssets(selectedFiles.value, damStore.currentFolderPath, isPublicOverride)
     toastStore.show(`Uploaded ${selectedFiles.value.length} files to ${damStore.currentFolderPath}`)
     selectedFiles.value = []
     showUploadModal.value = false

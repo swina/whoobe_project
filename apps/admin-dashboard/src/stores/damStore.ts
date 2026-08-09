@@ -202,6 +202,20 @@ export const useDamStore = defineStore('dam', () => {
   const connectionStatus = ref<'idle' | 'testing' | 'success' | 'error'>('idle')
   const statusMessage = ref<string>('')
 
+  // Persist the last-selected folder across sessions
+  const FOLDER_PATH_KEY = 'whoobe:dam-current-folder-path'
+  try {
+    const saved = localStorage.getItem(FOLDER_PATH_KEY)
+    if (saved) currentFolderPath.value = saved
+  } catch { /* ignore */ }
+
+  function saveCurrentFolderPath() {
+    try { localStorage.setItem(FOLDER_PATH_KEY, currentFolderPath.value) } catch { /* ignore */ }
+  }
+
+  // Auto-persist on every navigation
+  watch(currentFolderPath, () => { saveCurrentFolderPath() })
+
   async function refreshDamInfo(): Promise<void> {
     try {
       damInfo.value = await fetchDamInfo(config.value.assetProcessorUrl)
@@ -307,13 +321,13 @@ export const useDamStore = defineStore('dam', () => {
     addFolderRule(`${folderPath}/**`, isPublic)
   }
 
-  async function uploadMultipleAssets(files: File[], folderPath?: string): Promise<AssetItem[]> {
+  async function uploadMultipleAssets(files: File[], folderPath?: string, isPublicOverride?: boolean): Promise<AssetItem[]> {
     const uploaded: AssetItem[] = []
     for (const file of files) {
       if (file.name.toLowerCase().endsWith('.zip')) {
-        await uploadZipAsset(file, folderPath, true)
+        await uploadZipAsset(file, folderPath, true, isPublicOverride)
       } else {
-        const item = await uploadAsset(file, folderPath)
+        const item = await uploadAsset(file, folderPath, isPublicOverride)
         uploaded.push(item)
       }
     }
@@ -339,11 +353,11 @@ export const useDamStore = defineStore('dam', () => {
     }
   }
 
-  async function uploadAsset(file: File, folderPath?: string): Promise<AssetItem> {
+  async function uploadAsset(file: File, folderPath?: string, isPublicOverride?: boolean): Promise<AssetItem> {
     const targetFolder = folderPath ?? currentFolderPath.value
     const pimcorePath = targetFolder === '/' ? `/${file.name}` : `${targetFolder}/${file.name}`
     const { mimeType } = getFileTypeFromFilename(file.name)
-    const isPublic = isPathPublic(pimcorePath)
+    const isPublic = isPublicOverride ?? isPathPublic(pimcorePath)
 
     let dataUrl: string | undefined
     if (file.type.startsWith('image/')) {
@@ -379,12 +393,13 @@ export const useDamStore = defineStore('dam', () => {
   async function uploadZipAsset(
     zipFile: File,
     folderPath?: string,
-    autoExtract: boolean = true
+    autoExtract: boolean = true,
+    isPublicOverride?: boolean
   ): Promise<{ extractedCount: number; rootAsset?: AssetItem }> {
     const targetFolder = folderPath ?? currentFolderPath.value
 
     if (!autoExtract) {
-      const asset = await uploadAsset(zipFile, targetFolder)
+      const asset = await uploadAsset(zipFile, targetFolder, isPublicOverride)
       return { extractedCount: 0, rootAsset: asset }
     }
 
@@ -395,7 +410,7 @@ export const useDamStore = defineStore('dam', () => {
 
     // Ensure folder exists
     try {
-      await createFolder(extractedFolder, false, targetFolder)
+      await createFolder(extractedFolder, isPublicOverride ?? false, targetFolder)
     } catch {
       // Ignore if folder already exists
     }
@@ -413,7 +428,7 @@ export const useDamStore = defineStore('dam', () => {
           const newPath = currPath === '/' ? `/${dirName}` : `${currPath}/${dirName}`
           if (!folders.value.some((f) => f.path === newPath)) {
             try {
-              await createFolder(dirName, false, currPath)
+              await createFolder(dirName, isPublicOverride ?? false, currPath)
             } catch {
               // Ignore if folder already exists
             }
@@ -428,7 +443,7 @@ export const useDamStore = defineStore('dam', () => {
         const entryFolderPath = fileFolderDir ? `${baseExtractPath}/${fileFolderDir}` : baseExtractPath
 
         const extractedFile = new File([blob], entryFilename, { type: blob.type })
-        await uploadAsset(extractedFile, entryFolderPath)
+        await uploadAsset(extractedFile, entryFolderPath, isPublicOverride)
         extractedCount++
       }
     }

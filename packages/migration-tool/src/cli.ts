@@ -8,6 +8,7 @@ import {
   upsertDataObjectByPimcoreId,
   getDataObjectByPimcoreId,
   deleteDataObjectsByClassId,
+  getAssetByPath,
 } from '@pimcore-custom/core/server';
 import { PimcorePageConverter } from './pimcore-page-converter.js';
 import { PimcoreRawDocument, PimcoreEditableElement } from './pimcore-document-converter.js';
@@ -251,6 +252,12 @@ export interface RunObjectMigrationOptions {
   dryRun?: boolean;
   limit?: number;
   clear?: boolean;
+  /**
+   * When true (default), resolves Pimcore asset paths to DAM asset UUIDs
+   * at migration time so asset fields store `{ assetId: "<uuid>" }` instead
+   * of `{ assetId: "/path/string" }`. Set false to keep raw path strings.
+   */
+  resolveAssetUuids?: boolean;
 }
 
 /**
@@ -313,12 +320,26 @@ export async function runObjectMigration(options: RunObjectMigrationOptions): Pr
     let succeeded = 0;
     const errors: { item: string; message: string }[] = [];
 
+    // Asset UUID resolver: looks up a Pimcore path in the assets table
+    // and returns the DAM UUID if the asset has been migrated.
+    const resolveAssetUuid = options.resolveAssetUuids !== false
+      ? async (path: string): Promise<string | null> => {
+          try {
+            const asset = await getAssetByPath(path);
+            return asset ? asset.id : null;
+          } catch {
+            return null;
+          }
+        }
+      : undefined;
+
     for (const obj of toProcess) {
       try {
         const raw = await adapter.getObjectAttributes(pimcoreClassId, obj.id);
         const converted = await PimcoreObjectConverter.convertObject(raw, dataClass.fields, {
           resolveAssetPath: adapter.resolveAssetPath,
           resolveRelation,
+          resolveAssetUuid,
         });
 
         // Every locale row for this one Pimcore object shares one

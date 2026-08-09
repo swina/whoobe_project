@@ -14,7 +14,7 @@
             <Layers class="w-5 h-5" />
           </div>
           <span v-if="!isSidebarCollapsed" class="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-slate-400 light:from-slate-900 light:to-slate-600 bg-clip-text text-transparent truncate">
-            Whoobe CMS
+            Whoobe
           </span>
         </div>
         <button
