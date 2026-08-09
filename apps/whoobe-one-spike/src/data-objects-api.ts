@@ -48,6 +48,12 @@ export interface DataObjectRecord {
   updatedAt: string
 }
 
+export interface DataObjectQueryFilter {
+  field: string
+  operator: 'eq' | 'neq' | 'contains' | 'gt' | 'lt'
+  value: unknown
+}
+
 function getDefaultCoreApiUrl(): string {
   if (typeof window !== 'undefined' && window.location?.hostname) {
     return `${window.location.protocol}//${window.location.hostname}:3003`
@@ -113,4 +119,41 @@ export async function getPublishedDataObject(id: string): Promise<DataObjectReco
   const res = await fetch(`${getDefaultCoreApiUrl()}/public/data-objects/${id}`, { credentials: 'include' })
   const body = await parseJsonOrThrow(res)
   return body.object
+}
+
+/** Query published data objects with server-side filters and limit.
+ *  Avoids fetching every object and filtering client-side. Falls back to
+ *  the admin endpoint if the public query route is unavailable. */
+export async function queryPublishedDataObjects(
+  className: string,
+  filters?: DataObjectQueryFilter[],
+  limit?: number,
+  locale?: string
+): Promise<DataObjectRecord[]> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/public/data-objects/query`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ class: className, filters, limit, locale }),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.objects
+}
+
+/** Admin query (returns all objects regardless of published status).
+ *  Requires OBJECTS_READ permission (session cookie from admin dashboard). */
+export async function queryDataObjects(
+  className: string,
+  filters?: DataObjectQueryFilter[],
+  limit?: number,
+  locale?: string
+): Promise<DataObjectRecord[]> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/data-objects/query`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ class: className, filters, limit, locale }),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.objects
 }

@@ -436,6 +436,7 @@ import DataObjectPicker from './DataObjectPicker.vue'
 import ExpandableTextInput from './ExpandableTextInput.vue'
 import type { ElementDataBinding } from '../scripts/ElementsClass.js'
 import { generateTemplateFromClass } from '../scripts/template-generator'
+import { resolveDocumentData } from '../scripts/data-resolver'
 import { getDataClass } from '../data-objects-api'
 import {
   ArrowLeftRight,
@@ -546,11 +547,13 @@ const bindingTarget = computed(() => {
 function onDataBound(binding: ElementDataBinding) {
   if (editor.current) (editor.current as any).dataBinding = binding
   showDataPicker.value = false
+  if (editor.document) resolveDocumentData(editor.document)
 }
 
 function onDataClear() {
   if (editor.current) (editor.current as any).dataBinding = null
   showDataPicker.value = false
+  if (editor.document) resolveDocumentData(editor.document)
 }
 
 // --- Field-level binding (Image src / Link href) ---
@@ -573,7 +576,7 @@ const hrefBindingLabel = computed(() => {
 // comes from the nearest container ancestor's dataContext instead.
 const allowRelativeBinding = computed(() => {
   const db = (editor.current as any)?.dataBinding
-  return db && !db.objectId && db.className
+  return !!(db && !db.objectId && db.className)
 })
 
 function openFieldDataPicker(target: 'src' | 'href') {

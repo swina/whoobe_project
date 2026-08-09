@@ -101,8 +101,8 @@
               No filters - resolves to all objects of this class.
             </div>
             <div v-for="(f, i) in filters" :key="i" class="flex items-center gap-2 mb-2">
-              <select v-model="f.field" class="text-xs border rounded px-2 py-1">
-                <option v-for="field in fields" :key="field.name" :value="field.name">{{ field.title || field.name }}</option>
+              <select v-model="f.field" class="text-xs border rounded px-2 py-1 min-w-[7rem]">
+                <option v-for="field in filterFields" :key="field.name" :value="field.name">{{ field.title || field.name }}</option>
               </select>
               <select v-model="f.operator" class="text-xs border rounded px-2 py-1">
                 <option value="eq">=</option>
@@ -112,10 +112,60 @@
                 <option value="gt">&gt;</option>
                 <option value="lt">&lt;</option>
               </select>
-              <input v-model="f.value" type="text" class="text-xs border rounded px-2 py-1 flex-1" placeholder="value" />
-              <button class="text-gray-400 hover:text-rose-500" @click="filters.splice(i, 1)"><Trash2 class="w-3.5 h-3.5" /></button>
+              <!-- Field-type-aware filter value input -->
+              <template v-if="filterInputType(f.field) === 'checkbox'">
+                <select v-model="f.value" class="text-xs border rounded px-2 py-1">
+                  <option :value="true">true</option>
+                  <option :value="false">false</option>
+                </select>
+              </template>
+              <template v-else-if="filterInputType(f.field) === 'select'">
+                <select v-model="f.value" class="text-xs border rounded px-2 py-1 flex-1">
+                  <option value="">Any</option>
+                  <option v-for="opt in filterFieldOptions(f.field)" :key="opt" :value="opt">{{ opt }}</option>
+                </select>
+              </template>
+              <template v-else-if="filterInputType(f.field) === 'number'">
+                <input v-model.number="f.value" type="number" class="text-xs border rounded px-2 py-1 flex-1" placeholder="value" />
+              </template>
+              <template v-else-if="filterInputType(f.field) === 'date'">
+                <input v-model="f.value" type="date" class="text-xs border rounded px-2 py-1 flex-1" />
+              </template>
+              <template v-else>
+                <input v-model="f.value" type="text" class="text-xs border rounded px-2 py-1 flex-1" placeholder="value" />
+              </template>
+              <button class="text-gray-400 hover:text-rose-500 shrink-0" @click="filters.splice(i, 1)"><Trash2 class="w-3.5 h-3.5" /></button>
             </div>
             <button class="flex items-center gap-1 text-xs text-indigo-600" @click="addFilter"><Plus class="w-3.5 h-3.5" /> Add filter</button>
+
+            <div class="pt-3 border-t border-gray-100 mt-3">
+              <button
+                class="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 disabled:opacity-40"
+                :disabled="testLoading"
+                @click="testQuery"
+              >
+                <Play class="w-3 h-3" /> {{ testLoading ? 'Testing…' : 'Test query' }}
+              </button>
+
+              <div v-if="testError" class="mt-2 text-xs text-rose-600">{{ testError }}</div>
+
+              <div v-else-if="testResults !== null" class="mt-2 space-y-1">
+                <div class="text-xs" :class="testResults.length === 0 ? 'text-amber-600' : 'text-emerald-600'">
+                  {{ testResults.length }} record(s) found
+                </div>
+                <div v-if="testResults.length > 0" class="max-h-28 overflow-y-auto space-y-1">
+                  <div
+                    v-for="obj in testResults"
+                    :key="obj.id"
+                    class="flex items-center justify-between text-[10px] text-gray-600 bg-gray-50 rounded px-2 py-1"
+                  >
+                    <span class="truncate font-mono">{{ objectLabel(obj) }}</span>
+                    <span class="text-gray-400 shrink-0 ml-2">{{ obj.locale }}</span>
+                  </div>
+                  <div v-if="testResults.length === 20" class="text-[10px] text-gray-400 italic">Showing first 20 results</div>
+                </div>
+              </div>
+            </div>
           </template>
         </div>
 
@@ -182,8 +232,8 @@
 // pick → field pick, all on one screen with the class step as the only
 // "back" transition.
 import { computed, ref, watch } from 'vue'
-import { ChevronLeft, Layers, Plus, Trash2, Unlink, X } from '@lucide/vue'
-import { listDataClasses, listDataObjects, type ClassFieldDefinition, type DataClassRecord, type DataObjectRecord } from '../data-objects-api'
+import { ChevronLeft, Layers, Play, Plus, Trash2, Unlink, X } from '@lucide/vue'
+import { listDataClasses, listDataObjects, queryDataObjects, type ClassFieldDefinition, type DataClassRecord, type DataObjectRecord, type DataObjectQueryFilter } from '../data-objects-api'
 import type { DataBindingFilter, ElementDataBinding } from '../scripts/ElementsClass.js'
 
 const emit = defineEmits<{
@@ -212,9 +262,46 @@ const selectedField = ref<string | null>(props.initial?.field ?? null)
 const loading = ref(true)
 const error = ref('')
 
+// Query test state
+const testLoading = ref(false)
+const testResults = ref<DataObjectRecord[] | null>(null)
+const testError = ref('')
+
 const currentClass = computed(() => classes.value.find((c) => c.name === className.value) ?? null)
 const classLabel = computed(() => currentClass.value?.label || className.value)
 const fields = computed(() => currentClass.value?.fields ?? [])
+const filterFields = computed(() => [
+  { name: 'key', title: 'Key', fieldType: 'input' },
+  { name: 'path', title: 'Path', fieldType: 'input' },
+  { name: 'locale', title: 'Locale', fieldType: 'input' },
+  ...fields.value,
+])
+
+/** Quick lookup: field name → ClassFieldDefinition for filter type inference. */
+const fieldMap = computed(() => {
+  const map = new Map<string, ClassFieldDefinition>()
+  for (const f of filterFields.value) map.set(f.name, f)
+  return map
+})
+
+/** Determine the suitable HTML input type for a filter value based on its
+ *  field's data type. Returns 'text', 'number', 'date', 'checkbox', or
+ *  'select' (the latter only for select fields with predefined options). */
+function filterInputType(fieldName: string): 'text' | 'number' | 'date' | 'checkbox' | 'select' {
+  const field = fieldMap.value.get(fieldName)
+  if (!field) return 'text'
+  const ft = field.fieldType
+  if (ft === 'numeric' || ft === 'slider' || ft === 'range') return 'number'
+  if (ft === 'date' || ft === 'datetime') return 'date'
+  if (ft === 'checkbox') return 'checkbox'
+  if (ft === 'select' && field.options && field.options.length > 0) return 'select'
+  return 'text'
+}
+
+function filterFieldOptions(fieldName: string): string[] {
+  return fieldMap.value.get(fieldName)?.options ?? []
+}
+
 const bindableFields = computed(() => fields.value.filter((f) => fieldCompatibleWithTarget(f, props.target)))
 const canConfirm = computed(() => {
   if (!className.value) return false
@@ -253,6 +340,25 @@ function selectClass(cls: DataClassRecord) {
 
 function addFilter() {
   filters.value.push({ field: fields.value[0]?.name ?? '', operator: 'eq', value: '' })
+}
+
+async function testQuery() {
+  testLoading.value = true
+  testError.value = ''
+  testResults.value = null
+  try {
+    const qf: DataObjectQueryFilter[] = filters.value.map((f) => ({
+      field: f.field,
+      operator: f.operator as DataObjectQueryFilter['operator'],
+      value: f.value,
+    }))
+    const results = await queryDataObjects(className.value, qf, 20)
+    testResults.value = results
+  } catch (e: any) {
+    testError.value = e?.message || 'Query failed'
+  } finally {
+    testLoading.value = false
+  }
 }
 
 function confirm() {
