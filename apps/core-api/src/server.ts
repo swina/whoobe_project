@@ -74,6 +74,8 @@ import {
   getPublishedDataObject,
   getDataObjectsByIds,
   getPublishedDataObjectsByIds,
+  queryDataObjects,
+  queryPublishedDataObjects,
   getDataClassByName,
   createPreviewToken,
   getPreviewToken,
@@ -1733,6 +1735,64 @@ app.get('/public/data-objects/batch', async (req: Request, res: Response): Promi
   } catch (error: any) {
     console.error('Batch get public data objects error:', error);
     res.status(500).json({ error: error.message || 'Failed to batch get objects' });
+  }
+});
+
+// --- Admin query endpoint (no published filter) ---
+
+app.post(
+  '/data-objects/query',
+  requirePermission(PERMISSIONS.OBJECTS_READ),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { class: className, filters, limit, locale } = req.body ?? {};
+      if (!className) {
+        res.status(400).json({ error: 'class (name) is required' });
+        return;
+      }
+      const dataClass = await getDataClassByName(className);
+      if (!dataClass) {
+        res.json({ objects: [] });
+        return;
+      }
+      const objects = await queryDataObjects(
+        dataClass.id,
+        Array.isArray(filters) ? filters : undefined,
+        typeof limit === 'number' ? limit : undefined,
+        typeof locale === 'string' ? locale : undefined
+      );
+      res.json({ objects });
+    } catch (error: any) {
+      console.error('Query data objects error:', error);
+      res.status(500).json({ error: error.message || 'Failed to query objects' });
+    }
+  }
+);
+
+// --- Public query endpoint (published only) ---
+
+app.post('/public/data-objects/query', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { class: className, filters, limit, locale } = req.body ?? {};
+    if (!className) {
+      res.status(400).json({ error: 'class (name) is required' });
+      return;
+    }
+    const dataClass = await getDataClassByName(className);
+    if (!dataClass) {
+      res.json({ objects: [] });
+      return;
+    }
+    const objects = await queryPublishedDataObjects(
+      dataClass.id,
+      Array.isArray(filters) ? filters : undefined,
+      typeof limit === 'number' ? limit : undefined,
+      typeof locale === 'string' ? locale : undefined
+    );
+    res.json({ objects });
+  } catch (error: any) {
+    console.error('Query public data objects error:', error);
+    res.status(500).json({ error: error.message || 'Failed to query objects' });
   }
 });
 

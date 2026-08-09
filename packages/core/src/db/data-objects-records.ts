@@ -57,6 +57,113 @@ export async function listPublishedDataObjects(classId?: string, locale?: string
     .orderBy(desc(dataObjects.publishedAt));
 }
 
+/**
+ * Query published data objects with optional field-level filters and limit.
+ * Filters are applied server-side as JSONB attribute checks. This avoids
+ * fetching every object and filtering client-side (which the original
+ * data-resolver.ts did, breaking on large datasets and auth issues).
+ */
+export interface DataObjectQueryFilter {
+  field: string;
+  operator: 'eq' | 'neq' | 'contains' | 'gt' | 'lt';
+  value: unknown;
+}
+
+/**
+ * Query published data objects with optional field-level filters and limit.
+ * Filters are applied server-side as JSONB attribute checks. This avoids
+ * fetching every object and filtering client-side (which the original
+ * data-resolver.ts did, breaking on large datasets and auth issues).
+ */
+export interface DataObjectQueryFilter {
+  field: string;
+  operator: 'eq' | 'neq' | 'contains' | 'gt' | 'lt';
+  value: unknown;
+}
+
+const TOP_LEVEL_FILTER_FIELDS = new Set(['key', 'path', 'locale', 'id', 'classId', 'pimcoreId', 'translationGroupId']);
+
+function getFieldValue(obj: DataObjectRecord, field: string): unknown {
+  return TOP_LEVEL_FILTER_FIELDS.has(field) ? (obj as any)[field] : (obj.attributes as any)?.[field];
+}
+
+function matchFilter(obj: DataObjectRecord, f: DataObjectQueryFilter): boolean {
+  const value = getFieldValue(obj, f.field);
+  switch (f.operator) {
+    case 'eq': return value === f.value;
+    case 'neq': return value !== f.value;
+    case 'contains': return String(value ?? '').toLowerCase().includes(String(f.value ?? '').toLowerCase());
+    case 'gt': return compareGT(value, f.value);
+    case 'lt': return compareLT(value, f.value);
+    default: return true;
+  }
+}
+
+function compareGT(value: unknown, filterValue: unknown): boolean {
+  // Numeric comparison
+  const nv = Number(value);
+  const nf = Number(filterValue);
+  if (!isNaN(nv) && !isNaN(nf)) return nv > nf;
+  // Date string comparison
+  const dv = new Date(value as any);
+  const df = new Date(filterValue as any);
+  if (!isNaN(dv.getTime()) && !isNaN(df.getTime())) return dv.getTime() > df.getTime();
+  return false;
+}
+
+function compareLT(value: unknown, filterValue: unknown): boolean {
+  const nv = Number(value);
+  const nf = Number(filterValue);
+  if (!isNaN(nv) && !isNaN(nf)) return nv < nf;
+  const dv = new Date(value as any);
+  const df = new Date(filterValue as any);
+  if (!isNaN(dv.getTime()) && !isNaN(df.getTime())) return dv.getTime() < df.getTime();
+  return false;
+}
+
+/** Admin query (no published filter) - used by the editor's data-resolver.
+ *  Returns objects regardless of published status. */
+export async function queryDataObjects(
+  classId: string,
+  filters?: DataObjectQueryFilter[],
+  limit?: number,
+  locale?: string
+): Promise<DataObjectRecord[]> {
+  const db = getDb();
+  const conditions = [eq(dataObjects.classId, classId)];
+  if (locale) conditions.push(eq(dataObjects.locale, locale));
+
+  const base = db.select().from(dataObjects).where(and(...conditions)).orderBy(desc(dataObjects.createdAt));
+
+  const rows = typeof limit === 'number' && limit > 0
+    ? await base.limit(limit)
+    : await base;
+
+  if (!filters || filters.length === 0) return rows;
+  return rows.filter((obj) => filters.every((f) => matchFilter(obj, f)));
+}
+
+/** Public query - only returns published objects. */
+export async function queryPublishedDataObjects(
+  classId: string,
+  filters?: DataObjectQueryFilter[],
+  limit?: number,
+  locale?: string
+): Promise<DataObjectRecord[]> {
+  const db = getDb();
+  const conditions = [eq(dataObjects.published, true), eq(dataObjects.classId, classId)];
+  if (locale) conditions.push(eq(dataObjects.locale, locale));
+
+  const base = db.select().from(dataObjects).where(and(...conditions)).orderBy(desc(dataObjects.publishedAt));
+
+  const rows = typeof limit === 'number' && limit > 0
+    ? await base.limit(limit)
+    : await base;
+
+  if (!filters || filters.length === 0) return rows;
+  return rows.filter((obj) => filters.every((f) => matchFilter(obj, f)));
+}
+
 /** Same `published = true` gate as `listPublishedDataObjects` - a single
  * object lookup returns `null` identically whether the id doesn't exist
  * at all or exists but isn't published, so the public API never leaks

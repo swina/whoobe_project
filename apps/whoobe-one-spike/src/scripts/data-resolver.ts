@@ -1,24 +1,17 @@
-// Resolves Element data bindings for preview/production rendering.
-// Called by DocumentPreview.vue before rendering the document tree.
-// Walks the tree, resolves each element's dataBinding, and stores the
-// resolved data object (or array for collection bindings) in the editor
-// store's resolvedData map, keyed by element id.
-//
-// Preview components read from editor.resolvedData[elementId] to get the
-// resolved object, then use resolveFieldValue() to extract the target field.
 import type { DataBindingFilter, ElementDataBinding } from './ElementsClass.js'
 import {
   getDataObject,
   getDataClassByName,
+  queryDataObjects,
+  queryPublishedDataObjects,
   listDataObjects,
   type DataObjectRecord,
+  type DataObjectQueryFilter,
 } from '../data-objects-api'
 import { useEditorStore } from '../store/editor'
 
 type WhoobeElement = InstanceType<typeof import('./ElementsClass.js').default>
 
-/** Walk the entire document tree, resolve every element's dataBinding,
- *  and store results in the store's resolvedData map. */
 export async function resolveDocumentData(doc: WhoobeElement, locale?: string): Promise<void> {
   const editor = useEditorStore()
   editor.resolvedData = {}
@@ -30,7 +23,8 @@ async function resolveTree(node: WhoobeElement, locale: string | undefined, edit
   if (db) {
     try {
       editor.resolvedData[node.id] = await resolveBinding(db, locale)
-    } catch {
+    } catch (err: any) {
+      console.error(`[data-resolver] Failed to resolve binding for element ${node.id}:`, err)
       editor.resolvedData[node.id] = null
     }
   }
@@ -45,25 +39,53 @@ async function resolveBinding(db: ElementDataBinding, locale?: string): Promise<
       if (!db.objectId) return null
       try {
         return await getDataObject(db.objectId)
-      } catch {
-        return null
+      } catch (err) {
+        // Fall back to public endpoint if admin auth isn't available
+        // (standalone whoobe-one-spike with no session cookie).
+        try {
+          const { getPublishedDataObject } = await import('../data-objects-api')
+          return await getPublishedDataObject(db.objectId!)
+        } catch {
+          return null
+        }
       }
     case 'query':
     case 'first': {
-      const all = await listDataObjects()
-      const dataClass = await getDataClassByName(db.className)
-      const filtered = dataClass ? all.filter((o) => o.classId === dataClass.id) : all
-      if (db.filters && db.filters.length > 0) {
-        return applyFilters(filtered, db.filters)
+      const filters: DataObjectQueryFilter[] | undefined = db.filters?.map(f => ({
+        field: f.field,
+        operator: f.operator as DataObjectQueryFilter['operator'],
+        value: f.value,
+      }))
+      try {
+        // Admin query first (no published filter) - works when embedded in
+        // the admin dashboard with a valid session cookie.
+        const objects = await queryDataObjects(db.className, filters, undefined, locale)
+        return db.resolveMode === 'first' ? (objects[0] ?? null) : objects
+      } catch (err) {
+        // Fallback: try the public endpoint (published-only) for standalone
+        // whoobe-one-spike with no admin session.
+        console.warn('[data-resolver] Admin query failed, trying public:', err)
+        try {
+          const objects = await queryPublishedDataObjects(db.className, filters, undefined, locale)
+          return db.resolveMode === 'first' ? (objects[0] ?? null) : objects
+        } catch (err2) {
+          // Final fallback: fetch all via admin endpoint, filter client-side
+          console.warn('[data-resolver] Public query failed, falling back to client-side filter:', err2)
+          const all = await listDataObjects()
+          const dataClass = await getDataClassByName(db.className)
+          const filtered = dataClass ? all.filter((o) => o.classId === dataClass.id) : all
+          if (db.filters && db.filters.length > 0) {
+            return applyFilters(filtered, db.filters)
+          }
+          return db.resolveMode === 'first' ? (filtered[0] ?? null) : filtered
+        }
       }
-      return db.resolveMode === 'first' ? (filtered[0] ?? null) : filtered
     }
     default:
       return null
   }
 }
 
-/** Client-side filter matching for dynamic query bindings. */
 export function applyFilters(objects: DataObjectRecord[], filters: DataBindingFilter[]): DataObjectRecord[] {
   return objects.filter((obj) =>
     filters.every((f) => {
@@ -88,7 +110,6 @@ export function applyFilters(objects: DataObjectRecord[], filters: DataBindingFi
   )
 }
 
-/** Extract a binding's target field value from a resolved data object. */
 export function resolveFieldValue(
   resolved: DataObjectRecord | DataObjectRecord[] | null,
   db: ElementDataBinding
