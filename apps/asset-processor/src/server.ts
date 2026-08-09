@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express';
 import multer from 'multer';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import { Readable } from 'node:stream';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import {
   ImageProcessingPipeline,
   AssetMetadataExtractor,
@@ -498,6 +500,33 @@ app.get('/api/v1/dam/assets', requireAuth, async (req: Request, res: Response): 
   }
 });
 
+// POST variant of /api/v1/dam/assets — avoids URL length limits when
+// folderRules is large. Frontend switched to this to fix 431 errors.
+app.post('/api/v1/dam/assets', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const folderPath = req.body.folderPath as string | undefined;
+    const records = await listAssets(folderPath);
+    const provider = createDamProvider(parseFolderRules(req.body.folderRules));
+
+    const withUrls = await Promise.all(
+      records.map(async (record) => {
+        const [url, thumb, medium, large] = await Promise.all([
+          provider.getAssetUrl(record.pimcorePath),
+          provider.getThumbnailUrl(record.pimcorePath, { preset: 'thumb' }),
+          provider.getThumbnailUrl(record.pimcorePath, { preset: 'medium' }),
+          provider.getThumbnailUrl(record.pimcorePath, { preset: 'large' }),
+        ]);
+        return { ...record, url, thumbnailUrl: thumb, thumbnails: { thumb, medium, large } };
+      })
+    );
+
+    res.json({ assets: withUrls });
+  } catch (error: any) {
+    console.error('DAM list assets error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list assets' });
+  }
+});
+
 // Single asset by record id - used to resolve a data object's asset
 // reference (stored as { assetId: '<uuid>' }) to a real displayable URL
 // at render time. Must be registered BEFORE any more-specific /assets/...
@@ -568,6 +597,31 @@ app.get('/api/v1/dam/asset-urls', requireAuth, async (req: Request, res: Respons
   }
 });
 
+// POST variant — avoids URL length limits from large folderRules.
+app.post('/api/v1/dam/asset-urls', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { pimcorePath, folderRules, expiresIn } = req.body ?? {};
+    if (!pimcorePath) {
+      res.status(400).json({ error: 'Missing pimcorePath' });
+      return;
+    }
+    const provider = createDamProvider(parseFolderRules(folderRules));
+    const isPublic = provider.visibilityManager.isPathPublic(pimcorePath);
+
+    const [url, thumb, medium, large] = await Promise.all([
+      provider.getAssetUrl(pimcorePath, { expiresInSeconds: expiresIn }),
+      provider.getThumbnailUrl(pimcorePath, { preset: 'thumb', expiresInSeconds: expiresIn }),
+      provider.getThumbnailUrl(pimcorePath, { preset: 'medium', expiresInSeconds: expiresIn }),
+      provider.getThumbnailUrl(pimcorePath, { preset: 'large', expiresInSeconds: expiresIn }),
+    ]);
+
+    res.json({ isPublic, url, thumbnailUrl: thumb, thumbnails: { thumb, medium, large } });
+  } catch (error: any) {
+    console.error('DAM asset-urls error:', error);
+    res.status(500).json({ error: error.message || 'Failed to resolve asset URL' });
+  }
+});
+
 // Check whether an asset already exists in the bucket.
 app.get('/api/v1/dam/exists', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -585,6 +639,49 @@ app.get('/api/v1/dam/exists', requireAuth, async (req: Request, res: Response): 
   }
 });
 
+// POST variant — avoids URL length limits from large folderRules.
+app.post('/api/v1/dam/exists', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { pimcorePath, folderRules } = req.body ?? {};
+    if (!pimcorePath) {
+      res.status(400).json({ error: 'Missing pimcorePath' });
+      return;
+    }
+    const provider = createDamProvider(parseFolderRules(folderRules));
+    const exists = await provider.existsAsset(pimcorePath);
+    res.json({ exists });
+  } catch (error: any) {
+    console.error('DAM exists error:', error);
+    res.status(500).json({ error: error.message || 'Failed to check asset existence' });
+  }
+});
+
+// Regenerate thumbnails for one or more assets by pimcorePath.
+app.post('/api/v1/dam/regenerate-thumbnails', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { paths, folderRules } = req.body ?? {};
+    if (!Array.isArray(paths) || paths.length === 0) {
+      res.status(400).json({ error: 'paths[] is required' });
+      return;
+    }
+    const provider = createDamProvider(parseFolderRules(folderRules));
+    const results: { pimcorePath: string; success: boolean; error?: string }[] = [];
+    for (const pimcorePath of paths) {
+      try {
+        const thumbnails = await provider.regenerateThumbnails(pimcorePath);
+        results.push({ pimcorePath, success: !!thumbnails });
+      } catch (e: any) {
+        results.push({ pimcorePath, success: false, error: e.message });
+      }
+    }
+    const succeeded = results.filter((r) => r.success).length;
+    res.json({ succeeded, failed: results.length - succeeded, results });
+  } catch (error: any) {
+    console.error('Regenerate thumbnails error:', error);
+    res.status(500).json({ error: error.message || 'Failed to regenerate thumbnails' });
+  }
+});
+
 // Ensure the bucket exists and its public-read policy reflects current folder rules.
 app.post('/api/v1/dam/ensure-bucket', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -594,6 +691,38 @@ app.post('/api/v1/dam/ensure-bucket', requireAuth, async (req: Request, res: Res
   } catch (error: any) {
     console.error('DAM ensure-bucket error:', error);
     res.status(500).json({ error: error.message || 'Failed to ensure bucket' });
+  }
+});
+
+// S3 client for the proxy — created once with the same credentials as the
+// DAM provider, so the proxy can serve authenticated requests to MinIO.
+const s3ClientForProxy = new S3Client({
+  region: damBaseConfig.region,
+  endpoint: damBaseConfig.endpoint,
+  credentials: { accessKeyId: damBaseConfig.accessKeyId, secretAccessKey: damBaseConfig.secretAccessKey },
+  forcePathStyle: damBaseConfig.forcePathStyle !== false,
+});
+
+// Proxy endpoint: serves files from S3/MinIO through this server so the
+// browser never hits S3/MinIO directly (avoids CORS, presigned URL expiry,
+// and cross-host issues). Uses a signed GetObjectCommand so MinIO
+// authenticated access works (the bucket is not publicly readable).
+app.get('/dam-asset/*', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const s3Key = req.params[0];
+    if (!s3Key) { res.status(400).end(); return; }
+    const command = new GetObjectCommand({ Bucket: damBaseConfig.bucket, Key: s3Key });
+    const response = await s3ClientForProxy.send(command);
+    if (response.Body) {
+      res.setHeader('Content-Type', response.ContentType || 'application/octet-stream');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      (response.Body as Readable).pipe(res);
+    } else {
+      res.status(404).end();
+    }
+  } catch (error: any) {
+    console.error('DAM proxy error:', error);
+    res.status(500).json({ error: error.message || 'Failed to serve asset' });
   }
 });
 

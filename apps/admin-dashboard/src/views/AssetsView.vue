@@ -30,6 +30,16 @@
         </button>
 
         <button
+          @click="regenerateAllThumbnails"
+          :disabled="isRegenerating"
+          class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-700 hover:bg-slate-600 text-white shadow-lg transition flex items-center gap-1.5 disabled:opacity-50"
+          title="Regenerate thumbnails for all images in this folder and subfolders"
+        >
+          <RefreshCw class="w-4 h-4" :class="isRegenerating ? 'animate-spin' : ''" />
+          <span>{{ isRegenerating ? 'Regenerating...' : 'Regen Thumbnails' }}</span>
+        </button>
+
+        <button
           @click="tabsStore.openSection('settings')"
           class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 light:bg-white hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 border border-slate-800 light:border-slate-200 transition"
           title="DAM S3 Settings"
@@ -88,64 +98,14 @@
       </template>
     </div>
 
-    <!-- Subfolders list — shown inline in the asset listing, not as separate buttons -->
-    <div v-if="damStore.currentSubfolders.length > 0 && viewMode === 'list'" class="space-y-1 mb-4">
-      <div
-        v-for="folder in damStore.currentSubfolders"
-        :key="folder.path"
-        @click="navigateToFolder(folder.path)"
-        class="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-800/40 light:hover:bg-slate-100/40 cursor-pointer transition text-xs text-slate-300 light:text-slate-700 group"
-      >
-        <Folder class="w-4 h-4 text-indigo-400 shrink-0" />
-        <span class="truncate flex-1 font-medium">{{ folder.name }}</span>
-        <span
-          class="text-[9px] font-bold uppercase"
-          :class="folder.isPublic ? 'text-emerald-400' : 'text-slate-500'"
-        >
-          {{ folder.isPublic ? 'PUBLIC' : 'PRIVATE' }}
-        </span>
-        <button
-          @click.stop="confirmDeleteFolder(folder.path)"
-          class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 transition p-1"
-          title="Delete Folder"
-        >
-          <Trash2 class="w-3.5 h-3.5" />
-        </button>
-      </div>
-    </div>
-
-    <!-- Subfolders grid (grid view mode) -->
-    <div v-else-if="damStore.currentSubfolders.length > 0 && viewMode === 'grid'" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
-      <div
-        v-for="folder in damStore.currentSubfolders"
-        :key="folder.path"
-        @click="navigateToFolder(folder.path)"
-        class="p-3 rounded-xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 hover:border-indigo-500/50 hover:bg-slate-900 light:bg-white transition group cursor-pointer flex items-center justify-between"
-      >
-        <div class="flex items-center gap-2.5 truncate">
-          <Folder class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform shrink-0" />
-          <div class="truncate">
-            <span class="text-xs font-medium text-slate-200 light:text-slate-800 block truncate">{{ folder.name }}</span>
-            <span :class="['text-[9px] font-bold uppercase block truncate', folder.isPublic ? 'text-emerald-400' : 'text-slate-500']">
-              {{ folder.isPublic ? 'PUBLIC' : 'PRIVATE' }}
-            </span>
-          </div>
-        </div>
-        <button
-          @click.stop="confirmDeleteFolder(folder.path)"
-          class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 transition text-xs p-1"
-          title="Delete Folder"
-        >
-          <Trash2 class="w-3.5 h-3.5" />
-        </button>
-      </div>
-    </div>
+    <!-- Subfolders integrated into the asset listing — not a separate section above -->
+    <!-- no separate subfolders block here -->
 
     <!-- Asset Section Header with View Mode & Column Config Controls -->
     <div class="space-y-3">
       <div class="flex items-center justify-between flex-wrap gap-2">
         <h3 class="text-xs font-semibold text-slate-400 light:text-slate-600 uppercase tracking-wider">
-          Assets ({{ filteredAndSortedAssets.length }})
+          Assets ({{ unifiedItems.length }})
         </h3>
 
         <div class="flex items-center gap-2">
@@ -267,7 +227,7 @@
         </div>
 
         <div class="text-[11px] text-slate-400 light:text-slate-600 font-mono">
-          Showing <strong class="text-indigo-300 font-bold">{{ filteredAndSortedAssets.length }}</strong> of {{ damStore.currentAssets.length }} assets
+          Showing <strong class="text-indigo-300 font-bold">{{ unifiedItems.length }}</strong> of {{ damStore.currentAssets.length + damStore.currentSubfolders.length }} items
         </div>
       </div>
 
@@ -280,11 +240,11 @@
           </div>
           <div class="h-4 w-px bg-indigo-800/80"></div>
           <button
-            v-if="!isAllFilteredSelected && filteredAndSortedAssets.length > paginatedAssets.length"
+            v-if="!isAllFilteredSelected && filteredAndSortedAssets.length > paginatedItems.length"
             @click="selectAllFiltered"
             class="text-xs font-medium text-indigo-300 hover:text-white underline transition"
           >
-            Select all {{ filteredAndSortedAssets.length }} assets in folder
+            Select all {{ unifiedItems.length }} items in folder
           </button>
           <button
             @click="clearSelection"
@@ -314,36 +274,37 @@
       </div>
 
       <!-- GRID VIEW -->
-      <div v-if="viewMode === 'grid' && paginatedAssets.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div v-if="viewMode === 'grid' && paginatedItems.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <div
-          v-for="asset in paginatedAssets"
-          :key="asset.id"
-          @click="tabsStore.openAsset(asset.id)"
+          v-for="item in paginatedItems"
+          :key="item.id"
+          @click="item.kind === 'folder' ? navigateToFolder(item.folderPath) : tabsStore.openAsset(item.id)"
           class="p-4 rounded-xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 hover:border-indigo-500/50 transition group flex flex-col justify-between space-y-3 cursor-pointer"
         >
           <div class="aspect-video w-full rounded-lg bg-slate-950 light:bg-slate-50 flex items-center justify-center border border-slate-800/80 light:border-slate-200/80 overflow-hidden relative group-hover:bg-slate-900/80 light:bg-white/80 transition">
+            <Folder v-if="item.kind === 'folder'" class="w-12 h-12 text-indigo-400 group-hover:scale-110 transition-transform" />
             <img
-              v-if="PREVIEWABLE_IMAGE_TYPES.includes(asset.fileType)"
-              :src="asset.dataUrl || asset.thumbnailUrl || asset.url"
-              @error="handleImageError($event, asset)"
-              :alt="asset.filename"
+              v-else-if="PREVIEWABLE_IMAGE_TYPES.includes(item.fileType ?? '')"
+              :src="item.dataUrl || item.thumbnailUrl || item.url"
+              @error="handleImageError($event, item)"
+              :alt="item.filename"
               class="w-full h-full object-cover rounded-lg"
             />
-            <component v-else :is="getIconForFileType(asset.fileType)" class="w-8 h-8 text-slate-500 group-hover:text-indigo-400 transition-colors" />
+            <component v-else :is="getIconForFileType(item.fileType ?? '')" class="w-8 h-8 text-slate-500 group-hover:text-indigo-400 transition-colors" />
 
-            <!-- Quick Eye Preview Indicator -->
-            <div class="absolute inset-0 bg-slate-950/40 light:bg-white/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1 text-xs text-white font-medium">
+            <!-- Quick Eye Preview Indicator (assets only) -->
+            <div v-if="item.kind !== 'folder'" class="absolute inset-0 bg-slate-950/40 light:bg-white/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1 text-xs text-white font-medium">
               <Eye class="w-4 h-4 text-indigo-400" />
               <span>Preview</span>
             </div>
 
-            <!-- Selection Checkbox -->
-            <div class="absolute top-2 left-2 z-20" @click.stop>
+            <!-- Selection Checkbox (assets only) -->
+            <div v-if="item.kind !== 'folder'" class="absolute top-2 left-2 z-20" @click.stop>
               <input
                 type="checkbox"
-                :value="asset.id"
-                :checked="selectedAssetIds.includes(asset.id)"
-                @change="toggleSelectAsset(asset.id)"
+                :value="item.id"
+                :checked="selectedAssetIds.includes(item.id)"
+                @change="toggleSelectAsset(item.id)"
                 class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950/90 light:bg-white/90 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-900 cursor-pointer shadow-md"
               />
             </div>
@@ -352,76 +313,87 @@
             <span
               :class="[
                 'absolute top-2 left-8 px-2 py-0.5 text-[9px] font-bold rounded-full border z-10',
-                asset.isPublic ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                item.isPublic ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
               ]"
             >
-              {{ asset.isPublic ? 'PUBLIC' : 'PRIVATE' }}
+              {{ item.isPublic ? 'PUBLIC' : 'PRIVATE' }}
             </span>
 
-            <!-- Version Badge -->
-            <span class="absolute top-2 right-2 px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-slate-900 light:bg-white text-indigo-300 border border-slate-800 light:border-slate-200 z-10">
-              v{{ asset.version }}
+            <!-- Version Badge (assets only) -->
+            <span v-if="item.kind !== 'folder'" class="absolute top-2 right-2 px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-slate-900 light:bg-white text-indigo-300 border border-slate-800 light:border-slate-200 z-10">
+              v{{ item.version }}
             </span>
           </div>
 
           <div>
-            <div class="font-medium text-slate-200 light:text-slate-800 text-sm truncate" :title="asset.filename">{{ asset.filename }}</div>
+            <div class="font-medium text-slate-200 light:text-slate-800 text-sm truncate" :title="item.filename">{{ item.filename }}</div>
             <div class="flex items-center justify-between text-xs text-slate-500 mt-1">
-              <span>{{ asset.sizeFormatted }}</span>
-              <span v-if="asset.metadata?.technical?.width && asset.metadata?.technical?.height" class="font-mono">
-                {{ asset.metadata.technical.width }} × {{ asset.metadata.technical.height }}
+              <span>{{ item.kind === 'folder' ? 'folder' : item.sizeFormatted }}</span>
+              <span v-if="item.kind !== 'folder' && item.metadata?.technical?.width && item.metadata?.technical?.height" class="font-mono">
+                {{ item.metadata.technical.width }} × {{ item.metadata.technical.height }}
               </span>
-              <span class="font-mono text-[11px] text-indigo-300 truncate max-w-[120px]">{{ asset.pimcorePath }}</span>
+              <span class="font-mono text-[11px] text-indigo-300 truncate max-w-[120px]">{{ item.pimcorePath }}</span>
             </div>
           </div>
 
           <!-- Hover Actions Toolbar -->
           <div class="pt-2 border-t border-slate-800/80 light:border-slate-200/80 flex items-center justify-between text-xs" @click.stop>
-            <button
-              @click="openVersionModal(asset)"
-              class="px-2 py-1 rounded bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-indigo-300 hover:text-indigo-200 transition text-[11px] font-medium flex items-center gap-1"
-              title="Upload New Version"
-            >
-              <RefreshCw class="w-3 h-3" />
-              <span>New Version</span>
-            </button>
-
-            <div class="flex items-center gap-1">
+            <template v-if="item.kind === 'folder'">
               <button
-                @click="tabsStore.openAsset(asset.id)"
-                class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
-                title="Open Asset"
+                @click="confirmDeleteFolder(item.folderPath)"
+                class="px-2 py-1 rounded bg-slate-800 light:bg-slate-100 hover:bg-rose-700 text-slate-400 hover:text-white transition text-[11px] font-medium flex items-center gap-1"
+                title="Delete Folder"
               >
-                <Eye class="w-3.5 h-3.5 text-indigo-400" />
+                <Trash2 class="w-3 h-3" />
+                <span>Delete</span>
               </button>
+            </template>
+            <template v-else>
               <button
-                @click="openAssetInNewTab(asset)"
-                class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-indigo-300 transition"
-                title="Open Asset URL in New Tab"
+                @click="openVersionModal(item)"
+                class="px-2 py-1 rounded bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-indigo-300 hover:text-indigo-200 transition text-[11px] font-medium flex items-center gap-1"
+                title="Upload New Version"
               >
-                <ExternalLink class="w-3.5 h-3.5" />
+                <RefreshCw class="w-3 h-3" />
+                <span>New Version</span>
               </button>
-              <button
-                @click="copyAssetUrl(asset)"
-                class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
-                title="Copy Asset URL"
-              >
-                <Link class="w-3.5 h-3.5" />
-              </button>
-              <button
-                @click="deleteAsset(asset.id)"
-                class="p-1.5 rounded hover:bg-rose-950 text-slate-400 light:text-slate-600 hover:text-rose-400 transition"
-                title="Delete Asset"
-              >
-                <Trash2 class="w-3.5 h-3.5" />
-              </button>
-            </div>
+              <div class="flex items-center gap-1">
+                <button
+                  @click="tabsStore.openAsset(item.id)"
+                  class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
+                  title="Open Asset"
+                >
+                  <Eye class="w-3.5 h-3.5 text-indigo-400" />
+                </button>
+                <button
+                  @click="openAssetInNewTab(item)"
+                  class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-indigo-300 transition"
+                  title="Open Asset URL in New Tab"
+                >
+                  <ExternalLink class="w-3.5 h-3.5" />
+                </button>
+                <button
+                  @click="copyAssetUrl(item)"
+                  class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
+                  title="Copy Asset URL"
+                >
+                  <Link class="w-3.5 h-3.5" />
+                </button>
+                <button
+                  @click="deleteAsset(item.id)"
+                  class="p-1.5 rounded hover:bg-rose-950 text-slate-400 light:text-slate-600 hover:text-rose-400 transition"
+                  title="Delete Asset"
+                >
+                  <Trash2 class="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </template>
           </div>
         </div>
       </div>
 
       <!-- LIST / TABLE VIEW WITH CLICKABLE SORT HEADERS -->
-      <div v-else-if="viewMode === 'list' && paginatedAssets.length > 0" class="overflow-x-auto rounded-xl border border-slate-800 light:border-slate-200 bg-slate-900/60 light:bg-white/60 shadow-xl">
+      <div v-else-if="viewMode === 'list' && paginatedItems.length > 0" class="overflow-x-auto rounded-xl border border-slate-800 light:border-slate-200 bg-slate-900/60 light:bg-white/60 shadow-xl">
         <table class="w-full text-left text-xs text-slate-300 light:text-slate-700">
           <thead class="bg-slate-950/80 light:bg-white/80 border-b border-slate-800 light:border-slate-200 text-[11px] font-semibold text-slate-400 light:text-slate-600 uppercase tracking-wider select-none">
             <tr>
@@ -522,118 +494,152 @@
               <th v-if="visibleColumns.actions" class="py-3 px-4 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-800/60 light:divide-slate-200/60">
-            <tr
-              v-for="asset in paginatedAssets"
-              :key="asset.id"
-              @click="tabsStore.openAsset(asset.id)"
-              :class="[
-                'transition cursor-pointer',
-                selectedAssetIds.includes(asset.id) ? 'bg-indigo-950/40 hover:bg-indigo-900/50' : 'hover:bg-slate-800/10 light:bg-slate-100/50'
-              ]"
-            >
-              <td class="py-2.5 px-3 text-center" @click.stop>
-                <input
-                  type="checkbox"
-                  :value="asset.id"
-                  :checked="selectedAssetIds.includes(asset.id)"
-                  @change="toggleSelectAsset(asset.id)"
-                  class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
-                />
-              </td>
-              <td v-if="visibleColumns.thumbnail" class="py-2.5 px-4 text-center">
-                <div class="w-14 h-14 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 flex items-center justify-center overflow-hidden mx-auto">
-                  <img
-                    v-if="PREVIEWABLE_IMAGE_TYPES.includes(asset.fileType)"
-                    :src="asset.dataUrl || asset.thumbnailUrl || asset.url"
-                    @error="handleImageError($event, asset)"
-                    class="w-full h-full object-cover"
+<tbody class="divide-y divide-slate-800/60 light:divide-slate-200/60">
+            <template v-for="item in paginatedItems" :key="item.id">
+              <!-- Folder row -->
+              <tr v-if="item.kind === 'folder'"
+                @click="navigateToFolder(item.folderPath)"
+                class="transition cursor-pointer hover:bg-slate-800/10 light:bg-slate-100/50"
+              >
+                <td class="py-2.5 px-3 text-center"></td>
+                <td v-if="visibleColumns.thumbnail" class="py-2.5 px-4 text-center">
+                  <div class="w-14 h-14 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 flex items-center justify-center mx-auto">
+                    <Folder class="w-6 h-6 text-indigo-400" />
+                  </div>
+                </td>
+                <td v-if="visibleColumns.filename" class="py-2.5 px-4 font-semibold text-slate-100 light:text-slate-900" :title="item.filename">
+                  <span class="flex items-center gap-1.5"><Folder class="w-3.5 h-3.5 text-indigo-400 shrink-0" /> {{ item.filename }}</span>
+                </td>
+                <td v-if="visibleColumns.path" class="py-2.5 px-4 font-mono text-indigo-300" :title="item.pimcorePath">{{ item.pimcorePath }}</td>
+                <td v-if="visibleColumns.fileType" class="py-2.5 px-4 text-slate-400 light:text-slate-600">
+                  <span class="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-slate-950 light:bg-slate-50 text-slate-300 light:text-slate-700 border border-slate-800 light:border-slate-200">folder</span>
+                </td>
+                <td v-if="visibleColumns.dimensions" class="py-2.5 px-4 text-slate-400 light:text-slate-600 font-mono">—</td>
+                <td v-if="visibleColumns.size" class="py-2.5 px-4 text-slate-400 light:text-slate-600 font-mono">—</td>
+                <td v-if="visibleColumns.visibility" class="py-2.5 px-4">
+                  <span :class="['px-2 py-0.5 text-[10px] font-bold rounded-full border', item.isPublic ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30']">
+                    {{ item.isPublic ? 'PUBLIC' : 'PRIVATE' }}
+                  </span>
+                </td>
+                <td v-if="visibleColumns.version" class="py-2.5 px-4 font-mono text-slate-400 light:text-slate-600">—</td>
+                <td v-if="visibleColumns.uploadedAt" class="py-2.5 px-4 text-slate-400 light:text-slate-600 text-[11px]">—</td>
+                <td v-if="visibleColumns.updatedAt" class="py-2.5 px-4 text-slate-400 light:text-slate-600 text-[11px]">—</td>
+                <td v-if="visibleColumns.s3Key" class="py-2.5 px-4 font-mono text-slate-400 light:text-slate-600">—</td>
+                <td v-if="visibleColumns.actions" class="py-2.5 px-4 text-right" @click.stop>
+                  <div class="flex items-center justify-end gap-1">
+                    <button @click="confirmDeleteFolder(item.folderPath)"
+                      class="p-1.5 rounded hover:bg-rose-950 text-slate-400 light:text-slate-600 hover:text-rose-400 transition"
+                      title="Delete Folder">
+                      <Trash2 class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Asset row -->
+              <tr v-else
+                :key="item.id"
+                @click="tabsStore.openAsset(item.id)"
+                :class="[
+                  'transition cursor-pointer',
+                  selectedAssetIds.includes(item.id) ? 'bg-indigo-950/40 hover:bg-indigo-900/50' : 'hover:bg-slate-800/10 light:bg-slate-100/50'
+                ]"
+              >
+                <td class="py-2.5 px-3 text-center" @click.stop>
+                  <input
+                    type="checkbox"
+                    :value="item.id"
+                    :checked="selectedAssetIds.includes(item.id)"
+                    @change="toggleSelectAsset(item.id)"
+                    class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
                   />
-                  <component v-else :is="getIconForFileType(asset.fileType)" class="w-4 h-4 text-slate-400 light:text-slate-600" />
-                </div>
-              </td>
-              <td v-if="visibleColumns.filename" class="py-2.5 px-4 font-semibold text-slate-100 light:text-slate-900 max-w-[200px] truncate" :title="asset.filename">
-                {{ asset.filename }}
-              </td>
-              <td v-if="visibleColumns.path" class="py-2.5 px-4 font-mono text-indigo-300 max-w-[180px] truncate" :title="asset.pimcorePath">
-                {{ asset.pimcorePath }}
-              </td>
-              <td v-if="visibleColumns.fileType" class="py-2.5 px-4 text-slate-400 light:text-slate-600">
-                <span class="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-slate-950 light:bg-slate-50 text-slate-300 light:text-slate-700 border border-slate-800 light:border-slate-200">
-                  {{ asset.fileType }}
-                </span>
-              </td>
-              <td v-if="visibleColumns.dimensions" class="py-2.5 px-4 text-slate-400 light:text-slate-600 font-mono">
-                <span v-if="asset.metadata?.technical?.width && asset.metadata?.technical?.height">
-                  {{ asset.metadata.technical.width }} × {{ asset.metadata.technical.height }}
-                </span>
-                <span v-else class="text-slate-600 light:text-slate-400">—</span>
-              </td>
-              <td v-if="visibleColumns.size" class="py-2.5 px-4 text-slate-400 light:text-slate-600 font-mono">
-                {{ asset.sizeFormatted }}
-              </td>
-              <td v-if="visibleColumns.visibility" class="py-2.5 px-4">
-                <span
-                  :class="[
-                    'px-2 py-0.5 text-[10px] font-bold rounded-full border',
-                    asset.isPublic ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                  ]"
-                >
-                  {{ asset.isPublic ? 'PUBLIC' : 'PRIVATE' }}
-                </span>
-              </td>
-              <td v-if="visibleColumns.version" class="py-2.5 px-4 font-mono text-slate-400 light:text-slate-600">
-                v{{ asset.version }}
-              </td>
-              <td v-if="visibleColumns.uploadedAt" class="py-2.5 px-4 text-slate-400 light:text-slate-600 text-[11px]">
-                {{ new Date(asset.uploadedAt).toLocaleDateString() }}
-              </td>
-              <td v-if="visibleColumns.updatedAt" class="py-2.5 px-4 text-slate-400 light:text-slate-600 text-[11px]">
-                {{ new Date(asset.updatedAt).toLocaleDateString() }}
-              </td>
-              <td v-if="visibleColumns.s3Key" class="py-2.5 px-4 font-mono text-slate-400 light:text-slate-600 max-w-[160px] truncate" :title="asset.s3Key">
-                {{ asset.s3Key }}
-              </td>
-              <td v-if="visibleColumns.actions" class="py-2.5 px-4 text-right" @click.stop>
-                <div class="flex items-center justify-end gap-1">
-                  <button
-                    @click="tabsStore.openAsset(asset.id)"
-                    class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
-                    title="Open Asset"
+                </td>
+                <td v-if="visibleColumns.thumbnail" class="py-2.5 px-4 text-center">
+                  <div class="w-14 h-14 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 flex items-center justify-center overflow-hidden mx-auto">
+                    <img
+                      v-if="PREVIEWABLE_IMAGE_TYPES.includes(item.fileType ?? '')"
+                      :src="item.dataUrl || item.thumbnailUrl || item.url"
+                      @error="handleImageError($event, item)"
+                      class="w-full h-full object-cover"
+                    />
+                    <component v-else :is="getIconForFileType(item.fileType ?? '')" class="w-4 h-4 text-slate-400 light:text-slate-600" />
+                  </div>
+                </td>
+                <td v-if="visibleColumns.filename" class="py-2.5 px-4 font-semibold text-slate-100 light:text-slate-900 max-w-[200px] truncate" :title="item.filename">
+                  {{ item.filename }}
+                </td>
+                <td v-if="visibleColumns.path" class="py-2.5 px-4 font-mono text-indigo-300 max-w-[180px] truncate" :title="item.pimcorePath">
+                  {{ item.pimcorePath }}
+                </td>
+                <td v-if="visibleColumns.fileType" class="py-2.5 px-4 text-slate-400 light:text-slate-600">
+                  <span class="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-slate-950 light:bg-slate-50 text-slate-300 light:text-slate-700 border border-slate-800 light:border-slate-200">
+                    {{ item.fileType }}
+                  </span>
+                </td>
+                <td v-if="visibleColumns.dimensions" class="py-2.5 px-4 text-slate-400 light:text-slate-600 font-mono">
+                  <span v-if="item.metadata?.technical?.width && item.metadata?.technical?.height">
+                    {{ item.metadata.technical.width }} × {{ item.metadata.technical.height }}
+                  </span>
+                  <span v-else class="text-slate-600 light:text-slate-400">—</span>
+                </td>
+                <td v-if="visibleColumns.size" class="py-2.5 px-4 text-slate-400 light:text-slate-600 font-mono">
+                  {{ item.sizeFormatted }}
+                </td>
+                <td v-if="visibleColumns.visibility" class="py-2.5 px-4">
+                  <span
+                    :class="[
+                      'px-2 py-0.5 text-[10px] font-bold rounded-full border',
+                      item.isPublic ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    ]"
                   >
-                    <Eye class="w-3.5 h-3.5 text-indigo-400" />
-                  </button>
-                  <button
-                    @click="openAssetInNewTab(asset)"
-                    class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-indigo-300 transition"
-                    title="Open Asset URL in New Tab"
-                  >
-                    <ExternalLink class="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    @click="openVersionModal(asset)"
-                    class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
-                    title="Upload New Version"
-                  >
-                    <RefreshCw class="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    @click="copyAssetUrl(asset)"
-                    class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
-                    title="Copy Asset URL"
-                  >
-                    <Link class="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    @click="deleteAsset(asset.id)"
-                    class="p-1.5 rounded hover:bg-rose-950 text-slate-400 light:text-slate-600 hover:text-rose-400 transition"
-                    title="Delete Asset"
-                  >
-                    <Trash2 class="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </td>
-            </tr>
+                    {{ item.isPublic ? 'PUBLIC' : 'PRIVATE' }}
+                  </span>
+                </td>
+                <td v-if="visibleColumns.version" class="py-2.5 px-4 font-mono text-slate-400 light:text-slate-600">
+                  v{{ item.version }}
+                </td>
+                <td v-if="visibleColumns.uploadedAt" class="py-2.5 px-4 text-slate-400 light:text-slate-600 text-[11px]">
+                  {{ new Date(item.uploadedAt!).toLocaleDateString() }}
+                </td>
+                <td v-if="visibleColumns.updatedAt" class="py-2.5 px-4 text-slate-400 light:text-slate-600 text-[11px]">
+                  {{ new Date(item.updatedAt!).toLocaleDateString() }}
+                </td>
+                <td v-if="visibleColumns.s3Key" class="py-2.5 px-4 font-mono text-slate-400 light:text-slate-600 max-w-[160px] truncate" :title="item.s3Key">
+                  {{ item.s3Key }}
+                </td>
+                <td v-if="visibleColumns.actions" class="py-2.5 px-4 text-right" @click.stop>
+                  <div class="flex items-center justify-end gap-1">
+                    <button
+                      @click="tabsStore.openAsset(item.id)"
+                      class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
+                      title="Open Asset"
+                    >
+                      <Eye class="w-3.5 h-3.5 text-indigo-400" />
+                    </button>
+                    <button
+                      @click="openAssetInNewTab(item)"
+                      class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-indigo-300 transition"
+                      title="Open Asset URL in New Tab"
+                    >
+                      <ExternalLink class="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      @click="copyAssetUrl(item)"
+                      class="p-1.5 rounded hover:bg-slate-800 light:bg-slate-100 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
+                      title="Copy Asset URL"
+                    >
+                      <Link class="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      @click="deleteAsset(item.id)"
+                      class="p-1.5 rounded hover:bg-rose-950 text-slate-400 light:text-slate-600 hover:text-rose-400 transition"
+                      title="Delete Asset"
+                    >
+                      <Trash2 class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -670,7 +676,7 @@
         <div class="text-slate-400 light:text-slate-600 font-mono">
           Showing <strong class="text-indigo-300 font-bold">{{ paginationStartIndex }}</strong> -
           <strong class="text-indigo-300 font-bold">{{ paginationEndIndex }}</strong> of
-          <strong class="text-slate-200 light:text-slate-800 font-bold">{{ filteredAndSortedAssets.length }}</strong> assets
+          <strong class="text-slate-200 light:text-slate-800 font-bold">{{ unifiedItems.length }}</strong> items
         </div>
 
         <!-- Controls: Items Per Page & Page Navigation -->
@@ -851,10 +857,24 @@
           </div>
         </div>
 
+        <div v-if="isUploading && damStore.uploadProgress" class="px-3 py-2 space-y-1">
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span class="truncate">{{ damStore.uploadProgress.label }}</span>
+            <span>{{ damStore.uploadProgress.current }} / {{ damStore.uploadProgress.total }}</span>
+          </div>
+          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              class="h-full bg-indigo-500 rounded-full transition-all duration-300"
+              :style="{ width: `${(damStore.uploadProgress.current / damStore.uploadProgress.total) * 100}%` }"
+            ></div>
+          </div>
+        </div>
+
         <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800 light:border-slate-200">
           <button
             @click="showUploadModal = false"
-            class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
+            :disabled="isUploading"
+            class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition disabled:opacity-40"
           >
             Cancel
           </button>
@@ -864,7 +884,7 @@
             class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition flex items-center gap-1.5 disabled:opacity-50"
           >
             <span v-if="isUploading" class="animate-spin w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span>
-            <span>{{ isUploading ? 'Uploading Batch...' : `Upload (${selectedFiles.length}) Files` }}</span>
+            <span>{{ isUploading ? 'Uploading...' : `Upload (${selectedFiles.length}) Files` }}</span>
           </button>
         </div>
       </div>
@@ -1000,7 +1020,9 @@ const showCreateFolderModal = ref(false)
 const showVersionModal = ref(false)
 const showColumnConfig = ref(false)
 
-async function openAssetInNewTab(asset: AssetItem) {
+async function openAssetInNewTab(item: UnifiedItem) {
+  const asset = damStore.assets.find((a) => a.id === item.id)
+  if (!asset) return
   const targetUrl = (await damStore.getAssetUrl(asset)) || asset.url || asset.pimcorePath
   if (!targetUrl) return
   window.open(targetUrl, '_blank', 'noopener,noreferrer')
@@ -1192,35 +1214,83 @@ function applyCustomPerPage() {
   currentPage.value = 1
 }
 
+// Unified list: folders first, then assets, sorted by name
+interface UnifiedItem {
+  kind: 'folder' | 'asset'
+  id: string
+  filename: string
+  pimcorePath: string
+  folderPath: string
+  isPublic: boolean
+  fileType?: string
+  sizeFormatted?: string
+  version?: number
+  url?: string
+  dataUrl?: string
+  thumbnailUrl?: string
+  uploadedAt?: string
+  updatedAt?: string
+  s3Key?: string
+  metadata?: { technical?: { width?: number; height?: number } }
+}
+
+const unifiedItems = computed<UnifiedItem[]>(() => {
+  const folders: UnifiedItem[] = damStore.currentSubfolders.map((f) => ({
+    kind: 'folder',
+    id: `folder:${f.path}`,
+    filename: f.name,
+    pimcorePath: f.path,
+    folderPath: f.path,
+    isPublic: f.isPublic ?? false,
+  }))
+  const assets: UnifiedItem[] = filteredAndSortedAssets.value.map((a) => ({
+    kind: 'asset',
+    id: a.id,
+    filename: a.filename,
+    pimcorePath: a.pimcorePath,
+    folderPath: a.folderPath,
+    isPublic: a.isPublic,
+    fileType: a.fileType,
+    sizeFormatted: a.sizeFormatted,
+    version: a.version,
+    url: a.url,
+    dataUrl: a.dataUrl,
+    thumbnailUrl: a.thumbnailUrl,
+    uploadedAt: a.uploadedAt,
+    updatedAt: a.updatedAt,
+    s3Key: a.s3Key,
+    metadata: a.metadata,
+  }))
+  return [...folders, ...assets].sort((a, b) => a.filename.localeCompare(b.filename))
+})
+
+const paginatedItems = computed(() => {
+  if (itemsPerPageLimit.value === Infinity) return unifiedItems.value
+  const start = (currentPage.value - 1) * itemsPerPageLimit.value
+  return unifiedItems.value.slice(start, start + itemsPerPageLimit.value)
+})
+
 const totalPages = computed(() => {
   if (itemsPerPageLimit.value === Infinity) return 1
-  const count = filteredAndSortedAssets.value.length
+  const count = unifiedItems.value.length
   return Math.max(1, Math.ceil(count / itemsPerPageLimit.value))
 })
 
-watch([filteredAndSortedAssets, itemsPerPageLimit], () => {
+watch([filteredAndSortedAssets, unifiedItems, itemsPerPageLimit], () => {
   if (currentPage.value > totalPages.value) {
     currentPage.value = totalPages.value
   }
 })
 
-const paginatedAssets = computed(() => {
-  if (itemsPerPageLimit.value === Infinity) {
-    return filteredAndSortedAssets.value
-  }
-  const start = (currentPage.value - 1) * itemsPerPageLimit.value
-  return filteredAndSortedAssets.value.slice(start, start + itemsPerPageLimit.value)
-})
-
 const paginationStartIndex = computed(() => {
-  if (filteredAndSortedAssets.value.length === 0) return 0
+  if (unifiedItems.value.length === 0) return 0
   if (itemsPerPageLimit.value === Infinity) return 1
   return (currentPage.value - 1) * itemsPerPageLimit.value + 1
 })
 
 const paginationEndIndex = computed(() => {
-  if (itemsPerPageLimit.value === Infinity) return filteredAndSortedAssets.value.length
-  return Math.min(currentPage.value * itemsPerPageLimit.value, filteredAndSortedAssets.value.length)
+  if (itemsPerPageLimit.value === Infinity) return unifiedItems.value.length
+  return Math.min(currentPage.value * itemsPerPageLimit.value, unifiedItems.value.length)
 })
 
 function goToPage(page: number) {
@@ -1234,28 +1304,29 @@ const selectedAssetIds = ref<string[]>([])
 const isDownloadingZip = ref(false)
 
 const isAllPageSelected = computed(() => {
-  if (paginatedAssets.value.length === 0) return false
-  return paginatedAssets.value.every((a) => selectedAssetIds.value.includes(a.id))
+  const pageAssetIds = paginatedItems.value.filter((a) => a.kind === 'asset')
+  if (pageAssetIds.length === 0) return false
+  return pageAssetIds.every((a) => selectedAssetIds.value.includes(a.id))
 })
 
 const isAllFilteredSelected = computed(() => {
-  if (filteredAndSortedAssets.value.length === 0) return false
-  return filteredAndSortedAssets.value.every((a) => selectedAssetIds.value.includes(a.id))
+  const assetIds = unifiedItems.value.filter((a) => a.kind === 'asset')
+  if (assetIds.length === 0) return false
+  return assetIds.every((a) => selectedAssetIds.value.includes(a.id))
 })
 
 function toggleSelectAllPage() {
+  const pageAssetIds = paginatedItems.value.filter((a) => a.kind === 'asset').map((a) => a.id)
   if (isAllPageSelected.value) {
-    const pageIds = paginatedAssets.value.map((a) => a.id)
-    selectedAssetIds.value = selectedAssetIds.value.filter((id) => !pageIds.includes(id))
+    selectedAssetIds.value = selectedAssetIds.value.filter((id) => !pageAssetIds.includes(id))
   } else {
-    const pageIds = paginatedAssets.value.map((a) => a.id)
-    const set = new Set([...selectedAssetIds.value, ...pageIds])
+    const set = new Set([...selectedAssetIds.value, ...pageAssetIds])
     selectedAssetIds.value = Array.from(set)
   }
 }
 
 function selectAllFiltered() {
-  selectedAssetIds.value = filteredAndSortedAssets.value.map((a) => a.id)
+  selectedAssetIds.value = unifiedItems.value.filter((a) => a.kind === 'asset').map((a) => a.id)
 }
 
 function clearSelection() {
@@ -1363,6 +1434,7 @@ const newFolderIsPublic = ref(false)
 const autoExtractZip = ref(true)
 const zipVisibility = ref<'public' | 'private'>('public')
 const isUploading = ref(false)
+const isRegenerating = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 
 function triggerFileInputClick() {
@@ -1390,7 +1462,33 @@ function navigateToFolder(path: string) {
 function openUploadModal() {
   selectedFiles.value = []
   autoExtractZip.value = true
+  zipVisibility.value = 'public'
   showUploadModal.value = true
+}
+
+async function regenerateAllThumbnails() {
+  // Collect all image assets from current folder and all subfolders recursively
+  function collectImagePaths(folderPath: string): string[] {
+    const paths: string[] = []
+    for (const a of damStore.assets) {
+      if (a.folderPath === folderPath || a.folderPath.startsWith(folderPath === '/' ? '/' : folderPath + '/')) {
+        if (PREVIEWABLE_IMAGE_TYPES.includes(a.fileType)) paths.push(a.pimcorePath)
+      }
+    }
+    return paths
+  }
+  const paths = collectImagePaths(damStore.currentFolderPath)
+  if (paths.length === 0) { toastStore.show('No image assets in this folder or subfolders'); return }
+  if (!confirm(`Regenerate thumbnails for ${paths.length} image(s) in "${damStore.currentFolderPath}" and all subfolders?`)) return
+  isRegenerating.value = true
+  try {
+    const result = await damStore.regenerateThumbnails(paths)
+    toastStore.show(`Thumbnails: ${result.succeeded} OK, ${result.failed} failed`)
+  } catch (e: any) {
+    toastStore.show(e?.message || 'Failed to regenerate thumbnails')
+  } finally {
+    isRegenerating.value = false
+  }
 }
 
 function handleFileSelect(e: Event) {
@@ -1453,8 +1551,9 @@ async function confirmDeleteFolder(path: string) {
   }
 }
 
-function openVersionModal(asset: AssetItem) {
-  selectedAssetForVersion.value = asset
+function openVersionModal(item: UnifiedItem) {
+  const asset = damStore.assets.find((a) => a.id === item.id)
+  if (asset) selectedAssetForVersion.value = asset
   showVersionModal.value = true
 }
 
@@ -1466,13 +1565,15 @@ async function deleteAsset(id: string) {
   }
 }
 
-async function copyAssetUrl(asset: AssetItem) {
+async function copyAssetUrl(item: UnifiedItem) {
+  const asset = damStore.assets.find((a) => a.id === item.id)
+  if (!asset) return
   const url = (await damStore.getAssetUrl(asset)) || asset.url || asset.pimcorePath
   await navigator.clipboard.writeText(url)
   toastStore.show('Asset URL copied to clipboard!')
 }
 
-function handleImageError(e: Event, asset: AssetItem) {
-  handleAssetImageError(e, asset)
+function handleImageError(e: Event, item: UnifiedItem) {
+  handleAssetImageError(e, item as any)
 }
 </script>

@@ -37,6 +37,12 @@ export interface AssetStorageProvider {
 
   existsAsset(pimcorePath: string): Promise<boolean>;
 
+  /** Download the original file from storage as a Buffer. */
+  downloadAsset(pimcorePath: string): Promise<Buffer | null>;
+
+  /** Regenerate all thumbnail presets for an asset and upload them. */
+  regenerateThumbnails(pimcorePath: string): Promise<Record<ThumbnailPreset, string> | null>;
+
   visibilityManager: FolderVisibilityManager;
 }
 

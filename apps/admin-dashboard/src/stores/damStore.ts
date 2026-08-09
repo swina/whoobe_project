@@ -21,6 +21,7 @@ import {
   fetchAssets,
   updateAssetMetadataApi,
   transformAssetOnDam,
+  regenerateThumbnailsApi,
   DamBackendInfo,
   DamFolderRecord,
   DamAssetRecordWithUrls,
@@ -321,16 +322,24 @@ export const useDamStore = defineStore('dam', () => {
     addFolderRule(`${folderPath}/**`, isPublic)
   }
 
-  async function uploadMultipleAssets(files: File[], folderPath?: string, isPublicOverride?: boolean): Promise<AssetItem[]> {
+  // Upload progress tracking — updated during uploadMultipleAssets/uploadZipAsset
+const uploadProgress = ref<{ current: number; total: number; label: string } | null>(null)
+
+async function uploadMultipleAssets(files: File[], folderPath?: string, isPublicOverride?: boolean): Promise<AssetItem[]> {
     const uploaded: AssetItem[] = []
-    for (const file of files) {
+    uploadProgress.value = { current: 0, total: files.length, label: 'Starting...' }
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      uploadProgress.value = { current: i, total: files.length, label: file.name }
       if (file.name.toLowerCase().endsWith('.zip')) {
         await uploadZipAsset(file, folderPath, true, isPublicOverride)
       } else {
         const item = await uploadAsset(file, folderPath, isPublicOverride)
         uploaded.push(item)
       }
+      uploadProgress.value = { current: i + 1, total: files.length, label: file.name }
     }
+    uploadProgress.value = null
     return uploaded
   }
 
@@ -489,6 +498,23 @@ export const useDamStore = defineStore('dam', () => {
     assets.value = assets.value.filter((a) => a.id !== assetId)
   }
 
+  // --- Regenerate Thumbnails ---
+  async function regenerateThumbnails(paths: string[]): Promise<{ succeeded: number; failed: number }> {
+    const result = await regenerateThumbnailsApi(config.value.assetProcessorUrl, paths, config.value.folderRules)
+    const updatedPaths = new Set(result.results.filter((r) => r.success).map((r) => r.pimcorePath))
+    for (const asset of assets.value) {
+      if (updatedPaths.has(asset.pimcorePath)) {
+        try {
+          const fresh = await generateAssetUrl(asset.pimcorePath)
+          asset.url = fresh.url
+          asset.thumbnailUrl = fresh.thumbnailUrl
+          asset.thumbnails = fresh.thumbnails
+        } catch { /* will heal on next image error */ }
+      }
+    }
+    return { succeeded: result.succeeded, failed: result.failed }
+  }
+
   // --- Update Metadata (EXIF/technical/camera/gps/rights editor) ---
   async function updateAssetMetadata(assetId: string, metadata: ExtractedAssetMetadata): Promise<void> {
     const target = assets.value.find((a) => a.id === assetId)
@@ -610,8 +636,10 @@ export const useDamStore = defineStore('dam', () => {
     uploadAsset,
     uploadZipAsset,
     uploadMultipleAssets,
+    uploadProgress,
     uploadNewVersion,
     deleteAsset,
+    regenerateThumbnails,
     updateAssetMetadata,
     transformAsset,
     addFolderRule,

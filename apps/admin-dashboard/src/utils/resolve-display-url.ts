@@ -40,7 +40,10 @@ export function resolveDisplayUrl(value: unknown): string | undefined {
       })
       .catch((e) => {
         console.warn(`resolveDisplayUrl: failed to resolve "${value}":`, e)
-        cache[value] = null
+        // Don't cache failures — the upstream issue (e.g. proxy down, S3
+        // misconfigured) may be fixed without a page reload, so retry on
+        // the next access instead of returning null forever.
+        delete cache[value]
       })
       .finally(() => inFlight.delete(value))
   }

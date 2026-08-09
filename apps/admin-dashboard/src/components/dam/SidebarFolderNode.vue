@@ -80,7 +80,7 @@ const emit = defineEmits<{
   (e: 'select', path: string): void
 }>()
 
-const isOpen = ref(true)
+const isOpen = ref(false)
 
 const children = computed(() => {
   return props.allFolders.filter((f) => f.parentPath === props.folder.path)
