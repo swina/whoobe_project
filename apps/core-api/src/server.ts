@@ -1546,6 +1546,74 @@ app.get('/data-objects', requirePermission(PERMISSIONS.OBJECTS_READ), async (req
   }
 });
 
+// Batch actions: publish/unpublish, delete, resolve-assets. Registered
+// before /batch and /:id so the path is not captured as an id.
+app.post(
+  '/data-objects/batch',
+  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { ids, action } = req.body ?? {};
+      if (!Array.isArray(ids) || ids.length === 0) {
+        res.status(400).json({ error: 'ids[] is required' });
+        return;
+      }
+      switch (action) {
+        case 'publish':
+        case 'unpublish': {
+          const published = action === 'publish';
+          let succeeded = 0;
+          const errors: { id: string; message: string }[] = [];
+          for (const id of ids) {
+            try {
+              await updateDataObject(id, { published });
+              succeeded++;
+            } catch (e: any) {
+              errors.push({ id, message: e.message });
+            }
+          }
+          res.json({ succeeded, failed: errors.length, errors });
+          return;
+        }
+        case 'delete': {
+          let succeeded = 0;
+          const errors: { id: string; message: string }[] = [];
+          for (const id of ids) {
+            try {
+              await deleteDataObject(id);
+              succeeded++;
+            } catch (e: any) {
+              errors.push({ id, message: e.message });
+            }
+          }
+          res.json({ succeeded, failed: errors.length, errors });
+          return;
+        }
+        case 'resolve-assets': {
+          const objects = await getDataObjectsByIds(ids);
+          const results: Record<string, Record<string, unknown>> = {};
+          for (const obj of objects) {
+            const resolved: Record<string, unknown> = {};
+            for (const [key, value] of Object.entries(obj.attributes)) {
+              if (value && typeof value === 'object' && 'assetId' in (value as any)) {
+                resolved[key] = value;
+              }
+            }
+            results[obj.id] = resolved;
+          }
+          res.json({ results });
+          return;
+        }
+        default:
+          res.status(400).json({ error: `Unknown action "${action}". Use publish, unpublish, or delete.` });
+      }
+    } catch (error: any) {
+      console.error('Batch action error:', error);
+      res.status(500).json({ error: error.message || 'Failed to process batch action' });
+    }
+  }
+);
+
 // Batch-fetch multiple objects by id - one round-trip for the editor's
 // data-binding resolution instead of N single-object requests. Must be
 // registered BEFORE the `/:id` route below (Express matches in order, and
