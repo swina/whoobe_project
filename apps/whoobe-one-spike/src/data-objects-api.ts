@@ -54,6 +54,19 @@ export interface DataObjectQueryFilter {
   value: unknown
 }
 
+export interface DataObjectOrderBy {
+  field: string
+  direction: 'asc' | 'desc'
+}
+
+export interface DataObjectQueryOptions {
+  filters?: DataObjectQueryFilter[]
+  orderBy?: DataObjectOrderBy | null
+  offset?: number
+  limit?: number
+  locale?: string
+}
+
 function getDefaultCoreApiUrl(): string {
   if (typeof window !== 'undefined' && window.location?.hostname) {
     return `${window.location.protocol}//${window.location.hostname}:3003`
@@ -121,19 +134,17 @@ export async function getPublishedDataObject(id: string): Promise<DataObjectReco
   return body.object
 }
 
-/** Query published data objects with server-side filters and limit.
- *  Avoids fetching every object and filtering client-side. Falls back to
- *  the admin endpoint if the public query route is unavailable. */
+/** Query published data objects with server-side filters/order/offset/
+ *  limit. Avoids fetching every object and filtering client-side. Falls
+ *  back to the admin endpoint if the public query route is unavailable. */
 export async function queryPublishedDataObjects(
   className: string,
-  filters?: DataObjectQueryFilter[],
-  limit?: number,
-  locale?: string
+  options?: DataObjectQueryOptions
 ): Promise<DataObjectRecord[]> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/public/data-objects/query`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ class: className, filters, limit, locale }),
+    body: JSON.stringify({ class: className, ...options }),
     credentials: 'include',
   })
   const body = await parseJsonOrThrow(res)
@@ -144,14 +155,12 @@ export async function queryPublishedDataObjects(
  *  Requires OBJECTS_READ permission (session cookie from admin dashboard). */
 export async function queryDataObjects(
   className: string,
-  filters?: DataObjectQueryFilter[],
-  limit?: number,
-  locale?: string
+  options?: DataObjectQueryOptions
 ): Promise<DataObjectRecord[]> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/data-objects/query`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ class: className, filters, limit, locale }),
+    body: JSON.stringify({ class: className, ...options }),
     credentials: 'include',
   })
   const body = await parseJsonOrThrow(res)

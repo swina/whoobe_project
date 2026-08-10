@@ -1,4 +1,4 @@
-import type { DataBindingFilter, ElementDataBinding } from './ElementsClass.js'
+import type { DataBindingFilter, DataBindingOrderBy, ElementDataBinding } from './ElementsClass.js'
 import {
   getDataObject,
   getDataClassByName,
@@ -56,26 +56,46 @@ async function resolveBinding(db: ElementDataBinding, locale?: string): Promise<
         operator: f.operator as DataObjectQueryFilter['operator'],
         value: f.value,
       }))
+      // offset/limit are 'query'-only (pagination of a single 'first'
+      // record is meaningless) - orderBy applies to both.
+      const queryOptions = {
+        filters,
+        orderBy: db.orderBy ?? undefined,
+        offset: db.resolveMode === 'query' ? (db.offset ?? undefined) : undefined,
+        limit: db.resolveMode === 'query' ? (db.limit ?? undefined) : undefined,
+        locale,
+      }
       try {
         // Admin query first (no published filter) - works when embedded in
         // the admin dashboard with a valid session cookie.
-        const objects = await queryDataObjects(db.className, filters, undefined, locale)
+        const objects = await queryDataObjects(db.className, queryOptions)
         return db.resolveMode === 'first' ? (objects[0] ?? null) : objects
       } catch (err) {
         // Fallback: try the public endpoint (published-only) for standalone
         // whoobe-one-spike with no admin session.
         console.warn('[data-resolver] Admin query failed, trying public:', err)
         try {
-          const objects = await queryPublishedDataObjects(db.className, filters, undefined, locale)
+          const objects = await queryPublishedDataObjects(db.className, queryOptions)
           return db.resolveMode === 'first' ? (objects[0] ?? null) : objects
         } catch (err2) {
-          // Final fallback: fetch all via admin endpoint, filter client-side
+          // Final fallback: fetch all via admin endpoint, filter/sort/
+          // offset/limit client-side - so a bound container doesn't
+          // visibly behave differently (wrong order, no pagination
+          // window) just because this rare no-session/no-public-route
+          // path was taken instead of the primary query path.
           console.warn('[data-resolver] Public query failed, falling back to client-side filter:', err2)
           const all = await listDataObjects()
           const dataClass = await getDataClassByName(db.className)
-          const filtered = dataClass ? all.filter((o) => o.classId === dataClass.id) : all
+          let filtered = dataClass ? all.filter((o) => o.classId === dataClass.id) : all
           if (db.filters && db.filters.length > 0) {
-            return applyFilters(filtered, db.filters)
+            filtered = applyFilters(filtered, db.filters)
+          }
+          if (db.orderBy) {
+            filtered = sortClientSide(filtered, db.orderBy)
+          }
+          if (db.resolveMode === 'query') {
+            const off = db.offset && db.offset > 0 ? db.offset : 0
+            filtered = db.limit ? filtered.slice(off, off + db.limit) : filtered.slice(off)
           }
           return db.resolveMode === 'first' ? (filtered[0] ?? null) : filtered
         }
@@ -84,6 +104,43 @@ async function resolveBinding(db: ElementDataBinding, locale?: string): Promise<
     default:
       return null
   }
+}
+
+// Same top-level/attribute distinction and numeric-then-date-then-string
+// coercion order as the server's own getSortValue/compareSortValues/
+// sortDataObjects (packages/core/src/db/data-objects-records.ts) - a
+// client-side duplicate, not an import, since this file already
+// duplicates the filter logic locally the same way (applyFilters above)
+// rather than importing server internals across the process boundary.
+const TOP_LEVEL_SORT_FIELDS = new Set([
+  'key', 'path', 'locale', 'id', 'classId', 'pimcoreId', 'translationGroupId',
+  'published', 'workflowState', 'createdAt', 'updatedAt', 'publishedAt',
+])
+
+function getSortValueClientSide(obj: DataObjectRecord, field: string): unknown {
+  return TOP_LEVEL_SORT_FIELDS.has(field) ? (obj as any)[field] : (obj.attributes as any)?.[field]
+}
+
+function compareSortValuesClientSide(a: unknown, b: unknown): number {
+  const na = Number(a)
+  const nb = Number(b)
+  if (!isNaN(na) && !isNaN(nb)) return na - nb
+  const da = new Date(a as any).getTime()
+  const db_ = new Date(b as any).getTime()
+  if (!isNaN(da) && !isNaN(db_)) return da - db_
+  return String(a).localeCompare(String(b))
+}
+
+function sortClientSide(rows: DataObjectRecord[], orderBy: DataBindingOrderBy): DataObjectRecord[] {
+  return [...rows].sort((a, b) => {
+    const va = getSortValueClientSide(a, orderBy.field)
+    const vb = getSortValueClientSide(b, orderBy.field)
+    if (va == null && vb == null) return 0
+    if (va == null) return 1
+    if (vb == null) return -1
+    const cmp = compareSortValuesClientSide(va, vb)
+    return orderBy.direction === 'asc' ? cmp : -cmp
+  })
 }
 
 export function applyFilters(objects: DataObjectRecord[], filters: DataBindingFilter[]): DataObjectRecord[] {

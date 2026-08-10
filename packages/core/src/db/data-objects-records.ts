@@ -58,10 +58,12 @@ export async function listPublishedDataObjects(classId?: string, locale?: string
 }
 
 /**
- * Query published data objects with optional field-level filters and limit.
- * Filters are applied server-side as JSONB attribute checks. This avoids
- * fetching every object and filtering client-side (which the original
- * data-resolver.ts did, breaking on large datasets and auth issues).
+ * Query data objects with optional field-level filters, ordering, offset
+ * and limit. Filters/ordering are applied in JS against a fetched-in-full
+ * row set (not pushed to SQL) - this avoids building dynamic JSONB SQL for
+ * arbitrary attribute fields, matching the same "fetch everything, process
+ * in JS" convention apps/admin-dashboard's ObjectsView.vue/AssetsView.vue
+ * already use over this same record shape.
  */
 export interface DataObjectQueryFilter {
   field: string;
@@ -69,22 +71,40 @@ export interface DataObjectQueryFilter {
   value: unknown;
 }
 
-/**
- * Query published data objects with optional field-level filters and limit.
- * Filters are applied server-side as JSONB attribute checks. This avoids
- * fetching every object and filtering client-side (which the original
- * data-resolver.ts did, breaking on large datasets and auth issues).
- */
-export interface DataObjectQueryFilter {
+export interface DataObjectQueryOrderBy {
   field: string;
-  operator: 'eq' | 'neq' | 'contains' | 'gt' | 'lt';
-  value: unknown;
+  direction: 'asc' | 'desc';
+}
+
+export interface DataObjectQueryOptions {
+  filters?: DataObjectQueryFilter[];
+  orderBy?: DataObjectQueryOrderBy | null;
+  offset?: number;
+  limit?: number;
+  locale?: string;
 }
 
 const TOP_LEVEL_FILTER_FIELDS = new Set(['key', 'path', 'locale', 'id', 'classId', 'pimcoreId', 'translationGroupId']);
 
+// Superset used only for sorting - filtering (getFieldValue/matchFilter) is
+// intentionally left untouched. createdAt/updatedAt/publishedAt/published
+// are legitimate sort keys that don't need to become filterable just
+// because they're now sortable.
+const TOP_LEVEL_SORT_FIELDS = new Set([
+  ...TOP_LEVEL_FILTER_FIELDS,
+  'published',
+  'workflowState',
+  'createdAt',
+  'updatedAt',
+  'publishedAt',
+]);
+
 function getFieldValue(obj: DataObjectRecord, field: string): unknown {
   return TOP_LEVEL_FILTER_FIELDS.has(field) ? (obj as any)[field] : (obj.attributes as any)?.[field];
+}
+
+export function getSortValue(obj: DataObjectRecord, field: string): unknown {
+  return TOP_LEVEL_SORT_FIELDS.has(field) ? (obj as any)[field] : (obj.attributes as any)?.[field];
 }
 
 function matchFilter(obj: DataObjectRecord, f: DataObjectQueryFilter): boolean {
@@ -121,47 +141,81 @@ function compareLT(value: unknown, filterValue: unknown): boolean {
   return false;
 }
 
-/** Admin query (no published filter) - used by the editor's data-resolver.
- *  Returns objects regardless of published status. */
-export async function queryDataObjects(
+/** Same numeric-then-date-then-string coercion order as compareGT/compareLT,
+ *  so "order by X asc/desc" and "filter X gt/lt" agree on what "greater"
+ *  means for the same field. */
+export function compareSortValues(a: unknown, b: unknown): number {
+  const na = Number(a);
+  const nb = Number(b);
+  if (!isNaN(na) && !isNaN(nb)) return na - nb;
+  const da = new Date(a as any).getTime();
+  const db_ = new Date(b as any).getTime();
+  if (!isNaN(da) && !isNaN(db_)) return da - db_;
+  return String(a).localeCompare(String(b));
+}
+
+/** Nulls always sort last regardless of direction. */
+export function sortDataObjects(rows: DataObjectRecord[], orderBy: DataObjectQueryOrderBy): DataObjectRecord[] {
+  return [...rows].sort((a, b) => {
+    const va = getSortValue(a, orderBy.field);
+    const vb = getSortValue(b, orderBy.field);
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    const cmp = compareSortValues(va, vb);
+    return orderBy.direction === 'asc' ? cmp : -cmp;
+  });
+}
+
+async function queryDataObjectsInternal(
   classId: string,
-  filters?: DataObjectQueryFilter[],
-  limit?: number,
-  locale?: string
+  publishedOnly: boolean,
+  defaultOrderField: 'createdAt' | 'publishedAt',
+  options: DataObjectQueryOptions = {}
 ): Promise<DataObjectRecord[]> {
   const db = getDb();
   const conditions = [eq(dataObjects.classId, classId)];
-  if (locale) conditions.push(eq(dataObjects.locale, locale));
+  if (publishedOnly) conditions.push(eq(dataObjects.published, true));
+  if (options.locale) conditions.push(eq(dataObjects.locale, options.locale));
 
-  const base = db.select().from(dataObjects).where(and(...conditions)).orderBy(desc(dataObjects.createdAt));
+  // No SQL LIMIT here - deliberately unbounded (matches ObjectsView.vue/
+  // AssetsView.vue's own no-cap convention, and data-resolver.ts's query-
+  // binding path already called this with no limit before this change, so
+  // this isn't a new scaling regression). The SQL ORDER BY below is just a
+  // stable base fetch order; the real, authoritative order is always
+  // recomputed in JS afterward so it can honor filters/attributes and the
+  // caller's own orderBy, which SQL can't see without dynamic JSONB
+  // expressions this codebase doesn't otherwise build.
+  const rows = await db
+    .select()
+    .from(dataObjects)
+    .where(and(...conditions))
+    .orderBy(defaultOrderField === 'createdAt' ? desc(dataObjects.createdAt) : desc(dataObjects.publishedAt));
 
-  const rows = typeof limit === 'number' && limit > 0
-    ? await base.limit(limit)
-    : await base;
+  const filtered = options.filters && options.filters.length > 0
+    ? rows.filter((obj) => options.filters!.every((f) => matchFilter(obj, f)))
+    : rows;
 
-  if (!filters || filters.length === 0) return rows;
-  return rows.filter((obj) => filters.every((f) => matchFilter(obj, f)));
+  // Always apply an effective order (caller's, or the same default this
+  // code already hardcoded before this change) so offset/limit stay
+  // deterministic - Postgres gives no row-order guarantee without one.
+  const effectiveOrderBy: DataObjectQueryOrderBy = options.orderBy ?? { field: defaultOrderField, direction: 'desc' };
+  const sorted = sortDataObjects(filtered, effectiveOrderBy);
+
+  const offset = typeof options.offset === 'number' && options.offset > 0 ? options.offset : 0;
+  const limit = typeof options.limit === 'number' && options.limit > 0 ? options.limit : undefined;
+  return limit !== undefined ? sorted.slice(offset, offset + limit) : sorted.slice(offset);
+}
+
+/** Admin query (no published filter) - used by the editor's data-resolver.
+ *  Returns objects regardless of published status. */
+export async function queryDataObjects(classId: string, options?: DataObjectQueryOptions): Promise<DataObjectRecord[]> {
+  return queryDataObjectsInternal(classId, false, 'createdAt', options);
 }
 
 /** Public query - only returns published objects. */
-export async function queryPublishedDataObjects(
-  classId: string,
-  filters?: DataObjectQueryFilter[],
-  limit?: number,
-  locale?: string
-): Promise<DataObjectRecord[]> {
-  const db = getDb();
-  const conditions = [eq(dataObjects.published, true), eq(dataObjects.classId, classId)];
-  if (locale) conditions.push(eq(dataObjects.locale, locale));
-
-  const base = db.select().from(dataObjects).where(and(...conditions)).orderBy(desc(dataObjects.publishedAt));
-
-  const rows = typeof limit === 'number' && limit > 0
-    ? await base.limit(limit)
-    : await base;
-
-  if (!filters || filters.length === 0) return rows;
-  return rows.filter((obj) => filters.every((f) => matchFilter(obj, f)));
+export async function queryPublishedDataObjects(classId: string, options?: DataObjectQueryOptions): Promise<DataObjectRecord[]> {
+  return queryDataObjectsInternal(classId, true, 'publishedAt', options);
 }
 
 /** Same `published = true` gate as `listPublishedDataObjects` - a single

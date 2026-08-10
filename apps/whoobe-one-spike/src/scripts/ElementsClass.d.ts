@@ -43,6 +43,8 @@ export interface ElementGsap {
   trigger?: boolean
 }
 
+import type { FieldTransform } from './field-transforms.js'
+
 export interface DataBindingFilter {
   field: string
   operator: 'eq' | 'neq' | 'in' | 'contains' | 'gt' | 'lt'
@@ -50,15 +52,42 @@ export interface DataBindingFilter {
   valueIsBinding?: boolean
 }
 
+export interface DataBindingOrderBy {
+  field: string
+  direction: 'asc' | 'desc'
+}
+
 export interface ElementDataBinding {
   className: string
   objectId?: string | null
   field?: string | null
+  // Denormalized ClassFieldDefinition.fieldType, set at bind time
+  // (DataObjectPicker.vue's confirm()) - lets the sidebar's "data binding"
+  // transform picker (DataBindingTransformControl.vue) know which
+  // transformers apply without re-fetching the data class. Absent on
+  // bindings saved before this field existed.
+  fieldType?: string | null
   target: string
   dataKey?: string | null
   resolveMode: 'explicit' | 'first' | 'query' | 'parent' | 'currentPage'
   filters?: DataBindingFilter[]
+  // Sorts the resolved set before offset/limit/pagination are applied.
+  // Meaningful for 'first' too (e.g. "the most-recently-updated record"),
+  // not just 'query'.
+  orderBy?: DataBindingOrderBy | null
+  // 'query'-only (meaningless for a single-record 'first'/'explicit'
+  // fetch): skip N records after ordering, before limit/pagination.
+  offset?: number | null
+  // 'query'-only: cap the total working-set size after offset.
+  limit?: number | null
+  // 'query'-only, client-side-pagination-only (never sent to the server).
+  // 0/undefined means "no pagination, render the whole (offset+limit-
+  // bounded) working set at once".
+  rowsPerPage?: number | null
   locale?: string | null
+  // Configured from the sidebar (DataBindingTransformControl.vue), not the
+  // bind modal - absent/undefined on all pre-existing saved bindings.
+  transform?: FieldTransform | null
 }
 
 // Only present on nodes built via .Slider() - a full redesign, not a port

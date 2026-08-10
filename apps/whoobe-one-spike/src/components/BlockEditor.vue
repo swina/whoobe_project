@@ -211,7 +211,10 @@ function suggestPathFromName(name: string): string {
 // replacing action in this file (Load, Import), none of which warn either.
 function onNew() {
   const root = new Element().Flexbox({ direction: 'col' }).setIcon('dashboard').setTag('document')
-  root.css.container = clean(root.css.container + ' gap-4 min-h-[600px] bg-white p-6')
+  // No padding/margin here deliberately - the root should render full-bleed
+  // by default (a real page has no built-in inset), with any padding/margin
+  // left entirely to the user to add via the customize sidebar.
+  root.css.container = clean(root.css.container + ' gap-4 min-h-[600px] bg-white')
 
   editor.setDocument(root)
   editor.setCurrent(null)

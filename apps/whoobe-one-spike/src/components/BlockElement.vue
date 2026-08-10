@@ -47,6 +47,7 @@ import { resolveDisplayUrl } from '../resolve-display-url'
 import { resolveFieldValue } from '../scripts/data-resolver'
 import type { DataObjectRecord } from '../data-objects-api'
 import { editorBus } from '../bus'
+import { applyTransform, escapeHtml } from '../scripts/field-transforms'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -98,9 +99,12 @@ const bindingPlaceholder = computed(() => {
 
 const displayContent = computed(() => {
   if (hasResolvedData.value) {
-    const v = resolvedDataValue.value
-    if (typeof v === 'string' || typeof v === 'number') return String(v)
-    return ''
+    const result = applyTransform(resolvedDataValue.value, db.value?.transform)
+    if (result.kind === 'link') {
+      const targetAttr = result.target ? ` target="${result.target}" rel="noopener noreferrer"` : ''
+      return `<a href="${escapeHtml(result.href)}"${targetAttr}>${escapeHtml(result.text)}</a>`
+    }
+    return result.text
   }
   return (props.element as any).content
 })
@@ -118,6 +122,10 @@ const displaySrc = computed(() => {
 const displayAlt = computed(() => {
   if (hasResolvedData.value && (props.element as any).element === 'img') {
     const v = resolvedDataValue.value
+    if (db.value?.transform && db.value.transform.type !== 'none') {
+      const text = applyTransform(v, db.value.transform).text
+      return text || undefined
+    }
     if (typeof v === 'string') return v
     return undefined
   }

@@ -62,6 +62,7 @@ import ButtonControl from './tailwind-controls/ButtonControl.vue'
 import BorderColorControl from './tailwind-controls/BorderColorControl.vue'
 import CustomClassesControl from './tailwind-controls/CustomClassesControl.vue'
 import SemanticControl from './tailwind-controls/SemanticControl.vue'
+import DataBindingTransformControl from './tailwind-controls/DataBindingTransformControl.vue'
 
 interface TwControl {
   name: string
@@ -102,11 +103,46 @@ const SEMANTIC_GROUP: TwGroup = {
   components: [{ name: 'Semantic', attr: 'semantic', title: 'Renders as' }],
 }
 
+// Not from tw.groups.js either - lets a data-bound element's displayed
+// value be reformatted (date/number/url-as-link/truncate) without leaving
+// this sidebar, the same way every other post-bind setting already works
+// here. Shown for 'content'-target bindings, and for 'src'-target bindings
+// on an <img> element specifically - bindingTarget() in FloatingToolbar.vue
+// always targets an image binding at 'src' (there is no reachable path
+// that ever produces target 'alt' today, despite DataObjectPicker.vue's
+// own fieldCompatibleWithTarget() having a case for it - same kind of
+// forward-looking dead branch as its 'datetime' fieldType check), and
+// BlockElement.vue/BlockElementPreview.vue's displayAlt reuses that same
+// binding's resolved+transformed value as the image's alt text. Excluded
+// for 'href'/'icon'/'custom' targets - their resolved values never flow
+// through a transform-aware render path (href isn't applied to the DOM at
+// all yet, a pre-existing gap; icon/custom values are used as-is).
+//
+// No fieldType-based gating here (unlike DataBindingTransformControl.vue's
+// own availableTransformers) - truncate's 'any' applicableFieldTypes gate
+// means at least one transformer is always offered regardless of fieldType,
+// so a field-type check here would never actually hide the group; deciding
+// *which* transformers show is entirely that control's own job, including
+// its fallback lookup for bindings saved before fieldType existed (see
+// resolve-binding-field-type.ts).
+const DATA_BINDING_GROUP: TwGroup = {
+  label: 'data binding',
+  components: [{ name: 'DataBindingTransform', attr: 'dataBinding', title: 'Format bound value' }],
+}
+
 const visibleGroups = computed(() => {
   if (!editor.current) return []
   const tag = editor.current.tag
   const isContainer = (editor.current as any).type === 'container'
-  return [...groups.filter((g) => !g.filter || g.filter.includes(tag)), ...(isContainer ? [SEMANTIC_GROUP] : []), CUSTOM_CLASSES_GROUP]
+  const db = (editor.current as any).dataBinding
+  const isImgSrcBinding = db?.target === 'src' && (editor.current as any).element === 'img'
+  const showDataBinding = db && (db.target === 'content' || isImgSrcBinding)
+  return [
+    ...groups.filter((g) => !g.filter || g.filter.includes(tag)),
+    ...(isContainer ? [SEMANTIC_GROUP] : []),
+    ...(showDataBinding ? [DATA_BINDING_GROUP] : []),
+    CUSTOM_CLASSES_GROUP,
+  ]
 })
 
 const componentMap: Record<string, unknown> = {
@@ -119,6 +155,7 @@ const componentMap: Record<string, unknown> = {
   BorderColor: BorderColorControl,
   CustomClasses: CustomClassesControl,
   Semantic: SemanticControl,
+  DataBindingTransform: DataBindingTransformControl,
 }
 
 function controlComponent(name: string) {

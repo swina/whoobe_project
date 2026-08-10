@@ -5,7 +5,7 @@
          its children once per resolved data object, each time providing
          that object's data to the whole subtree. -->
     <template v-if="collectionResolved.length">
-      <template v-for="(obj, index) in collectionResolved" :key="index">
+      <template v-for="(obj, index) in pagedItems" :key="index">
         <template v-for="child in doc.blocks" :key="child.id">
           <a v-if="(child as any).link" :href="(child as any).link" :target="(child as any).linkTarget || undefined">
             <component :is="childComponent(child)" v-bind="boundChildProps(child, obj)" />
@@ -13,6 +13,14 @@
           <component v-else :is="childComponent(child)" v-bind="boundChildProps(child, obj)" />
         </template>
       </template>
+      <div
+        v-if="rowsPerPage > 0 && collectionResolved.length > rowsPerPage"
+        class="flex items-center justify-center gap-3 text-xs text-gray-500 py-2"
+      >
+        <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="currentPage <= 1" @click="currentPage = Math.max(1, currentPage - 1)">‹ Prev</button>
+        <span>Page {{ currentPage }} of {{ totalPages }}</span>
+        <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="currentPage >= totalPages" @click="currentPage = Math.min(totalPages, currentPage + 1)">Next ›</button>
+      </div>
     </template>
     <!-- Normal children, or a single-object binding (no field = whole object
          passed down to the subtree; with a field = only the bound element
@@ -51,7 +59,7 @@
 // has to be written once instead of duplicated across all three branches.
 // `target` is new, not in the source at all (its own <a> never sets one) -
 // see FloatingToolbar.vue's Link popover.
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
 import { resolveDisplayUrl } from '../../resolve-display-url'
@@ -87,6 +95,27 @@ const collectionResolved = computed<DataObjectRecord[]>(() => {
   const resolved = editor.resolvedData[el.id]
   if (!Array.isArray(resolved)) return []
   return resolved
+})
+
+// Client-side pagination over collectionResolved - the binding's own
+// rowsPerPage (0/unset = no pagination, render the whole working set).
+// Ephemeral, not persisted: resets whenever the resolved set itself
+// changes, same as ObjectsView.vue's own currentPage pattern.
+const rowsPerPage = computed(() => Number((props.doc as any).dataBinding?.rowsPerPage) || 0)
+const currentPage = ref(1)
+const totalPages = computed(() =>
+  rowsPerPage.value > 0 ? Math.max(1, Math.ceil(collectionResolved.value.length / rowsPerPage.value)) : 1
+)
+const pagedItems = computed(() => {
+  if (!rowsPerPage.value) return collectionResolved.value
+  const start = (currentPage.value - 1) * rowsPerPage.value
+  return collectionResolved.value.slice(start, start + rowsPerPage.value)
+})
+watch(collectionResolved, () => {
+  currentPage.value = 1
+})
+watch(totalPages, (p) => {
+  if (currentPage.value > p) currentPage.value = p
 })
 
 // A container with a single-object binding (whole object, no field).
