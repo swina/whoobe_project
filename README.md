@@ -1,0 +1,142 @@
+# Whoobe CMS
+
+A TypeScript-native, open-source alternative to [Pimcore](https://pimcore.com/), combining **PIM/MDM** (flexible product/data modeling), **DAM** (digital asset management), and a **headless CMS** with a visual block builder — plus a built-in ETL pipeline for a loss-less migration path off legacy Pimcore instances.
+
+The repository's technical/package name is `pimcore-to-custom`; the product itself is branded **Whoobe CMS** (npm scope `@whoobe-cms/*`).
+
+## Main features
+
+- **Data Objects & Classes (PIM/MDM)** — define custom data classes ("Class Definitions") with arbitrary field layouts through the admin UI, à la Pimcore Classes. Supports reusable structured sub-schemas ("Components", Pimcore's Field Collection equivalent), custom object listing views, ordering, and filtering.
+- **Digital Asset Management (DAM)** — S3/MinIO-backed asset storage with Sharp-powered image processing (resize/WebP thumbnails via configurable presets) and EXIF/IPTC metadata extraction, with public/private folder visibility rules.
+- **Headless CMS & Whoobe Studio** — a Vue-based visual WYSIWYG block/page builder that outputs structured, Zod-validated JSON layout trees, embeddable in the admin dashboard and renderable headlessly by any frontend.
+- **Publishing workflow engine** — XState-driven publish/draft workflows with configurable states, transitions, and per-transition permissions.
+- **Auth & permissions** — session-based authentication shared across backend services, with 2FA (TOTP/QR) and role-based permissions.
+- **Pimcore migration tool** — a CLI ETL pipeline that imports legacy Pimcore Documents, Class Definitions, and Data Objects (from a source MySQL database and/or `var/classes` PHP files) directly into this system's Postgres schema.
+
+## Monorepo layout
+
+Managed with **pnpm workspaces** + **Turborepo**.
+
+| Path | Package | Description |
+| --- | --- | --- |
+| `packages/core` | `@whoobe-cms/core` | Shared domain layer: Drizzle ORM schema/migrations (Postgres), Zod validation, auth, S3 client, XState workflows. |
+| `packages/migration-tool` | `@whoobe-cms/migration-tool` | ETL CLI for migrating Documents/Classes/Objects/Assets out of Pimcore. |
+| `apps/core-api` | `@whoobe-cms/core-api` | Main Express backend API. |
+| `apps/asset-processor` | `@whoobe-cms/asset-processor` | Express microservice for asset upload/processing (Sharp, exiftool, S3). |
+| `apps/admin-dashboard` | `@whoobe-cms/admin-dashboard` | Vue 3 + Vite admin UI (data objects, classes, DAM, settings, workflows). |
+| `apps/whoobe-studio` | `@whoobe-cms/whoobe-studio` | Vue 3 visual WYSIWYG block/page builder, embedded via the admin dashboard. |
+| `apps/whoobe-one-spike` | `@whoobe-cms/whoobe-one-spike` | Experimental standalone page-building editor. |
+
+## Prerequisites
+
+- Node.js 18+
+- [pnpm](https://pnpm.io/) 9.x (`corepack enable` or `npm i -g pnpm`)
+- Docker (for local Postgres + MinIO), or your own Postgres 16 and S3-compatible storage
+
+## Install
+
+```bash
+git clone <repo-url>
+cd pimcore-to-custom
+pnpm install
+```
+
+## Configure
+
+Start local infrastructure (Postgres + MinIO):
+
+```bash
+docker compose up -d
+```
+
+Each app reads its config from its own `.env` file. Copy/create the following (values below match the `docker-compose.yml` defaults):
+
+**`.env`** (repo root — used by `docker-compose.yml`)
+```
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgrespassword
+POSTGRES_DB=pimcore_custom
+```
+
+**`apps/core-api/.env`**
+```
+PORT=3003
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgrespassword
+DB_NAME=pimcore_custom
+MIGRATION_SOURCE_ENCRYPTION_KEY=<random-32-byte-key>
+```
+
+**`apps/asset-processor/.env`**
+```
+PORT=3002
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgrespassword
+DB_NAME=pimcore_custom
+S3_ENDPOINT=http://localhost:9000
+S3_BUCKET=whoobe-cms
+S3_REGION=us-east-1
+S3_ACCESS_KEY_ID=minioadmin
+S3_SECRET_ACCESS_KEY=minioadminpassword
+S3_FORCE_PATH_STYLE=true
+S3_PUBLIC_BASE_URL=http://localhost:9000/whoobe-cms
+```
+
+**`apps/admin-dashboard/.env.local`**
+```
+VITE_ASSET_PROCESSOR_URL=http://localhost:3002
+VITE_CORE_API_URL=http://localhost:3003
+```
+
+`core-api` creates the database and applies migrations automatically on startup, so no separate migration step is required for a fresh Postgres instance.
+
+## Run (development)
+
+The quickest way to start the core services (admin-dashboard, core-api, asset-processor, whoobe-one-spike) together:
+
+```bash
+./dev-cms.sh          # start all
+./dev-cms.sh --build  # rebuild @whoobe-cms/core first, then start all
+./dev-cms.sh --stop   # stop all
+```
+
+| App | URL |
+| --- | --- |
+| admin-dashboard | http://localhost:3000 |
+| asset-processor | http://localhost:3002 |
+| core-api | http://localhost:3003 |
+| whoobe-one-spike | http://localhost:3006 |
+
+To run an individual app/package instead:
+
+```bash
+pnpm --filter @whoobe-cms/core-api dev
+pnpm --filter @whoobe-cms/admin-dashboard dev
+pnpm --filter @whoobe-cms/whoobe-studio dev   # http://localhost:3004
+```
+
+### Migrating from Pimcore
+
+```bash
+pnpm --filter @whoobe-cms/migration-tool cli -- help
+pnpm --filter @whoobe-cms/migration-tool cli -- migrate-classes --dry-run
+pnpm --filter @whoobe-cms/migration-tool cli -- migrate-objects --class=Product
+pnpm --filter @whoobe-cms/migration-tool cli -- migrate-documents
+```
+
+Configure the source Pimcore MySQL connection in `packages/migration-tool/.env` (`PIMCORE_DB_HOST`, `PIMCORE_DB_PORT`, `PIMCORE_DB_USER`, `PIMCORE_DB_PASSWORD`, `PIMCORE_DB_NAME`, plus the target `DB_*` vars matching `core-api`'s database).
+
+## Other scripts
+
+Run across the whole workspace via Turborepo:
+
+```bash
+pnpm build       # build all apps/packages
+pnpm dev         # dev mode for all apps/packages
+pnpm lint        # lint all apps/packages
+pnpm typecheck   # typecheck all apps/packages
+```

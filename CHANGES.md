@@ -4,6 +4,13 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Project Documentation] — 2026-08-10 (branch: master)
+
+- **`README.md`** (new): Project overview — main features (PIM/MDM, DAM, CMS/Whoobe Studio, workflow engine, auth, Pimcore migration tool), monorepo layout, and install/configure/run instructions.
+- **`docs/guides/api-reference.md`** (new): Reference of available HTTP endpoints for `core-api` and `asset-processor`, grouped by resource, plus the `migration-tool` CLI commands.
+
+---
+
 ## [Migration Sources, Data Object Features & DAM Asset Improvements] — 2026-08-09
 
 ### Migration & Data Import
