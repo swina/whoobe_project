@@ -1,4 +1,4 @@
-import type { WhoobeBlockNode } from '@pimcore-custom/core';
+import type { WhoobeBlockNode } from '@whoobe-cms/core';
 import { registerAreabrickConverter, resolveMediaUrl } from '../pimcore-document-converter.js';
 
 /**

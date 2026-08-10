@@ -2,7 +2,7 @@
 // is the same httpOnly cookie auth-api.ts already relies on - see its
 // header comment for why credentials:'include' is always sent instead of
 // handling a token directly.
-import type { WhoobeBlockNode } from '@pimcore-custom/core'
+import type { WhoobeBlockNode } from '@whoobe-cms/core'
 import { getDefaultCoreApiUrl } from './auth-api'
 
 export interface CmsDocumentRecord {

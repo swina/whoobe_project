@@ -31,7 +31,7 @@ Keeping these separate matters: an object can stay `published = true` while its 
 
 ### 2.2 Public API visibility rule
 
-- **Public API** (used by public-facing frontends consuming this CMS's content): every query/resolver for Data Objects filters `WHERE published = true`. This must be enforced in one shared place — a `publicObjectsQuery()` helper exported from `@pimcore-custom/core` — not left to each resolver to remember individually. A forgotten filter in one resolver is a real data leak; centralizing it removes that failure mode.
+- **Public API** (used by public-facing frontends consuming this CMS's content): every query/resolver for Data Objects filters `WHERE published = true`. This must be enforced in one shared place — a `publicObjectsQuery()` helper exported from `@whoobe-cms/core` — not left to each resolver to remember individually. A forgotten filter in one resolver is a real data leak; centralizing it removes that failure mode.
 - **Backend/admin API** (used by `apps/admin-dashboard`): no such filter. Authenticated admin/editor identities can read and write objects in any state.
 - Rule of thumb for review: any new query that touches Data Objects and is reachable by the public API must go through `publicObjectsQuery()` or be rejected in code review.
 

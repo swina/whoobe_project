@@ -2,7 +2,7 @@
 # Start all CMS apps in parallel for development.
 # Usage: ./dev-cms.sh [--build]
 #
-# Optional --build flag rebuilds @pimcore-custom/core first.
+# Optional --build flag rebuilds @whoobe-cms/core first.
 # Stop all with: ./dev-cms.sh --stop
 
 set -e
@@ -27,8 +27,8 @@ if [ "$1" = "--stop" ]; then
 fi
 
 if [ "$1" = "--build" ]; then
-  echo "Building @pimcore-custom/core..."
-  pnpm --filter @pimcore-custom/core build
+  echo "Building @whoobe-cms/core..."
+  pnpm --filter @whoobe-cms/core build
 fi
 
 echo "Starting CMS dev servers..."
@@ -40,7 +40,7 @@ echo ""
 
 # Start each app in background, prefixing output with its name
 for app in "${APPS[@]}"; do
-  pnpm --filter "@pimcore-custom/$app" dev 2>&1 | sed "s/^/[$app] /" &
+  pnpm --filter "@whoobe-cms/$app" dev 2>&1 | sed "s/^/[$app] /" &
 done
 
 echo "All started. Press Ctrl+C to stop all."

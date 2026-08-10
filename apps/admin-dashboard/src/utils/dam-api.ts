@@ -1,4 +1,4 @@
-import type { FolderVisibilityRule, ThumbnailPreset, ExtractedAssetMetadata, SupportedImageFormat } from '@pimcore-custom/core'
+import type { FolderVisibilityRule, ThumbnailPreset, ExtractedAssetMetadata, SupportedImageFormat } from '@whoobe-cms/core'
 
 // Thin HTTP client for the asset-processor DAM endpoints. S3/MinIO
 // credentials never touch the browser: the backend owns them via its

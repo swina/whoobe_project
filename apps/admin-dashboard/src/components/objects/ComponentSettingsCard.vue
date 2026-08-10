@@ -93,7 +93,7 @@
 // column to check against, it's referenced by name from inside arbitrary
 // JSONB).
 import { ref } from 'vue'
-import type { ClassFieldDefinition } from '@pimcore-custom/core'
+import type { ClassFieldDefinition } from '@whoobe-cms/core'
 import { useComponentsStore } from '../../stores/componentsStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useToastStore } from '../../stores/toastStore'

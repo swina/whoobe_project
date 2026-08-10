@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { ClassFieldDefinition } from '@pimcore-custom/core'
+import type { ClassFieldDefinition } from '@whoobe-cms/core'
 import {
   fetchDataComponents,
   fetchDataComponentById,

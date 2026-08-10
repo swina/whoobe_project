@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { PimcoreObjectConverter } from './pimcore-object-converter.js';
 import type { RawPimcoreObjectAttributes } from './source-adapter.js';
-import type { ClassFieldDefinition } from '@pimcore-custom/core';
+import type { ClassFieldDefinition } from '@whoobe-cms/core';
 
 // A fake, deterministic pair mirroring what cli.ts's real
 // upsertDataObjectByPimcoreId-backed resolvers would do - see

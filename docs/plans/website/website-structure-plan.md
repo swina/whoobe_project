@@ -42,7 +42,7 @@ Pages exist as a flat list with slug+locale. A website needs a way to define nav
 
 **Recommendation:** Start with **Headless API + SSR** as a layered approach:
 1. **Phase 1:** Public API endpoints (headless) — anyone can build their own frontend
-2. **Phase 2:** SSR renderer — extract preview components to a `@pimcore-custom/whoobe-renderer` package, add Node.js Express middleware that renders pages server-side
+2. **Phase 2:** SSR renderer — extract preview components to a `@whoobe-cms/whoobe-renderer` package, add Node.js Express middleware that renders pages server-side
 3. **Phase 3 (future):** SSG build command for static hosting
 
 ### 4. Public API Endpoints
@@ -61,7 +61,7 @@ All respect the `published` gate and `search.indexable`/`sitemap.included` flags
 
 ### 5. Renderer Package Architecture
 
-Extract from `whoobe-one-spike` into a shared `@pimcore-custom/whoobe-renderer`:
+Extract from `whoobe-one-spike` into a shared `@whoobe-cms/whoobe-renderer`:
 
 - **Recursive tree walker** — walks the Element tree, resolves data bindings (server-side via data-objects API), produces a render tree
 - **Component renderers** — port the existing preview components (`BlockContainerPreview`, `BlockElementPreview`, `BlockSliderPreview`, `BlockIFramePreview`) to work in a non-Vue context or as pure rendering functions
@@ -94,7 +94,7 @@ Phase 2 — Website Admin UI
 └── Admin-dashboard: Navigation preview
 
 Phase 3 — Renderer Package
-├── Extract `@pimcore-custom/whoobe-renderer` package
+├── Extract `@whoobe-cms/whoobe-renderer` package
 ├── Recursive tree renderer (server-side)
 ├── Tailwind JIT CSS extraction
 ├── Data binding resolution (server-side)

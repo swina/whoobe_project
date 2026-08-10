@@ -60,7 +60,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
-import type { WhoobeBlockNode } from '@pimcore-custom/core'
+import type { WhoobeBlockNode } from '@whoobe-cms/core'
 import { resolveDisplayUrl, resolveStyleBackgroundImage } from '../../utils/resolve-display-url'
 
 defineOptions({ name: 'BlockNodePreview' })

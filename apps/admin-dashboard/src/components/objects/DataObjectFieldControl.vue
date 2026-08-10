@@ -234,7 +234,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ClassFieldDefinition } from '@pimcore-custom/core'
+import type { ClassFieldDefinition } from '@whoobe-cms/core'
 import { useRelationOptions } from '../../composables/useRelationOptions'
 import { resolveCustomClasses } from '../../utils/custom-classes'
 import type { AssetCategoryFilter } from '../../utils/asset-category'

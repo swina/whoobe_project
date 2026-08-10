@@ -185,7 +185,7 @@
 // editor - see that file's git history for the pre-tab version.
 import { ref, reactive, computed, watch } from 'vue'
 import { ChevronDown, ChevronRight } from '@lucide/vue'
-import type { ClassFieldDefinition, ClassViewConfig } from '@pimcore-custom/core'
+import type { ClassFieldDefinition, ClassViewConfig } from '@whoobe-cms/core'
 import { useDataClassesStore } from '../../stores/dataClassesStore'
 import { useTabsStore, classTabId } from '../../stores/tabsStore'
 import { useAuthStore } from '../../stores/authStore'

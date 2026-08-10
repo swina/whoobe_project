@@ -1,4 +1,4 @@
-import type { ClassFieldDefinition } from '@pimcore-custom/core';
+import type { ClassFieldDefinition } from '@whoobe-cms/core';
 
 /**
  * Parses a real Pimcore `var/classes/definition_<Name>.php` file into

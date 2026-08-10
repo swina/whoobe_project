@@ -1,4 +1,4 @@
-import { WhoobeDocumentLayout } from '@pimcore-custom/core'
+import { WhoobeDocumentLayout } from '@whoobe-cms/core'
 
 export type WhoobeHostMessageType =
   | 'SYNC_DOCUMENT'

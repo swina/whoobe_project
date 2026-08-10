@@ -295,7 +295,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { AssetItem, useDamStore } from '../../stores/damStore'
-import { SupportedImageFormat } from '@pimcore-custom/core'
+import { SupportedImageFormat } from '@whoobe-cms/core'
 
 const props = defineProps<{
   asset: AssetItem

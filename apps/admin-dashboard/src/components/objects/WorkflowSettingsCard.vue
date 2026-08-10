@@ -94,7 +94,7 @@
 // drop editor is explicitly "nice-to-have, not required for v1" per
 // that plan's own §5, so not attempted here.
 import { ref } from 'vue'
-import type { WorkflowPlace, WorkflowTransitionDefinition } from '@pimcore-custom/core'
+import type { WorkflowPlace, WorkflowTransitionDefinition } from '@whoobe-cms/core'
 import { useDataClassesStore } from '../../stores/dataClassesStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useToastStore } from '../../stores/toastStore'

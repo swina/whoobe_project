@@ -1,8 +1,8 @@
-import { ClassDefinition } from '@pimcore-custom/core';
+import { ClassDefinition } from '@whoobe-cms/core';
 
 /**
  * Class Definition & Document Editable Translator
- * Converts Pimcore PHP/JSON layout classes into @pimcore-custom/core definitions.
+ * Converts Pimcore PHP/JSON layout classes into @whoobe-cms/core definitions.
  */
 export function translatePimcoreClassDefinition(pimcoreJson: Record<string, unknown>): ClassDefinition {
   const className = String(pimcoreJson.name || 'UnnamedClass');

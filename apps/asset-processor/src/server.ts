@@ -12,7 +12,7 @@ import {
   FolderVisibilityManager,
   FolderVisibilityRule,
   getFileTypeFromFilename,
-} from '@pimcore-custom/core';
+} from '@whoobe-cms/core';
 import {
   requireAuth,
   requirePermission,
@@ -26,7 +26,7 @@ import {
   upsertAssetRecord,
   deleteAssetRecord,
   updateAssetMetadata,
-} from '@pimcore-custom/core/server';
+} from '@whoobe-cms/core/server';
 
 // Load apps/asset-processor/.env (if present) so bucket/endpoint/credentials
 // have a persisted, discoverable place to live instead of one-off shell vars.

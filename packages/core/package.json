@@ -1,5 +1,5 @@
 {
-  "name": "@pimcore-custom/core",
+  "name": "@whoobe-cms/core",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
