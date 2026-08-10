@@ -2,7 +2,7 @@
   <div
     v-if="editor.current"
     class="fixed z-[9999] flex items-center gap-1 bg-white text-black shadow-lg border border-gray-200 rounded-md px-1.5 py-1 text-xs"
-    :style="{ top: top + 'px', left: left + 'px' }"
+    :style="{ top: (top-7) + 'px', left: (left+0) + 'px' }"
   >
     <span class="px-1.5 py-0.5 rounded bg-blue-500 text-white capitalize font-semibold">{{ label }}</span>
 
