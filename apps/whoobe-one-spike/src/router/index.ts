@@ -26,6 +26,14 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'Main', component: Main },
     { path: '/editor', name: 'Editor', component: Editor },
+    // Catch-all, always last - an exact match above always wins regardless
+    // of array position, so this only ever matches something neither of
+    // those two are. Renders a real page by its stored slug/dynamic-
+    // pattern via the public API - see docs/plans/website/website-paths.md
+    // and PublicPage.vue's own header comment. This is what a list-to-
+    // detail link (BlockContainerPreview.vue's childHref()) opens in a new
+    // tab to.
+    { path: '/:pathMatch(.*)*', name: 'PublicPage', component: () => import('../views/PublicPage.vue') },
   ],
 })
 

@@ -1,12 +1,12 @@
 # Whoobe CMS
 
-A TypeScript-native, open-source alternative to [Pimcore](https://pimcore.com/), combining **PIM/MDM** (flexible product/data modeling), **DAM** (digital asset management), and a **headless CMS** with a visual block builder — plus a built-in ETL pipeline for a loss-less migration path off legacy Pimcore instances.
+A TypeScript-native, open-source combining **PIM/MDM** (flexible product/data modeling), **DAM** (digital asset management), and a **headless CMS** with a visual block builder — plus a built-in ETL pipeline for a loss-less migration path off legacy instances.
 
-The repository's technical/package name is `pimcore-to-custom`; the product itself is branded **Whoobe CMS** (npm scope `@whoobe-cms/*`).
+The product itself is branded **Whoobe CMS** (npm scope `@whoobe-cms/*`).
 
 ## Main features
 
-- **Data Objects & Classes (PIM/MDM)** — define custom data classes ("Class Definitions") with arbitrary field layouts through the admin UI, à la Pimcore Classes. Supports reusable structured sub-schemas ("Components", Pimcore's Field Collection equivalent), custom object listing views, ordering, and filtering.
+- **Data Objects & Classes (PIM/MDM)** — define custom data classes ("Class Definitions") with arbitrary field layouts through the admin UI. Supports reusable structured sub-schemas ("Components"), custom object listing views, ordering, and filtering.
 - **Digital Asset Management (DAM)** — S3/MinIO-backed asset storage with Sharp-powered image processing (resize/WebP thumbnails via configurable presets) and EXIF/IPTC metadata extraction, with public/private folder visibility rules.
 - **Headless CMS & Whoobe Studio** — a Vue-based visual WYSIWYG block/page builder that outputs structured, Zod-validated JSON layout trees, embeddable in the admin dashboard and renderable headlessly by any frontend.
 - **Publishing workflow engine** — XState-driven publish/draft workflows with configurable states, transitions, and per-transition permissions.
@@ -36,8 +36,8 @@ Managed with **pnpm workspaces** + **Turborepo**.
 ## Install
 
 ```bash
-git clone <repo-url>
-cd pimcore-to-custom
+git clone <repo-url> <your_folder>
+cd <your_folder>
 pnpm install
 ```
 

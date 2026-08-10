@@ -7,7 +7,13 @@
     <template v-if="collectionResolved.length">
       <template v-for="(obj, index) in pagedItems" :key="index">
         <template v-for="child in doc.blocks" :key="child.id">
-          <a v-if="(child as any).link" :href="(child as any).link" :target="(child as any).linkTarget || undefined">
+          <a
+            v-if="(child as any).link || (child as any).dynamicLink"
+            :href="childHref(child, obj)"
+            :target="(child as any).dynamicLink ? '_blank' : (child as any).linkTarget || undefined"
+            :rel="(child as any).dynamicLink ? 'noopener noreferrer' : undefined"
+            @click="onDynamicLinkClick($event, child, obj)"
+          >
             <component :is="childComponent(child)" v-bind="boundChildProps(child, obj)" />
           </a>
           <component v-else :is="childComponent(child)" v-bind="boundChildProps(child, obj)" />
@@ -65,6 +71,8 @@ import type Element from '../../scripts/ElementsClass.js'
 import { resolveDisplayUrl } from '../../resolve-display-url'
 import { useEditorStore } from '../../store/editor'
 import type { DataObjectRecord } from '../../data-objects-api'
+import { getPage } from '../../pages-api'
+import { extractPlaceholderNames, substitutePattern } from '../../scripts/path-pattern'
 import BlockElementPreview from './BlockElementPreview.vue'
 import BlockIFramePreview from './BlockIFramePreview.vue'
 import BlockSliderPreview from './BlockSliderPreview.vue'
@@ -134,6 +142,81 @@ function boundChildProps(child: WhoobeElement, obj: DataObjectRecord): Record<st
   const c = child as any
   if (c.tag === 'slider' || c.type === 'container') return { doc: child, dataContext: obj }
   return { element: child, dataContext: obj }
+}
+
+// List-to-detail linking (docs/plans/website/website-paths.md): per-record
+// href, built by substituting `dynamicLink.valueField`'s value on THIS
+// record into the target page's own dynamic slug pattern. Cached by
+// targetPageId, same lazy-fetch-then-cache pattern resolve-display-url.ts
+// already uses - childHref() is called during render, so a not-yet-cached
+// id triggers a fetch and returns '#' for this pass; the reactive Map
+// update re-renders with the real href once it resolves.
+const targetPageCache = ref<Map<string, { slug: string; locale: string }>>(new Map())
+const pendingTargetPageIds = new Set<string>()
+
+function ensureTargetPageLoaded(targetPageId: string) {
+  if (targetPageCache.value.has(targetPageId) || pendingTargetPageIds.has(targetPageId)) return
+  pendingTargetPageIds.add(targetPageId)
+  getPage(targetPageId)
+    .then((page) => { targetPageCache.value.set(targetPageId, { slug: page.slug, locale: page.locale }) })
+    .catch(() => {
+      // Target page missing/deleted - childHref falls back to '#'.
+    })
+    .finally(() => { pendingTargetPageIds.delete(targetPageId) })
+}
+
+// Shared by childHref() and onDynamicLinkClick() - resolves a dynamicLink
+// child + its current record down to the concrete { path, locale } a real
+// visit to this specific record would need. Returns null when the target
+// page isn't loaded yet, the record has no value for the mapped field, or
+// (v1 limitation) the target pattern has more than one placeholder - only
+// the first is ever filled from valueField, matching childHref()'s own
+// documented v1 boundary.
+function resolveDynamicLinkTarget(child: WhoobeElement, obj: DataObjectRecord): { path: string; locale: string } | null {
+  const c = child as any
+  if (!c.dynamicLink) return null
+  ensureTargetPageLoaded(c.dynamicLink.targetPageId)
+  const target = targetPageCache.value.get(c.dynamicLink.targetPageId)
+  const value = (obj.attributes as any)?.[c.dynamicLink.valueField]
+  if (!target || value == null) return null
+  const [placeholderName] = extractPlaceholderNames(target.slug)
+  if (!placeholderName) return null
+  const path = substitutePattern(target.slug, { [placeholderName]: String(value) })
+  if (!path) return null
+  return { path, locale: target.locale }
+}
+
+function childHref(child: WhoobeElement, obj: DataObjectRecord): string {
+  const c = child as any
+  if (c.dynamicLink) {
+    const resolved = resolveDynamicLinkTarget(child, obj)
+    if (!resolved) return '#'
+    // ?locale= is a dev-preview-tool affordance (see PublicPage.vue): the
+    // public page route needs locale as an explicit param, and it's not
+    // reliably derivable from the path itself (the DB's own locale column
+    // doesn't always match a leading path segment) - taken directly from
+    // the target page's own real, already-fetched locale, not guessed.
+    return `${resolved.path}?locale=${encodeURIComponent(resolved.locale)}`
+  }
+  return c.link || '#'
+}
+
+// When running embedded inside admin-dashboard (editor.embedded), a
+// list-to-detail link opens as a tab in admin-dashboard's own tab strip
+// instead of a real new browser tab - see docs/plans (list-to-detail-tabs
+// plan) and DashboardLayout.vue's matching message listener. Standalone
+// (:3006 direct, no parent to message) falls through to the normal
+// target="_blank" navigation, unchanged.
+function onDynamicLinkClick(e: MouseEvent, child: WhoobeElement, obj: DataObjectRecord) {
+  const c = child as any
+  if (!c.dynamicLink || !editor.embedded) return
+  const resolved = resolveDynamicLinkTarget(child, obj)
+  if (!resolved) return
+  e.preventDefault()
+  window.parent.postMessage(
+    { type: 'whoobe-one:open-page-preview', pageId: c.dynamicLink.targetPageId, path: resolved.path, locale: resolved.locale },
+    editor.parentOrigin || '*'
+  )
 }
 
 function childComponent(child: WhoobeElement): Component {

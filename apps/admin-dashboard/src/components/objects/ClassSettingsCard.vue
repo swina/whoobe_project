@@ -43,13 +43,14 @@ import type { DataClass } from '../../utils/data-classes-api'
 import { useDataClassesStore } from '../../stores/dataClassesStore'
 import { useTabsStore } from '../../stores/tabsStore'
 import { useToastStore } from '../../stores/toastStore'
+import { randomUUID } from '../../utils/random-id'
 
 const dataClassesStore = useDataClassesStore()
 const tabsStore = useTabsStore()
 const toastStore = useToastStore()
 
 function handleCreate() {
-  tabsStore.openClass(`new:${crypto.randomUUID()}`)
+  tabsStore.openClass(`new:${randomUUID()}`)
 }
 
 async function handleDelete(dataClass: DataClass) {

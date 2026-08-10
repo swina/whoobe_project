@@ -84,6 +84,21 @@ export async function getPage(id: string): Promise<WhoobeOnePage> {
   return body.page
 }
 
+export interface PublicPageLookup {
+  page: WhoobeOnePage
+  params: Record<string, string>
+}
+
+/** Public, unauthenticated lookup by locale + full path (static slug or a
+ *  dynamic pattern match) - see docs/plans/website/website-paths.md and
+ *  apps/core-api/src/server.ts's `GET /public/pages/:locale/*` route.
+ *  `path` must start with '/'. `params` holds any {placeholder} values
+ *  extracted from a dynamic-pattern match (empty for a static page). */
+export async function getPublicPage(locale: string, path: string): Promise<PublicPageLookup> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/public/pages/${encodeURIComponent(locale)}${path}`, { credentials: 'include' })
+  return parseJsonOrThrow(res)
+}
+
 export async function listPageTranslations(id: string): Promise<WhoobeOnePage[]> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages/${id}/translations`, { credentials: 'include' })
   const body = await parseJsonOrThrow(res)

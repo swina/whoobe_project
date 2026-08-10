@@ -54,6 +54,13 @@ export interface MainTab {
   // (DashboardLayout.vue's own tabLabel()), which doesn't work for a
   // brand-new Data Object that isn't in any shared list yet.
   label?: string
+  // Only meaningful when itemKind === 'page' && pageSubTab === 'preview' -
+  // set by openPagePreview() below when a list-to-detail link (clicked
+  // inside the embedded whoobe-one-spike editor's own Preview) asks this
+  // page's Preview sub-tab to show one specific resolved record, rather
+  // than the page's own static slug (PagePreviewTab.vue's default).
+  pagePreviewPath?: string
+  pagePreviewLocale?: string
 }
 
 export function sectionTabId(section: SectionKind): string {
@@ -149,6 +156,22 @@ export const useTabsStore = defineStore('tabs', () => {
   function setPageSubTab(pageId: string, subTab: PageSubTab) {
     const tab = tabs.value.find((t) => t.id === pageTabId(pageId))
     if (tab) tab.pageSubTab = subTab
+  }
+
+  // Opens (or focuses) a page's tab directly on its Preview sub-tab,
+  // targeted at one specific resolved record - the receiving end of the
+  // postMessage a list-to-detail link posts from inside the embedded
+  // whoobe-one-spike editor (see DashboardLayout.vue's message listener).
+  // Reuses openPage()'s own dedup/focus logic as-is; clicking a second,
+  // different record just overwrites pagePreviewPath/Locale on the same
+  // tab rather than opening a duplicate.
+  function openPagePreview(pageId: string, path: string, locale: string) {
+    openPage(pageId, 'preview')
+    const tab = tabs.value.find((t) => t.id === pageTabId(pageId))
+    if (tab) {
+      tab.pagePreviewPath = path
+      tab.pagePreviewLocale = locale
+    }
   }
 
   // A Data Object tab represents one *logical record* (`translationGroupId`),
@@ -254,6 +277,7 @@ export const useTabsStore = defineStore('tabs', () => {
     setDocumentSubTab,
     openPage,
     setPageSubTab,
+    openPagePreview,
     openObject,
     setObjectSubTab,
     openClass,

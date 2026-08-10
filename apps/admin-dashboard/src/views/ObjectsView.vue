@@ -296,6 +296,7 @@ import type { DataObjectQueryFilter } from '../utils/data-objects-api'
 import { exportRowsAsCsv, exportRowsAsJson, exportRowsAsXlsx } from '../utils/data-export'
 import { loadObjectListPresets, upsertObjectListPreset, deleteObjectListPreset, setDefaultPreset, getDefaultPreset, type ObjectListPreset } from '../utils/object-list-presets'
 import type { ClassFieldDefinition } from '@whoobe-cms/core'
+import { randomUUID } from '../utils/random-id'
 
 const dataObjectsStore = useDataObjectsStore()
 const dataClassesStore = useDataClassesStore()
@@ -715,7 +716,7 @@ function openRecord(record: ObjectRecord) {
 
 function handleCreate() {
   if (!selectedClassId.value) return
-  tabsStore.openObject(`new:${crypto.randomUUID()}`, selectedClassId.value, 'en')
+  tabsStore.openObject(`new:${randomUUID()}`, selectedClassId.value, 'en')
 }
 
 async function handleDelete(record: ObjectRecord) {

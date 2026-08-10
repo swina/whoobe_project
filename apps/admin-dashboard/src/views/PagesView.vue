@@ -56,7 +56,7 @@
             </td>
             <td class="py-2.5 px-4 font-semibold text-slate-100 light:text-slate-900">{{ page.title }}</td>
             <td class="py-2.5 px-4 font-mono text-indigo-300">{{ page.slug }}</td>
-            <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ page.website_id }}</td>
+            <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ page.websiteId }}</td>
             <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ page.locale }}</td>
             <td class="py-2.5 px-4">
               <span
@@ -96,6 +96,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { FileText } from '@lucide/vue'
 import { usePagesStore } from '../stores/pagesStore'
 import { useTabsStore } from '../stores/tabsStore'
+import { randomUUID } from '../utils/random-id'
 
 const pagesStore = usePagesStore()
 const tabsStore = useTabsStore()
@@ -135,7 +136,7 @@ watch(pageSize, () => { currentPage.value = 1 })
 watch(totalPages, (pages) => { if (currentPage.value > pages) currentPage.value = pages })
 
 function handleCreate() {
-  const placeholderId = `new:${crypto.randomUUID()}`
+  const placeholderId = `new:${randomUUID()}`
   tabsStore.openPage(placeholderId, 'settings')
 }
 </script>

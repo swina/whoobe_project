@@ -53,6 +53,8 @@ import {
   deleteWhoobePage,
   getPublishedWhoobePageBySlug,
   listPublishedWhoobePages,
+  isDynamicSlug,
+  matchPagePath,
   listDataClasses,
   getDataClass,
   createDataClass,
@@ -1044,15 +1046,39 @@ app.delete('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECT
 });
 
 // Public page endpoints (no auth required)
-app.get('/public/pages/:locale/:slug', async (req: Request, res: Response): Promise<void> => {
+// Wildcard (not a single-segment :slug param) - a dynamic page's stored
+// slug can be a multi-segment pattern (e.g. '/it/news/{slug}', see
+// docs/plans/website/website-paths.md), which a plain Express 4 :param
+// can never match (it stops at the first '/'). Static pages resolve
+// exactly as before - the literal-match branch below reconstructs the
+// same slug string the old single-segment route would have received.
+app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<void> => {
   try {
     const websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
-    const page = await getPublishedWhoobePageBySlug(req.params.locale, req.params.slug, websiteId);
+    const requestPath = '/' + (req.params[0] ?? '');
+    const locale = req.params.locale;
+
+    // Cheapest, most common case first: exact literal match, identical to
+    // the old route's only behavior - zero extra query for any static page.
+    let page = await getPublishedWhoobePageBySlug(locale, requestPath, websiteId);
+    let params: Record<string, string> = {};
+
+    if (!page) {
+      // Only fetch+scan dynamic-slug pages when the literal lookup misses.
+      const candidates = await listPublishedWhoobePages(websiteId);
+      const dynamicCandidates = candidates.filter((p) => p.locale === locale && isDynamicSlug(p.slug));
+      const matched = matchPagePath(dynamicCandidates, requestPath);
+      if (matched) {
+        page = matched.page;
+        params = matched.params;
+      }
+    }
+
     if (!page) {
       res.status(404).json({ error: 'Page not found' });
       return;
     }
-    res.json({ page });
+    res.json({ page, params });
   } catch (error: any) {
     console.error('Public page lookup error:', error);
     res.status(500).json({ error: error.message || 'Failed to look up page' });
@@ -1063,7 +1089,9 @@ app.get('/public/sitemap.xml', async (req: Request, res: Response): Promise<void
   try {
     const websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
     const pages = await listPublishedWhoobePages(websiteId);
-    const sitemapPages = pages.filter((p) => p.sitemap?.included !== false);
+    const sitemapPages = pages
+      .filter((p) => p.sitemap?.included !== false)
+      .filter((p) => !isDynamicSlug(p.slug));
 
     const baseUrl = process.env.PUBLIC_SITE_URL || 'https://example.com';
 

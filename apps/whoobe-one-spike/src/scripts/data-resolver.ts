@@ -12,28 +12,53 @@ import { useEditorStore } from '../store/editor'
 
 type WhoobeElement = InstanceType<typeof import('./ElementsClass.js').default>
 
-export async function resolveDocumentData(doc: WhoobeElement, locale?: string): Promise<void> {
+export async function resolveDocumentData(doc: WhoobeElement, locale?: string, urlParams?: Record<string, string>): Promise<void> {
   const editor = useEditorStore()
   editor.resolvedData = {}
-  await resolveTree(doc, locale, editor)
+  await resolveTree(doc, locale, urlParams, editor)
 }
 
-async function resolveTree(node: WhoobeElement, locale: string | undefined, editor: ReturnType<typeof useEditorStore>): Promise<void> {
+async function resolveTree(
+  node: WhoobeElement,
+  locale: string | undefined,
+  urlParams: Record<string, string> | undefined,
+  editor: ReturnType<typeof useEditorStore>
+): Promise<void> {
   const db = (node as any).dataBinding as ElementDataBinding | undefined
   if (db) {
     try {
-      editor.resolvedData[node.id] = await resolveBinding(db, locale)
+      editor.resolvedData[node.id] = await resolveBinding(db, locale, urlParams)
     } catch (err: any) {
       console.error(`[data-resolver] Failed to resolve binding for element ${node.id}:`, err)
       editor.resolvedData[node.id] = null
     }
   }
   for (const child of (node as any).blocks ?? []) {
-    await resolveTree(child, locale, editor)
+    await resolveTree(child, locale, urlParams, editor)
   }
 }
 
-async function resolveBinding(db: ElementDataBinding, locale?: string): Promise<DataObjectRecord | DataObjectRecord[] | null> {
+/** A filter value that IS, whole-string, a `{name}` placeholder gets
+ *  substituted from urlParams (see docs/plans/website/website-paths.md) -
+ *  e.g. binding a container's filter to `slug = {slug}` on a page whose
+ *  own routing slug is `/it/news/{slug}` resolves the one record matching
+ *  whatever the visitor actually requested. A value merely CONTAINING a
+ *  brace elsewhere is left untouched (only a whole-string match counts).
+ *  A missing param leaves the literal placeholder text as the query value,
+ *  which resolves to 0 rows - a safe, visible failure rather than
+ *  silently matching everything. */
+function substituteUrlParam(value: unknown, urlParams: Record<string, string> | undefined): unknown {
+  if (typeof value !== 'string') return value
+  const m = /^\{(\w+)\}$/.exec(value.trim())
+  if (!m) return value
+  return urlParams?.[m[1]] ?? value
+}
+
+async function resolveBinding(
+  db: ElementDataBinding,
+  locale?: string,
+  urlParams?: Record<string, string>
+): Promise<DataObjectRecord | DataObjectRecord[] | null> {
   switch (db.resolveMode) {
     case 'explicit':
       if (!db.objectId) return null
@@ -51,7 +76,15 @@ async function resolveBinding(db: ElementDataBinding, locale?: string): Promise<
       }
     case 'query':
     case 'first': {
-      const filters: DataObjectQueryFilter[] | undefined = db.filters?.map(f => ({
+      // Substituted once, up front, and reused by every fallback tier
+      // below (admin query, public query, client-side filter) so a
+      // {placeholder}-marked filter behaves identically no matter which
+      // path actually resolves it.
+      const substitutedFilters: DataBindingFilter[] | undefined = db.filters?.map((f) => ({
+        ...f,
+        value: substituteUrlParam(f.value, urlParams),
+      }))
+      const filters: DataObjectQueryFilter[] | undefined = substitutedFilters?.map(f => ({
         field: f.field,
         operator: f.operator as DataObjectQueryFilter['operator'],
         value: f.value,
@@ -87,8 +120,8 @@ async function resolveBinding(db: ElementDataBinding, locale?: string): Promise<
           const all = await listDataObjects()
           const dataClass = await getDataClassByName(db.className)
           let filtered = dataClass ? all.filter((o) => o.classId === dataClass.id) : all
-          if (db.filters && db.filters.length > 0) {
-            filtered = applyFilters(filtered, db.filters)
+          if (substitutedFilters && substitutedFilters.length > 0) {
+            filtered = applyFilters(filtered, substitutedFilters)
           }
           if (db.orderBy) {
             filtered = sortClientSide(filtered, db.orderBy)
