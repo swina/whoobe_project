@@ -33,6 +33,7 @@ import { resolveDisplayUrl } from '../../resolve-display-url'
 import { useEditorStore } from '../../store/editor'
 import { resolveFieldValue } from '../../scripts/data-resolver'
 import type { DataObjectRecord } from '../../data-objects-api'
+import { applyTransform, escapeHtml } from '../../scripts/field-transforms'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -69,11 +70,12 @@ const displayContent = computed(() => {
   const el = props.element as any
   if (el.dataBinding) {
     if (resolvedData.value === null) return ''
-    const v = resolvedData.value
-    // Don't render { assetId } / { url } object values as text - only
-    // primitive text values are meaningful as element content.
-    if (typeof v === 'string' || typeof v === 'number') return String(v)
-    return ''
+    const result = applyTransform(resolvedData.value, el.dataBinding.transform)
+    if (result.kind === 'link') {
+      const targetAttr = result.target ? ` target="${result.target}" rel="noopener noreferrer"` : ''
+      return `<a href="${escapeHtml(result.href)}"${targetAttr}>${escapeHtml(result.text)}</a>`
+    }
+    return result.text
   }
   return el.content
 })
@@ -102,6 +104,10 @@ const displayAlt = computed(() => {
   const el = props.element as any
   if (el.dataBinding && resolvedData.value !== null) {
     const v = resolvedData.value
+    if (el.dataBinding.transform && el.dataBinding.transform.type !== 'none') {
+      const text = applyTransform(v, el.dataBinding.transform).text
+      return text || undefined
+    }
     if (typeof v === 'string') return v
     if (v && typeof v === 'object' && typeof (v as any).alt === 'string') return (v as any).alt
     return undefined

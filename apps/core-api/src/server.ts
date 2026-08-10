@@ -1813,7 +1813,7 @@ app.post(
   requirePermission(PERMISSIONS.OBJECTS_READ),
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const { class: className, filters, limit, locale } = req.body ?? {};
+      const { class: className, filters, orderBy, offset, limit, locale } = req.body ?? {};
       if (!className) {
         res.status(400).json({ error: 'class (name) is required' });
         return;
@@ -1823,12 +1823,19 @@ app.post(
         res.json({ objects: [] });
         return;
       }
-      const objects = await queryDataObjects(
-        dataClass.id,
-        Array.isArray(filters) ? filters : undefined,
-        typeof limit === 'number' ? limit : undefined,
-        typeof locale === 'string' ? locale : undefined
-      );
+      const validOrderBy =
+        orderBy && typeof orderBy === 'object' &&
+        typeof orderBy.field === 'string' &&
+        (orderBy.direction === 'asc' || orderBy.direction === 'desc')
+          ? { field: orderBy.field, direction: orderBy.direction }
+          : undefined;
+      const objects = await queryDataObjects(dataClass.id, {
+        filters: Array.isArray(filters) ? filters : undefined,
+        orderBy: validOrderBy,
+        offset: typeof offset === 'number' && offset > 0 ? offset : undefined,
+        limit: typeof limit === 'number' ? limit : undefined,
+        locale: typeof locale === 'string' ? locale : undefined,
+      });
       res.json({ objects });
     } catch (error: any) {
       console.error('Query data objects error:', error);
@@ -1841,7 +1848,7 @@ app.post(
 
 app.post('/public/data-objects/query', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { class: className, filters, limit, locale } = req.body ?? {};
+    const { class: className, filters, orderBy, offset, limit, locale } = req.body ?? {};
     if (!className) {
       res.status(400).json({ error: 'class (name) is required' });
       return;
@@ -1851,12 +1858,19 @@ app.post('/public/data-objects/query', async (req: Request, res: Response): Prom
       res.json({ objects: [] });
       return;
     }
-    const objects = await queryPublishedDataObjects(
-      dataClass.id,
-      Array.isArray(filters) ? filters : undefined,
-      typeof limit === 'number' ? limit : undefined,
-      typeof locale === 'string' ? locale : undefined
-    );
+    const validOrderBy =
+      orderBy && typeof orderBy === 'object' &&
+      typeof orderBy.field === 'string' &&
+      (orderBy.direction === 'asc' || orderBy.direction === 'desc')
+        ? { field: orderBy.field, direction: orderBy.direction }
+        : undefined;
+    const objects = await queryPublishedDataObjects(dataClass.id, {
+      filters: Array.isArray(filters) ? filters : undefined,
+      orderBy: validOrderBy,
+      offset: typeof offset === 'number' && offset > 0 ? offset : undefined,
+      limit: typeof limit === 'number' ? limit : undefined,
+      locale: typeof locale === 'string' ? locale : undefined,
+    });
     res.json({ objects });
   } catch (error: any) {
     console.error('Query public data objects error:', error);

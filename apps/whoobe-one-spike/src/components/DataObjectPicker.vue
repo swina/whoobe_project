@@ -138,7 +138,39 @@
             </div>
             <button class="flex items-center gap-1 text-xs text-indigo-600" @click="addFilter"><Plus class="w-3.5 h-3.5" /> Add filter</button>
 
-            <div class="pt-3 border-t border-gray-100 mt-3">
+            <div class="pt-3 border-t border-gray-100 mt-3 space-y-2">
+              <div>
+                <div class="text-[10px] text-gray-400 mb-1">Order by</div>
+                <div class="flex items-center gap-2">
+                  <select v-model="orderByField" class="text-xs border rounded px-2 py-1 flex-1">
+                    <option value="">Default (newest first)</option>
+                    <option v-for="field in filterFields" :key="field.name" :value="field.name">{{ field.title || field.name }}</option>
+                  </select>
+                  <select v-model="orderByDirection" class="text-xs border rounded px-2 py-1" :disabled="!orderByField">
+                    <option value="desc">Descending</option>
+                    <option value="asc">Ascending</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <div class="text-[10px] text-gray-400 mb-1">Offset</div>
+                  <input v-model.number="offset" type="number" min="0" class="text-xs border rounded px-2 py-1 w-full" placeholder="0" />
+                </div>
+                <div>
+                  <div class="text-[10px] text-gray-400 mb-1">Limit</div>
+                  <input v-model.number="limit" type="number" min="0" class="text-xs border rounded px-2 py-1 w-full" placeholder="No limit" />
+                </div>
+                <div>
+                  <div class="text-[10px] text-gray-400 mb-1">Rows per page</div>
+                  <select v-model.number="rowsPerPage" class="text-xs border rounded px-2 py-1 w-full">
+                    <option :value="0">No pagination</option>
+                    <option v-for="size in [5, 10, 25, 50]" :key="size" :value="size">{{ size }}</option>
+                  </select>
+                </div>
+              </div>
+
               <button
                 class="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 disabled:opacity-40"
                 :disabled="testLoading"
@@ -155,14 +187,16 @@
                 </div>
                 <div v-if="testResults.length > 0" class="max-h-28 overflow-y-auto space-y-1">
                   <div
-                    v-for="obj in testResults"
+                    v-for="obj in testResults.slice(0, TEST_DISPLAY_CAP)"
                     :key="obj.id"
                     class="flex items-center justify-between text-[10px] text-gray-600 bg-gray-50 rounded px-2 py-1"
                   >
                     <span class="truncate font-mono">{{ objectLabel(obj) }}</span>
                     <span class="text-gray-400 shrink-0 ml-2">{{ obj.locale }}</span>
                   </div>
-                  <div v-if="testResults.length === 20" class="text-[10px] text-gray-400 italic">Showing first 20 results</div>
+                  <div v-if="testResults.length > TEST_DISPLAY_CAP" class="text-[10px] text-gray-400 italic">
+                    Showing first {{ TEST_DISPLAY_CAP }} of {{ testResults.length }} results
+                  </div>
                 </div>
               </div>
             </div>
@@ -262,10 +296,18 @@ const selectedField = ref<string | null>(props.initial?.field ?? null)
 const loading = ref(true)
 const error = ref('')
 
+// Order by / offset / limit / rows-per-page ('query' mode only)
+const orderByField = ref<string>(props.initial?.orderBy?.field ?? '')
+const orderByDirection = ref<'asc' | 'desc'>(props.initial?.orderBy?.direction ?? 'desc')
+const offset = ref<number | null>(props.initial?.offset ?? null)
+const limit = ref<number | null>(props.initial?.limit ?? null)
+const rowsPerPage = ref<number>(props.initial?.rowsPerPage ?? 0)
+
 // Query test state
 const testLoading = ref(false)
 const testResults = ref<DataObjectRecord[] | null>(null)
 const testError = ref('')
+const TEST_DISPLAY_CAP = 50
 
 const currentClass = computed(() => classes.value.find((c) => c.name === className.value) ?? null)
 const classLabel = computed(() => currentClass.value?.label || className.value)
@@ -352,7 +394,12 @@ async function testQuery() {
       operator: f.operator as DataObjectQueryFilter['operator'],
       value: f.value,
     }))
-    const results = await queryDataObjects(className.value, qf, 20)
+    const results = await queryDataObjects(className.value, {
+      filters: qf,
+      orderBy: orderByField.value ? { field: orderByField.value, direction: orderByDirection.value } : undefined,
+      offset: offset.value ?? undefined,
+      limit: limit.value ?? undefined,
+    })
     testResults.value = results
   } catch (e: any) {
     testError.value = e?.message || 'Query failed'
@@ -362,13 +409,32 @@ async function testQuery() {
 }
 
 function confirm() {
+  const fieldType = selectedField.value ? fieldMap.value.get(selectedField.value)?.fieldType ?? null : null
+  // Transform config lives in the sidebar (DataBindingTransformControl.vue),
+  // not this modal - preserve it only when rebinding to the SAME field
+  // (a different field's transform options would be nonsensical, since
+  // they're field-type-specific).
+  const transform: ElementDataBinding['transform'] =
+    selectedField.value && selectedField.value === props.initial?.field
+      ? props.initial?.transform ?? { type: 'none' }
+      : { type: 'none' }
+
   const binding: ElementDataBinding = {
     className: className.value,
     objectId: mode.value === 'explicit' ? selectedObjectId.value : null,
     field: selectedField.value,
+    fieldType,
     target: props.target,
     resolveMode: mode.value,
     filters: mode.value === 'query' ? filters.value : undefined,
+    orderBy:
+      mode.value === 'query' && orderByField.value
+        ? { field: orderByField.value, direction: orderByDirection.value }
+        : undefined,
+    offset: mode.value === 'query' && offset.value ? offset.value : undefined,
+    limit: mode.value === 'query' && limit.value ? limit.value : undefined,
+    rowsPerPage: mode.value === 'query' && rowsPerPage.value ? rowsPerPage.value : undefined,
+    transform,
   }
   emit('select', binding)
 }

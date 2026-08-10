@@ -17,11 +17,40 @@
       {{ doc.tag || 'container' }}
       <span v-if="(doc as any).dataBinding" class="text-[9px] opacity-80 ml-1">{{ ((doc as any).dataBinding?.className || '?') }}</span>
     </button>
-    <template v-for="child in doc.blocks" :key="child.id">
-      <BlockSlider v-if="child.tag === 'slider'" :doc="child" :level="level + 1" :data-context="childContext" />
-      <BlockContainer v-else-if="child.type === 'container'" :doc="child" :level="level + 1" :data-context="childContext" />
-      <BlockIFrame v-else-if="child.tag === 'youtube' || child.tag === 'vimeo'" :element="child" :level="level + 1" />
-      <BlockElement v-else :element="child" :level="level + 1" :data-context="childContext" />
+    <button
+      v-if="(doc as any).semantic"
+      type="button"
+      class="absolute -top-2.5 -right-2.5 z-50 px-1.5 py-0.5 rounded text-[10px] leading-none font-semibold text-white bg-slate-500 transition-opacity"
+      :class="tagOpacityClass"
+      @click.stop="onSelect"
+    >
+      &lt;{{ (doc as any).semantic }}&gt;
+    </button>
+    <template v-if="collectionResolved.length">
+      <template v-for="(obj, index) in pagedItems" :key="index">
+        <template v-for="child in doc.blocks" :key="child.id">
+          <BlockSlider v-if="child.tag === 'slider'" :doc="child" :level="level + 1" :data-context="obj" />
+          <BlockContainer v-else-if="child.type === 'container'" :doc="child" :level="level + 1" :data-context="obj" />
+          <BlockIFrame v-else-if="child.tag === 'youtube' || child.tag === 'vimeo'" :element="child" :level="level + 1" />
+          <BlockElement v-else :element="child" :level="level + 1" :data-context="obj" />
+        </template>
+      </template>
+      <div
+        v-if="rowsPerPage > 0 && collectionResolved.length > rowsPerPage"
+        class="flex items-center justify-center gap-2 text-[10px] text-gray-400 py-1.5 border-t border-dashed border-gray-200 mt-1"
+      >
+        <button type="button" class="px-1.5 py-0.5 rounded border disabled:opacity-30" :disabled="currentPage <= 1" @click.stop="currentPage = Math.max(1, currentPage - 1)">‹</button>
+        <span>Page {{ currentPage }} / {{ totalPages }}</span>
+        <button type="button" class="px-1.5 py-0.5 rounded border disabled:opacity-30" :disabled="currentPage >= totalPages" @click.stop="currentPage = Math.min(totalPages, currentPage + 1)">›</button>
+      </div>
+    </template>
+    <template v-else>
+      <template v-for="child in doc.blocks" :key="child.id">
+        <BlockSlider v-if="child.tag === 'slider'" :doc="child" :level="level + 1" :data-context="childContext" />
+        <BlockContainer v-else-if="child.type === 'container'" :doc="child" :level="level + 1" :data-context="childContext" />
+        <BlockIFrame v-else-if="child.tag === 'youtube' || child.tag === 'vimeo'" :element="child" :level="level + 1" />
+        <BlockElement v-else :element="child" :level="level + 1" :data-context="childContext" />
+      </template>
     </template>
   </component>
 </template>
@@ -78,7 +107,7 @@
 // part was never the bug, "you're inside me" is accurate information) -
 // it no longer leaks to unrelated siblings or nested children elsewhere in
 // the tree.
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type Element from '../scripts/ElementsClass.js'
 import { useEditorStore } from '../store/editor'
 import { resolveDisplayUrl } from '../resolve-display-url'
@@ -108,6 +137,41 @@ const resolvedContext = computed<DataObjectRecord | null>(() => {
 })
 
 const childContext = computed(() => props.dataContext ?? resolvedContext.value)
+
+// A container with a collection/query data binding (whole-object, no
+// field) whose resolved value is an array - previously discarded entirely
+// (rendered with no data context at all) since resolvedContext above bails
+// out on arrays; this is the live-canvas counterpart of BlockContainerPreview.
+// vue's own collectionResolved/repeater, so a bound list is visible and
+// editable while building the page, not just in Preview.
+const collectionResolved = computed<DataObjectRecord[]>(() => {
+  const editor = useEditorStore()
+  const db = (props.doc as any).dataBinding
+  if (!db || db.field) return []
+  const resolved = editor.resolvedData[props.doc.id]
+  return Array.isArray(resolved) ? resolved : []
+})
+
+// Client-side pagination over collectionResolved - same pattern as
+// BlockContainerPreview.vue's own rowsPerPage/currentPage/totalPages/
+// pagedItems (kept duplicated rather than a shared composable, matching
+// this exact file pair's existing extensive duplication).
+const rowsPerPage = computed(() => Number((props.doc as any).dataBinding?.rowsPerPage) || 0)
+const currentPage = ref(1)
+const totalPages = computed(() =>
+  rowsPerPage.value > 0 ? Math.max(1, Math.ceil(collectionResolved.value.length / rowsPerPage.value)) : 1
+)
+const pagedItems = computed(() => {
+  if (!rowsPerPage.value) return collectionResolved.value
+  const start = (currentPage.value - 1) * rowsPerPage.value
+  return collectionResolved.value.slice(start, start + rowsPerPage.value)
+})
+watch(collectionResolved, () => {
+  currentPage.value = 1
+})
+watch(totalPages, (p) => {
+  if (currentPage.value > p) currentPage.value = p
+})
 
 const editor = useEditorStore()
 
