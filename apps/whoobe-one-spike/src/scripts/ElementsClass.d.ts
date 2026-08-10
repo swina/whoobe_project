@@ -90,6 +90,18 @@ export interface ElementDataBinding {
   transform?: FieldTransform | null
 }
 
+// List-to-detail linking (docs/plans/website/website-paths.md) - lets an
+// element inside a collection-bound container link to a per-record detail
+// URL, built by substituting `valueField`'s resolved value (on THIS
+// record) into `targetPageId`'s own dynamic slug pattern. Not reusable as
+// plain `link`/`linkTarget` below: those are flat strings, the same for
+// every repeated record - this needs to vary per iteration, computed in
+// BlockContainerPreview.vue's repeater (childHref()).
+export interface DynamicLinkBinding {
+  targetPageId: string
+  valueField: string // a field name on the CURRENT container's bound Data Class
+}
+
 // Only present on nodes built via .Slider() - a full redesign, not a port
 // (see that method's own comment in ElementsClass.js). Read by preview/
 // BlockSliderPreview.vue and set via FloatingToolbar.vue's slider settings
@@ -160,6 +172,11 @@ export default class Element {
   // is actually set, unlike the base fields above the constructor always
   // initializes.
   linkTarget?: string
+  // List-to-detail linking (see DynamicLinkBinding above) - set via
+  // FloatingToolbar.vue's Link popover's "Link to a page" mode, mutually
+  // exclusive with `link`/`linkTarget` on the same element (setting one
+  // clears the other, so there's one unambiguous source of truth).
+  dynamicLink?: DynamicLinkBinding | null
   anchor: string
   slider?: ElementSlider
   // Not in the source, and not set by any builder - only meaningful on a

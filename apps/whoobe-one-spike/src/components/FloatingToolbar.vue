@@ -315,6 +315,46 @@
             </div>
             <div v-if="hrefBindingLabel" class="text-[9px] text-indigo-500 font-mono mt-0.5">{{ hrefBindingLabel }}</div>
           </div>
+
+          <div class="border-t border-gray-100 pt-2">
+            <button
+              type="button"
+              title="Link each record in this list to its own detail page"
+              class="w-full flex items-center gap-1.5 px-1.5 py-1 text-[10px] rounded font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+              :class="hasDynamicLink ? 'text-indigo-600 bg-indigo-50 border border-indigo-200' : 'text-gray-500 hover:text-indigo-500 bg-gray-50 hover:bg-indigo-50 border border-gray-200 hover:border-indigo-200'"
+              :disabled="!ancestorCollectionClassName"
+              @click.stop="togglePageLinkPicker"
+            >
+              <FileText class="w-3 h-3" /> Link to a page (per record)
+            </button>
+            <div v-if="!ancestorCollectionClassName" class="text-[9px] text-gray-400 mt-0.5">
+              Only available inside a data-bound list.
+            </div>
+            <template v-else-if="showPageLinkPicker">
+              <div class="mt-1.5 space-y-1.5">
+                <select v-model="pageLinkTargetPageId" class="w-full px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500">
+                  <option value="">Select a dynamic page…</option>
+                  <option v-for="p in dynamicPagesList" :key="p.id" :value="p.id">{{ p.name }} ({{ p.path }})</option>
+                </select>
+                <select v-model="pageLinkValueField" class="w-full px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500">
+                  <option value="">Select a field…</option>
+                  <option v-for="f in ancestorClassFields" :key="f.name" :value="f.name">{{ f.title || f.name }}</option>
+                </select>
+                <div class="flex justify-between pt-1">
+                  <button type="button" class="px-2 py-1 text-[10px] rounded bg-gray-100 hover:bg-gray-200 text-gray-500" @click="clearPageLink">Clear</button>
+                  <button
+                    type="button"
+                    class="px-2 py-1 text-[10px] rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-40"
+                    :disabled="!pageLinkTargetPageId || !pageLinkValueField"
+                    @click="applyPageLink"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">Opens in</label>
             <select v-model="linkTargetDraft" class="w-full px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500">
@@ -428,7 +468,7 @@ import twclasses from '../scripts/tw.classes.js'
 import { previewAnimation } from '../scripts/gsap-actions'
 import { playYouTubeVideo } from '../scripts/youtube-player'
 import { useEditorStore } from '../store/editor'
-import { clean, findParentAndIndex, removeNodeById, friendlyElementName } from '../helpers'
+import { clean, findParentAndIndex, findAncestorChain, removeNodeById, friendlyElementName } from '../helpers'
 import TipTapPanel from './TipTapPanel.vue'
 import MediaPickerModal from './MediaPickerModal.vue'
 import SaveSnippetModal from './SaveSnippetModal.vue'
@@ -437,12 +477,15 @@ import ExpandableTextInput from './ExpandableTextInput.vue'
 import type { ElementDataBinding } from '../scripts/ElementsClass.js'
 import { generateTemplateFromClass } from '../scripts/template-generator'
 import { resolveDocumentData } from '../scripts/data-resolver'
-import { getDataClass } from '../data-objects-api'
+import { getDataClass, getDataClassByName } from '../data-objects-api'
+import { listPages } from '../scripts/database-actions'
+import { isDynamicSlug } from '../scripts/path-pattern'
 import {
   ArrowLeftRight,
   ArrowUp,
   ArrowUpDown,
   Database,
+  FileText,
   FolderOpen,
   Image,
   Link,
@@ -473,6 +516,13 @@ const showSaveSnippet = ref(false)
 const showLinkPicker = ref(false)
 const linkUrlDraft = ref('')
 const linkTargetDraft = ref('_self')
+
+// --- List-to-detail linking ("Link to a page") ---
+const showPageLinkPicker = ref(false)
+const pageLinkTargetPageId = ref('')
+const pageLinkValueField = ref('')
+const dynamicPagesList = ref<{ id: string; name: string; path: string }[]>([])
+const ancestorClassFields = ref<{ name: string; title?: string }[]>([])
 const showImagePicker = ref(false)
 const imageUrlDraft = ref('')
 const imageAltDraft = ref('')
@@ -858,12 +908,16 @@ function openLinkPicker() {
   linkUrlDraft.value = editor.current.link || ''
   linkTargetDraft.value = (editor.current as any).linkTarget || '_self'
   showLinkPicker.value = true
+  showPageLinkPicker.value = false
 }
 
 function applyLink() {
   if (!editor.current) return
   editor.current.link = linkUrlDraft.value
   ;(editor.current as any).linkTarget = linkTargetDraft.value
+  // Mutually exclusive with "link to a page" - one unambiguous source of
+  // truth per element.
+  ;(editor.current as any).dynamicLink = null
   showLinkPicker.value = false
 }
 
@@ -874,6 +928,65 @@ function clearLink() {
   linkUrlDraft.value = ''
   linkTargetDraft.value = '_self'
   showLinkPicker.value = false
+}
+
+// Nearest ancestor container (walking up from the selected element) whose
+// own dataBinding is a collection binding (whole-object, resolveMode
+// 'query') - the Data Class "Link to a page" resolves per-record field
+// values against. null when the selected element isn't inside one at all.
+const ancestorCollectionClassName = computed<string | null>(() => {
+  if (!editor.document || !editor.current) return null
+  const chain = findAncestorChain(editor.document, editor.current.id)
+  for (let i = chain.length - 1; i >= 0; i--) {
+    const db = (chain[i] as any).dataBinding
+    if (db && !db.field && db.resolveMode === 'query') return db.className
+  }
+  return null
+})
+
+const hasDynamicLink = computed(() => !!(editor.current as any)?.dynamicLink)
+
+async function togglePageLinkPicker() {
+  if (!editor.current || !ancestorCollectionClassName.value) return
+  if (showPageLinkPicker.value) {
+    showPageLinkPicker.value = false
+    return
+  }
+  const existing = (editor.current as any).dynamicLink
+  pageLinkTargetPageId.value = existing?.targetPageId || ''
+  pageLinkValueField.value = existing?.valueField || ''
+  try {
+    const [pages, dataClass] = await Promise.all([listPages(), getDataClassByName(ancestorCollectionClassName.value)])
+    dynamicPagesList.value = pages.filter((p) => isDynamicSlug(p.path))
+    ancestorClassFields.value = dataClass?.fields ?? []
+  } catch (err) {
+    console.error('[FloatingToolbar] Failed to load pages/fields for page link:', err)
+    dynamicPagesList.value = []
+    ancestorClassFields.value = []
+  }
+  showPageLinkPicker.value = true
+}
+
+function applyPageLink() {
+  if (!editor.current || !pageLinkTargetPageId.value || !pageLinkValueField.value) return
+  ;(editor.current as any).dynamicLink = {
+    targetPageId: pageLinkTargetPageId.value,
+    valueField: pageLinkValueField.value,
+  }
+  // Mutually exclusive with the plain URL link.
+  editor.current.link = ''
+  ;(editor.current as any).linkTarget = '_self'
+  linkUrlDraft.value = ''
+  showPageLinkPicker.value = false
+  showLinkPicker.value = false
+}
+
+function clearPageLink() {
+  if (!editor.current) return
+  ;(editor.current as any).dynamicLink = null
+  pageLinkTargetPageId.value = ''
+  pageLinkValueField.value = ''
+  showPageLinkPicker.value = false
 }
 
 function pickAnimation(e: Event) {

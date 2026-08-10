@@ -99,6 +99,17 @@ export async function savePage(editor: EditorStore, path?: string): Promise<void
   }
 }
 
+/** Changes an already-saved page's own slug/path - the gap savePage()'s
+ *  own comment above describes as "not in scope here" (its update branch
+ *  never sends `slug` at all). Needed for docs/plans/website/website-
+ *  paths.md's own "dynamic paths can be updated by the user" requirement
+ *  to hold for pages that already exist, not just brand-new ones. */
+export async function updatePageSlug(editor: EditorStore, newSlug: string): Promise<void> {
+  if (!editor.page?.id) return
+  const updated = await apiUpdatePage(String(editor.page.id), { slug: newSlug })
+  ;(editor.page as any).path = updated.slug
+}
+
 export async function listPages(): Promise<SavedTemplateSummary[]> {
   const pages = await apiListPages()
   return pages.map((p) => ({ id: p.id, name: p.title, category: p.category, path: p.slug }))

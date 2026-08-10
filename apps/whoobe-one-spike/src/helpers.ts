@@ -120,6 +120,22 @@ export function findNodeById(root: WhoobeElement, id: string): WhoobeElement | n
   return null
 }
 
+/** Returns every ancestor of `id`, ordered root-first, NOT including `id`
+ *  itself. Used by FloatingToolbar.vue's "Link to a page" picker to find
+ *  the nearest enclosing collection-bound container (walk the result in
+ *  reverse - last entry is the immediate parent). */
+export function findAncestorChain(root: WhoobeElement, id: string): WhoobeElement[] {
+  function walk(node: WhoobeElement, path: WhoobeElement[]): WhoobeElement[] | null {
+    if (node.id === id) return path
+    for (const child of node.blocks ?? []) {
+      const found = walk(child, [...path, node])
+      if (found) return found
+    }
+    return null
+  }
+  return walk(root, []) ?? []
+}
+
 export function findParentAndIndex(
   root: WhoobeElement,
   id: string

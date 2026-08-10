@@ -262,7 +262,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   Layers,
   LayoutDashboard,
@@ -499,7 +499,39 @@ function handleSelectSidebarFolder(path: string) {
   tabsStore.openSection('assets')
 }
 
+// Mirrors WhoobeOneEmbed.vue's own identically-named helper - duplicated,
+// not extracted (see PagePreviewTab.vue's matching comment on why).
+function getDefaultWhoobeOneSpikeUrl(): string {
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    return `${window.location.protocol}//${window.location.hostname}:3006`
+  }
+  return 'http://localhost:3006'
+}
+
+// Receiving end of a list-to-detail link clicked inside an embedded
+// whoobe-one-spike editor's own Preview (BlockContainerPreview.vue's
+// onDynamicLinkClick) - opens/focuses the target page's own tab directly
+// on its Preview sub-tab, targeted at that one resolved record, instead of
+// the link opening a real new browser tab. Registered ONCE here (not
+// inside WhoobeOneEmbed.vue, which mounts one instance per open page-
+// editor tab and would otherwise fire this handler once per open tab for
+// every single message). Origin-checked against the exact same
+// whoobe-one-spike origin every embedded iframe is already built from.
+function onWindowMessage(event: MessageEvent) {
+  if (event.origin !== new URL(getDefaultWhoobeOneSpikeUrl()).origin) return
+  if (event.data?.type !== 'whoobe-one:open-page-preview') return
+  const { pageId, path, locale } = event.data
+  if (typeof pageId === 'string' && typeof path === 'string' && typeof locale === 'string') {
+    tabsStore.openPagePreview(pageId, path, locale)
+  }
+}
+
 onMounted(() => {
   websitesStore.refreshWebsites()
+  window.addEventListener('message', onWindowMessage)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('message', onWindowMessage)
 })
 </script>

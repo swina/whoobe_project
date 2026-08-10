@@ -11,6 +11,14 @@
       <div class="flex-1"></div>
 
       <span v-if="saveState" class="text-[11px] text-gray-400 mr-1">{{ saveState }}</span>
+      <button
+        v-if="editor.page?.id"
+        title="Edit this page's path"
+        class="text-gray-400 hover:text-indigo-600 mr-1"
+        @click="onEditSlug"
+      >
+        <Pencil class="w-3.5 h-3.5" />
+      </button>
 
       <button :class="topbarBtnClass" @click="onNew"><FilePlus class="w-3.5 h-3.5" /> New</button>
       <!-- Hidden when embedded (CMS integration plan §6/§7) - the host's
@@ -128,7 +136,7 @@
 // new one being created from the palette below.
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import dragula from 'dragula'
-import { CopyPlus, Download, Eye, FilePlus, FolderOpen, PackagePlus, Save, Upload } from '@lucide/vue'
+import { CopyPlus, Download, Eye, FilePlus, FolderOpen, PackagePlus, Pencil, Save, Upload } from '@lucide/vue'
 import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
 import BlockContainer from './BlockContainer.vue'
@@ -145,7 +153,7 @@ import { useSnippetsStore } from '../store/snippets'
 import { clean, findNodeById, removeNodeById, applyImagePlaceholder } from '../helpers'
 import { editorBus } from '../bus'
 import { exportDocument, importDocument, cloneWithFreshIds } from '../scripts/editor-actions'
-import { savePage, saveAsNewTemplate } from '../scripts/database-actions'
+import { savePage, saveAsNewTemplate, updatePageSlug } from '../scripts/database-actions'
 import { resolveDocumentData } from '../scripts/data-resolver'
 
 type WhoobeElement = InstanceType<typeof Element>
@@ -246,7 +254,7 @@ async function onSave() {
   let path: string | undefined
   if (!editor.page.id) {
     const suggested = suggestPathFromName(editor.page.name || '')
-    const input = window.prompt('Document path (e.g. /about-us)', suggested)
+    const input = window.prompt('Document path (e.g. /about-us or /it/news/{slug} for a dynamic page)', suggested)
     if (input === null) return // cancelled - don't create a half-saved document
     path = input.trim() ? (input.trim().startsWith('/') ? input.trim() : '/' + input.trim()) : ''
     if (!path) {
@@ -266,6 +274,28 @@ async function onSave() {
     // surfaced by core-api as a 409 with a clear message.
     saveState.value = ''
     flash(e?.message || 'Failed to save', 'error')
+  }
+}
+
+// The counterpart onSave() itself deliberately doesn't offer for an
+// already-saved page (see its own comment) - updatePageSlug() covers the
+// real gap that leaves: an existing page's path/slug could never be
+// changed through this editor at all before, so a dynamic pattern like
+// /it/news/{slug} (docs/plans/website/website-paths.md) could only ever
+// be set at creation time.
+async function onEditSlug() {
+  if (!editor.page?.id) return
+  const current = (editor.page as any).path || ''
+  const input = window.prompt('Document path (e.g. /about-us or /it/news/{slug} for a dynamic page)', current)
+  if (input === null) return // cancelled
+  const trimmed = input.trim()
+  const newSlug = trimmed ? (trimmed.startsWith('/') ? trimmed : '/' + trimmed) : ''
+  if (!newSlug || newSlug === current) return
+  try {
+    await updatePageSlug(editor, newSlug)
+    flash('Path updated')
+  } catch (e: any) {
+    flash(e?.message || 'Failed to update path', 'error')
   }
 }
 
