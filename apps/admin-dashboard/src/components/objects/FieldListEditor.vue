@@ -122,7 +122,7 @@
 // a Component Type needs field-for-field the exact same editor a class's
 // own Fields tab already had - not a second, independently-maintained
 // near-copy that quietly drifts from this one over time.
-import type { ClassFieldDefinition } from '@pimcore-custom/core'
+import type { ClassFieldDefinition } from '@whoobe-cms/core'
 import { useDataClassesStore } from '../../stores/dataClassesStore'
 import { useComponentsStore } from '../../stores/componentsStore'
 import type { AssetCategoryFilter } from '../../utils/asset-category'

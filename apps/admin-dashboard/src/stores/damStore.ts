@@ -8,7 +8,7 @@ import {
   ExtractedAssetMetadata,
   AssetMetadataExtractor,
   getFileTypeFromFilename
-} from '@pimcore-custom/core'
+} from '@whoobe-cms/core'
 import {
   fetchDamInfo,
   uploadAssetToDam,

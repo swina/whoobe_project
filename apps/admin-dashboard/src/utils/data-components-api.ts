@@ -2,7 +2,7 @@
 // docs/plans/datamodel/component-fields-plan.md §3 (Phase 1). Mirrors
 // data-classes-api.ts's shape directly - Component Types are, on the
 // wire, structurally identical to classes (name/label/fields).
-import type { ClassFieldDefinition } from '@pimcore-custom/core'
+import type { ClassFieldDefinition } from '@whoobe-cms/core'
 import { getDefaultCoreApiUrl } from './auth-api'
 
 export interface DataComponent {

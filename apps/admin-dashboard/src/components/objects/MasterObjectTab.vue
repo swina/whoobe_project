@@ -131,7 +131,7 @@
 // directly instead, the same way MasterPageTab.vue/WhoobeOneEmbed.vue
 // already do for their own real API clients.
 import { ref, computed, watch, onMounted } from 'vue'
-import { isTransitionValid, type WorkflowTransitionDefinition } from '@pimcore-custom/core'
+import { isTransitionValid, type WorkflowTransitionDefinition } from '@whoobe-cms/core'
 import { useTabsStore, objectTabId } from '../../stores/tabsStore'
 import { useDataClassesStore } from '../../stores/dataClassesStore'
 import { useToastStore } from '../../stores/toastStore'

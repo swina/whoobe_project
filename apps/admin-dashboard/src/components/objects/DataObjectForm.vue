@@ -56,7 +56,7 @@
 // branch so an unconfigured class (the common case, every migrated class
 // today) isn't paying for a one-tab indirection it doesn't need.
 import { ref, computed, watch } from 'vue'
-import type { ClassFieldDefinition, ClassViewConfig } from '@pimcore-custom/core'
+import type { ClassFieldDefinition, ClassViewConfig } from '@whoobe-cms/core'
 import DataObjectFieldControl from './DataObjectFieldControl.vue'
 import { resolveCustomClasses } from '../../utils/custom-classes'
 import { useComponentsStore } from '../../stores/componentsStore'

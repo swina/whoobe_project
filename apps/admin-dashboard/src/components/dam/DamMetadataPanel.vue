@@ -260,7 +260,7 @@ import {
   AssetCameraMetadata,
   AssetGpsMetadata,
   AssetRightsMetadata
-} from '@pimcore-custom/core'
+} from '@whoobe-cms/core'
 
 const props = defineProps<{
   asset: AssetItem

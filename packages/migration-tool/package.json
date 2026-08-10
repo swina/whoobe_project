@@ -1,5 +1,5 @@
 {
-  "name": "@pimcore-custom/migration-tool",
+  "name": "@whoobe-cms/migration-tool",
   "version": "0.1.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,7 +11,7 @@
     "cli": "tsx src/cli.ts"
   },
   "dependencies": {
-    "@pimcore-custom/core": "workspace:*",
+    "@whoobe-cms/core": "workspace:*",
     "mysql2": "^3.11.0",
     "zod": "^3.22.4"
   },

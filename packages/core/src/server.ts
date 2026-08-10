@@ -1,4 +1,4 @@
-// Node-only entry point (import from '@pimcore-custom/core/server'): DB
+// Node-only entry point (import from '@whoobe-cms/core/server'): DB
 // access, sessions, password hashing, Express guards. Deliberately kept out
 // of the main './index.ts' barrel so apps/admin-dashboard (bundled by Vite
 // for the browser) never has 'pg'/drizzle/'crypto' in its import graph -

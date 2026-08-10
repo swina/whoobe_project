@@ -8,7 +8,7 @@ Repository Reference: [Whoobe Studio Alpha](https://github.com/swina/whoobe-stud
 
 **Whoobe Studio** is an open-source, visual block-driven page and layout builder written in **Vue.js 3**. In this headless CMS architecture, Whoobe Studio serves as the core **WYSIWYG Visual Block Editor** embedded directly inside the administrative interface (`apps/admin-dashboard`).
 
-Rather than storing unstructured HTML or monolithic page blobs, Whoobe Studio produces standardized, typed **JSON Block Layout Trees**. These trees are validated at runtime using Zod schemas provided by `@pimcore-custom/core` and rendered headlessly across frontend frameworks (Next.js, Nuxt 3, or Astro).
+Rather than storing unstructured HTML or monolithic page blobs, Whoobe Studio produces standardized, typed **JSON Block Layout Trees**. These trees are validated at runtime using Zod schemas provided by `@whoobe-cms/core` and rendered headlessly across frontend frameworks (Next.js, Nuxt 3, or Astro).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -28,12 +28,12 @@ Rather than storing unstructured HTML or monolithic page blobs, Whoobe Studio pr
                │                                                    │
                ▼                                                    ▼
  ┌────────────────────────────────────────────────────────────────────────────────┐
- │                      @pimcore-custom/core (Zod JSON Schemas)                   │
+ │                      @whoobe-cms/core (Zod JSON Schemas)                   │
  └────────────────────────────────────────────────────────────────────────────────┘
                                         │
                                         ▼
  ┌────────────────────────────────────────────────────────────────────────────────┐
- │               @pimcore-custom/migration-tool (Pimcore ETL Engine)             │
+ │               @whoobe-cms/migration-tool (Pimcore ETL Engine)             │
  └────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -51,7 +51,7 @@ Because `apps/admin-dashboard` is built with React/Next.js/TypeScript and `whoob
   - `OPEN_DAM_PICKER`: Whoobe Studio requests asset selection from DAM store; dashboard opens DAM modal and returns chosen S3 asset URL & metadata.
   - `OPEN_PIM_LINKER`: Whoobe Studio requests PIM Data Object relation; dashboard opens product selector and returns linked object IDs.
 
-### 2.2. Standardized JSON Block Layout Contract (`@pimcore-custom/core`)
+### 2.2. Standardized JSON Block Layout Contract (`@whoobe-cms/core`)
 All layout blocks conform to a strictly typed schema:
 
 ```typescript
@@ -94,7 +94,7 @@ export interface WhoobeBlockNode {
 - **Custom Block Library**: Pre-built block components mimicking Pimcore Areablocks (Feature Grid, Hero Banner, Testimonial Carousel, Product Showcase, FAQ Accordion).
 - **Reusable Block Snippets**: Save custom block subtrees as global templates that update automatically across all published pages when edited.
 
-### 4.2. Universal Layout Renderer (`@pimcore-custom/whoobe-renderer`)
+### 4.2. Universal Layout Renderer (`@whoobe-cms/whoobe-renderer`)
 - Headless layout tree renderer supporting:
   - **Server-Side Rendering (SSR)** for Next.js and Nuxt 3.
   - **Static Site Generation (SSG)** producing zero-JS lightweight HTML/CSS bundles.
@@ -104,7 +104,7 @@ export interface WhoobeBlockNode {
 
 ## 5. Migration Suite: Pimcore Documents & Objects Model Integration
 
-To ensure a loss-less, automated transition from legacy Pimcore instances, the migration suite inside `@pimcore-custom/migration-tool` translates Pimcore Document structures and Data Objects directly into Whoobe Studio JSON Block Trees.
+To ensure a loss-less, automated transition from legacy Pimcore instances, the migration suite inside `@whoobe-cms/migration-tool` translates Pimcore Document structures and Data Objects directly into Whoobe Studio JSON Block Trees.
 
 ```
 ┌─────────────────────────────────────────┐
@@ -116,7 +116,7 @@ To ensure a loss-less, automated transition from legacy Pimcore instances, the m
                      │
                      ▼
 ┌─────────────────────────────────────────┐
-│   @pimcore-custom/migration-tool        │
+│   @whoobe-cms/migration-tool        │
 │   PimcoreDocumentConverter              │
 └────────────────────┬────────────────────┘
                      │
@@ -143,7 +143,7 @@ To ensure a loss-less, automated transition from legacy Pimcore instances, the m
 
 ### 5.2. Pimcore Document Tree Migration Algorithm
 
-The `PimcoreDocumentConverter` class in `@pimcore-custom/migration-tool` performs automated ETL:
+The `PimcoreDocumentConverter` class in `@whoobe-cms/migration-tool` performs automated ETL:
 
 1. **Document Tree Traversal**: Queries Pimcore `documents` hierarchy (`page`, `snippet`, `folder`, `link`, `hardlink`).
 2. **Editable Parsing**: Reads `documents_elements` table to extract all serialized editables associated with each page ID.
@@ -158,6 +158,6 @@ The `PimcoreDocumentConverter` class in `@pimcore-custom/migration-tool` perform
 - [x] **Phase 1: Core Storage & DAM Foundation**
 - [x] **Phase 2: Image Processing Pipeline & Microservice**
 - [x] **Phase 3: Deep Metadata & EXIF Extractor**
-- [x] **Phase 4: Whoobe Studio JSON Block Schemas (`@pimcore-custom/core`)**
+- [x] **Phase 4: Whoobe Studio JSON Block Schemas (`@whoobe-cms/core`)**
 - [x] **Phase 5: Vue 3 $\leftrightarrow$ React iFrame PostMessage Bridge (`apps/whoobe-studio`)**
-- [x] **Phase 6: Pimcore Document & Areablock Migration Engine (`@pimcore-custom/migration-tool`)**
+- [x] **Phase 6: Pimcore Document & Areablock Migration Engine (`@whoobe-cms/migration-tool`)**

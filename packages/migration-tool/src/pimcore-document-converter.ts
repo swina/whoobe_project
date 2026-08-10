@@ -1,4 +1,4 @@
-import { WhoobeBlockNode, WhoobeDocumentLayout } from '@pimcore-custom/core';
+import { WhoobeBlockNode, WhoobeDocumentLayout } from '@whoobe-cms/core';
 
 export interface PimcoreEditableElement {
   name: string;

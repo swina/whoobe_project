@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ClassFieldDefinition } from '@pimcore-custom/core';
+import type { ClassFieldDefinition } from '@whoobe-cms/core';
 import {
   upsertWhoobePageByPimcoreId,
   upsertDataClassByPimcoreId,
@@ -9,7 +9,7 @@ import {
   getDataObjectByPimcoreId,
   deleteDataObjectsByClassId,
   getAssetByPath,
-} from '@pimcore-custom/core/server';
+} from '@whoobe-cms/core/server';
 import { PimcorePageConverter } from './pimcore-page-converter.js';
 import { PimcoreRawDocument, PimcoreEditableElement } from './pimcore-document-converter.js';
 import { PimcoreObjectConverter } from './pimcore-object-converter.js';

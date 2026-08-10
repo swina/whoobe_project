@@ -7,7 +7,7 @@ See `docs/plans/cms/whoobe-one-studio-vue3-port-plan.md` §5 ("Phase 0 - Spike",
 ## Run it
 
 ```
-pnpm --filter @pimcore-custom/whoobe-one-spike dev
+pnpm --filter @whoobe-cms/whoobe-one-spike dev
 ```
 
 Opens on port 3006. A demo document is seeded on load: a heading + paragraph side by side, an image, and a button, inside an outer container.

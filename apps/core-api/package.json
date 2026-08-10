@@ -1,5 +1,5 @@
 {
-  "name": "@pimcore-custom/core-api",
+  "name": "@whoobe-cms/core-api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@pimcore-custom/core": "workspace:*",
-    "@pimcore-custom/migration-tool": "workspace:*",
+    "@whoobe-cms/core": "workspace:*",
+    "@whoobe-cms/migration-tool": "workspace:*",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^4.21.2"

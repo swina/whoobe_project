@@ -2,7 +2,7 @@
 // docs/plans/datamodel/advanced-data-modeling-plan.md §4.1/§6 (Phase 1).
 // Mirrors pages-api.ts's shape (baseUrl from authStore.config, not a
 // hardcoded hostname default).
-import type { ClassFieldDefinition, ClassViewConfig, WorkflowPlace, WorkflowTransitionDefinition } from '@pimcore-custom/core'
+import type { ClassFieldDefinition, ClassViewConfig, WorkflowPlace, WorkflowTransitionDefinition } from '@whoobe-cms/core'
 import { getDefaultCoreApiUrl } from './auth-api'
 
 export interface DataClass {

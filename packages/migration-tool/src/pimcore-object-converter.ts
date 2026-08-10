@@ -1,4 +1,4 @@
-import type { ClassFieldDefinition } from '@pimcore-custom/core';
+import type { ClassFieldDefinition } from '@whoobe-cms/core';
 import type { RawPimcoreObjectAttributes, PimcoreFieldCollectionItem } from './source-adapter.js';
 import { phpUnserialize, type PhpValue } from './php-unserialize.js';
 
@@ -83,7 +83,7 @@ export type AssetUuidResolver = (path: string) => Promise<string | null>;
  * raw Pimcore object id) to the already-migrated `data_objects.id`
  * (a real internal uuid) - or `null` if that target hasn't been migrated
  * yet. Deliberately a callback, not something this converter looks up
- * itself - the converter stays free of `@pimcore-custom/core`/DB imports,
+ * itself - the converter stays free of `@whoobe-cms/core`/DB imports,
  * the same package-boundary discipline `pimcore-page-converter.ts`
  * already established for `Element`. `cli.ts` supplies the real
  * implementation (a `data_objects` lookup by `pimcoreId`).

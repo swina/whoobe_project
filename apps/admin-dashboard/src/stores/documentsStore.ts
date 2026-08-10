@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { fetchDocuments, fetchDocumentById, updateDocumentContent, type CmsDocumentRecord } from '../utils/documents-api'
-import type { WhoobeBlockNode } from '@pimcore-custom/core'
+import type { WhoobeBlockNode } from '@whoobe-cms/core'
 import { useAuthStore } from './authStore'
 
 export const useDocumentsStore = defineStore('documents', () => {

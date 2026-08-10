@@ -109,8 +109,8 @@ import {
   disableTotp,
   updateMfaRecoveryCodes,
   type AuthenticatedRequest,
-} from '@pimcore-custom/core/server';
-import { runClassMigration, runObjectMigration } from '@pimcore-custom/migration-tool';
+} from '@whoobe-cms/core/server';
+import { runClassMigration, runObjectMigration } from '@whoobe-cms/migration-tool';
 
 
 function escapeXml(s: string): string {

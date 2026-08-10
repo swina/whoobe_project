@@ -295,7 +295,7 @@ import { batchActionDataObjects, batchResolveAssets } from '../utils/data-object
 import type { DataObjectQueryFilter } from '../utils/data-objects-api'
 import { exportRowsAsCsv, exportRowsAsJson, exportRowsAsXlsx } from '../utils/data-export'
 import { loadObjectListPresets, upsertObjectListPreset, deleteObjectListPreset, setDefaultPreset, getDefaultPreset, type ObjectListPreset } from '../utils/object-list-presets'
-import type { ClassFieldDefinition } from '@pimcore-custom/core'
+import type { ClassFieldDefinition } from '@whoobe-cms/core'
 
 const dataObjectsStore = useDataObjectsStore()
 const dataClassesStore = useDataClassesStore()

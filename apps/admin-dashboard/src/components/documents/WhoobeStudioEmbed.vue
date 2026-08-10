@@ -24,7 +24,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import type { WhoobeDocumentLayout } from '@pimcore-custom/core'
+import type { WhoobeDocumentLayout } from '@whoobe-cms/core'
 import { WhoobeHostBridge } from '../../utils/whoobe-host-bridge'
 import { useDamStore } from '../../stores/damStore'
 import { useDocumentsStore } from '../../stores/documentsStore'

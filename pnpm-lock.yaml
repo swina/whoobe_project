@@ -23,9 +23,6 @@ importers:
       '@lucide/vue':
         specifier: ^1.1.0
         version: 1.28.0(vue@3.5.40(typescript@5.9.3))
-      '@pimcore-custom/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@tiptap/extension-image':
         specifier: ^2.11.5
         version: 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))
@@ -35,6 +32,9 @@ importers:
       '@tiptap/vue-3':
         specifier: ^2.11.5
         version: 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2)(vue@3.5.40(typescript@5.9.3))
+      '@whoobe-cms/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       bootstrap-icons:
         specifier: ^1.11.3
         version: 1.13.1
@@ -88,7 +88,7 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.700.0
         version: 3.1101.0
-      '@pimcore-custom/core':
+      '@whoobe-cms/core':
         specifier: workspace:*
         version: link:../../packages/core
       cookie-parser:
@@ -134,10 +134,10 @@ importers:
 
   apps/core-api:
     dependencies:
-      '@pimcore-custom/core':
+      '@whoobe-cms/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@pimcore-custom/migration-tool':
+      '@whoobe-cms/migration-tool':
         specifier: workspace:*
         version: link:../../packages/migration-tool
       cookie-parser:
@@ -241,7 +241,7 @@ importers:
       '@iconify/vue':
         specifier: ^4.1.2
         version: 4.3.0(vue@3.5.40(typescript@5.9.3))
-      '@pimcore-custom/core':
+      '@whoobe-cms/core':
         specifier: workspace:*
         version: link:../../packages/core
       bootstrap-icons:
@@ -333,7 +333,7 @@ importers:
 
   packages/migration-tool:
     dependencies:
-      '@pimcore-custom/core':
+      '@whoobe-cms/core':
         specifier: workspace:*
         version: link:../core
       mysql2:
