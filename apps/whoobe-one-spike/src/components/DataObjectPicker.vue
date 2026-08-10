@@ -431,8 +431,11 @@ function confirm() {
       mode.value === 'query' && orderByField.value
         ? { field: orderByField.value, direction: orderByDirection.value }
         : undefined,
-    offset: mode.value === 'query' && offset.value ? offset.value : undefined,
-    limit: mode.value === 'query' && limit.value ? limit.value : undefined,
+    // Nullish (not truthy) checks - offset=0 is a real, meaningful value
+    // ("skip nothing"), not the same as "no offset set" here; a `? :`
+    // truthy check would silently drop it back to undefined.
+    offset: mode.value === 'query' && offset.value != null ? offset.value : undefined,
+    limit: mode.value === 'query' && limit.value != null ? limit.value : undefined,
     rowsPerPage: mode.value === 'query' && rowsPerPage.value ? rowsPerPage.value : undefined,
     transform,
   }
