@@ -4,6 +4,15 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Fix: Dynamic Query offset/limit ignored] — 2026-08-10 (branch: feat/08-10/data-binding-field-transformers)
+
+Reported: a Dynamic Query binding with `offset=0, limit=1` still returned all 226 records. Root-caused via direct `curl` testing against `core-api` (bypassing the editor UI entirely) to isolate frontend vs. backend: `POST /public/data-objects/query` with `{"class":"Product","limit":1,"offset":0}` returned all 6 published records instead of 1.
+
+- **Root cause: stale/orphaned `core-api` processes**, not a logic bug — the source and compiled `packages/core/dist` were both already correct. Found multiple `tsx watch src/server.ts` processes running simultaneously, including a **5-day-old orphaned process from Aug 5** and another from earlier the same day; the one actually bound to port 3003 was serving pre-refactor query logic despite on-disk code being current. Killed all stale instances, rebuilt `packages/core`, started `core-api` fresh — `limit`/`offset` now behave correctly, verified via direct curl (`limit=1,offset=0` → 1 result; `limit=3,offset=2` → 3 results).
+- **Also fixed a real (if currently harmless) bug found while tracing this**: `apps/whoobe-one-spike/src/components/DataObjectPicker.vue`'s `confirm()` used a truthy check (`offset.value ? offset.value : undefined`) that silently dropped an explicit `offset = 0` back to `undefined`. No observable behavior change today (0 and "unset" produce identical query results), but the check is now `!= null`, matching actual intent.
+
+---
+
 ## [Fix: crypto.randomUUID crash on non-secure-context hostnames] — 2026-08-10 (branch: feat/08-10/data-binding-field-transformers)
 
 `crypto.randomUUID()` is only exposed in secure contexts (HTTPS, or literally the hostname `localhost`) — visiting admin-dashboard via a plain-HTTP LAN hostname (e.g. this project's own `develop.local` dev setup) throws `crypto.randomUUID is not a function`, breaking "Create Page"/"+ New class"/"+ New object" (all three mint a client-side `new:<uuid>` placeholder tab id the same way).
