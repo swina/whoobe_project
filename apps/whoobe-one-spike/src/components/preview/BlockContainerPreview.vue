@@ -1,6 +1,6 @@
 <template>
   <!-- Semantic -->
-  <component :is="semantic" :class="classe" :style="stile">
+  <component :is="semantic" :id="doc.id" :class="classe" :style="stile" v-bind="extraAttrs">
     <!-- Collection binding: this container is a repeater template - render
          its children once per resolved data object, each time providing
          that object's data to the whole subtree. -->
@@ -65,13 +65,15 @@
 // has to be written once instead of duplicated across all three branches.
 // `target` is new, not in the source at all (its own <a> never sets one) -
 // see FloatingToolbar.vue's Link popover.
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
 import { resolveDisplayUrl } from '../../resolve-display-url'
 import { useEditorStore } from '../../store/editor'
 import type { DataObjectRecord } from '../../data-objects-api'
 import { getPage } from '../../pages-api'
+import { customAttrs } from '../../helpers'
+import { mountAnimation } from '../../scripts/gsap-actions'
 import { extractPlaceholderNames, substitutePattern } from '../../scripts/path-pattern'
 import BlockElementPreview from './BlockElementPreview.vue'
 import BlockIFramePreview from './BlockIFramePreview.vue'
@@ -265,4 +267,47 @@ const stile = computed(() => {
   if (doc.font) st += `font-family:"${doc.font.replace('+', ' ')}";`
   return st + (doc.style ?? '')
 })
+
+// Custom attributes/AlpineJS directives/GSAP scroll-triggered animation on
+// the container itself - same wiring as BlockElementPreview.vue, see that
+// file's comment for the full rationale (why alpineAttrs drops empty
+// values, why the animation gate skips `&& gsap.duration`, why there's an
+// explicit Alpine.initTree() watch instead of relying only on Alpine's own
+// MutationObserver).
+const alpineAttrs = computed(() => {
+  const alpine = (props.doc as any).alpine as Record<string, string> | undefined
+  if (!alpine) return {}
+  const result: Record<string, string> = {}
+  for (const key of Object.keys(alpine)) {
+    if (alpine[key]) result[key] = alpine[key]
+  }
+  return result
+})
+
+const extraAttrs = computed(() => ({
+  ...customAttrs((props.doc as any).data?.attributes),
+  ...alpineAttrs.value,
+}))
+
+let stopAnimation: (() => void) | null = null
+
+onMounted(() => {
+  const el = document.getElementById(props.doc.id)
+  if (el) stopAnimation = mountAnimation(props.doc, el)
+})
+
+onUnmounted(() => {
+  stopAnimation?.()
+})
+
+watch(
+  () => (props.doc as any).alpine,
+  () => {
+    nextTick(() => {
+      const el = document.getElementById(props.doc.id)
+      if (el && (window as any).Alpine) (window as any).Alpine.initTree(el)
+    })
+  },
+  { deep: true }
+)
 </script>

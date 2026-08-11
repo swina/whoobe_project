@@ -1,11 +1,13 @@
 <template>
   <component
     :is="component"
+    :id="element.id"
     :class="classe"
     :style="stile"
     :src="displaySrc"
     :alt="displayAlt"
     :placeholder="element.placeholder"
+    v-bind="extraAttrs"
     v-html="displayContent"
   ></component>
 </template>
@@ -13,12 +15,15 @@
 <script setup lang="ts">
 // Read-only counterpart of ../BlockElement.vue, for DocumentPreview.vue -
 // port of whoobe-one-studio's src/components/blocks/preview/BlockElement.
-// vue, trimmed to what this spike actually exercises (no Alpine attribute
-// binding, no display/hide event-bus toggling - neither is wired up
-// anywhere else in this app either, see the README's "not ported" list).
-// Same rendering computeds as the editing version, minus everything that
-// only makes sense while editing: no contenteditable, no click-to-select,
-// no data-id/data-type markers, no selection ring.
+// vue. Same rendering computeds as the editing version, minus everything
+// that only makes sense while editing: no contenteditable, no click-to-
+// select, no data-id/data-type markers, no selection ring.
+//
+// Custom attributes/AlpineJS directives/GSAP scroll-triggered animation
+// (docs/plans/cms/whoobe-one-spike-missing-features.md) are applied here,
+// not in ../BlockElement.vue - matches the source, which only ever binds
+// Alpine/plays $animation in its own read-only preview tree, never the
+// editable canvas.
 //
 // `alt` (real `<img>` elements only) is set from FloatingToolbar.vue's
 // Image popover - unlike the source's own fallback (`element.image.alt ||
@@ -26,14 +31,15 @@
 // just omits the attribute entirely when unset. A fallback of the literal
 // tag name isn't meaningfully more accessible than no alt attribute at
 // all, so it wasn't worth carrying over.
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
-import { imageURL } from '../../helpers'
+import { customAttrs, imageURL } from '../../helpers'
 import { resolveDisplayUrl } from '../../resolve-display-url'
 import { useEditorStore } from '../../store/editor'
 import { resolveFieldValue } from '../../scripts/data-resolver'
 import type { DataObjectRecord } from '../../data-objects-api'
 import { applyTransform, escapeHtml } from '../../scripts/field-transforms'
+import { mountAnimation } from '../../scripts/gsap-actions'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -43,6 +49,52 @@ const props = defineProps<{
 }>()
 
 const editor = useEditorStore()
+
+// Empty-value entries are dropped (matches the reference's own `if
+// (element.data.alpine[attr])` check in preview/BlockElement.vue) so an
+// added-then-cleared directive doesn't leave a stray `x-show=""` attribute
+// behind.
+const alpineAttrs = computed(() => {
+  const alpine = (props.element as any).alpine as Record<string, string> | undefined
+  if (!alpine) return {}
+  const result: Record<string, string> = {}
+  for (const key of Object.keys(alpine)) {
+    if (alpine[key]) result[key] = alpine[key]
+  }
+  return result
+})
+
+const extraAttrs = computed(() => ({
+  ...customAttrs((props.element as any).data?.attributes),
+  ...alpineAttrs.value,
+}))
+
+let stopAnimation: (() => void) | null = null
+
+onMounted(() => {
+  const el = document.getElementById(props.element.id)
+  if (el) stopAnimation = mountAnimation(props.element, el)
+})
+
+onUnmounted(() => {
+  stopAnimation?.()
+})
+
+// Directives are applied via reactive v-bind (extraAttrs above), not the
+// reference's one-time setAttribute() in mounted() - Alpine's own
+// MutationObserver may not re-scan an attribute-only change on an
+// already-initialized node, so re-run Alpine's own tree scan explicitly
+// whenever the directive set actually changes.
+watch(
+  () => (props.element as any).alpine,
+  () => {
+    nextTick(() => {
+      const el = document.getElementById(props.element.id)
+      if (el && (window as any).Alpine) (window as any).Alpine.initTree(el)
+    })
+  },
+  { deep: true }
+)
 
 const resolvedData = computed(() => {
   const el = props.element as any

@@ -1,10 +1,10 @@
 <template>
-  <div class="w-64 shrink-0 overflow-y-auto">
+  <div class="shrink-0 overflow-y-auto">
     <div v-if="!editor.elements && !snippetsStore.items.length" class="p-3 text-xs text-gray-400">No elements loaded</div>
     <template v-for="label in groupLabels" :key="label">
       <button
         type="button"
-        class="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold capitalize text-gray-600 hover:bg-gray-50 border-b"
+        class="w-full flex items-center justify-between px-3 py-1.5 text-sm font-semibold capitalize text-gray-600 hover:bg-violet-500 hover:text-white border-b" :class="{ 'bg-violet-500 text-white': openGroup === label }"
         @click="openGroup = openGroup === label ? null : label"
       >
         {{ label }}

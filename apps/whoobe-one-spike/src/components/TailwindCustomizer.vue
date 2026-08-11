@@ -1,11 +1,11 @@
 <template>
-  <div class="w-64 shrink-0 overflow-y-auto flex flex-col text-xs">
+  <div class="shrink-0 overflow-y-auto flex flex-col text-sm">
     <div v-if="!editor.current" class="p-3 text-gray-400">Select an element to customize</div>
     <template v-else>
       <template v-for="group in visibleGroups" :key="group.label">
         <button
           type="button"
-          class="w-full flex items-center justify-between px-3 py-2 font-semibold capitalize text-gray-600 hover:bg-gray-50 border-b"
+          class="w-full flex items-center justify-between px-3 py-1.5 font-semibold capitalize text-gray-600 hover:bg-violet-500 hover:text-white border-b" :class="{ 'bg-violet-500 text-white': openGroup === group.label }"
           @click="openGroup = openGroup === group.label ? null : group.label"
         >
           {{ group.label }}
@@ -13,7 +13,7 @@
           <ChevronRight v-else class="w-3.5 h-3.5 text-gray-400" />
         </button>
 
-        <div v-if="openGroup === group.label" class="p-2 space-y-3 border-b bg-gray-50">
+        <div v-if="openGroup === group.label" class="p-2 space-y-3 border-b bg-gray-200">
           <template v-for="control in group.components" :key="control.attr">
             <component
               v-if="controlComponent(control.name)"
