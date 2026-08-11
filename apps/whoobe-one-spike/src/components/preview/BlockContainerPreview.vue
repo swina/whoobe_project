@@ -1,6 +1,6 @@
 <template>
   <!-- Semantic -->
-  <component :is="semantic" :id="doc.id" :class="classe" :style="stile" v-bind="extraAttrs">
+  <component :is="semantic" :id="doc.id" ref="rootEl" :class="classe" :style="stile" v-bind="extraAttrs">
     <!-- Collection binding: this container is a repeater template - render
          its children once per resolved data object, each time providing
          that object's data to the whole subtree. -->
@@ -289,11 +289,17 @@ const extraAttrs = computed(() => ({
   ...alpineAttrs.value,
 }))
 
+// Template ref, not document.getElementById(doc.id) - see
+// BlockElementPreview.vue's comment for the real bug that was (duplicate
+// ids: the editing canvas keeps its own :id="doc.id" node mounted
+// underneath DocumentPreview.vue's modal, and a data-bound repeater can
+// render this same doc N times, each with the identical id).
+const rootEl = ref<HTMLElement | null>(null)
+
 let stopAnimation: (() => void) | null = null
 
 onMounted(() => {
-  const el = document.getElementById(props.doc.id)
-  if (el) stopAnimation = mountAnimation(props.doc, el)
+  if (rootEl.value) stopAnimation = mountAnimation(props.doc, rootEl.value)
 })
 
 onUnmounted(() => {
@@ -304,8 +310,7 @@ watch(
   () => (props.doc as any).alpine,
   () => {
     nextTick(() => {
-      const el = document.getElementById(props.doc.id)
-      if (el && (window as any).Alpine) (window as any).Alpine.initTree(el)
+      if (rootEl.value && (window as any).Alpine) (window as any).Alpine.initTree(rootEl.value)
     })
   },
   { deep: true }
