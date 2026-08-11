@@ -6,6 +6,7 @@
     :style="stile"
     data-type="container"
     :data-id="doc.id"
+    v-bind="sliderAttrs"
     @click.self="onSelect"
   >
     <button
@@ -123,7 +124,7 @@ import { Copy, Plus } from '@lucide/vue'
 import Element from '../scripts/ElementsClass.js'
 import { useEditorStore } from '../store/editor'
 import { resolveDisplayUrl } from '../resolve-display-url'
-import { clean } from '../helpers'
+import { clean, customAttrs } from '../helpers'
 import { cloneWithFreshIds } from '../scripts/editor-actions'
 import type { DataObjectRecord } from '../data-objects-api'
 import BlockElement from './BlockElement.vue'
@@ -193,6 +194,8 @@ const tagBgClass = computed(() => {
 // container too (`type: 'container'`), so it had the exact same "always a
 // div, even if `semantic` is set" gap.
 const semantic = computed(() => (props.doc as any).semantic || 'div')
+
+const sliderAttrs = computed(() => customAttrs((props.doc as any).data?.attributes))
 
 const classe = computed(() => {
   const doc = props.doc as any

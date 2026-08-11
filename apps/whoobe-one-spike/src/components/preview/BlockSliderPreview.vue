@@ -1,5 +1,5 @@
 <template>
-  <component :is="semantic" :class="classe" :style="stile">
+  <component :is="semantic" :id="doc.id" :class="classe" :style="stile" v-bind="extraAttrs">
     <!-- 'tabs' + 'above': the named row sits in normal document flow
          before the slide viewport, not overlaid on top of it (see
          SliderTabsNav.vue's own comment on why tabs can't just be an
@@ -134,10 +134,12 @@
 // time inside a sliding track vs. every child always visible), so sharing
 // it would mean threading the sliding-vs-stacked difference through a
 // shared helper for little real benefit at this size.
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
 import { resolveDisplayUrl } from '../../resolve-display-url'
+import { customAttrs } from '../../helpers'
+import { mountAnimation } from '../../scripts/gsap-actions'
 import BlockElementPreview from './BlockElementPreview.vue'
 import BlockIFramePreview from './BlockIFramePreview.vue'
 import BlockContainerPreview from './BlockContainerPreview.vue'
@@ -276,4 +278,47 @@ const stile = computed(() => {
   if (doc.font) st += `font-family:"${doc.font.replace('+', ' ')}";`
   return st + (doc.style ?? '')
 })
+
+// Custom attributes/AlpineJS directives/GSAP scroll-triggered animation on
+// the slider's own root - same wiring as BlockContainerPreview.vue (a
+// slider is a container, see ElementsClass.js's Slider() builder). Each
+// individual slide gets its own copy of this same wiring recursively, via
+// childComponent()'s dispatch to BlockElementPreview/BlockContainerPreview
+// above - nothing extra needed here for the slides themselves.
+const alpineAttrs = computed(() => {
+  const alpine = (props.doc as any).alpine as Record<string, string> | undefined
+  if (!alpine) return {}
+  const result: Record<string, string> = {}
+  for (const key of Object.keys(alpine)) {
+    if (alpine[key]) result[key] = alpine[key]
+  }
+  return result
+})
+
+const extraAttrs = computed(() => ({
+  ...customAttrs((props.doc as any).data?.attributes),
+  ...alpineAttrs.value,
+}))
+
+let stopAnimation: (() => void) | null = null
+
+onMounted(() => {
+  const el = document.getElementById(props.doc.id)
+  if (el) stopAnimation = mountAnimation(props.doc, el)
+})
+
+onUnmounted(() => {
+  stopAnimation?.()
+})
+
+watch(
+  () => (props.doc as any).alpine,
+  () => {
+    nextTick(() => {
+      const el = document.getElementById(props.doc.id)
+      if (el && (window as any).Alpine) (window as any).Alpine.initTree(el)
+    })
+  },
+  { deep: true }
+)
 </script>

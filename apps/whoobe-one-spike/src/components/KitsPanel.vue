@@ -1,10 +1,10 @@
 <template>
-  <div class="w-64 shrink-0 overflow-y-auto text-xs">
+  <div class="shrink-0 overflow-y-auto text-sm">
     <div v-if="loading" class="p-3 text-gray-400">Loading kits…</div>
     <div v-else-if="!kits.length" class="p-3 text-gray-400">No kits yet</div>
     <template v-for="kit in kits" :key="kit.id">
-      <div class="w-full flex items-center gap-1 px-3 py-2 border-b hover:bg-gray-50">
-        <button type="button" class="flex-1 min-w-0 flex items-center justify-between font-semibold capitalize text-gray-600 text-left" @click="toggleKit(kit.id)">
+      <div class="w-full flex items-center gap-1 px-3 py-1.5 border-b hover:bg-violet-500 hover:text-white" :class="{ 'bg-violet-500 text-white': openKitId === kit.id }">
+        <button type="button" class="flex-1 min-w-0 flex items-center justify-between font-semibold capitalize text-left" @click="toggleKit(kit.id)">
           <span class="truncate">{{ kit.name }} <span class="text-gray-400 font-normal">({{ kit.templateCount }})</span></span>
           <ChevronDown v-if="openKitId === kit.id" class="w-3.5 h-3.5 text-gray-400 shrink-0 ml-1" />
           <ChevronRight v-else class="w-3.5 h-3.5 text-gray-400 shrink-0 ml-1" />
@@ -13,7 +13,7 @@
           <LayoutGrid class="w-3.5 h-3.5" />
         </button>
       </div>
-      <div v-if="openKitId === kit.id" class="border-b bg-gray-50">
+      <div v-if="openKitId === kit.id" class="border-b bg-gray-50 text-xs hover:bg-violet-100 cursor-pointer">
         <p v-if="kit.description" class="px-3 pt-2 text-gray-500">{{ kit.description }}</p>
         <div v-if="!(templatesByKit[kit.id]?.length)" class="px-3 py-2 text-gray-400">Loading templates…</div>
         <div

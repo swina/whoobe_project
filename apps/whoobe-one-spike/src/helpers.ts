@@ -181,3 +181,23 @@ export function applyImagePlaceholder(element: WhoobeElement): void {
     element.image = { url: PLACEHOLDER_IMAGE }
   }
 }
+
+// Attribute names that already have their own dedicated, authoritative
+// binding on the rendered <component> in every canvas/preview renderer -
+// `id`/`data-id` specifically are load-bearing for the canvas (selection,
+// dragula, gsap-actions.ts's document.getElementById(element.id) lookup),
+// so a user-typed custom attribute of the same name must never win.
+export const RESERVED_ATTRS = ['id', 'class', 'style', 'data-id', 'data-type', 'ref']
+
+/** Filters element.data.attributes down to what's safe to v-bind-spread
+ * onto a rendered node - see AttributesControl.vue (the editing UI) and
+ * RESERVED_ATTRS above. */
+export function customAttrs(attributes: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  if (!attributes) return {}
+  const result: Record<string, unknown> = {}
+  for (const key of Object.keys(attributes)) {
+    if (RESERVED_ATTRS.includes(key)) continue
+    result[key] = attributes[key]
+  }
+  return result
+}

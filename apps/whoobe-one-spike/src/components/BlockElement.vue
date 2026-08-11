@@ -12,6 +12,7 @@
       :placeholder="element.placeholder"
       :data-id="element.id"
       data-type="element"
+      v-bind="elementAttrs"
       v-html="displayContent"
       @click="onClick"
       @blur="onBlur"
@@ -48,6 +49,7 @@ import { resolveFieldValue } from '../scripts/data-resolver'
 import type { DataObjectRecord } from '../data-objects-api'
 import { editorBus } from '../bus'
 import { applyTransform, escapeHtml } from '../scripts/field-transforms'
+import { customAttrs } from '../helpers'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -162,6 +164,8 @@ const stile = computed(() => {
   if (el.font) st += `font-family:"${el.font.replace('+', ' ')}";`
   return st + (el.style ?? '')
 })
+
+const elementAttrs = computed(() => customAttrs((props.element as any).data?.attributes))
 
 function onClick(e: MouseEvent) {
   e.stopPropagation()

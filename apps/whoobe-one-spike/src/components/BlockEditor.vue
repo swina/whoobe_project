@@ -55,48 +55,81 @@
       <!-- Right sidebar: a tab switcher between the "add element" palette
            and the Tailwind customizer, mirroring the source's own right-
            side toolbar (Elements/Tailwind/CSS/Attributes/... tabs) rather
-           than the earlier single-purpose always-elements sidebar. -->
-      <div class="shrink-0 flex flex-col border-l bg-white">
-        <div class="flex border-b text-xs shrink-0">
-          <button
-            class="flex-1 px-3 py-2 font-semibold"
-            :class="sidebarTab === 'elements' ? 'text-indigo-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
-            @click="sidebarTab = 'elements'"
-          >
-            Elements
-          </button>
-          <button
-            class="flex-1 px-3 py-2 font-semibold"
-            :class="sidebarTab === 'customize' ? 'text-indigo-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
-            @click="sidebarTab = 'customize'"
-          >
-            Customize
-          </button>
-          <button
-            class="flex-1 px-3 py-2 font-semibold"
-            :class="sidebarTab === 'tree' ? 'text-indigo-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
-            @click="sidebarTab = 'tree'"
-          >
-            Tree
-          </button>
-          <button
-            class="flex-1 px-3 py-2 font-semibold"
-            :class="sidebarTab === 'kits' ? 'text-indigo-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
-            @click="sidebarTab = 'kits'"
-          >
-            Kits
-          </button>
+           than the earlier single-purpose always-elements sidebar.
+           Horizontally collapsible - width lives here on the wrapper (not
+           on each panel's own root, which used to each hardcode their own
+           `w-64`) so collapsing doesn't need to reach into every panel. -->
+      <div class="shrink-0 relative flex border-l bg-white" :class="sidebarCollapsed ? 'w-0 border-l-0' : 'w-64'">
+        <button
+          type="button"
+          :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+          class="absolute top-1/2 -translate-y-1/2 -left-3 z-10 w-6 h-6 rounded-full border bg-white shadow flex items-center justify-center text-gray-400 hover:text-indigo-600"
+          @click="sidebarCollapsed = !sidebarCollapsed"
+        >
+          <ChevronRight v-if="sidebarCollapsed" class="w-3.5 h-3.5" />
+          <ChevronLeft v-else class="w-3.5 h-3.5" />
+        </button>
+
+        <div v-show="!sidebarCollapsed" class="w-64 min-w-0 flex flex-col overflow-hidden">
+          <div class="flex border-b text-xs shrink-0">
+            <button
+              type="button"
+              title="Elements"
+              class="flex-1 flex items-center justify-center py-2"
+              :class="sidebarTab === 'elements' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
+              @click="sidebarTab = 'elements'"
+            >
+              <Shapes class="w-6 h-6" />
+            </button>
+            <button
+              type="button"
+              title="Customize"
+              class="flex-1 flex items-center justify-center py-2"
+              :class="sidebarTab === 'customize' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
+              @click="sidebarTab = 'customize'"
+            >
+              <Palette class="w-6 h-6" />
+            </button>
+            <button
+              type="button"
+              title="Advanced"
+              class="flex-1 flex items-center justify-center py-2"
+              :class="sidebarTab === 'advanced' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
+              @click="sidebarTab = 'advanced'"
+            >
+              <Settings2 class="w-6 h-6" />
+            </button>
+            <button
+              type="button"
+              title="Tree"
+              class="flex-1 flex items-center justify-center py-2"
+              :class="sidebarTab === 'tree' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
+              @click="sidebarTab = 'tree'"
+            >
+              <ListTree class="w-6 h-6" />
+            </button>
+            <button
+              type="button"
+              title="Kits"
+              class="flex-1 flex items-center justify-center py-2"
+              :class="sidebarTab === 'kits' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
+              @click="sidebarTab = 'kits'"
+            >
+              <Package class="w-6 h-6" />
+            </button>
+          </div>
+          <!-- Real BlockElements.vue port (categorized, drag-to-add) - see
+               BlockElementsPalette.vue. Dragging out of it works exactly like
+               the old flat palette row did (same data-type="template"/
+               data-template attributes, same dragula-source-container class),
+               so the shared dragula instance/drop handler below need no
+               changes. -->
+          <BlockElementsPalette v-if="sidebarTab === 'elements'" />
+          <TailwindCustomizer v-else-if="sidebarTab === 'customize'" />
+          <AdvancedPanel v-else-if="sidebarTab === 'advanced'" />
+          <DocumentTree v-else-if="sidebarTab === 'tree'" />
+          <KitsPanel v-else @loaded="sidebarTab = 'elements'" />
         </div>
-        <!-- Real BlockElements.vue port (categorized, drag-to-add) - see
-             BlockElementsPalette.vue. Dragging out of it works exactly like
-             the old flat palette row did (same data-type="template"/
-             data-template attributes, same dragula-source-container class),
-             so the shared dragula instance/drop handler below need no
-             changes. -->
-        <BlockElementsPalette v-if="sidebarTab === 'elements'" />
-        <TailwindCustomizer v-else-if="sidebarTab === 'customize'" />
-        <DocumentTree v-else-if="sidebarTab === 'tree'" />
-        <KitsPanel v-else @loaded="sidebarTab = 'elements'" />
       </div>
     </div>
 
@@ -136,7 +169,24 @@
 // new one being created from the palette below.
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import dragula from 'dragula'
-import { CopyPlus, Download, Eye, FilePlus, FolderOpen, PackagePlus, Pencil, Save, Upload } from '@lucide/vue'
+import {
+  ChevronLeft,
+  ChevronRight,
+  CopyPlus,
+  Download,
+  Eye,
+  FilePlus,
+  FolderOpen,
+  ListTree,
+  Package,
+  PackagePlus,
+  Palette,
+  Pencil,
+  Save,
+  Settings2,
+  Shapes,
+  Upload,
+} from '@lucide/vue'
 import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
 import BlockContainer from './BlockContainer.vue'
@@ -144,6 +194,7 @@ import FloatingToolbar from './FloatingToolbar.vue'
 import BlockElementsPalette from './BlockElementsPalette.vue'
 import TailwindCustomizer from './TailwindCustomizer.vue'
 import DocumentTree from './DocumentTree.vue'
+import AdvancedPanel from './AdvancedPanel.vue'
 import DocumentPreview from './DocumentPreview.vue'
 import KitsPanel from './KitsPanel.vue'
 import AddToKitModal from './AddToKitModal.vue'
@@ -161,8 +212,9 @@ type WhoobeElement = InstanceType<typeof Element>
 const editor = useEditorStore()
 const snippetsStore = useSnippetsStore()
 const message = ref('')
-const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-white'
-const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'kits'>('elements')
+const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-sm font-semibold bg-violet-500 hover:bg-violet-800 text-white'
+const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'advanced' | 'kits'>('elements')
+const sidebarCollapsed = ref(false)
 const showAddToKit = ref(false)
 const showTemplateGallery = ref(false)
 

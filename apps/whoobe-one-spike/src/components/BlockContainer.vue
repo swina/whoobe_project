@@ -6,6 +6,7 @@
     :style="stile"
     data-type="container"
     :data-id="doc.id"
+    v-bind="containerAttrs"
     @click.self="onSelect"
   >
     <button
@@ -115,6 +116,7 @@ import type { DataObjectRecord } from '../data-objects-api'
 import BlockElement from './BlockElement.vue'
 import BlockIFrame from './BlockIFrame.vue'
 import BlockSlider from './BlockSlider.vue'
+import { customAttrs } from '../helpers'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -196,6 +198,8 @@ const tagOpacityClass = computed(() => (isSelected.value ? 'opacity-100' : `opac
 // what actually lets a user set this for any container now, not just
 // Form()'s own builder default.
 const semantic = computed(() => (props.doc as any).semantic || 'div')
+
+const containerAttrs = computed(() => customAttrs((props.doc as any).data?.attributes))
 
 // Not from the source - a quick "does this container carry any of its own
 // styling" signal, requested directly. `css.container` doesn't qualify on
