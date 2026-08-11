@@ -2,6 +2,7 @@
   <component
     :is="component"
     :id="element.id"
+    ref="rootEl"
     :class="classe"
     :style="stile"
     :src="displaySrc"
@@ -31,7 +32,7 @@
 // just omits the attribute entirely when unset. A fallback of the literal
 // tag name isn't meaningfully more accessible than no alt attribute at
 // all, so it wasn't worth carrying over.
-import { computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
 import { customAttrs, imageURL } from '../../helpers'
 import { resolveDisplayUrl } from '../../resolve-display-url'
@@ -69,11 +70,24 @@ const extraAttrs = computed(() => ({
   ...alpineAttrs.value,
 }))
 
+// A real DOM handle via template ref, NOT document.getElementById(element.
+// id) - that lookup is ambiguous and was a real bug: DocumentPreview.vue's
+// modal renders this preview tree on TOP of the still-mounted editing
+// canvas (BlockElement.vue sets the identical :id on its own node, never
+// unmounted while the preview modal is open), and getElementById always
+// returns the FIRST matching node in document order - the hidden canvas
+// element, not this one - so ScrollTrigger/the hover listeners ended up
+// attached to a node that never actually scrolls into view. The same
+// ambiguity also breaks a data-bound repeater rendering the same child
+// element N times (N identical ids, one real match found for all of them).
+// A template ref is scoped to this exact component instance and has
+// neither problem.
+const rootEl = ref<HTMLElement | null>(null)
+
 let stopAnimation: (() => void) | null = null
 
 onMounted(() => {
-  const el = document.getElementById(props.element.id)
-  if (el) stopAnimation = mountAnimation(props.element, el)
+  if (rootEl.value) stopAnimation = mountAnimation(props.element, rootEl.value)
 })
 
 onUnmounted(() => {
@@ -89,8 +103,7 @@ watch(
   () => (props.element as any).alpine,
   () => {
     nextTick(() => {
-      const el = document.getElementById(props.element.id)
-      if (el && (window as any).Alpine) (window as any).Alpine.initTree(el)
+      if (rootEl.value && (window as any).Alpine) (window as any).Alpine.initTree(rootEl.value)
     })
   },
   { deep: true }
