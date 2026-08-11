@@ -31,7 +31,9 @@
       >
         <span>{{ tab.icon }}</span>
         <span>{{ tab.label }}</span>
+        
       </button>
+      <a :href="openPreviewUrl" target="_blank" rel="noopener noreferrer" title="Open in a new tab"><ExternalLink class="w-6 h-6 text-violet-700" /></a>
     </div>
 
     <div class="flex-1 min-h-0 px-2 pb-2 pt-2">
@@ -46,6 +48,7 @@
       <div v-show="activeSubTab === 'preview'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6">
         <PagePreviewTab v-if="!isNewPage" :page-id="props.pageId" />
         <div v-else class="h-full flex items-center justify-center text-xs text-slate-500">Save this page first to preview it.</div>
+        
       </div>
     </div>
   </div>
@@ -68,6 +71,7 @@ import WhoobeOneEmbed from './WhoobeOneEmbed.vue'
 import PageSettingsTab from './PageSettingsTab.vue'
 import PagePreviewTab from './PagePreviewTab.vue'
 import PageCreateForm from './PageCreateForm.vue'
+import { Eye, ExternalLink, LayoutDashboard, Settings } from '@lucide/vue'
 
 const props = defineProps<{
   pageId: string
@@ -82,22 +86,28 @@ const isNewPage = computed(() => props.pageId.startsWith('new:'))
 
 const subTabs: { key: PageSubTab; label: string; icon: string }[] = [
   { key: 'editor', label: 'Editor', icon: '🎨' },
-  { key: 'settings', label: 'Settings', icon: '⚙️' },
-  { key: 'preview', label: 'Preview', icon: '👁️' },
+  { key: 'settings', label: 'Settings', icon: '⚙️'},
+  { key: 'preview', label: 'Preview', icon: '👁️'}
 ]
 
 const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'page' && t.itemId === props.pageId))
 const activeSubTab = computed<PageSubTab>(() => currentTab.value?.pageSubTab ?? (isNewPage.value ? 'settings' : 'editor'))
 
+
+
 function setSubTab(tab: PageSubTab) {
   tabsStore.setPageSubTab(props.pageId, tab)
 }
 
+let openPreviewUrl
+
 async function load() {
   if (isNewPage.value) return
   isLoading.value = true
+  
   try {
     page.value = await pagesStore.getPage(props.pageId)
+    openPreviewUrl = getDefaultWhoobeOneSpikeUrl() + (currentTab.value?.pagePreviewPath || page.value?.slug || '') + '?locale=' + (currentTab.value?.pagePreviewLocale || page.value?.locale || 'en')
   } catch (e) {
     console.warn('Failed to load page:', e)
     page.value = null
@@ -119,10 +129,18 @@ function onPageCreated(created: WhoobeOnePage) {
     tab.itemId = created.id
     tab.pageSubTab = 'editor'
   }
+  
 }
 
 function closeTab() {
   tabsStore.closeTab(pageTabId(props.pageId))
+}
+
+function getDefaultWhoobeOneSpikeUrl(): string {
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    return `${window.location.protocol}//${window.location.hostname}:3006`
+  }
+  return 'http://localhost:3006'
 }
 
 onMounted(load)
