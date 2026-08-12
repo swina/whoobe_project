@@ -104,6 +104,7 @@ import {
   Image,
   LayoutGrid,
   Mail,
+  Menu,
   MousePointerClick,
   Package,
   Pilcrow,
@@ -134,6 +135,7 @@ import { useSnippetsStore } from '../store/snippets'
 const ELEMENT_ICONS: Record<string, Component> = {
   Grid: LayoutGrid,
   Flexbox: StretchHorizontal,
+  'Dropdown Menu': Menu,
   Heading: Heading,
   Paragraph: Pilcrow,
   'Inline Text': Type,
