@@ -8,6 +8,7 @@
 // this monorepo's existing whoobe-studio app's style - not carried forward
 // as a deliberate architecture decision, just the natural fit here.
 import type Element from './scripts/ElementsClass.js'
+import type { Component } from 'vue'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -58,10 +59,8 @@ export function friendlyElementName(el: any): string {
       return 'Youtube'
     case 'vimeo':
       return 'Vimeo'
-    case 'micon':
-      return 'MIcon'
-    case 'iconify':
-      return 'Iconify'
+    case 'lucideicon':
+      return 'LucideIcon'
     case 'file':
       return 'Download'
     case 'form':
@@ -200,4 +199,53 @@ export function customAttrs(attributes: Record<string, unknown> | null | undefin
     result[key] = attributes[key]
   }
   return result
+}
+
+// LucideIcon element support (replaces the dead MIcon/Iconify element
+// types - see ElementsClass.js's LucideIcon() builder). `@lucide/vue`
+// exports every icon as a PascalCase named export plus a combined `icons`
+// lookup map keyed the same way - no dynamicIconImports-style by-name
+// loader exists in this package (that's a lucide-react-only feature), so
+// resolving a user-typed string requires normalizing it into that exact
+// PascalCase key ourselves.
+//
+// `icons` references every one of @lucide/vue's ~1750 icons at once (it's
+// `import * as index from './icons/index.mjs'` internally) - unlike a
+// named import of a handful of specific icons (which tree-shakes fine, and
+// is how every other icon usage in this app works), there's no way to
+// import just *some* of `icons` statically. A static top-level import of
+// it here - in helpers.ts, a module loaded unconditionally by both the
+// editor and every published page's BlockElementPreview.vue - measurably
+// bloated the production build's main chunk (903KB -> 1.7MB gzip 289KB ->
+// 429KB), paid by every visitor of every page regardless of whether it
+// uses a LucideIcon element at all. A dynamic import() instead code-splits
+// the whole icon set into its own chunk, fetched once (cached in-module)
+// only the first time a LucideIcon element actually needs to resolve a
+// name - resolveLucideIcon is async for exactly this reason; callers
+// render a placeholder until the returned promise settles.
+function toPascalCase(input: string): string {
+  return input
+    .trim()
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+    .join('')
+}
+
+let lucideIconsPromise: Promise<Record<string, Component>> | null = null
+function loadLucideIcons(): Promise<Record<string, Component>> {
+  if (!lucideIconsPromise) {
+    lucideIconsPromise = import('@lucide/vue').then((m) => m.icons as unknown as Record<string, Component>)
+  }
+  return lucideIconsPromise
+}
+
+/** "arrow-right", "Arrow Right", "ARROW_RIGHT" all resolve to the same
+ * `ArrowRight` icon component - falls back to HelpCircle for an empty or
+ * unrecognized name, so a mistyped icon name is visibly wrong rather than
+ * rendering nothing at all. */
+export async function resolveLucideIcon(name: string | null | undefined): Promise<Component> {
+  const icons = await loadLucideIcons()
+  const key = toPascalCase(name ?? '')
+  return icons[key] ?? icons.HelpCircle
 }

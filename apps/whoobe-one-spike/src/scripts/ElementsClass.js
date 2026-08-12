@@ -124,11 +124,7 @@ export default class Element {
                         icon: 'movie' 
                     },
                     {
-                        name: 'MIcon',
-                        icon: 'crop_original'
-                    },
-                    {
-                        name: 'Iconify',
+                        name: 'LucideIcon',
                         icon: 'crop_original'
                     },
                     {
@@ -205,9 +201,8 @@ export default class Element {
             element === 'Video'         ? this.Video() :
             element === 'Youtube'       ? this.YTVideo() :
             element === 'Vimeo'         ? this.VimeoVideo() :
-            element === 'MIcon'         ? this.Icon() : 
-            element === 'Iconify'       ? this.Iconify() : 
-            element === 'Download'      ? this.Download() : 
+            element === 'LucideIcon'    ? this.LucideIcon() :
+            element === 'Download'      ? this.Download() :
             element === 'Form'          ? this.Form() :
             element === 'Input Text'    ? this.InputText() :
             element === 'Email'         ? this.InputEmail() :
@@ -534,25 +529,24 @@ export default class Element {
         return this
     }
 
-    Icon(){
-        this.label = 'Material Icon'
-        this.data = { icon:  'home' }
-        this.tag = "micon"
-        this.css.css = 'text-xl'
-        this.content = 'home'
-        this.css.container = 'material-icons'
-        this.element = 'i'
-        return this
-    }
-
-    Iconify(){
-        this.label = 'Iconify'
-        this.data = { icon:  'fa:home' }
-        this.tag = "iconify"
-        this.css.css = 'text-2xl'
-        this.content = ''
-        this.css.container = ''
-        this.element = 'IconifyIcon'
+    // Replaces MIcon (Material Icons ligature font, never loaded in this
+    // app) and Iconify (`element: 'IconifyIcon'`, never a registered
+    // component) - both were confirmed dead, never actually rendering an
+    // icon glyph anywhere. `content` IS the icon name here (not a separate
+    // `data.icon` field) - reused directly, so this element is editable
+    // exactly like Heading/Paragraph/Button (contenteditable text in the
+    // canvas), and BlockElementPreview.vue resolves that same text to a
+    // real @lucide/vue icon component at preview/render time (matching
+    // this app's existing "dynamic behavior is a preview-time concern"
+    // convention - GSAP animations and Alpine directives work the same
+    // way, never simulated live in the editing canvas).
+    LucideIcon(){
+        this.label = 'Lucide Icon'
+        this.tag = 'lucideicon'
+        this.element = 'span'
+        this.content = 'Settings'
+        this.editable = true
+        this.css.css = 'w-6 h-6'
         return this
     }
 

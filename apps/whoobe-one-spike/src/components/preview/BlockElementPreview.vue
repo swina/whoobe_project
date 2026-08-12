@@ -1,5 +1,17 @@
 <template>
+  <!-- LucideIcon renders a real icon component resolved from its own text
+       content - v-html can't be applied on the same tag (it would wipe out
+       the icon's own SVG children the moment it runs), so this is a
+       separate branch rather than a conditional v-html value. iconComponent
+       resolves asynchronously (see helpers.ts's resolveLucideIcon) - this
+       placeholder <span> covers the brief gap before the lazily-loaded
+       icon chunk resolves, rather than falling through to the v-else
+       branch (which would render this node as a plain text element, icon
+       name and all, for a moment). -->
+  <component v-if="element.tag === 'lucideicon' && iconComponent" :is="iconComponent" :id="element.id" ref="rootEl" :class="classe" :style="stile" v-bind="extraAttrs"></component>
+  <span v-else-if="element.tag === 'lucideicon'" :id="element.id" ref="rootEl" :class="classe" :style="stile"></span>
   <component
+    v-else
     :is="component"
     :id="element.id"
     ref="rootEl"
@@ -32,9 +44,10 @@
 // just omits the attribute entirely when unset. A fallback of the literal
 // tag name isn't meaningfully more accessible than no alt attribute at
 // all, so it wasn't worth carrying over.
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import type { Component } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
-import { customAttrs, imageURL } from '../../helpers'
+import { customAttrs, imageURL, resolveLucideIcon } from '../../helpers'
 import { resolveDisplayUrl } from '../../resolve-display-url'
 import { useEditorStore } from '../../store/editor'
 import { resolveFieldValue } from '../../scripts/data-resolver'
@@ -145,6 +158,34 @@ const displayContent = computed(() => {
   return el.content
 })
 
+// Reuses displayContent's own resolution (data-binding-aware, falling back
+// to the raw `content` text when unbound) rather than reading `element.
+// content` directly - so an icon name can be data-bound to a field the
+// same way any other text content can (FloatingToolbar.vue's bindingTarget
+// already special-cases `tag === 'lucideicon'` -> 'icon' for exactly this).
+// A ref, not a computed - resolveLucideIcon is async (see its own comment
+// in helpers.ts on why: the full @lucide/vue icon set is lazily code-split
+// rather than bundled into every page's main chunk), so this starts null
+// and is filled in once the lookup resolves. Guarded against a stale
+// resolution landing after the icon name has already changed again (fast
+// retyping while data-bound, or content resolving via a slow field
+// transform) by only committing the result if the name it was resolved
+// for is still the current one.
+const iconComponent = shallowRef<Component | null>(null)
+watch(
+  () => (props.element.tag === 'lucideicon' ? displayContent.value : null),
+  (name) => {
+    iconComponent.value = null
+    if (name === null) return
+    resolveLucideIcon(name).then((resolved) => {
+      if ((props.element.tag === 'lucideicon' ? displayContent.value : null) === name) {
+        iconComponent.value = resolved
+      }
+    })
+  },
+  { immediate: true }
+)
+
 // A UUID (asset reference) is not a URL - resolved via resolveDisplayUrl.
 
 const displaySrc = computed(() => {
@@ -211,7 +252,7 @@ const stile = computed(() => {
     const bgUrl = resolveDisplayUrl(el.image?.url)
     if (bgUrl) st += `background-image:url(${bgUrl});`
   }
-  if (el.font) st += `font-family:"${el.font.replace('+', ' ')}";`
+  if (el.font) st += `font-family:"${el.font.replaceAll('+', ' ')}";`
   return st + (el.style ?? '')
 })
 </script>

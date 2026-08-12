@@ -29,6 +29,7 @@
         <FolderOpen class="w-3.5 h-3.5" /> Templates
       </button>
       <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> Save Template</button>
+      <button :class="topbarBtnClass" @click="showThemeModal = true"><Palette class="w-3.5 h-3.5" /> Theme</button>
       <button v-if="editor.page?.id" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
       <button :class="topbarBtnClass" @click="showAddToKit = true"><PackagePlus class="w-3.5 h-3.5" /> Add to Kit</button>
       <button :class="topbarBtnClass" @click="exportDocument(editor)"><Download class="w-3.5 h-3.5" /> Export</button>
@@ -141,6 +142,8 @@
 
     <TemplateGalleryModal v-if="showTemplateGallery" @close="showTemplateGallery = false" @loaded="onTemplateLoaded" />
 
+    <ThemeModal v-if="showThemeModal" @close="showThemeModal = false" />
+
     <div v-if="message" class="shrink-0 px-4 py-1.5 text-white text-xs" :class="messageKind === 'error' ? 'bg-rose-600' : 'bg-emerald-600'">
       {{ message }}
     </div>
@@ -199,6 +202,7 @@ import DocumentPreview from './DocumentPreview.vue'
 import KitsPanel from './KitsPanel.vue'
 import AddToKitModal from './AddToKitModal.vue'
 import TemplateGalleryModal from './TemplateGalleryModal.vue'
+import ThemeModal from './ThemeModal.vue'
 import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
 import { clean, findNodeById, removeNodeById, applyImagePlaceholder } from '../helpers'
@@ -217,6 +221,7 @@ const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'advanced' | 'kits'>(
 const sidebarCollapsed = ref(false)
 const showAddToKit = ref(false)
 const showTemplateGallery = ref(false)
+const showThemeModal = ref(false)
 
 // A real, reported bug fixed here: `flash()` used to render every message
 // - including genuine failures ("Failed to save", "A path is required...")

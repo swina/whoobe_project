@@ -116,10 +116,11 @@
 // anything else.
 //
 // Icon is a plain emoji, not a Material Icons name (what the built-in
-// element groups use, and never actually rendered as a real icon anywhere
-// in this app - see BlockElementsPalette.vue's own comment) - an emoji
-// renders correctly as-is with zero icon-font dependency, matching this
-// app's established "plain glyphs stand in for Iconify" simplification.
+// element groups' own `icon` field holds - never rendered as a real icon
+// anywhere in this app, unlike LucideIcon element instances, which do
+// render a real icon via BlockElementPreview.vue's iconComponent - see
+// BlockElementsPalette.vue's own comment) - an emoji renders correctly
+// as-is with zero icon-font/icon-library dependency of its own.
 //
 // "Update existing" mode: without this, tweaking something minor about an
 // already-saved snippet (e.g. spacing, a color) had no way back onto the

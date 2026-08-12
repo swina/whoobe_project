@@ -1,5 +1,25 @@
 <template>
+  <!-- Collapsed via FloatingToolbar.vue's "Hide content" toggle - see
+       store/editor.ts's collapsedIds. Replaces the whole subtree (children
+       AND the tag badges above) with a small placeholder showing just the
+       real HTML tag, clearing the exact screen footprint a layered/
+       absolutely-positioned container (e.g. a dropdown panel) was
+       covering, so whatever's underneath it becomes clickable/droppable
+       again. Clicking the placeholder restores it and selects it. -->
+  <button
+    v-if="isCollapsedNode"
+    type="button"
+    :id="doc.id"
+    :data-id="doc.id"
+    data-type="container"
+    class="inline-flex items-center gap-1 m-0.5 px-1.5 py-0.5 rounded border border-dashed border-gray-400 bg-gray-200 text-gray-500 text-[10px] font-mono hover:border-indigo-400 hover:text-indigo-600"
+    title="Hidden - click to show content again"
+    @click="showAgain"
+  >
+    &lt;{{ semantic }}&gt;
+  </button>
   <component
+    v-else
     :is="semantic"
     :id="doc.id"
     :class="[classe, 'dragula-container', groupClass]"
@@ -198,6 +218,11 @@ const tagOpacityClass = computed(() => (isSelected.value ? 'opacity-100' : `opac
 // what actually lets a user set this for any container now, not just
 // Form()'s own builder default.
 const semantic = computed(() => (props.doc as any).semantic || 'div')
+const isCollapsedNode = computed(() => editor.isCollapsed(props.doc.id))
+function showAgain() {
+  editor.toggleCollapsed(props.doc.id)
+  editor.setCurrent(props.doc)
+}
 
 const containerAttrs = computed(() => customAttrs((props.doc as any).data?.attributes))
 
@@ -238,7 +263,7 @@ const stile = computed(() => {
   let st = ''
   const bgUrl = resolveDisplayUrl(doc.image?.url)
   if (bgUrl) st += `background-image:url(${bgUrl});`
-  if (doc.font) st += `font-family:"${doc.font.replace('+', ' ')}";`
+  if (doc.font) st += `font-family:"${doc.font.replaceAll('+', ' ')}";`
   return st + (doc.style ?? '')
 })
 

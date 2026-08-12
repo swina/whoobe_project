@@ -179,7 +179,7 @@ export default class Template {
         return container
     }
 
-    _iconInput(iconName='mi:home',type='text',name=''){
+    _iconInput(iconName='House',type='text',name=''){
         let container = new Element().Flexbox({direction:'row'})
         let inputField
         if ( type === 'text')
@@ -187,8 +187,8 @@ export default class Template {
         if ( type === 'email' )
             inputField = new Element().InputEmail().setCss('rounded-r-lg  outline-none focus:ring-1 ring-blue-400')
 
-        let icon = new Element().Iconify().setCss('rounded-l-lg w-10 h-10 flex justify-center items-center text-2xl text-gray-400 border border-r-0')
-        icon.data.icon = iconName
+        let icon = new Element().LucideIcon().setCss('rounded-l-lg w-10 h-10 flex justify-center items-center text-gray-400 border border-r-0')
+        icon.content = iconName
         name ? inputField.data.attributes.name =  name : null
         container.blocks.push ( icon )
         container.blocks.push ( inputField )
@@ -218,15 +218,15 @@ export default class Template {
         let btn = new Element().Button().setCss('px-4 py-2 rounded bg-blue-400 text-white hover:bg-blue-700 my-4').setContent('Send')
 
         content.blocks.push ( new Element().InlineText().setContent('Name') )
-        let name = this._iconInput('wpf:name')
+        let name = this._iconInput('User')
         content.blocks.push ( name )
 
         content.blocks.push ( new Element().InlineText().setContent('Address') )
-        let address = this._iconInput('entypo:address')
+        let address = this._iconInput('MapPin')
         content.blocks.push ( address )
 
         content.blocks.push ( new Element().InlineText().setContent('Email') )
-        let email = this._iconInput('mi:email','email')
+        let email = this._iconInput('Mail','email')
         content.blocks.push ( email )
 
         content.blocks.push ( btn )
@@ -268,8 +268,8 @@ export default class Template {
 
     feature(){
         let container = new Element().Flexbox({direction:'col'}).setCss ( 'w-full md:w-56 justify-center items-center shadow px-6 py-4')
-        let icon = new Element().Iconify().setCss('text-3xl')
-        icon.data.icon = 'mi:laptop'
+        let icon = new Element().LucideIcon().setCss('w-8 h-8')
+        icon.content = 'Laptop'
         let title = new Element().Heading(4).setContent('Feature').setCss('my-8')
         let description = new Element().Paragraph().setCss ( 'text-center' )
         container.blocks.push ( icon )
@@ -321,8 +321,8 @@ export default class Template {
     inputIcon(){
         let container = new Element().Flexbox({direction:'row'})
         let inputField = new Element().InputText().setCss('rounded-r-lg outline-none focus:ring-1 ring-blue-400')
-        let icon = new Element().Iconify().setCss('rounded-l-lg w-10 h-10 flex justify-center items-center text-2xl text-gray-400 border border-r-0')
-        icon.data.icon = 'mi:email'
+        let icon = new Element().LucideIcon().setCss('rounded-l-lg w-10 h-10 flex justify-center items-center text-gray-400 border border-r-0')
+        icon.content = 'Mail'
         container.blocks.push ( icon )
         container.blocks.push ( inputField )
         this.blocks.push ( container )
@@ -332,8 +332,8 @@ export default class Template {
     inputIconRight(){
         let container = new Element().Flexbox({direction:'row'})
         let inputField = new Element().InputText().setCss('rounded-l-lg outline-none focus:ring-1 ring-blue-400')
-        let icon = new Element().Iconify().setCss('rounded-r-lg w-10 h-10 flex justify-center items-center text-2xl text-gray-400 border border-l-0')
-        icon.data.icon = 'mi:email'
+        let icon = new Element().LucideIcon().setCss('rounded-r-lg w-10 h-10 flex justify-center items-center text-gray-400 border border-l-0')
+        icon.content = 'Mail'
         container.blocks.push ( inputField )
         container.blocks.push ( icon )
         this.blocks.push ( container )
