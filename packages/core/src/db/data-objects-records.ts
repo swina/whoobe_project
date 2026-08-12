@@ -84,18 +84,21 @@ export interface DataObjectQueryOptions {
   locale?: string;
 }
 
-const TOP_LEVEL_FILTER_FIELDS = new Set(['key', 'path', 'locale', 'id', 'classId', 'pimcoreId', 'translationGroupId']);
+// published/workflowState/updatedAt used to be sort-only (see the removed
+// comment this replaced) - promoted to real filter fields too, so Dynamic
+// Query's filter-condition picker (DataObjectPicker.vue) can build
+// conditions like "workflowState eq published" against actual server-side
+// results, not just offer them as inert dropdown options. createdAt/
+// publishedAt remain sort-only - nothing in the UI exposes them as
+// filter/binding fields, so there's no matching gap to close for those two.
+const TOP_LEVEL_FILTER_FIELDS = new Set([
+  'key', 'path', 'locale', 'id', 'classId', 'pimcoreId', 'translationGroupId',
+  'published', 'workflowState', 'updatedAt',
+]);
 
-// Superset used only for sorting - filtering (getFieldValue/matchFilter) is
-// intentionally left untouched. createdAt/updatedAt/publishedAt/published
-// are legitimate sort keys that don't need to become filterable just
-// because they're now sortable.
 const TOP_LEVEL_SORT_FIELDS = new Set([
   ...TOP_LEVEL_FILTER_FIELDS,
-  'published',
-  'workflowState',
   'createdAt',
-  'updatedAt',
   'publishedAt',
 ]);
 

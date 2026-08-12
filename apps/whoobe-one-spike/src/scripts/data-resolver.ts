@@ -140,15 +140,25 @@ async function resolveBinding(
 }
 
 // Same top-level/attribute distinction and numeric-then-date-then-string
-// coercion order as the server's own getSortValue/compareSortValues/
-// sortDataObjects (packages/core/src/db/data-objects-records.ts) - a
-// client-side duplicate, not an import, since this file already
-// duplicates the filter logic locally the same way (applyFilters above)
-// rather than importing server internals across the process boundary.
-const TOP_LEVEL_SORT_FIELDS = new Set([
+// coercion order as the server's own getSortValue/getFieldValue/
+// compareSortValues/sortDataObjects (packages/core/src/db/data-objects-
+// records.ts) - a client-side duplicate, not an import, since this file
+// already duplicates the filter logic locally the same way (applyFilters
+// below) rather than importing server internals across the process
+// boundary. published/workflowState/updatedAt are real filter/binding
+// fields now (DataObjectPicker.vue's SYSTEM_METADATA_FIELDS), not just
+// sort keys, so TOP_LEVEL_FILTER_FIELDS mirrors the server's own set and
+// is used by both applyFilters() and resolveFieldValue() below, not only
+// sorting. createdAt/publishedAt remain sort-only, same as server-side.
+const TOP_LEVEL_FILTER_FIELDS = new Set([
   'key', 'path', 'locale', 'id', 'classId', 'pimcoreId', 'translationGroupId',
-  'published', 'workflowState', 'createdAt', 'updatedAt', 'publishedAt',
+  'published', 'workflowState', 'updatedAt',
 ])
+const TOP_LEVEL_SORT_FIELDS = new Set([...TOP_LEVEL_FILTER_FIELDS, 'createdAt', 'publishedAt'])
+
+function getFieldValueClientSide(obj: DataObjectRecord, field: string): unknown {
+  return TOP_LEVEL_FILTER_FIELDS.has(field) ? (obj as any)[field] : (obj.attributes as any)?.[field]
+}
 
 function getSortValueClientSide(obj: DataObjectRecord, field: string): unknown {
   return TOP_LEVEL_SORT_FIELDS.has(field) ? (obj as any)[field] : (obj.attributes as any)?.[field]
@@ -179,7 +189,7 @@ function sortClientSide(rows: DataObjectRecord[], orderBy: DataBindingOrderBy): 
 export function applyFilters(objects: DataObjectRecord[], filters: DataBindingFilter[]): DataObjectRecord[] {
   return objects.filter((obj) =>
     filters.every((f) => {
-      const value = (obj.attributes as any)?.[f.field]
+      const value = getFieldValueClientSide(obj, f.field)
       switch (f.operator) {
         case 'eq':
           return value === f.value
@@ -208,9 +218,9 @@ export function resolveFieldValue(
   if (db.field) {
     const field = db.field
     if (Array.isArray(resolved)) {
-      return resolved.map((r) => (r.attributes as any)?.[field])
+      return resolved.map((r) => getFieldValueClientSide(r, field))
     }
-    return (resolved as DataObjectRecord).attributes?.[field]
+    return getFieldValueClientSide(resolved as DataObjectRecord, field)
   }
   return resolved
 }

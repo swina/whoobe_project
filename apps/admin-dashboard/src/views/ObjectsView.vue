@@ -471,6 +471,9 @@ const filterFields = computed(() => [
   { name: 'key', title: 'Key', fieldType: 'input' },
   { name: 'path', title: 'Path', fieldType: 'input' },
   { name: 'locale', title: 'Locale', fieldType: 'input' },
+  { name: 'published', title: 'Published', fieldType: 'checkbox' },
+  { name: 'workflowState', title: 'Workflow Status', fieldType: 'input' },
+  { name: 'updatedAt', title: 'Updated At', fieldType: 'date' },
   ...filterableFields.value,
 ])
 
@@ -582,7 +585,7 @@ function setDefaultPresetAction(name: string) {
   toastStore.show(`"${name}" is now the default view`)
 }
 
-const TOP_LEVEL_FILTER_FIELDS = new Set(['key', 'path', 'locale'])
+const TOP_LEVEL_FILTER_FIELDS = new Set(['key', 'path', 'locale', 'published', 'workflowState', 'updatedAt'])
 
 function matchObjectFilter(obj: DataObject, f: DataObjectQueryFilter): boolean {
   const value = TOP_LEVEL_FILTER_FIELDS.has(f.field) ? (obj as any)[f.field] : (obj.attributes as any)?.[f.field]

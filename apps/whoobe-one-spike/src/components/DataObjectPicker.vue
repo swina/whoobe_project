@@ -312,10 +312,32 @@ const TEST_DISPLAY_CAP = 50
 const currentClass = computed(() => classes.value.find((c) => c.name === className.value) ?? null)
 const classLabel = computed(() => currentClass.value?.label || className.value)
 const fields = computed(() => currentClass.value?.fields ?? [])
+// Synthetic ClassFieldDefinition-shaped entries for record metadata that
+// isn't part of any Data Class's own field list. SYSTEM_METADATA_FIELDS
+// (published/workflowState/updatedAt) is shared between filterFields
+// (below) and bindableFields (a leaf element's own "bind to field" picker)
+// - packages/core's TOP_LEVEL_FILTER_FIELDS now recognizes all three
+// server-side too, so a filter condition built on one of these actually
+// narrows results, not just an inert dropdown option. No `options` list
+// for workflowState (it's a free-form string, not a fixed enum in this
+// schema), so its filter value input degrades to plain text the same way
+// key/path/locale already do. key/path/locale themselves stay filter-only,
+// not added to bindableFields - not part of this request.
+const SYSTEM_METADATA_FIELDS: ClassFieldDefinition[] = [
+  { name: 'published', title: 'Published', fieldType: 'checkbox' },
+  { name: 'workflowState', title: 'Workflow Status', fieldType: 'input' },
+  // 'date', not 'datetime' - field-transforms.ts's date-format transform
+  // only ever declares itself applicable to fieldType 'date'
+  // (applicableFieldTypes: ['date']), and filterInputType() below already
+  // treats 'date'/'datetime' identically for the filter-value input widget,
+  // so 'date' is the one spelling that works everywhere this value is used.
+  { name: 'updatedAt', title: 'Updated At', fieldType: 'date' },
+]
 const filterFields = computed(() => [
   { name: 'key', title: 'Key', fieldType: 'input' },
   { name: 'path', title: 'Path', fieldType: 'input' },
   { name: 'locale', title: 'Locale', fieldType: 'input' },
+  ...SYSTEM_METADATA_FIELDS,
   ...fields.value,
 ])
 
@@ -344,7 +366,9 @@ function filterFieldOptions(fieldName: string): string[] {
   return fieldMap.value.get(fieldName)?.options ?? []
 }
 
-const bindableFields = computed(() => fields.value.filter((f) => fieldCompatibleWithTarget(f, props.target)))
+const bindableFields = computed(() =>
+  [...SYSTEM_METADATA_FIELDS, ...fields.value].filter((f) => fieldCompatibleWithTarget(f, props.target))
+)
 const canConfirm = computed(() => {
   if (!className.value) return false
   if (mode.value === 'query') return true
@@ -355,7 +379,11 @@ const canConfirm = computed(() => {
 })
 
 function fieldCompatibleWithTarget(field: ClassFieldDefinition, target: string): boolean {
-  const TEXT = ['input', 'textarea', 'wysiwyg', 'numeric', 'urlSlug', 'email', 'country', 'select', 'multiselect']
+  // 'checkbox'/'date' added for published/updatedAt (SYSTEM_METADATA_FIELDS
+  // above) - a boolean or a date is just as displayable as text (via
+  // DataBindingTransformControl.vue's own transforms) as any of the
+  // class-field types already here.
+  const TEXT = ['input', 'textarea', 'wysiwyg', 'numeric', 'urlSlug', 'email', 'country', 'select', 'multiselect', 'checkbox', 'date']
   const IMAGE = ['image', 'asset']
   const VIDEO = ['video']
   const LINK = ['link', 'manyToOneRelation', 'manyToManyRelation']
