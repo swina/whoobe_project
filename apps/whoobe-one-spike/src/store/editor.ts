@@ -67,6 +67,21 @@ export const useEditorStore = defineStore('editor', () => {
   // each resolution pass.
   const resolvedData = ref<Record<string, any>>({})
 
+  // Not from the source - a pure editor-session convenience (FloatingToolbar.
+  // vue's "Hide content" button): ids of elements collapsed down to a small
+  // tag-name chip in the canvas, so a layered/absolutely-positioned element
+  // (e.g. a dropdown panel) can be gotten out of the way of whatever it's
+  // covering while editing siblings underneath it. Deliberately NOT a field
+  // on the Element itself - it has nothing to do with the page's actual
+  // content (nothing reads it in BlockContainerPreview.vue/BlockElementPreview.
+  // vue), same category as which sidebar accordion group is open, so it's
+  // never saved/loaded with the document and always starts empty on a fresh
+  // page load. A plain `ref<Set<string>>` (Vue 3 deep-wraps Set/Map objects
+  // via reactive(), so .add()/.delete() mutations are reactive without any
+  // manual reassignment) - no existing per-id UI-state precedent elsewhere
+  // in this app to follow instead.
+  const collapsedIds = ref<Set<string>>(new Set())
+
   function setMode(v: string) { mode.value = v }
   function setSettings(v: any) { settings.value = v }
   function setElements(v: ElementGroup[] | null) { elements.value = v }
@@ -91,6 +106,13 @@ export const useEditorStore = defineStore('editor', () => {
     embedded.value = v
     parentOrigin.value = origin
   }
+  function toggleCollapsed(id: string) {
+    if (collapsedIds.value.has(id)) collapsedIds.value.delete(id)
+    else collapsedIds.value.add(id)
+  }
+  function isCollapsed(id: string): boolean {
+    return collapsedIds.value.has(id)
+  }
 
   return {
     mode, settings, elements, document, project, selected, page, current,
@@ -100,5 +122,6 @@ export const useEditorStore = defineStore('editor', () => {
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
     setParent, setStartTime, setAutosave, setExportMode, setPreview, setSave,
     setArticle, setCustomizeTab, setEmbedded, resolvedData,
+    collapsedIds, toggleCollapsed, isCollapsed,
   }
 })

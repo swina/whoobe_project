@@ -1,6 +1,24 @@
 <template>
   <div class="relative">
+    <!-- Collapsed via FloatingToolbar.vue's "Hide content" toggle - see
+         BlockContainer.vue's own comment on the same mechanism (store/
+         editor.ts's collapsedIds), applied here to leaf elements too (an
+         absolutely-positioned image/icon can layer-block siblings just as
+         easily as a container can). -->
+    <button
+      v-if="isCollapsedNode"
+      type="button"
+      :id="element.id"
+      :data-id="element.id"
+      data-type="element"
+      class="inline-flex items-center gap-1 m-0.5 px-1.5 py-0.5 rounded border border-dashed border-gray-400 bg-gray-200 text-gray-500 text-[10px] font-mono hover:border-indigo-400 hover:text-indigo-600"
+      title="Hidden - click to show content again"
+      @click="showAgain"
+    >
+      &lt;{{ component }}&gt;
+    </button>
     <component
+      v-else
       :is="component"
       :id="element.id"
       :ref="element.id"
@@ -62,6 +80,11 @@ const props = defineProps<{
 const editor = useEditorStore()
 
 const isSelected = computed(() => editor.current?.id === props.element.id)
+const isCollapsedNode = computed(() => editor.isCollapsed(props.element.id))
+function showAgain() {
+  editor.toggleCollapsed(props.element.id)
+  editor.setCurrent(props.element)
+}
 
 const db = computed(() => (props.element as any).dataBinding)
 
@@ -161,7 +184,12 @@ const stile = computed(() => {
     const bgUrl = resolveDisplayUrl(el.image?.url)
     if (bgUrl) st += `background-image:url(${bgUrl});`
   }
-  if (el.font) st += `font-family:"${el.font.replace('+', ' ')}";`
+  // replaceAll, not replace - a source-repo bug (single replace() only
+  // swaps the first '+'): a 3-word font like "Alfa+Slab+One" rendered as
+  // the broken `font-family:"Alfa Slab+One"` (2 pluses, one replaced).
+  // Same fix applied to every other font.replace('+', ' ') call site
+  // (BlockContainer.vue/BlockSlider.vue + their *Preview.vue counterparts).
+  if (el.font) st += `font-family:"${el.font.replaceAll('+', ' ')}";`
   return st + (el.style ?? '')
 })
 

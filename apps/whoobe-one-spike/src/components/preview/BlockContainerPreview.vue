@@ -267,7 +267,7 @@ const stile = computed(() => {
   let st = ''
   const bgUrl = resolveDisplayUrl(doc.image?.url)
   if (bgUrl) st += `background-image:url(${bgUrl});`
-  if (doc.font) st += `font-family:"${doc.font.replace('+', ' ')}";`
+  if (doc.font) st += `font-family:"${doc.font.replaceAll('+', ' ')}";`
   return st + (doc.style ?? '')
 })
 

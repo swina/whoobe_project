@@ -185,6 +185,17 @@ export default class Element {
   // BlockSlider.vue's rename action, same treatment as `linkTarget`/`alt`
   // above; falls back to a plain "Slide N" wherever it's read unset.
   tabLabel?: string
+  // Not in the source, and not set by any builder - only meaningful on the
+  // document root (the top-level Element returned by editor.document,
+  // itself just an Element like any other node). Per-page design tokens
+  // (this session's color-system fix): named custom hex colors and a
+  // curated font list, both lazily created the first time ThemeModal.vue's
+  // "add color"/"add font" actions actually need somewhere to write -
+  // absent on any document that's never opened that modal, same "absent
+  // until actually set" treatment as `linkTarget`/`tabLabel` above. Read
+  // defensively (`document?.theme?.colors ?? []`) everywhere it's
+  // consumed (ColorControl.vue's swatches, FontControl.vue's font list).
+  theme?: { colors: { name: string; hex: string }[]; fonts: string[] }
   image: ElementImage
   type: string
   tag: string
@@ -234,8 +245,7 @@ export default class Element {
   Video(): this
   YTVideo(): this
   VimeoVideo(): this
-  Icon(): this
-  Iconify(): this
+  LucideIcon(): this
   Download(): this
   Form(): this
   inputElement(): this

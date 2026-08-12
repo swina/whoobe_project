@@ -7,6 +7,12 @@
     <span class="px-1.5 py-0.5 rounded bg-blue-500 text-white capitalize font-semibold">{{ label }}</span>
 
     <button title="Move up" class="toolbar-icon" @click="moveUp"><ArrowUp class="w-4 h-4" /></button>
+    <button
+      title="Hide content (collapses this element to just its tag, so elements underneath it - e.g. a layered dropdown panel - become clickable again)"
+      class="toolbar-icon"
+      :class="isCollapsed ? 'text-indigo-600' : ''"
+      @click="toggleCollapsed"
+    ><EyeOff class="w-4 h-4" /></button>
     <template v-if="isContainer">
       <button title="Add child (Paragraph)" class="toolbar-icon" @click="addChild"><Plus class="w-4 h-4" /></button>
       <button title="Direction: row" class="toolbar-icon" @click="setDirection('row')"><ArrowLeftRight class="w-4 h-4" /></button>
@@ -485,6 +491,7 @@ import {
   ArrowUp,
   ArrowUpDown,
   Database,
+  EyeOff,
   FileText,
   FolderOpen,
   Image,
@@ -576,6 +583,17 @@ const textSwatches = (twclasses.colors as string[]).flatMap((color) => FILL_SHAD
 // to check the same `type === 'container'` discriminator BlockContainer.
 // vue's own dispatch already uses.
 const isContainer = computed(() => (editor.current as any)?.type === 'container')
+// Editor-session-only convenience, not part of the saved document (see
+// store/editor.ts's own comment on collapsedIds) - a layered element
+// (e.g. an absolutely-positioned dropdown panel) covers whatever's
+// visually underneath it in the canvas, making those siblings unclickable/
+// undroppable. Collapsing swaps this one element's own rendering (in
+// BlockContainer.vue/BlockElement.vue) for a small tag-name chip, clearing
+// the same footprint it was covering.
+const isCollapsed = computed(() => !!editor.current && editor.isCollapsed(editor.current.id))
+function toggleCollapsed() {
+  if (editor.current) editor.toggleCollapsed(editor.current.id)
+}
 const isSlider = computed(() => editor.current?.tag === 'slider')
 const isTextEditable = computed(() => !!editor.current?.editable)
 const isVideoEmbed = computed(() => editor.current?.tag === 'youtube' || editor.current?.tag === 'vimeo')
@@ -589,7 +607,7 @@ const bindingTarget = computed(() => {
   if (el.type === 'container' || el.tag === 'slider') return 'custom'
   if (el.element === 'img') return 'src'
   if (el.tag === 'youtube' || el.tag === 'vimeo') return 'src'
-  if (el.tag === 'micon' || el.tag === 'iconify') return 'icon'
+  if (el.tag === 'lucideicon') return 'icon'
   if (el.link) return 'href'
   return 'content'
 })

@@ -56,18 +56,16 @@ const twgroups = [
         { name: 'Button' , group: 'text-decoration' , attr: 'uppercase' , title : 'uppercase' , icon: 'arrow_upward', css: 'float-left'},
         { name: 'Button' , group: 'text-decoration' , attr: 'lowercase' , title : 'lowercase' , icon: 'arrow_downward', css: 'float-left'},
         { name: 'Button' , group: 'text-decoration' , attr: 'capitalize' , title : 'capitalize' , icon: 'text_fields' , css: 'float-none'},
-        //{ name: 'Color' , attr: 'textcolor' }, 
+        { name: 'Color' , attr: 'textcolor' , title: 'color' , prefix: 'text' },
         { name: 'Options' , attr: 'textSize' , title: 'size' },
         { name: 'Options' , attr: 'textAlign' , title: 'Align' },
         { name: 'Options' , attr: 'fontWeight' , title: 'weight' },
-        { name: 'Range' , attr: 'textOpacity' , title: 'opacity' },
         { name: 'Options' , attr: 'textSpacing' , title: 'letter spacing' },
         { name: 'Options' , attr: 'textlineheight' , title: 'line height'},
         { name: 'TextFont' , attr: 'textfont' },
     ]},
-    { label: 'background' , components: [ 
-        //{ name: 'Color' , attr: 'bgcolor'},
-        { name: 'Range' , attr: 'bgOpacity' , title: 'opacity' },
+    { label: 'background' , components: [
+        { name: 'Color' , attr: 'bgcolor' , title: 'color' , prefix: 'bg' },
         { name: 'BgPosition' , attr: 'bgposition' },
         { name: 'Options' , attr: 'blur' , title: 'filter blur' }
     ]},
@@ -100,9 +98,8 @@ const twgroups = [
         { name: 'Range' , attr: 'borderRight' , title: 'right' },
         { name: 'Range' , attr: 'borderBottom' , title: 'bottom' },
         { name: 'Range' , attr: 'borderLeft' , title: 'left' },
-        { name: 'BorderColor' , attr: 'bordercolor' },
+        { name: 'BorderColor' , attr: 'bordercolor' , title: 'color' },
         { name: 'Options' , attr: 'borderType' },
-        { name: 'Range' , attr: 'borderOpacity' , title: 'opacity' }
     ]},
     { label: 'rounded / shadow / +', components : [ 
         { name: 'Options' , attr: 'rounded' },

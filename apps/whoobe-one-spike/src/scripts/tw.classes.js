@@ -37,7 +37,14 @@ const percs =  [ 'full','1/2',
 '11/12'
 ]
 
-const colors = [ 'gray' , 'bluegray' , 'brown' , 'red', 'yellow' , 'orange' , 'green' , 'lime' , 'teal' , 'blue' , 'indigo' , 'purple' , 'pink' ]
+// 'bluegray'/'brown' (source repo, an old pre-v3 Tailwind palette) renamed/
+// swapped for their nearest Tailwind v4 equivalents - 'bluegray' collapsed
+// into 'slate' as of Tailwind v3 (blueGray -> slate, not just a rename of
+// the class prefix but a genuine palette replacement), and 'brown' was
+// never a real Tailwind color in any version - no CSS was ever generated
+// for either class, so those two swatches always silently did nothing.
+// 'stone' is the closest available warm/brown-ish neutral in v4's theme.
+const colors = [ 'gray' , 'slate' , 'stone' , 'red', 'yellow' , 'orange' , 'green' , 'lime' , 'teal' , 'blue' , 'indigo' , 'purple' , 'pink' ]
 
 function setPercs ( prefix ){
     let arr = []
@@ -70,11 +77,30 @@ function setOpacity ( prefix ){
     return arr
 }
 
+const SHADES = [ 300 , 500 , 700 ]
+
+// Fixed, not a straight port: the source never appended a shade at all
+// (`prefix + '-' + color`, e.g. 'bg-blue') - Tailwind has never generated
+// CSS for an unshaded named-color utility, in any version, so every
+// textcolor/bgcolor/bordercolor/from/to/via swatch built from this was
+// dead on arrival (confirmed by compiling the full candidate list through
+// the real installed tailwindcss@4.3.3 compiler - see BorderColorControl.
+// vue's own comment for the same class of bug, already fixed there for
+// border specifically). Shades mirror BorderColorControl.vue's own
+// SHADES=[300,500,700], the one picker in this app that already got this
+// right by building its own swatch list directly rather than going
+// through this function.
 function setColors ( prefix ){
-    let arr = ['transparent','white','black']
+    // Same bug as the shade issue above, one level simpler: these three
+    // were pushed completely bare ('white', not 'bg-white') - never valid
+    // either, for the same reason ('white' alone isn't a CSS declaration
+    // of anything; Tailwind only ever generates the prefixed form).
+    let arr = [ prefix + '-transparent' , prefix + '-white' , prefix + '-black' ]
     colors.forEach ( color => {
-        arr.push ( prefix + '-' + color)
-        arr.push ( 'hover:' + prefix + '-' + color )
+        SHADES.forEach ( shade => {
+            arr.push ( prefix + '-' + color + '-' + shade )
+            arr.push ( 'hover:' + prefix + '-' + color + '-' + shade )
+        })
     })
     return arr
 }
@@ -213,7 +239,6 @@ var classes = {
         'tracking-wider',
         'tracking-widest'
     ],
-    textOpacity: setOpacity('text-opacity'),
     textcolor: setColors('text'),
     fontfamily: fonts
     /*[
@@ -241,7 +266,6 @@ var classes = {
         'font-extrabold',
         'font-black'
     ],
-    bgOpacity: setOpacity('bg-opacity'),
     opacity: setOpacity('opacity'),
     colors: colors,
     bgcolor : setColors('bg'),
@@ -425,7 +449,6 @@ var classes = {
         'border-b-4',
         'border-b-8'
     ],
-    borderOpacity: setOpacity('border-opacity'),
     padding: setClass('p'),
     paddingTop: setClass('pt'),
     paddingBottom: setClass('pb'),

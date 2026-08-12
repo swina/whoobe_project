@@ -17,10 +17,11 @@
 // Real icon rendering, not a hand-rolled SVG set (an earlier version of
 // this file was exactly that - a handful of inline <svg> shapes, because
 // at the time this was the only real icon rendering anywhere in this app;
-// ElementsClass.js's own `Icon()`/`Iconify()` element types still don't
-// draw anything at all, see FloatingToolbar.vue's long-standing comment on
-// that being out of scope). `@lucide/vue` is already this monorepo's own
-// established icon library (apps/admin-dashboard imports it the exact same
+// ElementsClass.js's `Icon()`/`Iconify()` element types didn't draw
+// anything at all, since replaced by a real LucideIcon element type - see
+// ElementsClass.js's own LucideIcon() builder and BlockElementPreview.vue's
+// iconComponent). `@lucide/vue` is already this monorepo's own established
+// icon library (apps/admin-dashboard imports it the exact same
 // way - named components, sized via a plain Tailwind `class`), so this
 // swaps the hand-rolled shapes for real Lucide ones instead of inventing a
 // second, competing icon system just for this component.
