@@ -219,8 +219,8 @@
           :key="tab.id"
           @click="tabsStore.activeTabId = tab.id"
           :class="[
-            'group flex items-center gap-1.5 pl-3 pr-2 py-2 text-xs font-semibold rounded-t-xl border border-b-0 transition shrink-0 cursor-pointer',
-            tabsStore.activeTabId === tab.id ? 'bg-slate-900 light:bg-slate-200 text-indigo-300 light:text-blue-600 border-slate-800 light:border-slate-200' : 'bg-slate-950/60 light:bg-white/60 text-slate-500 hover:text-slate-600 light:text-slate-700 border-transparent'
+            'group flex items-center gap-1.5 pl-3 pr-2 py-2 text-xs font-semibold rounded-t-lg border border-b-0 light:border-slate-300 transition shrink-0 cursor-pointer',
+            tabsStore.activeTabId === tab.id ? 'bg-slate-900 light:bg-violet-500 text-indigo-300 light:text-white border-slate-800 light:border-slate-200' : 'bg-slate-950/60 light:bg-white/60 text-slate-500 hover:text-slate-600 light:text-slate-700 border-transparent'
           ]"
         >
           <component :is="tabIcon(tab)" class="w-3.5 h-3.5 shrink-0" />
