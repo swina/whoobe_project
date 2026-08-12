@@ -114,8 +114,9 @@ const openPreviewUrl = computed(() => {
   if (!page.value) return ''
   return (
     getDefaultWhoobeOneSpikeUrl() +
-    (currentTab.value?.pagePreviewPath || page.value.slug || '') +
-    '?locale=' + (currentTab.value?.pagePreviewLocale || page.value.locale || 'en')
+    (currentTab.value?.pagePreviewPath || page.value.slug || '')
+    //  +
+    // '?locale=' + (currentTab.value?.pagePreviewLocale || page.value.locale || 'en')
   )
 })
 

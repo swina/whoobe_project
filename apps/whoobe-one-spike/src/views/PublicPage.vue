@@ -38,7 +38,7 @@ onMounted(async () => {
     // already-known locale - not guessed from the path (see that
     // function's own comment on why guessing isn't reliable here).
     // Defaults to 'en' for a link typed/pasted by hand with no query string.
-    const locale = typeof route.query.locale === 'string' ? route.query.locale : 'en'
+    const locale = typeof route.query.locale === 'string' ? route.query.locale : 'it'
     const { page, params } = await getPublicPage(locale, route.path)
     // Same "use the raw JSON content directly, no class-instance
     // reconstruction" precedent as database-actions.ts's loadPage().
