@@ -45,7 +45,9 @@ import { useEditorStore } from '../../store/editor'
 
 const DIRECTIVES = [
   'x-data', 'x-init', 'x-show', 'x-bind', 'x-bind:class', 'x-on', 'x-on:click',
-  'x-text', 'x-html', 'x-model', 'x-for', 'x-transition', 'x-effect', 'x-ignore',
+  'x-text', 'x-html', 'x-model', 'x-for', 'x-transition', 'x-transition:enter',
+  'x-transition:enter-start', 'x-transition:enter-end', 'x-transition:leave',
+  'x-transition:leave-start', 'x-transition:leave-end', 'x-effect', 'x-ignore',
   'x-ref', 'x-cloak', 'x-if',
 ]
 

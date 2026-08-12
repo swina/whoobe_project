@@ -63,6 +63,10 @@ export default class Element {
                     {
                         name: 'Flexbox' ,
                         icon: 'highlight_alt'
+                    },
+                    {
+                        name: 'Dropdown Menu',
+                        icon: 'arrow_drop_down_circle'
                     }
                 ],
             } ,
@@ -187,8 +191,9 @@ export default class Element {
 
     
     createElement(element,options){
-        return element === 'Grid'       ? this.Grid(options) : 
+        return element === 'Grid'       ? this.Grid(options) :
             element === 'Flexbox'       ? this.Flexbox(options) :
+            element === 'Dropdown Menu' ? this.DropdownMenu() :
             element === 'Heading'       ? this.Heading(options) : 
             element === 'Paragraph'     ? this.Paragraph() :
             element === 'Inline Text'   ? this.InlineText() :
@@ -282,6 +287,64 @@ export default class Element {
         this.css.container += options.direction ? ' flex-' + options.direction : '' 
         this.css.container += options.colspan ? ' col-span-' + options.colspan : ''
         this.element = 'div'
+        return this
+    }
+
+    // Not a port - a composite preset (root + trigger + panel + children),
+    // unlike every other createElement() builder here which only ever
+    // configures the single node it's called on. Built from three plain
+    // Flexbox()/Span()/Button() nodes assembled by hand rather than reusing
+    // `new Element()...` chains, since each child needs its own independent
+    // `alpine`/`css`/`semantic` set after construction - a burger trigger
+    // (`x-on:click="open = !open"`, 3 bar Spans, re-tagged <button> via
+    // setSemantic() since a container's rendered tag comes from `semantic`,
+    // never `element` - see BlockContainerPreview.vue/BlockContainer.vue's
+    // own `semantic || 'div'` computed) and a dropdown panel
+    // (`x-show`/`x-transition`/`x-on:click.outside`, absolutely positioned,
+    // holding 3 Button menu items). An empty `x-transition` value is
+    // deliberate, not an oversight: Alpine's `x-transition` directive
+    // crashes (`directiveStorageMap[stage] is not a function`) if given a
+    // class-string value with no `:enter`/`:leave` stage suffix - empty
+    // routes through its own default fade+scale instead.
+    DropdownMenu(){
+        this.Flexbox()
+        this.css.container = 'relative inline-block'
+        this.label = 'Dropdown Menu'
+        this.alpine = { 'x-data': '{ open: false }' }
+
+        const bar = () => {
+            const b = new Element().Span()
+            b.content = ''
+            b.css.css = 'block w-6 h-0.5 bg-gray-800 rounded'
+            return b
+        }
+        const menuItem = (label) => {
+            const btn = new Element().Button()
+            btn.content = label
+            btn.value = label
+            btn.css.css = 'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100'
+            return btn
+        }
+
+        const trigger = new Element().Flexbox({ direction: 'col' })
+        trigger.setSemantic('button')
+        trigger.tag = 'button'
+        trigger.label = 'Burger Trigger'
+        trigger.css.container = 'flex flex-col justify-center items-center gap-1.5 w-10 h-10 rounded hover:bg-gray-100'
+        trigger.alpine = { 'x-on:click': 'open = !open' }
+        trigger.blocks = [ bar(), bar(), bar() ]
+
+        const panel = new Element().Flexbox({ direction: 'col' })
+        panel.label = 'Dropdown Panel'
+        panel.css.container = 'absolute right-0 mt-2 w-48 flex flex-col rounded-md shadow-lg bg-white ring-1 ring-black/5 z-20 py-1'
+        panel.alpine = {
+            'x-show': 'open',
+            'x-transition': '',
+            'x-on:click.outside': 'open = false',
+        }
+        panel.blocks = [ menuItem('Profile'), menuItem('Settings'), menuItem('Sign out') ]
+
+        this.blocks = [ trigger, panel ]
         return this
     }
 

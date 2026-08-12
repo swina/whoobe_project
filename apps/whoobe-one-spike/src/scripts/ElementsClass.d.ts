@@ -222,6 +222,7 @@ export default class Element {
   Grid(): this
   Cols(cols?: number): this
   Flexbox(options?: { direction?: string | null; colspan?: number | null }): this
+  DropdownMenu(): this
   Slider(): this
   Heading(level?: number): this
   Paragraph(): this
