@@ -33,7 +33,7 @@
         <span>{{ tab.label }}</span>
         
       </button>
-      <a :href="openPreviewUrl" target="_blank" rel="noopener noreferrer" title="Open in a new tab"><ExternalLink class="w-6 h-6 text-violet-700" /></a>
+      <a v-if="page" :href="openPreviewUrl" target="_blank" rel="noopener noreferrer" title="Open in a new tab"><ExternalLink class="w-6 h-6 text-violet-700" /></a>
     </div>
     </div>
     <div class="flex-1 min-h-0 px-2 pb-2 pt-2">
@@ -99,15 +99,32 @@ function setSubTab(tab: PageSubTab) {
   tabsStore.setPageSubTab(props.pageId, tab)
 }
 
-let openPreviewUrl
+// Was a plain `let`, reassigned inside load() below - not just the
+// implicit-any type error this triggered (assigned only inside an async
+// function, so TS can't narrow its type at the declaration site), but a
+// real functional bug: a bare variable mutated outside Vue's reactivity
+// system never triggers a re-render, so the template's `:href="
+// openPreviewUrl"` stayed stuck on its initial `undefined` (rendering
+// literally `href="undefined"`) even after load() finished fetching the
+// page - clicking "Open in a new tab" before some unrelated re-render
+// happened to occur would navigate to a nonsense relative "undefined"
+// URL. A computed, deriving from the same reactive `page`/`currentTab`
+// state load() already sets, updates the anchor automatically.
+const openPreviewUrl = computed(() => {
+  if (!page.value) return ''
+  return (
+    getDefaultWhoobeOneSpikeUrl() +
+    (currentTab.value?.pagePreviewPath || page.value.slug || '') +
+    '?locale=' + (currentTab.value?.pagePreviewLocale || page.value.locale || 'en')
+  )
+})
 
 async function load() {
   if (isNewPage.value) return
   isLoading.value = true
-  
+
   try {
     page.value = await pagesStore.getPage(props.pageId)
-    openPreviewUrl = getDefaultWhoobeOneSpikeUrl() + (currentTab.value?.pagePreviewPath || page.value?.slug || '') + '?locale=' + (currentTab.value?.pagePreviewLocale || page.value?.locale || 'en')
   } catch (e) {
     console.warn('Failed to load page:', e)
     page.value = null
