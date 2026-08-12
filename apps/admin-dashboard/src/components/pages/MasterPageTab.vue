@@ -21,7 +21,7 @@
         <span v-if="page.pimcoreId">pimcore id: {{ page.pimcoreId }}</span>
         <span>updated: {{ new Date(page.updatedAt).toLocaleString() }}</span>
       </div>
-    </div>
+    
 
     <div class="flex shrink-0 items-center gap-2 px-6 text-xs font-semibold">
       <button
@@ -35,7 +35,7 @@
       </button>
       <a :href="openPreviewUrl" target="_blank" rel="noopener noreferrer" title="Open in a new tab"><ExternalLink class="w-6 h-6 text-violet-700" /></a>
     </div>
-
+    </div>
     <div class="flex-1 min-h-0 px-2 pb-2 pt-2">
       <div v-show="activeSubTab === 'editor'" class="h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-2">
         <WhoobeOneEmbed v-if="!isNewPage" :page-id="props.pageId" />
