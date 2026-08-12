@@ -8,17 +8,19 @@
       <template v-for="(obj, index) in pagedItems" :key="index">
         <template v-for="child in doc.blocks" :key="child.id">
           <a
-            v-if="(child as any).link || (child as any).dynamicLink"
-            :href="childHref(child, obj)"
-            :target="(child as any).dynamicLink ? '_blank' : (child as any).linkTarget || undefined"
-            :rel="(child as any).dynamicLink ? 'noopener noreferrer' : undefined"
-            @click="onDynamicLinkClick($event, child, obj)"
+          v-if="(child as any).link || (child as any).dynamicLink"
+          :href="childHref(child, obj)"
+          :target="(child as any).dynamicLink ? '_blank' : (child as any).linkTarget || undefined"
+          :rel="(child as any).dynamicLink ? 'noopener noreferrer' : undefined"
+          @click="onDynamicLinkClick($event, child, obj)"
           >
-            <component :is="childComponent(child)" v-bind="boundChildProps(child, obj)" />
-          </a>
-          <component v-else :is="childComponent(child)" v-bind="boundChildProps(child, obj)" />
-        </template>
+          <component :is="childComponent(child)" v-bind="boundChildProps(child, obj)" />
+        </a>
+        <component v-else :is="childComponent(child)" v-bind="boundChildProps(child, obj)" />
       </template>
+    </template>
+    
+    <div class="flex flex-col w-full items-center justify-center md:gap-3 gap-2 md:p-4 p-2">
       <div
         v-if="rowsPerPage > 0 && collectionResolved.length > rowsPerPage"
         class="flex items-center justify-center gap-3 text-xs text-gray-500 py-2"
@@ -27,6 +29,7 @@
         <span>Page {{ currentPage }} of {{ totalPages }}</span>
         <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="currentPage >= totalPages" @click="currentPage = Math.min(totalPages, currentPage + 1)">Next ›</button>
       </div>
+    </div>
     </template>
     <!-- Normal children, or a single-object binding (no field = whole object
          passed down to the subtree; with a field = only the bound element
