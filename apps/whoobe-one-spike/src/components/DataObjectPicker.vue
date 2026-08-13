@@ -1,6 +1,6 @@
 <template>
   <div class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="$emit('close')">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl h-[34rem] flex flex-col overflow-hidden">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl h-[80vh] max-h-[80vh] flex flex-col overflow-hidden">
       <div class="flex items-center gap-2 px-3 py-2 border-b shrink-0">
         <span class="text-xs font-semibold text-gray-600">Bind to data object</span>
         <span class="text-xs text-gray-400 font-mono">{{ className || 'no class' }}</span>
@@ -43,7 +43,7 @@
         </div>
       </div>
 
-      <div v-else class="flex-1 min-h-0 flex flex-col">
+      <div v-else class="flex-1 min-h-0 h-[80vh] max-h-[80vh] flex flex-col">
         <div class="flex items-center gap-2 px-3 py-2 border-b shrink-0">
           <button class="text-gray-400 hover:text-gray-700" title="Back to classes" @click="className = ''">
             <ChevronLeft class="w-4 h-4" />
