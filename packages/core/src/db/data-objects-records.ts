@@ -428,9 +428,23 @@ export async function upsertDataObjectByPimcoreId(input: {
   locale?: string;
   translationGroupId?: string;
   attributes: Record<string, unknown>;
+  /** Pimcore's own real `o_creationDate`/`o_modificationDate` (packages/
+   *  migration-tool's PimcoreObjectSummary) - a migration run always
+   *  carries these through rather than stamping "now" on data that's
+   *  really years old, and included in the conflict-update set (not just
+   *  the insert) so a re-run also corrects a value stamped wrong before
+   *  this was wired up. Falls back to `now` only for a caller that
+   *  genuinely has no source timestamp (e.g. the fixture adapter). This
+   *  function has exactly one real caller today (runObjectMigration,
+   *  packages/migration-tool/src/cli.ts) - safe to always apply both
+   *  fields on conflict for that reason. */
+  createdAt?: Date;
+  updatedAt?: Date;
 }): Promise<DataObjectRecord> {
   const db = getDb();
   const now = new Date();
+  const createdAt = input.createdAt ?? now;
+  const updatedAt = input.updatedAt ?? now;
 
   const [row] = await db
     .insert(dataObjects)
@@ -446,7 +460,8 @@ export async function upsertDataObjectByPimcoreId(input: {
       // createWhoobePage already use.
       ...(input.translationGroupId ? { translationGroupId: input.translationGroupId } : {}),
       attributes: input.attributes,
-      updatedAt: now,
+      createdAt,
+      updatedAt,
     })
     .onConflictDoUpdate({
       target: dataObjects.pimcoreId,
@@ -457,7 +472,8 @@ export async function upsertDataObjectByPimcoreId(input: {
         locale: input.locale ?? 'en',
         ...(input.translationGroupId ? { translationGroupId: input.translationGroupId } : {}),
         attributes: input.attributes,
-        updatedAt: now,
+        createdAt,
+        updatedAt,
       },
     })
     .returning();

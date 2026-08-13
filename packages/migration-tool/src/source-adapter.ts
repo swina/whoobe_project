@@ -41,6 +41,13 @@ export interface PimcoreObjectSummary {
   className: string;
   key: string;
   path: string;
+  /** Pimcore's own real `o_creationDate`/`o_modificationDate` - Unix
+   *  seconds (Pimcore's own storage unit for these columns), not
+   *  milliseconds. Threaded through to `data_objects.createdAt`/
+   *  `updatedAt` by runObjectMigration (cli.ts) rather than letting a
+   *  migration run stamp "now" on real, years-old source data. */
+  creationDate: number;
+  modificationDate: number;
 }
 
 /** One `object_relations_<classId>` edge - `type` is Pimcore's own real
