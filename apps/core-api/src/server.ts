@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import express, { Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -110,8 +110,18 @@ import {
   enableTotp,
   disableTotp,
   updateMfaRecoveryCodes,
+  getMailSettings,
+  upsertMailSettings,
+  sendMail,
+  renderMailTemplate,
   type AuthenticatedRequest,
 } from '@whoobe-cms/core/server';
+// Root package entry, not '/server' - compileDynamicSchema lives in
+// schema/dynamic.ts, exported from index.ts and kept out of the Node-only
+// './server' barrel on purpose (no DB/crypto dependency, so it's also
+// reachable from browser bundles - admin-dashboard already imports other
+// root-package exports like ClassFieldDefinition the same way).
+import { compileDynamicSchema } from '@whoobe-cms/core';
 import { runClassMigration, runObjectMigration } from '@whoobe-cms/migration-tool';
 
 
@@ -167,6 +177,37 @@ function recordFailedAttempt(key: string): void {
 
 function clearFailedAttempts(key: string): void {
   loginAttempts.delete(key);
+}
+
+// --- Simple in-memory fixed-window rate limit for /public/forms/*/submit ---
+// Same single-process/dev-scale caveat as loginAttempts above. A separate
+// map rather than reusing loginAttempts/recordFailedAttempt: that one
+// models failure-triggered lockout (N wrong passwords -> locked out), this
+// is a plain request-volume window (N submissions per IP per window,
+// success or failure doesn't matter) - different enough semantics to be a
+// real bug if conflated (e.g. a burst of legitimate submissions would never
+// trip a failure-counting lockout at all).
+const FORM_SUBMIT_MAX = 10;
+const FORM_SUBMIT_WINDOW_MS = 15 * 60 * 1000;
+const formSubmitCounts = new Map<string, { count: number; windowStart: number }>();
+
+function isFormSubmitRateLimited(key: string): boolean {
+  const entry = formSubmitCounts.get(key);
+  if (!entry) return false;
+  if (Date.now() - entry.windowStart > FORM_SUBMIT_WINDOW_MS) {
+    formSubmitCounts.delete(key);
+    return false;
+  }
+  return entry.count >= FORM_SUBMIT_MAX;
+}
+
+function recordFormSubmit(key: string): void {
+  const entry = formSubmitCounts.get(key);
+  if (!entry || Date.now() - entry.windowStart > FORM_SUBMIT_WINDOW_MS) {
+    formSubmitCounts.set(key, { count: 1, windowStart: Date.now() });
+    return;
+  }
+  entry.count += 1;
 }
 
 function setSessionCookie(res: Response, token: string, expiresAt: Date): void {
@@ -1903,6 +1944,137 @@ app.post('/public/data-objects/query', async (req: Request, res: Response): Prom
   } catch (error: any) {
     console.error('Query public data objects error:', error);
     res.status(500).json({ error: error.message || 'Failed to query objects' });
+  }
+});
+
+// --- Public form submission endpoint (docs/plans/forms/cms-forms.md) ---
+// No requireAuth/requirePermission, same as the query endpoint above - a
+// site visitor submitting a page's contact/registration/etc. form has no
+// admin session. classId (not class name) since the editor's Form element
+// config picks a class by id (FormConfigControl.vue), same as
+// createDataObject's own classId param below.
+app.post('/public/forms/:classId/submit', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rateLimitKey = req.ip ?? 'unknown';
+    if (isFormSubmitRateLimited(rateLimitKey)) {
+      res.status(429).json({ error: 'Too many submissions, please try again later' });
+      return;
+    }
+    recordFormSubmit(rateLimitKey);
+
+    const { attributes, formConfig } = req.body ?? {};
+    if (attributes == null || typeof attributes !== 'object') {
+      res.status(400).json({ error: 'attributes is required' });
+      return;
+    }
+    // Hidden decoy field a real visitor never fills in - looks like success
+    // to whatever submitted it, without revealing it was a trap or that
+    // any validation even ran.
+    if ((attributes as Record<string, unknown>)._hp) {
+      res.status(204).end();
+      return;
+    }
+
+    const dataClass = await getDataClass(req.params.classId);
+    if (!dataClass) {
+      res.status(404).json({ error: 'Form target not found' });
+      return;
+    }
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = compileDynamicSchema({ id: dataClass.id, name: dataClass.name, fields: dataClass.fields as any }).parse(
+        attributes
+      ) as Record<string, unknown>;
+    } catch (validationError: any) {
+      res.status(400).json({ error: validationError?.message || 'Invalid submission' });
+      return;
+    }
+
+    // Lands unpublished by default (createDataObject doesn't set
+    // `published`) - a deliberate side effect, not an oversight: every
+    // submission is a draft an admin has to actively review/publish in
+    // Object View before it's visible anywhere, not auto-live.
+    await createDataObject({
+      classId: dataClass.id,
+      key: `sub-${randomUUID()}`,
+      attributes: parsed,
+    });
+
+    // Own try/catch, separate from the main handler's - a misconfigured or
+    // failing mailer must never turn a successful Data Object write into a
+    // 500 for the visitor. The client includes the Form's own `notify`
+    // config in the submit payload (it already has it in hand at submit
+    // time), so no separate server-side lookup is needed.
+    const notify = formConfig?.notify;
+    if (notify?.enabled && notify.templatePageId && notify.recipientEmail) {
+      try {
+        const page = await getWhoobePage(notify.templatePageId);
+        if (page) {
+          const html = renderMailTemplate(page.content, parsed);
+          await sendMail({
+            to: notify.recipientEmail,
+            subject: notify.subject || 'New form submission',
+            html,
+          });
+        } else {
+          console.warn(`Form notify: template page ${notify.templatePageId} not found`);
+        }
+      } catch (notifyError) {
+        console.warn('Form notify email failed:', notifyError);
+      }
+    }
+
+    res.status(201).json({ success: true });
+  } catch (error: any) {
+    console.error('Form submit error:', error);
+    res.status(500).json({ error: 'Failed to submit form' });
+  }
+});
+
+// Global outgoing-mail config (docs/plans/forms/cms-forms.md's Phase 2) -
+// GET never returns the stored password, only whether one is set, so the
+// admin-dashboard settings form can't leak it back out over the wire.
+app.get('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const settings = await getMailSettings();
+    if (!settings) {
+      res.json(null);
+      return;
+    }
+    const { password, ...rest } = settings;
+    res.json({ ...rest, hasPassword: !!password });
+  } catch (error) {
+    console.error('Mail settings fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch mail settings' });
+  }
+});
+
+app.put('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { host, port, secure, user, password, fromAddress, fromName } = req.body ?? {};
+    if (!host || !port || !fromAddress) {
+      res.status(400).json({ error: 'host, port, and fromAddress are required' });
+      return;
+    }
+    // An empty/omitted password in the request means "leave it as-is" (the
+    // GET response never sends the real one back for the form to resubmit)
+    // rather than clearing a previously configured one.
+    const existing = await getMailSettings();
+    const updated = await upsertMailSettings({
+      host,
+      port: Number(port),
+      secure: !!secure,
+      user: user || null,
+      password: password ? password : existing?.password ?? null,
+      fromAddress,
+      fromName: fromName || null,
+    });
+    const { password: _pw, ...rest } = updated;
+    res.json({ ...rest, hasPassword: !!updated.password });
+  } catch (error) {
+    console.error('Mail settings update error:', error);
+    res.status(500).json({ error: 'Failed to update mail settings' });
   }
 });
 

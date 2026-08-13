@@ -67,7 +67,11 @@ export interface DataObjectQueryOptions {
   locale?: string
 }
 
-function getDefaultCoreApiUrl(): string {
+// Exported for form-actions.ts's public (unauthenticated, no credentials)
+// submit call - same core-api host every other call in this file already
+// targets, just without `credentials: 'include'` since a site visitor has
+// no admin session cookie to send.
+export function getDefaultCoreApiUrl(): string {
   if (typeof window !== 'undefined' && window.location?.hostname) {
     return `${window.location.protocol}//${window.location.hostname}:3003`
   }

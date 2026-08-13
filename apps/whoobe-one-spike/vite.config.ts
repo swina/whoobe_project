@@ -32,6 +32,6 @@ export default defineConfig({
   },
   server: {
     port: 3006,
-    allowedHosts: ['develop.local']
+    allowedHosts: ['develop.local','whoobeone.local','whoobeone.localhost','whoobeone.test','whoobeone.test.localhost','whoobeone.test.lvh.me','whoobeone.test']
   }
 })

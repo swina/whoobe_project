@@ -2,7 +2,7 @@
   <button
     type="button"
     class="px-2 py-1 rounded text-[10px] font-semibold border capitalize"
-    :class="active ? 'bg-indigo-600 text-white border-indigo-600' : 'text-gray-500 border-gray-200 hover:border-gray-300'"
+    :class="active ? 'bg-indigo-200 text-white border-indigo-600' : 'text-gray-500 border-gray-200 hover:border-gray-300'"
     @click="toggle"
   >
     {{ title || attr }}

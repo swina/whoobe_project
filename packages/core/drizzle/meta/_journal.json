@@ -127,6 +127,13 @@
       "when": 1786221327411,
       "tag": "0017_dusty_tarot",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786630172832,
+      "tag": "0018_dry_luminals",
+      "breakpoints": true
     }
   ]
 }

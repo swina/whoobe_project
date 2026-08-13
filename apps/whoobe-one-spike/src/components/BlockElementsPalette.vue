@@ -1,5 +1,5 @@
 <template>
-  <div class="shrink-0 overflow-y-auto">
+  <div class="flex-1 min-h-0 overflow-y-auto">
     <div v-if="!editor.elements && !snippetsStore.items.length" class="p-3 text-xs text-gray-400">No elements loaded</div>
     <template v-for="label in groupLabels" :key="label">
       <button
@@ -95,6 +95,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronsUpDown,
+  CircleDot,
   ClipboardList,
   Code,
   Download,
@@ -154,6 +155,7 @@ const ELEMENT_ICONS: Record<string, Component> = {
   Email: Mail,
   Number: Hash,
   Checkbox: SquareCheck,
+  'Radio Group': CircleDot,
   Textarea: TextAlignStart,
   Select: ChevronsUpDown,
   Submit: MousePointerClick,

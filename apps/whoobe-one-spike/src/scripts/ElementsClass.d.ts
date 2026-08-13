@@ -43,6 +43,38 @@ export interface ElementGsap {
   trigger?: boolean
 }
 
+// Shared `data.options` shape for Select()/RadioGroup() - see
+// FormFieldControl.vue (the sidebar editor for this list) and helpers.ts's
+// renderSelectOptionsHtml()/renderRadioGroupHtml() (what actually turns it
+// into real <option>/<input type="radio"> markup).
+export interface FieldOption {
+  label: string
+  value: string
+}
+
+// Optional notification email sent on top of the Data Object write - see
+// docs/plans/forms/cms-forms.md's Phase 2. `templatePageId` is a
+// whoobe_pages id rendered server-side (renderMailTemplate()) against the
+// submission's own attributes.
+export interface ElementFormNotifyConfig {
+  enabled: boolean
+  templatePageId: string
+  recipientEmail: string
+  subject: string
+}
+
+// Only present on nodes built via .Form() - see docs/plans/forms/cms-forms.
+// md's "Plan". Replaces the old dead success/error/action fields.
+export interface ElementFormConfig {
+  enabled: boolean
+  targetClassId: string
+  successMessage: string
+  errorMessage: string
+  successRedirectUrl: string
+  errorRedirectUrl: string
+  notify: ElementFormNotifyConfig
+}
+
 import type { FieldTransform } from './field-transforms.js'
 
 export interface DataBindingFilter {
@@ -213,10 +245,8 @@ export default class Element {
   value?: string
   label?: string
   semantic?: string
-  action?: string
-  success?: string
-  error?: string
   element?: string
+  formConfig?: ElementFormConfig
 
   randomID(): string
   Groups(): ElementGroup[]

@@ -161,6 +161,10 @@ export default class Element {
                         icon: 'check_box'
                     },
                     {
+                        name: 'Radio Group',
+                        icon: 'radio_button_checked'
+                    },
+                    {
                         name: 'Textarea',
                         icon: 'text_format'
                     },
@@ -208,6 +212,7 @@ export default class Element {
             element === 'Email'         ? this.InputEmail() :
             element === 'Textarea'      ? this.InputTextarea() :
             element === 'Checkbox'      ? this.InputCheckbox() :
+            element === 'Radio Group'   ? this.RadioGroup() :
             element === 'Number'        ? this.InputNumber() :
             element === 'Hidden'        ? this.InputHidden() :
             element === 'Select'        ? this.InputSelect() :
@@ -565,9 +570,6 @@ export default class Element {
         this.blocks = []
         this.tag = 'form'
         this.element = 'form'
-        this.success = ''
-        this.error = ''
-        this.action = ''
         this.css.container = 'flex flex-col'
         this.semantic = 'form'
         this.data['attributes'] = {
@@ -575,6 +577,30 @@ export default class Element {
             id: 'form-id',
             action: '',
             method: 'post'
+        }
+        // See docs/plans/forms/cms-forms.md's "Plan" - a submission is
+        // posted to /public/forms/:targetClassId/submit and created as a
+        // Data Object of that class, one input's data.attributes.name per
+        // target field. Only meaningful on a Form element, so set here
+        // rather than in the base constructor (same treatment as the old
+        // success/error/action fields this replaces).
+        this.formConfig = {
+            enabled: false,
+            targetClassId: '',
+            successMessage: '',
+            errorMessage: '',
+            successRedirectUrl: '',
+            errorRedirectUrl: '',
+            // Optional notification email on top of the Data Object write -
+            // docs/plans/forms/cms-forms.md's Phase 2. templatePageId points
+            // at a whoobe_pages row rendered server-side via
+            // renderMailTemplate() with this submission's own attributes.
+            notify: {
+                enabled: false,
+                templatePageId: '',
+                recipientEmail: '',
+                subject: ''
+            }
         }
         return this
     }
@@ -599,6 +625,12 @@ export default class Element {
         this.type = 'text'
         this.tag = 'input'
         this.placeholder = 'Input'
+        // this.type above is this Element model's own field, never rendered
+        // as an HTML attribute on its own - see InputSubmit()'s comment for
+        // the full explanation. Every Input*() builder needs its own real
+        // `type` in data.attributes (the field customAttrs()/extraAttrs
+        // actually spread onto the DOM node), not just InputSubmit()'s.
+        this.data.attributes.type = 'text'
         return this
     }
 
@@ -607,6 +639,7 @@ export default class Element {
         this.type = 'email'
         this.tag = 'input'
         this.placeholder = 'Email'
+        this.data.attributes.type = 'email'
         return this
     }
 
@@ -614,6 +647,7 @@ export default class Element {
         this.inputElement()
         this.tag = 'input'
         this.type = 'number'
+        this.data.attributes.type = 'number'
         return this
     }
 
@@ -621,6 +655,7 @@ export default class Element {
         this.inputElement()
         this.tag = 'input'
         this.type = 'hidden'
+        this.data.attributes.type = 'hidden'
         return this
     }
 
@@ -628,6 +663,12 @@ export default class Element {
         this.inputElement()
         this.tag = 'input'
         this.type = 'checkbox'
+        this.data.attributes.type = 'checkbox'
+        // Default state a freshly-dropped checkbox starts in - configurable
+        // from FormFieldControl.vue's "Checked by default" toggle. `false`
+        // (not omitted) so the toggle has a real value to bind to from the
+        // start, same as `required` above in inputElement().
+        this.data.attributes.checked = false
         return this
     }
 
@@ -647,9 +688,47 @@ export default class Element {
     InputSelect(){
         this.inputElement()
         this.element = 'select'
-        this.data.options = [ 'option a' , 'option b' , 'option c']
+        // {label,value} pairs, not a flat string[] - lets the submitted
+        // value differ from the visible label (e.g. "United States" ->
+        // "US"), configurable via FormFieldControl.vue's options list
+        // editor. Rendered into real <option> children by helpers.ts's
+        // renderSelectOptionsHtml() (BlockElement.vue/BlockElementPreview.
+        // vue's displayContent) - nothing consumed data.options at all
+        // before this, so a dropped Select always rendered as an empty,
+        // option-less dropdown.
+        this.data.options = [
+            { label: 'Option A', value: 'option-a' },
+            { label: 'Option B', value: 'option-b' },
+            { label: 'Option C', value: 'option-c' }
+        ]
         this.tag = 'select'
         this.type = 'select'
+        return this
+    }
+
+    // A single self-contained field (not a container of individual Radio
+    // children) - same reasoning Select() gets away with a flat options
+    // list: FormFieldControl.vue's options editor and helpers.ts's
+    // renderRadioGroupHtml() are shared with Select(), and every radio
+    // input in the group needs the exact same `name` (data.attributes.name)
+    // to behave as one mutually-exclusive group, which a single element
+    // owning the whole list guarantees for free - no risk of two admins'
+    // worth of drag-and-drop leaving mismatched names across separate
+    // sibling elements.
+    RadioGroup(){
+        this.blocks = []
+        this.element = 'div'
+        this.label = 'Radio Group'
+        this.tag = 'radiogroup'
+        this.icon = 'radio_button_checked'
+        this.data.attributes = {
+            name: '',
+            required: false
+        }
+        this.data.options = [
+            { label: 'Option A', value: 'option-a' },
+            { label: 'Option B', value: 'option-b' }
+        ]
         return this
     }
 
@@ -663,6 +742,13 @@ export default class Element {
         // same reason. InputReset() calls this method first, so it inherits
         // the fix automatically.
         this.editable = true
+        // this.type above is this Element model's own field, never rendered
+        // as an HTML attribute - without a real `type="submit"` in
+        // data.attributes (the field that IS spread onto the DOM node, see
+        // helpers.ts's customAttrs()), clicking this button did nothing at
+        // all inside a <form>. InputReset() overrides this to 'reset' right
+        // after calling this method.
+        this.data.attributes = { type: 'submit' }
         return this
     }
 
@@ -671,6 +757,7 @@ export default class Element {
         this.tag = 'reset'
         this.value = 'Reset'
         this.content = 'Reset'
+        this.data.attributes = { type: 'reset' }
         return this
     }
 
@@ -692,6 +779,13 @@ export default class Element {
         // this is the one exception to this file otherwise being a
         // byte-for-byte port (see ElementsClass.d.ts's header).
         this.editable = true
+        // An HTML <button> with no explicit type defaults to type="submit"
+        // when it's inside a <form> - harmless while forms had no real
+        // submit handler, but now that InputSubmit() actually submits (see
+        // its own comment), a purely decorative Button() dropped inside a
+        // Form would silently start submitting it too. Same fix as
+        // InputSubmit()'s, opposite value.
+        this.data.attributes = { type: 'button' }
         return this
     }
     

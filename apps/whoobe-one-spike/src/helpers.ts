@@ -8,7 +8,9 @@
 // this monorepo's existing whoobe-studio app's style - not carried forward
 // as a deliberate architecture decision, just the natural fit here.
 import type Element from './scripts/ElementsClass.js'
+import type { FieldOption } from './scripts/ElementsClass.js'
 import type { Component } from 'vue'
+import { escapeHtml } from './scripts/field-transforms'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -67,6 +69,8 @@ export function friendlyElementName(el: any): string {
       return 'Form'
     case 'select':
       return 'Select'
+    case 'radiogroup':
+      return 'Radio Group'
     case 'submit':
       return 'Submit'
     case 'reset':
@@ -199,6 +203,51 @@ export function customAttrs(attributes: Record<string, unknown> | null | undefin
     result[key] = attributes[key]
   }
   return result
+}
+
+// InputSelect() shipped a flat string[] (value === label) before this
+// session's change added the real {label,value} shape - a Select element
+// saved/dropped before that (e.g. already sitting in an open document) still
+// has the old shape on disk, and nothing migrates it in place. Tolerating
+// both here, rather than assuming every entry is a well-formed FieldOption
+// object, is what keeps a pre-existing Select from crashing this computed
+// (escapeHtml(undefined) throws) the moment it's rendered.
+function normalizeOption(o: FieldOption | string | null | undefined): FieldOption {
+  if (typeof o === 'string') return { label: o, value: o }
+  return { label: o?.label ?? '', value: o?.value ?? '' }
+}
+
+/** A tag==='select' element's real <option> children - see ElementsClass.
+ *  js's InputSelect() and FormFieldControl.vue (the sidebar editor for this
+ *  list). Rendered as generated HTML into displayContent (BlockElement.vue/
+ *  BlockElementPreview.vue), the same "content is sometimes a computed HTML
+ *  string, not just element.content" convention already used for data-bound
+ *  text/links there - a <select> was never a real editable-content element
+ *  to begin with, so there's no static `element.content` this needs to
+ *  coexist with. */
+export function renderSelectOptionsHtml(options: (FieldOption | string)[] | undefined): string {
+  if (!options || options.length === 0) return ''
+  return options
+    .map(normalizeOption)
+    .map((o) => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</option>`)
+    .join('')
+}
+
+/** RadioGroup()'s own generated markup - one labeled <input type="radio">
+ *  per option, all sharing `name` so the browser treats them as one
+ *  mutually-exclusive group. `name` comes from the group's own
+ *  data.attributes.name (set via AttributesControl.vue/FormFieldControl.
+ *  vue), same field a real submission's FormData would key this value by. */
+export function renderRadioGroupHtml(options: (FieldOption | string)[] | undefined, name: string | undefined): string {
+  if (!options || options.length === 0) return ''
+  const groupName = name || 'radiogroup'
+  return options
+    .map(normalizeOption)
+    .map((o, i) => {
+      const id = `${groupName}-${i}`
+      return `<label for="${escapeHtml(id)}" class="flex items-center gap-1.5"><input type="radio" id="${escapeHtml(id)}" name="${escapeHtml(groupName)}" value="${escapeHtml(o.value)}"> ${escapeHtml(o.label)}</label>`
+    })
+    .join('')
 }
 
 // LucideIcon element support (replaces the dead MIcon/Iconify element

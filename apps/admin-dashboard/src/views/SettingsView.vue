@@ -58,6 +58,8 @@
 
         <WorkflowSettingsCard v-if="activeSubSection === 'workflows'" />
 
+        <MailSettingsCard v-if="activeSubSection === 'mail'" />
+
         <div v-if="activeSubSection === 'general'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-6">
           <div class="space-y-4">
             <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">General Options</h3>
@@ -91,6 +93,7 @@ import ClassSettingsCard from '../components/objects/ClassSettingsCard.vue'
 import ComponentSettingsCard from '../components/objects/ComponentSettingsCard.vue'
 import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue'
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'
+import MailSettingsCard from '../components/settings/MailSettingsCard.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
 import {
   Sliders,
@@ -102,6 +105,7 @@ import {
   Workflow,
   Upload,
   FileJson,
+  Mail,
 } from '@lucide/vue'
 
 const tabsStore = useTabsStore()
@@ -114,6 +118,7 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'roles', name: 'Roles', icon: Users },
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
+  { key: 'mail', name: 'Mail', icon: Mail },
 ]
 
 type ClassesSubTab = 'classes' | 'pimcore' | 'file'
@@ -155,6 +160,7 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   roles: { title: 'Roles / Users / Workspaces', description: 'Manage who can access this dashboard and what they can do.' },
   security: { title: 'Security', description: 'Two-factor authentication and account security.' },
   workflows: { title: 'Workflows', description: 'Author publish/review workflows for Data Object classes.' },
+  mail: { title: 'Outgoing Mail', description: 'SMTP config used for Form notification emails.' },
 }
 
 const sectionTitle = computed(() => sectionTitles[activeSubSection.value].title)

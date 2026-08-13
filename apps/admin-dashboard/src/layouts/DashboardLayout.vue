@@ -288,7 +288,8 @@ import {
   Moon,
   Blocks,
   Globe,
-  Table2
+  Table2,
+  Mail
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
@@ -351,6 +352,7 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'roles', name: 'Roles/Users/Workspaces', icon: Users },
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
+  { key: 'mail', name: 'Outgoing mail', icon: Mail },
 ]
 
 const settingsSubLabels: Record<SettingsSubSection, string> = {
@@ -361,6 +363,7 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   roles: 'Roles/Users/Workspaces',
   security: 'Security',
   workflows: 'Workflows',
+  mail: 'Outgoing mail',
 }
 
 function isSettingsSubSectionActive(key: SettingsSubSection): boolean {
