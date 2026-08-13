@@ -1,9 +1,20 @@
 #!/bin/bash
 # Start all CMS apps in parallel for development.
-# Usage: ./dev-cms.sh [--build]
+# Usage: ./dev-cms.sh [--build] [--hostname <name>] [--stop]
 #
-# Optional --build flag rebuilds @whoobe-cms/core first.
-# Stop all with: ./dev-cms.sh --stop
+# --build            Rebuilds the workspace packages first. core-api imports
+#                    @whoobe-cms/core and @whoobe-cms/migration-tool (both
+#                    resolve to their dist/ outputs), so both must be built
+#                    before it starts.
+# --hostname <name>  Overrides ONLY the browser-facing app endpoints - the
+#                    VITE_* URLs admin-dashboard talks to - e.g.
+#                    ./dev-cms.sh --hostname develop.local. Pick the
+#                    hostname you open the dashboard from, so the session
+#                    cookie (host-only + SameSite=Lax) always reaches the
+#                    APIs. DB (DB_HOST) and S3 (S3_ENDPOINT) endpoints are
+#                    external infrastructure and stay as configured in the
+#                    root .env.
+# --stop             Stops all dev servers.
 
 set -e
 
@@ -15,7 +26,30 @@ APPS=(
   "whoobe-one-spike"
 )
 
-if [ "$1" = "--stop" ]; then
+BUILD=0
+STOP=0
+HOSTNAME=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --build)
+      BUILD=1
+      ;;
+    --stop)
+      STOP=1
+      ;;
+    --hostname)
+      HOSTNAME="$2"
+      shift
+      ;;
+    *)
+      echo "Unknown option: $1 (expected --build, --hostname <name>, or --stop)" >&2
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+if [ "$STOP" = "1" ]; then
   echo "Stopping all CMS dev servers..."
   for app in "${APPS[@]}"; do
     pkill -f ".*tsx.*$app.*" 2>/dev/null || true
@@ -26,9 +60,17 @@ if [ "$1" = "--stop" ]; then
   exit 0
 fi
 
-if [ "$1" = "--build" ]; then
+if [ "$BUILD" = "1" ]; then
   echo "Building @whoobe-cms/core..."
   pnpm --filter @whoobe-cms/core build
+  echo "Building @whoobe-cms/migration-tool..."
+  pnpm --filter @whoobe-cms/migration-tool build
+fi
+
+if [ -n "$HOSTNAME" ]; then
+  export VITE_ASSET_PROCESSOR_URL="http://$HOSTNAME:3002"
+  export VITE_CORE_API_URL="http://$HOSTNAME:3003"
+  echo "App endpoints use hostname: $HOSTNAME"
 fi
 
 echo "Starting CMS dev servers..."

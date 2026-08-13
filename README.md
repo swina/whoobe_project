@@ -49,47 +49,38 @@ Start local infrastructure (Postgres + MinIO):
 docker compose up -d
 ```
 
-Each app reads its config from its own `.env` file. Copy/create the following (values below match the `docker-compose.yml` defaults):
+The whole monorepo reads a **single** `.env` at the repo root — docker-compose interpolates its `POSTGRES_*` vars, the Node services (`core-api`, `asset-processor`, `migration-tool`) load it via `@whoobe-cms/core`'s `loadRootEnv()`, and the Vite apps (`admin-dashboard`, `whoobe-one-spike`) load it via `envDir` in their `vite.config.ts`. `${VAR}` references are expanded everywhere (Vite natively, `loadRootEnv()` for Node); shell-exported vars always win.
 
-**`.env`** (repo root — used by `docker-compose.yml`)
+**`.env`** (repo root)
 ```
+# The hostname all derived URLs are built from - change here for the
+# whole stack at once, or per run via ./dev-cms.sh --hostname <name>.
+WHOOBE_HOSTNAME=localhost
+
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgrespassword
-POSTGRES_DB=pimcore_custom
-```
+POSTGRES_DB=whoobe_db
 
-**`apps/core-api/.env`**
-```
-PORT=3003
-DB_HOST=localhost
+DB_HOST=${WHOOBE_HOSTNAME}
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=postgrespassword
-DB_NAME=pimcore_custom
+DB_NAME=whoobe_db
+
 MIGRATION_SOURCE_ENCRYPTION_KEY=<random-32-byte-key>
-```
 
-**`apps/asset-processor/.env`**
-```
-PORT=3002
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgrespassword
-DB_NAME=pimcore_custom
-S3_ENDPOINT=http://localhost:9000
+S3_ENDPOINT=http://${WHOOBE_HOSTNAME}:9000
 S3_BUCKET=whoobe-cms
 S3_REGION=us-east-1
 S3_ACCESS_KEY_ID=minioadmin
 S3_SECRET_ACCESS_KEY=minioadminpassword
 S3_FORCE_PATH_STYLE=true
-S3_PUBLIC_BASE_URL=http://localhost:9000/whoobe-cms
-```
+S3_PUBLIC_BASE_URL=http://${WHOOBE_HOSTNAME}:3002/dam-asset
 
-**`apps/admin-dashboard/.env.local`**
-```
-VITE_ASSET_PROCESSOR_URL=http://localhost:3002
-VITE_CORE_API_URL=http://localhost:3003
+VITE_ASSET_PROCESSOR_URL=http://${WHOOBE_HOSTNAME}:3002
+VITE_CORE_API_URL=http://${WHOOBE_HOSTNAME}:3003
+
+VITE_FONT_FAMILIES=Alfa+Slab+One|Asap+Condensed|...
 ```
 
 `core-api` creates the database and applies migrations automatically on startup, so no separate migration step is required for a fresh Postgres instance.
@@ -99,10 +90,13 @@ VITE_CORE_API_URL=http://localhost:3003
 The quickest way to start the core services (admin-dashboard, core-api, asset-processor, whoobe-one-spike) together:
 
 ```bash
-./dev-cms.sh          # start all
-./dev-cms.sh --build  # rebuild @whoobe-cms/core first, then start all
-./dev-cms.sh --stop   # stop all
+./dev-cms.sh                       # start all
+./dev-cms.sh --build               # rebuild the workspace packages first, then start all
+./dev-cms.sh --hostname develop.local   # override ONLY the browser-facing app endpoints (VITE_* URLs)
+./dev-cms.sh --stop                # stop all
 ```
+
+Use `--hostname` matching the hostname you open the dashboard from (the session cookie is host-only + `SameSite=Lax`, so it only reaches APIs on the same host). DB/S3 endpoints are external infrastructure and stay as configured in the `.env`.
 
 | App | URL |
 | --- | --- |
@@ -128,7 +122,7 @@ pnpm --filter @whoobe-cms/migration-tool cli -- migrate-objects --class=Product
 pnpm --filter @whoobe-cms/migration-tool cli -- migrate-documents
 ```
 
-Configure the source Pimcore MySQL connection in `packages/migration-tool/.env` (`PIMCORE_DB_HOST`, `PIMCORE_DB_PORT`, `PIMCORE_DB_USER`, `PIMCORE_DB_PASSWORD`, `PIMCORE_DB_NAME`, plus the target `DB_*` vars matching `core-api`'s database).
+Configure the source Pimcore MySQL connection in the repo-root `.env` (`PIMCORE_DB_HOST`, `PIMCORE_DB_PORT`, `PIMCORE_DB_USER`, `PIMCORE_DB_PASSWORD`, `PIMCORE_DB_NAME`, plus the target `DB_*` vars).
 
 ## Other scripts
 

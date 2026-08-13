@@ -14,6 +14,10 @@ import vue from '@vitejs/plugin-vue'
 // runtime engine watches the live DOM directly and generates real CSS for
 // whatever classes actually appear, immediately, with no such limitation.
 export default defineConfig({
+  // Single source of truth for env vars: the repo-root .env (see
+  // docs/plans/environment/env-optimization.md). Vite natively expands
+  // ${VAR} references (dotenv-expand) and shell-exported vars win.
+  envDir: '../../',
   plugins: [vue()],
   // dragula's own dependency chain (crossvent -> custom-event) references
   // Node's `global` object directly, assuming a bundler that polyfills it
