@@ -144,11 +144,19 @@ const resolvedData = computed(() => {
   return null
 })
 
+// Computed once and reused by displayContent/transformClassName below,
+// rather than calling applyTransform twice per render.
+const transformResult = computed(() => {
+  const el = props.element as any
+  if (!el.dataBinding || resolvedData.value === null) return null
+  return applyTransform(resolvedData.value, el.dataBinding.transform)
+})
+
 const displayContent = computed(() => {
   const el = props.element as any
   if (el.dataBinding) {
-    if (resolvedData.value === null) return ''
-    const result = applyTransform(resolvedData.value, el.dataBinding.transform)
+    const result = transformResult.value
+    if (!result) return ''
     if (result.kind === 'link') {
       const targetAttr = result.target ? ` target="${result.target}" rel="noopener noreferrer"` : ''
       return `<a href="${escapeHtml(result.href)}"${targetAttr}>${escapeHtml(result.text)}</a>`
@@ -156,6 +164,32 @@ const displayContent = computed(() => {
     return result.text
   }
   return el.content
+})
+
+// 'valueMap' transform's per-value className (e.g. a status badge's
+// background color) - applied via native :class below instead of baking
+// it into the v-html string, so it updates correctly across pagination
+// even when the DOM node/component instance is reused (see the comment
+// on field-transforms.ts's valueMapTransformer for why this replaced the
+// original Alpine-based approach).
+const transformClassName = computed(() => {
+  const result = transformResult.value
+  return result && result.kind === 'text' ? result.className : undefined
+})
+
+// Same MutationObserver gap as above, but for v-html'd content rather than
+// the alpine attribute map: a data-bound repeater (BlockContainerPreview.
+// vue's paginated list) reuses this component instance/DOM node across
+// pages (positional v-for :key), so v-html only ever patches innerHTML on
+// an already-initialized node instead of creating a fresh one Alpine's
+// observer would pick up on its own. Any x-data markup baked into the
+// bound field's own HTML value needs the same explicit re-scan whenever
+// the resolved content changes - which includes paging to a different
+// record, not just editing the field.
+watch(displayContent, () => {
+  nextTick(() => {
+    if (rootEl.value && (window as any).Alpine) (window as any).Alpine.initTree(rootEl.value)
+  })
 })
 
 // Reuses displayContent's own resolution (data-binding-aware, falling back
@@ -238,6 +272,7 @@ const classe = computed(() => {
   const el = props.element as any
   let cls = `${el.css.css} ${el.css.container}`
   if (el.dataBinding && !el.content && el.element !== 'img') cls += ' min-h-8'
+  if (transformClassName.value) cls += ` ${transformClassName.value}`
   return cls
 })
 

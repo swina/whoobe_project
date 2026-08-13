@@ -5,7 +5,7 @@
 // group in TailwindCustomizer.vue's sidebar (DataBindingTransformControl.vue)
 // - see docs/plans (field transformer plan) for the full design.
 
-export type TransformType = 'date' | 'url' | 'number' | 'truncate'
+export type TransformType = 'date' | 'url' | 'number' | 'truncate' | 'valueMap'
 
 export interface DateTransformOptions {
   dateStyle: 'short' | 'medium' | 'long' | 'full'
@@ -32,15 +32,33 @@ export interface TruncateTransformOptions {
   ellipsis: string
 }
 
+export interface ValueMapRule {
+  /** Matched against String(value) - same equality check a hand-written
+   *  `original === 'x' ? ... : ...` ternary chain would use. */
+  match: string
+  label: string
+  className: string
+}
+
+export interface ValueMapTransformOptions {
+  rules: ValueMapRule[]
+  /** Applied when no rule's `match` equals the resolved value. An empty
+   *  fallbackLabel falls back to the raw value itself (same convention as
+   *  the other transformers' empty/passthrough behavior). */
+  fallbackLabel: string
+  fallbackClassName: string
+}
+
 export type FieldTransform =
   | { type: 'none' }
   | { type: 'date'; options: DateTransformOptions }
   | { type: 'url'; options: UrlTransformOptions }
   | { type: 'number'; options: NumberTransformOptions }
   | { type: 'truncate'; options: TruncateTransformOptions }
+  | { type: 'valueMap'; options: ValueMapTransformOptions }
 
 export type TransformResult =
-  | { kind: 'text'; text: string }
+  | { kind: 'text'; text: string; className?: string }
   | { kind: 'link'; href: string; text: string; target?: '_blank' | '_self' }
 
 export interface TransformerDefinition<O> {
@@ -57,8 +75,8 @@ export interface TransformerDefinition<O> {
  *  etc. from becoming a clickable anchor built from stored field data. */
 const SAFE_SCHEME_RE = /^(https?:\/\/|mailto:|tel:|\/(?!\/))/i
 
-function textResult(text: string): TransformResult {
-  return { kind: 'text', text }
+function textResult(text: string, className?: string): TransformResult {
+  return className ? { kind: 'text', text, className } : { kind: 'text', text }
 }
 
 const dateTransformer: TransformerDefinition<DateTransformOptions> = {
@@ -136,11 +154,34 @@ const truncateTransformer: TransformerDefinition<TruncateTransformOptions> = {
   },
 }
 
+// Native Vue :class/text binding, not Alpine - a data-bound repeater (e.g.
+// BlockContainerPreview.vue's paginated list) reuses DOM nodes/component
+// instances across pages, and Alpine's directive lifecycle (x-init/x-data
+// scope) doesn't reliably re-run on a node it already initialized once
+// that content changes underneath it (see docs/plans - the Alpine-badge
+// approach broke on page 2+ of a paginated Dynamic Query). This transformer
+// gets the same "value -> label + class" badge result through Vue's own
+// reactivity instead, which patches correctly regardless of DOM/instance
+// reuse.
+const valueMapTransformer: TransformerDefinition<ValueMapTransformOptions> = {
+  type: 'valueMap',
+  label: 'Map value to label/class',
+  applicableFieldTypes: 'any',
+  defaultOptions: { rules: [], fallbackLabel: '', fallbackClassName: '' },
+  apply(value, options) {
+    const str = value == null ? '' : String(value)
+    const rule = options.rules?.find((r) => r.match === str)
+    if (rule) return textResult(rule.label || str, rule.className)
+    return textResult(options.fallbackLabel || str, options.fallbackClassName)
+  },
+}
+
 export const TRANSFORMERS = {
   date: dateTransformer,
   url: urlTransformer,
   number: numberTransformer,
   truncate: truncateTransformer,
+  valueMap: valueMapTransformer,
 } satisfies Record<TransformType, TransformerDefinition<any>>
 
 export function transformersForFieldType(fieldType: string | null | undefined): TransformerDefinition<any>[] {

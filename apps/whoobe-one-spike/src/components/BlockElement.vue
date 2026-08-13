@@ -122,9 +122,13 @@ const bindingPlaceholder = computed(() => {
   return binding.field ? `{${binding.className}.${binding.field}}` : `{${binding.className}}`
 })
 
+// Computed once and reused by displayContent/transformClassName below,
+// rather than calling applyTransform twice per render.
+const transformResult = computed(() => (hasResolvedData.value ? applyTransform(resolvedDataValue.value, db.value?.transform) : null))
+
 const displayContent = computed(() => {
-  if (hasResolvedData.value) {
-    const result = applyTransform(resolvedDataValue.value, db.value?.transform)
+  const result = transformResult.value
+  if (result) {
     if (result.kind === 'link') {
       const targetAttr = result.target ? ` target="${result.target}" rel="noopener noreferrer"` : ''
       return `<a href="${escapeHtml(result.href)}"${targetAttr}>${escapeHtml(result.text)}</a>`
@@ -132,6 +136,13 @@ const displayContent = computed(() => {
     return result.text
   }
   return (props.element as any).content
+})
+
+// 'valueMap' transform's per-value className - see field-transforms.ts's
+// valueMapTransformer / BlockElementPreview.vue's identical computed.
+const transformClassName = computed(() => {
+  const result = transformResult.value
+  return result && result.kind === 'text' ? result.className : undefined
 })
 
 const displaySrc = computed(() => {
@@ -172,6 +183,7 @@ const classe = computed(() => {
   // Keep a bound element with no content visible/selectable in the editor
   // canvas (data not yet resolved, or resolves to empty/null).
   if (db.value && !el.content && el.element !== 'img') cls += ' min-h-8'
+  if (transformClassName.value) cls += ` ${transformClassName.value}`
   if (isSelected.value) cls += ' shadow-lg ring-2 ring-indigo-500'
   return cls
 })
