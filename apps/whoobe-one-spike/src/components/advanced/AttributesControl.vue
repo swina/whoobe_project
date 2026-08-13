@@ -12,7 +12,7 @@
     </div>
     <div class="flex flex-col gap-1">
       <input v-model="newName" type="text" placeholder="attribute name" class="w-full text-xs border rounded px-1.5 py-1" @keydown.enter="addAttribute" />
-      <input v-model="newValue" type="text" placeholder="value" class="w-full text-xs border rounded px-1.5 py-1" @keydown.enter="addAttribute" />
+      <textarea v-model="newValue" type="text" placeholder="value" class="w-full text-xs border rounded px-1.5 py-1"/>
       <button type="button" class="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 self-start" @click="addAttribute">+ Add attribute</button>
     </div>
     <p class="text-[10px] text-gray-400">

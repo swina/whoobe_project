@@ -1,5 +1,5 @@
 <template>
-  <div class="shrink-0 overflow-y-auto flex flex-col text-sm">
+  <div class="flex-1 min-h-0 overflow-y-auto flex flex-col text-sm">
     <div v-if="!editor.current" class="p-3 text-gray-400">Select an element to customize</div>
     <template v-else>
       <template v-for="group in visibleGroups" :key="group.label">
@@ -64,9 +64,7 @@ import ColorControl from './tailwind-controls/ColorControl.vue'
 import BgGradientControl from './tailwind-controls/BgGradientControl.vue'
 import BgGradientPresetsControl from './tailwind-controls/BgGradientPresetsControl.vue'
 import FontControl from './tailwind-controls/FontControl.vue'
-import CustomClassesControl from './tailwind-controls/CustomClassesControl.vue'
 import SemanticControl from './tailwind-controls/SemanticControl.vue'
-import DataBindingTransformControl from './tailwind-controls/DataBindingTransformControl.vue'
 
 interface TwControl {
   name: string
@@ -85,16 +83,7 @@ const openGroup = ref<string | null>(null)
 
 const groups = twgroups as unknown as TwGroup[]
 
-// Not from tw.groups.js - no source equivalent (see CustomClassesControl.
-// vue's own header). Appended unconditionally, not filtered by tag like
-// the ported groups above: unlike e.g. the "grid" group (only meaningful
-// for grid containers), typing arbitrary classes is valid for any node.
-const CUSTOM_CLASSES_GROUP: TwGroup = {
-  label: 'custom classes',
-  components: [{ name: 'CustomClasses', attr: 'css' }],
-}
-
-// Also not from tw.groups.js - a second place to reach the same setting
+// Not from tw.groups.js - a second place to reach the same setting
 // FloatingToolbar.vue's own "Semantic tag" popover already controls (both
 // read/write the identical `editor.current.semantic` field, so there's
 // nothing to keep in sync between them). Gated on `type === 'container'`,
@@ -108,46 +97,16 @@ const SEMANTIC_GROUP: TwGroup = {
   components: [{ name: 'Semantic', attr: 'semantic', title: 'Renders as' }],
 }
 
-// Not from tw.groups.js either - lets a data-bound element's displayed
-// value be reformatted (date/number/url-as-link/truncate) without leaving
-// this sidebar, the same way every other post-bind setting already works
-// here. Shown for 'content'-target bindings, and for 'src'-target bindings
-// on an <img> element specifically - bindingTarget() in FloatingToolbar.vue
-// always targets an image binding at 'src' (there is no reachable path
-// that ever produces target 'alt' today, despite DataObjectPicker.vue's
-// own fieldCompatibleWithTarget() having a case for it - same kind of
-// forward-looking dead branch as its 'datetime' fieldType check), and
-// BlockElement.vue/BlockElementPreview.vue's displayAlt reuses that same
-// binding's resolved+transformed value as the image's alt text. Excluded
-// for 'href'/'icon'/'custom' targets - their resolved values never flow
-// through a transform-aware render path (href isn't applied to the DOM at
-// all yet, a pre-existing gap; icon/custom values are used as-is).
-//
-// No fieldType-based gating here (unlike DataBindingTransformControl.vue's
-// own availableTransformers) - truncate's 'any' applicableFieldTypes gate
-// means at least one transformer is always offered regardless of fieldType,
-// so a field-type check here would never actually hide the group; deciding
-// *which* transformers show is entirely that control's own job, including
-// its fallback lookup for bindings saved before fieldType existed (see
-// resolve-binding-field-type.ts).
-const DATA_BINDING_GROUP: TwGroup = {
-  label: 'data binding',
-  components: [{ name: 'DataBindingTransform', attr: 'dataBinding', title: 'Format bound value' }],
-}
+// Custom Classes and Data Binding (format bound value) used to live here
+// as two more unconditional/conditional groups - moved to AdvancedPanel.vue
+// instead (its "Custom Classes"/"Data Binding" sections), alongside every
+// other per-element setting that isn't a plain TailwindCSS utility knob.
 
 const visibleGroups = computed(() => {
   if (!editor.current) return []
   const tag = editor.current.tag
   const isContainer = (editor.current as any).type === 'container'
-  const db = (editor.current as any).dataBinding
-  const isImgSrcBinding = db?.target === 'src' && (editor.current as any).element === 'img'
-  const showDataBinding = db && (db.target === 'content' || isImgSrcBinding)
-  return [
-    ...groups.filter((g) => !g.filter || g.filter.includes(tag)),
-    ...(isContainer ? [SEMANTIC_GROUP] : []),
-    ...(showDataBinding ? [DATA_BINDING_GROUP] : []),
-    CUSTOM_CLASSES_GROUP,
-  ]
+  return [...groups.filter((g) => !g.filter || g.filter.includes(tag)), ...(isContainer ? [SEMANTIC_GROUP] : [])]
 })
 
 const componentMap: Record<string, unknown> = {
@@ -162,9 +121,7 @@ const componentMap: Record<string, unknown> = {
   BgGradient: BgGradientControl,
   BgGradientPresets: BgGradientPresetsControl,
   TextFont: FontControl,
-  CustomClasses: CustomClassesControl,
   Semantic: SemanticControl,
-  DataBindingTransform: DataBindingTransformControl,
 }
 
 function controlComponent(name: string) {

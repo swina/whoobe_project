@@ -47,7 +47,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import type { Component } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
-import { customAttrs, imageURL, resolveLucideIcon } from '../../helpers'
+import { customAttrs, imageURL, resolveLucideIcon, renderSelectOptionsHtml, renderRadioGroupHtml } from '../../helpers'
 import { resolveDisplayUrl } from '../../resolve-display-url'
 import { useEditorStore } from '../../store/editor'
 import { resolveFieldValue } from '../../scripts/data-resolver'
@@ -163,6 +163,11 @@ const displayContent = computed(() => {
     }
     return result.text
   }
+  // See ../BlockElement.vue's identical branch - a select/radio group's
+  // options list (FormFieldControl.vue) generates real markup instead of
+  // the always-empty static `content` field.
+  if (el.tag === 'select') return renderSelectOptionsHtml(el.data?.options)
+  if (el.tag === 'radiogroup') return renderRadioGroupHtml(el.data?.options, el.data?.attributes?.name)
   return el.content
 })
 

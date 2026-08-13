@@ -42,6 +42,13 @@
         <component v-else :is="childComponent(child)" v-bind="childPropsWithContext(child)" />
       </template>
     </template>
+
+    <!-- Inline result of a form-actions.ts submission - only ever set on a
+         tag === 'form' container with formConfig.enabled (see onMounted()
+         below), stays empty/absent for every other container. -->
+    <p v-if="submitResult" class="text-xs mt-2" :class="submitResult.ok ? 'text-emerald-600' : 'text-rose-600'">
+      {{ submitResult.message }}
+    </p>
   </component>
 </template>
 
@@ -77,6 +84,7 @@ import type { DataObjectRecord } from '../../data-objects-api'
 import { getPage } from '../../pages-api'
 import { customAttrs } from '../../helpers'
 import { mountAnimation } from '../../scripts/gsap-actions'
+import { mountFormSubmit, type FormSubmitResult } from '../../scripts/form-actions'
 import { extractPlaceholderNames, substitutePattern } from '../../scripts/path-pattern'
 import BlockElementPreview from './BlockElementPreview.vue'
 import BlockIFramePreview from './BlockIFramePreview.vue'
@@ -300,13 +308,21 @@ const extraAttrs = computed(() => ({
 const rootEl = ref<HTMLElement | null>(null)
 
 let stopAnimation: (() => void) | null = null
+let stopFormSubmit: (() => void) | null = null
+const submitResult = ref<FormSubmitResult | null>(null)
 
 onMounted(() => {
   if (rootEl.value) stopAnimation = mountAnimation(props.doc, rootEl.value)
+  if ((props.doc as any).tag === 'form' && rootEl.value) {
+    stopFormSubmit = mountFormSubmit(props.doc, rootEl.value as unknown as HTMLFormElement, (result) => {
+      submitResult.value = result
+    })
+  }
 })
 
 onUnmounted(() => {
   stopAnimation?.()
+  stopFormSubmit?.()
 })
 
 watch(

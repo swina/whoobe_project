@@ -11,7 +11,7 @@
 
     <Teleport to="body">
       <div v-if="showModal" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="cancel">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
           <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
             <span class="text-xs font-semibold text-gray-600">Format bound value</span>
             <button type="button" class="text-gray-400 hover:text-gray-700" @click="cancel"><X class="w-4 h-4" /></button>
@@ -83,9 +83,9 @@
 
             <div v-else-if="draftType === 'valueMap'" class="flex flex-col gap-1.5">
               <div v-for="(rule, i) in draftOptions.rules" :key="i" class="flex items-center gap-1">
-                <input v-model="rule.match" type="text" placeholder="value" class="text-xs border rounded px-1.5 py-1 w-20" />
+                <input v-model="rule.match" type="text" placeholder="value" class="text-xs border rounded px-1.5 py-1 w-30" />
                 <span class="text-[10px] text-gray-400">→</span>
-                <input v-model="rule.label" type="text" placeholder="label" class="text-xs border rounded px-1.5 py-1 w-20" />
+                <input v-model="rule.label" type="text" placeholder="label" class="text-xs border rounded px-1.5 py-1 w-30" />
                 <input v-model="rule.className" type="text" placeholder="css class" class="text-xs border rounded px-1.5 py-1 flex-1" />
                 <button type="button" class="text-gray-400 hover:text-rose-500 shrink-0" @click="draftOptions.rules.splice(i, 1)">
                   <Trash2 class="w-3.5 h-3.5" />

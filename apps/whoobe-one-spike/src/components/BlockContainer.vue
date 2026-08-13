@@ -28,6 +28,7 @@
     :data-id="doc.id"
     v-bind="containerAttrs"
     @click.self="onSelect"
+    @submit.prevent
   >
     <button
       type="button"
@@ -225,6 +226,13 @@ function showAgain() {
 }
 
 const containerAttrs = computed(() => customAttrs((props.doc as any).data?.attributes))
+
+// A Form() element renders as a real <form> here too (semantic above) -
+// @submit.prevent on the template's root <component> is defense-in-depth
+// alongside BlockElement.vue's onClick preventDefault() (docs/plans/forms/
+// cms-forms.md): that stops a Submit button's own click from firing, but
+// pressing Enter inside a text input submits the *form*, not the button,
+// bypassing that guard entirely. Edit mode never actually submits.
 
 // Not from the source - a quick "does this container carry any of its own
 // styling" signal, requested directly. `css.container` doesn't qualify on

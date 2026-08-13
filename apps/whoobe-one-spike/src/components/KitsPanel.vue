@@ -1,5 +1,5 @@
 <template>
-  <div class="shrink-0 overflow-y-auto text-sm">
+  <div class="flex-1 min-h-0 overflow-y-auto text-sm">
     <div v-if="loading" class="p-3 text-gray-400">Loading kits…</div>
     <div v-else-if="!kits.length" class="p-3 text-gray-400">No kits yet</div>
     <template v-for="kit in kits" :key="kit.id">

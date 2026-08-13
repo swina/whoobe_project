@@ -1,5 +1,5 @@
 <template>
-  <div class="shrink-0 overflow-y-auto text-xs py-1">
+  <div class="flex-1 min-h-0 overflow-y-auto text-xs py-1">
     <div v-if="!editor.document" class="p-3 text-gray-400">No document</div>
     <DocumentTreeNode v-else :node="editor.document" :depth="0" />
   </div>

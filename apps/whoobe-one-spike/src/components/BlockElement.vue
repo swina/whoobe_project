@@ -67,7 +67,7 @@ import { resolveFieldValue } from '../scripts/data-resolver'
 import type { DataObjectRecord } from '../data-objects-api'
 import { editorBus } from '../bus'
 import { applyTransform, escapeHtml } from '../scripts/field-transforms'
-import { customAttrs } from '../helpers'
+import { customAttrs, renderSelectOptionsHtml, renderRadioGroupHtml } from '../helpers'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -135,7 +135,14 @@ const displayContent = computed(() => {
     }
     return result.text
   }
-  return (props.element as any).content
+  const el = props.element as any
+  // A select/radio group was never a real editable-content element - its
+  // configured options list (FormFieldControl.vue) generates real
+  // <option>/<input type="radio"> markup instead of falling through to the
+  // (always empty) static `content` field.
+  if (el.tag === 'select') return renderSelectOptionsHtml(el.data?.options)
+  if (el.tag === 'radiogroup') return renderRadioGroupHtml(el.data?.options, el.data?.attributes?.name)
+  return el.content
 })
 
 // 'valueMap' transform's per-value className - see field-transforms.ts's
@@ -208,6 +215,17 @@ const stile = computed(() => {
 const elementAttrs = computed(() => customAttrs((props.element as any).data?.attributes))
 
 function onClick(e: MouseEvent) {
+  // preventDefault, not just stopPropagation - this node's own tag/type
+  // attribute is rendered here exactly as it would be on the published
+  // page (elementAttrs above, incl. InputSubmit()'s real type="submit"
+  // added for the forms feature - see docs/plans/forms/cms-forms.md).
+  // Without this, clicking a Submit/Reset button (or any other element
+  // with a native click action - a checkbox toggling, a raw <a> navigating)
+  // while editing would fire that native browser behavior on top of
+  // selection - a submit button would actually submit/navigate away from
+  // the editor. Edit mode is select-and-customize only; only the preview/
+  // published render tree (BlockElementPreview.vue) is ever "live".
+  e.preventDefault()
   e.stopPropagation()
   editor.setCurrent(isSelected.value ? null : props.element)
   if (!isSelected.value) editorBus.emit('floatingElement', props.element.id)
