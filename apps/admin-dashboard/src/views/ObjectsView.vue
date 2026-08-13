@@ -109,7 +109,7 @@
     <p v-if="!selectedClassId" class="text-xs text-slate-500 -mt-2">Select a class above to create a new object.</p>
 
     <div v-if="selectedRowIds.length > 0"
-      class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-indigo-900/40 light:bg-indigo-50/60 border border-indigo-700/50 light:border-indigo-200">
+      class="absolute bottom-0 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-indigo-900/40 light:bg-indigo-50 border border-indigo-700/50 light:border-indigo-200">
       <span class="text-xs font-semibold text-indigo-200 light:text-indigo-700">{{ selectedRowIds.length }} selected</span>
       <button @click="handleBatchPublish"
         class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-white">Publish</button>
@@ -224,7 +224,7 @@
     <!-- Filter Query-->
     <div v-if="showFilterModal && selectedDataClass"
       class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="showFilterModal = false">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl h-[60vh] max-h-[80vh] flex flex-col overflow-hidden">
         <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
           <span class="text-xs font-semibold text-gray-600">Filter {{ selectedDataClass.label }} objects</span>
           <button class="text-xs text-gray-400 hover:text-gray-700" @click="showFilterModal = false"><X class="w-4 h-4" /></button>
@@ -282,7 +282,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { ChevronUp, ChevronDown, Filter, Plus, Trash2, X } from '@lucide/vue'
 import { useDataObjectsStore } from '../stores/dataObjectsStore'
 import { useDataClassesStore } from '../stores/dataClassesStore'
@@ -535,10 +535,13 @@ function recordAssetUrl(record: ObjectRecord, fieldName: string): string | undef
 }
 
 // Reactive cache for asset path → URL resolution, shared across the view.
-// Refreshed on each call if the cache is stale (avoids the module-level
-// resolveDisplayUrl cache which may have stale null entries from restarts).
-const _assetUrlCache = new Map<string, string | undefined>()
+// Wrapped in Vue's reactive() so a URL resolved after the initial render
+// (e.g. the first request failing transiently right after a server restart)
+// still triggers the template to re-render and pick up the fresh URL.
+const _assetUrlCache = reactive(new Map<string, string | undefined>())
 const _assetUrlInFlight = new Set<string>()
+const _assetUrlFailCount = new Map<string, number>()
+const ASSET_URL_MAX_RETRIES = 3
 
 function resolveAssetPathUrl(path: string): string | undefined {
   if (_assetUrlCache.has(path)) return _assetUrlCache.get(path)
@@ -546,8 +549,23 @@ function resolveAssetPathUrl(path: string): string | undefined {
     _assetUrlInFlight.add(path)
     damStore.generateAssetUrl(path).then((fresh) => {
       _assetUrlCache.set(path, fresh.url)
+      _assetUrlFailCount.delete(path)
     }).catch(() => {
-      _assetUrlCache.set(path, undefined)
+      // Don't cache the failure as a permanent result — a transient error
+      // (e.g. backend not fully warmed up right after a restart) would
+      // otherwise poison this path forever, since Map.has() returns true
+      // even for a key holding `undefined`. Leave the entry unset so the
+      // next render retries, up to a small cap so a genuinely missing
+      // asset doesn't get hammered on every re-render.
+      const attempts = (_assetUrlFailCount.get(path) ?? 0) + 1
+      _assetUrlFailCount.set(path, attempts)
+      if (attempts >= ASSET_URL_MAX_RETRIES) {
+        _assetUrlCache.set(path, undefined)
+      } else {
+        // Self-heal with a short backoff instead of waiting for the user
+        // to trigger a re-render (e.g. by paginating or reloading the page).
+        setTimeout(() => resolveAssetPathUrl(path), 1000 * attempts)
+      }
     }).finally(() => {
       _assetUrlInFlight.delete(path)
     })
