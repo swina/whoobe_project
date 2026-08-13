@@ -368,6 +368,11 @@ export async function runObjectMigration(options: RunObjectMigrationOptions): Pr
               locale,
               translationGroupId,
               attributes,
+              // Pimcore's own real o_creationDate/o_modificationDate
+              // (Unix seconds) - always carried through as-is, not
+              // stamped "now" at migration time.
+              createdAt: new Date(obj.creationDate * 1000),
+              updatedAt: new Date(obj.modificationDate * 1000),
             });
             // The first locale processed for a brand-new object mints its
             // own group id (the schema column's own defaultRandom()) -

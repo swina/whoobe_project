@@ -138,15 +138,27 @@ export function createMysqlPimcoreSourceAdapter(config: MysqlPimcoreSourceConfig
     async listObjects(classId: number): Promise<PimcoreObjectSummary[]> {
       const conn = requireConnection();
       const [rows] = await conn.query(
-        "SELECT o_id, o_classId, o_className, o_key, o_path FROM `objects` WHERE o_classId = ? AND o_type = 'object'",
+        "SELECT o_id, o_classId, o_className, o_key, o_path, o_creationDate, o_modificationDate FROM `objects` WHERE o_classId = ? AND o_type = 'object'",
         [classId]
       );
-      return (rows as { o_id: number; o_classId: number; o_className: string; o_key: string; o_path: string }[]).map((row) => ({
+      return (
+        rows as {
+          o_id: number;
+          o_classId: number;
+          o_className: string;
+          o_key: string;
+          o_path: string;
+          o_creationDate: number;
+          o_modificationDate: number;
+        }[]
+      ).map((row) => ({
         id: row.o_id,
         classId: row.o_classId,
         className: row.o_className,
         key: row.o_key,
         path: row.o_path,
+        creationDate: row.o_creationDate,
+        modificationDate: row.o_modificationDate,
       }));
     },
 
