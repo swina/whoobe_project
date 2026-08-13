@@ -28,6 +28,7 @@ import {
   TransformOptions,
   getDefaultAssetProcessorUrl
 } from '../utils/dam-api'
+import { isStaleLocalhostUrl } from '../utils/stale-localhost'
 
 const CONFIG_STORAGE_KEY = 'whoobe_custom_dam_config'
 
@@ -140,22 +141,6 @@ function toAssetItem(record: DamAssetRecordWithUrls, dataUrl?: string): AssetIte
     thumbnailUrl: record.thumbnailUrl,
     thumbnails: record.thumbnails,
     metadata: record.metadata ?? undefined
-  }
-}
-
-// "localhost" in a persisted assetProcessorUrl only ever meant "whatever
-// machine the browser happened to be on when it was saved" - if the page
-// is now loaded from a different hostname (e.g. a LAN host like
-// develop.local), that stale value can never be reachable, so discard it
-// in favor of a fresh same-host default instead of getting stuck on it.
-function isStaleLocalhostUrl(url: string): boolean {
-  try {
-    const parsedHost = new URL(url).hostname
-    const isLocalhostUrl = parsedHost === 'localhost' || parsedHost === '127.0.0.1'
-    const pageIsLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    return isLocalhostUrl && !pageIsLocalhost
-  } catch {
-    return false
   }
 }
 

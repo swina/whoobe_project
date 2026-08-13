@@ -26,15 +26,15 @@ import {
   upsertAssetRecord,
   deleteAssetRecord,
   updateAssetMetadata,
+  loadRootEnv,
 } from '@whoobe-cms/core/server';
 
-// Load apps/asset-processor/.env (if present) so bucket/endpoint/credentials
-// have a persisted, discoverable place to live instead of one-off shell vars.
-try {
-  process.loadEnvFile();
-} catch {
-  // No .env file present - fall back to whatever is already in process.env.
-}
+// Load the repo-root .env (single source of truth for all apps, see
+// docs/plans/environment/env-optimization.md) with ${VAR} expansion so
+// bucket/endpoint/credentials have a persisted, discoverable place to live
+// instead of one-off shell vars. Shell-exported vars win, which is how
+// ./dev-cms.sh --hostname overrides WHOOBE_HOSTNAME-derived values.
+loadRootEnv();
 
 const app = express();
 const port = process.env.PORT || 3002;

@@ -4,6 +4,46 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Implemented: single root .env for all configuration + WHOOBE_HOSTNAME] — 2026-08-14 (branch: env-unification)
+
+Per `docs/plans/environment/env-optimization.md` (with one enhancement: a `WHOOBE_HOSTNAME` variable drives all derived URLs instead of hardcoded values):
+
+- **`.env` (root, rewritten)**: single source of truth for the whole monorepo — `POSTGRES_*` (docker-compose), shared `DB_*`, `MIGRATION_SOURCE_ENCRYPTION_KEY` (core-api), `S3_*` (asset-processor), `VITE_*` (admin-dashboard/whoobe-one-spike), `VITE_FONT_FAMILIES`. `WHOOBE_HOSTNAME=localhost` is expanded into `DB_HOST`, `S3_ENDPOINT`, `S3_PUBLIC_BASE_URL`, `VITE_CORE_API_URL`, `VITE_ASSET_PROCESSOR_URL`. `PORT` vars dropped (code defaults `3003`/`3002`). Deleted: `apps/core-api/.env`, `apps/asset-processor/.env`, `apps/admin-dashboard/.env.local`, `apps/whoobe-one-spike/.env`, `apps/whoobe-one-spike/.env.example` (tracked) and all `:Zone.Identifier` junk files.
+- **`packages/core/src/env.ts`** (new): `loadRootEnv()` — reads the repo-root `.env` with `${VAR}` expansion, merges into `process.env` without overwriting shell-exported vars (exported wins). Exported from the Node-only `@whoobe-cms/core/server` barrel (kept out of the browser-safe `index.ts`).
+- **`apps/core-api/src/server.ts`, `apps/asset-processor/src/server.ts`, `packages/migration-tool/src/cli.ts`**: replaced `process.loadEnvFile()` with `loadRootEnv()` + updated comments.
+- **`apps/admin-dashboard/vite.config.ts`, `apps/whoobe-one-spike/vite.config.ts`**: added `envDir: '../../'` — Vite now loads the root `.env` (native dotenv-expand for `${VAR}`, process.env wins).
+- **`dev-cms.sh`**: proper arg parsing (`--build`, `--stop`, `--hostname <name>`, combinable, unknown options rejected). `--hostname` exports only the browser-facing app endpoints (`VITE_ASSET_PROCESSOR_URL`, `VITE_CORE_API_URL`); DB/S3 endpoints are external infra and stay as configured in `.env`.
+- **`README.md`**: config section rewritten for the single root `.env` + `--hostname` usage.
+- **Verified**: `loadRootEnv()` expansion + shell-override precedence (node test); `docker compose up -d` (postgres+minio up); core-api boots and `/health` 200; asset-processor `/health` ok; Vite serves expanded `VITE_*` = localhost from root `.env`, and exported `VITE_CORE_API_URL=http://develop.local:3003` wins (the `--hostname` path). Full `pnpm typecheck` green.
+
+---
+
+## [Fix: DAM 401 "Authentication required" - cross-host session cookie mismatch] — 2026-08-14 (branch: env-unification)
+
+- Reported: admin-dashboard DAM panel fails with 401 "Authentication required" on `develop.local:3002/api/v1/dam/*` while the rest of the dashboard works. Verified the entire backend path is healthy via curl with a real MFA login (login → `/auth/mfa/challenge` → cookie → `/api/v1/dam/folders` + `/assets` + `/auth/me` all 200).
+- **Root cause (browser-side, not server-side)**: the page is opened at `http://localhost:3000` while the effective API/DAM URLs pointed at `develop.local:3002/3003`. The session cookie is host-only for the host the login happened on (localhost) and `SameSite=Lax`, so cross-site requests to `develop.local:3002` arrive without it → 401; core-api on the cookie's own host (localhost:3003) keeps working. Compounded by: (a) the running Vite dev server was started before `apps/admin-dashboard/.env.local` was last edited, so it served stale env values, and (b) `damStore` persists the DAM URL in localStorage (`whoobe_custom_dam_config`) which overrides env — the persisted `develop.local:3002` survived the switch to localhost.
+- **`apps/admin-dashboard/src/utils/stale-localhost.ts`** (new): `isStaleLocalhostUrl()` extracted from `damStore` into a shared util.
+- **`apps/admin-dashboard/src/stores/authStore.ts`**: `loadInitialConfig()` now applies the same stale-localhost guard as `damStore` — a persisted `coreApiUrl` of `localhost`/`127.0.0.1` is discarded when the page is loaded from a LAN hostname, falling back to the env/window-hostname default (authStore previously had no purge, so a stale localhost auth URL would keep re-breaking DAM once the page moved to develop.local).
+- **`apps/admin-dashboard/src/stores/damStore.ts`**: now imports the shared `isStaleLocalhostUrl` instead of its local copy.
+- **User action required (one-time)**: restart the dev stack (so Vite loads the current `.env.local`) and clear the browser's localStorage keys `whoobe_custom_auth_config` + `whoobe_custom_dam_config` (or "Clear site data" for the dashboard origin), then log in again — the cookie will then be host-only for the same host all API URLs use (localhost, per the current `.env.local`).
+
+---
+
+## [Fix: core-api fails to start - @whoobe-cms/migration-tool dist missing] — 2026-08-14 (branch: env-unification)
+
+- Reported: `./dev-cms.sh` failed with `ERR_MODULE_NOT_FOUND: Cannot find package '.../apps/core-api/node_modules/@whoobe-cms/migration-tool/dist/index.js'`. Root cause: `packages/migration-tool/dist` was never built — core-api imports `@whoobe-cms/migration-tool` (resolves to `dist/index.js` via `main`), but `dev-cms.sh --build` only built `@whoobe-cms/core`.
+- **`dev-cms.sh`**: `--build` now also builds `@whoobe-cms/migration-tool` before starting the apps; header comment updated to explain both workspace deps must be built first.
+- Built `packages/migration-tool` (`tsc` → `dist/`) and verified `core-api` boots and answers `/health` with 200.
+
+---
+
+## [Plan: Single root .env for all configuration] — 2026-08-14 (branch: env-unification)
+
+- Added `docs/plans/environment/env-optimization.md` — plan to consolidate the five per-app `.env` files (root, `core-api`, `asset-processor`, `admin-dashboard/.env.local`, `whoobe-one-spike`) into one unique `.env` at the repo root.
+- Decisions locked in the plan: `PORT` dropped from env (code defaults `3003`/`3002` keep running), only existing vars consolidated (no `PIMCORE_DB_*`/`SEED_*`/`PUBLIC_SITE_URL` additions), Node loaders (`core-api`, `asset-processor`, `migration-tool`) pointed at `../../../.env` via `import.meta.url`, both Vite apps pointed at the root via `envDir: '../../'`, per-app env files deleted.
+
+---
+
 ## [Fix: Dynamic Query offset/limit ignored] — 2026-08-10 (branch: feat/08-10/data-binding-field-transformers)
 
 Reported: a Dynamic Query binding with `offset=0, limit=1` still returned all 226 records. Root-caused via direct `curl` testing against `core-api` (bypassing the editor UI entirely) to isolate frontend vs. backend: `POST /public/data-objects/query` with `{"class":"Product","limit":1,"offset":0}` returned all 6 published records instead of 1.

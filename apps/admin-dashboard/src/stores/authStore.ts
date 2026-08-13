@@ -9,6 +9,7 @@ import {
   type AuthenticatedUser,
   type MfaRequired,
 } from '../utils/auth-api'
+import { isStaleLocalhostUrl } from '../utils/stale-localhost'
 
 function isMfaRequired(result: AuthenticatedUser | MfaRequired): result is MfaRequired {
   return (result as MfaRequired).mfaRequired === true
@@ -25,7 +26,10 @@ function loadInitialConfig(): AuthConfigState {
     const stored = localStorage.getItem(CONFIG_STORAGE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
-      if (typeof parsed.coreApiUrl === 'string' && parsed.coreApiUrl) {
+      // Same stale-localhost guard as damStore: a persisted localhost URL
+      // can never be reachable (nor carry the session cookie) once the
+      // page is loaded from a LAN hostname - drop it for the default.
+      if (typeof parsed.coreApiUrl === 'string' && parsed.coreApiUrl && !isStaleLocalhostUrl(parsed.coreApiUrl)) {
         return { coreApiUrl: parsed.coreApiUrl }
       }
     }

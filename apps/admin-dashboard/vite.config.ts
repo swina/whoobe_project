@@ -5,6 +5,11 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Single source of truth for env vars: the repo-root .env (see
+  // docs/plans/environment/env-optimization.md). Vite natively expands
+  // ${VAR} references (dotenv-expand) and shell-exported vars win, which
+  // is how ./dev-cms.sh --hostname overrides WHOOBE_HOSTNAME per run.
+  envDir: '../../',
   plugins: [
     vue(),
     tailwindcss()

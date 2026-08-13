@@ -9,6 +9,7 @@ import {
   getDataObjectByPimcoreId,
   deleteDataObjectsByClassId,
   getAssetByPath,
+  loadRootEnv,
 } from '@whoobe-cms/core/server';
 import { PimcorePageConverter } from './pimcore-page-converter.js';
 import { PimcoreRawDocument, PimcoreEditableElement } from './pimcore-document-converter.js';
@@ -24,13 +25,10 @@ import './adapters/mysql-adapter.js';
 import './adapters/fixture-adapter.js';
 import './element-areabrick-mappings/index.js';
 
-// Load packages/migration-tool/.env (if present), matching the pattern
-// already used by apps/asset-processor/apps/core-api.
-try {
-  process.loadEnvFile();
-} catch {
-  // No .env file present - fall back to whatever is already in process.env.
-}
+// Load the repo-root .env (single source of truth for all apps, see
+// docs/plans/environment/env-optimization.md), matching the pattern used
+// by apps/asset-processor/apps/core-api.
+loadRootEnv();
 
 interface CliFlags {
   dryRun: boolean;
