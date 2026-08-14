@@ -132,12 +132,16 @@ function collectAttributeText(value: unknown, out: string[]): void {
 }
 
 /** data_objects.attributes -> searchable text, guided by the class field
- *  definitions (which fields exist and what they're called). */
-export function extractObjectText(object: DataObjectRecord, classDef: DataClassRecord): ExtractedSearchDoc {
+ *  definitions (which fields exist and what they're called). `extraText`
+ *  appends indexer-side enrichment (e.g. the relation display labels
+ *  resolved in indexer.ts from the fields' own relationDisplayField) to
+ *  the body before truncation. */
+export function extractObjectText(object: DataObjectRecord, classDef: DataClassRecord, extraText: string[] = []): ExtractedSearchDoc {
   const text: string[] = [];
   for (const field of classDef.fields) {
     collectAttributeText(object.attributes?.[field.name], text);
   }
+  text.push(...extraText);
   const body = truncateText(text.join(' '), MAX_BODY_CHARS);
   const title = [object.attributes?.title, object.attributes?.name, object.key]
     .find((v): v is string => typeof v === 'string' && v.trim().length > 0) || object.key;

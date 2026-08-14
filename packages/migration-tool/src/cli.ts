@@ -13,7 +13,7 @@ import {
 } from '@whoobe-cms/core/server';
 import { PimcorePageConverter } from './pimcore-page-converter.js';
 import { PimcoreRawDocument, PimcoreEditableElement } from './pimcore-document-converter.js';
-import { PimcoreObjectConverter } from './pimcore-object-converter.js';
+import { PimcoreObjectConverter, appendPimcoreSystemFields } from './pimcore-object-converter.js';
 import {
   parsePimcoreClassDefinitionFile,
   parsePimcoreClassMeta,
@@ -205,6 +205,7 @@ export async function runClassMigration(options: RunClassMigrationOptions): Prom
       if (!meta) throw new Error('Could not find the class\'s own id/name near the top of the file');
       const fields = parsePimcoreClassDefinitionFile(source);
       enrichFieldCollectionTypes(fields, source, classesDir);
+      appendPimcoreSystemFields(fields);
 
       if (dryRun) {
         console.log(`[dry-run] Class ${meta.id} (${meta.name}) - ${fields.length} field(s)`);
@@ -334,7 +335,12 @@ export async function runObjectMigration(options: RunObjectMigrationOptions): Pr
     for (const obj of toProcess) {
       try {
         const raw = await adapter.getObjectAttributes(pimcoreClassId, obj.id);
-        const converted = await PimcoreObjectConverter.convertObject(raw, dataClass.fields, {
+        // System audit fields (o_creationDate/o_modificationDate) may not
+        // be on this class's stored definition yet (it was migrated
+        // before they were always-appended) - always convert them too.
+        const fieldsWithSystem = [...dataClass.fields];
+        appendPimcoreSystemFields(fieldsWithSystem);
+        const converted = await PimcoreObjectConverter.convertObject(raw, fieldsWithSystem, {
           resolveAssetPath: adapter.resolveAssetPath,
           resolveRelation,
           resolveAssetUuid,

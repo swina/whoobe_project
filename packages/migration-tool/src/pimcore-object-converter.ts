@@ -115,6 +115,31 @@ export interface PimcoreObjectConverterOptions {
   resolveAssetUuid?: AssetUuidResolver;
 }
 
+/**
+ * Pimcore's own system audit fields - `o_creationDate`/`o_modificationDate`
+ * are always present as columns on every class's query table
+ * (`object_<classId>`, Unix seconds), whether or not the class author ever
+ * touched them. They must always be imported - field AND value - so every
+ * migrated class carries them as real `date` fields and every migrated
+ * object's attributes include the actual creation/modification timestamps.
+ * `appendPimcoreSystemFields` is called at migrate-classes time (persisted
+ * class definitions) and again at migrate-objects time (conversion field
+ * list, so re-imports of an already-migrated class pick them up even
+ * without re-running migrate-classes). Deduped by name - a class that
+ * already defines them keeps its own.
+ */
+export const PIMCORE_SYSTEM_DATE_FIELDS: ClassFieldDefinition[] = [
+  { name: 'o_creationDate', title: 'Creation Date', fieldType: 'date' },
+  { name: 'o_modificationDate', title: 'Modification Date', fieldType: 'date' },
+];
+
+export function appendPimcoreSystemFields(fields: ClassFieldDefinition[]): void {
+  const existing = new Set(fields.map((f) => f.name));
+  for (const field of PIMCORE_SYSTEM_DATE_FIELDS) {
+    if (!existing.has(field.name)) fields.push(field);
+  }
+}
+
 async function resolveObjectRelationValue(
   targetClassName: string | undefined,
   pimcoreId: string,
@@ -186,7 +211,19 @@ async function convertFieldValue(
 
     case 'manyToOneRelation': {
       const relation = raw.relations.find((r) => r.fieldname === field.name);
-      if (!relation) return null;
+      if (!relation) {
+        // No `object_relations_*` edge for this fieldname - fall back to
+        // the raw column. Real Pimcore installs store object-provider
+        // selects (a real, confirmed shape: Product's `category`/`brand`
+        // are varchar columns holding the target's raw object id, no edge
+        // row at all) as a plain id string; a `manyToOneRelation` field
+        // authored against such a column must resolve the same way the
+        // `select`-with-relationTarget case below does. Non-relation
+        // usage (asset refs, no relationTarget) has no id string to
+        // resolve and stays null.
+        if (rawValue == null || String(rawValue).trim() === '' || !field.relationTarget) return null;
+        return resolveObjectRelationValue(field.relationTarget, String(rawValue), locale, options.resolveRelation);
+      }
       if (relation.type === 'asset') {
         const path = await options.resolveAssetPath(relation.destId);
         return path ? resolveAssetValue(path, options) : null;
@@ -206,6 +243,17 @@ async function convertFieldValue(
         } else {
           values.push(await resolveObjectRelationValue(field.relationTarget, String(edge.destId), locale, options.resolveRelation));
         }
+      }
+      // Same no-edge fallback as manyToOneRelation above, for the
+      // multi-relation family: an object-provider multiselect stores a
+      // delimited id string in its own column (real, confirmed shape:
+      // Product's `tags`, e.g. ",1531,") instead of relation rows.
+      if (values.length === 0 && field.relationTarget && rawValue != null && String(rawValue).trim() !== '') {
+        const ids = String(rawValue)
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        return Promise.all(ids.map((id) => resolveObjectRelationValue(field.relationTarget, id, locale, options.resolveRelation)));
       }
       return values;
     }

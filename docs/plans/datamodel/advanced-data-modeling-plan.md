@@ -201,6 +201,8 @@ Per §3.1, Pimcore's actual field definitions are not reachable via MySQL alone 
 
 `migrate-classes` itself, once pointed at real parsed field data, is a thin CLI command mirroring `migrate-documents`' structure (`cli.ts`), populating `data_classes` rows (§4.1) via `upsertDataClassByPimcoreId`.
 
+> **System audit fields (2026-08-14):** every class's query table (`object_<classId>`) always carries `o_creationDate`/`o_modificationDate` (Unix seconds), never listed in the source class definition. `appendPimcoreSystemFields()` (in `pimcore-object-converter.ts`) appends both as `date` fields to every migrated class, and `runObjectMigration` appends them to the conversion field list so values always land in `attributes` even for classes migrated before this change. Note `upsertDataClassByPimcoreId` wholesale-replaces `fields` on conflict - a migrate-classes re-run will clobber any post-migration dashboard edits (e.g. turning `category` into a relation), so syncing the system fields into existing classes is done as a targeted jsonb append instead.
+
 ### 5.2 `migrate-objects`
 
 New `source-adapter.ts` methods (extending the interface `migrate-documents` already established):

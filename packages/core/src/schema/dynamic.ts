@@ -25,6 +25,15 @@ export interface ClassFieldDefinition {
   mandatory?: boolean;
   localized?: boolean;
   relationTarget?: string;
+  // For relation-flavored fields (relationTarget set): the name of a field
+  // on the related class whose value is shown for this relation wherever a
+  // human-readable label is needed - object-listing columns (ObjectsView)
+  // and the relation pickers on the object edit form
+  // (DataObjectFieldControl.vue). Absent = fall back to the related
+  // object's `key`. Authored from the class editor's View Layout and
+  // List Layout tabs (MasterClassTab.vue) - docs/plans/UI/editing-object-
+  // class.md.
+  relationDisplayField?: string;
   options?: string[];
   blockFields?: ClassFieldDefinition[];
   collectionFields?: ClassFieldDefinition[];
@@ -89,6 +98,12 @@ export interface ClassDefinition {
  */
 export interface ClassViewConfig {
   detailSections?: { title: string; fields: string[]; containerClass?: string }[];
+  // Default columns for the object listing (ObjectsView), in display
+  // order. `name` references a class field or one of the system list
+  // columns (key, locales, class, status, updatedAt); `title` optionally
+  // overrides the header label. Absent/empty = existing "all columns"
+  // behavior. Saved views/presets (user-side, per device) override it.
+  listColumns?: { name: string; title?: string }[];
 }
 
 const RELATION_ID_SHAPE = z.object({ id: z.string(), classId: z.string().optional() });

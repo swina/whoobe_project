@@ -76,7 +76,7 @@
       :style="fieldLayout.style"
     >
       <option value="">—</option>
-      <option v-for="opt in relationOptions" :key="opt.id" :value="opt.id">{{ opt.key }}</option>
+      <option v-for="opt in relationOptions" :key="opt.id" :value="opt.id">{{ relationOptionLabel(opt) }}</option>
     </select>
     <select
       v-else-if="field.fieldType === 'select'"
@@ -109,7 +109,7 @@
       :style="fieldLayout.style"
     >
       <option value="">—</option>
-      <option v-for="opt in relationOptions" :key="opt.id" :value="opt.id">{{ opt.key }}</option>
+      <option v-for="opt in relationOptions" :key="opt.id" :value="opt.id">{{ relationOptionLabel(opt) }}</option>
     </select>
     <AssetFieldPicker
       v-else-if="['manyToOneRelation', 'video', 'image', 'asset'].includes(field.fieldType)"
@@ -130,7 +130,7 @@
       :style="fieldLayout.style"
       size="4"
     >
-      <option v-for="opt in relationOptions" :key="opt.id" :value="opt.id">{{ opt.key }}</option>
+      <option v-for="opt in relationOptions" :key="opt.id" :value="opt.id">{{ relationOptionLabel(opt) }}</option>
     </select>
 
     <!-- link: grouped path/text/target - className lands on the group, not
@@ -271,6 +271,18 @@ const relationOptions = props.field.relationTarget ? useRelationOptions(props.fi
 
 function relationValueFromId(id: string): { id: string } | null {
   return id ? { id } : null
+}
+
+// Human-readable label for a related object - the field's own
+// `relationDisplayField` (authored in the class editor's View Layout /
+// List Layout tabs) wins, falling back to the object's `key`.
+function relationOptionLabel(opt: { id: string; key: string; attributes?: Record<string, unknown> | null }): string {
+  const displayField = props.field.relationDisplayField
+  if (displayField) {
+    const value = opt.attributes?.[displayField]
+    if (value != null && value !== '') return String(value)
+  }
+  return opt.key
 }
 
 // Pulled out of the template as named computeds - Vue's template

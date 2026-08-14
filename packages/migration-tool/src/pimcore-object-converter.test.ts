@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PimcoreObjectConverter } from './pimcore-object-converter.js';
+import { PimcoreObjectConverter, appendPimcoreSystemFields } from './pimcore-object-converter.js';
 import type { RawPimcoreObjectAttributes } from './source-adapter.js';
 import type { ClassFieldDefinition } from '@whoobe-cms/core';
 
@@ -148,6 +148,27 @@ describe('PimcoreObjectConverter (docs/plans/datamodel/advanced-data-modeling-pl
     expect(result.attributes.technicalSheet).toBeNull();
   });
 
+  it('falls back to the raw column id string when a relation-targeted manyToOneRelation has no object_relations edge (Product\'s real category/brand shape)', async () => {
+    const fields: ClassFieldDefinition[] = [{ name: 'category', title: 'Category', fieldType: 'manyToOneRelation', relationTarget: 'Category' }];
+    const raw: RawPimcoreObjectAttributes = { columns: { category: '1524' }, localizedByLocale: {}, relations: [] };
+    const [result] = await PimcoreObjectConverter.convertObject(raw, fields, { resolveAssetPath, resolveRelation });
+    expect(result.attributes.category).toEqual({ id: 'real-category-uuid' });
+  });
+
+  it('keeps a manyToOneRelation without relationTarget null when there is no edge and no usable column value', async () => {
+    const fields: ClassFieldDefinition[] = [{ name: 'technicalSheet', title: 'Technical Sheet', fieldType: 'manyToOneRelation' }];
+    const raw: RawPimcoreObjectAttributes = { columns: { technicalSheet: '42' }, localizedByLocale: {}, relations: [] };
+    const [result] = await PimcoreObjectConverter.convertObject(raw, fields, { resolveAssetPath, resolveRelation });
+    expect(result.attributes.technicalSheet).toBeNull();
+  });
+
+  it('falls back to a delimited id string for the multi-relation family with no edges (Product\'s real tags shape)', async () => {
+    const fields: ClassFieldDefinition[] = [{ name: 'tags', title: 'Tags', fieldType: 'advancedManyToManyRelation', relationTarget: 'Category' }];
+    const raw: RawPimcoreObjectAttributes = { columns: { tags: ',1524,7,' }, localizedByLocale: {}, relations: [] };
+    const [result] = await PimcoreObjectConverter.convertObject(raw, fields, { resolveAssetPath, resolveRelation });
+    expect(result.attributes.tags).toEqual([{ id: 'real-category-uuid' }, { id: null, pimcoreId: '7' }]);
+  });
+
   it('collects a multi-relation family field into an array, mixing resolved assets and unresolved objects', async () => {
     const fields: ClassFieldDefinition[] = [{ name: 'technicalSheets', title: 'Technical Sheets', fieldType: 'advancedManyToManyRelation' }];
     const raw: RawPimcoreObjectAttributes = {
@@ -285,5 +306,25 @@ describe('PimcoreObjectConverter (docs/plans/datamodel/advanced-data-modeling-pl
     const raw: RawPimcoreObjectAttributes = { columns: {}, localizedByLocale: {}, relations: [] };
     const [result] = await PimcoreObjectConverter.convertObject(raw, fields, { resolveAssetPath, resolveRelation });
     expect(result.attributes.content).toEqual([]);
+  });
+
+  it('always appends Pimcore system date fields, deduped by name', () => {
+    const fields: ClassFieldDefinition[] = [
+      { name: 'name', title: 'Name', fieldType: 'input' },
+      { name: 'o_modificationDate', title: 'Modification Date', fieldType: 'date' },
+    ];
+    appendPimcoreSystemFields(fields);
+    expect(fields.map((f) => f.name)).toEqual(['name', 'o_modificationDate', 'o_creationDate']);
+  });
+
+  it('converts the system date fields (Unix seconds) into ISO date values', async () => {
+    const fields: ClassFieldDefinition[] = [
+      { name: 'o_creationDate', title: 'Creation Date', fieldType: 'date' },
+      { name: 'o_modificationDate', title: 'Modification Date', fieldType: 'date' },
+    ];
+    const raw: RawPimcoreObjectAttributes = { columns: { o_creationDate: 1645008088, o_modificationDate: 1748444485 }, localizedByLocale: {}, relations: [] };
+    const [result] = await PimcoreObjectConverter.convertObject(raw, fields, { resolveAssetPath, resolveRelation });
+    expect(result.attributes.o_creationDate).toBe('2022-02-16T10:41:28.000Z');
+    expect(result.attributes.o_modificationDate).toBe('2025-05-28T15:01:25.000Z');
   });
 });

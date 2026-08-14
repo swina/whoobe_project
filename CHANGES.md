@@ -4,6 +4,60 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Pimcore system audit fields always imported] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+Every Pimcore class's query table (`object_<classId>`) always has `o_creationDate`/`o_modificationDate` (Unix seconds) - they must survive migration as real fields with real values, even though the source class definition never lists them.
+
+- `pimcore-object-converter.ts`: exported `PIMCORE_SYSTEM_DATE_FIELDS` + `appendPimcoreSystemFields()` (DB-free, deduped by name) - `o_creationDate`/`o_modificationDate` as `date` fields. 2 new tests (49 total pass).
+- `cli.ts` `runClassMigration`: appends the system fields to every migrated class definition. `runObjectMigration`: appends them to the conversion field list too, so re-imports of an already-migrated class get the values even without re-running migrate-classes.
+- Applied to the 14 existing classes via a targeted jsonb `fields` append (NOT a migrate-classes re-run, which would have clobbered the user's dashboard edits like Product's category/brand relation changes - `upsertDataClassByPimcoreId` wholesale-replaces fields). All 14 classes now define the two fields; re-imported Product rows (55 × 2 locales) carry both values as ISO dates (e.g. `2022-02-16T16:50:40.000Z`). Search reindexed.
+
+---
+
+## [Fix: Pimcore relations not imported for relation fields + search enrichment] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+Real finding from the Product class: raw Pimcore stores `category`/`brand` as plain varchar columns holding the target's raw object id (object-provider selects) with **no `object_relations_*` edge at all** - so a `manyToOneRelation` field authored in the new editor imported as null.
+
+- `pimcore-object-converter.ts` (migration-tool): `manyToOneRelation` now falls back to the raw column id string when no relation edge exists (same resolution path as `select`-with-`relationTarget`); the multi-relation family (`manyToManyRelation`/`manyToManyObjectRelation`/`advancedManyToManyRelation`) likewise falls back to a delimited id string when there are no edges (Product's real `tags` shape). Asset-type/no-relationTarget fields stay null. 3 new tests (47 total pass).
+- Re-ran Product import (`clear: true`) via the migration-sources route: all 55 products × 2 locales now carry real `category`/`brand` `{ id }` references (was null).
+- Search index relation enrichment (the plan's documented "reindex-time enrichment" follow-up): `indexer.ts` resolves each relation's `relationDisplayField` label from the related object and appends it to the indexed body (`extractObjectText` gained an `extraText` param, still DB-free). A product is now findable by its Category's name, e.g. "mineral waters". Full reindex done: 6 pages, 3368 objects, 14 classes, 1135 assets.
+- Dashboard search dropdown now sends `includeUnpublished: true` - drafts (e.g. freshly migrated objects) are findable in the admin surface before publish.
+- Asset previews not resolving is a dev-environment gap (assets not uploaded to the new bucket yet) - no code change.
+
+---
+
+## [Relations: choose which related-class field to display] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+- `ClassFieldDefinition` (packages/core/src/schema/dynamic.ts) gains `relationDisplayField?: string` - the name of a field on the relation target class whose value is shown for the relation wherever a label is needed; absent = fall back to the related object's `key`.
+- `MasterClassTab.vue`: relation-flavored fields (any field with `relationTarget`) get a "Show: …" picker of the related class's fields in both the View Layout tree rows (sections + Ungrouped) and the List Layout column rows. Writes `relationDisplayField` on the field definition itself (one source of truth, like `relationTarget`); "Key (default)" clears it.
+- `ObjectsView.vue`: relation columns now resolve each related object (via the shared `useRelationOptions` cache, new `getRelationOptions` peek helper) and render `relationDisplayField`'s value, joining multi-relations, falling back to the object's key.
+- `DataObjectFieldControl.vue`: the relation `<select>`s (relation select, manyToOneRelation, multi-relation family) label their options with `relationDisplayField`'s value via `relationOptionLabel()`.
+- Docs: editing-object-class.md addendum.
+
+---
+
+## [Class editor: new "List Layout" tab - default listing columns] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+- `ClassViewConfig` (packages/core/src/schema/dynamic.ts) gains `listColumns?: { name: string; title?: string }[]` - the class's default object-listing columns (name = class field or system column, title = optional header override).
+- `MasterClassTab.vue` gets a third subtab "List Layout": ordered, reorderable (↑/↓), removable (✕) column rows with an optional custom-header input, an add-picker grouped into System (Key/Path, Locales, Class, Status, Modification Date) and Fields, Clear all, and empty states. Save merges it into `viewConfig` alongside `detailSections` (still drops authored-but-empty config back to null).
+- New shared `utils/list-columns.ts` - single source of truth for `SYSTEM_LIST_COLUMNS`, the per-field-type lucide icon map (`fieldTypeIcon`, now also imported by FieldListEditor.vue), and system-column icons (`listColumnIcon`).
+- `ObjectsView.vue`: on class selection the listing falls back to the class's List Layout when no user-side default preset exists (preset > class default > all columns); View ▾ menu gains "Use class default listing" to re-apply it anytime. Stale column names (renamed/deleted fields) are filtered out against the current column options.
+- Docs: editing-object-class.md updated with the new tab + precedence rules.
+
+---
+
+## [UI: per-field-type lucide icons in the fields editor] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+`FieldListEditor.vue` now shows a type-specific lucide icon on every field-list row (Text → cursor/type, Textarea → align-justify, Rich text → file-text, Number → hash, Checkbox → square-check, Date → calendar, Email → mail, Country → globe, Select → square-chevron-down, Multi-select → list-checks, Relations → link/network, Link → link, Asset → folder-open, Image/Video, Components → component, fallback file) and in the right-pane header above the selected field's settings. All icon names verified against the installed `@lucide/vue` exports; builds green.
+
+---
+
+## [UI: Fields editor becomes a master-detail 2-column layout] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+`FieldListEditor.vue` (shared by the class Fields tab in `MasterClassTab.vue` and by `ComponentSettingsCard.vue`) switches from stacked per-field cards to a master-detail layout: left column lists the fields (click to select, hover ↑/↓/✕ for reorder/remove), right column holds every setting of the selected field (name/title/type, required/localized, select options, relation target, asset filter, allowed components, control classes, move/remove). Selection follows add/remove/move; empty states for "no fields yet" and "select a field". Same v-model contract as before (edits mutate field objects in place; add/remove/move re-emit the array), so both consumers keep working unchanged.
+
+---
+
 ## [Fix: Office viewer login redirect in dev - only use MS viewer for internet-reachable URLs] — 2026-08-14 (branch: feat/08-14/search-engine)
 
 The Microsoft Office viewer embed showed a sign-in page instead of the document: `view.officeapps.live.com` fetches the file from Microsoft's servers, and the dev asset URL (`develop.local` - a LAN hostname) is unreachable from the internet, so the viewer fell back to a login/error screen (unrelated to the user's Microsoft account/license). `officeViewerUrl` now runs the URL through an `isInternetPublicUrl()` check (localhost, `*.local`/`*.lan`/`*.internal`/`*.home`, private/loopback IPs rejected); non-public-reachable office assets get the icon + "Open in New Tab" fallback instead of a broken embed. In production, with a real public CDN URL configured, the viewer works as intended.
