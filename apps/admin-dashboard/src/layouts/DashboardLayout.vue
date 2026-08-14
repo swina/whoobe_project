@@ -289,7 +289,8 @@ import {
   Blocks,
   Globe,
   Table2,
-  Mail
+  Mail,
+  Sparkles
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
@@ -353,6 +354,7 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'mail', name: 'Outgoing mail', icon: Mail },
+  { key: 'ai', name: 'AI agent', icon: Sparkles },
 ]
 
 const settingsSubLabels: Record<SettingsSubSection, string> = {
@@ -364,6 +366,7 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   security: 'Security',
   workflows: 'Workflows',
   mail: 'Outgoing mail',
+  ai: 'AI agent',
 }
 
 function isSettingsSubSectionActive(key: SettingsSubSection): boolean {

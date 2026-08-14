@@ -114,6 +114,16 @@ import {
   upsertMailSettings,
   sendMail,
   renderMailTemplate,
+  getAiSettings,
+  upsertAiSettings,
+  listAiGenerated,
+  createAiGenerated,
+  generateAiJson,
+  buildSystemPrompt,
+  buildUserPrompt,
+  validateElementTree,
+  sanitizeGeneratedImages,
+  AiGenerationError,
   loadRootEnv,
   type AuthenticatedRequest,
 } from '@whoobe-cms/core/server';
@@ -2077,6 +2087,125 @@ app.put('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async 
   } catch (error) {
     console.error('Mail settings update error:', error);
     res.status(500).json({ error: 'Failed to update mail settings' });
+  }
+});
+
+// AI generation config (docs/plans/ai/ai-pages-snippets-generator.md) -
+// same shape as mail-settings: single global row, GET never returns the
+// stored API key (only `hasApiKey`), PUT treats a blank key as
+// "keep the existing one".
+app.get('/ai/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const settings = await getAiSettings();
+    if (!settings) {
+      res.json(null);
+      return;
+    }
+    const { apiKey, ...rest } = settings;
+    res.json({ ...rest, hasApiKey: !!apiKey });
+  } catch (error) {
+    console.error('AI settings fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch AI settings' });
+  }
+});
+
+app.put('/ai/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { provider, model, endpoint, apiKey } = req.body ?? {};
+    if (!provider || !model) {
+      res.status(400).json({ error: 'provider and model are required' });
+      return;
+    }
+    const existing = await getAiSettings();
+    const updated = await upsertAiSettings({
+      provider,
+      model,
+      endpoint: endpoint || null,
+      apiKey: apiKey ? apiKey : existing?.apiKey ?? null,
+    });
+    const { apiKey: _ak, ...rest } = updated;
+    res.json({ ...rest, hasApiKey: !!updated.apiKey });
+  } catch (error) {
+    console.error('AI settings update error:', error);
+    res.status(500).json({ error: 'Failed to update AI settings' });
+  }
+});
+
+// AI generation - POST /ai/generate (gated on OBJECTS_WRITE, same as the
+// whoobe-one page routes it feeds): builds the prompt from the stored
+// settings, calls the configured provider, structurally validates the
+// returned Element tree, and logs the whole exchange into
+// whoobe_ai_generated (successes and failures alike).
+app.post('/ai/generate', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const { kind, prompt, context } = req.body ?? {};
+  if (kind !== 'snippet' && kind !== 'page') {
+    res.status(400).json({ error: 'kind must be "snippet" or "page"' });
+    return;
+  }
+  if (typeof prompt !== 'string' || !prompt.trim()) {
+    res.status(400).json({ error: 'prompt is required' });
+    return;
+  }
+  const settings = await getAiSettings();
+  if (!settings || !settings.apiKey) {
+    res.status(400).json({ error: 'AI is not configured. Save the provider, model, and API key in Settings → AI first.' });
+    return;
+  }
+  const ctx = {
+    kind,
+    prompt: prompt.trim(),
+    selectedTag: typeof context?.selectedTag === 'string' ? context.selectedTag : null,
+    pageTitle: typeof context?.pageTitle === 'string' ? context.pageTitle : null,
+    pageCategory: typeof context?.pageCategory === 'string' ? context.pageCategory : null,
+  };
+  try {
+    const result = await generateAiJson({
+      settings: { provider: settings.provider, model: settings.model, endpoint: settings.endpoint, apiKey: settings.apiKey },
+      systemPrompt: buildSystemPrompt(),
+      userPrompt: buildUserPrompt(ctx),
+    });
+    const validationError = validateElementTree(result.json);
+    if (validationError) {
+      await createAiGenerated({
+        kind, prompt: ctx.prompt, provider: settings.provider, model: settings.model,
+        rawResponse: result.rawText, status: 'error', error: validationError, createdBy: req.user?.id ?? null,
+      });
+      res.status(422).json({ error: `Generated content rejected: ${validationError}` });
+      return;
+    }
+    // The model can't know which photo IDs really exist - replace every
+    // image URL with a guaranteed-valid placeholder (see prompts.ts's
+    // sanitizeGeneratedImages comment) so stored and rendered pages never
+    // show broken images.
+    sanitizeGeneratedImages(result.json as Record<string, any>);
+    await createAiGenerated({
+      kind, prompt: ctx.prompt, provider: settings.provider, model: settings.model,
+      payload: result.json, rawResponse: result.rawText, status: 'success', createdBy: req.user?.id ?? null,
+    });
+    res.json({ payload: result.json });
+  } catch (error: any) {
+    const message = error instanceof AiGenerationError ? error.message : (error?.message || 'AI generation failed');
+    try {
+      await createAiGenerated({
+        kind, prompt: ctx.prompt, provider: settings.provider, model: settings.model,
+        status: 'error', error: message, createdBy: req.user?.id ?? null,
+      });
+    } catch (logError) {
+      console.error('AI generation audit log write error:', logError);
+    }
+    const status = error instanceof AiGenerationError && error.status ? error.status : 500;
+    res.status(status).json({ error: message });
+  }
+});
+
+// Recent generation history for admin review.
+app.get('/ai/generated', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const records = await listAiGenerated();
+    res.json({ records });
+  } catch (error: any) {
+    console.error('List AI generated error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list AI generations' });
   }
 });
 

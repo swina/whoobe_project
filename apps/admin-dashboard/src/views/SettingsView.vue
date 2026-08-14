@@ -60,6 +60,8 @@
 
         <MailSettingsCard v-if="activeSubSection === 'mail'" />
 
+        <AiSettingsCard v-if="activeSubSection === 'ai'" />
+
         <div v-if="activeSubSection === 'general'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-6">
           <div class="space-y-4">
             <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">General Options</h3>
@@ -94,6 +96,7 @@ import ComponentSettingsCard from '../components/objects/ComponentSettingsCard.v
 import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue'
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'
 import MailSettingsCard from '../components/settings/MailSettingsCard.vue'
+import AiSettingsCard from '../components/settings/AiSettingsCard.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
 import {
   Sliders,
@@ -106,6 +109,7 @@ import {
   Upload,
   FileJson,
   Mail,
+  Sparkles,
 } from '@lucide/vue'
 
 const tabsStore = useTabsStore()
@@ -119,6 +123,7 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'mail', name: 'Mail', icon: Mail },
+  { key: 'ai', name: 'AI', icon: Sparkles },
 ]
 
 type ClassesSubTab = 'classes' | 'pimcore' | 'file'
@@ -161,6 +166,7 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   security: { title: 'Security', description: 'Two-factor authentication and account security.' },
   workflows: { title: 'Workflows', description: 'Author publish/review workflows for Data Object classes.' },
   mail: { title: 'Outgoing Mail', description: 'SMTP config used for Form notification emails.' },
+  ai: { title: 'AI Agent', description: 'LLM provider used by the AI page and snippet generator in the Whoobe One composer.' },
 }
 
 const sectionTitle = computed(() => sectionTitles[activeSubSection.value].title)

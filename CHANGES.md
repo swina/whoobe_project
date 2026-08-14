@@ -4,6 +4,112 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Fix: AI-generated pages invisible on the canvas - normalize type/element + corrected prompt contract] — 2026-08-14 (branch: dev/08-14/various-features)
+
+Root cause of "the AI page has a payload but nothing shows on the canvas": generated trees came back with `type` = builder names ("Flexbox", "Heading", ...) and no `element` field at all, but the editor's render dispatch is strict - `BlockContainer.vue` recurses only on `type === 'container'` and `BlockElement.vue` renders `:is="el.element"` (undefined = Vue renders nothing). Every generated node rendered as an invisible leaf, so both the fresh "AI Page" flow and the AI history re-import silently produced an empty-looking canvas.
+
+- `apps/whoobe-one-spike/src/helpers.ts`: new `normalizeGeneratedTree()` - derives `element` from `tag` (tag→HTML-tag map) and coerces `type` to `'container'`/`'element'` from children presence, recursively. Applied at both insertion points, so old stored payloads and any model that ignores the contract still render.
+- `apps/whoobe-one-spike/src/scripts/editor-actions.ts` (`insertGeneratedSnippet()`) and `src/components/BlockEditor.vue` (`onAiPageGenerated()`): both normalize after `cloneWithFreshIds()`.
+- `packages/core/src/ai/prompts.ts`: `ELEMENT_CONTRACT` corrected - `type` is now documented as `"container"`/`"element"` (builder names explicitly banned), `element` (concrete HTML tag) is required on every node, and the page root is `type: "container", element: "div"`. New generations come out renderable without normalization.
+- Verified: core + spike typechecks and spike build green; the stored 41-node payload (laguna-s-2.1-free page) normalizes to 13 containers / 28 leaves with no missing `element` and no invalid `type`.
+
+## [Fix: AI-generated images were broken - models invent non-existent Unsplash photo URLs] — 2026-08-14 (branch: dev/08-14/various-features)
+
+The prompt asked the model for "a plausible placeholder image URL from images.unsplash.com" - models hallucinate photo IDs that don't exist, so generated `<img>` nodes pointed at 404s.
+
+- `packages/core/src/ai/prompts.ts`: `ELEMENT_CONTRACT` now mandates the `https://picsum.photos/seed/<node-id>/1200/800` pattern (picsum always serves a real photo, deterministic per seed) and explicitly bans invented Unsplash/real photo URLs. New `sanitizeGeneratedImages()` walks the tree and swaps every image URL for the seeded placeholder - belt and braces, applied regardless of what the model outputs.
+- `apps/core-api/src/server.ts`: `/ai/generate` calls `sanitizeGeneratedImages()` after `validateElementTree()` and before persisting, so stored payloads never contain broken image URLs.
+- `apps/whoobe-one-spike/src/helpers.ts`: `normalizeGeneratedTree()` applies the same URL swap, so already-stored records (and any payload a model gets wrong) render with valid images on import.
+- Verified: core + core-api + spike typechecks and spike build green; `sanitizeGeneratedImages()` round-trip tested against a synthetic tree with nested img nodes. Note: the currently stored success record (laguna-s-2.1-free) contains no img nodes - the user's broken-image generation was never persisted (its record likely failed validation or was discarded); regeneration with the updated contract will produce valid seeded URLs.
+
+## [Fix: transient 503 gateway errors from Zen free models now retry] — 2026-08-14 (branch: dev/08-14/various-features)
+
+Zen's free-model gateway intermittently returns 503 "Upstream request failed: Endpoint is unavailable" (observed: successes at 09:15/09:19 UTC, 503s at 09:21/09:22 with laguna-s-2.1-free). Previously only 429s were retried, so these transient flaps failed immediately.
+
+- `packages/core/src/ai/providers.ts`: the retry loop in `generateAiJson()` now treats any 502/503/504 as transient and retries (up to 3 attempts total, `Retry-After`-aware backoff), alongside 429s. If the 5xx persists after all attempts, `mapProviderError()` returns a clear message ("AI provider endpoint is temporarily unavailable (gateway error). Try again in a moment, or switch provider/model in Settings → AI.") instead of the raw upstream text.
+- Verified: core typecheck/build green; mock-server test - two 503s with `Retry-After: 1` then success → exactly 3 calls, ~2s elapsed, parsed result returned.
+
+## [Fix: invalid nested <button> in DataObjectPicker.vue] — 2026-08-14 (branch: dev/08-14/various-features)
+
+Vite warning: `<button>` cannot be child of `<button>` - the per-class card in the data-object picker was a `<button>` wrapping the inner "Generate template" `<button>`.
+
+- `apps/whoobe-one-spike/src/components/DataObjectPicker.vue`: inner action changed from `<button>` to a `<span role="button">` with `tabindex="0"`, `@keydown.enter` handler and click-stop, keeping the same visual/behaviour while producing valid HTML.
+- Verified: spike typecheck + build green.
+
+## [AI history panel: preview modal + "import into current element" buttons] — 2026-08-14 (branch: dev/08-14/various-features)
+
+- `apps/whoobe-one-spike/src/components/AiGeneratedPanel.vue`: each record row now has Preview (Eye) and Import (Download) buttons (click-stop so the row's own import still fires only on the row). Emits `preview` in addition to `import`.
+- New `apps/whoobe-one-spike/src/components/AiGeneratedPreviewModal.vue`: read-only preview of a stored payload rendered through the same `BlockContainerPreview` renderer DocumentPreview uses, with a normalized deep clone (legacy payloads with builder-name types/missing element/invented image URLs preview correctly); footer has an "Import into current element" button.
+- `apps/whoobe-one-spike/src/components/BlockEditor.vue`: `onAiGeneratedPreview()` opens the modal; `onAiGeneratedImportIntoCurrent()` always inserts the tree into the current selection (into it if a real container, after it otherwise, page-root fallback) regardless of stored kind - unlike the row click, which keeps the kind-aware page→replace-document behavior.
+- `apps/whoobe-one-spike/src/scripts/editor-actions.ts`: `insertGeneratedSnippet()` now actually falls back to appending at the document root when nothing is selected (the doc comment already promised it; the code bailed early) - needed by the new import-into-current flow.
+- Verified: spike typecheck + build green.
+
+---
+
+## [Feat: AI generations history panel - re-import lost generated pages/snippets] — 2026-08-14 (branch: dev/08-14/various-features)
+
+- `apps/whoobe-one-spike/src/ai-api.ts`: new `listAiGenerations()` (GET `/ai/generated`) returning only records with a validated `payload` (failed/rejected calls are noise for the editor).
+- `apps/whoobe-one-spike/src/components/AiGeneratedPanel.vue` (new): editor sidebar tab listing recent usable generations - kind badge (page/snippet), model, date, truncated prompt - with a refresh button; clicking one emits `import`.
+- `apps/whoobe-one-spike/src/components/BlockEditor.vue`: new "AI generations" tab in the right sidebar (Sparkles icon); `onAiGeneratedImport()` re-imports a record: `kind='page'` replaces the document via the existing `onAiPageGenerated()` flow, `kind='snippet'` inserts at the current selection. Recovery path for generations whose payload was persisted server-side but never made it into the canvas (the reported case: one success with `laguna-s-2.1-free` sits in `whoobe_ai_generated` with no matching canvas insertion).
+- `apps/whoobe-one-spike/src/scripts/editor-actions.ts`: snippet insertion logic extracted from FloatingToolbar into shared `insertGeneratedSnippet(editor, payload)` (same placement rules as paste) - FloatingToolbar's "AI generate snippet" now uses it too, so both entry points behave identically.
+- Verified: whoobe-one-spike typecheck + production build green; dev-DB spot check confirms the panel's data source (`kind='page'`, `status='success'`, payload present).
+
+---
+
+## [Feat: AI modal shows provider/model; raw model response always logged] — 2026-08-14 (branch: dev/08-14/various-features)
+
+- `packages/core/src/db/ai-generated-schema.ts` + `ai-generated-records.ts`: `whoobe_ai_generated.raw_response` changed from `jsonb` to `text` (migration `drizzle/0020_stiff_the_spike.sql`, applied to both the local container and `develop.local`). The raw model reply is usually fence-wrapped markdown that is not valid JSON - the old jsonb column rejected it and would 500 the request right after a successful generation (or silently swallow the log for bare-JSON outputs). The full response is now always persisted for success and validation-failure outcomes. `AiGeneratedRecord.rawResponse` typed `string | null`.
+- `apps/whoobe-one-spike/src/ai-api.ts`: new `fetchAiInfo()` (GET `/ai/settings`, never exposes the key; returns null when unconfigured/unauthenticated).
+- `apps/whoobe-one-spike/src/components/AiGenerateModal.vue`: shows the current AI agent as a badge under the description - provider (friendly label map for openai/anthropic/google/zen/openrouter/custom) and model, fetched on mount; when no API key is configured it shows an amber "Not configured yet - save provider, model and API key in Settings → AI" hint instead.
+- Verified: core + whoobe-one-spike typechecks and spike production build green.
+
+---
+
+## [Feat: OpenRouter as AI provider option] — 2026-08-14 (branch: dev/08-14/various-features)
+
+- `packages/core/src/ai/providers.ts`: new `'openrouter'` provider - the OpenRouter gateway (https://openrouter.ai/api/v1, OpenAI-compatible) served through the existing chat.completions path (`OPENROUTER_DEFAULT_ENDPOINT`, suggested model `OPENROUTER_DEFAULT_MODEL = deepseek/deepseek-chat`); stored `endpoint` still overrides the default; "no API key" error names the provider. `AiProviderName` is now `openai | anthropic | google | zen | openrouter | custom`.
+- `packages/core/src/db/ai-settings-schema.ts`: provider comment updated with `openrouter`.
+- `apps/admin-dashboard/src/components/settings/AiSettingsCard.vue`: "OpenRouter (openrouter.ai)" added to the Provider dropdown; model prefill logic generalized to a `DEFAULT_MODELS` map (zen → deepseek-v4-flash-free, openrouter → deepseek/deepseek-chat) applied when the field still holds the initial default; endpoint placeholder/help text extended with the OpenRouter URL.
+- Verified: core rebuild + typechecks green (`@whoobe-cms/core`, `admin-dashboard`); dispatch smoke test via built dist (missing key → "AI provider (openrouter)" message).
+
+---
+
+## [Fix: detect free-tier quota exhaustion (FreeUsageLimitError) on AI 429s] — 2026-08-14 (branch: dev/08-14/various-features)
+
+- `packages/core/src/ai/providers.ts`: OpenCode Zen returns `FreeUsageLimitError` for the `*-free` models when the account's free quota is spent (not a transient limit). `isFreeQuotaError()` now detects it (OpenAI SDK v7 surfaces the parsed body on `.error`, older SDKs on `.body.error` - both checked) and `generateAiJson()` skips the retry loop for it (was 3 wasted attempts), while `mapProviderError()` returns an actionable message: wait for the quota window or switch to a paid model (e.g. `deepseek-v4-flash`). Plain 429s keep the Retry-After-aware retry behavior.
+- Diagnosed live: the stored Zen config (`zen` / `deepseek-v4-flash-free`) returns `429 {"error":{"type":"FreeUsageLimitError",...}}` from `https://opencode.ai/zen/v1/chat/completions` - the free model's account quota was exhausted; a new API key does not reset it (it is an account-level usage cap, not a per-key limit).
+- Verified with mock servers against the built dist: FreeUsageLimitError → 1 call, no retries, new message; plain persistent 429 → 3 calls + Retry-After message (unchanged). Typechecks green.
+
+---
+
+## [Fix: AI 429 rate-limit handling - retry with backoff + Retry-After] — 2026-08-14 (branch: dev/08-14/various-features)
+
+- `packages/core/src/ai/providers.ts`: `generateAiJson()` now retries HTTP 429s up to 2 extra times (3 attempts total), sleeping per the provider's `Retry-After` header when present, else backoff (2s/4s); SDK-internal retries are disabled (`maxRetries: 0` on the OpenAI and Anthropic clients) so the loop is the single retry mechanism (was up to 9 hammering calls: 3 SDK x 3 loop). The 429 error message now reports the actual wait time ("Wait ~Ns per the provider's Retry-After header"). Error mapping extracted to `mapProviderError()` + `retryAfterMs()` helpers.
+- Verified with a local mock HTTP server against the built dist: transient 429 (2x with `Retry-After: 1`) → recovers on the 3rd attempt (~2s, JSON parsed); persistent 429 → exactly 3 calls (~2s) and the Retry-After-aware message. Typechecks green.
+
+---
+
+## [Feat: OpenCode Zen as AI provider option] — 2026-08-14 (branch: dev/08-14/various-features)
+
+- `packages/core/src/ai/providers.ts`: new `'zen'` provider - the OpenCode Zen gateway (https://opencode.ai/zen/v1) served through the existing OpenAI-compatible path (`ZEN_DEFAULT_ENDPOINT`, suggested model `ZEN_DEFAULT_MODEL = deepseek-v4-flash-free`); the stored `endpoint` still overrides the default when set, and the "no API key" error now names the provider correctly (`generateOpenAi` takes a provider label).
+- `packages/core/src/db/ai-settings-schema.ts`: provider comment updated (`openai | anthropic | google | zen | custom`).
+- `apps/admin-dashboard/src/components/settings/AiSettingsCard.vue`: "OpenCode Zen (opencode.ai)" added to the Provider dropdown; picking it prefills the model with `deepseek-v4-flash-free` when the field still holds the initial default; endpoint placeholder/help text now covers blank-for-default + the Zen URL.
+- Verified: core rebuild + typechecks green (`@whoobe-cms/core`, `admin-dashboard`); dispatch smoke test via built dist (unreachable endpoint → connection error, missing key → "AI provider (zen)" message).
+
+---
+
+## [Feat: AI pages & snippets generator] — 2026-08-14 (branch: dev/08-14/various-features)
+
+Per `docs/plans/ai/ai-pages-snippets-generator.md` (rewritten into a full plan in this change): Settings (AI agent/model, endpoint, API key) + whoobe-one-spike "AI Generate Snippet/Page" + results persisted in the new `whoobe_ai_generated` table.
+
+- **`packages/core`**: new `ai_settings` (single-row, mirrors `mail_settings`) and `whoobe_ai_generated` (audit log: kind/prompt/provider/model/payload jsonb/rawResponse jsonb/status/error/createdBy) Drizzle schemas + records (`db/ai-settings-schema.ts`, `ai-settings-records.ts`, `ai-generated-schema.ts`, `ai-generated-records.ts`), registered in `drizzle.config.ts` (migration `drizzle/0019_overrated_ken_ellis.sql`) and exported from `src/server.ts`. New LLM layer: `ai/providers.ts` (`generateAiJson()` dispatching to openai / @anthropic-ai/sdk / @google/generative-ai SDKs — "custom" = OpenAI SDK at a user-supplied base URL — non-streaming, `parseJsonText()` fence-stripping, `AiGenerationError` with mapped 401/429/404 messages; new deps `openai`, `@anthropic-ai/sdk`, `@google/generative-ai`) and `ai/prompts.ts` (Element-tree JSON contract system prompt, snippet/page user prompts, shallow `validateElementTree()` with unique-id/tag/node-count checks).
+- **`apps/core-api/src/server.ts`**: `GET/PUT /ai/settings` (SETTINGS_MANAGE, key never returned — only `hasApiKey`; blank key on PUT keeps the existing one), `POST /ai/generate` (OBJECTS_WRITE; validates kind/prompt, 400 when unconfigured, 422 on validation rejection, logs every success *and* failure into `whoobe_ai_generated` with `createdBy`), `GET /ai/generated` (OBJECTS_READ, recent 50).
+- **`apps/admin-dashboard`**: new Settings → AI sub-section (`'ai'` in `tabsStore.ts` `SettingsSubSection`, sidebar entry in `DashboardLayout.vue` with Sparkles icon, sub-tab + title in `SettingsView.vue`); new `components/settings/AiSettingsCard.vue` (provider/model/endpoint/API-key form modeled on MailSettingsCard) + `utils/ai-settings-api.ts`.
+- **`apps/whoobe-one-spike`**: new `ai-api.ts` (`generateAi()`, `AiApiError` with status) and `components/AiGenerateModal.vue` (prompt modal, spinner, 401 → "log into the admin dashboard" hint). **AI Generate Snippet**: Wand2 button in `FloatingToolbar.vue` beside "Save as snippet", inserting the generated tree (fresh ids via `cloneWithFreshIds()`, `clean()`, `applyImagePlaceholder()`) with the same placement rules as paste. **AI Generate Page**: "AI Page" top-bar button in `BlockEditor.vue` (visible when embedded too), replacing the document via the `onNew()` pattern (root coerced to tag `document`, keeps the open page's id/name/category).
+- **Verified**: `db:generate` + `db:migrate` applied on a fresh Postgres; all four apps typecheck; dashboard + spike production builds pass; authenticated curl round-trip (GET null → PUT persists without echoing the key → blank-key PUT keeps it → generate with bad key returns the mapped 401 message AND writes an error audit row with `createdBy` → bad `kind` 400 → `GET /ai/generated` lists the row); pure-logic spot checks for prompts/parse/validation.
+
+---
+
 ## [Feat: Pages list view - column order, sortable headers, multi-column filters, batch selection] — 2026-08-14 (branch: dev/08-14/various-features)
 
 - `apps/admin-dashboard/src/views/PagesView.vue`: pages table now supports configurable column order and visibility via a "View" dropdown (reorder with up/down arrows, toggle checkboxes, matching the Objects view), click-to-sort on every column header (ASC/DESC toggle with ▲/▼ indicator, default sort by slug), and a multi-column filter modal (`Filter` button, field/operator/value rows with AND semantics, incl. boolean `published` and date `updatedAt` inputs). Added a checkbox column with header select-all plus a bottom batch-action bar (same options as `ObjectsView.vue`: Publish, Unpublish, Delete, Clear) operating on the selected rows.

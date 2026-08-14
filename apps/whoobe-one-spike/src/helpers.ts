@@ -185,6 +185,45 @@ export function applyImagePlaceholder(element: WhoobeElement): void {
   }
 }
 
+// AI-generated trees come back with `type` = the *builder* name
+// ("Flexbox", "Heading", ...) and no `element` field at all - the prompt
+// contract used to be silent on both (packages/core/src/ai/prompts.ts,
+// since fixed to teach the model the real shape). The editor's render
+// dispatch, however, is strict: BlockContainer.vue recurses only on
+// `type === 'container'`, and BlockElement.vue renders the leaf's concrete
+// HTML tag from `element` (`:is="el.element"` - undefined means Vue
+// renders *nothing*). A generated page therefore landed in the document
+// but was invisible on the canvas (the reported "AI page didn't show" bug;
+// recoverable via the AI generations sidebar panel). This normalizer
+// derives both fields from what the model does provide (tag + children),
+// so old stored payloads and any model that ignores the contract still
+// render. Recursive, mutates in place.
+const TAG_TO_ELEMENT: Record<string, string> = {
+  document: 'div', div: 'div', section: 'section', header: 'header', footer: 'footer',
+  nav: 'nav', main: 'main', aside: 'aside', h1: 'h1', h2: 'h2', h3: 'h3', h4: 'h4',
+  h5: 'h5', h6: 'h6', p: 'p', span: 'span', img: 'img', a: 'a', button: 'button',
+  input: 'input', textarea: 'textarea', select: 'select', blockquote: 'blockquote',
+  pre: 'pre', ul: 'ul', ol: 'ol', li: 'li', video: 'video', form: 'form', hr: 'hr',
+}
+export function normalizeGeneratedTree(node: any): any {
+  if (!node || typeof node !== 'object') return node
+  if (!node.element) node.element = TAG_TO_ELEMENT[node.tag] ?? 'div'
+  if (node.type !== 'container' && node.type !== 'element') {
+    node.type = Array.isArray(node.blocks) && node.blocks.length ? 'container' : 'element'
+  }
+  // Same guarantee as the server's sanitizeGeneratedImages(): models invent
+  // unsplash.com URLs whose photo IDs don't exist - swap any image URL for
+  // a deterministic, always-valid placeholder so imported pages (incl. old
+  // stored records) never render broken <img>s.
+  if (node.element === 'img' && node.image?.url) {
+    node.image.url = `https://picsum.photos/seed/${node.id}/1200/800`
+  }
+  if (Array.isArray(node.blocks)) {
+    for (const child of node.blocks) normalizeGeneratedTree(child)
+  }
+  return node
+}
+
 // Attribute names that already have their own dedicated, authoritative
 // binding on the rendered <component> in every canvas/preview renderer -
 // `id`/`data-id` specifically are load-bearing for the canvas (selection,

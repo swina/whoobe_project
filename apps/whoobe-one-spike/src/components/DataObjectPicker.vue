@@ -31,14 +31,16 @@
             <span class="text-sm font-medium text-gray-700">{{ cls.label || cls.name }}</span>
             <span class="text-[10px] text-gray-400 font-mono">{{ cls.name }}</span>
             <span class="text-[10px] text-gray-400">{{ cls.fields.length }} fields</span>
-            <button
-              type="button"
+            <span
               title="Generate template from this class"
-              class="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-500 hover:bg-indigo-100 border border-indigo-200"
+              class="absolute top-1 right-1 cursor-pointer text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-500 hover:bg-indigo-100 border border-indigo-200"
+              role="button"
               @click.stop="emit('generateTemplate', cls.id)"
+              @keydown.enter.stop.prevent="emit('generateTemplate', cls.id)"
+              tabindex="0"
             >
               <Layers class="w-3 h-3 inline-block" /> Template
-            </button>
+            </span>
           </button>
         </div>
       </div>
