@@ -43,7 +43,23 @@
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Locale</label>
-            <input v-model="form.locale" type="text" placeholder="e.g. en, it, de" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <select
+              v-if="selectedWebsite && selectedWebsite.supportedLocales.length > 0"
+              v-model="form.locale"
+              class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+            >
+              <option v-for="l in localeOptions" :key="l" :value="l">{{ l }}</option>
+            </select>
+            <input
+              v-else
+              v-model="form.locale"
+              type="text"
+              placeholder="e.g. en, it, de"
+              class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+            />
+            <p v-if="selectedWebsite && selectedWebsite.supportedLocales.length > 0 && !selectedWebsite.supportedLocales.includes(form.locale)" class="text-[10px] text-amber-400 mt-0.5">
+              "{{ form.locale }}" isn't in {{ selectedWebsite.name }}'s supported locales.
+            </p>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Website</label>
@@ -58,7 +74,10 @@
       <template v-if="activeTab === 'seo'">
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Meta Title</label>
-          <input v-model="form.seo.metaTitle" type="text" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+          <input v-model="form.seo.metaTitle" type="text" :placeholder="`Uses page title: ${form.title}`" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+          <p v-if="!form.seo.metaTitle?.trim()" class="text-[10px] text-slate-500 mt-0.5">
+            Empty - will use the page title: <span class="text-indigo-400">{{ form.title }}</span>
+          </p>
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Meta Description</label>
@@ -173,7 +192,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { usePagesStore } from '../../stores/pagesStore'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import type { WhoobeOnePage, PageSeo, PageSitemapSettings, PageSearchSettings } from '../../utils/pages-api'
@@ -232,6 +251,34 @@ const form = reactive({
 
 const structuredDataText = ref('')
 
+// Locale is a selection of the selected website's supported languages
+// (falling back to a free-text input when the page has no website, i.e.
+// single-site mode). The current page locale is always kept selectable
+// even if it isn't in the website's list, so opening a legacy page never
+// silently drops its value.
+const selectedWebsite = computed(() => websites.value.find((w) => w.id === form.websiteId) ?? null)
+const localeOptions = computed<string[]>(() => {
+  const list = selectedWebsite.value ? [...selectedWebsite.value.supportedLocales] : []
+  if (form.locale && !list.includes(form.locale)) list.push(form.locale)
+  return list
+})
+
+// Only adopt the (new) website's default locale when the admin actually
+// switches websites - never on initial form population, so opening a legacy
+// page whose locale isn't in the list keeps its real value (the amber
+// warning + localeOptions above handle that case instead).
+let hydrated = false
+watch(
+  () => form.websiteId,
+  (websiteId) => {
+    if (!hydrated) return
+    const website = websites.value.find((w) => w.id === websiteId)
+    if (website && website.supportedLocales.length > 0 && !website.supportedLocales.includes(form.locale)) {
+      form.locale = website.defaultLocale
+    }
+  }
+)
+
 onMounted(async () => {
   try {
     const [pageData, websiteList] = await Promise.all([
@@ -252,6 +299,7 @@ onMounted(async () => {
       form.sitemap = pageData.sitemap ? { ...emptySitemap(), ...pageData.sitemap } : emptySitemap()
       form.search = pageData.search ? { ...emptySearch(), ...pageData.search, keywords: pageData.search.keywords ?? [] } : emptySearch()
       structuredDataText.value = form.seo.structuredData ? JSON.stringify(form.seo.structuredData, null, 2) : ''
+      hydrated = true
     }
   } catch (e) {
     error.value = 'Failed to load page data'
@@ -304,7 +352,7 @@ async function save() {
       locale: form.locale || undefined,
       websiteId: form.websiteId || undefined,
       seo: {
-        metaTitle: form.seo.metaTitle || null,
+        metaTitle: form.seo.metaTitle?.trim() || form.title.trim() || null,
         metaDescription: form.seo.metaDescription || null,
         canonicalUrl: form.seo.canonicalUrl || null,
         robots: form.seo.robots ?? { index: true, follow: true },

@@ -4,6 +4,14 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Pages settings: locale selection, SEO title fallback, linked-page info] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+- `PageSettingsTab.vue` General: the page's Locale is now a `<select>` of the selected website's `supportedLocales` (free-text input only in single-site mode / when the website has no languages). Switching websites adopts the new site's default locale; a legacy page whose locale isn't in the list keeps its real value (kept selectable + amber warning). Only user-initiated website switches reset the locale - never the initial form load.
+- `PageSettingsTab.vue` SEO: when Meta Title is empty it now falls back to the page title - the input shows the page title as placeholder plus an "Empty - will use the page title: …" hint, and save persists `metaTitle: seo.metaTitle || form.title`.
+- `MenuItemRow.vue` (Website Paths): a path linked to a page now shows the page's title + locale + last-modified date (e.g. `About Us · en · 8/14/2026`), not just the title.
+
+---
+
 ## [Fix: object-list asset previews missing on first render] — 2026-08-14 (branch: feat/08-14/search-engine)
 
 ObjectsView's thumbnail `<img>` rendered with `:src="recordAssetUrl(...) || ''"` - on the first render the asset URL isn't resolved yet (async DAM lookup), so the empty `src` fired a browser `error` event and the `@error` handler permanently set `style.display='none'` on that element. When the URL later arrived, Vue updated `src` but the inline style persisted, so the preview stayed hidden until page navigation recreated the rows.
