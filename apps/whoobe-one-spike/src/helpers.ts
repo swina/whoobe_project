@@ -53,10 +53,14 @@ export function friendlyElementName(el: any): string {
   if (el.level) return 'Heading'
 
   switch (el.tag) {
+    case 'document':
+      return 'Document'
     case 'grid':
       return 'Grid'
     case 'flex':
       return el.type === 'slider' ? 'Slider' : 'Flexbox'
+    case 'slider':
+      return 'Slider'
     case 'youtube':
       return 'Youtube'
     case 'vimeo':
@@ -108,7 +112,15 @@ export function friendlyElementName(el: any): string {
     case 'video':
       return 'Video'
     case 'div':
-      return 'Inline Text'
+      // Containers (Flexbox/Grid/plain div wrappers, the document root)
+      // render as <div> but are NOT the InlineText builder - that leaf is
+      // the only element that ever deserves the "Inline Text" label, and
+      // only when it's still in its editable-text default state. Before
+      // this distinction the tree (and floating toolbar) named every
+      // container "Inline Text".
+      if (el.type === 'container') return 'Container'
+      if (el.editable) return 'Inline Text'
+      return 'Div'
   }
 
   return el.semantic || el.element || 'Element'

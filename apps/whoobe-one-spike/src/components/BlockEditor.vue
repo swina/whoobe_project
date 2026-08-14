@@ -527,7 +527,11 @@ onMounted(() => {
       if (!el || !target) return false
       // The palette is a fixed menu, never a real drop target.
       if (target.classList.contains('dragula-source-container')) return false
-      if (target === source) return false
+      // Same-container drops are allowed: the drop handler resolves the
+      // exact DOM drop index, so this is how in-place sibling reordering
+      // works (both on the canvas and in the document tree). Rejecting
+      // target === source here - as it used to - silently disabled every
+      // same-parent reorder attempt.
       const type = el.getAttribute('data-type')
       return type === 'element' || type === 'template'
     },
@@ -539,6 +543,19 @@ onMounted(() => {
 
   drake.on('drop', (el, target) => {
     if (!editor.document || !target) return
+
+    // Where in the target's children did the drop actually land? Count
+    // only real node rows (data-type="element") - BlockContainer's own
+    // absolute tag badges are also DOM children of the container element
+    // but must never count as positions. The index is read BEFORE the
+    // undo below (after removing the dragged element from the DOM the
+    // lookup would be pointless), and it's what makes precise-position
+    // drops work: the document tree's rows and the canvas's nodes both
+    // land at the exact spot the mouse left them, including when the
+    // source and target are the same container (sibling reordering).
+    const siblings = Array.from(target.children).filter((c) => c.getAttribute('data-type') === 'element')
+    const dropIndex = siblings.indexOf(el as HTMLElement)
+
     // Undo dragula's own DOM move/copy first - see file header comment.
     // Vue's reactive re-render (triggered by the state mutation below) is
     // what actually determines the element's final DOM position.
@@ -548,6 +565,10 @@ onMounted(() => {
     if (!targetId) return
     const targetNode = findNodeById(editor.document, targetId)
     if (!targetNode) return
+
+    const insertAt = (node: WhoobeElement) => {
+      targetNode.blocks.splice(dropIndex >= 0 ? Math.min(dropIndex, targetNode.blocks.length) : targetNode.blocks.length, 0, node)
+    }
 
     const snippetId = el.getAttribute('data-snippet-id')
     if (snippetId) {
@@ -559,7 +580,7 @@ onMounted(() => {
       const snippet = snippetsStore.items.find((s) => s.id === snippetId)
       if (!snippet) return
       const created = cloneWithFreshIds(snippet.node) as WhoobeElement
-      targetNode.blocks.push(created)
+      insertAt(created)
       editor.setCurrent(created)
       flash(`Added "${snippet.name}"`)
       return
@@ -568,10 +589,7 @@ onMounted(() => {
     const templateName = el.getAttribute('data-template')
     if (templateName) {
       // A palette drag: construct a brand new node rather than moving an
-      // existing one. Position isn't drop-precise (always appended) - a
-      // reasonable Phase 0 simplification, not attempted here since the
-      // question this spike exists to answer is "can drag-to-add work at
-      // all", not "is the exact drop index pixel-perfect".
+      // existing one.
       //
       // A real bug, fixed here: createElement()'s second argument isn't a
       // generic "options" object for every builder - ElementsClass.js's
@@ -596,7 +614,7 @@ onMounted(() => {
       if (!created) return
       created.css.css = clean(created.css.css)
       applyImagePlaceholder(created)
-      targetNode.blocks.push(created)
+      insertAt(created)
       editor.setCurrent(created)
       flash(`Added ${templateName}`)
       return
@@ -604,12 +622,24 @@ onMounted(() => {
 
     const id = el.getAttribute('data-id')
     if (!id) return
-    const node = removeNodeById(editor.document, id)
-    if (node) {
-      targetNode.blocks.push(node)
-      editorBus.emit('editorMessage', 'Block moved')
-      flash('Moved')
+    const node = findNodeById(editor.document, id)
+    if (!node) return
+    // Dropping a container into itself or one of its own descendants
+    // detaches that whole subtree from the document (the target lives
+    // inside the moved node) and it silently disappears from canvas and
+    // tree alike - the "element vanished after a drag" bug. The tree made
+    // this easy to hit (rows are small, a container's own rows and its
+    // children's rows sit right next to each other), so it's guarded here
+    // for both surfaces.
+    if (targetId === id || findNodeById(node, targetId)) {
+      flash('Cannot drop an element into itself')
+      return
     }
+    const removed = removeNodeById(editor.document, id)
+    if (!removed) return // the document root itself (no parent) - never re-parent it
+    insertAt(removed)
+    editorBus.emit('editorMessage', 'Block moved')
+    flash('Moved')
   })
 })
 

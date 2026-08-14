@@ -4,7 +4,7 @@
     data-type="element"
     :data-id="node.id"
     class="w-full flex items-center gap-1 py-1 pr-2 text-left truncate cursor-grab"
-    :class="isSelected ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'"
+    :class="isSelected ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-200'"
     :style="{ paddingLeft: `${0.5 + depth * 0.75}rem` }"
     @click.stop="select"
   >
@@ -14,6 +14,13 @@
     </span>
     <span v-else class="w-3 shrink-0"></span>
     <span class="capitalize truncate">{{ label }}</span>
+    <span
+      v-if="(node as any).semantic"
+      class="shrink-0 ml-auto font-mono text-[9px] px-1 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200"
+      :title="`Rendered as &lt;${(node as any).semantic}&gt;`"
+    >
+      &lt;{{ (node as any).semantic }}&gt;
+    </span>
   </button>
   <div v-if="isContainer && open" class="dragula-container" :data-id="node.id">
     <div
@@ -79,6 +86,14 @@
 //    Reordering a *sibling* into a precise position isn't supported here,
 //    same limitation the canvas itself already has (drop always appends,
 //    see BlockEditor.vue's own comment) - not something this adds.
+//
+//    (That last paragraph predates the drop-handler rework in
+//    BlockEditor.vue - same-container drops are now accepted and land at
+//    the exact DOM drop index, so in-tree sibling reordering works.)
+//
+// 3. Semantic tags: a node with `semantic` set (setSemantic(), e.g. a
+//    migrated <section>/<nav> or a re-tagged container) renders a small
+//    <tag> chip on the row, in addition to its friendly builder name.
 //
 // The recursive nesting is deliberately flatter than it looks: each
 // container's own `dragula-container` div is what dragula must see as the

@@ -44,6 +44,17 @@ Vite warning: `<button>` cannot be child of `<button>` - the per-class card in t
 - `apps/whoobe-one-spike/src/scripts/editor-actions.ts`: `insertGeneratedSnippet()` now actually falls back to appending at the document root when nothing is selected (the doc comment already promised it; the code bailed early) - needed by the new import-into-current flow.
 - Verified: spike typecheck + build green.
 
+## [Document tree fixes: naming, current-element root, semantic chips, stable drag & drop] — 2026-08-14 (branch: dev/08-14/various-features)
+
+- `apps/whoobe-one-spike/src/helpers.ts` `friendlyElementName()`: every node with `element === 'div'` (all containers, the document root, plain div wrappers) was named "Inline Text" - that label is now reserved for the InlineText builder leaf (`type === 'element'` + `editable`), while containers get "Container" (tag-based names still win: Document/Grid/Flexbox/Slider...) and non-editable div leaves get "Div". Fixes the tree AND the floating toolbar, which share this helper.
+- `apps/whoobe-one-spike/src/components/DocumentTree.vue`: shows the **current element's children tree** - container selection roots the tree at it, leaf selection shows a hint and falls back to the document, nothing selected shows the whole page; header states the root ("Tree of: Page/Flexbox/...") plus its semantic tag.
+- `apps/whoobe-one-spike/src/components/DocumentTreeNode.vue`: rows with a `semantic` tag (setSemantic, e.g. <section>/<nav>/<form>) render an amber `<tag>` chip.
+- `apps/whoobe-one-spike/src/components/BlockEditor.vue` drag & drop rework - three real bugs:
+  1. `accepts` rejected `target === source`, so same-parent drops never fired → sibling reordering was impossible everywhere.
+  2. Drops always appended; the handler now computes the exact DOM drop index (filtering out BlockContainer's absolute tag badges) and splices at it → precise-position drops on canvas and in the tree, including in-place reorder.
+  3. Dropping a container into itself or a descendant detached that whole subtree from the document (the "element vanished after a drag" bug, easy to hit in the tree) → now guarded with a "Cannot drop an element into itself" flash; the document root itself can never be re-parented.
+- Verified: spike typecheck + build green.
+
 ---
 
 ## [Feat: AI generations history panel - re-import lost generated pages/snippets] — 2026-08-14 (branch: dev/08-14/various-features)
