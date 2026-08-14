@@ -4,6 +4,14 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Fix: object-list asset previews missing on first render] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+ObjectsView's thumbnail `<img>` rendered with `:src="recordAssetUrl(...) || ''"` - on the first render the asset URL isn't resolved yet (async DAM lookup), so the empty `src` fired a browser `error` event and the `@error` handler permanently set `style.display='none'` on that element. When the URL later arrived, Vue updated `src` but the inline style persisted, so the preview stayed hidden until page navigation recreated the rows.
+
+Fix: the `<img>` is now `v-if`-gated on a non-empty resolved URL (only mounts once the URL actually exists), so no spurious error is ever fired; the cell shows the raw value meanwhile and swaps to the thumbnail the moment the reactive `_assetUrlCache` re-renders. Verified against the Content class (header field stores asset UUIDs).
+
+---
+
 ## [Pimcore system audit fields always imported] — 2026-08-14 (branch: feat/08-14/search-engine)
 
 Every Pimcore class's query table (`object_<classId>`) always has `o_creationDate`/`o_modificationDate` (Unix seconds) - they must survive migration as real fields with real values, even though the source class definition never lists them.

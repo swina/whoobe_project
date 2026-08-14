@@ -188,8 +188,9 @@
                 {{ new Date(record.primary.updatedAt).toLocaleString() }}
               </template>
               <template v-else>
-                <img v-if="classFieldByName(col.name) && isAssetField(classFieldByName(col.name)!)"
-                  :src="recordAssetUrl(record, col.name) || ''"
+                <img
+                  v-if="classFieldByName(col.name) && isAssetField(classFieldByName(col.name)!) && recordAssetUrl(record, col.name)"
+                  :src="recordAssetUrl(record, col.name)!"
                   class="w-10 h-10 rounded object-cover border border-slate-700/50 bg-slate-800"
                   :title="col.title"
                   @error="($event.target as HTMLImageElement).style.display = 'none'"
