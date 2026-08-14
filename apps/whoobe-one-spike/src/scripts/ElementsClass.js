@@ -185,6 +185,15 @@ export default class Element {
                         icon: 'smart_button'
                     }
                 ]
+            },
+            {
+                label: 'search',
+                elements: [
+                    {
+                        name: 'Search',
+                        icon: 'search'
+                    }
+                ]
             }
         ]
     }
@@ -218,7 +227,8 @@ export default class Element {
             element === 'Select'        ? this.InputSelect() :
             element === 'Submit'        ? this.InputSubmit() :
             element === 'Reset'         ? this.InputReset() :
-            element === 'Button'        ? this.Button() : null
+            element === 'Button'        ? this.Button() :
+            element === 'Search'        ? this.Search() : null
     }
 
     setIcon(icon){
@@ -601,6 +611,53 @@ export default class Element {
                 recipientEmail: '',
                 subject: ''
             }
+        }
+        return this
+    }
+
+    // A website search box (docs/plans/search-engine/search-element-plan.md)
+    // rendered as a live <SearchElement> component on canvas/preview/public
+    // page (BlockElement.vue/BlockElementPreview.vue map `element ===
+    // 'search'` to that component). Submits to the spike's own /search route
+    // (SearchResultsView.vue), narrowing results to whatever types/classes
+    // this element's `searchConfig` allows - the Advanced tab's
+    // SearchConfigControl edits that config. Mirrors the Form element's
+    // own element-specific config field (this.formConfig) rather than
+    // stuffing it into the generic `data` bag.
+    Search(){
+        this.tag = 'search'
+        this.element = 'search'
+        // No default container class - the container <div> is a plain block
+        // (fills its parent by default), and the inner <form> is w-full, so
+        // a baked-in w-full here would only fight a custom container width.
+        this.css.container = ''
+        this.placeholder = 'Search…'
+        this.editable = false
+        this.content = ''
+        this.searchConfig = {
+            // Which document types to include in the results.
+            types: {
+                page: true,
+                object: true,
+                asset: false
+            },
+            // Restrict object results to these classes (by data_classes.id);
+            // empty = all object classes.
+            classIds: [],
+            // Custom Tailwind classes for the live results dropdown (the
+            // search element shows a dropdown on top of navigating to
+            // /search). Empty = a sensible built-in default. How admins
+            // manage this per-site is still open - see the search-element
+            // plan.
+            dropdownClass: '',
+            // Custom Tailwind classes appended to the search input and the
+            // submit button - blank = each one's built-in default.
+            inputClass: '',
+            buttonClass: '',
+            // Submit button label; when buttonIcon is true the search icon
+            // is shown instead of the text.
+            buttonLabel: 'Search',
+            buttonIcon: false
         }
         return this
     }

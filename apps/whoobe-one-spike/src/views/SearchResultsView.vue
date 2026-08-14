@@ -66,13 +66,21 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SearchBox from '../components/SearchBox.vue'
-import { searchContent, type SearchResult } from '../search-api'
+import { searchContent, type SearchResult, type SearchDocumentType } from '../search-api'
 
 const route = useRoute()
 const router = useRouter()
 
 const query = computed(() => (typeof route.query.q === 'string' ? route.query.q.trim() : ''))
 const page = computed(() => Math.max(1, Number.parseInt(typeof route.query.page === 'string' ? route.query.page : '1', 10) || 1))
+// The search element narrows results via the URL (types + optional classId) -
+// e.g. /search?q=...&type=object,asset&classId=<id>.
+const types = computed<SearchDocumentType[]>(() => {
+  const raw = route.query.type
+  const values = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : []
+  return values.filter((v): v is SearchDocumentType => typeof v === 'string' && ['page', 'object', 'class', 'asset'].includes(v))
+})
+const classId = computed(() => (typeof route.query.classId === 'string' ? route.query.classId : null))
 const pageSize = 10
 
 const results = ref<SearchResult[]>([])
@@ -98,11 +106,19 @@ function typeBadgeClass(type: string): string {
 }
 
 function goTo(target: number) {
-  router.push({ name: 'Search', query: { q: query.value, page: target > 1 ? String(target) : undefined } })
+  router.push({
+    name: 'Search',
+    query: {
+      q: query.value,
+      page: target > 1 ? String(target) : undefined,
+      type: types.value.length > 0 ? types.value.join(',') : undefined,
+      classId: classId.value ?? undefined,
+    },
+  })
 }
 
 watch(
-  [query, page],
+  [query, page, types, classId],
   async () => {
     if (query.value.length < 2) {
       results.value = []
@@ -112,7 +128,13 @@ watch(
     loading.value = true
     error.value = null
     try {
-      const res = await searchContent({ q: query.value, page: page.value, pageSize })
+      const res = await searchContent({
+        q: query.value,
+        page: page.value,
+        pageSize,
+        type: types.value.length > 0 ? types.value : null,
+        classId: classId.value,
+      })
       results.value = res.results
       total.value = res.total
       tookMs.value = res.tookMs

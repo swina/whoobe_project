@@ -5,6 +5,7 @@ import App from './App.vue'
 import router from './router'
 import './style.css'
 import tailwindBrowserUrl from '@tailwindcss/browser?url'
+import SearchElement from './components/SearchElement.vue'
 
 // AlpineJS (docs/plans/cms/whoobe-one-spike-missing-features.md) - a real
 // ESM import + Alpine.start(), not the reference's CDN-<script>-in-iframe-
@@ -36,4 +37,11 @@ const tailwindScript = document.createElement('script')
 tailwindScript.src = tailwindBrowserUrl
 document.head.appendChild(tailwindScript)
 
-createApp(App).use(createPinia()).use(router).mount('#app')
+// The "Search" palette element (ElementsClass.js Search()) renders as a
+// live component rather than a native tag (search-element-plan) - the
+// editing canvas, the preview tree and the public page all resolve
+// `element === 'search'` to this same globally-registered component via
+// BlockElement.vue/BlockElementPreview.vue's `component` computed.
+const app = createApp(App)
+app.component('SearchElement', SearchElement)
+app.use(createPinia()).use(router).mount('#app')

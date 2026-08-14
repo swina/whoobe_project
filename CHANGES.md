@@ -4,6 +4,55 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Search element: no baked-in w-full on the container] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+- `ElementsClass.js` `Search()` no longer defaults `css.container` to `w-full` - the container `<div>` is a plain block (fills its parent by default) and the inner `<form>` is already `w-full`, so the redundant class only fought a custom container width in the render (preview/editor) cascade.
+
+---
+
+## [Search element: container div + button icon] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+- `SearchElement.vue` renders as **container `<div>` → `<form class="w-full">`**: the element's own custom classes now land on the container div (a plain block, no baked-in width), so styling the form container (width/bg/padding/border/centering) works without fighting the form's `w-full`.
+- `searchConfig` gains `buttonLabel` (default "Search") and `buttonIcon` (default false): when `buttonIcon` is on, the submit button shows the search icon instead of the label text (with `aria-label` for accessibility). Editable in SearchConfigControl (button label + "Icon instead of text" toggle).
+- Docs: search-element-plan.md updated.
+
+---
+
+## [Search element: custom classes for input and button] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+- `searchConfig` gains `inputClass` and `buttonClass` (ElementsClass.js + d.ts) - extra Tailwind utilities appended to the search input and submit button on top of their built-in defaults (blank = default).
+- `SearchElement.vue` applies them via `:class` on the input/button.
+- `SearchConfigControl.vue` (Advanced tab) gains "Input classes" and "Button classes" fields alongside the existing dropdown/placeholder config.
+- Docs: search-element-plan.md updated (cascade caveat: use `max-w-*` to size the input rather than fighting the built-in `w-full`).
+
+---
+
+## [Search element: custom CSS fix (element + dropdown visible while editing)] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+- `SearchElement.vue`: the root `<form>` no longer hardcodes conflicting layout utilities (`flex w-full`) - they moved to an inner wrapper, so the element's own custom classes (bg/max-w/w-*/etc., merged from the parent `:class`) apply without being overridden by the Tailwind cascade; a plain block `<form>` still fills its parent width by default.
+- The editor canvas now uses a select-only click on the search element (no `preventDefault`, unlike other elements), so the input stays focusable - and the live results dropdown now **fetches and shows while `:editing`** (submit + result clicks stay gated), letting the admin see and tune `dropdownClass` and the element's custom classes in place.
+- Docs: search-element-plan.md updated.
+
+---
+
+## [Search element: live results dropdown + custom dropdown class] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+- `SearchElement.vue` now shows a **live results dropdown** under the box while typing (debounced 300ms, min 2 chars, scoped by the same `searchConfig` types/classes, pageSize 8) on top of the existing `/search` navigation on submit. Loading/error/no-results states, type badges, ts_headline highlight; Escape/outside-blur closes it. `:editing` still disables fetch/navigation on the canvas.
+- `searchConfig.dropdownClass` (default `''` = built-in `bg-white border-gray-200 rounded-lg shadow-lg`) styles the dropdown; editable via SearchConfigControl's new "Dropdown classes" field. How admins manage that class per-site is a documented follow-up.
+- Docs: search-element-plan.md dropdown section + open-question note.
+
+---
+
+## [whoobe-one-spike: Search element on the canvas] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+- `ElementsClass.js`: new `search` palette group with a `Search` element (`Search()` builder - `tag/element 'search'`, `searchConfig` = `types {page,object,asset}` + `classIds`, `placeholder`); registered in `createElement`.
+- `SearchElement.vue` (globally registered in `main.ts`): the live search box, rendered on the canvas (editing guard - select-only, never submits), the preview tree and the public page. `BlockElement.vue`/`BlockElementPreview.vue` special-case `tag === 'search'` so the generic `v-html`/contenteditable branch never touches the interactive component; `ElementSearchConfig` type added to `ElementsClass.d.ts`.
+- **Advanced tab**: `SearchConfigControl.vue` (modal, mirrors FormConfigControl) - toggles for Pages / Assets / Objects, a class multi-select when Objects is on (empty = all classes), and the placeholder; scope summary label.
+- Submits to the spike's `/search` route with `type` (comma-separated / single) + `classId` query params; `search-api.ts` supports `type` arrays and `SearchResultsView.vue` reads/round-trips those params through pagination.
+- Verified against the public `/public/search` endpoint (`type=object,asset` and `type=object&classId=...` both accepted).
+
+---
+
 ## [Mail settings: Email Test tab] — 2026-08-14 (branch: feat/08-14/search-engine)
 
 - `MailSettingsCard.vue` gains an "Email Test" tab beside Settings: a card with From (defaults to the configured from address), To, CC, Subject and a Body textarea (text or HTML - HTML-looking content is sent as html, otherwise plain text).

@@ -10,6 +10,15 @@
        name and all, for a moment). -->
   <component v-if="element.tag === 'lucideicon' && iconComponent" :is="iconComponent" :id="element.id" ref="rootEl" :class="classe" :style="stile" v-bind="extraAttrs"></component>
   <span v-else-if="element.tag === 'lucideicon'" :id="element.id" ref="rootEl" :class="classe" :style="stile"></span>
+  <SearchElement
+    v-else-if="element.tag === 'search'"
+    :id="element.id"
+    ref="rootEl"
+    :config="(element as any).searchConfig"
+    :placeholder="element.placeholder"
+    :class="classe"
+    :style="stile"
+  />
   <component
     v-else
     :is="component"
@@ -270,7 +279,7 @@ const component = computed(() => {
     const level = Number(el.level)
     return 'h' + (Number.isInteger(level) && level >= 1 && level <= 6 ? level : 1)
   }
-  return el.element === 'grid' ? 'div' : el.element
+  return el.element === 'grid' ? 'div' : el.element === 'search' ? 'SearchElement' : el.element
 })
 
 const classe = computed(() => {

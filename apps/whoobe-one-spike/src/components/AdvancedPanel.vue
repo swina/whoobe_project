@@ -17,6 +17,7 @@
         </div>
       </template>
       <FormConfigControl v-if="(editor.current as any)?.tag === 'form'" />
+      <SearchConfigControl v-if="(editor.current as any)?.tag === 'search'" />
     </template>
   </div>
 </template>
@@ -38,6 +39,7 @@ import AnimationControl from './advanced/AnimationControl.vue'
 import AlpineControl from './advanced/AlpineControl.vue'
 import FormFieldControl from './advanced/FormFieldControl.vue'
 import FormConfigControl from './advanced/FormConfigControl.vue'
+import SearchConfigControl from './advanced/SearchConfigControl.vue'
 import CustomClassesControl from './tailwind-controls/CustomClassesControl.vue'
 import DataBindingTransformControl from './tailwind-controls/DataBindingTransformControl.vue'
 
