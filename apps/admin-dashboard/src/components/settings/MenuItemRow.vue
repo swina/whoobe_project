@@ -19,7 +19,13 @@
         <div class="text-[14px] text-slate-500 font-mono truncate" @click="editing = !editing">/{{ item.path }}</div>
       </div>
       <div class="flex items-center gap-2 w-1/2 justify-start" @click="openLinkPage">
-      <span v-if="item.pageId" class="text-[12px] text-indigo-400 font-mono shrink-0" :title="'ID: ' + item.pageId">{{ pageTitle || 'page' }}</span>
+        <span v-if="item.pageId" class="text-[12px] w-[120px] text-indigo-400 font-mono shrink-0" :title="'ID: ' + item.pageId">
+          {{ pageTitle || 'page' }}
+        </span>
+        <template v-if="linkedPage">
+          <span class="text-slate-500 text-[11px] bg-sky-200 rounded-lg px-2 uppercase">{{ linkedPage.locale }}</span>
+          <span class="text-slate-500 text-[11px]">{{ pageUpdatedText }}</span>
+        </template>
       <span v-else-if="item.url" class="text-[12px] text-amber-400 font-mono shrink-0">url</span>
       <span v-else class="text-[12px] text-slate-600 font-mono shrink-0">unlinked</span>
       </div>
@@ -132,6 +138,18 @@ const pageTitle = computed(() => {
   if (!props.item.pageId) return ''
   const page = pagesStore.pages.find((p) => p.id === props.item.pageId)
   return page?.title || ''
+})
+
+// The linked page itself (a specific locale row) - shows the page's locale
+// and last-modified date alongside the title in the row.
+const linkedPage = computed(() => {
+  if (!props.item.pageId) return null
+  return pagesStore.pages.find((p) => p.id === props.item.pageId) ?? null
+})
+
+const pageUpdatedText = computed(() => {
+  if (!linkedPage.value?.updatedAt) return ''
+  return new Date(linkedPage.value.updatedAt).toLocaleDateString()
 })
 
 function emitInsertBelow() {
