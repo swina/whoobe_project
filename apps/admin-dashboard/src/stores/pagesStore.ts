@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { fetchPages, fetchPageById, updatePageById, createPageById, type WhoobeOnePage, type PageSeo, type PageSitemapSettings, type PageSearchSettings } from '../utils/pages-api'
+import { fetchPages, fetchPageById, updatePageById, createPageById, deletePageById, type WhoobeOnePage, type PageSeo, type PageSitemapSettings, type PageSearchSettings } from '../utils/pages-api'
 import { useAuthStore } from './authStore'
 
 export const usePagesStore = defineStore('pages', () => {
@@ -67,6 +67,12 @@ export const usePagesStore = defineStore('pages', () => {
     return created
   }
 
+  async function deletePage(id: string): Promise<void> {
+    const authStore = useAuthStore()
+    await deletePageById(authStore.config.coreApiUrl, id)
+    pages.value = pages.value.filter((p) => p.id !== id)
+  }
+
   return {
     pages,
     isLoading,
@@ -75,5 +81,6 @@ export const usePagesStore = defineStore('pages', () => {
     getPage,
     updatePage,
     createPage,
+    deletePage,
   }
 })

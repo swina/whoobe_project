@@ -5,12 +5,9 @@
 // not apps/whoobe-one-spike/src/pages-api.ts's own client (that one hardcodes
 // its own hostname-derived default since it has no settings UI of its own).
 //
-// Deliberately list/get-only for now: this app doesn't yet have a "create a
-// new page" flow (DocumentsView.vue doesn't have one either - pages are
-// authored either via the Pimcore migration tool or directly inside
-// whoobe-one-spike's own standalone UI), and edits happen entirely inside
-// the embedded editor itself (see WhoobeOneEmbed.vue), not through this
-// client.
+// Full CRUD: PagesView.vue lists/creates pages, edits happen inside the
+// embedded editor (see WhoobeOneEmbed.vue), and the list view supports
+// batch publish/unpublish via PATCH plus batch delete via DELETE.
 import { getDefaultCoreApiUrl } from './auth-api'
 
 export interface PageSeo {
@@ -132,4 +129,12 @@ export async function createPageById(
   })
   const body = await parseJsonOrThrow(res)
   return body.page
+}
+
+export async function deletePageById(baseUrl: string, id: string): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/pages/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  await parseJsonOrThrow(res)
 }
