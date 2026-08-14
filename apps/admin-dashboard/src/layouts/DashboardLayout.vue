@@ -157,10 +157,83 @@
           <div class="relative w-full max-w-md">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input
+              v-model="searchQuery"
               type="text"
-              placeholder="Search objects, assets, documents..."
-              class="w-full pl-9 pr-4 py-1.5 text-sm bg-slate-950/60 light:bg-white/60 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 placeholder-slate-500 light:placeholder-slate-400 focus:outline-none focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/80 transition"
+              placeholder="Search objects, pages, assets, classes..."
+              class="w-full pl-9 pr-9 py-1.5 text-sm bg-slate-950/60 light:bg-white/60 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 placeholder-slate-500 light:placeholder-slate-400 focus:outline-none focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/80 transition"
+              @input="onSearchInput"
+              @focus="searchOpen = true"
+              @blur="onSearchBlur"
+              @keydown.enter.prevent="openFirstSearchResult"
+              @keydown.esc="closeSearch"
             />
+            <button
+              v-if="searchQuery.trim().length >= 2"
+              class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-slate-500 hover:text-rose-400 transition"
+              title="Clear search"
+              @mousedown.prevent
+              @click="closeSearch"
+            >
+              <X class="w-3.5 h-3.5" />
+            </button>
+
+            <!-- Global search results (search-engine plan Phase 5) -->
+            <div
+              v-if="searchOpen && searchQuery.trim().length >= 2"
+              class="absolute top-full left-0 right-0 mt-1.5 rounded-xl border border-slate-800 light:border-slate-200 bg-slate-900 light:bg-white shadow-2xl overflow-hidden z-50"
+            >
+              <!-- Type filter badges: all on by default, click to exclude a
+                   type from the query (multi-select). -->
+              <div class="flex items-center gap-1.5 px-3 py-2 border-b border-slate-800/60 light:border-slate-100">
+                <span class="text-[10px] uppercase tracking-wide text-slate-500 shrink-0">Types</span>
+                <button
+                  v-for="t in searchTypeFilters"
+                  :key="t.key"
+                  class="px-2 py-0.5 rounded-full text-[11px] font-semibold transition"
+                  :class="searchTypeFilter.has(t.key)
+                    ? 'bg-indigo-500/20 text-indigo-300 light:bg-indigo-500/15 light:text-indigo-700'
+                    : 'bg-slate-800/60 light:bg-slate-100 text-slate-400 light:text-slate-500'"
+                  @mousedown.prevent
+                  @click="toggleSearchType(t.key)"
+                >
+                  {{ t.label }}
+                </button>
+              </div>
+              <div v-if="searchLoading" class="px-4 py-3 text-sm text-slate-400 animate-pulse">Searching…</div>
+              <div v-else-if="searchError" class="px-4 py-3 text-sm text-rose-400">{{ searchError }}</div>
+              <div v-else-if="searchResults.length === 0" class="px-4 py-3 text-sm text-slate-400">
+                No results for "<span class="text-slate-200 light:text-slate-700">{{ searchQuery }}</span>"
+              </div>
+              <ul v-else class="max-h-96 overflow-y-auto divide-y divide-slate-800/60 light:divide-slate-100">
+                <li v-for="result in searchResults" :key="`${result.type}-${result.id}`">
+                  <button
+                    class="w-full text-left px-4 py-2.5 hover:bg-slate-800/60 light:hover:bg-slate-50 transition"
+                    @mousedown.prevent
+                    @click="openSearchResult(result)"
+                  >
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                        :class="searchTypeBadge(result.type)"
+                      >
+                        {{ result.type }}
+                      </span>
+                      <span class="text-sm text-slate-200 light:text-slate-800 truncate">{{ result.title }}</span>
+                      <span v-if="result.type === 'object' && result.publishedAt" class="ml-auto shrink-0 text-[10px] text-slate-500">
+                        {{ result.payload?.className ?? '' }}
+                      </span>
+                    </div>
+                    <p class="mt-0.5 text-xs text-slate-500 truncate" v-html="searchHighlight(result.excerpt)"></p>
+                  </button>
+                </li>
+                <li class="flex items-center justify-between px-4 py-2 bg-slate-950/40 light:bg-slate-50 text-[11px] text-slate-500">
+                  <span>{{ searchTotal }} result{{ searchTotal === 1 ? '' : 's' }} • {{ searchTookMs }}ms</span>
+                  <button class="hover:text-indigo-400 transition" title="Rebuild search index" @mousedown.prevent @click="handleReindex">
+                    Rebuild index
+                  </button>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
 
@@ -290,7 +363,8 @@ import {
   Globe,
   Table2,
   Mail,
-  Sparkles
+  Sparkles,
+  X
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
@@ -315,6 +389,7 @@ import DocumentsView from '../views/DocumentsView.vue'
 import PagesView from '../views/PagesView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import { usePagesStore } from '../stores/pagesStore'
+import { adminSearch, reindexSearchIndex, type SearchResult } from '../utils/search-api'
 import { useWebsitesStore } from '../stores/websitesStore'
 
 const damStore = useDamStore()
@@ -339,6 +414,132 @@ const userInitials = computed(() => {
 
 function handleLogout() {
   authStore.logout()
+}
+
+// Global search (search-engine plan Phase 5): debounced admin search over
+// /whoobe-one/search with a dropdown of results, Enter-to-open-first, and a
+// one-click full index rebuild. Includes unpublished/drafts, which is the
+// whole point of the admin endpoint over the public one.
+const searchQuery = ref('')
+const searchOpen = ref(false)
+const searchLoading = ref(false)
+const searchError = ref<string | null>(null)
+const searchResults = ref<SearchResult[]>([])
+const searchTotal = ref(0)
+const searchTookMs = ref(0)
+let searchDebounce: ReturnType<typeof setTimeout> | null = null
+
+const searchTypeFilters: { key: SearchResult['type']; label: string }[] = [
+  { key: 'object', label: 'Objects' },
+  { key: 'asset', label: 'Assets' },
+  { key: 'page', label: 'Pages' },
+  { key: 'class', label: 'Classes' },
+]
+// All on by default; a Set is fine in Vue 3 reactivity (replaced on toggle).
+const searchTypeFilter = ref<Set<SearchResult['type']>>(new Set(searchTypeFilters.map((t) => t.key)))
+
+function toggleSearchType(key: SearchResult['type']) {
+  const next = new Set(searchTypeFilter.value)
+  if (next.has(key)) {
+    next.delete(key)
+    // Never a dead state: dropping the last active type resets to all.
+    if (next.size === 0) {
+      searchTypeFilters.forEach((t) => next.add(t.key))
+    }
+  } else {
+    next.add(key)
+  }
+  searchTypeFilter.value = next
+  runSearch()
+}
+
+function onSearchInput() {
+  if (searchDebounce) clearTimeout(searchDebounce)
+  searchOpen.value = true
+  searchDebounce = setTimeout(() => runSearch(), 300)
+}
+
+async function runSearch() {
+  const q = searchQuery.value.trim()
+  if (q.length < 2) {
+    searchResults.value = []
+    searchTotal.value = 0
+    return
+  }
+  searchLoading.value = true
+  searchError.value = null
+  try {
+    const types = [...searchTypeFilter.value]
+    const res = await adminSearch({
+      q,
+      pageSize: 20,
+      type: types.length === searchTypeFilters.length ? undefined : types.length === 1 ? types[0] : types,
+    })
+    searchResults.value = res.results
+    searchTotal.value = res.total
+    searchTookMs.value = res.tookMs
+  } catch (e: any) {
+    searchError.value = e.message || 'Search failed'
+    searchResults.value = []
+  } finally {
+    searchLoading.value = false
+  }
+}
+
+function searchTypeBadge(type: string): string {
+  if (type === 'page') return 'bg-violet-500/15 text-violet-300 light:text-violet-700'
+  if (type === 'class') return 'bg-emerald-500/15 text-emerald-300 light:text-emerald-700'
+  if (type === 'asset') return 'bg-amber-500/15 text-amber-300 light:text-amber-700'
+  return 'bg-blue-500/15 text-blue-300 light:text-blue-700'
+}
+
+function searchHighlight(text: string): string {
+  return (text || '').replace(/<\/?em>/g, (m) => (m === '<em>' ? '<mark class="bg-amber-200/40 text-slate-200 light:text-slate-700">' : '</mark>'))
+}
+
+function openSearchResult(result: SearchResult) {
+  closeSearch()
+  if (result.type === 'page') {
+    tabsStore.openPage(result.id)
+  } else if (result.type === 'object') {
+    const { classId, translationGroupId } = result.payload ?? {}
+    if (classId && translationGroupId) {
+      tabsStore.openObject(translationGroupId, classId, result.locale || 'en')
+    }
+  } else if (result.type === 'class') {
+    tabsStore.openClass(result.id)
+  } else if (result.type === 'asset') {
+    tabsStore.openAsset(result.id)
+  }
+}
+
+function openFirstSearchResult() {
+  if (searchResults.value.length > 0) openSearchResult(searchResults.value[0])
+}
+
+function onSearchBlur() {
+  // Give mousedown-clicked result buttons time to fire before the dropdown
+  // unmounts.
+  setTimeout(() => {
+    searchOpen.value = false
+  }, 150)
+}
+
+function closeSearch() {
+  searchQuery.value = ''
+  searchResults.value = []
+  searchTotal.value = 0
+  searchOpen.value = false
+  if (searchDebounce) clearTimeout(searchDebounce)
+}
+
+async function handleReindex() {
+  try {
+    const counts = await reindexSearchIndex()
+    toastStore.show(`Index rebuilt: ${counts.pages} pages, ${counts.objects} objects, ${counts.classes} classes, ${counts.assets} assets`)
+  } catch (e: any) {
+    toastStore.show(e.message || 'Reindex failed')
+  }
 }
 
 const isSidebarCollapsed = ref(false)

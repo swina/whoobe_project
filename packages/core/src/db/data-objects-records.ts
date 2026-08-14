@@ -2,6 +2,7 @@ import { eq, and, desc, inArray } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { dataObjects } from './data-objects-schema.js';
 import { getDataClass } from './data-classes-records.js';
+import { indexObject, deleteIndexedByDocument, deleteIndexedByClass } from '../search/indexer.js';
 
 export interface DataObjectRecord {
   id: string;
@@ -362,6 +363,8 @@ export async function createDataObject(input: {
   // MasterObjectTab.vue's own job client-side, so the admin sees the
   // shared value immediately rather than only after this first save).
   await syncNonLocalizedAttributes(row);
+  const classDef = await getDataClass(row.classId);
+  if (classDef) await indexObject(row, classDef);
   return row;
 }
 
@@ -400,6 +403,10 @@ export async function updateDataObject(
   if (row && input.attributes !== undefined) {
     await syncNonLocalizedAttributes(row);
   }
+  if (row) {
+    const classDef = await getDataClass(row.classId);
+    if (classDef) await indexObject(row, classDef);
+  }
   return row ?? null;
 }
 
@@ -408,11 +415,13 @@ export async function updateDataObject(
 export async function deleteDataObjectsByClassId(classId: string): Promise<void> {
   const db = getDb();
   await db.delete(dataObjects).where(eq(dataObjects.classId, classId));
+  await deleteIndexedByClass(classId);
 }
 
 export async function deleteDataObject(id: string): Promise<void> {
   const db = getDb();
   await db.delete(dataObjects).where(eq(dataObjects.id, id));
+  await deleteIndexedByDocument('object', id);
 }
 
 /** Insert-or-update-by-`pimcoreId` - packages/migration-tool's
@@ -477,5 +486,7 @@ export async function upsertDataObjectByPimcoreId(input: {
       },
     })
     .returning();
+  const classDef = await getDataClass(row.classId);
+  if (classDef) await indexObject(row, classDef);
   return row;
 }
