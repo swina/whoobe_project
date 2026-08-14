@@ -4,6 +4,16 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Feat: Pages list view - column order, sortable headers, multi-column filters, batch selection] — 2026-08-14 (branch: dev/08-14/various-features)
+
+- `apps/admin-dashboard/src/views/PagesView.vue`: pages table now supports configurable column order and visibility via a "View" dropdown (reorder with up/down arrows, toggle checkboxes, matching the Objects view), click-to-sort on every column header (ASC/DESC toggle with ▲/▼ indicator, default sort by slug), and a multi-column filter modal (`Filter` button, field/operator/value rows with AND semantics, incl. boolean `published` and date `updatedAt` inputs). Added a checkbox column with header select-all plus a bottom batch-action bar (same options as `ObjectsView.vue`: Publish, Unpublish, Delete, Clear) operating on the selected rows.
+- `apps/admin-dashboard/src/utils/pages-api.ts`: added `deletePageById()` (DELETE `/whoobe-one/pages/:id`); updated the stale "list/get-only" header comment.
+- `apps/admin-dashboard/src/stores/pagesStore.ts`: added `deletePage()` which removes the page from the local list after a successful delete.
+- `apps/admin-dashboard/src/views/PagesView.vue`: the Website column now displays the website's `name` (resolved via the websites store, loaded on mount) instead of the raw `websiteId`; sorting on that column also uses the label. Falls back to the id (or "—") when unknown.
+- Verified: `pnpm --filter admin-dashboard typecheck` green.
+
+---
+
 ## [Feat: editable existing custom attributes in AttributesControl] — 2026-08-14 (branch: feat/08-14/env-optimization)
 
 - `apps/whoobe-one-spike/src/components/advanced/AttributesControl.vue`: existing custom HTML attributes are now editable in place — each row renders an editable name input and value input (previously a read-only `name="value"` span, so updating meant delete + re-add).
