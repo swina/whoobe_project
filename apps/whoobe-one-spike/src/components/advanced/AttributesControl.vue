@@ -1,11 +1,22 @@
 <template>
   <div class="flex flex-col gap-2">
     <div v-if="rows.length" class="flex flex-col gap-1">
-      <div v-for="row in rows" :key="row.name" class="flex items-center gap-1">
-        <span class="flex-1 truncate font-mono bg-white border rounded px-1.5 py-0.5" :title="`${row.name}=&quot;${row.value}&quot;`">
-          {{ row.name }}="{{ row.value }}"
-        </span>
-        <button type="button" class="text-gray-400 hover:text-rose-500 shrink-0" title="Remove" @click="removeAttribute(row.name)">
+      <div v-for="row in rows" :key="row.originalName" class="flex items-center gap-1">
+        <input
+          :value="row.name"
+          type="text"
+          class="w-1/3 min-w-0 font-mono text-xs border rounded px-1.5 py-0.5"
+          title="attribute name"
+          @input="renameAttribute(row.originalName, ($event.target as HTMLInputElement).value)"
+        />
+        <input
+          :value="row.value"
+          type="text"
+          class="flex-1 min-w-0 font-mono text-xs border rounded px-1.5 py-0.5"
+          title="attribute value"
+          @input="updateAttributeValue(row.originalName, ($event.target as HTMLInputElement).value)"
+        />
+        <button type="button" class="text-gray-400 hover:text-rose-500 shrink-0" title="Remove" @click="removeAttribute(row.originalName)">
           <X class="w-3 h-3" />
         </button>
       </div>
@@ -43,7 +54,7 @@ const newValue = ref('')
 const rows = computed(() => {
   const attrs = (editor.current as any)?.data?.attributes as Record<string, string> | undefined
   if (!attrs) return []
-  return Object.keys(attrs).map((name) => ({ name, value: attrs[name] }))
+  return Object.keys(attrs).map((name) => ({ originalName: name, name, value: attrs[name] }))
 })
 
 function addAttribute() {
@@ -55,6 +66,26 @@ function addAttribute() {
   data.attributes[name] = newValue.value
   newName.value = ''
   newValue.value = ''
+}
+
+// Renaming moves the bag key (keep the value). Invalid names - empty,
+// reserved, or already taken - are ignored: the input's :value binding
+// keeps showing whatever the bag actually holds, so it snaps back.
+function renameAttribute(originalName: string, newName: string) {
+  const attrs = (editor.current as any)?.data?.attributes as Record<string, string> | undefined
+  if (!attrs || !(originalName in attrs)) return
+  const trimmed = newName.trim()
+  if (!trimmed || RESERVED_ATTRS.includes(trimmed)) return
+  if (trimmed === originalName) return
+  if (trimmed in attrs) return
+  attrs[trimmed] = attrs[originalName]
+  delete attrs[originalName]
+}
+
+function updateAttributeValue(originalName: string, value: string) {
+  const attrs = (editor.current as any)?.data?.attributes as Record<string, string> | undefined
+  if (!attrs || !(originalName in attrs)) return
+  attrs[originalName] = value
 }
 
 function removeAttribute(name: string) {

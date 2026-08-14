@@ -4,6 +4,13 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Feat: editable existing custom attributes in AttributesControl] — 2026-08-14 (branch: feat/08-14/env-optimization)
+
+- `apps/whoobe-one-spike/src/components/advanced/AttributesControl.vue`: existing custom HTML attributes are now editable in place — each row renders an editable name input and value input (previously a read-only `name="value"` span, so updating meant delete + re-add).
+- Renaming moves the bag key while keeping the value; invalid renames (empty, reserved per `RESERVED_ATTRS`, duplicate) are ignored and the input snaps back to the stored name. Values update the attributes bag on input.
+
+---
+
 ## [Implemented: single root .env for all configuration + WHOOBE_HOSTNAME] — 2026-08-14 (branch: env-unification)
 
 Per `docs/plans/environment/env-optimization.md` (with one enhancement: a `WHOOBE_HOSTNAME` variable drives all derived URLs instead of hardcoded values):
