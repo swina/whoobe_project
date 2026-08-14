@@ -2,6 +2,7 @@ import { eq, or, like } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { folders, assets } from './dam-schema.js';
 import type { ExtractedAssetMetadata } from '../dam/metadata-extractor.js';
+import { indexAsset, deleteIndexedByDocument } from '../search/indexer.js';
 
 export interface FolderRecord {
   id: string;
@@ -157,12 +158,15 @@ export async function upsertAssetRecord(input: {
       },
     })
     .returning();
+  await indexAsset(row);
   return row;
 }
 
 export async function deleteAssetRecord(pimcorePath: string): Promise<void> {
   const db = getDb();
+  const existing = await getAssetByPath(pimcorePath);
   await db.delete(assets).where(eq(assets.pimcorePath, pimcorePath));
+  if (existing) await deleteIndexedByDocument('asset', existing.id);
 }
 
 export async function updateAssetMetadata(
@@ -175,5 +179,6 @@ export async function updateAssetMetadata(
     .set({ metadata, updatedAt: new Date() })
     .where(eq(assets.pimcorePath, pimcorePath))
     .returning();
+  if (row) await indexAsset(row);
   return row ?? null;
 }

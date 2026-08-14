@@ -6,11 +6,16 @@
       Phase 3 scope (blocks/gallery, blocks/desktop). This route only exists to prove Vue Router 4 actually works
       end-to-end (see port plan §5 Phase 1) - a single static route wouldn't demonstrate real navigation.
     </p>
+    <SearchBox class="mt-4" />
     <router-link
       to="/editor"
-      class="px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold"
+      class="mt-4 px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold"
     >
       Open Editor
     </router-link>
   </div>
 </template>
+
+<script setup lang="ts">
+import SearchBox from '../components/SearchBox.vue'
+</script>

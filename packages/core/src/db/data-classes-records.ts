@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { dataClasses } from './data-classes-schema.js';
 import type { ClassFieldDefinition, ClassViewConfig } from '../schema/dynamic.js';
+import { indexClass, deleteIndexedByDocument } from '../search/indexer.js';
 
 export interface DataClassRecord {
   id: string;
@@ -53,6 +54,7 @@ export async function createDataClass(input: {
       pimcoreId: input.pimcoreId ?? null,
     })
     .returning();
+  await indexClass(row);
   return row;
 }
 
@@ -69,12 +71,14 @@ export async function updateDataClass(
   if (input.viewConfig !== undefined) values.viewConfig = input.viewConfig;
 
   const [row] = await db.update(dataClasses).set(values).where(eq(dataClasses.id, id)).returning();
+  if (row) await indexClass(row);
   return row ?? null;
 }
 
 export async function deleteDataClass(id: string): Promise<void> {
   const db = getDb();
   await db.delete(dataClasses).where(eq(dataClasses.id, id));
+  await deleteIndexedByDocument('class', id);
 }
 
 /** Insert-or-update-by-`pimcoreId` - packages/migration-tool's

@@ -148,6 +148,20 @@
       "when": 1786697264956,
       "tag": "0020_stiff_the_spike",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1786700000000,
+      "tag": "0021_search_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1786700000001,
+      "tag": "0022_search_documents_asset",
+      "breakpoints": true
     }
   ]
 }

@@ -26,6 +26,10 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'Main', component: Main },
     { path: '/editor', name: 'Editor', component: Editor },
+    // Website search (search-engine plan Phase 4): real search over the
+    // headless /public/search endpoint, no catch-all interplay - registered
+    // before it so "search" is never treated as a page slug.
+    { path: '/search', name: 'Search', component: () => import('../views/SearchResultsView.vue') },
     // Catch-all, always last - an exact match above always wins regardless
     // of array position, so this only ever matches something neither of
     // those two are. Renders a real page by its stored slug/dynamic-

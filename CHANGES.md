@@ -4,6 +4,55 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Feature: multi-type filters in admin global search] — 2026-08-14 (branch: dev/08-14/various-features)
+
+The dashboard search dropdown now has a row of toggle badges (Objects / Assets / Pages / Classes), all on by default; clicking one excludes that type from the query, dropping the last active one resets to all. Backend support: `type` on both search routes now accepts several values (comma-separated `?type=object,asset` or repeated params), ORed via `inArray` in `searchContent` — validated against `SEARCH_TYPES` (400 on unknown). Also: reindex toast now includes the asset count. Verified: `type=asset` → 16 pinocchio assets only, `type=object,asset` → 20 mixed, invalid type → 400.
+
+---
+
+## [Fix: admin search dropdown capped at 8 results hid matching assets] — 2026-08-14 (branch: dev/08-14/various-features)
+
+Dashboard global search fetched `pageSize: 8`, so a query like `pinocchio` (4 content objects + 16 filename-matching assets) showed only the 4 objects + 4 assets — the rest were ranked off the visible list even though the footer count said 20. Raised the dropdown fetch to `pageSize: 20` (matching the API default; the dropdown scrolls, and the "N results" footer still reflects the true total).
+
+---
+
+## [Feature: DAM assets join the search index (v1.1)] — 2026-08-14 (branch: dev/08-14/various-features)
+
+Extends the Postgres-native search engine to DAM assets - filename, folder, mime/file type and EXIF metadata are now searchable alongside pages/objects/classes.
+
+- `packages/core/drizzle/0022_search_documents_asset.sql` + journal entry: widens the `search_documents` document_type CHECK to `'asset'` (the 0021 table/columns/indexes are reused as-is; asset extraction flattens the jsonb metadata into the text columns).
+- `packages/core/src/search/extract.ts`: `extractAssetDoc()` - title = filename, body = folder/pimcore path + mime/file type + technical (dimensions/format/colorSpace), camera (make/model/lens/ISO/f-number/exposure/flash), GPS, rights (artist/copyright/software) and every string value in the raw EXIF blob; keywords promote filename base, extension, mime type and raw values.
+- `packages/core/src/search/indexer.ts`: `indexAsset()` - published mirrors the asset's own `isPublic` flag (private assets stay admin-only), document id = asset id, locale 'en'; `reindexAll()` now reports and rebuilds `assets`.
+- `packages/core/src/db/asset-records.ts` hooks: `upsertAssetRecord` → `indexAsset`, `updateAssetMetadata` (e.g. re-extracted EXIF) → reindex, `deleteAssetRecord` → `deleteIndexedByDocument('asset', id)`.
+- `apps/core-api/src/server.ts`: `SEARCH_TYPES` now accepts `type=asset` on both search routes.
+- UI type unions + badges: `apps/admin-dashboard/src/utils/search-api.ts` + `apps/whoobe-one-spike/src/search-api.ts` (SearchDocumentType + 'asset'), dashboard dropdown gets an amber asset badge and opens the DAM preview tab (`tabsStore.openAsset`), spike results get an asset badge class.
+- Verified: all four packages typecheck/build green; migration applied to develop.local and localhost container; reindex = 6 pages / 3368 objects / 14 classes / **1134 assets**; live HTTP - `q=pinocchio` surfaces the asset `pinocchio20202.jpg` alongside content objects, `type=asset` filter works, dimension metadata search (`q=2560&type=asset` → exactly the two 2560px-wide jpgs) works through the technical-metadata path. Note: the current asset DB only carries `technical` metadata (no camera/GPS/rights), so those extractor paths are covered by code but not by live data.
+
+---
+
+## [Feature: Postgres-native search engine implemented (plan phases 1-6)] — 2026-08-14 (branch: dev/08-14/various-features)
+
+Full implementation of `docs/plans/search-engine/search-engine-plan.md` - Postgres tsvector + pg_trgm search over pages, class instances and class definitions, no new infrastructure.
+
+- `packages/core/drizzle/0021_search_documents.sql` + journal entry: `pg_trgm` extension, `search_documents` table with generated `document_tsvector` column (weights A=title / B=category+keywords+excerpt / C=body, `simple` config) via IMMUTABLE wrapper functions `immutable_tsvector()` / `immutable_array_to_string()` (raw `to_tsvector`/`array_to_string` are STABLE, which Postgres rejects in generated columns), GIN tsvector index + trgm GIN indexes, `search_documents_unique` constraint.
+- `packages/core/src/db/search-documents-schema.ts`: drizzle table + `uniqueDoc` unique index (name matches the SQL constraint).
+- `packages/core/src/search/extract.ts`: `extractPageText()` (Element tree walk, SEO/section/category, page-localized), `extractObjectText()` (localized + non-localized attributes, asset/relation envelopes skipped), `extractClassDoc()` (definition fields + per-field labels/descriptions). `MAX_BODY_CHARS` 20k truncation.
+- `packages/core/src/search/indexer.ts`: `upsertSearchDocument()` (ON CONFLICT on (type, id, locale)), `indexPage()` (published = page.published && `search.indexable !== false`; payload slug+websiteId), `indexObject()` / `indexClass()`, `deleteIndexedByDocument()`, `deleteIndexedByClass()` (via `payload->>'classId'`), `reindexAll()` (dynamic imports avoid records↔indexer cycle), `safeIndex()` best-effort wrapper so indexing failures never break publish flows.
+- `packages/core/src/search/query.ts`: `buildTsQuery()` (prefix `:*` on last lexeme, single-quote escaping), `searchContent()` - locale/published/websiteId/type/classId filters, `ts_rank_cd(...,32)` + tsvector GIN scan, pg_trgm similarity fallback (>0.3) for fuzzy matches, `ts_headline` `<em>` excerpts, relevance/date sort, pagination (max pageSize 50).
+- Records-layer hooks (single-writer pattern): `whoobe-pages-records.ts`, `data-objects-records.ts` (incl. pimcore upsert + `deleteDataObjectsByClassId`), `data-classes-records.ts` - every create/update/delete keeps the index in sync.
+- `apps/core-api/src/server.ts`: `GET /public/search` (headless, no auth, published-only, min 2 chars, `PUBLIC_SITE_URL`-based page URLs), `GET /whoobe-one/search` (OBJECTS_READ, `includeUnpublished` for drafts + indexable=false pages), `POST /whoobe-one/search/reindex` (OBJECTS_WRITE). New `search` barrel exports in `packages/core/src/server.ts`.
+- `apps/whoobe-one-spike`: `src/search-api.ts` client, `SearchBox.vue` header component, `SearchResultsView.vue` (`/search` route with highlighting + pagination), SearchBox added to `Main.vue`.
+- `apps/admin-dashboard`: `src/utils/search-api.ts`, global search input in `DashboardLayout.vue` - debounced dropdown results (page/object/class badges, highlighted excerpts, Enter-to-open-first, click opens the matching tab via `tabsStore.openPage/openObject/openClass`) + one-click "Rebuild index".
+- Verified: all four packages typecheck/build green; migration applied to develop.local; reindex = 6 pages / 3368 objects / 14 classes; live HTTP checks - tsvector hit (`energ` → 8), prefix, trgm fallback, 2-char minimum, locale filter, page paths (single-slash `slug` fallback fix), unpublished hidden from public but visible to admin, indexer upsert→search→delete round-trip with a transient doc. Known cosmetic note: `q=ab` style 2-char queries match broadly via trgm (accepted; 3+ chars are the useful range).
+
+---
+
+## [Docs: Postgres-native search engine plan] — 2026-08-14 (branch: dev/08-14/various-features)
+
+- New `docs/plans/search-engine/search-engine-plan.md`: full design for a Postgres-native search engine (tsvector + pg_trgm, no new infra) over pages (`whoobe_pages` Element trees) and classes (`data_objects` attributes + `data_classes` definitions). Covers the `search_documents` table + GIN indexes, extraction/indexing pipeline with records-layer hooks, query building & ranking (ts_rank_cd, trgm similarity, ts_headline), headless API (`GET /public/search`, admin `GET /whoobe-one/search`, `POST /whoobe-one/search/reindex`), website integration (SearchBox + SearchResultsView in whoobe-one-spike), admin dashboard wiring, security/edge cases (locale, multi-site, dynamic slugs, indexable flag), implementation phases and risks. Out of scope for v1: legacy `cms_documents` (different tree shape). Follow-up addendum: V2 hybrid semantic search via pgvector (embedding column + HNSW, `/embeddings` capability in the AI provider layer, RRF fusion) as a documented evolution, not part of the v1 lexical engine.
+
+---
+
 ## [Fix: AI-generated pages invisible on the canvas - normalize type/element + corrected prompt contract] — 2026-08-14 (branch: dev/08-14/various-features)
 
 Root cause of "the AI page has a payload but nothing shows on the canvas": generated trees came back with `type` = builder names ("Flexbox", "Heading", ...) and no `element` field at all, but the editor's render dispatch is strict - `BlockContainer.vue` recurses only on `type === 'container'` and `BlockElement.vue` renders `:is="el.element"` (undefined = Vue renders nothing). Every generated node rendered as an invisible leaf, so both the fresh "AI Page" flow and the AI history re-import silently produced an empty-looking canvas.

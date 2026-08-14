@@ -124,8 +124,12 @@ import {
   validateElementTree,
   sanitizeGeneratedImages,
   AiGenerationError,
+  searchContent,
+  reindexAll,
   loadRootEnv,
   type AuthenticatedRequest,
+  type SearchOptions,
+  type SearchDocumentType,
 } from '@whoobe-cms/core/server';
 // Root package entry, not '/server' - compileDynamicSchema lives in
 // schema/dynamic.ts, exported from index.ts and kept out of the Node-only
@@ -1186,6 +1190,76 @@ app.get('/public/robots.txt', async (_req: Request, res: Response): Promise<void
 
   res.set('Content-Type', 'text/plain');
   res.send(content);
+});
+
+// ---------------------------------------------------------------------------
+// Public search (headless) - see docs/plans/search-engine/search-engine-plan.md
+// §7. No auth, published-only, respects per-page search.indexable (enforced
+// at index time via indexer.ts). The response contract is the website's
+// integration point (whoobe-one-spike's SearchBox) and the future SSR
+// renderer's.
+const SEARCH_TYPES = ['page', 'object', 'class', 'asset'];
+
+function parseSearchQuery(req: Request): { error?: string; options?: import('@whoobe-cms/core/server').SearchOptions } {
+  const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  if (q.length < 2) return { error: 'Query parameter "q" must be at least 2 characters' };
+
+  // type accepts one value, several repeated (?type=object&type=asset) or a
+  // comma-separated list (?type=object,asset) - the admin search toggles
+  // multiple types on/off simultaneously.
+  const rawTypes = Array.isArray(req.query.type) ? req.query.type : typeof req.query.type === 'string' ? req.query.type.split(',') : [];
+  const types = rawTypes
+    .filter((t): t is string => typeof t === 'string')
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+  const invalid = types.find((t) => !SEARCH_TYPES.includes(t));
+  if (invalid) {
+    return { error: `Invalid "type": ${invalid} (expected page, object, class or asset)` };
+  }
+  const page = Number.parseInt(typeof req.query.page === 'string' ? req.query.page : '1', 10);
+  const pageSize = Number.parseInt(typeof req.query.pageSize === 'string' ? req.query.pageSize : '20', 10);
+  const sort = req.query.sort === 'date' ? 'date' : 'relevance';
+  const includeUnpublished = req.query.includeUnpublished === 'true';
+
+  return {
+    options: {
+      q,
+      locale: typeof req.query.locale === 'string' && req.query.locale ? req.query.locale : 'en',
+      websiteId: typeof req.query.websiteId === 'string' && req.query.websiteId ? req.query.websiteId : null,
+      type: (types.length === 1 ? types[0] : types.length > 1 ? types : null) as
+        | import('@whoobe-cms/core/server').SearchDocumentType
+        | import('@whoobe-cms/core/server').SearchDocumentType[]
+        | null,
+      classId: typeof req.query.classId === 'string' && req.query.classId ? req.query.classId : null,
+      includeUnpublished,
+      page: Number.isFinite(page) ? page : 1,
+      pageSize: Number.isFinite(pageSize) ? pageSize : 20,
+      sort,
+    },
+  };
+}
+
+function withSearchUrls<T extends { type: string; path: string }>(results: T[], locale: string): Array<T & { url: string | null }> {
+  const baseUrl = process.env.PUBLIC_SITE_URL || '';
+  return results.map((row) => {
+    const url = row.type === 'page' && baseUrl && row.path ? `${baseUrl}${row.path.startsWith('/') ? '' : '/'}${row.path}` : null;
+    return { ...row, url };
+  });
+}
+
+app.get('/public/search', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const parsed = parseSearchQuery(req);
+    if (parsed.error || !parsed.options) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+    const results = await searchContent(parsed.options);
+    res.json({ ...results, results: withSearchUrls(results.results, parsed.options.locale ?? 'en') });
+  } catch (error: any) {
+    console.error('Public search error:', error);
+    res.status(500).json({ error: error.message || 'Search failed' });
+  }
 });
 
 // Data Object classes (Pimcore's "Classes" concept) - see docs/plans/
@@ -2432,6 +2506,45 @@ app.get(
     } catch (error: any) {
       console.error('List object transitions error:', error);
       res.status(500).json({ error: error.message || 'Failed to list transitions' });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Admin search - same engine as /public/search, but session-gated and with
+// draft visibility (index rows carry published=false for unpublished content
+// and for pages whose search.indexable is false).
+app.get(
+  '/whoobe-one/search',
+  requirePermission(PERMISSIONS.OBJECTS_READ),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const parsed = parseSearchQuery(req);
+      if (parsed.error || !parsed.options) {
+        res.status(400).json({ error: parsed.error });
+        return;
+      }
+      const results = await searchContent(parsed.options);
+      res.json({ ...results, results: withSearchUrls(results.results, parsed.options.locale ?? 'en') });
+    } catch (error: any) {
+      console.error('Admin search error:', error);
+      res.status(500).json({ error: error.message || 'Search failed' });
+    }
+  }
+);
+
+// Full rebuild of the search index from source tables - heals any drift
+// (indexing hooks are best-effort by design; see indexer.ts).
+app.post(
+  '/whoobe-one/search/reindex',
+  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const counts = await reindexAll();
+      res.json({ ok: true, ...counts });
+    } catch (error: any) {
+      console.error('Search reindex error:', error);
+      res.status(500).json({ error: error.message || 'Reindex failed' });
     }
   }
 );

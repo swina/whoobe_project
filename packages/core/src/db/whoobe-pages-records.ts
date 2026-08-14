@@ -1,6 +1,7 @@
 import { eq, desc, and } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { whoobePages, type PageSeo, type PageSitemapSettings, type PageSearchSettings } from './whoobe-pages-schema.js';
+import { indexPage, deleteIndexedByDocument } from '../search/indexer.js';
 
 export interface WhoobePageRecord {
   id: string;
@@ -85,6 +86,7 @@ export async function createWhoobePage(input: {
       websiteId: input.websiteId ?? null,
     })
     .returning();
+  await indexPage(row);
   return row;
 }
 
@@ -133,12 +135,14 @@ export async function updateWhoobePage(
   }
 
   const [row] = await db.update(whoobePages).set(values).where(eq(whoobePages.id, id)).returning();
+  if (row) await indexPage(row);
   return row ?? null;
 }
 
 export async function deleteWhoobePage(id: string): Promise<void> {
   const db = getDb();
   await db.delete(whoobePages).where(eq(whoobePages.id, id));
+  await deleteIndexedByDocument('page', id);
 }
 
 /**
@@ -226,5 +230,6 @@ export async function upsertWhoobePageByPimcoreId(input: {
       },
     })
     .returning();
+  await indexPage(row);
   return row;
 }
