@@ -1,0 +1,1 @@
+ALTER TABLE "whoobe_ai_generated" ALTER COLUMN "raw_response" SET DATA TYPE text;

@@ -387,6 +387,7 @@
       </select>
     </label>
     <button v-if="editor.current?.gsap?.animation" title="Preview animation" class="toolbar-icon" @click="replayAnimation"><Play class="w-4 h-4" /></button>
+    <button title="AI generate snippet" class="toolbar-icon" @click="showAiGenerate = true"><Wand2 class="w-4 h-4" /></button>
     <button title="Save as snippet" class="toolbar-icon" @click="showSaveSnippet = true"><Save class="w-4 h-4" /></button>
     <button
       title="Bind to data object"
@@ -418,6 +419,14 @@
   <MediaPickerModal v-if="showMediaPicker" @select="onMediaPicked" @close="showMediaPicker = false" />
 
   <SaveSnippetModal v-if="showSaveSnippet && editor.current" :element="editor.current" @close="showSaveSnippet = false" />
+
+  <AiGenerateModal
+    v-if="showAiGenerate && editor.current"
+    kind="snippet"
+    :context="{ selectedTag: (editor.current as any).tag ?? null }"
+    @close="showAiGenerate = false"
+    @generated="onAiSnippetGenerated"
+  />
 
   <DataObjectPicker
     v-if="showDataPicker && editor.current"
@@ -478,9 +487,11 @@ import { clean, findParentAndIndex, findAncestorChain, removeNodeById, friendlyE
 import TipTapPanel from './TipTapPanel.vue'
 import MediaPickerModal from './MediaPickerModal.vue'
 import SaveSnippetModal from './SaveSnippetModal.vue'
+import AiGenerateModal from './AiGenerateModal.vue'
 import DataObjectPicker from './DataObjectPicker.vue'
 import ExpandableTextInput from './ExpandableTextInput.vue'
 import type { ElementDataBinding } from '../scripts/ElementsClass.js'
+import { insertGeneratedSnippet } from '../scripts/editor-actions'
 import { generateTemplateFromClass } from '../scripts/template-generator'
 import { resolveDocumentData } from '../scripts/data-resolver'
 import { getDataClass, getDataClassByName } from '../data-objects-api'
@@ -506,6 +517,7 @@ import {
   Tag,
   Trash2,
   Type,
+  Wand2,
   X,
 } from '@lucide/vue'
 
@@ -520,6 +532,7 @@ const showMediaPicker = ref(false)
 const showTextPicker = ref(false)
 const showFillPicker = ref(false)
 const showSaveSnippet = ref(false)
+const showAiGenerate = ref(false)
 const showLinkPicker = ref(false)
 const linkUrlDraft = ref('')
 const linkTargetDraft = ref('_self')
@@ -681,6 +694,18 @@ async function onGenerateTemplate(classId: string) {
   }
   showDataPicker.value = false
   showFieldDataPicker.value = false
+}
+
+// AI-generated snippet insertion - the same placement logic as paste
+// (pasteClipboardInto() in editor-actions.ts) and the same flow the
+// BlockEditor's AI history panel uses: into the selected element when it's
+// a real container, otherwise as a sibling right after it (in its own
+// parent), falling back to appending at the document root. Fresh ids
+// throughout, so the generated tree can be inserted more than once
+// without id collisions.
+function onAiSnippetGenerated(payload: unknown) {
+  showAiGenerate.value = false
+  insertGeneratedSnippet(editor, payload)
 }
 
 const label = computed(() => {

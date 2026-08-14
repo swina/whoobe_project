@@ -25,6 +25,7 @@
            own page-listing view is what's reachable in that case, this
            app's own Templates gallery would be a redundant second way to
            browse the same content. -->
+      <button :class="topbarBtnClass" @click="showAiGeneratePage = true"><Wand2 class="w-3.5 h-3.5" /> AI Page</button>
       <button v-if="!editor.embedded" :class="topbarBtnClass" @click="showTemplateGallery = true">
         <FolderOpen class="w-3.5 h-3.5" /> Templates
       </button>
@@ -118,6 +119,15 @@
             >
               <Package class="w-6 h-6" />
             </button>
+            <button
+              type="button"
+              title="AI generations"
+              class="flex-1 flex items-center justify-center py-2"
+              :class="sidebarTab === 'ai' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
+              @click="sidebarTab = 'ai'"
+            >
+              <WandSparkles class="w-6 h-6" />
+            </button>
           </div>
           <!-- Real BlockElements.vue port (categorized, drag-to-add) - see
                BlockElementsPalette.vue. Dragging out of it works exactly like
@@ -129,7 +139,8 @@
           <TailwindCustomizer v-else-if="sidebarTab === 'customize'" />
           <AdvancedPanel v-else-if="sidebarTab === 'advanced'" />
           <DocumentTree v-else-if="sidebarTab === 'tree'" />
-          <KitsPanel v-else @loaded="sidebarTab = 'elements'" />
+          <KitsPanel v-else-if="sidebarTab === 'kits'" @loaded="sidebarTab = 'elements'" />
+          <AiGeneratedPanel v-else @import="onAiGeneratedImport" @preview="onAiGeneratedPreview" />
         </div>
       </div>
     </div>
@@ -143,6 +154,21 @@
     <TemplateGalleryModal v-if="showTemplateGallery" @close="showTemplateGallery = false" @loaded="onTemplateLoaded" />
 
     <ThemeModal v-if="showThemeModal" @close="showThemeModal = false" />
+
+    <AiGenerateModal
+      v-if="showAiGeneratePage"
+      kind="page"
+      :context="{ pageTitle: editor.page?.name ?? null, pageCategory: editor.page?.category ?? null }"
+      @close="showAiGeneratePage = false"
+      @generated="onAiPageGenerated"
+    />
+
+    <AiGeneratedPreviewModal
+      v-if="showAiPreview && aiPreviewRecord"
+      :record="aiPreviewRecord"
+      @close="showAiPreview = false"
+      @import="onAiGeneratedImportIntoCurrent"
+    />
 
     <div v-if="message" class="shrink-0 px-4 py-1.5 text-white text-xs" :class="messageKind === 'error' ? 'bg-rose-600' : 'bg-emerald-600'">
       {{ message }}
@@ -188,7 +214,10 @@ import {
   Save,
   Settings2,
   Shapes,
+  Sparkles,
   Upload,
+  Wand2,
+  WandSparkles,
 } from '@lucide/vue'
 import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
@@ -203,11 +232,15 @@ import KitsPanel from './KitsPanel.vue'
 import AddToKitModal from './AddToKitModal.vue'
 import TemplateGalleryModal from './TemplateGalleryModal.vue'
 import ThemeModal from './ThemeModal.vue'
+import AiGenerateModal from './AiGenerateModal.vue'
+import AiGeneratedPanel from './AiGeneratedPanel.vue'
+import AiGeneratedPreviewModal from './AiGeneratedPreviewModal.vue'
+import type { AiGeneratedRecord } from '../ai-api'
 import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
-import { clean, findNodeById, removeNodeById, applyImagePlaceholder } from '../helpers'
+import { clean, findNodeById, removeNodeById, applyImagePlaceholder, normalizeGeneratedTree } from '../helpers'
 import { editorBus } from '../bus'
-import { exportDocument, importDocument, cloneWithFreshIds } from '../scripts/editor-actions'
+import { exportDocument, importDocument, cloneWithFreshIds, insertGeneratedSnippet } from '../scripts/editor-actions'
 import { savePage, saveAsNewTemplate, updatePageSlug } from '../scripts/database-actions'
 import { resolveDocumentData } from '../scripts/data-resolver'
 
@@ -217,11 +250,12 @@ const editor = useEditorStore()
 const snippetsStore = useSnippetsStore()
 const message = ref('')
 const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-sm font-semibold bg-violet-500 hover:bg-violet-800 text-white'
-const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'advanced' | 'kits'>('elements')
+const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'advanced' | 'kits' | 'ai'>('elements')
 const sidebarCollapsed = ref(false)
 const showAddToKit = ref(false)
 const showTemplateGallery = ref(false)
 const showThemeModal = ref(false)
+const showAiGeneratePage = ref(false)
 
 // A real, reported bug fixed here: `flash()` used to render every message
 // - including genuine failures ("Failed to save", "A path is required...")
@@ -392,6 +426,72 @@ async function onSaveAs() {
 
 function onTemplateLoaded() {
   flash('Loaded')
+}
+
+// AI-generated whole-page replacement - mirrors onNew()'s document swap
+// (fresh ids throughout, root coerced to the 'document' tag the editor
+// expects, page object reset so the next "Save Template" saves this new
+// content, keeping the page's id/name/category if one was already open).
+function onAiPageGenerated(payload: unknown) {
+  showAiGeneratePage.value = false
+  if (!editor.document) return
+  // normalizeGeneratedTree(): the model's raw output uses builder names
+  // for `type` and omits `element` entirely (see helpers.ts's own comment
+  // on the render dispatch), which rendered generated pages as empty
+  // canvas - derive the fields the editor's renderer actually needs.
+  const root = normalizeGeneratedTree(cloneWithFreshIds(payload)) as WhoobeElement
+  root.tag = 'document'
+  root.icon = 'dashboard'
+  root.css = {
+    css: clean(root.css?.css || ''),
+    container: clean((root.css?.container || '') + ' gap-4 min-h-[600px] bg-white'),
+  }
+  applyImagePlaceholder(root)
+  editor.setDocument(root)
+  editor.setCurrent(null)
+  const page = editor.page ?? new Block()
+  page.name = editor.page?.name || 'Untitled'
+  page.category = editor.page?.category || ''
+  page.json.blocks = root
+  editor.setPage(page)
+  flash('AI page generated')
+}
+
+// Re-import from the AI history panel (AiGeneratedPanel): a generation can
+// be lost between server-side success (payload persisted in
+// whoobe_ai_generated) and the client actually inserting it into the
+// canvas - this is the recovery path. Pages replace the document (same as
+// a fresh generation), snippets insert at the current selection (same as
+// the FloatingToolbar's flow).
+function onAiGeneratedImport(record: { kind: 'snippet' | 'page'; payload: unknown }) {
+  if (record.kind === 'page') {
+    onAiPageGenerated(record.payload)
+    return
+  }
+  insertGeneratedSnippet(editor, record.payload)
+  flash('AI snippet imported')
+}
+
+// Preview button from the AI history panel: opens the read-only modal
+// (AiGeneratedPreviewModal renders the payload through the same
+// BlockContainerPreview renderer DocumentPreview uses).
+const showAiPreview = ref(false)
+const aiPreviewRecord = ref<AiGeneratedRecord | null>(null)
+function onAiGeneratedPreview(record: AiGeneratedRecord) {
+  aiPreviewRecord.value = record
+  showAiPreview.value = true
+}
+
+// "Import into current element" (from the panel's Import button or the
+// preview modal's footer): always inserts the tree into the current
+// selection - into it when it's a real container, after it otherwise,
+// falling back to the page root when nothing is selected - regardless of
+// the stored kind, unlike the row click above (which keeps the old
+// kind-aware behavior: page → replace document).
+function onAiGeneratedImportIntoCurrent(record: AiGeneratedRecord) {
+  showAiPreview.value = false
+  insertGeneratedSnippet(editor, record.payload)
+  flash(`AI ${record.kind} imported into current element`)
 }
 
 async function onImportFile(e: Event) {

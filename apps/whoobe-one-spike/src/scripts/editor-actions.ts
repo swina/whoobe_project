@@ -24,7 +24,7 @@ import FileSaver from 'file-saver'
 import Block from './BlocksClass.js'
 import type Element from './ElementsClass.js'
 import type { useEditorStore } from '../store/editor'
-import { randomID, findParentAndIndex } from '../helpers'
+import { randomID, findParentAndIndex, clean, applyImagePlaceholder, normalizeGeneratedTree } from '../helpers'
 
 type WhoobeElement = InstanceType<typeof Element>
 type EditorStore = ReturnType<typeof useEditorStore>
@@ -121,6 +121,35 @@ export function pasteClipboardInto(editor: EditorStore): void {
     }
   }
   editor.document.blocks.push(clone)
+}
+
+/** Inserts an AI-generated Element tree (kind='snippet' payload) into the
+ *  document using the same placement rules as pasteClipboardInto(): into
+ *  the selected element when it's a real container, otherwise as a sibling
+ *  right after it (in its own parent), falling back to appending at the
+ *  document root. Fresh ids throughout via cloneWithFreshIds() so the
+ *  same generated tree can be imported more than once without collisions.
+ *  Shared by FloatingToolbar's "AI generate snippet" flow and BlockEditor's
+ *  AI history panel. */
+export function insertGeneratedSnippet(editor: EditorStore, payload: unknown): void {
+  if (!editor.document) return
+  const created = normalizeGeneratedTree(cloneWithFreshIds(payload)) as WhoobeElement & { type?: string }
+  created.css = {
+    css: clean(created.css?.css || ''),
+    container: clean(created.css?.container || ''),
+  }
+  applyImagePlaceholder(created)
+  const current = editor.current as (WhoobeElement & { type?: string }) | null
+  if (current && current.type === 'container') {
+    current.blocks.push(created)
+  } else if (current) {
+    const found = findParentAndIndex(editor.document, current.id)
+    if (found) found.parent.blocks.splice(found.index + 1, 0, created)
+    else editor.document.blocks.push(created)
+  } else {
+    editor.document.blocks.push(created)
+  }
+  editor.setCurrent(created)
 }
 
 /** Port of $exportBlock - downloads just the selected node as JSON. */
