@@ -9,7 +9,9 @@ export interface SearchOptions {
   q: string
   locale?: string
   websiteId?: string | null
-  type?: SearchDocumentType | null
+  /** One type or several (comma-separated on the wire) - the search
+   *  element lets a site scope its box to pages/assets/objects. */
+  type?: SearchDocumentType | SearchDocumentType[] | null
   classId?: string | null
   page?: number
   pageSize?: number
@@ -57,7 +59,7 @@ export async function searchContent(options: SearchOptions): Promise<SearchResul
   params.set('q', options.q)
   if (options.locale) params.set('locale', options.locale)
   if (options.websiteId) params.set('websiteId', options.websiteId)
-  if (options.type) params.set('type', options.type)
+  if (options.type) params.set('type', Array.isArray(options.type) ? options.type.join(',') : options.type)
   if (options.classId) params.set('classId', options.classId)
   if (options.page && options.page > 1) params.set('page', String(options.page))
   if (options.pageSize) params.set('pageSize', String(options.pageSize))

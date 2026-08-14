@@ -17,6 +17,26 @@
     >
       &lt;{{ component }}&gt;
     </button>
+    <!-- The "Search" element is a live component, not a native tag - a
+         dedicated branch (like lucideicon) so the generic <component>
+         branch's v-html/contenteditable never touch its interactive
+         internals. `editing` keeps it from submitting/navigating, and this
+         branch uses its own select-only click (no preventDefault, unlike
+         onClick) so the input stays focusable - the admin can type and see
+         the live dropdown (and its custom classes) while managing it. -->
+    <SearchElement
+      v-else-if="element.tag === 'search'"
+      :id="element.id"
+      :ref="element.id"
+      :config="(element as any).searchConfig"
+      :placeholder="element.placeholder"
+      :editing="true"
+      :class="classe"
+      :style="stile"
+      :data-id="element.id"
+      data-type="element"
+      @click.stop="selectSearchElement"
+    />
     <component
       v-else
       :is="component"
@@ -181,6 +201,9 @@ const component = computed(() => {
     const level = Number(el.level)
     return 'h' + (Number.isInteger(level) && level >= 1 && level <= 6 ? level : 1)
   }
+  // The "Search" palette element renders as the globally-registered
+  // SearchElement component (search-element-plan), not a native tag.
+  if (el.element === 'search') return 'SearchElement'
   return el.element === 'grid' ? 'div' : el.element
 })
 
@@ -236,5 +259,14 @@ function onBlur(e: FocusEvent) {
   const target = e.target as HTMLElement
   const text = target.innerHTML.replace(/style="[^"]*"/gm, '')
   props.element.content = text
+}
+
+// Selection for the Search element - same as onClick minus the
+// preventDefault (a native <form> has no default navigation to suppress,
+// and blocking the default click would also block focusing its <input>,
+// so the admin couldn't type to see the live dropdown).
+function selectSearchElement() {
+  editor.setCurrent(isSelected.value ? null : props.element)
+  if (!isSelected.value) editorBus.emit('floatingElement', props.element.id)
 }
 </script>

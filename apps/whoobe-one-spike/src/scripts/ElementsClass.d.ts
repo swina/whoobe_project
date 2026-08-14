@@ -75,6 +75,34 @@ export interface ElementFormConfig {
   notify: ElementFormNotifyConfig
 }
 
+// Only present on nodes built via .Search() - see docs/plans/search-engine/
+// search-element-plan.md. Scopes the search box to certain document types
+// (and, for objects, to specific classes).
+export interface ElementSearchConfig {
+  types: {
+    page: boolean
+    object: boolean
+    asset: boolean
+  }
+  /** Restrict object results to these classes (data_classes.id); empty =
+   *  all object classes. */
+  classIds: string[]
+  /** Custom Tailwind classes for the live results dropdown; empty = the
+   *  component's built-in default. */
+  dropdownClass?: string
+  /** Custom Tailwind classes appended to the search input; empty = the
+   *  built-in default. */
+  inputClass?: string
+  /** Custom Tailwind classes appended to the submit button; empty = the
+   *  built-in default. */
+  buttonClass?: string
+  /** Submit button label text; default "Search". */
+  buttonLabel?: string
+  /** When true the submit button shows a search icon instead of the label
+   *  text. */
+  buttonIcon?: boolean
+}
+
 import type { FieldTransform } from './field-transforms.js'
 
 export interface DataBindingFilter {
