@@ -2164,6 +2164,32 @@ app.put('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async 
   }
 });
 
+// Sends a test email through the configured SMTP - the "Email Test" card
+// in the mail settings UI. Unlike the form-notification path it lets the
+// admin override the from address and pass a cc, so delivery can be
+// verified end to end.
+app.post('/mail-settings/test', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { from, to, cc, subject, html, text } = req.body ?? {};
+    if (!to || !subject) {
+      res.status(400).json({ error: 'to and subject are required' });
+      return;
+    }
+    await sendMail({
+      to,
+      subject,
+      from: typeof from === 'string' && from.trim() ? from.trim() : undefined,
+      cc: typeof cc === 'string' && cc.trim() ? cc.trim() : undefined,
+      html: typeof html === 'string' ? html : '',
+      text: typeof text === 'string' && text.trim() ? text : undefined,
+    });
+    res.json({ ok: true });
+  } catch (error: any) {
+    console.error('Mail test error:', error);
+    res.status(500).json({ error: error?.message || 'Failed to send test email' });
+  }
+});
+
 // AI generation config (docs/plans/ai/ai-pages-snippets-generator.md) -
 // same shape as mail-settings: single global row, GET never returns the
 // stored API key (only `hasApiKey`), PUT treats a blank key as

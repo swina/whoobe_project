@@ -57,3 +57,22 @@ export async function saveMailSettings(baseUrl: string, input: MailSettingsInput
   })
   return parseJsonOrThrow(res)
 }
+
+export interface SendTestMailInput {
+  from?: string
+  to: string
+  cc?: string
+  subject: string
+  html?: string
+  text?: string
+}
+
+export async function sendTestMail(baseUrl: string, input: SendTestMailInput): Promise<{ ok: boolean }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/mail-settings/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}

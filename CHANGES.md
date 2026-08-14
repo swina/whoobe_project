@@ -4,6 +4,15 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Mail settings: Email Test tab] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+- `MailSettingsCard.vue` gains an "Email Test" tab beside Settings: a card with From (defaults to the configured from address), To, CC, Subject and a Body textarea (text or HTML - HTML-looking content is sent as html, otherwise plain text).
+- `packages/core/src/mail/mailer.ts`: `sendMail` now accepts optional `from` (overrides the configured sender), `cc` and `text`.
+- `apps/core-api`: new `POST /mail-settings/test` (SETTINGS_MANAGE) sends a test email through the configured SMTP and returns `{ ok: true }` or the transport error.
+- `utils/mail-settings-api.ts`: `sendTestMail()` client. Verified live against the dev SMTP config.
+
+---
+
 ## [Pages settings: locale selection, SEO title fallback, linked-page info] — 2026-08-14 (branch: feat/08-14/search-engine)
 
 - `PageSettingsTab.vue` General: the page's Locale is now a `<select>` of the selected website's `supportedLocales` (free-text input only in single-site mode / when the website has no languages). Switching websites adopts the new site's default locale; a legacy page whose locale isn't in the list keeps its real value (kept selectable + amber warning). Only user-initiated website switches reset the locale - never the initial form load.
