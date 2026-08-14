@@ -35,3 +35,10 @@ export function useRelationOptions(className: string) {
 
   return cacheByClassName.get(className)!
 }
+
+// Read-only peek at the cache (no trigger side effect) - ObjectsView.vue
+// uses this to resolve a relation column's display value once the picker
+// loading above has kicked in.
+export function getRelationOptions(className: string): DataObject[] {
+  return cacheByClassName.get(className)?.value ?? []
+}

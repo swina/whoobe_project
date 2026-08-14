@@ -63,6 +63,13 @@
                 Update
               </button>
             </div>
+            <div v-if="classListColumns.length > 0" class="pt-1 border-t border-slate-800 light:border-slate-200">
+              <button @click="applyClassListColumns" type="button"
+                class="text-xs text-slate-400 hover:text-indigo-300"
+                title="Re-apply the columns defined in the class editor's List Layout tab">
+                Use class default listing
+              </button>
+            </div>
             <div v-if="presets.length > 0" class="space-y-1 pt-1 border-t border-slate-800 light:border-slate-200">
               <span class="text-[10px] font-semibold text-slate-500 uppercase">Saved presets</span>
               <div v-for="preset in presets" :key="preset.name"
@@ -187,7 +194,7 @@
                   :title="col.title"
                   @error="($event.target as HTMLImageElement).style.display = 'none'"
                 />
-                <span v-else>{{ formatListValue(record.primary.attributes?.[col.name]) }}</span>
+                <span v-else>{{ listCellValue(record, col.name) }}</span>
               </template>
             </td>
             <td class="px-4 py-3.5 text-right" @click.stop>
@@ -294,7 +301,9 @@ import type { DataObject } from '../utils/data-objects-api'
 import { batchActionDataObjects, batchResolveAssets } from '../utils/data-objects-api'
 import type { DataObjectQueryFilter } from '../utils/data-objects-api'
 import { exportRowsAsCsv, exportRowsAsJson, exportRowsAsXlsx } from '../utils/data-export'
+import { useRelationOptions } from '../composables/useRelationOptions'
 import { loadObjectListPresets, upsertObjectListPreset, deleteObjectListPreset, setDefaultPreset, getDefaultPreset, type ObjectListPreset } from '../utils/object-list-presets'
+import { SYSTEM_LIST_COLUMNS, type ListColumnOption } from '../utils/list-columns'
 import type { ClassFieldDefinition } from '@whoobe-cms/core'
 import { randomUUID } from '../utils/random-id'
 
@@ -319,15 +328,10 @@ const sortDir = ref<'asc' | 'desc'>('asc')
 const showFilterModal = ref(false)
 const queryFilters = ref<DataObjectQueryFilter[]>([])
 
-// System columns always available in the view config
-interface ColumnOption { name: string; title: string }
-const SYSTEM_COLUMNS: ColumnOption[] = [
-  { name: 'key', title: 'Key / Path' },
-  { name: 'locales', title: 'Locales' },
-  { name: 'class', title: 'Class' },
-  { name: 'status', title: 'Status' },
-  { name: 'updatedAt', title: 'Modification Date' },
-]
+// System columns always available in the view config - shared vocabulary
+// with the class editor's List Layout tab (utils/list-columns.ts).
+type ColumnOption = ListColumnOption
+const SYSTEM_COLUMNS = SYSTEM_LIST_COLUMNS
 
 const allColumnOptions = computed<ColumnOption[]>(() => {
   const classFields = filterableFields.value.map((f) => ({ name: f.name, title: f.title || f.name }))
@@ -466,6 +470,7 @@ function classLabel(classId: string): string {
 }
 
 const selectedDataClass = computed(() => dataClassesStore.classes.find((c) => c.id === selectedClassId.value) || null)
+const classListColumns = computed(() => selectedDataClass.value?.viewConfig?.listColumns ?? [])
 const filterableFields = computed(() => selectedDataClass.value?.fields ?? [])
 const filterFields = computed(() => [
   { name: 'key', title: 'Key', fieldType: 'input' },
@@ -642,6 +647,47 @@ function formatListValue(value: unknown): string {
   return String(value)
 }
 
+// Relation ids from a stored relation value - `{ id }` for singles, an
+// array of `{ id }` for the multi-relation family.
+function relationIds(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => (v && typeof v === 'object' && 'id' in (v as Record<string, unknown>) ? String((v as { id: string }).id) : ''))
+      .filter(Boolean)
+  }
+  if (value && typeof value === 'object' && 'id' in (value as Record<string, unknown>)) return [String((value as { id: string }).id)]
+  return []
+}
+
+// Cell value for a relation column: resolves each related object and shows
+// the field's `relationDisplayField` (class editor's List Layout / View
+// Layout tabs) when set, falling back to the object's `key`. Triggers the
+// relation-options loader for the target class (cached per class name,
+// shared with the form's pickers via useRelationOptions).
+function listCellValue(record: ObjectRecord, colName: string): string {
+  const field = classFieldByName(colName)
+  const raw = record.primary.attributes?.[colName]
+  if (field?.relationTarget) {
+    const ids = relationIds(raw)
+    if (ids.length > 0) {
+      const related = useRelationOptions(field.relationTarget).value ?? []
+      const displayField = field.relationDisplayField
+      return ids
+        .map((id) => {
+          const target = related.find((o) => o.id === id)
+          if (!target) return id
+          if (displayField) {
+            const value = (target.attributes as Record<string, unknown> | null | undefined)?.[displayField]
+            if (value != null && value !== '') return String(value)
+          }
+          return target.key
+        })
+        .join(', ')
+    }
+  }
+  return formatListValue(raw)
+}
+
 function handleClassChange() {
   queryFilters.value = []
   currentPage.value = 1
@@ -652,9 +698,30 @@ function handleClassChange() {
   presets.value = selectedClassId.value ? loadObjectListPresets(selectedClassId.value) : []
   if (selectedClassId.value) {
     const defaultPreset = getDefaultPreset(selectedClassId.value)
-    if (defaultPreset) activeColumnNames.value = [...defaultPreset.columns]
+    if (defaultPreset) {
+      activeColumnNames.value = [...defaultPreset.columns]
+    } else {
+      // Fall back to the class's own List Layout (MasterClassTab) when no
+      // user-side default preset exists - a preset wins over the class
+      // default, which wins over "all columns".
+      const known = new Set(allColumnOptions.value.map((c) => c.name))
+      activeColumnNames.value = (selectedDataClass.value?.viewConfig?.listColumns ?? [])
+        .map((c) => c.name)
+        .filter((n) => known.has(n))
+    }
   }
   dataObjectsStore.refreshDataObjects(selectedClassId.value || undefined)
+}
+
+// Re-applies the class's List Layout to the current listing (the View ▾
+// menu's "Use class default listing" action) - handy after the class
+// author changed the default or after a rename dropped a column.
+function applyClassListColumns() {
+  if (!selectedDataClass.value) return
+  const known = new Set(allColumnOptions.value.map((c) => c.name))
+  activeColumnNames.value = (selectedDataClass.value.viewConfig?.listColumns ?? [])
+    .map((c) => c.name)
+    .filter((n) => known.has(n))
 }
 
 interface ObjectRecord {

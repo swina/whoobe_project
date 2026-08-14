@@ -474,6 +474,9 @@ async function runSearch() {
       q,
       pageSize: 20,
       type: types.length === searchTypeFilters.length ? undefined : types.length === 1 ? types[0] : types,
+      // Admin search is the management surface - drafts (e.g. freshly
+      // migrated objects) must be findable there even before publish.
+      includeUnpublished: true,
     })
     searchResults.value = res.results
     searchTotal.value = res.total

@@ -71,8 +71,7 @@
            the generic flat detail form exactly as before. Reassigning a
            field moves it between tree nodes (no drag-and-drop, matching
            this codebase's own recurring precedent for admin editors). -->
-      <div v-if="editorTab === 'viewLayout'" class="space-y-3">
-        <div class="flex items-center justify-between">
+      <div v-if="editorTab === 'viewLayout'" class="space-y-3">        <div class="flex items-center justify-between">
           <p class="text-[11px] text-slate-500">
             Group fields into sections - each becomes its own tab on the object edit form. Fields left ungrouped still show, under an
             "Other fields" tab.
@@ -91,15 +90,26 @@
               <span class="text-slate-600 light:text-slate-400">({{ ungroupedFields.length }})</span>
             </button>
             <div v-if="isExpanded('__ungrouped__')" class="pl-6 pb-2 pr-2 space-y-1 border-t border-slate-800/60 light:border-slate-200/60 pt-1.5">
-              <div v-for="field in ungroupedFields" :key="field.name" class="flex items-center justify-between gap-2 text-xs text-slate-400 light:text-slate-600 py-0.5">
-                <span class="truncate">{{ field.title || field.name }}</span>
+              <div v-for="field in ungroupedFields" :key="field.name" class="flex flex-col gap-1 text-xs text-slate-400 light:text-slate-600 py-0.5">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="truncate">{{ field.title || field.name }}</span>
+                  <select
+                    :value="''"
+                    @change="assignFieldToSection(field.name, ($event.target as HTMLSelectElement).value)"
+                    class="px-1.5 py-1 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500 shrink-0"
+                  >
+                    <option value="">Ungrouped</option>
+                    <option v-for="(section, i) in viewConfig.detailSections" :key="i" :value="i">→ {{ section.title || `Section ${i + 1}` }}</option>
+                  </select>
+                </div>
                 <select
-                  :value="''"
-                  @change="assignFieldToSection(field.name, ($event.target as HTMLSelectElement).value)"
-                  class="px-1.5 py-1 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500 shrink-0"
+                  v-if="relationDisplayOptions(field)"
+                  :value="field.relationDisplayField ?? ''"
+                  @change="setRelationDisplayField(field, ($event.target as HTMLSelectElement).value)"
+                  class="w-52 px-1.5 py-1 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
                 >
-                  <option value="">Ungrouped</option>
-                  <option v-for="(section, i) in viewConfig.detailSections" :key="i" :value="i">→ {{ section.title || `Section ${i + 1}` }}</option>
+                  <option value="">Show: Key (default)</option>
+                  <option v-for="f in relationDisplayOptions(field)" :key="f.name" :value="f.name">{{ f.title || f.name }}</option>
                 </select>
               </div>
               <p v-if="ungroupedFields.length === 0" class="text-slate-600 light:text-slate-400 italic">All fields are assigned to a section.</p>
@@ -141,36 +151,128 @@
               <div
                 v-for="(field, fieldIndex) in sectionFields(sectionIndex)"
                 :key="field.name"
-                class="flex items-center justify-between gap-2 text-xs text-slate-400 light:text-slate-600 py-0.5"
+                class="flex flex-col gap-1 text-xs text-slate-400 light:text-slate-600 py-0.5"
               >
-                <span class="truncate">{{ field.title || field.name }}</span>
-                <div class="flex items-center gap-1 shrink-0">
-                  <button
-                    @click="moveFieldInSection(sectionIndex, field.name, -1)"
-                    type="button"
-                    :disabled="fieldIndex === 0"
-                    class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30"
-                  >↑</button>
-                  <button
-                    @click="moveFieldInSection(sectionIndex, field.name, 1)"
-                    type="button"
-                    :disabled="fieldIndex === sectionFields(sectionIndex).length - 1"
-                    class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30"
-                  >↓</button>
-                  <select
-                    :value="String(sectionIndex)"
-                    @change="assignFieldToSection(field.name, ($event.target as HTMLSelectElement).value)"
-                    class="px-1.5 py-1 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="">Ungrouped</option>
-                    <option v-for="(s, i) in viewConfig.detailSections" :key="i" :value="i">→ {{ s.title || `Section ${i + 1}` }}</option>
-                  </select>
+                <div class="flex items-center justify-between gap-2">
+                  <span class="truncate">{{ field.title || field.name }}</span>
+                  <div class="flex items-center gap-1 shrink-0">
+                    <button
+                      @click="moveFieldInSection(sectionIndex, field.name, -1)"
+                      type="button"
+                      :disabled="fieldIndex === 0"
+                      class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30"
+                    >↑</button>
+                    <button
+                      @click="moveFieldInSection(sectionIndex, field.name, 1)"
+                      type="button"
+                      :disabled="fieldIndex === sectionFields(sectionIndex).length - 1"
+                      class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30"
+                    >↓</button>
+                    <select
+                      :value="String(sectionIndex)"
+                      @change="assignFieldToSection(field.name, ($event.target as HTMLSelectElement).value)"
+                      class="px-1.5 py-1 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="">Ungrouped</option>
+                      <option v-for="(s, i) in viewConfig.detailSections" :key="i" :value="i">→ {{ s.title || `Section ${i + 1}` }}</option>
+                    </select>
+                  </div>
                 </div>
+                <select
+                  v-if="relationDisplayOptions(field)"
+                  :value="field.relationDisplayField ?? ''"
+                  @change="setRelationDisplayField(field, ($event.target as HTMLSelectElement).value)"
+                  class="w-52 px-1.5 py-1 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="">Show: Key (default)</option>
+                  <option v-for="f in relationDisplayOptions(field)" :key="f.name" :value="f.name">{{ f.title || f.name }}</option>
+                </select>
               </div>
               <p v-if="sectionFields(sectionIndex).length === 0" class="text-slate-600 light:text-slate-400 italic">No fields yet - move some in from Ungrouped.</p>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- List Layout: the class's default listing columns for the
+           Objects tab - docs/plans/UI/editing-object-class.md. Optional;
+           an empty list keeps the listing's existing "all columns"
+           behavior. Column rows are admin-reorderable and removable, new
+           ones are picked from the class's named fields + the system
+           columns, and a custom title overrides the header label. -->
+      <div v-if="editorTab === 'listLayout'" class="space-y-3">
+        <div class="flex items-center justify-between">
+          <p class="text-[11px] text-slate-500">
+            Define the default columns for this class's object listing. Any saved view (the listing's own View ▾ menu) overrides these;
+            otherwise they apply whenever this class is selected.
+          </p>
+          <button
+            v-if="listColumns.length > 0"
+            @click="listColumns = []"
+            type="button"
+            class="text-xs font-semibold text-rose-400 hover:text-rose-300 shrink-0 ml-3"
+          >Clear all</button>
+        </div>
+
+        <p v-if="namedFields.length === 0" class="text-xs text-slate-600 light:text-slate-400 italic">Add fields on the Fields tab first.</p>
+
+        <template v-else>
+          <div v-if="listColumns.length === 0" class="rounded-lg border border-dashed border-slate-800 light:border-slate-200 p-4 text-xs text-slate-600 light:text-slate-400 italic">
+            No columns configured - the listing shows every field. Pick columns below to define a fixed layout.
+          </div>
+
+          <div v-else class="rounded-lg border border-slate-800 light:border-slate-200 overflow-hidden">
+            <div
+              v-for="(column, columnIndex) in listColumns"
+              :key="column.name"
+              class="flex items-center gap-2 px-2 py-1.5 text-xs border-b border-slate-800/60 light:border-slate-200/60 last:border-b-0"
+            >
+              <component :is="listColumnIcon(column.name, classFieldType(column.name))" class="w-3.5 h-3.5 shrink-0 text-slate-500" />
+              <div class="flex flex-col flex-1 min-w-0 gap-0.5">
+                <span class="text-slate-300 light:text-slate-700 truncate">{{ columnTitle(column.name) }}</span>
+                <input
+                  v-model="column.title"
+                  type="text"
+                  placeholder="Custom header (optional)"
+                  class="px-2 py-0.5 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+                />
+                <select
+                  v-if="relationDisplayOptions(classFieldByName(column.name))"
+                  :value="classFieldByName(column.name)?.relationDisplayField ?? ''"
+                  @change="setRelationDisplayField(classFieldByName(column.name)!, ($event.target as HTMLSelectElement).value)"
+                  class="px-2 py-0.5 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="">Show: Key (default)</option>
+                  <option v-for="f in relationDisplayOptions(classFieldByName(column.name))" :key="f.name" :value="f.name">{{ f.title || f.name }}</option>
+                </select>
+              </div>
+              <button @click="moveListColumn(columnIndex, -1)" type="button" :disabled="columnIndex === 0" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30 shrink-0">↑</button>
+              <button @click="moveListColumn(columnIndex, 1)" type="button" :disabled="columnIndex === listColumns.length - 1" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30 shrink-0">↓</button>
+              <button @click="removeListColumn(columnIndex)" type="button" class="text-xs text-rose-400 hover:text-rose-300 shrink-0">✕</button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <select
+              v-model="pendingColumnName"
+              class="flex-1 px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="" disabled>Pick a column to add…</option>
+              <optgroup v-if="availableSystemColumns.length > 0" label="System">
+                <option v-for="col in availableSystemColumns" :key="col.name" :value="col.name">{{ col.title }}</option>
+              </optgroup>
+              <optgroup label="Fields">
+                <option v-for="field in availableFieldColumns" :key="field.name" :value="field.name">{{ field.title || field.name }}</option>
+              </optgroup>
+            </select>
+            <button
+              @click="addListColumn"
+              :disabled="!pendingColumnName"
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 shrink-0"
+            >+ Add</button>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -191,6 +293,7 @@ import { useTabsStore, classTabId } from '../../stores/tabsStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useToastStore } from '../../stores/toastStore'
 import { fetchDataObjects } from '../../utils/data-objects-api'
+import { SYSTEM_LIST_COLUMNS, listColumnIcon } from '../../utils/list-columns'
 import FieldListEditor from './FieldListEditor.vue'
 
 const props = defineProps<{ classId: string }>()
@@ -213,11 +316,12 @@ const isSaving = ref(false)
 const objectCount = ref(0)
 const hydrated = ref(false)
 
-const editorTabs: { key: 'fields' | 'viewLayout'; label: string }[] = [
+const editorTabs: { key: 'fields' | 'viewLayout' | 'listLayout'; label: string }[] = [
   { key: 'fields', label: 'Fields' },
   { key: 'viewLayout', label: 'View Layout' },
+  { key: 'listLayout', label: 'List Layout' },
 ]
-const editorTab = ref<'fields' | 'viewLayout'>('fields')
+const editorTab = ref<'fields' | 'viewLayout' | 'listLayout'>('fields')
 
 const name = ref('')
 const label = ref('')
@@ -225,6 +329,8 @@ const fields = ref<ClassFieldDefinition[]>([])
 const viewConfig = ref<{ detailSections: { title: string; fields: string[]; containerClass?: string }[] }>({
   detailSections: [],
 })
+const listColumns = ref<{ name: string; title?: string }[]>([])
+const pendingColumnName = ref('')
 
 // Seeds the editable draft from the loaded class exactly once - further
 // store refreshes (e.g. this same save re-triggering refreshDataClasses())
@@ -239,6 +345,7 @@ watch(
     viewConfig.value = {
       detailSections: (dataClass.viewConfig?.detailSections ?? []).map((s) => ({ title: s.title, fields: [...s.fields], containerClass: s.containerClass ?? '' })),
     }
+    listColumns.value = (dataClass.viewConfig?.listColumns ?? []).map((c) => ({ name: c.name, ...(c.title ? { title: c.title } : {}) }))
     hydrated.value = true
     fetchDataObjects(authStore.config.coreApiUrl, dataClass.id)
       .then((objects) => (objectCount.value = objects.length))
@@ -330,6 +437,66 @@ function assignFieldToSection(fieldName: string, targetValue: string) {
   }
 }
 
+// List Layout - the class's default listing columns. Picks come from the
+// class's named fields plus the system columns (shared vocabulary with
+// ObjectsView.vue via utils/list-columns.ts); `title` is an optional
+// custom header that overrides the column's natural label.
+const systemColumnTitles = new Map(SYSTEM_LIST_COLUMNS.map((c) => [c.name, c.title]))
+
+function classFieldByName(name: string): ClassFieldDefinition | undefined {
+  return namedFields.value.find((f) => f.name === name)
+}
+
+function classFieldType(name: string): string | undefined {
+  return classFieldByName(name)?.fieldType
+}
+
+function columnTitle(name: string): string {
+  return classFieldByName(name)?.title || classFieldByName(name)?.name || systemColumnTitles.get(name) || name
+}
+
+const availableSystemColumns = computed(() =>
+  SYSTEM_LIST_COLUMNS.filter((c) => !listColumns.value.some((lc) => lc.name === c.name))
+)
+const availableFieldColumns = computed(() =>
+  namedFields.value.filter((f) => !listColumns.value.some((lc) => lc.name === f.name))
+)
+
+function addListColumn() {
+  const name = pendingColumnName.value
+  if (!name || listColumns.value.some((lc) => lc.name === name)) return
+  listColumns.value.push({ name })
+  pendingColumnName.value = ''
+}
+
+function removeListColumn(index: number) {
+  listColumns.value.splice(index, 1)
+}
+
+function moveListColumn(index: number, direction: 1 | -1) {
+  const target = index + direction
+  if (target < 0 || target >= listColumns.value.length) return
+  const [moved] = listColumns.value.splice(index, 1)
+  listColumns.value.splice(target, 0, moved)
+}
+
+// Relation display fields - shared by the List Layout and View Layout
+// tabs. A relation-flavored field (relationTarget set) gets a picker of
+// the related class's fields; the chosen one becomes
+// `relationDisplayField` on the field definition itself (like
+// relationTarget), so the listing columns and the form's relation pickers
+// both show it - one source of truth, no per-config duplication.
+function relationDisplayOptions(field: ClassFieldDefinition | undefined): ClassFieldDefinition[] | null {
+  if (!field?.relationTarget) return null
+  const targetClass = dataClassesStore.classes.find((c) => c.name === field.relationTarget)
+  return targetClass?.fields ?? null
+}
+
+function setRelationDisplayField(field: ClassFieldDefinition, value: string) {
+  if (value === '') delete field.relationDisplayField
+  else field.relationDisplayField = value
+}
+
 // Drops anything authored, then abandoned - a field removed/renamed
 // mid-edit, or a section left with no title/fields - and collapses back
 // to `null` when nothing real is configured, so a class nobody touched
@@ -342,8 +509,17 @@ function buildViewConfigPayload(): ClassViewConfig | null {
       return { title: s.title.trim(), fields: s.fields.filter((n) => validNames.has(n)), ...(containerClass ? { containerClass } : {}) };
     })
     .filter((s) => s.title !== '' && s.fields.length > 0)
-  if (detailSections.length === 0) return null
-  return { detailSections }
+  // List columns may also reference system columns - only field names are
+  // validated against the class itself. Custom titles survive; blank ones
+  // are dropped.
+  const validListColumns = listColumns.value
+    .map((c) => (c.title?.trim() ? { name: c.name, title: c.title.trim() } : { name: c.name }))
+    .filter((c) => validNames.has(c.name) || systemColumnTitles.has(c.name))
+  if (detailSections.length === 0 && validListColumns.length === 0) return null
+  return {
+    ...(detailSections.length > 0 ? { detailSections } : {}),
+    ...(validListColumns.length > 0 ? { listColumns: validListColumns } : {}),
+  }
 }
 
 function refreshTabLabel() {

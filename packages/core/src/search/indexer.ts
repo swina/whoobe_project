@@ -13,6 +13,7 @@ import { searchDocuments, type SearchDocumentType } from '../db/search-documents
 import { extractPageText, extractObjectText, extractClassDoc, extractAssetDoc, type ExtractedSearchDoc } from './extract.js';
 import type { WhoobePageRecord } from '../db/whoobe-pages-records.js';
 import type { DataObjectRecord } from '../db/data-objects-records.js';
+import { getDataObject } from '../db/data-objects-records.js';
 import type { DataClassRecord } from '../db/data-classes-records.js';
 import type { AssetRecord } from '../db/asset-records.js';
 
@@ -80,8 +81,45 @@ export async function indexPage(page: WhoobePageRecord): Promise<void> {
   });
 }
 
+// Relation display labels - the indexer-side "reindex-time enrichment"
+// the extract.ts comment documents. The class editor's own
+// relationDisplayField (docs/plans/UI/editing-object-class.md) tells us
+// exactly which field of the related object to pull in, so e.g. a Product
+// becomes findable by its Category's name rather than being invisible
+// behind a bare {id} reference. Sync-extract stays DB-free; the lookups
+// live here, in the DB-aware indexer.
+function relationIdsFromAttribute(value: unknown): string[] {
+  const ids: string[] = [];
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (item && typeof item === 'object' && 'id' in (item as Record<string, unknown>)) {
+        const id = (item as { id: string }).id;
+        if (id) ids.push(id);
+      }
+    }
+  } else if (value && typeof value === 'object' && 'id' in (value as Record<string, unknown>)) {
+    const id = (value as { id: string }).id;
+    if (id) ids.push(id);
+  }
+  return ids;
+}
+
+async function resolveRelationLabels(object: DataObjectRecord, classDef: DataClassRecord): Promise<string[]> {
+  const labels: string[] = [];
+  for (const field of classDef.fields) {
+    if (!field.relationTarget || !field.relationDisplayField) continue;
+    for (const id of relationIdsFromAttribute(object.attributes?.[field.name])) {
+      const related = await getDataObject(id);
+      const label = related?.attributes?.[field.relationDisplayField];
+      if (label != null && String(label).trim() !== '') labels.push(String(label));
+    }
+  }
+  return labels;
+}
+
 export async function indexObject(object: DataObjectRecord, classDef: DataClassRecord): Promise<void> {
-  return upsertSearchDocument('object', object.id, extractObjectText(object, classDef), {
+  const relationLabels = await resolveRelationLabels(object, classDef);
+  return upsertSearchDocument('object', object.id, extractObjectText(object, classDef, relationLabels), {
     locale: object.locale,
     websiteId: null,
     published: object.published,
