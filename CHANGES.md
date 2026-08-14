@@ -4,6 +4,24 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Fix: Office viewer login redirect in dev - only use MS viewer for internet-reachable URLs] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+The Microsoft Office viewer embed showed a sign-in page instead of the document: `view.officeapps.live.com` fetches the file from Microsoft's servers, and the dev asset URL (`develop.local` - a LAN hostname) is unreachable from the internet, so the viewer fell back to a login/error screen (unrelated to the user's Microsoft account/license). `officeViewerUrl` now runs the URL through an `isInternetPublicUrl()` check (localhost, `*.local`/`*.lan`/`*.internal`/`*.home`, private/loopback IPs rejected); non-public-reachable office assets get the icon + "Open in New Tab" fallback instead of a broken embed. In production, with a real public CDN URL configured, the viewer works as intended.
+
+---
+
+## [Feature: DAM previews for PDF, Office and JSON assets] — 2026-08-14 (branch: feat/08-14/search-engine)
+
+`DamAssetPreviewPanel.vue` now renders inline previews beyond images/MP4, using the asset-processor proxy (`/dam-asset/<s3Key>`, CORS-enabled) so content never needs S3's own CORS or presigned-URL freshness:
+
+- **PDF** → streamed through the proxy, re-typed to `application/pdf` as a blob URL and rendered in an `<iframe>` (works even though the stored S3 objects are `application/octet-stream`, which would otherwise force a download).
+- **Word / Excel / PowerPoint** (DOC/DOCX/XLS/XLSX/PPT/PPTX) → embedded Microsoft Office viewer iframe for **public** assets (the file is fetched by Microsoft's servers — acceptable for CDN-public files; private files deliberately fall back to the icon + "Open in New Tab" panel, since presigned URLs expire and sending private files to Microsoft would leak them).
+- **JSON** → fetched via the proxy and pretty-printed in a scrollable `<pre>` (raw text fallback if unparseable).
+- Busy spinner while streaming; error state with "Open in New Tab"; blob URL revoked on unmount/asset switch; preview reloads when a new version bump changes `updatedAt`.
+- Verified: proxy serves the test PDF with `200` and a real `%PDF-1.6` payload (content-type octet-stream — handled by the blob re-typing); admin-dashboard builds green.
+
+---
+
 ## [Feature: multi-type filters in admin global search] — 2026-08-14 (branch: dev/08-14/various-features)
 
 The dashboard search dropdown now has a row of toggle badges (Objects / Assets / Pages / Classes), all on by default; clicking one excludes that type from the query, dropping the last active one resets to all. Backend support: `type` on both search routes now accepts several values (comma-separated `?type=object,asset` or repeated params), ORed via `inArray` in `searchContent` — validated against `SEARCH_TYPES` (400 on unknown). Also: reindex toast now includes the asset count. Verified: `type=asset` → 16 pinocchio assets only, `type=object,asset` → 20 mixed, invalid type → 400.

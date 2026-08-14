@@ -22,6 +22,48 @@
           Your browser does not support HTML5 video preview.
         </video>
 
+        <!-- PDF Preview: streamed through the asset-processor proxy and
+             re-typed to application/pdf, so inline rendering works even
+             when the stored object's content-type is octet-stream. -->
+        <iframe
+          v-else-if="isPdf && pdfBlobUrl"
+          :src="pdfBlobUrl"
+          title="PDF preview"
+          class="h-full w-full rounded-lg border-0 bg-white"
+        ></iframe>
+
+        <!-- Office (Word/Excel/PowerPoint) Preview: only public assets get
+             the Microsoft Office viewer - the file is fetched by Microsoft's
+             servers, which is fine for CDN-public files but not for private
+             ones (privacy + presigned URLs expire). -->
+        <iframe
+          v-else-if="isOffice && asset.isPublic && asset.url"
+          :src="officeViewerUrl"
+          title="Office preview"
+          class="h-full w-full rounded-lg border-0 bg-white"
+        ></iframe>
+
+        <!-- JSON Preview: pretty-printed, streamed through the proxy. -->
+        <div v-else-if="isJson && jsonText !== null" class="h-full w-full overflow-auto rounded-lg bg-slate-950 light:bg-white text-left">
+          <pre class="p-3 text-[11px] leading-relaxed font-mono text-emerald-300 light:text-slate-800 whitespace-pre-wrap break-words">{{ jsonText }}</pre>
+        </div>
+
+        <!-- Inline render busy / failed state for PDF/JSON/office -->
+        <div v-else-if="previewBusy" class="text-center space-y-3">
+          <div class="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p class="text-xs text-slate-400 light:text-slate-600">Loading preview…</p>
+        </div>
+        <div v-else-if="previewError" class="text-center space-y-3">
+          <component :is="getIconForFileType(asset.fileType)" class="w-16 h-16 text-rose-400/80 mx-auto" />
+          <p class="text-xs text-rose-400 max-w-sm mx-auto">{{ previewError }}</p>
+          <button
+            @click="openAssetInNewTab"
+            class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition"
+          >
+            Open in New Tab
+          </button>
+        </div>
+
         <!-- Fallback Icon Preview -->
         <div v-else class="text-center space-y-3">
           <component :is="getIconForFileType(asset.fileType)" class="w-16 h-16 text-indigo-400/80 mx-auto" />
@@ -132,6 +174,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import { ExternalLink, RefreshCw, Link } from '@lucide/vue'
 import { AssetItem, useDamStore } from '../../stores/damStore'
 import { getIconForFileType, PREVIEWABLE_IMAGE_TYPES } from '../../utils/asset-file-icons'
@@ -150,6 +193,91 @@ const emit = defineEmits<{
 }>()
 
 const damStore = useDamStore()
+
+const OFFICE_TYPES = ['DOC', 'DOCX', 'XLS', 'XLSX', 'PPT', 'PPTX']
+
+const isPdf = computed(() => props.asset.fileType === 'PDF')
+const isJson = computed(() => props.asset.fileType === 'JSON')
+const isOffice = computed(() => OFFICE_TYPES.includes(props.asset.fileType))
+
+// Blob-fetched content (guaranteed correct mime regardless of what S3
+// stored): a PDF blob URL for the <iframe>, raw/pretty text for JSON.
+const pdfBlobUrl = ref<string | null>(null)
+const jsonText = ref<string | null>(null)
+const previewBusy = ref(false)
+const previewError = ref<string | null>(null)
+let activeBlobUrl: string | null = null
+
+// Microsoft Office viewer for public office files (fetched by MS servers,
+// so the URL must be reachable from the internet - LAN/local hostnames like
+// develop.local make the viewer redirect to a login/error page, and private
+// files must never be handed to Microsoft at all).
+function isInternetPublicUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase()
+    if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.lan') || host.endsWith('.internal') || host.endsWith('.home')) return false
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+      const [a, b] = host.split('.').map(Number)
+      if (a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)) return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+const officeViewerUrl = computed(() => {
+  if (!isOffice.value || !props.asset.isPublic || !props.asset.url) return ''
+  if (!isInternetPublicUrl(props.asset.url)) return ''
+  return `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(props.asset.url)}`
+})
+
+function proxyUrl(): string {
+  return `${damStore.config.assetProcessorUrl}/dam-asset/${props.asset.s3Key}`
+}
+
+function releaseBlobUrl() {
+  if (activeBlobUrl) {
+    URL.revokeObjectURL(activeBlobUrl)
+    activeBlobUrl = null
+  }
+}
+
+async function loadInlinePreview() {
+  releaseBlobUrl()
+  pdfBlobUrl.value = null
+  jsonText.value = null
+  previewError.value = null
+  if (!isPdf.value && !isJson.value) return
+
+  previewBusy.value = true
+  try {
+    const res = await fetch(proxyUrl())
+    if (!res.ok) throw new Error(`Fetch failed with status ${res.status}`)
+    if (isPdf.value) {
+      const blob = await res.blob()
+      const typed = new Blob([blob], { type: 'application/pdf' })
+      activeBlobUrl = URL.createObjectURL(typed)
+      pdfBlobUrl.value = activeBlobUrl
+    } else {
+      const text = await res.text()
+      try {
+        jsonText.value = JSON.stringify(JSON.parse(text), null, 2)
+      } catch {
+        jsonText.value = text
+      }
+    }
+  } catch (e: any) {
+    previewError.value = e.message || 'Preview failed to load'
+  } finally {
+    previewBusy.value = false
+  }
+}
+
+// Reload when the asset changes OR is updated (new version upload bumps
+// updatedAt while keeping the same id).
+watch(() => [props.asset.id, props.asset.updatedAt], loadInlinePreview, { immediate: true })
+onBeforeUnmount(releaseBlobUrl)
 
 async function openAssetInNewTab() {
   const targetUrl = (await damStore.getAssetUrl(props.asset)) || props.asset.url || props.asset.pimcorePath
