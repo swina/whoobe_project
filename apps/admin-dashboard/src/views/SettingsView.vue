@@ -110,6 +110,7 @@ import {
   FileJson,
   Mail,
   Sparkles,
+  WandSparkles
 } from '@lucide/vue'
 
 const tabsStore = useTabsStore()
@@ -123,7 +124,7 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'mail', name: 'Mail', icon: Mail },
-  { key: 'ai', name: 'AI', icon: Sparkles },
+  { key: 'ai', name: 'AI', icon: WandSparkles },
 ]
 
 type ClassesSubTab = 'classes' | 'pimcore' | 'file'
