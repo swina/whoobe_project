@@ -12,7 +12,7 @@
 
       <span v-if="saveState" class="text-[11px] text-gray-400 mr-1">{{ saveState }}</span>
       <button
-        v-if="editor.page?.id"
+        v-if="editor.page?.id && !editor.mailTemplateId"
         title="Edit this page's path"
         class="text-gray-400 hover:text-indigo-600 mr-1"
         @click="onEditSlug"
@@ -29,9 +29,9 @@
       <button v-if="!editor.embedded" :class="topbarBtnClass" @click="showTemplateGallery = true">
         <FolderOpen class="w-3.5 h-3.5" /> Templates
       </button>
-      <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> Save Template</button>
+      <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> {{ editor.mailTemplateId ? 'Save' : 'Save Template' }}</button>
       <button :class="topbarBtnClass" @click="showThemeModal = true"><Palette class="w-3.5 h-3.5" /> Theme</button>
-      <button v-if="editor.page?.id" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
+      <button v-if="editor.page?.id && !editor.mailTemplateId" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
       <button :class="topbarBtnClass" @click="showAddToKit = true"><PackagePlus class="w-3.5 h-3.5" /> Add to Kit</button>
       <button :class="topbarBtnClass" @click="exportDocument(editor)"><Download class="w-3.5 h-3.5" /> Export</button>
       <button :class="topbarBtnClass" @click="fileInput?.click()"><Upload class="w-3.5 h-3.5" /> Import</button>
@@ -241,7 +241,7 @@ import { useSnippetsStore } from '../store/snippets'
 import { clean, findNodeById, removeNodeById, applyImagePlaceholder, normalizeGeneratedTree } from '../helpers'
 import { editorBus } from '../bus'
 import { exportDocument, importDocument, cloneWithFreshIds, insertGeneratedSnippet } from '../scripts/editor-actions'
-import { savePage, saveAsNewTemplate, updatePageSlug } from '../scripts/database-actions'
+import { savePage, saveMailTemplate, saveAsNewTemplate, updatePageSlug } from '../scripts/database-actions'
 import { resolveDocumentData } from '../scripts/data-resolver'
 
 type WhoobeElement = InstanceType<typeof Element>
@@ -324,6 +324,10 @@ function onNew() {
   page.json.blocks = root
   editor.setPage(page)
 
+  // Leaving a mail-template session also leaves its mode - "New" now edits
+  // a plain document again, not an unsaved mail template.
+  editor.setMailTemplateId(null)
+
   flash('New empty template')
 }
 
@@ -338,6 +342,20 @@ function onNew() {
 // choice via a confirm() popup.
 async function onSave() {
   if (!editor.page) return
+
+  // Editing an HTML mail template (docs/plans/forms/mail-templates.md) -
+  // no path to ask for, saves straight to mail_templates.
+  if (editor.mailTemplateId) {
+    saveState.value = 'saving…'
+    try {
+      await saveMailTemplate(editor)
+      saveState.value = 'saved ' + new Date().toLocaleTimeString()
+    } catch (e: any) {
+      saveState.value = ''
+      flash(e?.message || 'Failed to save mail template', 'error')
+    }
+    return
+  }
 
   // Only a brand-new document (no id yet) needs a path - an already-saved
   // one keeps whatever it was given the first time (changing a document's

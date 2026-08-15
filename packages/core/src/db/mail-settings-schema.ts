@@ -14,5 +14,9 @@ export const mailSettings = pgTable('mail_settings', {
   password: text('password'),
   fromAddress: text('from_address').notNull(),
   fromName: text('from_name'),
+  // When enabled, every outgoing email gets a BCC (blind copy / CCN) to the
+  // configured from address - a "keep a copy of everything we send" audit
+  // convenience, independent of any template/Form-level bcc.
+  bccFromAddress: boolean('bcc_from_address').notNull().default(false),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

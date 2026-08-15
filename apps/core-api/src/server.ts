@@ -113,10 +113,19 @@ import {
   getMailSettings,
   upsertMailSettings,
   sendMail,
+  sendMailFromTemplate,
   renderMailTemplate,
+  collectMailFonts,
+  buildMailDocument,
+  resolveMailImageUrls,
   listMailLog,
   getMailLogEntry,
   deleteMailLogEntries,
+  listMailTemplates,
+  getMailTemplate,
+  createMailTemplate,
+  updateMailTemplate,
+  deleteMailTemplate,
   getAiSettings,
   upsertAiSettings,
   listAiGenerated,
@@ -2095,19 +2104,52 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
     // 500 for the visitor. The client includes the Form's own `notify`
     // config in the submit payload (it already has it in hand at submit
     // time), so no separate server-side lookup is needed.
+    //
+    // Notification emails personalize against what the visitor actually
+    // submitted, not the class-validated `parsed` subset - `parsed` drops
+    // unknown fields (Zod's z.object() strips by default), so a template
+    // referencing {form.message} would render empty for any input that
+    // isn't a declared field on the target Data Class. The renderer
+    // HTML-escapes every bound/token value, so the raw attributes are safe.
+    const submitted = { ...(attributes as Record<string, unknown>) };
+    delete submitted._hp;
+
     const notify = formConfig?.notify;
-    if (notify?.enabled && notify.templatePageId && notify.recipientEmail) {
+    if (notify?.enabled) {
       try {
-        const page = await getWhoobePage(notify.templatePageId);
-        if (page) {
-          const html = renderMailTemplate(page.content, parsed);
-          await sendMail({
-            to: notify.recipientEmail,
-            subject: notify.subject || 'New form submission',
-            html,
-          });
-        } else {
-          console.warn(`Form notify: template page ${notify.templatePageId} not found`);
+        // A mail template id is the primary reference (docs/plans/forms/
+        // mail-templates.md); the legacy templatePageId (a whoobe_pages
+        // row) stays supported so already-saved Forms keep working. The
+        // recipient comes from notify.recipientEmail when set, otherwise
+        // from the template's own (possibly dynamic) `to` field.
+        if (notify.mailTemplateId) {
+          const template = await getMailTemplate(notify.mailTemplateId);
+          if (template) {
+            await sendMailFromTemplate({
+              template,
+              context: { form: submitted },
+              to: notify.recipientEmail || undefined,
+              subject: notify.subject || undefined,
+            });
+          } else {
+            console.warn(`Form notify: mail template ${notify.mailTemplateId} not found`);
+          }
+        } else if (notify.templatePageId && notify.recipientEmail) {
+          const page = await getWhoobePage(notify.templatePageId);
+          if (page) {
+            const imageUrls = await resolveMailImageUrls(page.content);
+            const html = buildMailDocument({
+              bodyHtml: renderMailTemplate(page.content, submitted, imageUrls),
+              fonts: collectMailFonts(page.content),
+            });
+            await sendMail({
+              to: notify.recipientEmail,
+              subject: notify.subject || 'New form submission',
+              html,
+            });
+          } else {
+            console.warn(`Form notify: template page ${notify.templatePageId} not found`);
+          }
         }
       } catch (notifyError) {
         console.warn('Form notify email failed:', notifyError);
@@ -2141,7 +2183,7 @@ app.get('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async 
 
 app.put('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { host, port, secure, user, password, fromAddress, fromName } = req.body ?? {};
+    const { host, port, secure, user, password, fromAddress, fromName, bccFromAddress } = req.body ?? {};
     if (!host || !port || !fromAddress) {
       res.status(400).json({ error: 'host, port, and fromAddress are required' });
       return;
@@ -2158,6 +2200,7 @@ app.put('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async 
       password: password ? password : existing?.password ?? null,
       fromAddress,
       fromName: fromName || null,
+      bccFromAddress: !!bccFromAddress,
     });
     const { password: _pw, ...rest } = updated;
     res.json({ ...rest, hasPassword: !!updated.password });
@@ -2234,6 +2277,101 @@ app.post('/mail-log/delete', requirePermission(PERMISSIONS.SETTINGS_MANAGE), asy
   } catch (error: any) {
     console.error('Mail log delete error:', error);
     res.status(500).json({ error: error.message || 'Failed to delete mail log entries' });
+  }
+});
+
+// Mail templates (docs/plans/forms/mail-templates.md) - reusable email
+// bodies referenced by Form notify configs (and future triggers). The list
+// returns metadata only; the full Element tree / text body is fetched per
+// template (GET /mail-templates/:id) for editing and rendering.
+app.get('/mail-templates', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const templates = await listMailTemplates();
+    res.json({ templates });
+  } catch (error: any) {
+    console.error('Mail templates fetch error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch mail templates' });
+  }
+});
+
+app.post('/mail-templates', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, kind, description, subject, to, bcc, content, body } = req.body ?? {};
+    if (typeof name !== 'string' || !name.trim()) {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    if (kind !== 'html' && kind !== 'text') {
+      res.status(400).json({ error: 'kind must be "html" or "text"' });
+      return;
+    }
+    const template = await createMailTemplate({
+      name: name.trim(),
+      kind,
+      description: typeof description === 'string' ? description : null,
+      subject: typeof subject === 'string' ? subject : null,
+      to: typeof to === 'string' ? to : null,
+      bcc: typeof bcc === 'string' ? bcc : null,
+      content: kind === 'html' ? (content ?? null) : null,
+      body: kind === 'text' ? (typeof body === 'string' ? body : '') : null,
+    });
+    res.status(201).json({ template });
+  } catch (error: any) {
+    console.error('Mail template create error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create mail template' });
+  }
+});
+
+app.get('/mail-templates/:id', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const template = await getMailTemplate(req.params.id);
+    if (!template) {
+      res.status(404).json({ error: 'Mail template not found' });
+      return;
+    }
+    res.json({ template });
+  } catch (error: any) {
+    console.error('Mail template fetch error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch mail template' });
+  }
+});
+
+app.patch('/mail-templates/:id', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, kind, description, subject, to, bcc, content, body } = req.body ?? {};
+    if (kind !== undefined && kind !== 'html' && kind !== 'text') {
+      res.status(400).json({ error: 'kind must be "html" or "text"' });
+      return;
+    }
+    const existing = await getMailTemplate(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: 'Mail template not found' });
+      return;
+    }
+    const template = await updateMailTemplate(req.params.id, {
+      ...(name !== undefined ? { name: typeof name === 'string' ? name : existing.name } : {}),
+      ...(kind !== undefined ? { kind } : {}),
+      ...(description !== undefined ? { description: typeof description === 'string' ? description : null } : {}),
+      ...(subject !== undefined ? { subject: typeof subject === 'string' ? subject : null } : {}),
+      ...(to !== undefined ? { to: typeof to === 'string' ? to : null } : {}),
+      ...(bcc !== undefined ? { bcc: typeof bcc === 'string' ? bcc : null } : {}),
+      ...(content !== undefined ? { content: content ?? null } : {}),
+      ...(body !== undefined ? { body: typeof body === 'string' ? body : null } : {}),
+    });
+    res.json({ template });
+  } catch (error: any) {
+    console.error('Mail template update error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update mail template' });
+  }
+});
+
+app.delete('/mail-templates/:id', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteMailTemplate(req.params.id);
+    res.json({ ok: true });
+  } catch (error: any) {
+    console.error('Mail template delete error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete mail template' });
   }
 });
 

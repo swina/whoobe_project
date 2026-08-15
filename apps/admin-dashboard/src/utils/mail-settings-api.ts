@@ -12,6 +12,7 @@ export interface MailSettingsRecord {
   hasPassword: boolean
   fromAddress: string
   fromName: string | null
+  bccFromAddress: boolean
   updatedAt: string
 }
 
@@ -23,6 +24,7 @@ export interface MailSettingsInput {
   password?: string
   fromAddress: string
   fromName?: string | null
+  bccFromAddress?: boolean
 }
 
 function normalizeBaseUrl(baseUrl: string): string {

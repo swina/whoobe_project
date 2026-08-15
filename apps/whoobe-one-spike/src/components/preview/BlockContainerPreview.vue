@@ -43,12 +43,37 @@
       </template>
     </template>
 
-    <!-- Inline result of a form-actions.ts submission - only ever set on a
+    <!-- Submission result from form-actions.ts - only ever set on a
          tag === 'form' container with formConfig.enabled (see onMounted()
-         below), stays empty/absent for every other container. -->
-    <p v-if="submitResult" class="text-xs mt-2" :class="submitResult.ok ? 'text-emerald-600' : 'text-rose-600'">
-      {{ submitResult.message }}
-    </p>
+         below), stays empty/absent for every other container. Displayed as
+         a click-to-close HTML popup over the page: the success/error
+         message configured in FormConfigControl.vue renders as HTML, and
+         any click dismisses it. On success form-actions.ts already resets
+         the form; on error it leaves the values in place. -->
+    <Teleport to="body">
+      <div
+        v-if="submitResult"
+        class="fixed inset-0 z-[100000] bg-black/60 flex items-center justify-center p-4 cursor-pointer"
+        @click="submitResult = null"
+      >
+        <div
+          class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative text-sm cursor-default"
+        >
+          <button
+            type="button"
+            class="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+            aria-label="Close"
+            @click="submitResult = null"
+          >
+            <X class="w-4 h-4" />
+          </button>
+          <div
+            v-html="submitResult.message"
+            :class="submitResult.ok ? 'text-emerald-700' : 'text-rose-700'"
+          ></div>
+        </div>
+      </div>
+    </Teleport>
   </component>
 </template>
 
@@ -77,6 +102,7 @@
 // see FloatingToolbar.vue's Link popover.
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Component } from 'vue'
+import { X } from '@lucide/vue'
 import type Element from '../../scripts/ElementsClass.js'
 import { resolveDisplayUrl } from '../../resolve-display-url'
 import { useEditorStore } from '../../store/editor'

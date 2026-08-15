@@ -61,6 +61,13 @@ export const useEditorStore = defineStore('editor', () => {
   const embedded = ref<boolean>(false)
   const parentOrigin = ref<string | null>(null)
 
+  // Not from the source - mail template editing (docs/plans/forms/mail-
+  // templates.md): set when /editor is opened with a `mailTemplateId` query
+  // param (loadMailTemplate() also sets it), so the editor's Save writes to
+  // mail_templates instead of whoobe_pages. Null while editing a regular
+  // page or a fresh/demo document.
+  const mailTemplateId = ref<string | null>(null)
+
   // Populated by data-resolver.ts at preview/render time - maps element ids
   // to their resolved data object records (DataObjectRecord or
   // DataObjectRecord[] for collection bindings). Cleared at the start of
@@ -106,6 +113,9 @@ export const useEditorStore = defineStore('editor', () => {
     embedded.value = v
     parentOrigin.value = origin
   }
+  function setMailTemplateId(v: string | null) {
+    mailTemplateId.value = v
+  }
   function toggleCollapsed(id: string) {
     if (collapsedIds.value.has(id)) collapsedIds.value.delete(id)
     else collapsedIds.value.add(id)
@@ -118,10 +128,11 @@ export const useEditorStore = defineStore('editor', () => {
     mode, settings, elements, document, project, selected, page, current,
     component, action, subaction, level, parent, startTime, autosave,
     exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
+    mailTemplateId,
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
     setParent, setStartTime, setAutosave, setExportMode, setPreview, setSave,
-    setArticle, setCustomizeTab, setEmbedded, resolvedData,
+    setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, resolvedData,
     collapsedIds, toggleCollapsed, isCollapsed,
   }
 })

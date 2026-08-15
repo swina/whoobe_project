@@ -602,11 +602,14 @@ export default class Element {
             successRedirectUrl: '',
             errorRedirectUrl: '',
             // Optional notification email on top of the Data Object write -
-            // docs/plans/forms/cms-forms.md's Phase 2. templatePageId points
-            // at a whoobe_pages row rendered server-side via
-            // renderMailTemplate() with this submission's own attributes.
+            // docs/plans/forms/cms-forms.md's Phase 2 and docs/plans/forms/
+            // mail-templates.md. mailTemplateId points at a mail_templates
+            // row (the primary reference, rendered by kind via
+            // sendMailFromTemplate()); templatePageId (a whoobe_pages row)
+            // is the legacy fallback, kept for already-saved Forms.
             notify: {
                 enabled: false,
+                mailTemplateId: '',
                 templatePageId: '',
                 recipientEmail: '',
                 subject: ''
