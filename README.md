@@ -1,17 +1,24 @@
 # Whoobe CMS
 
-A TypeScript-native, open-source combining **PIM/MDM** (flexible product/data modeling), **DAM** (digital asset management), and a **headless CMS** with a visual block builder — plus a built-in ETL pipeline for a loss-less migration path off legacy instances.
+A TypeScript-native, open-source **PIM/MDM** (flexible product/data modeling) + **DAM** (digital asset management) + **headless CMS** with a visual block builder — plus a built-in ETL pipeline for a loss-less migration path off legacy instances.
 
 The product itself is branded **Whoobe CMS** (npm scope `@whoobe-cms/*`).
 
 ## Main features
 
-- **Data Objects & Classes (PIM/MDM)** — define custom data classes ("Class Definitions") with arbitrary field layouts through the admin UI. Supports reusable structured sub-schemas ("Components"), custom object listing views, ordering, and filtering.
-- **Digital Asset Management (DAM)** — S3/MinIO-backed asset storage with Sharp-powered image processing (resize/WebP thumbnails via configurable presets) and EXIF/IPTC metadata extraction, with public/private folder visibility rules.
-- **Headless CMS & Whoobe Studio** — a Vue-based visual WYSIWYG block/page builder that outputs structured, Zod-validated JSON layout trees, embeddable in the admin dashboard and renderable headlessly by any frontend.
-- **Publishing workflow engine** — XState-driven publish/draft workflows with configurable states, transitions, and per-transition permissions.
-- **Auth & permissions** — session-based authentication shared across backend services, with 2FA (TOTP/QR) and role-based permissions.
-- **Pimcore migration tool** — a CLI ETL pipeline that imports legacy Pimcore Documents, Class Definitions, and Data Objects (from a source MySQL database and/or `var/classes` PHP files) directly into this system's Postgres schema.
+- **Data Objects & Classes (PIM/MDM)** — define custom data classes ("Class Definitions") with arbitrary field layouts (text, rich-text/WYSIWYG, numbers, dates, selects, assets, relations, `fieldcollections`) through the admin UI, including reusable structured sub-schemas ("Components"). Objects get per-class listing views with ordering and filtering, multiple locales/translations, and CSV export.
+- **Digital Asset Management (DAM)** — S3/MinIO-backed asset storage with Sharp-powered image processing (configurable thumb/medium/large presets) and EXIF/IPTC metadata extraction; public/private folder visibility rules, folder management, versioning, and presigned URLs for private assets.
+- **Headless CMS & visual page builder** — a Vue-based WYSIWYG block/page editor (`whoobe-one-spike`, embedded in the admin dashboard) that outputs structured, Zod-validated JSON layout trees. Pages carry SEO/sitemap/search settings, per-locale translations, a publish gate + workflow state, and render publicly through dynamic URL path patterns.
+- **Forms** — a Form element in the page builder that submits to a public endpoint, storing submissions as draft (unpublished) Data Objects; honeypot spam trap and per-IP rate limiting; success/error feedback as a click-to-close popup on the page.
+- **Email notifications & mail templates** — global SMTP configuration (Settings → Mail), reusable **mail templates** (HTML authored in the page-builder editor, or plain text) with `{form.field}` token personalization and dynamic `to`/`bcc`; a "BCC the from address" audit flag; DAM images and web-font handling in sent emails; and a full **mail log** (preview, resend, search, pagination, bulk delete).
+- **Publishing workflow engine** — XState-driven publish/draft workflows with configurable states and transitions, plus a transition audit log.
+- **Auth & permissions** — session-based authentication shared across backend services, with 2FA (TOTP via QR code, recovery codes) and role-based permissions.
+- **AI agent** — LLM-powered page/snippet generator (OpenAI / Anthropic / Google) with a generation history panel in the editor.
+- **Site search** — headless public search across published pages and Data Objects, with type/class filtering.
+- **Websites & URL paths** — manage multiple websites with default/supported locales, and dynamic URL path patterns (`/it/news/{slug}`) served by the public page route.
+- **Pimcore migration tool** — a CLI ETL pipeline that imports legacy Pimcore Documents, Class Definitions, Data Objects, and Assets (from a source MySQL database and/or `var/classes` PHP files) directly into this system's Postgres schema.
+
+> Some admin sections are still placeholders pending future work — e.g. Roles/Users management and file-based migration — while the rest above are implemented end to end.
 
 ## Monorepo layout
 
@@ -19,13 +26,13 @@ Managed with **pnpm workspaces** + **Turborepo**.
 
 | Path | Package | Description |
 | --- | --- | --- |
-| `packages/core` | `@whoobe-cms/core` | Shared domain layer: Drizzle ORM schema/migrations (Postgres), Zod validation, auth, S3 client, XState workflows. |
+| `packages/core` | `@whoobe-cms/core` | Shared domain layer: Drizzle ORM schema/migrations (Postgres), Zod validation, auth, S3 client, XState workflows, mail rendering. |
 | `packages/migration-tool` | `@whoobe-cms/migration-tool` | ETL CLI for migrating Documents/Classes/Objects/Assets out of Pimcore. |
-| `apps/core-api` | `@whoobe-cms/core-api` | Main Express backend API. |
-| `apps/asset-processor` | `@whoobe-cms/asset-processor` | Express microservice for asset upload/processing (Sharp, exiftool, S3). |
-| `apps/admin-dashboard` | `@whoobe-cms/admin-dashboard` | Vue 3 + Vite admin UI (data objects, classes, DAM, settings, workflows). |
-| `apps/whoobe-studio` | `@whoobe-cms/whoobe-studio` | Vue 3 visual WYSIWYG block/page builder, embedded via the admin dashboard. |
-| `apps/whoobe-one-spike` | `@whoobe-cms/whoobe-one-spike` | Experimental standalone page-building editor. |
+| `apps/core-api` | `@whoobe-cms/core-api` | Main Express backend API (data, DAM URLs, pages, forms, mail, search, AI). |
+| `apps/asset-processor` | `@whoobe-cms/asset-processor` | Express microservice for asset upload/processing (Sharp, exiftool, S3) and the public `/dam-asset/*` proxy. |
+| `apps/admin-dashboard` | `@whoobe-cms/admin-dashboard` | Vue 3 + Vite admin UI (overview, data objects, DAM, documents, pages, websites, settings). |
+| `apps/whoobe-one-spike` | `@whoobe-cms/whoobe-one-spike` | Vue 3 visual WYSIWYG block/page builder, embedded in the admin dashboard for pages and HTML mail templates. |
+| `apps/whoobe-studio` | `@whoobe-cms/whoobe-studio` | Legacy standalone document editor (documents pipeline being retired). |
 
 ## Prerequisites
 
