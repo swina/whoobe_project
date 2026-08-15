@@ -647,16 +647,17 @@ export default class Element {
             // Restrict object results to these classes (by data_classes.id);
             // empty = all object classes.
             classIds: [],
-            // Custom Tailwind classes for the live results dropdown (the
-            // search element shows a dropdown on top of navigating to
-            // /search). Empty = a sensible built-in default. How admins
-            // manage this per-site is still open - see the search-element
-            // plan.
-            dropdownClass: '',
-            // Custom Tailwind classes appended to the search input and the
-            // submit button - blank = each one's built-in default.
-            inputClass: '',
-            buttonClass: '',
+            // Tailwind classes for the live results dropdown (the search
+            // element shows a dropdown on top of navigating to /search).
+            // The default is pre-filled here so the box looks right out of
+            // the box, but it's a normal editable field - clearing it gives
+            // no styling (there is no built-in that can't be removed).
+            dropdownClass: 'rounded-lg border border-gray-200 bg-white shadow-lg',
+            // Tailwind classes for the search input and the submit button -
+            // pre-filled with the default look, editable/removable from
+            // SearchConfigControl (no hardcoded classes in the component).
+            inputClass: 'w-full rounded-l-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 placeholder-gray-400 shadow-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200',
+            buttonClass: 'rounded-r-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white',
             // Submit button label; when buttonIcon is true the search icon
             // is shown instead of the text.
             buttonLabel: 'Search',

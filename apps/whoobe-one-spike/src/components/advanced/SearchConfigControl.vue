@@ -26,19 +26,19 @@
             <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
               Dropdown classes
               <input v-model="dropdownClass" type="text" class="text-xs border rounded px-1.5 py-1 font-mono" placeholder="bg-white border border-gray-200 rounded-lg shadow-lg" />
-              <span class="text-[10px] text-gray-400 italic">Tailwind utilities applied to the live results dropdown; blank uses a built-in default. How this is managed per-site is still open - see the search-element plan.</span>
+              <span class="text-[10px] text-gray-400 italic">Tailwind utilities for the results dropdown; blank = no styling.</span>
             </label>
 
             <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
               Input classes
               <input v-model="inputClass" type="text" class="text-xs border rounded px-1.5 py-1 font-mono" placeholder="w-full rounded-l-full border border-gray-300 bg-white px-4 py-2 text-sm" />
-              <span class="text-[10px] text-gray-400 italic">Extra Tailwind utilities for the search input, on top of the built-in default; blank = default.</span>
+              <span class="text-[10px] text-gray-400 italic">Tailwind utilities for the search input; blank = no styling.</span>
             </label>
 
             <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
               Button classes
               <input v-model="buttonClass" type="text" class="text-xs border rounded px-1.5 py-1 font-mono" placeholder="rounded-r-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white" />
-              <span class="text-[10px] text-gray-400 italic">Extra Tailwind utilities for the submit button, on top of the built-in default; blank = default.</span>
+              <span class="text-[10px] text-gray-400 italic">Tailwind utilities for the submit button; blank = no styling.</span>
             </label>
 
             <div class="flex items-center gap-4 border rounded p-1.5">

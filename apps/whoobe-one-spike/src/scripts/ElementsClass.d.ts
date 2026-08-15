@@ -90,14 +90,12 @@ export interface ElementSearchConfig {
   /** Restrict object results to these classes (data_classes.id); empty =
    *  all object classes. */
   classIds: string[]
-  /** Custom Tailwind classes for the live results dropdown; empty = the
-   *  component's built-in default. */
+  /** Tailwind classes for the live results dropdown; blank = no styling.
+   *  The Search() builder pre-fills a default, editable/removable here. */
   dropdownClass?: string
-  /** Custom Tailwind classes appended to the search input; empty = the
-   *  built-in default. */
+  /** Tailwind classes for the search input; blank = no styling. */
   inputClass?: string
-  /** Custom Tailwind classes appended to the submit button; empty = the
-   *  built-in default. */
+  /** Tailwind classes for the submit button; blank = no styling. */
   buttonClass?: string
   /** Submit button label text; default "Search". */
   buttonLabel?: string
