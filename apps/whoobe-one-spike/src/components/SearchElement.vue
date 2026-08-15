@@ -2,7 +2,12 @@
   <!-- Outer div = the element's container - the element's own custom
        classes land here via fallthrough (a plain block div fills its
        parent by default, so no baked-in width fights a custom w-*/max-w-*),
-       and the <form> inside stays w-full by default. -->
+       and the <form> inside stays w-full by default. The look of the
+       input/button/dropdown comes entirely from searchConfig's
+       inputClass/buttonClass/dropdownClass (pre-filled defaults, editable
+       and removable from SearchConfigControl) - no hardcoded styling that
+       the editor can't remove. Only structural layout classes are hardcoded
+       here (flex row sizing, dropdown positioning). -->
   <div class="relative">
     <form class="w-full" @submit.prevent="onSubmit">
       <div class="relative flex w-full">
@@ -13,7 +18,7 @@
           aria-label="Search"
           autocomplete="off"
           :class="inputClass"
-          class="w-full rounded-l-full border border-gray-300 bg-white px-4 py-2 pr-10 text-sm text-gray-800 placeholder-gray-400 shadow-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200"
+          class="flex-1 min-w-0"
           @input="onInput"
           @focus="onFocus"
           @blur="onBlur"
@@ -23,7 +28,7 @@
           type="submit"
           :class="buttonClass"
           :aria-label="buttonLabel"
-          class="inline-flex shrink-0 items-center justify-center px-4 py-2"
+          class="inline-flex shrink-0 items-center justify-center"
         >
           <svg v-if="buttonIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
             <path
@@ -37,9 +42,9 @@
 
         <!-- Live results dropdown - search-element-plan.md. Sits below the
              box, scoped by the same searchConfig (types/classes), and is
-             styled with searchConfig.dropdownClass on top of a built-in
-             default. @mousedown.prevent keeps the input focused so the
-             dropdown doesn't close before a result's click registers. -->
+             styled by searchConfig.dropdownClass (blank = no styling).
+             @mousedown.prevent keeps the input focused so the dropdown
+             doesn't close before a result's click registers. -->
         <div
           v-if="showDropdown"
           :class="dropdownClass"
@@ -140,15 +145,12 @@ const routeTypes = computed(() => {
   return Array.isArray(type) ? type.join(',') : type
 })
 
-const dropdownClass = computed(() => {
-  const custom = props.config?.dropdownClass
-  return custom && custom.trim() ? custom : 'rounded-lg border border-gray-200 bg-white shadow-lg'
-})
+const dropdownClass = computed(() => props.config?.dropdownClass?.trim() ?? '')
 
-// Appended to the input/button on top of their built-in defaults (blank =
-// default). The element's own custom classes land on the <form> root via
-// fallthrough, so a conflicting width utility here resolves per the
-// Tailwind cascade - use max-w-* to size the input without fighting w-full.
+// The searchConfig classes are the input/button/dropdown's styling - the
+// Search() builder pre-fills sensible defaults, and SearchConfigControl lets
+// the admin change or clear them (blank = no styling). The element's own
+// custom classes land on the <form> root via fallthrough.
 const inputClass = computed(() => props.config?.inputClass?.trim() ?? '')
 const buttonClass = computed(() => props.config?.buttonClass?.trim() ?? '')
 const buttonLabel = computed(() => props.config?.buttonLabel?.trim() || 'Search')

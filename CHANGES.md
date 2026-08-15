@@ -4,6 +4,13 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Search element: CSS fully editable/removable] — 2026-08-15 (branch: master)
+
+- `SearchElement.vue` no longer hardcodes styling on the search input/button/dropdown - it only keeps structural layout classes (`flex-1 min-w-0` on the input, `shrink-0 inline-flex items-center justify-center` on the button, dropdown positioning). The look now comes entirely from `searchConfig.inputClass`/`buttonClass`/`dropdownClass`.
+- `ElementsClass.js` `Search()` pre-fills those config fields with the previous built-in classes (input pill, violet button, dropdown), so new search boxes look the same out of the box - but they're normal editable fields, so `SearchConfigControl` can change or **clear** them (blank = no styling). `SearchConfigControl` + `ElementsClass.d.ts` comments updated.
+
+---
+
 ## [Outgoing Mail: main sidebar item] — 2026-08-15 (branch: master)
 
 - **Outgoing Mail** promoted from a Settings sub-section to its own main sidebar item, positioned just before **Settings** (`SectionKind 'mail'` + `MailSettingsView.vue`, which renders the existing `MailSettingsCard` - Settings, Email Test, Mail Log, Templates tabs).
