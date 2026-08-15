@@ -44,6 +44,8 @@ export * from './ai/providers.js';
 export * from './ai/prompts.js';
 export * from './mail/mailer.js';
 export * from './mail/render-mail-template.js';
+export * from './db/mail-log-schema.js';
+export * from './db/mail-log-records.js';
 export * from './db/class-workflow-definitions-schema.js';
 export * from './db/class-workflow-definitions-records.js';
 export * from './db/workflow-transition-log-schema.js';

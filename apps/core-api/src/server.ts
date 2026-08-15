@@ -114,6 +114,9 @@ import {
   upsertMailSettings,
   sendMail,
   renderMailTemplate,
+  listMailLog,
+  getMailLogEntry,
+  deleteMailLogEntries,
   getAiSettings,
   upsertAiSettings,
   listAiGenerated,
@@ -2187,6 +2190,90 @@ app.post('/mail-settings/test', requirePermission(PERMISSIONS.SETTINGS_MANAGE), 
   } catch (error: any) {
     console.error('Mail test error:', error);
     res.status(500).json({ error: error?.message || 'Failed to send test email' });
+  }
+});
+
+// Outgoing mail log (Settings → Mail → Log) - every sendMail() attempt,
+// newest first by default. Read-only listing: rows are only ever deleted
+// via POST /mail-log/delete. `status` (sent|failed), `search` (matches to,
+// subject, and status), `order` (newest|oldest), `limit` (default 100,
+// cap 500) and `offset` narrow the result. Returns `total` (matching count)
+// alongside the page so the UI can paginate. The list strips the message
+// body - fetch a single entry (GET /mail-log/:id) for the preview modal.
+app.get('/mail-log', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { status, search, order, limit, offset } = req.query;
+    const result = await listMailLog({
+      status: status === 'sent' || status === 'failed' ? status : undefined,
+      search: typeof search === 'string' ? search : undefined,
+      order: order === 'oldest' ? 'oldest' : 'newest',
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+    });
+    const records = result.records.map(({ html: _h, text: _t, ...rest }) => rest);
+    res.json({ records, total: result.total });
+  } catch (error: any) {
+    console.error('Mail log fetch error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch mail log' });
+  }
+});
+
+// Bulk-delete selected log entries from the admin Log view. Read-only
+// guards already prevent editing other data; this is the one write the log
+// allows, so admins can prune noise without touching the rest of the table.
+app.post('/mail-log/delete', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { ids } = req.body ?? {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ error: 'ids array is required' });
+      return;
+    }
+    const validIds = ids.filter((id: unknown): id is string => typeof id === 'string' && id.trim().length > 0);
+    const deleted = await deleteMailLogEntries(validIds);
+    res.json({ deleted });
+  } catch (error: any) {
+    console.error('Mail log delete error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete mail log entries' });
+  }
+});
+
+// Full log entry including the stored body, for the admin preview modal.
+app.get('/mail-log/:id', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const entry = await getMailLogEntry(req.params.id);
+    if (!entry) {
+      res.status(404).json({ error: 'Mail log entry not found' });
+      return;
+    }
+    res.json(entry);
+  } catch (error: any) {
+    console.error('Mail log entry fetch error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch mail log entry' });
+  }
+});
+
+// Resends a logged email verbatim (stored to/from/cc/subject/body).
+// sendMail() records the resend as a fresh log row, so the resend itself
+// shows up in the log with its own status.
+app.post('/mail-log/:id/resend', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const entry = await getMailLogEntry(req.params.id);
+    if (!entry) {
+      res.status(404).json({ error: 'Mail log entry not found' });
+      return;
+    }
+    await sendMail({
+      to: entry.to,
+      from: entry.from ?? undefined,
+      cc: entry.cc ?? undefined,
+      subject: entry.subject,
+      html: entry.html ?? '',
+      text: entry.text ?? undefined,
+    });
+    res.json({ ok: true });
+  } catch (error: any) {
+    console.error('Mail resend error:', error);
+    res.status(500).json({ error: error.message || 'Failed to resend email' });
   }
 });
 

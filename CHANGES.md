@@ -4,6 +4,34 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Email log: search, pagination, select, order, delete] — 2026-08-15 (branch: master)
+
+- `listMailLog()` (packages/core/src/db/mail-log-records.ts) now supports `search` (case-insensitive match on `to`, `subject`, `status`), `order` (`newest`/`oldest`), and returns `{ records, total }` (matching count) so the UI can paginate. New `deleteMailLogEntries(ids)` bulk delete.
+- API: `GET /mail-log` accepts `search` and `order` and returns `total` alongside the stripped records; new `POST /mail-log/delete` (`{ ids: string[] }`, SETTINGS_MANAGE) deletes selected entries.
+- Admin dashboard Mail Log tab (MailSettingsCard.vue): search box (debounced server-side), status filter, **Newest/Oldest** order select, page-size select (10/25/50/100), pagination footer with prev/next and "X–Y of Z", row checkboxes with select-all (including indeterminate state), and a **Delete (n)** action with confirmation that prunes the selection and steps back a page if the last one empties. `fetchMailLog()` util returns `{ records, total }`; new `deleteMailLogEntries()` util.
+
+---
+
+## [Email log: body storage, preview modal, resend] — 2026-08-15 (branch: master)
+
+- `mail_log` gains `html` and `text` columns (packages/core/src/db/mail-log-schema.ts) so the sent body is stored with each entry; migration `drizzle/0024_careless_morgan_stark.sql` applied.
+- `logMailDelivery()` now stores the body; `sendMail()` (packages/core/src/mail/mailer.ts) passes `html`/`text` through. New `getMailLogEntry(id)` returns the full entry.
+- API: `GET /mail-log` list now strips the body (metadata only); new `GET /mail-log/:id` returns the full entry for preview; new `POST /mail-log/:id/resend` resends the stored email verbatim (the resend is itself logged as a fresh entry). All gated on SETTINGS_MANAGE.
+- Admin dashboard: `fetchMailLogEntry()`/`resendMail()` utils (mail-settings-api.ts); the Mail Log tab gains an **Actions → Preview** button opening a modal showing metadata plus the rendered body (HTML via sandboxed iframe, else plain text) with a **Resend** button.
+
+---
+
+## [Email delivery log] — 2026-08-15 (branch: master)
+
+- New `mail_log` table (packages/core/src/db/mail-log-schema.ts): durable audit trail of every outgoing email — `to`, `from`, `cc`, `subject`, `status` (`sent`/`failed`), `error`, `sent_at`. Not a typed enum so new states need no migration.
+- New `logMailDelivery()` / `listMailLog()` records (packages/core/src/db/mail-log-records.ts) - newest-first list with optional `status` filter and `limit` (cap 500)/`offset` paging.
+- `sendMail()` (packages/core/src/mail/mailer.ts) now records every send attempt - success and failure alike. The send and the log write are decoupled so a failing log write never changes the send result, and a failed send is recorded before the error is rethrown. Covers both callers (form notifications and the mail-settings "Email Test" flow).
+- New read-only `GET /mail-log` endpoint (apps/core-api/src/server.ts, gated on SETTINGS_MANAGE) with `?status=`, `?limit=`, `?offset=` query params.
+- Admin dashboard: `fetchMailLog()` util (mail-settings-api.ts) and a new **Mail Log** tab in Settings → Mail (MailSettingsCard.vue) - table of sent/failed emails with status filter, refresh, and auto-reload after a test send.
+- Migration `drizzle/0023_same_korvac.sql` generated and applied to `whoobe_db`.
+
+---
+
 ## [Documents Migration plan: Pimcore Documents → Pages] — 2026-08-14 (branch: dev/08-14-documents/documents-migration)
 
 - `docs/plans/cms/documents-migration.md` expanded from a 4-line stub into the full PIMCORE MIGRATION plan: terminology (Documents = Pimcore Documents/brick-built pages vs. Pages = `whoobe_pages`), verified current state (pipeline built and piloted against the 117-document live site), scope & non-goals, and six phases — asset migration (`migrate-assets`), brick mappings for the remaining 41 types, document metadata (title/locale/SEO), full-site run, validation, and retiring the legacy `cms_documents`/`whoobe-studio` path.
