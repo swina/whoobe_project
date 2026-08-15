@@ -4,6 +4,45 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Headless SDK: Svelte & Vue adapters implemented] — 2026-08-15 (branch: master)
+
+- **`@whoobe-cms/vue`** (`packages/sdk/vue`, Vue 3): `WhoobeProvider`/`WhoobeNode`/`WhoobePage`, default primitives, `descriptorToProps`, composables (`useWhoobe`/`usePage`/`useObject`/`useQuery`/`useForm`). Plain `defineComponent`+`h()` so it builds with `tsc`; tested via `@vue/server-renderer` (4 tests).
+- **`@whoobe-cms/svelte`** (`packages/sdk/svelte`, Svelte 5, built with `svelte-package`): `WhoobeProvider`/`WhoobeNode`/`WhoobePage`, default primitives, `defaults` registry, stores (`createPageStore`/`createObjectStore`/`createQueryStore`/`createWhoobeApi`), context helpers. Tested via `svelte/server` SSR render (3 tests).
+- Shared `Record<NodeKind, Component>` registry contract across React/Svelte/Vue; both adapters reuse `@whoobe-cms/renderer` 100% (escaping, DAM images, per-record links, SSR-descriptor hydration).
+- All four SDK packages build via turbo and all tests pass (schema 15, renderer 27, vue 4, svelte 3).
+
+---
+
+## [Headless SDK: Svelte & Vue adapter plan] — 2026-08-15 (branch: master)
+
+- New `docs/plans/cms/headless-sdk-svelte-vue-plan.md`: design for the Svelte (`@whoobe-cms/svelte`, Svelte 5 + SvelteKit) and Vue (`@whoobe-cms/vue`, Vue 3 + Nuxt) adapters of the headless SDK, reusing the `@whoobe-cms/renderer` core 100%. Covers the shared registry contract (`Record<NodeKind, Component>`), `WhoobeProvider`/`WhoobePage`/`WhoobeNode` per framework, default primitives, async-data helpers (Svelte stores / Vue composables), deterministic SSR/hydration, a cross-adapter parity snapshot test, and file-summary/verification sections.
+
+---
+
+## [Headless SDK Phase 2: @whoobe-cms/renderer] — 2026-08-15 (branch: master)
+
+- New workspace package `packages/sdk/renderer` (`@whoobe-cms/renderer`, depends on `@whoobe-cms/schema`) - the pure-TS, framework-agnostic core of the headless SDK (docs/plans/cms/headless-sdk-plan.md §2).
+- `kind.ts`: `normalizeKind()` (canonical registry key) + `resolveTag()` (heading levels, semantic containers), mirroring the editor's node→component dispatch.
+- `descriptor.ts`: serializable `RenderDescriptor` (id/kind/tag/className/style/attributes/content/image/link/children/configs/options + raw node) - SSR-boundary-safe.
+- `walk.ts`: `walkTree()`/`walkNode()` - validates via the schema, resolves field bindings, collection repeaters (query → children per record), config passthrough.
+- `resolve.ts`: `resolveDataBinding` (explicit/first/query/parent/currentPage via the public API), `resolveFieldValue`, `formatBoundContent` (shared transform + escaping → safe HTML), `resolveRecordField`.
+- `url.ts`: `resolveImageUrl()` (DAM path → proxy URL, http/data passthrough, UUIDs documented unresolvable).
+- `path-pattern.ts`: `resolveDynamicLinkPath()` for list-to-detail slugs.
+- `api-client.ts`: `ApiClient` (injectable `fetch`, typed getPage/getObject/queryObjects/search/submitForm) + `RenderApi` interface for mocking; fully SSR-safe (no window at module scope).
+- 27 vitest tests pass; typecheck + build clean; smoke-tested walking a real `whoobe_pages.content` from the live DB.
+
+---
+
+## [Headless SDK Phase 1: @whoobe-cms/schema] — 2026-08-15 (branch: master)
+
+- New workspace package `packages/sdk/schema` (`@whoobe-cms/schema`, added to `pnpm-workspace.yaml` via `packages/sdk/*`) — the shared, framework-agnostic contract for Whoobe's JSON element trees (docs/plans/cms/headless-sdk-plan.md §1).
+- `src/node.ts`: port of the Element-tree data contract (`WhoobeElementNode` + `ElementCss`/`ElementImage`/`ElementDataBinding`/`DynamicLinkBinding`/`ElementFormConfig`/`ElementSearchConfig`/`ElementSlider`, …) as pure interfaces.
+- `src/transform.ts`: port of `field-transforms.ts` (`FieldTransform`, `applyTransform`, `escapeHtml`, `TRANSFORMERS`, `transformersForFieldType`) so editor, backend mail renderer, and SDK format values identically.
+- `src/validators.ts`: Zod schemas for the tree (recursive lazy node schema, discriminated-union transforms, `formConfig`/`searchConfig`/`slider`), `.passthrough()` so unknown editor fields survive validation, `validatePageContent`/`parsePageContent`.
+- 15 vitest tests pass; typecheck + build clean; validated against 4 real trees from the live `whoobe_pages`/`whoobe_one_templates` tables.
+
+---
+
 ## [Headless SDK plan] — 2026-08-15 (branch: master)
 
 - New `docs/plans/cms/headless-sdk-plan.md`: design for the official framework-agnostic SDK (React/Next.js first) referenced in `docs/plans/executive-summary.md` §3.3. Covers the shared `@whoobe-cms/schema` contract package (node types + Zod validators + `applyTransform` port), a pure-TS `@whoobe-cms/renderer` (tree-walk → render descriptors, data/image/link resolution via public API, SSR-safe), a `@whoobe-cms/react` adapter (component registry + `<WhoobePage>`/`<WhoobeNode>` + hooks + default components), `@whoobe-cms/next` (RSC/SSR/ISR helpers, metadata, dynamic paths), future adapters, styling/parity notes, a canonical node-kind→component mapping table, and file-summary/verification sections.

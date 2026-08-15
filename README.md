@@ -63,20 +63,28 @@ The whole monorepo reads a **single** `.env` at the repo root — docker-compose
 # The hostname all derived URLs are built from - change here for the
 # whole stack at once, or per run via ./dev-cms.sh --hostname <name>.
 WHOOBE_HOSTNAME=localhost
+DB_HOSTNAME=<database_hostname>
+S3_ENDPOINT_HOSTNAME=<S3_endpoint_hostname>
 
+# --- Postgres container (docker-compose.yml) ---
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgrespassword
 POSTGRES_DB=whoobe_db
 
-DB_HOST=${WHOOBE_HOSTNAME}
+# --- Shared Postgres connection (core-api, asset-processor, migration-tool) ---
+DB_HOST=${DB_HOSTNAME}
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=postgrespassword
 DB_NAME=whoobe_db
 
-MIGRATION_SOURCE_ENCRYPTION_KEY=<random-32-byte-key>
+# --- core-api only ---
+# Encryption key for stored Pimcore migration sources (aes-256, 32 bytes).
+MIGRATION_SOURCE_ENCRYPTION_KEY=my_secret_key_change_me
 
-S3_ENDPOINT=http://${WHOOBE_HOSTNAME}:9000
+# --- asset-processor only: S3/MinIO connection ---
+# Owned exclusively by the backend - never shipped to the browser.
+S3_ENDPOINT=http://${S3_ENDPOINT_HOSTNAME}:9000
 S3_BUCKET=whoobe-cms
 S3_REGION=us-east-1
 S3_ACCESS_KEY_ID=minioadmin
@@ -84,10 +92,12 @@ S3_SECRET_ACCESS_KEY=minioadminpassword
 S3_FORCE_PATH_STYLE=true
 S3_PUBLIC_BASE_URL=http://${WHOOBE_HOSTNAME}:3002/dam-asset
 
+# --- admin-dashboard (Vite) ---
 VITE_ASSET_PROCESSOR_URL=http://${WHOOBE_HOSTNAME}:3002
 VITE_CORE_API_URL=http://${WHOOBE_HOSTNAME}:3003
 
-VITE_FONT_FAMILIES=Alfa+Slab+One|Asap+Condensed|...
+# --- whoobe-one-spike (Vite) ---
+VITE_FONT_FAMILIES=Alfa+Slab+One|Asap+Condensed|Abel|Alice|Alegreya|Amethysta|Archivo+Black|Barlow|Barlow+Condensed|Bungee+Inline|Expletus+Sans|Lora|Montserrat|Nunito+Sans|Oi|Open+Sans|PT+Sans|Roboto|Roboto+Condensed|Quattrocento|Raleway|Ultra|Yatra+One
 ```
 
 `core-api` creates the database and applies migrations automatically on startup, so no separate migration step is required for a fresh Postgres instance.
