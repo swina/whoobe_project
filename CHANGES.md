@@ -4,6 +4,12 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Page editor: full-screen mode] — 2026-08-15 (branch: master)
+
+- `MasterPageTab.vue`: a Maximize/Minimize toggle button next to the "Open in a new tab" link opens the embedded Whoobe One editor in a full-screen overlay (`fixed inset-0`, header with the page title + Close button, `WhoobeOneEmbed` filling the viewport) - same pattern as the HTML mail-template editor. Disabled for unsaved (new) pages.
+
+---
+
 ## [Headless SDK guide: architecture updated] — 2026-08-15 (branch: master)
 
 - `docs/guides/headless-sdk.md` architecture section rewritten: the layer diagram now shows all three layers (contract → core → adapters) and all four adapters (`@whoobe-cms/react`, `@whoobe-cms/vue`, `@whoobe-cms/svelte`) plus `@whoobe-cms/next` (server-only RSC/ISR helpers on top of React), and a prose summary of the pipeline.
