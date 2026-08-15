@@ -4,6 +4,26 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Headless SDK guide: architecture updated] — 2026-08-15 (branch: master)
+
+- `docs/guides/headless-sdk.md` architecture section rewritten: the layer diagram now shows all three layers (contract → core → adapters) and all four adapters (`@whoobe-cms/react`, `@whoobe-cms/vue`, `@whoobe-cms/svelte`) plus `@whoobe-cms/next` (server-only RSC/ISR helpers on top of React), and a prose summary of the pipeline.
+
+---
+
+## [Headless SDK: React & Next.js adapters] — 2026-08-15 (branch: master)
+
+- **`@whoobe-cms/react`** (`packages/sdk/react`, React 18+): `WhoobeProvider`/`WhoobeNode`/`WhoobePage`, default primitives, hooks (`usePage`/`useObject`/`useQuery`/`useForm`/`useWhoobe`), `descriptorToProps`. `jsx: react-jsx`, builds with `tsc`; tested via `renderToStaticMarkup` (3 tests).
+- **`@whoobe-cms/next`** (`packages/sdk/next`): server-only helpers for App Router/RSC - `getPageData`/`getObjectData` (Next `fetch` + `revalidate` for ISR, then `walkTree`), `generateMetadataFromPage` (page.seo → Metadata), `staticParamsForSlugs`/`staticParamsForRecords` (dynamic pages), `whoobeApi(baseUrl)`, re-exports the React adapter. No `next` package dependency (3 tests).
+- Guide `docs/guides/headless-sdk.md` extended with React + Next usage (registry overrides, RSC/ISR patterns); plan Resolved + §5 updated. All six SDK packages build via turbo and all tests pass (schema 15, renderer 27, react 3, next 3, vue 4, svelte 3).
+
+---
+
+## [Headless SDK guide] — 2026-08-15 (branch: master)
+
+- New `docs/guides/headless-sdk.md`: architecture and usage of the headless SDK. Covers the four packages (`@whoobe-cms/schema`, `@whoobe-cms/renderer`, `@whoobe-cms/vue`, `@whoobe-cms/svelte`), the layer diagram and `RenderDescriptor`/registry contracts, node-kind mapping table, core `walkTree`/`ApiClient` usage (data bindings, DAM images, dynamic links), per-adapter usage with design-system registry overrides, SSR/hydration patterns for Nuxt and SvelteKit, out-of-the-box features (forms, search, escaping), and verification commands.
+
+---
+
 ## [Headless SDK: Svelte & Vue adapters implemented] — 2026-08-15 (branch: master)
 
 - **`@whoobe-cms/vue`** (`packages/sdk/vue`, Vue 3): `WhoobeProvider`/`WhoobeNode`/`WhoobePage`, default primitives, `descriptorToProps`, composables (`useWhoobe`/`usePage`/`useObject`/`useQuery`/`useForm`). Plain `defineComponent`+`h()` so it builds with `tsc`; tested via `@vue/server-renderer` (4 tests).

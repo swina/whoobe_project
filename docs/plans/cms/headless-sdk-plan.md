@@ -96,7 +96,8 @@ App Router + Pages Router support:
 
 ## 5. Adapter surface (future phases)
 
-- `@whoobe-cms/svelte` and `@whoobe-cms/vue` — **implemented** (docs/plans/cms/headless-sdk-svelte-vue-plan.md "Resolved"): Svelte 5 + svelte-package and Vue 3 + `defineComponent`/`h()` adapters over `@whoobe-cms/renderer`, with the shared `Record<NodeKind, Component>` registry contract.
+- `@whoobe-cms/react` and `@whoobe-cms/next` — **implemented** (see "Resolved" below).
+- `@whoobe-cms/svelte` and `@whoobe-cms/vue` — **implemented** (docs/plans/cms/headless-sdk-svelte-vue-plan.md "Resolved").
 - `@whoobe-cms/web` (Web Components wrapper over the core walker) — registry + descriptor rendering over the same `@whoobe-cms/renderer`.
 - CLI scaffolder: `npx @whoobe-cms/cli init <app>` to bootstrap a Next.js/React app wired to a Whoobe instance.
 
@@ -150,4 +151,8 @@ Phase 2 (`@whoobe-cms/renderer`) implemented 2026-08-15:
 - `src/api-client.ts` — `ApiClient` (injectable `fetch`, typed `getPage`/`getObject`/`queryObjects`/`search`/`submitForm`), `RenderApi` structural interface for mocking.
 - 27 vitest tests pass; typecheck + build clean; smoke-tested walking a real `whoobe_pages.content` from the live DB (containers/headings/paragraphs/images resolve to correct kinds/tags).
 
-Phase 3 (the `@whoobe-cms/react` adapter with the component registry) is not yet implemented.
+Phase 3/4 (`@whoobe-cms/react` + `@whoobe-cms/next`) implemented 2026-08-15:
+
+- **`@whoobe-cms/react`** (`packages/sdk/react`, React 18+, `jsx: react-jsx`, builds with `tsc`): `WhoobeProvider` (context), `WhoobeNode` (recursive registry renderer), `WhoobePage` (fetch+walk, or a pre-walked `descriptor` for SSR), default primitives (container/headings/image/link/form+honeypot+result-popup/inputs/select/radiogroup/buttons/search/media), hooks (`usePage`/`useObject`/`useQuery`/`useForm`/`useWhoobe`), `descriptorToProps`. Tested via `renderToStaticMarkup` (3 tests).
+- **`@whoobe-cms/next`** (`packages/sdk/next`, server-only helpers, no `next` dependency): `getPageData`/`getObjectData` (Next-patched `fetch` + `revalidate` for ISR, then `walkTree`), `generateMetadataFromPage` (from `page.seo`), `staticParamsForSlugs`/`staticParamsForRecords` (dynamic pages), `whoobeApi(baseUrl)`, and re-exports the React adapter. Tested with a mocked fetch (3 tests).
+- Full headless SDK surface now: `schema` (15), `renderer` (27), `react` (3), `next` (3), `vue` (4), `svelte` (3) tests — all pass; turbo build green.
