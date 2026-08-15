@@ -1,11 +1,11 @@
 <template>
   <div class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-4">
-    <div>
+    <!-- <div>
       <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">Outgoing Mail</h3>
       <p class="text-xs text-slate-500 mt-1">
         SMTP config used for Form notification emails (docs/plans/forms/cms-forms.md). One global config, applied to every site.
       </p>
-    </div>
+    </div> -->
 
     <div class="flex gap-1 border-b border-slate-800 light:border-slate-200">
       <button
@@ -105,14 +105,155 @@
           <span v-if="testError" class="text-xs text-rose-400">{{ testError }}</span>
         </div>
       </form>
+
+      <!-- Mail Log -->
+      <div v-show="activeTab === 'log'" class="space-y-4">
+        <!-- Toolbar: search / status / order / page size / refresh / delete -->
+        <div class="flex flex-wrap items-center gap-2">
+          <input
+            v-model="logSearch"
+            type="text"
+            placeholder="Search to, subject, status…"
+            class="flex-1 min-w-[180px] px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800 placeholder:text-slate-500"
+          />
+          <select v-model="logFilter" @change="resetAndLoad" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800">
+            <option value="">All statuses</option>
+            <option value="sent">Sent</option>
+            <option value="failed">Failed</option>
+          </select>
+          <select v-model="logOrder" @change="resetAndLoad" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+          <select v-model="logPageSize" @change="resetAndLoad" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800">
+            <option :value="10">10 / page</option>
+            <option :value="25">25 / page</option>
+            <option :value="50">50 / page</option>
+            <option :value="100">100 / page</option>
+          </select>
+          <button type="button" @click="loadLog" :disabled="logLoading" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white">
+            {{ logLoading ? 'Loading…' : 'Refresh' }}
+          </button>
+          <button
+            type="button"
+            :disabled="selectedIds.size === 0 || deleting"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white"
+            @click="deleteSelected"
+          >
+            {{ deleting ? 'Deleting…' : `Delete${selectedIds.size ? ` (${selectedIds.size})` : ''}` }}
+          </button>
+        </div>
+        <div v-if="deleteError" class="text-xs text-rose-400">{{ deleteError }}</div>
+
+        <div v-if="logLoading" class="text-xs text-slate-500 text-center py-4">Loading…</div>
+        <div v-else-if="logError" class="text-xs text-rose-400">{{ logError }}</div>
+        <div v-else-if="logEntries.length === 0" class="text-xs text-slate-500 text-center py-4">
+          <template v-if="logTotal > 0">No results on this page.</template>
+          <template v-else>No emails logged yet. Every sendMail() attempt is recorded here once one is made.</template>
+        </div>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="text-slate-500 border-b border-slate-800 light:border-slate-200">
+              <tr>
+                <th class="py-2 pr-3">
+                  <input
+                    type="checkbox"
+                    :checked="allPageSelected"
+                    :indeterminate="somePageSelected && !allPageSelected"
+                    @change="toggleSelectAll"
+                    class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-slate-800 light:border-slate-200"
+                  />
+                </th>
+                <th class="py-2 pr-3 font-semibold whitespace-nowrap">Sent</th>
+                <th class="py-2 pr-3 font-semibold">To</th>
+                <th class="py-2 pr-3 font-semibold">Subject</th>
+                <th class="py-2 pr-3 font-semibold">Status</th>
+                <th class="py-2 pr-3 font-semibold">Detail</th>
+                <th class="py-2 font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 light:divide-slate-200">
+              <tr v-for="entry in logEntries" :key="entry.id">
+                <td class="py-2 pr-3">
+                  <input
+                    type="checkbox"
+                    :checked="selectedIds.has(entry.id)"
+                    @change="toggleSelect(entry.id)"
+                    class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-slate-800 light:border-slate-200"
+                  />
+                </td>
+                <td class="py-2 pr-3 text-slate-400 whitespace-nowrap">{{ formatLogTime(entry.sentAt) }}</td>
+                <td class="py-2 pr-3 text-slate-300 light:text-slate-700">{{ entry.to }}</td>
+                <td class="py-2 pr-3 text-slate-200 light:text-slate-800">{{ entry.subject }}</td>
+                <td class="py-2 pr-3">
+                  <span :class="entry.status === 'sent' ? 'text-emerald-400' : 'text-rose-400'">{{ entry.status }}</span>
+                </td>
+                <td class="py-2 pr-3 text-slate-500">{{ entry.error || '—' }}</td>
+                <td class="py-2">
+                  <button type="button" class="px-2 py-0.5 rounded text-[11px] font-semibold text-indigo-300 hover:bg-indigo-600/20" @click="openPreview(entry)">Preview</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination footer -->
+        <div v-if="logTotal > 0" class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+          <span>{{ logPageStart }}–{{ logPageEnd }} of {{ logTotal }}</span>
+          <div class="flex items-center gap-1">
+            <button type="button" :disabled="logPage <= 1 || logLoading" class="px-2 py-1 rounded border border-slate-800 light:border-slate-200 hover:bg-slate-800 light:hover:bg-slate-100 disabled:opacity-40" @click="changePage(logPage - 1)">Prev</button>
+            <span class="px-2">{{ logPage }} / {{ logTotalPages }}</span>
+            <button type="button" :disabled="logPage >= logTotalPages || logLoading" class="px-2 py-1 rounded border border-slate-800 light:border-slate-200 hover:bg-slate-800 light:hover:bg-slate-100 disabled:opacity-40" @click="changePage(logPage + 1)">Next</button>
+          </div>
+        </div>
+      </div>
     </template>
+  </div>
+
+  <!-- Mail preview modal -->
+  <div v-if="previewOpen" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center p-4" @click.self="closePreview">
+    <div class="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-slate-900 light:bg-white border border-slate-700 light:border-slate-200 shadow-xl overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-3 border-b border-slate-800 light:border-slate-200">
+        <div class="min-w-0">
+          <h4 class="text-sm font-semibold text-slate-100 light:text-slate-900 truncate">{{ previewEntry?.subject }}</h4>
+          <p class="text-xs text-slate-500">{{ previewEntry?.status }} · {{ previewEntry ? formatLogTime(previewEntry.sentAt) : '' }}</p>
+        </div>
+        <button type="button" class="text-slate-500 hover:text-slate-300 text-lg leading-none" @click="closePreview">×</button>
+      </div>
+
+      <div v-if="previewLoading" class="text-xs text-slate-500 text-center py-10">Loading…</div>
+      <div v-else-if="previewError" class="text-xs text-rose-400 text-center py-10">{{ previewError }}</div>
+      <template v-else-if="previewEntry">
+        <div class="px-5 py-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs border-b border-slate-800 light:border-slate-200">
+          <div><span class="text-slate-500">To:</span> <span class="text-slate-200 light:text-slate-800">{{ previewEntry.to }}</span></div>
+          <div><span class="text-slate-500">From:</span> <span class="text-slate-200 light:text-slate-800">{{ previewEntry.from || '—' }}</span></div>
+          <div><span class="text-slate-500">CC:</span> <span class="text-slate-200 light:text-slate-800">{{ previewEntry.cc || '—' }}</span></div>
+          <div><span class="text-slate-500">Status:</span> <span :class="previewEntry.status === 'sent' ? 'text-emerald-400' : 'text-rose-400'">{{ previewEntry.status }}</span></div>
+        </div>
+        <div v-if="previewEntry.error" class="px-5 py-2 text-xs text-rose-400 border-b border-slate-800 light:border-slate-200">{{ previewEntry.error }}</div>
+        <div class="flex-1 min-h-0 overflow-auto bg-slate-950 light:bg-slate-50">
+          <iframe v-if="previewEntry.html" :srcdoc="previewEntry.html" sandbox="" class="w-full h-96 bg-white border-0"></iframe>
+          <pre v-else-if="previewEntry.text" class="whitespace-pre-wrap text-xs text-slate-200 light:text-slate-800 p-4 font-mono">{{ previewEntry.text }}</pre>
+          <p v-else class="text-xs text-slate-500 p-4">No body stored for this entry.</p>
+        </div>
+        <div class="flex items-center gap-3 px-5 py-3 border-t border-slate-800 light:border-slate-200">
+          <button type="button" :disabled="resending" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white" @click="resend">
+            {{ resending ? 'Resending…' : 'Resend' }}
+          </button>
+          <span v-if="resendResult" class="text-xs text-emerald-400">{{ resendResult }}</span>
+          <span v-if="resendError" class="text-xs text-rose-400">{{ resendError }}</span>
+          <span class="flex-1"></span>
+          <button type="button" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-200 text-slate-200 light:text-slate-800 hover:bg-slate-700 light:hover:bg-slate-300" @click="closePreview">Close</button>
+        </div>
+      </template>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
-import { fetchMailSettings, saveMailSettings, sendTestMail, type MailSettingsRecord } from '../../utils/mail-settings-api'
+import { fetchMailSettings, saveMailSettings, sendTestMail, fetchMailLog, fetchMailLogEntry, resendMail, deleteMailLogEntries, type MailSettingsRecord, type MailLogEntry } from '../../utils/mail-settings-api'
 
 const loading = ref(true)
 const saving = ref(false)
@@ -120,11 +261,169 @@ const error = ref('')
 const savedAt = ref(false)
 const existing = ref<MailSettingsRecord | null>(null)
 
-const tabs: { key: 'settings' | 'test'; label: string }[] = [
+const tabs: { key: 'settings' | 'test' | 'log'; label: string }[] = [
   { key: 'settings', label: 'Settings' },
   { key: 'test', label: 'Email Test' },
+  { key: 'log', label: 'Mail Log' },
 ]
-const activeTab = ref<'settings' | 'test'>('settings')
+const activeTab = ref<'settings' | 'test' | 'log'>('settings')
+
+const logLoading = ref(false)
+const logError = ref('')
+const logFilter = ref<'sent' | 'failed' | ''>('')
+const logOrder = ref<'newest' | 'oldest'>('newest')
+const logSearch = ref('')
+const logPageSize = ref(25)
+const logPage = ref(1)
+const logTotal = ref(0)
+const logEntries = ref<MailLogEntry[]>([])
+const selectedIds = ref<Set<string>>(new Set())
+const deleting = ref(false)
+const deleteError = ref('')
+
+const logTotalPages = computed(() => Math.max(1, Math.ceil(logTotal.value / logPageSize.value)))
+const logPageStart = computed(() => (logTotal.value === 0 ? 0 : (logPage.value - 1) * logPageSize.value + 1))
+const logPageEnd = computed(() => Math.min(logTotal.value, logPage.value * logPageSize.value))
+const allPageSelected = computed(() => logEntries.value.length > 0 && logEntries.value.every((e) => selectedIds.value.has(e.id)))
+const somePageSelected = computed(() => logEntries.value.some((e) => selectedIds.value.has(e.id)))
+
+async function loadLog() {
+  logLoading.value = true
+  logError.value = ''
+  try {
+    const result = await fetchMailLog(getDefaultCoreApiUrl(), {
+      status: logFilter.value || undefined,
+      search: logSearch.value.trim() || undefined,
+      order: logOrder.value,
+      limit: logPageSize.value,
+      offset: (logPage.value - 1) * logPageSize.value,
+    })
+    logEntries.value = result.records
+    logTotal.value = result.total
+    // Drop selections for entries that no longer exist (deleted or
+    // filtered out since they were picked).
+    const next = new Set<string>()
+    for (const id of selectedIds.value) {
+      if (logEntries.value.some((e) => e.id === id)) next.add(id)
+    }
+    selectedIds.value = next
+  } catch (e: any) {
+    logError.value = e?.message || 'Failed to load mail log'
+  } finally {
+    logLoading.value = false
+  }
+}
+
+function resetAndLoad() {
+  logPage.value = 1
+  loadLog()
+}
+
+function changePage(page: number) {
+  const clamped = Math.min(Math.max(page, 1), logTotalPages.value)
+  if (clamped === logPage.value) return
+  logPage.value = clamped
+  loadLog()
+}
+
+function toggleSelect(id: string) {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedIds.value = next
+}
+
+function toggleSelectAll() {
+  const next = new Set(selectedIds.value)
+  if (allPageSelected.value) {
+    logEntries.value.forEach((e) => next.delete(e.id))
+  } else {
+    logEntries.value.forEach((e) => next.add(e.id))
+  }
+  selectedIds.value = next
+}
+
+async function deleteSelected() {
+  const ids = [...selectedIds.value]
+  if (ids.length === 0) return
+  const noun = ids.length === 1 ? 'entry' : 'entries'
+  if (!window.confirm(`Delete ${ids.length} log ${noun}? This cannot be undone.`)) return
+  deleting.value = true
+  deleteError.value = ''
+  try {
+    await deleteMailLogEntries(getDefaultCoreApiUrl(), ids)
+    selectedIds.value = new Set()
+    await loadLog()
+    // If we just cleared the last page of results, step back one page.
+    if (logEntries.value.length === 0 && logPage.value > 1 && logTotal.value > 0) {
+      logPage.value -= 1
+      await loadLog()
+    }
+  } catch (e: any) {
+    deleteError.value = e?.message || 'Failed to delete log entries'
+  } finally {
+    deleting.value = false
+  }
+}
+
+// Debounced server-side search across to/subject/status.
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+watch(logSearch, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    logPage.value = 1
+    loadLog()
+  }, 300)
+})
+
+function formatLogTime(sentAt: string): string {
+  return new Date(sentAt).toLocaleString()
+}
+
+const previewOpen = ref(false)
+const previewLoading = ref(false)
+const previewError = ref('')
+const previewEntry = ref<MailLogEntry | null>(null)
+const resending = ref(false)
+const resendResult = ref('')
+const resendError = ref('')
+
+async function openPreview(entry: MailLogEntry) {
+  previewOpen.value = true
+  previewLoading.value = true
+  previewError.value = ''
+  previewEntry.value = null
+  resendResult.value = ''
+  resendError.value = ''
+  try {
+    previewEntry.value = await fetchMailLogEntry(getDefaultCoreApiUrl(), entry.id)
+  } catch (e: any) {
+    previewError.value = e?.message || 'Failed to load email'
+  } finally {
+    previewLoading.value = false
+  }
+}
+
+function closePreview() {
+  previewOpen.value = false
+  previewEntry.value = null
+}
+
+async function resend() {
+  if (!previewEntry.value) return
+  resending.value = true
+  resendResult.value = ''
+  resendError.value = ''
+  try {
+    await resendMail(getDefaultCoreApiUrl(), previewEntry.value.id)
+    resendResult.value = 'Re-sent. The resend is logged as its own entry.'
+    loadLog()
+  } catch (e: any) {
+    resendError.value = e?.message || 'Failed to resend email'
+  } finally {
+    resending.value = false
+  }
+}
 
 const testSending = ref(false)
 const testResult = ref<'ok' | null>(null)
@@ -216,6 +515,7 @@ async function sendTest() {
       text: looksLikeHtml ? undefined : body,
     })
     testResult.value = 'ok'
+    loadLog()
   } catch (e: any) {
     testError.value = e?.message || 'Failed to send test email'
   } finally {

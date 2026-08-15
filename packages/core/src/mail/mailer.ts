@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { getMailSettings } from '../db/mail-settings-records.js';
+import { logMailDelivery } from '../db/mail-log-records.js';
 
 export interface SendMailInput {
   to: string;
@@ -31,13 +32,38 @@ export async function sendMail({ to, subject, html, from, cc, text }: SendMailIn
   });
 
   const defaultFrom = settings.fromName ? `"${settings.fromName}" <${settings.fromAddress}>` : settings.fromAddress;
+  const fromAddress = from || defaultFrom;
 
-  await transport.sendMail({
-    from: from || defaultFrom,
-    to,
-    cc: cc || undefined,
-    subject,
-    text: text || undefined,
-    html,
-  });
+  // Every send attempt is logged (Settings → Mail → Log), success and
+  // failure alike. The two concerns are deliberately decoupled: a failing
+  // log write must never change the send result, and a failed send must
+  // still be recorded before the error is rethrown to the caller.
+  let sendError: unknown = null;
+  try {
+    await transport.sendMail({
+      from: fromAddress,
+      to,
+      cc: cc || undefined,
+      subject,
+      text: text || undefined,
+      html,
+    });
+  } catch (error) {
+    sendError = error;
+  }
+  try {
+    await logMailDelivery({
+      to,
+      from: fromAddress,
+      cc: cc || null,
+      subject,
+      html: html || null,
+      text: text || null,
+      status: sendError ? 'failed' : 'sent',
+      error: sendError ? (sendError instanceof Error ? sendError.message : String(sendError)) : null,
+    });
+  } catch (logError) {
+    console.warn('Mail log write failed:', logError);
+  }
+  if (sendError) throw sendError;
 }

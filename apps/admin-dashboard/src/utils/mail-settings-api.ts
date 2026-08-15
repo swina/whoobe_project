@@ -76,3 +76,69 @@ export async function sendTestMail(baseUrl: string, input: SendTestMailInput): P
   })
   return parseJsonOrThrow(res)
 }
+
+// Every sendMail() attempt is logged server-side (Settings → Mail → Log).
+// The list response strips the body (html/text); fetchMailLogEntry returns
+// the full entry for the preview modal.
+export interface MailLogEntry {
+  id: string
+  to: string
+  from: string | null
+  cc: string | null
+  subject: string
+  html?: string | null
+  text?: string | null
+  status: 'sent' | 'failed'
+  error: string | null
+  sentAt: string
+}
+
+export interface MailLogListResult {
+  records: MailLogEntry[]
+  total: number
+}
+
+export async function fetchMailLog(
+  baseUrl: string,
+  options?: {
+    status?: 'sent' | 'failed'
+    search?: string
+    order?: 'newest' | 'oldest'
+    limit?: number
+    offset?: number
+  },
+): Promise<MailLogListResult> {
+  const params = new URLSearchParams()
+  if (options?.status) params.set('status', options.status)
+  if (options?.search) params.set('search', options.search)
+  if (options?.order) params.set('order', options.order)
+  if (options?.limit != null) params.set('limit', String(options.limit))
+  if (options?.offset != null) params.set('offset', String(options.offset))
+  const qs = params.toString()
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/mail-log${qs ? `?${qs}` : ''}`, { credentials: 'include' })
+  const data = await parseJsonOrThrow(res)
+  return { records: data.records ?? [], total: data.total ?? 0 }
+}
+
+export async function deleteMailLogEntries(baseUrl: string, ids: string[]): Promise<{ deleted: number }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/mail-log/delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
+export async function fetchMailLogEntry(baseUrl: string, id: string): Promise<MailLogEntry> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/mail-log/${id}`, { credentials: 'include' })
+  return parseJsonOrThrow(res)
+}
+
+export async function resendMail(baseUrl: string, id: string): Promise<{ ok: boolean }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/mail-log/${id}/resend`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
