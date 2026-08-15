@@ -4,6 +4,12 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Documents Migration plan: Pimcore Documents → Pages] — 2026-08-14 (branch: dev/08-14-documents/documents-migration)
+
+- `docs/plans/cms/documents-migration.md` expanded from a 4-line stub into the full PIMCORE MIGRATION plan: terminology (Documents = Pimcore Documents/brick-built pages vs. Pages = `whoobe_pages`), verified current state (pipeline built and piloted against the 117-document live site), scope & non-goals, and six phases — asset migration (`migrate-assets`), brick mappings for the remaining 41 types, document metadata (title/locale/SEO), full-site run, validation, and retiring the legacy `cms_documents`/`whoobe-studio` path.
+
+---
+
 ## [Search element: no baked-in w-full on the container] — 2026-08-14 (branch: feat/08-14/search-engine)
 
 - `ElementsClass.js` `Search()` no longer defaults `css.container` to `w-full` - the container `<div>` is a plain block (fills its parent by default) and the inner `<form>` is already `w-full`, so the redundant class only fought a custom container width in the render (preview/editor) cascade.
