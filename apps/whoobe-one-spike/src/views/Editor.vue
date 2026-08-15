@@ -36,7 +36,7 @@ import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
 import BlockEditor from '../components/BlockEditor.vue'
 import { useEditorStore } from '../store/editor'
-import { loadPage } from '../scripts/database-actions'
+import { loadPage, loadMailTemplate, createEmptyMailTemplateRoot } from '../scripts/database-actions'
 import { clean } from '../helpers'
 
 const editor = useEditorStore()
@@ -46,9 +46,36 @@ onMounted(async () => {
   const parentOrigin = typeof route.query.parentOrigin === 'string' ? route.query.parentOrigin : null
   if (parentOrigin) editor.setEmbedded(true, parentOrigin)
 
+  const mailTemplateId = typeof route.query.mailTemplateId === 'string' ? route.query.mailTemplateId : null
+  if (mailTemplateId) {
+    try {
+      await loadMailTemplate(editor, mailTemplateId)
+    } catch (e) {
+      // A failed template fetch must never leave a dead blank iframe nor
+      // silently become a whoobe_pages save - seed an empty mail-template
+      // document (keeping mailTemplateId set) so the editor is usable and a
+      // follow-up Save creates a fresh mail template, never a page.
+      console.warn('Failed to load mail template:', e)
+      const root = createEmptyMailTemplateRoot()
+      const page = new Block()
+      page.name = 'Untitled mail template'
+      page.category = 'html'
+      page.json.blocks = root
+      editor.setPage(page)
+      editor.setDocument(root)
+      editor.setCurrent(null)
+      editor.setMailTemplateId(mailTemplateId)
+    }
+    return
+  }
+
   const pageId = typeof route.query.pageId === 'string' ? route.query.pageId : null
   if (pageId) {
-    await loadPage(editor, pageId)
+    try {
+      await loadPage(editor, pageId)
+    } catch (e) {
+      console.warn('Failed to load page:', e)
+    }
     return
   }
 

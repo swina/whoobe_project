@@ -11,6 +11,7 @@ export interface MailSettingsRecord {
   password: string | null;
   fromAddress: string;
   fromName: string | null;
+  bccFromAddress: boolean;
   updatedAt: Date;
 }
 
@@ -33,6 +34,7 @@ export async function upsertMailSettings(input: {
   password?: string | null;
   fromAddress: string;
   fromName?: string | null;
+  bccFromAddress?: boolean;
 }): Promise<MailSettingsRecord> {
   const db = getDb();
   const existing = await getMailSettings();
@@ -44,6 +46,7 @@ export async function upsertMailSettings(input: {
     password: input.password ?? null,
     fromAddress: input.fromAddress,
     fromName: input.fromName ?? null,
+    bccFromAddress: input.bccFromAddress ?? false,
     updatedAt: new Date(),
   };
   if (existing) {

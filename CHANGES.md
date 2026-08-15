@@ -4,6 +4,84 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Form submit result: HTML popup (click to close)] — 2026-08-15 (branch: master)
+
+- The success/error message configured in the editor's Form configuration (`FormConfigControl.vue`, `formConfig.successMessage`/`errorMessage`) now displays as a **click-to-close HTML popup** over the page instead of an inline `<p>` under the form (`BlockContainerPreview.vue`): a Teleported `fixed inset-0` overlay renders the message as HTML (`v-html`), and any click (overlay or the box) dismisses it, plus a ✕ button.
+- Behavior on submit is unchanged and matches the requirement: on success `form-actions.ts` calls `formEl.reset()` so the form clears; on error the submitted values stay in place. Verified the preview inputs are native/uncontrolled with no `value` defaults, so `reset()` genuinely empties them.
+
+---
+
+## [Mail templates: notify email uses raw submission (fix empty {form.field})] — 2026-08-15 (branch: master)
+
+- Fixed form-notification emails rendering `{form.message}`-style tokens empty for inputs the target Data Class doesn't declare. The notify context was the class-validated `parsed` object, and Zod's `z.object()` strips unknown fields by default - a form with a `message` input against a class lacking that field lost the value before the email rendered. The submit route now passes the **raw submitted attributes** (honeypot-stripped) as the email's `context.form`, so every submitted field is available to the template regardless of the class schema. The renderer still HTML-escapes all bound/token values, so this is safe. The Data Object write continues to use `parsed` (unchanged behavior).
+- Verified end to end against the live API with the exact reported payload: subject "Richiesta Contatto", dynamic `to` from `{form.email}`, and body containing firstname/lastname and the full `message` value.
+
+---
+
+## [Mail templates: DAM images in emails] — 2026-08-15 (branch: master)
+
+- Fixed email templates silently dropping images picked from the DAM: the editor stores a *stable reference* (Pimcore-style path like `/uploads/marketing/hero.jpg`, or an asset-record UUID), never a resolved URL, and the mail renderer only emitted `<img>` for full http(s) URLs. New `packages/core/src/mail/mail-image-urls.ts` (`resolveMailImageUrls()` + `looksLikeDamReference()`) walks the Element tree and resolves every DAM reference to a stable public URL via the asset-processor's `/dam-asset/*` proxy (`S3_PUBLIC_BASE_URL` + object key) - which serves objects regardless of visibility and never expires, unlike presigned URLs. `renderTemplateContent()`/`renderMailTemplate()` take an optional `imageUrls` map; `sendMailFromTemplate()` and the legacy `templatePageId` notify path resolve references before rendering. Unresolvable references still omit the `<img>` rather than emit a broken `src`.
+- `{form.field}` token substitution in static content already worked (verified end to end); emails with empty context/fields render an empty string, as mail-merge does.
+
+---
+
+## [Mail templates: BCC (CCN) field + "BCC from address" flag] — 2026-08-15 (branch: master)
+
+- `mail_templates` gains a `bcc` column (migration `drizzle/0027_loud_frog_thor.sql`) - an optional blind-copy recipient supporting `{form.field}` tokens like `to`. `sendMailFromTemplate()` resolves it (explicit bcc wins over the template's, CR/LF-stripped), and admin Templates tab exposes a "BCC / CCN" field (form + list column).
+- `mail_settings` gains a `bcc_from_address` boolean flag (same migration): when on, every outgoing email is BCC'd to the configured from address (a "keep a copy of everything we send" convenience), combined with any explicit bcc. Exposed in `GET`/`PUT /mail-settings` and as a checkbox in Settings → Mail.
+- `sendMail()` now accepts `bcc` and merges the flag's from address into it. Verified end to end via mailhog: envelope delivered to the dynamic `to`, the template bcc, and the from address.
+
+---
+
+## [Mail templates: font family handling in emails] — 2026-08-15 (branch: master)
+
+- Fonts picked in the editor (`node.font`, Google Font family names like `Open+Sans`) now render properly in emails. New `packages/core/src/mail/mail-document.ts`: `fontFamilyStack()` emits a web-safe fallback stack (`"Open Sans", 'Segoe UI', Helvetica, Arial, sans-serif`, serif faces → Georgia), and `buildMailDocument()` wraps the body fragment in a full HTML document whose `<head>` links the Google Fonts CSS for every family the template uses (`collectMailFonts()` walks the Element tree) - so Apple Mail/iOS Mail load the exact face, while Gmail/Outlook (which strip web fonts) degrade to the fallback.
+- `sendMailFromTemplate()` and the legacy `templatePageId` notify path now send the wrapped document; the mail log stores it, so the preview modal renders the same document.
+
+---
+
+## [Mail templates: dynamic `to` field] — 2026-08-15 (branch: master)
+
+- `mail_templates` gains a `to` column (migration `drizzle/0026_unusual_bloodstrike.sql`) - an optional default recipient that supports `{form.field}` tokens, so a template can be addressed dynamically (e.g. `{form.email}`).
+- `sendMailFromTemplate()` now resolves the recipient itself: an explicit `to` (a Form's `notify.recipientEmail`) wins, otherwise the template's `to` is token-substituted; it throws if nothing resolves to a non-empty address. Subject/to are both CR/LF-stripped via `substituteTokensPlain`.
+- `POST`/`PATCH /mail-templates` accept `to`; the form-submit notify path no longer requires `notify.recipientEmail` when the template has a (dynamic) `to`.
+- Admin dashboard Templates tab: "To (optional, supports {form.field} tokens)" field in the edit form, `To` column in the list, and `to` in the create/update payloads.
+
+---
+
+## [Mail templates: email-correct HTML (inline styles + rich content)] — 2026-08-15 (branch: master)
+
+- Email bodies rendered from Tailwind-styled templates now carry **inline CSS styles**, not bare `class` attributes - email clients don't load stylesheets, so a body with only `class="p-8 flex flex-col..."` rendered as unstyled text. New `packages/core/src/mail/tailwind-inline.ts` compiles each element's Tailwind utility classes to a `style` attribute at render time via `tw-to-css` (new dependency in `packages/core`), with results cached per class string; interaction variants (hover:/focus:/group-*:) are dropped since a static email has no hover state. Explicit inline `style`/`font` still win over compiled utilities.
+- **Static (admin-authored) content now renders as sanitized HTML instead of escaped text**: the editor stores contenteditable innerHTML (real `<b>`/`<a>` markup) into `content`, so escaping it destroyed formatting (`<b>Antonio</b>` shipped as `&lt;b&gt;`). `sanitizeInlineHtml()` keeps a whitelist of safe inline/flow tags, drops all attributes except a safe `href` on links, and escapes everything else (`<script>` etc.). Bound values (public form input) remain fully escaped.
+- Text-kind template bodies now substitute tokens **without** HTML-escaping (`substituteTokensPlain`) - they're sent as text/plain, so escaping printed literal `&amp;`/`&lt;`; control characters are still stripped.
+
+---
+
+## [Mail Templates editor fixes] — 2026-08-15 (branch: master)
+
+- Fixed the HTML mail-template editor's save/empty-editor bugs: a brand-new template's `null` content previously left the editor canvas dead (`document = null` - drag-to-add silently no-op'd and Save returned early), and a failed template fetch could silently become a whoobe_pages save. `loadMailTemplate` now seeds an empty document root when content is null; `saveMailTemplate` seeds one defensively too; `Editor.vue` catches load failures and seeds an empty mail-template document keeping `mailTemplateId` set (Save then creates a fresh mail template, never a page). New shared `createEmptyMailTemplateRoot()` in database-actions.ts.
+- The admin dashboard now presents the HTML template editor as a **full-page-width editor**: a full-screen overlay (`fixed inset-0`, `MailTemplateEditorEmbed.vue` filling it) opened via an "Open full-screen editor" button in the Templates edit panel, instead of a cramped `h-[480px]` iframe inside the settings card.
+
+---
+
+## [Mail Templates implemented] — 2026-08-15 (branch: master)
+
+- New `mail_templates` table (migration `drizzle/0025_heavy_mephistopheles.sql`): `name`, `kind` (html|text), `description`, `subject` (token-supported), `content` (Element tree jsonb) / `body` (plain text).
+- `render-mail-template.ts` generalized to context-aware rendering: `renderTemplateContent(content, context)` with a final `{namespace.field}` token pass; `dataBinding` fields resolve against `context.form` (legacy `renderMailTemplate(pageContent, submission)` preserved). New `mail/token-substitution.ts` (`substituteTokens` HTML-escapes, `substituteTokensPlain` strips CR/LF for headers).
+- `mailer.ts`: new `sendMailFromTemplate({ template, context, to, cc?, subject? })` renders by kind, token-substitutes the subject, sends, and records to `mail_log` automatically.
+- core-api: `GET/POST /mail-templates` + `GET/PATCH/DELETE /mail-templates/:id` (SETTINGS_MANAGE, list returns metadata only); form notify prefers `notify.mailTemplateId` with legacy `notify.templatePageId` fallback.
+- whoobe-one-spike: `formConfig.notify.mailTemplateId`, `FormConfigControl.vue` mail-template select, `mail-templates-api.ts`, `loadMailTemplate`/`saveMailTemplate`, editor-store `mailTemplateId` flag, `/editor?mailTemplateId=` route param, `BlockEditor.vue` Save branching (no path prompt in mail mode).
+- admin-dashboard: `utils/mail-templates-api.ts`, **Templates** tab in `MailSettingsCard.vue` (list, text-template editor, `MailTemplateEditorEmbed.vue` iframe for HTML).
+- `docs/plans/forms/mail-templates.md` "Resolved" section written up.
+
+---
+
+## [Mail Templates plan] — 2026-08-15 (branch: master)
+
+- `docs/plans/forms/mail-templates.md` rewritten from a sketch into a full plan: a dedicated `mail_templates` table (`kind` html|text, default subject, content/body) replacing the current "a whoobe_pages row as template" approach, a shared `{namespace.field}` token-substitution engine working across text templates, HTML templates, and subject lines, context-aware rendering (`{ form, site?, user?, object? }` with `form.*` today), `sendMailFromTemplate()` as the single path for all app emails (mail log records automatically), `/mail-templates` CRUD API (SETTINGS_MANAGE), `formConfig.notify.mailTemplateId` with a legacy `templatePageId` fallback, embedded whoobe-one-spike editing via `/editor?mailTemplateId=`, and a Settings → Mail "Templates" tab. Includes security considerations (HTML-escaping of public input, CR/LF-strip in subjects) and a verification section.
+
+---
+
 ## [Email log: search, pagination, select, order, delete] — 2026-08-15 (branch: master)
 
 - `listMailLog()` (packages/core/src/db/mail-log-records.ts) now supports `search` (case-insensitive match on `to`, `subject`, `status`), `order` (`newest`/`oldest`), and returns `{ records, total }` (matching count) so the UI can paginate. New `deleteMailLogEntries(ids)` bulk delete.

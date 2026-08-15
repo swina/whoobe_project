@@ -66,7 +66,17 @@
                 </label>
                 <template v-if="formConfig.notify.enabled">
                   <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
-                    Template page
+                    Mail template
+                    <select v-model="formConfig.notify.mailTemplateId" class="text-xs border rounded px-1.5 py-1 bg-white">
+                      <option value="">select a mail template...</option>
+                      <option v-for="t in mailTemplates" :key="t.id" :value="t.id">{{ t.name }}</option>
+                    </select>
+                  </label>
+                  <p v-if="!formConfig.notify.mailTemplateId" class="text-[10px] text-amber-600">
+                    If blank, the legacy template page below (whoobe_pages) is used if set.
+                  </p>
+                  <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
+                    Template page (legacy)
                     <select v-model="formConfig.notify.templatePageId" class="text-xs border rounded px-1.5 py-1 bg-white">
                       <option value="">select a page...</option>
                       <option v-for="p in pages" :key="p.id" :value="p.id">{{ p.title }}</option>
@@ -111,6 +121,7 @@ import { X } from '@lucide/vue'
 import { useEditorStore } from '../../store/editor'
 import { listDataClasses, type DataClassRecord } from '../../data-objects-api'
 import { listPages, type WhoobeOnePage } from '../../pages-api'
+import { listMailTemplates, type MailTemplateSummary } from '../../mail-templates-api'
 import type { ElementFormConfig } from '../../scripts/ElementsClass.js'
 
 defineProps<{ attr?: string; title?: string }>()
@@ -118,6 +129,7 @@ defineProps<{ attr?: string; title?: string }>()
 const editor = useEditorStore()
 const classes = ref<DataClassRecord[]>([])
 const pages = ref<WhoobeOnePage[]>([])
+const mailTemplates = ref<MailTemplateSummary[]>([])
 const showModal = ref(false)
 
 onMounted(async () => {
@@ -131,6 +143,11 @@ onMounted(async () => {
   } catch (e) {
     console.warn('[FormConfigControl] Failed to load pages:', e)
   }
+  try {
+    mailTemplates.value = await listMailTemplates()
+  } catch (e) {
+    console.warn('[FormConfigControl] Failed to load mail templates:', e)
+  }
 })
 
 // Backfills `notify` in place for a Form saved before that field existed -
@@ -141,7 +158,12 @@ onMounted(async () => {
 const formConfig = computed(() => {
   const config = (editor.current as any)?.formConfig as ElementFormConfig | undefined
   if (config && !config.notify) {
-    config.notify = { enabled: false, templatePageId: '', recipientEmail: '', subject: '' }
+    config.notify = { enabled: false, mailTemplateId: '', templatePageId: '', recipientEmail: '', subject: '' }
+  }
+  // Backfill mailTemplateId in place for a Form saved before it existed.
+  // Cast: `in` on a now-mandatory field makes the falsy branch `never`.
+  if (config?.notify && !('mailTemplateId' in config.notify)) {
+    ;(config.notify as any).mailTemplateId = ''
   }
   return config
 })

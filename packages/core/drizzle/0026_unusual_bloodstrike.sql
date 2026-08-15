@@ -1,0 +1,1 @@
+ALTER TABLE "mail_templates" ADD COLUMN "to" text;

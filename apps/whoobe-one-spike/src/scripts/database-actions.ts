@@ -37,9 +37,9 @@
 // this drops a field that was already inert in practice, not a visible
 // regression.
 import Block from './BlocksClass.js'
-import type Element from './ElementsClass.js'
+import Element from './ElementsClass.js'
 import type { useEditorStore } from '../store/editor'
-import { randomID } from '../helpers'
+import { randomID, clean } from '../helpers'
 import { cloneWithFreshIds } from './editor-actions'
 import {
   listPages as apiListPages,
@@ -48,6 +48,11 @@ import {
   updatePage as apiUpdatePage,
   deletePage as apiDeletePage,
 } from '../pages-api'
+import {
+  getMailTemplate as apiGetMailTemplate,
+  createMailTemplate as apiCreateMailTemplate,
+  updateMailTemplate as apiUpdateMailTemplate,
+} from '../mail-templates-api'
 import {
   listKits as apiListKits,
   getKit as apiGetKit,
@@ -149,6 +154,72 @@ export async function loadPage(editor: EditorStore, id: string): Promise<void> {
   editor.setPage(page)
   editor.setDocument(saved.content as any)
   editor.setCurrent(null)
+}
+
+/** Loads an HTML mail template into the editor (docs/plans/forms/mail-
+ *  templates.md) - the same shape as loadPage() above, but the content
+ *  comes from a mail_templates row's `content` Element tree instead of a
+ *  whoobe_pages row. The editor store's `mailTemplateId` is set so the
+ *  editor's Save writes back to the template, not a page. A brand-new
+ *  template has null content - an empty document root is seeded so the
+ *  canvas is usable immediately (drag-to-add works and Save persists). */
+export async function loadMailTemplate(editor: EditorStore, id: string): Promise<void> {
+  const saved = await apiGetMailTemplate(id)
+  // saved.content is untyped jsonb in the API client - the editor only ever
+  // opens `html` templates, so it's an Element tree when present.
+  const doc = (saved.content as WhoobeElement | null) ?? createEmptyMailTemplateRoot()
+
+  const page = new Block()
+  page.id = saved.id as any
+  page.name = saved.name
+  page.category = saved.kind
+  page.json.blocks = doc
+
+  editor.setPage(page)
+  editor.setDocument(doc)
+  editor.setCurrent(null)
+  editor.setMailTemplateId(id)
+}
+
+/** An empty, immediately-usable document root for a mail template with no
+ *  content yet - mirrors the onNew()/demo-seed roots elsewhere in this app
+ *  (a col flexbox tagged `document` with the standard minimum height). */
+export function createEmptyMailTemplateRoot(): WhoobeElement {
+  const root = new Element().Flexbox({ direction: 'col' }).setIcon('dashboard').setTag('document')
+  root.css.container = clean((root.css.container || '') + ' gap-4 min-h-[600px] bg-white')
+  return root
+}
+
+/** Saves the current document as the `html` body of an HTML mail template -
+ *  create on first save (no id yet), overwrite in place after that. Mirrors
+ *  savePage() but writes to mail_templates and never asks for a path (mail
+ *  templates have no slug/URL). If the document is somehow null (it isn't
+ *  after loadMailTemplate, which seeds an empty root) an empty root is
+ *  seeded so the save always has something to persist. */
+export async function saveMailTemplate(editor: EditorStore): Promise<void> {
+  if (!editor.page) return
+  if (!editor.document) {
+    const root = createEmptyMailTemplateRoot()
+    editor.setDocument(root)
+    editor.page.json.blocks = root
+  }
+  editor.page.json.blocks = editor.document
+  const content = JSON.parse(JSON.stringify(editor.document))
+
+  if (!editor.page.id) {
+    const created = await apiCreateMailTemplate({
+      name: editor.page.name || 'Untitled',
+      kind: 'html',
+      content,
+    })
+    editor.page.id = created.id
+    editor.setMailTemplateId(created.id)
+  } else {
+    await apiUpdateMailTemplate(String(editor.page.id), {
+      name: editor.page.name || 'Untitled',
+      content,
+    })
+  }
 }
 
 export async function deleteSavedPage(id: string): Promise<void> {

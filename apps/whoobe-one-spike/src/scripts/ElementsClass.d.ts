@@ -53,11 +53,14 @@ export interface FieldOption {
 }
 
 // Optional notification email sent on top of the Data Object write - see
-// docs/plans/forms/cms-forms.md's Phase 2. `templatePageId` is a
-// whoobe_pages id rendered server-side (renderMailTemplate()) against the
-// submission's own attributes.
+// docs/plans/forms/cms-forms.md's Phase 2 and docs/plans/forms/mail-templates.
+// md. `mailTemplateId` is the primary reference (a mail_templates row,
+// rendered by kind via sendMailFromTemplate()); `templatePageId` is the
+// legacy fallback (a whoobe_pages row, renderMailTemplate()) kept so
+// already-saved Forms keep working.
 export interface ElementFormNotifyConfig {
   enabled: boolean
+  mailTemplateId: string
   templatePageId: string
   recipientEmail: string
   subject: string

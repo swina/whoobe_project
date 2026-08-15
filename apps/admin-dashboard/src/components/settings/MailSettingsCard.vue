@@ -59,6 +59,11 @@
           <input v-model="form.fromName" type="text" placeholder="Whoobe CMS" class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
         </label>
 
+        <label class="col-span-2 flex items-center gap-2 text-xs text-slate-400">
+          <input v-model="form.bccFromAddress" type="checkbox" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-slate-800 light:border-slate-200" />
+          BCC the from address on every outgoing email (keep a copy of all mail sent)
+        </label>
+
         <div class="col-span-2 flex items-center gap-3 pt-2">
           <button type="submit" :disabled="saving" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white">
             {{ saving ? 'Saving…' : 'Save' }}
@@ -207,6 +212,116 @@
           </div>
         </div>
       </div>
+
+      <!-- Mail Templates -->
+      <div v-show="activeTab === 'templates'" class="space-y-4">
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-xs text-slate-500">Reusable email templates referenced by Form notifications. Text templates edit inline; HTML templates open in the embedded Whoobe One editor.</p>
+          <button type="button" @click="startNewTemplate" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shrink-0">
+            New template
+          </button>
+        </div>
+
+        <div v-if="templateLoading" class="text-xs text-slate-500 text-center py-4">Loading…</div>
+        <div v-else-if="templateError" class="text-xs text-rose-400">{{ templateError }}</div>
+
+        <!-- Edit panel -->
+        <div v-else-if="editingId !== '' || creatingNew" class="rounded-xl border border-slate-800 light:border-slate-200 p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-semibold text-slate-200 light:text-slate-800">{{ editingId ? 'Edit template' : 'New template' }}</h4>
+            <button type="button" class="text-slate-500 hover:text-slate-300 text-lg leading-none" @click="closeTemplateEditor">×</button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <label class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
+              Name
+              <input v-model="templateForm.name" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+            </label>
+            <label class="flex flex-col gap-1 text-xs text-slate-400">
+              Kind
+              <select v-model="templateForm.kind" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800">
+                <option value="text">Text</option>
+                <option value="html">HTML</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1 text-xs text-slate-400">
+              Subject (supports {form.field} tokens)
+              <input v-model="templateForm.subject" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" placeholder="New submission from {form.firstname}" />
+            </label>
+            <label class="flex flex-col gap-1 text-xs text-slate-400">
+              To (optional, supports {form.field} tokens)
+              <input v-model="templateForm.to" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" placeholder="{form.email} or team@example.com" />
+            </label>
+            <label class="flex flex-col gap-1 text-xs text-slate-400">
+              BCC / CCN (optional, supports {form.field} tokens)
+              <input v-model="templateForm.bcc" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" placeholder="archive@example.com or {form.email}" />
+            </label>
+            <label class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
+              Description
+              <input v-model="templateForm.description" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+            </label>
+          </div>
+
+          <div v-if="templateForm.kind === 'text'">
+            <label class="flex flex-col gap-1 text-xs text-slate-400">
+              Body (supports {form.field} tokens)
+              <textarea v-model="templateForm.body" rows="8" class="w-full px-3 py-2 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800 resize-none font-mono" placeholder="Hello {form.firstname},&#10;&#10;thank you for contacting us."></textarea>
+            </label>
+          </div>
+
+          <div v-else>
+            <div v-if="!editingId" class="text-xs text-slate-500">Save this template first, then open it in the Whoobe One editor.</div>
+            <div v-else class="flex flex-wrap items-center gap-3">
+              <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white" @click="editorFullscreen = true">Open full-screen editor</button>
+              <span class="text-xs text-slate-500">Edit the HTML body in the Whoobe One page editor, then click Save inside the editor to persist it.</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 pt-1">
+            <button type="button" :disabled="templateSaving" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white" @click="saveTemplate">
+              {{ templateSaving ? 'Saving…' : 'Save' }}
+            </button>
+            <span v-if="templateSaveOk" class="text-xs text-emerald-400">Saved.</span>
+            <span v-if="templateSaveError" class="text-xs text-rose-400">{{ templateSaveError }}</span>
+          </div>
+        </div>
+
+        <!-- List -->
+        <div v-else-if="templates.length === 0" class="text-xs text-slate-500 text-center py-4">
+          No mail templates yet. Create one to reuse it in Form notifications.
+        </div>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="text-slate-500 border-b border-slate-800 light:border-slate-200">
+              <tr>
+                <th class="py-2 pr-3 font-semibold">Name</th>
+                <th class="py-2 pr-3 font-semibold">Kind</th>
+                <th class="py-2 pr-3 font-semibold">Subject</th>
+                <th class="py-2 pr-3 font-semibold">To</th>
+                <th class="py-2 pr-3 font-semibold">BCC</th>
+                <th class="py-2 pr-3 font-semibold">Updated</th>
+                <th class="py-2 font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 light:divide-slate-200">
+              <tr v-for="t in templates" :key="t.id">
+                <td class="py-2 pr-3 text-slate-200 light:text-slate-800">{{ t.name }}</td>
+                <td class="py-2 pr-3">
+                  <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase" :class="t.kind === 'html' ? 'text-indigo-300 bg-indigo-600/20' : 'text-slate-300 bg-slate-700/40'">{{ t.kind }}</span>
+                </td>
+                <td class="py-2 pr-3 text-slate-300 light:text-slate-700">{{ t.subject || '—' }}</td>
+                <td class="py-2 pr-3 text-slate-300 light:text-slate-700">{{ t.to || '—' }}</td>
+                <td class="py-2 pr-3 text-slate-300 light:text-slate-700">{{ t.bcc || '—' }}</td>
+                <td class="py-2 pr-3 text-slate-400 whitespace-nowrap">{{ formatLogTime(t.updatedAt) }}</td>
+                <td class="py-2 flex items-center gap-2">
+                  <button type="button" class="px-2 py-0.5 rounded text-[11px] font-semibold text-indigo-300 hover:bg-indigo-600/20" @click="editTemplate(t.id)">Edit</button>
+                  <button type="button" class="px-2 py-0.5 rounded text-[11px] font-semibold text-rose-400 hover:bg-rose-600/20" @click="removeTemplate(t)">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </template>
   </div>
 
@@ -245,7 +360,21 @@
           <span class="flex-1"></span>
           <button type="button" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-200 text-slate-200 light:text-slate-800 hover:bg-slate-700 light:hover:bg-slate-300" @click="closePreview">Close</button>
         </div>
-      </template>
+    </template>
+  </div>
+  </div>
+
+  <!-- Full-screen Whoobe One editor for HTML mail templates -->
+  <div v-if="editorFullscreen" class="fixed inset-0 z-[10000] bg-slate-950 flex flex-col">
+    <div class="shrink-0 flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-800">
+      <span class="text-sm font-semibold text-slate-100">{{ templateForm.name || 'Mail template' }} — HTML editor</span>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-slate-500 hidden sm:inline">Save inside the editor, then close.</span>
+        <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white" @click="editorFullscreen = false">Close editor</button>
+      </div>
+    </div>
+    <div class="flex-1 min-h-0">
+      <MailTemplateEditorEmbed :template-id="editingId" />
     </div>
   </div>
 </template>
@@ -254,6 +383,8 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import { fetchMailSettings, saveMailSettings, sendTestMail, fetchMailLog, fetchMailLogEntry, resendMail, deleteMailLogEntries, type MailSettingsRecord, type MailLogEntry } from '../../utils/mail-settings-api'
+import { fetchMailTemplates, fetchMailTemplate, createMailTemplate, updateMailTemplate, deleteMailTemplate, type MailTemplateSummary } from '../../utils/mail-templates-api'
+import MailTemplateEditorEmbed from './MailTemplateEditorEmbed.vue'
 
 const loading = ref(true)
 const saving = ref(false)
@@ -261,12 +392,13 @@ const error = ref('')
 const savedAt = ref(false)
 const existing = ref<MailSettingsRecord | null>(null)
 
-const tabs: { key: 'settings' | 'test' | 'log'; label: string }[] = [
+const tabs: { key: 'settings' | 'test' | 'log' | 'templates'; label: string }[] = [
   { key: 'settings', label: 'Settings' },
   { key: 'test', label: 'Email Test' },
   { key: 'log', label: 'Mail Log' },
+  { key: 'templates', label: 'Templates' },
 ]
-const activeTab = ref<'settings' | 'test' | 'log'>('settings')
+const activeTab = ref<'settings' | 'test' | 'log' | 'templates'>('settings')
 
 const logLoading = ref(false)
 const logError = ref('')
@@ -436,6 +568,131 @@ const testForm = reactive({
   body: '',
 })
 
+const templates = ref<MailTemplateSummary[]>([])
+const templateLoading = ref(false)
+const templateError = ref('')
+const editingId = ref('')
+const creatingNew = ref(false)
+const editorFullscreen = ref(false)
+const templateSaving = ref(false)
+const templateSaveOk = ref(false)
+const templateSaveError = ref('')
+const templateForm = reactive({
+  name: '',
+  kind: 'text' as 'text' | 'html',
+  subject: '',
+  to: '',
+  bcc: '',
+  description: '',
+  body: '',
+})
+
+async function loadTemplates() {
+  templateLoading.value = true
+  templateError.value = ''
+  try {
+    templates.value = await fetchMailTemplates(getDefaultCoreApiUrl())
+  } catch (e: any) {
+    templateError.value = e?.message || 'Failed to load mail templates'
+  } finally {
+    templateLoading.value = false
+  }
+}
+
+function startNewTemplate() {
+  creatingNew.value = true
+  editingId.value = ''
+  templateSaveOk.value = false
+  templateSaveError.value = ''
+  templateForm.name = ''
+  templateForm.kind = 'text'
+  templateForm.subject = ''
+  templateForm.to = ''
+  templateForm.bcc = ''
+  templateForm.description = ''
+  templateForm.body = ''
+}
+
+async function editTemplate(id: string) {
+  creatingNew.value = false
+  templateSaveOk.value = false
+  templateSaveError.value = ''
+  try {
+    const t = await fetchMailTemplate(getDefaultCoreApiUrl(), id)
+    editingId.value = t.id
+    templateForm.name = t.name
+    templateForm.kind = t.kind
+    templateForm.subject = t.subject ?? ''
+    templateForm.to = t.to ?? ''
+    templateForm.bcc = t.bcc ?? ''
+    templateForm.description = t.description ?? ''
+    templateForm.body = t.body ?? ''
+  } catch (e: any) {
+    templateError.value = e?.message || 'Failed to load mail template'
+  }
+}
+
+function closeTemplateEditor() {
+  editorFullscreen.value = false
+  editingId.value = ''
+  creatingNew.value = false
+  loadTemplates()
+}
+
+async function saveTemplate() {
+  if (!templateForm.name.trim()) {
+    templateSaveError.value = 'Name is required'
+    return
+  }
+  templateSaving.value = true
+  templateSaveOk.value = false
+  templateSaveError.value = ''
+  try {
+    const payload = {
+      name: templateForm.name.trim(),
+      kind: templateForm.kind,
+      subject: templateForm.subject.trim() || null,
+      to: templateForm.to.trim() || null,
+      bcc: templateForm.bcc.trim() || null,
+      description: templateForm.description.trim() || null,
+    }
+    if (editingId.value) {
+      await updateMailTemplate(getDefaultCoreApiUrl(), editingId.value, {
+        ...payload,
+        body: templateForm.kind === 'text' ? templateForm.body : undefined,
+      })
+    } else {
+      const created = await createMailTemplate(getDefaultCoreApiUrl(), {
+        ...payload,
+        body: templateForm.kind === 'text' ? templateForm.body : null,
+      })
+      editingId.value = created.id
+      creatingNew.value = false
+    }
+    templateSaveOk.value = true
+    loadTemplates()
+  } catch (e: any) {
+    templateSaveError.value = e?.message || 'Failed to save mail template'
+  } finally {
+    templateSaving.value = false
+  }
+}
+
+async function removeTemplate(t: MailTemplateSummary) {
+  if (!window.confirm(`Delete mail template "${t.name}"?`)) return
+  try {
+    await deleteMailTemplate(getDefaultCoreApiUrl(), t.id)
+    if (editingId.value === t.id) {
+      editingId.value = ''
+      creatingNew.value = false
+      editorFullscreen.value = false
+    }
+    loadTemplates()
+  } catch (e: any) {
+    templateError.value = e?.message || 'Failed to delete mail template'
+  }
+}
+
 const form = reactive({
   host: '',
   port: 587,
@@ -444,6 +701,7 @@ const form = reactive({
   password: '',
   fromAddress: '',
   fromName: '',
+  bccFromAddress: false,
 })
 
 onMounted(async () => {
@@ -457,6 +715,7 @@ onMounted(async () => {
       form.user = settings.user ?? ''
       form.fromAddress = settings.fromAddress
       form.fromName = settings.fromName ?? ''
+      form.bccFromAddress = settings.bccFromAddress
       // Default the test sender to the configured from address.
       testForm.from = settings.fromAddress
     }
@@ -465,6 +724,7 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  loadTemplates()
 })
 
 async function save() {
@@ -483,6 +743,7 @@ async function save() {
       password: form.password || undefined,
       fromAddress: form.fromAddress,
       fromName: form.fromName || null,
+      bccFromAddress: form.bccFromAddress,
     })
     existing.value = updated
     form.password = ''
