@@ -4,6 +4,18 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Headless SDK plan] — 2026-08-15 (branch: master)
+
+- New `docs/plans/cms/headless-sdk-plan.md`: design for the official framework-agnostic SDK (React/Next.js first) referenced in `docs/plans/executive-summary.md` §3.3. Covers the shared `@whoobe-cms/schema` contract package (node types + Zod validators + `applyTransform` port), a pure-TS `@whoobe-cms/renderer` (tree-walk → render descriptors, data/image/link resolution via public API, SSR-safe), a `@whoobe-cms/react` adapter (component registry + `<WhoobePage>`/`<WhoobeNode>` + hooks + default components), `@whoobe-cms/next` (RSC/SSR/ISR helpers, metadata, dynamic paths), future adapters, styling/parity notes, a canonical node-kind→component mapping table, and file-summary/verification sections.
+
+---
+
+## [README: feature list updated] — 2026-08-15 (branch: master)
+
+- `README.md` "Main features" rewritten to reflect the currently implemented surface: Data Objects/Classes (incl. Components, WYSIWYG fields, locales, CSV export), DAM (thumbnails, metadata, folder visibility, presigned URLs), headless CMS + visual page builder (SEO/sitemap/search, translations, publish gate, dynamic URL paths), Forms (draft Data Object submissions, honeypot, rate limit, result popup), Email notifications & mail templates (token personalization, dynamic to/bcc, BCC-from-address flag, mail log with preview/resend/search/pagination/delete), workflow engine, auth/2FA, AI agent, site search, websites/URL paths, and the Pimcore migration tool. Placeholder sections (Roles/Users, file migration) explicitly noted as not yet built. Monorepo layout table updated to current app roles (whoobe-one-spike = page + mail-template editor; whoobe-studio = legacy documents pipeline).
+
+---
+
 ## [Form submit result: HTML popup (click to close)] — 2026-08-15 (branch: master)
 
 - The success/error message configured in the editor's Form configuration (`FormConfigControl.vue`, `formConfig.successMessage`/`errorMessage`) now displays as a **click-to-close HTML popup** over the page instead of an inline `<p>` under the form (`BlockContainerPreview.vue`): a Teleported `fixed inset-0` overlay renders the message as HTML (`v-html`), and any click (overlay or the box) dismisses it, plus a ✕ button.
