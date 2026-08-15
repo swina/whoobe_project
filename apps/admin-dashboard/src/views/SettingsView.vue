@@ -24,7 +24,7 @@
 
         <template v-if="activeSubSection === 'classes'">
           <!-- Inner tabs for Classes section -->
-          <div class="flex items-center gap-2 pb-2 border-b border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-2 pb-1 border-b border-slate-800 light:border-slate-200">
             <button
               v-for="tab in classesSubTabs" :key="tab.key"
               @click="setClassesSubTab(tab.key)"

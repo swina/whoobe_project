@@ -1,5 +1,5 @@
 <template>
-  <div class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-4">
+  <div class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-2 space-y-4">
     <!-- <div>
       <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">Outgoing Mail</h3>
       <p class="text-xs text-slate-500 mt-1">
