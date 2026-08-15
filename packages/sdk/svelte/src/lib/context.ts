@@ -2,6 +2,7 @@
 // svelte-vue-plan.md).
 
 import { getContext, setContext } from 'svelte'
+import type { PublicLayout } from '@whoobe-cms/renderer'
 
 export const WHOOBE_KEY = Symbol('whoobe')
 
@@ -12,7 +13,7 @@ export interface WhoobeAdapterOptions {
 }
 
 export interface WhoobeApi {
-  getPage(locale: string, path: string, websiteId?: string): Promise<{ page: { content: unknown }; params: Record<string, string> }>
+  getPage(locale: string, path: string, websiteId?: string): Promise<{ page: { content: unknown }; params: Record<string, string>; layout?: PublicLayout | null }>
   getObject(id: string): Promise<Record<string, unknown> | null>
   queryObjects(params: {
     class: string

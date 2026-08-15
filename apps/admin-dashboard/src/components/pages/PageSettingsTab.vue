@@ -30,6 +30,16 @@
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Category</label>
           <input v-model="form.category" type="text" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
         </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Kind</label>
+          <select v-model="form.kind" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500">
+            <option value="content">Content (routable page)</option>
+            <option value="module">Module (website template fragment)</option>
+          </select>
+          <p v-if="form.kind === 'module'" class="text-[10px] text-slate-500 mt-0.5">
+            Modules fill a website template's header/aside/footer slots. They are not routable and are excluded from sitemaps.
+          </p>
+        </div>
         <div class="flex items-center gap-4">
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" v-model="form.published" class="rounded border-slate-700 bg-slate-900" />
@@ -240,6 +250,7 @@ const form = reactive({
   title: '',
   slug: '',
   category: '',
+  kind: 'content' as 'content' | 'module',
   published: false,
   workflowState: '',
   locale: '',
@@ -291,6 +302,7 @@ onMounted(async () => {
       form.title = pageData.title
       form.slug = pageData.slug
       form.category = pageData.category
+      form.kind = pageData.kind ?? 'content'
       form.published = pageData.published
       form.workflowState = pageData.workflowState ?? ''
       form.locale = pageData.locale
@@ -347,6 +359,7 @@ async function save() {
       title: form.title,
       slug,
       category: form.category,
+      kind: form.kind,
       published: form.published,
       workflowState: form.workflowState || null,
       locale: form.locale || undefined,

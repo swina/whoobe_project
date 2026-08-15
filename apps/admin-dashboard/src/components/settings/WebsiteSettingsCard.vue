@@ -26,6 +26,7 @@
         </div>
         <div class="flex items-center gap-2 shrink-0 ml-3">
           <button @click="openPaths(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Paths</button>
+          <button @click="openTemplates(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Templates</button>
           <button @click="openWebsiteTab(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Edit</button>
           <button @click="handleDelete(website)" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Delete</button>
         </div>
@@ -49,6 +50,10 @@ function openWebsiteTab(website: WebsiteRecord) {
 
 function openPaths(website: WebsiteRecord) {
   tabsStore.openWebsite(website.id, 'paths')
+}
+
+function openTemplates(website: WebsiteRecord) {
+  tabsStore.openWebsite(website.id, 'templates')
 }
 
 async function createNewWebsite() {

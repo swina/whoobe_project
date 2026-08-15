@@ -263,6 +263,10 @@ const classe = computed(() => {
   // it collapses to a sliver a few px tall, making it practically
   // impossible to see, hover (for the corner tag) or drop into.
   if (!doc.blocks?.length) cls += ' min-h-12 min-w-12'
+  // The document root gets a canvas floor (min-height) as an EDITOR-ONLY
+  // affordance - it is not part of the stored content, so it never renders
+  // in preview/public (the old baked-in `min-h-[600px]` class did).
+  if (doc.tag === 'document') cls += ' whoobe-canvas-root'
   return cls
 })
 

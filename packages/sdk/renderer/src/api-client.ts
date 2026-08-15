@@ -3,6 +3,7 @@
 // and RSC/server components. No window/document at module scope - fully SSR-safe.
 
 import type { DataBindingFilter, DataBindingOrderBy } from '@whoobe-cms/schema'
+import type { PublicLayout } from './compose-layout.js'
 
 /** The minimal API surface the renderer depends on - implemented by
  *  ApiClient and easy to mock in tests/adapters. */
@@ -34,6 +35,9 @@ export interface PublicPageRecord {
 export interface PublicPageLookup {
   page: PublicPageRecord
   params: Record<string, string>
+  /** Website-template composition (website-templates.md) - present only when
+   *  the website has a template for this path. */
+  layout?: PublicLayout | null
 }
 
 export interface SearchParams {

@@ -197,6 +197,13 @@
       "when": 1786784583480,
       "tag": "0027_loud_frog_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1786804877153,
+      "tag": "0028_smooth_ezekiel",
+      "breakpoints": true
     }
   ]
 }

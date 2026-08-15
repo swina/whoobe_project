@@ -4,6 +4,101 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Outgoing Mail: main sidebar item] — 2026-08-15 (branch: master)
+
+- **Outgoing Mail** promoted from a Settings sub-section to its own main sidebar item, positioned just before **Settings** (`SectionKind 'mail'` + `MailSettingsView.vue`, which renders the existing `MailSettingsCard` - Settings, Email Test, Mail Log, Templates tabs).
+- Removed the now-redundant Settings → Mail submenu entry, the `mail` member of `SettingsSubSection`, and the dead `MailSettingsCard`/`Mail` references in `SettingsView.vue`.
+
+---
+
+## [Website route preview: fix data bindings with a template] — 2026-08-15 (branch: master)
+
+- `resolveDocumentData` (whoobe-one-spike `data-resolver.ts`) gained a `reset` option (default true). The website route preview composes the body page plus the template's header/aside/footer modules, each resolved separately - previously every call reset `editor.resolvedData = {}`, so each module wiped the body's bindings (and vice versa) and data-bound elements rendered empty. `PublicPage.vue` now resolves the modules with `reset=false`, merging their bindings into the same map; single-document callers (editor, DocumentPreview, FloatingToolbar) keep the reset behavior.
+
+---
+
+## [Silence Node `--localstorage-file` warning from tw-to-css] — 2026-08-15 (branch: master)
+
+- `packages/core/src/mail/tailwind-inline.ts` now lazy-loads `tw-to-css` (via `createRequire`) on first use instead of importing it at module load. Its bundled postcss touches `global.localStorage`, which made Node 25 print a spurious `` `--localstorage-file` was provided without a valid path `` warning on every core-api startup. Startup logs are now clean; the warning only appears if an email with Tailwind classes is actually rendered (harmless). Conversion behavior unchanged (59 core tests pass).
+
+---
+
+## [Snippets main item + snippet slot picker + editor canvas classes] — 2026-08-15 (branch: master)
+
+- **Snippets sidebar item**: new **Snippets** main section (`SnippetsView.vue`) lists `whoobe_one_snippets` with name search + category filter; clicking opens an editor tab (`MasterSnippetTab.vue` → `SnippetEditorEmbed.vue`, `/editor?snippetId=`); "+ New Snippet" opens `/editor?snippetNew=1` (created on first save). New `snippetsStore`, `utils/snippets-api.ts`, `tabsStore.openSnippet`, `MasterItemKind 'snippet'`, and sidebar wiring in `DashboardLayout`.
+- **Snippet editing in the editor**: `whoobe-one-spike` loads/saves snippets via new `loadSnippet`/`saveSnippet` (database-actions), `getSnippet` API, store `snippetId`/`snippetMode`, `/editor?snippetId=`/`snippetNew` handling in `Editor.vue`, and a Save branch + chrome hiding in `BlockEditor.vue`. New `GET /whoobe-one/snippets/:id` route; PATCH category no longer required non-empty.
+- **Snippet picker filters**: the website-template slot picker gained a **search by name** + **category filter** (both in WebsiteTemplatesManager and SnippetsView).
+- **Editor container classes fix**: the default document root no longer bakes `gap-4 min-h-[600px] bg-white` into stored content (new `createEmptyDocumentRoot()`); the canvas min-height is now an **editor-only** affordance (`.whoobe-canvas-root` in the spike's style.css, applied in `BlockContainer.vue`), so it no longer renders in preview/public and never fights user-assigned container classes.
+
+---
+
+## [Website template slots: reusable snippets] — 2026-08-15 (branch: master)
+
+- `TemplateSlot` (schema + dashboard type) gains `snippetIds` - references to `whoobe_one_snippets` (reusable Element subtrees saved from the Whoobe One editor), so a header/aside/footer slot can include user-created snippets alongside module pages and custom JSON elements.
+- Public composition: the slot's referenced snippets are appended to the composed slot's `pages` (id/title/node), so both whoobe-one-spike's renderer and the headless SDK compose them unchanged. New `getWhoobeOneSnippet(id)` record. Verified: a header slot with a snippet composes it ("Top Bar" → its node).
+- Admin UI (`WebsiteTemplatesManager.vue`): each slot gains a snippet chip row + "+ Add snippet" picker modal (list of all snippets, click toggles assignment, removable chips), alongside the module picker and custom-elements JSON.
+
+---
+
+## [Website template slots: user-created elements] — 2026-08-15 (branch: master)
+
+- `TemplateSlot` (schema + dashboard type) gains an optional `content` field: a directly-authored Element tree (or an array of trees) rendered in the header/aside/footer slot **alongside** the module pages - so a slot can include user-created elements (logo, custom menu, footer text) without a whole module page.
+- Public composition: the slot's `content` nodes are appended to the composed slot's `pages` as pseudo-pages (id/title/content), so both whoobe-one-spike's renderer and the headless SDK compose them unchanged. Verified: a header with 1 module + 2 custom elements → 3 composed pages; a footer with only custom content renders.
+- Admin UI (`WebsiteTemplatesManager.vue`): each slot gains a "Custom elements (JSON)" editor (an Element tree from the editor, or an array), validated before save; an empty slot with only custom content is created on save.
+
+---
+
+## [Website preview: layout without ?websiteId, no ?locale in previews] — 2026-08-15 (branch: master)
+
+- **Public route infers the website for template composition**: `GET /public/pages/:locale/*` now uses the resolved page's own `websiteId` when no `?websiteId=` query param is given, so headless consumers (whoobe-one-spike's public renderer) receive the composed `layout` (header/footer) without knowing the website up front. Verified: `/public/pages/it/it/magazine/` (no query) returns `layout.template = "Default"` with 1 header + 1 footer module.
+- **No `?locale=` in path previews**: the Website → Paths item preview (👁) no longer appends `?locale=` — the path carries the locale and the renderer derives it. (Page Preview and "Open in a new tab" already had no query.)
+
+---
+
+## [Website preview + per-route template fixes] — 2026-08-15 (branch: master)
+
+- **Preview no longer depends on `?locale`**: `PagePreviewTab.vue` drops the `?locale=` query (pages carry the locale in their path, `/it/…`); `PublicPage.vue` (whoobe-one-spike) derives the locale from the path's first segment when the query is absent, and a failed layout-module data resolution is now non-fatal (warn + skip) so a broken module never turns the page into "Page not found".
+- **Per-route template association**: `MenuItemRow.vue` now shows, on each path item, the Website Template that applies to that route (via a new `resolveTemplateForItem` prop from `MasterWebsiteTab`, using the same path-pattern-override-else-default resolution; " (default)" marked). Templates also re-fetch when entering the Paths tab so a freshly created template appears without a tab reload.
+- Verified: the public route returns the composed layout (template "Default", header + footer module) for a page under `/it/**`.
+
+---
+
+## [Website Paths: show assigned Website Template] — 2026-08-15 (branch: master)
+
+- `MasterWebsiteTab.vue` (Website → Paths): each path group now shows the Website Template(s) that apply to its items, resolved client-side with the same semantics as the server (`getWebsiteTemplateForPath`): the longest `path_patterns` match wins per item path (item `path` → linked page's slug → raw `url`), else the website's default template, marked "(default)". "no website template" when the website has none. Templates are loaded per website and recomputed when paths/templates change.
+
+---
+
+## [Website preview shell + module picker UI] — 2026-08-15 (branch: master)
+
+- **Website preview**: the whoobe-one-spike public page renderer (`PublicPage.vue`) now composes the full site shell - it consumes the `layout` object returned by `GET /public/pages/:locale/*` and renders `<header>`/`<aside>`/`<main>`/`<footer>` with the template's module pages (slot `className`/`style` applied, module data bindings resolved). The admin dashboard's Page Preview iframe and the editor's "Open in a new tab" therefore show the real website with header/body/footer, not just the body page. `getPublicPage` (spike `pages-api.ts`) carries the `layout` type.
+- **Module assignment UX**: `WebsiteTemplatesManager.vue` slots no longer use checkboxes - each slot shows its assigned modules as removable chips (×) plus an "+ Add module" button that opens a picker modal listing the website's module pages; clicking one adds (or removes) it, with a Done button to close.
+
+---
+
+## [Pages list: Kind column] — 2026-08-15 (branch: master)
+
+- `PagesView.vue`: new **Kind** column in the pages table (badge: violet "module" / slate "content"), added to the column picker (visible by default, toggleable/orderable) and to the filter fields.
+
+---
+
+## [Website Templates implemented] — 2026-08-15 (branch: master)
+
+- **Page kind**: `whoobe_pages.kind` (`content`/`module`, migration `0028`). Routing + sitemap only serve `content` pages; `listPublishedModulePages()` loads published modules (with default-locale fallback). `POST`/`PATCH /whoobe-one/pages` accept `kind`; editor + dashboard page types updated.
+- **`website_templates` table** (schema/records): per-website header/aside/footer slot config (`pageIds` + wrapper `className`/`style`), `path_patterns` glob overrides, one `is_default`; `getWebsiteTemplateForPath` = longest-path-pattern match else default. CRUD at `/whoobe-one/websites/:websiteId/templates` (SETTINGS_MANAGE).
+- **Public composition**: `GET /public/pages/:locale/*` returns a non-breaking `layout` object with the resolved template + slot module trees; a broken template never 500s.
+- **Admin UI**: Pages settings gain a Kind select; website tab gains a **Templates** sub-tab (`WebsiteTemplatesManager.vue`) with per-slot module pickers + classes/style + path patterns + default toggle, reachable via a Templates button in `WebsiteSettingsCard`.
+- **Headless SDK shell**: `@whoobe-cms/renderer` `composeLayout()` + `PublicLayout`/`ComposedLayout`; React/Vue/Svelte `<WhoobePage>` render the header/aside/main/footer shell (auto-compose on fetch, `layout` prop for SSR); `@whoobe-cms/next` `getPageData` composes for RSC/ISR.
+- Verified: all packages typecheck; SDK 69 tests + core 59 pass; migration applied; live end-to-end (content page + module + default template → composed layout, empty slot null, module not routable).
+
+---
+
+## [Website Templates plan] — 2026-08-15 (branch: master)
+
+- `docs/plans/cms/website-templates.md` expanded from a 26-line sketch into a full plan (style of pimcore-areablock-import-plan.md): page `kind` (`content`/`module`), a per-website `website_templates` table with header/aside/footer slot config (page ids + per-slot className/style) and path-pattern overrides + one default, public-route template resolution returning a `layout` object (non-breaking), a `composeLayout`/`layout` prop in the headless SDK shell, admin UI in the Websites card, and phases/sequencing/file-summary/verification/open-questions sections. Grounded in the existing `whoobe_pages`/`websites`/`website_paths`/public-route/SDK infra.
+
+---
+
 ## [Page editor: full-screen mode] — 2026-08-15 (branch: master)
 
 - `MasterPageTab.vue`: a Maximize/Minimize toggle button next to the "Open in a new tab" link opens the embedded Whoobe One editor in a full-screen overlay (`fixed inset-0`, header with the page title + Close button, `WhoobeOneEmbed` filling the viewport) - same pattern as the HTML mail-template editor. Disabled for unsaved (new) pages.

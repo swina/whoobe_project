@@ -124,6 +124,18 @@
               <template v-else-if="col.name === 'category'">
                 <span class="text-slate-400 light:text-slate-600">{{ page.category || '—' }}</span>
               </template>
+              <template v-else-if="col.name === 'kind'">
+                <span
+                  :class="[
+                    'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
+                    page.kind === 'module'
+                      ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
+                      : 'bg-slate-500/20 text-slate-300 border-slate-500/30'
+                  ]"
+                >
+                  {{ page.kind || 'content' }}
+                </span>
+              </template>
               <template v-else-if="col.name === 'status'">
                 <span
                   :class="[
@@ -248,6 +260,7 @@ const SYSTEM_COLUMNS: ColumnOption[] = [
   { name: 'websiteId', title: 'Website' },
   { name: 'locale', title: 'Locale' },
   { name: 'category', title: 'Category' },
+  { name: 'kind', title: 'Kind' },
   { name: 'status', title: 'Status' },
   { name: 'pimcoreId', title: 'Pimcore ID' },
   { name: 'updatedAt', title: 'Updated' },
@@ -305,6 +318,7 @@ const filterFields: FilterField[] = [
   { name: 'title', title: 'Title', fieldType: 'input' },
   { name: 'slug', title: 'Slug', fieldType: 'input' },
   { name: 'category', title: 'Category', fieldType: 'input' },
+  { name: 'kind', title: 'Kind', fieldType: 'input' },
   { name: 'websiteId', title: 'Website', fieldType: 'input' },
   { name: 'locale', title: 'Locale', fieldType: 'input' },
   { name: 'published', title: 'Published', fieldType: 'checkbox' },

@@ -12,9 +12,14 @@ import { useEditorStore } from '../store/editor'
 
 type WhoobeElement = InstanceType<typeof import('./ElementsClass.js').default>
 
-export async function resolveDocumentData(doc: WhoobeElement, locale?: string, urlParams?: Record<string, string>): Promise<void> {
+export async function resolveDocumentData(doc: WhoobeElement, locale?: string, urlParams?: Record<string, string>, reset = true): Promise<void> {
   const editor = useEditorStore()
-  editor.resolvedData = {}
+  // `reset` is true for a fresh render (clear stale data). A composed
+  // render - the body page plus its website-template header/aside/footer
+  // modules - resolves several trees together, so each subsequent tree must
+  // MERGE into the same map rather than wipe it (PublicPage.vue resolves
+  // the modules with reset=false).
+  if (reset) editor.resolvedData = {}
   await resolveTree(doc, locale, urlParams, editor)
 }
 

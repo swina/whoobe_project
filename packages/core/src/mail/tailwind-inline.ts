@@ -1,4 +1,4 @@
-import { twj } from 'tw-to-css'
+import { createRequire } from 'node:module'
 
 // Converts Tailwind utility classes into inline CSS styles for email bodies
 // (docs/plans/forms/mail-templates.md consideration C5, implemented 2026-08-
@@ -15,6 +15,20 @@ import { twj } from 'tw-to-css'
 // class strings. Interaction variants (hover:/focus:/group-*:) are dropped:
 // a static email has no hover state, and applying a hover-only background
 // as a permanent color would be wrong.
+
+const require = createRequire(import.meta.url)
+let twjFn: ((classes: string) => Record<string, string>) | null = null
+
+/** Lazy-loads tw-to-css on first use rather than at import time - its
+ *  bundled postcss touches `global.localStorage` at module load, which
+ *  makes Node 25 print a spurious `--localstorage-file` warning on every
+ *  core-api startup even when no email is ever rendered. */
+function twj(classes: string): Record<string, string> {
+  if (!twjFn) {
+    twjFn = require('tw-to-css').twj
+  }
+  return twjFn!(classes)
+}
 
 const STATE_VARIANT_RE =
   /^(hover|focus|focus-visible|focus-within|active|visited|disabled|checked|group-hover|group-focus|group|first|last|odd|even|only|placeholder|required|invalid|read-only|target|before|after|selection|marker|open|motion-safe|motion-reduce|contrast-more|contrast-less|print|landscape|portrait|dark|light):/

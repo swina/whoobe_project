@@ -3,7 +3,7 @@
 // receives the RenderDescriptor and renders its resolved children.
 
 import type { ComponentType, ReactNode } from 'react'
-import type { RenderDescriptor } from '@whoobe-cms/renderer'
+import type { RenderDescriptor, PublicLayout } from '@whoobe-cms/renderer'
 
 export interface WhoobeAdapterOptions {
   assetBaseUrl?: string
@@ -12,7 +12,7 @@ export interface WhoobeAdapterOptions {
 }
 
 export interface WhoobeApi {
-  getPage(locale: string, path: string, websiteId?: string): Promise<{ page: { content: unknown }; params: Record<string, string> }>
+  getPage(locale: string, path: string, websiteId?: string): Promise<{ page: { content: unknown }; params: Record<string, string>; layout?: PublicLayout | null }>
   getObject(id: string): Promise<Record<string, unknown> | null>
   queryObjects(params: {
     class: string

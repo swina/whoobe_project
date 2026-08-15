@@ -17,6 +17,7 @@
           <span v-if="item.pageId" :class="['inline-block w-1.5 h-1.5 rounded-full shrink-0', pagePublished ? 'bg-emerald-400' : 'bg-amber-400']" :title="pagePublished ? 'Published' : 'Draft'"></span>
         </div>
         <div class="text-[14px] text-slate-500 font-mono truncate" @click="editing = !editing">/{{ item.path }}</div>
+        <span v-if="resolvedTemplateName" class="text-[10px] font-mono text-indigo-400 light:text-indigo-700 truncate shrink-0" title="Website template for this route">{{ resolvedTemplateName }}</span>
       </div>
       <div class="flex items-center gap-2 w-1/2 justify-start" @click="openLinkPage">
         <span v-if="item.pageId" class="text-[12px] w-[120px] text-indigo-400 font-mono shrink-0" :title="'ID: ' + item.pageId">
@@ -30,6 +31,7 @@
       <span v-else class="text-[12px] text-slate-600 font-mono shrink-0">unlinked</span>
       </div>
       <div class="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition cursor-pointer">
+        <a v-if="previewUrl" :href="previewUrl" target="_blank" rel="noopener noreferrer" title="Preview this path" class="text-[16px] text-emerald-400 hover:text-emerald-300 px-0.5 no-underline">👁</a>
         <button @click="openLinkPage" class="text-[16px] text-indigo-400 hover:text-indigo-300 px-0.5" title="Link a page">🔗</button>
         <button @click="moveUp" :disabled="index === 0" class="text-[16px] text-slate-500 hover:text-slate-300 disabled:opacity-30 px-0.5">▲</button>
         <button @click="moveDown" :disabled="index === items.length - 1" class="text-[16px] text-slate-500 hover:text-slate-300 disabled:opacity-30 px-0.5">▼</button>
@@ -80,6 +82,7 @@
         :item-path="[...props.itemPath, props.index]"
         :website-id="websiteId"
         :website-locale="websiteLocale"
+        :resolve-template-for-item="resolveTemplateForItem"
         @update="handleChildUpdate"
         @remove="handleChildRemove(ci)"
         @insert-below="(path: number[]) => emit('insert-below', path)"
@@ -102,6 +105,9 @@ const props = withDefaults(defineProps<{
   itemPath?: number[]
   websiteId?: string
   websiteLocale?: string
+  /** Resolves the website template that applies to an item's path (set by
+   *  MasterWebsiteTab); absent = no per-route template shown. */
+  resolveTemplateForItem?: (item: MenuItem) => string | null
 }>(), {
   websiteId: '',
   websiteLocale: 'en',
@@ -152,9 +158,38 @@ const pageUpdatedText = computed(() => {
   return new Date(linkedPage.value.updatedAt).toLocaleDateString()
 })
 
+const resolvedTemplateName = computed(() => (props.resolveTemplateForItem ? props.resolveTemplateForItem(props.item) : null))
+
 function emitInsertBelow() {
   emit('insert-below', [...props.itemPath, props.index])
 }
+
+// Preview opens the path in whoobe-one-spike's public renderer (the same
+// iframe source the dashboard's Page Preview tab uses). A linked page's
+// routable slug is preferred; otherwise the menu path, prefixed with '/'.
+// No ?locale= query - the path carries the locale (/it/…) and the renderer
+// derives it from the path; no ?websiteId= needed either, since the public
+// route infers the website from the resolved page.
+function getDefaultWhoobeOneSpikeUrl(): string {
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    return `${window.location.protocol}//${window.location.hostname}:3006`
+  }
+  return 'http://localhost:3006'
+}
+
+const previewUrl = computed(() => {
+  let target: string | null = null
+  if (props.item.pageId) {
+    const slug = pagesStore.pages.find((p) => p.id === props.item.pageId)?.slug
+    if (slug && slug !== '/') target = slug
+  }
+  if (!target) {
+    const path = props.item.path?.trim()
+    if (!path) return null
+    target = path.startsWith('/') ? path : '/' + path
+  }
+  return `${getDefaultWhoobeOneSpikeUrl()}${target}`
+})
 
 function openLinkPage() {
   emit('link-page', [...props.itemPath, props.index])

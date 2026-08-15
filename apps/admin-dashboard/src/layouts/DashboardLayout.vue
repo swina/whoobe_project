@@ -320,6 +320,7 @@
             <MasterAssetTab v-else-if="tab.type === 'item' && tab.itemKind === 'asset' && tab.itemId" :asset-id="tab.itemId" />
             <MasterDocumentTab v-else-if="tab.type === 'item' && tab.itemKind === 'document' && tab.itemId" :document-id="tab.itemId" />
             <MasterPageTab v-else-if="tab.type === 'item' && tab.itemKind === 'page' && tab.itemId" :page-id="tab.itemId" />
+            <MasterSnippetTab v-else-if="tab.type === 'item' && tab.itemKind === 'snippet' && tab.itemId" :snippet-id="tab.itemId" />
             <MasterObjectTab
               v-else-if="tab.type === 'item' && tab.itemKind === 'object' && tab.itemId && tab.objectClassId"
               :translation-group-id="tab.itemId"
@@ -344,6 +345,7 @@ import {
   FileText,
   FileStack,
   Settings,
+  Puzzle,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -378,6 +380,7 @@ import SidebarFolderNode from '../components/dam/SidebarFolderNode.vue'
 import MasterAssetTab from '../components/dam/MasterAssetTab.vue'
 import MasterDocumentTab from '../components/documents/MasterDocumentTab.vue'
 import MasterPageTab from '../components/pages/MasterPageTab.vue'
+import MasterSnippetTab from '../components/snippets/MasterSnippetTab.vue'
 import MasterObjectTab from '../components/objects/MasterObjectTab.vue'
 import MasterClassTab from '../components/objects/MasterClassTab.vue'
 import MasterWebsiteTab from '../components/websites/MasterWebsiteTab.vue'
@@ -387,14 +390,18 @@ import ObjectsView from '../views/ObjectsView.vue'
 import AssetsView from '../views/AssetsView.vue'
 import DocumentsView from '../views/DocumentsView.vue'
 import PagesView from '../views/PagesView.vue'
+import SnippetsView from '../views/SnippetsView.vue'
+import MailSettingsView from '../views/MailSettingsView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import { usePagesStore } from '../stores/pagesStore'
+import { useSnippetsStore } from '../stores/snippetsStore'
 import { adminSearch, reindexSearchIndex, type SearchResult } from '../utils/search-api'
 import { useWebsitesStore } from '../stores/websitesStore'
 
 const damStore = useDamStore()
 const documentsStore = useDocumentsStore()
 const pagesStore = usePagesStore()
+const snippetsStore = useSnippetsStore()
 const websitesStore = useWebsitesStore()
 const dataClassesStore = useDataClassesStore()
 const tabsStore = useTabsStore()
@@ -557,7 +564,6 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'roles', name: 'Roles/Users/Workspaces', icon: Users },
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
-  { key: 'mail', name: 'Outgoing mail', icon: Mail },
   { key: 'ai', name: 'AI agent', icon: Sparkles },
 ]
 
@@ -569,7 +575,6 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   roles: 'Roles/Users/Workspaces',
   security: 'Security',
   workflows: 'Workflows',
-  mail: 'Outgoing mail',
   ai: 'AI agent',
 }
 
@@ -582,9 +587,11 @@ const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Overview', section: 'overview', icon: LayoutDashboard },
   { name: 'Websites', section: 'websites', icon: Globe },
   { name: 'Pages', section: 'pages', icon: FileStack },
+  { name: 'Snippets', section: 'snippets', icon: Puzzle },
   { name: 'Assets', section: 'assets', icon: FolderArchive },
   { name: 'Data Objects', section: 'objects', icon: Database },
   { name: 'Documents', section: 'documents', icon: FileText },
+  { name: 'Outgoing Mail', section: 'mail', icon: Mail },
   { name: 'Settings', section: 'settings', icon: Settings }
 ]
 
@@ -595,6 +602,8 @@ const sectionComponents: Record<SectionKind, any> = {
   assets: AssetsView,
   documents: DocumentsView,
   pages: PagesView,
+  snippets: SnippetsView,
+  mail: MailSettingsView,
   settings: SettingsView
 }
 
@@ -605,6 +614,8 @@ const sectionLabels: Record<SectionKind, string> = {
   assets: 'Assets',
   documents: 'Documents',
   pages: 'Pages',
+  snippets: 'Snippets',
+  mail: 'Outgoing Mail',
   settings: 'Settings'
 }
 
@@ -615,6 +626,8 @@ const sectionIcons: Record<SectionKind, any> = {
   assets: FolderArchive,
   documents: FileText,
   pages: FileStack,
+  snippets: Puzzle,
+  mail: Mail,
   settings: Settings
 }
 
@@ -650,6 +663,10 @@ function tabLabel(tab: MainTab): string {
     const page = pagesStore.pages.find((p) => p.id === tab.itemId)
     return page?.title || 'Page'
   }
+  if (tab.type === 'item' && tab.itemKind === 'snippet' && tab.itemId) {
+    const snippet = snippetsStore.snippets.find((s) => s.id === tab.itemId)
+    return snippet?.name || (tab.itemId.startsWith('new:') ? 'New Snippet' : 'Snippet')
+  }
   if (tab.type === 'item' && tab.itemKind === 'object') {
     return tab.label || 'New Object'
   }
@@ -682,6 +699,9 @@ function tabIcon(tab: MainTab) {
   }
   if (tab.type === 'item' && tab.itemKind === 'page' && tab.itemId) {
     return FileStack
+  }
+  if (tab.type === 'item' && tab.itemKind === 'snippet' && tab.itemId) {
+    return Puzzle
   }
   if (tab.type === 'item' && tab.itemKind === 'object') {
     return Database

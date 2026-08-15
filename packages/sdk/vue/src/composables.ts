@@ -2,7 +2,7 @@
 // wrap the renderer/api in reactive async helpers.
 
 import { inject, ref, type Ref } from 'vue'
-import { walkTree, type RenderDescriptor } from '@whoobe-cms/renderer'
+import { walkTree, composeLayout, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
 import { WHOOBE_KEY, type WhoobeContext } from './types.js'
 
 export function useWhoobe(): WhoobeContext {
@@ -19,10 +19,11 @@ export interface AsyncState<T> {
 }
 
 /** Loads + walks a published page by locale/path. */
-export function usePage(locale: Ref<string> | string, path: Ref<string> | string, websiteId?: Ref<string> | string): AsyncState<RenderDescriptor> {
+export function usePage(locale: Ref<string> | string, path: Ref<string> | string, websiteId?: Ref<string> | string): AsyncState<RenderDescriptor> & { layout: Ref<ComposedLayout | null> } {
   const ctx = useWhoobe()
   const status = ref<'loading' | 'ready' | 'error'>('loading')
   const data = ref<RenderDescriptor | null>(null)
+  const layout = ref<ComposedLayout | null>(null)
   const error = ref<string | null>(null)
 
   async function load() {
@@ -33,12 +34,15 @@ export function usePage(locale: Ref<string> | string, path: Ref<string> | string
       const p = typeof path === 'string' ? path : path.value
       const w = websiteId ? (typeof websiteId === 'string' ? websiteId : websiteId.value) : undefined
       const lookup = await ctx.api.getPage(l, p, w)
-      data.value = await walkTree(lookup.page.content, {}, {
+      const walkOptions = {
         api: ctx.api as never,
         assetBaseUrl: ctx.options.assetBaseUrl,
         keyPrefix: ctx.options.keyPrefix,
         resolveTargetPage: ctx.options.resolveTargetPage,
-      })
+      }
+      const descriptor = await walkTree(lookup.page.content, {}, walkOptions)
+      data.value = descriptor
+      layout.value = lookup.layout ? await composeLayout(descriptor, lookup.layout, walkOptions) : null
       status.value = 'ready'
     } catch (e: any) {
       status.value = 'error'
@@ -47,7 +51,7 @@ export function usePage(locale: Ref<string> | string, path: Ref<string> | string
   }
 
   void load()
-  return { status, data, error, reload: load }
+  return { status, data, layout, error, reload: load }
 }
 
 /** Loads a published data object by id (raw record). */
