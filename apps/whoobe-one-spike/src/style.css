@@ -88,3 +88,10 @@ html, body, #app {
 .clip-path-parallelogram {
     clip-path: polygon(25% 0%, 100% 0%, 75% 100%, 0% 100%);
 }
+
+/* Editor-only canvas floor for the document root - applied in
+   BlockContainer.vue (editing canvas), never persisted into content, so it
+   doesn't leak into preview or the public site. */
+.whoobe-canvas-root {
+  min-height: 600px;
+}

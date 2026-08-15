@@ -58,6 +58,13 @@ export const whoobePages = pgTable(
     slug: text('slug').notNull(),
     title: text('title').notNull(),
     category: text('category').notNull().default(''),
+    // Structural role of the page (docs/plans/cms/website-templates.md):
+    // 'content' = a routable page (the body of a route, what routing and
+    // sitemaps operate on); 'module' = a reusable fragment that fills a
+    // website template's header/aside/footer slot (never routed, never
+    // sitemapped, still authored/translated/published like any page).
+    // Plain text, not an enum - new kinds need no migration.
+    kind: text('kind').$type<'content' | 'module'>().notNull().default('content'),
     published: boolean('published').notNull().default(false),
     workflowState: text('workflow_state'),
     content: jsonb('content').notNull(),

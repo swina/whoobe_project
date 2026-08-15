@@ -30,6 +30,8 @@ export * from './db/websites-schema.js';
 export * from './db/websites-records.js';
 export * from './db/website-paths-schema.js';
 export * from './db/website-paths-records.js';
+export * from './db/website-templates-schema.js';
+export * from './db/website-templates-records.js';
 export * from './db/mail-settings-schema.js';
 export * from './db/mail-settings-records.js';
 export * from './db/ai-settings-schema.js';

@@ -35,6 +35,7 @@ export const usePagesStore = defineStore('pages', () => {
       title?: string
       slug?: string
       category?: string
+      kind?: 'content' | 'module'
       published?: boolean
       workflowState?: string | null
       locale?: string

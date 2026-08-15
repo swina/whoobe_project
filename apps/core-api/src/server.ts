@@ -26,6 +26,14 @@ import {
   createWebsite,
   updateWebsite,
   deleteWebsite,
+  listWebsiteTemplates,
+  getWebsiteTemplate,
+  createWebsiteTemplate,
+  updateWebsiteTemplate,
+  deleteWebsiteTemplate,
+  getWebsiteTemplateForPath,
+  listPublishedModulePages,
+  getWhoobeOneSnippet,
   listWebsitePaths,
   getWebsitePath,
   createWebsitePath,
@@ -620,10 +628,25 @@ app.post('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), a
 // Overwrites an existing snippet in place - lets a minor tweak get saved
 // back onto the snippet it came from instead of always creating a new,
 // near-duplicate one (see SaveSnippetModal.vue's "Update existing" mode).
+app.get('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const snippet = await getWhoobeOneSnippet(req.params.id);
+    if (!snippet) {
+      res.status(404).json({ error: 'Snippet not found' });
+      return;
+    }
+    res.json({ snippet });
+  } catch (error: any) {
+    console.error('Get whoobe-one snippet error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get snippet' });
+  }
+});
+
 app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, category, icon, node } = req.body ?? {};
-    if (typeof name !== 'string' || !name.trim() || typeof category !== 'string' || !category.trim() || node == null) {
+    // category may be empty (an uncategorised snippet), name/node required.
+    if (typeof name !== 'string' || !name.trim() || typeof category !== 'string' || node == null) {
       res.status(400).json({ error: 'name, category, and node are required' });
       return;
     }
@@ -886,7 +909,7 @@ app.get(
 
 app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { translationGroupId, locale, slug, title, category, content, seo, sitemap, search, pimcoreId, path, websiteId } = req.body ?? {};
+    const { translationGroupId, locale, slug, title, category, kind, content, seo, sitemap, search, pimcoreId, path, websiteId } = req.body ?? {};
     if (typeof slug !== 'string' || !slug.trim() || typeof title !== 'string' || !title.trim() || content == null) {
       res.status(400).json({ error: 'slug, title, and content are required' });
       return;
@@ -898,6 +921,7 @@ app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
       slug: slug.trim(),
       title: title.trim(),
       category: typeof category === 'string' ? category : undefined,
+      kind: kind === 'module' ? 'module' : 'content',
       content,
       seo: seo ?? null,
       sitemap: sitemap ?? null,
@@ -919,12 +943,13 @@ app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
 
 app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { slug, title, category, published, workflowState, content, locale, path, websiteId, seo, sitemap, search } = req.body ?? {};
+    const { slug, title, category, kind, published, workflowState, content, locale, path, websiteId, seo, sitemap, search } = req.body ?? {};
 
     const page = await updateWhoobePage(req.params.id, {
       slug: typeof slug === 'string' ? slug : undefined,
       title: typeof title === 'string' ? title : undefined,
       category: typeof category === 'string' ? category : undefined,
+      kind: kind === 'module' ? 'module' : kind === 'content' ? 'content' : undefined,
       published: typeof published === 'boolean' ? published : undefined,
       workflowState: workflowState === null || typeof workflowState === 'string' ? workflowState : undefined,
       content: content !== undefined ? content : undefined,
@@ -1034,6 +1059,95 @@ app.delete('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRI
   } catch (error: any) {
     console.error('Delete website error:', error);
     res.status(500).json({ error: error.message || 'Failed to delete website' });
+  }
+});
+
+// --- Website Templates (docs/plans/cms/website-templates.md) ---
+// A named composition of module pages into header/aside/footer slots around
+// the routed page. Gated on SETTINGS_MANAGE (site structure config, same as
+// mail settings). The list augments each template with the module page
+// titles for its slots, so the UI can render slot pickers without a second
+// fetch per template.
+app.get('/whoobe-one/websites/:websiteId/templates', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const templates = await listWebsiteTemplates(req.params.websiteId);
+    res.json({ templates });
+  } catch (error: any) {
+    console.error('List website templates error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list website templates' });
+  }
+});
+
+app.post('/whoobe-one/websites/:websiteId/templates', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, description, layout, pathPatterns, isDefault } = req.body ?? {};
+    if (typeof name !== 'string' || !name.trim()) {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    const template = await createWebsiteTemplate({
+      websiteId: req.params.websiteId,
+      name: name.trim(),
+      description: typeof description === 'string' ? description : null,
+      layout: layout !== undefined ? layout : undefined,
+      pathPatterns: Array.isArray(pathPatterns) ? pathPatterns.filter((p): p is string => typeof p === 'string') : undefined,
+      isDefault: !!isDefault,
+    });
+    res.status(201).json({ template });
+  } catch (error: any) {
+    console.error('Create website template error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create website template' });
+  }
+});
+
+app.get('/whoobe-one/websites/:websiteId/templates/:id', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const template = await getWebsiteTemplate(req.params.id);
+    if (!template || template.websiteId !== req.params.websiteId) {
+      res.status(404).json({ error: 'Website template not found' });
+      return;
+    }
+    res.json({ template });
+  } catch (error: any) {
+    console.error('Get website template error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get website template' });
+  }
+});
+
+app.patch('/whoobe-one/websites/:websiteId/templates/:id', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const existing = await getWebsiteTemplate(req.params.id);
+    if (!existing || existing.websiteId !== req.params.websiteId) {
+      res.status(404).json({ error: 'Website template not found' });
+      return;
+    }
+    const { name, description, layout, pathPatterns, isDefault } = req.body ?? {};
+    const template = await updateWebsiteTemplate(req.params.id, {
+      ...(name !== undefined ? { name: typeof name === 'string' ? name : existing.name } : {}),
+      ...(description !== undefined ? { description: typeof description === 'string' ? description : null } : {}),
+      ...(layout !== undefined ? { layout: layout ?? {} } : {}),
+      ...(pathPatterns !== undefined ? { pathPatterns: Array.isArray(pathPatterns) ? pathPatterns.filter((p): p is string => typeof p === 'string') : [] } : {}),
+      ...(isDefault !== undefined ? { isDefault: !!isDefault } : {}),
+    });
+    res.json({ template });
+  } catch (error: any) {
+    console.error('Update website template error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update website template' });
+  }
+});
+
+app.delete('/whoobe-one/websites/:websiteId/templates/:id', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const existing = await getWebsiteTemplate(req.params.id);
+    if (!existing || existing.websiteId !== req.params.websiteId) {
+      res.status(404).json({ error: 'Website template not found' });
+      return;
+    }
+    await deleteWebsiteTemplate(req.params.id);
+    res.json({ ok: true });
+  } catch (error: any) {
+    console.error('Delete website template error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete website template' });
   }
 });
 
@@ -1147,7 +1261,67 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
       res.status(404).json({ error: 'Page not found' });
       return;
     }
-    res.json({ page, params });
+
+    // Website Template composition (docs/plans/cms/website-templates.md):
+    // when the website has templates, resolve the one for this path
+    // (path-pattern override, else the default) and attach the module pages
+    // that fill its header/aside/footer slots. Non-breaking - a website with
+    // no templates keeps the plain `{ page, params }` response. The website
+    // is taken from the explicit ?websiteId query param, else from the
+    // resolved page's own websiteId - so headless consumers that don't know
+    // the website up front (e.g. whoobe-one-spike's public renderer) still
+    // get the composed layout.
+    let layout: Record<string, unknown> | null = null;
+    const layoutWebsiteId = websiteId ?? page.websiteId;
+    if (layoutWebsiteId) {
+      try {
+        const template = await getWebsiteTemplateForPath(layoutWebsiteId, requestPath);
+        if (template) {
+          const website = await getWebsite(layoutWebsiteId);
+          const modules = await listPublishedModulePages(layoutWebsiteId, locale, website?.defaultLocale ?? null);
+          const byId = new Map(modules.map((m) => [m.id, m]));
+          const snippetIds = new Set<string>();
+          for (const slot of [template.layout.header, template.layout.aside, template.layout.footer]) {
+            for (const sid of slot?.snippetIds ?? []) snippetIds.add(sid);
+          }
+          const snippets = await Promise.all([...snippetIds].map((id) => getWhoobeOneSnippet(id)));
+          const snippetById = new Map(snippets.filter((s): s is NonNullable<typeof s> => !!s).map((s) => [s.id, s]));
+          const slot = (s: { pageIds: string[]; snippetIds?: string[] | null; className?: string | null; style?: string | null; content?: unknown } | null | undefined) => {
+            if (!s || (s.pageIds.length === 0 && !s.snippetIds?.length && !s.content)) return null;
+            const pages = s.pageIds
+              .map((id) => byId.get(id))
+              .filter((m): m is NonNullable<typeof m> => !!m)
+              .map((m) => ({ id: m.id, title: m.title, content: m.content }));
+            // Reusable snippets (whoobe_one_snippets) - each as a pseudo-page.
+            for (const snippetId of s.snippetIds ?? []) {
+              const snippet = snippetById.get(snippetId);
+              if (snippet) pages.push({ id: snippet.id, title: snippet.name, content: snippet.node });
+            }
+            // Directly-authored slot elements (a node or an array of nodes) -
+            // included after the module pages, each as a pseudo-page so both
+            // the spike renderer and the headless SDK compose them unchanged.
+            const custom = Array.isArray(s.content) ? s.content : s.content ? [s.content] : [];
+            for (const node of custom) {
+              const id = (node as { id?: unknown } | null)?.id;
+              pages.push({ id: typeof id === 'string' ? id : 'slot-custom', title: 'Custom', content: node });
+            }
+            if (pages.length === 0) return null;
+            return { className: s.className ?? '', style: s.style ?? '', pages };
+          };
+          layout = {
+            template: { id: template.id, name: template.name },
+            header: slot(template.layout.header),
+            aside: slot(template.layout.aside),
+            footer: slot(template.layout.footer),
+          };
+        }
+      } catch (templateError) {
+        // A broken template must never turn a valid page into a 500.
+        console.warn('Website template resolution failed:', templateError);
+      }
+    }
+
+    res.json(layout ? { page, params, layout } : { page, params });
   } catch (error: any) {
     console.error('Public page lookup error:', error);
     res.status(500).json({ error: error.message || 'Failed to look up page' });

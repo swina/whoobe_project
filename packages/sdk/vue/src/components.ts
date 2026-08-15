@@ -3,7 +3,7 @@
 // render). Plain defineComponent + h() so the package builds with tsc.
 
 import { defineComponent, h, inject, provide, ref, type PropType } from 'vue'
-import { walkTree, ApiClient, type RenderDescriptor } from '@whoobe-cms/renderer'
+import { walkTree, composeLayout, ApiClient, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
 import { WHOOBE_KEY, type NodeComponent, type Registry, type WhoobeAdapterOptions, type WhoobeApi } from './types.js'
 import { defaults } from './defaults.js'
 
@@ -50,7 +50,8 @@ export const WhoobeNode: NodeComponent = defineComponent({
 
 /** Fetches a page, validates + walks it, and renders the root node. Accepts
  *  a pre-walked `descriptor` prop for the SSR path (walk once server-side,
- *  hydrate from the descriptor). */
+ *  hydrate from the descriptor). When the page's website has a template,
+ *  `layout` (ComposedLayout) renders the header/aside/main/footer shell. */
 export const WhoobePage = defineComponent({
   name: 'WhoobePage',
   props: {
@@ -58,10 +59,12 @@ export const WhoobePage = defineComponent({
     path: { type: String, default: undefined },
     websiteId: { type: String, default: undefined },
     descriptor: { type: Object as PropType<RenderDescriptor>, default: undefined },
+    layout: { type: Object as PropType<ComposedLayout | null>, default: undefined },
   },
   setup(props) {
     const ctx = inject(WHOOBE_KEY)!
     const descriptor = ref<RenderDescriptor | null>(props.descriptor ?? null)
+    const layout = ref<ComposedLayout | null>(props.layout ?? null)
     const status = ref<'loading' | 'ready' | 'error'>('loading')
     const error = ref<string | null>(null)
 
@@ -78,12 +81,15 @@ export const WhoobePage = defineComponent({
       status.value = 'loading'
       try {
         const lookup = await ctx.api.getPage(props.locale, props.path, props.websiteId)
-        descriptor.value = await walkTree(lookup.page.content, {}, {
+        const walkOptions = {
           api: ctx.api as never,
           assetBaseUrl: ctx.options.assetBaseUrl,
           keyPrefix: ctx.options.keyPrefix,
           resolveTargetPage: ctx.options.resolveTargetPage,
-        })
+        }
+        const walked = await walkTree(lookup.page.content, {}, walkOptions)
+        descriptor.value = walked
+        layout.value = lookup.layout ? await composeLayout(walked, lookup.layout, walkOptions) : null
         status.value = 'ready'
       } catch (e: any) {
         status.value = 'error'
@@ -96,7 +102,11 @@ export const WhoobePage = defineComponent({
     return () => {
       if (status.value === 'error') return h('div', { class: 'whoobe-error' }, error.value ?? 'Failed to load page')
       if (!descriptor.value) return h('div', { class: 'whoobe-loading' }, 'Loading…')
-      return h(WhoobeNode, { descriptor: descriptor.value })
+
+      const region = (d: RenderDescriptor | null) => (d ? h(WhoobeNode, { descriptor: d }) : null)
+      const body = h('main', { class: 'whoobe-page-body' }, [h(WhoobeNode, { descriptor: descriptor.value })])
+      const shell = layout.value ? [region(layout.value.header), region(layout.value.aside), body, region(layout.value.footer)] : body
+      return h('div', { class: 'whoobe-page' }, shell)
     }
   },
 })

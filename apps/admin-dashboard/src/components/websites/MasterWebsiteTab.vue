@@ -56,8 +56,19 @@
 
         <div v-for="pg in pathsStore.paths" :key="pg.id" class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-white/40 overflow-hidden mb-4">
           <div class="flex items-center justify-between px-3 py-2 border-b border-slate-800/60 light:border-slate-200/60 bg-slate-950/60 light:bg-white/60">
-            <span class="text-xs font-semibold text-slate-200 light:text-slate-800">{{ pg.name }}</span>
-            <div class="flex items-center gap-2">
+            <div class="min-w-0">
+              <span class="text-xs font-semibold text-slate-200 light:text-slate-800">{{ pg.name }}</span>
+              <div class="text-[10px] text-slate-500 mt-0.5">
+                <template v-if="groupTemplates.get(pg.id)?.length">
+                  template:
+                  <template v-for="(t, i) in groupTemplates.get(pg.id)" :key="t.id">
+                    <span class="font-mono text-indigo-300 light:text-indigo-700">{{ t.name }}</span><span v-if="t.isDefault"> (default)</span><template v-if="i < (groupTemplates.get(pg.id)!.length ?? 0) - 1">, </template>
+                  </template>
+                </template>
+                <span v-else class="italic">no website template</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0 ml-3">
               <button @click="addRootItem(pg)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">+ Add item</button>
               <button @click="renamePathGroup(pg)" class="text-xs text-slate-400 hover:text-slate-200">Rename</button>
               <button @click="deletePathGroup(pg)" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Delete</button>
@@ -74,6 +85,7 @@
               :item-path="[]"
               :website-id="websiteId"
               :website-locale="website?.defaultLocale ?? 'en'"
+              :resolve-template-for-item="resolveTemplateForItem"
               @update="updateItem(pg, $event)"
               @remove="removeItem(pg, i)"
               @insert-below="onInsertBelow(pg, $event)"
@@ -86,6 +98,10 @@
         <div class="flex justify-center pt-2">
           <button @click="createPathGroup" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">+ New Path Group</button>
         </div>
+      </div>
+
+      <div v-show="activeSubTab === 'templates'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-4">
+        <WebsiteTemplatesManager :website-id="websiteId" />
       </div>
     </div>
 
@@ -114,11 +130,14 @@ import { useWebsitesStore } from '../../stores/websitesStore'
 import { usePathStore } from '../../stores/menusStore'
 import { usePagesStore } from '../../stores/pagesStore'
 import { useTabsStore, type WebsiteSubTab, websiteTabId } from '../../stores/tabsStore'
+import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
 import type { MenuItem, WebsitePathRecord } from '../../utils/menus-api'
 import type { WhoobeOnePage } from '../../utils/pages-api'
+import { fetchWebsiteTemplates, type WebsiteTemplate } from '../../utils/website-templates-api'
 import MenuItemRow from '../settings/MenuItemRow.vue'
 import PagePickerDrawer from './PagePickerDrawer.vue'
+import WebsiteTemplatesManager from './WebsiteTemplatesManager.vue'
 
 const props = defineProps<{
   websiteId: string
@@ -143,6 +162,7 @@ const form = ref({
 const subTabs: { key: WebsiteSubTab; label: string }[] = [
   { key: 'settings', label: 'Settings' },
   { key: 'paths', label: 'Paths' },
+  { key: 'templates', label: 'Templates' },
 ]
 
 const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'website' && t.itemId === props.websiteId))
@@ -151,6 +171,102 @@ const activeSubTab = computed<WebsiteSubTab>(() => currentTab.value?.websiteSubT
 const showPagePicker = ref(false)
 const pendingPagePicker = ref<{ pathGroup: WebsitePathRecord; itemPath: number[] } | null>(null)
 
+// --- Website Templates (assigned to paths) ---
+const websiteTemplates = ref<WebsiteTemplate[]>([])
+
+async function loadTemplates() {
+  try {
+    websiteTemplates.value = await fetchWebsiteTemplates(getDefaultCoreApiUrl(), props.websiteId)
+  } catch {
+    websiteTemplates.value = []
+  }
+}
+
+/** Glob → RegExp, matching the server's path-pattern resolution. */
+function pathPatternToRegExp(pattern: string): RegExp {
+  const source = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*/g, '\u0000')
+    .replace(/\*/g, '[^/]*')
+    .replace(/\u0000/g, '.*')
+    .replace(/\/$/, '(/|$)')
+  return new RegExp(`^${source}$`)
+}
+
+/** The template that applies to a request path: longest path-pattern match
+ *  wins, else the website's default. */
+function templateForPath(path: string): WebsiteTemplate | null {
+  if (websiteTemplates.value.length === 0) return null
+  let best: WebsiteTemplate | null = null
+  let bestLen = -1
+  for (const t of websiteTemplates.value) {
+    for (const pattern of t.pathPatterns) {
+      if (pathPatternToRegExp(pattern).test(path) && pattern.length > bestLen) {
+        best = t
+        bestLen = pattern.length
+      }
+    }
+  }
+  return best ?? websiteTemplates.value.find((t) => t.isDefault) ?? null
+}
+
+/** A menu item's effective request path: its own path, else its page's slug
+ *  (best effort via the loaded pages), else its raw URL. Normalized to a
+ *  leading slash so it matches template patterns like `/it/*` (menu paths
+ *  are stored relative, e.g. `it/magazine`). */
+function itemPath(item: MenuItem): string | null {
+  const raw =
+    item.path?.trim() ||
+    (item.pageId ? pagesStore.pages.find((p) => p.id === item.pageId)?.slug ?? '' : '') ||
+    item.url ||
+    ''
+  if (!raw || raw === '/') return null
+  return raw.startsWith('/') ? raw : '/' + raw
+}
+
+/** Per-route template label for a menu item (shown in each row). */
+function resolveTemplateForItem(item: MenuItem): string | null {
+  const p = itemPath(item)
+  if (!p) return null
+  const t = templateForPath(p)
+  return t ? (t.isDefault ? `${t.name} (default)` : t.name) : null
+}
+
+function collectItemPaths(items: MenuItem[]): string[] {
+  const out: string[] = []
+  for (const item of items) {
+    const p = itemPath(item)
+    if (p) out.push(p)
+    if (item.children?.length) out.push(...collectItemPaths(item.children))
+  }
+  return out
+}
+
+const defaultTemplate = computed(() => websiteTemplates.value.find((t) => t.isDefault) ?? null)
+
+/** Templates that apply to a path group's items (path-pattern overrides,
+ *  plus the website's default which applies to every route without one). */
+const groupTemplates = computed(() => {
+  const map = new Map<string, WebsiteTemplate[]>()
+  for (const pg of pathsStore.paths) {
+    const tpls: WebsiteTemplate[] = []
+    const seen = new Set<string>()
+    for (const p of collectItemPaths(pg.items)) {
+      const t = templateForPath(p)
+      if (t && !seen.has(t.id)) {
+        seen.add(t.id)
+        tpls.push(t)
+      }
+    }
+    if (defaultTemplate.value && !seen.has(defaultTemplate.value.id)) {
+      seen.add(defaultTemplate.value.id)
+      tpls.unshift(defaultTemplate.value)
+    }
+    map.set(pg.id, tpls)
+  }
+  return map
+})
+
 function setSubTab(tab: WebsiteSubTab) {
   tabsStore.setWebsiteSubTab(props.websiteId, tab)
 }
@@ -158,7 +274,13 @@ function setSubTab(tab: WebsiteSubTab) {
 async function load() {
   isLoading.value = true
   try {
-    website.value = await websitesStore.getWebsite(props.websiteId)
+    const [websiteData] = await Promise.all([
+      websitesStore.getWebsite(props.websiteId),
+      // Pages back the path↔template resolution (a linked item's slug is
+      // the routable path) and the menu item rows' titles.
+      pagesStore.refreshPages(),
+    ])
+    website.value = websiteData
     form.value = {
       name: website.value.name,
       domainsText: website.value.domains.join('\n'),
@@ -340,11 +462,22 @@ async function updatePathItems(pathGroup: WebsitePathRecord, items: MenuItem[], 
 
 onMounted(() => {
   load()
+  loadTemplates()
   pathsStore.refreshPaths(props.websiteId)
 })
 
 watch(() => props.websiteId, () => {
   load()
+  loadTemplates()
   pathsStore.refreshPaths(props.websiteId)
+})
+
+// Re-fetch templates when entering the Paths tab, so a template created or
+// edited in the Templates tab shows its association without a tab reload.
+watch(activeSubTab, (tab) => {
+  if (tab === 'paths') {
+    loadTemplates()
+    pathsStore.refreshPaths(props.websiteId)
+  }
 })
 </script>

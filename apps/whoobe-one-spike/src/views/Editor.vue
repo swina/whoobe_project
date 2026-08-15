@@ -36,7 +36,7 @@ import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
 import BlockEditor from '../components/BlockEditor.vue'
 import { useEditorStore } from '../store/editor'
-import { loadPage, loadMailTemplate, createEmptyMailTemplateRoot } from '../scripts/database-actions'
+import { loadPage, loadMailTemplate, loadSnippet, createEmptyMailTemplateRoot, createEmptyDocumentRoot } from '../scripts/database-actions'
 import { clean } from '../helpers'
 
 const editor = useEditorStore()
@@ -45,6 +45,39 @@ const route = useRoute()
 onMounted(async () => {
   const parentOrigin = typeof route.query.parentOrigin === 'string' ? route.query.parentOrigin : null
   if (parentOrigin) editor.setEmbedded(true, parentOrigin)
+
+  // Snippet editing (admin-dashboard's Snippets item): an existing snippet
+  // loads its node; a brand-new one seeds an empty document in snippet mode.
+  const snippetId = typeof route.query.snippetId === 'string' ? route.query.snippetId : null
+  if (snippetId) {
+    try {
+      await loadSnippet(editor, snippetId)
+    } catch (e) {
+      console.warn('Failed to load snippet:', e)
+      const root = createEmptyDocumentRoot()
+      const page = new Block()
+      page.name = 'Untitled snippet'
+      page.category = ''
+      page.json.blocks = root
+      editor.setPage(page)
+      editor.setDocument(root)
+      editor.setCurrent(null)
+      editor.setSnippetId(snippetId)
+    }
+    return
+  }
+  if (route.query.snippetNew !== undefined) {
+    const root = createEmptyDocumentRoot()
+    const page = new Block()
+    page.name = 'Untitled snippet'
+    page.category = ''
+    page.json.blocks = root
+    editor.setPage(page)
+    editor.setDocument(root)
+    editor.setCurrent(null)
+    editor.setSnippetMode(true)
+    return
+  }
 
   const mailTemplateId = typeof route.query.mailTemplateId === 'string' ? route.query.mailTemplateId : null
   if (mailTemplateId) {
@@ -82,7 +115,9 @@ onMounted(async () => {
   if (editor.document) return
 
   const root = new Element().Flexbox({ direction: 'col' }).setIcon('dashboard').setTag('document')
-  root.css.container = clean(root.css.container + ' min-h-[600px] bg-white')
+  // Editor-only canvas affordance (min-height) lives in style.css's
+  // .whoobe-canvas-root, not in the stored content - see onNew()'s comment.
+  root.css.container = clean(root.css.container)
   
   const row = new Element().Flexbox({ direction: 'row' })
   row.css.container = clean(row.css.container + ' items-center')

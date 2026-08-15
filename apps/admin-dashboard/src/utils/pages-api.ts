@@ -39,6 +39,9 @@ export interface WhoobeOnePage {
   slug: string
   title: string
   category: string
+  /** 'content' = routable page; 'module' = reusable website-template fragment
+   *  (docs/plans/cms/website-templates.md). */
+  kind: 'content' | 'module'
   published: boolean
   workflowState: string | null
   content: unknown
@@ -91,6 +94,7 @@ export async function updatePageById(
     slug?: string
     title?: string
     category?: string
+    kind?: 'content' | 'module'
     published?: boolean
     workflowState?: string | null
     locale?: string
@@ -117,6 +121,7 @@ export async function createPageById(
     slug: string
     title: string
     category?: string
+    kind?: 'content' | 'module'
     content: unknown
     websiteId?: string | null
   }

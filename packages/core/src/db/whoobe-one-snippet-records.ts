@@ -17,6 +17,12 @@ export async function listWhoobeOneSnippets(): Promise<WhoobeOneSnippetRecord[]>
   return db.select().from(whoobeOneSnippets).orderBy(desc(whoobeOneSnippets.createdAt));
 }
 
+export async function getWhoobeOneSnippet(id: string): Promise<WhoobeOneSnippetRecord | null> {
+  const db = getDb();
+  const [row] = await db.select().from(whoobeOneSnippets).where(eq(whoobeOneSnippets.id, id)).limit(1);
+  return row ?? null;
+}
+
 export async function createWhoobeOneSnippet(input: {
   name: string;
   category: string;

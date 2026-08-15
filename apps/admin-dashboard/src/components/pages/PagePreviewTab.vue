@@ -64,12 +64,14 @@ const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'pag
 const iframeSrc = computed(() => {
   const base = getDefaultWhoobeOneSpikeUrl()
   const tab = currentTab.value
+  // No ?locale= query: pages carry the locale in their path (/it/…), and
+  // the public renderer derives the locale from the path when the query is
+  // absent (a wrong/stale ?locale caused "page not found").
   if (tab?.pagePreviewPath) {
-    const locale = tab.pagePreviewLocale || page.value?.locale || 'en'
-    return `${base}${tab.pagePreviewPath}?locale=${encodeURIComponent(locale)}`
+    return `${base}${tab.pagePreviewPath}`
   }
   if (page.value?.published && page.value.slug && !page.value.slug.includes('{')) {
-    return `${base}${page.value.slug}?locale=${encodeURIComponent(page.value.locale)}`
+    return `${base}${page.value.slug}`
   }
   return null
 })

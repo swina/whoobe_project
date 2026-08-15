@@ -8,7 +8,7 @@
 // the global fetch that Next patches; `generateMetadataFromPage` returns a
 // plain object shaped like Next's Metadata.
 
-import { walkTree, ApiClient, type RenderDescriptor } from '@whoobe-cms/renderer'
+import { walkTree, composeLayout, ApiClient, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
 import type { WhoobeApi, WhoobeAdapterOptions } from '@whoobe-cms/react'
 
 export interface WhoobeNextOptions extends WhoobeAdapterOptions {
@@ -42,27 +42,36 @@ function fetchInit(options: WhoobeNextOptions): NextFetchInit {
 }
 
 /** Fetches a published page (with optional ISR) and walks it into a
- *  descriptor. Use in `generateStaticParams`/`generateMetadata` loaders and
- *  pass the descriptor to <WhoobePage descriptor={...} /> on the client. */
+ *  descriptor, composing the website-template shell when the site has one.
+ *  Use in `generateStaticParams`/`generateMetadata` loaders and pass the
+ *  descriptor (+ `layout`) to <WhoobePage descriptor={...} layout={...} />. */
 export async function getPageData(
   locale: string,
   path: string,
   options: WhoobeNextOptions,
-): Promise<{ page: PublicPageRecord; params: Record<string, string>; descriptor: RenderDescriptor }> {
+): Promise<{
+  page: PublicPageRecord
+  params: Record<string, string>
+  descriptor: RenderDescriptor
+  layout: ComposedLayout | null
+}> {
   const base = options.baseUrl.replace(/\/+$/, '')
   const p = path.startsWith('/') ? path : `/${path}`
   const qs = options.websiteId ? `?websiteId=${encodeURIComponent(options.websiteId)}` : ''
-  const { page, params } = await fetchJson<{ page: PublicPageRecord; params: Record<string, string> }>(
-    `${base}/public/pages/${encodeURIComponent(locale)}${p}${qs}`,
-    fetchInit(options),
-  )
-  const descriptor = await walkTree(page.content, {}, {
+  const { page, params, layout: publicLayout } = await fetchJson<{
+    page: PublicPageRecord
+    params: Record<string, string>
+    layout: { template: { id: string; name: string }; header?: any; aside?: any; footer?: any } | null
+  }>(`${base}/public/pages/${encodeURIComponent(locale)}${p}${qs}`, fetchInit(options))
+  const walkOptions = {
     api: new ApiClient(base),
     assetBaseUrl: options.assetBaseUrl,
     keyPrefix: options.keyPrefix,
     resolveTargetPage: options.resolveTargetPage,
-  })
-  return { page, params, descriptor }
+  }
+  const descriptor = await walkTree(page.content, {}, walkOptions)
+  const layout = publicLayout ? await composeLayout(descriptor, publicLayout, walkOptions) : null
+  return { page, params, descriptor, layout }
 }
 
 /** Fetches a published data object by id (with optional ISR). */

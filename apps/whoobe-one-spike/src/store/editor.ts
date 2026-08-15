@@ -68,6 +68,14 @@ export const useEditorStore = defineStore('editor', () => {
   // page or a fresh/demo document.
   const mailTemplateId = ref<string | null>(null)
 
+  // Not from the source - snippet editing (admin-dashboard's Snippets main
+  // item): set when /editor is opened with a `snippetId`/`snippetNew` query
+  // param, so Save writes to whoobe_one_snippets. `snippetId` is the
+  // snippet being edited (null for a brand-new one), `snippetMode` is the
+  // mode flag (new or existing).
+  const snippetId = ref<string | null>(null)
+  const snippetMode = ref<boolean>(false)
+
   // Populated by data-resolver.ts at preview/render time - maps element ids
   // to their resolved data object records (DataObjectRecord or
   // DataObjectRecord[] for collection bindings). Cleared at the start of
@@ -116,6 +124,14 @@ export const useEditorStore = defineStore('editor', () => {
   function setMailTemplateId(v: string | null) {
     mailTemplateId.value = v
   }
+  function setSnippetId(v: string | null) {
+    snippetId.value = v
+    snippetMode.value = v !== null
+  }
+  function setSnippetMode(v: boolean) {
+    snippetMode.value = v
+    if (!v) snippetId.value = null
+  }
   function toggleCollapsed(id: string) {
     if (collapsedIds.value.has(id)) collapsedIds.value.delete(id)
     else collapsedIds.value.add(id)
@@ -128,11 +144,11 @@ export const useEditorStore = defineStore('editor', () => {
     mode, settings, elements, document, project, selected, page, current,
     component, action, subaction, level, parent, startTime, autosave,
     exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
-    mailTemplateId,
+    mailTemplateId, snippetId, snippetMode,
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
     setParent, setStartTime, setAutosave, setExportMode, setPreview, setSave,
-    setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, resolvedData,
+    setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, setSnippetId, setSnippetMode, resolvedData,
     collapsedIds, toggleCollapsed, isCollapsed,
   }
 })

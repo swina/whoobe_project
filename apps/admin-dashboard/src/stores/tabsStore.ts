@@ -12,16 +12,16 @@ import { ref } from 'vue'
 // with Preview (the read-only rendered HTML) as a second sub-tab, mirroring
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
-export type SectionKind = 'overview' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'settings'
-export type MasterItemKind = 'asset' | 'document' | 'page' | 'object' | 'class' | 'website'
+export type SectionKind = 'overview' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'mail' | 'settings'
+export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'website'
 export type AssetSubTab = 'preview' | 'editor' | 'metadata' | 'thumbnails'
 export type DocumentSubTab = 'editor' | 'preview'
 export type PageSubTab = 'editor' | 'settings' | 'preview'
-export type WebsiteSubTab = 'settings' | 'paths'
+export type WebsiteSubTab = 'settings' | 'paths' | 'templates'
 // A fixed, known-upfront set (docs/plans/UI/settings-ui-plan.md) - unlike
 // objectSubTab's free-form string (which varies per class's locales),
 // this is a real enum, matching AssetSubTab/DocumentSubTab's own pattern.
-export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'components' | 'roles' | 'security' | 'workflows' | 'mail' | 'ai'
+export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'components' | 'roles' | 'security' | 'workflows' | 'ai'
 
 export interface MainTab {
   id: string
@@ -77,6 +77,10 @@ export function documentTabId(documentId: string): string {
 
 export function pageTabId(pageId: string): string {
   return `item:page:${pageId}`
+}
+
+export function snippetTabId(snippetId: string): string {
+  return `item:snippet:${snippetId}`
 }
 
 export function objectTabId(translationGroupId: string): string {
@@ -156,6 +160,16 @@ export const useTabsStore = defineStore('tabs', () => {
   function setPageSubTab(pageId: string, subTab: PageSubTab) {
     const tab = tabs.value.find((t) => t.id === pageTabId(pageId))
     if (tab) tab.pageSubTab = subTab
+  }
+
+  // Opens (or focuses) a whoobe snippet's editor tab - the embedded
+  // whoobe-one-spike editor pointed at /editor?snippetId=.
+  function openSnippet(snippetId: string) {
+    const id = snippetTabId(snippetId)
+    if (findIndex(id) === -1) {
+      tabs.value.push({ id, type: 'item', itemKind: 'snippet', itemId: snippetId })
+    }
+    activeTabId.value = id
   }
 
   // Opens (or focuses) a page's tab directly on its Preview sub-tab,
@@ -278,6 +292,7 @@ export const useTabsStore = defineStore('tabs', () => {
     openPage,
     setPageSubTab,
     openPagePreview,
+    openSnippet,
     openObject,
     setObjectSubTab,
     openClass,

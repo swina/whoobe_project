@@ -1,6 +1,6 @@
 <template>
   <div class="h-full flex flex-col">
-    <div class="flex shrink-0 items-center gap-2 px-1 text-xs font-semibold pb-3 flex-wrap">
+    <!-- <div class="flex shrink-0 items-center gap-2 px-1 text-xs font-semibold pb-3 flex-wrap">
       <button
         v-for="sub in subTabs" :key="sub.key"
         @click="setSubTab(sub.key)"
@@ -9,7 +9,7 @@
         <component :is="sub.icon" class="w-3.5 h-3.5" />
         <span>{{ sub.name }}</span>
       </button>
-    </div>
+    </div> -->
 
     <div class="flex-1 min-h-0 overflow-y-auto">
       <div class="space-y-6 max-w-4xl">
@@ -58,8 +58,6 @@
 
         <WorkflowSettingsCard v-if="activeSubSection === 'workflows'" />
 
-        <MailSettingsCard v-if="activeSubSection === 'mail'" />
-
         <AiSettingsCard v-if="activeSubSection === 'ai'" />
 
         <div v-if="activeSubSection === 'general'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-6">
@@ -95,7 +93,6 @@ import ClassSettingsCard from '../components/objects/ClassSettingsCard.vue'
 import ComponentSettingsCard from '../components/objects/ComponentSettingsCard.vue'
 import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue'
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'
-import MailSettingsCard from '../components/settings/MailSettingsCard.vue'
 import AiSettingsCard from '../components/settings/AiSettingsCard.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
 import {
@@ -108,7 +105,6 @@ import {
   Workflow,
   Upload,
   FileJson,
-  Mail,
   Sparkles,
   WandSparkles
 } from '@lucide/vue'
@@ -123,7 +119,6 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'roles', name: 'Roles', icon: Users },
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
-  { key: 'mail', name: 'Mail', icon: Mail },
   { key: 'ai', name: 'AI', icon: WandSparkles },
 ]
 
@@ -166,7 +161,6 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   roles: { title: 'Roles / Users / Workspaces', description: 'Manage who can access this dashboard and what they can do.' },
   security: { title: 'Security', description: 'Two-factor authentication and account security.' },
   workflows: { title: 'Workflows', description: 'Author publish/review workflows for Data Object classes.' },
-  mail: { title: 'Outgoing Mail', description: 'SMTP config used for Form notification emails.' },
   ai: { title: 'AI Agent', description: 'LLM provider used by the AI page and snippet generator in the Whoobe One composer.' },
 }
 

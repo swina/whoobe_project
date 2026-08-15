@@ -12,7 +12,7 @@
 
       <span v-if="saveState" class="text-[11px] text-gray-400 mr-1">{{ saveState }}</span>
       <button
-        v-if="editor.page?.id && !editor.mailTemplateId"
+        v-if="editor.page?.id && !editor.mailTemplateId && !editor.snippetMode"
         title="Edit this page's path"
         class="text-gray-400 hover:text-indigo-600 mr-1"
         @click="onEditSlug"
@@ -29,9 +29,9 @@
       <button v-if="!editor.embedded" :class="topbarBtnClass" @click="showTemplateGallery = true">
         <FolderOpen class="w-3.5 h-3.5" /> Templates
       </button>
-      <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> {{ editor.mailTemplateId ? 'Save' : 'Save Template' }}</button>
+      <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> {{ editor.mailTemplateId || editor.snippetMode ? 'Save' : 'Save Template' }}</button>
       <button :class="topbarBtnClass" @click="showThemeModal = true"><Palette class="w-3.5 h-3.5" /> Theme</button>
-      <button v-if="editor.page?.id && !editor.mailTemplateId" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
+      <button v-if="editor.page?.id && !editor.mailTemplateId && !editor.snippetMode" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
       <button :class="topbarBtnClass" @click="showAddToKit = true"><PackagePlus class="w-3.5 h-3.5" /> Add to Kit</button>
       <button :class="topbarBtnClass" @click="exportDocument(editor)"><Download class="w-3.5 h-3.5" /> Export</button>
       <button :class="topbarBtnClass" @click="fileInput?.click()"><Upload class="w-3.5 h-3.5" /> Import</button>
@@ -241,7 +241,7 @@ import { useSnippetsStore } from '../store/snippets'
 import { clean, findNodeById, removeNodeById, applyImagePlaceholder, normalizeGeneratedTree } from '../helpers'
 import { editorBus } from '../bus'
 import { exportDocument, importDocument, cloneWithFreshIds, insertGeneratedSnippet } from '../scripts/editor-actions'
-import { savePage, saveMailTemplate, saveAsNewTemplate, updatePageSlug } from '../scripts/database-actions'
+import { savePage, saveMailTemplate, saveSnippet, saveAsNewTemplate, updatePageSlug } from '../scripts/database-actions'
 import { resolveDocumentData } from '../scripts/data-resolver'
 
 type WhoobeElement = InstanceType<typeof Element>
@@ -312,8 +312,11 @@ function onNew() {
   const root = new Element().Flexbox({ direction: 'col' }).setIcon('dashboard').setTag('document')
   // No padding/margin here deliberately - the root should render full-bleed
   // by default (a real page has no built-in inset), with any padding/margin
-  // left entirely to the user to add via the customize sidebar.
-  root.css.container = clean(root.css.container + ' gap-4 min-h-[600px] bg-white')
+  // left entirely to the user to add via the customize sidebar. The canvas
+  // min-height affordance is editor-only (see .whoobe-canvas-root in
+  // style.css / BlockContainer.vue) and is NOT baked into the stored
+  // content, so it never leaks into preview or the public site.
+  root.css.container = clean(root.css.container)
 
   editor.setDocument(root)
   editor.setCurrent(null)
@@ -324,9 +327,10 @@ function onNew() {
   page.json.blocks = root
   editor.setPage(page)
 
-  // Leaving a mail-template session also leaves its mode - "New" now edits
-  // a plain document again, not an unsaved mail template.
+  // Leaving a mail-template/snippet session also leaves its mode - "New"
+  // now edits a plain document again, not an unsaved template/snippet.
   editor.setMailTemplateId(null)
+  editor.setSnippetMode(false)
 
   flash('New empty template')
 }
@@ -342,6 +346,20 @@ function onNew() {
 // choice via a confirm() popup.
 async function onSave() {
   if (!editor.page) return
+
+  // Editing a whoobe snippet (admin-dashboard's Snippets item) - saves to
+  // whoobe_one_snippets, creating on first save.
+  if (editor.snippetMode) {
+    saveState.value = 'saving…'
+    try {
+      await saveSnippet(editor)
+      saveState.value = 'saved ' + new Date().toLocaleTimeString()
+    } catch (e: any) {
+      saveState.value = ''
+      flash(e?.message || 'Failed to save snippet', 'error')
+    }
+    return
+  }
 
   // Editing an HTML mail template (docs/plans/forms/mail-templates.md) -
   // no path to ask for, saves straight to mail_templates.

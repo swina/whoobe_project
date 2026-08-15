@@ -54,6 +54,11 @@ import {
   updateMailTemplate as apiUpdateMailTemplate,
 } from '../mail-templates-api'
 import {
+  getSnippet as apiGetSnippet,
+  createSnippet as apiCreateSnippet,
+  updateSnippet as apiUpdateSnippet,
+} from '../snippets-api'
+import {
   listKits as apiListKits,
   getKit as apiGetKit,
   createKit as apiCreateKit,
@@ -190,6 +195,15 @@ export function createEmptyMailTemplateRoot(): WhoobeElement {
   return root
 }
 
+/** A clean empty document root (a col flexbox tagged `document`) with no
+ *  baked-in layout classes - used for new snippets/pages. The canvas
+ *  min-height is editor-only (.whoobe-canvas-root), never part of content. */
+export function createEmptyDocumentRoot(): WhoobeElement {
+  const root = new Element().Flexbox({ direction: 'col' }).setIcon('dashboard').setTag('document')
+  root.css.container = clean(root.css.container)
+  return root
+}
+
 /** Saves the current document as the `html` body of an HTML mail template -
  *  create on first save (no id yet), overwrite in place after that. Mirrors
  *  savePage() but writes to mail_templates and never asks for a path (mail
@@ -224,6 +238,50 @@ export async function saveMailTemplate(editor: EditorStore): Promise<void> {
 
 export async function deleteSavedPage(id: string): Promise<void> {
   await apiDeletePage(id)
+}
+
+/** Loads a whoobe_one_snippets subtree into the editor (admin-dashboard's
+ *  Snippets main item). `editor.page` holds the snippet's id/name/category,
+ *  and the store's snippet mode is set so Save writes back to the snippet. */
+export async function loadSnippet(editor: EditorStore, id: string): Promise<void> {
+  const saved = await apiGetSnippet(id)
+
+  const page = new Block()
+  page.id = saved.id as any
+  page.name = saved.name
+  page.category = saved.category
+  page.json.blocks = saved.node
+
+  editor.setPage(page)
+  editor.setDocument(saved.node as any)
+  editor.setCurrent(null)
+  editor.setSnippetId(id)
+}
+
+/** Saves the current document as a whoobe_one_snippets subtree - create on
+ *  first save (no id yet), overwrite in place after that. Mirrors
+ *  saveMailTemplate() but for snippets; never asks for a name/path (the
+ *  snippet's name comes from editor.page, set on creation). */
+export async function saveSnippet(editor: EditorStore): Promise<void> {
+  if (!editor.page || !editor.document) return
+  editor.page.json.blocks = editor.document
+  const node = JSON.parse(JSON.stringify(editor.document))
+
+  if (!editor.page.id) {
+    const created = await apiCreateSnippet({
+      name: editor.page.name || 'Untitled',
+      category: editor.page.category || '',
+      node,
+    })
+    editor.page.id = created.id
+    editor.setSnippetId(created.id)
+  } else {
+    await apiUpdateSnippet(String(editor.page.id), {
+      name: editor.page.name || 'Untitled',
+      category: editor.page.category || '',
+      node,
+    })
+  }
 }
 
 /** "Save As" - always creates a brand new template, regardless of whether

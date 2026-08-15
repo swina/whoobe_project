@@ -10,6 +10,7 @@ export interface WhoobePageRecord {
   slug: string;
   title: string;
   category: string;
+  kind: 'content' | 'module';
   published: boolean;
   workflowState: string | null;
   content: unknown;
@@ -56,6 +57,7 @@ export async function createWhoobePage(input: {
   slug: string;
   title: string;
   category?: string;
+  kind?: 'content' | 'module';
   content: unknown;
   seo?: PageSeo | null;
   sitemap?: PageSitemapSettings | null;
@@ -77,6 +79,7 @@ export async function createWhoobePage(input: {
       slug: input.slug,
       title: input.title,
       category: input.category ?? '',
+      kind: input.kind ?? 'content',
       content: input.content,
       seo: input.seo ?? null,
       sitemap: input.sitemap ?? null,
@@ -96,6 +99,7 @@ export async function updateWhoobePage(
     slug?: string;
     title?: string;
     category?: string;
+    kind?: 'content' | 'module';
     published?: boolean;
     workflowState?: string | null;
     content?: unknown;
@@ -113,6 +117,7 @@ export async function updateWhoobePage(
   if (input.slug !== undefined) values.slug = input.slug;
   if (input.title !== undefined) values.title = input.title;
   if (input.category !== undefined) values.category = input.category;
+  if (input.kind !== undefined) values.kind = input.kind;
   if (input.workflowState !== undefined) values.workflowState = input.workflowState;
   if (input.content !== undefined) values.content = input.content;
   if (input.seo !== undefined) values.seo = input.seo;
@@ -156,7 +161,13 @@ export async function getPublishedWhoobePageBySlug(
   websiteId?: string | null
 ): Promise<WhoobePageRecord | null> {
   const db = getDb();
-  const conditions = [eq(whoobePages.locale, locale), eq(whoobePages.slug, slug), eq(whoobePages.published, true)];
+  const conditions = [
+    eq(whoobePages.locale, locale),
+    eq(whoobePages.slug, slug),
+    eq(whoobePages.published, true),
+    // Modules fill website-template slots, never routes.
+    eq(whoobePages.kind, 'content'),
+  ];
   if (websiteId) {
     conditions.push(eq(whoobePages.websiteId, websiteId));
   }
@@ -166,14 +177,40 @@ export async function getPublishedWhoobePageBySlug(
 
 /**
  * List all published pages. Used for sitemap generation and public listing.
+ * `content`-kind only - modules are excluded (they're not routes and never
+ * belong in a sitemap).
  */
 export async function listPublishedWhoobePages(websiteId?: string | null): Promise<WhoobePageRecord[]> {
   const db = getDb();
-  const conditions = [eq(whoobePages.published, true)];
+  const conditions = [eq(whoobePages.published, true), eq(whoobePages.kind, 'content')];
   if (websiteId) {
     conditions.push(eq(whoobePages.websiteId, websiteId));
   }
   return db.select().from(whoobePages).where(and(...conditions)).orderBy(desc(whoobePages.updatedAt));
+}
+
+/** Published `module`-kind pages for a website - what a website template's
+ *  header/aside/footer slots are filled with (website-templates.md Phase 4).
+ *  Resolved by locale with a defaultLocale fallback so a missing translation
+ *  still renders a slot rather than silently dropping it. */
+export async function listPublishedModulePages(websiteId: string, locale: string, defaultLocale?: string | null): Promise<WhoobePageRecord[]> {
+  const db = getDb();
+  const conditions = [eq(whoobePages.websiteId, websiteId), eq(whoobePages.published, true), eq(whoobePages.kind, 'module')];
+  const rows = await db.select().from(whoobePages).where(and(...conditions)).orderBy(desc(whoobePages.updatedAt));
+  const byLocale = new Map<string, WhoobePageRecord[]>();
+  for (const row of rows) {
+    const list = byLocale.get(row.locale) ?? [];
+    list.push(row);
+    byLocale.set(row.locale, list);
+  }
+  // A slot needs a deterministic page order per locale; the caller maps by id.
+  const result = byLocale.get(locale);
+  if (result) return result;
+  if (defaultLocale) {
+    const fallback = byLocale.get(defaultLocale);
+    if (fallback) return fallback;
+  }
+  return rows;
 }
 
 /** Insert-or-update-by-`pimcoreId` - the migration importer's own re-run

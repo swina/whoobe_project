@@ -44,6 +44,12 @@ export async function listSnippets(): Promise<WhoobeOneSnippet[]> {
   return body.snippets
 }
 
+export async function getSnippet(id: string): Promise<WhoobeOneSnippet> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/snippets/${id}`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.snippet
+}
+
 export async function createSnippet(input: {
   name: string
   category: string

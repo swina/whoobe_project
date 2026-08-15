@@ -1,11 +1,12 @@
 // Core React components: WhoobeNode (recursive descriptor renderer) and
 // WhoobePage (fetch + walk + render, or a pre-walked descriptor for SSR).
 
-import { ApiClient, walkTree, type RenderDescriptor } from '@whoobe-cms/renderer'
+import { ApiClient, walkTree, composeLayout, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
 import { WhoobeProvider, useWhoobe } from './context.js'
 import { defaults } from './defaults.js'
 import { usePage } from './hooks.js'
 import type { WhoobeApi } from './types.js'
+import type { ReactNode } from 'react'
 
 /** Recursively renders one descriptor through the registry (or defaults). */
 export function WhoobeNode({ descriptor }: { descriptor: RenderDescriptor }) {
@@ -21,14 +22,31 @@ export interface WhoobePageProps {
   websiteId?: string
   /** Pre-walked descriptor (SSR path) - when present, no fetch happens. */
   descriptor?: RenderDescriptor
+  /** Pre-composed website-template shell (SSR path) - see composeLayout. */
+  layout?: ComposedLayout | null
 }
 
-/** Fetches a page, validates + walks it, and renders the root node. */
-export function WhoobePage({ locale, path, websiteId, descriptor: initial }: WhoobePageProps) {
-  const { status, data, error } = usePage(locale, path, websiteId, initial)
+/** Fetches a page, validates + walks it, and renders the root node (or the
+ *  header/aside/main/footer shell when the website has a template). */
+export function WhoobePage({ locale, path, websiteId, descriptor: initial, layout: initialLayout }: WhoobePageProps) {
+  const { status, data, layout, error } = usePage(locale, path, websiteId, initial)
   if (status === 'error') return <div className="whoobe-error">{error}</div>
   if (!data) return <div className="whoobe-loading">Loading…</div>
-  return <WhoobeNode descriptor={data} />
+
+  const resolvedLayout = layout ?? initialLayout
+  if (!resolvedLayout) return <WhoobeNode descriptor={data} />
+
+  const region = (d: RenderDescriptor | null): ReactNode => (d ? <WhoobeNode descriptor={d} /> : null)
+  return (
+    <div className="whoobe-page">
+      {region(resolvedLayout.header)}
+      {region(resolvedLayout.aside)}
+      <main className="whoobe-page-body">
+        <WhoobeNode descriptor={data} />
+      </main>
+      {region(resolvedLayout.footer)}
+    </div>
+  )
 }
 
 /** Convenience: build an ApiClient from a base URL and use it as `api`. */

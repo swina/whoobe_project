@@ -39,6 +39,9 @@ export interface WhoobeOnePage {
   slug: string
   title: string
   category: string
+  /** 'content' = routable page; 'module' = reusable template fragment
+   *  (website-templates.md). */
+  kind: 'content' | 'module'
   published: boolean
   workflowState: string | null
   content: unknown
@@ -87,6 +90,14 @@ export async function getPage(id: string): Promise<WhoobeOnePage> {
 export interface PublicPageLookup {
   page: WhoobeOnePage
   params: Record<string, string>
+  /** Website-template composition (website-templates.md) - the resolved
+   *  template's header/aside/footer module pages + slot styling. */
+  layout?: {
+    template: { id: string; name: string }
+    header?: { className: string; style: string; pages: { id: string; title: string; content: unknown }[] } | null
+    aside?: { className: string; style: string; pages: { id: string; title: string; content: unknown }[] } | null
+    footer?: { className: string; style: string; pages: { id: string; title: string; content: unknown }[] } | null
+  } | null
 }
 
 /** Public, unauthenticated lookup by locale + full path (static slug or a
@@ -111,6 +122,7 @@ export async function createPage(input: {
   slug: string
   title: string
   category?: string
+  kind?: 'content' | 'module'
   content: unknown
   seo?: PageSeo | null
   sitemap?: PageSitemapSettings | null
@@ -133,6 +145,7 @@ export async function updatePage(
     slug?: string
     title?: string
     category?: string
+    kind?: 'content' | 'module'
     published?: boolean
     workflowState?: string | null
     content?: unknown

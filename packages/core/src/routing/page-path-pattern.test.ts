@@ -15,6 +15,7 @@ function makePage(overrides: Partial<WhoobePageRecord> & { slug: string }): Whoo
     locale: 'en',
     title: 'Title',
     category: '',
+    kind: overrides.kind ?? 'content',
     published: true,
     workflowState: null,
     content: null,

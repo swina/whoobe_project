@@ -1,7 +1,7 @@
 // React hooks wrapping the renderer/api (usePage/useObject/useQuery/useForm).
 
 import { useCallback, useEffect, useState } from 'react'
-import { walkTree, type RenderDescriptor } from '@whoobe-cms/renderer'
+import { walkTree, composeLayout, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
 import { useWhoobe } from './context.js'
 
 export type AsyncStatus = 'loading' | 'ready' | 'error'
@@ -20,10 +20,11 @@ export function usePage(
   path?: string,
   websiteId?: string,
   initial?: RenderDescriptor,
-): AsyncState<RenderDescriptor> {
+): AsyncState<RenderDescriptor> & { layout: ComposedLayout | null } {
   const ctx = useWhoobe()
   const [status, setStatus] = useState<AsyncStatus>(initial ? 'ready' : 'loading')
   const [data, setData] = useState<RenderDescriptor | null>(initial ?? null)
+  const [layout, setLayout] = useState<ComposedLayout | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -36,14 +37,15 @@ export function usePage(
     setError(null)
     try {
       const lookup = await ctx.api.getPage(locale, path, websiteId)
-      setData(
-        await walkTree(lookup.page.content, {}, {
-          api: ctx.api as never,
-          assetBaseUrl: ctx.options.assetBaseUrl,
-          keyPrefix: ctx.options.keyPrefix,
-          resolveTargetPage: ctx.options.resolveTargetPage,
-        }),
-      )
+      const walkOptions = {
+        api: ctx.api as never,
+        assetBaseUrl: ctx.options.assetBaseUrl,
+        keyPrefix: ctx.options.keyPrefix,
+        resolveTargetPage: ctx.options.resolveTargetPage,
+      }
+      const descriptor = await walkTree(lookup.page.content, {}, walkOptions)
+      setData(descriptor)
+      setLayout(lookup.layout ? await composeLayout(descriptor, lookup.layout, walkOptions) : null)
       setStatus('ready')
     } catch (e: any) {
       setStatus('error')
@@ -56,7 +58,7 @@ export function usePage(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load])
 
-  return { status, data, error, reload: load }
+  return { status, data, layout, error, reload: load }
 }
 
 /** Loads a published data object by id (raw record). */

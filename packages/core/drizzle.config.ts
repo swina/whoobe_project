@@ -31,6 +31,7 @@ export default defineConfig({
     './src/db/migration-sources-schema.ts',
     './src/db/websites-schema.ts',
     './src/db/website-paths-schema.ts',
+    './src/db/website-templates-schema.ts',
     './src/db/mail-settings-schema.ts',
     './src/db/mail-log-schema.ts',
     './src/db/mail-templates-schema.ts',
