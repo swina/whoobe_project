@@ -96,7 +96,8 @@ App Router + Pages Router support:
 
 ## 5. Adapter surface (future phases)
 
-- `@whoobe-cms/svelte`, `@whoobe-cms/vue`, `@whoobe-cms/web` (Web Components wrapper over the core walker) — all just registry + descriptor rendering over the same `@whoobe-cms/renderer`.
+- `@whoobe-cms/svelte` and `@whoobe-cms/vue` — **implemented** (docs/plans/cms/headless-sdk-svelte-vue-plan.md "Resolved"): Svelte 5 + svelte-package and Vue 3 + `defineComponent`/`h()` adapters over `@whoobe-cms/renderer`, with the shared `Record<NodeKind, Component>` registry contract.
+- `@whoobe-cms/web` (Web Components wrapper over the core walker) — registry + descriptor rendering over the same `@whoobe-cms/renderer`.
 - CLI scaffolder: `npx @whoobe-cms/cli init <app>` to bootstrap a Next.js/React app wired to a Whoobe instance.
 
 ## 6. Styling & output parity
@@ -129,4 +130,24 @@ Modified: root `pnpm-workspace.yaml`/Turborepo config (new packages), `CHANGES.m
 
 ## Resolved
 
-(Not yet implemented — this is the plan.)
+Phase 1 (`@whoobe-cms/schema`) implemented 2026-08-15:
+
+- New workspace package `packages/sdk/schema` (added to `pnpm-workspace.yaml` via `packages/sdk/*`).
+- `src/node.ts` — framework-agnostic port of the Element-tree data contract (`WhoobeElementNode`, `ElementCss`, `ElementImage`, `ElementDataBinding`, `DynamicLinkBinding`, `ElementFormConfig`/`ElementSearchConfig`/`ElementSlider`, …) with the canonical node-kind mapping documented in the type docs.
+- `src/transform.ts` — port of `field-transforms.ts` (`FieldTransform`/`TransformResult`, `applyTransform`, `escapeHtml`, `TRANSFORMERS`, `transformersForFieldType`) so editor, backend mail renderer, and SDK format values identically.
+- `src/validators.ts` — Zod schemas (`whoobeElementSchema` recursive lazy, `dataBindingSchema` with a discriminated-union transform, `formConfig`/`searchConfig`/`slider`), `.passthrough()` so unknown editor fields survive a round-trip, plus `validatePageContent`/`parsePageContent`.
+- 15 vitest tests pass (transforms, escaping, realistic-tree validation, clear nested error paths, passthrough, defaults); typecheck + build clean; validated against 4 real trees from the live `whoobe_pages`/`whoobe_one_templates` tables.
+
+Phase 2 (`@whoobe-cms/renderer`) implemented 2026-08-15:
+
+- New workspace package `packages/sdk/renderer`, depending on `@whoobe-cms/schema`.
+- `src/kind.ts` — `normalizeKind()` (canonical registry key: container/heading/paragraph/image/form/input/textarea/select/radiogroup/submit/reset/search/slider/youtube/vimeo/icon/button/link/code/span…) and `resolveTag()` (heading levels, semantic containers), mirroring `BlockElementPreview.vue`'s dispatch.
+- `src/descriptor.ts` — the serializable `RenderDescriptor` (id/kind/tag/className/style/attributes/content/image/link/children/configs/options + raw `node`).
+- `src/walk.ts` — `walkTree()`/`walkNode()` (async): validates via the schema, resolves field bindings, collection repeaters (query → children per record), `form`/`search`/`slider` config passthrough.
+- `src/resolve.ts` — `resolveDataBinding` (explicit/first/query/parent/currentPage via public API), `resolveFieldValue`, `formatBoundContent` (transform + escaping, safe HTML), `resolveRecordField`.
+- `src/url.ts` — `resolveImageUrl()` (DAM path → proxy URL; http/data passthrough; UUIDs documented unresolvable), `objectKeyForPath`.
+- `src/path-pattern.ts` — `resolveDynamicLinkPath()` (list-to-detail slugs).
+- `src/api-client.ts` — `ApiClient` (injectable `fetch`, typed `getPage`/`getObject`/`queryObjects`/`search`/`submitForm`), `RenderApi` structural interface for mocking.
+- 27 vitest tests pass; typecheck + build clean; smoke-tested walking a real `whoobe_pages.content` from the live DB (containers/headings/paragraphs/images resolve to correct kinds/tags).
+
+Phase 3 (the `@whoobe-cms/react` adapter with the component registry) is not yet implemented.

@@ -1,0 +1,114 @@
+import { describe, it, expect, vi } from 'vitest'
+import { walkTree } from './walk.js'
+import type { RenderApi } from './api-client.js'
+
+const makeApi = (overrides: Partial<RenderApi> = {}): RenderApi => ({
+  getObject: async () => null,
+  queryObjects: async () => [],
+  ...overrides,
+})
+
+describe('walkTree', () => {
+  it('walks a simple tree with kind/tag/content/className', async () => {
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      css: { css: 'p-8', container: 'flex flex-col' },
+      blocks: [
+        { id: 'h', type: 'element', tag: 'element', element: 'h', level: 1, content: 'Title', css: { css: 'text-2xl', container: '' } },
+        { id: 'p', type: 'element', tag: 'element', element: 'p', content: 'Body' },
+        { id: 'img', type: 'element', tag: 'element', element: 'img', image: { url: '/uploads/hero.jpg', alt: 'Hero' } },
+      ],
+    }
+    const out = await walkTree(tree, {}, { api: makeApi(), assetBaseUrl: 'http://dam:3002/dam-asset' })
+    expect(out.kind).toBe('container')
+    expect(out.className).toBe('p-8 flex flex-col')
+    expect(out.children).toHaveLength(3)
+
+    const [h, p, img] = out.children
+    expect(h.kind).toBe('heading')
+    expect(h.tag).toBe('h1')
+    expect(h.content).toBe('Title')
+    expect(h.className).toBe('text-2xl')
+
+    expect(p.kind).toBe('paragraph')
+    expect(p.content).toBe('Body')
+
+    expect(img.kind).toBe('image')
+    expect(img.image?.url).toBe('http://dam:3002/dam-asset/uploads/hero.jpg')
+    expect(img.image?.alt).toBe('Hero')
+  })
+
+  it('resolves relative bound fields against the context record', async () => {
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      blocks: [{ id: 'p', type: 'element', tag: 'element', element: 'p', dataBinding: { className: 'X', target: 'text', resolveMode: 'explicit', field: 'message' } }],
+    }
+    const out = await walkTree(tree, { record: { attributes: { message: '<b>hello</b>' } } }, { api: makeApi() })
+    expect(out.children[0].content).toBe('&lt;b&gt;hello&lt;/b&gt;')
+  })
+
+  it('repeats children per record for a query binding and resolves per-record dynamic links', async () => {
+    const api = makeApi({
+      queryObjects: async (params) => {
+        expect(params.class).toBe('Newsletter')
+        return [
+          { id: 'r1', attributes: { name: 'Antonio', slug: 'antonio' } },
+          { id: 'r2', attributes: { name: 'Maria', slug: 'maria' } },
+        ]
+      },
+    })
+    const tree = {
+      id: 'list', type: 'container', tag: 'document',
+      dataBinding: { className: 'Newsletter', target: 'collection', resolveMode: 'query' },
+      blocks: [
+        { id: 'p', type: 'element', tag: 'element', element: 'p', content: '{name}', dataBinding: { className: 'Newsletter', target: 'text', resolveMode: 'explicit', field: 'name' } },
+        { id: 'a', type: 'element', tag: 'element', element: 'p', link: '', dynamicLink: { targetPageId: 'detail', valueField: 'slug' } },
+      ],
+    }
+    const resolveTargetPage = async () => ({ slug: '/it/news/{slug}', locale: 'it' })
+    const out = await walkTree(tree, {}, { api, resolveTargetPage })
+    expect(out.children).toHaveLength(4) // 2 records x 2 children
+    expect(out.children[0].content).toBe('Antonio')
+    expect(out.children[1].link?.href).toBe('/it/news/antonio')
+    expect(out.children[2].content).toBe('Maria')
+    expect(out.children[3].link?.href).toBe('/it/news/maria')
+  })
+
+  it('falls back to # for unresolvable dynamic links', async () => {
+    const api = makeApi()
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      blocks: [{ id: 'a', type: 'element', tag: 'element', element: 'p', dynamicLink: { targetPageId: 'missing', valueField: 'slug' } }],
+    }
+    const out = await walkTree(tree, { record: { attributes: { slug: 'x' } } }, { api })
+    expect(out.children[0].link?.href).toBe('#')
+  })
+
+  it('passes through form/search/slider configs', async () => {
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      blocks: [
+        { id: 'f', type: 'container', tag: 'form', element: 'form', formConfig: { enabled: true, targetClassId: 'c1', successMessage: 'ok', errorMessage: 'no', successRedirectUrl: '', errorRedirectUrl: '', notify: { enabled: false, mailTemplateId: '', templatePageId: '', recipientEmail: '', subject: '' } } },
+        { id: 's', type: 'element', tag: 'search', element: 'search', searchConfig: { types: { page: true, object: false, asset: false }, classIds: [] } },
+      ],
+    }
+    const out = await walkTree(tree, {}, { api: makeApi() })
+    expect(out.children[0].kind).toBe('form')
+    expect(out.children[0].formConfig?.targetClassId).toBe('c1')
+    expect(out.children[1].kind).toBe('search')
+    expect(out.children[1].searchConfig?.types.page).toBe(true)
+  })
+
+  it('validates malformed trees and throws', async () => {
+    await expect(walkTree({ type: 'container', tag: 'document' }, {}, { api: makeApi() })).rejects.toThrow(/schema validation|id/)
+  })
+
+  it('carries select options in the descriptor', async () => {
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      blocks: [{ id: 'sel', type: 'element', tag: 'select', element: 'select', data: { attributes: { name: 'city' }, options: [{ label: 'Rome', value: 'roma' }] } }],
+    }
+    const out = await walkTree(tree, {}, { api: makeApi() })
+    expect(out.children[0].options).toEqual([{ label: 'Rome', value: 'roma' }])
+  })
+})

@@ -1,0 +1,9 @@
+// @whoobe-cms/schema - the shared, framework-agnostic contract for Whoobe's
+// JSON element trees (docs/plans/cms/headless-sdk-plan.md §1): node types,
+// the field-transform engine, and Zod runtime validators. Consumed by the
+// headless SDK adapters (and, eventually, the editor + backend mail renderer)
+// so every consumer agrees on the same tree shape and formatting rules.
+
+export * from './node.js'
+export * from './transform.js'
+export * from './validators.js'

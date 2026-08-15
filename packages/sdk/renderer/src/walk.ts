@@ -1,0 +1,183 @@
+// The core tree-walker (docs/plans/cms/headless-sdk-plan.md §2) - pure TS,
+// no framework imports. Walks a Whoobe element tree and emits a flat-ready
+// tree of RenderDescriptors with data/image/link resolution applied. Async
+// because object/query data bindings hit the public API.
+
+import { parsePageContent, type WhoobeElementNode } from '@whoobe-cms/schema'
+import type { RenderDescriptor } from './descriptor.js'
+import { normalizeKind, resolveTag } from './kind.js'
+import { resolveImageUrl } from './url.js'
+import { resolveDynamicLinkPath } from './path-pattern.js'
+import { formatBoundContent, resolveDataBinding, resolveFieldValue, resolveRecordField } from './resolve.js'
+import type { RenderApi } from './api-client.js'
+
+/** The data in scope for relative bindings - a consumer supplies the page's
+ *  record (currentPage/parent) or form values; the walker sets `record` as
+ *  it descends into bound containers. */
+export interface WalkContext {
+  record?: Record<string, unknown> | null
+  form?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+export interface RenderOptions {
+  /** Public API client (or a mock) for object/query bindings. */
+  api: RenderApi
+  /** Base URL of the DAM asset proxy (e.g. http://host:3002/dam-asset). */
+  assetBaseUrl?: string
+  /** S3 key prefix applied to DAM path references. */
+  keyPrefix?: string
+  /** Resolves a dynamicLink's target page by id to its slug pattern +
+   *  locale; when absent, dynamic links resolve to '#'. */
+  resolveTargetPage?: (id: string) => Promise<{ slug: string; locale: string } | null>
+}
+
+function buildStyle(node: WhoobeElementNode): string {
+  let style = ''
+  if (node.font) style += `font-family:"${node.font.replaceAll('+', ' ')}";`
+  if (node.style) style += node.style
+  return style
+}
+
+function buildAttributes(node: WhoobeElementNode): Record<string, unknown> {
+  const attrs = node.data?.attributes
+  return attrs && typeof attrs === 'object' ? (attrs as Record<string, unknown>) : {}
+}
+
+async function resolveNodeLink(
+  node: WhoobeElementNode,
+  scope: { ctx: WalkContext; api: RenderApi },
+  options: RenderOptions,
+): Promise<RenderDescriptor['link']> {
+  if (node.link) return { href: node.link, target: node.linkTarget }
+  if (node.dynamicLink) {
+    if (options.resolveTargetPage) {
+      const target = await options.resolveTargetPage(node.dynamicLink.targetPageId)
+      const value = scope.ctx.record ? resolveRecordField(scope.ctx.record, node.dynamicLink.valueField) : undefined
+      if (target && value != null) {
+        const href = resolveDynamicLinkPath(target.slug, String(value))
+        if (href) return { href, dynamic: node.dynamicLink }
+      }
+    }
+    return { href: '#', dynamic: node.dynamicLink }
+  }
+  return null
+}
+
+async function resolveNodeImage(
+  node: WhoobeElementNode,
+  scope: { ctx: WalkContext; api: RenderApi },
+  options: RenderOptions,
+): Promise<{ url: string; alt?: string | null } | null> {
+  if (node.element !== 'img') return null
+  let url: string | null = null
+  let alt: string | undefined
+  if (node.dataBinding?.field) {
+    const value = await resolveFieldValue(node.dataBinding, scope)
+    if (typeof value === 'string') url = resolveImageUrl(value, options.assetBaseUrl, options.keyPrefix)
+  } else if (node.image?.url) {
+    url = resolveImageUrl(node.image.url, options.assetBaseUrl, options.keyPrefix)
+  }
+  if (!url) return null
+  alt = node.image?.alt ?? undefined
+  if (alt == null && node.dataBinding?.field) {
+    const value = await resolveFieldValue(node.dataBinding, scope)
+    if (typeof value === 'string') alt = value
+  }
+  return { url, alt }
+}
+
+async function walkChildren(node: WhoobeElementNode, ctx: WalkContext, options: RenderOptions): Promise<RenderDescriptor[]> {
+  const scope = { ctx, api: options.api }
+  const children: RenderDescriptor[] = []
+
+  // A container with a dataBinding selects the record(s) its children bind
+  // against - a `query` binding is a repeater (children per record), any
+  // other mode provides a single record (or the context's own).
+  if (node.type === 'container' && node.dataBinding) {
+    const resolved = await resolveDataBinding(node.dataBinding, scope)
+    if (resolved.records && resolved.records.length > 0) {
+      for (const record of resolved.records) {
+        for (const child of node.blocks ?? []) {
+          children.push(await walkNode(child, { ...ctx, record }, options))
+        }
+      }
+      return children
+    }
+    const record = resolved.record
+    for (const child of node.blocks ?? []) {
+      children.push(await walkNode(child, record ? { ...ctx, record } : ctx, options))
+    }
+    return children
+  }
+
+  for (const child of node.blocks ?? []) {
+    children.push(await walkNode(child, ctx, options))
+  }
+  return children
+}
+
+/** Walks one validated node into a RenderDescriptor. */
+export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, options: RenderOptions): Promise<RenderDescriptor> {
+  const scope = { ctx, api: options.api }
+
+  let content = ''
+  let contentIsHtml = false
+  let transformClassName: string | undefined
+
+  if (node.dataBinding?.field) {
+    const value = await resolveFieldValue(node.dataBinding, scope)
+    const formatted = formatBoundContent(value, node.dataBinding.transform)
+    content = formatted.content
+    contentIsHtml = true
+    transformClassName = formatted.className
+  } else if (typeof node.content === 'string') {
+    content = node.content
+    contentIsHtml = true // static content is authored HTML
+  }
+
+  const [image, link] = await Promise.all([
+    resolveNodeImage(node, scope, options),
+    resolveNodeLink(node, scope, options),
+  ])
+
+  const className = [node.css?.css ?? '', node.css?.container ?? '', transformClassName ?? ''].filter(Boolean).join(' ')
+
+  const kind = normalizeKind(node)
+
+  const optionsData = node.data?.options
+  const optionsList = Array.isArray(optionsData) ? (optionsData as Array<{ label: string; value: string }>) : null
+
+  return {
+    id: node.id,
+    kind,
+    tag: resolveTag(node),
+    node,
+    className,
+    style: buildStyle(node),
+    attributes: buildAttributes(node),
+    data: node.data ?? null,
+    content,
+    contentIsHtml,
+    image,
+    link,
+    ...(kind === 'heading' && node.level != null ? { headingLevel: Number(node.level) } : {}),
+    children: await walkChildren(node, ctx, options),
+    formConfig: node.formConfig ?? null,
+    searchConfig: node.searchConfig ?? null,
+    slider: node.slider ?? null,
+    dataBinding: node.dataBinding ?? null,
+    options: optionsList,
+  }
+}
+
+/** Walks a (raw) element tree or page content into render descriptors.
+ *  The tree is validated against @whoobe-cms/schema first; throws a ZodError
+ *  with a clear path on malformed input. */
+export async function walkTree(root: WhoobeElementNode | unknown, ctx: WalkContext, options: RenderOptions): Promise<RenderDescriptor> {
+  const node = parsePageContent(root)
+  if (!node) {
+    throw new Error('Invalid Whoobe element tree - failed schema validation')
+  }
+  return walkNode(node, ctx, options)
+}
