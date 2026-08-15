@@ -25,6 +25,16 @@
 
     <div class="flex shrink-0 items-center gap-2 px-6 text-xs font-semibold">
       <button
+      type="button"
+      :disabled="isNewPage"
+      :title="fullscreen ? 'Close full screen' : 'Open editor full screen'"
+      class="disabled:opacity-30"
+      @click="fullscreen = !fullscreen"
+      >
+        <Maximize v-if="!fullscreen" class="w-6 h-6 text-violet-700" />
+        <Minimize v-else class="w-6 h-6 text-violet-700" />
+      </button>
+      <button
         v-for="tab in subTabs" :key="tab.key"
         @click="setSubTab(tab.key)"
         :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === tab.key ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200']"
@@ -33,6 +43,7 @@
         <span>{{ tab.label }}</span>
         
       </button>
+      
       <a v-if="page" :href="openPreviewUrl" target="_blank" rel="noopener noreferrer" title="Open in a new tab"><ExternalLink class="w-6 h-6 text-violet-700" /></a>
     </div>
     </div>
@@ -50,6 +61,20 @@
         <div v-else class="h-full flex items-center justify-center text-xs text-slate-500">Save this page first to preview it.</div>
         
       </div>
+    </div>
+  </div>
+
+  <!-- Full-screen editor overlay -->
+  <div v-if="fullscreen && !isNewPage" class="fixed inset-0 z-[10000] bg-slate-950 flex flex-col">
+    <div class="shrink-0 flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-800">
+      <span class="text-sm font-semibold text-slate-100">{{ page?.title || 'Editor' }}</span>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-slate-500 hidden sm:inline">Edit the page, then close.</span>
+        <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white" @click="fullscreen = false">Close editor</button>
+      </div>
+    </div>
+    <div class="flex-1 min-h-0">
+      <WhoobeOneEmbed v-if="!isNewPage" :page-id="props.pageId" />
     </div>
   </div>
 
@@ -71,7 +96,7 @@ import WhoobeOneEmbed from './WhoobeOneEmbed.vue'
 import PageSettingsTab from './PageSettingsTab.vue'
 import PagePreviewTab from './PagePreviewTab.vue'
 import PageCreateForm from './PageCreateForm.vue'
-import { Eye, ExternalLink, LayoutDashboard, Settings } from '@lucide/vue'
+import { Eye, ExternalLink, LayoutDashboard, Settings, Maximize, Minimize } from '@lucide/vue'
 
 const props = defineProps<{
   pageId: string
@@ -81,6 +106,7 @@ const pagesStore = usePagesStore()
 const tabsStore = useTabsStore()
 const page = ref<WhoobeOnePage | null>(null)
 const isLoading = ref(true)
+const fullscreen = ref(false)
 
 const isNewPage = computed(() => props.pageId.startsWith('new:'))
 
