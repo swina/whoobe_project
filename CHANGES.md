@@ -4,6 +4,14 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Data Binding date transformer: use page locale for date formatting] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Date transformer now uses page locale**: `Intl.DateTimeFormat(locale ?? undefined, ...)` instead of `Intl.DateTimeFormat(undefined, ...)`. When a page locale (e.g. `it`, `en`) is available from `editor.page?.locale`, dates are formatted in the page's language/region. Falls back to browser default when unset.
+- **Signature**: `TransformerDefinition.apply` and `applyTransform` both accept an optional `locale` parameter, threaded through from call sites in BlockElement.vue and BlockElementPreview.vue.
+- **SDK schema sync**: duplicate `transform.ts` in `packages/sdk/schema` updated with the same locale support.
+
+---
+
 ## [Images: remove duplicate background-image on <img> elements (SVG double-render)] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - **Bug**: the `stile` computed in BlockElement.vue and BlockElementPreview.vue unconditionally set `background-image: url(...)` from `el.image.url`. For `<img>` elements, that same URL is already shown via `:src` — so SVGs (transparent background) rendered double, and raster images had an invisible duplicate layer underneath. Caused by treating `image.url` as a CSS background even when the element IS an image element.
