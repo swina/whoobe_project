@@ -89,6 +89,9 @@ export const dataBindingSchema: z.ZodType<ElementDataBinding> = z.object({
   offset: z.number().nullable().optional(),
   limit: z.number().nullable().optional(),
   rowsPerPage: z.number().nullable().optional(),
+  paginationMode: z.enum(['standard', 'lazyload']).nullable().optional(),
+  loadMoreText: z.string().nullable().optional(),
+  loadMoreClass: z.string().nullable().optional(),
   locale: z.string().nullable().optional(),
   transform: z.discriminatedUnion('type', [
     z.object({ type: z.literal('none') }),
