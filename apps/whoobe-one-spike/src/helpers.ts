@@ -256,6 +256,24 @@ export function customAttrs(attributes: Record<string, unknown> | null | undefin
   return result
 }
 
+/**
+ * Safeguards an AlpineJS directive value against common user mistakes. Alpine
+ * evaluates directive values as JavaScript expressions, so a bare Tailwind
+ * class like `h-[600px]` typed into the x-bind:class value field would throw
+ * a SyntaxError at render time. When the value fails to parse as JS it's
+ * silently wrapped in single quotes so it becomes a string literal - a
+ * no-op fix that makes `x-bind:class="h-[600px]"` behave the way a non-
+ * technical user expects it to (same as `class="h-[600px]"`).
+ */
+export function safeAlpineValue(value: string): string {
+  try {
+    new Function(`return ${value}`)
+    return value
+  } catch {
+    return `'${value.replaceAll("'", "\\'")}'`
+  }
+}
+
 // InputSelect() shipped a flat string[] (value === label) before this
 // session's change added the real {label,value} shape - a Select element
 // saved/dropped before that (e.g. already sitting in an open document) still

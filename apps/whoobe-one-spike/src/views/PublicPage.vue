@@ -50,7 +50,7 @@ const error = ref(false)
 const doc = ref<any>(null)
 const layout = ref<any>(null)
 
-useThemeStyles(doc)
+useThemeStyles(() => doc.value)
 
 onMounted(async () => {
   try {

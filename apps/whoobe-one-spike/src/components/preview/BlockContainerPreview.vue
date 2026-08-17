@@ -115,7 +115,7 @@ import { resolveDisplayUrl } from '../../resolve-display-url'
 import { useEditorStore } from '../../store/editor'
 import type { DataObjectRecord } from '../../data-objects-api'
 import { getPage } from '../../pages-api'
-import { customAttrs } from '../../helpers'
+import { customAttrs, safeAlpineValue } from '../../helpers'
 import { mountAnimation } from '../../scripts/gsap-actions'
 import { mountFormSubmit, type FormSubmitResult } from '../../scripts/form-actions'
 import { extractPlaceholderNames, substitutePattern } from '../../scripts/path-pattern'
@@ -350,7 +350,7 @@ const alpineAttrs = computed(() => {
   if (!alpine) return {}
   const result: Record<string, string> = {}
   for (const key of Object.keys(alpine)) {
-    if (alpine[key]) result[key] = alpine[key]
+    if (alpine[key]) result[key] = safeAlpineValue(alpine[key])
   }
   return result
 })
