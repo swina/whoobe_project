@@ -13,7 +13,7 @@
 // groups)`), and installing the global keydown hotkey listener (the
 // source did this as an import-time side effect of scripts/hotkeys.js;
 // here it's an explicit setupHotkeys() call - see that file's header).
-import { computed, onMounted, watch } from 'vue'
+import { onMounted } from 'vue'
 import Element from './scripts/ElementsClass.js'
 import { useEditorStore } from './store/editor'
 import { setupHotkeys } from './scripts/hotkeys'
@@ -28,37 +28,4 @@ onMounted(() => {
   // seed.ts's seedWhoobeOneKits()), so they're already there by the time
   // KitsPanel.vue asks for them.
 })
-
-// Actually load the fonts FontControl.vue/ThemeModal.vue let you pick -
-// selecting one only ever set an inline `font-family` CSS value (see
-// BlockElement.vue etc.); with no stylesheet for it, anything not already
-// a system font (most of the curated list, e.g. "Alfa Slab One") silently
-// fell back. One shared <link>, replaced (not accumulated) whenever the
-// active font list changes - watching a cheap joined-string key rather
-// than deep-watching `editor.document` itself, which is a large,
-// constantly-mutated tree during normal editing (every keystroke, drag,
-// etc.) that has nothing to do with fonts.
-const fontsKey = computed(() => {
-  const theme = (editor.document as any)?.theme?.fonts as string[] | undefined
-  return (theme && theme.length ? theme : editor.fonts).join('|')
-})
-
-let fontLink: HTMLLinkElement | null = null
-watch(
-  fontsKey,
-  (key) => {
-    fontLink?.remove()
-    fontLink = null
-    if (!key) return
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = `https://fonts.googleapis.com/css2?${key
-      .split('|')
-      .map((f) => `family=${f}`)
-      .join('&')}&display=swap`
-    document.head.appendChild(link)
-    fontLink = link
-  },
-  { immediate: true }
-)
 </script>
