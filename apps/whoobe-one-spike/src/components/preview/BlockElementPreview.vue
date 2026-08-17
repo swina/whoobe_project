@@ -158,7 +158,7 @@ const resolvedData = computed(() => {
 const transformResult = computed(() => {
   const el = props.element as any
   if (!el.dataBinding || resolvedData.value === null) return null
-  return applyTransform(resolvedData.value, el.dataBinding.transform)
+  return applyTransform(resolvedData.value, el.dataBinding.transform, editor.page?.locale)
 })
 
 const displayContent = computed(() => {
@@ -259,7 +259,7 @@ const displayAlt = computed(() => {
   if (el.dataBinding && resolvedData.value !== null) {
     const v = resolvedData.value
     if (el.dataBinding.transform && el.dataBinding.transform.type !== 'none') {
-      const text = applyTransform(v, el.dataBinding.transform).text
+      const text = applyTransform(v, el.dataBinding.transform, editor.page?.locale).text
       return text || undefined
     }
     if (typeof v === 'string') return v

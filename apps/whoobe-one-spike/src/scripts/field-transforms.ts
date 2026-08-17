@@ -68,7 +68,7 @@ export interface TransformerDefinition<O> {
    *  in the sidebar picker, or 'any' to offer it regardless of field type. */
   applicableFieldTypes: string[] | 'any'
   defaultOptions: O
-  apply: (value: unknown, options: O) => TransformResult
+  apply: (value: unknown, options: O, locale?: string) => TransformResult
 }
 
 /** http(s), same-origin absolute paths, mailto, tel - blocks javascript:/data:
@@ -84,11 +84,11 @@ const dateTransformer: TransformerDefinition<DateTransformOptions> = {
   label: 'Format date',
   applicableFieldTypes: ['date'],
   defaultOptions: { dateStyle: 'medium', includeTime: false },
-  apply(value, options) {
+  apply(value, options, locale) {
     if (value == null || value === '') return textResult('')
     const d = value instanceof Date ? value : new Date(value as any)
     if (Number.isNaN(d.getTime())) return textResult(String(value))
-    const fmt = new Intl.DateTimeFormat(undefined, {
+    const fmt = new Intl.DateTimeFormat(locale ?? undefined, {
       dateStyle: options.dateStyle,
       ...(options.includeTime ? { timeStyle: options.timeStyle ?? 'short' } : {}),
     })
@@ -192,7 +192,7 @@ export function transformersForFieldType(fieldType: string | null | undefined): 
 
 /** Single entry point every render computed calls. Never throws - on any
  *  internal error, falls back to the same behavior as 'none'. */
-export function applyTransform(value: unknown, transform: FieldTransform | null | undefined): TransformResult {
+export function applyTransform(value: unknown, transform: FieldTransform | null | undefined, locale?: string): TransformResult {
   if (!transform || transform.type === 'none') {
     if (value == null) return textResult('')
     if (typeof value === 'string' || typeof value === 'number') return textResult(String(value))
@@ -201,7 +201,7 @@ export function applyTransform(value: unknown, transform: FieldTransform | null 
   const def = TRANSFORMERS[transform.type] as TransformerDefinition<any> | undefined
   if (!def) return applyTransform(value, { type: 'none' })
   try {
-    return def.apply(value, (transform as any).options ?? def.defaultOptions)
+    return def.apply(value, (transform as any).options ?? def.defaultOptions, locale)
   } catch (e) {
     console.warn(`[field-transforms] "${transform.type}" failed:`, e)
     return applyTransform(value, { type: 'none' })
