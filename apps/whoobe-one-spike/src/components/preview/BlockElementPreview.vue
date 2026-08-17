@@ -285,7 +285,6 @@ const component = computed(() => {
 const classe = computed(() => {
   const el = props.element as any
   let cls = `${el.css.css} ${el.css.container}`
-  if (el.dataBinding && !el.content && el.element !== 'img') cls += ' min-h-8'
   if (transformClassName.value) cls += ` ${transformClassName.value}`
   return cls
 })
