@@ -188,6 +188,11 @@
                 </div>
               </div>
 
+              <div>
+                <div class="text-[10px] text-gray-400 mb-1">Pagination container CSS</div>
+                <input v-model="paginationContainerClass" type="text" class="text-xs border rounded px-2 py-1 w-full" placeholder="Tailwind classes for the whole pagination area (default: centered block on its own line)" />
+              </div>
+
               <button
                 class="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 disabled:opacity-40"
                 :disabled="testLoading"
@@ -322,6 +327,7 @@ const rowsPerPage = ref<number>(props.initial?.rowsPerPage ?? 0)
 const paginationMode = ref<'standard' | 'lazyload'>(props.initial?.paginationMode === 'lazyload' ? 'lazyload' : 'standard')
 const loadMoreText = ref<string>(props.initial?.loadMoreText ?? '')
 const loadMoreClass = ref<string>(props.initial?.loadMoreClass ?? '')
+const paginationContainerClass = ref<string>(props.initial?.paginationContainerClass ?? '')
 
 // Query test state
 const testLoading = ref(false)
@@ -488,6 +494,8 @@ function confirm() {
     paginationMode: mode.value === 'query' && rowsPerPage.value ? (paginationMode.value === 'lazyload' ? 'lazyload' : 'standard') : undefined,
     loadMoreText: mode.value === 'query' && rowsPerPage.value && loadMoreText.value ? loadMoreText.value : undefined,
     loadMoreClass: mode.value === 'query' && rowsPerPage.value && loadMoreClass.value ? loadMoreClass.value : undefined,
+    paginationContainerClass:
+      mode.value === 'query' && rowsPerPage.value && paginationContainerClass.value ? paginationContainerClass.value : undefined,
     transform,
   }
   emit('select', binding)

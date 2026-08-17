@@ -8,6 +8,16 @@ All notable changes to the Whoobe CMS project.
 
 - **Rows per page is now a free number input** in DataObjectPicker.vue's Dynamic query config (was a fixed 5/10/25/50 select) - any user value paginates the resolved set; 0 = no pagination.
 - **New `paginationMode` on `ElementDataBinding`**: `standard` (existing Prev/Next arrows + page indicator, the default) or `lazyload` (rows are appended to the currently-shown list in batches of `rowsPerPage`). Lazy load shows a "shown / total" counter (e.g. `10 / 48`) on its own line, then a "More" button whose **text and Tailwind classes are configurable** (`loadMoreText`, `loadMoreClass`).
+- **Pagination container is configurable** via `paginationContainerClass` - a Tailwind class string for the block-level wrapper under the list (both modes). Default: centered, full-width flex column on its own line. Applied in both `preview/BlockContainerPreview.vue` and `BlockContainer.vue` (editor canvas).
+- **Rendering**: lazyload implemented in both preview and editor canvas, each with a sensible default "More" button style when `loadMoreClass` is unset. State resets when the resolved set changes.
+- **Type surface**: `ElementDataBinding` (whoobe-one-spike `ElementsClass.d.ts`) + SDK schema (`packages/sdk/schema` `node.ts` / `validators.ts`) gained `paginationMode`, `loadMoreText`, `loadMoreClass`, `paginationContainerClass`. Purely client-side, never sent to the server (matches `rowsPerPage`).
+
+---
+
+## [Editor: remove min-h-8 leak from preview/public rendering] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Rows per page is now a free number input** in DataObjectPicker.vue's Dynamic query config (was a fixed 5/10/25/50 select) - any user value paginates the resolved set; 0 = no pagination.
+- **New `paginationMode` on `ElementDataBinding`**: `standard` (existing Prev/Next arrows + page indicator, the default) or `lazyload` (rows are appended to the currently-shown list in batches of `rowsPerPage`). Lazy load shows a "shown / total" counter (e.g. `10 / 48`) on its own line, then a "More" button whose **text and Tailwind classes are configurable** (`loadMoreText`, `loadMoreClass`).
 - **Rendering**: lazyload implemented in both `preview/BlockContainerPreview.vue` (public/Preview) and `BlockContainer.vue` (editor canvas), each with a sensible default "More" button style when `loadMoreClass` is unset. State resets when the resolved set changes.
 - **Type surface**: `ElementDataBinding` (whoobe-one-spike `ElementsClass.d.ts`) + SDK schema (`packages/sdk/schema` `node.ts` / `validators.ts`) gained `paginationMode`, `loadMoreText`, `loadMoreClass`. Purely client-side, never sent to the server (matches `rowsPerPage`).
 

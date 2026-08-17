@@ -59,14 +59,14 @@
       </template>
       <div
         v-if="rowsPerPage > 0 && collectionResolved.length > rowsPerPage"
-        class="flex items-center justify-center gap-2 text-[10px] text-gray-400 py-1.5 border-t border-dashed border-gray-200 mt-1"
+        :class="paginationContainerClass"
       >
-        <template v-if="paginationMode === 'standard'">
+        <div v-if="paginationMode === 'standard'" class="flex items-center justify-center gap-2 text-[10px] text-gray-400 py-1.5 border-t border-dashed border-gray-200 mt-1">
           <button type="button" class="px-1.5 py-0.5 rounded border disabled:opacity-30" :disabled="currentPage <= 1" @click.stop="currentPage = Math.max(1, currentPage - 1)">‹</button>
           <span>Page {{ currentPage }} / {{ totalPages }}</span>
           <button type="button" class="px-1.5 py-0.5 rounded border disabled:opacity-30" :disabled="currentPage >= totalPages" @click.stop="currentPage = Math.min(totalPages, currentPage + 1)">›</button>
-        </template>
-        <template v-else class="flex flex-col items-center gap-1">
+        </div>
+        <div v-else class="flex flex-col items-center gap-1 text-[10px] text-gray-400 py-1.5 border-t border-dashed border-gray-200 mt-1">
           <span>{{ visibleCount }} / {{ collectionResolved.length }}</span>
           <button
             v-if="visibleCount < collectionResolved.length"
@@ -74,7 +74,7 @@
             :class="loadMoreButtonClass"
             @click.stop="loadMoreMore"
           >{{ loadMoreButtonText }}</button>
-        </template>
+        </div>
       </div>
     </template>
     <template v-else>
@@ -204,6 +204,10 @@ const loadMoreButtonText = computed(() => (props.doc as any).dataBinding?.loadMo
 const loadMoreButtonClass = computed(() => {
   const cls = (props.doc as any).dataBinding?.loadMoreClass?.trim()
   return cls || 'px-3 py-1 rounded border border-gray-300 text-xs text-gray-500 hover:bg-gray-100'
+})
+const paginationContainerClass = computed(() => {
+  const cls = (props.doc as any).dataBinding?.paginationContainerClass?.trim()
+  return cls || 'w-full'
 })
 const pagedItems = computed(() => {
   if (!rowsPerPage.value) return collectionResolved.value

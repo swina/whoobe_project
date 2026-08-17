@@ -20,7 +20,7 @@
       </template>
     </template>
     
-    <div class="flex flex-col w-full items-center justify-center md:gap-3 gap-2 md:p-4 p-2">
+    <div :class="paginationContainerClass">
       <template v-if="rowsPerPage > 0 && collectionResolved.length > rowsPerPage">
         <div v-if="paginationMode === 'standard'" class="flex items-center justify-center gap-3 text-xs text-gray-500 py-2">
           <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="currentPage <= 1" @click="currentPage = Math.max(1, currentPage - 1)">‹ Prev</button>
@@ -172,6 +172,10 @@ const loadMoreButtonText = computed(() => (props.doc as any).dataBinding?.loadMo
 const loadMoreButtonClass = computed(() => {
   const cls = (props.doc as any).dataBinding?.loadMoreClass?.trim()
   return cls || 'px-4 py-2 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50'
+})
+const paginationContainerClass = computed(() => {
+  const cls = (props.doc as any).dataBinding?.paginationContainerClass?.trim()
+  return cls || 'w-full flex flex-col items-center justify-center md:gap-3 gap-2 md:p-4 p-2'
 })
 const pagedItems = computed(() => {
   if (!rowsPerPage.value) return collectionResolved.value
