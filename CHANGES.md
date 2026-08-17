@@ -4,6 +4,13 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Date transformer: remove unused timeStyle option, simplify to dateStyle + includeTime only] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- Removed `timeStyle` from `DateTransformOptions` — it was never exposed in the UI (only dateStyle select + includeTime checkbox appeared). Time is now hardcoded to `'short'` when `includeTime` is true.
+- Updated both whoobe-one-spike `field-transforms.ts` and SDK schema `transform.ts` + `validators.ts`.
+
+---
+
 ## [Data Binding date transformer: use page locale for date formatting] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - **Date transformer now uses page locale**: `Intl.DateTimeFormat(locale ?? undefined, ...)` instead of `Intl.DateTimeFormat(undefined, ...)`. When a page locale (e.g. `it`, `en`) is available from `editor.page?.locale`, dates are formatted in the page's language/region. Falls back to browser default when unset.

@@ -9,7 +9,6 @@ export type TransformType = 'date' | 'url' | 'number' | 'truncate' | 'valueMap'
 export interface DateTransformOptions {
   dateStyle: 'short' | 'medium' | 'long' | 'full'
   includeTime: boolean
-  timeStyle?: 'short' | 'medium'
 }
 
 export interface UrlTransformOptions {
@@ -84,7 +83,7 @@ const dateTransformer: TransformerDefinition<DateTransformOptions> = {
     if (Number.isNaN(d.getTime())) return textResult(String(value))
     const fmt = new Intl.DateTimeFormat(locale ?? undefined, {
       dateStyle: options.dateStyle,
-      ...(options.includeTime ? { timeStyle: options.timeStyle ?? 'short' } : {}),
+      ...(options.includeTime ? { timeStyle: 'short' } : {}),
     })
     return textResult(fmt.format(d))
   },

@@ -99,7 +99,6 @@ export const dataBindingSchema: z.ZodType<ElementDataBinding> = z.object({
     z.object({ type: z.literal('date'), options: z.object({
       dateStyle: z.enum(['short', 'medium', 'long', 'full']),
       includeTime: z.boolean(),
-      timeStyle: z.enum(['short', 'medium']).optional(),
     }) }),
     z.object({ type: z.literal('url'), options: z.object({
       linkText: z.enum(['value', 'custom']),
