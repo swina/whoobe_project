@@ -4,6 +4,14 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Theme: fonts not applied in public/preview — moved font loading from App.vue into useThemeStyles composable used by all renderers] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Bug**: Google Fonts `<link>` tags were only injected by a watcher on `editor.document` in `App.vue`. PublicPage.vue fetches into its own local `doc` ref (never writes to the editor store), so page-specific fonts from ThemeModal were silently missing — only the default `VITE_FONT_FAMILIES` list loaded.
+- **Fix**: moved font loading into the `useThemeStyles` composable, which already runs in all three renderers (BlockEditor.vue, DocumentPreview.vue, PublicPage.vue). The composable now manages both the `@theme` color `<style>` AND the Google Fonts `<link>`, keyed on the same getter function. Fallback to `editor.fonts` (the default list) when the document has no page-specific fonts.
+- **Cleanup**: removed the now-duplicate font watch from `App.vue` (it still keeps the onMounted bootstrap). Unused `computed`/`watch` imports removed.
+
+---
+
 ## [Theme: fix useThemeStyles null ref crash + safeAlpineValue for invalid Alpine expressions] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - **Bugfix `useThemeStyles`**: Pinia setup stores auto-unwrap refs, so passing `editor.document` directly passed the value (not the ref). Changed to accept a getter `() => doc` instead of `Ref<doc>`, preventing `Cannot read properties of null (reading 'value')` crash. Updated all 3 callers (BlockEditor.vue, DocumentPreview.vue, PublicPage.vue).
