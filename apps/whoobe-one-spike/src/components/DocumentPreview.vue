@@ -144,8 +144,9 @@ import { resolveDocumentData } from '../scripts/data-resolver'
 import { isDynamicSlug, matchAgainstPattern } from '../scripts/path-pattern'
 import { useEditorStore } from '../store/editor'
 import BlockContainerPreview from './preview/BlockContainerPreview.vue'
+import { useThemeStyles } from '../composables/useThemeStyles'
 
-defineProps<{
+const props = defineProps<{
   doc: InstanceType<typeof Element> | null
 }>()
 
@@ -154,6 +155,13 @@ const emit = defineEmits<{
 }>()
 
 const editor = useEditorStore()
+
+// Wrap the doc prop into a ref the composable can watch, so theme styles
+// update when the previewed document changes (e.g. KitsPanel swapping in a
+// different preview).
+const docRef = ref<any>(null)
+watch(() => props.doc, (v) => { docRef.value = v }, { immediate: true })
+useThemeStyles(docRef)
 
 // The current document's own routing slug (set on save/load - see
 // database-actions.ts's savePage()/loadPage()), e.g. '/it/news/{slug}'.

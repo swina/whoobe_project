@@ -44,7 +44,7 @@ import CustomClassesControl from './tailwind-controls/CustomClassesControl.vue'
 import DataBindingTransformControl from './tailwind-controls/DataBindingTransformControl.vue'
 
 const editor = useEditorStore()
-const openSection = ref<string | null>('style')
+const openSection = ref<string | null>('customClasses')
 
 // A checkbox input or an options-driven field (Select/RadioGroup, see
 // ElementsClass.js) - every other section applies to any element, so this
@@ -70,8 +70,8 @@ const sections = computed(() => {
   const isImgSrcBinding = db?.target === 'src' && current?.element === 'img'
   const showDataBinding = db && (db.target === 'content' || isImgSrcBinding)
   return [
-    { key: 'style', label: 'Style', component: StyleControl },
     { key: 'customClasses', label: 'Custom Classes', component: CustomClassesControl },
+    { key: 'style', label: 'Style', component: StyleControl },
     ...(showDataBinding ? [{ key: 'dataBinding', label: 'Data Binding', component: DataBindingTransformControl }] : []),
     { key: 'attributes', label: 'Attributes', component: AttributesControl },
     { key: 'animation', label: 'Animation', component: AnimationControl },

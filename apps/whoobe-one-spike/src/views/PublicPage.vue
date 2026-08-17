@@ -42,12 +42,15 @@ import { useRoute } from 'vue-router'
 import { getPublicPage } from '../pages-api'
 import { resolveDocumentData } from '../scripts/data-resolver'
 import BlockContainerPreview from '../components/preview/BlockContainerPreview.vue'
+import { useThemeStyles } from '../composables/useThemeStyles'
 
 const route = useRoute()
 const loading = ref(true)
 const error = ref(false)
 const doc = ref<any>(null)
 const layout = ref<any>(null)
+
+useThemeStyles(doc)
 
 onMounted(async () => {
   try {
