@@ -157,6 +157,12 @@ export interface ElementDataBinding {
   // unset) is a neutral outline button - configurable like every other
   // Tailwind string in the editor.
   loadMoreClass?: string | null
+  // Tailwind classes for the pagination container itself (the block-level
+  // wrapper on its own line under the list, in BOTH modes). Applies to the
+  // whole pagination area - the counter and the More button / the arrows.
+  // Default (when unset) is a centered, full-width flex column that always
+  // sits on its own line.
+  paginationContainerClass?: string | null
   locale?: string | null
   // Configured from the sidebar (DataBindingTransformControl.vue), not the
   // bind modal - absent/undefined on all pre-existing saved bindings.
