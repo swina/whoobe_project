@@ -4,6 +4,13 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Editor: remove min-h-8 leak from preview/public rendering] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Bug**: `template-generator.ts` baked `min-h-8` into every data-bound element's stored `css.css` (line 105–108), and `BlockElementPreview.vue` also added it at render time (line 288) — so data-bound elements in preview/public mode had an unwanted `min-height: 2rem` floor. This class is an editing affordance (makes empty elements selectable/clickable in the canvas) and should never appear outside the editor.
+- **Fix**: Removed the `min-h-8` baking from `template-generator.ts`'s `createBoundElement` (keeps it out of stored content). Removed the render-time addition from `BlockElementPreview.vue`'s `classe` computed. The editor-only fallback remains in `BlockElement.vue:215`, so canvas-bound elements still get the floor while editing.
+
+---
+
 ## [migrate-assets + review UI + promote guard on direct write] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - **migrate-assets (Phase 1)**: new `runAssetMigration` in migration-tool/cli.ts walks the same documents `migrate-documents` walks, collects asset paths referenced by image/video editables (top-level + nested inside areablock bricks), reads bytes from the source filesystem via `PIMCORE_VAR_ASSETS_PATH`, uploads to MinIO via `S3AssetStorageProvider`, and creates `assets`/`folders` rows path-keyed like a normal DAM upload. Flags: `--dry-run`, `--source=`, `--limit=`, `--public`. Backed by the CLI command `migrate-assets` and the `runAssetMigration` export.
