@@ -145,6 +145,18 @@ export interface ElementDataBinding {
   // 0/undefined means "no pagination, render the whole (offset+limit-
   // bounded) working set at once".
   rowsPerPage?: number | null
+  // How pagination is presented when rowsPerPage > 0 and the resolved
+  // working set is larger: 'standard' (Prev/Next arrows + page indicator,
+  // the original behaviour) or 'lazyload' (rows are appended in batches to
+  // the already-shown list, with a "shown / total" counter and a "More"
+  // button on its own line). Absent/undefined = 'standard'.
+  paginationMode?: 'standard' | 'lazyload' | null
+  // 'lazyload'-only: label for the "More" button (default 'More').
+  loadMoreText?: string | null
+  // 'lazyload'-only: Tailwind classes for the "More" button. Default (when
+  // unset) is a neutral outline button - configurable like every other
+  // Tailwind string in the editor.
+  loadMoreClass?: string | null
   locale?: string | null
   // Configured from the sidebar (DataBindingTransformControl.vue), not the
   // bind modal - absent/undefined on all pre-existing saved bindings.

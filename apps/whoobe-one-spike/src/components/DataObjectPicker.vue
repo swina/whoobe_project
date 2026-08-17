@@ -166,10 +166,25 @@
                 </div>
                 <div>
                   <div class="text-[10px] text-gray-400 mb-1">Rows per page</div>
-                  <select v-model.number="rowsPerPage" class="text-xs border rounded px-2 py-1 w-full">
-                    <option :value="0">No pagination</option>
-                    <option v-for="size in [5, 10, 25, 50]" :key="size" :value="size">{{ size }}</option>
+                  <input v-model.number="rowsPerPage" type="number" min="0" class="text-xs border rounded px-2 py-1 w-full" placeholder="0 = no pagination" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <div class="text-[10px] text-gray-400 mb-1">Pagination</div>
+                  <select v-model="paginationMode" class="text-xs border rounded px-2 py-1 w-full" :disabled="!rowsPerPage">
+                    <option value="standard">Standard (arrows)</option>
+                    <option value="lazyload">Lazy load (More button)</option>
                   </select>
+                </div>
+                <div v-if="paginationMode === 'lazyload'">
+                  <div class="text-[10px] text-gray-400 mb-1">More button text</div>
+                  <input v-model="loadMoreText" type="text" class="text-xs border rounded px-2 py-1 w-full" placeholder="More" />
+                </div>
+                <div v-if="paginationMode === 'lazyload'">
+                  <div class="text-[10px] text-gray-400 mb-1">More button CSS</div>
+                  <input v-model="loadMoreClass" type="text" class="text-xs border rounded px-2 py-1 w-full" placeholder="Tailwind classes" />
                 </div>
               </div>
 
@@ -304,6 +319,9 @@ const orderByDirection = ref<'asc' | 'desc'>(props.initial?.orderBy?.direction ?
 const offset = ref<number | null>(props.initial?.offset ?? null)
 const limit = ref<number | null>(props.initial?.limit ?? null)
 const rowsPerPage = ref<number>(props.initial?.rowsPerPage ?? 0)
+const paginationMode = ref<'standard' | 'lazyload'>(props.initial?.paginationMode === 'lazyload' ? 'lazyload' : 'standard')
+const loadMoreText = ref<string>(props.initial?.loadMoreText ?? '')
+const loadMoreClass = ref<string>(props.initial?.loadMoreClass ?? '')
 
 // Query test state
 const testLoading = ref(false)
@@ -467,6 +485,9 @@ function confirm() {
     offset: mode.value === 'query' && offset.value != null ? offset.value : undefined,
     limit: mode.value === 'query' && limit.value != null ? limit.value : undefined,
     rowsPerPage: mode.value === 'query' && rowsPerPage.value ? rowsPerPage.value : undefined,
+    paginationMode: mode.value === 'query' && rowsPerPage.value ? (paginationMode.value === 'lazyload' ? 'lazyload' : 'standard') : undefined,
+    loadMoreText: mode.value === 'query' && rowsPerPage.value && loadMoreText.value ? loadMoreText.value : undefined,
+    loadMoreClass: mode.value === 'query' && rowsPerPage.value && loadMoreClass.value ? loadMoreClass.value : undefined,
     transform,
   }
   emit('select', binding)

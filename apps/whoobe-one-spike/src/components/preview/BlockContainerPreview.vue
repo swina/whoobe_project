@@ -21,14 +21,21 @@
     </template>
     
     <div class="flex flex-col w-full items-center justify-center md:gap-3 gap-2 md:p-4 p-2">
-      <div
-        v-if="rowsPerPage > 0 && collectionResolved.length > rowsPerPage"
-        class="flex items-center justify-center gap-3 text-xs text-gray-500 py-2"
-      >
-        <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="currentPage <= 1" @click="currentPage = Math.max(1, currentPage - 1)">‹ Prev</button>
-        <span>Page {{ currentPage }} of {{ totalPages }}</span>
-        <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="currentPage >= totalPages" @click="currentPage = Math.min(totalPages, currentPage + 1)">Next ›</button>
-      </div>
+      <template v-if="rowsPerPage > 0 && collectionResolved.length > rowsPerPage">
+        <div v-if="paginationMode === 'standard'" class="flex items-center justify-center gap-3 text-xs text-gray-500 py-2">
+          <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="currentPage <= 1" @click="currentPage = Math.max(1, currentPage - 1)">‹ Prev</button>
+          <span>Page {{ currentPage }} of {{ totalPages }}</span>
+          <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="currentPage >= totalPages" @click="currentPage = Math.min(totalPages, currentPage + 1)">Next ›</button>
+        </div>
+        <div v-else class="flex flex-col items-center gap-2 py-2">
+          <span class="text-xs text-gray-500">{{ visibleCount }} / {{ collectionResolved.length }}</span>
+          <button
+            v-if="visibleCount < collectionResolved.length"
+            :class="loadMoreButtonClass"
+            @click="loadMoreMore"
+          >{{ loadMoreButtonText }}</button>
+        </div>
+      </template>
     </div>
     </template>
     <!-- Normal children, or a single-object binding (no field = whole object
@@ -145,21 +152,44 @@ const collectionResolved = computed<DataObjectRecord[]>(() => {
 })
 
 // Client-side pagination over collectionResolved - the binding's own
-// rowsPerPage (0/unset = no pagination, render the whole working set).
-// Ephemeral, not persisted: resets whenever the resolved set itself
-// changes, same as ObjectsView.vue's own currentPage pattern.
+// rowsPerPage (0/unset = no pagination, render the whole working set) and
+// paginationMode ('standard' Prev/Next arrows vs 'lazyload' a growing list
+// plus a configurable "More" button). Ephemeral, not persisted: resets
+// whenever the resolved set itself changes, same as ObjectsView.vue's own
+// currentPage pattern.
 const rowsPerPage = computed(() => Number((props.doc as any).dataBinding?.rowsPerPage) || 0)
+const paginationMode = computed<'standard' | 'lazyload'>(() =>
+  (props.doc as any).dataBinding?.paginationMode === 'lazyload' ? 'lazyload' : 'standard'
+)
 const currentPage = ref(1)
 const totalPages = computed(() =>
   rowsPerPage.value > 0 ? Math.max(1, Math.ceil(collectionResolved.value.length / rowsPerPage.value)) : 1
 )
+// Lazyload: how many rows are currently shown (grows by rowsPerPage per
+// "More" click). Standard mode ignores it and pages instead.
+const visibleCount = ref(rowsPerPage.value || 0)
+const loadMoreButtonText = computed(() => (props.doc as any).dataBinding?.loadMoreText?.trim() || 'More')
+const loadMoreButtonClass = computed(() => {
+  const cls = (props.doc as any).dataBinding?.loadMoreClass?.trim()
+  return cls || 'px-4 py-2 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50'
+})
 const pagedItems = computed(() => {
   if (!rowsPerPage.value) return collectionResolved.value
+  if (paginationMode.value === 'lazyload') {
+    return collectionResolved.value.slice(0, visibleCount.value)
+  }
   const start = (currentPage.value - 1) * rowsPerPage.value
   return collectionResolved.value.slice(start, start + rowsPerPage.value)
 })
+function loadMoreMore() {
+  visibleCount.value = Math.min(visibleCount.value + rowsPerPage.value, collectionResolved.value.length)
+}
 watch(collectionResolved, () => {
   currentPage.value = 1
+  visibleCount.value = rowsPerPage.value
+})
+watch(rowsPerPage, (n) => {
+  visibleCount.value = n || 0
 })
 watch(totalPages, (p) => {
   if (currentPage.value > p) currentPage.value = p

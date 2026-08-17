@@ -91,6 +91,9 @@ export interface ElementDataBinding {
   offset?: number | null
   limit?: number | null
   rowsPerPage?: number | null
+  paginationMode?: 'standard' | 'lazyload' | null
+  loadMoreText?: string | null
+  loadMoreClass?: string | null
   locale?: string | null
   transform?: import('./transform.js').FieldTransform | null
 }

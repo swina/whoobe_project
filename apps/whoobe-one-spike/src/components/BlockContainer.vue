@@ -61,9 +61,20 @@
         v-if="rowsPerPage > 0 && collectionResolved.length > rowsPerPage"
         class="flex items-center justify-center gap-2 text-[10px] text-gray-400 py-1.5 border-t border-dashed border-gray-200 mt-1"
       >
-        <button type="button" class="px-1.5 py-0.5 rounded border disabled:opacity-30" :disabled="currentPage <= 1" @click.stop="currentPage = Math.max(1, currentPage - 1)">‹</button>
-        <span>Page {{ currentPage }} / {{ totalPages }}</span>
-        <button type="button" class="px-1.5 py-0.5 rounded border disabled:opacity-30" :disabled="currentPage >= totalPages" @click.stop="currentPage = Math.min(totalPages, currentPage + 1)">›</button>
+        <template v-if="paginationMode === 'standard'">
+          <button type="button" class="px-1.5 py-0.5 rounded border disabled:opacity-30" :disabled="currentPage <= 1" @click.stop="currentPage = Math.max(1, currentPage - 1)">‹</button>
+          <span>Page {{ currentPage }} / {{ totalPages }}</span>
+          <button type="button" class="px-1.5 py-0.5 rounded border disabled:opacity-30" :disabled="currentPage >= totalPages" @click.stop="currentPage = Math.min(totalPages, currentPage + 1)">›</button>
+        </template>
+        <template v-else class="flex flex-col items-center gap-1">
+          <span>{{ visibleCount }} / {{ collectionResolved.length }}</span>
+          <button
+            v-if="visibleCount < collectionResolved.length"
+            type="button"
+            :class="loadMoreButtonClass"
+            @click.stop="loadMoreMore"
+          >{{ loadMoreButtonText }}</button>
+        </template>
       </div>
     </template>
     <template v-else>
@@ -178,19 +189,39 @@ const collectionResolved = computed<DataObjectRecord[]>(() => {
 // Client-side pagination over collectionResolved - same pattern as
 // BlockContainerPreview.vue's own rowsPerPage/currentPage/totalPages/
 // pagedItems (kept duplicated rather than a shared composable, matching
-// this exact file pair's existing extensive duplication).
+// this exact file pair's existing extensive duplication), plus the
+// lazyload variant.
 const rowsPerPage = computed(() => Number((props.doc as any).dataBinding?.rowsPerPage) || 0)
+const paginationMode = computed<'standard' | 'lazyload'>(() =>
+  (props.doc as any).dataBinding?.paginationMode === 'lazyload' ? 'lazyload' : 'standard'
+)
 const currentPage = ref(1)
 const totalPages = computed(() =>
   rowsPerPage.value > 0 ? Math.max(1, Math.ceil(collectionResolved.value.length / rowsPerPage.value)) : 1
 )
+const visibleCount = ref(rowsPerPage.value || 0)
+const loadMoreButtonText = computed(() => (props.doc as any).dataBinding?.loadMoreText?.trim() || 'More')
+const loadMoreButtonClass = computed(() => {
+  const cls = (props.doc as any).dataBinding?.loadMoreClass?.trim()
+  return cls || 'px-3 py-1 rounded border border-gray-300 text-xs text-gray-500 hover:bg-gray-100'
+})
 const pagedItems = computed(() => {
   if (!rowsPerPage.value) return collectionResolved.value
+  if (paginationMode.value === 'lazyload') {
+    return collectionResolved.value.slice(0, visibleCount.value)
+  }
   const start = (currentPage.value - 1) * rowsPerPage.value
   return collectionResolved.value.slice(start, start + rowsPerPage.value)
 })
+function loadMoreMore() {
+  visibleCount.value = Math.min(visibleCount.value + rowsPerPage.value, collectionResolved.value.length)
+}
 watch(collectionResolved, () => {
   currentPage.value = 1
+  visibleCount.value = rowsPerPage.value
+})
+watch(rowsPerPage, (n) => {
+  visibleCount.value = n || 0
 })
 watch(totalPages, (p) => {
   if (currentPage.value > p) currentPage.value = p
