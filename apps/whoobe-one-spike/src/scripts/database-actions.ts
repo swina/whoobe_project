@@ -67,6 +67,26 @@ import {
 } from '../kits-api'
 
 type EditorStore = ReturnType<typeof useEditorStore>
+
+/**
+ * Fetches the website theme from the backend (stored in websites.settings.theme)
+ * and sets it as the current session theme in the editor store. The
+ * useThemeStyles composable watches both the website theme and the per-page
+ * theme — website theme is the base, page theme overrides.
+ */
+export async function loadWebsiteTheme(editor: EditorStore, websiteId: string): Promise<void> {
+  try {
+    const baseUrl = typeof window !== 'undefined' && window.location?.hostname
+      ? `${window.location.protocol}//${window.location.hostname}:3003`
+      : 'http://localhost:3003'
+    const res = await fetch(`${baseUrl}/whoobe-one/websites/${websiteId}/theme`, { credentials: 'include' })
+    if (!res.ok) return
+    const body = await res.json()
+    editor.setWebsiteTheme(body.theme ?? { colors: [], fonts: [] })
+  } catch {
+    // Silent — website theme is optional; the editor works fine without it.
+  }
+}
 type WhoobeElement = InstanceType<typeof Element>
 
 export interface SavedTemplateSummary {
@@ -159,6 +179,12 @@ export async function loadPage(editor: EditorStore, id: string): Promise<void> {
   editor.setPage(page)
   editor.setDocument(saved.content as any)
   editor.setCurrent(null)
+
+  // Load the website's theme as the current session theme, so theme classes
+  // and fonts are available in the editor regardless of per-page overrides.
+  if (saved.websiteId) {
+    await loadWebsiteTheme(editor, saved.websiteId)
+  }
 }
 
 /** Loads an HTML mail template into the editor (docs/plans/forms/mail-

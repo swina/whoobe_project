@@ -1143,6 +1143,49 @@ app.delete('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRI
   }
 });
 
+// --- Website Theme ---
+
+const websiteThemeSchema = z.object({
+  colors: z.array(z.object({ name: z.string(), hex: z.string() })).optional().default([]),
+  fonts: z.array(z.string()).optional().default([]),
+});
+
+app.get('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const website = await getWebsite(req.params.id);
+    if (!website) {
+      res.status(404).json({ error: 'Website not found' });
+      return;
+    }
+    const theme = (website.settings as any)?.theme ?? { colors: [], fonts: [] };
+    res.json({ theme });
+  } catch (error: any) {
+    console.error('Get website theme error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get website theme' });
+  }
+});
+
+app.put('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const parsed = websiteThemeSchema.parse(req.body);
+    const website = await getWebsite(req.params.id);
+    if (!website) {
+      res.status(404).json({ error: 'Website not found' });
+      return;
+    }
+    const settings = { ...(website.settings as Record<string, unknown> ?? {}), theme: parsed };
+    const updated = await updateWebsite(req.params.id, { settings });
+    if (!updated) {
+      res.status(404).json({ error: 'Website not found' });
+      return;
+    }
+    res.json({ theme: parsed });
+  } catch (error: any) {
+    console.error('Update website theme error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update website theme' });
+  }
+});
+
 // --- Website Templates (docs/plans/cms/website-templates.md) ---
 // A named composition of module pages into header/aside/footer slots around
 // the routed page. Gated on SETTINGS_MANAGE (site structure config, same as

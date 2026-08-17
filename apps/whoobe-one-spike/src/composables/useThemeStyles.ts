@@ -5,14 +5,15 @@ const THEME_STYLE_ID = 'whoobe-theme-styles'
 
 /**
  * Injects theme styles into the page head so @tailwindcss/browser and the
- * browser's font system recognize what the Theme modal configured:
+ * browser's font system recognize what the Theme modal configured.
  *
- *   - Colors: a <style> element with @theme { --color-{name}: {hex}; ... }
- *   - Fonts: a <link> element pointing at Google Fonts for each family
- *
- * Takes a getter function (not a Ref) so it works with Pinia store
- * properties which are auto-unwrapped. Safe to call from multiple
- * components — all watchers update the same shared elements.
+ * Merges two layers:
+ *   1. The website-level theme (editor.websiteTheme, set from
+ *      websites.settings.theme when a page/snippet belonging to a website
+ *      is loaded) — acts as the base.
+ *   2. The per-page theme (getDoc()?.theme) — overrides the website theme
+ *      for the same color names, and replaces website fonts entirely when
+ *      the page has its own font list.
  */
 export function useThemeStyles(getDoc: () => any) {
   const editor = useEditorStore()
@@ -20,33 +21,43 @@ export function useThemeStyles(getDoc: () => any) {
 
   function update() {
     const doc = getDoc()
-    const theme = doc?.theme
+    const pageTheme = doc?.theme
+    const webTheme = editor.websiteTheme
 
-    // --- Colors (@theme) ---
+    // --- Merge colors: website base + page overrides ---
     const existing = document.getElementById(THEME_STYLE_ID)
-    if (theme?.colors?.length) {
-      const colors = theme.colors
-        .map((c: { name: string; hex: string }) => `  --color-${c.name}: ${c.hex};`)
-        .join('\n')
+    const webColors = (webTheme?.colors as { name: string; hex: string }[]) ?? []
+    const pageColors = (pageTheme?.colors as { name: string; hex: string }[]) ?? []
+
+    // Page colors with the same name replace the website's entry.
+    const colorMap = new Map<string, string>()
+    for (const c of webColors) colorMap.set(c.name, c.hex)
+    for (const c of pageColors) colorMap.set(c.name, c.hex)
+
+    if (colorMap.size > 0) {
+      const lines: string[] = []
+      colorMap.forEach((hex, name) => {
+        lines.push(`  --color-${name}: ${hex};`)
+      })
       let style = existing as HTMLStyleElement | null
       if (!style) {
         style = document.createElement('style')
         style.id = THEME_STYLE_ID
         document.head.appendChild(style)
       }
-      style.textContent = `@theme {\n${colors}\n}`
+      style.textContent = `@theme {\n${lines.join('\n')}\n}`
     } else {
       if (existing) existing.remove()
     }
 
-    // --- Fonts (Google Fonts <link>) ---
-    const pageFonts = theme?.fonts as string[] | undefined
+    // --- Fonts: page fonts > website fonts > default list ---
+    const pageFonts = pageTheme?.fonts as string[] | undefined
+    const webFonts = webTheme?.fonts as string[] | undefined
     const fontList = pageFonts?.length
       ? pageFonts
-      : // Fall back to the editor store's default list when the document
-        // has no page-specific fonts (un-opened Theme modal, or a raw
-        // fetched page that was saved before theme existed).
-        (editor.fonts as string[])
+      : webFonts?.length
+        ? webFonts
+        : (editor.fonts as string[])
     const fontKey = fontList.join('|')
 
     fontLink?.remove()
@@ -69,5 +80,10 @@ export function useThemeStyles(getDoc: () => any) {
     { deep: true }
   )
   watch(() => getDoc(), update)
+  watch(
+    () => editor.websiteTheme,
+    update,
+    { deep: true }
+  )
   if (getDoc()) update()
 }

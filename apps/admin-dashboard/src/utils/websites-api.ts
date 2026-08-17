@@ -89,3 +89,25 @@ export async function deleteWebsite(baseUrl: string, id: string): Promise<void> 
   })
   await parseJsonOrThrow(res)
 }
+
+export interface WebsiteTheme {
+  colors: { name: string; hex: string }[]
+  fonts: string[]
+}
+
+export async function fetchWebsiteTheme(baseUrl: string, id: string): Promise<WebsiteTheme> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${id}/theme`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.theme
+}
+
+export async function updateWebsiteTheme(baseUrl: string, id: string, theme: WebsiteTheme): Promise<WebsiteTheme> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${id}/theme`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(theme),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.theme
+}

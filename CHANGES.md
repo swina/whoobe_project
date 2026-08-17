@@ -4,6 +4,18 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Website-level themes: manage colors/fonts per website, inherited by all pages and snippets] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Backend** (`apps/core-api`): new `GET /whoobe-one/websites/:id/theme` and `PUT /whoobe-one/websites/:id/theme` endpoints, storing/reading the theme in `websites.settings.theme` (the existing generic JSONB column). Zod-validated shape: `{ colors: { name, hex }[], fonts: string[] }`.
+- **Admin dashboard** (`MasterWebsiteTab.vue`): new "Theme" sub-tab with color-name/hex pairs (add/remove/rename) and font list (add/remove). Saves to the website via the new API.
+- **Editor store** (`editor.ts`): new `websiteTheme` ref and `setWebsiteTheme` action, populated from the backend when a page/snippet loads.
+- **`loadPage` / `loadWebsiteTheme`** (`database-actions.ts`): after loading a page with a `websiteId`, fetches the website theme and sets it as the current session theme. Same `loadWebsiteTheme` helper is available for snippet loading.
+- **`useThemeStyles`** (composable): now merges two layers — website theme as the base, per-page document theme as overrides. Colors with the same name replace the website entry; fonts use page fonts if present, otherwise website fonts, otherwise the default env list. Watches both `editor.websiteTheme` and `getDoc()?.theme`.
+- **Page API client** (`pages-api.ts`): `WhoobeOnePage` now includes `websiteId: string | null`.
+- **Tabs store** (`tabsStore.ts`): `WebsiteSubTab` union extended with `'theme'`.
+
+---
+
 ## [Date transformer: remove unused timeStyle option, simplify to dateStyle + includeTime only] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - Removed `timeStyle` from `DateTransformOptions` — it was never exposed in the UI (only dateStyle select + includeTime checkbox appeared). Time is now hardcoded to `'short'` when `includeTime` is true.
