@@ -110,3 +110,33 @@ export async function importObjectsFromPimcore(
   const body = await parseJsonOrThrow(res)
   return body.result
 }
+
+export async function importDocumentsFromPimcore(
+  baseUrl: string,
+  id: string,
+  input: { dryRun?: boolean; limit?: number; staging?: boolean }
+): Promise<MigrationRunResult> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/migration-sources/${id}/import-documents`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.result
+}
+
+export async function promoteDocumentsFromStaging(
+  baseUrl: string,
+  id: string,
+  input: { dryRun?: boolean; clear?: boolean }
+): Promise<MigrationRunResult> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/migration-sources/${id}/promote-documents`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.result
+}

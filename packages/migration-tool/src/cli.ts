@@ -1,18 +1,28 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassFieldDefinition } from '@whoobe-cms/core';
+import { createS3ProviderFromEnv, getFileTypeFromFilename } from '@whoobe-cms/core';
 import {
   upsertWhoobePageByPimcoreId,
+  findPublishedWhoobePageConflict,
+  upsertStagedWhoobePageByPimcoreId,
+  listStagedWhoobePages,
+  getStagedWhoobePage,
+  deleteStagedWhoobePage,
+  clearStagedWhoobePages,
   upsertDataClassByPimcoreId,
   getDataClassByName,
   upsertDataObjectByPimcoreId,
   getDataObjectByPimcoreId,
   deleteDataObjectsByClassId,
   getAssetByPath,
+  upsertAssetRecord,
+  createFolderRecord,
   loadRootEnv,
 } from '@whoobe-cms/core/server';
 import { PimcorePageConverter } from './pimcore-page-converter.js';
 import { PimcoreRawDocument, PimcoreEditableElement } from './pimcore-document-converter.js';
+import { PimcoreAssetSummary } from './source-adapter.js';
 import { PimcoreObjectConverter, appendPimcoreSystemFields } from './pimcore-object-converter.js';
 import {
   parsePimcoreClassDefinitionFile,
@@ -35,6 +45,9 @@ interface CliFlags {
   source: string;
   limit?: number;
   class?: string;
+  public?: boolean;
+  staging?: boolean;
+  clear?: boolean;
 }
 
 function parseFlags(args: string[]): CliFlags {
@@ -44,6 +57,9 @@ function parseFlags(args: string[]): CliFlags {
     else if (arg.startsWith('--source=')) flags.source = arg.slice('--source='.length);
     else if (arg.startsWith('--limit=')) flags.limit = parseInt(arg.slice('--limit='.length), 10);
     else if (arg.startsWith('--class=')) flags.class = arg.slice('--class='.length);
+    else if (arg === '--public') flags.public = true;
+    else if (arg === '--staging') flags.staging = true;
+    else if (arg === '--clear') flags.clear = true;
   }
   return flags;
 }
@@ -66,23 +82,60 @@ function buildMysqlSourceConfigFromEnv(): Record<string, unknown> {
     documentsTable: process.env.PIMCORE_DOCUMENTS_TABLE,
     documentsElementsTable: process.env.PIMCORE_DOCUMENTS_ELEMENTS_TABLE,
     assetsTable: process.env.PIMCORE_ASSETS_TABLE,
+    assetsPath: process.env.PIMCORE_VAR_ASSETS_PATH,
   };
 }
 
 async function migrateDocuments(flags: CliFlags): Promise<void> {
-  console.log(`[ETL] Source adapter: "${flags.source}"${flags.dryRun ? ' (dry run - no writes)' : ''}`);
+  const sourceConfig = flags.source === 'mysql' ? buildMysqlSourceConfigFromEnv() : {};
+  await runDocumentMigration({ source: flags.source, sourceConfig, dryRun: flags.dryRun, limit: flags.limit, staging: flags.staging });
+}
 
-  const config = flags.source === 'mysql' ? buildMysqlSourceConfigFromEnv() : {};
-  const adapter = createPimcoreSourceAdapter(flags.source, config);
+/**
+ * The real migrate-documents logic, parameterized the same way
+ * runClassMigration/runObjectMigration are - shared by the CLI (below) and
+ * apps/core-api's on-demand admin-triggered import (the native-class-
+ * authoring plan's §3.4 pattern), which supplies this same config
+ * per-request from a stored migration source instead of process.env.
+ *
+ * `staging` selects WHERE the converted pages land: `false` (default)
+ * writes straight into `whoobe_pages` via upsertWhoobePageByPimcoreId; `true`
+ * writes into `whoobe_pages_staging` via upsertStagedWhoobePageByPimcoreId -
+ * the "migrate to a temporary table, review, then promote" workflow
+ * (docs/plans/cms/documents-migration.md §3 Phase 1 / Option B). Both go
+ * through the same converter and the same upsert-by-pimcore_id primitive;
+ * staging just points that primitive at the staging table, so a promoted
+ * page is byte-identical to one migrated directly.
+ *
+ * Both write paths are protected by the same published-page guard the
+ * promote path uses (findPublishedWhoobePageConflict): a converted document
+ * whose `pimcore_id` or `slug` path collides with a live, `published: true`
+ * page is skipped with a clear failure rather than silently overwriting an
+ * editor's published edits. Staging is exempt (it lands in
+ * whoobe_pages_staging, never touching whoobe_pages).
+ */
+export interface RunDocumentMigrationOptions {
+  source?: string;
+  sourceConfig: Record<string, unknown>;
+  dryRun?: boolean;
+  limit?: number;
+  staging?: boolean;
+}
+
+export async function runDocumentMigration(options: RunDocumentMigrationOptions): Promise<MigrationRunResult> {
+  const { source = 'mysql', sourceConfig, dryRun = false, limit, staging = false } = options;
+  console.log(`[ETL] Source adapter: "${source}"${dryRun ? ' (dry run - no writes)' : ''}${staging ? ' (staging - writes go to whoobe_pages_staging)' : ''}`);
+
+  const adapter = createPimcoreSourceAdapter(source, sourceConfig);
   await adapter.connect();
 
   try {
     const documents = await adapter.listDocuments();
-    const toProcess = flags.limit ? documents.slice(0, flags.limit) : documents;
-    console.log(`[ETL] Found ${documents.length} document(s)${flags.limit ? `, processing first ${toProcess.length}` : ''}.`);
+    const toProcess = limit ? documents.slice(0, limit) : documents;
+    console.log(`[ETL] Found ${documents.length} document(s)${limit ? `, processing first ${toProcess.length}` : ''}.`);
 
     let succeeded = 0;
-    let failed = 0;
+    const errors: { item: string; message: string }[] = [];
 
     for (const doc of toProcess) {
       try {
@@ -102,10 +155,29 @@ async function migrateDocuments(flags: CliFlags): Promise<void> {
 
         const converted = PimcorePageConverter.convertDocument(rawDoc);
 
-        if (flags.dryRun) {
+        if (dryRun) {
           console.log(`[dry-run] Document ${doc.id} (${doc.path}) -> ${converted.slug}`);
           console.log(JSON.stringify(converted, null, 2));
+        } else if (staging) {
+          await upsertStagedWhoobePageByPimcoreId({
+            pimcoreId: converted.pimcoreId,
+            title: converted.title,
+            slug: converted.slug,
+            locale: converted.locale,
+            content: converted.content,
+          });
+          console.log(`[ETL] Staged document ${doc.id} -> ${converted.slug}`);
         } else {
+          // Same published-page guard the promote path uses - a direct
+          // migration must never silently clobber a live, published page
+          // at the same path / for the same source document either.
+          const conflict = await findPublishedWhoobePageConflict(converted.locale, converted.slug, converted.pimcoreId);
+          if (conflict) {
+            const message = `Skipped - a published page already exists at ${converted.slug} (pimcore ${conflict.pimcoreId ?? 'n/a'}), refusing to overwrite it`;
+            errors.push({ item: `${doc.id} (${doc.path})`, message });
+            console.error(`[ETL] ${message}`);
+            continue;
+          }
           await upsertWhoobePageByPimcoreId({
             pimcoreId: converted.pimcoreId,
             title: converted.title,
@@ -117,12 +189,13 @@ async function migrateDocuments(flags: CliFlags): Promise<void> {
         }
         succeeded++;
       } catch (err: any) {
-        failed++;
+        errors.push({ item: `${doc.id} (${doc.path})`, message: err.message });
         console.error(`[ETL] Failed to migrate document ${doc.id} (${doc.path}): ${err.message}`);
       }
     }
 
-    console.log(`[ETL] Done. ${succeeded} succeeded, ${failed} failed.`);
+    console.log(`[ETL] Done. ${succeeded} succeeded, ${errors.length} failed.`);
+    return { succeeded, failed: errors.length, errors };
   } finally {
     await adapter.disconnect();
   }
@@ -405,6 +478,317 @@ async function migrateObjects(flags: CliFlags): Promise<void> {
   await runObjectMigration({ className: flags.class, source: flags.source, sourceConfig, dryRun: flags.dryRun, limit: flags.limit });
 }
 
+/**
+ * migrate-assets - docs/plans/cms/documents-migration.md §3 Phase 1. The
+ * single biggest correctness blocker for the real site: documents were
+ * migrating but the assets they reference (image/video editables resolve to
+ * Pimcore paths like "/communication/Visore_2023.jpg") were not being copied
+ * into this system's own S3/DAM, so every such image 404'd at render time.
+ *
+ * Approach: walk the SAME documents migrate-documents walks (same source
+ * adapter, same editables), collect the set of asset paths those documents
+ * actually reference (top-level image/video editables AND image/video fields
+ * nested inside every areablock brick - the bricks' own mapped/unmapped
+ * converters consume the same normalized editables), then for each referenced
+ * path: read the real bytes from the source install's filesystem
+ * (readAssetFile), upload to MinIO via the DAM's own S3 provider, and
+ * insert/upsert the `assets` row path-keyed exactly like a normal DAM upload
+ * (upsertAssetRecord) - reusing the DAM's conventions, not inventing a second
+ * asset store.
+ *
+ * Deliberately path-filtered rather than uploading the whole source assets
+ * table: the goal is "every asset a migrated page needs is available", not a
+ * wholesale copy of the source library (which could contain unused uploads).
+ */
+export interface RunAssetMigrationOptions {
+  source?: string;
+  sourceConfig: Record<string, unknown>;
+  dryRun?: boolean;
+  limit?: number;
+  /**
+   * Whether migrated assets upload as public-read (ACL + assets.is_public).
+   * Defaults to false (private, resolved via presigned URLs at render time) -
+   * the same default the DAM upload path itself uses. Pass true for folders
+   * that must be directly fetchable without auth.
+   */
+  isPublic?: boolean;
+}
+
+/** Recursively collects every image/video path a document's editables reference. */
+function collectReferencedAssetPaths(elements: PimcoreEditableElement[], into: Set<string>): void {
+  for (const element of elements) {
+    if (element.type === 'image' || element.type === 'video') {
+      const path = element.data?.path || element.data;
+      if (typeof path === 'string' && path) into.add(path);
+    } else if (element.type === 'areablock' && Array.isArray(element.data)) {
+      for (const brick of element.data) {
+        if (brick?.fields) collectReferencedAssetPaths(Object.values(brick.fields), into);
+      }
+    }
+  }
+}
+
+function deriveFolderPath(pimcorePath: string): string {
+  const idx = pimcorePath.lastIndexOf('/');
+  return idx <= 0 ? '/' : pimcorePath.substring(0, idx);
+}
+
+/** Best-effort folder-record creation for an asset's full folder chain -
+ * folders are only browsable once every ancestor has a `folders` row (see
+ * damStore's folder tree, which navigates parentPath -> children), so a
+ * nested path like /communication/2023 needs both /communication and
+ * /communication/2023 to exist. Duplicates are a no-op. */
+async function ensureFolderRecord(folderPath: string): Promise<void> {
+  if (!folderPath || folderPath === '/') return;
+  const segments = folderPath.split('/').filter(Boolean);
+  let current = '';
+  for (const segment of segments) {
+    current += `/${segment}`;
+    const parentIdx = current.lastIndexOf('/');
+    const parentPath = parentIdx <= 0 ? '/' : current.substring(0, parentIdx);
+    try {
+      await createFolderRecord({
+        path: current,
+        name: segment,
+        parentPath,
+      });
+    } catch {
+      // Already exists - fine.
+    }
+  }
+}
+
+export async function runAssetMigration(options: RunAssetMigrationOptions): Promise<MigrationRunResult> {
+  const { source = 'mysql', sourceConfig, dryRun = false, limit, isPublic = false } = options;
+  console.log(`[ETL] Source adapter: "${source}"${dryRun ? ' (dry run - no writes)' : ''}`);
+
+  const adapter = createPimcoreSourceAdapter(source, sourceConfig);
+  await adapter.connect();
+
+  try {
+    if (!adapter.listAssets || !adapter.readAssetFile) {
+      throw new Error(`Source adapter "${source}" does not support asset migration.`);
+    }
+
+    const documents = await adapter.listDocuments();
+    const toProcess = limit ? documents.slice(0, limit) : documents;
+    console.log(`[ETL] Found ${documents.length} document(s)${limit ? `, collecting references from first ${toProcess.length}` : ''}.`);
+
+    const referencedPaths = new Set<string>();
+    for (const doc of toProcess) {
+      const elements = await adapter.getDocumentElements(doc.id);
+      collectReferencedAssetPaths(elements, referencedPaths);
+    }
+    console.log(`[ETL] ${referencedPaths.size} unique referenced asset path(s).`);
+
+    const allAssets = await adapter.listAssets();
+    const assetByPath = new Map(allAssets.map((asset) => [asset.path, asset]));
+
+    const provider = createS3ProviderFromEnv();
+    let succeeded = 0;
+    const errors: { item: string; message: string }[] = [];
+
+    for (const path of [...referencedPaths].sort()) {
+      const asset = assetByPath.get(path);
+      if (!asset) {
+        errors.push({ item: path, message: 'Referenced by a document but missing from the source assets table' });
+        console.error(`[ETL] Referenced asset "${path}" missing from the source assets table - skipped.`);
+        continue;
+      }
+      try {
+        const bytes = await adapter.readAssetFile(asset);
+        if (!bytes) {
+          errors.push({ item: path, message: 'File bytes not found on the source filesystem' });
+          console.error(`[ETL] Could not read file bytes for "${path}" - skipped.`);
+          continue;
+        }
+
+        if (dryRun) {
+          console.log(`[dry-run] Asset ${path} (${bytes.length} bytes, ${asset.mimetype})`);
+          succeeded++;
+          continue;
+        }
+
+        const { fileType } = getFileTypeFromFilename(asset.filename);
+        const folderPath = deriveFolderPath(path);
+        await ensureFolderRecord(folderPath);
+        const upload = await provider.uploadAsset(path, bytes, asset.mimetype, { isPublic });
+        await upsertAssetRecord({
+          pimcorePath: path,
+          filename: asset.filename,
+          folderPath,
+          sizeBytes: bytes.length,
+          mimeType: asset.mimetype,
+          fileType,
+          s3Key: upload.s3Key,
+          isPublic,
+        });
+        console.log(`[ETL] Migrated asset ${path} -> ${upload.s3Key}`);
+        succeeded++;
+      } catch (err: any) {
+        errors.push({ item: path, message: err.message });
+        console.error(`[ETL] Failed to migrate asset ${path}: ${err.message}`);
+      }
+    }
+
+    console.log(`[ETL] Done. ${succeeded} succeeded, ${errors.length} failed.`);
+    return { succeeded, failed: errors.length, errors };
+  } finally {
+    await adapter.disconnect();
+  }
+}
+
+async function migrateAssets(flags: CliFlags): Promise<void> {
+  const sourceConfig = flags.source === 'mysql' ? buildMysqlSourceConfigFromEnv() : {};
+  await runAssetMigration({ source: flags.source, sourceConfig, dryRun: flags.dryRun, limit: flags.limit, isPublic: flags.public });
+}
+
+/**
+ * promote-staging - the second half of the staged migration workflow
+ * (docs/plans/cms/documents-migration.md §3 Phase 1 / Option B): copies
+ * every row from `whoobe_pages_staging` into `whoobe_pages` via the SAME
+ * upsertByPimcoreId primitive the direct migration path uses, so a promoted
+ * page is byte-identical to one migrated straight in. Idempotent by
+ * pimcore_id - re-promoting (or promoting a row already migrated directly)
+ * updates in place rather than duplicating.
+ *
+ * A staged row without a pimcore_id is a real error, not something to
+ * silently drop - staging rows are only ever written by migrate-documents
+ * --staging, which always sets it.
+ */
+export interface RunPromoteDocumentsOptions {
+  dryRun?: boolean;
+  /** Delete staged rows that promoted successfully. Off by default so a
+   *  failed batch can be retried without re-staging. */
+  clear?: boolean;
+}
+
+export async function runPromoteDocuments(options: RunPromoteDocumentsOptions = {}): Promise<MigrationRunResult> {
+  const { dryRun = false, clear = false } = options;
+  console.log(`[ETL] Promote staged documents${dryRun ? ' (dry run - no writes)' : ''}${clear ? ' (clearing staged rows after promote)' : ''}`);
+
+  const staged = await listStagedWhoobePages();
+  console.log(`[ETL] Found ${staged.length} staged page(s).`);
+
+  let succeeded = 0;
+  const errors: { item: string; message: string }[] = [];
+
+  for (const row of staged) {
+    try {
+      if (!row.pimcoreId) {
+        throw new Error('Staged page has no pimcoreId - cannot promote a non-migrated row.');
+      }
+      // Never overwrite a live, published page at the same path / for the
+      // same source document - the exact clobber this workflow was built to
+      // prevent (an editor's published edits must survive re-imports).
+      const conflict = await findPublishedWhoobePageConflict(row.locale, row.slug, row.pimcoreId);
+      if (conflict) {
+        const message = `Skipped - a published page already exists at ${row.slug} (pimcore ${conflict.pimcoreId ?? 'n/a'}), refusing to overwrite it`;
+        errors.push({ item: `${row.pimcoreId ?? row.slug}`, message });
+        console.error(`[ETL] ${message}`);
+        continue;
+      }
+      if (dryRun) {
+        console.log(`[dry-run] Promote ${row.pimcoreId} (${row.slug})`);
+      } else {
+        await upsertWhoobePageByPimcoreId({
+          pimcoreId: row.pimcoreId,
+          title: row.title,
+          slug: row.slug,
+          locale: row.locale,
+          category: row.category,
+          content: row.content,
+          seo: row.seo,
+          sitemap: row.sitemap,
+          search: row.search,
+          websiteId: row.websiteId,
+        });
+        if (clear) {
+          await deleteStagedWhoobePage(row.id);
+        }
+        console.log(`[ETL] Promoted ${row.pimcoreId} -> ${row.slug}`);
+      }
+      succeeded++;
+    } catch (err: any) {
+      errors.push({ item: `${row.pimcoreId ?? row.slug}`, message: err.message });
+      console.error(`[ETL] Failed to promote ${row.pimcoreId ?? row.slug}: ${err.message}`);
+    }
+  }
+
+  console.log(`[ETL] Done. ${succeeded} succeeded, ${errors.length} failed.`);
+  return { succeeded, failed: errors.length, errors };
+}
+
+/**
+ * promote-staging for a SINGLE staged page - the per-row Promote action in
+ * the Pages panel's Staged tab. Same upsert primitive and same
+ * never-touch-publish-state guarantee as runPromoteDocuments, but scoped to
+ * one staged row by id, so "promote this page" promotes exactly that page
+ * and nothing else. A missing row is reported as a failure, not a crash.
+ */
+export interface RunPromoteDocumentOptions {
+  stagedId: string;
+  dryRun?: boolean;
+  /** Delete the staged row if it promoted successfully. */
+  clear?: boolean;
+}
+
+export async function runPromoteDocument(options: RunPromoteDocumentOptions): Promise<MigrationRunResult> {
+  const { stagedId, dryRun = false, clear = false } = options;
+  console.log(`[ETL] Promote staged document ${stagedId}${dryRun ? ' (dry run - no writes)' : ''}${clear ? ' (clearing staged row after promote)' : ''}`);
+
+  const row = await getStagedWhoobePage(stagedId);
+  if (!row) {
+    const errors = [{ item: stagedId, message: 'Staged page not found' }];
+    console.error(`[ETL] Staged page ${stagedId} not found.`);
+    return { succeeded: 0, failed: 1, errors };
+  }
+
+  try {
+    if (!row.pimcoreId) {
+      throw new Error('Staged page has no pimcoreId - cannot promote a non-migrated row.');
+    }
+    // Same published-page guard as runPromoteDocuments - a single-page
+    // promote must never clobber a live, published page either.
+    const conflict = await findPublishedWhoobePageConflict(row.locale, row.slug, row.pimcoreId);
+    if (conflict) {
+      const message = `Skipped - a published page already exists at ${row.slug} (pimcore ${conflict.pimcoreId ?? 'n/a'}), refusing to overwrite it`;
+      const errors = [{ item: `${row.pimcoreId ?? row.slug}`, message }];
+      console.error(`[ETL] ${message}`);
+      return { succeeded: 0, failed: 1, errors };
+    }
+    if (dryRun) {
+      console.log(`[dry-run] Promote ${row.pimcoreId} (${row.slug})`);
+    } else {
+      await upsertWhoobePageByPimcoreId({
+        pimcoreId: row.pimcoreId,
+        title: row.title,
+        slug: row.slug,
+        locale: row.locale,
+        category: row.category,
+        content: row.content,
+        seo: row.seo,
+        sitemap: row.sitemap,
+        search: row.search,
+        websiteId: row.websiteId,
+      });
+      if (clear) {
+        await deleteStagedWhoobePage(row.id);
+      }
+      console.log(`[ETL] Promoted ${row.pimcoreId} -> ${row.slug}`);
+    }
+    return { succeeded: 1, failed: 0, errors: [] };
+  } catch (err: any) {
+    const errors = [{ item: `${row.pimcoreId ?? row.slug}`, message: err.message }];
+    console.error(`[ETL] Failed to promote ${row.pimcoreId ?? row.slug}: ${err.message}`);
+    return { succeeded: 0, failed: 1, errors };
+  }
+}
+
+async function promoteStaging(flags: CliFlags): Promise<void> {
+  await runPromoteDocuments({ dryRun: flags.dryRun, clear: flags.clear });
+}
+
 export function runMigrationCli(args: string[] = process.argv.slice(2)): void {
   console.log('----------------------------------------------------');
   console.log('PIMCORE TO WHOOBE CMS MIGRATION SUITE');
@@ -435,6 +819,20 @@ export function runMigrationCli(args: string[] = process.argv.slice(2)): void {
       });
       break;
 
+    case 'migrate-assets':
+      migrateAssets(flags).catch((err) => {
+        console.error('[ETL] Fatal error:', err);
+        process.exitCode = 1;
+      });
+      break;
+
+    case 'promote-staging':
+      promoteStaging(flags).catch((err) => {
+        console.error('[ETL] Fatal error:', err);
+        process.exitCode = 1;
+      });
+      break;
+
     case 'help':
     default:
       console.log('Available Commands:');
@@ -442,7 +840,12 @@ export function runMigrationCli(args: string[] = process.argv.slice(2)): void {
       console.log('                       editables/Areablocks into whoobe_pages, ready to open');
       console.log('                       and edit directly in whoobe-one-spike.');
       console.log('                       Flags: --dry-run, --source=<mysql|fixture> (default: mysql),');
-      console.log('                              --limit=<N>');
+      console.log('                              --limit=<N>, --staging (land in whoobe_pages_staging');
+      console.log('                              instead, for review-then-promote - see promote-staging)');
+      console.log('  promote-staging    - Copy every row from whoobe_pages_staging into whoobe_pages');
+      console.log('                       (idempotent by pimcore_id), completing the staged migration');
+      console.log('                       workflow started by `migrate-documents --staging`.');
+      console.log('                       Flags: --dry-run, --clear (delete promoted staging rows)');
       console.log('  migrate-classes    - Translate real Pimcore class definitions (var/classes/*.php,');
       console.log('                       filesystem - not MySQL, see PIMCORE_VAR_CLASSES_PATH) into');
       console.log('                       data_classes.');
@@ -452,15 +855,24 @@ export function runMigrationCli(args: string[] = process.argv.slice(2)): void {
       console.log('                       migrated targets - migrate reference/lookup classes first.');
       console.log('                       Flags: --dry-run, --source=<mysql|fixture> (default: mysql),');
       console.log('                              --limit=<N>, --class=<Name> (required)');
-      console.log('  migrate-assets     - Upload /web/var/assets to MinIO/S3 object storage (not yet built)');
+      console.log('  migrate-assets     - Upload Pimcore assets referenced by migrated documents into');
+  console.log('                       this system\'s own S3/MinIO bucket + assets table, so migrated');
+  console.log('                       pages\' images/videos actually load (documents-migration plan');
+  console.log('                       Phase 1 - the site\'s biggest correctness blocker). Walks the same');
+  console.log('                       documents migrate-documents walks, uploads only what they');
+  console.log('                       reference (not the whole source library).');
+  console.log('                       Flags: --dry-run, --source=<mysql|fixture> (default: mysql),');
+  console.log('                              --limit=<N>, --public (upload as public-read)');
       console.log('');
       console.log('Source config (for --source=mysql, the default) via env vars or packages/migration-tool/.env:');
       console.log('  PIMCORE_DB_HOST, PIMCORE_DB_PORT, PIMCORE_DB_USER, PIMCORE_DB_PASSWORD, PIMCORE_DB_NAME');
       console.log('  Optional overrides if a specific instance\'s schema differs:');
       console.log('  PIMCORE_DOCUMENTS_TABLE, PIMCORE_DOCUMENTS_ELEMENTS_TABLE, PIMCORE_ASSETS_TABLE');
-      console.log('  PIMCORE_VAR_CLASSES_PATH - filesystem path to the source install\'s var/classes');
-      console.log('                             directory (migrate-classes only, no default)');
-      break;
+  console.log('  PIMCORE_VAR_CLASSES_PATH - filesystem path to the source install\'s var/classes');
+  console.log('                             directory (migrate-classes only, no default)');
+  console.log('  PIMCORE_VAR_ASSETS_PATH  - filesystem path to the source install\'s asset directory');
+  console.log('                             (e.g. .../web/var/assets - migrate-assets only, no default)');
+  break;
   }
 }
 

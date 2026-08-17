@@ -136,10 +136,13 @@ pnpm --filter @whoobe-cms/whoobe-studio dev   # http://localhost:3004
 pnpm --filter @whoobe-cms/migration-tool cli -- help
 pnpm --filter @whoobe-cms/migration-tool cli -- migrate-classes --dry-run
 pnpm --filter @whoobe-cms/migration-tool cli -- migrate-objects --class=Product
-pnpm --filter @whoobe-cms/migration-tool cli -- migrate-documents
+pnpm --filter @whoobe-cms/migration-tool cli -- migrate-assets --dry-run
+pnpm --filter @whoobe-cms/migration-tool cli -- migrate-documents --staging   # review first
+pnpm --filter @whoobe-cms/migration-tool cli -- promote-staging --dry-run     # then promote
+pnpm --filter @whoobe-cms/migration-tool cli -- migrate-documents             # or direct
 ```
 
-Configure the source Pimcore MySQL connection in the repo-root `.env` (`PIMCORE_DB_HOST`, `PIMCORE_DB_PORT`, `PIMCORE_DB_USER`, `PIMCORE_DB_PASSWORD`, `PIMCORE_DB_NAME`, plus the target `DB_*` vars).
+Configure the source Pimcore MySQL connection in the repo-root `.env` (`PIMCORE_DB_HOST`, `PIMCORE_DB_PORT`, `PIMCORE_DB_USER`, `PIMCORE_DB_PASSWORD`, `PIMCORE_DB_NAME`, plus the target `DB_*` vars). `migrate-assets` also needs `PIMCORE_VAR_ASSETS_PATH` pointing at the source install's asset directory (e.g. `.../web/var/assets`) so it can read the actual file bytes it uploads.
 
 ## Other scripts
 

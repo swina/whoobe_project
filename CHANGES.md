@@ -4,6 +4,71 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [migrate-assets + review UI + promote guard on direct write] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **migrate-assets (Phase 1)**: new `runAssetMigration` in migration-tool/cli.ts walks the same documents `migrate-documents` walks, collects asset paths referenced by image/video editables (top-level + nested inside areablock bricks), reads bytes from the source filesystem via `PIMCORE_VAR_ASSETS_PATH`, uploads to MinIO via `S3AssetStorageProvider`, and creates `assets`/`folders` rows path-keyed like a normal DAM upload. Flags: `--dry-run`, `--source=`, `--limit=`, `--public`. Backed by the CLI command `migrate-assets` and the `runAssetMigration` export.
+- **Source adapter asset support**: `PimcoreSourceAdapter` gained optional `listAssets()`/`readAssetFile()` (interface + mysql-adapter + fixture-adapter implementations). MysqlPimcoreSourceConfig gained `assetsPath` config.
+- **Fixture adapter extended**: `FixturePimcoreDataset` now supports optional `assets` and `assetBytesByPath` fields for migrate-assets testing.
+- **core-api endpoints**: `POST /migration-sources/:id/import-documents` (staging flag), `POST /migration-sources/:id/promote-documents`, `GET/DELETE /whoobe-one/pages/staged`, `POST /whoobe-one/pages/staged/promote`, `POST /whoobe-one/pages/staged/:id/promote`. All wired into `apps/core-api/src/server.ts`.
+- **Published-page guard on direct write**: `runDocumentMigration`'s non-staging path now consults `findPublishedWhoobePageConflict` before upserting (same as the promote path), preventing `migrate-documents` from silently clobbering published pages. Staging exempt.
+- **Drizzle migration 0029**: new `whoobe_pages_staging` table schema + records module.
+- **Export surface**: `cli.ts` and `index.ts` export `runAssetMigration`, `runDocumentMigration`, `runPromoteDocuments`, `runPromoteDocument` + their option types.
+
+---
+
+## [Promote guard extended to the direct migrate-documents path] — 2026-08-16 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Extends the published-page guard**: `runDocumentMigration`'s direct (non-staging) write now also consults `findPublishedWhoobePageConflict` before `upsertWhoobePageByPimcoreId` - a converted document whose `pimcore_id` or `slug` path collides with a live, `published: true` page is skipped with a clear failure instead of silently clobbering an editor's published edits. Previously only the promote path (runPromoteDocuments/runPromoteDocument) was guarded; the direct `migrate-documents` (and the backend's `/migration-sources/:id/import-documents` with `staging: false`) could still overwrite. Staging remains exempt (it never touches `whoobe_pages`).
+- Verified: positive test against the live DB (a temporary published page at `/it/shared/header/` blocks its staged counterpart; cleaned up after), 0 current staged rows blocked, migration-tool 55 tests + all 13 typechecks clean, core-api restarted.
+
+---
+
+## [Promote guard: never overwrite a live published page] — 2026-08-16 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Bug**: promote (all or single) could silently overwrite a page that was previously migrated, later edited and **published** - `upsertWhoobePageByPimcoreId` upserts on `pimcore_id` and clobbers `content`, and the guard wasn't checking whether the target was already published.
+- **Fix**: new `findPublishedWhoobePageConflict(locale, slug, pimcoreId)` in `whoobe-pages-records.ts` - returns a live, `published: true` page whose `pimcore_id` matches the staged row OR whose `slug` (path) matches it (slug matched regardless of locale deliberately, since migrated rows are still hardcoded `locale: 'en'` (plan Phase 3) while real published pages may be `it` - a locale-qualified match would let the overwrite through). Both `runPromoteDocuments` and `runPromoteDocument` consult it before upserting and report a clear "Skipped - a published page already exists at ..." failure instead of overwriting. Unpublished pages remain fair game (promote never flips publish state anyway).
+- Verified: guard blocks 0 current staged rows against the live DB (the 4 published pages are authored, no slug/pimcore overlap), migration-tool 55 tests + all 13 typechecks clean, core-api restarted with the guard live.
+
+---
+
+## [Fix: per-row Promote now promotes only that staged page] — 2026-08-16 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Bug**: the Pages panel's per-row "Promote" and the detail drawer's "Promote this page" both called the whole-table endpoint (`POST /whoobe-one/pages/staged/promote`), so "promote one" promoted all 129 staged rows. Root cause: `PagesView.vue`'s `promoteOne` used `promoteStagedPages` (the promote-all API helper) instead of a single-page variant.
+- **Fix**: new `runPromoteDocument({ stagedId, dryRun, clear })` in migration-tool (same upsert primitive and never-touch-publish-state guarantee as `runPromoteDocuments`, scoped to one staged row by id, missing row reported as a failure) + new `POST /whoobe-one/pages/staged/:id/promote` core-api route. Admin-dashboard gained `promoteStagedPageById` in `pages-api.ts`; `PagesView.vue`'s `promoteOne` now calls it. Promote All still uses the whole-table path.
+- Verified: migration-tool build/typecheck/tests (55) clean, core-api + admin-dashboard typecheck clean, both routes confirmed live (401 without auth).
+
+---
+
+## [Pages view: Staged migration tab (review before promote)] — 2026-08-16 (branch: feat/08-16/pimcore-documents-migration)
+
+- **`PagesView.vue` gained a Pages/Staged mode toggle** in its header. "Staged" lists every `whoobe_pages_staging` row (title/slug/locale/pimcore id/staged-at) fetched from the existing `GET /whoobe-one/pages/staged` endpoint - the review surface the staged migration workflow was missing, so an admin can check what an import produced *before* promoting it into the real Pages table.
+- Per-row **Promote** / **Discard** actions, plus a **Promote All** (with "clear staging after" checkbox) and a click-to-open **detail drawer** showing the converted `content` JSON for inspection. All promote/discard calls refresh both the staged list and the live pages list, so the Pages tab reflects the change immediately.
+- **New source-agnostic `POST /whoobe-one/pages/staged/promote`** route in core-api (wraps the same `runPromoteDocuments` as the migration-sources-scoped route) - the Pages panel shouldn't need a migration-source id to trigger promote. New admin-dashboard API helpers `fetchStagedPages`/`deleteStagedPageById`/`promoteStagedPages` + `StagedWhoobePage` type in `pages-api.ts`.
+- Verified: admin-dashboard `vue-tsc` clean, core-api typecheck clean, all 13 packages/apps typecheck clean.
+
+---
+
+## [Staged Documents migration (whoobe_pages_staging) + backend availability] — 2026-08-16 (branch: feat/08-16/pimcore-documents-migration)
+
+- **`whoobe_pages_staging`** table (new `whoobe-pages-staging-schema.ts`/`-records.ts`, Drizzle migration `0029`): structural mirror of `whoobe_pages` + `staged_at`, same unique indexes (`pimcore_id`, `(locale, slug)`, `(translation_group_id, locale)`) so a constraint violation surfaces at staging time, not promote time. Records layer: `upsertStagedWhoobePageByPimcoreId` (upsert-by-pimcore_id, stamps `staged_at`), `listStagedWhoobePages`, `getStagedWhoobePage`, `deleteStagedWhoobePage`, `clearStagedWhoobePages`.
+- **`migrate-documents --staging`** refactored into exported `runDocumentMigration(options)` (like `runClassMigration`/`runObjectMigration`): `staging: true` lands converted pages in `whoobe_pages_staging`, default writes straight to `whoobe_pages` as before - same converter, same upsert-by-pimcore_id primitive, only the target table differs. **`promote-staging`** command (`runPromoteDocuments`): copies every staged row into `whoobe_pages` via `upsertWhoobePageByPimcoreId` (never touches `published`/`workflowState`, idempotent by pimcore_id), flags `--dry-run`/`--clear`. Both exported from migration-tool's `index.ts`.
+- **Backend (`apps/core-api`)**: `POST /migration-sources/:id/import-documents` (body `dryRun`/`limit`/`staging`), `POST /migration-sources/:id/promote-documents` (body `dryRun`/`clear`), and review surface `GET /whoobe-one/pages/staged` + `DELETE /whoobe-one/pages/staged/:id` (registered before `/whoobe-one/pages/:id` so "staged" isn't captured as an id).
+- **Admin UI (`MigrationSourcesCard.vue`)**: per-source "Import Documents" (limit, dry-run, **stage** toggle) and "Promote Staging" (dry-run, clear) controls; new `importDocumentsFromPimcore`/`promoteDocumentsFromStaging` in `migration-sources-api.ts`.
+- Tests: 2 new DB-free staging tests in migration-tool (`runDocumentMigration` dry-run with `--staging` matches the direct path; unresolvable asset produces a null-URL image node, batch survives). migration-tool now 55 tests; all 13 packages/apps typecheck clean; admin-dashboard `vue-tsc` clean.
+- Docs: `docs/guides/api-reference.md`, `README.md`, and the plan's Phase 1 status block updated with the staged workflow.
+
+---
+
+## [migrate-assets: Phase 1 of the Documents → Pages migration] — 2026-08-16 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Built `migrate-assets`** (docs/plans/cms/documents-migration.md Phase 1 - the site's biggest correctness blocker): walks the same documents `migrate-documents` walks, collects the asset paths those documents actually reference (top-level image/video editables plus image/video fields nested inside every areablock brick), then for each path reads the real file bytes from the source Pimcore install's filesystem and uploads them into this system's own S3/MinIO bucket + `assets` table - reusing the DAM's conventions (`S3AssetStorageProvider.uploadAsset` + `upsertAssetRecord`), so a migrated page's images/videos finally resolve instead of 404ing.
+- `PimcoreSourceAdapter` gained optional `listAssets()`/`readAssetFile()` (asset migration support, same optional-style as Data Object migration); mysql adapter implements both (`PIMCORE_VAR_ASSETS_PATH` config for the source install's asset directory, byte reads keyed by the `assets.data` column with a path-composition fallback); fixture adapter gained in-memory assets/bytes for tests.
+- New exported `runAssetMigration(options)` (parameterized like `runClassMigration`/`runObjectMigration`, for CLI + future core-api reuse); CLI command `migrate-assets` with `--dry-run`, `--source=`, `--limit=`, `--public`. Best-effort `folders` row creation for the full ancestor chain so migrated assets are browsable in the DAM UI. Deliberately path-filtered (uploads only what documents reference, not the whole source library).
+- Tests: 4 new migrate-assets tests (referenced-path collection incl. brick-nested fields, missing-catalogue-row, missing-bytes, unreferenced-assets-excluded). migration-tool now 53 tests, all passing; all 13 packages/apps typecheck clean.
+- Docs: help text, `docs/guides/api-reference.md`, and `README.md` updated (no longer "not yet built").
+
+---
+
 ## [Search element: CSS fully editable/removable] — 2026-08-15 (branch: master)
 
 - `SearchElement.vue` no longer hardcodes styling on the search input/button/dropdown - it only keeps structural layout classes (`flex-1 min-w-0` on the input, `shrink-0 inline-flex items-center justify-center` on the button, dropdown positioning). The look now comes entirely from `searchConfig.inputClass`/`buttonClass`/`dropdownClass`.

@@ -61,6 +61,8 @@ import {
   deleteWhoobePage,
   getPublishedWhoobePageBySlug,
   listPublishedWhoobePages,
+  listStagedWhoobePages,
+  deleteStagedWhoobePage,
   isDynamicSlug,
   matchPagePath,
   listDataClasses,
@@ -157,7 +159,7 @@ import {
 // reachable from browser bundles - admin-dashboard already imports other
 // root-package exports like ClassFieldDefinition the same way).
 import { compileDynamicSchema } from '@whoobe-cms/core';
-import { runClassMigration, runObjectMigration } from '@whoobe-cms/migration-tool';
+import { runClassMigration, runObjectMigration, runDocumentMigration, runPromoteDocuments, runPromoteDocument } from '@whoobe-cms/migration-tool';
 
 
 function escapeXml(s: string): string {
@@ -870,6 +872,85 @@ app.get('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_READ), async 
     res.status(500).json({ error: error.message || 'Failed to list pages' });
   }
 });
+
+// Review surface for the staged migration workflow (docs/plans/cms/
+// documents-migration.md §3 Phase 1 / Option B): list the rows currently
+// sitting in whoobe_pages_staging - the same shape a reviewer edits later -
+// without touching whoobe_pages, and delete a single staged page
+// (reject/re-stage). Registered BEFORE the /whoobe-one/pages/:id GET and
+// DELETE routes below so the literal "staged" segment isn't captured as an
+// id (same reason /data-objects/batch precedes /data-objects/:id).
+app.get('/whoobe-one/pages/staged', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const staged = await listStagedWhoobePages();
+    res.json({ pages: staged });
+  } catch (error: any) {
+    console.error('List staged whoobe-one pages error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list staged pages' });
+  }
+});
+
+app.delete(
+  '/whoobe-one/pages/staged/:id',
+  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      await deleteStagedWhoobePage(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Delete staged whoobe-one page error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete staged page' });
+    }
+  }
+);
+
+// Promote the whole staging table into whoobe_pages - the Pages panel's own
+// "review then promote" action. Source-agnostic (reads all of
+// whoobe_pages_staging), unlike the migration-sources-scoped
+// /migration-sources/:id/promote-documents which is the CLI-equivalent
+// trigger from the Migration Sources card. Both call the same
+// runPromoteDocuments.
+app.post(
+  '/whoobe-one/pages/staged/promote',
+  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { dryRun, clear } = req.body ?? {};
+      const result = await runPromoteDocuments({
+        dryRun: dryRun === true,
+        clear: clear === true,
+      });
+      res.json({ result });
+    } catch (error: any) {
+      console.error('Promote staged whoobe-one pages error:', error);
+      res.status(500).json({ error: error.message || 'Failed to promote staged pages' });
+    }
+  }
+);
+
+// Promote ONE staged page into whoobe_pages - the per-row "Promote" action
+// in the Pages panel's Staged tab. Deliberately separate from the
+// whole-table route above (and registered after it, same method+path
+// prefix, different final segment) so a single-page promote never touches
+// the other staged rows.
+app.post(
+  '/whoobe-one/pages/staged/:id/promote',
+  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { dryRun, clear } = req.body ?? {};
+      const result = await runPromoteDocument({
+        stagedId: req.params.id,
+        dryRun: dryRun === true,
+        clear: clear === true,
+      });
+      res.json({ result });
+    } catch (error: any) {
+      console.error('Promote staged whoobe-one page error:', error);
+      res.status(500).json({ error: error.message || 'Failed to promote staged page' });
+    }
+  }
+);
 
 app.get('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -1868,6 +1949,56 @@ app.post(
     } catch (error: any) {
       console.error('Import objects error:', error);
       res.status(500).json({ error: error.message || 'Failed to import objects' });
+    }
+  }
+);
+
+// Document import + promote - the Documents → Pages migration
+// (docs/plans/cms/documents-migration.md §3 Phase 1). import-documents
+// wraps runDocumentMigration; with `staging: true` it lands converted pages
+// in whoobe_pages_staging (review first, promote later) instead of touching
+// the live pages table, and promote-documents copies those staged rows into
+// whoobe_pages via the same upsert primitive the direct path uses.
+app.post(
+  '/migration-sources/:id/import-documents',
+  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { dryRun, limit, staging } = req.body ?? {};
+      const resolved = await getMigrationSourceConnectionConfig(req.params.id);
+      if (!resolved) {
+        res.status(404).json({ error: 'Migration source not found' });
+        return;
+      }
+      const result = await runDocumentMigration({
+        source: 'mysql',
+        sourceConfig: { ...resolved.connection } as Record<string, unknown>,
+        dryRun: dryRun === true,
+        limit: typeof limit === 'number' ? limit : undefined,
+        staging: staging === true,
+      });
+      res.json({ result });
+    } catch (error: any) {
+      console.error('Import documents error:', error);
+      res.status(500).json({ error: error.message || 'Failed to import documents' });
+    }
+  }
+);
+
+app.post(
+  '/migration-sources/:id/promote-documents',
+  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { dryRun, clear } = req.body ?? {};
+      const result = await runPromoteDocuments({
+        dryRun: dryRun === true,
+        clear: clear === true,
+      });
+      res.json({ result });
+    } catch (error: any) {
+      console.error('Promote documents error:', error);
+      res.status(500).json({ error: error.message || 'Failed to promote documents' });
     }
   }
 );

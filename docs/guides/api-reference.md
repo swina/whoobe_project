@@ -214,7 +214,8 @@ pnpm --filter @whoobe-cms/migration-tool cli -- help
 
 | Command | Description |
 | --- | --- |
-| `migrate-documents` | Import Pimcore Documents (pages/snippets) and their Areablocks into `whoobe_pages`. |
+| `migrate-documents` | Import Pimcore Documents (pages/snippets) and their Areablocks into `whoobe_pages`. Flags: `--dry-run`, `--source=`, `--limit=`, `--staging`. |
+| `promote-staging` | Copy `whoobe_pages_staging` rows into `whoobe_pages` (completes the staged workflow). Flags: `--dry-run`, `--clear`. |
 | `migrate-classes` | Translate Pimcore class definitions (`var/classes/*.php`) into `data_classes`. |
 | `migrate-objects --class=<Name>` | Import one class's real object instances into `data_objects`. |
-| `migrate-assets` | Upload `/web/var/assets` to MinIO/S3 (not yet built). |
+| `migrate-assets` | Upload Pimcore assets referenced by migrated documents into this system's S3/MinIO bucket + `assets` table (documents-migration plan Phase 1). Flags: `--dry-run`, `--source=`, `--limit=`, `--public`. Requires `PIMCORE_VAR_ASSETS_PATH` pointing at the source install's asset directory. |
