@@ -238,6 +238,7 @@ import AiGeneratedPreviewModal from './AiGeneratedPreviewModal.vue'
 import type { AiGeneratedRecord } from '../ai-api'
 import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
+import { useThemeStyles } from '../composables/useThemeStyles'
 import { clean, findNodeById, removeNodeById, applyImagePlaceholder, normalizeGeneratedTree } from '../helpers'
 import { editorBus } from '../bus'
 import { exportDocument, importDocument, cloneWithFreshIds, insertGeneratedSnippet } from '../scripts/editor-actions'
@@ -256,6 +257,11 @@ const showAddToKit = ref(false)
 const showTemplateGallery = ref(false)
 const showThemeModal = ref(false)
 const showAiGeneratePage = ref(false)
+
+// Inject theme colors as @theme CSS custom properties so @tailwindcss/browser
+// recognizes named classes like `bg-light-grey`. Watches editor.document
+// reactively and updates a shared <style id="whoobe-theme-styles">.
+useThemeStyles(editor.document as any)
 
 // A real, reported bug fixed here: `flash()` used to render every message
 // - including genuine failures ("Failed to save", "A path is required...")

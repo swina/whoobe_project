@@ -4,6 +4,14 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Theme: inject @theme colors so named custom classes (e.g. bg-light-grey) are recognized at runtime] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Bug**: custom theme colors defined in ThemeModal (name + hex) were stored on the document but never registered with `@tailwindcss/browser`. Typing a named class like `bg-light-grey` into Custom Classes (or any other CSS textarea) silently produced no CSS, because the runtime engine didn't know `light-grey` as a valid color.
+- **Fix**: new `useThemeStyles()` composable injects a `<style id="whoobe-theme-styles">` element into the page `<head>` containing `@theme { --color-{name}: {hex}; ... }` — the standard Tailwind v4 mechanism for registering custom color tokens. `@tailwindcss/browser`'s MutationObserver picks it up immediately and recompiles, so `bg-light-grey` (or any user-named color) starts working the moment the ThemeModal closes.
+- **Coverage**: the composable is called from `BlockEditor.vue` (watches `editor.document.theme.colors`), `DocumentPreview.vue` (watches the previewed doc prop), and `PublicPage.vue` (watches the fetched public page). Shared `<style>` element — multiple watchers all update the same tag, no duplication.
+
+---
+
 ## [Collection pagination: user-set rows per page + standard/lazyload modes] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - **Rows per page is now a free number input** in DataObjectPicker.vue's Dynamic query config (was a fixed 5/10/25/50 select) - any user value paginates the resolved set; 0 = no pagination.
