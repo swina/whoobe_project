@@ -103,6 +103,39 @@
       <div v-show="activeSubTab === 'templates'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-4">
         <WebsiteTemplatesManager :website-id="websiteId" />
       </div>
+      <div v-show="activeSubTab === 'theme'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-4">
+        <div v-if="themeLoading" class="text-xs text-slate-500 text-center py-8">Loading theme…</div>
+        <div v-else class="max-w-lg space-y-4">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-slate-400">Colors</span>
+              <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300" @click="addThemeColor">+ Add color</button>
+            </div>
+            <div v-for="(c, i) in themeColors" :key="i" class="flex items-center gap-2 mb-1.5">
+              <input v-model="c.name" type="text" placeholder="name" class="flex-1 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1 text-slate-200 light:text-slate-800" />
+              <input v-model="c.hex" type="color" class="w-8 h-8 rounded border border-slate-700 cursor-pointer" />
+              <span class="text-[10px] text-slate-500 font-mono w-16">{{ c.hex }}</span>
+              <button type="button" class="text-rose-400 hover:text-rose-300 text-xs" @click="removeThemeColor(i)">✕</button>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-slate-400">Fonts</span>
+              <div class="flex items-center gap-1">
+                <input v-model="newFont" type="text" placeholder="Font name" class="text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1 text-slate-200 light:text-slate-800 w-36" @keydown.enter="addThemeFont" />
+                <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300" @click="addThemeFont">+ Add</button>
+              </div>
+            </div>
+            <div v-for="(f, i) in themeFonts" :key="i" class="flex items-center gap-2 mb-1">
+              <span class="text-xs text-slate-300 flex-1">{{ f.replace('+', ' ') }}</span>
+              <button type="button" class="text-rose-400 hover:text-rose-300 text-xs" @click="removeThemeFont(i)">✕</button>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" :disabled="themeSaving" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold disabled:opacity-50" @click="saveTheme">{{ themeSaving ? 'Saving…' : 'Save theme' }}</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Page Picker Drawer -->
@@ -135,6 +168,7 @@ import type { WebsiteRecord } from '../../utils/websites-api'
 import type { MenuItem, WebsitePathRecord } from '../../utils/menus-api'
 import type { WhoobeOnePage } from '../../utils/pages-api'
 import { fetchWebsiteTemplates, type WebsiteTemplate } from '../../utils/website-templates-api'
+import { fetchWebsiteTheme, updateWebsiteTheme, type WebsiteTheme } from '../../utils/websites-api'
 import MenuItemRow from '../settings/MenuItemRow.vue'
 import PagePickerDrawer from './PagePickerDrawer.vue'
 import WebsiteTemplatesManager from './WebsiteTemplatesManager.vue'
@@ -163,6 +197,7 @@ const subTabs: { key: WebsiteSubTab; label: string }[] = [
   { key: 'settings', label: 'Settings' },
   { key: 'paths', label: 'Paths' },
   { key: 'templates', label: 'Templates' },
+  { key: 'theme', label: 'Theme' },
 ]
 
 const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'website' && t.itemId === props.websiteId))
@@ -179,6 +214,62 @@ async function loadTemplates() {
     websiteTemplates.value = await fetchWebsiteTemplates(getDefaultCoreApiUrl(), props.websiteId)
   } catch {
     websiteTemplates.value = []
+  }
+}
+
+// --- Theme ---
+
+const themeLoading = ref(false)
+const themeSaving = ref(false)
+const themeColors = ref<{ name: string; hex: string }[]>([])
+const themeFonts = ref<string[]>([])
+const newFont = ref('')
+
+async function loadTheme() {
+  themeLoading.value = true
+  try {
+    const theme = await fetchWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId)
+    themeColors.value = theme.colors ?? []
+    themeFonts.value = theme.fonts ?? []
+  } catch {
+    themeColors.value = []
+    themeFonts.value = []
+  } finally {
+    themeLoading.value = false
+  }
+}
+
+function addThemeColor() {
+  themeColors.value.push({ name: `color-${themeColors.value.length + 1}`, hex: '#6366f1' })
+}
+
+function removeThemeColor(i: number) {
+  themeColors.value.splice(i, 1)
+}
+
+function addThemeFont() {
+  const name = newFont.value.trim()
+  if (!name) return
+  const value = name.replaceAll(' ', '+')
+  if (!themeFonts.value.includes(value)) themeFonts.value.push(value)
+  newFont.value = ''
+}
+
+function removeThemeFont(i: number) {
+  themeFonts.value.splice(i, 1)
+}
+
+async function saveTheme() {
+  themeSaving.value = true
+  try {
+    await updateWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, {
+      colors: themeColors.value,
+      fonts: themeFonts.value,
+    })
+  } catch (e: any) {
+    alert(e?.message || 'Failed to save theme')
+  } finally {
+    themeSaving.value = false
   }
 }
 
@@ -463,12 +554,14 @@ async function updatePathItems(pathGroup: WebsitePathRecord, items: MenuItem[], 
 onMounted(() => {
   load()
   loadTemplates()
+  loadTheme()
   pathsStore.refreshPaths(props.websiteId)
 })
 
 watch(() => props.websiteId, () => {
   load()
   loadTemplates()
+  loadTheme()
   pathsStore.refreshPaths(props.websiteId)
 })
 

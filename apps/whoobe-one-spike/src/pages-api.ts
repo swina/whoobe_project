@@ -49,6 +49,7 @@ export interface WhoobeOnePage {
   sitemap: PageSitemapSettings | null
   search: PageSearchSettings | null
   pimcoreId: string | null
+  websiteId: string | null
   publishedAt: string | null
   createdAt: string
   updatedAt: string

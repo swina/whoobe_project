@@ -17,7 +17,7 @@ export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object
 export type AssetSubTab = 'preview' | 'editor' | 'metadata' | 'thumbnails'
 export type DocumentSubTab = 'editor' | 'preview'
 export type PageSubTab = 'editor' | 'settings' | 'preview'
-export type WebsiteSubTab = 'settings' | 'paths' | 'templates'
+export type WebsiteSubTab = 'settings' | 'paths' | 'templates' | 'theme'
 // A fixed, known-upfront set (docs/plans/UI/settings-ui-plan.md) - unlike
 // objectSubTab's free-form string (which varies per class's locales),
 // this is a real enum, matching AssetSubTab/DocumentSubTab's own pattern.
