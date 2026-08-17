@@ -295,7 +295,7 @@ const stile = computed(() => {
   // When this element is data-bound with a resolved src, don't layer the
   // editor's placeholder SVG on as a background - the real resolved image
   // (or the broken-image state) is what should show.
-  const showBg = !(el.dataBinding && el.dataBinding.target === 'src' && resolvedData.value !== null)
+  const showBg = el.element !== 'img' && !(el.dataBinding && el.dataBinding.target === 'src' && resolvedData.value !== null)
   if (showBg) {
     const bgUrl = resolveDisplayUrl(el.image?.url)
     if (bgUrl) st += `background-image:url(${bgUrl});`

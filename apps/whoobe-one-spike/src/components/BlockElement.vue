@@ -221,7 +221,7 @@ const classe = computed(() => {
 const stile = computed(() => {
   const el = props.element as any
   let st = ''
-  const showBg = !(db.value && db.value.target === 'src' && hasResolvedData.value)
+  const showBg = el.element !== 'img' && !(db.value && db.value.target === 'src' && hasResolvedData.value)
   if (showBg) {
     const bgUrl = resolveDisplayUrl(el.image?.url)
     if (bgUrl) st += `background-image:url(${bgUrl});`

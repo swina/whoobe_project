@@ -4,6 +4,13 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Images: remove duplicate background-image on <img> elements (SVG double-render)] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Bug**: the `stile` computed in BlockElement.vue and BlockElementPreview.vue unconditionally set `background-image: url(...)` from `el.image.url`. For `<img>` elements, that same URL is already shown via `:src` — so SVGs (transparent background) rendered double, and raster images had an invisible duplicate layer underneath. Caused by treating `image.url` as a CSS background even when the element IS an image element.
+- **Fix**: both components now skip `background-image` when `el.element === 'img'`. The `showBg` guard already existed for data-bound src images; this extends it to all `<img>` elements. Containers (BlockContainer/BlockSlider) still get `background-image` from `image.url` as before.
+
+---
+
 ## [Theme: fonts not applied in public/preview — moved font loading from App.vue into useThemeStyles composable used by all renderers] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - **Bug**: Google Fonts `<link>` tags were only injected by a watcher on `editor.document` in `App.vue`. PublicPage.vue fetches into its own local `doc` ref (never writes to the editor store), so page-specific fonts from ThemeModal were silently missing — only the default `VITE_FONT_FAMILIES` list loaded.
