@@ -23,6 +23,7 @@ export default defineConfig({
     './src/db/whoobe-one-template-schema.ts',
     './src/db/whoobe-one-kit-schema.ts',
     './src/db/whoobe-pages-schema.ts',
+    './src/db/whoobe-pages-staging-schema.ts',
     './src/db/data-classes-schema.ts',
     './src/db/data-components-schema.ts',
     './src/db/data-objects-schema.ts',

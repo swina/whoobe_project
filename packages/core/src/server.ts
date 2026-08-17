@@ -19,6 +19,8 @@ export * from './db/whoobe-one-kit-schema.js';
 export * from './db/whoobe-one-kit-records.js';
 export * from './db/whoobe-pages-schema.js';
 export * from './db/whoobe-pages-records.js';
+export * from './db/whoobe-pages-staging-schema.js';
+export * from './db/whoobe-pages-staging-records.js';
 export * from './db/data-classes-schema.js';
 export * from './db/data-classes-records.js';
 export * from './db/data-components-schema.js';

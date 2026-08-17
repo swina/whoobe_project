@@ -1,4 +1,4 @@
-import { registerPimcoreSourceAdapter, type PimcoreSourceAdapter, type PimcoreDocumentSummary } from '../source-adapter.js';
+import { registerPimcoreSourceAdapter, type PimcoreSourceAdapter, type PimcoreDocumentSummary, type PimcoreAssetSummary } from '../source-adapter.js';
 import { normalizeDocumentElements, type RawDocumentElementRow } from '../pimcore-serialized-data.js';
 
 /**
@@ -11,6 +11,9 @@ export interface FixturePimcoreDataset {
   documents: PimcoreDocumentSummary[];
   elementRowsByDocumentId: Record<number, RawDocumentElementRow[]>;
   assetPathsById: Record<number, string>;
+  /** Optional asset catalogue + bytes for migrate-assets tests - see PimcoreAssetSummary. */
+  assets?: PimcoreAssetSummary[];
+  assetBytesByPath?: Record<string, Buffer>;
 }
 
 export function createFixturePimcoreSourceAdapter(dataset: FixturePimcoreDataset): PimcoreSourceAdapter {
@@ -26,6 +29,12 @@ export function createFixturePimcoreSourceAdapter(dataset: FixturePimcoreDataset
     },
     async resolveAssetPath(assetId: number): Promise<string | null> {
       return dataset.assetPathsById[assetId] ?? null;
+    },
+    async listAssets(): Promise<PimcoreAssetSummary[]> {
+      return dataset.assets ?? [];
+    },
+    async readAssetFile(asset: PimcoreAssetSummary): Promise<Buffer | null> {
+      return dataset.assetBytesByPath?.[asset.path] ?? null;
     },
     async getDocumentElements(documentId: number) {
       const rows = dataset.elementRowsByDocumentId[documentId] ?? [];

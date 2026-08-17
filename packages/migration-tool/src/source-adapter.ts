@@ -30,6 +30,29 @@ export interface PimcoreDocumentSummary {
  * used by the Document pipeline's own tests doesn't, and shouldn't need
  * dummy stubs just to keep satisfying the interface).
  */
+/**
+ * A source Pimcore asset, as migrate-assets needs it - the `assets` table
+ * row plus the filesystem storage location that lets the adapter read the
+ * actual file bytes (`readAssetFile`, below). `path` is the full asset path
+ * INCLUDING filename (e.g. "/communication/Visore_2023.jpg"), composed from
+ * the table's own `path` (parent folder) + `filename` exactly the way
+ * `resolveAssetPath` already does for editables. `data` is the raw
+ * `assets.data` column - Pimcore's own record of where the file lives
+ * within the source install's asset directory, passed through untouched so
+ * each adapter can interpret its own instance's layout.
+ */
+export interface PimcoreAssetSummary {
+  id: number;
+  /** Full asset path including filename, e.g. "/communication/Visore_2023.jpg". */
+  path: string;
+  filename: string;
+  /** Pimcore asset type: 'image' | 'video' | 'text' | 'folder' | ... */
+  type: string;
+  mimetype: string;
+  /** Raw `assets.data` column - the file's storage location relative to the source install's asset directory. */
+  data: string;
+}
+
 export interface PimcoreObjectClassSummary {
   id: number;
   name: string;
@@ -112,6 +135,20 @@ export interface PimcoreSourceAdapter {
   getDocumentElements(documentId: number): Promise<PimcoreEditableElement[]>;
   /** Looks up an asset's full path (e.g. "/logos/hero.png") by its Pimcore asset ID. */
   resolveAssetPath(assetId: number): Promise<string | null>;
+
+  /**
+   * Asset migration support (docs/plans/cms/documents-migration.md §3 Phase 1) -
+   * optional on `PimcoreSourceAdapter` the same way Data Object migration is:
+   * not every adapter needs to migrate assets (the existing fixture adapter
+   * didn't, and doesn't need dummy stubs just to keep satisfying the
+   * interface). `listAssets` walks the source install's assets table (path-
+   * keyed rows - see PimcoreAssetSummary), `readAssetFile` reads the actual
+   * file bytes for one asset from the source install's filesystem. A missing
+   * file (deleted at the source, broken reference) is `null`, not a throw, so
+   * a single broken reference can't abort a whole migration run.
+   */
+  listAssets?(): Promise<PimcoreAssetSummary[]>;
+  readAssetFile?(asset: PimcoreAssetSummary): Promise<Buffer | null>;
 
   listObjectClasses?(): Promise<PimcoreObjectClassSummary[]>;
   listObjects?(classId: number): Promise<PimcoreObjectSummary[]>;

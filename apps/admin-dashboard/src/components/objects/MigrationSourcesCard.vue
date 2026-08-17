@@ -83,6 +83,54 @@
           <span v-if="migratedClasses.length === 0" class="text-xs text-slate-600 light:text-slate-400 italic">Import classes first.</span>
         </div>
 
+        <!-- Import documents: convert Pimcore pages into whoobe_pages (or stage them first) -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <input
+            v-model.number="documentLimit[source.id]"
+            type="number"
+            min="1"
+            placeholder="limit"
+            class="w-20 px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+          />
+          <label class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600">
+            <input type="checkbox" v-model="dryRunDocuments[source.id]" class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
+            dry-run
+          </label>
+          <label class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600">
+            <input type="checkbox" v-model="stageDocuments[source.id]" class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-amber-600" />
+            stage
+          </label>
+          <button
+            @click="handleImportDocuments(source)"
+            :disabled="runningDocuments === source.id"
+            type="button"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 disabled:opacity-50"
+          >
+            {{ runningDocuments === source.id ? 'Importing…' : 'Import Documents' }}
+          </button>
+        </div>
+
+        <!-- Promote staging: copy whoobe_pages_staging into whoobe_pages -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs text-slate-500">Staged migration:</span>
+          <label class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600">
+            <input type="checkbox" v-model="dryRunPromote[source.id]" class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
+            dry-run
+          </label>
+          <label class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600">
+            <input type="checkbox" v-model="clearAfterPromote[source.id]" class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-rose-600" />
+            clear
+          </label>
+          <button
+            @click="handlePromoteDocuments(source)"
+            :disabled="runningPromote === source.id"
+            type="button"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 disabled:opacity-50"
+          >
+            {{ runningPromote === source.id ? 'Promoting…' : 'Promote Staging' }}
+          </button>
+        </div>
+
         <!-- Last run result -->
         <div v-if="results[source.id]" class="text-xs pt-1">
           <span class="text-emerald-400 font-semibold">{{ results[source.id].succeeded }} succeeded</span>
@@ -138,7 +186,7 @@ import { useMigrationSourcesStore } from '../../stores/migrationSourcesStore'
 import { useDataClassesStore } from '../../stores/dataClassesStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useToastStore } from '../../stores/toastStore'
-import { importClassesFromPimcore, importObjectsFromPimcore, type MigrationSource, type MigrationRunResult } from '../../utils/migration-sources-api'
+import { importClassesFromPimcore, importObjectsFromPimcore, importDocumentsFromPimcore, promoteDocumentsFromStaging, type MigrationSource, type MigrationRunResult } from '../../utils/migration-sources-api'
 
 const store = useMigrationSourcesStore()
 const dataClassesStore = useDataClassesStore()
@@ -161,9 +209,16 @@ const objectClassName = reactive<Record<string, string>>({})
 const limitByClass = reactive<Record<string, number | undefined>>({})
 const dryRunObjects = reactive<Record<string, boolean>>({})
 const clearObjects = reactive<Record<string, boolean>>({})
+const documentLimit = reactive<Record<string, number | undefined>>({})
+const dryRunDocuments = reactive<Record<string, boolean>>({})
+const stageDocuments = reactive<Record<string, boolean>>({})
+const dryRunPromote = reactive<Record<string, boolean>>({})
+const clearAfterPromote = reactive<Record<string, boolean>>({})
 const results = reactive<Record<string, MigrationRunResult>>({})
 const runningClasses = ref<string | null>(null)
 const runningObjects = ref<string | null>(null)
+const runningDocuments = ref<string | null>(null)
+const runningPromote = ref<string | null>(null)
 
 async function handleImportClasses(source: MigrationSource) {
   runningClasses.value = source.id
@@ -199,6 +254,43 @@ async function handleImportObjects(source: MigrationSource) {
     toastStore.show(e?.message || 'Failed to import objects')
   } finally {
     runningObjects.value = null
+  }
+}
+
+async function handleImportDocuments(source: MigrationSource) {
+  runningDocuments.value = source.id
+  try {
+    const result = await importDocumentsFromPimcore(authStore.config.coreApiUrl, source.id, {
+      dryRun: !!dryRunDocuments[source.id],
+      limit: documentLimit[source.id],
+      staging: !!stageDocuments[source.id],
+    })
+    results[source.id] = result
+    toastStore.show(
+      stageDocuments[source.id]
+        ? `${result.succeeded} document(s) staged, ${result.failed} failed`
+        : `${result.succeeded} document(s) imported, ${result.failed} failed`
+    )
+  } catch (e: any) {
+    toastStore.show(e?.message || 'Failed to import documents')
+  } finally {
+    runningDocuments.value = null
+  }
+}
+
+async function handlePromoteDocuments(source: MigrationSource) {
+  runningPromote.value = source.id
+  try {
+    const result = await promoteDocumentsFromStaging(authStore.config.coreApiUrl, source.id, {
+      dryRun: !!dryRunPromote[source.id],
+      clear: !!clearAfterPromote[source.id],
+    })
+    results[source.id] = result
+    toastStore.show(`${result.succeeded} staged page(s) promoted, ${result.failed} failed`)
+  } catch (e: any) {
+    toastStore.show(e?.message || 'Failed to promote staged documents')
+  } finally {
+    runningPromote.value = null
   }
 }
 

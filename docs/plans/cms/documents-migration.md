@@ -64,7 +64,16 @@ brick mappings, metadata, a full-site run, validation, and retiring the legacy d
 
 ## 3. Phases
 
-### Phase 1 — Asset migration (`migrate-assets`)
+### Phase 1 — Asset migration (`migrate-assets`) ✅ BUILT (2026-08-16)
+
+> **Status**: implemented on `feat/08-16/pimcore-documents-migration`. `migrate-assets` walks the same documents `migrate-documents` walks, collects the asset paths those documents actually reference (top-level image/video editables plus image/video fields nested inside areablock bricks), then for each path reads the real bytes from the source install's filesystem (`PIMCORE_VAR_ASSETS_PATH`) and uploads them via `S3AssetStorageProvider` + `upsertAssetRecord`, creating `folders` rows for the ancestor chain. Supported on the adapter layer via optional `listAssets()`/`readAssetFile()` (mysql + fixture). Flags: `--dry-run`, `--source=`, `--limit=`, `--public`. **Still to do**: a real (non-dry-run) run against the live site, then re-run `migrate-documents` as the plan's own next step.
+>
+> **Also built (same session): the staged, review-then-promote document workflow.** `migrate-documents --staging` lands converted pages in a new `whoobe_pages_staging` table (schema `whoobe-pages-staging-schema.ts`, Drizzle migration `0029`) instead of touching the live pages table; `promote-staging` copies those rows into `whoobe_pages` via the same `upsertWhoobePageByPimcoreId` primitive the direct path uses (so a promoted page is byte-identical to a directly-migrated one), idempotent by `pimcore_id`, never touching `published`/`workflowState`. Exposed in the backend (`apps/core-api`): `POST /migration-sources/:id/import-documents` (`staging` flag), `POST /migration-sources/:id/promote-documents`, `GET/DELETE /whoobe-one/pages/staged` for review, plus the admin `MigrationSourcesCard.vue` Import Documents (stage) / Promote Staging controls. Shared logic: `runDocumentMigration`/`runPromoteDocuments` in `packages/migration-tool` (exported from its `index.ts` like `runClassMigration`/`runObjectMigration`).
+>
+> **Review UI added (same session): `PagesView.vue` now has a Pages/Staged mode toggle.** "Staged" lists every `whoobe_pages_staging` row (from `GET /whoobe-one/pages/staged`), with per-row Promote/Discard, a Promote All button, and a detail drawer showing the converted `content` JSON - so an admin can inspect what an import produced before promoting. A source-agnostic `POST /whoobe-one/pages/staged/promote` route (wrapping `runPromoteDocuments`) backs the panel's actions so they don't require a migration-source id.
+>
+> **Promote safety guard (same session): never overwrite a live published page.** Both `runPromoteDocuments` and `runPromoteDocument` now consult `findPublishedWhoobePageConflict` (whoobe-pages-records.ts) before upserting - it returns any `published: true` page whose `pimcore_id` matches the staged row OR whose `slug` path matches it (slug matched regardless of locale because migrated rows are still hardcoded `locale: 'en'` - Phase 3 - while real published pages may be `it`), and the promote is skipped with a clear failure message instead of silently clobbering an editor's published edits. **The same guard was then extended to `runDocumentMigration`'s direct (non-staging) write path** (and thus `/migration-sources/:id/import-documents` with `staging: false`) - the direct path previously overwrote published pages by design; staging is exempt since it never touches `whoobe_pages`. This is the concrete fix for the §5 "re-running overwrites content" risk across both write paths.
+
 Assets referenced by migrated documents (image/video editables resolve to Pimcore paths like
 `/communication/Visore_2023.jpg`) are **not** copied into this system's S3/DAM. The dashboard preview
 and whoobe-one-spike resolve them at render time via `/api/v1/dam/asset-urls`, but a
@@ -105,7 +114,7 @@ Then verify: distinct slugs, translation-group wiring, asset URLs actually load,
 pages render in the whoobe-one-spike editor and the public path.
 
 ### Phase 5 — Validation
-- All migration-tool tests (currently 24) + typecheck across all 6 packages/apps.
+- All migration-tool tests (currently 53) + typecheck across all 6 packages/apps.
 - Interactive browser pass: open `/pages`, open a real migrated page, edit in the embedded
   whoobe-one-spike editor, save, re-open, preview, and hit the public URL.
 - Asset-resolution check: every image/video on migrated pages loads over HTTP.

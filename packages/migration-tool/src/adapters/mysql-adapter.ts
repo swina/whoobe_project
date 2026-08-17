@@ -1,4 +1,6 @@
 import mysql from 'mysql2/promise';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import {
   registerPimcoreSourceAdapter,
   type PimcoreSourceAdapter,
@@ -7,6 +9,7 @@ import {
   type PimcoreObjectSummary,
   type RawPimcoreObjectAttributes,
   type PimcoreFieldCollectionItem,
+  type PimcoreAssetSummary,
 } from '../source-adapter.js';
 import { normalizeDocumentElements, type RawDocumentElementRow } from '../pimcore-serialized-data.js';
 
@@ -27,6 +30,14 @@ export interface MysqlPimcoreSourceConfig {
   documentsTable?: string;
   documentsElementsTable?: string;
   assetsTable?: string;
+  /**
+   * Filesystem path to the source install's asset directory (Pimcore's
+   * `PIMCORE_ASSET_DIRECTORY`, default `web/var/assets`) - migrate-assets
+   * reads the actual file bytes from here, keyed by the `assets.data`
+   * column. Only needed by migrate-assets; document migration works fine
+   * without it.
+   */
+  assetsPath?: string;
 }
 
 const DEFAULT_TABLES = {
@@ -50,6 +61,15 @@ interface DocumentRow {
 interface AssetRow {
   path: string;
   filename: string;
+}
+
+interface AssetFileRow {
+  id: number;
+  type: string;
+  filename: string;
+  path: string;
+  data: string | null;
+  mimetype: string | null;
 }
 
 export function createMysqlPimcoreSourceAdapter(config: MysqlPimcoreSourceConfig): PimcoreSourceAdapter {
@@ -90,6 +110,54 @@ export function createMysqlPimcoreSourceAdapter(config: MysqlPimcoreSourceConfig
     async disconnect() {
       await connection?.end();
       connection = null;
+    },
+
+    // Asset migration support - docs/plans/cms/documents-migration.md
+    // §3 Phase 1 (migrate-assets). Lists every non-folder asset row with
+    // its full path (composed exactly like resolveAssetPath, so the two
+    // never disagree), then reads the actual bytes from the source
+    // install's filesystem keyed by the `assets.data` column.
+    async listAssets(): Promise<PimcoreAssetSummary[]> {
+      const conn = requireConnection();
+      const [rows] = await conn.query(
+        `SELECT id, type, filename, path, data, mimetype FROM \`${assetsTable}\` WHERE type != 'folder'`
+      );
+      return (rows as AssetFileRow[]).map((row) => {
+        const parentPath = row.path === '/' ? '' : row.path.replace(/\/+$/, '');
+        return {
+          id: row.id,
+          path: `${parentPath}/${row.filename}`,
+          filename: row.filename,
+          type: row.type,
+          mimetype: row.mimetype ?? 'application/octet-stream',
+          data: row.data ?? '',
+        };
+      });
+    },
+
+    async readAssetFile(asset: PimcoreAssetSummary): Promise<Buffer | null> {
+      if (!config.assetsPath) {
+        throw new Error(
+          'PIMCORE_VAR_ASSETS_PATH is not set - point it at the source Pimcore install\'s asset directory (e.g. .../web/var/assets) so migrate-assets can read file bytes.'
+        );
+      }
+      // Pimcore's default storage keeps the file under the asset directory
+      // keyed by the `data` column's own relative path (e.g. "image/Visore_
+      // 2023.jpg"). Fall back to composing the same full path from the row
+      // when `data` is empty - both conventions exist across real installs.
+      const candidates = [
+        asset.data,
+        asset.path.replace(/^\/+/, ''),
+      ].filter(Boolean) as string[];
+
+      for (const relative of candidates) {
+        try {
+          return await readFile(join(config.assetsPath, relative));
+        } catch {
+          // Not at this candidate path - try the next one.
+        }
+      }
+      return null;
     },
 
     async listDocuments(): Promise<PimcoreDocumentSummary[]> {

@@ -143,3 +143,85 @@ export async function deletePageById(baseUrl: string, id: string): Promise<void>
   })
   await parseJsonOrThrow(res)
 }
+
+// --- Staged migration review (docs/plans/cms/documents-migration.md §3
+// Phase 1 / Option B) ---
+
+/** A row from whoobe_pages_staging - a converted document awaiting review
+ *  before promote copies it into whoobe_pages. Same shape as WhoobeOnePage
+ *  plus `stagedAt`. */
+export interface StagedWhoobePage {
+  id: string
+  translationGroupId: string
+  locale: string
+  slug: string
+  title: string
+  category: string
+  kind: 'content' | 'module'
+  published: boolean
+  workflowState: string | null
+  content: unknown
+  seo: PageSeo | null
+  sitemap: PageSitemapSettings | null
+  search: PageSearchSettings | null
+  pimcoreId: string | null
+  path: string | null
+  websiteId: string | null
+  publishedAt: string | null
+  createdAt: string
+  updatedAt: string
+  stagedAt: string
+}
+
+export async function fetchStagedPages(baseUrl: string): Promise<StagedWhoobePage[]> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/pages/staged`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.pages
+}
+
+export async function deleteStagedPageById(baseUrl: string, id: string): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/pages/staged/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  await parseJsonOrThrow(res)
+}
+
+export interface PromoteStagedResult {
+  succeeded: number
+  failed: number
+  errors: { item: string; message: string }[]
+}
+
+/** Copies every whoobe_pages_staging row into whoobe_pages (idempotent by
+ *  pimcore_id). `clear: true` deletes promoted staging rows. */
+export async function promoteStagedPages(
+  baseUrl: string,
+  input: { dryRun?: boolean; clear?: boolean }
+): Promise<PromoteStagedResult> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/pages/staged/promote`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.result
+}
+
+/** Copies ONE whoobe_pages_staging row into whoobe_pages - the per-row
+ *  Promote action. Never touches the other staged rows. */
+export async function promoteStagedPageById(
+  baseUrl: string,
+  id: string,
+  input: { dryRun?: boolean; clear?: boolean }
+): Promise<PromoteStagedResult> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/pages/staged/${id}/promote`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.result
+}

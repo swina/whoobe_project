@@ -1,4 +1,4 @@
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, or } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { whoobePages, type PageSeo, type PageSitemapSettings, type PageSearchSettings } from './whoobe-pages-schema.js';
 import { indexPage, deleteIndexedByDocument } from '../search/indexer.js';
@@ -172,6 +172,37 @@ export async function getPublishedWhoobePageBySlug(
     conditions.push(eq(whoobePages.websiteId, websiteId));
   }
   const [row] = await db.select().from(whoobePages).where(and(...conditions)).limit(1);
+  return row ?? null;
+}
+
+/**
+ * Promote guard: does a LIVE, PUBLISHED page already exist that promoting
+ * this staged row would overwrite? Matches either the same `pimcoreId` (the
+ * upsert conflict target of upsertWhoobePageByPimcoreId - the exact case
+ * that clobbers an editor's later edits, which is what happened when the
+ * staged Pages panel's per-row Promote was mis-wired to the whole-table
+ * endpoint) or the same `slug` path (the user-facing "same path" rule -
+ * matched regardless of locale deliberately, since migrated rows are still
+ * hardcoded `locale: 'en'` today (plan Phase 3) while real published pages
+ * may be `it`, so a locale-qualified match would let the overwrite through).
+ * Returns null when no published page is at risk.
+ *
+ * Published-only on purpose: unpublished pages are fair game (they're
+ * drafts, and promote's upsert never flips publish state), but a page an
+ * editor explicitly published is the one thing a migration re-run must
+ * never silently overwrite.
+ */
+export async function findPublishedWhoobePageConflict(
+  locale: string,
+  slug: string,
+  pimcoreId: string
+): Promise<WhoobePageRecord | null> {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(whoobePages)
+    .where(and(eq(whoobePages.published, true), or(eq(whoobePages.pimcoreId, pimcoreId), eq(whoobePages.slug, slug))))
+    .limit(1);
   return row ?? null;
 }
 
