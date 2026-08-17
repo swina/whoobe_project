@@ -1,19 +1,18 @@
-import { watch, type Ref } from 'vue'
+import { watch } from 'vue'
 
 const THEME_STYLE_ID = 'whoobe-theme-styles'
 
 /**
  * Injects theme colors as @theme CSS custom properties so
  * @tailwindcss/browser recognizes named classes like `bg-light-grey`.
- * Watches `docRef` for theme.colors changes and updates a <style> element.
- * Call from any component that renders a document tree (editor, preview,
- * public page). Safe to call from multiple components simultaneously -
- * the shared <style id="whoobe-theme-styles"> is updated in place.
+ * Takes a getter function (not a Ref) so it works with Pinia store
+ * properties which are auto-unwrapped.
  */
-export function useThemeStyles(docRef: Ref<any>) {
+export function useThemeStyles(getDoc: () => any) {
   function update() {
     const existing = document.getElementById(THEME_STYLE_ID)
-    const theme = docRef.value?.theme
+    const doc = getDoc()
+    const theme = doc?.theme
     if (!theme?.colors?.length) {
       if (existing) existing.remove()
       return
@@ -31,12 +30,10 @@ export function useThemeStyles(docRef: Ref<any>) {
   }
 
   watch(
-    () => docRef.value?.theme?.colors,
+    () => getDoc()?.theme?.colors,
     update,
     { deep: true }
   )
-  watch(() => docRef.value, update)
-
-  // Call once synchronously if the document is already available.
-  if (docRef.value) update()
+  watch(() => getDoc(), update)
+  if (getDoc()) update()
 }

@@ -56,7 +56,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import type { Component } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
-import { customAttrs, imageURL, resolveLucideIcon, renderSelectOptionsHtml, renderRadioGroupHtml } from '../../helpers'
+import { customAttrs, imageURL, resolveLucideIcon, renderSelectOptionsHtml, renderRadioGroupHtml, safeAlpineValue } from '../../helpers'
 import { resolveDisplayUrl } from '../../resolve-display-url'
 import { useEditorStore } from '../../store/editor'
 import { resolveFieldValue } from '../../scripts/data-resolver'
@@ -82,7 +82,7 @@ const alpineAttrs = computed(() => {
   if (!alpine) return {}
   const result: Record<string, string> = {}
   for (const key of Object.keys(alpine)) {
-    if (alpine[key]) result[key] = alpine[key]
+    if (alpine[key]) result[key] = safeAlpineValue(alpine[key])
   }
   return result
 })

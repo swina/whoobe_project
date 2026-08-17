@@ -261,7 +261,7 @@ const showAiGeneratePage = ref(false)
 // Inject theme colors as @theme CSS custom properties so @tailwindcss/browser
 // recognizes named classes like `bg-light-grey`. Watches editor.document
 // reactively and updates a shared <style id="whoobe-theme-styles">.
-useThemeStyles(editor.document as any)
+useThemeStyles(() => editor.document)
 
 // A real, reported bug fixed here: `flash()` used to render every message
 // - including genuine failures ("Failed to save", "A path is required...")

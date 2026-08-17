@@ -161,7 +161,7 @@ const editor = useEditorStore()
 // different preview).
 const docRef = ref<any>(null)
 watch(() => props.doc, (v) => { docRef.value = v }, { immediate: true })
-useThemeStyles(docRef)
+useThemeStyles(() => docRef.value)
 
 // The current document's own routing slug (set on save/load - see
 // database-actions.ts's savePage()/loadPage()), e.g. '/it/news/{slug}'.

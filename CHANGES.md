@@ -4,6 +4,13 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Theme: fix useThemeStyles null ref crash + safeAlpineValue for invalid Alpine expressions] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Bugfix `useThemeStyles`**: Pinia setup stores auto-unwrap refs, so passing `editor.document` directly passed the value (not the ref). Changed to accept a getter `() => doc` instead of `Ref<doc>`, preventing `Cannot read properties of null (reading 'value')` crash. Updated all 3 callers (BlockEditor.vue, DocumentPreview.vue, PublicPage.vue).
+- **`safeAlpineValue` helper** (`helpers.ts`): Alpine directives are evaluated as JS expressions, so typing a bare Tailwind class like `h-[600px]` into the `x-bind:class` value field of AlpineControl throws a SyntaxError. The helper validates the value with `new Function()`, and when it fails, wraps it in single quotes so it behaves as a string literal — what a non-technical user expects. Applied in all 3 preview components' `alpineAttrs` computed. Cosmetic fix: previously a silent `eval()` error in the console, now silently corrected to the expected display behaviour.
+
+---
+
 ## [Theme: inject @theme colors so named custom classes (e.g. bg-light-grey) are recognized at runtime] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - **Bug**: custom theme colors defined in ThemeModal (name + hex) were stored on the document but never registered with `@tailwindcss/browser`. Typing a named class like `bg-light-grey` into Custom Classes (or any other CSS textarea) silently produced no CSS, because the runtime engine didn't know `light-grey` as a valid color.

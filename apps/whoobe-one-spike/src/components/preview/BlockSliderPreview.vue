@@ -138,7 +138,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
 import { resolveDisplayUrl } from '../../resolve-display-url'
-import { customAttrs } from '../../helpers'
+import { customAttrs, safeAlpineValue } from '../../helpers'
 import { mountAnimation } from '../../scripts/gsap-actions'
 import BlockElementPreview from './BlockElementPreview.vue'
 import BlockIFramePreview from './BlockIFramePreview.vue'
@@ -290,7 +290,7 @@ const alpineAttrs = computed(() => {
   if (!alpine) return {}
   const result: Record<string, string> = {}
   for (const key of Object.keys(alpine)) {
-    if (alpine[key]) result[key] = alpine[key]
+    if (alpine[key]) result[key] = safeAlpineValue(alpine[key])
   }
   return result
 })
