@@ -43,6 +43,13 @@
               <input v-model="form.supportedLocalesText" type="text" placeholder="en, it, de" class="w-full px-3 py-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
             </div>
           </div>
+          <div>
+            <label class="block font-semibold text-slate-400 light:text-slate-600 mb-1">Theme</label>
+            <select v-model="form.themeId" class="w-full px-3 py-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500">
+              <option value="">No theme</option>
+              <option v-for="t in themeOptions" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </div>
           <div v-if="error" class="px-3 py-2 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-300">{{ error }}</div>
           <div class="flex justify-end gap-2 pt-2">
             <button type="submit" :disabled="saving" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-50">{{ saving ? 'Saving…' : 'Save' }}</button>
@@ -103,43 +110,6 @@
       <div v-show="activeSubTab === 'templates'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-4">
         <WebsiteTemplatesManager :website-id="websiteId" />
       </div>
-      <div v-show="activeSubTab === 'theme'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-4">
-        <div v-if="themeLoading" class="text-xs text-slate-500 text-center py-8">Loading themes…</div>
-        <div v-else class="max-w-lg space-y-4">
-          <div v-for="t in websiteThemesList" :key="t.id" class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-white/40 p-3">
-            <div class="flex items-center justify-between mb-2">
-              <input v-model="t.name" type="text" class="flex-1 text-xs font-semibold bg-transparent border-none text-slate-200 light:text-slate-800 focus:outline-none focus:ring-0" @change="saveThemeName(t)" />
-              <div class="flex items-center gap-1">
-                <span v-if="t.id === themeDefaultId" class="text-[10px] text-indigo-400 font-semibold">DEFAULT</span>
-                <button v-if="t.id !== themeDefaultId" type="button" class="text-[10px] text-indigo-400 hover:text-indigo-300" @click="setDefaultTheme(t.id)">Set default</button>
-                <button type="button" class="text-rose-400 hover:text-rose-300 text-xs" @click="removeTheme(t.id)" :disabled="websiteThemesList.length <= 1">✕</button>
-              </div>
-            </div>
-            <div class="space-y-1.5">
-              <div v-for="(c, i) in t.colors" :key="i" class="flex items-center gap-2">
-                <input v-model="c.name" type="text" placeholder="name" class="flex-1 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1 text-slate-200 light:text-slate-800" />
-                <input v-model="c.hex" type="color" class="w-7 h-7 rounded border border-slate-700 cursor-pointer" />
-                <span class="text-[10px] text-slate-500 font-mono w-14">{{ c.hex }}</span>
-                <button type="button" class="text-rose-400 hover:text-rose-300 text-xs" @click="removeThemeColor(t, i)">✕</button>
-              </div>
-              <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300" @click="addThemeColor(t)">+ Add color</button>
-              <div class="border-t border-slate-800 light:border-slate-200 pt-1.5 mt-1.5">
-                <div v-for="(f, i) in t.fonts" :key="i" class="flex items-center gap-2 mb-1">
-                  <span class="text-xs text-slate-300 flex-1">{{ f.replace('+', ' ') }}</span>
-                  <button type="button" class="text-rose-400 hover:text-rose-300 text-xs" @click="removeThemeFont(t, i)">✕</button>
-                </div>
-                <div class="flex items-center gap-1 mt-1">
-                  <input v-model="newFontInputs[t.id]" type="text" placeholder="Font name" class="text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1 text-slate-200 light:text-slate-800 w-36" @keydown.enter="addThemeFont(t)" />
-                  <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300" @click="addThemeFont(t)">+ Add</button>
-                </div>
-              </div>
-            </div>
-            <div class="flex justify-end pt-2">
-              <button type="button" class="text-xs px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="themeSavingIds.has(t.id)" @click="saveThemeColors(t)">{{ themeSavingIds.has(t.id) ? 'Saving…' : 'Save' }}</button>
-            </div>
-          </div>
-          <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300" @click="addTheme">+ New theme</button>
-        </div>
       </div>
     </div>
 
@@ -174,10 +144,7 @@ import type { WebsiteRecord } from '../../utils/websites-api'
 import type { MenuItem, WebsitePathRecord } from '../../utils/menus-api'
 import type { WhoobeOnePage } from '../../utils/pages-api'
 import { fetchWebsiteTemplates, type WebsiteTemplate } from '../../utils/website-templates-api'
-import {
-  fetchWebsiteThemes, createWebsiteTheme, updateWebsiteTheme, deleteWebsiteTheme,
-  type WebsiteTheme,
-} from '../../utils/websites-api'
+import { fetchThemes, type ThemeRecord } from '../../utils/themes-api'
 import MenuItemRow from '../settings/MenuItemRow.vue'
 import PagePickerDrawer from './PagePickerDrawer.vue'
 import WebsiteTemplatesManager from './WebsiteTemplatesManager.vue'
@@ -200,13 +167,15 @@ const form = ref({
   domainsText: '',
   defaultLocale: 'en',
   supportedLocalesText: 'en',
+  themeId: '',
 })
+
+const themeOptions = ref<ThemeRecord[]>([])
 
 const subTabs: { key: WebsiteSubTab; label: string }[] = [
   { key: 'settings', label: 'Settings' },
   { key: 'paths', label: 'Paths' },
   { key: 'templates', label: 'Templates' },
-  { key: 'theme', label: 'Theme' },
 ]
 
 const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'website' && t.itemId === props.websiteId))
@@ -223,105 +192,6 @@ async function loadTemplates() {
     websiteTemplates.value = await fetchWebsiteTemplates(getDefaultCoreApiUrl(), props.websiteId)
   } catch {
     websiteTemplates.value = []
-  }
-}
-
-// --- Themes (multi) — inline CRUD ---
-
-const themeLoading = ref(false)
-const themeSavingIds = ref<Set<string>>(new Set())
-const websiteThemesList = ref<WebsiteTheme[]>([])
-const themeDefaultId = ref('')
-const newFontInputs = ref<Record<string, string>>({})
-
-async function loadTheme() {
-  themeLoading.value = true
-  try {
-    const data = await fetchWebsiteThemes(getDefaultCoreApiUrl(), props.websiteId)
-    websiteThemesList.value = data.themes
-    themeDefaultId.value = data.defaultThemeId
-  } catch {
-    websiteThemesList.value = []
-    themeDefaultId.value = ''
-  } finally {
-    themeLoading.value = false
-  }
-}
-
-async function addTheme() {
-  try {
-    const created = await createWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, { name: 'New Theme' })
-    websiteThemesList.value.push(created)
-  } catch (e: any) {
-    alert(e?.message || 'Failed to create theme')
-  }
-}
-
-async function removeTheme(themeId: string) {
-  if (!confirm('Delete this theme?')) return
-  try {
-    await deleteWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, themeId)
-    websiteThemesList.value = websiteThemesList.value.filter((t) => t.id !== themeId)
-    if (themeDefaultId.value === themeId) themeDefaultId.value = websiteThemesList.value[0]?.id ?? ''
-  } catch (e: any) {
-    alert(e?.message || 'Failed to delete theme')
-  }
-}
-
-async function setDefaultTheme(themeId: string) {
-  try {
-    await updateWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, themeId, { isDefault: true })
-    themeDefaultId.value = themeId
-  } catch (e: any) {
-    alert(e?.message || 'Failed to set default theme')
-  }
-}
-
-async function saveThemeName(t: WebsiteTheme) {
-  try {
-    await updateWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, t.id, { name: t.name })
-  } catch {
-    // Silent — name is cosmetic.
-  }
-}
-
-function addThemeColor(t: WebsiteTheme) {
-  t.colors.push({ name: `color-${t.colors.length + 1}`, hex: '#6366f1' })
-}
-
-function removeThemeColor(t: WebsiteTheme, i: number) {
-  t.colors.splice(i, 1)
-  saveThemeColors(t)
-}
-
-function addThemeFont(t: WebsiteTheme) {
-  const input = newFontInputs.value[t.id]
-  if (!input?.trim()) return
-  const value = input.trim().replaceAll(' ', '+')
-  if (!t.fonts.includes(value)) t.fonts.push(value)
-  newFontInputs.value[t.id] = ''
-}
-
-function removeThemeFont(t: WebsiteTheme, i: number) {
-  t.fonts.splice(i, 1)
-  saveThemeColors(t)
-}
-
-async function saveThemeColors(t: WebsiteTheme) {
-  const ids = themeSavingIds.value
-  ids.add(t.id)
-  themeSavingIds.value = new Set(ids)
-  try {
-    await updateWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, t.id, {
-      colors: t.colors,
-      fonts: t.fonts,
-    })
-  } catch (e: any) {
-    alert(e?.message || 'Failed to save theme')
-  } finally {
-    const ids2 = themeSavingIds.value
-    ids2.delete(t.id)
-    themeSavingIds.value = new Set(ids2)
   }
 }
 
@@ -429,12 +299,21 @@ async function load() {
       domainsText: website.value.domains.join('\n'),
       defaultLocale: website.value.defaultLocale,
       supportedLocalesText: website.value.supportedLocales.join(', '),
+      themeId: website.value.themeId ?? '',
     }
   } catch (e) {
     console.warn('Failed to load website:', e)
     website.value = null
   } finally {
     isLoading.value = false
+  }
+}
+
+async function loadThemeOptions() {
+  try {
+    themeOptions.value = await fetchThemes(getDefaultCoreApiUrl())
+  } catch {
+    themeOptions.value = []
   }
 }
 
@@ -447,6 +326,7 @@ async function save() {
       domains: form.value.domainsText.split('\n').map((d) => d.trim()).filter(Boolean),
       defaultLocale: form.value.defaultLocale.trim() || 'en',
       supportedLocales: form.value.supportedLocalesText.split(',').map((l) => l.trim()).filter(Boolean),
+      themeId: form.value.themeId || null,
     }
     const updated = await websitesStore.update(props.websiteId, input)
     website.value = updated
@@ -606,14 +486,14 @@ async function updatePathItems(pathGroup: WebsitePathRecord, items: MenuItem[], 
 onMounted(() => {
   load()
   loadTemplates()
-  loadTheme()
+  loadThemeOptions()
   pathsStore.refreshPaths(props.websiteId)
 })
 
 watch(() => props.websiteId, () => {
   load()
   loadTemplates()
-  loadTheme()
+  loadThemeOptions()
   pathsStore.refreshPaths(props.websiteId)
 })
 
