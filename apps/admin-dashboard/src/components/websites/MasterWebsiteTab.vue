@@ -110,7 +110,6 @@
       <div v-show="activeSubTab === 'templates'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-4">
         <WebsiteTemplatesManager :website-id="websiteId" />
       </div>
-      </div>
     </div>
 
     <!-- Page Picker Drawer -->
@@ -128,9 +127,8 @@
   <div v-else class="p-6">
     <div class="rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center text-xs text-slate-500">
       This website is no longer available.
-</div>
-
-      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
