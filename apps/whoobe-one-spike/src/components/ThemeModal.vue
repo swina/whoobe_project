@@ -99,7 +99,7 @@ const editor = useEditorStore()
 const newFont = ref('')
 
 // Load themes from the new independent themes API.
-const themeList = ref<{ id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles: string }[]>([])
+const themeList = ref<{ id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles: string; tailwindClasses: string }[]>([])
 const themeLoading = ref(true)
 
 async function loadThemes() {
@@ -110,7 +110,7 @@ async function loadThemes() {
     const res = await fetch(`${baseUrl}/whoobe-one/themes`, { credentials: 'include' })
     if (!res.ok) return
     const body = await res.json()
-    themeList.value = (body.themes ?? []).map((t: any) => ({ ...t, styles: t.styles ?? '' }))
+    themeList.value = (body.themes ?? []).map((t: any) => ({ ...t, styles: t.styles ?? '', tailwindClasses: t.tailwindClasses ?? '' }))
   } catch {
     // Silent
   } finally {
@@ -134,7 +134,7 @@ function pickTheme(id: string) {
   selectedThemeId.value = id
   const t = themeList.value.find((t) => t.id === id)
   if (t) {
-    editor.setWebsiteTheme({ colors: t.colors ?? [], fonts: t.fonts ?? [], styles: t.styles ?? '' })
+    editor.setWebsiteTheme({ colors: t.colors ?? [], fonts: t.fonts ?? [], styles: t.styles ?? '', tailwindClasses: t.tailwindClasses ?? '' })
   }
 }
 
