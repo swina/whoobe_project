@@ -4,6 +4,13 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Theme: font picker shows website theme fonts + Theme modal shows theme selector] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **FontControl.vue** (Customize > Typography > Font): now cascades through per-page theme fonts → website theme fonts → default env list, so website theme fonts appear in the editor's font selector.
+- **ThemeModal.vue**: rewritten to show the list of website themes (`editor.websiteThemes`) at the top, with a radio-button selector. The user picks a theme for the current page, which sets `editor.websiteTheme` (the active session theme). Below the theme picker, the per-page color/font overrides remain editable — they override the website theme when same color name, or when the page has its own font list. The old "Page Theme" label is now just "Theme", matching the topbar button.
+
+---
+
 ## [Multiple named themes per website: create, edit, delete, set default] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - **Data model**: themes are now stored as `settings.themes[]` (array of `{ id, name, colors, fonts }`) with `settings.defaultThemeId` pointer. Backward-compatible: the old `settings.theme` singular format is migrated on read.
