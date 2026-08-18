@@ -9,6 +9,7 @@ export interface WebsiteRecord {
   defaultLocale: string;
   supportedLocales: string[];
   settings: Record<string, unknown> | null;
+  themeId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +37,7 @@ export async function createWebsite(input: {
   defaultLocale?: string;
   supportedLocales?: string[];
   settings?: Record<string, unknown>;
+  themeId?: string | null;
 }): Promise<WebsiteRecord> {
   const db = getDb();
   const [row] = await db
@@ -46,6 +48,7 @@ export async function createWebsite(input: {
       defaultLocale: input.defaultLocale ?? 'en',
       supportedLocales: input.supportedLocales ?? ['en'],
       settings: input.settings ?? {},
+      themeId: input.themeId ?? null,
     })
     .returning();
   return row;
@@ -59,6 +62,7 @@ export async function updateWebsite(
     defaultLocale?: string;
     supportedLocales?: string[];
     settings?: Record<string, unknown>;
+    themeId?: string | null;
   }
 ): Promise<WebsiteRecord | null> {
   const db = getDb();
@@ -68,6 +72,7 @@ export async function updateWebsite(
   if (input.defaultLocale !== undefined) values.defaultLocale = input.defaultLocale;
   if (input.supportedLocales !== undefined) values.supportedLocales = input.supportedLocales;
   if (input.settings !== undefined) values.settings = input.settings;
+  if (input.themeId !== undefined) values.themeId = input.themeId;
   const [row] = await db.update(websites).set(values).where(eq(websites.id, id)).returning();
   return row ?? null;
 }

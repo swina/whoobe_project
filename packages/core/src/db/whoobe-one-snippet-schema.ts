@@ -17,6 +17,7 @@ export const whoobeOneSnippets = pgTable('whoobe_one_snippets', {
   category: text('category').notNull(),
   icon: text('icon'),
   node: jsonb('node').notNull(),
+  themeId: uuid('theme_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

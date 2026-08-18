@@ -20,6 +20,7 @@ export interface WhoobePageRecord {
   pimcoreId: string | null;
   path: string | null;
   websiteId: string | null;
+  themeId: string | null;
   publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -65,6 +66,7 @@ export async function createWhoobePage(input: {
   pimcoreId?: string | null;
   path?: string | null;
   websiteId?: string | null;
+  themeId?: string | null;
 }): Promise<WhoobePageRecord> {
   const db = getDb();
   const [row] = await db
@@ -87,6 +89,7 @@ export async function createWhoobePage(input: {
       pimcoreId: input.pimcoreId ?? null,
       path: input.path ?? null,
       websiteId: input.websiteId ?? null,
+      themeId: input.themeId ?? null,
     })
     .returning();
   await indexPage(row);
@@ -106,6 +109,7 @@ export async function updateWhoobePage(
     locale?: string;
     path?: string | null;
     websiteId?: string | null;
+    themeId?: string | null;
     seo?: PageSeo | null;
     sitemap?: PageSitemapSettings | null;
     search?: PageSearchSettings | null;
@@ -126,6 +130,7 @@ export async function updateWhoobePage(
   if (input.locale !== undefined) values.locale = input.locale;
   if (input.path !== undefined) values.path = input.path;
   if (input.websiteId !== undefined) values.websiteId = input.websiteId;
+  if (input.themeId !== undefined) values.themeId = input.themeId;
 
   if (input.published !== undefined) {
     values.published = input.published;
