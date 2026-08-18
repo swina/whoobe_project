@@ -10,12 +10,15 @@
 
       <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-5">
         <!-- Website themes selector -->
-        <section v-if="websiteThemes.length" class="space-y-2">
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Website themes</h3>
+        <section v-if="themeLoading" class="space-y-2">
+          <p class="text-[11px] text-gray-400 text-center py-4">Loading themes…</p>
+        </section>
+        <section v-else-if="themeList.length" class="space-y-2">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Themes</h3>
           <p class="text-[11px] text-gray-400">Choose a theme for this page, or customize per-page below.</p>
           <div class="flex flex-col gap-1">
             <button
-              v-for="t in websiteThemes"
+              v-for="t in themeList"
               :key="t.id"
               type="button"
               class="flex items-center gap-2 text-xs border rounded px-3 py-2 text-left transition"
@@ -87,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { X } from '@lucide/vue'
 import { useEditorStore } from '../store/editor'
 
@@ -95,29 +98,47 @@ defineEmits<{ close: [] }>()
 const editor = useEditorStore()
 const newFont = ref('')
 
-// Website themes from the editor store (loaded when a page/snippet loads).
-const websiteThemes = computed(() => editor.websiteThemes)
+// Load themes from the new independent themes API.
+const themeList = ref<{ id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles: string }[]>([])
+const themeLoading = ref(true)
+
+async function loadThemes() {
+  try {
+    const baseUrl = typeof window !== 'undefined' && window.location?.hostname
+      ? `${window.location.protocol}//${window.location.hostname}:3003`
+      : 'http://localhost:3003'
+    const res = await fetch(`${baseUrl}/whoobe-one/themes`, { credentials: 'include' })
+    if (!res.ok) return
+    const body = await res.json()
+    themeList.value = (body.themes ?? []).map((t: any) => ({ ...t, styles: t.styles ?? '' }))
+  } catch {
+    // Silent
+  } finally {
+    themeLoading.value = false
+  }
+}
+
 const selectedThemeId = ref<string>('')
 
-// On mount, detect which theme is currently active by matching the active
-// websiteTheme colors/fonts against the available themes list.
 function init() {
-  if (!websiteThemes.value.length) return
+  if (!themeList.value.length) return
   const active = editor.websiteTheme
-  const match = websiteThemes.value.find(
+  const match = themeList.value.find(
     (t) => JSON.stringify(t.colors) === JSON.stringify(active.colors) && JSON.stringify(t.fonts) === JSON.stringify(active.fonts)
   )
-  selectedThemeId.value = match?.id ?? websiteThemes.value[0].id
+  selectedThemeId.value = match?.id ?? themeList.value[0]?.id ?? ''
 }
 init()
 
 function pickTheme(id: string) {
   selectedThemeId.value = id
-  const t = websiteThemes.value.find((t) => t.id === id)
+  const t = themeList.value.find((t) => t.id === id)
   if (t) {
-    editor.setWebsiteTheme({ colors: t.colors ?? [], fonts: t.fonts ?? [] })
+    editor.setWebsiteTheme({ colors: t.colors ?? [], fonts: t.fonts ?? [], styles: t.styles ?? '' })
   }
 }
+
+onMounted(loadThemes)
 
 // Per-page overrides (existing document.theme logic, unchanged).
 function ensureTheme() {
