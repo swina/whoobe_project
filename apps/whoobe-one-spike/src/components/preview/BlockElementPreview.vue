@@ -19,19 +19,24 @@
     :class="classe"
     :style="stile"
   />
-  <component
-    v-else
-    :is="component"
-    :id="element.id"
-    ref="rootEl"
-    :class="classe"
-    :style="stile"
-    :src="displaySrc"
-    :alt="displayAlt"
-    :placeholder="element.placeholder"
-    v-bind="extraAttrs"
-    v-html="displayContent"
-  ></component>
+<component
+  v-else
+  :is="component"
+  :id="element.id"
+  ref="rootEl"
+  :class="classe"
+  :style="stile"
+  :src="displaySrc"
+  :alt="displayAlt"
+  :placeholder="element.placeholder"
+  v-bind="extraAttrs"
+>
+  <template v-if="element.tag === 'button' || element.tag === 'submit' || element.tag === 'reset'">
+    <span v-if="buttonIconComponent" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" class="w-4 h-4" /></span>
+    <span v-html="displayContent"></span>
+  </template>
+  <template v-else v-html="displayContent"></template>
+</component>
 </template>
 
 <script setup lang="ts">
@@ -229,6 +234,20 @@ watch(
       if ((props.element.tag === 'lucideicon' ? displayContent.value : null) === name) {
         iconComponent.value = resolved
       }
+    })
+  },
+  { immediate: true }
+)
+
+// Button icon: resolves the Lucide icon name set on button/submit/reset elements.
+const buttonIconComponent = shallowRef<Component | null>(null)
+watch(
+  () => (props.element.tag === 'button' || props.element.tag === 'submit' || props.element.tag === 'reset') ? (props.element as any).buttonIcon : null,
+  (name) => {
+    buttonIconComponent.value = null
+    if (!name) return
+    resolveLucideIcon(name).then((resolved) => {
+      buttonIconComponent.value = resolved
     })
   },
   { immediate: true }
