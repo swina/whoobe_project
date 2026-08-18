@@ -53,7 +53,7 @@
             </div>
             <textarea
               v-model="t.styles"
-              class="w-full text-xs font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1.5 text-slate-200 light:text-slate-800 h-20 resize-y"
+              class="w-full text-xs font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1.5 text-slate-200 light:text-slate-800 min-h-[450px] resize-y"
               placeholder="/* CSS rules */ .my-class { color: red; }"
               @blur="validateStyles(t)"
             ></textarea>
