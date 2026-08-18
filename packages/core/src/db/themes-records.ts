@@ -8,6 +8,7 @@ export interface ThemeRecord {
   colors: { name: string; hex: string }[];
   fonts: string[];
   styles: string;
+  tailwindClasses: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +29,7 @@ export async function createTheme(input: {
   colors?: { name: string; hex: string }[];
   fonts?: string[];
   styles?: string;
+  tailwindClasses?: string;
 }): Promise<ThemeRecord> {
   const db = getDb();
   const [row] = await db
@@ -37,6 +39,7 @@ export async function createTheme(input: {
       colors: input.colors ?? [],
       fonts: input.fonts ?? [],
       styles: input.styles ?? '',
+      tailwindClasses: input.tailwindClasses ?? '',
     })
     .returning();
   return row;
@@ -49,6 +52,7 @@ export async function updateTheme(
     colors?: { name: string; hex: string }[];
     fonts?: string[];
     styles?: string;
+    tailwindClasses?: string;
   }
 ): Promise<ThemeRecord | null> {
   const db = getDb();
@@ -57,6 +61,7 @@ export async function updateTheme(
   if (input.colors !== undefined) values.colors = input.colors;
   if (input.fonts !== undefined) values.fonts = input.fonts;
   if (input.styles !== undefined) values.styles = input.styles;
+  if (input.tailwindClasses !== undefined) values.tailwindClasses = input.tailwindClasses;
   const [row] = await db.update(themes).set(values).where(eq(themes.id, id)).returning();
   return row ?? null;
 }

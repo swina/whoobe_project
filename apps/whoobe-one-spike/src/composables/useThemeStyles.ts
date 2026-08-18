@@ -3,6 +3,7 @@ import { useEditorStore } from '../store/editor'
 
 const THEME_STYLE_ID = 'whoobe-theme-styles'
 const CUSTOM_STYLE_ID = 'whoobe-custom-styles'
+const TAILWIND_CLASSES_ID = 'whoobe-tailwind-classes'
 
 /**
  * Injects theme styles into the page head so @tailwindcss/browser and the
@@ -88,6 +89,23 @@ export function useThemeStyles(getDoc: () => any) {
       style.textContent = styles
     } else {
       if (customExisting) customExisting.remove()
+    }
+
+    // --- Tailwind custom classes: inject into a hidden <div> so
+    // @tailwindcss/browser's DOM scanner picks them up and generates CSS ---
+    const twExisting = document.getElementById(TAILWIND_CLASSES_ID)
+    const twClasses = webTheme?.tailwindClasses?.trim()
+    if (twClasses) {
+      let div = twExisting as HTMLDivElement | null
+      if (!div) {
+        div = document.createElement('div')
+        div.id = TAILWIND_CLASSES_ID
+        div.style.display = 'none'
+        document.body.appendChild(div)
+      }
+      div.className = twClasses
+    } else {
+      if (twExisting) twExisting.remove()
     }
   }
 

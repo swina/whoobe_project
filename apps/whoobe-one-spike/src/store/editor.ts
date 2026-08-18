@@ -50,10 +50,10 @@ export const useEditorStore = defineStore('editor', () => {
   // snippet is loaded that belongs to a website. Acts as the base theme;
   // the per-page theme (document.theme) overrides it when present. Managed
   // via the Theme modal which can save back to the website.
-  const websiteTheme = ref<{ colors: { name: string; hex: string }[]; fonts: string[]; styles: string }>({ colors: [], fonts: [], styles: '' })
+  const websiteTheme = ref<{ colors: { name: string; hex: string }[]; fonts: string[]; styles: string; tailwindClasses: string }>({ colors: [], fonts: [], styles: '', tailwindClasses: '' })
 
   // All available themes for the current website (multiple named themes).
-  const websiteThemes = ref<{ id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles: string }[]>([])
+  const websiteThemes = ref<{ id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles: string; tailwindClasses: string }[]>([])
 
   // Not from the source - the CMS integration plan's embedding contract
   // (docs/plans/cms/whoobe-one-editor-integration-plan.md §6): a
@@ -148,11 +148,11 @@ export const useEditorStore = defineStore('editor', () => {
   function isCollapsed(id: string): boolean {
     return collapsedIds.value.has(id)
   }
-  function setWebsiteTheme(v: { colors: { name: string; hex: string }[]; fonts: string[]; styles?: string }) {
-    websiteTheme.value = { colors: v.colors, fonts: v.fonts, styles: v.styles ?? '' }
+  function setWebsiteTheme(v: { colors: { name: string; hex: string }[]; fonts: string[]; styles?: string; tailwindClasses?: string }) {
+    websiteTheme.value = { colors: v.colors, fonts: v.fonts, styles: v.styles ?? '', tailwindClasses: v.tailwindClasses ?? '' }
   }
-  function setWebsiteThemes(v: { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles?: string }[]) {
-    websiteThemes.value = v.map((t) => ({ ...t, styles: t.styles ?? '' }))
+  function setWebsiteThemes(v: { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles?: string; tailwindClasses?: string }[]) {
+    websiteThemes.value = v.map((t) => ({ ...t, styles: t.styles ?? '', tailwindClasses: t.tailwindClasses ?? '' }))
   }
 
   return {

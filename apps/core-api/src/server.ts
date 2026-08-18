@@ -1330,7 +1330,7 @@ app.get('/whoobe-one/themes', requirePermission(PERMISSIONS.OBJECTS_READ), async
 
 app.post('/whoobe-one/themes', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, colors, fonts, styles } = req.body ?? {};
+    const { name, colors, fonts, styles, tailwindClasses } = req.body ?? {};
     if (!name || typeof name !== 'string') {
       res.status(400).json({ error: 'name is required' });
       return;
@@ -1340,6 +1340,7 @@ app.post('/whoobe-one/themes', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
       colors: Array.isArray(colors) ? colors.filter((c: any) => c && typeof c.name === 'string' && typeof c.hex === 'string') : undefined,
       fonts: Array.isArray(fonts) ? fonts.filter((f: any) => typeof f === 'string') : undefined,
       styles: typeof styles === 'string' ? styles : undefined,
+      tailwindClasses: typeof tailwindClasses === 'string' ? tailwindClasses : undefined,
     });
     res.status(201).json({ theme });
   } catch (error: any) {
@@ -1364,12 +1365,13 @@ app.get('/whoobe-one/themes/:id', requirePermission(PERMISSIONS.OBJECTS_READ), a
 
 app.put('/whoobe-one/themes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, colors, fonts, styles } = req.body ?? {};
+    const { name, colors, fonts, styles, tailwindClasses } = req.body ?? {};
     const theme = await updateTheme(req.params.id, {
       name: typeof name === 'string' ? name : undefined,
       colors: Array.isArray(colors) ? colors.filter((c: any) => c && typeof c.name === 'string' && typeof c.hex === 'string') : undefined,
       fonts: Array.isArray(fonts) ? fonts.filter((f: any) => typeof f === 'string') : undefined,
       styles: typeof styles === 'string' ? styles : undefined,
+      tailwindClasses: typeof tailwindClasses === 'string' ? tailwindClasses : undefined,
     });
     if (!theme) {
       res.status(404).json({ error: 'Theme not found' });

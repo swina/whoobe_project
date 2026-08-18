@@ -6,6 +6,7 @@ export interface ThemeRecord {
   colors: { name: string; hex: string }[]
   fonts: string[]
   styles: string
+  tailwindClasses: string
   createdAt: string
   updatedAt: string
 }
@@ -42,7 +43,7 @@ export async function fetchThemeById(baseUrl: string, id: string): Promise<Theme
 
 export async function createTheme(
   baseUrl: string,
-  input: { name: string; colors?: { name: string; hex: string }[]; fonts?: string[]; styles?: string }
+  input: { name: string; colors?: { name: string; hex: string }[]; fonts?: string[]; styles?: string; tailwindClasses?: string }
 ): Promise<ThemeRecord> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/themes`, {
     method: 'POST',
@@ -57,7 +58,7 @@ export async function createTheme(
 export async function updateTheme(
   baseUrl: string,
   id: string,
-  input: { name?: string; colors?: { name: string; hex: string }[]; fonts?: string[]; styles?: string }
+  input: { name?: string; colors?: { name: string; hex: string }[]; fonts?: string[]; styles?: string; tailwindClasses?: string }
 ): Promise<ThemeRecord> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/themes/${id}`, {
     method: 'PUT',

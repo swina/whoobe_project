@@ -81,15 +81,15 @@ export async function loadAllThemes(editor: EditorStore): Promise<void> {
     if (!res.ok) return
     const body = await res.json()
     const websites = body.websites ?? []
-    const allThemes: { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles: string }[] = []
+    const allThemes: { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles: string; tailwindClasses: string }[] = []
     for (const site of websites) {
       for (const t of site.themes ?? []) {
-        allThemes.push({ id: `${site.websiteId}:${t.id}`, name: `${t.name} (${site.websiteName})`, colors: t.colors ?? [], fonts: t.fonts ?? [], styles: t.styles ?? '' })
+        allThemes.push({ id: `${site.websiteId}:${t.id}`, name: `${t.name} (${site.websiteName})`, colors: t.colors ?? [], fonts: t.fonts ?? [], styles: t.styles ?? '', tailwindClasses: t.tailwindClasses ?? '' })
       }
     }
     editor.setWebsiteThemes(allThemes)
     if (allThemes.length > 0) {
-      editor.setWebsiteTheme({ colors: allThemes[0].colors ?? [], fonts: allThemes[0].fonts ?? [], styles: allThemes[0].styles ?? '' })
+      editor.setWebsiteTheme({ colors: allThemes[0].colors ?? [], fonts: allThemes[0].fonts ?? [], styles: allThemes[0].styles ?? '', tailwindClasses: allThemes[0].tailwindClasses ?? '' })
     }
   } catch {
     // Silent.
@@ -111,10 +111,10 @@ export async function loadWebsiteTheme(editor: EditorStore, websiteId: string): 
     const body = await res.json()
     const themes = body.themes ?? []
     const defaultId = body.defaultThemeId ?? ''
-    editor.setWebsiteThemes(themes.map((t: any) => ({ id: t.id, name: t.name, colors: t.colors ?? [], fonts: t.fonts ?? [], styles: t.styles ?? '' })))
+    editor.setWebsiteThemes(themes.map((t: any) => ({ id: t.id, name: t.name, colors: t.colors ?? [], fonts: t.fonts ?? [], styles: t.styles ?? '', tailwindClasses: t.tailwindClasses ?? '' })))
     const defaultTheme = themes.find((t: any) => t.id === defaultId) ?? themes[0]
     if (defaultTheme) {
-      editor.setWebsiteTheme({ colors: defaultTheme.colors ?? [], fonts: defaultTheme.fonts ?? [], styles: defaultTheme.styles ?? '' })
+      editor.setWebsiteTheme({ colors: defaultTheme.colors ?? [], fonts: defaultTheme.fonts ?? [], styles: defaultTheme.styles ?? '', tailwindClasses: defaultTheme.tailwindClasses ?? '' })
     }
   } catch {
     // Silent — website theme is optional; the editor works fine without it.

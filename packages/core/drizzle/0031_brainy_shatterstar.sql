@@ -1,0 +1,1 @@
+ALTER TABLE "themes" ADD COLUMN "tailwind_classes" text DEFAULT '' NOT NULL;

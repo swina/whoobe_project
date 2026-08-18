@@ -59,6 +59,18 @@
             ></textarea>
             <div v-if="styleErrors[t.id]" class="text-[10px] text-rose-400 mt-0.5">{{ styleErrors[t.id] }}</div>
           </div>
+
+          <!-- Tailwind Custom Classes -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Tailwind Custom Classes</span>
+            </div>
+            <textarea
+              v-model="t.tailwindClasses"
+              class="w-full text-xs font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1.5 text-slate-200 light:text-slate-800 min-h-[200px] resize-y"
+              placeholder="space-separated Tailwind utility classes, e.g.&#10;shadow-lg rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600"
+            ></textarea>
+          </div>
         </div>
 
         <div class="flex justify-end pt-2">
@@ -166,6 +178,7 @@ async function saveTheme(t: ThemeRecord) {
       colors: t.colors,
       fonts: t.fonts,
       styles: t.styles,
+      tailwindClasses: t.tailwindClasses,
     })
   } catch (e: any) {
     alert(e?.message || 'Failed to save theme')

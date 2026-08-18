@@ -6,6 +6,7 @@ export const themes = pgTable('themes', {
   colors: jsonb('colors').$type<{ name: string; hex: string }[]>().notNull().default([]),
   fonts: text('fonts').array().notNull().default([]),
   styles: text('styles').notNull().default(''),
+  tailwindClasses: text('tailwind_classes').notNull().default(''),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
