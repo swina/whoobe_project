@@ -28,7 +28,7 @@
   :style="stile"
   v-bind="extraAttrs"
 >
-  <span v-if="buttonIconComponent" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" class="w-4 h-4" /></span>
+  <span v-if="buttonIconComponent" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" :style="{ width: buttonIconSize.width + 'px', height: buttonIconSize.height + 'px' }" /></span>
   <span v-html="displayContent"></span>
 </component>
 <component
@@ -249,7 +249,7 @@ watch(
 // Button icon: resolves the Lucide icon name set on button/submit/reset elements.
 const buttonIconComponent = shallowRef<Component | null>(null)
 watch(
-  () => (props.element.tag === 'button' || props.element.tag === 'submit' || props.element.tag === 'reset') ? (props.element as any).buttonIcon : null,
+  () => (props.element as any).buttonIcon,
   (name) => {
     buttonIconComponent.value = null
     if (!name) return
@@ -259,6 +259,10 @@ watch(
   },
   { immediate: true }
 )
+const buttonIconSize = computed(() => ({
+  width: (props.element as any).buttonIconWidth ?? 16,
+  height: (props.element as any).buttonIconHeight ?? 16,
+}))
 
 // A UUID (asset reference) is not a URL - resolved via resolveDisplayUrl.
 

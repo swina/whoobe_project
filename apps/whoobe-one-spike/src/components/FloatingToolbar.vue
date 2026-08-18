@@ -195,7 +195,7 @@
       <button type="button" title="Button icon" class="toolbar-icon" @click="openButtonIconPicker"><Image class="w-4 h-4" /></button>
       <template v-if="showButtonIconPicker">
         <div class="fixed inset-0 z-[10000]" @click="showButtonIconPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" @click.stop>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-64 space-y-2" @click.stop>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">Lucide icon name</label>
             <div class="flex items-center gap-1">
@@ -208,11 +208,21 @@
               />
             </div>
             <div class="flex items-center gap-2 mt-1">
-              <span v-if="buttonIconPreview" class="inline-flex items-center justify-center w-5 h-5 text-gray-600">
-                <component :is="buttonIconPreview" />
+              <span v-if="buttonIconPreview" class="inline-flex items-center justify-center text-gray-600">
+                <component :is="buttonIconPreview" :style="{ width: buttonIconWidthDraft + 'px', height: buttonIconHeightDraft + 'px' }" />
               </span>
               <span v-else class="text-[10px] text-gray-400">No icon</span>
               <span class="text-[10px] text-gray-500 font-mono">{{ buttonIconDraft }}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-0.5">Width</label>
+              <input v-model.number="buttonIconWidthDraft" type="number" min="8" max="64" class="w-full px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-0.5">Height</label>
+              <input v-model.number="buttonIconHeightDraft" type="number" min="8" max="64" class="w-full px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500" />
             </div>
           </div>
           <div class="flex justify-between pt-1">
@@ -569,6 +579,8 @@ const showLinkPicker = ref(false)
 const linkUrlDraft = ref('')
 const showButtonIconPicker = ref(false)
 const buttonIconDraft = ref('')
+const buttonIconWidthDraft = ref(16)
+const buttonIconHeightDraft = ref(16)
 const buttonIconPreview = shallowRef<Component | null>(null)
 const linkTargetDraft = ref('_self')
 
@@ -1028,19 +1040,28 @@ async function previewButtonIcon() {
 function applyButtonIcon() {
   if (!editor.current) return
   editor.current.buttonIcon = buttonIconDraft.value.trim()
+  editor.current.buttonIconWidth = buttonIconWidthDraft.value
+  editor.current.buttonIconHeight = buttonIconHeightDraft.value
   showButtonIconPicker.value = false
 }
 
 function clearButtonIcon() {
   buttonIconDraft.value = ''
+  buttonIconWidthDraft.value = 16
+  buttonIconHeightDraft.value = 16
   buttonIconPreview.value = null
   showButtonIconPicker.value = false
   if (!editor.current) return
   editor.current.buttonIcon = ''
+  editor.current.buttonIconWidth = 16
+  editor.current.buttonIconHeight = 16
 }
 
 function openButtonIconPicker() {
-  buttonIconDraft.value = (editor.current as any)?.buttonIcon || ''
+  const el = editor.current as any
+  buttonIconDraft.value = el?.buttonIcon || ''
+  buttonIconWidthDraft.value = el?.buttonIconWidth ?? 16
+  buttonIconHeightDraft.value = el?.buttonIconHeight ?? 16
   previewButtonIcon()
   showButtonIconPicker.value = true
 }

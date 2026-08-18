@@ -281,6 +281,8 @@ export default class Element {
   editable: boolean
   icon: string
   buttonIcon?: string
+  buttonIconWidth?: number
+  buttonIconHeight?: number
   helper: string | null
   dialog: string | null
   dataBinding?: ElementDataBinding | null
