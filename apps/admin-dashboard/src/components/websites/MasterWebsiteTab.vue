@@ -104,36 +104,31 @@
         <WebsiteTemplatesManager :website-id="websiteId" />
       </div>
       <div v-show="activeSubTab === 'theme'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-4">
-        <div v-if="themeLoading" class="text-xs text-slate-500 text-center py-8">Loading theme…</div>
+        <div v-if="themeLoading" class="text-xs text-slate-500 text-center py-8">Loading themes…</div>
         <div v-else class="max-w-lg space-y-4">
-          <div>
+          <div v-for="t in websiteThemesList" :key="t.id" class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-white/40 p-3">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-semibold text-slate-400">Colors</span>
-              <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300" @click="addThemeColor">+ Add color</button>
-            </div>
-            <div v-for="(c, i) in themeColors" :key="i" class="flex items-center gap-2 mb-1.5">
-              <input v-model="c.name" type="text" placeholder="name" class="flex-1 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1 text-slate-200 light:text-slate-800" />
-              <input v-model="c.hex" type="color" class="w-8 h-8 rounded border border-slate-700 cursor-pointer" />
-              <span class="text-[10px] text-slate-500 font-mono w-16">{{ c.hex }}</span>
-              <button type="button" class="text-rose-400 hover:text-rose-300 text-xs" @click="removeThemeColor(i)">✕</button>
-            </div>
-          </div>
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-semibold text-slate-400">Fonts</span>
+              <input v-model="t.name" type="text" class="flex-1 text-xs font-semibold bg-transparent border-none text-slate-200 light:text-slate-800 focus:outline-none focus:ring-0" @change="saveThemeName(t)" />
               <div class="flex items-center gap-1">
-                <input v-model="newFont" type="text" placeholder="Font name" class="text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1 text-slate-200 light:text-slate-800 w-36" @keydown.enter="addThemeFont" />
-                <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300" @click="addThemeFont">+ Add</button>
+                <span v-if="t.id === themeDefaultId" class="text-[10px] text-indigo-400 font-semibold">DEFAULT</span>
+                <button v-if="t.id !== themeDefaultId" type="button" class="text-[10px] text-indigo-400 hover:text-indigo-300" @click="setDefaultTheme(t.id)">Set default</button>
+                <button type="button" class="text-rose-400 hover:text-rose-300 text-xs" @click="removeTheme(t.id)" :disabled="websiteThemesList.length <= 1">✕</button>
               </div>
             </div>
-            <div v-for="(f, i) in themeFonts" :key="i" class="flex items-center gap-2 mb-1">
-              <span class="text-xs text-slate-300 flex-1">{{ f.replace('+', ' ') }}</span>
-              <button type="button" class="text-rose-400 hover:text-rose-300 text-xs" @click="removeThemeFont(i)">✕</button>
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span v-for="c in t.colors" :key="c.name" class="flex items-center gap-1 text-[10px] text-slate-400 bg-slate-950 light:bg-slate-100 rounded px-1.5 py-0.5 border border-slate-800 light:border-slate-200">
+                  <span class="w-3 h-3 rounded inline-block" :style="{ backgroundColor: c.hex }"></span>
+                  {{ c.name }}
+                </span>
+              </div>
+              <div class="text-[10px] text-slate-500">
+                {{ t.fonts.length }} font(s)
+              </div>
             </div>
+            <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300 mt-1" @click="editTheme(t)">Edit colors &amp; fonts</button>
           </div>
-          <div class="flex justify-end gap-2 pt-2">
-            <button type="button" :disabled="themeSaving" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold disabled:opacity-50" @click="saveTheme">{{ themeSaving ? 'Saving…' : 'Save theme' }}</button>
-          </div>
+          <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300" @click="addTheme">+ New theme</button>
         </div>
       </div>
     </div>
@@ -153,8 +148,49 @@
   <div v-else class="p-6">
     <div class="rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center text-xs text-slate-500">
       This website is no longer available.
+</div>
+
+      <!-- Theme editor modal -->
+      <div v-if="showThemeEditor && editingTheme" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="showThemeEditor = false">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden">
+          <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
+            <span class="text-xs font-semibold text-gray-600">{{ editingTheme.name }}</span>
+            <button type="button" class="text-gray-400 hover:text-gray-700" @click="showThemeEditor = false"><span class="text-lg leading-none">✕</span></button>
+          </div>
+          <div class="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-500">Colors</span>
+                <button type="button" class="text-xs text-indigo-600 hover:text-indigo-500" @click="addEditorColor">+ Add color</button>
+              </div>
+              <div v-for="(c, i) in editingTheme.colors" :key="i" class="flex items-center gap-2 mb-1.5">
+                <input v-model="c.name" type="text" placeholder="name" class="flex-1 text-xs border rounded px-2 py-1" />
+                <input v-model="c.hex" type="color" class="w-8 h-8 rounded border border-gray-300 cursor-pointer" />
+                <span class="text-[10px] text-gray-500 font-mono w-16">{{ c.hex }}</span>
+                <button type="button" class="text-rose-500 hover:text-rose-700 text-xs" @click="removeEditorColor(i)">✕</button>
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-500">Fonts</span>
+                <div class="flex items-center gap-1">
+                  <input v-model="newFont" type="text" placeholder="Font name" class="text-xs border rounded px-2 py-1 w-36" @keydown.enter="addEditorFont" />
+                  <button type="button" class="text-xs text-indigo-600 hover:text-indigo-500" @click="addEditorFont">+ Add</button>
+                </div>
+              </div>
+              <div v-for="(f, i) in editingTheme.fonts" :key="i" class="flex items-center gap-2 mb-1">
+                <span class="text-xs text-slate-700 flex-1">{{ f.replace('+', ' ') }}</span>
+                <button type="button" class="text-rose-500 hover:text-rose-700 text-xs" @click="removeEditorFont(i)">✕</button>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center justify-end gap-2 px-3 py-2 border-t shrink-0">
+            <button type="button" class="text-xs px-3 py-1.5 rounded border text-gray-600 hover:bg-gray-100" @click="showThemeEditor = false">Cancel</button>
+            <button type="button" class="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-500" @click="saveEditedTheme">Save</button>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -168,7 +204,10 @@ import type { WebsiteRecord } from '../../utils/websites-api'
 import type { MenuItem, WebsitePathRecord } from '../../utils/menus-api'
 import type { WhoobeOnePage } from '../../utils/pages-api'
 import { fetchWebsiteTemplates, type WebsiteTemplate } from '../../utils/website-templates-api'
-import { fetchWebsiteTheme, updateWebsiteTheme, type WebsiteTheme } from '../../utils/websites-api'
+import {
+  fetchWebsiteThemes, createWebsiteTheme, updateWebsiteTheme, deleteWebsiteTheme,
+  type WebsiteTheme,
+} from '../../utils/websites-api'
 import MenuItemRow from '../settings/MenuItemRow.vue'
 import PagePickerDrawer from './PagePickerDrawer.vue'
 import WebsiteTemplatesManager from './WebsiteTemplatesManager.vue'
@@ -217,59 +256,115 @@ async function loadTemplates() {
   }
 }
 
-// --- Theme ---
+// --- Themes (multi) ---
 
 const themeLoading = ref(false)
-const themeSaving = ref(false)
-const themeColors = ref<{ name: string; hex: string }[]>([])
-const themeFonts = ref<string[]>([])
-const newFont = ref('')
+const websiteThemesList = ref<WebsiteTheme[]>([])
+const themeDefaultId = ref('')
 
 async function loadTheme() {
   themeLoading.value = true
   try {
-    const theme = await fetchWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId)
-    themeColors.value = theme.colors ?? []
-    themeFonts.value = theme.fonts ?? []
+    const data = await fetchWebsiteThemes(getDefaultCoreApiUrl(), props.websiteId)
+    websiteThemesList.value = data.themes
+    themeDefaultId.value = data.defaultThemeId
   } catch {
-    themeColors.value = []
-    themeFonts.value = []
+    websiteThemesList.value = []
+    themeDefaultId.value = ''
   } finally {
     themeLoading.value = false
   }
 }
 
-function addThemeColor() {
-  themeColors.value.push({ name: `color-${themeColors.value.length + 1}`, hex: '#6366f1' })
+async function addTheme() {
+  try {
+    const created = await createWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, { name: 'New Theme' })
+    websiteThemesList.value.push(created)
+  } catch (e: any) {
+    alert(e?.message || 'Failed to create theme')
+  }
 }
 
-function removeThemeColor(i: number) {
-  themeColors.value.splice(i, 1)
+async function removeTheme(themeId: string) {
+  if (!confirm('Delete this theme?')) return
+  try {
+    await deleteWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, themeId)
+    websiteThemesList.value = websiteThemesList.value.filter((t) => t.id !== themeId)
+    if (themeDefaultId.value === themeId) themeDefaultId.value = websiteThemesList.value[0]?.id ?? ''
+  } catch (e: any) {
+    alert(e?.message || 'Failed to delete theme')
+  }
 }
 
-function addThemeFont() {
+async function setDefaultTheme(themeId: string) {
+  try {
+    await updateWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, themeId, { isDefault: true })
+    themeDefaultId.value = themeId
+  } catch (e: any) {
+    alert(e?.message || 'Failed to set default theme')
+  }
+}
+
+async function saveThemeName(t: WebsiteTheme) {
+  try {
+    await updateWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, t.id, { name: t.name })
+  } catch {
+    // Silent — name is cosmetic.
+  }
+}
+
+function editTheme(t: WebsiteTheme) {
+  const colors = JSON.parse(JSON.stringify(t.colors)) as { name: string; hex: string }[]
+  const fonts = [...t.fonts]
+  const themeId = t.id
+  const themeName = t.name
+
+  // Simple inline edit modal using prompt-like UI
+  showThemeEditor.value = true
+  editingTheme.value = { id: themeId, name: themeName, colors, fonts }
+}
+
+const showThemeEditor = ref(false)
+const editingTheme = ref<{ id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[] } | null>(null)
+const newFont = ref('')
+
+function addEditorColor() {
+  if (!editingTheme.value) return
+  editingTheme.value.colors.push({ name: `color-${editingTheme.value.colors.length + 1}`, hex: '#6366f1' })
+}
+
+function removeEditorColor(i: number) {
+  if (!editingTheme.value) return
+  editingTheme.value.colors.splice(i, 1)
+}
+
+function addEditorFont() {
+  if (!editingTheme.value) return
   const name = newFont.value.trim()
   if (!name) return
   const value = name.replaceAll(' ', '+')
-  if (!themeFonts.value.includes(value)) themeFonts.value.push(value)
+  if (!editingTheme.value.fonts.includes(value)) editingTheme.value.fonts.push(value)
   newFont.value = ''
 }
 
-function removeThemeFont(i: number) {
-  themeFonts.value.splice(i, 1)
+function removeEditorFont(i: number) {
+  if (!editingTheme.value) return
+  editingTheme.value.fonts.splice(i, 1)
 }
 
-async function saveTheme() {
-  themeSaving.value = true
+async function saveEditedTheme() {
+  if (!editingTheme.value) return
   try {
-    await updateWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, {
-      colors: themeColors.value,
-      fonts: themeFonts.value,
+    const updated = await updateWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, editingTheme.value.id, {
+      colors: editingTheme.value.colors,
+      fonts: editingTheme.value.fonts,
     })
+    const idx = websiteThemesList.value.findIndex((t) => t.id === editingTheme.value!.id)
+    if (idx >= 0) websiteThemesList.value[idx] = updated
+    showThemeEditor.value = false
+    editingTheme.value = null
   } catch (e: any) {
     alert(e?.message || 'Failed to save theme')
-  } finally {
-    themeSaving.value = false
   }
 }
 

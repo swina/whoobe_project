@@ -4,6 +4,16 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Multiple named themes per website: create, edit, delete, set default] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Data model**: themes are now stored as `settings.themes[]` (array of `{ id, name, colors, fonts }`) with `settings.defaultThemeId` pointer. Backward-compatible: the old `settings.theme` singular format is migrated on read.
+- **Backend** (`apps/core-api`): new endpoints — `GET /websites/:id/themes` (list + defaultThemeId), `POST /websites/:id/themes` (create), `PUT /websites/:id/themes/:themeId` (update name/colors/fonts + set as default), `DELETE /websites/:id/themes/:themeId` (remove). Legacy `GET/PUT /websites/:id/theme` kept for backward compat.
+- **Admin dashboard** (`MasterWebsiteTab.vue`): Theme tab now shows a list of named themes with inline name editing, color/font summary, set-default and delete actions. A modal editor opens for editing a theme's colors and fonts. Create new theme button.
+- **Editor store** (`editor.ts`): new `websiteThemes` array ref (+ `setWebsiteThemes` action), populated alongside the active `websiteTheme` when a page/snippet loads.
+- **`loadWebsiteTheme`** (`database-actions.ts`): now fetches the full themes list, sets the default theme as active, and stores all themes in the store for the editor to offer as presets.
+
+---
+
 ## [Website-level themes: manage colors/fonts per website, inherited by all pages and snippets] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - **Backend** (`apps/core-api`): new `GET /whoobe-one/websites/:id/theme` and `PUT /whoobe-one/websites/:id/theme` endpoints, storing/reading the theme in `websites.settings.theme` (the existing generic JSONB column). Zod-validated shape: `{ colors: { name, hex }[], fonts: string[] }`.

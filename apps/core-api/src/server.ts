@@ -1143,22 +1143,116 @@ app.delete('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRI
   }
 });
 
-// --- Website Theme ---
+// --- Website Themes (multiple named themes per website) ---
 
-const websiteThemeSchema = z.object({
-  colors: z.array(z.object({ name: z.string(), hex: z.string() })).optional().default([]),
-  fonts: z.array(z.string()).optional().default([]),
+/**
+ * Reads the themes array from settings, falling back to the old singular
+ * `settings.theme` format for backward compatibility.
+ */
+function readThemes(settings: Record<string, unknown> | null): { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[] }[] {
+  const s = settings ?? {};
+  if (Array.isArray(s.themes)) return s.themes as any;
+  const old = s.theme as any;
+  if (old) return [{ id: 'default', name: 'Default', colors: old.colors ?? [], fonts: old.fonts ?? [] }];
+  return [];
+}
+
+function readDefaultThemeId(settings: Record<string, unknown> | null): string {
+  const s = settings ?? {};
+  if (typeof s.defaultThemeId === 'string') return s.defaultThemeId;
+  const themes = readThemes(settings);
+  return themes.length > 0 ? themes[0].id : 'default';
+}
+
+function themeId(): string {
+  return 'theme-' + randomBytes(4).toString('hex');
+}
+
+app.get('/whoobe-one/websites/:id/themes', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const website = await getWebsite(req.params.id);
+    if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
+    const themes = readThemes(website.settings as Record<string, unknown> | null);
+    const defaultThemeId = readDefaultThemeId(website.settings as Record<string, unknown> | null);
+    res.json({ themes, defaultThemeId });
+  } catch (error: any) {
+    console.error('List website themes error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list themes' });
+  }
 });
 
+app.post('/whoobe-one/websites/:id/themes', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, colors, fonts } = req.body ?? {};
+    const website = await getWebsite(req.params.id);
+    if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
+    const themes = readThemes(website.settings as Record<string, unknown> | null);
+    const newTheme = {
+      id: themeId(),
+      name: typeof name === 'string' && name.trim() ? name.trim() : 'Untitled',
+      colors: Array.isArray(colors) ? colors.filter((c: any) => c && typeof c.name === 'string' && typeof c.hex === 'string') : [],
+      fonts: Array.isArray(fonts) ? fonts.filter((f: any) => typeof f === 'string') : [],
+    };
+    themes.push(newTheme);
+    const settings = { ...(website.settings as Record<string, unknown> ?? {}), themes };
+    await updateWebsite(req.params.id, { settings });
+    res.status(201).json({ theme: newTheme });
+  } catch (error: any) {
+    console.error('Create website theme error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create theme' });
+  }
+});
+
+app.put('/whoobe-one/websites/:id/themes/:themeId', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, colors, fonts, isDefault } = req.body ?? {};
+    const website = await getWebsite(req.params.id);
+    if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
+    const themes = readThemes(website.settings as Record<string, unknown> | null);
+    const idx = themes.findIndex((t) => t.id === req.params.themeId);
+    if (idx === -1) { res.status(404).json({ error: 'Theme not found' }); return; }
+    if (typeof name === 'string' && name.trim()) themes[idx].name = name.trim();
+    if (Array.isArray(colors)) themes[idx].colors = colors.filter((c: any) => c && typeof c.name === 'string' && typeof c.hex === 'string');
+    if (Array.isArray(fonts)) themes[idx].fonts = fonts.filter((f: any) => typeof f === 'string');
+    const settings: Record<string, unknown> = { ...(website.settings as Record<string, unknown> ?? {}), themes };
+    if (isDefault === true) settings.defaultThemeId = req.params.themeId;
+    await updateWebsite(req.params.id, { settings });
+    res.json({ theme: themes[idx] });
+  } catch (error: any) {
+    console.error('Update website theme error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update theme' });
+  }
+});
+
+app.delete('/whoobe-one/websites/:id/themes/:themeId', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const website = await getWebsite(req.params.id);
+    if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
+    let themes = readThemes(website.settings as Record<string, unknown> | null);
+    const idx = themes.findIndex((t) => t.id === req.params.themeId);
+    if (idx === -1) { res.status(404).json({ error: 'Theme not found' }); return; }
+    themes = themes.filter((t) => t.id !== req.params.themeId);
+    const settings: Record<string, unknown> = { ...(website.settings as Record<string, unknown> ?? {}), themes };
+    if (settings.defaultThemeId === req.params.themeId) {
+      settings.defaultThemeId = themes.length > 0 ? themes[0].id : 'default';
+    }
+    await updateWebsite(req.params.id, { settings });
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete website theme error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete theme' });
+  }
+});
+
+// Backward-compatible single-theme endpoints — read/write the default theme.
 app.get('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const website = await getWebsite(req.params.id);
-    if (!website) {
-      res.status(404).json({ error: 'Website not found' });
-      return;
-    }
-    const theme = (website.settings as any)?.theme ?? { colors: [], fonts: [] };
-    res.json({ theme });
+    if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
+    const themes = readThemes(website.settings as Record<string, unknown> | null);
+    const defaultId = readDefaultThemeId(website.settings as Record<string, unknown> | null);
+    const theme = themes.find((t) => t.id === defaultId) ?? themes[0] ?? { colors: [], fonts: [] };
+    res.json({ theme: { colors: theme.colors, fonts: theme.fonts } });
   } catch (error: any) {
     console.error('Get website theme error:', error);
     res.status(500).json({ error: error.message || 'Failed to get website theme' });
@@ -1167,18 +1261,24 @@ app.get('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_
 
 app.put('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const parsed = websiteThemeSchema.parse(req.body);
+    const { colors, fonts } = req.body ?? {};
+    const parsed = {
+      colors: Array.isArray(colors) ? colors.filter((c: any) => c && typeof c.name === 'string' && typeof c.hex === 'string') : [],
+      fonts: Array.isArray(fonts) ? fonts.filter((f: any) => typeof f === 'string') : [],
+    };
     const website = await getWebsite(req.params.id);
-    if (!website) {
-      res.status(404).json({ error: 'Website not found' });
-      return;
+    if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
+    const themes = readThemes(website.settings as Record<string, unknown> | null);
+    const defaultId = readDefaultThemeId(website.settings as Record<string, unknown> | null);
+    const idx = themes.findIndex((t) => t.id === defaultId);
+    if (idx >= 0) {
+      themes[idx].colors = parsed.colors;
+      themes[idx].fonts = parsed.fonts;
+    } else {
+      themes.unshift({ id: defaultId, name: 'Default', ...parsed });
     }
-    const settings = { ...(website.settings as Record<string, unknown> ?? {}), theme: parsed };
-    const updated = await updateWebsite(req.params.id, { settings });
-    if (!updated) {
-      res.status(404).json({ error: 'Website not found' });
-      return;
-    }
+    const settings = { ...(website.settings as Record<string, unknown> ?? {}), themes };
+    await updateWebsite(req.params.id, { settings });
     res.json({ theme: parsed });
   } catch (error: any) {
     console.error('Update website theme error:', error);
