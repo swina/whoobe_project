@@ -149,6 +149,11 @@ import {
   searchContent,
   reindexAll,
   loadRootEnv,
+  listThemes,
+  getTheme,
+  createTheme,
+  updateTheme,
+  deleteTheme,
   type AuthenticatedRequest,
   type SearchOptions,
   type SearchDocumentType,
@@ -619,6 +624,7 @@ app.post('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), a
       category: category.trim(),
       icon: typeof icon === 'string' ? icon : null,
       node,
+      themeId: typeof themeId === 'string' ? themeId : null,
     });
     res.status(201).json({ snippet });
   } catch (error: any) {
@@ -646,7 +652,7 @@ app.get('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_READ),
 
 app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, category, icon, node } = req.body ?? {};
+    const { name, category, icon, node, themeId } = req.body ?? {};
     // category may be empty (an uncategorised snippet), name/node required.
     if (typeof name !== 'string' || !name.trim() || typeof category !== 'string' || node == null) {
       res.status(400).json({ error: 'name, category, and node are required' });
@@ -658,6 +664,7 @@ app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRIT
       category: category.trim(),
       icon: typeof icon === 'string' ? icon : null,
       node,
+      themeId: themeId !== undefined ? (typeof themeId === 'string' ? themeId : null) : undefined,
     });
     if (!snippet) {
       res.status(404).json({ error: 'Snippet not found' });
@@ -990,7 +997,7 @@ app.get(
 
 app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { translationGroupId, locale, slug, title, category, kind, content, seo, sitemap, search, pimcoreId, path, websiteId } = req.body ?? {};
+    const { translationGroupId, locale, slug, title, category, kind, content, seo, sitemap, search, pimcoreId, path, websiteId, themeId } = req.body ?? {};
     if (typeof slug !== 'string' || !slug.trim() || typeof title !== 'string' || !title.trim() || content == null) {
       res.status(400).json({ error: 'slug, title, and content are required' });
       return;
@@ -1010,6 +1017,7 @@ app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
       pimcoreId: typeof pimcoreId === 'string' ? pimcoreId : null,
       path: typeof path === 'string' ? path : null,
       websiteId: typeof websiteId === 'string' ? websiteId : null,
+      themeId: typeof themeId === 'string' ? themeId : null,
     });
     res.status(201).json({ page });
   } catch (error: any) {
@@ -1024,7 +1032,7 @@ app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
 
 app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { slug, title, category, kind, published, workflowState, content, locale, path, websiteId, seo, sitemap, search } = req.body ?? {};
+    const { slug, title, category, kind, published, workflowState, content, locale, path, websiteId, themeId, seo, sitemap, search } = req.body ?? {};
 
     const page = await updateWhoobePage(req.params.id, {
       slug: typeof slug === 'string' ? slug : undefined,
@@ -1037,6 +1045,7 @@ app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE),
       locale: typeof locale === 'string' ? locale : undefined,
       path: path === null || typeof path === 'string' ? path : undefined,
       websiteId: websiteId === null || typeof websiteId === 'string' ? websiteId : undefined,
+      themeId: themeId === null || typeof themeId === 'string' ? themeId : undefined,
       seo: seo !== undefined ? seo : undefined,
       sitemap: sitemap !== undefined ? sitemap : undefined,
       search: search !== undefined ? search : undefined,
@@ -1079,7 +1088,7 @@ app.get('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_READ), asy
 
 app.post('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, domains, defaultLocale, supportedLocales, settings } = req.body ?? {};
+    const { name, domains, defaultLocale, supportedLocales, settings, themeId } = req.body ?? {};
     if (!name || typeof name !== 'string') {
       res.status(400).json({ error: 'name is required' });
       return;
@@ -1090,6 +1099,7 @@ app.post('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_WRITE), a
       defaultLocale: typeof defaultLocale === 'string' ? defaultLocale : undefined,
       supportedLocales: Array.isArray(supportedLocales) ? supportedLocales : undefined,
       settings: settings !== undefined ? settings : undefined,
+      themeId: typeof themeId === 'string' ? themeId : null,
     });
     res.status(201).json({ website });
   } catch (error: any) {
@@ -1114,13 +1124,14 @@ app.get('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_READ),
 
 app.patch('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, domains, defaultLocale, supportedLocales, settings } = req.body ?? {};
+    const { name, domains, defaultLocale, supportedLocales, settings, themeId } = req.body ?? {};
     const website = await updateWebsite(req.params.id, {
       name: typeof name === 'string' ? name : undefined,
       domains: Array.isArray(domains) ? domains : undefined,
       defaultLocale: typeof defaultLocale === 'string' ? defaultLocale : undefined,
       supportedLocales: Array.isArray(supportedLocales) ? supportedLocales : undefined,
       settings: settings !== undefined ? settings : undefined,
+      themeId: themeId !== undefined ? (typeof themeId === 'string' ? themeId : null) : undefined,
     });
     if (!website) {
       res.status(404).json({ error: 'Website not found' });
@@ -1302,6 +1313,82 @@ app.put('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_
   } catch (error: any) {
     console.error('Update website theme error:', error);
     res.status(500).json({ error: error.message || 'Failed to update website theme' });
+  }
+});
+
+// --- Themes (independent entity, own DB table) ---
+
+app.get('/whoobe-one/themes', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await listThemes();
+    res.json({ themes: result });
+  } catch (error: any) {
+    console.error('List themes error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list themes' });
+  }
+});
+
+app.post('/whoobe-one/themes', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, colors, fonts, styles } = req.body ?? {};
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    const theme = await createTheme({
+      name,
+      colors: Array.isArray(colors) ? colors.filter((c: any) => c && typeof c.name === 'string' && typeof c.hex === 'string') : undefined,
+      fonts: Array.isArray(fonts) ? fonts.filter((f: any) => typeof f === 'string') : undefined,
+      styles: typeof styles === 'string' ? styles : undefined,
+    });
+    res.status(201).json({ theme });
+  } catch (error: any) {
+    console.error('Create theme error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create theme' });
+  }
+});
+
+app.get('/whoobe-one/themes/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const theme = await getTheme(req.params.id);
+    if (!theme) {
+      res.status(404).json({ error: 'Theme not found' });
+      return;
+    }
+    res.json({ theme });
+  } catch (error: any) {
+    console.error('Get theme error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get theme' });
+  }
+});
+
+app.put('/whoobe-one/themes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, colors, fonts, styles } = req.body ?? {};
+    const theme = await updateTheme(req.params.id, {
+      name: typeof name === 'string' ? name : undefined,
+      colors: Array.isArray(colors) ? colors.filter((c: any) => c && typeof c.name === 'string' && typeof c.hex === 'string') : undefined,
+      fonts: Array.isArray(fonts) ? fonts.filter((f: any) => typeof f === 'string') : undefined,
+      styles: typeof styles === 'string' ? styles : undefined,
+    });
+    if (!theme) {
+      res.status(404).json({ error: 'Theme not found' });
+      return;
+    }
+    res.json({ theme });
+  } catch (error: any) {
+    console.error('Update theme error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update theme' });
+  }
+});
+
+app.delete('/whoobe-one/themes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteTheme(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete theme error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete theme' });
   }
 });
 

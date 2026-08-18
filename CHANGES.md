@@ -4,6 +4,19 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Themes as independent entities: new DB table, API, themeId on websites/pages/snippets] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **New `themes` table** (`packages/core/src/db/themes-schema.ts`): `id` (uuid pk), `name`, `colors` (jsonb), `fonts` (text[]), `styles` (text), timestamps. CRUD in `themes-records.ts`, exported from `@whoobe-cms/core/server`.
+- **API endpoints** (`apps/core-api`): `GET/POST /whoobe-one/themes`, `GET/PUT/DELETE /whoobe-one/themes/:id` — full CRUD for independent theme entities.
+- **`themeId` added to websites**: `websites-schema.ts` + `websites-records.ts` + core-api create/update endpoints. Nullable uuid column, references themes.id.
+- **`themeId` added to whoobe_pages**: schema + records + core-api create/update endpoints. Nullable.
+- **`themeId` added to whoobe_one_snippets**: schema + records + core-api create/update endpoints. Nullable.
+- **Drizzle migration `0030`**: creates themes table, adds theme_id columns to websites/whoobe_pages/whoobe_one_snippets.
+- **Test fix**: `page-path-pattern.test.ts` mock page now includes `themeId: null`.
+- **Drizzle config**: added `themes-schema.ts` to the schema list.
+
+---
+
 ## [Snippet editor: load all themes from all websites, no websiteId required] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - **Backend**: `GET /whoobe-one/themes/all` returns all themes from every website, grouped by website (id + name). Used by snippet editors that don't belong to a specific website.

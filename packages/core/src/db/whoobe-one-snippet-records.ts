@@ -8,6 +8,7 @@ export interface WhoobeOneSnippetRecord {
   category: string;
   icon: string | null;
   node: unknown;
+  themeId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,11 +29,12 @@ export async function createWhoobeOneSnippet(input: {
   category: string;
   icon?: string | null;
   node: unknown;
+  themeId?: string | null;
 }): Promise<WhoobeOneSnippetRecord> {
   const db = getDb();
   const [row] = await db
     .insert(whoobeOneSnippets)
-    .values({ name: input.name, category: input.category, icon: input.icon ?? null, node: input.node })
+    .values({ name: input.name, category: input.category, icon: input.icon ?? null, node: input.node, themeId: input.themeId ?? null })
     .returning();
   return row;
 }
@@ -47,12 +49,14 @@ export async function deleteWhoobeOneSnippet(id: string): Promise<void> {
 // instead of piling up near-duplicate snippets that only differ slightly.
 export async function updateWhoobeOneSnippet(
   id: string,
-  input: { name: string; category: string; icon?: string | null; node: unknown }
+  input: { name: string; category: string; icon?: string | null; node: unknown; themeId?: string | null }
 ): Promise<WhoobeOneSnippetRecord | null> {
   const db = getDb();
+  const values: Record<string, unknown> = { name: input.name, category: input.category, icon: input.icon ?? null, node: input.node, updatedAt: new Date() };
+  if (input.themeId !== undefined) values.themeId = input.themeId;
   const [row] = await db
     .update(whoobeOneSnippets)
-    .set({ name: input.name, category: input.category, icon: input.icon ?? null, node: input.node, updatedAt: new Date() })
+    .set(values)
     .where(eq(whoobeOneSnippets.id, id))
     .returning();
   return row ?? null;
