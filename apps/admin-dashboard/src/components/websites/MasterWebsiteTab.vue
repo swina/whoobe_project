@@ -129,7 +129,7 @@
                   <button type="button" class="text-rose-400 hover:text-rose-300 text-xs" @click="removeThemeFont(t, i)">✕</button>
                 </div>
                 <div class="flex items-center gap-1 mt-1">
-                  <input v-model="newFontInputs[t.id] ?? ''" type="text" placeholder="Font name" class="text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1 text-slate-200 light:text-slate-800 w-36" @keydown.enter="addThemeFont(t)" />
+                  <input v-model="newFontInputs[t.id]" type="text" placeholder="Font name" class="text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1 text-slate-200 light:text-slate-800 w-36" @keydown.enter="addThemeFont(t)" />
                   <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300" @click="addThemeFont(t)">+ Add</button>
                 </div>
               </div>
