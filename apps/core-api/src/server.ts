@@ -1244,6 +1244,25 @@ app.delete('/whoobe-one/websites/:id/themes/:themeId', requirePermission(PERMISS
   }
 });
 
+// All themes from all websites — for snippet/standalone editors that don't
+// belong to a specific website.
+app.get('/whoobe-one/themes/all', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const allWebsites = await listWebsites();
+    const allThemes: { websiteId: string; websiteName: string; themes: { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[] }[] }[] = [];
+    for (const site of allWebsites) {
+      const themes = readThemes(site.settings as Record<string, unknown> | null);
+      if (themes.length > 0) {
+        allThemes.push({ websiteId: site.id, websiteName: site.name, themes });
+      }
+    }
+    res.json({ websites: allThemes });
+  } catch (error: any) {
+    console.error('List all themes error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list themes' });
+  }
+});
+
 // Backward-compatible single-theme endpoints — read/write the default theme.
 app.get('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {

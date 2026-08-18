@@ -36,7 +36,7 @@ import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
 import BlockEditor from '../components/BlockEditor.vue'
 import { useEditorStore } from '../store/editor'
-import { loadPage, loadMailTemplate, loadSnippet, loadWebsiteTheme, createEmptyMailTemplateRoot, createEmptyDocumentRoot } from '../scripts/database-actions'
+import { loadPage, loadMailTemplate, loadSnippet, loadWebsiteTheme, loadAllThemes, createEmptyMailTemplateRoot, createEmptyDocumentRoot } from '../scripts/database-actions'
 import { clean } from '../helpers'
 
 const editor = useEditorStore()
@@ -66,6 +66,7 @@ onMounted(async () => {
     }
     const wsId = typeof route.query.websiteId === 'string' ? route.query.websiteId : null
     if (wsId) await loadWebsiteTheme(editor, wsId)
+    else await loadAllThemes(editor)
     return
   }
   if (route.query.snippetNew !== undefined) {
@@ -80,6 +81,7 @@ onMounted(async () => {
     editor.setSnippetMode(true)
     const wsId = typeof route.query.websiteId === 'string' ? route.query.websiteId : null
     if (wsId) await loadWebsiteTheme(editor, wsId)
+    else await loadAllThemes(editor)
     return
   }
 

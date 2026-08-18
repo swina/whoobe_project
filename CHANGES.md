@@ -4,6 +4,14 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Snippet editor: load all themes from all websites, no websiteId required] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **Backend**: `GET /whoobe-one/themes/all` returns all themes from every website, grouped by website (id + name). Used by snippet editors that don't belong to a specific website.
+- **`loadAllThemes`** (`database-actions.ts`): fetches all themes across all websites, prefixed with `websiteId:` for unique IDs and labeled with `(websiteName)` for clarity. Sets the first theme as active.
+- **Editor.vue**: snippet and new-snippet branches now call `loadAllThemes()` when no `websiteId` query param is provided, so all website themes are available and selectable in the snippet editor's Theme modal.
+
+---
+
 ## [Snippet editor: pass websiteId for theme availability] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - **SnippetEditorEmbed.vue**: accepts optional `websiteId` prop, passed as `?websiteId=` query param to the spike editor iframe.
