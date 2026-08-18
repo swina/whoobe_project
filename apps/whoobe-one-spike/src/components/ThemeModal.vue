@@ -2,16 +2,39 @@
   <div class="fixed inset-0 z-[10000] bg-black/50 flex items-center justify-center p-6" @click.self="$emit('close')">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
       <div class="flex items-center justify-between px-4 py-2 border-b shrink-0">
-        <span class="font-semibold text-gray-700 text-sm">Page Theme</span>
+        <span class="font-semibold text-gray-700 text-sm">Theme</span>
         <button class="flex items-center gap-1 text-gray-400 hover:text-gray-700 text-xs" @click="$emit('close')">
           <X class="w-3.5 h-3.5" /> Close
         </button>
       </div>
 
       <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-5">
+        <!-- Website themes selector -->
+        <section v-if="websiteThemes.length" class="space-y-2">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Website themes</h3>
+          <p class="text-[11px] text-gray-400">Choose a theme for this page, or customize per-page below.</p>
+          <div class="flex flex-col gap-1">
+            <button
+              v-for="t in websiteThemes"
+              :key="t.id"
+              type="button"
+              class="flex items-center gap-2 text-xs border rounded px-3 py-2 text-left transition"
+              :class="selectedThemeId === t.id ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'"
+              @click="pickTheme(t.id)"
+            >
+              <span class="w-3 h-3 rounded-full shrink-0" :class="selectedThemeId === t.id ? 'bg-indigo-500' : 'border border-gray-300'"></span>
+              <span class="font-medium text-gray-700">{{ t.name }}</span>
+              <span class="text-gray-400 ml-auto">{{ t.colors.length }} colors, {{ t.fonts.length }} fonts</span>
+            </button>
+          </div>
+        </section>
+
+        <hr class="border-gray-200" />
+
+        <!-- Per-page overrides: colors -->
         <section class="space-y-2">
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Custom colors</h3>
-          <p class="text-[11px] text-gray-400">Added as extra swatches on every Text/Background/Border/Gradient color picker for this page.</p>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Page custom colors</h3>
+          <p class="text-[11px] text-gray-400">Added as extra swatches on every color picker for this page, overriding the website theme when same name.</p>
 
           <div v-if="colors.length" class="flex flex-col gap-1.5">
             <div v-for="(color, i) in colors" :key="i" class="flex items-center gap-2">
@@ -33,9 +56,10 @@
           <button type="button" class="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200" @click="addColor">+ Add color</button>
         </section>
 
+        <!-- Per-page overrides: fonts -->
         <section class="space-y-2">
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Fonts</h3>
-          <p class="text-[11px] text-gray-400">The font list offered by the Font picker (Style tab) for this page - starts from the site default list.</p>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Page font list</h3>
+          <p class="text-[11px] text-gray-400">When set, overrides the website theme's font list for this page.</p>
 
           <div class="flex flex-col gap-1">
             <div v-for="font in fonts" :key="font" class="flex items-center gap-2">
@@ -63,20 +87,6 @@
 </template>
 
 <script setup lang="ts">
-// Per-page design tokens (this session's "review system colors, add a
-// user-defined theme" request) - a modal rather than a per-element
-// Advanced-panel tab (TailwindCustomizer.vue/AdvancedPanel.vue's own
-// tabs), since a theme is document-scoped, not selection-scoped, matching
-// how TemplateGalleryModal.vue is the document-scoped counterpart to the
-// per-element FloatingToolbar.vue popovers. Opened from a new "Theme"
-// topbar button in BlockEditor.vue, next to Templates/Save Template.
-//
-// Colors live at editor.document.theme.colors (see ElementsClass.d.ts's
-// own comment on `theme` for why it's optional/lazily created) and are
-// applied by ColorControl.vue/BgGradientControl.vue as Tailwind v4
-// arbitrary-value classes (`bg-[#3366ff]`) - no `@theme` CSS registration
-// needed, the live `@tailwindcss/browser` runtime already compiles
-// arbitrary bracket values for any class (style.css's own header comment).
 import { computed, ref } from 'vue'
 import { X } from '@lucide/vue'
 import { useEditorStore } from '../store/editor'
@@ -85,6 +95,31 @@ defineEmits<{ close: [] }>()
 const editor = useEditorStore()
 const newFont = ref('')
 
+// Website themes from the editor store (loaded when a page/snippet loads).
+const websiteThemes = computed(() => editor.websiteThemes)
+const selectedThemeId = ref<string>('')
+
+// On mount, detect which theme is currently active by matching the active
+// websiteTheme colors/fonts against the available themes list.
+function init() {
+  if (!websiteThemes.value.length) return
+  const active = editor.websiteTheme
+  const match = websiteThemes.value.find(
+    (t) => JSON.stringify(t.colors) === JSON.stringify(active.colors) && JSON.stringify(t.fonts) === JSON.stringify(active.fonts)
+  )
+  selectedThemeId.value = match?.id ?? websiteThemes.value[0].id
+}
+init()
+
+function pickTheme(id: string) {
+  selectedThemeId.value = id
+  const t = websiteThemes.value.find((t) => t.id === id)
+  if (t) {
+    editor.setWebsiteTheme({ colors: t.colors ?? [], fonts: t.fonts ?? [] })
+  }
+}
+
+// Per-page overrides (existing document.theme logic, unchanged).
 function ensureTheme() {
   const doc = editor.document as any
   if (!doc) return null
@@ -92,12 +127,6 @@ function ensureTheme() {
   return doc.theme
 }
 
-// Fonts specifically seed from the build-time default list (editor.fonts)
-// the first time this page's own list is touched, not from empty - so
-// customizing fonts is additive/subtractive from what a page already had,
-// never a jarring "everything disappeared" reset. Colors have no
-// equivalent default list to seed from (there was never a built-in custom
-// color set), hence ensureTheme() alone for those.
 function ensureFonts() {
   const theme = ensureTheme()
   if (!theme) return null

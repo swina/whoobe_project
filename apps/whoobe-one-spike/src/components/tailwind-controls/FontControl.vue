@@ -37,8 +37,11 @@ defineProps<{ attr?: string; title?: string }>()
 const editor = useEditorStore()
 
 const fontList = computed(() => {
-  const themeFonts = (editor.document as any)?.theme?.fonts as string[] | undefined
-  return themeFonts && themeFonts.length ? themeFonts : editor.fonts
+  const pageFonts = (editor.document as any)?.theme?.fonts as string[] | undefined
+  if (pageFonts?.length) return pageFonts
+  const webFonts = editor.websiteTheme?.fonts as string[] | undefined
+  if (webFonts?.length) return webFonts
+  return editor.fonts
 })
 
 function pick(value: string) {
