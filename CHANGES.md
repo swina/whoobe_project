@@ -4,6 +4,13 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Snippet editor: pass websiteId for theme availability] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
+
+- **SnippetEditorEmbed.vue**: accepts optional `websiteId` prop, passed as `?websiteId=` query param to the spike editor iframe.
+- **Editor.vue**: snippet and new-snippet branches now read `route.query.websiteId` and call `loadWebsiteTheme()` when present, so theme colors/fonts are available in the snippet editor the same way they are for pages.
+
+---
+
 ## [Theme: font picker shows website theme fonts + Theme modal shows theme selector] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - **FontControl.vue** (Customize > Typography > Font): now cascades through per-page theme fonts → website theme fonts → default env list, so website theme fonts appear in the editor's font selector.
