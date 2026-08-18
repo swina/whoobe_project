@@ -37,7 +37,7 @@
       data-type="element"
       @click.stop="selectSearchElement"
     />
-    <component
+<component
       v-else
       :is="component"
       :id="element.id"
@@ -51,15 +51,10 @@
       :data-id="element.id"
       data-type="element"
       v-bind="elementAttrs"
+      v-html="displayContent"
       @click="onClick"
       @blur="onBlur"
-    >
-<template v-if="element.tag === 'button' || element.tag === 'submit' || element.tag === 'reset'">
-    <span v-if="element.buttonIcon" class="inline-flex items-center mr-1 text-indigo-400">[icon]</span>
-    <span v-html="displayContent"></span>
-  </template>
-      <span v-else v-html="displayContent"></span>
-    </component>
+    ></component>
     <div
       v-if="showOverlay"
       class="absolute inset-0 z-10 flex items-center justify-center bg-indigo-50/80 text-indigo-500 text-[10px] font-mono pointer-events-none select-none rounded"
