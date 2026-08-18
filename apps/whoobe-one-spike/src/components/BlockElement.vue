@@ -54,10 +54,10 @@
       @click="onClick"
       @blur="onBlur"
     >
-      <template v-if="element.tag === 'button' || element.tag === 'submit' || element.tag === 'reset'">
-        <span v-if="element.buttonIcon" class="inline-flex items-center mr-1 text-[10px] text-indigo-400 font-mono">[{{ element.buttonIcon }}]</span>
-        <span v-html="displayContent"></span>
-      </template>
+<template v-if="element.tag === 'button' || element.tag === 'submit' || element.tag === 'reset'">
+    <span v-if="element.buttonIcon" class="inline-flex items-center mr-1 text-indigo-400">[icon]</span>
+    <span v-html="displayContent"></span>
+  </template>
       <span v-else v-html="displayContent"></span>
     </component>
     <div

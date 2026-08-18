@@ -800,6 +800,8 @@ export default class Element {
         this.value = 'Submit'
         this.content = 'Submit'
         this.buttonIcon = ''
+        this.buttonIconWidth = 16
+        this.buttonIconHeight = 16
         // Not in the original - see Button()'s own comment below, same fix,
         // same reason. InputReset() calls this method first, so it inherits
         // the fix automatically.
@@ -830,6 +832,8 @@ export default class Element {
         this.content = 'button'
         this.value = 'button'
         this.buttonIcon = ''
+        this.buttonIconWidth = 16
+        this.buttonIconHeight = 16
         // Not in the original: Heading()/Paragraph()/InlineText()/Span()/
         // Blockquote()/Code() all set `this.editable = true` - Button()
         // (and InputSubmit(), see below) never did, even though a button's
