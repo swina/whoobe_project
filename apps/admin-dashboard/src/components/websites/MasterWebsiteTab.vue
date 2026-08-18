@@ -116,17 +116,27 @@
               </div>
             </div>
             <div class="space-y-1.5">
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <span v-for="c in t.colors" :key="c.name" class="flex items-center gap-1 text-[10px] text-slate-400 bg-slate-950 light:bg-slate-100 rounded px-1.5 py-0.5 border border-slate-800 light:border-slate-200">
-                  <span class="w-3 h-3 rounded inline-block" :style="{ backgroundColor: c.hex }"></span>
-                  {{ c.name }}
-                </span>
+              <div v-for="(c, i) in t.colors" :key="i" class="flex items-center gap-2">
+                <input v-model="c.name" type="text" placeholder="name" class="flex-1 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1 text-slate-200 light:text-slate-800" />
+                <input v-model="c.hex" type="color" class="w-7 h-7 rounded border border-slate-700 cursor-pointer" />
+                <span class="text-[10px] text-slate-500 font-mono w-14">{{ c.hex }}</span>
+                <button type="button" class="text-rose-400 hover:text-rose-300 text-xs" @click="removeThemeColor(t, i)">✕</button>
               </div>
-              <div class="text-[10px] text-slate-500">
-                {{ t.fonts.length }} font(s)
+              <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300" @click="addThemeColor(t)">+ Add color</button>
+              <div class="border-t border-slate-800 light:border-slate-200 pt-1.5 mt-1.5">
+                <div v-for="(f, i) in t.fonts" :key="i" class="flex items-center gap-2 mb-1">
+                  <span class="text-xs text-slate-300 flex-1">{{ f.replace('+', ' ') }}</span>
+                  <button type="button" class="text-rose-400 hover:text-rose-300 text-xs" @click="removeThemeFont(t, i)">✕</button>
+                </div>
+                <div class="flex items-center gap-1 mt-1">
+                  <input v-model="newFontInputs[t.id] ?? ''" type="text" placeholder="Font name" class="text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1 text-slate-200 light:text-slate-800 w-36" @keydown.enter="addThemeFont(t)" />
+                  <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300" @click="addThemeFont(t)">+ Add</button>
+                </div>
               </div>
             </div>
-            <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300 mt-1" @click="editTheme(t)">Edit colors &amp; fonts</button>
+            <div class="flex justify-end pt-2">
+              <button type="button" class="text-xs px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="themeSavingIds.has(t.id)" @click="saveThemeColors(t)">{{ themeSavingIds.has(t.id) ? 'Saving…' : 'Save' }}</button>
+            </div>
           </div>
           <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300" @click="addTheme">+ New theme</button>
         </div>
@@ -150,47 +160,7 @@
       This website is no longer available.
 </div>
 
-      <!-- Theme editor modal -->
-      <div v-if="showThemeEditor && editingTheme" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="showThemeEditor = false">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden">
-          <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
-            <span class="text-xs font-semibold text-gray-600">{{ editingTheme.name }}</span>
-            <button type="button" class="text-gray-400 hover:text-gray-700" @click="showThemeEditor = false"><span class="text-lg leading-none">✕</span></button>
-          </div>
-          <div class="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold text-slate-500">Colors</span>
-                <button type="button" class="text-xs text-indigo-600 hover:text-indigo-500" @click="addEditorColor">+ Add color</button>
-              </div>
-              <div v-for="(c, i) in editingTheme.colors" :key="i" class="flex items-center gap-2 mb-1.5">
-                <input v-model="c.name" type="text" placeholder="name" class="flex-1 text-xs border rounded px-2 py-1" />
-                <input v-model="c.hex" type="color" class="w-8 h-8 rounded border border-gray-300 cursor-pointer" />
-                <span class="text-[10px] text-gray-500 font-mono w-16">{{ c.hex }}</span>
-                <button type="button" class="text-rose-500 hover:text-rose-700 text-xs" @click="removeEditorColor(i)">✕</button>
-              </div>
-            </div>
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold text-slate-500">Fonts</span>
-                <div class="flex items-center gap-1">
-                  <input v-model="newFont" type="text" placeholder="Font name" class="text-xs border rounded px-2 py-1 w-36" @keydown.enter="addEditorFont" />
-                  <button type="button" class="text-xs text-indigo-600 hover:text-indigo-500" @click="addEditorFont">+ Add</button>
-                </div>
-              </div>
-              <div v-for="(f, i) in editingTheme.fonts" :key="i" class="flex items-center gap-2 mb-1">
-                <span class="text-xs text-slate-700 flex-1">{{ f.replace('+', ' ') }}</span>
-                <button type="button" class="text-rose-500 hover:text-rose-700 text-xs" @click="removeEditorFont(i)">✕</button>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center justify-end gap-2 px-3 py-2 border-t shrink-0">
-            <button type="button" class="text-xs px-3 py-1.5 rounded border text-gray-600 hover:bg-gray-100" @click="showThemeEditor = false">Cancel</button>
-            <button type="button" class="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-500" @click="saveEditedTheme">Save</button>
-          </div>
-        </div>
       </div>
-    </div>
 </template>
 
 <script setup lang="ts">
@@ -256,11 +226,13 @@ async function loadTemplates() {
   }
 }
 
-// --- Themes (multi) ---
+// --- Themes (multi) — inline CRUD ---
 
 const themeLoading = ref(false)
+const themeSavingIds = ref<Set<string>>(new Set())
 const websiteThemesList = ref<WebsiteTheme[]>([])
 const themeDefaultId = ref('')
+const newFontInputs = ref<Record<string, string>>({})
 
 async function loadTheme() {
   themeLoading.value = true
@@ -313,58 +285,43 @@ async function saveThemeName(t: WebsiteTheme) {
   }
 }
 
-function editTheme(t: WebsiteTheme) {
-  const colors = JSON.parse(JSON.stringify(t.colors)) as { name: string; hex: string }[]
-  const fonts = [...t.fonts]
-  const themeId = t.id
-  const themeName = t.name
-
-  // Simple inline edit modal using prompt-like UI
-  showThemeEditor.value = true
-  editingTheme.value = { id: themeId, name: themeName, colors, fonts }
+function addThemeColor(t: WebsiteTheme) {
+  t.colors.push({ name: `color-${t.colors.length + 1}`, hex: '#6366f1' })
 }
 
-const showThemeEditor = ref(false)
-const editingTheme = ref<{ id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[] } | null>(null)
-const newFont = ref('')
-
-function addEditorColor() {
-  if (!editingTheme.value) return
-  editingTheme.value.colors.push({ name: `color-${editingTheme.value.colors.length + 1}`, hex: '#6366f1' })
+function removeThemeColor(t: WebsiteTheme, i: number) {
+  t.colors.splice(i, 1)
+  saveThemeColors(t)
 }
 
-function removeEditorColor(i: number) {
-  if (!editingTheme.value) return
-  editingTheme.value.colors.splice(i, 1)
+function addThemeFont(t: WebsiteTheme) {
+  const input = newFontInputs.value[t.id]
+  if (!input?.trim()) return
+  const value = input.trim().replaceAll(' ', '+')
+  if (!t.fonts.includes(value)) t.fonts.push(value)
+  newFontInputs.value[t.id] = ''
 }
 
-function addEditorFont() {
-  if (!editingTheme.value) return
-  const name = newFont.value.trim()
-  if (!name) return
-  const value = name.replaceAll(' ', '+')
-  if (!editingTheme.value.fonts.includes(value)) editingTheme.value.fonts.push(value)
-  newFont.value = ''
+function removeThemeFont(t: WebsiteTheme, i: number) {
+  t.fonts.splice(i, 1)
+  saveThemeColors(t)
 }
 
-function removeEditorFont(i: number) {
-  if (!editingTheme.value) return
-  editingTheme.value.fonts.splice(i, 1)
-}
-
-async function saveEditedTheme() {
-  if (!editingTheme.value) return
+async function saveThemeColors(t: WebsiteTheme) {
+  const ids = themeSavingIds.value
+  ids.add(t.id)
+  themeSavingIds.value = new Set(ids)
   try {
-    const updated = await updateWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, editingTheme.value.id, {
-      colors: editingTheme.value.colors,
-      fonts: editingTheme.value.fonts,
+    await updateWebsiteTheme(getDefaultCoreApiUrl(), props.websiteId, t.id, {
+      colors: t.colors,
+      fonts: t.fonts,
     })
-    const idx = websiteThemesList.value.findIndex((t) => t.id === editingTheme.value!.id)
-    if (idx >= 0) websiteThemesList.value[idx] = updated
-    showThemeEditor.value = false
-    editingTheme.value = null
   } catch (e: any) {
     alert(e?.message || 'Failed to save theme')
+  } finally {
+    const ids2 = themeSavingIds.value
+    ids2.delete(t.id)
+    themeSavingIds.value = new Set(ids2)
   }
 }
 
