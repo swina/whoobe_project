@@ -69,6 +69,34 @@ import {
 type EditorStore = ReturnType<typeof useEditorStore>
 
 /**
+ * Fetches all themes from all websites — used by snippet editors that don't
+ * belong to a specific website. Sets the first found theme as active.
+ */
+export async function loadAllThemes(editor: EditorStore): Promise<void> {
+  try {
+    const baseUrl = typeof window !== 'undefined' && window.location?.hostname
+      ? `${window.location.protocol}//${window.location.hostname}:3003`
+      : 'http://localhost:3003'
+    const res = await fetch(`${baseUrl}/whoobe-one/themes/all`, { credentials: 'include' })
+    if (!res.ok) return
+    const body = await res.json()
+    const websites = body.websites ?? []
+    const allThemes: { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[] }[] = []
+    for (const site of websites) {
+      for (const t of site.themes ?? []) {
+        allThemes.push({ ...t, id: `${site.websiteId}:${t.id}`, name: `${t.name} (${site.websiteName})` })
+      }
+    }
+    editor.setWebsiteThemes(allThemes)
+    if (allThemes.length > 0) {
+      editor.setWebsiteTheme({ colors: allThemes[0].colors ?? [], fonts: allThemes[0].fonts ?? [] })
+    }
+  } catch {
+    // Silent.
+  }
+}
+
+/**
  * Fetches the website themes from the backend (stored in websites.settings.themes)
  * and sets them in the editor store. The default theme is set as the active
  * websiteTheme, and all themes are available for the user to pick from.
