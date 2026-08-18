@@ -7,6 +7,7 @@ export interface WebsiteRecord {
   defaultLocale: string
   supportedLocales: string[]
   settings: Record<string, unknown> | null
+  themeId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -49,6 +50,7 @@ export async function createWebsite(
     defaultLocale?: string
     supportedLocales?: string[]
     settings?: Record<string, unknown>
+    themeId?: string | null
   }
 ): Promise<WebsiteRecord> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites`, {
@@ -70,6 +72,7 @@ export async function updateWebsite(
     defaultLocale?: string
     supportedLocales?: string[]
     settings?: Record<string, unknown>
+    themeId?: string | null
   }
 ): Promise<WebsiteRecord> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${id}`, {

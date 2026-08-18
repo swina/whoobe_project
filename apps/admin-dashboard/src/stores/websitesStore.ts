@@ -30,6 +30,7 @@ export const useWebsitesStore = defineStore('websites', () => {
     defaultLocale?: string
     supportedLocales?: string[]
     settings?: Record<string, unknown>
+    themeId?: string | null
   }): Promise<WebsiteRecord> {
     const authStore = useAuthStore()
     const created = await createWebsite(authStore.config.coreApiUrl, input)
@@ -45,6 +46,7 @@ export const useWebsitesStore = defineStore('websites', () => {
       defaultLocale?: string
       supportedLocales?: string[]
       settings?: Record<string, unknown>
+      themeId?: string | null
     }
   ): Promise<WebsiteRecord> {
     const authStore = useAuthStore()
