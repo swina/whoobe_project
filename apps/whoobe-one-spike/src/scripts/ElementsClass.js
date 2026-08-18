@@ -799,6 +799,7 @@ export default class Element {
         this.type = 'button'
         this.value = 'Submit'
         this.content = 'Submit'
+        this.buttonIcon = ''
         // Not in the original - see Button()'s own comment below, same fix,
         // same reason. InputReset() calls this method first, so it inherits
         // the fix automatically.
@@ -828,6 +829,7 @@ export default class Element {
         this.tag = 'button'
         this.content = 'button'
         this.value = 'button'
+        this.buttonIcon = ''
         // Not in the original: Heading()/Paragraph()/InlineText()/Span()/
         // Blockquote()/Code() all set `this.editable = true` - Button()
         // (and InputSubmit(), see below) never did, even though a button's

@@ -191,6 +191,37 @@
     </div>
     <button v-if="isTextEditable || isVideoEmbed" title="Edit content" class="toolbar-icon" @click="onEditContent"><Pencil class="w-4 h-4" /></button>
     <button v-if="isVideoEmbed && editor.current?.content" title="Play video" class="toolbar-icon" @click="playVideoEmbed"><Play class="w-4 h-4" /></button>
+    <div v-if="isButtonElement" class="relative">
+      <button type="button" title="Button icon" class="toolbar-icon" @click="openButtonIconPicker"><Image class="w-4 h-4" /></button>
+      <template v-if="showButtonIconPicker">
+        <div class="fixed inset-0 z-[10000]" @click="showButtonIconPicker = false"></div>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" @click.stop>
+          <div>
+            <label class="block text-[10px] text-gray-500 mb-1">Lucide icon name</label>
+            <div class="flex items-center gap-1">
+              <input
+                v-model="buttonIconDraft"
+                type="text"
+                placeholder="ArrowRight, Settings, …"
+                class="flex-1 px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+                @input="previewButtonIcon"
+              />
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+              <span v-if="buttonIconPreview" class="inline-flex items-center justify-center w-5 h-5 text-gray-600">
+                <component :is="buttonIconPreview" />
+              </span>
+              <span v-else class="text-[10px] text-gray-400">No icon</span>
+              <span class="text-[10px] text-gray-500 font-mono">{{ buttonIconDraft }}</span>
+            </div>
+          </div>
+          <div class="flex justify-between pt-1">
+            <button type="button" class="px-2 py-1 text-[10px] rounded bg-gray-100 hover:bg-gray-200 text-gray-500" @click="clearButtonIcon">Clear</button>
+            <button type="button" class="px-2 py-1 text-[10px] rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold" @click="applyButtonIcon">Apply</button>
+          </div>
+        </div>
+      </template>
+    </div>
     <div v-if="isTextEditable" class="relative">
       <button type="button" title="Text color" class="toolbar-icon" @click="showTextPicker = !showTextPicker"><Type class="w-4 h-4" /></button>
       <template v-if="showTextPicker">
@@ -476,14 +507,15 @@
 // plus two ref writes) rather than wiring explicit scroll/resize/mutation
 // listeners - simpler, and correctly handles content reflow (e.g. editing
 // text changes the element's height) without needing a MutationObserver.
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
+import type { Component } from 'vue'
 import Element from '../scripts/ElementsClass.js'
 import animations from '../scripts/animations.js'
 import twclasses from '../scripts/tw.classes.js'
 import { previewAnimation } from '../scripts/gsap-actions'
 import { playYouTubeVideo } from '../scripts/youtube-player'
 import { useEditorStore } from '../store/editor'
-import { clean, findParentAndIndex, findAncestorChain, removeNodeById, friendlyElementName } from '../helpers'
+import { clean, findParentAndIndex, findAncestorChain, removeNodeById, friendlyElementName, resolveLucideIcon } from '../helpers'
 import TipTapPanel from './TipTapPanel.vue'
 import MediaPickerModal from './MediaPickerModal.vue'
 import SaveSnippetModal from './SaveSnippetModal.vue'
@@ -535,6 +567,9 @@ const showSaveSnippet = ref(false)
 const showAiGenerate = ref(false)
 const showLinkPicker = ref(false)
 const linkUrlDraft = ref('')
+const showButtonIconPicker = ref(false)
+const buttonIconDraft = ref('')
+const buttonIconPreview = shallowRef<Component | null>(null)
 const linkTargetDraft = ref('_self')
 
 // --- List-to-detail linking ("Link to a page") ---
@@ -610,6 +645,7 @@ function toggleCollapsed() {
 const isSlider = computed(() => editor.current?.tag === 'slider')
 const isTextEditable = computed(() => !!editor.current?.editable)
 const isVideoEmbed = computed(() => editor.current?.tag === 'youtube' || editor.current?.tag === 'vimeo')
+const isButtonElement = computed(() => editor.current?.tag === 'button' || editor.current?.tag === 'submit' || editor.current?.tag === 'reset')
 const isRoot = computed(() => !editor.document || editor.current?.id === editor.document.id)
 
 // Auto-detect the binding target based on the current element's nature.
@@ -971,6 +1007,42 @@ function clearLink() {
   linkUrlDraft.value = ''
   linkTargetDraft.value = '_self'
   showLinkPicker.value = false
+}
+
+// --- Button icon picker ---
+
+async function previewButtonIcon() {
+  const name = buttonIconDraft.value.trim()
+  if (!name) {
+    buttonIconPreview.value = null
+    return
+  }
+  try {
+    const resolved = await resolveLucideIcon(name)
+    buttonIconPreview.value = resolved
+  } catch {
+    buttonIconPreview.value = null
+  }
+}
+
+function applyButtonIcon() {
+  if (!editor.current) return
+  editor.current.buttonIcon = buttonIconDraft.value.trim()
+  showButtonIconPicker.value = false
+}
+
+function clearButtonIcon() {
+  buttonIconDraft.value = ''
+  buttonIconPreview.value = null
+  showButtonIconPicker.value = false
+  if (!editor.current) return
+  editor.current.buttonIcon = ''
+}
+
+function openButtonIconPicker() {
+  buttonIconDraft.value = (editor.current as any)?.buttonIcon || ''
+  previewButtonIcon()
+  showButtonIconPicker.value = true
 }
 
 // Nearest ancestor container (walking up from the selected element) whose

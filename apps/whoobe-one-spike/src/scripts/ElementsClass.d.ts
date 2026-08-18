@@ -280,6 +280,7 @@ export default class Element {
   tag: string
   editable: boolean
   icon: string
+  buttonIcon?: string
   helper: string | null
   dialog: string | null
   dataBinding?: ElementDataBinding | null
