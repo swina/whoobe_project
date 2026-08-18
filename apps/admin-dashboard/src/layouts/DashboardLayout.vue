@@ -363,6 +363,7 @@ import {
   Moon,
   Blocks,
   Globe,
+  Palette,
   Table2,
   Mail,
   Sparkles,
@@ -393,6 +394,7 @@ import PagesView from '../views/PagesView.vue'
 import SnippetsView from '../views/SnippetsView.vue'
 import MailSettingsView from '../views/MailSettingsView.vue'
 import SettingsView from '../views/SettingsView.vue'
+import ThemesView from '../components/themes/ThemesView.vue'
 import { usePagesStore } from '../stores/pagesStore'
 import { useSnippetsStore } from '../stores/snippetsStore'
 import { adminSearch, reindexSearchIndex, type SearchResult } from '../utils/search-api'
@@ -592,6 +594,7 @@ const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Data Objects', section: 'objects', icon: Database },
   { name: 'Documents', section: 'documents', icon: FileText },
   { name: 'Outgoing Mail', section: 'mail', icon: Mail },
+  { name: 'Themes', section: 'themes', icon: Palette },
   { name: 'Settings', section: 'settings', icon: Settings }
 ]
 
@@ -603,6 +606,7 @@ const sectionComponents: Record<SectionKind, any> = {
   documents: DocumentsView,
   pages: PagesView,
   snippets: SnippetsView,
+  themes: ThemesView,
   mail: MailSettingsView,
   settings: SettingsView
 }
@@ -616,6 +620,7 @@ const sectionLabels: Record<SectionKind, string> = {
   pages: 'Pages',
   snippets: 'Snippets',
   mail: 'Outgoing Mail',
+  themes: 'Themes',
   settings: 'Settings'
 }
 
@@ -628,6 +633,7 @@ const sectionIcons: Record<SectionKind, any> = {
   pages: FileStack,
   snippets: Puzzle,
   mail: Mail,
+  themes: Palette,
   settings: Settings
 }
 
