@@ -344,7 +344,9 @@ export function renderRadioGroupHtml(options: (FieldOption | string)[] | undefin
 function toPascalCase(input: string): string {
   return input
     .trim()
-    .split(/[^a-zA-Z0-9]+/)
+    // Split on non-alphanumeric separators OR on lowercase→uppercase transitions
+    // (handles both "arrow-right" and "arrowRight").
+    .split(/[^a-zA-Z0-9]+|(?<=[a-z])(?=[A-Z])/)
     .filter(Boolean)
     .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
     .join('')
