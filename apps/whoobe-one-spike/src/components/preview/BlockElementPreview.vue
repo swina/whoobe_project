@@ -28,7 +28,7 @@
   :style="stile"
   v-bind="extraAttrs"
 >
-  <span v-if="buttonIconComponent" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" :style="{ width: buttonIconSize.width + 'px', height: buttonIconSize.height + 'px' }" /></span>
+  <span v-if="buttonIconComponent" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" :style="getButtonIconStyle()" /></span>
   <span v-html="displayContent"></span>
 </component>
 <component
@@ -259,10 +259,12 @@ watch(
   },
   { immediate: true }
 )
-const buttonIconSize = computed(() => ({
-  width: (props.element as any).buttonIconWidth ?? 16,
-  height: (props.element as any).buttonIconHeight ?? 16,
-}))
+function getButtonIconStyle(): Record<string, string> {
+  return {
+    width: ((props.element as any)?.buttonIconWidth ?? 16) + 'px',
+    height: ((props.element as any)?.buttonIconHeight ?? 16) + 'px',
+  }
+}
 
 // A UUID (asset reference) is not a URL - resolved via resolveDisplayUrl.
 
