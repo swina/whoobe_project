@@ -24,6 +24,7 @@ import { ref, computed } from 'vue'
 
 const props = defineProps<{
   snippetId: string
+  websiteId?: string
 }>()
 
 function getDefaultWhoobeOneSpikeUrl(): string {
@@ -38,10 +39,11 @@ const isConnecting = ref(true)
 const embedSrc = computed(() => {
   const base = getDefaultWhoobeOneSpikeUrl()
   const isNew = props.snippetId.startsWith('new:')
-  const params = new URLSearchParams({
+  const params: Record<string, string> = {
     ...(isNew ? { snippetNew: '1' } : { snippetId: props.snippetId }),
     parentOrigin: window.location.origin,
-  })
-  return `${base}/editor?${params.toString()}`
+  }
+  if (props.websiteId) params.websiteId = props.websiteId
+  return `${base}/editor?${new URLSearchParams(params).toString()}`
 })
 </script>
