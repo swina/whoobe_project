@@ -90,18 +90,77 @@ export async function deleteWebsite(baseUrl: string, id: string): Promise<void> 
   await parseJsonOrThrow(res)
 }
 
+// --- Multi-theme API ---
+
 export interface WebsiteTheme {
+  id: string
+  name: string
   colors: { name: string; hex: string }[]
   fonts: string[]
 }
 
-export async function fetchWebsiteTheme(baseUrl: string, id: string): Promise<WebsiteTheme> {
+export interface WebsiteThemesResponse {
+  themes: WebsiteTheme[]
+  defaultThemeId: string
+}
+
+export async function fetchWebsiteThemes(baseUrl: string, id: string): Promise<WebsiteThemesResponse> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${id}/themes`, { credentials: 'include' })
+  return parseJsonOrThrow(res)
+}
+
+export async function createWebsiteTheme(
+  baseUrl: string,
+  websiteId: string,
+  input: { name: string; colors?: { name: string; hex: string }[]; fonts?: string[] }
+): Promise<WebsiteTheme> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${websiteId}/themes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.theme
+}
+
+export async function updateWebsiteTheme(
+  baseUrl: string,
+  websiteId: string,
+  themeId: string,
+  input: { name?: string; colors?: { name: string; hex: string }[]; fonts?: string[]; isDefault?: boolean }
+): Promise<WebsiteTheme> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${websiteId}/themes/${themeId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.theme
+}
+
+export async function deleteWebsiteTheme(baseUrl: string, websiteId: string, themeId: string): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${websiteId}/themes/${themeId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  await parseJsonOrThrow(res)
+}
+
+// Legacy single-theme API (backward-compatible) — reads/writes the default theme.
+export interface WebsiteThemeLegacy {
+  colors: { name: string; hex: string }[]
+  fonts: string[]
+}
+
+export async function fetchWebsiteTheme(baseUrl: string, id: string): Promise<WebsiteThemeLegacy> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${id}/theme`, { credentials: 'include' })
   const body = await parseJsonOrThrow(res)
   return body.theme
 }
 
-export async function updateWebsiteTheme(baseUrl: string, id: string, theme: WebsiteTheme): Promise<WebsiteTheme> {
+export async function updateWebsiteThemeLegacy(baseUrl: string, id: string, theme: WebsiteThemeLegacy): Promise<WebsiteThemeLegacy> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${id}/theme`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

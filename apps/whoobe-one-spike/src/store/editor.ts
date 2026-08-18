@@ -52,6 +52,9 @@ export const useEditorStore = defineStore('editor', () => {
   // via the Theme modal which can save back to the website.
   const websiteTheme = ref<{ colors: { name: string; hex: string }[]; fonts: string[] }>({ colors: [], fonts: [] })
 
+  // All available themes for the current website (multiple named themes).
+  const websiteThemes = ref<{ id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[] }[]>([])
+
   // Not from the source - the CMS integration plan's embedding contract
   // (docs/plans/cms/whoobe-one-editor-integration-plan.md §6): a
   // `parentOrigin` query param on `/editor` means this is running inside
@@ -148,16 +151,19 @@ export const useEditorStore = defineStore('editor', () => {
   function setWebsiteTheme(v: { colors: { name: string; hex: string }[]; fonts: string[] }) {
     websiteTheme.value = v
   }
+  function setWebsiteThemes(v: { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[] }[]) {
+    websiteThemes.value = v
+  }
 
   return {
     mode, settings, elements, document, project, selected, page, current,
     component, action, subaction, level, parent, startTime, autosave,
     exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
-    mailTemplateId, snippetId, snippetMode, websiteTheme,
+    mailTemplateId, snippetId, snippetMode, websiteTheme, websiteThemes,
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
     setParent, setStartTime, setAutosave, setExportMode, setPreview, setSave,
     setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, setSnippetId, setSnippetMode, resolvedData,
-    collapsedIds, toggleCollapsed, isCollapsed, setWebsiteTheme,
+    collapsedIds, toggleCollapsed, isCollapsed, setWebsiteTheme, setWebsiteThemes,
   }
 })

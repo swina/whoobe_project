@@ -69,20 +69,25 @@ import {
 type EditorStore = ReturnType<typeof useEditorStore>
 
 /**
- * Fetches the website theme from the backend (stored in websites.settings.theme)
- * and sets it as the current session theme in the editor store. The
- * useThemeStyles composable watches both the website theme and the per-page
- * theme — website theme is the base, page theme overrides.
+ * Fetches the website themes from the backend (stored in websites.settings.themes)
+ * and sets them in the editor store. The default theme is set as the active
+ * websiteTheme, and all themes are available for the user to pick from.
  */
 export async function loadWebsiteTheme(editor: EditorStore, websiteId: string): Promise<void> {
   try {
     const baseUrl = typeof window !== 'undefined' && window.location?.hostname
       ? `${window.location.protocol}//${window.location.hostname}:3003`
       : 'http://localhost:3003'
-    const res = await fetch(`${baseUrl}/whoobe-one/websites/${websiteId}/theme`, { credentials: 'include' })
+    const res = await fetch(`${baseUrl}/whoobe-one/websites/${websiteId}/themes`, { credentials: 'include' })
     if (!res.ok) return
     const body = await res.json()
-    editor.setWebsiteTheme(body.theme ?? { colors: [], fonts: [] })
+    const themes = body.themes ?? []
+    const defaultId = body.defaultThemeId ?? ''
+    editor.setWebsiteThemes(themes)
+    const defaultTheme = themes.find((t: any) => t.id === defaultId) ?? themes[0]
+    if (defaultTheme) {
+      editor.setWebsiteTheme({ colors: defaultTheme.colors ?? [], fonts: defaultTheme.fonts ?? [] })
+    }
   } catch {
     // Silent — website theme is optional; the editor works fine without it.
   }
