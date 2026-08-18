@@ -2,18 +2,21 @@ import { watch } from 'vue'
 import { useEditorStore } from '../store/editor'
 
 const THEME_STYLE_ID = 'whoobe-theme-styles'
+const CUSTOM_STYLE_ID = 'whoobe-custom-styles'
 
 /**
  * Injects theme styles into the page head so @tailwindcss/browser and the
  * browser's font system recognize what the Theme modal configured.
  *
  * Merges two layers:
- *   1. The website-level theme (editor.websiteTheme, set from
- *      websites.settings.theme when a page/snippet belonging to a website
- *      is loaded) — acts as the base.
+ *   1. The website-level theme (editor.websiteTheme) — always injected.
  *   2. The per-page theme (getDoc()?.theme) — overrides the website theme
  *      for the same color names, and replaces website fonts entirely when
  *      the page has its own font list.
+ *
+ * Also injects the theme's custom CSS styles as a raw <style> element,
+ * so both website theme and page/snippet theme styles are applied
+ * simultaneously (CSS cascade handles conflicts).
  */
 export function useThemeStyles(getDoc: () => any) {
   const editor = useEditorStore()
@@ -29,7 +32,6 @@ export function useThemeStyles(getDoc: () => any) {
     const webColors = (webTheme?.colors as { name: string; hex: string }[]) ?? []
     const pageColors = (pageTheme?.colors as { name: string; hex: string }[]) ?? []
 
-    // Page colors with the same name replace the website's entry.
     const colorMap = new Map<string, string>()
     for (const c of webColors) colorMap.set(c.name, c.hex)
     for (const c of pageColors) colorMap.set(c.name, c.hex)
@@ -71,6 +73,21 @@ export function useThemeStyles(getDoc: () => any) {
         .join('&')}&display=swap`
       document.head.appendChild(link)
       fontLink = link
+    }
+
+    // --- Custom styles: inject raw CSS from the active theme ---
+    const customExisting = document.getElementById(CUSTOM_STYLE_ID)
+    const styles = webTheme?.styles?.trim()
+    if (styles) {
+      let style = customExisting as HTMLStyleElement | null
+      if (!style) {
+        style = document.createElement('style')
+        style.id = CUSTOM_STYLE_ID
+        document.head.appendChild(style)
+      }
+      style.textContent = styles
+    } else {
+      if (customExisting) customExisting.remove()
     }
   }
 
