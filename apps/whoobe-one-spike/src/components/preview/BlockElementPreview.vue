@@ -20,6 +20,18 @@
     :style="stile"
   />
 <component
+  v-else-if="element.tag === 'button' || element.tag === 'submit' || element.tag === 'reset'"
+  :is="component"
+  :id="element.id"
+  ref="rootEl"
+  :class="classe"
+  :style="stile"
+  v-bind="extraAttrs"
+>
+  <span v-if="buttonIconComponent" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" class="w-4 h-4" /></span>
+  <span v-html="displayContent"></span>
+</component>
+<component
   v-else
   :is="component"
   :id="element.id"
@@ -30,13 +42,8 @@
   :alt="displayAlt"
   :placeholder="element.placeholder"
   v-bind="extraAttrs"
->
-  <template v-if="element.tag === 'button' || element.tag === 'submit' || element.tag === 'reset'">
-    <span v-if="buttonIconComponent" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" class="w-4 h-4" /></span>
-    <span v-html="displayContent"></span>
-  </template>
-  <template v-else v-html="displayContent"></template>
-</component>
+  v-html="displayContent"
+></component>
 </template>
 
 <script setup lang="ts">
