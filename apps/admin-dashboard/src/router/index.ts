@@ -6,8 +6,20 @@ import AssetsView from '../views/AssetsView.vue'
 import DocumentsView from '../views/DocumentsView.vue'
 import PagesView from '../views/PagesView.vue'
 import SettingsView from '../views/SettingsView.vue'
+import ForgotPasswordView from '../views/ForgotPasswordView.vue'
+import ResetPasswordView from '../views/ResetPasswordView.vue'
 
 const routes: Array<RouteRecordRaw> = [
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: ForgotPasswordView,
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: ResetPasswordView,
+  },
   {
     path: '/',
     component: DashboardLayout,

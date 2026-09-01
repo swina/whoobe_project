@@ -11,6 +11,8 @@ export interface UserRecord {
   totpSecret: string | null;
   totpEnabledAt: Date | null;
   mfaRecoveryCodes: MfaRecoveryCode[] | null;
+  resetToken: string | null;
+  resetTokenExpiresAt: Date | null;
 }
 
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {

@@ -154,6 +154,11 @@ import {
   createTheme,
   updateTheme,
   deleteTheme,
+  generateResetToken,
+  findUserByResetToken,
+  clearResetToken,
+  updatePassword,
+  RESET_TOKEN_TTL_MS,
   type AuthenticatedRequest,
   type SearchOptions,
   type SearchDocumentType,
@@ -490,6 +495,114 @@ app.get('/auth/me', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   res.json(req.user);
 });
 
+// --- Password Reset ---
+// Rate-limited to the same in-memory approach as the login-lockout map
+// above. Separate map: a forgot-password request is not a login attempt,
+// it's a volume guard against email-bombing a single address.
+const FORGOT_PASSWORD_MAX = 3;
+const FORGOT_PASSWORD_WINDOW_MS = 15 * 60 * 1000;
+const forgotPasswordCounts = new Map<string, { count: number; windowStart: number }>();
+
+function isForgotPasswordRateLimited(email: string): boolean {
+  const entry = forgotPasswordCounts.get(email);
+  if (!entry) return false;
+  if (Date.now() - entry.windowStart > FORGOT_PASSWORD_WINDOW_MS) {
+    forgotPasswordCounts.delete(email);
+    return false;
+  }
+  return entry.count >= FORGOT_PASSWORD_MAX;
+}
+
+function recordForgotPassword(email: string): void {
+  const entry = forgotPasswordCounts.get(email);
+  if (!entry || Date.now() - entry.windowStart > FORGOT_PASSWORD_WINDOW_MS) {
+    forgotPasswordCounts.set(email, { count: 1, windowStart: Date.now() });
+    return;
+  }
+  entry.count += 1;
+}
+
+app.post('/auth/forgot-password', async (req: Request, res: Response): Promise<void> => {
+  const { email } = req.body ?? {};
+  if (typeof email !== 'string' || !email.trim()) {
+    res.status(400).json({ error: 'email is required' });
+    return;
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  if (isForgotPasswordRateLimited(normalizedEmail)) {
+    res.status(429).json({ error: 'Too many requests. Try again later.' });
+    return;
+  }
+
+  recordForgotPassword(normalizedEmail);
+
+// Always respond with success, whether or not the email exists - never
+  // reveal account existence to unauthenticated callers.
+  try {
+    const user = await findUserByEmail(normalizedEmail);
+    if (user && user.isActive) {
+      const token = await generateResetToken(user.id);
+      const hostname = process.env.WHOOBE_HOSTNAME || 'localhost';
+      const resetUrl = `http://${hostname}:3000/reset-password?token=${token}`;
+
+      const settings = await getMailSettings();
+      if (!settings) {
+        // Dev fallback: no SMTP configured, log the URL so testing can
+        // still proceed without mail infrastructure.
+        console.log('');
+        console.log('=== Password reset link (no mail settings configured) ===');
+        console.log(`  ${resetUrl}`);
+        console.log('========================================================');
+        console.log('');
+      } else {
+        await sendMail({
+          to: user.email,
+          subject: 'Password Reset Request',
+          html: `<p>You requested a password reset.</p><p><a href="${resetUrl}">Reset your password</a></p><p>This link expires in 1 hour.</p><p>If you did not request this, ignore this email.</p>`,
+          text: `You requested a password reset.\n\nReset your password here: ${resetUrl}\n\nThis link expires in 1 hour.\n\nIf you did not request this, ignore this email.`,
+        });
+      }
+    }
+  } catch (error: any) {
+    console.error('Forgot-password error:', error);
+    // Still return success - don't leak whether the account exists.
+  }
+
+  res.json({ success: true });
+});
+
+app.post('/auth/reset-password', async (req: Request, res: Response): Promise<void> => {
+  const { token, password } = req.body ?? {};
+  if (typeof token !== 'string' || typeof password !== 'string' || password.length < 8) {
+    res.status(400).json({ error: 'token and password (min 8 characters) are required' });
+    return;
+  }
+
+  try {
+    const user = await findUserByResetToken(token);
+    if (!user) {
+      res.status(400).json({ error: 'Invalid or expired reset token' });
+      return;
+    }
+
+    // Double-check expiry server-side against the DB timestamp.
+    const fullUser = await findUserById(user.id);
+    if (!fullUser?.resetTokenExpiresAt || fullUser.resetTokenExpiresAt.getTime() < Date.now()) {
+      await clearResetToken(user.id);
+      res.status(400).json({ error: 'Reset token has expired' });
+      return;
+    }
+
+    await updatePassword(user.id, password);
+    await clearResetToken(user.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Reset-password error:', error);
+    res.status(500).json({ error: 'Password reset failed' });
+  }
+});
+
 // Documents migrated from Pimcore (or authored fresh) - see
 // docs/plans/cms/pimcore-areablock-import-plan.md. Reuses the objects:read
 // permission rather than introducing a separate documents:* domain, since
@@ -613,7 +726,7 @@ app.get('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_READ), asy
 
 app.post('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, category, icon, node } = req.body ?? {};
+    const { name, category, icon, node, themeId } = req.body ?? {};
     if (typeof name !== 'string' || !name.trim() || typeof category !== 'string' || !category.trim() || node == null) {
       res.status(400).json({ error: 'name, category, and node are required' });
       return;
