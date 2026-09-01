@@ -6,11 +6,12 @@ All notable changes to the Whoobe CMS project.
 
 ## [Extract collectionTypes to data_components] — 2026-09-01 (current branch)
 
-- **New `extract-collection-types-to-components.ts`** (`packages/migration-tool/src/`): CLI command `extract-collection-types` that reads all `data_classes` from the DB, finds `fieldcollections` fields with embedded `collectionTypes`, creates a `data_components` record for each unique collection type (deduplicated by name), and updates the class field to use `allowedComponentTypes` instead of `collectionTypes`.
-- **CLI flags**: `--dry-run` (report-only), `--class=<Name>` (optional, default: all classes).
+- **New `extract-collection-types-to-components.ts`** (`packages/migration-tool/src/`): CLI command `extract-collection-types` that reads all `data_classes` from the DB, finds `fieldcollections` fields with embedded `collectionTypes`, creates a `data_components` record for each unique collection type (deduplicated by name), and updates the class field to use `allowedComponentTypes` alongside `collectionTypes`.
+- **CLI flags**: `--dry-run` (report-only), `--class=<Name>` (optional, default: all classes), `--clear` (delete all components first), `--classes-dir=<path>` (re-populate `collectionTypes` from Pimcore files when missing).
 - **Exports**: `runExtractCollectionTypes()` + `ExtractCollectionTypesOptions` type from `@whoobe-cms/migration-tool`.
 - **Class trace**: before creating/updating, logs every class + field that references each component (e.g. `Component "ProductBanner" -> Product.content`).
-- **Integrated into the PIMCORE MIGRATION SOURCE UI** (`MigrationSourcesCard.vue`): new "Extract Components" action per source with class-name filter + dry-run toggle, backed by new `extractComponentsFromClasses()` client util and a new `POST /migration-sources/:id/extract-components` core-api route (wraps `runExtractCollectionTypes`, OBJECTS_WRITE, no Pimcore DB needed).
+- **Integrated into the PIMCORE MIGRATION SOURCE UI** (`MigrationSourcesCard.vue`): new "Extract Components" action per source with class-name filter + dry-run + clear toggles, backed by new `extractComponentsFromClasses()` client util and a new `POST /migration-sources/:id/extract-components` core-api route (wraps `runExtractCollectionTypes`, OBJECTS_WRITE, no Pimcore DB needed).
+- **ZIP extraction progress** (`damStore.ts` + `AssetsView.vue`): when uploading a ZIP archive with auto-extract, the modal now shows a live "Extracting ZIP..." section with up to 10 most recently extracted filenames (monospace, bottom-to-top, overwriting as extraction progresses).
 - Verified: `packages/migration-tool` typecheck clean + 55 tests pass, `packages/core` typecheck clean, `core-api` typecheck clean, `admin-dashboard` build (vue-tsc + vite) clean.
 
 ---
