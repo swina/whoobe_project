@@ -4,6 +4,15 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Replace inline getDefaultWhoobeOneSpikeUrl/getDefaultWhoobeStudioUrl with shared editor-urls import] — 2026-09-01 (current branch)
+
+- **New shared utility `utils/editor-urls.ts`**: exports `getWhoobeOneSpikeUrl()` (returns `http://localhost:3006` on localhost, `<origin>/whoobe-one-editor` externally) and `getWhoobeStudioUrl()` (returns `http://localhost:3004` on localhost, `<origin>/whoobe-studio` externally).
+- **Removed 8 inline `getDefaultWhoobeOneSpikeUrl()` definitions** from: `WhoobeOneEmbed.vue`, `SnippetEditorEmbed.vue`, `MailTemplateEditorEmbed.vue`, `MenuItemRow.vue`, `PagePreviewTab.vue`, `MasterPageTab.vue`, `DashboardLayout.vue` — all now import `getWhoobeOneSpikeUrl` from `../../utils/editor-urls` (or `../utils/editor-urls` for DashboardLayout).
+- **`WhoobeStudioEmbed.vue`**: changed import from `getDefaultWhoobeStudioUrl` (from `documents-api`) to `getWhoobeStudioUrl` (from `editor-urls`).
+- **`documents-api.ts`**: removed the now-unused `getDefaultWhoobeStudioUrl()` export entirely.
+
+---
+
 ## [Themes as independent entities: new DB table, API, themeId on websites/pages/snippets] — 2026-08-17 (branch: feat/08-16/pimcore-documents-migration)
 
 - **New `themes` table** (`packages/core/src/db/themes-schema.ts`): `id` (uuid pk), `name`, `colors` (jsonb), `fonts` (text[]), `styles` (text), timestamps. CRUD in `themes-records.ts`, exported from `@whoobe-cms/core/server`.

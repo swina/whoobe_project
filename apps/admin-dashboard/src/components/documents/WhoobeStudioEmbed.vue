@@ -29,7 +29,8 @@ import { WhoobeHostBridge } from '../../utils/whoobe-host-bridge'
 import { useDamStore } from '../../stores/damStore'
 import { useDocumentsStore } from '../../stores/documentsStore'
 import { useToastStore } from '../../stores/toastStore'
-import { getDefaultWhoobeStudioUrl, type CmsDocumentRecord } from '../../utils/documents-api'
+import { getWhoobeStudioUrl } from '../../utils/editor-urls'
+import type { CmsDocumentRecord } from '../../utils/documents-api'
 
 const props = defineProps<{
   documentId: string
@@ -49,7 +50,7 @@ const isSaving = ref(false)
 const lastSavedAt = ref<Date | null>(null)
 const currentDocument = ref<CmsDocumentRecord | null>(null)
 
-const studioBaseUrl = getDefaultWhoobeStudioUrl()
+const studioBaseUrl = getWhoobeStudioUrl()
 // The studio has no other way to know who's allowed to talk to it - see
 // WhoobeStudioBridge/WhoobeHostBridge, both of which refuse to fall back
 // to "*" and require this to actually match.

@@ -50,6 +50,7 @@ export interface WhoobeOnePage {
   search: PageSearchSettings | null
   pimcoreId: string | null
   websiteId: string | null
+  themeId: string | null
   publishedAt: string | null
   createdAt: string
   updatedAt: string
@@ -124,6 +125,7 @@ export async function createPage(input: {
   sitemap?: PageSitemapSettings | null
   search?: PageSearchSettings | null
   pimcoreId?: string | null
+  themeId?: string | null
 }): Promise<WhoobeOnePage> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages`, {
     method: 'POST',
@@ -148,6 +150,7 @@ export async function updatePage(
     seo?: PageSeo | null
     sitemap?: PageSitemapSettings | null
     search?: PageSearchSettings | null
+    themeId?: string | null
   }
 ): Promise<WhoobeOnePage> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages/${id}`, {

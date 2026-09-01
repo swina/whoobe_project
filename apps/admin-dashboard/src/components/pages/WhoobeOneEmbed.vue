@@ -40,31 +40,16 @@
 //   would mean that scanner running against this app's *entire* page.
 //   The iframe keeps the two fully isolated.
 import { ref, computed } from 'vue'
+import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
 
 const props = defineProps<{
   pageId: string
 }>()
 
-// Mirrors getDefaultWhoobeStudioUrl()/getDefaultCoreApiUrl() (utils/
-// documents-api.ts, utils/auth-api.ts) - default to whatever hostname the
-// page itself was loaded from, never a hardcoded "localhost". Port 3006 -
-// see apps/whoobe-one-spike's own vite.config.ts. Inlined here rather than
-// added to documents-api.ts (that file belongs to the cms_documents/
-// whoobe-studio pipeline being retired, not this one) - if/when Phase 4
-// adds a real pages-api.ts client for listing/CRUD, this belongs there
-// instead of staying duplicated in this component.
-function getDefaultWhoobeOneSpikeUrl(): string {
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    const port = window.location.port
-    return `${window.location.protocol}//${window.location.hostname}${port ? `:${port}` : ''}/whoobe-one-editor`
-  }
-  return 'http://localhost:3000/whoobe-one-editor'
-}
-
 const isConnecting = ref(true)
 
 const embedSrc = computed(() => {
-  const base = getDefaultWhoobeOneSpikeUrl()
+  const base = getWhoobeOneSpikeUrl()
   const params = new URLSearchParams({
     pageId: props.pageId,
     parentOrigin: window.location.origin,

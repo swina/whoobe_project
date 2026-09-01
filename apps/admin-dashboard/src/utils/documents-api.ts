@@ -22,17 +22,6 @@ function normalizeBaseUrl(baseUrl: string): string {
   return (baseUrl || getDefaultCoreApiUrl()).replace(/\/+$/, '')
 }
 
-// Mirrors getDefaultCoreApiUrl()/getDefaultAssetProcessorUrl(): default to
-// whatever hostname the page itself was loaded from, never a hardcoded
-// "localhost" - see apps/whoobe-studio's vite.config.ts for the port.
-export function getDefaultWhoobeStudioUrl(): string {
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    const port = window.location.port
-    return `${window.location.protocol}//${window.location.hostname}${port ? `:${port}` : ''}/whoobe-studio`
-  }
-  return 'http://localhost:3000/whoobe-studio'
-}
-
 async function parseJsonOrThrow(res: Response): Promise<any> {
   if (!res.ok) {
     let message = `Request failed with status ${res.status}`

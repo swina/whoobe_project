@@ -398,6 +398,7 @@ import ThemesView from '../components/themes/ThemesView.vue'
 import { usePagesStore } from '../stores/pagesStore'
 import { useSnippetsStore } from '../stores/snippetsStore'
 import { adminSearch, reindexSearchIndex, type SearchResult } from '../utils/search-api'
+import { getWhoobeOneSpikeUrl } from '../utils/editor-urls'
 import { useWebsitesStore } from '../stores/websitesStore'
 
 const damStore = useDamStore()
@@ -735,15 +736,6 @@ function handleSelectSidebarFolder(path: string) {
   tabsStore.openSection('assets')
 }
 
-// Mirrors WhoobeOneEmbed.vue's own identically-named helper - duplicated,
-// not extracted (see PagePreviewTab.vue's matching comment on why).
-function getDefaultWhoobeOneSpikeUrl(): string {
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    const port = window.location.port; return `${window.location.protocol}//${window.location.hostname}${port ? `:${port}` : ""}/whoobe-one-editor`
-  }
-  return 'http://localhost:3000/whoobe-one-editor'
-}
-
 // Receiving end of a list-to-detail link clicked inside an embedded
 // whoobe-one-spike editor's own Preview (BlockContainerPreview.vue's
 // onDynamicLinkClick) - opens/focuses the target page's own tab directly
@@ -754,7 +746,7 @@ function getDefaultWhoobeOneSpikeUrl(): string {
 // every single message). Origin-checked against the exact same
 // whoobe-one-spike origin every embedded iframe is already built from.
 function onWindowMessage(event: MessageEvent) {
-  if (event.origin !== new URL(getDefaultWhoobeOneSpikeUrl()).origin) return
+  if (event.origin !== new URL(getWhoobeOneSpikeUrl()).origin) return
   if (event.data?.type !== 'whoobe-one:open-page-preview') return
   const { pageId, path, locale } = event.data
   if (typeof pageId === 'string' && typeof path === 'string' && typeof locale === 'string') {

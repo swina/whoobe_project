@@ -39,6 +39,7 @@ import { Eye } from '@lucide/vue'
 import { usePagesStore } from '../../stores/pagesStore'
 import { useTabsStore } from '../../stores/tabsStore'
 import type { WhoobeOnePage } from '../../utils/pages-api'
+import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
 
 const props = defineProps<{
   pageId: string
@@ -48,21 +49,10 @@ const pagesStore = usePagesStore()
 const tabsStore = useTabsStore()
 const page = ref<WhoobeOnePage | null>(null)
 
-// Mirrors WhoobeOneEmbed.vue's own identically-named helper - duplicated,
-// not extracted, matching that file's own comment on why (belongs in a
-// real pages-api.ts client if/when one exists, not worth a shared module
-// for two call sites today).
-function getDefaultWhoobeOneSpikeUrl(): string {
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    const port = window.location.port; return `${window.location.protocol}//${window.location.hostname}${port ? `:${port}` : ""}/whoobe-one-editor`
-  }
-  return 'http://localhost:3000/whoobe-one-editor'
-}
-
 const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'page' && t.itemId === props.pageId))
 
 const iframeSrc = computed(() => {
-  const base = getDefaultWhoobeOneSpikeUrl()
+  const base = getWhoobeOneSpikeUrl()
   const tab = currentTab.value
   // No ?locale= query: pages carry the locale in their path (/it/…), and
   // the public renderer derives the locale from the path when the query is
