@@ -80,7 +80,7 @@ export interface AssetItem {
 }
 
 const defaultConfig: DamConfigState = {
-  assetProcessorUrl: import.meta.env.VITE_ASSET_PROCESSOR_URL || getDefaultAssetProcessorUrl(),
+  assetProcessorUrl: getDefaultAssetProcessorUrl(),
   folderRules: [
     { pathPrefix: '/public/**', isPublic: true },
     { pathPrefix: '/uploads/marketing/**', isPublic: true }

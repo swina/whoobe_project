@@ -94,9 +94,9 @@ export interface DamUploadResult {
 // hostname the page itself was loaded from instead of hardcoding one.
 export function getDefaultAssetProcessorUrl(): string {
   if (typeof window !== 'undefined' && window.location?.hostname) {
-    return `${window.location.protocol}//${window.location.hostname}:3002`
+    return `${window.location.protocol}//${window.location.hostname}:${window.location.port || '3000'}`
   }
-  return 'http://localhost:3002'
+  return 'http://localhost:3000'
 }
 
 function normalizeBaseUrl(baseUrl: string): string {

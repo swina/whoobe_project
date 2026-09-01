@@ -36,7 +36,7 @@ function loadInitialConfig(): AuthConfigState {
   } catch (e) {
     console.error('Failed to load auth config:', e)
   }
-  return { coreApiUrl: import.meta.env.VITE_CORE_API_URL || getDefaultCoreApiUrl() }
+  return { coreApiUrl: getDefaultCoreApiUrl() }
 }
 
 export const useAuthStore = defineStore('auth', () => {
