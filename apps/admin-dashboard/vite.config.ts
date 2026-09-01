@@ -22,7 +22,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3000,
-    allowedHosts: ["develop.local"],
+    allowedHosts: true,
     proxy: {
       '/auth': { target: 'http://develop.local:3003', changeOrigin: true },
       '/whoobe-one': { target: 'http://develop.local:3003', changeOrigin: true },
