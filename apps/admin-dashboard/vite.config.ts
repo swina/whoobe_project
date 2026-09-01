@@ -39,6 +39,12 @@ export default defineConfig({
       '/search': { target: 'http://develop.local:3003', changeOrigin: true },
       '/themes': { target: 'http://develop.local:3003', changeOrigin: true },
       '/api/v1/dam': { target: 'http://develop.local:3002', changeOrigin: true },
+      // whoobe-one-spike editor (port 3006) — proxied through a unique
+      // path prefix so the iframe and all its assets work from any
+      // hostname, including Cloudflare tunnels.
+      '/whoobe-one-editor': { target: 'http://develop.local:3006', changeOrigin: true },
+      // whoobe-studio (port 3004) — same proxying rationale.
+      '/whoobe-studio': { target: 'http://develop.local:3004', changeOrigin: true },
     },
   },
   optimizeDeps: {

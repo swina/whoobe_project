@@ -25,12 +25,7 @@ export class AiApiError extends Error {
   }
 }
 
-function getDefaultCoreApiUrl(): string {
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    return `${window.location.protocol}//${window.location.hostname}:3003`
-  }
-  return 'http://localhost:3003'
-}
+import { getDefaultCoreApiUrl } from './core-api-url'
 
 async function parseJsonOrThrow(res: Response): Promise<any> {
   if (!res.ok) {

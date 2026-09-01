@@ -29,9 +29,10 @@ const props = defineProps<{
 
 function getDefaultWhoobeOneSpikeUrl(): string {
   if (typeof window !== 'undefined' && window.location?.hostname) {
-    return `${window.location.protocol}//${window.location.hostname}:3006`
+    const port = window.location.port
+    return `${window.location.protocol}//${window.location.hostname}${port ? `:${port}` : ''}/whoobe-one-editor`
   }
-  return 'http://localhost:3006'
+  return 'http://localhost:3000/whoobe-one-editor'
 }
 
 const isConnecting = ref(true)

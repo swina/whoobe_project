@@ -58,6 +58,7 @@ import {
   createSnippet as apiCreateSnippet,
   updateSnippet as apiUpdateSnippet,
 } from '../snippets-api'
+import { getDefaultCoreApiUrl } from '../core-api-url'
 import {
   listKits as apiListKits,
   getKit as apiGetKit,
@@ -74,9 +75,7 @@ type EditorStore = ReturnType<typeof useEditorStore>
  */
 export async function loadAllThemes(editor: EditorStore): Promise<void> {
   try {
-    const baseUrl = typeof window !== 'undefined' && window.location?.hostname
-      ? `${window.location.protocol}//${window.location.hostname}:3003`
-      : 'http://localhost:3003'
+    const baseUrl = getDefaultCoreApiUrl()
     const res = await fetch(`${baseUrl}/whoobe-one/themes/all`, { credentials: 'include' })
     if (!res.ok) return
     const body = await res.json()
@@ -103,9 +102,7 @@ export async function loadAllThemes(editor: EditorStore): Promise<void> {
  */
 export async function loadWebsiteTheme(editor: EditorStore, websiteId: string): Promise<void> {
   try {
-    const baseUrl = typeof window !== 'undefined' && window.location?.hostname
-      ? `${window.location.protocol}//${window.location.hostname}:3003`
-      : 'http://localhost:3003'
+    const baseUrl = getDefaultCoreApiUrl()
     const res = await fetch(`${baseUrl}/whoobe-one/websites/${websiteId}/themes`, { credentials: 'include' })
     if (!res.ok) return
     const body = await res.json()

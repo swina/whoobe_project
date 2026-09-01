@@ -71,12 +71,8 @@ export interface DataObjectQueryOptions {
 // submit call - same core-api host every other call in this file already
 // targets, just without `credentials: 'include'` since a site visitor has
 // no admin session cookie to send.
-export function getDefaultCoreApiUrl(): string {
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    return `${window.location.protocol}//${window.location.hostname}:3003`
-  }
-  return 'http://localhost:3003'
-}
+import { getDefaultCoreApiUrl } from './core-api-url'
+export { getDefaultCoreApiUrl }
 
 async function parseJsonOrThrow(res: Response): Promise<any> {
   if (!res.ok) {

@@ -18,6 +18,7 @@ export default defineConfig({
   // docs/plans/environment/env-optimization.md). Vite natively expands
   // ${VAR} references (dotenv-expand) and shell-exported vars win.
   envDir: '../../',
+  base: '/whoobe-one-editor/',
   plugins: [vue()],
   // dragula's own dependency chain (crossvent -> custom-event) references
   // Node's `global` object directly, assuming a bundler that polyfills it
@@ -36,6 +37,6 @@ export default defineConfig({
   },
   server: {
     port: 3006,
-    allowedHosts: ['develop.local','whoobeone.local','whoobeone.localhost','whoobeone.test','whoobeone.test.localhost','whoobeone.test.lvh.me','whoobeone.test']
+    allowedHosts: true
   }
 })

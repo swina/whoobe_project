@@ -1228,3 +1228,13 @@ Implements `docs/plans/website/website-paths.md`: a page's routing slug can now 
 - **damStore** (`damStore.ts`): uses `getDefaultAssetProcessorUrl()` directly instead of the env var `VITE_ASSET_PROCESSOR_URL`.
 - **`setSessionCookie`** (`core-api/server.ts`): `secure` flag now set to `false` (was `isProduction`), so the session cookie is always sent over HTTP — fixes 401 on production environments without HTTPS termination.
 - **`express-guards.ts`**: added debug logging (`requireAuth`/`requirePermission`) to distinguish "no cookie" vs "invalid session" on 401 responses.
+- **Stale URL detection** (`stale-localhost.ts`): added `isStoredUrlStale()` — a persisted DAM URL is discarded when its hostname differs from the page's current hostname, preventing 401s from a stale custom backend URL saved in localStorage.
+
+## [whoobe-one-spike & whoobe-studio editor proxying] — 2026-09-01 (branch: current)
+
+- **Vite proxy** (`apps/admin-dashboard/vite.config.ts`): added `/whoobe-one-editor` → `develop.local:3006` and `/whoobe-studio` → `develop.local:3004` proxy rules, so both embedded editors load correctly behind a tunnel that only exposes port 3000.
+- **Unique base paths**: whoobe-one-spike set to `base: '/whoobe-one-editor/'` and whoobe-studio to `base: '/whoobe-studio/'` in their vite.config.ts, so their assets resolve through the proxy without colliding with the host app's own `/` paths.
+- **Embed components updated** (`apps/admin-dashboard`): `WhoobeOneEmbed.vue`, `SnippetEditorEmbed.vue`, `WhoobeStudioEmbed.vue` (via `documents-api.ts`'s `getDefaultWhoobeStudioUrl`) now build iframe URLs on the page's own origin with the editor base path, instead of hardcoding ports `:3006`/`:3004`.
+- **Shared core-api URL helper** (`apps/whoobe-one-spike/src/core-api-url.ts`): new `getDefaultCoreApiUrl()` that returns the page's own origin (no `:3003`), so the embedded editor's own API calls go through the proxy. All 9 whoobe-one-spike API files and `ThemeModal.vue` updated to use it.
+- **`allowedHosts: true`** in admin-dashboard, whoobe-one-spike, and whoobe-studio vite configs — accept connections from any hostname (Cloudflare public URL).
+- **`getDefaultCoreApiUrl()` / `getDefaultAssetProcessorUrl()`** now only append a port when the page is served on a non-default port, so HTTPS (portless) URLs work correctly.

@@ -27,9 +27,10 @@ function normalizeBaseUrl(baseUrl: string): string {
 // "localhost" - see apps/whoobe-studio's vite.config.ts for the port.
 export function getDefaultWhoobeStudioUrl(): string {
   if (typeof window !== 'undefined' && window.location?.hostname) {
-    return `${window.location.protocol}//${window.location.hostname}:3004`
+    const port = window.location.port
+    return `${window.location.protocol}//${window.location.hostname}${port ? `:${port}` : ''}/whoobe-studio`
   }
-  return 'http://localhost:3004'
+  return 'http://localhost:3000/whoobe-studio'
 }
 
 async function parseJsonOrThrow(res: Response): Promise<any> {
