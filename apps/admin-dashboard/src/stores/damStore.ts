@@ -311,6 +311,9 @@ export const useDamStore = defineStore('dam', () => {
   // Upload progress tracking — updated during uploadMultipleAssets/uploadZipAsset
 const uploadProgress = ref<{ current: number; total: number; label: string } | null>(null)
 
+// Extraction progress for ZIP uploads — shows last N extracted filenames
+const extractProgress = ref<string[]>([])
+
 async function uploadMultipleAssets(files: File[], folderPath?: string, isPublicOverride?: boolean): Promise<AssetItem[]> {
     const uploaded: AssetItem[] = []
     uploadProgress.value = { current: 0, total: files.length, label: 'Starting...' }
@@ -412,6 +415,7 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
 
     let extractedCount = 0
     const entries = Object.keys(zip.files)
+    extractProgress.value = []
 
     for (const relativePath of entries) {
       const zipEntry = zip.files[relativePath]
@@ -438,11 +442,14 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
         const entryFolderPath = fileFolderDir ? `${baseExtractPath}/${fileFolderDir}` : baseExtractPath
 
         const extractedFile = new File([blob], entryFilename, { type: blob.type })
+        const progressLine = `${fileFolderDir ? fileFolderDir + '/' : ''}${entryFilename}`
+        extractProgress.value = [progressLine, ...extractProgress.value].slice(0, 10)
         await uploadAsset(extractedFile, entryFolderPath, isPublicOverride)
         extractedCount++
       }
     }
 
+    extractProgress.value = []
     return { extractedCount }
   }
 
@@ -623,6 +630,7 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
     uploadZipAsset,
     uploadMultipleAssets,
     uploadProgress,
+    extractProgress,
     uploadNewVersion,
     deleteAsset,
     regenerateThumbnails,

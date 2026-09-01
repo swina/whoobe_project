@@ -870,6 +870,17 @@
           </div>
         </div>
 
+        <!-- ZIP extraction progress -->
+        <div v-if="damStore.extractProgress.length > 0" class="px-3 py-2 space-y-1">
+          <div class="text-[11px] font-semibold text-amber-400">Extracting ZIP...</div>
+          <div class="space-y-0.5 max-h-[18rem] overflow-y-auto">
+            <div v-for="(line, idx) in damStore.extractProgress" :key="idx"
+              class="text-[11px] font-mono text-slate-300 truncate">
+              extracting {{ line }}
+            </div>
+          </div>
+        </div>
+
         <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800 light:border-slate-200">
           <button
             @click="showUploadModal = false"
