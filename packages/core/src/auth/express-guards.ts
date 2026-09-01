@@ -5,16 +5,18 @@ export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
 }
 
-async function resolveUser(req: Request): Promise<AuthenticatedUser | null> {
-  const token = (req as any).cookies?.[SESSION_COOKIE_NAME];
-  return validateSessionToken(token);
-}
-
 /** Rejects unless a valid, non-expired, non-revoked session is present. */
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const user = await resolveUser(req);
+    const token = req.cookies?.[SESSION_COOKIE_NAME];
+    if (!token) {
+      console.warn(`requireAuth: no cookie "${SESSION_COOKIE_NAME}" on ${req.method} ${req.path} (origin: ${req.headers.origin ?? 'unknown'})`);
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    const user = await validateSessionToken(token);
     if (!user) {
+      console.warn(`requireAuth: cookie present but session invalid for ${req.method} ${req.path} (token prefix: ${token.slice(0, 8)}...)`);
       res.status(401).json({ error: 'Authentication required' });
       return;
     }
@@ -30,8 +32,15 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
 export function requirePermission(permissionKey: string) {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const user = await resolveUser(req);
+      const token = req.cookies?.[SESSION_COOKIE_NAME];
+      if (!token) {
+        console.warn(`requirePermission(${permissionKey}): no cookie on ${req.method} ${req.path}`);
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+      }
+      const user = await validateSessionToken(token);
       if (!user) {
+        console.warn(`requirePermission(${permissionKey}): cookie present but session invalid for ${req.method} ${req.path} (token prefix: ${token.slice(0, 8)}...)`);
         res.status(401).json({ error: 'Authentication required' });
         return;
       }
