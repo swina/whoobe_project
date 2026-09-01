@@ -47,14 +47,22 @@
 
         <ComponentSettingsCard v-if="activeSubSection === 'components'" />
 
-        <div v-if="activeSubSection === 'roles'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-3">
-          <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">Roles / Users / Workspaces</h3>
-          <p class="text-xs text-slate-500">
-            Not built yet - there's no admin UI or backend routes for managing users, roles, or workspaces in this codebase yet
-            (only the auth tables sign-in already relies on; "workspaces" isn't a concept in the schema at all today). This card is a
-            placeholder for that future work, not a working feature.
-          </p>
-        </div>
+        <template v-if="activeSubSection === 'roles'">
+          <!-- Inner tabs for Roles section -->
+          <div class="flex items-center gap-2 pb-1 border-b border-slate-800 light:border-slate-200">
+            <button
+              v-for="tab in rolesSubTabs" :key="tab.key"
+              @click="setRolesSubTab(tab.key)"
+              :class="['px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5', rolesActiveTab === tab.key ? 'bg-slate-800 light:bg-slate-200 text-slate-100 light:text-slate-900' : 'text-slate-500 light:text-slate-600 hover:text-slate-300 light:hover:text-slate-700']"
+            >
+              <component :is="tab.icon" class="w-3.5 h-3.5" />
+              <span>{{ tab.name }}</span>
+            </button>
+          </div>
+
+          <UsersView v-if="rolesActiveTab === 'users'" />
+          <RolesView v-else-if="rolesActiveTab === 'roles'" />
+        </template>
 
         <WorkflowSettingsCard v-if="activeSubSection === 'workflows'" />
 
@@ -94,6 +102,8 @@ import ComponentSettingsCard from '../components/objects/ComponentSettingsCard.v
 import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue'
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'
 import AiSettingsCard from '../components/settings/AiSettingsCard.vue'
+import UsersView from './UsersView.vue'
+import RolesView from './RolesView.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
 import {
   Sliders,
@@ -106,7 +116,9 @@ import {
   Upload,
   FileJson,
   Sparkles,
-  WandSparkles
+  WandSparkles,
+  UserRound,
+  KeyRound,
 } from '@lucide/vue'
 
 const tabsStore = useTabsStore()
@@ -142,6 +154,24 @@ const classesSubTabs: { key: ClassesSubTab; name: string; icon: any }[] = [
 function setClassesSubTab(key: ClassesSubTab) {
   classesActiveTab.value = key
   try { localStorage.setItem(CLASSES_SUB_KEY, key) } catch { /* ignore */ }
+}
+
+const ROLES_SUB_KEY = 'whoobe:settings-roles-subtab'
+type RolesSubTab = 'users' | 'roles'
+const rolesActiveTab = ref<RolesSubTab>('users')
+try {
+  const saved = localStorage.getItem(ROLES_SUB_KEY) as RolesSubTab | null
+  if (saved) rolesActiveTab.value = saved
+} catch { /* ignore */ }
+
+const rolesSubTabs: { key: RolesSubTab; name: string; icon: any }[] = [
+  { key: 'users', name: 'Users', icon: UserRound },
+  { key: 'roles', name: 'Roles', icon: KeyRound },
+]
+
+function setRolesSubTab(key: RolesSubTab) {
+  rolesActiveTab.value = key
+  try { localStorage.setItem(ROLES_SUB_KEY, key) } catch { /* ignore */ }
 }
 
 const activeSubSection = computed<SettingsSubSection>(() => {

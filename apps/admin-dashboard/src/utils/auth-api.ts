@@ -156,3 +156,116 @@ export async function resetPassword(baseUrl: string, token: string, password: st
   })
   await parseJsonOrThrow(res)
 }
+
+// --- Admin: User & Role Management ---
+
+export interface UserAdmin {
+  id: string
+  email: string
+  displayName: string
+  isActive: boolean
+  createdAt: string
+  lastLoginAt: string | null
+  roleIds: string[]
+  roleNames: string[]
+}
+
+export interface RoleAdmin {
+  id: string
+  name: string
+  description: string | null
+  permissionKeys: string[]
+  userCount: number
+}
+
+export interface PermissionItem {
+  id: string
+  key: string
+  description: string | null
+}
+
+export async function listUsers(baseUrl: string): Promise<UserAdmin[]> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/users`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.users ?? []
+}
+
+export async function createUser(baseUrl: string, input: { email: string; password: string; displayName: string; roleIds: string[] }): Promise<UserAdmin> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/users`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.user
+}
+
+export async function updateUser(baseUrl: string, id: string, input: { email?: string; displayName?: string; isActive?: boolean; roleIds?: string[] }): Promise<UserAdmin> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/users/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.user
+}
+
+export async function deleteUser(baseUrl: string, id: string): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/users/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  await parseJsonOrThrow(res)
+}
+
+export async function adminResetPassword(baseUrl: string, id: string): Promise<{ resetUrl: string; token: string }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/users/${id}/reset-password`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
+export async function listRoles(baseUrl: string): Promise<RoleAdmin[]> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/roles`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.roles ?? []
+}
+
+export async function createRole(baseUrl: string, input: { name: string; description?: string; permissionKeys: string[] }): Promise<RoleAdmin> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/roles`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.role
+}
+
+export async function updateRole(baseUrl: string, id: string, input: { name?: string; description?: string | null; permissionKeys?: string[] }): Promise<RoleAdmin> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/roles/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.role
+}
+
+export async function deleteRole(baseUrl: string, id: string): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/roles/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  await parseJsonOrThrow(res)
+}
+
+export async function listAllPermissions(baseUrl: string): Promise<PermissionItem[]> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/permissions`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.permissions ?? []
+}

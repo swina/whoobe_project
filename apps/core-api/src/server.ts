@@ -159,6 +159,18 @@ import {
   clearResetToken,
   updatePassword,
   RESET_TOKEN_TTL_MS,
+  listUsers,
+  getUserWithRoles,
+  createUser,
+  updateUser,
+  deleteUser as deleteUserRecord,
+  adminResetPassword,
+  listRoles,
+  getRole,
+  createRole,
+  updateRole,
+  deleteRole as deleteRoleRecord,
+  listAllPermissions,
   type AuthenticatedRequest,
   type SearchOptions,
   type SearchDocumentType,
@@ -340,7 +352,26 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await findUserByEmail(email);
 
-    if (!user || !user.isActive || !(await verifyPassword(user.passwordHash, password))) {
+    if (!user) {
+      console.warn(`Login failed: user not found for email "${email.toLowerCase()}"`);
+      recordFailedAttempt(rateLimitKey);
+      res.status(401).json({ error: 'Invalid email or password' });
+      return;
+    }
+
+    if (!user.isActive) {
+      console.warn(`Login failed: user "${user.id}" is inactive`);
+      recordFailedAttempt(rateLimitKey);
+      res.status(401).json({ error: 'Invalid email or password' });
+      return;
+    }
+
+    const passwordOk = await verifyPassword(user.passwordHash, password);
+    if (!passwordOk) {
+      console.warn(
+        `Login failed: wrong password for user "${user.id}" ` +
+        `(hash prefix: ${user.passwordHash.slice(0, 16)}..., email: "${user.email}")`
+      );
       recordFailedAttempt(rateLimitKey);
       res.status(401).json({ error: 'Invalid email or password' });
       return;
@@ -543,6 +574,7 @@ app.post('/auth/forgot-password', async (req: Request, res: Response): Promise<v
     const user = await findUserByEmail(normalizedEmail);
     if (user && user.isActive) {
       const token = await generateResetToken(user.id);
+      console.log(`Password reset token generated for user "${user.id}": ${token.slice(0, 8)}...`);
       const hostname = process.env.WHOOBE_HOSTNAME || 'localhost';
       const resetUrl = `http://${hostname}:3000/reset-password?token=${token}`;
 
@@ -600,6 +632,172 @@ app.post('/auth/reset-password', async (req: Request, res: Response): Promise<vo
   } catch (error: any) {
     console.error('Reset-password error:', error);
     res.status(500).json({ error: 'Password reset failed' });
+  }
+});
+
+// --- Admin: User & Role CRUD (requires users:manage) ---
+
+app.get('/auth/users', requirePermission(PERMISSIONS.USERS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const usersList = await listUsers();
+    res.json({ users: usersList });
+  } catch (error: any) {
+    console.error('List users error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list users' });
+  }
+});
+
+app.post('/auth/users', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  const { email, password, displayName, roleIds } = req.body ?? {};
+  if (typeof email !== 'string' || typeof password !== 'string' || password.length < 8 || typeof displayName !== 'string') {
+    res.status(400).json({ error: 'email, password (min 8 chars), and displayName are required' });
+    return;
+  }
+  if (!Array.isArray(roleIds) || roleIds.length === 0) {
+    res.status(400).json({ error: 'At least one roleId is required' });
+    return;
+  }
+  try {
+    const user = await createUser({ email, password, displayName, roleIds });
+    res.status(201).json({ user });
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      res.status(409).json({ error: 'A user with this email already exists' });
+      return;
+    }
+    console.error('Create user error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create user' });
+  }
+});
+
+app.get('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = await getUserWithRoles(req.params.id);
+    if (!user) { res.status(404).json({ error: 'User not found' }); return; }
+    res.json({ user });
+  } catch (error: any) {
+    console.error('Get user error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get user' });
+  }
+});
+
+app.patch('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  const { email, displayName, isActive, roleIds } = req.body ?? {};
+  try {
+    const user = await updateUser(req.params.id, {
+      email: typeof email === 'string' ? email : undefined,
+      displayName: typeof displayName === 'string' ? displayName : undefined,
+      isActive: typeof isActive === 'boolean' ? isActive : undefined,
+      roleIds: Array.isArray(roleIds) ? roleIds : undefined,
+    });
+    if (!user) { res.status(404).json({ error: 'User not found' }); return; }
+    res.json({ user });
+  } catch (error: any) {
+    console.error('Update user error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update user' });
+  }
+});
+
+app.delete('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteUserRecord(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete user' });
+  }
+});
+
+app.post('/auth/users/:id/reset-password', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const token = await adminResetPassword(req.params.id);
+    const hostname = process.env.WHOOBE_HOSTNAME || 'localhost';
+    const resetUrl = `http://${hostname}:3000/reset-password?token=${token}`;
+    console.log(`Admin-triggered password reset for user ${req.params.id}: ${resetUrl}`);
+    res.json({ resetUrl, token });
+  } catch (error: any) {
+    console.error('Admin reset password error:', error);
+    res.status(500).json({ error: error.message || 'Failed to reset password' });
+  }
+});
+
+app.get('/auth/roles', requirePermission(PERMISSIONS.USERS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const rolesList = await listRoles();
+    res.json({ roles: rolesList });
+  } catch (error: any) {
+    console.error('List roles error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list roles' });
+  }
+});
+
+app.post('/auth/roles', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  const { name, description, permissionKeys } = req.body ?? {};
+  if (typeof name !== 'string' || !name.trim()) {
+    res.status(400).json({ error: 'name is required' });
+    return;
+  }
+  try {
+    const role = await createRole({ name: name.trim(), description, permissionKeys: Array.isArray(permissionKeys) ? permissionKeys : [] });
+    res.status(201).json({ role });
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      res.status(409).json({ error: 'A role with this name already exists' });
+      return;
+    }
+    console.error('Create role error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create role' });
+  }
+});
+
+app.get('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const role = await getRole(req.params.id);
+    if (!role) { res.status(404).json({ error: 'Role not found' }); return; }
+    res.json({ role });
+  } catch (error: any) {
+    console.error('Get role error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get role' });
+  }
+});
+
+app.patch('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  const { name, description, permissionKeys } = req.body ?? {};
+  try {
+    const role = await updateRole(req.params.id, {
+      name: typeof name === 'string' ? name.trim() : undefined,
+      description: description === null ? null : typeof description === 'string' ? description : undefined,
+      permissionKeys: Array.isArray(permissionKeys) ? permissionKeys : undefined,
+    });
+    if (!role) { res.status(404).json({ error: 'Role not found' }); return; }
+    res.json({ role });
+  } catch (error: any) {
+    console.error('Update role error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update role' });
+  }
+});
+
+app.delete('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await deleteRoleRecord(req.params.id);
+    if (result.blocked) {
+      res.status(409).json({ error: `Cannot delete role: ${result.userCount} user(s) are assigned to it` });
+      return;
+    }
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete role error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete role' });
+  }
+});
+
+app.get('/auth/permissions', requirePermission(PERMISSIONS.USERS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const allPerms = await listAllPermissions();
+    res.json({ permissions: allPerms });
+  } catch (error: any) {
+    console.error('List permissions error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list permissions' });
   }
 });
 

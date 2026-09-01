@@ -75,4 +75,5 @@ export * from './auth/express-guards.js';
 export * from './auth/users.js';
 export * from './auth/mfa.js';
 export * from './auth/reset-password.js';
+export * from './auth/admin-users.js';
 export * from './env.js';
