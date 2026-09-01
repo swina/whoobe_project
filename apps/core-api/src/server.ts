@@ -108,6 +108,7 @@ import {
   createMigrationSource,
   updateMigrationSource,
   deleteMigrationSource,
+  getConnectionConfig,
   SESSION_COOKIE_NAME,
   generateTotpSecret,
   totpKeyUri,
@@ -194,6 +195,15 @@ function escapeXml(s: string): string {
 // WHOOBE_HOSTNAME-derived values. No .env present -> fall back to whatever
 // is already in process.env.
 loadRootEnv();
+
+const cfg = getConnectionConfig();
+console.log('');
+console.log('=== Database Connection ===');
+console.log(`  Host: ${cfg.host}`);
+console.log(`  Port: ${cfg.port}`);
+console.log(`  DB:   ${cfg.database}`);
+console.log(`  User: ${cfg.user}`);
+console.log('==========================\n');
 
 const app = express();
 const port = process.env.PORT || 3003;
