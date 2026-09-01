@@ -140,3 +140,18 @@ export async function promoteDocumentsFromStaging(
   const body = await parseJsonOrThrow(res)
   return body.result
 }
+
+export async function extractComponentsFromClasses(
+  baseUrl: string,
+  id: string,
+  input: { dryRun?: boolean; className?: string; clear?: boolean }
+): Promise<MigrationRunResult> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/migration-sources/${id}/extract-components`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.result
+}

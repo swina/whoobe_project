@@ -182,7 +182,7 @@ import {
 // reachable from browser bundles - admin-dashboard already imports other
 // root-package exports like ClassFieldDefinition the same way).
 import { compileDynamicSchema } from '@whoobe-cms/core';
-import { runClassMigration, runObjectMigration, runDocumentMigration, runPromoteDocuments, runPromoteDocument } from '@whoobe-cms/migration-tool';
+import { runClassMigration, runObjectMigration, runDocumentMigration, runPromoteDocuments, runPromoteDocument, runExtractCollectionTypes } from '@whoobe-cms/migration-tool';
 
 
 function escapeXml(s: string): string {
@@ -2571,6 +2571,30 @@ app.post(
     } catch (error: any) {
       console.error('Promote documents error:', error);
       res.status(500).json({ error: error.message || 'Failed to promote documents' });
+    }
+  }
+);
+
+// Extract embedded collectionTypes from migrated classes into standalone
+// data_components records - the CLI's extract-collection-types command,
+// exposed through the migration source UI so admins can run it after
+// importing classes, no shell access needed. Does not need the Pimcore DB
+// (reads data_classes, writes data_components).
+app.post(
+  '/migration-sources/:id/extract-components',
+  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { dryRun, className, clear } = req.body ?? {};
+      const result = await runExtractCollectionTypes({
+        dryRun: dryRun === true,
+        className: typeof className === 'string' && className ? className : undefined,
+        clear: clear === true,
+      });
+      res.json({ result });
+    } catch (error: any) {
+      console.error('Extract components error:', error);
+      res.status(500).json({ error: error.message || 'Failed to extract components' });
     }
   }
 );

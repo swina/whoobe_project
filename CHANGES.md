@@ -4,6 +4,17 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Extract collectionTypes to data_components] — 2026-09-01 (current branch)
+
+- **New `extract-collection-types-to-components.ts`** (`packages/migration-tool/src/`): CLI command `extract-collection-types` that reads all `data_classes` from the DB, finds `fieldcollections` fields with embedded `collectionTypes`, creates a `data_components` record for each unique collection type (deduplicated by name), and updates the class field to use `allowedComponentTypes` instead of `collectionTypes`.
+- **CLI flags**: `--dry-run` (report-only), `--class=<Name>` (optional, default: all classes).
+- **Exports**: `runExtractCollectionTypes()` + `ExtractCollectionTypesOptions` type from `@whoobe-cms/migration-tool`.
+- **Class trace**: before creating/updating, logs every class + field that references each component (e.g. `Component "ProductBanner" -> Product.content`).
+- **Integrated into the PIMCORE MIGRATION SOURCE UI** (`MigrationSourcesCard.vue`): new "Extract Components" action per source with class-name filter + dry-run toggle, backed by new `extractComponentsFromClasses()` client util and a new `POST /migration-sources/:id/extract-components` core-api route (wraps `runExtractCollectionTypes`, OBJECTS_WRITE, no Pimcore DB needed).
+- Verified: `packages/migration-tool` typecheck clean + 55 tests pass, `packages/core` typecheck clean, `core-api` typecheck clean, `admin-dashboard` build (vue-tsc + vite) clean.
+
+---
+
 ## [Replace inline getDefaultWhoobeOneSpikeUrl/getDefaultWhoobeStudioUrl with shared editor-urls import] — 2026-09-01 (current branch)
 
 - **New shared utility `utils/editor-urls.ts`**: exports `getWhoobeOneSpikeUrl()` (returns `http://localhost:3006` on localhost, `<origin>/whoobe-one-editor` externally) and `getWhoobeStudioUrl()` (returns `http://localhost:3004` on localhost, `<origin>/whoobe-studio` externally).

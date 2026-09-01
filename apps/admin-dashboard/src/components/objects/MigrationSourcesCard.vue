@@ -131,6 +131,33 @@
           </button>
         </div>
 
+        <!-- Extract Components: convert embedded collectionTypes into data_components -->
+        <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-800/60 light:border-slate-200/60">
+          <span class="text-xs text-slate-500">Components:</span>
+          <input
+            v-model="classNameExtract[source.id]"
+            type="text"
+            placeholder="Class name (blank = all)"
+            class="flex-1 min-w-[10rem] px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+          />
+          <label class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600">
+            <input type="checkbox" v-model="dryRunExtract[source.id]" class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
+            dry-run
+          </label>
+          <label class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600">
+            <input type="checkbox" v-model="clearExtract[source.id]" class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-rose-600" />
+            clear
+          </label>
+          <button
+            @click="handleExtractComponents(source)"
+            :disabled="runningExtract === source.id"
+            type="button"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 disabled:opacity-50"
+          >
+            {{ runningExtract === source.id ? 'Extracting…' : 'Extract Components' }}
+          </button>
+        </div>
+
         <!-- Last run result -->
         <div v-if="results[source.id]" class="text-xs pt-1">
           <span class="text-emerald-400 font-semibold">{{ results[source.id].succeeded }} succeeded</span>
@@ -186,7 +213,7 @@ import { useMigrationSourcesStore } from '../../stores/migrationSourcesStore'
 import { useDataClassesStore } from '../../stores/dataClassesStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useToastStore } from '../../stores/toastStore'
-import { importClassesFromPimcore, importObjectsFromPimcore, importDocumentsFromPimcore, promoteDocumentsFromStaging, type MigrationSource, type MigrationRunResult } from '../../utils/migration-sources-api'
+import { importClassesFromPimcore, importObjectsFromPimcore, importDocumentsFromPimcore, promoteDocumentsFromStaging, extractComponentsFromClasses, type MigrationSource, type MigrationRunResult } from '../../utils/migration-sources-api'
 
 const store = useMigrationSourcesStore()
 const dataClassesStore = useDataClassesStore()
@@ -214,11 +241,15 @@ const dryRunDocuments = reactive<Record<string, boolean>>({})
 const stageDocuments = reactive<Record<string, boolean>>({})
 const dryRunPromote = reactive<Record<string, boolean>>({})
 const clearAfterPromote = reactive<Record<string, boolean>>({})
+const dryRunExtract = reactive<Record<string, boolean>>({})
+const classNameExtract = reactive<Record<string, string>>({})
+const clearExtract = reactive<Record<string, boolean>>({})
 const results = reactive<Record<string, MigrationRunResult>>({})
 const runningClasses = ref<string | null>(null)
 const runningObjects = ref<string | null>(null)
 const runningDocuments = ref<string | null>(null)
 const runningPromote = ref<string | null>(null)
+const runningExtract = ref<string | null>(null)
 
 async function handleImportClasses(source: MigrationSource) {
   runningClasses.value = source.id
@@ -291,6 +322,23 @@ async function handlePromoteDocuments(source: MigrationSource) {
     toastStore.show(e?.message || 'Failed to promote staged documents')
   } finally {
     runningPromote.value = null
+  }
+}
+
+async function handleExtractComponents(source: MigrationSource) {
+  runningExtract.value = source.id
+  try {
+    const result = await extractComponentsFromClasses(authStore.config.coreApiUrl, source.id, {
+      dryRun: !!dryRunExtract[source.id],
+      className: classNameExtract[source.id] || undefined,
+      clear: !!clearExtract[source.id],
+    })
+    results[source.id] = result
+    toastStore.show(`${result.succeeded} component(s) extracted, ${result.failed} failed`)
+  } catch (e: any) {
+    toastStore.show(e?.message || 'Failed to extract components')
+  } finally {
+    runningExtract.value = null
   }
 }
 

@@ -24,6 +24,7 @@ import { PimcorePageConverter } from './pimcore-page-converter.js';
 import { PimcoreRawDocument, PimcoreEditableElement } from './pimcore-document-converter.js';
 import { PimcoreAssetSummary } from './source-adapter.js';
 import { PimcoreObjectConverter, appendPimcoreSystemFields } from './pimcore-object-converter.js';
+import { runExtractCollectionTypes } from './extract-collection-types-to-components.js';
 import {
   parsePimcoreClassDefinitionFile,
   parsePimcoreClassMeta,
@@ -48,6 +49,7 @@ interface CliFlags {
   public?: boolean;
   staging?: boolean;
   clear?: boolean;
+  classesDir?: string;
 }
 
 function parseFlags(args: string[]): CliFlags {
@@ -57,6 +59,7 @@ function parseFlags(args: string[]): CliFlags {
     else if (arg.startsWith('--source=')) flags.source = arg.slice('--source='.length);
     else if (arg.startsWith('--limit=')) flags.limit = parseInt(arg.slice('--limit='.length), 10);
     else if (arg.startsWith('--class=')) flags.class = arg.slice('--class='.length);
+    else if (arg.startsWith('--classes-dir=')) flags.classesDir = arg.slice('--classes-dir='.length);
     else if (arg === '--public') flags.public = true;
     else if (arg === '--staging') flags.staging = true;
     else if (arg === '--clear') flags.clear = true;
@@ -833,6 +836,13 @@ export function runMigrationCli(args: string[] = process.argv.slice(2)): void {
       });
       break;
 
+    case 'extract-collection-types':
+      runExtractCollectionTypes({ dryRun: flags.dryRun, className: flags.class, clear: flags.clear, classesDir: flags.classesDir }).catch((err) => {
+        console.error('[extract-collection-types] Fatal error:', err);
+        process.exitCode = 1;
+      });
+      break;
+
     case 'help':
     default:
       console.log('Available Commands:');
@@ -861,8 +871,12 @@ export function runMigrationCli(args: string[] = process.argv.slice(2)): void {
   console.log('                       Phase 1 - the site\'s biggest correctness blocker). Walks the same');
   console.log('                       documents migrate-documents walks, uploads only what they');
   console.log('                       reference (not the whole source library).');
-  console.log('                       Flags: --dry-run, --source=<mysql|fixture> (default: mysql),');
-  console.log('                              --limit=<N>, --public (upload as public-read)');
+console.log('                       Flags: --dry-run, --source=<mysql|fixture> (default: mysql),');
+      console.log('                              --limit=<N>, --public (upload as public-read)');
+      console.log('  extract-collection-types - Extract embedded collectionTypes from fieldcollections');
+      console.log('                       fields into standalone data_components, then convert the');
+      console.log('                       class field to use allowedComponentTypes instead.');
+      console.log('                       Flags: --dry-run, --class=<Name> (optional, default: all classes)');
       console.log('');
       console.log('Source config (for --source=mysql, the default) via env vars or packages/migration-tool/.env:');
       console.log('  PIMCORE_DB_HOST, PIMCORE_DB_PORT, PIMCORE_DB_USER, PIMCORE_DB_PASSWORD, PIMCORE_DB_NAME');
@@ -879,3 +893,5 @@ export function runMigrationCli(args: string[] = process.argv.slice(2)): void {
 if (import.meta.url === `file://${process.argv[1]}`) {
   runMigrationCli();
 }
+
+export type { ExtractCollectionTypesOptions } from './extract-collection-types-to-components.js';
