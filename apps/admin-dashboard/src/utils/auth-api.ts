@@ -39,7 +39,8 @@ export interface MfaVerifySetupResponse {
 // Cloudflare) that only exposes the frontend port.
 export function getDefaultCoreApiUrl(): string {
   if (typeof window !== 'undefined' && window.location?.hostname) {
-    return `${window.location.protocol}//${window.location.hostname}:${window.location.port || '3000'}`
+    const port = window.location.port
+    return `${window.location.protocol}//${window.location.hostname}${port ? `:${port}` : ''}`
   }
   return 'http://localhost:3000'
 }
