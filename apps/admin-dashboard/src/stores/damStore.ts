@@ -28,7 +28,7 @@ import {
   TransformOptions,
   getDefaultAssetProcessorUrl
 } from '../utils/dam-api'
-import { isStaleLocalhostUrl } from '../utils/stale-localhost'
+import { isStaleLocalhostUrl, isStoredUrlStale } from '../utils/stale-localhost'
 
 const CONFIG_STORAGE_KEY = 'whoobe_custom_dam_config'
 
@@ -153,8 +153,9 @@ function loadInitialConfig(): DamConfigState {
       // legacy accessKeyId/secretAccessKey persisted by older versions of
       // this store is dropped instead of being carried forward.
       const storedUrl = typeof parsed.assetProcessorUrl === 'string' ? parsed.assetProcessorUrl : ''
+      const storedValid = storedUrl && !isStaleLocalhostUrl(storedUrl) && !isStoredUrlStale(storedUrl)
       return {
-        assetProcessorUrl: storedUrl && !isStaleLocalhostUrl(storedUrl)
+        assetProcessorUrl: storedValid
           ? storedUrl
           : defaultConfig.assetProcessorUrl,
         folderRules: Array.isArray(parsed.folderRules) ? parsed.folderRules : [...defaultConfig.folderRules]
