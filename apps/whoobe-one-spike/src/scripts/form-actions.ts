@@ -4,7 +4,7 @@
 // gsap-actions.ts's mountAnimation()/BlockElementPreview.vue's Alpine
 // wiring, not a Vue directive or component of its own.
 import type Element from './ElementsClass.js'
-import { getDefaultCoreApiUrl } from '../data-objects-api'
+import { getDefaultCoreApiUrl } from '../core-api-url'
 
 type WhoobeElement = InstanceType<typeof Element>
 
