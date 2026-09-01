@@ -46,6 +46,10 @@
           <span v-if="isSubmitting" class="animate-spin w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span>
           <span>{{ isSubmitting ? 'Signing in...' : 'Sign In' }}</span>
         </button>
+
+        <p class="text-center text-xs text-slate-500">
+          <router-link to="/forgot-password" class="text-indigo-400 hover:text-indigo-300">Forgot password?</router-link>
+        </p>
       </form>
 
       <!-- Step 2: password already verified (that's what mfaToken proves) -

@@ -1196,3 +1196,14 @@ Implements `docs/plans/website/website-paths.md`: a page's routing slug can now 
 - Dark/light theme support
 - Toast notification system
 - Responsive sidebar with collapsible navigation
+
+## [Password reset flow (forgot/reset via email)] — 2026-09-01 (branch: current)
+
+- **New DB columns** on `users` table: `reset_token` (text, nullable) and `reset_token_expires_at` (timestamptz, nullable). Drizzle migration `0032`.
+- **New service** `packages/core/src/auth/reset-password.ts`: `generateResetToken()`, `findUserByResetToken()`, `clearResetToken()`, `updatePassword()` — argon2id-hashed password update, 1-hour token TTL. Exported from `@whoobe-cms/core/server`.
+- **Backend routes** (`apps/core-api`): `POST /auth/forgot-password` (rate-limited, sends email with reset link via sendMail), `POST /auth/reset-password` (validates token, updates password).
+- **Frontend API client** (`apps/admin-dashboard`): `requestPasswordReset()` and `resetPassword()` in `auth-api.ts`.
+- **New views** (`apps/admin-dashboard`): `ForgotPasswordView.vue` (email input form, success confirmation), `ResetPasswordView.vue` (token from query param, new password + confirm, success state).
+- **Router update** (`apps/admin-dashboard`): added `/forgot-password` and `/reset-password` routes outside the auth gate.
+- **App.vue updated**: renders `ForgotPasswordView`/`ResetPasswordView` when not authenticated and route matches.
+- **LoginView.vue**: added "Forgot password?" link below the Sign In button.

@@ -36,6 +36,11 @@ export const users = pgTable('users', {
   totpSecret: text('totp_secret'),
   totpEnabledAt: timestamp('totp_enabled_at', { withTimezone: true }),
   mfaRecoveryCodes: jsonb('mfa_recovery_codes').$type<MfaRecoveryCode[]>(),
+  // Password-reset flow: a random token stored when /auth/forgot-password is
+  // called; /auth/reset-password consumes it. An expired or already-used
+  // token is treated as "not found" - no separate consumed-at column needed.
+  resetToken: text('reset_token'),
+  resetTokenExpiresAt: timestamp('reset_token_expires_at', { withTimezone: true }),
 });
 
 export const roles = pgTable('roles', {

@@ -134,3 +134,25 @@ export async function fetchCurrentUser(baseUrl: string): Promise<AuthenticatedUs
   if (res.status === 401) return null
   return parseJsonOrThrow(res)
 }
+
+// --- Password Reset ---
+
+export async function requestPasswordReset(baseUrl: string, email: string): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+    credentials: 'include',
+  })
+  await parseJsonOrThrow(res)
+}
+
+export async function resetPassword(baseUrl: string, token: string, password: string): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password }),
+    credentials: 'include',
+  })
+  await parseJsonOrThrow(res)
+}
