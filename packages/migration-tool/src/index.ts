@@ -18,6 +18,7 @@ export {
   runPromoteDocuments,
   runPromoteDocument,
 } from './cli.js';
+export { runExtractCollectionTypes } from './extract-collection-types-to-components.js';
 export type {
   MigrationRunResult,
   RunClassMigrationOptions,
@@ -26,4 +27,5 @@ export type {
   RunDocumentMigrationOptions,
   RunPromoteDocumentsOptions,
   RunPromoteDocumentOptions,
+  ExtractCollectionTypesOptions,
 } from './cli.js';
