@@ -114,6 +114,7 @@ async function loadThemes() {
     // Silent
   } finally {
     themeLoading.value = false
+    init()
   }
 }
 
@@ -121,19 +122,25 @@ const selectedThemeId = ref<string>('')
 
 function init() {
   if (!themeList.value.length) return
+  // Prefer the page's stored themeId, then fall back to matching by content.
+  const pageThemeId = editor.pageThemeId
+  if (pageThemeId && themeList.value.some((t) => t.id === pageThemeId)) {
+    selectedThemeId.value = pageThemeId
+    return
+  }
   const active = editor.websiteTheme
   const match = themeList.value.find(
     (t) => JSON.stringify(t.colors) === JSON.stringify(active.colors) && JSON.stringify(t.fonts) === JSON.stringify(active.fonts)
   )
   selectedThemeId.value = match?.id ?? themeList.value[0]?.id ?? ''
 }
-init()
 
 function pickTheme(id: string) {
   selectedThemeId.value = id
   const t = themeList.value.find((t) => t.id === id)
   if (t) {
     editor.setWebsiteTheme({ colors: t.colors ?? [], fonts: t.fonts ?? [], styles: t.styles ?? '', tailwindClasses: t.tailwindClasses ?? '' })
+    editor.setPageThemeId(id)
   }
 }
 

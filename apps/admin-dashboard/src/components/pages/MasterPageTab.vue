@@ -97,6 +97,7 @@ import PageSettingsTab from './PageSettingsTab.vue'
 import PagePreviewTab from './PagePreviewTab.vue'
 import PageCreateForm from './PageCreateForm.vue'
 import { Eye, ExternalLink, LayoutDashboard, Settings, Maximize, Minimize } from '@lucide/vue'
+import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
 
 const props = defineProps<{
   pageId: string
@@ -139,7 +140,7 @@ function setSubTab(tab: PageSubTab) {
 const openPreviewUrl = computed(() => {
   if (!page.value) return ''
   return (
-    getDefaultWhoobeOneSpikeUrl() +
+    getWhoobeOneSpikeUrl() +
     (currentTab.value?.pagePreviewPath || page.value.slug || '')
     //  +
     // '?locale=' + (currentTab.value?.pagePreviewLocale || page.value.locale || 'en')
@@ -178,13 +179,6 @@ function onPageCreated(created: WhoobeOnePage) {
 
 function closeTab() {
   tabsStore.closeTab(pageTabId(props.pageId))
-}
-
-function getDefaultWhoobeOneSpikeUrl(): string {
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    const port = window.location.port; return `${window.location.protocol}//${window.location.hostname}${port ? `:${port}` : ""}/whoobe-one-editor`
-  }
-  return 'http://localhost:3000/whoobe-one-editor'
 }
 
 onMounted(load)

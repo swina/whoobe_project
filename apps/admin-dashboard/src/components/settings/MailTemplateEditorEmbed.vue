@@ -24,22 +24,16 @@
 // postMessage bridge - the iframe only isolates the runtime Tailwind
 // scanner, same reasoning as WhoobeOneEmbed.vue.
 import { ref, computed } from 'vue'
+import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
 
 const props = defineProps<{
   templateId: string
 }>()
 
-function getDefaultWhoobeOneSpikeUrl(): string {
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    const port = window.location.port; return `${window.location.protocol}//${window.location.hostname}${port ? `:${port}` : ""}/whoobe-one-editor`
-  }
-  return 'http://localhost:3000/whoobe-one-editor'
-}
-
 const isConnecting = ref(true)
 
 const embedSrc = computed(() => {
-  const base = getDefaultWhoobeOneSpikeUrl()
+  const base = getWhoobeOneSpikeUrl()
   const params = new URLSearchParams({
     mailTemplateId: props.templateId,
     parentOrigin: window.location.origin,

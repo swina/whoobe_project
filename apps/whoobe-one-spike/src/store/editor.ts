@@ -82,8 +82,9 @@ export const useEditorStore = defineStore('editor', () => {
   // param, so Save writes to whoobe_one_snippets. `snippetId` is the
   // snippet being edited (null for a brand-new one), `snippetMode` is the
   // mode flag (new or existing).
-  const snippetId = ref<string | null>(null)
-  const snippetMode = ref<boolean>(false)
+const snippetId = ref<string | null>(null)
+const snippetMode = ref<boolean>(false)
+const pageThemeId = ref<string | null>(null)
 
   // Populated by data-resolver.ts at preview/render time - maps element ids
   // to their resolved data object records (DataObjectRecord or
@@ -133,6 +134,7 @@ export const useEditorStore = defineStore('editor', () => {
   function setMailTemplateId(v: string | null) {
     mailTemplateId.value = v
   }
+  function setPageThemeId(v: string | null) { pageThemeId.value = v }
   function setSnippetId(v: string | null) {
     snippetId.value = v
     snippetMode.value = v !== null
@@ -159,11 +161,11 @@ export const useEditorStore = defineStore('editor', () => {
     mode, settings, elements, document, project, selected, page, current,
     component, action, subaction, level, parent, startTime, autosave,
     exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
-    mailTemplateId, snippetId, snippetMode, websiteTheme, websiteThemes,
+    mailTemplateId, snippetId, snippetMode, pageThemeId, websiteTheme, websiteThemes,
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
     setParent, setStartTime, setAutosave, setExportMode, setPreview, setSave,
-    setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, setSnippetId, setSnippetMode, resolvedData,
+    setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, setPageThemeId, setSnippetId, setSnippetMode, resolvedData,
     collapsedIds, toggleCollapsed, isCollapsed, setWebsiteTheme, setWebsiteThemes,
   }
 })

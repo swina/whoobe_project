@@ -43,8 +43,11 @@ import { getPublicPage } from '../pages-api'
 import { resolveDocumentData } from '../scripts/data-resolver'
 import BlockContainerPreview from '../components/preview/BlockContainerPreview.vue'
 import { useThemeStyles } from '../composables/useThemeStyles'
+import { useEditorStore } from '../store/editor'
+import { fetchTheme } from '../themes-api'
 
 const route = useRoute()
+const editor = useEditorStore()
 const loading = ref(true)
 const error = ref(false)
 const doc = ref<any>(null)
@@ -52,26 +55,46 @@ const layout = ref<any>(null)
 
 useThemeStyles(() => doc.value)
 
+async function loadPageTheme(page: { themeId?: string | null; websiteId?: string | null }) {
+  // If the page has a specific theme, load it directly.
+  if (page.themeId) {
+    const theme = await fetchTheme(page.themeId)
+    if (theme) {
+      editor.setWebsiteTheme({ colors: theme.colors ?? [], fonts: theme.fonts ?? [], styles: theme.styles ?? '', tailwindClasses: theme.tailwindClasses ?? '' })
+      return
+    }
+  }
+  // Fall back to the website's default theme.
+  if (page.websiteId) {
+    try {
+      const baseUrl = (await import('../core-api-url')).getDefaultCoreApiUrl()
+      const res = await fetch(`${baseUrl}/whoobe-one/websites/${page.websiteId}/themes`, { credentials: 'include' })
+      if (res.ok) {
+        const body = await res.json()
+        const webThemes = body.themes ?? []
+        const defaultId = body.defaultThemeId ?? ''
+        const defaultTheme = webThemes.find((t: any) => t.id === defaultId) ?? webThemes[0]
+        if (defaultTheme) {
+          editor.setWebsiteTheme({ colors: defaultTheme.colors ?? [], fonts: defaultTheme.fonts ?? [], styles: defaultTheme.styles ?? '', tailwindClasses: defaultTheme.tailwindClasses ?? '' })
+        }
+      }
+    } catch {
+      // Silent.
+    }
+  }
+}
+
 onMounted(async () => {
   try {
-    // ?locale= is set by childHref() from the target page's own real,
-    // already-known locale - not guessed from the path (see that function's
-    // own comment on why guessing isn't reliable there). When absent, the
-    // locale is derived from the path's first segment (pages are stored with
-    // the locale prefix, e.g. /it/magazine/), falling back to 'it'.
     const queryLocale = typeof route.query.locale === 'string' && route.query.locale ? route.query.locale : ''
     const locale = queryLocale || route.path.split('/')[1] || 'it'
     const { page, params, layout: pageLayout } = await getPublicPage(locale, route.path)
-    // Same "use the raw JSON content directly, no class-instance
-    // reconstruction" precedent as database-actions.ts's loadPage().
     doc.value = page.content
     layout.value = pageLayout ?? null
+    // Load the page's theme before resolving data, so theme styles are
+    // available for the rendered content.
+    await loadPageTheme(page)
     await resolveDocumentData(doc.value, locale, params)
-    // Resolve module trees too, so their data bindings render - with
-    // reset=false so each module MERGES into the same resolvedData map
-    // instead of wiping the body's bindings (see data-resolver.ts). A
-    // broken module must never turn the page into a 404 - resolve
-    // defensively.
     for (const slot of [pageLayout?.header, pageLayout?.aside, pageLayout?.footer]) {
       for (const m of slot?.pages ?? []) {
         try {

@@ -96,6 +96,7 @@
 import { ref, computed, watch } from 'vue'
 import { usePagesStore } from '../../stores/pagesStore'
 import type { MenuItem } from '../../utils/menus-api'
+import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
 
 const props = withDefaults(defineProps<{
   item: MenuItem
@@ -170,13 +171,6 @@ function emitInsertBelow() {
 // No ?locale= query - the path carries the locale (/it/…) and the renderer
 // derives it from the path; no ?websiteId= needed either, since the public
 // route infers the website from the resolved page.
-function getDefaultWhoobeOneSpikeUrl(): string {
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    const port = window.location.port; return `${window.location.protocol}//${window.location.hostname}${port ? `:${port}` : ""}/whoobe-one-editor`
-  }
-  return 'http://localhost:3000/whoobe-one-editor'
-}
-
 const previewUrl = computed(() => {
   let target: string | null = null
   if (props.item.pageId) {
@@ -188,7 +182,7 @@ const previewUrl = computed(() => {
     if (!path) return null
     target = path.startsWith('/') ? path : '/' + path
   }
-  return `${getDefaultWhoobeOneSpikeUrl()}${target}`
+  return `${getWhoobeOneSpikeUrl()}${target}`
 })
 
 function openLinkPage() {

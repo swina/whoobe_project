@@ -147,6 +147,7 @@ export async function savePage(editor: EditorStore, path?: string): Promise<void
       category: editor.page.category || '',
       slug: path || '',
       content,
+      themeId: editor.pageThemeId ?? null,
     })
     editor.page.id = created.id
     ;(editor.page as any).path = created.slug
@@ -155,6 +156,7 @@ export async function savePage(editor: EditorStore, path?: string): Promise<void
       title: editor.page.name || 'Untitled',
       category: editor.page.category || '',
       content,
+      themeId: editor.pageThemeId ?? null,
     })
   }
 }
@@ -209,9 +211,8 @@ export async function loadPage(editor: EditorStore, id: string): Promise<void> {
   editor.setPage(page)
   editor.setDocument(saved.content as any)
   editor.setCurrent(null)
+  editor.setPageThemeId(saved.themeId)
 
-  // Load the website's theme as the current session theme, so theme classes
-  // and fonts are available in the editor regardless of per-page overrides.
   if (saved.websiteId) {
     await loadWebsiteTheme(editor, saved.websiteId)
   }

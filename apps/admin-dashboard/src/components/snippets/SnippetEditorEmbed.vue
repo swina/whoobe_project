@@ -21,24 +21,17 @@
 // loads/saves the snippet itself against core-api (database-actions.ts's
 // loadSnippet/saveSnippet), so there's no postMessage bridge.
 import { ref, computed } from 'vue'
+import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
 
 const props = defineProps<{
   snippetId: string
   websiteId?: string
 }>()
 
-function getDefaultWhoobeOneSpikeUrl(): string {
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    const port = window.location.port
-    return `${window.location.protocol}//${window.location.hostname}${port ? `:${port}` : ''}/whoobe-one-editor`
-  }
-  return 'http://localhost:3000/whoobe-one-editor'
-}
-
 const isConnecting = ref(true)
 
 const embedSrc = computed(() => {
-  const base = getDefaultWhoobeOneSpikeUrl()
+  const base = getWhoobeOneSpikeUrl()
   const isNew = props.snippetId.startsWith('new:')
   const params: Record<string, string> = {
     ...(isNew ? { snippetNew: '1' } : { snippetId: props.snippetId }),
