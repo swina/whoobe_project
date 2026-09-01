@@ -1218,3 +1218,13 @@ Implements `docs/plans/website/website-paths.md`: a page's routing slug can now 
 - **RolesView.vue**: table of all roles with user count, create/edit modal with permission grid grouped by context (Websites, Pages, Snippets, Assets, Data Objects, Themes, Components, Workflow) plus system permissions section. Blocks deletion when users are assigned.
 - **SettingsView.vue**: replaced the "Roles/Users/Workspaces" placeholder card with sub-tab navigation (Users | Roles) rendering the two new views.
 - **Seed updated**: existing idempotent seed loop now picks up all new permission keys from `ALL_PERMISSION_KEYS` automatically — no code change needed.
+
+## [Vite proxy for tunnel/Cloudflare access] — 2026-09-01 (branch: current)
+
+- **Vite proxy** (`apps/admin-dashboard/vite.config.ts`): added proxy rules for all API paths (`/auth`, `/whoobe-one`, `/documents`, `/snippets`, `/data-classes`, `/data-components`, `/data-objects`, `/mail-settings`, `/mail-log`, `/mail-templates`, `/migration-sources`, `/health`, `/search`, `/themes`) to `develop.local:3003`, and `/api/v1/dam` to `develop.local:3002`. This allows all API traffic to go through the frontend port (3000), making the app work behind a tunnel (e.g. Cloudflare) that only exposes that port.
+- **`getDefaultCoreApiUrl()`** (`auth-api.ts`): now uses the page's own origin (hostname + port) instead of hardcoding `:3003`, so requests go through the Vite proxy.
+- **`getDefaultAssetProcessorUrl()`** (`dam-api.ts`): same change — uses the page's origin instead of hardcoding `:3002`.
+- **authStore** (`authStore.ts`): uses `getDefaultCoreApiUrl()` directly instead of the env var `VITE_CORE_API_URL`, so the URL always matches the page's origin.
+- **damStore** (`damStore.ts`): uses `getDefaultAssetProcessorUrl()` directly instead of the env var `VITE_ASSET_PROCESSOR_URL`.
+- **`setSessionCookie`** (`core-api/server.ts`): `secure` flag now set to `false` (was `isProduction`), so the session cookie is always sent over HTTP — fixes 401 on production environments without HTTPS termination.
+- **`express-guards.ts`**: added debug logging (`requireAuth`/`requirePermission`) to distinguish "no cookie" vs "invalid session" on 401 responses.

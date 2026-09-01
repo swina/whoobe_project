@@ -22,7 +22,24 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3000,
-    allowedHosts: ["develop.local", "whoobe.devophub.space"]
+    allowedHosts: ["develop.local"],
+    proxy: {
+      '/auth': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/whoobe-one': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/documents': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/snippets': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/data-classes': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/data-components': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/data-objects': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/mail-settings': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/mail-log': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/mail-templates': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/migration-sources': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/health': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/search': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/themes': { target: 'http://develop.local:3003', changeOrigin: true },
+      '/api/v1/dam': { target: 'http://develop.local:3002', changeOrigin: true },
+    },
   },
   optimizeDeps: {
     exclude: ['sharp']

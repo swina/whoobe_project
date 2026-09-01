@@ -33,12 +33,15 @@ export interface MfaVerifySetupResponse {
 }
 
 // Mirrors dam-api.ts's getDefaultAssetProcessorUrl(): default to whatever
-// hostname the page itself was loaded from, never a hardcoded "localhost".
+// hostname and port the page itself was loaded from, so API calls go
+// through the Vite proxy (vite.config.ts) which forwards them to the
+// correct backend port. This makes the app work behind a tunnel (e.g.
+// Cloudflare) that only exposes the frontend port.
 export function getDefaultCoreApiUrl(): string {
   if (typeof window !== 'undefined' && window.location?.hostname) {
-    return `${window.location.protocol}//${window.location.hostname}:3003`
+    return `${window.location.protocol}//${window.location.hostname}:${window.location.port || '3000'}`
   }
-  return 'http://localhost:3003'
+  return 'http://localhost:3000'
 }
 
 function normalizeBaseUrl(baseUrl: string): string {
