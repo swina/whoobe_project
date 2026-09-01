@@ -280,10 +280,10 @@ function recordFormSubmit(key: string): void {
   entry.count += 1;
 }
 
-function setSessionCookie(res: Response, token: string, expiresAt: Date, req: Request): void {
+function setSessionCookie(res: Response, token: string, expiresAt: Date, _req: Request): void {
   res.cookie(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
+    secure: false,
     sameSite: 'lax',
     expires: expiresAt,
     path: '/',
