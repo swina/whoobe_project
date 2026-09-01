@@ -280,10 +280,10 @@ function recordFormSubmit(key: string): void {
   entry.count += 1;
 }
 
-function setSessionCookie(res: Response, token: string, expiresAt: Date): void {
+function setSessionCookie(res: Response, token: string, expiresAt: Date, req: Request): void {
   res.cookie(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: isProduction,
+    secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
     sameSite: 'lax',
     expires: expiresAt,
     path: '/',
@@ -339,7 +339,7 @@ async function completeLogin(res: Response, userId: string, req: Request): Promi
     userAgent: req.headers['user-agent'],
   });
   await touchLastLogin(userId);
-  setSessionCookie(res, token, expiresAt);
+  setSessionCookie(res, token, expiresAt, req);
 
   const user = await findUserById(userId);
   const permissions = await getEffectivePermissions(userId);
