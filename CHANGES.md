@@ -1207,3 +1207,14 @@ Implements `docs/plans/website/website-paths.md`: a page's routing slug can now 
 - **Router update** (`apps/admin-dashboard`): added `/forgot-password` and `/reset-password` routes outside the auth gate.
 - **App.vue updated**: renders `ForgotPasswordView`/`ResetPasswordView` when not authenticated and route matches.
 - **LoginView.vue**: added "Forgot password?" link below the Sign In button.
+
+## [Roles, Users & Permissions admin] — 2026-09-01 (branch: current)
+
+- **Granular permission keys** (`packages/core/src/auth/permissions.ts`): added context-scoped keys (`websites:list`, `pages:edit`, `assets:rename`, `data_objects:create`, `themes:list`, `components:view`, etc.) alongside the existing legacy flat keys. Updated `DEFAULT_ROLE_PERMISSIONS` for admin/editor/viewer.
+- **New service** `packages/core/src/auth/admin-users.ts`: full CRUD service for users (`listUsers`, `createUser`, `getUserWithRoles`, `updateUser`, `deleteUser`, `setUserRoles`, `adminResetPassword`) and roles (`listRoles`, `createRole`, `getRole`, `updateRole`, `deleteRole`, `setRolePermissions`) plus `listAllPermissions`. Exported from `@whoobe-cms/core/server`.
+- **Backend CRUD routes** (`apps/core-api`): all gated by `requirePermission(PERMISSIONS.USERS_MANAGE)` — `GET/POST /auth/users`, `GET/PATCH/DELETE /auth/users/:id`, `POST /auth/users/:id/reset-password`, `GET/POST /auth/roles`, `GET/PATCH/DELETE /auth/roles/:id`, `GET /auth/permissions`.
+- **Frontend API client** (`apps/admin-dashboard`): `listUsers`, `createUser`, `updateUser`, `deleteUser`, `adminResetPassword`, `listRoles`, `createRole`, `updateRole`, `deleteRole`, `listAllPermissions` in `auth-api.ts` with full TypeScript types.
+- **UsersView.vue**: table of all users with role badges, create/edit modal (email, display name, password, role picker), delete, admin-forced password reset.
+- **RolesView.vue**: table of all roles with user count, create/edit modal with permission grid grouped by context (Websites, Pages, Snippets, Assets, Data Objects, Themes, Components, Workflow) plus system permissions section. Blocks deletion when users are assigned.
+- **SettingsView.vue**: replaced the "Roles/Users/Workspaces" placeholder card with sub-tab navigation (Users | Roles) rendering the two new views.
+- **Seed updated**: existing idempotent seed loop now picks up all new permission keys from `ALL_PERMISSION_KEYS` automatically — no code change needed.
