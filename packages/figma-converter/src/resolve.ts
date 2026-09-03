@@ -8,12 +8,24 @@ export async function fetchAndConvert(options: FetchOptions): Promise<Conversion
 
   const headers = { Authorization: `Bearer ${accessToken}` }
 
+  async function figmaFetch(url: string): Promise<Response> {
+    const res = await fetch(url, { headers })
+    if (!res.ok) {
+      let detail = ''
+      try { const body = await res.json(); detail = body.err || JSON.stringify(body).slice(0, 200) } catch { detail = res.statusText }
+      if (res.status === 401) {
+        throw new Error(`Figma API 401 Unauthorized — your Personal Access Token is invalid, expired, or lacks access to this file. Generate a new token at https://www.figma.com/developers/api#access-tokens (scopes: file_read). Response: ${detail}`)
+      }
+      throw new Error(`Figma API error (${res.status}): ${detail}`)
+    }
+    return res
+  }
+
   let figmaNode: import('./figma-types.js').SubcanvasNode
 
   if (nodeIds && nodeIds.length > 0) {
     const nodesUrl = `${apiBaseUrl}/files/${fileKey}/nodes?ids=${nodeIds.join(',')}`
-    const nodesRes = await fetch(nodesUrl, { headers })
-    if (!nodesRes.ok) throw new Error(`Figma API error (nodes): ${nodesRes.status} ${nodesRes.statusText}`)
+    const nodesRes = await figmaFetch(nodesUrl)
     const nodesData: FigmaNodesResponse = await nodesRes.json()
     const firstKey = Object.keys(nodesData.nodes)[0]
     const firstNode = nodesData.nodes[firstKey]?.document
@@ -21,8 +33,7 @@ export async function fetchAndConvert(options: FetchOptions): Promise<Conversion
     figmaNode = firstNode as import('./figma-types.js').SubcanvasNode
   } else {
     const fileUrl = `${apiBaseUrl}/files/${fileKey}`
-    const fileRes = await fetch(fileUrl, { headers })
-    if (!fileRes.ok) throw new Error(`Figma API error (file): ${fileRes.status} ${fileRes.statusText}`)
+    const fileRes = await figmaFetch(fileUrl)
     const fileData: FigmaFileResponse = await fileRes.json()
     const canvas = fileData.document?.children?.[0]
     if (!canvas) throw new Error('No canvas found in Figma file')
