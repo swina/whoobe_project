@@ -12,8 +12,8 @@ import { ref } from 'vue'
 // with Preview (the read-only rendered HTML) as a second sub-tab, mirroring
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
-export type SectionKind = 'overview' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'mail' | 'themes' | 'settings'
-export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'website'
+export type SectionKind = 'overview' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'components' | 'mail' | 'themes' | 'settings'
+export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'classList' | 'website'
 export type AssetSubTab = 'preview' | 'editor' | 'metadata' | 'thumbnails'
 export type DocumentSubTab = 'editor' | 'preview'
 export type PageSubTab = 'editor' | 'settings' | 'preview'
@@ -21,7 +21,7 @@ export type WebsiteSubTab = 'settings' | 'paths' | 'templates'
 // A fixed, known-upfront set (docs/plans/UI/settings-ui-plan.md) - unlike
 // objectSubTab's free-form string (which varies per class's locales),
 // this is a real enum, matching AssetSubTab/DocumentSubTab's own pattern.
-export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'components' | 'roles' | 'security' | 'workflows' | 'ai'
+export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'roles' | 'security' | 'workflows' | 'ai'
 
 export interface MainTab {
   id: string
@@ -48,6 +48,8 @@ export interface MainTab {
   // or the list's class filter may have moved on while this tab stayed
   // open).
   objectClassId?: string
+  // The class whose objects this classList tab shows.
+  classListClassId?: string
   // Set by the owning master-tab component once it knows a real label to
   // show (MasterObjectTab.vue's own key, once loaded/created) - other
   // item kinds derive their label from a shared store instead
@@ -93,6 +95,10 @@ export function classTabId(classId: string): string {
 
 export function websiteTabId(websiteId: string): string {
   return `item:website:${websiteId}`
+}
+
+export function classListTabId(classId: string): string {
+  return `item:classList:${classId}`
 }
 
 export const useTabsStore = defineStore('tabs', () => {
@@ -231,6 +237,20 @@ export const useTabsStore = defineStore('tabs', () => {
     closeTab(classTabId(classId))
   }
 
+  // Opens (or focuses) a tab showing objects filtered to one class - each
+  // class gets its own tab so users can keep multiple class lists open.
+  function openClassList(classId: string, className: string) {
+    const id = classListTabId(classId)
+    if (findIndex(id) === -1) {
+      tabs.value.push({ id, type: 'item', itemKind: 'classList', classListClassId: classId, label: className })
+    }
+    activeTabId.value = id
+  }
+
+  function closeClassListTab(classId: string) {
+    closeTab(classListTabId(classId))
+  }
+
   function openWebsite(websiteId: string, subTab: WebsiteSubTab = 'settings') {
     const id = websiteTabId(websiteId)
     if (findIndex(id) === -1) {
@@ -302,6 +322,8 @@ export const useTabsStore = defineStore('tabs', () => {
     closeDocumentTab,
     closeObjectTab,
     closeClassTab,
+    openClassList,
+    closeClassListTab,
     openWebsite,
     setWebsiteSubTab,
     closeWebsiteTab

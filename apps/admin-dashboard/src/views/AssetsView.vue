@@ -1,7 +1,8 @@
 <template>
-  <div class="space-y-6">
-    <!-- Header & Action Bar -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div class="flex flex-col h-full min-h-0 gap-6">
+    <!-- shrink-0: header, filters, selection bar -->
+    <div class="shrink-0 flex flex-col gap-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h2 class="text-xl font-bold text-slate-100 light:text-slate-900 flex items-center gap-2">
           <span>Assets Manager</span>
@@ -272,9 +273,38 @@
           </button>
         </div>
       </div>
+    </div>
+    </div>  <!-- end shrink-0 header -->
 
-      <!-- GRID VIEW -->
-      <div v-if="viewMode === 'grid' && paginatedItems.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <!-- Scrollable + Pagination container -->
+    <div class="flex flex-col flex-1 min-h-0 gap-3">
+      <!-- scrollable: grid or list -->
+      <div class="flex-1 overflow-y-auto min-h-0">
+        <!-- no results within scrollable -->
+        <div v-if="paginatedItems.length === 0" class="rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center space-y-3">
+          <Folder class="w-12 h-12 text-slate-600 light:text-slate-400 mx-auto" />
+          <h4 class="text-sm font-semibold text-slate-300 light:text-slate-700">No assets found</h4>
+          <p class="text-xs text-slate-500 max-w-sm mx-auto">No assets match your current filters in <code class="font-mono text-indigo-400">{{ damStore.currentFolderPath }}</code>.</p>
+          <button
+            v-if="hasActiveFilters"
+            @click="resetFilters"
+            class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-indigo-300 transition inline-flex items-center gap-1.5 mt-2"
+          >
+            <X class="w-3.5 h-3.5" />
+            <span>Reset Filters</span>
+          </button>
+          <button
+            v-else
+            @click="openUploadModal()"
+            class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition inline-flex items-center gap-1.5 mt-2"
+          >
+            <Upload class="w-3.5 h-3.5" />
+            <span>Upload Multiple Files or ZIP</span>
+          </button>
+        </div>
+
+        <!-- GRID VIEW -->
+        <div v-else-if="viewMode === 'grid'" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-0.5">
         <div
           v-for="item in paginatedItems"
           :key="item.id"
@@ -984,6 +1014,7 @@
       :asset="selectedAssetForVersion"
       @close="showVersionModal = false"
     />
+  </div>
   </div>
 </template>
 

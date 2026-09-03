@@ -581,18 +581,30 @@ app.get('/api/v1/dam/asset-urls', requireAuth, async (req: Request, res: Respons
       res.status(400).json({ error: 'Missing pimcorePath' });
       return;
     }
-    const expiresInSeconds = req.query.expiresIn ? parseInt(req.query.expiresIn as string, 10) : undefined;
+    const forwardedProto = (req.headers['x-forwarded-proto'] as string) ?? req.protocol
+    const forwardedHost = (req.headers['x-forwarded-host'] as string) ?? req.headers.host ?? 'localhost'
+    const publicOrigin = `${forwardedProto}://${forwardedHost}`
+
     const provider = createDamProvider(parseFolderRules(req.query.folderRules));
-    const isPublic = provider.visibilityManager.isPathPublic(pimcorePath);
+    const s3Key = provider.getS3Key(pimcorePath);
+    const thumbKey = provider.getThumbnailS3Key(pimcorePath, 'thumb');
+    const mediumKey = provider.getThumbnailS3Key(pimcorePath, 'medium');
+    const largeKey = provider.getThumbnailS3Key(pimcorePath, 'large');
 
-    const [url, thumb, medium, large] = await Promise.all([
-      provider.getAssetUrl(pimcorePath, { expiresInSeconds }),
-      provider.getThumbnailUrl(pimcorePath, { preset: 'thumb', expiresInSeconds }),
-      provider.getThumbnailUrl(pimcorePath, { preset: 'medium', expiresInSeconds }),
-      provider.getThumbnailUrl(pimcorePath, { preset: 'large', expiresInSeconds }),
-    ]);
+    function proxyUrl(key: string): string {
+      return `${publicOrigin}/dam-asset/${key}`
+    }
 
-    res.json({ isPublic, url, thumbnailUrl: thumb, thumbnails: { thumb, medium, large } });
+    res.json({
+      isPublic: provider.visibilityManager.isPathPublic(pimcorePath),
+      url: proxyUrl(s3Key),
+      thumbnailUrl: proxyUrl(thumbKey),
+      thumbnails: {
+        thumb: proxyUrl(thumbKey),
+        medium: proxyUrl(mediumKey),
+        large: proxyUrl(largeKey),
+      }
+    });
   } catch (error: any) {
     console.error('DAM asset-urls error:', error);
     res.status(500).json({ error: error.message || 'Failed to resolve asset URL' });
@@ -607,17 +619,35 @@ app.post('/api/v1/dam/asset-urls', requireAuth, async (req: Request, res: Respon
       res.status(400).json({ error: 'Missing pimcorePath' });
       return;
     }
+
+    // Determine the public-facing hostname from forwarded headers (set by
+    // Cloudflare etc.) so asset URLs use the same origin as the page,
+    // avoiding mixed-content and Chrome Local Network Access blocks when
+    // the page is served over HTTPS behind a reverse proxy.
+    const forwardedProto = (req.headers['x-forwarded-proto'] as string) ?? req.protocol
+    const forwardedHost = (req.headers['x-forwarded-host'] as string) ?? req.headers.host ?? 'localhost'
+    const publicOrigin = `${forwardedProto}://${forwardedHost}`
+
     const provider = createDamProvider(parseFolderRules(folderRules));
-    const isPublic = provider.visibilityManager.isPathPublic(pimcorePath);
+    const s3Key = provider.getS3Key(pimcorePath);
+    const thumbKey = provider.getThumbnailS3Key(pimcorePath, 'thumb');
+    const mediumKey = provider.getThumbnailS3Key(pimcorePath, 'medium');
+    const largeKey = provider.getThumbnailS3Key(pimcorePath, 'large');
 
-    const [url, thumb, medium, large] = await Promise.all([
-      provider.getAssetUrl(pimcorePath, { expiresInSeconds: expiresIn }),
-      provider.getThumbnailUrl(pimcorePath, { preset: 'thumb', expiresInSeconds: expiresIn }),
-      provider.getThumbnailUrl(pimcorePath, { preset: 'medium', expiresInSeconds: expiresIn }),
-      provider.getThumbnailUrl(pimcorePath, { preset: 'large', expiresInSeconds: expiresIn }),
-    ]);
+    function proxyUrl(key: string): string {
+      return `${publicOrigin}/dam-asset/${key}`
+    }
 
-    res.json({ isPublic, url, thumbnailUrl: thumb, thumbnails: { thumb, medium, large } });
+    res.json({
+      isPublic: provider.visibilityManager.isPathPublic(pimcorePath),
+      url: proxyUrl(s3Key),
+      thumbnailUrl: proxyUrl(thumbKey),
+      thumbnails: {
+        thumb: proxyUrl(thumbKey),
+        medium: proxyUrl(mediumKey),
+        large: proxyUrl(largeKey),
+      }
+    });
   } catch (error: any) {
     console.error('DAM asset-urls error:', error);
     res.status(500).json({ error: error.message || 'Failed to resolve asset URL' });

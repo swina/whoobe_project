@@ -87,6 +87,24 @@ const defaultConfig: DamConfigState = {
   ]
 }
 
+// Upgrade http:// -> https:// when the page is served over TLS. Used when
+// loading a stored assetProcessorUrl so a URL saved during an HTTP-only dev
+// session doesn't cause mixed-content errors behind Cloudflare.
+function upgradeScheme(url: string): string {
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && url.startsWith('http://')) {
+    try {
+      const parsed = new URL(url)
+      const currentHost = window.location.hostname
+      if (parsed.hostname === currentHost || parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+        return 'https://' + url.slice(7)
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return url
+}
+
 const defaultDamInfo: DamBackendInfo = {
   bucket: '',
   endpoint: '',
@@ -154,10 +172,14 @@ function loadInitialConfig(): DamConfigState {
       // this store is dropped instead of being carried forward.
       const storedUrl = typeof parsed.assetProcessorUrl === 'string' ? parsed.assetProcessorUrl : ''
       const storedValid = storedUrl && !isStaleLocalhostUrl(storedUrl) && !isStoredUrlStale(storedUrl)
+      // Upgrade http:// to https:// when the page itself is served over TLS
+      // (Cloudflare, etc.) — the stored URL may have been saved in an earlier
+      // HTTP-only dev session. The backend still listens on the same port;
+      // only the wire protocol changes.
+      const resolvedUrl = storedValid ? storedUrl : defaultConfig.assetProcessorUrl
+      const protocolUpgraded = upgradeScheme(resolvedUrl)
       return {
-        assetProcessorUrl: storedValid
-          ? storedUrl
-          : defaultConfig.assetProcessorUrl,
+        assetProcessorUrl: protocolUpgraded,
         folderRules: Array.isArray(parsed.folderRules) ? parsed.folderRules : [...defaultConfig.folderRules]
       }
     }
