@@ -137,6 +137,9 @@ importers:
       '@whoobe-cms/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@whoobe-cms/figma-converter':
+        specifier: workspace:*
+        version: link:../../packages/figma-converter
       '@whoobe-cms/migration-tool':
         specifier: workspace:*
         version: link:../../packages/migration-tool
@@ -186,6 +189,9 @@ importers:
       '@tiptap/vue-3':
         specifier: ^2.11.5
         version: 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2)(vue@3.5.40(typescript@5.9.3))
+      '@whoobe-cms/figma-converter':
+        specifier: workspace:*
+        version: link:../../packages/figma-converter
       alpinejs:
         specifier: ^3.16.1
         version: 3.16.1
@@ -348,6 +354,19 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.23.1
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@20.19.43)(lightningcss@1.32.0)
+
+  packages/figma-converter:
+    dependencies:
+      '@whoobe-cms/schema':
+        specifier: workspace:*
+        version: link:../sdk/schema
+    devDependencies:
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
