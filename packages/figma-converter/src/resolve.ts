@@ -12,9 +12,9 @@ export async function fetchAndConvert(options: FetchOptions): Promise<Conversion
     const res = await fetch(url, { headers })
     if (!res.ok) {
       let detail = ''
-      try { const body = await res.json(); detail = body.err || JSON.stringify(body).slice(0, 200) } catch { detail = res.statusText }
+      try { const body = await res.json(); detail = body.err || JSON.stringify(body).slice(0, 300) } catch { detail = res.statusText }
       if (res.status === 401) {
-        throw new Error(`Figma API 401 Unauthorized — your Personal Access Token is invalid, expired, or lacks access to this file. Generate a new token at https://www.figma.com/developers/api#access-tokens (scopes: file_read). Make sure you use the full token string (figd_...) passed via X-Figma-Token header. Response: ${detail}`)
+        throw new Error(`Figma API 401 Unauthorized — your Personal Access Token is invalid, expired, or lacks access to this file. Generate a new token at https://www.figma.com/developers/api#access-tokens (scopes: file_read). Pass the full token string (figd_...) via X-Figma-Token header. Response: ${detail}`)
       }
       if (res.status === 400) {
         throw new Error(`Figma API error (400): ${detail}
@@ -22,11 +22,11 @@ export async function fetchAndConvert(options: FetchOptions): Promise<Conversion
 The file key "${fileKey}" is not a valid Figma design file.
 
 • Make sure the file key is the alphanumeric string from the Figma URL, e.g.:
-    https://www.figma.com/file/<b>ABC123def456</b>/My-Design
+    https://www.figma.com/file/ABC123def456/My-Design
                            └─ file key here
 
 • This endpoint only supports Figma design files (not FigJam, not libraries).
-• Verify the file is accessible with your Figma account (not a Community file).`)
+• Verify the file is accessible with your Figma account.`)
       }
       throw new Error(`Figma API error (${res.status}): ${detail}`)
     }
@@ -49,8 +49,9 @@ The file key "${fileKey}" is not a valid Figma design file.
     const fileData: FigmaFileResponse = await fileRes.json()
     const canvas = fileData.document?.children?.[0]
     if (!canvas) throw new Error('No canvas found in Figma file')
-    figmaNode = canvas.children?.[0]
-    if (!figmaNode) throw new Error('No frame found in first canvas')
+    const frames = canvas.children?.filter((c: any) => c.type === 'FRAME' || c.type === 'COMPONENT') || []
+    if (frames.length === 0) throw new Error('No frames found in the first canvas')
+    figmaNode = frames[0]
   }
 
   const result = convertFigmaNode(figmaNode, options)
