@@ -1,4 +1,6 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import {
+  randomBytes, randomUUID
+} from 'node:crypto';
 import express, { Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -139,6 +141,8 @@ import {
   deleteMailTemplate,
   getAiSettings,
   upsertAiSettings,
+  getFigmaSettings,
+  upsertFigmaSettings,
   listAiGenerated,
   createAiGenerated,
   generateAiJson,
@@ -183,6 +187,7 @@ import {
 // root-package exports like ClassFieldDefinition the same way).
 import { compileDynamicSchema } from '@whoobe-cms/core';
 import { runClassMigration, runObjectMigration, runDocumentMigration, runPromoteDocuments, runPromoteDocument, runExtractCollectionTypes } from '@whoobe-cms/migration-tool';
+import { fetchAndConvert } from '@whoobe-cms/figma-converter';
 
 
 function escapeXml(s: string): string {
@@ -3700,6 +3705,67 @@ app.post(
     }
   }
 );
+
+// Figma settings (single global row, same pattern as ai_settings / mail_settings).
+// GET never returns the stored access token (only `hasToken`), PUT treats a
+// blank token as "keep the existing one".
+app.get('/figma/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const settings = await getFigmaSettings();
+    if (!settings) { res.json(null); return; }
+    const { accessToken, ...rest } = settings;
+    res.json({ ...rest, hasToken: !!accessToken });
+  } catch (error) {
+    console.error('Figma settings fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch Figma settings' });
+  }
+});
+
+app.put('/figma/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { accessToken, teamId } = req.body ?? {};
+    const existing = await getFigmaSettings();
+    const updated = await upsertFigmaSettings({
+      accessToken: accessToken ? accessToken : existing?.accessToken ?? null,
+      teamId: teamId || null,
+    });
+    const { accessToken: _at, ...rest } = updated;
+    res.json({ ...rest, hasToken: !!updated.accessToken });
+  } catch (error) {
+    console.error('Figma settings update error:', error);
+    res.status(500).json({ error: 'Failed to update Figma settings' });
+  }
+});
+
+// Figma import: proxies the Figma API, converts the tree, returns the
+// Whoobe Element tree ready for insertion. Requires OBJECTS_WRITE
+// permission (same as page/snippet creation).
+app.post('/figma/import', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { fileKey, nodeId, mode = 'snippet' } = req.body ?? {};
+    if (!fileKey) { res.status(400).json({ error: 'fileKey is required' }); return; }
+    if (mode !== 'page' && mode !== 'snippet') { res.status(400).json({ error: 'mode must be "page" or "snippet"' }); return; }
+
+    const settings = await getFigmaSettings();
+    if (!settings || !settings.accessToken) {
+      res.status(400).json({ error: 'Figma is not configured. Save the access token in Settings → Figma first.' });
+      return;
+    }
+
+    const nodeIds = nodeId ? [nodeId] : undefined;
+    const result = await fetchAndConvert({
+      accessToken: settings.accessToken,
+      fileKey,
+      nodeIds,
+      mode,
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Figma import error:', error);
+    res.status(500).json({ error: error?.message || 'Failed to import from Figma' });
+  }
+});
 
 // On-the-fly bootstrap: create the database if it doesn't exist, apply any
 // pending migrations, and seed default roles/permissions/admin user. Runs

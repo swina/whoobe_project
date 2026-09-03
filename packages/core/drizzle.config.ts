@@ -39,6 +39,7 @@ export default defineConfig({
     './src/db/mail-templates-schema.ts',
     './src/db/ai-settings-schema.ts',
     './src/db/ai-generated-schema.ts',
+    './src/db/figma-settings-schema.ts',
   ],
   out: './drizzle',
   dialect: 'postgresql',

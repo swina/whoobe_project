@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@whoobe-cms/core": "workspace:*",
+    "@whoobe-cms/figma-converter": "workspace:*",
     "@whoobe-cms/migration-tool": "workspace:*",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

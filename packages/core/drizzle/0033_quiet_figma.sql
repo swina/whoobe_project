@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS "figma_settings" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "access_token" text,
+  "team_id" text,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
