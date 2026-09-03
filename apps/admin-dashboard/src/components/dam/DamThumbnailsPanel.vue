@@ -68,7 +68,8 @@ const presets: { key: 'thumb' | 'medium' | 'large'; label: string; dimensions: s
 // was configured and may fail with 403/network errors.
 onMounted(() => {
   const thumb = props.asset.thumbnails?.thumb
-  if (thumb && !thumb.startsWith('http://develop.local:3002/dam-asset')) {
+  const proxyBase = damStore.config.assetProcessorUrl.replace(/\/+$/, '') + '/dam-asset'
+  if (thumb && !thumb.startsWith(proxyBase)) {
     damStore.generateAssetUrl(props.asset.pimcorePath).then((fresh) => {
       props.asset.thumbnailUrl = fresh.thumbnailUrl
       props.asset.thumbnails = fresh.thumbnails

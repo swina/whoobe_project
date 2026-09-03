@@ -1,6 +1,6 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex items-center justify-between">
+  <div class="flex flex-col h-full min-h-0 gap-6 p-1">
+    <!--<div class="shrink-0 flex items-center justify-between">
       <div>
         <h2 class="text-xl font-bold text-slate-100 light:text-slate-900">Data Objects</h2>
         <p class="text-xs text-slate-400 light:text-slate-600">Whoobe CMS data objects, backed by admin-defined classes. Migrated from Pimcore or authored directly.</p>
@@ -13,11 +13,19 @@
         + Create {{ classLabel(selectedClassId) }}
       </button>
     </div>
-
-    <div class="flex flex-col gap-3 p-4 rounded-xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200">
-      <div class="flex flex-col sm:flex-row gap-4">
+    -->
+    <div class="shrink-0 flex flex-col gap-3 p-4 rounded-xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200">
+      <div class="flex flex-col sm:flex-row gap-4 items-center">
+        <label class="bg-slate-800 light:bg-slate-300 text-slate-300 light:text-slate-700 px-3 py-2 rounded-lg">{{ classLabel(selectedClassId) }}</label>
         <input v-model="searchQuery" type="text" placeholder="Filter by key or path..."
           class="flex-1 px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+        <button
+        v-if="selectedClassId"
+        @click="handleCreate"
+        class="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition"
+      >
+        + Create {{ classLabel(selectedClassId) }}
+      </button>
         <select v-model="selectedClassId" @change="handleClassChange"
           class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500">
           <option value="">All Classes</option>
@@ -30,8 +38,9 @@
             :class="activeColumnNames.length > 0 ? 'border-indigo-500 text-indigo-400' : ''">
             View ▾
           </button>
+          <!-- Columns view menu -->
           <div v-if="isColumnsMenuOpen"
-            class="absolute right-0 mt-1 w-72 rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-xl z-10 p-3 space-y-3">
+            class="absolute right-0 mt-1 w-72 rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-xl z-1000 p-3 space-y-3">
             <div class="space-y-1">
               <span class="text-[10px] font-semibold text-slate-500 uppercase">Columns</span>
               <div class="flex flex-col gap-1 max-h-60 overflow-y-auto">
@@ -95,7 +104,7 @@
           :class="queryFilters.length > 0 ? 'border-indigo-500 text-indigo-400' : ''">
           <Filter class="w-4 h-4" /> Filter{{ queryFilters.length > 0 ? ` (${queryFilters.length})` : '' }}
         </button>
-
+        <!-- Export -->
         <div class="relative">
           <button @click="isExportMenuOpen = !isExportMenuOpen"
             class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 hover:border-indigo-500 transition">
@@ -113,10 +122,10 @@
         </div>
       </div>
     </div>
-    <p v-if="!selectedClassId" class="text-xs text-slate-500 -mt-2">Select a class above to create a new object.</p>
+    <p v-if="!selectedClassId" class="shrink-0 text-xs text-slate-500 -mt-2">Select a class above to create a new object.</p>
 
     <div v-if="selectedRowIds.length > 0"
-      class="absolute bottom-0 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-indigo-900/40 light:bg-indigo-50 border border-indigo-700/50 light:border-indigo-200">
+      class="shrink-0 absolute bottom-0 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-indigo-900 light:bg-indigo-50 border border-indigo-700/50 light:border-indigo-200 z-1000">
       <span class="text-xs font-semibold text-indigo-200 light:text-indigo-700">{{ selectedRowIds.length }} selected</span>
       <button @click="handleBatchPublish"
         class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-white">Publish</button>
@@ -131,91 +140,107 @@
     </div>
 
     <div v-if="dataObjectsStore.isLoading && dataObjectsStore.objects.length === 0"
-      class="p-12 text-center text-xs text-slate-500">Loading objects…</div>
+      class="shrink-0 p-12 text-center text-xs text-slate-500">Loading objects…</div>
 
     <div v-else-if="sortedRecords.length === 0"
-      class="rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center text-xs text-slate-500">
+      class="shrink-0 rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center text-xs text-slate-500">
       No objects yet. Run the migration tool's `migrate-objects` command to import from Pimcore, or author a class and its objects directly.
     </div>
 
     <div v-else
-      class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 overflow-hidden">
-      <table class="w-full text-left text-sm text-slate-300 light:text-slate-700">
-        <thead
-          class="text-xs uppercase bg-slate-950/70 light:bg-white/70 text-slate-400 light:text-slate-600 border-b border-slate-800 light:border-slate-200">
-          <tr>
-            <th class="px-3 py-3 w-10">
-              <input type="checkbox" :checked="allPageSelected()" @change="toggleSelectAll"
-                class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
-            </th>
-            <th v-for="col in visibleColumns" :key="col.name" @click="toggleSort(col.name)"
-              class="px-4 py-3 font-semibold cursor-pointer hover:text-slate-200 select-none whitespace-nowrap">
-              {{ col.title }}
-              <span v-if="sortField === col.name" class="ml-1">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
-            </th>
-            <th class="px-4 py-3 font-semibold text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-800/60 light:divide-slate-200/60">
-          <tr v-for="record in pagedRecords" :key="record.translationGroupId"
-            class="hover:bg-slate-800/40 light:bg-slate-100/40 transition cursor-pointer">
-            <td class="px-3 py-3.5" @click.stop>
-              <input type="checkbox" :checked="selectedGroupIds.has(record.translationGroupId)"
-                @change="toggleSelectGroup(record.translationGroupId)"
-                class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
-            </td>
-            <td v-for="col in visibleColumns" :key="col.name" @click="openRecord(record)"
-              class="px-4 py-3.5" :class="col.name === 'key' ? 'font-medium text-slate-200 light:text-slate-800' : 'text-slate-400 light:text-slate-600'">
-              <template v-if="col.name === 'key'">
-                <div>{{ record.primary.key }}</div>
-                <div class="text-xs text-slate-500 font-mono">{{ record.primary.path }}</div>
-              </template>
-              <template v-else-if="col.name === 'locales'">
-                <span v-for="row in record.rows" :key="row.locale"
-                  class="px-2 py-0.5 mr-1 text-[10px] font-bold rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 uppercase">{{ row.locale }}</span>
-              </template>
-              <template v-else-if="col.name === 'class'">
-                <span
-                  class="px-2 py-0.5 text-xs bg-slate-800 light:bg-slate-100 rounded font-mono text-indigo-300">{{ classLabel(record.primary.classId) }}</span>
-              </template>
-              <template v-else-if="col.name === 'status'">
-                <span :class="[
-                  'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
-                  record.primary.published ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                ]">{{ record.primary.published ? 'published' : (record.primary.workflowState || 'draft') }}</span>
-              </template>
-              <template v-else-if="col.name === 'updatedAt'">
-                {{ new Date(record.primary.updatedAt).toLocaleString() }}
-              </template>
-              <template v-else>
-                <img
-                  v-if="classFieldByName(col.name) && isAssetField(classFieldByName(col.name)!) && recordAssetUrl(record, col.name)"
-                  :src="recordAssetUrl(record, col.name)!"
-                  class="w-10 h-10 rounded object-cover border border-slate-700/50 bg-slate-800"
-                  :title="col.title"
-                  @error="($event.target as HTMLImageElement).style.display = 'none'"
-                />
-                <span v-else>{{ listCellValue(record, col.name) }}</span>
-              </template>
-            </td>
-            <td class="px-4 py-3.5 text-right" @click.stop>
-              <button @click="openRecord(record)"
-                class="text-xs font-medium text-indigo-400 hover:text-indigo-300 mr-3">Edit</button>
-              <button @click="handleDelete(record)"
-                class="text-xs font-medium text-rose-400 hover:text-rose-300">Delete</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      class="flex flex-col flex-1 min-h-0 rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 overflow-hidden">
 
+      <!-- Sticky Table Header -->
       <div
-        class="flex items-center justify-between px-4 py-3 border-t border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-white/40">
+        class="sticky top-0 z-10 grid text-xs uppercase bg-slate-950/70 light:bg-white/70 text-slate-400 light:text-slate-600 border-b border-slate-800 light:border-slate-200"
+        :style="{ gridTemplateColumns: gridTemplateCols }">
+        <div class="px-3 py-3 w-10 shrink-0">
+          <input type="checkbox" :checked="allPageSelected()" @change="toggleSelectAll"
+            class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
+        </div>
+        <div v-for="col in visibleColumns" :key="col.name" @click="toggleSort(col.name)"
+          class="px-4 py-3 font-semibold cursor-pointer hover:text-slate-200 select-none whitespace-nowrap truncate">
+          {{ col.title }}
+          <span v-if="sortField === col.name" class="ml-1">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
+        </div>
+        <div class="px-4 py-3 font-semibold text-right shrink-0">Actions</div>
+      </div>
+
+      <!-- Scrollable Table Body -->
+      <div class="flex-1 overflow-y-auto min-h-0 divide-y divide-slate-800/60 light:divide-slate-200/60">
+        <div v-for="record in pagedRecords" :key="record.translationGroupId"
+          class="grid hover:bg-slate-800/40 light:bg-slate-100/40 transition cursor-pointer text-sm text-slate-300 light:text-slate-700"
+          :style="{ gridTemplateColumns: gridTemplateCols }">
+          <div class="px-3 py-3.5 w-10 shrink-0 flex items-center" @click.stop>
+            <input type="checkbox" :checked="selectedGroupIds.has(record.translationGroupId)"
+              @change="toggleSelectGroup(record.translationGroupId)"
+              class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
+          </div>
+          <div v-for="col in visibleColumns" :key="col.name" @click="openRecord(record)"
+            class="px-4 py-3.5 flex items-center overflow-hidden"
+            :class="col.name === 'key' ? 'font-medium text-slate-200 light:text-slate-800' : 'text-slate-400 light:text-slate-600'">
+            <template v-if="col.name === 'key'">
+              <div class="truncate min-w-0">
+                <div class="truncate">{{ record.primary.key }}</div>
+                <div class="text-xs text-slate-500 font-mono truncate">{{ record.primary.path }}</div>
+              </div>
+            </template>
+            <template v-else-if="col.name === 'locales'">
+              <div class="flex flex-wrap gap-1">
+                <span v-for="row in record.rows" :key="row.locale"
+                  class="px-2 py-0.5 text-[10px] font-bold rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 uppercase">{{ row.locale }}</span>
+              </div>
+            </template>
+            <template v-else-if="col.name === 'class'">
+              <span
+                class="truncate px-2 py-0.5 text-xs bg-slate-800 light:bg-slate-100 rounded font-mono text-indigo-300">{{ classLabel(record.primary.classId) }}</span>
+            </template>
+            <template v-else-if="col.name === 'status'">
+              <span :class="[
+                'truncate px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
+                record.primary.published ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+              ]">{{ record.primary.published ? 'published' : (record.primary.workflowState || 'draft') }}</span>
+            </template>
+            <template v-else-if="col.name === 'updatedAt'">
+              <span class="truncate">{{ new Date(record.primary.updatedAt).toLocaleString() }}</span>
+            </template>
+            <template v-else>
+              <img
+                v-if="classFieldByName(col.name) && isAssetField(classFieldByName(col.name)!) && recordAssetUrl(record, col.name)"
+                :src="recordAssetUrl(record, col.name)!"
+                class="w-10 h-10 rounded object-cover border border-slate-700/50 bg-slate-800 shrink-0"
+                :title="col.title"
+                @error="($event.target as HTMLImageElement).style.display = 'none'"
+              />
+              <span v-else class="truncate">{{ listCellValue(record, col.name) }}</span>
+            </template>
+          </div>
+          <div class="px-4 py-3.5 text-right shrink-0 flex items-center justify-end gap-3" @click.stop>
+            <button @click="openRecord(record)"
+              class="text-xs font-medium text-indigo-400 hover:text-indigo-300">Edit</button>
+            <button @click="handleDelete(record)"
+              class="text-xs font-medium text-rose-400 hover:text-rose-300">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sticky Pagination Footer -->
+      <div
+        class="sticky bottom-0 z-10 flex items-center justify-between px-4 py-3 border-t border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-white/40">
         <div class="flex items-center gap-2 text-xs text-slate-400 light:text-slate-600">
           <span>Rows per page:</span>
-          <select v-model.number="pageSize"
+          <select v-model="pageSize"
             class="px-2 py-1 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700">
-            <option v-for="size in [10, 25, 50, 100]" :key="size" :value="size">{{ size }}</option>
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="all">All</option>
+            <option value="custom">Custom...</option>
           </select>
+          <input v-if="pageSize === 'custom'" v-model.number="customPageSize" type="number" min="1"
+            class="w-16 px-2 py-1 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 text-xs"
+            placeholder="Rows" />
         </div>
         <div class="flex items-center gap-3 text-xs text-slate-400 light:text-slate-600">
           <span>{{ pageRangeLabel }}</span>
@@ -308,6 +333,7 @@ import { SYSTEM_LIST_COLUMNS, type ListColumnOption } from '../utils/list-column
 import type { ClassFieldDefinition } from '@whoobe-cms/core'
 import { randomUUID } from '../utils/random-id'
 
+const props = withDefaults(defineProps<{ classId?: string }>(), { classId: '' })
 const dataObjectsStore = useDataObjectsStore()
 const dataClassesStore = useDataClassesStore()
 const damStore = useDamStore()
@@ -316,12 +342,13 @@ const toastStore = useToastStore()
 const authStore = useAuthStore()
 
 const searchQuery = ref('')
-const selectedClassId = ref('')
+const selectedClassId = ref(props.classId)
 const isExportMenuOpen = ref(false)
 const isColumnsMenuOpen = ref(false)
 const activeColumnNames = ref<string[]>([])
 const presets = ref<ObjectListPreset[]>([])
-const pageSize = ref(25)
+const pageSize = ref<number | 'all' | 'custom'>(25)
+const customPageSize = ref(50)
 const currentPage = ref(1)
 const sortField = ref<string>('key')
 const sortDir = ref<'asc' | 'desc'>('asc')
@@ -344,6 +371,10 @@ const visibleColumns = computed<ColumnOption[]>(() => {
   return activeColumnNames.value
     .map((name) => allColumnOptions.value.find((c) => c.name === name))
     .filter((c): c is ColumnOption => !!c)
+})
+
+const gridTemplateCols = computed(() => {
+  return `40px repeat(${visibleColumns.value.length}, minmax(0, 1fr)) auto`
 })
 
 // Order used in the View dropdown: selected columns first (in active order),
@@ -777,17 +808,26 @@ const sortedRecords = computed(() => {
   })
 })
 
-const totalPages = computed(() => Math.max(1, Math.ceil(sortedRecords.value.length / pageSize.value)))
+const effectivePageSize = computed(() => {
+  if (pageSize.value === 'all') return Infinity
+  if (pageSize.value === 'custom') return customPageSize.value
+  return pageSize.value
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(sortedRecords.value.length / effectivePageSize.value)))
 
 const pagedRecords = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return sortedRecords.value.slice(start, start + pageSize.value)
+  const size = effectivePageSize.value
+  const start = (currentPage.value - 1) * size
+  return sortedRecords.value.slice(start, start + size)
 })
 
 const pageRangeLabel = computed(() => {
   if (sortedRecords.value.length === 0) return '0 of 0'
-  const start = (currentPage.value - 1) * pageSize.value + 1
-  const end = Math.min(sortedRecords.value.length, currentPage.value * pageSize.value)
+  if (pageSize.value === 'all') return `1-${sortedRecords.value.length} of ${sortedRecords.value.length}`
+  const size = effectivePageSize.value
+  const start = (currentPage.value - 1) * size + 1
+  const end = Math.min(sortedRecords.value.length, currentPage.value * size)
   return `${start}-${end} of ${sortedRecords.value.length}`
 })
 
@@ -797,6 +837,20 @@ watch(totalPages, (pages) => { if (currentPage.value > pages) currentPage.value 
 
 watch(() => tabsStore.activeTabId, (activeId) => {
   if (activeId === sectionTabId('objects')) dataObjectsStore.refreshDataObjects(selectedClassId.value || undefined)
+})
+
+// Sync sidebar class selection with local state (bi-directional)
+watch(() => dataClassesStore.selectedClassId, (classId) => {
+  if (classId !== selectedClassId.value) {
+    selectedClassId.value = classId
+    handleClassChange()
+  }
+})
+
+watch(selectedClassId, (classId) => {
+  if (classId !== dataClassesStore.selectedClassId) {
+    dataClassesStore.selectedClassId = classId
+  }
 })
 
 function openRecord(record: ObjectRecord) {

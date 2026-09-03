@@ -42,6 +42,17 @@
             <component :is="item.icon" class="w-5 h-5 shrink-0 transition-transform group-hover:scale-110" />
             <span v-if="!isSidebarCollapsed" class="ml-3 text-sm truncate flex-1">{{ item.name }}</span>
 
+            <!-- Expand/Collapse Objects Class Tree Toggle -->
+            <button
+              v-if="item.section === 'objects' && !isSidebarCollapsed"
+              @click.stop="isObjectsTreeExpanded = !isObjectsTreeExpanded"
+              class="p-1 rounded text-slate-400 light:text-slate-600 hover:text-white hover:bg-slate-700/60 light:bg-slate-200/60 transition ml-1 shrink-0"
+              title="Toggle Classes Tree"
+            >
+              <ChevronDown v-if="isObjectsTreeExpanded" class="w-4 h-4 text-indigo-400" />
+              <ChevronRight v-else class="w-4 h-4 text-slate-500" />
+            </button>
+
             <!-- Expand/Collapse Assets Tree Toggle -->
             <button
               v-if="item.section === 'assets' && !isSidebarCollapsed"
@@ -121,6 +132,27 @@
               <component :is="sub.icon" class="w-3.5 h-3.5 mr-1.5 shrink-0" />
               <span class="truncate flex-1">{{ sub.name }}</span>
             </button>
+          </div>
+
+          <!-- Data Objects Class Tree -->
+          <div
+            v-if="item.section === 'objects' && isObjectsTreeExpanded && !isSidebarCollapsed"
+            class="ml-3 pl-2.5 border-l border-slate-800/80 light:border-slate-200/80 space-y-1 py-1"
+          >
+            <div
+              v-for="dataClass in dataClassesStore.classes"
+              :key="dataClass.id"
+              @click="handleSelectSidebarClass(dataClass.id)"
+              :class="[
+                'flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none group',
+                dataClassesStore.selectedClassId === dataClass.id
+                  ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
+                  : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
+              ]"
+            >
+              <Table2 class="w-3.5 h-3.5 mr-1.5 text-indigo-400 shrink-0" />
+              <span class="truncate flex-1">{{ dataClass.label }}</span>
+            </div>
           </div>
         </div>
       </nav>
@@ -327,6 +359,10 @@
               :class-id="tab.objectClassId"
             />
             <MasterClassTab v-else-if="tab.type === 'item' && tab.itemKind === 'class' && tab.itemId" :class-id="tab.itemId" />
+            <ObjectsView
+              v-else-if="tab.type === 'item' && tab.itemKind === 'classList' && tab.classListClassId"
+              :class-id="tab.classListClassId"
+            />
             <MasterWebsiteTab v-else-if="tab.type === 'item' && tab.itemKind === 'website' && tab.itemId" :website-id="tab.itemId" />
           </div>
         </template>
@@ -392,6 +428,7 @@ import AssetsView from '../views/AssetsView.vue'
 import DocumentsView from '../views/DocumentsView.vue'
 import PagesView from '../views/PagesView.vue'
 import SnippetsView from '../views/SnippetsView.vue'
+import ComponentsView from '../views/ComponentsView.vue'
 import MailSettingsView from '../views/MailSettingsView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import ThemesView from '../components/themes/ThemesView.vue'
@@ -556,6 +593,7 @@ async function handleReindex() {
 }
 
 const isSidebarCollapsed = ref(false)
+const isObjectsTreeExpanded = ref(true)
 const isAssetsTreeExpanded = ref(true)
 const isSettingsMenuExpanded = ref(true)
 
@@ -563,7 +601,6 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'general', name: 'General settings', icon: Sliders },
   { key: 'dam', name: 'DAM configuration', icon: HardDrive },
   { key: 'classes', name: 'Data Object classes', icon: Database },
-  { key: 'components', name: 'Components', icon: Blocks },
   { key: 'roles', name: 'Roles/Users/Workspaces', icon: Users },
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
@@ -574,7 +611,6 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   general: 'General settings',
   dam: 'DAM configuration',
   classes: 'Data Object classes',
-  components: 'Components',
   roles: 'Roles/Users/Workspaces',
   security: 'Security',
   workflows: 'Workflows',
@@ -591,6 +627,7 @@ const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Websites', section: 'websites', icon: Globe },
   { name: 'Pages', section: 'pages', icon: FileStack },
   { name: 'Snippets', section: 'snippets', icon: Puzzle },
+  { name: 'Components', section: 'components', icon: Blocks },
   { name: 'Assets', section: 'assets', icon: FolderArchive },
   { name: 'Data Objects', section: 'objects', icon: Database },
   { name: 'Documents', section: 'documents', icon: FileText },
@@ -607,6 +644,7 @@ const sectionComponents: Record<SectionKind, any> = {
   documents: DocumentsView,
   pages: PagesView,
   snippets: SnippetsView,
+  components: ComponentsView,
   themes: ThemesView,
   mail: MailSettingsView,
   settings: SettingsView
@@ -620,6 +658,7 @@ const sectionLabels: Record<SectionKind, string> = {
   documents: 'Documents',
   pages: 'Pages',
   snippets: 'Snippets',
+  components: 'Components',
   mail: 'Outgoing Mail',
   themes: 'Themes',
   settings: 'Settings'
@@ -633,6 +672,7 @@ const sectionIcons: Record<SectionKind, any> = {
   documents: FileText,
   pages: FileStack,
   snippets: Puzzle,
+  components: Blocks,
   mail: Mail,
   themes: Palette,
   settings: Settings
@@ -689,6 +729,10 @@ function tabLabel(tab: MainTab): string {
     const dataClass = dataClassesStore.classes.find((c) => c.id === tab.itemId)
     return dataClass?.label ?? tab.label ?? 'New Class'
   }
+  if (tab.type === 'item' && tab.itemKind === 'classList') {
+    const dataClass = dataClassesStore.classes.find((c) => c.id === tab.classListClassId)
+    return `${dataClass?.label ?? tab.label ?? 'Data'} Objects`
+  }
   if (tab.type === 'item' && tab.itemKind === 'website' && tab.itemId) {
     const website = websitesStore.websites.find((w) => w.id === tab.itemId)
     return website?.name || 'Website'
@@ -716,6 +760,9 @@ function tabIcon(tab: MainTab) {
   if (tab.type === 'item' && tab.itemKind === 'class') {
     return Table2
   }
+  if (tab.type === 'item' && tab.itemKind === 'classList') {
+    return Database
+  }
   if (tab.type === 'item' && tab.itemKind === 'website') {
     return Globe
   }
@@ -734,6 +781,12 @@ const rootSubfolders = computed(() => {
 function handleSelectSidebarFolder(path: string) {
   damStore.currentFolderPath = path
   tabsStore.openSection('assets')
+}
+
+function handleSelectSidebarClass(classId: string) {
+  const dataClass = dataClassesStore.classes.find((c) => c.id === classId)
+  tabsStore.openClassList(classId, dataClass?.label ?? classId)
+  dataClassesStore.selectedClassId = classId
 }
 
 // Receiving end of a list-to-detail link clicked inside an embedded

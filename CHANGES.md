@@ -4,6 +4,36 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Add simplified architecture domain diagram + architectural principles] — 2026-09-03 (current branch)
+
+- **docs/plans/executive-summary.md**: Added a simplified Mermaid flowchart organized by domain (PIM/MDM, DAM, CMS, Headless SDK, ETL) between the full infra diagram and §3.1. Added a "Principio architetturale" table describing the four key principles: Single Source of Truth, Separazione delle Responsabilità, Headless by Design, Zero Nuove Infrastrutture.
+
+---
+
+## [Add general architecture diagram (Mermaid flowchart) to section 3] — 2026-09-03 (current branch)
+
+- **docs/plans/executive-summary.md**: Added a full Mermaid flowchart diagram at the top of section 3 ("Deep Dive Architetturale") showing all architecture layers — infrastructure (Postgres, MinIO), shared core (@whoobe-cms/core: ORM, Zod, Auth, S3, XState, Mail, Search), backend services (core-api, asset-processor), admin dashboard (admin-dashboard, whoobe-one-spike), headless SDK (schema → renderer → react/next/vue/svelte), frontend consumers, and migration tool — with color-coded boxes and dependency flows. Brief prose summary below the diagram.
+
+---
+
+## [Add Websites & Themes section, renumber 3.9–3.13 to 3.6–3.10] — 2026-09-03 (current branch)
+
+- **docs/plans/executive-summary.md**: New section 3.5 "Siti Web (Multi-site), Template e Temi" covering multi-site management, dynamic URL patterns, website templates (header/aside/footer slots, path pattern overrides), and themes (independent entities, hierarchical assignment website→page, Tailwind `@theme` color injection, Google Fonts loading). Existing sections 3.9–3.13 renumbered to 3.6–3.10.
+
+---
+
+## [Restructure executive-summary.md: split Visual Builder & SDK sections, renumber all subsections, mark SDK risk mitigated] — 2026-09-03 (current branch)
+
+- **docs/plans/executive-summary.md**: Section 3.3 rewritten as dedicated "Visual Builder (Whoobe One)" chapter covering the block editor, JSON output, SEO/themes/snippets/mail-editor/AI. New section 3.4 "SDK Frontend Headless (già implementato)" with three-layer architecture (schema → renderer → adapters) and all four implemented adapters: React 18+, Next.js (App Router ISR), Vue 3, Svelte 5. Existing sections 3.4–3.8 renumbered to 3.9–3.13. Risk 1 in section 5 marked as mitigated — SDK already complete. Step 3 in "Prossimi Passi" updated from "Drafting dell'SDK" to "integrare l'adapter prescelto con il design system".
+
+---
+
+## [Update executive-summary.md with app features 3.4–3.8] — 2026-09-03 (current branch)
+
+- **docs/plans/executive-summary.md**: Added subsections 3.4 (DAM su MinIO/S3), 3.5 (Forms & Notifiche Email), 3.6 (Motore di Pubblicazione XState), 3.7 (Autenticazione e Permessi), and 3.8 (Agente AI Generativo) between the existing 3.3 and section 4, covering the full feature surface described in README.md and implemented in CHANGES.md.
+
+---
+
 ## [Extract collectionTypes to data_components] — 2026-09-01 (current branch)
 
 - **New `extract-collection-types-to-components.ts`** (`packages/migration-tool/src/`): CLI command `extract-collection-types` that reads all `data_classes` from the DB, finds `fieldcollections` fields with embedded `collectionTypes`, creates a `data_components` record for each unique collection type (deduplicated by name), and updates the class field to use `allowedComponentTypes` alongside `collectionTypes`.

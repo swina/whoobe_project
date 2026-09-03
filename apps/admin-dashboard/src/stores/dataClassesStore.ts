@@ -14,6 +14,7 @@ import { useAuthStore } from './authStore'
 export const useDataClassesStore = defineStore('dataClasses', () => {
   const classes = ref<DataClass[]>([])
   const isLoading = ref(false)
+  const selectedClassId = ref('')
 
   async function refreshDataClasses(): Promise<void> {
     const authStore = useAuthStore()
@@ -68,6 +69,7 @@ export const useDataClassesStore = defineStore('dataClasses', () => {
   return {
     classes,
     isLoading,
+    selectedClassId,
     refreshDataClasses,
     getDataClass,
     createDataClass,
