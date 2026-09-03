@@ -4,6 +4,12 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [New plan: Figma → Whoobe converter (docs/plans/figma-converter-plan.md)] — 2026-09-03 (current branch)
+
+- **docs/plans/figma-converter-plan.md**: Full implementation plan for a Figma-to-Whoobe converter. Covers architecture (new `@whoobe-cms/figma-converter` package, core-api routes, whoobe-one-spike modal), dual import modes (Live API + JSON upload), conversion pipeline (node mapping, auto-layout → Tailwind flex, style conversion, component resolution, image upload), 4 implementation phases (core converter → live API → UI → polish), file summary, and open questions.
+
+---
+
 ## [Add simplified architecture domain diagram + architectural principles] — 2026-09-03 (current branch)
 
 - **docs/plans/executive-summary.md**: Added a simplified Mermaid flowchart organized by domain (PIM/MDM, DAM, CMS, Headless SDK, ETL) between the full infra diagram and §3.1. Added a "Principio architetturale" table describing the four key principles: Single Source of Truth, Separazione delle Responsabilità, Headless by Design, Zero Nuove Infrastrutture.
