@@ -66,6 +66,8 @@
 
         <AiSettingsCard v-if="activeSubSection === 'ai'" />
 
+        <FigmaSettingsCard v-if="activeSubSection === 'figma'" />
+
         <div v-if="activeSubSection === 'general'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-6">
           <div class="space-y-4">
             <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">General Options</h3>
@@ -99,6 +101,7 @@ import ClassSettingsCard from '../components/objects/ClassSettingsCard.vue'
 import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue'
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'
 import AiSettingsCard from '../components/settings/AiSettingsCard.vue'
+import FigmaSettingsCard from '../components/settings/FigmaSettingsCard.vue'
 import UsersView from './UsersView.vue'
 import RolesView from './RolesView.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
@@ -113,6 +116,7 @@ import {
   FileJson,
   Sparkles,
   WandSparkles,
+  Palette,
   UserRound,
   KeyRound,
 } from '@lucide/vue'
@@ -127,6 +131,7 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'ai', name: 'AI', icon: WandSparkles },
+  { key: 'figma', name: 'Figma', icon: Palette },
 ]
 
 type ClassesSubTab = 'classes' | 'pimcore' | 'file'
@@ -186,6 +191,7 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   security: { title: 'Security', description: 'Two-factor authentication and account security.' },
   workflows: { title: 'Workflows', description: 'Author publish/review workflows for Data Object classes.' },
   ai: { title: 'AI Agent', description: 'LLM provider used by the AI page and snippet generator in the Whoobe One composer.' },
+  figma: { title: 'Figma Integration', description: 'Figma Personal Access Token configuration for importing designs into the Whoobe One editor.' },
 }
 
 const sectionTitle = computed(() => sectionTitles[activeSubSection.value].title)

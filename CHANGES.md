@@ -4,6 +4,31 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Phases 2-3: core-api figma routes + figma_settings + admin UI + whoobe-one-spike modal] — 2026-09-03 (branch: feat/09-03/figma-converter)
+
+- **`packages/core/src/db/figma-settings-schema.ts`**: New `figma_settings` Drizzle table (single-row, access_token + team_id + timestamps), matching the mail_settings/ai_settings pattern.
+- **`packages/core/src/db/figma-settings-records.ts`**: `getFigmaSettings()` + `upsertFigmaSettings()` — same upsert pattern as ai_settings/mail_settings.
+- **`packages/core/drizzle/0033_quiet_figma.sql`**: Migration to create `figma_settings` table (manually authored, 0033 entry in _journal.json).
+- **`packages/core/drizzle.config.ts`**: Added figma-settings-schema to schema list.
+- **`packages/core/src/server.ts`**: Added figma-settings exports to the Node-only barrel.
+- **`apps/core-api/package.json`**: Added `@whoobe-cms/figma-converter` workspace dependency.
+- **`apps/core-api/src/server.ts`**: Added three new routes —
+  - `GET /figma/settings` (SETTINGS_MANAGE, strips token, returns hasToken)
+  - `PUT /figma/settings` (SETTINGS_MANAGE, blank token = keep existing)
+  - `POST /figma/import` (OBJECTS_WRITE, proxies Figma API, converts via figma-converter, returns Element tree + warnings)
+- **`apps/admin-dashboard/src/utils/figma-settings-api.ts`**: API client for figma settings CRUD (fetch + save).
+- **`apps/admin-dashboard/src/components/settings/FigmaSettingsCard.vue`**: Settings card for Figma Personal Access Token configuration (password field, team_id, hasToken indicator).
+- **`apps/admin-dashboard/src/stores/tabsStore.ts`**: Added `'figma'` to `SettingsSubSection` union type.
+- **`apps/admin-dashboard/src/views/SettingsView.vue`**: Added Figma sub-tab with Palette icon, description, and FigmaSettingsCard rendering.
+- **`apps/admin-dashboard/src/layouts/DashboardLayout.vue`**: Added Figma to settings sidebar items and labels.
+- **`apps/whoobe-one-spike/src/figma-api.ts`**: HTTP client for figma settings and figma import (matching ai-api.ts pattern).
+- **`apps/whoobe-one-spike/src/scripts/figma-actions.ts`**: `insertFigmaAsPage()` and `insertFigmaAsSnippet()` — normalization + insertion logic mirroring AI/kit template patterns.
+- **`apps/whoobe-one-spike/src/components/FigmaImportModal.vue`**: Two-tab modal (Live API + Upload JSON) with file key/node id inputs, drag-and-drop JSON upload, DocumentPreview, import-as-page/snippet mode selector, warnings display.
+- **`apps/whoobe-one-spike/src/components/BlockEditor.vue`**: Added "Figma" toolbar button next to "AI Page", FigmaImportModal integration, onFigmaImported handler.
+- Verified: packages/core, core-api, figma-converter, admin-dashboard, whoobe-one-spike all typecheck clean. 28 figma-converter unit tests pass.
+
+---
+
 ## [Phase 1: @whoobe-cms/figma-converter package (Figma → Whoobe converter)] — 2026-09-03 (branch: feat/09-03/figma-converter)
 
 - **New `packages/figma-converter/`** (`@whoobe-cms/figma-converter`): Pure TypeScript package that converts Figma node JSON trees into Whoobe Element trees. Depends on `@whoobe-cms/schema`.

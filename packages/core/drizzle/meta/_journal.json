@@ -232,6 +232,13 @@
       "when": 1788249142521,
       "tag": "0032_short_captain_universe",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1788300000000,
+      "tag": "0033_quiet_figma",
+      "breakpoints": true
     }
   ]
 }

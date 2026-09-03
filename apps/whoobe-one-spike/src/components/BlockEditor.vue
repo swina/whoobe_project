@@ -26,6 +26,7 @@
            app's own Templates gallery would be a redundant second way to
            browse the same content. -->
       <button :class="topbarBtnClass" @click="showAiGeneratePage = true"><Wand2 class="w-3.5 h-3.5" /> AI Page</button>
+      <button :class="topbarBtnClass" @click="showFigmaImport = true"><Palette class="w-3.5 h-3.5" /> Figma</button>
       <button v-if="!editor.embedded" :class="topbarBtnClass" @click="showTemplateGallery = true">
         <FolderOpen class="w-3.5 h-3.5" /> Templates
       </button>
@@ -163,6 +164,12 @@
       @generated="onAiPageGenerated"
     />
 
+    <FigmaImportModal
+      v-if="showFigmaImport"
+      @close="showFigmaImport = false"
+      @imported="onFigmaImported"
+    />
+
     <AiGeneratedPreviewModal
       v-if="showAiPreview && aiPreviewRecord"
       :record="aiPreviewRecord"
@@ -233,6 +240,7 @@ import AddToKitModal from './AddToKitModal.vue'
 import TemplateGalleryModal from './TemplateGalleryModal.vue'
 import ThemeModal from './ThemeModal.vue'
 import AiGenerateModal from './AiGenerateModal.vue'
+import FigmaImportModal from './FigmaImportModal.vue'
 import AiGeneratedPanel from './AiGeneratedPanel.vue'
 import AiGeneratedPreviewModal from './AiGeneratedPreviewModal.vue'
 import type { AiGeneratedRecord } from '../ai-api'
@@ -244,6 +252,7 @@ import { editorBus } from '../bus'
 import { exportDocument, importDocument, cloneWithFreshIds, insertGeneratedSnippet } from '../scripts/editor-actions'
 import { savePage, saveMailTemplate, saveSnippet, saveAsNewTemplate, updatePageSlug } from '../scripts/database-actions'
 import { resolveDocumentData } from '../scripts/data-resolver'
+import { insertFigmaAsPage, insertFigmaAsSnippet } from '../scripts/figma-actions'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -257,6 +266,7 @@ const showAddToKit = ref(false)
 const showTemplateGallery = ref(false)
 const showThemeModal = ref(false)
 const showAiGeneratePage = ref(false)
+const showFigmaImport = ref(false)
 
 // Inject theme colors as @theme CSS custom properties so @tailwindcss/browser
 // recognizes named classes like `bg-light-grey`. Watches editor.document
@@ -512,6 +522,17 @@ function onAiGeneratedImport(record: { kind: 'snippet' | 'page'; payload: unknow
   }
   insertGeneratedSnippet(editor, record.payload)
   flash('AI snippet imported')
+}
+
+function onFigmaImported(result: { element: any; name: string; mode: 'page' | 'snippet' }) {
+  showFigmaImport.value = false
+  if (result.mode === 'page') {
+    insertFigmaAsPage(editor, result.element, result.name)
+    flash(`Figma page imported: ${result.name}`)
+  } else {
+    const ok = insertFigmaAsSnippet(editor, result.element)
+    flash(ok ? `Figma snippet imported: ${result.name}` : 'Failed to import Figma snippet')
+  }
 }
 
 // Preview button from the AI history panel: opens the read-only modal

@@ -605,6 +605,7 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'ai', name: 'AI agent', icon: Sparkles },
+  { key: 'figma', name: 'Figma', icon: Palette },
 ]
 
 const settingsSubLabels: Record<SettingsSubSection, string> = {
@@ -615,6 +616,7 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   security: 'Security',
   workflows: 'Workflows',
   ai: 'AI agent',
+  figma: 'Figma',
 }
 
 function isSettingsSubSectionActive(key: SettingsSubSection): boolean {

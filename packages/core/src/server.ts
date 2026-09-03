@@ -40,6 +40,8 @@ export * from './db/mail-settings-schema.js';
 export * from './db/mail-settings-records.js';
 export * from './db/ai-settings-schema.js';
 export * from './db/ai-settings-records.js';
+export * from './db/figma-settings-schema.js';
+export * from './db/figma-settings-records.js';
 export * from './db/ai-generated-schema.js';
 export * from './db/ai-generated-records.js';
 export * from './db/search-documents-schema.js';
