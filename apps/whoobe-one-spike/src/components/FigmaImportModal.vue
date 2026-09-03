@@ -124,7 +124,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { X, Loader2, Upload } from '@lucide/vue'
 import BlockContainerPreview from './preview/BlockContainerPreview.vue'
 import { importFromFigma, fetchFigmaSettings, type FigmaImportResult } from '../figma-api'
@@ -156,6 +156,11 @@ const uploadedJson = ref<Record<string, unknown> | null>(null)
 const previewElement = ref<any>(null)
 const previewName = ref('')
 const warnings = ref<string[]>([])
+
+onMounted(async () => {
+  const settings = await fetchFigmaSettings()
+  hasToken.value = settings?.hasToken ?? false
+})
 
 const safePreview = computed(() => {
   if (!previewElement.value) return null
