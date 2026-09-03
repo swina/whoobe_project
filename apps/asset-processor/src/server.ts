@@ -3,7 +3,7 @@ import multer from 'multer';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import { Readable } from 'node:stream';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import {
   ImageProcessingPipeline,
   AssetMetadataExtractor,
@@ -11,6 +11,8 @@ import {
   S3AssetStorageProvider,
   FolderVisibilityManager,
   FolderVisibilityRule,
+  ThumbnailGenerator,
+  ThumbnailPreset,
   getFileTypeFromFilename,
 } from '@whoobe-cms/core';
 import {
@@ -703,14 +705,46 @@ const s3ClientForProxy = new S3Client({
   forcePathStyle: damBaseConfig.forcePathStyle !== false,
 });
 
+const THUMB_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'tiff', 'svg'];
+
+const MIME_BY_EXT: Record<string, string> = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+  webp: 'image/webp', gif: 'image/gif', avif: 'image/avif',
+  tiff: 'image/tiff', svg: 'image/svg+xml',
+};
+
+function parseThumbnailKey(thumbKey: string): { basePath: string; preset: ThumbnailPreset } | null {
+  if (!thumbKey.startsWith('.thumbnails/')) return null;
+  const relativeKey = thumbKey.slice('.thumbnails/'.length);
+  const presets: ThumbnailPreset[] = ['thumb', 'medium', 'large'];
+  for (const preset of presets) {
+    const suffix = `_${preset}.webp`;
+    if (relativeKey.endsWith(suffix)) {
+      return { basePath: relativeKey.slice(0, -suffix.length), preset };
+    }
+  }
+  return null;
+}
+
+async function findOriginalS3Key(basePath: string): Promise<string | null> {
+  for (const ext of THUMB_EXTENSIONS) {
+    const candidateKey = `${basePath}.${ext}`;
+    try {
+      await s3ClientForProxy.send(new HeadObjectCommand({ Bucket: damBaseConfig.bucket, Key: candidateKey }));
+      return candidateKey;
+    } catch { continue; }
+  }
+  return null;
+}
+
 // Proxy endpoint: serves files from S3/MinIO through this server so the
 // browser never hits S3/MinIO directly (avoids CORS, presigned URL expiry,
 // and cross-host issues). Uses a signed GetObjectCommand so MinIO
 // authenticated access works (the bucket is not publicly readable).
 app.get('/dam-asset/*', async (req: Request, res: Response): Promise<void> => {
+  const s3Key = req.params[0];
+  if (!s3Key) { res.status(400).end(); return; }
   try {
-    const s3Key = req.params[0];
-    if (!s3Key) { res.status(400).end(); return; }
     const command = new GetObjectCommand({ Bucket: damBaseConfig.bucket, Key: s3Key });
     const response = await s3ClientForProxy.send(command);
     if (response.Body) {
@@ -721,6 +755,39 @@ app.get('/dam-asset/*', async (req: Request, res: Response): Promise<void> => {
       res.status(404).end();
     }
   } catch (error: any) {
+    if (error.name === 'NoSuchKey') {
+      const parsed = parseThumbnailKey(s3Key);
+      if (parsed) {
+        try {
+          const originalKey = await findOriginalS3Key(parsed.basePath);
+          if (originalKey) {
+            const mimeType = MIME_BY_EXT[originalKey.split('.').pop() ?? ''] ?? 'application/octet-stream';
+            const downloadCmd = new GetObjectCommand({ Bucket: damBaseConfig.bucket, Key: originalKey });
+            const original = await s3ClientForProxy.send(downloadCmd);
+            if (original.Body) {
+              const chunks: Uint8Array[] = [];
+              for await (const chunk of original.Body as any) {
+                chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk));
+              }
+              const buffer = Buffer.concat(chunks);
+              const thumbBuffer = await ThumbnailGenerator.generateThumbnail(buffer, parsed.preset);
+              await s3ClientForProxy.send(new PutObjectCommand({
+                Bucket: damBaseConfig.bucket,
+                Key: s3Key,
+                Body: thumbBuffer,
+                ContentType: 'image/webp',
+              }));
+              res.setHeader('Content-Type', 'image/webp');
+              res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+              res.end(thumbBuffer);
+              return;
+            }
+          }
+        } catch { }
+      }
+      res.status(404).json({ error: 'Asset not found' });
+      return;
+    }
     console.error('DAM proxy error:', error);
     res.status(500).json({ error: error.message || 'Failed to serve asset' });
   }

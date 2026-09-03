@@ -61,23 +61,47 @@
 
         <!-- Per-page overrides: fonts -->
         <section class="space-y-2">
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Page font list</h3>
-          <p class="text-[11px] text-gray-400">When set, overrides the website theme's font list for this page.</p>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Page fonts</h3>
+          <p class="text-[11px] text-gray-400">Select which fonts this page uses. Overrides the website theme's font list.</p>
 
-          <div class="flex flex-col gap-1">
-            <div v-for="font in fonts" :key="font" class="flex items-center gap-2">
-              <span class="flex-1 text-xs truncate" :style="{ fontFamily: font.replaceAll('+', ' ') }">{{ font.replaceAll('+', ' ') }}</span>
-              <button type="button" title="Remove" class="text-gray-400 hover:text-rose-500 shrink-0" @click="removeFont(font)">
-                <X class="w-3.5 h-3.5" />
+          <!-- Selected page fonts -->
+          <div class="flex flex-wrap gap-1.5 mb-2">
+            <span
+              v-for="font in pageFonts"
+              :key="font"
+              class="inline-flex items-center gap-1 text-[11px] border rounded px-2 py-0.5 bg-indigo-50 border-indigo-200 text-indigo-700"
+              :style="{ fontFamily: font.replaceAll('+', ' ') }"
+            >
+              {{ font.replaceAll('+', ' ') }}
+              <button type="button" class="text-indigo-400 hover:text-rose-500" @click="removeFont(font)" :style="{ fontFamily: font.replaceAll('+', ' ') }">
+                <X class="w-3 h-3" />
               </button>
-            </div>
+            </span>
           </div>
 
-          <div class="flex items-center gap-1.5">
+          <!-- Available fonts checklist -->
+          <div class="max-h-40 overflow-y-auto border rounded bg-gray-50 p-1.5 space-y-0.5">
+            <label
+              v-for="font in editor.fonts"
+              :key="font"
+              class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-gray-100 cursor-pointer text-xs"
+            >
+              <input
+                type="checkbox"
+                class="w-3.5 h-3.5 rounded accent-indigo-600 shrink-0"
+                :checked="pageFonts.includes(font)"
+                @change="toggleFont(font)"
+              />
+              <span :style="{ fontFamily: font.replaceAll('+', ' ') }">{{ font.replaceAll('+', ' ') }}</span>
+            </label>
+          </div>
+
+          <!-- Custom font input -->
+          <div class="flex items-center gap-1.5 pt-1">
             <input
               v-model="newFont"
               type="text"
-              placeholder="e.g. Playfair Display"
+              placeholder="Or type a custom font name…"
               class="flex-1 text-xs border rounded px-1.5 py-1"
               @keydown.enter="addFont"
             />
@@ -154,13 +178,6 @@ function ensureTheme() {
   return doc.theme
 }
 
-function ensureFonts() {
-  const theme = ensureTheme()
-  if (!theme) return null
-  if (!theme.fonts.length) theme.fonts = [...editor.fonts]
-  return theme
-}
-
 const colors = computed(() => (editor.document as any)?.theme?.colors ?? [])
 
 function addColor() {
@@ -187,7 +204,23 @@ function removeColor(i: number) {
   theme.colors.splice(i, 1)
 }
 
-const fonts = computed(() => (editor.document as any)?.theme?.fonts?.length ? (editor.document as any).theme.fonts : editor.fonts)
+const pageFonts = computed(() => (editor.document as any)?.theme?.fonts ?? [])
+
+function ensureFonts() {
+  const theme = ensureTheme()
+  if (!theme) return null
+  if (!theme.fonts) theme.fonts = []
+  return theme
+}
+
+function toggleFont(font: string) {
+  const theme = ensureFonts()
+  if (!theme) return
+  const idx = theme.fonts.indexOf(font)
+  if (idx >= 0) theme.fonts.splice(idx, 1)
+  else theme.fonts.push(font)
+  // Trigger watcher in useThemeStyles
+}
 
 function addFont() {
   const name = newFont.value.trim()
