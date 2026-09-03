@@ -20,7 +20,7 @@
               :is="controlComponent(control.name)"
               :attr="control.attr"
               :title="control.title || control.attr"
-              :prefix="control.prefix"
+              v-bind="control.prefix ? { prefix: control.prefix } : {}"
             />
           </template>
         </div>

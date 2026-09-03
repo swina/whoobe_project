@@ -41,13 +41,6 @@ export default defineConfig({
       '/public': { target: 'http://localhost:3003', changeOrigin: true },
       '/ai': { target: 'http://localhost:3003', changeOrigin: true },
       '/api/v1/dam': { target: 'http://localhost:3002', changeOrigin: true },
-      // whoobe-one-spike editor (port 3006) — proxy strips the prefix so
-      // the editor app at `/` receives the clean path.
-      '/whoobe-one-editor': {
-        target: 'http://localhost:3006',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/whoobe-one-editor/, ''),
-      },
       // whoobe-studio (port 3004) — same proxying approach.
       '/whoobe-studio': {
         target: 'http://localhost:3004',

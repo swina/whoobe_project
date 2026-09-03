@@ -21,6 +21,19 @@ import SearchElement from './components/SearchElement.vue'
 ;(window as any).Alpine = Alpine
 Alpine.start()
 
+// Preload all available fonts from the build-time font list so the editor
+// canvas (which sets font-family on selected elements via inline style) and
+// the preview tree always see the fonts without a flash-of-unstyled-text
+// delay. Runs before the app mounts so the font stylesheet is loading in
+// parallel while Vue compiles the component tree.
+const fontList = (import.meta.env.VITE_FONT_FAMILIES ?? '').trim()
+if (fontList) {
+  const fontLink = document.createElement('link')
+  fontLink.rel = 'stylesheet'
+  fontLink.href = `https://fonts.googleapis.com/css2?${fontList.split('|').map((f) => `family=${f}`).join('&')}&display=swap`
+  document.head.appendChild(fontLink)
+}
+
 // @tailwindcss/browser is a self-executing script (not a real ES module -
 // its package.json has no meaningful exports beyond the file itself), so
 // it's loaded the same way Tailwind's own docs load it: a <script> tag,

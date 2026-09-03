@@ -114,11 +114,10 @@ export function useThemeStyles(getDoc: () => any) {
     update,
     { deep: true }
   )
-  watch(() => getDoc(), update)
+  watch(() => getDoc(), update, { immediate: true })
   watch(
     () => editor.websiteTheme,
     update,
     { deep: true }
   )
-  if (getDoc()) update()
 }

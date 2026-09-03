@@ -1,8 +1,11 @@
-// Returns the core-api base URL. On localhost, all backend ports are
-// directly accessible so use localhost:3003 directly. On external hosts
-// (Cloudflare tunnel, LAN), only the admin-dashboard port (3000) is exposed
-// and API calls go through the Vite proxy, so use the page's own origin.
+// Returns the core-api base URL. Prefers the VITE_CORE_API_URL env var
+// (set by dev-cms.sh --hostname, e.g. http://develop.local:3003), falling
+// back to localhost:3003 (direct port for local dev) or, on external hosts,
+// the page's own origin (which works when proxied through admin-dashboard).
 export function getDefaultCoreApiUrl(): string {
+  if (typeof import.meta !== 'undefined' && import.meta.env.VITE_CORE_API_URL) {
+    return import.meta.env.VITE_CORE_API_URL
+  }
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const hostname = window.location.hostname
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
