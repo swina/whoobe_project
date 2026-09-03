@@ -65,12 +65,12 @@ describe('convertLayout', () => {
     expect(result.tailwind).toContain('justify-center')
   })
 
-  it('adds absolute positioning for ABSOLUTE layoutPositioning', () => {
+it('adds absolute positioning for ABSOLUTE layoutPositioning', () => {
     const result: LayoutResult = convertLayout({
       layoutMode: 'NONE',
       layoutPositioning: 'ABSOLUTE',
       absoluteBoundingBox: { x: 50, y: 30, width: 200, height: 100 },
-    } as any)
+    } as any, { x: 0, y: 0 })
     expect(result.inline.some(s => s.includes('position: absolute'))).toBe(true)
     expect(result.inline.some(s => s.includes('left: 50px'))).toBe(true)
     expect(result.inline.some(s => s.includes('top: 30px'))).toBe(true)

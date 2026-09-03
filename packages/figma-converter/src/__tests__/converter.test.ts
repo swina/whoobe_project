@@ -22,6 +22,7 @@ describe('convertFigmaNode', () => {
     expect(textEl?.content).toBe('Welcome to Whoobe CMS')
     expect(textEl?.editable).toBe(true)
     expect(textEl?.font).toBe('Inter')
+    expect(String(textEl?.style)).toContain('position: absolute')
   })
 
   it('sets correct heading level based on fontsize 24', () => {
