@@ -77,8 +77,8 @@
         <!-- Preview -->
         <div v-if="previewElement" class="border rounded-lg p-2 bg-gray-50">
           <div class="text-[10px] text-gray-400 mb-1">Preview: {{ previewName }}</div>
-          <div class="max-h-48 overflow-auto border rounded bg-white p-2">
-            <DocumentPreview :doc="previewElement" />
+          <div class="max-h-48 overflow-auto border rounded bg-white p-2 transform scale-[0.6] origin-top-left" style="width: 166%;">
+            <BlockContainerPreview :doc="safePreview" />
           </div>
         </div>
         <div v-if="warnings.length > 0" class="text-[10px] text-amber-600 bg-amber-50 rounded px-2 py-1 space-y-0.5">
@@ -126,7 +126,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { X, Loader2, Upload } from '@lucide/vue'
-import DocumentPreview from './DocumentPreview.vue'
+import BlockContainerPreview from './preview/BlockContainerPreview.vue'
 import { importFromFigma, fetchFigmaSettings, type FigmaImportResult } from '../figma-api'
 
 const emit = defineEmits<{
@@ -156,6 +156,14 @@ const uploadedJson = ref<Record<string, unknown> | null>(null)
 const previewElement = ref<any>(null)
 const previewName = ref('')
 const warnings = ref<string[]>([])
+
+const safePreview = computed(() => {
+  if (!previewElement.value) return null
+  const el = { ...previewElement.value }
+  if (!el.css) el.css = { css: '', container: '' }
+  if (!el.blocks) el.blocks = []
+  return el
+})
 
 const tabs = [
   { key: 'live' as const, label: 'Live API' },
