@@ -16,6 +16,18 @@ export async function fetchAndConvert(options: FetchOptions): Promise<Conversion
       if (res.status === 401) {
         throw new Error(`Figma API 401 Unauthorized — your Personal Access Token is invalid, expired, or lacks access to this file. Generate a new token at https://www.figma.com/developers/api#access-tokens (scopes: file_read). Make sure you use the full token string (figd_...) passed via X-Figma-Token header. Response: ${detail}`)
       }
+      if (res.status === 400) {
+        throw new Error(`Figma API error (400): ${detail}
+
+The file key "${fileKey}" is not a valid Figma design file.
+
+• Make sure the file key is the alphanumeric string from the Figma URL, e.g.:
+    https://www.figma.com/file/<b>ABC123def456</b>/My-Design
+                           └─ file key here
+
+• This endpoint only supports Figma design files (not FigJam, not libraries).
+• Verify the file is accessible with your Figma account (not a Community file).`)
+      }
       throw new Error(`Figma API error (${res.status}): ${detail}`)
     }
     return res
