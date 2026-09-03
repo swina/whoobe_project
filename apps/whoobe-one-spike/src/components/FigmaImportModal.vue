@@ -128,6 +128,7 @@ import { ref, computed, onMounted } from 'vue'
 import { X, Loader2, Upload } from '@lucide/vue'
 import BlockContainerPreview from './preview/BlockContainerPreview.vue'
 import { importFromFigma, fetchFigmaSettings, type FigmaImportResult } from '../figma-api'
+import { convertPluginJson, isPluginFormat } from '@whoobe-cms/figma-converter'
 
 const emit = defineEmits<{
   close: []
@@ -207,9 +208,19 @@ function handleFile(file: File) {
   reader.onload = () => {
     try {
       const json = JSON.parse(reader.result as string)
-      uploadedJson.value = json
-      previewName.value = json.name || 'Uploaded frame'
-      previewElement.value = json
+      if (isPluginFormat(json)) {
+        const result = convertPluginJson(json)
+        previewElement.value = result.element
+        previewName.value = result.name
+        warnings.value = result.warnings
+        uploadedJson.value = result.element
+      } else if (json && typeof json === 'object' && 'type' in json) {
+        previewName.value = json.name || 'Uploaded frame'
+        previewElement.value = json
+        uploadedJson.value = json
+      } else {
+        parseError.value = 'Unrecognized JSON format. Please export using the Figma JSON plugin (Codify AI).'
+      }
     } catch {
       parseError.value = 'Invalid JSON file'
     }

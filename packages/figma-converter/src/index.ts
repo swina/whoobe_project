@@ -1,5 +1,6 @@
 export { convertFigmaNode as convertFigmaTree } from './figma-node-converter.js'
 export { fetchAndConvert } from './resolve.js'
+export { convertPluginJson, isPluginFormat } from './plugin-converter.js'
 export type { ConversionResult, FigmaConversionOptions, FigmaImportMode, WhoobeElementNode } from './types.js'
 export type { FigmaNode, DocumentNode, CanvasNode, FrameNode, GroupNode, TextNode, RectangleNode, EllipseNode, LineNode, VectorNode, InstanceNode, ComponentNode, BooleanOperationNode, SectionNode } from './figma-types.js'
 export type { SolidPaint, GradientPaint, ImagePaint, Paint } from './figma-types.js'
