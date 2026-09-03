@@ -6,7 +6,7 @@ import type { FetchOptions } from './types.js'
 export async function fetchAndConvert(options: FetchOptions): Promise<ConversionResult> {
   const { accessToken, fileKey, nodeIds, apiBaseUrl = 'https://api.figma.com/v1', imageUploadFn } = options
 
-  const headers = { Authorization: `Bearer ${accessToken}` }
+  const headers: Record<string, string> = { 'X-Figma-Token': accessToken }
 
   async function figmaFetch(url: string): Promise<Response> {
     const res = await fetch(url, { headers })
@@ -14,7 +14,7 @@ export async function fetchAndConvert(options: FetchOptions): Promise<Conversion
       let detail = ''
       try { const body = await res.json(); detail = body.err || JSON.stringify(body).slice(0, 200) } catch { detail = res.statusText }
       if (res.status === 401) {
-        throw new Error(`Figma API 401 Unauthorized — your Personal Access Token is invalid, expired, or lacks access to this file. Generate a new token at https://www.figma.com/developers/api#access-tokens (scopes: file_read). Response: ${detail}`)
+        throw new Error(`Figma API 401 Unauthorized — your Personal Access Token is invalid, expired, or lacks access to this file. Generate a new token at https://www.figma.com/developers/api#access-tokens (scopes: file_read). Make sure you use the full token string (figd_...) passed via X-Figma-Token header. Response: ${detail}`)
       }
       throw new Error(`Figma API error (${res.status}): ${detail}`)
     }
@@ -99,7 +99,7 @@ function replaceImageRef(node: Record<string, unknown>, imageRef: string, damUrl
 }
 
 export async function fetchImageUrls(fileKey: string, imageRefs: string[], accessToken: string, apiBaseUrl = 'https://api.figma.com/v1'): Promise<Record<string, string>> {
-  const headers = { Authorization: `Bearer ${accessToken}` }
+  const headers = { 'X-Figma-Token': accessToken }
   const fillsUrl = `${apiBaseUrl}/files/${fileKey}/images`
   const res = await fetch(fillsUrl, { headers })
   if (!res.ok) throw new Error(`Figma API error (image fills): ${res.status}`)
@@ -109,7 +109,7 @@ export async function fetchImageUrls(fileKey: string, imageRefs: string[], acces
 }
 
 export async function renderNodeToImage(fileKey: string, nodeId: string, accessToken: string, format: 'png' | 'jpg' | 'svg' = 'png', apiBaseUrl = 'https://api.figma.com/v1'): Promise<string | null> {
-  const headers = { Authorization: `Bearer ${accessToken}` }
+  const headers = { 'X-Figma-Token': accessToken }
   const url = `${apiBaseUrl}/images/${fileKey}?ids=${nodeId}&format=${format}&scale=2`
   const res = await fetch(url, { headers })
   if (!res.ok) return null
