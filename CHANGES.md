@@ -4,7 +4,19 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
-## [New plan: Figma → Whoobe converter (docs/plans/figma-converter-plan.md)] — 2026-09-03 (current branch)
+## [Phase 1: @whoobe-cms/figma-converter package (Figma → Whoobe converter)] — 2026-09-03 (branch: feat/09-03/figma-converter)
+
+- **New `packages/figma-converter/`** (`@whoobe-cms/figma-converter`): Pure TypeScript package that converts Figma node JSON trees into Whoobe Element trees. Depends on `@whoobe-cms/schema`.
+  - `src/figma-types.ts`: Complete Figma REST API type definitions (all node types, paints, effects, layout traits, style types, API responses)
+  - `src/figma-node-converter.ts`: Main converter entry point (`convertFigmaNode`) with mapping for FRAME, GROUP, TEXT, RECTANGLE, ELLIPSE, LINE, VECTOR, BOOLEAN_OPERATION, INSTANCE, SECTION, COMPONENT node types
+  - `src/layout.ts`: Auto-layout conversion (Figma auto-layout → Tailwind flex classes, absolute positioning → inline style, padding/gap → tailwind arbitrary values)
+  - `src/style.ts`: Style conversion (SOLID fills → `bg-[#hex]`, gradients → `bg-gradient-*` or inline, corner radius, drop/inner shadows, layer blur, opacity, text color, stroke/border)
+  - `src/text.ts`: Text conversion (TypeStyle → heading tags h1-h6, font weight/size/alignment, line-height, letter-spacing, font family → Google Fonts or inline)
+  - `src/resolve.ts`: Figma Live API integration (`fetchAndConvert`, `fetchImageUrls`, `renderNodeToImage`) — fetches files/nodes, resolves image fills, uploads to MinIO
+  - `src/utils.ts`: RGBA → hex, RGBA → CSS, Tailwind nearest value matching, random id generation, CSS class dedup
+  - `src/types.ts`: Shared types (`WhoobeElementNode`, `ConversionResult`, `FigmaConversionOptions`, `FetchOptions`)
+  - 28 unit tests across 3 test suites (converter, layout, style) with 2 Figma JSON fixtures
+  - TypeScript + vitest, ES module, typecheck clean, all tests passing
 
 - **docs/plans/figma-converter-plan.md**: Full implementation plan for a Figma-to-Whoobe converter. Covers architecture (new `@whoobe-cms/figma-converter` package, core-api routes, whoobe-one-spike modal), dual import modes (Live API + JSON upload), conversion pipeline (node mapping, auto-layout → Tailwind flex, style conversion, component resolution, image upload), 4 implementation phases (core converter → live API → UI → polish), file summary, and open questions.
 
