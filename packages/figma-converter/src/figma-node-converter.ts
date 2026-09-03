@@ -10,7 +10,8 @@ export function convertFigmaNode(node: FigmaNode, options?: FigmaConversionOptio
   const images: Record<string, string> = {}
   const element = convertNode(node as SubcanvasNode, warnings, true)
 
-  if (element && node.name) {
+  if (element) {
+    ensureDefaults(element)
     element.label = node.name
   }
 
@@ -437,5 +438,13 @@ function createEmptyRoot(): WhoobeElementNode {
     element: 'div',
     blocks: [],
     css: { css: '', container: 'gap-4' },
+  }
+}
+
+function ensureDefaults(node: WhoobeElementNode): void {
+  if (!node.css) node.css = { css: '', container: '' }
+  if (!node.blocks) node.blocks = []
+  for (const child of node.blocks) {
+    ensureDefaults(child)
   }
 }
