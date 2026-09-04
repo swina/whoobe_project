@@ -22,7 +22,7 @@ export interface DataObject {
 
 export interface DataObjectQueryFilter {
   field: string
-  operator: 'eq' | 'neq' | 'contains' | 'gt' | 'lt'
+  operator: 'eq' | 'neq' | 'contains' | 'gt' | 'lt' | 'in'
   value: unknown
 }
 
