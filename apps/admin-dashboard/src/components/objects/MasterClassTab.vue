@@ -539,11 +539,29 @@ async function handleSave() {
       })
       editingId.value = created.id
     } else {
-      await dataClassesStore.updateDataClass(editingId.value as string, {
+      const updated = await dataClassesStore.updateDataClass(editingId.value as string, {
         label: label.value.trim(),
         fields: fields.value,
         viewConfig: viewConfigPayload,
       })
+      // Re-hydrate from the server response so the tab reflects exactly what
+      // was persisted — accounts for server-side field validation and ensures
+      // a page reload doesn't show stale data (the hydrated flag below is
+      // reset so the existingClass watch picks up the fresh data).
+      if (updated) {
+        hydrated.value = false
+        // Bump the watcher manually by triggering existingClass re-evaluation.
+        // The store's internal refreshDataClasses() may not have settled yet,
+        // so force-recompute from the freshly returned value.
+        name.value = updated.name
+        label.value = updated.label
+        fields.value = updated.fields.map((f) => ({ ...f }))
+        viewConfig.value = {
+          detailSections: (updated.viewConfig?.detailSections ?? []).map((s) => ({ title: s.title, fields: [...s.fields], containerClass: s.containerClass ?? '' })),
+        }
+        listColumns.value = (updated.viewConfig?.listColumns ?? []).map((c) => ({ name: c.name, ...(c.title ? { title: c.title } : {}) }))
+        hydrated.value = true
+      }
     }
     refreshTabLabel()
     toastStore.show('Class saved')

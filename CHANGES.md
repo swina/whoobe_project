@@ -4,7 +4,12 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
-## [Phases 2-3: core-api figma routes + figma_settings + admin UI + whoobe-one-spike modal] — 2026-09-03 (branch: feat/09-03/figma-converter)
+## [Bugfix: Data Objects custom views not persisting + asset previews not showing in lists] — 2026-09-03 (current branch)
+
+- **`apps/admin-dashboard/src/views/ObjectsView.vue`**: Fixed `recordAssetUrl()` — when an asset is referenced by UUID but not yet loaded in `damStore.assets` (async loading race), the function now falls back to fetching the single asset by ID from the backend (`fetchAssetById`) and caches the resolved URL reactively. Added `_assetIdUrlCache`/`_assetIdUrlInFlight`/`resolveAssetIdUrl()` parallel to the existing path-based cache, so the template re-renders once the URL arrives.
+- **`apps/admin-dashboard/src/utils/dam-api.ts`**: Added `fetchAssetById()` — calls `GET /api/v1/dam/assets/:id?folderRules=...` to resolve a single asset's record + URLs by UUID, following the same pattern as `getAssetById` in the asset-processor backend.
+- **`apps/admin-dashboard/src/components/objects/MasterClassTab.vue`**: After saving a class, `handleSave()` now re-hydrates the local state (`name`, `label`, `fields`, `viewConfig`, `listColumns`) from the server response returned by `updateDataClass()`, ensuring the in-memory state reflects exactly what was persisted — prevents stale data after reload when the `hydrated` guard would otherwise skip the server response.
+- Verified: admin-dashboard `vue-tsc` typecheck clean.
 
 - **`packages/core/src/db/figma-settings-schema.ts`**: New `figma_settings` Drizzle table (single-row, access_token + team_id + timestamps), matching the mail_settings/ai_settings pattern.
 - **`packages/core/src/db/figma-settings-records.ts`**: `getFigmaSettings()` + `upsertFigmaSettings()` — same upsert pattern as ai_settings/mail_settings.
