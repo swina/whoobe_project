@@ -901,12 +901,24 @@
         </div>
 
         <!-- ZIP extraction progress -->
-        <div v-if="damStore.extractProgress.length > 0" class="px-3 py-2 space-y-1">
-          <div class="text-[11px] font-semibold text-amber-400">Extracting ZIP...</div>
-          <div class="space-y-0.5 max-h-[18rem] overflow-y-auto">
-            <div v-for="(line, idx) in damStore.extractProgress" :key="idx"
-              class="text-[11px] font-mono text-slate-300 truncate">
-              extracting {{ line }}
+        <div v-if="damStore.extractProgress" class="px-3 py-2 space-y-2">
+          <div class="text-[11px] font-semibold text-amber-400 flex items-center gap-1.5">
+            <span class="animate-spin w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full"></span>
+            Extracting ZIP &middot; {{ damStore.extractProgress.current }} / {{ damStore.extractProgress.total }} files
+          </div>
+          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              class="h-full bg-amber-500 rounded-full transition-all duration-300"
+              :style="{ width: `${(damStore.extractProgress.current / damStore.extractProgress.total) * 100}%` }"
+            ></div>
+          </div>
+          <div v-if="damStore.extractProgress.filename" class="text-[11px] font-mono text-indigo-300 truncate">
+            {{ damStore.extractProgress.filename }}
+          </div>
+          <div v-if="damStore.extractProgress.recent.length > 0" class="space-y-0.5 max-h-[18rem] overflow-y-auto">
+            <div v-for="(line, idx) in damStore.extractProgress.recent" :key="idx"
+              class="text-[10px] font-mono text-slate-500 truncate">
+              {{ line }}
             </div>
           </div>
         </div>

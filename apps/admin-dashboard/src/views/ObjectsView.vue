@@ -139,7 +139,7 @@
         class="text-xs text-slate-400 hover:text-slate-200 light:text-slate-500 ml-auto">Clear</button>
     </div>
 
-    <div v-if="dataObjectsStore.isLoading && dataObjectsStore.objects.length === 0"
+    <div v-if="isLoading && objects.length === 0"
       class="shrink-0 p-12 text-center text-xs text-slate-500">Loading objects…</div>
 
     <div v-else-if="sortedRecords.length === 0"
@@ -266,10 +266,10 @@
           <div class="text-[10px] text-gray-400 mb-1">Filters (all must match)</div>
           <div v-if="queryFilters.length === 0" class="text-xs text-gray-400 text-center py-4">No filters — shows all objects of this class.</div>
           <div v-for="(f, i) in queryFilters" :key="i" class="flex items-center gap-2">
-            <select v-model="f.field" class="text-xs border rounded px-2 py-1 min-w-[7rem]">
+            <select v-model="f.field" @change="onFilterFieldChange(f)" class="text-xs border rounded px-2 py-1 min-w-[7rem]">
               <option v-for="ff in filterFields" :key="ff.name" :value="ff.name">{{ ff.title || ff.name }}</option>
             </select>
-            <select v-model="f.operator" class="text-xs border rounded px-2 py-1">
+            <select v-if="filterInputType(f.field) !== 'relation'" v-model="f.operator" class="text-xs border rounded px-2 py-1">
               <option value="eq">=</option>
               <option value="neq">≠</option>
               <option value="contains">contains</option>
@@ -287,6 +287,27 @@
                 <option value="">Any</option>
                 <option v-for="opt in filterFieldOptions(f.field)" :key="opt" :value="opt">{{ opt }}</option>
               </select>
+            </template>
+            <template v-else-if="filterInputType(f.field) === 'relation'">
+              <div class="relative flex-1">
+                <button @click.stop="toggleRelationDropdown(i)"
+                  class="w-full px-2 py-1 text-xs border rounded flex items-center gap-1 bg-white"
+                  :class="isRelationDropdownOpen === i ? 'border-indigo-500' : 'border-gray-200'">
+                  <span class="truncate flex-1 text-left text-gray-500" v-if="!Array.isArray(f.value) || (f.value as string[]).length === 0">Select values...</span>
+                  <span class="truncate flex-1 text-left" v-else>{{ (f.value as string[]).length }} selected</span>
+                  <ChevronDown class="w-3 h-3 shrink-0 text-gray-400" />
+                </button>
+                <div v-if="isRelationDropdownOpen === i"
+                  class="absolute top-full mt-1 left-0 right-0 z-50 bg-white border border-gray-200 rounded shadow-lg max-h-48 overflow-y-auto">
+                  <label v-for="opt in relationFilterOptions(f.field)" :key="opt.id"
+                    class="flex items-center gap-1.5 px-2 py-1 text-xs hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" :checked="isRelationSelected(f.field, opt.id)"
+                      @change="toggleRelationFilter(f.field, opt.id)"
+                      class="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600" />
+                    <span class="truncate">{{ relationFilterLabel(f.field, opt) }}</span>
+                  </label>
+                </div>
+              </div>
             </template>
             <template v-else-if="filterInputType(f.field) === 'number'">
               <input v-model.number="f.value" type="number" class="text-xs border rounded px-2 py-1 flex-1" placeholder="value" />
@@ -317,14 +338,13 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import { ChevronUp, ChevronDown, Filter, Plus, Trash2, X } from '@lucide/vue'
-import { useDataObjectsStore } from '../stores/dataObjectsStore'
 import { useDataClassesStore } from '../stores/dataClassesStore'
 import { useDamStore } from '../stores/damStore'
-import { useTabsStore, sectionTabId } from '../stores/tabsStore'
+import { useTabsStore } from '../stores/tabsStore'
 import { useToastStore } from '../stores/toastStore'
 import { useAuthStore } from '../stores/authStore'
 import type { DataObject } from '../utils/data-objects-api'
-import { batchActionDataObjects, batchResolveAssets } from '../utils/data-objects-api'
+import { fetchDataObjects, deleteDataObject as apiDeleteDataObject, batchActionDataObjects, batchResolveAssets } from '../utils/data-objects-api'
 import type { DataObjectQueryFilter } from '../utils/data-objects-api'
 import { exportRowsAsCsv, exportRowsAsJson, exportRowsAsXlsx } from '../utils/data-export'
 import { useRelationOptions } from '../composables/useRelationOptions'
@@ -335,12 +355,17 @@ import type { ClassFieldDefinition } from '@whoobe-cms/core'
 import { randomUUID } from '../utils/random-id'
 
 const props = withDefaults(defineProps<{ classId?: string }>(), { classId: '' })
-const dataObjectsStore = useDataObjectsStore()
 const dataClassesStore = useDataClassesStore()
 const damStore = useDamStore()
 const tabsStore = useTabsStore()
 const toastStore = useToastStore()
 const authStore = useAuthStore()
+
+// Each ObjectsView instance owns its own object list — class list tabs
+// each get their own instance (v-show keeps them alive), so sharing a
+// global store would mix data between classes.
+const objects = ref<DataObject[]>([])
+const isLoading = ref(false)
 
 const searchQuery = ref('')
 const selectedClassId = ref(props.classId)
@@ -466,7 +491,7 @@ async function handleBatchPublish() {
   try {
     const result = await batchActionDataObjects(authStore.config.coreApiUrl, ids, 'publish')
     toastStore.show(`${result.succeeded} published, ${result.failed} failed`)
-    selectedGroupIds.value = new Set(); await dataObjectsStore.refreshDataObjects(selectedClassId.value || undefined)
+    selectedGroupIds.value = new Set(); await fetchObjects()
   } catch (e: any) { toastStore.show(e?.message || 'Batch publish failed') }
 }
 
@@ -475,7 +500,7 @@ async function handleBatchUnpublish() {
   try {
     const result = await batchActionDataObjects(authStore.config.coreApiUrl, ids, 'unpublish')
     toastStore.show(`${result.succeeded} unpublished, ${result.failed} failed`)
-    selectedGroupIds.value = new Set(); await dataObjectsStore.refreshDataObjects(selectedClassId.value || undefined)
+    selectedGroupIds.value = new Set(); await fetchObjects()
   } catch (e: any) { toastStore.show(e?.message || 'Batch unpublish failed') }
 }
 
@@ -485,7 +510,7 @@ async function handleBatchDelete() {
   try {
     const result = await batchActionDataObjects(authStore.config.coreApiUrl, ids, 'delete')
     toastStore.show(`${result.succeeded} deleted, ${result.failed} failed`)
-    selectedGroupIds.value = new Set(); await dataObjectsStore.refreshDataObjects(selectedClassId.value || undefined)
+    selectedGroupIds.value = new Set(); await fetchObjects()
   } catch (e: any) { toastStore.show(e?.message || 'Batch delete failed') }
 }
 
@@ -521,7 +546,55 @@ const fieldMap = computed(() => {
   return map
 })
 
-function filterInputType(fieldName: string): 'text' | 'number' | 'date' | 'checkbox' | 'select' {
+const isRelationDropdownOpen = ref<number | null>(null)
+
+function toggleRelationDropdown(index: number) {
+  isRelationDropdownOpen.value = isRelationDropdownOpen.value === index ? null : index
+}
+
+const relationOptionsByField = computed(() => {
+  const map = new Map<string, DataObject[]>()
+  if (!selectedDataClass.value) return map
+  for (const field of selectedDataClass.value.fields) {
+    if (field.relationTarget) {
+      const ref = useRelationOptions(field.relationTarget)
+      map.set(field.name, ref.value as DataObject[])
+    }
+  }
+  return map
+})
+
+function relationFilterOptions(fieldName: string): DataObject[] {
+  return relationOptionsByField.value.get(fieldName) ?? []
+}
+
+function relationFilterLabel(fieldName: string, opt: DataObject): string {
+  const field = fieldMap.value.get(fieldName) as ClassFieldDefinition | undefined
+  const displayField = field?.relationDisplayField
+  if (displayField) {
+    const value = (opt.attributes as Record<string, unknown> | null | undefined)?.[displayField]
+    if (value != null && value !== '') return String(value)
+  }
+  return opt.key || opt.id
+}
+
+function isRelationSelected(fieldName: string, id: string): boolean {
+  const arr = queryFilters.value.find((f) => f.field === fieldName)?.value
+  return Array.isArray(arr) && arr.includes(id)
+}
+
+function toggleRelationFilter(fieldName: string, id: string) {
+  const f = queryFilters.value.find((ff) => ff.field === fieldName)
+  if (!f) return
+  const arr: string[] = Array.isArray(f.value) ? [...f.value] : []
+  const idx = arr.indexOf(id)
+  if (idx >= 0) arr.splice(idx, 1)
+  else arr.push(id)
+  f.value = arr
+  f.operator = 'in'
+}
+
+function filterInputType(fieldName: string): 'text' | 'number' | 'date' | 'checkbox' | 'select' | 'relation' {
   const field = fieldMap.value.get(fieldName)
   if (!field) return 'text'
   const ft = field.fieldType
@@ -529,6 +602,7 @@ function filterInputType(fieldName: string): 'text' | 'number' | 'date' | 'check
   if (ft === 'date' || ft === 'datetime') return 'date'
   if (ft === 'checkbox') return 'checkbox'
   if (ft === 'select' && field.options && field.options.length > 0) return 'select'
+  if ((ft === 'select' || ft === 'manyToOneRelation' || ft === 'manyToManyRelation' || ft === 'object' || ft === 'block') && field.relationTarget) return 'relation'
   return 'text'
 }
 
@@ -538,7 +612,17 @@ function filterFieldOptions(fieldName: string): string[] {
 
 function addQueryFilter() {
   const firstField = filterFields.value[0]
-  queryFilters.value.push({ field: firstField?.name ?? 'key', operator: 'contains', value: '' })
+  if (!firstField) return
+  const init: DataObjectQueryFilter = { field: firstField.name ?? 'key', operator: 'contains', value: '' }
+  const field = firstField as ClassFieldDefinition
+  if (field.relationTarget) {
+    init.operator = 'in'
+    init.value = []
+  } else if (field.fieldType === 'checkbox') {
+    init.operator = 'eq'
+    init.value = true
+  }
+  queryFilters.value.push(init)
 }
 
 function clearQueryFilters() { queryFilters.value = [] }
@@ -551,6 +635,11 @@ function isAssetField(field: ClassFieldDefinition): boolean {
 }
 
 function recordAssetUrl(record: ObjectRecord, fieldName: string): string | undefined {
+  // Dummy read to ensure the template tracks _urlResolveTick as a
+  // dependency — this ref is bumped after every async URL fetch so
+  // Vue re-evaluates the template even when the reactive Maps don't
+  // reliably trigger re-render across re-render boundaries.
+  _urlResolveTick.value
   const value = record.primary.attributes?.[fieldName]
   if (value == null) return undefined
   // Asset reference object { assetId: "..." }
@@ -583,6 +672,12 @@ const _assetUrlInFlight = new Set<string>()
 const _assetUrlFailCount = new Map<string, number>()
 const ASSET_URL_MAX_RETRIES = 3
 
+// A bump counter incremented whenever any asset URL finishes resolving.
+// The template's recordAssetUrl() calls depend on this via the reactive
+// Maps above, but Vue 3's tracking of module-level reactive Maps across
+// re-renders can be unreliable — this ref forces a re-evaluation.
+const _urlResolveTick = ref(0)
+
 function resolveAssetPathUrl(path: string): string | undefined {
   if (_assetUrlCache.has(path)) return _assetUrlCache.get(path)
   if (!_assetUrlInFlight.has(path)) {
@@ -590,11 +685,13 @@ function resolveAssetPathUrl(path: string): string | undefined {
     damStore.generateAssetUrl(path).then((fresh) => {
       _assetUrlCache.set(path, fresh.url)
       _assetUrlFailCount.delete(path)
+      _urlResolveTick.value++
     }).catch(() => {
       const attempts = (_assetUrlFailCount.get(path) ?? 0) + 1
       _assetUrlFailCount.set(path, attempts)
       if (attempts >= ASSET_URL_MAX_RETRIES) {
         _assetUrlCache.set(path, undefined)
+        _urlResolveTick.value++
       } else {
         setTimeout(() => resolveAssetPathUrl(path), 1000 * attempts)
       }
@@ -611,6 +708,8 @@ function resolveAssetPathUrl(path: string): string | undefined {
 // asset from the backend by ID and cache its full-size URL.
 const _assetIdUrlCache = reactive(new Map<string, string | undefined>())
 const _assetIdUrlInFlight = new Set<string>()
+const ASSET_ID_URL_MAX_RETRIES = 3
+const _assetIdUrlFailCount = new Map<string, number>()
 
 function resolveAssetIdUrl(assetId: string): string | undefined {
   if (_assetIdUrlCache.has(assetId)) return _assetIdUrlCache.get(assetId)
@@ -623,8 +722,16 @@ function resolveAssetIdUrl(assetId: string): string | undefined {
       if (asset.pimcorePath) {
         _assetUrlCache.set(asset.pimcorePath, asset.url)
       }
+      _urlResolveTick.value++
     }).catch(() => {
-      _assetIdUrlCache.set(assetId, undefined)
+      const attempts = (_assetIdUrlFailCount.get(assetId) ?? 0) + 1
+      _assetIdUrlFailCount.set(assetId, attempts)
+      if (attempts >= ASSET_ID_URL_MAX_RETRIES) {
+        _assetIdUrlCache.set(assetId, undefined)
+        _urlResolveTick.value++
+      } else {
+        setTimeout(() => resolveAssetIdUrl(assetId), 1000 * attempts)
+      }
     }).finally(() => {
       _assetIdUrlInFlight.delete(assetId)
     })
@@ -665,7 +772,20 @@ function setDefaultPresetAction(name: string) {
 const TOP_LEVEL_FILTER_FIELDS = new Set(['key', 'path', 'locale', 'published', 'workflowState', 'updatedAt'])
 
 function matchObjectFilter(obj: DataObject, f: DataObjectQueryFilter): boolean {
-  const value = TOP_LEVEL_FILTER_FIELDS.has(f.field) ? (obj as any)[f.field] : (obj.attributes as any)?.[f.field]
+  const raw = TOP_LEVEL_FILTER_FIELDS.has(f.field) ? (obj as any)[f.field] : (obj.attributes as any)?.[f.field]
+  const field = fieldMap.value.get(f.field) as ClassFieldDefinition | undefined
+
+  if (field?.relationTarget) {
+    // Relation field — the stored value is { id, classId } (single) or
+    // [{ id, classId }, ...] (multi). Filter by matching the related
+    // object's id against the selected IDs array.
+    const selectedIds: string[] = Array.isArray(f.value) ? f.value : []
+    if (selectedIds.length === 0) return true
+    const ids = relationIds(raw)
+    return ids.some((id) => selectedIds.includes(id))
+  }
+
+  const value = raw
   switch (f.operator) {
     case 'eq': return value === f.value
     case 'neq': return value !== f.value
@@ -685,6 +805,21 @@ function matchObjectFilter(obj: DataObject, f: DataObjectQueryFilter): boolean {
       return false
     }
     default: return true
+  }
+}
+
+// Reset operator/value when the selected field changes
+function onFilterFieldChange(f: DataObjectQueryFilter) {
+  const field = fieldMap.value.get(f.field) as ClassFieldDefinition | undefined
+  if (field?.relationTarget) {
+    f.operator = 'in'
+    f.value = []
+  } else if (field?.fieldType === 'checkbox') {
+    f.operator = 'eq'
+    f.value = true
+  } else {
+    f.operator = 'contains'
+    f.value = ''
   }
 }
 
@@ -742,6 +877,23 @@ function listCellValue(record: ObjectRecord, colName: string): string {
   return formatListValue(raw)
 }
 
+// Local data fetching — each class list tab owns its own object list so
+// switching between tabs doesn't mix data from different classes.
+async function fetchObjects() {
+  if (!selectedClassId.value) {
+    objects.value = []
+    return
+  }
+  isLoading.value = true
+  try {
+    objects.value = await fetchDataObjects(authStore.config.coreApiUrl, selectedClassId.value)
+  } catch (e) {
+    console.warn('Could not load data objects:', e)
+  } finally {
+    isLoading.value = false
+  }
+}
+
 function handleClassChange() {
   queryFilters.value = []
   currentPage.value = 1
@@ -751,20 +903,22 @@ function handleClassChange() {
   sortDir.value = 'asc'
   presets.value = selectedClassId.value ? loadObjectListPresets(selectedClassId.value) : []
   if (selectedClassId.value) {
-    const defaultPreset = getDefaultPreset(selectedClassId.value)
-    if (defaultPreset) {
-      activeColumnNames.value = [...defaultPreset.columns]
+    // The class's own List Layout (configured in Settings > Classes > List Layout)
+    // is the default. Use it when no user-side default preset exists.
+    const classColumns = (selectedDataClass.value?.viewConfig?.listColumns ?? [])
+    const known = new Set(allColumnOptions.value.map((c) => c.name))
+    const classColumnNames = classColumns.map((c) => c.name).filter((n) => known.has(n))
+    if (classColumnNames.length > 0) {
+      activeColumnNames.value = classColumnNames
     } else {
-      // Fall back to the class's own List Layout (MasterClassTab) when no
-      // user-side default preset exists - a preset wins over the class
-      // default, which wins over "all columns".
-      const known = new Set(allColumnOptions.value.map((c) => c.name))
-      activeColumnNames.value = (selectedDataClass.value?.viewConfig?.listColumns ?? [])
-        .map((c) => c.name)
-        .filter((n) => known.has(n))
+      // Fall back to user-side default preset when no class List Layout is set.
+      const defaultPreset = getDefaultPreset(selectedClassId.value)
+      if (defaultPreset) {
+        activeColumnNames.value = [...defaultPreset.columns]
+      }
     }
   }
-  dataObjectsStore.refreshDataObjects(selectedClassId.value || undefined)
+  fetchObjects()
 }
 
 // Re-applies the class's List Layout to the current listing (the View ▾
@@ -786,7 +940,7 @@ interface ObjectRecord {
 
 const groupedRecords = computed<ObjectRecord[]>(() => {
   const groups = new Map<string, DataObject[]>()
-  for (const obj of dataObjectsStore.objects) {
+  for (const obj of objects.value) {
     const existing = groups.get(obj.translationGroupId)
     if (existing) existing.push(obj)
     else groups.set(obj.translationGroupId, [obj])
@@ -857,21 +1011,60 @@ watch([searchQuery, queryFilters, pageSize], () => { currentPage.value = 1 }, { 
 
 watch(totalPages, (pages) => { if (currentPage.value > pages) currentPage.value = pages })
 
-watch(() => tabsStore.activeTabId, (activeId) => {
-  if (activeId === sectionTabId('objects')) dataObjectsStore.refreshDataObjects(selectedClassId.value || undefined)
-})
-
-// Sync sidebar class selection with local state (bi-directional)
-watch(() => dataClassesStore.selectedClassId, (classId) => {
-  if (classId !== selectedClassId.value) {
-    selectedClassId.value = classId
-    handleClassChange()
+// Preload relation filter options when the filter modal opens so the
+// multiselect dropdowns are populated immediately.
+watch(showFilterModal, (open) => {
+  if (!open || !selectedDataClass.value) return
+  for (const field of selectedDataClass.value.fields) {
+    if (field.relationTarget) {
+      useRelationOptions(field.relationTarget)
+    }
   }
 })
 
-watch(selectedClassId, (classId) => {
-  if (classId !== dataClassesStore.selectedClassId) {
-    dataClassesStore.selectedClassId = classId
+// Section tab (no classId prop): sync with the sidebar's global selected class.
+// Class list tabs (with classId prop): ignore global state — each tab owns
+// its own data and should not react to sidebar clicks on other classes.
+if (!props.classId) {
+  watch(() => dataClassesStore.selectedClassId, (classId) => {
+    if (classId !== selectedClassId.value) {
+      selectedClassId.value = classId
+      handleClassChange()
+    }
+  })
+
+  watch(selectedClassId, (classId) => {
+    if (classId !== dataClassesStore.selectedClassId) {
+      dataClassesStore.selectedClassId = classId
+    }
+  })
+}
+
+// Class list tab: fetch objects for this class on mount and when the
+// classId prop changes (e.g. when the sidebar clicks a different class).
+if (props.classId) {
+  watch(() => props.classId, (classId) => {
+    if (classId !== selectedClassId.value) {
+      selectedClassId.value = classId
+      handleClassChange()
+    }
+  })
+  // Fetch data immediately on mount since the global-store watcher is
+  // skipped for classList tab instances.
+  handleClassChange()
+}
+
+// When selectedDataClass finishes loading asynchronously (dataClassesStore
+// may not be populated yet when handleClassChange runs), apply the class's
+// List Layout if it wasn't already set.
+watch(selectedDataClass, (dataClass) => {
+  if (!dataClass || !selectedClassId.value || activeColumnNames.value.length > 0) return
+  const classColumns = dataClass.viewConfig?.listColumns ?? []
+  if (classColumns.length === 0) return
+  const known = new Set(allColumnOptions.value.map((c) => c.name))
+  const names = classColumns.map((c) => c.name).filter((n) => known.has(n))
+  if (names.length > 0) {
+    activeColumnNames.value = names
   }
 })
 
@@ -887,7 +1080,8 @@ function handleCreate() {
 async function handleDelete(record: ObjectRecord) {
   if (!confirm(`Delete "${record.primary.key}" and all its locale rows? This cannot be undone.`)) return
   try {
-    await Promise.all(record.rows.map((row) => dataObjectsStore.deleteDataObject(row.id)))
+    await Promise.all(record.rows.map((row) => apiDeleteDataObject(authStore.config.coreApiUrl, row.id)))
+    objects.value = objects.value.filter((o) => !record.rows.some((r) => r.id === o.id))
     tabsStore.closeObjectTab(record.translationGroupId)
   } catch (e: any) { toastStore.show(e?.message || 'Failed to delete object') }
 }

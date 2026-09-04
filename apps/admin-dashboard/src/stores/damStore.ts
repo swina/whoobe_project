@@ -333,8 +333,9 @@ export const useDamStore = defineStore('dam', () => {
   // Upload progress tracking — updated during uploadMultipleAssets/uploadZipAsset
 const uploadProgress = ref<{ current: number; total: number; label: string } | null>(null)
 
-// Extraction progress for ZIP uploads — shows last N extracted filenames
-const extractProgress = ref<string[]>([])
+// Extraction progress for ZIP uploads — tracks overall zip progress with
+// total file count and per-file details for the progress UI.
+const extractProgress = ref<{ total: number; current: number; filename: string; recent: string[] } | null>(null)
 
 async function uploadMultipleAssets(files: File[], folderPath?: string, isPublicOverride?: boolean): Promise<AssetItem[]> {
     const uploaded: AssetItem[] = []
@@ -437,7 +438,9 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
 
     let extractedCount = 0
     const entries = Object.keys(zip.files)
-    extractProgress.value = []
+    // Count only file entries (non-directory) for total progress
+    const totalFiles = entries.filter((p) => !zip.files[p].dir).length
+    extractProgress.value = { total: totalFiles, current: 0, filename: '', recent: [] }
 
     for (const relativePath of entries) {
       const zipEntry = zip.files[relativePath]
@@ -464,14 +467,28 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
         const entryFolderPath = fileFolderDir ? `${baseExtractPath}/${fileFolderDir}` : baseExtractPath
 
         const extractedFile = new File([blob], entryFilename, { type: blob.type })
-        const progressLine = `${fileFolderDir ? fileFolderDir + '/' : ''}${entryFilename}`
-        extractProgress.value = [progressLine, ...extractProgress.value].slice(0, 10)
+        const displayName = `${fileFolderDir ? fileFolderDir + '/' : ''}${entryFilename}`
+
+        // Update both progress indicators for the extraction UI
+        uploadProgress.value = { current: extractedCount, total: totalFiles, label: displayName }
+        extractProgress.value = {
+          total: totalFiles,
+          current: extractedCount,
+          filename: displayName,
+          recent: [displayName, ...(extractProgress.value?.recent ?? [])].slice(0, 20)
+        }
+
         await uploadAsset(extractedFile, entryFolderPath, isPublicOverride)
         extractedCount++
+
+        // Update current count after upload completes
+        if (extractProgress.value) {
+          extractProgress.value.current = extractedCount
+        }
       }
     }
 
-    extractProgress.value = []
+    extractProgress.value = null
     return { extractedCount }
   }
 
