@@ -66,6 +66,20 @@ export interface DamAssetRecordWithUrls extends DamAssetRecord {
   thumbnails: Record<ThumbnailPreset, string>
 }
 
+/** Fetch a single asset by its UUID from the DAM backend, returning
+ * its record + resolved URLs. Used as a fallback when the asset isn't
+ * yet in the client-side store (ObjectsView.vue's recordAssetUrl). */
+export async function fetchAssetById(
+  baseUrl: string,
+  assetId: string,
+  folderRules: FolderVisibilityRule[]
+): Promise<DamAssetRecordWithUrls> {
+  const query = `?folderRules=${encodeURIComponent(JSON.stringify(folderRules))}`
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/assets/${assetId}${query}`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.asset
+}
+
 export async function regenerateThumbnailsApi(
   baseUrl: string,
   paths: string[],

@@ -330,6 +330,7 @@ import { exportRowsAsCsv, exportRowsAsJson, exportRowsAsXlsx } from '../utils/da
 import { useRelationOptions } from '../composables/useRelationOptions'
 import { loadObjectListPresets, upsertObjectListPreset, deleteObjectListPreset, setDefaultPreset, getDefaultPreset, type ObjectListPreset } from '../utils/object-list-presets'
 import { SYSTEM_LIST_COLUMNS, type ListColumnOption } from '../utils/list-columns'
+import { fetchAssetById } from '../utils/dam-api'
 import type { ClassFieldDefinition } from '@whoobe-cms/core'
 import { randomUUID } from '../utils/random-id'
 
@@ -556,11 +557,13 @@ function recordAssetUrl(record: ObjectRecord, fieldName: string): string | undef
   if (typeof value === 'object') {
     const assetId = (value as Record<string, unknown>).assetId
     if (typeof assetId === 'string') {
-      // UUID → look up the pimcorePath from the DAM store and resolve fresh
+      // UUID → look up the pimcorePath from the DAM store and resolve fresh.
+      // When the asset isn't in the store yet (async load in progress), fall
+      // back to fetching it by ID from the backend via resolveAssetIdUrl.
       if (assetId.includes('-')) {
         const asset = damStore.assets.find((a) => a.id === assetId)
         if (asset) return resolveAssetPathUrl(asset.pimcorePath)
-        return undefined
+        return resolveAssetIdUrl(assetId)
       }
       // Raw path → resolve via DAM API
       return resolveAssetPathUrl(assetId)
@@ -588,23 +591,42 @@ function resolveAssetPathUrl(path: string): string | undefined {
       _assetUrlCache.set(path, fresh.url)
       _assetUrlFailCount.delete(path)
     }).catch(() => {
-      // Don't cache the failure as a permanent result — a transient error
-      // (e.g. backend not fully warmed up right after a restart) would
-      // otherwise poison this path forever, since Map.has() returns true
-      // even for a key holding `undefined`. Leave the entry unset so the
-      // next render retries, up to a small cap so a genuinely missing
-      // asset doesn't get hammered on every re-render.
       const attempts = (_assetUrlFailCount.get(path) ?? 0) + 1
       _assetUrlFailCount.set(path, attempts)
       if (attempts >= ASSET_URL_MAX_RETRIES) {
         _assetUrlCache.set(path, undefined)
       } else {
-        // Self-heal with a short backoff instead of waiting for the user
-        // to trigger a re-render (e.g. by paginating or reloading the page).
         setTimeout(() => resolveAssetPathUrl(path), 1000 * attempts)
       }
     }).finally(() => {
       _assetUrlInFlight.delete(path)
+    })
+  }
+  return undefined
+}
+
+// Cache for asset-UUID to URL, mirroring the path-based cache above.
+// When an asset references a UUID not yet in damStore.assets (the store
+// loads asynchronously and may not include it yet), we fetch the single
+// asset from the backend by ID and cache its full-size URL.
+const _assetIdUrlCache = reactive(new Map<string, string | undefined>())
+const _assetIdUrlInFlight = new Set<string>()
+
+function resolveAssetIdUrl(assetId: string): string | undefined {
+  if (_assetIdUrlCache.has(assetId)) return _assetIdUrlCache.get(assetId)
+  if (!_assetIdUrlInFlight.has(assetId)) {
+    _assetIdUrlInFlight.add(assetId)
+    fetchAssetById(damStore.config.assetProcessorUrl, assetId, damStore.config.folderRules).then((asset) => {
+      _assetIdUrlCache.set(assetId, asset.url)
+      // Also seed the path-based cache so the next lookup of the same
+      // asset via its pimcorePath doesn't need a separate fetch.
+      if (asset.pimcorePath) {
+        _assetUrlCache.set(asset.pimcorePath, asset.url)
+      }
+    }).catch(() => {
+      _assetIdUrlCache.set(assetId, undefined)
+    }).finally(() => {
+      _assetIdUrlInFlight.delete(assetId)
     })
   }
   return undefined
