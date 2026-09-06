@@ -22,7 +22,7 @@ import Main from '../views/Main.vue'
 import Editor from '../views/Editor.vue'
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'Main', component: Main },
     { path: '/editor', name: 'Editor', component: Editor },
