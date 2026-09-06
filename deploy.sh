@@ -45,6 +45,8 @@ echo ""
 echo ">>> Installing dependencies & building on remote..."
 ssh "$REMOTE_HOST" <<-SSH_EOF
   set -e
+  export NVM_DIR="\$HOME/.nvm"
+  [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh"
   cd "$REMOTE_PATH"
 
   echo "--- pnpm install ---"
@@ -54,7 +56,7 @@ ssh "$REMOTE_HOST" <<-SSH_EOF
   pnpm build
 
   echo "--- pm2 restart ---"
-  pm2 restart ecosystem.config.cjs --update-env
+  ls -la "$REMOTE_PATH/ecosystem.config.cjs" && cd "$REMOTE_PATH" && pm2 start ecosystem.config.cjs --update-env
   pm2 save
 
   echo "--- status ---"
