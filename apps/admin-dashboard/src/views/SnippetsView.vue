@@ -7,12 +7,42 @@
           Reusable elements saved from the Whoobe One editor. Click a snippet to edit it, or link it to a website template's header/aside/footer.
         </p>
       </div>
-      <button
-        @click="handleCreate"
-        class="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition"
-      >
-        + New Snippet
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          @click="handleExport"
+          class="px-3 py-2 text-sm font-medium rounded-xl bg-slate-700 hover:bg-slate-600 text-white shadow transition"
+        >
+          Export All
+        </button>
+        <button
+          @click="handleImportClick"
+          class="px-3 py-2 text-sm font-medium rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow transition"
+        >
+          Import
+        </button>
+        <input
+          ref="fileInput"
+          type="file"
+          accept=".json"
+          class="hidden"
+          @change="handleImportFile"
+        />
+        <button
+          @click="handleCreate"
+          class="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition"
+        >
+          + New Snippet
+        </button>
+      </div>
+    </div>
+
+    <div v-if="importResult" class="p-3 rounded-xl text-xs" :class="importResult.errors.length ? 'bg-amber-900/40 border border-amber-700/50 text-amber-200' : 'bg-emerald-900/40 border border-emerald-700/50 text-emerald-200'">
+      <strong>Import complete:</strong> {{ importResult.created }} created, {{ importResult.skipped }} skipped.
+      <template v-if="importResult.errors.length">
+        <ul class="mt-1 list-disc list-inside text-amber-300">
+          <li v-for="err in importResult.errors" :key="err">{{ err }}</li>
+        </ul>
+      </template>
     </div>
 
     <div class="flex flex-col gap-3 p-4 rounded-xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200">
@@ -83,12 +113,15 @@ import { Puzzle } from '@lucide/vue'
 import { useSnippetsStore } from '../stores/snippetsStore'
 import { useTabsStore } from '../stores/tabsStore'
 import { randomUUID } from '../utils/random-id'
+import type { WhoobeSnippetInput } from '../utils/snippets-api'
 
 const snippetsStore = useSnippetsStore()
 const tabsStore = useTabsStore()
 
 const searchQuery = ref('')
 const categoryFilter = ref('')
+const fileInput = ref<HTMLInputElement | null>(null)
+const importResult = ref<{ created: number; skipped: number; errors: string[] } | null>(null)
 
 const categories = computed(() => {
   const set = new Set(snippetsStore.snippets.map((s) => s.category).filter(Boolean))
@@ -118,6 +151,57 @@ async function handleDelete(id: string, name: string) {
     await snippetsStore.remove(id)
   } catch (e: any) {
     alert(e?.message || 'Failed to delete snippet')
+  }
+}
+
+function handleExport() {
+  const data = filteredSnippets.value.map((s) => ({
+    name: s.name,
+    category: s.category,
+    icon: s.icon ?? undefined,
+    node: s.node,
+    themeId: s.themeId ?? undefined,
+  }))
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'whoobe-snippets-export.json'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function handleImportClick() {
+  importResult.value = null
+  fileInput.value?.click()
+}
+
+async function handleImportFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input?.files?.[0]
+  if (!file) return
+
+  try {
+    const text = await file.text()
+    const parsed: WhoobeSnippetInput[] = JSON.parse(text)
+
+    if (!Array.isArray(parsed)) {
+      alert('Invalid file format: expected an array of snippets.')
+      return
+    }
+
+    for (const item of parsed) {
+      if (!item.name || !item.category || !item.node) {
+        alert(`Invalid snippet entry: "${item.name || '(unnamed)'}" is missing required fields (name, category, node).`)
+        return
+      }
+    }
+
+    importResult.value = await snippetsStore.importSnippets(parsed)
+  } catch (e: any) {
+    alert(`Failed to import snippets: ${e?.message || 'Invalid JSON'}`)
+  } finally {
+    input.value = '' // reset so same file can be re-imported
   }
 }
 

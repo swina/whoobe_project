@@ -1,22 +1,22 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './authStore'
-import { fetchSnippets, deleteSnippet, type WhoobeSnippet } from '../utils/snippets-api'
+import { fetchSnippets, createSnippet, deleteSnippet, type WhoobeSnippet, type WhoobeSnippetInput } from '../utils/snippets-api'
 
-// whoobe_one_snippets - reusable Element subtrees saved from the Whoobe One
-// editor. Listed in the Snippets main item; opened for editing in the
-// embedded editor (/editor?snippetId=).
 export const useSnippetsStore = defineStore('snippets', () => {
   const snippets = ref<WhoobeSnippet[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
+  function getBaseUrl() {
+    return useAuthStore().config.coreApiUrl
+  }
+
   async function refresh() {
-    const authStore = useAuthStore()
     isLoading.value = true
     error.value = null
     try {
-      snippets.value = await fetchSnippets(authStore.config.coreApiUrl)
+      snippets.value = await fetchSnippets(getBaseUrl())
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to load snippets'
     } finally {
@@ -25,10 +25,24 @@ export const useSnippetsStore = defineStore('snippets', () => {
   }
 
   async function remove(id: string) {
-    const authStore = useAuthStore()
-    await deleteSnippet(authStore.config.coreApiUrl, id)
+    await deleteSnippet(getBaseUrl(), id)
     snippets.value = snippets.value.filter((s) => s.id !== id)
   }
 
-  return { snippets, isLoading, error, refresh, remove }
+  async function importSnippets(inputs: WhoobeSnippetInput[]): Promise<{ created: number; skipped: number; errors: string[] }> {
+    const errors: string[] = []
+    let created = 0
+    for (const input of inputs) {
+      try {
+        await createSnippet(getBaseUrl(), input)
+        created++
+      } catch (e: any) {
+        errors.push(`${input.name}: ${e?.message || 'Unknown error'}`)
+      }
+    }
+    await refresh()
+    return { created, skipped: inputs.length - created - errors.length, errors }
+  }
+
+  return { snippets, isLoading, error, refresh, remove, importSnippets }
 })
