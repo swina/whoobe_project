@@ -4,6 +4,25 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Add deploy.sh script for rsync-based deployment] — 2026-09-06
+
+- **`deploy.sh`**: New script that syncs local code to the remote server via rsync (excludes `.env`, `.git`, `.turbo`, `node_modules`), then SSHes into the remote to run `pnpm install`, `pnpm build`, `pm2 restart`. Accepts `--dry-run` flag. Uses `DEPLOY_HOST` / `DEPLOY_PATH` env vars with sensible defaults for the current setup.
+
+---
+
+## [Fix: nginx /whoobe-one/ API routes proxied to SPA instead of core-api] — 2026-09-06
+
+- **`docs/deployment.md`**: Added a regex location block `~ ^/whoobe-one/(websites|themes|pages|snippets|templates|kits|website-paths|search)(/.*)?$` **before** the generic `/whoobe-one/` SPA catch-all. Without this, all `/whoobe-one/*` requests (including API calls like `GET /whoobe-one/websites` from the admin-dashboard) were proxied to the whoobe-one-spike preview server on port 3006, which returned HTML instead of JSON — causing `SyntaxError: Unexpected token '<'` in the browser console. The new block routes API paths to core-api on port 3003, while the SPA paths still go to port 3006.
+
+---
+
+## [Fix: nginx config bootstrap order in deployment guide] — 2026-09-06
+
+- **`docs/deployment.md`**: Fixed nginx `location ~` regex spanning multiple lines (lines 299–302) — nginx rejects line-wrapped regex patterns as "invalid number of arguments". Collapsed onto a single line.
+- **`docs/deployment.md`**: Restructured sections 8–10 to eliminate the bootstrapping deadlock: the old config referenced `/etc/letsencrypt/live/your-domain.com/*.pem` before certbot had run, causing `nginx -t` to fail. Section 8 now provides an HTTP-only config (no SSL cert references), section 9 runs certbot against it, and section 10 provides a manual fallback if certbot didn't add the HTTPS block. Subsequent sections renumbered 10→11 through 14→15.
+
+---
+
 ## [Fix: Class List Layout should be the default column set] — 2026-09-04
 
 - **`apps/admin-dashboard/src/views/ObjectsView.vue`**: Changed `handleClassChange()` so the class's own List Layout (configured in Settings > Classes > List Layout) is applied as the default columns whenever it exists and has entries. Previously it was only a fallback when no user-side default preset existed; now the class's List Layout takes priority, and user-side default presets are only used as a secondary fallback when the class has no List Layout configured.
@@ -1347,4 +1366,8 @@ Implements `docs/plans/website/website-paths.md`: a page's routing slug can now 
 - **Embed components updated** (`apps/admin-dashboard`): `WhoobeOneEmbed.vue`, `SnippetEditorEmbed.vue`, `WhoobeStudioEmbed.vue` (via `documents-api.ts`'s `getDefaultWhoobeStudioUrl`) now build iframe URLs on the page's own origin with the editor base path, instead of hardcoding ports `:3006`/`:3004`.
 - **Shared core-api URL helper** (`apps/whoobe-one-spike/src/core-api-url.ts`): new `getDefaultCoreApiUrl()` that returns the page's own origin (no `:3003`), so the embedded editor's own API calls go through the proxy. All 9 whoobe-one-spike API files and `ThemeModal.vue` updated to use it.
 - **`allowedHosts: true`** in admin-dashboard, whoobe-one-spike, and whoobe-studio vite configs — accept connections from any hostname (Cloudflare public URL).
+
+## [Oracle Free Tier Deployment Guide] — 2026-09-05
+
+- **`docs/deployment.md`**: Added comprehensive deployment guide for Oracle Cloud Infrastructure Always Free Tier, covering VM provisioning (Ampere A1 ARM), dependency installation (Node.js 20, pnpm, PostgreSQL 16, MinIO, nginx), environment configuration, PM2 process management, nginx reverse proxy setup with SSL via Let's Encrypt, OCI Object Storage alternative, backup strategy, and performance tuning for ARM64.
 - **`getDefaultCoreApiUrl()` / `getDefaultAssetProcessorUrl()`** now only append a port when the page is served on a non-default port, so HTTPS (portless) URLs work correctly.
