@@ -1,16 +1,22 @@
 import { getDefaultCoreApiUrl } from './auth-api'
 
-// whoobe_one_snippets - reusable Element subtrees saved from the Whoobe One
-// editor (apps/whoobe-one-spike). Listed in the Snippets main item and
-// referenced by website-template slots.
 export interface WhoobeSnippet {
   id: string
   name: string
   category: string
   icon: string | null
   node: unknown
+  themeId?: string | null
   createdAt: string
   updatedAt: string
+}
+
+export interface WhoobeSnippetInput {
+  name: string
+  category: string
+  icon?: string | null
+  node: unknown
+  themeId?: string | null
 }
 
 function normalizeBaseUrl(baseUrl: string): string {
@@ -35,6 +41,17 @@ export async function fetchSnippets(baseUrl: string): Promise<WhoobeSnippet[]> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/snippets`, { credentials: 'include' })
   const data = await parseJsonOrThrow(res)
   return data.snippets ?? []
+}
+
+export async function createSnippet(baseUrl: string, input: WhoobeSnippetInput): Promise<WhoobeSnippet> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/snippets`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  const data = await parseJsonOrThrow(res)
+  return data.snippet
 }
 
 export async function deleteSnippet(baseUrl: string, id: string): Promise<void> {
