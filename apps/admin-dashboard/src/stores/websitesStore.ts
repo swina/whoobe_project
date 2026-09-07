@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchWebsites, fetchWebsiteById, createWebsite, updateWebsite, deleteWebsite, type WebsiteRecord } from '../utils/websites-api'
+import { fetchWebsites, fetchWebsiteById, createWebsite, updateWebsite, deleteWebsite, generateAiWebsiteStructure, createWebsiteFromAi, type WebsiteRecord, type AiWebsiteStructure } from '../utils/websites-api'
 import { useAuthStore } from './authStore'
 
 export const useWebsitesStore = defineStore('websites', () => {
@@ -62,6 +62,18 @@ export const useWebsitesStore = defineStore('websites', () => {
     websites.value = websites.value.filter((w) => w.id !== id)
   }
 
+  async function generateStructure(prompt: string): Promise<AiWebsiteStructure> {
+    const authStore = useAuthStore()
+    return generateAiWebsiteStructure(authStore.config.coreApiUrl, prompt)
+  }
+
+  async function createFromAiStructure(structure: AiWebsiteStructure): Promise<{ website: WebsiteRecord; pages: any[]; snippets: any[] }> {
+    const authStore = useAuthStore()
+    const result = await createWebsiteFromAi(authStore.config.coreApiUrl, structure)
+    websites.value.push(result.website)
+    return result
+  }
+
   return {
     websites,
     isLoading,
@@ -70,5 +82,7 @@ export const useWebsitesStore = defineStore('websites', () => {
     create,
     update,
     remove,
+    generateStructure,
+    createFromAiStructure,
   }
 })

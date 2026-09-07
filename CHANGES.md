@@ -4,6 +4,18 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [AI Website Wizard: generate complete website structure from natural language] — 2026-09-07
+
+- **`packages/core/src/ai/prompts.ts`**: Added `buildWebsiteStructurePrompt()` — generates a compact prompt instructing the LLM to output a JSON structure with `website`, `pages` (3 exact, each with full Element tree), and `snippets` (3 exact). Added `validateWebsiteStructure()` — validates the shape, required fields, page/snippet counts, and per-tree node limits (30 pages, 15 snippets). Exported `collectNodes()` for reuse.
+- **`packages/core/src/ai/providers.ts`**: Added `maxTokens` option to `AiGenerateInput` interface, threaded through OpenAI, Anthropic, and Google provider functions. Defaults to 4096 for backward compatibility. `parseJsonText()` now includes the raw output snippet in the error message for debugging.
+- **`apps/core-api/src/server.ts`**: Added `POST /ai/generate-website-structure` — generates a website structure from a prompt with retry-with-feedback loop (up to 3 attempts, feeding parse/validation errors back to the model). Added `POST /whoobe-one/websites/from-ai` — creates the website, all pages, and all snippets from the generated structure. Both behind `OBJECTS_WRITE` permission.
+- **`apps/admin-dashboard/src/utils/websites-api.ts`**: Added `generateAiWebsiteStructure()` and `createWebsiteFromAi()` API functions with `AiWebsiteStructure` type.
+- **`apps/admin-dashboard/src/stores/websitesStore.ts`**: Added `generateStructure()` and `createFromAiStructure()` actions.
+- **`apps/admin-dashboard/src/components/settings/AiWebsiteWizardModal.vue`**: New modal with prompt input, generating/preview/creating states, error handling, and result preview showing website name, pages list, and snippets list.
+- **`apps/admin-dashboard/src/components/settings/WebsiteSettingsCard.vue`**: Added "AI Website Wizard" button with Sparkles icon next to "+ New Website" button.
+
+---
+
 ## [Fix: DAM asset-processor timeout in production — proxy URLs instead of presigned S3 URLs + local dev hostname support] — 2026-09-07
 
 - **`apps/admin-dashboard/src/utils/editor-urls.ts`**: `getWhoobeOneSpikeUrl()` and `getWhoobeStudioUrl()` now distinguish HTTP (local dev on a LAN hostname like whoobecms.local:3000) from HTTPS (production behind nginx). HTTP dev → direct port 3006/3004. HTTPS production → `/whoobe-one/` / `/whoobe-studio/` nginx path. Previously used the nginx path for any non-localhost hostname, breaking the embedded editor in local LAN dev.

@@ -148,7 +148,9 @@ import {
   generateAiJson,
   buildSystemPrompt,
   buildUserPrompt,
+  buildWebsiteStructurePrompt,
   validateElementTree,
+  validateWebsiteStructure,
   sanitizeGeneratedImages,
   AiGenerationError,
   searchContent,
@@ -3437,6 +3439,138 @@ app.get('/ai/generated', requirePermission(PERMISSIONS.OBJECTS_READ), async (_re
   } catch (error: any) {
     console.error('List AI generated error:', error);
     res.status(500).json({ error: error.message || 'Failed to list AI generations' });
+  }
+});
+
+// AI website structure generation — generates a complete website with pages
+// and snippets from a natural language prompt.
+app.post('/ai/generate-website-structure', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const { prompt } = req.body ?? {};
+  if (typeof prompt !== 'string' || !prompt.trim()) {
+    res.status(400).json({ error: 'prompt is required' });
+    return;
+  }
+  const settings = await getAiSettings();
+  if (!settings || !settings.apiKey) {
+    res.status(400).json({ error: 'AI is not configured. Save the provider, model, and API key in Settings → AI first.' });
+    return;
+  }
+  try {
+    // Retry-with-feedback loop: sample-free models (and even paid ones) often
+    // truncate a large nested JSON or wrap it in stray markdown. Each retry
+    // feeds the model its own previous output + the exact parse/rejection
+    // error and asks for a corrected, complete JSON object.
+    let lastError = '';
+    let lastRaw = '';
+    let structure: unknown = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      let result;
+      try {
+        result = await generateAiJson({
+          settings: { provider: settings.provider, model: settings.model, endpoint: settings.endpoint, apiKey: settings.apiKey },
+          systemPrompt: 'You are an expert front-end developer and website architect. You output ONLY valid JSON, no markdown, no commentary.',
+          userPrompt: (attempt === 1
+            ? buildWebsiteStructurePrompt({ prompt: prompt.trim() })
+            : `Your previous answer was rejected for this reason:\n${lastError}\n\nYour previous starting text was:\n${lastRaw.substring(0, 2000)}\n\nOutput ONLY the corrected, complete, valid JSON object matching the original request, no markdown fences, no commentary:\n${prompt.trim()}`),
+          maxTokens: 8192,
+        });
+      } catch (error: any) {
+        // generateAiJson throws on invalid JSON (AiGenerationError from
+        // parseJsonText). Capture enough of the raw output to feed back.
+        const message = error instanceof AiGenerationError ? error.message : (error?.message || 'AI generation failed');
+        lastError = message;
+        lastRaw = message.includes('\nRaw output:\n') ? message.split('\nRaw output:\n')[1] ?? '' : '';
+        if (attempt === 3) {
+          throw error;
+        }
+        continue;
+      }
+      lastRaw = result.rawText;
+      const validationError = validateWebsiteStructure(result.json);
+      if (!validationError) {
+        structure = result.json;
+        break;
+      }
+      lastError = validationError;
+      if (attempt === 3) {
+        await createAiGenerated({
+          kind: 'website-structure', prompt: prompt.trim(), provider: settings.provider, model: settings.model,
+          rawResponse: result.rawText, status: 'error', error: validationError, createdBy: req.user?.id ?? null,
+        });
+        res.status(422).json({ error: `Generated structure rejected: ${validationError}` });
+        return;
+      }
+    }
+
+    if (structure === null) {
+      throw new AiGenerationError(lastError || 'AI generation failed');
+    }
+
+    const parsed = structure as Record<string, any>;
+    for (const page of (parsed.pages as any[]) ?? []) {
+      sanitizeGeneratedImages(page.content as Record<string, any>);
+    }
+    for (const snippet of (parsed.snippets as any[]) ?? []) {
+      sanitizeGeneratedImages(snippet.node as Record<string, any>);
+    }
+    await createAiGenerated({
+      kind: 'website-structure', prompt: prompt.trim(), provider: settings.provider, model: settings.model,
+      payload: structure, rawResponse: lastRaw, status: 'success', createdBy: req.user?.id ?? null,
+    });
+    res.json({ structure });
+  } catch (error: any) {
+    const message = error instanceof AiGenerationError ? error.message : (error?.message || 'AI generation failed');
+    try {
+      await createAiGenerated({
+        kind: 'website-structure', prompt: prompt.trim(), status: 'error', error: message, createdBy: req.user?.id ?? null,
+      });
+    } catch (logError) {
+      console.error('AI website-structure audit log write error:', logError);
+    }
+    const status = error instanceof AiGenerationError && error.status ? error.status : 500;
+    res.status(status).json({ error: message });
+  }
+});
+
+// Creates a website from the AI-generated structure — creates the website,
+// all its pages, and all its snippets in one orchestrated call.
+app.post('/whoobe-one/websites/from-ai', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const { structure } = req.body ?? {};
+  if (!structure || typeof structure.website !== 'object' || !Array.isArray(structure.pages) || !Array.isArray(structure.snippets)) {
+    res.status(400).json({ error: 'structure with website, pages, and snippets is required' });
+    return;
+  }
+  try {
+    const website = await createWebsite({
+      name: structure.website.name,
+      defaultLocale: structure.website.defaultLocale ?? 'en',
+      supportedLocales: structure.website.supportedLocales ?? ['en'],
+      settings: structure.website.settings ?? {},
+    });
+    const pages = [];
+    for (const p of structure.pages) {
+      const page = await createWhoobePage({
+        slug: p.slug,
+        title: p.title,
+        category: p.category ?? '',
+        content: p.content,
+        websiteId: website.id,
+      });
+      pages.push(page);
+    }
+    const snippets = [];
+    for (const s of structure.snippets) {
+      const snippet = await createWhoobeOneSnippet({
+        name: s.name,
+        category: s.category,
+        node: s.node,
+      });
+      snippets.push(snippet);
+    }
+    res.status(201).json({ website, pages, snippets });
+  } catch (error: any) {
+    console.error('Create website from AI error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create website from AI structure' });
   }
 });
 

@@ -61,8 +61,62 @@ const ALLOWED_TAGS = new Set([
 ]);
 
 const MAX_NODES = 200;
+const PAGE_MAX_NODES = 30;
+const SNIPPET_MAX_NODES = 15;
 
-function collectNodes(node: Record<string, unknown>): Record<string, unknown>[] {
+export function buildWebsiteStructurePrompt(context: { prompt: string }): string {
+  return `You output ONLY valid JSON, no markdown fences, no commentary.
+
+Generate a website structure as this JSON shape:
+{
+  "website": { "name": "short-url-safe-name", "defaultLocale": "en", "supportedLocales": ["en"] },
+  "pages": [
+    {
+      "slug": "home", "title": "Home", "category": "main",
+      "content": {
+        "id": "root", "type": "container", "element": "div", "tag": "document", "icon": "dashboard",
+        "css": { "css": "bg-white", "container": "min-h-[600px] gap-4" },
+        "blocks": [
+          {
+            "id": "sec1", "type": "container", "element": "div", "tag": "section",
+            "css": { "css": "py-16 bg-indigo-600 text-white text-center" },
+            "blocks": [
+              { "id": "t1", "type": "element", "element": "h1", "tag": "h1", "content": "Welcome", "editable": true, "css": { "css": "text-4xl font-bold" } },
+              { "id": "t2", "type": "element", "element": "p", "tag": "p", "content": "Description", "editable": true, "css": { "css": "mt-4 text-lg" } }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "snippets": [
+    {
+      "name": "Hero Banner", "category": "hero",
+      "node": {
+        "id": "s1", "type": "container", "element": "div", "tag": "section",
+        "css": { "css": "py-12 bg-indigo-600 text-white text-center" },
+        "blocks": [
+          { "id": "s1a", "type": "element", "element": "h2", "tag": "h2", "content": "Hero Title", "editable": true, "css": { "css": "text-3xl font-bold" } }
+        ]
+      }
+    }
+  ]
+}
+
+CONSTRAINTS:
+- 3 pages exactly: a homepage plus two secondary pages.
+- 3 snippets exactly.
+- Each page "content" root has "tag":"document","type":"container","element":"div","icon":"dashboard".
+- Each snippet "node" is a container subtree (no document root).
+- Each page max 30 nodes. Each snippet max 15 nodes.
+- Keep every tree shallow and compact. Prefer 1-2 nested section levels.
+- Each node: "id" unique, "type" "container"|"element", "element" HTML tag, "blocks" children array, "css":{"css":"tailwind classes","container":"tailwind classes"}, "content" text for text nodes, "editable":true for text.
+- Use Tailwind for spacing/colors. Real text, not lorem ipsum. Omit dataBinding/gsap/link/alpine/events/slider/formConfig.
+
+User request: ${context.prompt}`;
+}
+
+export function collectNodes(node: Record<string, unknown>): Record<string, unknown>[] {
   const nodes: Record<string, unknown>[] = [node];
   const children = node.blocks;
   if (Array.isArray(children)) {
@@ -116,5 +170,49 @@ export function validateElementTree(json: unknown): string | null {
     if (node.content !== undefined && typeof node.content !== 'string') return '"content" must be a string.';
     if (node.style !== undefined && typeof node.style !== 'string') return '"style" must be a string.';
   }
+  return null;
+}
+
+/** Validates a generated website structure (website + pages + snippets). */
+export function validateWebsiteStructure(json: unknown): string | null {
+  if (typeof json !== 'object' || json === null || Array.isArray(json)) {
+    return 'Expected a single object at the top level.';
+  }
+  const root = json as Record<string, unknown>;
+
+  if (typeof root.website !== 'object' || root.website === null) return '"website" object is required.';
+  const website = root.website as Record<string, unknown>;
+  if (typeof website.name !== 'string' || !website.name.trim()) return '"website.name" must be a non-empty string.';
+
+  if (!Array.isArray(root.pages) || root.pages.length === 0) return '"pages" must be a non-empty array.';
+  if (root.pages.length < 3) return `"pages" must contain at least 3 pages (got ${root.pages.length}).`;
+  if (root.pages.length > 5) return `"pages" too many (${root.pages.length}, max 5).`;
+  for (let i = 0; i < root.pages.length; i++) {
+    const page = root.pages[i] as Record<string, unknown>;
+    if (typeof page.slug !== 'string' || !page.slug.trim()) return `pages[${i}].slug must be a non-empty string.`;
+    if (typeof page.title !== 'string' || !page.title.trim()) return `pages[${i}].title must be a non-empty string.`;
+    if (page.content === null || page.content === undefined) return `pages[${i}].content is required.`;
+    const contentError = validateElementTree(page.content);
+    if (contentError) return `pages[${i}].content: ${contentError}`;
+    const nodes = collectNodes(page.content as Record<string, unknown>);
+    if (nodes.length > PAGE_MAX_NODES) return `pages[${i}].content too large (${nodes.length} nodes, max ${PAGE_MAX_NODES}).`;
+  }
+
+  if (!Array.isArray(root.snippets)) return '"snippets" must be an array.';
+  if (root.snippets.length > 8) return `"snippets" too many (${root.snippets.length}, max 8).`;
+  if (root.snippets.length > 0 && root.snippets.length < 3) {
+    return `"snippets" should have at least 3 entries (got ${root.snippets.length}).`;
+  }
+  for (let i = 0; i < root.snippets.length; i++) {
+    const snippet = root.snippets[i] as Record<string, unknown>;
+    if (typeof snippet.name !== 'string' || !snippet.name.trim()) return `snippets[${i}].name must be a non-empty string.`;
+    if (typeof snippet.category !== 'string' || !snippet.category.trim()) return `snippets[${i}].category must be a non-empty string.`;
+    if (snippet.node === null || snippet.node === undefined) return `snippets[${i}].node is required.`;
+    const nodeError = validateElementTree(snippet.node);
+    if (nodeError) return `snippets[${i}].node: ${nodeError}`;
+    const nodes = collectNodes(snippet.node as Record<string, unknown>);
+    if (nodes.length > SNIPPET_MAX_NODES) return `snippets[${i}].node too large (${nodes.length} nodes, max ${SNIPPET_MAX_NODES}).`;
+  }
+
   return null;
 }

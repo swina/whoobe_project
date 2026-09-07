@@ -34,6 +34,7 @@ export interface AiGenerateInput {
   settings: AiProviderSettings;
   systemPrompt: string;
   userPrompt: string;
+  maxTokens?: number;
 }
 
 export class AiGenerationError extends Error {
@@ -68,7 +69,10 @@ export function parseJsonText(text: string): unknown {
   try {
     return JSON.parse(cleaned);
   } catch {
-    throw new AiGenerationError('The AI provider did not return valid JSON. Check the model\'s output or try a different model.');
+    // Log the first 3000 chars for debugging, then truncate to avoid
+    // shipping megabytes of garbage in an error message.
+    const preview = cleaned.length > 3000 ? cleaned.substring(0, 3000) + '\n... [truncated]' : cleaned;
+    throw new AiGenerationError(`The AI provider did not return valid JSON. Raw output:\n${preview}`);
   }
 }
 
@@ -148,7 +152,7 @@ async function generateOpenAi(input: AiGenerateInput, baseUrl?: string, provider
   const completion = await client.chat.completions.create({
     model: input.settings.model,
     temperature: 0.7,
-    max_tokens: 4096,
+    max_tokens: input.maxTokens ?? 4096,
     messages: [
       { role: 'system', content: input.systemPrompt },
       { role: 'user', content: input.userPrompt },
@@ -166,7 +170,7 @@ async function generateAnthropic(input: AiGenerateInput): Promise<AiGenerateResu
   });
   const message = await client.messages.create({
     model: input.settings.model,
-    max_tokens: 4096,
+    max_tokens: input.maxTokens ?? 4096,
     system: input.systemPrompt,
     messages: [{ role: 'user', content: input.userPrompt }],
   });
@@ -182,6 +186,7 @@ async function generateGoogle(input: AiGenerateInput): Promise<AiGenerateResult>
   const model = genAI.getGenerativeModel({
     model: input.settings.model,
     systemInstruction: input.systemPrompt,
+    generationConfig: { maxOutputTokens: input.maxTokens ?? 4096 },
   });
   const result = await model.generateContent(input.userPrompt);
   const rawText = result.response.text();
