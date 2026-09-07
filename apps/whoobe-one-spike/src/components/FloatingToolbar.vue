@@ -93,6 +93,10 @@
               Home button
               <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.showHome" />
             </label>
+            <label class="flex items-center justify-between">
+              Dot indicator
+              <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.showDots" />
+            </label>
             <label class="block">
               <span class="block text-xs font-medium text-gray-500 mb-1.5">Arrow icon</span>
               <select
@@ -114,8 +118,32 @@
                 <option value="dot">Dot</option>
                 <option value="circle">Circle</option>
               </select>
-            </label>
-          </template>
+</label>
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-500 mb-1.5">Dot classes</span>
+                <ExpandableTextInput
+                  v-model="editor.current.slider.dotClass"
+                  popup-label="Dot classes"
+                  monospace
+                />
+              </label>
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-500 mb-1.5">Active dot classes</span>
+                <ExpandableTextInput
+                  v-model="editor.current.slider.activeDotClass"
+                  popup-label="Active dot classes"
+                  monospace
+                />
+              </label>
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-500 mb-1.5">Dot container classes</span>
+                <ExpandableTextInput
+                  v-model="editor.current.slider.dotContainerClass"
+                  popup-label="Dot container classes"
+                  monospace
+                />
+              </label>
+            </template>
 
           <template v-else>
             <div>

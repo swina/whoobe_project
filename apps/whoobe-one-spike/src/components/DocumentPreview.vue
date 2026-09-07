@@ -80,19 +80,17 @@
 
     <BlockContainerPreview v-if="doc && deviceMode === 'desktop'" :doc="doc" />
 
-    <!-- Tablet/mobile: a fixed-size, real-DOM "device" frame at 1:1 scale
-         (not a scaled-down thumbnail, not an iframe+srcdoc the way the
-         source's own device switcher works - see this file's header
-         comment for why) - its own independent scroll for content taller
-         than the device, centered on a neutral backdrop so its actual
-         edges are visible. -->
+    <!-- Tablet/mobile: a real iframe at 1:1 device dimensions, so
+         @tailwindcss/browser inside the iframe correctly resolves responsive
+         breakpoints (md:, sm:, etc.) against the device viewport, not the
+         browser window. The serialized document is passed via sessionStorage
+         and read by PreviewView.vue on mount. -->
     <div v-else-if="doc" class="flex justify-center py-8 px-4">
-      <div
-        class="bg-white shadow-2xl overflow-y-auto shrink-0"
+      <iframe
+        :src="previewUrl"
+        class="bg-white shadow-2xl border-0"
         :style="{ width: frameWidth + 'px', height: frameHeight + 'px' }"
-      >
-        <BlockContainerPreview :doc="doc" />
-      </div>
+      />
     </div>
   </div>
 </template>
@@ -153,6 +151,25 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
 }>()
+
+// Preview URL — opens the standalone preview route in an iframe.
+// sessionStorage is shared across same-origin browsing contexts.
+const previewUrl = computed(() => {
+  return `${window.location.origin}${import.meta.env.BASE_URL}preview`
+})
+
+// Serialize the document and store it in sessionStorage so PreviewView.vue
+// inside the iframe can read it. Uses JSON round-trip, same pattern as
+// database-actions.ts's savePage().
+function storeDocForPreview() {
+  if (!props.doc) return
+  try {
+    sessionStorage.setItem('whoobe-preview-doc', JSON.stringify(props.doc))
+  } catch {
+    // sessionStorage full/unavailable — iframe preview falls back to blank.
+  }
+}
+watch(() => props.doc, () => storeDocForPreview(), { immediate: true })
 
 const editor = useEditorStore()
 

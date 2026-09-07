@@ -14,10 +14,11 @@
  */
 const twgroups = [
     { label: 'grid' , filter: ['grid'] , components: [
-        { name: 'Options' , attr: 'gridgap' , title: 'grid gap'}
+        { name: 'Options' , attr: 'gridgap' , title: 'gap'},
+        { name: 'Options' , attr: 'gridcols' , title: 'columns'},
+        { name: 'Grid' , attr: 'gridcols' , title: 'column span'}
     ]},
     { label: 'flex' , filter: ['flex','mansory' ] , components: [
-        { name: 'Options' , attr: 'colspan' , title: 'grid column span' },
         { name: 'Options' , attr: 'flexdirection' , title: 'direction'},
         { name: 'Options' , attr: 'flexwrap' , title: 'wrap'},
         { name: 'Options' , attr: 'flexgrow' , title: 'grow'},
@@ -100,6 +101,9 @@ const twgroups = [
         { name: 'Range' , attr: 'borderLeft' , title: 'left' },
         { name: 'BorderColor' , attr: 'bordercolor' , title: 'color' },
         { name: 'Options' , attr: 'borderType' },
+    ]},
+    { label: 'col span', components: [
+        { name: 'Options' , attr: 'colspan' , title: 'column span'}
     ]},
     { label: 'rounded / shadow / +', components : [ 
         { name: 'Options' , attr: 'rounded' },

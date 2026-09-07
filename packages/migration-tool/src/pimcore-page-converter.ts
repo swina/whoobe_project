@@ -139,7 +139,7 @@ export class PimcorePageConverter {
       id: `whoobe_root_${pimcoreDoc.id}`,
       type: 'container',
       tag: 'document',
-      css: { css: '', container: 'flex flex-col gap-4 min-h-[600px] bg-white p-6' },
+      css: { css: '', container: 'flex flex-col '}// gap-4 min-h-[600px] bg-white p-6' },
     });
 
     if (pimcoreDoc.elements) {

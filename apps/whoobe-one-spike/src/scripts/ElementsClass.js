@@ -435,6 +435,7 @@ export default class Element {
             loop: true,
             showNav: true,
             showHome: true,
+            showDots: true,
             mode: 'standard',
             tabsPosition: 'below',
             navClass: 'flex items-center justify-center gap-1.5 flex-wrap px-2 py-2',
@@ -442,6 +443,9 @@ export default class Element {
             homeClass: 'w-7 h-7 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white',
             tabClass: 'px-2.5 py-1 rounded-full text-xs font-medium truncate max-w-[9rem] transition-colors border bg-white text-gray-600 border-gray-300 hover:border-indigo-400',
             activeTabClass: 'px-2.5 py-1 rounded-full text-xs font-medium truncate max-w-[9rem] transition-colors border bg-indigo-600 text-white border-indigo-600',
+            dotClass: 'w-2.5 h-2.5 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors',
+            activeDotClass: 'w-2.5 h-2.5 rounded-full bg-indigo-600 transition-colors',
+            dotContainerClass: 'flex items-center justify-center gap-2 pt-3',
             arrowIcon: 'chevron',
             homeIcon: 'home'
         }

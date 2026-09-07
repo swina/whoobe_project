@@ -191,6 +191,7 @@ export interface ElementSlider {
   loop: boolean
   showNav: boolean
   showHome: boolean
+  showDots?: boolean
   // 'standard' (the original arrows/home nav) or 'tabs' (a row of user-
   // named tabs, one per slide - see BlockSlider.vue/BlockSliderPreview.vue
   // for how each mode renders). Added later, so this is `?` rather than
@@ -221,6 +222,9 @@ export interface ElementSlider {
   homeClass?: string
   tabClass?: string
   activeTabClass?: string
+  dotClass?: string
+  activeDotClass?: string
+  dotContainerClass?: string
   // 'standard' mode only: which built-in SVG shape (SliderNavIcon.vue)
   // draws the prev/next buttons (mirrored left/right) and the home button.
   // Defaults to 'chevron'/'home' respectively - the same visual look this

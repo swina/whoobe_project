@@ -327,6 +327,7 @@ const semantic = computed(() => (props.doc as any).semantic || 'div')
 
 const classe = computed(() => {
   const doc = props.doc as any
+  
   return `${doc.css.css ?? ''} ${doc.css.container ?? ''}`.trim()
 })
 
@@ -377,6 +378,12 @@ onMounted(() => {
     stopFormSubmit = mountFormSubmit(props.doc, rootEl.value as unknown as HTMLFormElement, (result) => {
       submitResult.value = result
     })
+  }
+  // Alpine attributes are already on the element via v-bind="extraAttrs",
+  // but Alpine's MutationObserver doesn't always catch them on initial
+  // mount inside an iframe. Explicit initTree guarantees they're processed.
+  if (rootEl.value && (window as any).Alpine) {
+    nextTick(() => (window as any).Alpine.initTree(rootEl.value))
   }
 })
 
