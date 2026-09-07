@@ -5,7 +5,13 @@
         <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">Websites</h3>
         <p class="text-xs text-slate-500 mt-1">Manage websites, domains, and supported locales. Each website can have its own set of pages and menus.</p>
       </div>
-      <button @click="createNewWebsite" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">+ New Website</button>
+      <div class="flex items-center gap-2">
+        <button @click="showAiModal = true" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 flex items-center gap-1.5">
+          <Sparkles class="w-3.5 h-3.5" />
+          AI Website Wizard
+        </button>
+        <button @click="createNewWebsite" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">+ New Website</button>
+      </div>
     </div>
 
     <div v-if="websitesStore.isLoading && websitesStore.websites.length === 0" class="text-xs text-slate-500 text-center py-4">Loading websites…</div>
@@ -32,17 +38,22 @@
         </div>
       </div>
     </div>
+
+    <AiWebsiteWizardModal :is-open="showAiModal" @close="showAiModal = false" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
+import { Sparkles } from '@lucide/vue'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import { useTabsStore } from '../../stores/tabsStore'
 import type { WebsiteRecord } from '../../utils/websites-api'
+import AiWebsiteWizardModal from './AiWebsiteWizardModal.vue'
 
 const websitesStore = useWebsitesStore()
 const tabsStore = useTabsStore()
+const showAiModal = ref(false)
 
 function openWebsiteTab(website: WebsiteRecord) {
   tabsStore.openWebsite(website.id)

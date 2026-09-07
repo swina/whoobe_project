@@ -93,6 +93,36 @@ export async function deleteWebsite(baseUrl: string, id: string): Promise<void> 
   await parseJsonOrThrow(res)
 }
 
+export interface AiWebsiteStructure {
+  website: { name: string; defaultLocale: string; supportedLocales: string[]; settings: Record<string, unknown> }
+  pages: { slug: string; title: string; category: string; content: unknown }[]
+  snippets: { name: string; category: string; node: unknown }[]
+}
+
+export async function generateAiWebsiteStructure(baseUrl: string, prompt: string): Promise<AiWebsiteStructure> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/ai/generate-website-structure`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt }),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.structure
+}
+
+export async function createWebsiteFromAi(
+  baseUrl: string,
+  structure: AiWebsiteStructure
+): Promise<{ website: WebsiteRecord; pages: any[]; snippets: any[] }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/from-ai`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ structure }),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
 // --- Multi-theme API ---
 
 export interface WebsiteTheme {
