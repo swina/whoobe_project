@@ -77,6 +77,16 @@ function createDamProvider(folderRules: FolderVisibilityRule[]): S3AssetStorageP
   });
 }
 
+function forwardOrigin(req: Request): string {
+  const proto = (req.headers['x-forwarded-proto'] as string) ?? req.protocol;
+  const host = (req.headers['x-forwarded-host'] as string) ?? req.headers.host ?? 'localhost';
+  return `${proto}://${host}`;
+}
+
+function proxyUrl(key: string, origin: string): string {
+  return `${origin}/dam-asset/${key}`;
+}
+
 function deriveFolderPath(pimcorePath: string): string {
   const idx = pimcorePath.lastIndexOf('/');
   return idx <= 0 ? '/' : pimcorePath.substring(0, idx);
@@ -105,7 +115,8 @@ async function finalizeAssetUpload(
     folderPath: string;
     fileType: string;
     metadata?: any;
-  }
+  },
+  origin: string
 ) {
   const result = await provider.uploadAsset(input.pimcorePath, input.buffer, input.mimeType, {
     isPublic: input.isPublic,
@@ -123,18 +134,18 @@ async function finalizeAssetUpload(
     metadata: input.metadata,
   });
 
+  const k = result.s3Key;
+  const thumbKey = provider.getThumbnailS3Key(input.pimcorePath, 'thumb');
+  const mediumKey = provider.getThumbnailS3Key(input.pimcorePath, 'medium');
+  const largeKey = provider.getThumbnailS3Key(input.pimcorePath, 'large');
+
   return {
     success: true,
-    s3Key: result.s3Key,
-    url: result.url,
-    thumbnailUrl: result.thumbnails?.thumb ?? '',
-    thumbnails: result.thumbnails ?? {},
-    asset: {
-      ...assetRecord,
-      url: result.url,
-      thumbnailUrl: result.thumbnails?.thumb ?? '',
-      thumbnails: result.thumbnails ?? {},
-    },
+    s3Key: k,
+    url: proxyUrl(k, origin),
+    thumbnailUrl: proxyUrl(thumbKey, origin),
+    thumbnails: { thumb: proxyUrl(thumbKey, origin), medium: proxyUrl(mediumKey, origin), large: proxyUrl(largeKey, origin) },
+    asset: { ...assetRecord, url: proxyUrl(k, origin), thumbnailUrl: proxyUrl(thumbKey, origin), thumbnails: { thumb: proxyUrl(thumbKey, origin), medium: proxyUrl(mediumKey, origin), large: proxyUrl(largeKey, origin) } },
   };
 }
 
@@ -316,7 +327,7 @@ app.post('/api/v1/dam/upload', requirePermission(PERMISSIONS.ASSETS_UPLOAD), upl
       folderPath: deriveFolderPath(pimcorePath),
       fileType,
       metadata,
-    });
+    }, forwardOrigin(req));
 
     res.json(response);
   } catch (error: any) {
@@ -391,7 +402,7 @@ app.post('/api/v1/dam/transform', requirePermission(PERMISSIONS.ASSETS_UPLOAD), 
       folderPath: sourceRecord.folderPath,
       fileType,
       metadata: transformedMetadata,
-    });
+    }, forwardOrigin(req));
 
     res.json(response);
   } catch (error: any) {
@@ -482,18 +493,15 @@ app.get('/api/v1/dam/assets', requireAuth, async (req: Request, res: Response): 
     const folderPath = req.query.folderPath as string | undefined;
     const records = await listAssets(folderPath);
     const provider = createDamProvider(parseFolderRules(req.query.folderRules));
+    const origin = forwardOrigin(req);
 
-    const withUrls = await Promise.all(
-      records.map(async (record) => {
-        const [url, thumb, medium, large] = await Promise.all([
-          provider.getAssetUrl(record.pimcorePath),
-          provider.getThumbnailUrl(record.pimcorePath, { preset: 'thumb' }),
-          provider.getThumbnailUrl(record.pimcorePath, { preset: 'medium' }),
-          provider.getThumbnailUrl(record.pimcorePath, { preset: 'large' }),
-        ]);
-        return { ...record, url, thumbnailUrl: thumb, thumbnails: { thumb, medium, large } };
-      })
-    );
+    const withUrls = records.map((record) => {
+      const k = provider.getS3Key(record.pimcorePath);
+      const t = provider.getThumbnailS3Key(record.pimcorePath, 'thumb');
+      const m = provider.getThumbnailS3Key(record.pimcorePath, 'medium');
+      const l = provider.getThumbnailS3Key(record.pimcorePath, 'large');
+      return { ...record, url: proxyUrl(k, origin), thumbnailUrl: proxyUrl(t, origin), thumbnails: { thumb: proxyUrl(t, origin), medium: proxyUrl(m, origin), large: proxyUrl(l, origin) } };
+    });
 
     res.json({ assets: withUrls });
   } catch (error: any) {
@@ -509,18 +517,15 @@ app.post('/api/v1/dam/assets', requireAuth, async (req: Request, res: Response):
     const folderPath = req.body.folderPath as string | undefined;
     const records = await listAssets(folderPath);
     const provider = createDamProvider(parseFolderRules(req.body.folderRules));
+    const origin = forwardOrigin(req);
 
-    const withUrls = await Promise.all(
-      records.map(async (record) => {
-        const [url, thumb, medium, large] = await Promise.all([
-          provider.getAssetUrl(record.pimcorePath),
-          provider.getThumbnailUrl(record.pimcorePath, { preset: 'thumb' }),
-          provider.getThumbnailUrl(record.pimcorePath, { preset: 'medium' }),
-          provider.getThumbnailUrl(record.pimcorePath, { preset: 'large' }),
-        ]);
-        return { ...record, url, thumbnailUrl: thumb, thumbnails: { thumb, medium, large } };
-      })
-    );
+    const withUrls = records.map((record) => {
+      const k = provider.getS3Key(record.pimcorePath);
+      const t = provider.getThumbnailS3Key(record.pimcorePath, 'thumb');
+      const m = provider.getThumbnailS3Key(record.pimcorePath, 'medium');
+      const l = provider.getThumbnailS3Key(record.pimcorePath, 'large');
+      return { ...record, url: proxyUrl(k, origin), thumbnailUrl: proxyUrl(t, origin), thumbnails: { thumb: proxyUrl(t, origin), medium: proxyUrl(m, origin), large: proxyUrl(l, origin) } };
+    });
 
     res.json({ assets: withUrls });
   } catch (error: any) {
@@ -541,13 +546,12 @@ app.get('/api/v1/dam/assets/:id', requireAuth, async (req: Request, res: Respons
       return;
     }
     const provider = createDamProvider(parseFolderRules(req.query.folderRules));
-    const [url, thumb, medium, large] = await Promise.all([
-      provider.getAssetUrl(record.pimcorePath),
-      provider.getThumbnailUrl(record.pimcorePath, { preset: 'thumb' }),
-      provider.getThumbnailUrl(record.pimcorePath, { preset: 'medium' }),
-      provider.getThumbnailUrl(record.pimcorePath, { preset: 'large' }),
-    ]);
-    res.json({ asset: { ...record, url, thumbnailUrl: thumb, thumbnails: { thumb, medium, large } } });
+    const origin = forwardOrigin(req);
+    const k = provider.getS3Key(record.pimcorePath);
+    const t = provider.getThumbnailS3Key(record.pimcorePath, 'thumb');
+    const m = provider.getThumbnailS3Key(record.pimcorePath, 'medium');
+    const l = provider.getThumbnailS3Key(record.pimcorePath, 'large');
+    res.json({ asset: { ...record, url: proxyUrl(k, origin), thumbnailUrl: proxyUrl(t, origin), thumbnails: { thumb: proxyUrl(t, origin), medium: proxyUrl(m, origin), large: proxyUrl(l, origin) } } });
   } catch (error: any) {
     console.error('DAM get asset by id error:', error);
     res.status(500).json({ error: error.message || 'Failed to get asset' });

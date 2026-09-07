@@ -1,9 +1,9 @@
 // Minimal client for this monorepo's real backend asset library
-// (apps/asset-processor), following the exact same pattern already
-// established in apps/whoobe-studio (a different, standalone-embedded app
-// in this monorepo that also has no auth/session UI of its own): default
-// to whatever hostname this page was loaded from, on port 3002, and always
-// send `credentials: 'include'`.
+// (apps/asset-processor). Defaults to the VITE_ASSET_PROCESSOR_URL env var
+// (set by .env for production, e.g. https://whoobecms.devophub.space), or
+// on localhost to port 3002 directly (the asset-processor dev server), or
+// on a remote host to the page's own origin (nginx proxies /api/v1/* to
+// the asset-processor on port 3002). Always sends credentials: 'include'.
 //
 // This is the one precondition worth being explicit about: this app has no
 // login flow of its own. `requireAuth` on the backend means these calls
@@ -25,6 +25,7 @@ export interface DamAssetRecord {
   filename: string
   folderPath: string
   mimeType: string
+  sizeBytes: number
   isPublic: boolean
   url: string
   thumbnailUrl: string
@@ -39,8 +40,16 @@ export interface DamFolderRecord {
 }
 
 function getDefaultAssetProcessorUrl(): string {
+  if (typeof import.meta !== 'undefined' && import.meta.env.VITE_ASSET_PROCESSOR_URL) {
+    return import.meta.env.VITE_ASSET_PROCESSOR_URL.replace(/\/+$/, '')
+  }
   if (typeof window !== 'undefined' && window.location?.hostname) {
-    return `${window.location.protocol}//${window.location.hostname}:3002`
+    const hostname = window.location.hostname
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return `${window.location.protocol}//${hostname}:3002`
+    }
+    const port = window.location.port
+    return `${window.location.protocol}//${hostname}${port ? `:${port}` : ''}`
   }
   return 'http://localhost:3002'
 }

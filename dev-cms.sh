@@ -8,7 +8,7 @@
 #                    before it starts.
 # --hostname <name>  Overrides ONLY the browser-facing app endpoints - the
 #                    VITE_* URLs admin-dashboard talks to - e.g.
-#                    ./dev-cms.sh --hostname develop.local. Pick the
+# ./dev-cms.sh --hostname whoobecms.local. Pick the
 #                    hostname you open the dashboard from, so the session
 #                    cookie (host-only + SameSite=Lax) always reaches the
 #                    APIs. DB (DB_HOST) and S3 (S3_ENDPOINT) endpoints are
