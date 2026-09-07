@@ -802,10 +802,14 @@ function handleSelectSidebarClass(classId: string) {
 // whoobe-one-spike origin every embedded iframe is already built from.
 function onWindowMessage(event: MessageEvent) {
   if (event.origin !== new URL(getWhoobeOneSpikeUrl()).origin) return
-  if (event.data?.type !== 'whoobe-one:open-page-preview') return
-  const { pageId, path, locale } = event.data
-  if (typeof pageId === 'string' && typeof path === 'string' && typeof locale === 'string') {
-    tabsStore.openPagePreview(pageId, path, locale)
+  if (event.data?.type === 'whoobe-one:open-page-preview') {
+    const { pageId, path, locale } = event.data
+    if (typeof pageId === 'string' && typeof path === 'string' && typeof locale === 'string') {
+      tabsStore.openPagePreview(pageId, path, locale)
+    }
+  }
+  if (event.data?.type === 'whoobe-one:snippet-saved') {
+    snippetsStore.refresh()
   }
 }
 

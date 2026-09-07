@@ -19,6 +19,49 @@ html, body, #app {
   height: 100%;
 }
 
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(205, 208, 216, 0.6);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 134, 141, 0.8);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(206, 211, 218);
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar {
+    
+    scrollbar-width: thin;
+    scrollbar-color: #979797 transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #979797;
+    border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #404040;
+}
+
 .clipped-right { 
   clip-path: polygon(0 0, 100% 100%, 100% 0);
 }

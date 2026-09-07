@@ -28,7 +28,7 @@
         </button>
         <template v-if="showSemanticPicker">
           <div class="fixed inset-0 z-[10000]" @click="showSemanticPicker = false"></div>
-          <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-40" @click.stop>
+          <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-40" :class="toolbarNearRightEdge ? 'right-0 left-auto' : ''" @click.stop>
             <span class="block text-[10px] text-gray-500 mb-1">Renders as</span>
             <select
               v-model="semanticValue"
@@ -47,13 +47,16 @@
       <template v-if="showSliderSettings && editor.current?.slider">
         <div class="fixed inset-0 z-[10000]" @click="showSliderSettings = false"></div>
         <div
-          class="absolute z-[10001] left-0 bg-white border border-gray-200 rounded-md shadow-lg p-3 w-80 space-y-3 text-sm overflow-y-auto"
-          :class="sliderPopoverOpensUpward ? 'bottom-full mb-1' : 'top-full mt-1'"
+          class="absolute z-[10001] left-0 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-180 space-y-2 text-xs font-bold overflow-y-auto"
+          :class="[
+            sliderPopoverOpensUpward ? 'bottom-full mb-1' : 'top-full mt-1',
+            toolbarNearRightEdge ? 'right-0 left-auto' : '',
+          ]"
           :style="{ maxHeight: sliderPopoverMaxHeight + 'px' }"
           @click.stop
         >
           <div>
-            <span class="block text-xs font-medium text-gray-500 mb-1.5">Navigation style</span>
+            <span class="block text-xs font-medium text-gray-500 mb-1.5">Navigation style ({{ editor.current.slider.mode }})</span>
             <div class="flex gap-3">
               <label class="flex items-center gap-1.5">
                 <input type="radio" value="standard" class="w-4 h-4" v-model="editor.current.slider.mode" />
@@ -65,7 +68,7 @@
               </label>
             </div>
           </div>
-          <label class="flex items-center justify-between">
+          <label class="flex items-center justify-between bg-slate-200 rounded-lg p-2">
             Autoplay
             <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.autoplay" />
           </label>
@@ -76,29 +79,21 @@
               min="500"
               step="500"
               v-model.number="editor.current.slider.interval"
-              class="w-full px-2.5 py-1.5 text-sm rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+              class="w-full px-2.5 py-1.5 text-sm font-normalrounded border border-gray-300 focus:outline-none focus:border-indigo-500"
             />
           </label>
-          <label class="flex items-center justify-between">
+          <label class="flex items-center justify-between bg-slate-200 rounded-lg p-2">
             Cycle (loop)
             <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.loop" />
           </label>
 
           <template v-if="(editor.current.slider.mode || 'standard') === 'standard'">
-            <label class="flex items-center justify-between">
+            <label class="flex items-center justify-between bg-slate-200 rounded-lg p-2">
               Back/forward buttons
               <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.showNav" />
             </label>
-            <label class="flex items-center justify-between">
-              Home button
-              <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.showHome" />
-            </label>
-            <label class="flex items-center justify-between">
-              Dot indicator
-              <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.showDots" />
-            </label>
-            <label class="block">
-              <span class="block text-xs font-medium text-gray-500 mb-1.5">Arrow icon</span>
+            <label class="block bg-slate-200 rounded-lg p-1 font-normal" v-if="editor.current.slider.showNav">
+              <span class="block text-xs font-medium text-gray-500 mb-1.5">Button icon</span>
               <select
                 v-model="editor.current.slider.arrowIcon"
                 class="w-full px-2.5 py-1.5 text-sm rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
@@ -107,8 +102,28 @@
                 <option value="arrow">Arrow ← →</option>
                 <option value="triangle">Triangle ◀ ▶</option>
               </select>
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-500 mb-1.5">Nav wrapper classes</span>
+                <ExpandableTextInput
+                  v-model="editor.current.slider.navClass"
+                  popup-label="Nav wrapper classes"
+                  monospace
+                />
+              </label>
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-500 mb-1.5">Arrow button classes</span>
+                <ExpandableTextInput
+                  v-model="editor.current.slider.arrowClass"
+                  popup-label="Arrow button classes"
+                  monospace
+                />
+              </label>
             </label>
-            <label class="block">
+            <label class="flex items-center justify-between bg-slate-200 rounded-lg p-2">
+              Home button
+              <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.showHome" />
+            </label>
+            <label class="block bg-slate-200 rounded-lg p-1 font-normal" v-if="editor.current.slider.showHome">
               <span class="block text-xs font-medium text-gray-500 mb-1.5">Home icon</span>
               <select
                 v-model="editor.current.slider.homeIcon"
@@ -118,7 +133,21 @@
                 <option value="dot">Dot</option>
                 <option value="circle">Circle</option>
               </select>
-</label>
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-500 mb-1.5">Home button classes</span>
+                <ExpandableTextInput
+                  v-model="editor.current.slider.homeClass"
+                  popup-label="Home button classes"
+                  monospace
+                />
+              </label>
+            </label>
+            <label class="flex items-center justify-between bg-slate-200 rounded-lg p-2">
+              Dot indicator
+              <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.showDots" />
+            </label>
+            
+            <div class="flex flex-col gap-2 bg-slate-200 rounded-lg p-1 font-normal" v-if="editor.current.slider.showDots">
               <label class="block">
                 <span class="block text-xs font-medium text-gray-500 mb-1.5">Dot classes</span>
                 <ExpandableTextInput
@@ -143,10 +172,14 @@
                   monospace
                 />
               </label>
+            </div>
             </template>
 
           <template v-else>
-            <div>
+            <div class="font-normal bg-slate-200 rounded-lg p-1">
+              <p class="text-xs font-normal text-gray-400">
+              Tab names are set directly on the slider's own nav strip while editing - double-click a tab to rename it.
+              </p>
               <span class="block text-xs font-medium text-gray-500 mb-1.5">Tab row position</span>
               <div class="flex gap-3">
                 <label class="flex items-center gap-1.5">
@@ -158,45 +191,9 @@
                   Below
                 </label>
               </div>
-            </div>
-            <p class="text-xs text-gray-400">
-              Tab names are set directly on the slider's own nav strip while editing - double-click a tab to rename it.
-            </p>
-          </template>
-
-          <div class="pt-2 border-t border-gray-100 space-y-3">
-            <span class="block text-xs text-gray-500">
-              Full Tailwind classes for each part - edit directly to match your design (this replaces the whole class list for
-              that part, it doesn't add to a hidden default).
-            </span>
-            <label class="block">
-              <span class="block text-xs font-medium text-gray-500 mb-1.5">Nav wrapper classes</span>
-              <ExpandableTextInput
-                v-model="editor.current.slider.navClass"
-                popup-label="Nav wrapper classes"
-                monospace
-              />
-            </label>
-            <template v-if="(editor.current.slider.mode || 'standard') === 'standard'">
-              <label class="block">
-                <span class="block text-xs font-medium text-gray-500 mb-1.5">Arrow button classes</span>
-                <ExpandableTextInput
-                  v-model="editor.current.slider.arrowClass"
-                  popup-label="Arrow button classes"
-                  monospace
-                />
-              </label>
-              <label class="block">
-                <span class="block text-xs font-medium text-gray-500 mb-1.5">Home button classes</span>
-                <ExpandableTextInput
-                  v-model="editor.current.slider.homeClass"
-                  popup-label="Home button classes"
-                  monospace
-                />
-              </label>
-            </template>
-            <template v-else>
-              <label class="block">
+            
+              <!---<template v-if="editor.current.slider.mode != 'standard'">--->
+              <label class="block pt-2">
                 <span class="block text-xs font-medium text-gray-500 mb-1.5">Tab button classes</span>
                 <ExpandableTextInput
                   v-model="editor.current.slider.tabClass"
@@ -212,8 +209,11 @@
                   monospace
                 />
               </label>
-            </template>
+            <!--</template>-->
           </div>
+          </template>
+
+          
         </div>
       </template>
     </div>
@@ -223,7 +223,7 @@
       <button type="button" title="Button icon" class="toolbar-icon" @click="openButtonIconPicker"><Image class="w-4 h-4" /></button>
       <template v-if="showButtonIconPicker">
         <div class="fixed inset-0 z-[10000]" @click="showButtonIconPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-64 space-y-2" @click.stop>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-64 space-y-2" :class="toolbarNearRightEdge ? 'right-0 left-auto' : ''" @click.stop>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">Lucide icon name</label>
             <div class="flex items-center gap-1">
@@ -264,22 +264,23 @@
       <button type="button" title="Text color" class="toolbar-icon" @click="showTextPicker = !showTextPicker"><Type class="w-4 h-4" /></button>
       <template v-if="showTextPicker">
         <div class="fixed inset-0 z-[10000]" @click="showTextPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-44" @click.stop>
-          <label class="flex items-center gap-1.5 mb-2 cursor-pointer text-[10px] text-gray-500">
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-80" :class="toolbarNearRightEdge ? 'right-0 left-auto' : ''" @click.stop>
+          <label class="block text-[11px] text-gray-500 mb-2 bg-slate-200 rounded p-1">Text Color</label>
+          <label class="flex items-center gap-1 mb-2 cursor-pointer text-[10px] text-gray-500">
             Custom
-            <input type="color" class="w-5 h-5 border rounded cursor-pointer" @input="pickTextColor" />
+            <input type="color" class="w-6 h-6 border rounded cursor-pointer" @input="pickTextColor" />
           </label>
-          <div class="grid grid-cols-6 gap-1">
+          <div class="grid grid-cols-8 gap-1">
             <button
               v-for="swatch in textSwatches"
               :key="swatch"
               type="button"
               :title="swatch"
-              class="w-5 h-5 rounded-full border-2"
+              class="w-6 h-6 rounded-full"
               :class="swatch"
               @click="pickTextSwatch(swatch)"
             ></button>
-            <button type="button" title="Clear" class="w-5 h-5 rounded-full border flex items-center justify-center text-gray-400" @click="clearTextColor">
+            <button type="button" title="Clear" class="w-6 h-6 rounded-full border flex items-center justify-center text-gray-400" @click="clearTextColor">
               <X class="w-2.5 h-2.5" />
             </button>
           </div>
@@ -290,22 +291,23 @@
       <button type="button" title="Fill color" class="toolbar-icon" @click="showFillPicker = !showFillPicker"><PaintBucket class="w-4 h-4" /></button>
       <template v-if="showFillPicker">
         <div class="fixed inset-0 z-[10000]" @click="showFillPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-44" @click.stop>
-          <label class="flex items-center gap-1.5 mb-2 cursor-pointer text-[10px] text-gray-500">
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-80" :class="toolbarNearRightEdge ? 'right-0 left-auto' : ''" @click.stop>
+          <label class="block text-[11px] text-gray-500 mb-2 bg-slate-200 rounded p-1">Fill Color</label>
+          <label class="flex items-center gap-1 mb-2 cursor-pointer text-[10px] text-gray-500">
             Custom
-            <input type="color" class="w-5 h-5 border rounded cursor-pointer" @input="pickFillColor" />
+            <input type="color" class="w-6 h-6 border rounded cursor-pointer" @input="pickFillColor" />
           </label>
-          <div class="grid grid-cols-6 gap-1">
+          <div class="grid grid-cols-8 gap-1">
             <button
               v-for="swatch in fillSwatches"
               :key="swatch"
               type="button"
               :title="swatch"
-              class="w-5 h-5 rounded-full border-2"
+              class="w-6 h-6 rounded-full"
               :class="swatch"
               @click="pickFillSwatch(swatch)"
             ></button>
-            <button type="button" title="Clear" class="w-5 h-5 rounded-full border flex items-center justify-center text-gray-400" @click="clearFill">
+            <button type="button" title="Clear" class="w-6 h-6 rounded-full border flex items-center justify-center text-gray-400" @click="clearFill">
               <X class="w-2.5 h-2.5" />
             </button>
           </div>
@@ -323,7 +325,7 @@
       </button>
       <template v-if="showImagePicker">
         <div class="fixed inset-0 z-[10000]" @click="showImagePicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" @click.stop>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" :class="toolbarNearRightEdge ? 'right-0 left-auto' : ''" @click.stop>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">Image URL</label>
             <div class="flex items-center gap-1">
@@ -368,7 +370,7 @@
       <button type="button" title="Link URL" class="toolbar-icon" @click="openLinkPicker"><Link class="w-4 h-4" /></button>
       <template v-if="showLinkPicker">
         <div class="fixed inset-0 z-[10000]" @click="showLinkPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" @click.stop>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" :class="toolbarNearRightEdge ? 'right-0 left-auto' : ''" @click.stop>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">URL</label>
             <div class="flex items-center gap-1">
@@ -659,7 +661,7 @@ const FILL_SHADES = [300, 500, 700]
 const BG_COLOR_CLASS_RE = new RegExp(`^bg-(${(twclasses.colors as string[]).join('|')})-\\d+$`)
 const fillSwatches = (twclasses.colors as string[]).flatMap((color) => FILL_SHADES.map((shade) => `bg-${color}-${shade}`))
 const TEXT_COLOR_CLASS_RE = new RegExp(`^text-(${(twclasses.colors as string[]).join('|')})-\\d+$`)
-const textSwatches = (twclasses.colors as string[]).flatMap((color) => FILL_SHADES.map((shade) => `text-${color}-${shade}`))
+const textSwatches = (twclasses.colors as string[]).flatMap((color) => FILL_SHADES.map((shade) => `bg-${color}-${shade}`))
 
 // A real bug, fixed here: was `!!editor.current?.blocks` - every Element,
 // container or leaf, has a `blocks: []` array from the base constructor
@@ -802,7 +804,9 @@ function updatePosition() {
   if (!el) return
   const rect = el.getBoundingClientRect()
   top.value = Math.max(4, rect.top - 36)
-  left.value = rect.left
+  // Clamp toolbar left edge so the toolbar never extends past the right
+  // edge of the viewport. 520px covers the widest toolbar + any popover.
+  left.value = Math.max(4, Math.min(rect.left, window.innerWidth - 520))
 }
 
 // The Slider settings popover is tall enough (a dozen-plus controls, five
@@ -817,6 +821,12 @@ function updatePosition() {
 // toolbar's own movement both stay accounted for automatically.
 const TOOLBAR_HEIGHT = 34
 const POPOVER_MARGIN = 12
+
+// Popovers open from the toolbar's left edge by default (`left-0`). When
+// the toolbar is within 400px of the viewport's right edge, flip popovers
+// to open from the right edge (`right-0`) so they don't overflow offscreen.
+const toolbarNearRightEdge = computed(() => window.innerWidth - left.value < 400)
+
 const sliderPopoverOpensUpward = computed(() => {
   const spaceBelow = window.innerHeight - (top.value + TOOLBAR_HEIGHT) - POPOVER_MARGIN
   return spaceBelow < 320 && top.value > spaceBelow

@@ -57,8 +57,8 @@
           v-model="categoryFilter"
           class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
         >
-          <option value="">All categories</option>
-          <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+          <option value="" class="capitalize">All categories</option>
+          <option v-for="cat in categories" :key="cat" :value="cat" class="capitalize">{{ cat }}</option>
         </select>
       </div>
     </div>
@@ -94,7 +94,7 @@
                 <Puzzle class="w-4 h-4 text-teal-400 inline" /> {{ snippet.name }}
               </span>
             </td>
-            <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ snippet.category || '—' }}</td>
+            <td class="py-2.5 px-4 text-slate-400 light:text-slate-600 capitalize">{{ snippet.category || '—' }}</td>
             <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ new Date(snippet.updatedAt).toLocaleString() }}</td>
             <td class="py-2.5 px-4" @click.stop>
               <button @click="openSnippetTab(snippet.id)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 mr-3">Edit</button>
@@ -125,7 +125,7 @@ const importResult = ref<{ created: number; skipped: number; errors: string[] } 
 
 const categories = computed(() => {
   const set = new Set(snippetsStore.snippets.map((s) => s.category).filter(Boolean))
-  return [...set]
+  return [...set].sort((a, b) => a.localeCompare(b))
 })
 
 const filteredSnippets = computed(() => {
