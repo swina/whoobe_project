@@ -20,18 +20,19 @@ export function isStoredUrlStale(storedUrl: string): boolean {
   try {
     const parsed = new URL(storedUrl)
     const currentHost = window.location.hostname
-    const currentPort = window.location.port || '80'
     // If the hostname differs, the stored URL is stale (cookie won't be sent)
     if (parsed.hostname !== currentHost && parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') {
       return true
     }
-    // Internal-only backend ports (asset-processor on 3002, core-api on 3003)
-    // are never reachable from a browser on a remote hostname — those ports
-    // listen on 127.0.0.1 only and have no SSL. The stored URL is stale.
-    const internalPorts = ['3002', '3003', '3006']
-    if (parsed.port && internalPorts.includes(parsed.port)) {
-      const isLocalhost = currentHost === 'localhost' || currentHost === '127.0.0.1'
-      if (!isLocalhost) return true
+    // In production (HTTPS), internal backend ports are never reachable from
+    // the browser — those ports listen on 127.0.0.1 only and have no SSL.
+    // In local dev (HTTP with port numbers), services are on direct ports.
+    if (window.location.protocol === 'https:') {
+      const internalPorts = ['3002', '3003', '3006']
+      if (parsed.port && internalPorts.includes(parsed.port)) {
+        const isLocalhost = currentHost === 'localhost' || currentHost === '127.0.0.1'
+        if (!isLocalhost) return true
+      }
     }
     return false
   } catch {

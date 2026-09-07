@@ -4,11 +4,19 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
-## [Fix: DAM asset-processor timeout in production — direct port 3002 used instead of nginx proxy] — 2026-09-07
+## [Fix: DAM asset-processor timeout in production — proxy URLs instead of presigned S3 URLs + local dev hostname support] — 2026-09-07
 
-- **`apps/admin-dashboard/src/utils/dam-api.ts`**: `getDefaultAssetProcessorUrl()` now respects `VITE_ASSET_PROCESSOR_URL` from `.env` first, and for non-localhost hostnames omits the port entirely (production traffic goes through nginx on 443 which routes `/api/v1/*` to the asset-processor on port 3002). Previously the function always used `window.location.hostname:port`, which caused the SPA to reach for the asset-processor directly on port 3002 — an internal-only port with no SSL that times out from a browser.
-- **`apps/admin-dashboard/src/utils/auth-api.ts`**: Same fix applied to `getDefaultCoreApiUrl()` — respects `VITE_CORE_API_URL` env var, strips port for non-localhost.
-- **`apps/admin-dashboard/src/utils/stale-localhost.ts`**: `isStoredUrlStale()` now also rejects stored URLs whose port matches known internal backend ports (`3002`, `3003`, `3006`) when the page is not on localhost — prevents a manually entered `:3002` URL in the DAM Settings UI from persisting and causing timeouts.
+- **`apps/admin-dashboard/src/utils/editor-urls.ts`**: `getWhoobeOneSpikeUrl()` and `getWhoobeStudioUrl()` now distinguish HTTP (local dev on a LAN hostname like whoobecms.local:3000) from HTTPS (production behind nginx). HTTP dev → direct port 3006/3004. HTTPS production → `/whoobe-one/` / `/whoobe-studio/` nginx path. Previously used the nginx path for any non-localhost hostname, breaking the embedded editor in local LAN dev.
+- **`apps/admin-dashboard/src/utils/stale-localhost.ts`**: `isStoredUrlStale()` now only rejects internal backend ports (`3002`, `3003`, `3006`) when the page is served over **HTTPS** (production). On HTTP (local dev), ports are expected and valid.
+- **`apps/asset-processor/src/server.ts`**: Added `forwardOrigin()` and `proxyUrl()` helpers. Changed all asset listing routes to return proxy URLs (`{origin}/dam-asset/{s3Key}`) instead of `provider.getAssetUrl()` which generated presigned S3 URLs with the internal MinIO endpoint (`127.0.0.1:9000`). Updated `finalizeAssetUpload` to accept an `origin` parameter.
+- **`apps/whoobe-one-spike/src/dam-api.ts`**: `getDefaultAssetProcessorUrl()` now respects `VITE_ASSET_PROCESSOR_URL` env var first.
+- **`apps/whoobe-one-spike/src/resolve-display-url.ts`**: Same fix.
+- **`apps/whoobe-one-spike/src/env.d.ts`**: Added `VITE_ASSET_PROCESSOR_URL` declaration.
+- **`apps/whoobe-studio/src/resolve-display-url.ts`**: Same fix.
+- **`apps/admin-dashboard/src/utils/dam-api.ts`**: Respects `VITE_ASSET_PROCESSOR_URL` from `.env` first.
+- **`apps/admin-dashboard/src/utils/auth-api.ts`**: Same for `VITE_CORE_API_URL`.
+- **`.env`**: Changed `WHOOBE_HOSTNAME` from `develop.local` to `whoobecms.local`.
+- **`dev-cms.sh`**: Updated `--hostname` example to `whoobecms.local`.
 
 ---
 

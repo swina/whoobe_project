@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_FONT_FAMILIES?: string
+  readonly VITE_ASSET_PROCESSOR_URL?: string
 }
 
 interface ImportMeta {
