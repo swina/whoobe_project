@@ -7,7 +7,7 @@
         v-if="isConnecting"
         class="absolute inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-xs flex flex-col items-center justify-center space-y-3 text-slate-300 light:text-slate-700"
       >
-        <span class="animate-spin text-2xl">⏳</span>
+        <Loader class="animate-spin w-14 h-14 text-slate-700 light:text-slate-700"/>
         <span class="text-xs font-semibold">Connecting to Whoobe One…</span>
       </div>
     </div>
@@ -40,6 +40,7 @@
 //   would mean that scanner running against this app's *entire* page.
 //   The iframe keeps the two fully isolated.
 import { ref, computed } from 'vue'
+import { Loader } from '@lucide/vue'
 import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
 
 const props = defineProps<{

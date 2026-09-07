@@ -190,10 +190,13 @@ const PLACEHOLDER_IMAGE =
 
 /** Gives a freshly-created Image element a visible placeholder instead of
  * an empty/broken <img> with no src - see the call site in
- * BlockEditor.vue's drop handler. */
+ * BlockEditor.vue's drop handler. Reads the global default placeholder URL
+ * from `window.__whoobeDefaultPlaceholder` (set by Editor.vue on mount),
+ * falling back to the hardcoded SVG when none is configured. */
 export function applyImagePlaceholder(element: WhoobeElement): void {
   if (element.element === 'img' && !element.image?.url) {
-    element.image = { url: PLACEHOLDER_IMAGE }
+    const customUrl = typeof window !== 'undefined' ? (window as any).__whoobeDefaultPlaceholder : null
+    element.image = { url: customUrl || PLACEHOLDER_IMAGE }
   }
 }
 

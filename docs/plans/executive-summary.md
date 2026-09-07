@@ -2,7 +2,7 @@
 ## Proposta Tecnica: Whoobe CMS - PIM, DAM e Headless CMS
 
 ## 1. Executive Summary
-L'attuale panorama tecnologico dei nostri progetti è frammentato tra WordPress (per siti editoriali minori), Strapi / Contentful (per applicazioni headless) e Pimcore (per la gestione complessa dei dati aziendali e PIM). Questa frammentazione genera:
+L'attuale panorama tecnologico di molti progetti CMS è frammentato tra WordPress (per siti editoriali minori), Strapi / Contentful (per applicazioni headless) e Pimcore (per la gestione complessa dei dati aziendali e PIM). Questa frammentazione genera:
 
 * Elevato debito tecnico e manutenzione di stack differenti (PHP/Symfony vs Node/JavaScript).
 * Costi SaaS crescenti ed eccessivi vincoli sulle API (Contentful).

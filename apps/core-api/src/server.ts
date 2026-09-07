@@ -1436,6 +1436,36 @@ app.post('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_WRITE), a
   }
 });
 
+// Default image placeholder — a pimcorePath pointing to a DAM asset used as
+// the default placeholder for newly-created image elements. Stored in the
+// first website's settings JSONB for simplicity (no separate table needed).
+app.get('/whoobe-one/settings/default-placeholder-image', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const all = await listWebsites();
+    const first = all[0];
+    const path = first?.settings && typeof first.settings === 'object' && !Array.isArray(first.settings)
+      ? (first.settings as Record<string, unknown>).defaultPlaceholderImage
+      : null;
+    res.json({ pimcorePath: typeof path === 'string' ? path : null });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to read default placeholder' });
+  }
+});
+
+app.put('/whoobe-one/settings/default-placeholder-image', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { pimcorePath } = req.body ?? {};
+    const all = await listWebsites();
+    if (!all.length) { res.status(404).json({ error: 'No website found' }); return; }
+    const first = all[0];
+    const settings = { ...(first.settings as Record<string, unknown> ?? {}), defaultPlaceholderImage: typeof pimcorePath === 'string' ? pimcorePath : null };
+    await updateWebsite(first.id, { settings });
+    res.json({ pimcorePath: typeof pimcorePath === 'string' ? pimcorePath : null });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to save default placeholder' });
+  }
+});
+
 app.get('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const website = await getWebsite(req.params.id);
