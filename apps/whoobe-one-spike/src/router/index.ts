@@ -26,6 +26,10 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'Main', component: Main },
     { path: '/editor', name: 'Editor', component: Editor },
+    // Standalone preview view — opened inside an iframe by
+    // DocumentPreview.vue for responsive device previews. Reads the
+    // serialized document from sessionStorage.
+    { path: '/preview', name: 'Preview', component: () => import('../views/PreviewView.vue') },
     // Website search (search-engine plan Phase 4): real search over the
     // headless /public/search endpoint, no catch-all interplay - registered
     // before it so "search" is never treated as a page slug.

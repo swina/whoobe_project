@@ -6,13 +6,30 @@ All notable changes to the Whoobe CMS project.
 
 ## [AI Website Wizard: generate complete website structure from natural language] — 2026-09-07
 
-- **`packages/core/src/ai/prompts.ts`**: Added `buildWebsiteStructurePrompt()` — generates a compact prompt instructing the LLM to output a JSON structure with `website`, `pages` (3 exact, each with full Element tree), and `snippets` (3 exact). Added `validateWebsiteStructure()` — validates the shape, required fields, page/snippet counts, and per-tree node limits (30 pages, 15 snippets). Exported `collectNodes()` for reuse.
-- **`packages/core/src/ai/providers.ts`**: Added `maxTokens` option to `AiGenerateInput` interface, threaded through OpenAI, Anthropic, and Google provider functions. Defaults to 4096 for backward compatibility. `parseJsonText()` now includes the raw output snippet in the error message for debugging.
-- **`apps/core-api/src/server.ts`**: Added `POST /ai/generate-website-structure` — generates a website structure from a prompt with retry-with-feedback loop (up to 3 attempts, feeding parse/validation errors back to the model). Added `POST /whoobe-one/websites/from-ai` — creates the website, all pages, and all snippets from the generated structure. Both behind `OBJECTS_WRITE` permission.
-- **`apps/admin-dashboard/src/utils/websites-api.ts`**: Added `generateAiWebsiteStructure()` and `createWebsiteFromAi()` API functions with `AiWebsiteStructure` type.
-- **`apps/admin-dashboard/src/stores/websitesStore.ts`**: Added `generateStructure()` and `createFromAiStructure()` actions.
-- **`apps/admin-dashboard/src/components/settings/AiWebsiteWizardModal.vue`**: New modal with prompt input, generating/preview/creating states, error handling, and result preview showing website name, pages list, and snippets list.
-- **`apps/admin-dashboard/src/components/settings/WebsiteSettingsCard.vue`**: Added "AI Website Wizard" button with Sparkles icon next to "+ New Website" button.
+- **`packages/core/src/ai/prompts.ts`**: Added `buildWebsiteStructurePrompt()` and `validateWebsiteStructure()`, exported `collectNodes()`.
+- **`packages/core/src/ai/providers.ts`**: Added `maxTokens` to `AiGenerateInput`, threaded through all providers. `parseJsonText()` shows raw output in errors.
+- **`apps/core-api/src/server.ts`**: Added `POST /ai/generate-website-structure` (with retry-with-feedback loop) and `POST /whoobe-one/websites/from-ai`.
+- **`apps/admin-dashboard/src/utils/websites-api.ts`**: Added `generateAiWebsiteStructure()`, `createWebsiteFromAi()`, `AiWebsiteStructure` type.
+- **`apps/admin-dashboard/src/stores/websitesStore.ts`**: Added `generateStructure()`, `createFromAiStructure()`.
+- **`apps/admin-dashboard/src/components/settings/AiWebsiteWizardModal.vue`**: New modal with prompt input, preview, error handling.
+- **`apps/admin-dashboard/src/components/settings/WebsiteSettingsCard.vue`**: Added "AI Website Wizard" button.
+
+## [Grid control, preview iframe, slider dots, Alpine fix, theme name prompt] — 2026-09-07
+
+- **`apps/whoobe-one-spike/src/components/tailwind-controls/GridControl.vue`**: New visual control using `grid.js` column-span distribution patterns. Column count buttons (1–6) with valid distribution patterns for each count.
+- **`apps/whoobe-one-spike/src/scripts/tw.groups.js`**: Grid group now has "gap", "columns", and "column span" controls. Added "col span" group for all elements.
+- **`apps/whoobe-one-spike/src/components/TailwindCustomizer.vue`**: Registered `GridControl` in component map.
+- **`apps/whoobe-one-spike/src/components/DocumentPreview.vue`**: Tablet/mobile preview now uses a real iframe so responsive breakpoints resolve against the device viewport.
+- **`apps/whoobe-one-spike/src/router/index.ts`**: Added `/preview` route.
+- **`apps/whoobe-one-spike/src/views/PreviewView.vue`**: New standalone preview view for iframe, strips default root classes (`gap-4`, `min-h-[600px]`, `bg-white`, `p-6`).
+- **`apps/whoobe-one-spike/src/components/preview/BlockSliderPreview.vue`**: Added dot navigation with `showDots`, `dotClass`, `activeDotClass`, `dotContainerClass` settings.
+- **`apps/whoobe-one-spike/src/components/preview/BlockContainerPreview.vue`**: Added `Alpine.initTree` on mount for Alpine support in preview iframe.
+- **`apps/whoobe-one-spike/src/components/preview/BlockElementPreview.vue`**: Same Alpine init fix.
+- **`apps/whoobe-one-spike/src/scripts/ElementsClass.js`**: Added `showDots`, `dotClass`, `activeDotClass`, `dotContainerClass` defaults to `Slider()`.
+- **`apps/whoobe-one-spike/src/scripts/ElementsClass.d.ts`**: Added `showDots`, `dotClass`, `activeDotClass`, `dotContainerClass` to `ElementSlider` interface.
+- **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: Added dot indicator checkbox and dot/active-dot/dot-container class inputs.
+- **`apps/admin-dashboard/src/components/themes/ThemesView.vue`**: "New Theme" now prompts for a name.
+- **`apps/whoobe-one-spike/src/scripts/tw.classes.js`**: Removed `colspan` from flex group (now in dedicated group).
 
 ---
 

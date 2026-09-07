@@ -4,7 +4,7 @@
     <div class="flex flex-col md:flex-row md:items-center justify-between p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 light:from-white light:via-indigo-50 light:to-white border border-slate-800 light:border-slate-200 shadow-xl relative overflow-hidden">
       <div class="absolute -right-10 -bottom-10 w-60 h-60 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
       <div class="relative z-10 space-y-1">
-        <h2 class="text-2xl font-bold text-white tracking-tight">Welcome back, Administrator 👋</h2>
+        <h2 class="text-2xl font-bold text-white light:text-black tracking-tight">Welcome back, Administrator 👋</h2>
         <p class="text-slate-400 light:text-slate-600 text-sm">System performance and repository status across Whoobe CMS modules.</p>
       </div>
       <div class="mt-4 md:mt-0 flex items-center space-x-3 relative z-10">

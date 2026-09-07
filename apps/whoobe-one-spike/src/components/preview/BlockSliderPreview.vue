@@ -62,6 +62,28 @@
           <SliderNavIcon :name="settings.homeIcon || 'home'" class="w-full h-full" />
         </button>
       </template>
+
+      <!-- Dot navigation: small clickable dots under the slide viewport,
+           one per slide, highlighting the current one — the standard
+           "dots" slider indicator. Uses `dotClass` for inactive dots,
+           `activeDotClass` for the current slide's dot, and `dotContainerClass`
+           for the wrapper row; all three are free-text Tailwind class lists
+           (the wrapper defaults to a centered row). Clicking a dot jumps to
+           that slide. Shown regardless of mode ('standard' or 'tabs') when
+           `showDots` is on and there's more than one slide. -->
+      <div
+        v-if="settings.showDots && doc.blocks.length > 1"
+        :class="settings.dotContainerClass || 'flex items-center justify-center gap-2 pt-3'"
+      >
+        <button
+          v-for="(slide, idx) in doc.blocks"
+          :key="slide.id"
+          type="button"
+          :aria-label="`Go to slide ${idx + 1}`"
+          :class="idx === current ? settings.activeDotClass : settings.dotClass"
+          @click="onNavClick(() => onDotClick(idx))"
+        ></button>
+      </div>
     </div>
 
     <SliderTabsNav
@@ -167,6 +189,7 @@ const DEFAULT_SLIDER_SETTINGS = {
   loop: true,
   showNav: true,
   showHome: true,
+  showDots: true,
   mode: 'standard' as const,
   tabsPosition: 'below' as const,
   navClass: 'flex items-center justify-center gap-1.5 flex-wrap px-2 py-2',
@@ -176,6 +199,9 @@ const DEFAULT_SLIDER_SETTINGS = {
     'px-2.5 py-1 rounded-full text-xs font-medium truncate max-w-[9rem] transition-colors border bg-white text-gray-600 border-gray-300 hover:border-indigo-400',
   activeTabClass:
     'px-2.5 py-1 rounded-full text-xs font-medium truncate max-w-[9rem] transition-colors border bg-indigo-600 text-white border-indigo-600',
+  dotClass: 'w-2.5 h-2.5 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors',
+  activeDotClass: 'w-2.5 h-2.5 rounded-full bg-indigo-600 transition-colors',
+  dotContainerClass: 'flex items-center justify-center gap-2 pt-3',
   arrowIcon: 'chevron' as const,
   homeIcon: 'home' as const,
 }
@@ -233,6 +259,11 @@ function selectTab(index: number) {
   onNavClick(() => {
     current.value = index
   })
+}
+
+// Dots-mode nav: same direct jump as tabs.
+function onDotClick(index: number) {
+  current.value = index
 }
 
 let timer: ReturnType<typeof window.setInterval> | null = null

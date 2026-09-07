@@ -106,8 +106,10 @@ async function load() {
 }
 
 async function addTheme() {
+  const name = prompt('Theme name:', '')
+  if (!name?.trim()) return
   try {
-    const created = await createTheme(getDefaultCoreApiUrl(), { name: 'New Theme' })
+    const created = await createTheme(getDefaultCoreApiUrl(), { name: name.trim() })
     themes.value.push(created)
   } catch (e: any) {
     alert(e?.message || 'Failed to create theme')

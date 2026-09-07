@@ -291,7 +291,7 @@ const tagBgClass = computed(() => {
 
 const classe = computed(() => {
   const doc = props.doc as any
-  let cls = `${doc.css.css ?? ''} ${doc.css.container ?? ''} relative cursor-pointer p-1`
+  let cls = `${doc.css.css ?? ''} ${doc.css.container ?? ''} relative cursor-pointer p-2`
   cls += isSelected.value ? ' border-2 border-red-400' : ' border border-dashed border-transparent hover:border-red-300'
   // An empty container (no children yet, e.g. one just added from the
   // palette) has nothing to give it visible size - without a floor here

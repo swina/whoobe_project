@@ -122,6 +122,9 @@ let stopAnimation: (() => void) | null = null
 
 onMounted(() => {
   if (rootEl.value) stopAnimation = mountAnimation(props.element, rootEl.value)
+  if (rootEl.value && (window as any).Alpine) {
+    nextTick(() => (window as any).Alpine.initTree(rootEl.value))
+  }
 })
 
 onUnmounted(() => {

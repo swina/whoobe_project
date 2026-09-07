@@ -65,6 +65,7 @@ import BgGradientControl from './tailwind-controls/BgGradientControl.vue'
 import BgGradientPresetsControl from './tailwind-controls/BgGradientPresetsControl.vue'
 import FontControl from './tailwind-controls/FontControl.vue'
 import SemanticControl from './tailwind-controls/SemanticControl.vue'
+import GridControl from './tailwind-controls/GridControl.vue'
 
 interface TwControl {
   name: string
@@ -122,6 +123,7 @@ const componentMap: Record<string, unknown> = {
   BgGradientPresets: BgGradientPresetsControl,
   TextFont: FontControl,
   Semantic: SemanticControl,
+  Grid: GridControl,
 }
 
 function controlComponent(name: string) {

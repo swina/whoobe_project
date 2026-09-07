@@ -141,7 +141,7 @@ var classes = {
         { label: '83%' , value: 'w-5/6'} , 
         { label: '90%' , value: 'w-11/12'} , 
         { label: '100%', value: 'w-full'} ,
-        { label: 'screen', value: 'w-screen'} 
+        { label: 'screen', value: 'w-screen'}
     ],
     height: [
         { label: 'auto', value: 'h-auto' }, 
