@@ -32,15 +32,23 @@ export interface MfaVerifySetupResponse {
   recoveryCodes: string[]
 }
 
-// Mirrors dam-api.ts's getDefaultAssetProcessorUrl(): default to whatever
-// hostname and port the page itself was loaded from, so API calls go
-// through the Vite proxy (vite.config.ts) which forwards them to the
-// correct backend port. This makes the app work behind a tunnel (e.g.
-// Cloudflare) that only exposes the frontend port.
+// Respect the build-time env var first (set in .env for production). For
+// localhost dev, use the Vite dev server's own hostname:port — the proxy
+// in vite.config.ts forwards /whoobe-one, /auth, etc. to the core-api on
+// port 3003. For remote hostnames (production behind nginx), omit the port;
+// nginx serves everything on 443 and routes the API paths to port 3003.
 export function getDefaultCoreApiUrl(): string {
+  if (import.meta.env.VITE_CORE_API_URL) {
+    return import.meta.env.VITE_CORE_API_URL.replace(/\/+$/, '')
+  }
   if (typeof window !== 'undefined' && window.location?.hostname) {
-    const port = window.location.port
-    return `${window.location.protocol}//${window.location.hostname}${port ? `:${port}` : ''}`
+    const hostname = window.location.hostname
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
+    if (isLocalhost) {
+      const port = window.location.port || '3000'
+      return `${window.location.protocol}//${hostname}:${port}`
+    }
+    return `${window.location.protocol}//${hostname}`
   }
   return 'http://localhost:3000'
 }

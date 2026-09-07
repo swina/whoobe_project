@@ -4,6 +4,14 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Fix: DAM asset-processor timeout in production — direct port 3002 used instead of nginx proxy] — 2026-09-07
+
+- **`apps/admin-dashboard/src/utils/dam-api.ts`**: `getDefaultAssetProcessorUrl()` now respects `VITE_ASSET_PROCESSOR_URL` from `.env` first, and for non-localhost hostnames omits the port entirely (production traffic goes through nginx on 443 which routes `/api/v1/*` to the asset-processor on port 3002). Previously the function always used `window.location.hostname:port`, which caused the SPA to reach for the asset-processor directly on port 3002 — an internal-only port with no SSL that times out from a browser.
+- **`apps/admin-dashboard/src/utils/auth-api.ts`**: Same fix applied to `getDefaultCoreApiUrl()` — respects `VITE_CORE_API_URL` env var, strips port for non-localhost.
+- **`apps/admin-dashboard/src/utils/stale-localhost.ts`**: `isStoredUrlStale()` now also rejects stored URLs whose port matches known internal backend ports (`3002`, `3003`, `3006`) when the page is not on localhost — prevents a manually entered `:3002` URL in the DAM Settings UI from persisting and causing timeouts.
+
+---
+
 ## [Add deploy.sh script for rsync-based deployment] — 2026-09-06
 
 - **`deploy.sh`**: New script that syncs local code to the remote server via rsync (excludes `.env`, `.git`, `.turbo`, `node_modules`), then SSHes into the remote to run `pnpm install`, `pnpm build`, `pm2 restart`. Accepts `--dry-run` flag. Uses `DEPLOY_HOST` / `DEPLOY_PATH` env vars with sensible defaults for the current setup.
