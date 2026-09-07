@@ -80,6 +80,26 @@
       <BlockElement v-else :element="activeSlide" :level="level + 1" :data-context="dataContext" />
     </template>
     <div v-else class="text-xs text-gray-400 italic py-6 text-center">No slides yet - click "+" to add one.</div>
+
+    <!-- Dot navigation mirroring preview/BlockSliderPreview.vue - centered
+         dots below the active slide, one per slide, highlighting the
+         current one. Editing-time counterpart so the editor canvas and the
+         preview render the same nav. -->
+    <div
+      v-if="showDots && doc.blocks.length > 1"
+      class="flex items-center justify-center gap-2 mt-4"
+      @click.stop
+    >
+      <button
+        v-for="(slide, index) in doc.blocks"
+        :key="slide.id"
+        type="button"
+        :aria-label="`Go to slide ${index + 1}`"
+        class="w-2.5 h-2.5 rounded-full transition-colors"
+        :class="index === activeIndex ? 'bg-indigo-600' : 'bg-gray-300 hover:bg-gray-400'"
+        @click="goToSlideNoSelect(index)"
+      ></button>
+    </div>
   </component>
 </template>
 
@@ -150,6 +170,10 @@ const activeSlide = computed<WhoobeElement | null>(() => props.doc.blocks[active
 // which reads the same `slider.mode` to pick between arrows/home and a row
 // of named tabs at preview time.
 const mode = computed<'standard' | 'tabs'>(() => (((props.doc as any).slider?.mode as 'standard' | 'tabs' | undefined) ?? 'standard'))
+const showDots = computed(() => {
+  const val = (props.doc as any).slider?.showDots
+  return val == null ? true : val
+})
 
 function tabLabel(slide: WhoobeElement, index: number): string {
   return (slide as any).tabLabel || `Slide ${index + 1}`
@@ -222,6 +246,10 @@ function goToSlide(index: number) {
   activeIndex.value = index
   const slide = props.doc.blocks[index]
   if (slide) editor.setCurrent(slide)
+}
+
+function goToSlideNoSelect(index: number) {
+  activeIndex.value = index
 }
 
 function addSlide() {
