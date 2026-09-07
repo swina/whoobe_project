@@ -205,7 +205,11 @@ const DEFAULT_SLIDER_SETTINGS = {
   arrowIcon: 'chevron' as const,
   homeIcon: 'home' as const,
 }
-const settings = computed(() => ({ ...DEFAULT_SLIDER_SETTINGS, ...(props.doc as any).slider }))
+const settings = computed(() => {
+  const s = { ...DEFAULT_SLIDER_SETTINGS, ...(props.doc as any).slider }
+  if (s.showDots == null) s.showDots = true
+  return s
+})
 
 function arrowIconName(direction: 'left' | 'right'): SliderNavIconName {
   return `${settings.value.arrowIcon || 'chevron'}-${direction}` as SliderNavIconName
