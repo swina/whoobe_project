@@ -102,14 +102,24 @@ export interface DamUploadResult {
   asset: DamAssetRecordWithUrls
 }
 
-// "localhost" only ever means the browser's own machine, which is wrong
-// whenever the SPA is loaded from a LAN hostname/IP (e.g. develop.local)
-// and the backend runs elsewhere on that same host. Default to whatever
-// hostname the page itself was loaded from instead of hardcoding one.
+// Respect the build-time env var first (set in .env for production, e.g.
+// VITE_ASSET_PROCESSOR_URL=https://whoobecms.example.com). For localhost
+// dev, use the Vite dev server's own hostname:port (the vite.config.ts proxy
+// forwards /api/v1/dam to the asset-processor on port 3002). For remote
+// hostnames (production behind nginx), omit the port — nginx serves
+// everything on 443 and routes /api/v1/* to port 3002 internally.
 export function getDefaultAssetProcessorUrl(): string {
+  if (import.meta.env.VITE_ASSET_PROCESSOR_URL) {
+    return import.meta.env.VITE_ASSET_PROCESSOR_URL.replace(/\/+$/, '')
+  }
   if (typeof window !== 'undefined' && window.location?.hostname) {
-    const port = window.location.port
-    return `${window.location.protocol}//${window.location.hostname}${port ? `:${port}` : ''}`
+    const hostname = window.location.hostname
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
+    if (isLocalhost) {
+      const port = window.location.port || '3000'
+      return `${window.location.protocol}//${hostname}:${port}`
+    }
+    return `${window.location.protocol}//${hostname}`
   }
   return 'http://localhost:3000'
 }

@@ -25,6 +25,14 @@ export function isStoredUrlStale(storedUrl: string): boolean {
     if (parsed.hostname !== currentHost && parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') {
       return true
     }
+    // Internal-only backend ports (asset-processor on 3002, core-api on 3003)
+    // are never reachable from a browser on a remote hostname — those ports
+    // listen on 127.0.0.1 only and have no SSL. The stored URL is stale.
+    const internalPorts = ['3002', '3003', '3006']
+    if (parsed.port && internalPorts.includes(parsed.port)) {
+      const isLocalhost = currentHost === 'localhost' || currentHost === '127.0.0.1'
+      if (!isLocalhost) return true
+    }
     return false
   } catch {
     return false
