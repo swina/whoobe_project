@@ -37,14 +37,14 @@
             type="text"
             required
             placeholder="e.g. Hero with image"
-            class="w-full px-2 py-1.5 rounded-md border border-gray-300 focus:outline-none focus:border-indigo-500"
+            class="w-full px-2 py-1.5 rounded-md border border-gray-300 focus:outline-none focus:border-indigo-500 capitalize"
           />
         </div>
 
         <div>
           <label class="block font-semibold text-gray-600 mb-1">Category</label>
           <select v-model="categoryChoice" class="w-full px-2 py-1.5 rounded-md border border-gray-300 focus:outline-none focus:border-indigo-500">
-            <option v-for="c in categoryOptions" :key="c" :value="c">{{ c }}</option>
+            <option v-for="c in categoryOptions.sort()" :key="c" :value="c" class="capitalize">{{ c }}</option>
             <option value="__new__">+ New category…</option>
           </select>
           <input
