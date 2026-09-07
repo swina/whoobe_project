@@ -71,22 +71,20 @@
         <div v-if="activeSubSection === 'general'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-6">
           <div class="space-y-4">
             <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">General Options</h3>
-            <div class="flex items-center justify-between py-2 border-b border-slate-800 light:border-slate-200">
-              <div>
-                <div class="text-sm font-medium text-slate-200 light:text-slate-800">Auto Synchronization</div>
-                <div class="text-xs text-slate-500">Automatically sync changes from Whoobe CMS backend</div>
-              </div>
-              <input type="checkbox" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-slate-800 light:border-slate-200" />
-            </div>
 
             <div class="flex items-center justify-between py-2 border-b border-slate-800 light:border-slate-200">
               <div>
-                <div class="text-sm font-medium text-slate-200 light:text-slate-800">Debug Logging</div>
-                <div class="text-xs text-slate-500">Enable verbose logging for API calls and GraphQL queries</div>
+                <div class="text-sm font-medium text-slate-200 light:text-slate-800">Default Image Placeholder</div>
+                <div class="text-xs text-slate-500">A DAM asset shown as placeholder for newly-created image elements</div>
               </div>
-              <input type="checkbox" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-slate-800 light:border-slate-200" />
+              <div class="flex items-center gap-2">
+                <span v-if="placeholderPimcorePath" class="text-xs text-slate-400 font-mono truncate max-w-[200px]">{{ placeholderPimcorePath }}</span>
+                <button @click="openPicker" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40">Pick</button>
+                <button v-if="placeholderPimcorePath" @click="clearPlaceholder" class="text-xs text-rose-400 hover:text-rose-300">Clear</button>
+              </div>
             </div>
           </div>
+          <AssetPickerModal :is-open="pickerOpen" @close="pickerOpen = false" @select="onPlaceholderSelected" />
         </div>
       </div>
     </div>
@@ -94,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import DamConfigManager from '../components/dam/DamConfigManager.vue'
 import MfaSettingsCard from '../components/auth/MfaSettingsCard.vue'
 import ClassSettingsCard from '../components/objects/ClassSettingsCard.vue'
@@ -105,6 +103,11 @@ import FigmaSettingsCard from '../components/settings/FigmaSettingsCard.vue'
 import UsersView from './UsersView.vue'
 import RolesView from './RolesView.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
+import { useAuthStore } from '../stores/authStore'
+import { fetchDefaultPlaceholderImage, saveDefaultPlaceholderImage } from '../utils/websites-api'
+import { useToastStore } from '../stores/toastStore'
+import AssetPickerModal from '../components/dam/AssetPickerModal.vue'
+import type { AssetItem } from '../stores/damStore'
 import {
   Sliders,
   HardDrive,
@@ -122,6 +125,44 @@ import {
 } from '@lucide/vue'
 
 const tabsStore = useTabsStore()
+const authStore = useAuthStore()
+const toastStore = useToastStore()
+
+const placeholderPimcorePath = ref<string | null>(null)
+const pickerOpen = ref(false)
+
+async function loadPlaceholder() {
+  try {
+    placeholderPimcorePath.value = await fetchDefaultPlaceholderImage(authStore.config.coreApiUrl)
+  } catch { /* ignore */ }
+}
+
+function openPicker() {
+  pickerOpen.value = true
+}
+
+async function onPlaceholderSelected(asset: AssetItem) {
+  pickerOpen.value = false
+  placeholderPimcorePath.value = asset.pimcorePath
+  try {
+    await saveDefaultPlaceholderImage(authStore.config.coreApiUrl, asset.pimcorePath)
+    toastStore.show('Default placeholder updated')
+  } catch (e: any) {
+    toastStore.show(e?.message || 'Failed to save placeholder')
+  }
+}
+
+async function clearPlaceholder() {
+  placeholderPimcorePath.value = null
+  try {
+    await saveDefaultPlaceholderImage(authStore.config.coreApiUrl, null)
+    toastStore.show('Default placeholder cleared')
+  } catch (e: any) {
+    toastStore.show(e?.message || 'Failed to clear placeholder')
+  }
+}
+
+onMounted(loadPlaceholder)
 
 const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'general', name: 'General', icon: Sliders },

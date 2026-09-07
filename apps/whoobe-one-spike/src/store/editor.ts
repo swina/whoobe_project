@@ -107,6 +107,11 @@ const pageThemeId = ref<string | null>(null)
   // in this app to follow instead.
   const collapsedIds = ref<Set<string>>(new Set())
 
+  // Default image placeholder — a DAM asset pimcorePath, fetched from the
+  // backend on editor init and used by applyImagePlaceholder() (helpers.ts)
+  // as a real image placeholder instead of the hardcoded SVG data URI.
+  const defaultPlaceholderUrl = ref<string | null>(null)
+
   function setMode(v: string) { mode.value = v }
   function setSettings(v: any) { settings.value = v }
   function setElements(v: ElementGroup[] | null) { elements.value = v }
@@ -157,15 +162,21 @@ const pageThemeId = ref<string | null>(null)
     websiteThemes.value = v.map((t) => ({ ...t, styles: t.styles ?? '', tailwindClasses: t.tailwindClasses ?? '' }))
   }
 
+  function setDefaultPlaceholderUrl(v: string | null) {
+    defaultPlaceholderUrl.value = v
+  }
+
   return {
     mode, settings, elements, document, project, selected, page, current,
     component, action, subaction, level, parent, startTime, autosave,
     exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
     mailTemplateId, snippetId, snippetMode, pageThemeId, websiteTheme, websiteThemes,
+    defaultPlaceholderUrl,
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
     setParent, setStartTime, setAutosave, setExportMode, setPreview, setSave,
     setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, setPageThemeId, setSnippetId, setSnippetMode, resolvedData,
     collapsedIds, toggleCollapsed, isCollapsed, setWebsiteTheme, setWebsiteThemes,
+    setDefaultPlaceholderUrl,
   }
 })

@@ -173,12 +173,19 @@ export async function updateWebsiteTheme(
   return body.theme
 }
 
-export async function deleteWebsiteTheme(baseUrl: string, websiteId: string, themeId: string): Promise<void> {
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${websiteId}/themes/${themeId}`, {
-    method: 'DELETE',
+export async function fetchDefaultPlaceholderImage(baseUrl: string): Promise<string | null> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/default-placeholder-image`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.pimcorePath ?? null
+}
+
+export async function saveDefaultPlaceholderImage(baseUrl: string, pimcorePath: string | null): Promise<void> {
+  await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/default-placeholder-image`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pimcorePath }),
     credentials: 'include',
   })
-  await parseJsonOrThrow(res)
 }
 
 // Legacy single-theme API (backward-compatible) — reads/writes the default theme.

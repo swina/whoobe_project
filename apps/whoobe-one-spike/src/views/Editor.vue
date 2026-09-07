@@ -38,11 +38,35 @@ import BlockEditor from '../components/BlockEditor.vue'
 import { useEditorStore } from '../store/editor'
 import { loadPage, loadMailTemplate, loadSnippet, loadWebsiteTheme, loadAllThemes, createEmptyMailTemplateRoot, createEmptyDocumentRoot } from '../scripts/database-actions'
 import { clean } from '../helpers'
+import { getDefaultCoreApiUrl } from '../core-api-url'
 
 const editor = useEditorStore()
 const route = useRoute()
 
+async function fetchDefaultPlaceholder() {
+  try {
+    const base = getDefaultCoreApiUrl()
+    const res = await fetch(`${base}/whoobe-one/settings/default-placeholder-image`, { credentials: 'include' })
+    if (res.ok) {
+      const body = await res.json()
+      if (body.pimcorePath) {
+        const urlRes = await fetch(`${base}/api/v1/dam/asset-urls?pimcorePath=${encodeURIComponent(body.pimcorePath)}`, { credentials: 'include' })
+        if (urlRes.ok) {
+          const urlBody = await urlRes.json()
+          if (urlBody.url) {
+            editor.setDefaultPlaceholderUrl(urlBody.url)
+            ;(window as any).__whoobeDefaultPlaceholder = urlBody.url
+          }
+        }
+      }
+    }
+  } catch {
+    // Non-critical — fall back to the hardcoded SVG placeholder.
+  }
+}
+
 onMounted(async () => {
+  await fetchDefaultPlaceholder()
   const parentOrigin = typeof route.query.parentOrigin === 'string' ? route.query.parentOrigin : null
   if (parentOrigin) editor.setEmbedded(true, parentOrigin)
 

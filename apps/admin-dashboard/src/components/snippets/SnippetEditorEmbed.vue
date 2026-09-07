@@ -7,7 +7,7 @@
         v-if="isConnecting"
         class="absolute inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-xs flex flex-col items-center justify-center space-y-3 text-slate-300 light:text-slate-700"
       >
-        <span class="animate-spin text-2xl">⏳</span>
+        <span class="animate-spin text-6xl"><Loader class="w-14 h-14"/></span>
         <span class="text-xs font-semibold">Connecting to Whoobe One…</span>
       </div>
     </div>
@@ -21,6 +21,7 @@
 // loads/saves the snippet itself against core-api (database-actions.ts's
 // loadSnippet/saveSnippet), so there's no postMessage bridge.
 import { ref, computed } from 'vue'
+import { Loader } from '@lucide/vue'
 import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
 
 const props = defineProps<{
