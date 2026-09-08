@@ -153,8 +153,8 @@
                   :class="[
                     'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
                     page.kind === 'module'
-                      ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
-                      : 'bg-slate-500/20 text-slate-300 border-slate-500/30'
+                      ? 'bg-violet-500/20 text-black border-violet-500/30'
+                      : 'bg-slate-500/20 text-slate-100 border-slate-500/30'
                   ]"
                 >
                   {{ page.kind || 'content' }}
@@ -335,7 +335,7 @@
               <option value="gt">&gt;</option>
               <option value="lt">&lt;</option>
             </select>
-            <template v-else-if="f.field === 'published'">
+            <template v-if="f.field === 'published'">
               <select v-model="f.value" class="text-xs border rounded px-2 py-1">
                 <option :value="true">true</option>
                 <option :value="false">false</option>
