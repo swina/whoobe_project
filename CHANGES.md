@@ -4,6 +4,10 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [PagePreviewTab: pass locale as query param — fix preview for slugs without locale prefix] — 2026-09-08
+
+- **`apps/admin-dashboard/src/components/pages/PagePreviewTab.vue`**: Added `?locale=` query param to the preview iframe URL, using the page's own locale from the DB. Fixes "Page not found" for pages whose slug doesn't start with a locale prefix (e.g. `/whoobecms` with locale `en`). PublicPage.vue already reads `?locale=` first, so this overrides its fallback path-segment extraction.
+
 ## [MasterWebsiteTab: per-tab paths/pages state — fix data race across tabs] — 2026-09-08
 
 - **`apps/admin-dashboard/src/components/websites/MasterWebsiteTab.vue`**: Replaced shared global `pathsStore.paths` and `pagesStore.pages` with per-tab local `websitePaths` and `websitePages` refs, fetched independently per instance. This fixes switching between multiple website tabs showing the wrong (last-loaded) data.

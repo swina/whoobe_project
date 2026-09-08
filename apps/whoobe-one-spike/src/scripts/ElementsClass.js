@@ -510,7 +510,7 @@ export default class Element {
         this.label = 'Image'
         this.icon = 'insert_photo'
         this.content = ''
-        this.css.css = 'w-40 h-auto'
+        this.css.css = 'w-240 h-auto'
         return this
     }
 
