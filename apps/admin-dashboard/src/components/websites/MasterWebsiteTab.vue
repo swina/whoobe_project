@@ -57,11 +57,11 @@
         </form>
       </div>
       <div v-show="activeSubTab === 'paths'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-4">
-        <div v-if="pathsStore.isLoading && pathsStore.paths.length === 0" class="text-xs text-slate-500 text-center py-4">Loading paths…</div>
+        <div v-if="pathsLoading && websitePaths.length === 0" class="text-xs text-slate-500 text-center py-4">Loading paths…</div>
 
-        <div v-else-if="pathsStore.paths.length === 0" class="text-xs text-slate-500 text-center py-4 italic">No path groups yet for this website.</div>
+        <div v-else-if="websitePaths.length === 0" class="text-xs text-slate-500 text-center py-4 italic">No path groups yet for this website.</div>
 
-        <div v-for="pg in pathsStore.paths" :key="pg.id" class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-white/40 overflow-hidden mb-4">
+        <div v-for="pg in websitePaths" :key="pg.id" class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-white/40 overflow-hidden mb-4">
           <div class="flex items-center justify-between px-3 py-2 border-b border-slate-800/60 light:border-slate-200/60 bg-slate-950/60 light:bg-white/60">
             <div class="min-w-0">
               <span class="text-xs font-semibold text-slate-200 light:text-slate-800">{{ pg.name }}</span>
@@ -135,12 +135,11 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import { usePathStore } from '../../stores/menusStore'
-import { usePagesStore } from '../../stores/pagesStore'
 import { useTabsStore, type WebsiteSubTab, websiteTabId } from '../../stores/tabsStore'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
-import type { MenuItem, WebsitePathRecord } from '../../utils/menus-api'
-import type { WhoobeOnePage } from '../../utils/pages-api'
+import { fetchWebsitePaths, type MenuItem, type WebsitePathRecord } from '../../utils/menus-api'
+import { fetchPages, type WhoobeOnePage } from '../../utils/pages-api'
 import { fetchWebsiteTemplates, type WebsiteTemplate } from '../../utils/website-templates-api'
 import { fetchThemes, type ThemeRecord } from '../../utils/themes-api'
 import MenuItemRow from '../settings/MenuItemRow.vue'
@@ -153,12 +152,17 @@ const props = defineProps<{
 
 const websitesStore = useWebsitesStore()
 const pathsStore = usePathStore()
-const pagesStore = usePagesStore()
 const tabsStore = useTabsStore()
 const website = ref<WebsiteRecord | null>(null)
 const isLoading = ref(true)
 const saving = ref(false)
 const error = ref('')
+
+// Per-tab paths and pages (avoids shared-store race when multiple website
+// tabs are open — each MasterWebsiteTab instance fetches its own data).
+const websitePaths = ref<WebsitePathRecord[]>([])
+const websitePages = ref<WhoobeOnePage[]>([])
+const pathsLoading = ref(false)
 
 const form = ref({
   name: '',
@@ -228,7 +232,7 @@ function templateForPath(path: string): WebsiteTemplate | null {
 function itemPath(item: MenuItem): string | null {
   const raw =
     item.path?.trim() ||
-    (item.pageId ? pagesStore.pages.find((p) => p.id === item.pageId)?.slug ?? '' : '') ||
+    (item.pageId ? websitePages.value.find((p) => p.id === item.pageId)?.slug ?? '' : '') ||
     item.url ||
     ''
   if (!raw || raw === '/') return null
@@ -259,7 +263,7 @@ const defaultTemplate = computed(() => websiteTemplates.value.find((t) => t.isDe
  *  plus the website's default which applies to every route without one). */
 const groupTemplates = computed(() => {
   const map = new Map<string, WebsiteTemplate[]>()
-  for (const pg of pathsStore.paths) {
+  for (const pg of websitePaths.value) {
     const tpls: WebsiteTemplate[] = []
     const seen = new Set<string>()
     for (const p of collectItemPaths(pg.items)) {
@@ -287,9 +291,7 @@ async function load() {
   try {
     const [websiteData] = await Promise.all([
       websitesStore.getWebsite(props.websiteId),
-      // Pages back the path↔template resolution (a linked item's slug is
-      // the routable path) and the menu item rows' titles.
-      pagesStore.refreshPages(),
+      loadPages(),
     ])
     website.value = websiteData
     form.value = {
@@ -312,6 +314,25 @@ async function loadThemeOptions() {
     themeOptions.value = await fetchThemes(getDefaultCoreApiUrl())
   } catch {
     themeOptions.value = []
+  }
+}
+
+async function loadPaths() {
+  pathsLoading.value = true
+  try {
+    websitePaths.value = await fetchWebsitePaths(getDefaultCoreApiUrl(), props.websiteId)
+  } catch {
+    websitePaths.value = []
+  } finally {
+    pathsLoading.value = false
+  }
+}
+
+async function loadPages() {
+  try {
+    websitePages.value = await fetchPages(getDefaultCoreApiUrl(), props.websiteId)
+  } catch {
+    websitePages.value = []
   }
 }
 
@@ -370,7 +391,7 @@ function setItemByPath(items: MenuItem[], path: number[], updater: (item: MenuIt
 async function onPageSelected(page: WhoobeOnePage) {
   if (!pendingPagePicker.value) return
   const { pathGroup, itemPath } = pendingPagePicker.value
-  const fresh = pathsStore.paths.find((p) => p.id === pathGroup.id)
+  const fresh = websitePaths.value.find((p) => p.id === pathGroup.id)
   if (!fresh) {
     showPagePicker.value = false
     pendingPagePicker.value = null
@@ -470,14 +491,14 @@ function removeItem(pathGroup: WebsitePathRecord, index: number) {
 
 async function updatePathItems(pathGroup: WebsitePathRecord, items: MenuItem[], optimistic = false) {
   if (optimistic) {
-    const pg = pathsStore.paths.find((p) => p.id === pathGroup.id)
+    const pg = websitePaths.value.find((p) => p.id === pathGroup.id)
     if (pg) pg.items = items
   }
   try {
     await pathsStore.update(pathGroup.id, { items })
   } catch (e: any) {
     alert(e?.message || 'Failed to update path group')
-    if (optimistic) pathsStore.refreshPaths(props.websiteId)
+    if (optimistic) loadPaths()
   }
 }
 
@@ -485,14 +506,14 @@ onMounted(() => {
   load()
   loadTemplates()
   loadThemeOptions()
-  pathsStore.refreshPaths(props.websiteId)
+  loadPaths()
 })
 
 watch(() => props.websiteId, () => {
   load()
   loadTemplates()
   loadThemeOptions()
-  pathsStore.refreshPaths(props.websiteId)
+  loadPaths()
 })
 
 // Re-fetch templates when entering the Paths tab, so a template created or
@@ -500,7 +521,7 @@ watch(() => props.websiteId, () => {
 watch(activeSubTab, (tab) => {
   if (tab === 'paths') {
     loadTemplates()
-    pathsStore.refreshPaths(props.websiteId)
+    loadPaths()
   }
 })
 </script>
