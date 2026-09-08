@@ -3,8 +3,11 @@
     v-if="editor.current"
     class="fixed z-[9999] flex items-center gap-1 bg-white text-black shadow-lg border border-gray-200 rounded-md px-1.5 py-1 text-xs"
     :style="{ top: (top-7) + 'px', left: (left+0) + 'px' }"
+    @mousedown="onDragStart"
   >
-    <span class="px-1.5 py-0.5 rounded bg-blue-500 text-white capitalize font-semibold">{{ label }}</span>
+    <span class="px-1.5 py-0.5 rounded bg-blue-500 text-white capitalize font-semibold cursor-grab active:cursor-grabbing select-none" title="Drag to reposition. Double-click to rename." @dblclick.stop="renameElement">{{ label }}</span>
+
+    <button title="Rename element" class="toolbar-icon" @click="renameElement"><Pen class="w-3 h-3" /></button>
 
     <button title="Move up" class="toolbar-icon" @click="moveUp"><ArrowUp class="w-4 h-4" /></button>
     <button
@@ -277,7 +280,7 @@
               type="button"
               :title="swatch"
               class="w-6 h-6 rounded-full"
-              :class="swatch"
+              :class="swatchBgClass(swatch)"
               @click="pickTextSwatch(swatch)"
             ></button>
             <button type="button" title="Clear" class="w-6 h-6 rounded-full border flex items-center justify-center text-gray-400" @click="clearTextColor">
@@ -547,7 +550,7 @@
 // plus two ref writes) rather than wiring explicit scroll/resize/mutation
 // listeners - simpler, and correctly handles content reflow (e.g. editing
 // text changes the element's height) without needing a MutationObserver.
-import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef, watchEffect } from 'vue'
 import type { Component } from 'vue'
 import Element from '../scripts/ElementsClass.js'
 import animations from '../scripts/animations.js'
@@ -580,6 +583,7 @@ import {
   Image,
   Link,
   PaintBucket,
+  Pen,
   Pencil,
   Play,
   Plus,
@@ -661,7 +665,18 @@ const FILL_SHADES = [300, 500, 700]
 const BG_COLOR_CLASS_RE = new RegExp(`^bg-(${(twclasses.colors as string[]).join('|')})-\\d+$`)
 const fillSwatches = (twclasses.colors as string[]).flatMap((color) => FILL_SHADES.map((shade) => `bg-${color}-${shade}`))
 const TEXT_COLOR_CLASS_RE = new RegExp(`^text-(${(twclasses.colors as string[]).join('|')})-\\d+$`)
-const textSwatches = (twclasses.colors as string[]).flatMap((color) => FILL_SHADES.map((shade) => `bg-${color}-${shade}`))
+const textSwatches = (twclasses.colors as string[]).flatMap((color) => FILL_SHADES.map((shade) => `text-${color}-${shade}`))
+
+// A swatch circle is empty - a `text-*` class on it just sets the color of
+// non-existent text. Derive the matching `bg-*` class solely for the
+// circle's own fill so the picker still shows a visible color chip, while
+// the applied class (passed to pickTextSwatch) stays `text-*`. Reference:
+// `textSwatches` was `bg-*` all the way through, so the chip looked right
+// but clicking it painted the background — the fix above keeps the visual
+// and the semantics separate.
+function swatchBgClass(swatch: string): string {
+  return swatch.startsWith('text-') ? `bg-${swatch.slice(5)}` : swatch
+}
 
 // A real bug, fixed here: was `!!editor.current?.blocks` - every Element,
 // container or leaf, has a `blocks: []` array from the base constructor
@@ -789,6 +804,7 @@ function onAiSnippetGenerated(payload: unknown) {
 const label = computed(() => {
   const el = editor.current as any
   if (!el) return ''
+  if (el.name) return el.name
   if (isContainer.value) {
     return `${el.tag || 'div'} ${el.css?.container?.includes('flex-col') ? 'col' : el.css?.container?.includes('flex') ? 'row' : ''}`.trim()
   }
@@ -840,7 +856,7 @@ const sliderPopoverMaxHeight = computed(() => {
 
 let rafId: number | null = null
 function loop() {
-  updatePosition()
+  if (!isDragging.value) updatePosition()
   rafId = requestAnimationFrame(loop)
 }
 onMounted(() => {
@@ -848,6 +864,8 @@ onMounted(() => {
 })
 onUnmounted(() => {
   if (rafId) cancelAnimationFrame(rafId)
+  document.removeEventListener('mousemove', onDragMove)
+  document.removeEventListener('mouseup', onDragEnd)
 })
 
 function moveUp() {
@@ -895,7 +913,26 @@ function onEditContent() {
     showTipTap.value = true
     return
   }
+  // A focused native <button>/<input> interprets the Space key as
+  // "activate this button" (dispatches a click) rather than "insert a
+  // space" - so even marked contenteditable, a Button/Submit/Reset can't
+  // ever type a label with a space in it. Same prompt-based editing as the
+  // video ID above, for exactly the same reason (a plain focused editable
+  // can't collect this value).
+  if (isButtonElement.value) {
+    const label = window.prompt('Button label', editor.current.content || '')
+    if (label !== null) editor.current.content = label
+    return
+  }
   focusContent()
+}
+
+function renameElement() {
+  if (!editor.current) return
+  const currentName = (editor.current as any).name || ''
+  const next = window.prompt('Element name', currentName)
+  if (next === null) return
+  ;(editor.current as any).name = next.trim() || ''
 }
 
 // BlockIFrame.vue disables pointer-events on the iframe itself (see its
@@ -1185,6 +1222,47 @@ function remove() {
   editor.setCurrent(null)
   removeNodeById(editor.document, id)
 }
+
+// --- Dragging ---
+const isDragging = ref(false)
+const dragOffsetX = ref(0)
+const dragOffsetY = ref(0)
+
+function onDragStart(e: MouseEvent) {
+  if (!editor.current) return
+  const rect = (e.currentTarget as HTMLElement).closest('.fixed')?.getBoundingClientRect()
+  if (!rect) return
+  dragOffsetX.value = e.clientX - rect.left
+  dragOffsetY.value = e.clientY - rect.top
+  isDragging.value = true
+  document.addEventListener('mousemove', onDragMove)
+  document.addEventListener('mouseup', onDragEnd)
+}
+
+function onDragMove(e: MouseEvent) {
+  top.value = Math.max(4, e.clientY - dragOffsetY.value + 7)
+  left.value = Math.max(4, Math.min(e.clientX - dragOffsetX.value, window.innerWidth - 520))
+}
+
+function onDragEnd() {
+  isDragging.value = false
+  document.removeEventListener('mousemove', onDragMove)
+  document.removeEventListener('mouseup', onDragEnd)
+}
+
+// When a new element is selected, cancel dragging and resume auto-position
+let currentElementId: string | null = null
+watchEffect(() => {
+  const id = editor.current?.id ?? null
+  if (id !== currentElementId) {
+    currentElementId = id
+    if (id) {
+      isDragging.value = false
+      document.removeEventListener('mousemove', onDragMove)
+      document.removeEventListener('mouseup', onDragEnd)
+    }
+  }
+})
 </script>
 
 <style scoped>

@@ -1,12 +1,12 @@
 <template>
   <div class="h-full flex flex-col">
-    <div class="flex shrink-0 px-6 pt-2 pb-2 items-center gap-2">
-      <h4 class="text-lg font-bold text-slate-100 light:text-slate-900">{{ title }}</h4>
+    <!---<div class="flex shrink-0 px-6 pt-2 pb-1 items-center gap-2">
+      <h4 class="text-sm font-bold text-slate-100 light:text-slate-900">{{ title }}</h4>
       <span v-if="isNewSnippet" class="px-2 py-0.5 text-[10px] font-bold rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 uppercase">new</span>
-    </div>
-    <div class="flex-1 min-h-0 px-2 pb-2 pt-2">
+    </div>--->
+    <div class="flex-1 min-h-0 px-2 pb-1 pt-2">
       <div class="h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-2">
-        <SnippetEditorEmbed :snippet-id="props.snippetId" />
+        <SnippetEditorEmbed :snippet-id="props.snippetId" :title="title" />
       </div>
     </div>
   </div>

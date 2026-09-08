@@ -19,7 +19,7 @@
         </div>
         <button
           @click="isSidebarCollapsed = !isSidebarCollapsed"
-          class="p-1.5 rounded-lg text-slate-400 light:text-slate-600 hover:text-white hover:bg-slate-800/60 light:bg-slate-100/60 transition"
+          :class="isSidebarCollapsed ? 'absolute bg-transparent right-0 p-0':'p-1.5 rounded-lg text-slate-400 light:text-slate-600 transition'"
           :title="isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'"
         >
           <ChevronLeft v-if="!isSidebarCollapsed" class="w-5 h-5" />
@@ -32,15 +32,16 @@
         <div v-for="item in navItems" :key="item.section" class="space-y-1">
           <button
             @click="tabsStore.openSection(item.section)"
+            :title="item.name"
             :class="[
-              'w-full flex items-center px-3 py-2.5 rounded-xl font-medium transition-all group relative text-left',
+              'w-full text-[10px] flex items-center px-3 py-2 rounded-xl font-medium transition-all group relative text-left',
               isSectionActive(item.section)
                 ? 'bg-gradient-to-r from-indigo-600/90 to-violet-600/90 text-white shadow-md shadow-indigo-500/10'
                 : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/50 light:bg-slate-100/50'
             ]"
           >
             <component :is="item.icon" class="w-5 h-5 shrink-0 transition-transform group-hover:scale-110" />
-            <span v-if="!isSidebarCollapsed" class="ml-3 text-sm truncate flex-1">{{ item.name }}</span>
+            <span v-if="!isSidebarCollapsed" class="ml-3 text-xs truncate flex-1">{{ item.name }}</span>
 
             <!-- Expand/Collapse Objects Class Tree Toggle -->
             <button
@@ -323,6 +324,7 @@
           v-for="tab in tabsStore.tabs"
           :key="tab.id"
           @click="tabsStore.activeTabId = tab.id"
+          @contextmenu.prevent="openContextMenu($event, tab)"
           :class="[
             'group flex items-center gap-1.5 pl-3 pr-2 py-2 text-xs font-semibold rounded-t-lg border border-b-0 light:border-slate-300 transition shrink-0 cursor-pointer',
             tabsStore.activeTabId === tab.id ? 'bg-slate-900 light:bg-violet-500 text-indigo-300 light:text-white border-slate-800 light:border-slate-200' : 'bg-slate-950/60 light:bg-white/60 text-slate-500 hover:text-slate-600 light:text-slate-700 border-transparent'
@@ -338,6 +340,34 @@
             ✕
           </button>
         </div>
+      </div>
+
+      <!-- Context menu backdrop -->
+      <div
+        v-if="contextMenu.visible"
+        class="fixed inset-0 z-[9998]"
+        @click="closeContextMenu"
+        @contextmenu.prevent="closeContextMenu"
+      ></div>
+      <!-- Context menu popup -->
+      <div
+        v-if="contextMenu.visible"
+        :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+        class="fixed z-[9999] min-w-[140px] py-1 bg-slate-800 light:bg-white border border-slate-700 light:border-slate-200 rounded-lg shadow-2xl"
+        @click.stop
+      >
+        <button
+          @click="handleCloseAllTabs"
+          class="w-full text-left px-3 py-2 text-xs font-medium text-slate-300 light:text-slate-700 hover:bg-slate-700/60 light:bg-slate-100/60 transition first:rounded-t-lg"
+        >
+          Close all tabs
+        </button>
+        <button
+          @click="handleCloseOtherTabs"
+          class="w-full text-left px-3 py-2 text-xs font-medium text-slate-300 light:text-slate-700 hover:bg-slate-700/60 light:bg-slate-100/60 transition last:rounded-b-lg"
+        >
+          Close others
+        </button>
       </div>
 
       <!-- Main Content View: all open tabs stay mounted (v-show) so switching preserves state.
@@ -581,6 +611,34 @@ function closeSearch() {
   searchTotal.value = 0
   searchOpen.value = false
   if (searchDebounce) clearTimeout(searchDebounce)
+}
+
+const contextMenu = ref<{ visible: boolean; x: number; y: number; tabId: string | null }>({
+  visible: false,
+  x: 0,
+  y: 0,
+  tabId: null
+})
+
+function openContextMenu(event: MouseEvent, tab: MainTab) {
+  contextMenu.value = { visible: true, x: event.clientX, y: event.clientY, tabId: tab.id }
+}
+
+function closeContextMenu() {
+  contextMenu.value.visible = false
+}
+
+function handleCloseAllTabs() {
+  closeContextMenu()
+  tabsStore.closeAllTabs()
+}
+
+function handleCloseOtherTabs() {
+  if (contextMenu.value.tabId) {
+    const id = contextMenu.value.tabId
+    closeContextMenu()
+    tabsStore.closeOtherTabs(id)
+  }
 }
 
 async function handleReindex() {

@@ -13,7 +13,7 @@
       <ChevronRight v-else class="w-3 h-3" />
     </span>
     <span v-else class="w-3 shrink-0"></span>
-    <span class="capitalize truncate">{{ label }}</span>
+    <span class="capitalize truncate" @dblclick.stop="renameElement">{{ label }}</span>
     <span
       v-if="(node as any).semantic"
       class="shrink-0 ml-auto font-mono text-[9px] px-1 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200"
@@ -142,5 +142,12 @@ function select() {
 
 function toggleOpen() {
   open.value = !open.value
+}
+
+function renameElement() {
+  const currentName = (props.node as any).name || ''
+  const next = window.prompt('Element name', currentName)
+  if (next === null) return
+  ;(props.node as any).name = next.trim() || ''
 }
 </script>

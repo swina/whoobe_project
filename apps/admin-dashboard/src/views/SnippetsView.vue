@@ -1,18 +1,31 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <h2 class="text-xl font-bold text-slate-100 light:text-slate-900">Snippets</h2>
+  <div class="flex flex-col h-full gap-6">
+    <div class="shrink-0">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-slate-100 light:text-slate-900">Snippets</h2>
         <p class="text-xs text-slate-400 light:text-slate-600">
           Reusable elements saved from the Whoobe One editor. Click a snippet to edit it, or link it to a website template's header/aside/footer.
         </p>
       </div>
       <div class="flex items-center gap-2">
+        <span v-if="selectedIds.size > 0" class="text-xs text-slate-400 light:text-slate-600">
+          {{ selectedIds.size }} selected
+        </span>
         <button
           @click="handleExport"
-          class="px-3 py-2 text-sm font-medium rounded-xl bg-slate-700 hover:bg-slate-600 text-white shadow transition"
+          :disabled="filteredSnippets.length === 0"
+          class="px-3 py-2 text-sm font-medium rounded-xl transition shadow disabled:opacity-40"
+          :class="selectedIds.size > 0 ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white'"
         >
-          Export All
+          {{ selectedIds.size > 0 ? `Export Selected (${selectedIds.size})` : 'Export All' }}
+        </button>
+        <button
+          @click="handleDeleteSelected"
+          v-if="selectedIds.size > 0"
+          class="px-3 py-2 text-sm font-medium rounded-xl bg-rose-700 hover:bg-rose-600 text-white shadow transition"
+        >
+          Delete Selected ({{ selectedIds.size }})
         </button>
         <button
           @click="handleImportClick"
@@ -60,22 +73,50 @@
           <option value="" class="capitalize">All categories</option>
           <option v-for="cat in categories" :key="cat" :value="cat" class="capitalize">{{ cat }}</option>
         </select>
+        <div class="flex items-center gap-1 p-1 rounded-lg bg-slate-950/80 light:bg-slate-100 border border-slate-800 light:border-slate-200 shrink-0">
+          <button
+            @click="viewMode = 'list'"
+            :class="viewMode === 'list' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:hover:text-slate-800'"
+            class="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+            title="List view"
+          >
+            <List class="w-4 h-4" />
+          </button>
+          <button
+            @click="viewMode = 'grid'"
+            :class="viewMode === 'grid' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:hover:text-slate-800'"
+            class="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+            title="Grid view"
+          >
+            <LayoutGrid class="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
 
-    <div v-if="snippetsStore.isLoading && snippetsStore.snippets.length === 0" class="p-12 text-center text-xs text-slate-500">
+    <div v-if="snippetsStore.isLoading && snippetsStore.snippets.length === 0" class="shrink-0 p-12 text-center text-xs text-slate-500">
       Loading snippets…
     </div>
 
-    <div v-else-if="filteredSnippets.length === 0" class="rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center text-xs text-slate-500">
+    <div v-else-if="filteredSnippets.length === 0" class="shrink-0 rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center text-xs text-slate-500">
       <template v-if="snippetsStore.snippets.length === 0">No snippets yet. Save a reusable element from the Whoobe One editor, or create one below.</template>
       <template v-else>No snippets match the current filters.</template>
     </div>
 
-    <div v-else class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 overflow-hidden">
+    <!-- List view -->
+    <div v-else-if="viewMode === 'list'" class="flex-1 min-h-0 overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200">
       <table class="w-full text-left text-xs text-slate-300 light:text-slate-700">
-        <thead class="bg-slate-950/80 light:bg-white/80 border-b border-slate-800 light:border-slate-200 text-[11px] font-semibold text-slate-400 light:text-slate-600 uppercase tracking-wider">
+        <thead class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 border-b border-slate-800 light:border-slate-200 text-[11px] font-semibold text-slate-400 light:text-slate-600 uppercase tracking-wider backdrop-blur-sm">
           <tr>
+            <th class="py-3 px-4 w-10">
+              <input
+                type="checkbox"
+                :checked="allSelected"
+                :indeterminate="someSelected && !allSelected"
+                @change="toggleSelectAll"
+                class="w-4 h-4 rounded border-slate-600 light:border-slate-300 bg-slate-800 light:bg-slate-100 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
+              />
+            </th>
             <th class="py-3 px-4">Name</th>
             <th class="py-3 px-4">Category</th>
             <th class="py-3 px-4">Updated</th>
@@ -87,8 +128,16 @@
             v-for="snippet in filteredSnippets"
             :key="snippet.id"
             @click="openSnippetTab(snippet.id)"
-            class="cursor-pointer hover:bg-slate-800/50 light:bg-slate-100/50 transition"
+            class="cursor-pointer hover:bg-slate-300/50 light:bg-slate-100/50 transition"
           >
+            <td class="py-2.5 px-4 w-10" @click.stop>
+              <input
+                type="checkbox"
+                :checked="selectedIds.has(snippet.id)"
+                @change="toggleSelect(snippet.id)"
+                class="w-4 h-4 rounded border-slate-600 light:border-slate-300 bg-slate-800 light:bg-slate-100 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
+              />
+            </td>
             <td class="py-2.5 px-4">
               <span class="font-semibold text-slate-100 light:text-slate-900 inline-flex items-center gap-2">
                 <Puzzle class="w-4 h-4 text-teal-400 inline" /> {{ snippet.name }}
@@ -97,31 +146,81 @@
             <td class="py-2.5 px-4 text-slate-400 light:text-slate-600 capitalize">{{ snippet.category || '—' }}</td>
             <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ new Date(snippet.updatedAt).toLocaleString() }}</td>
             <td class="py-2.5 px-4" @click.stop>
-              <button @click="openSnippetTab(snippet.id)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 mr-3">Edit</button>
-              <button @click="handleDelete(snippet.id, snippet.name)" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Delete</button>
+              <button @click="openSnippetTab(snippet.id)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 mr-3" title="Edit snippet">
+                <PencilSparkles class="w-4 h-4"/>
+              </button>
+              <button @click="handleDelete(snippet.id, snippet.name)" class="text-xs font-semibold text-rose-400 hover:text-rose-300" title="Delete snippet">
+                <Trash class="w-4 h-4"/>
+              </button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <!-- Grid view -->
+    <div v-else class="flex-1 min-h-0 overflow-y-auto">
+      <div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))">
+      <div
+        v-for="snippet in filteredSnippets"
+        :key="snippet.id"
+        class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 overflow-hidden hover:border-indigo-500 transition cursor-pointer group"
+        @click="openSnippetTab(snippet.id)"
+      >
+        <div class="relative h-[200px] bg-slate-950/40 light:bg-slate-50">
+          <SnippetPreviewCard :node="snippet.node" />
+          <div class="absolute top-2 left-2 z-10" @click.stop>
+            <input
+              type="checkbox"
+              :checked="selectedIds.has(snippet.id)"
+              @change="toggleSelect(snippet.id)"
+              class="w-4 h-4 rounded border-slate-500 bg-slate-800/80 light:bg-slate-100/80 text-indigo-500 focus:ring-indigo-500 cursor-pointer opacity-0 group-hover:opacity-100 transition"
+              :class="selectedIds.has(snippet.id) ? 'opacity-100' : ''"
+            />
+          </div>
+          <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-400/90 to-transparent p-2 pt-6">
+            <span class="text-xs font-semibold text-slate-100 light:text-slate-900">{{ snippet.name }}</span>
+            <span class="text-[10px] text-slate-400 light:text-slate-600 ml-2 capitalize">{{ snippet.category }}</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between px-3 py-2 border-t border-slate-800/60 light:border-slate-200/60">
+          <span class="text-[10px] text-slate-500 light:text-slate-600">{{ new Date(snippet.updatedAt).toLocaleString() }}</span>
+          <div class="flex items-center gap-1" @click.stop>
+            <button @click="openSnippetTab(snippet.id)" class="p-1.5 rounded text-slate-400 light:text-slate-600 hover:text-indigo-400 hover:bg-slate-400/60 light:bg-slate-100/60 transition" title="Edit snippet">
+              <PencilSparkles class="w-3.5 h-3.5" />
+            </button>
+            <button @click="handleDelete(snippet.id, snippet.name)" class="p-1.5 rounded text-slate-400 light:text-slate-600 hover:text-rose-400 hover:bg-slate-400/60 light:bg-slate-100/60 transition" title="Delete snippet">
+              <Trash class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Puzzle } from '@lucide/vue'
+import { Puzzle, PencilSparkles, Trash, List, LayoutGrid } from '@lucide/vue'
 import { useSnippetsStore } from '../stores/snippetsStore'
 import { useTabsStore } from '../stores/tabsStore'
+import { useToastStore } from '../stores/toastStore'
+import { embedNodeImages } from '../utils/snippet-export'
 import { randomUUID } from '../utils/random-id'
 import type { WhoobeSnippetInput } from '../utils/snippets-api'
+import SnippetPreviewCard from '../components/snippets/SnippetPreviewCard.vue'
 
 const snippetsStore = useSnippetsStore()
 const tabsStore = useTabsStore()
+const toastStore = useToastStore()
 
 const searchQuery = ref('')
 const categoryFilter = ref('')
+const viewMode = ref<'list' | 'grid'>('grid')
 const fileInput = ref<HTMLInputElement | null>(null)
 const importResult = ref<{ created: number; skipped: number; errors: string[] } | null>(null)
+const selectedIds = ref(new Set<string>())
 
 const categories = computed(() => {
   const set = new Set(snippetsStore.snippets.map((s) => s.category).filter(Boolean))
@@ -136,6 +235,27 @@ const filteredSnippets = computed(() => {
     return true
   })
 })
+
+const allSelected = computed(() => filteredSnippets.value.length > 0 && filteredSnippets.value.every((s) => selectedIds.value.has(s.id)))
+const someSelected = computed(() => filteredSnippets.value.some((s) => selectedIds.value.has(s.id)))
+
+function toggleSelect(id: string) {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  selectedIds.value = next
+}
+
+function toggleSelectAll() {
+  if (allSelected.value) {
+    selectedIds.value = new Set()
+  } else {
+    selectedIds.value = new Set(filteredSnippets.value.map((s) => s.id))
+  }
+}
 
 function openSnippetTab(id: string) {
   tabsStore.openSnippet(id)
@@ -154,14 +274,44 @@ async function handleDelete(id: string, name: string) {
   }
 }
 
-function handleExport() {
-  const data = filteredSnippets.value.map((s) => ({
-    name: s.name,
-    category: s.category,
-    icon: s.icon ?? undefined,
-    node: s.node,
-    themeId: s.themeId ?? undefined,
-  }))
+async function handleDeleteSelected() {
+  const count = selectedIds.value.size
+  if (count === 0) return
+  if (!confirm(`Delete ${count} selected snippet(s)? This cannot be undone.`)) return
+  const ids = [...selectedIds.value]
+  let errors = 0
+  for (const id of ids) {
+    try {
+      await snippetsStore.remove(id)
+    } catch {
+      errors++
+    }
+  }
+  selectedIds.value = new Set()
+  if (errors > 0) {
+    toastStore.show(`${count - errors} deleted, ${errors} failed.`)
+  } else {
+    toastStore.show(`${count} snippet(s) deleted.`)
+  }
+}
+
+async function handleExport() {
+  const toExport = selectedIds.value.size > 0
+    ? snippetsStore.snippets.filter((s) => selectedIds.value.has(s.id))
+    : filteredSnippets.value
+
+  toastStore.show(`Embedding images for ${toExport.length} snippet(s)…`)
+
+  const data = await Promise.all(
+    toExport.map(async (s) => ({
+      name: s.name,
+      category: s.category,
+      icon: s.icon ?? undefined,
+      node: await embedNodeImages(s.node),
+      themeId: s.themeId ?? undefined,
+    }))
+  )
+
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

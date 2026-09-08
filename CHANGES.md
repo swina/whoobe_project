@@ -4,6 +4,45 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [SaveSnippetModal: pre-fill current snippet name when editing] — 2026-09-08
+
+- **`apps/whoobe-one-spike/src/components/SaveSnippetModal.vue`**: When opening the modal while editing an existing snippet (`editor.snippetMode`), defaults to "Update existing" mode with the current snippet's name, category, and icon pre-filled. Switching to "New snippet" clears the name field.
+
+## [SnippetsView: delete selected button] — 2026-09-08
+
+- **`apps/admin-dashboard/src/views/SnippetsView.vue`**: Added "Delete Selected (N)" button in the toolbar, shown when snippets are selected. Bulk-deletes with a confirmation dialog and shows a toast summary.
+
+## [SnippetsView: grid view with live preview + List/Grid toggle] — 2026-09-08
+
+- **`apps/admin-dashboard/src/components/snippets/SnippetPreviewCard.vue`**: New component rendering a live scaled-down thumbnail of a snippet node tree (containers/elements/images/content), modeled after whoobe-one-spike's KitGalleryModal.
+- **`apps/admin-dashboard/src/views/SnippetsView.vue`**: Added a List/Grid view toggle. Grid view shows snippet preview cards with name, category, updated date, selection checkbox and edit/delete actions.
+
+## [Snippets export: embed images as base64 data URIs] — 2026-09-08
+
+- **`apps/admin-dashboard/src/utils/snippet-export.ts`**: New utility `embedNodeImages()` that walks a snippet node tree, resolves image references (raw Pimcore paths via DAM API, absolute URLs) to binary, and replaces them with base64 data URIs. Handles `image.url`, `props.src`, and `style.backgroundImage`.
+- **`apps/admin-dashboard/src/views/SnippetsView.vue`**: Export now embeds images as base64 data URIs, showing a toast while processing.
+
+## [SnippetsView: selectable rows, export selected only] — 2026-09-08
+
+- **`apps/admin-dashboard/src/views/SnippetsView.vue`**: Added checkbox column with select-all. Export now exports only selected snippets (or all if none selected).
+
+## [Element naming: user-assignable unique name per element] — 2026-09-08
+
+- **`apps/whoobe-one-spike/src/scripts/ElementsClass.js`**: Added `this.name = ''` to the constructor.
+- **`apps/whoobe-one-spike/src/scripts/ElementsClass.d.ts`**: Added `name?: string` type.
+- **`apps/whoobe-one-spike/src/helpers.ts`**: Updated `friendlyElementName()` to return `el.name` first if set, falling back to the existing derived label.
+- **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: Added double-click-to-rename on the label badge and a dedicated `Pen` icon button. Added `renameElement()` function using `window.prompt()`.
+- **`apps/whoobe-one-spike/src/components/DocumentTreeNode.vue`**: Added double-click-to-rename on the tree node label.
+
+## [FloatingToolbar draggable] — 2026-09-08
+
+- **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: Made the toolbar draggable via mousedown on the label/drag handle. Auto-position resumes when a new element is selected.
+
+## [Tab context menu: close all / close others] — 2026-09-08
+
+- **`apps/admin-dashboard/src/stores/tabsStore.ts`**: Added `closeAllTabs()` and `closeOtherTabs(id)` methods.
+- **`apps/admin-dashboard/src/layouts/DashboardLayout.vue`**: Added right-click context menu on tab strip with "Close all tabs" and "Close others" options.
+
 ## [AI Website Wizard: generate complete website structure from natural language] — 2026-09-07
 
 - **`packages/core/src/ai/prompts.ts`**: Added `buildWebsiteStructurePrompt()` and `validateWebsiteStructure()`, exported `collectNodes()`.

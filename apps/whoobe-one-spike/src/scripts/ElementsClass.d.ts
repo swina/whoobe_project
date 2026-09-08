@@ -267,6 +267,7 @@ export default class Element {
   // whose own `slider.mode === 'tabs'`. Assigned dynamically by
   // BlockSlider.vue's rename action, same treatment as `linkTarget`/`alt`
   // above; falls back to a plain "Slide N" wherever it's read unset.
+  name?: string
   tabLabel?: string
   // Not in the source, and not set by any builder - only meaningful on the
   // document root (the top-level Element returned by editor.document,

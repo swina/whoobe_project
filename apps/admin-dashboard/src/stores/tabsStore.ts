@@ -288,6 +288,17 @@ export const useTabsStore = defineStore('tabs', () => {
     }
   }
 
+  function closeAllTabs() {
+    tabs.value.splice(0, tabs.value.length)
+    openSection('overview')
+  }
+
+  function closeOtherTabs(id: string) {
+    const keep = tabs.value.filter((t) => t.id === id)
+    tabs.value.splice(0, tabs.value.length, ...keep)
+    activeTabId.value = id
+  }
+
   function closeAssetTab(assetId: string) {
     closeTab(assetTabId(assetId))
   }
@@ -318,6 +329,8 @@ export const useTabsStore = defineStore('tabs', () => {
     openClass,
     setTabLabel,
     closeTab,
+    closeAllTabs,
+    closeOtherTabs,
     closeAssetTab,
     closeDocumentTab,
     closeObjectTab,
