@@ -662,14 +662,9 @@ function pickWebsitePath(e: Event) {
 
 watch(showLinkPicker, async (open) => {
   if (open) {
-    const wsId = editor.websiteId
-    if (wsId) {
-      try {
-        websitePathRecords.value = await fetchWebsitePaths(wsId)
-      } catch { websitePathRecords.value = [] }
-    } else {
-      websitePathRecords.value = []
-    }
+    try {
+      websitePathRecords.value = await fetchWebsitePaths(editor.websiteId || undefined)
+    } catch { websitePathRecords.value = [] }
   }
 })
 
