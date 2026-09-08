@@ -4,6 +4,10 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [FloatingToolbar: remove current background image button] — 2026-09-08
+
+- **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: Added a "Remove current" (✕) button next to "Browse assets" that clears the element's background/image reference, only shown when an image is already set.
+
 ## [PNG transparency preserved in thumbnails + checkerboard background] — 2026-09-08
 
 - **`packages/core/src/dam/thumbnail-generator.ts`**: Added `alphaQuality: 100` to WebP output so the alpha channel is preserved at full fidelity. Canvas browser fallback now clears to transparent before drawing.
