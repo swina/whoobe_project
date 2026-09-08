@@ -38,6 +38,13 @@
           placeholder="Search by title or slug..."
           class="flex-1 px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
         />
+        <select
+          v-model="filterWebsiteId"
+          class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 min-w-[10rem]"
+        >
+          <option value="">All websites</option>
+          <option v-for="w in websitesStore.websites" :key="w.id" :value="w.id">{{ w.name }}</option>
+        </select>
         <div class="relative">
           <button @click="isColumnsMenuOpen = !isColumnsMenuOpen"
             class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 hover:border-indigo-500 transition"
@@ -328,10 +335,16 @@
               <option value="gt">&gt;</option>
               <option value="lt">&lt;</option>
             </select>
-            <template v-if="f.field === 'published'">
+            <template v-else-if="f.field === 'published'">
               <select v-model="f.value" class="text-xs border rounded px-2 py-1">
                 <option :value="true">true</option>
                 <option :value="false">false</option>
+              </select>
+            </template>
+            <template v-else-if="f.field === 'websiteId'">
+              <select v-model="f.value" class="text-xs border rounded px-2 py-1 min-w-[10rem]">
+                <option value="">—</option>
+                <option v-for="w in websitesStore.websites" :key="w.id" :value="w.id">{{ w.name }}</option>
               </select>
             </template>
             <template v-else-if="f.field === 'updatedAt'">
@@ -453,11 +466,12 @@ async function deleteStaged(sp: StagedWhoobePage) {
 }
 
 onMounted(() => {
-  pagesStore.refreshPages()
+  pagesStore.refreshPages(filterWebsiteId.value || undefined)
   websitesStore.refreshWebsites()
 })
 
 const searchQuery = ref('')
+const filterWebsiteId = ref('')
 const pageSize = ref(25)
 const currentPage = ref(1)
 const sortField = ref<string>('slug')
@@ -667,6 +681,10 @@ const pageRangeLabel = computed(() => {
 
 watch([searchQuery, queryFilters, pageSize], () => { currentPage.value = 1 }, { deep: true })
 watch(totalPages, (pages) => { if (currentPage.value > pages) currentPage.value = pages })
+watch(filterWebsiteId, (id) => {
+  currentPage.value = 1
+  pagesStore.refreshPages(id || undefined)
+})
 
 function handleCreate() {
   const placeholderId = `new:${randomUUID()}`
