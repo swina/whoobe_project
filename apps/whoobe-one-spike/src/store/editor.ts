@@ -85,6 +85,7 @@ export const useEditorStore = defineStore('editor', () => {
 const snippetId = ref<string | null>(null)
 const snippetMode = ref<boolean>(false)
 const pageThemeId = ref<string | null>(null)
+const websiteId = ref<string | null>(null)
 
   // Populated by data-resolver.ts at preview/render time - maps element ids
   // to their resolved data object records (DataObjectRecord or
@@ -148,6 +149,7 @@ const pageThemeId = ref<string | null>(null)
     snippetMode.value = v
     if (!v) snippetId.value = null
   }
+  function setWebsiteId(v: string | null) { websiteId.value = v }
   function toggleCollapsed(id: string) {
     if (collapsedIds.value.has(id)) collapsedIds.value.delete(id)
     else collapsedIds.value.add(id)
@@ -170,13 +172,13 @@ const pageThemeId = ref<string | null>(null)
     mode, settings, elements, document, project, selected, page, current,
     component, action, subaction, level, parent, startTime, autosave,
     exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
-    mailTemplateId, snippetId, snippetMode, pageThemeId, websiteTheme, websiteThemes,
+    mailTemplateId, snippetId, snippetMode, pageThemeId, websiteId, websiteTheme, websiteThemes,
     defaultPlaceholderUrl,
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
     setParent, setStartTime, setAutosave, setExportMode, setPreview, setSave,
     setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, setPageThemeId, setSnippetId, setSnippetMode, resolvedData,
-    collapsedIds, toggleCollapsed, isCollapsed, setWebsiteTheme, setWebsiteThemes,
+    collapsedIds, toggleCollapsed, isCollapsed, setWebsiteTheme, setWebsiteThemes, setWebsiteId,
     setDefaultPlaceholderUrl,
   }
 })

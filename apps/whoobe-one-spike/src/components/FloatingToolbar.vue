@@ -662,7 +662,7 @@ function pickWebsitePath(e: Event) {
 
 watch(showLinkPicker, async (open) => {
   if (open) {
-    const wsId = (editor as any).page?.websiteId
+    const wsId = editor.websiteId
     if (wsId) {
       try {
         websitePathRecords.value = await fetchWebsitePaths(wsId)

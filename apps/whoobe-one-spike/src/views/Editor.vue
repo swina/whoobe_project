@@ -89,8 +89,10 @@ onMounted(async () => {
       editor.setSnippetId(snippetId)
     }
     const wsId = typeof route.query.websiteId === 'string' ? route.query.websiteId : null
-    if (wsId) await loadWebsiteTheme(editor, wsId)
-    else await loadAllThemes(editor)
+    if (wsId) {
+      editor.setWebsiteId(wsId)
+      await loadWebsiteTheme(editor, wsId)
+    } else await loadAllThemes(editor)
     return
   }
   if (route.query.snippetNew !== undefined) {
@@ -104,8 +106,10 @@ onMounted(async () => {
     editor.setCurrent(null)
     editor.setSnippetMode(true)
     const wsId = typeof route.query.websiteId === 'string' ? route.query.websiteId : null
-    if (wsId) await loadWebsiteTheme(editor, wsId)
-    else await loadAllThemes(editor)
+    if (wsId) {
+      editor.setWebsiteId(wsId)
+      await loadWebsiteTheme(editor, wsId)
+    } else await loadAllThemes(editor)
     return
   }
 
