@@ -10,6 +10,7 @@ All notable changes to the Whoobe CMS project.
 - **`packages/core/src/db/websites-schema.ts`**: Added `rootPath` column with unique index.
 - **`packages/core/src/db/websites-records.ts`**: Added `rootPath` to `WebsiteRecord`. Added `getWebsiteByRootPath()` helper. Updated `createWebsite`/`updateWebsite` to accept and persist `rootPath`.
 - **`apps/core-api/src/server.ts`**: Accept `rootPath` on website create/update with validation (regex + uniqueness). Public pages handler strips `rootPath` from request path and resolves `websiteId` from it. Imported `getWebsiteByRootPath`.
+- **`packages/core/drizzle/0034_solid_freak.sql`**: Generated missing migration for `root_path` column + unique index on `websites` table (fixes bootstrap failure).
 - **`apps/admin-dashboard/src/utils/websites-api.ts`**: Added `rootPath` to `WebsiteRecord`, `createWebsite` input, `updateWebsite` input.
 - **`apps/admin-dashboard/src/components/websites/MasterWebsiteTab.vue`**: Added root preview path input in Settings tab with validation. Pre-fills from website data and saves via `rootPath` field.
 - **`apps/admin-dashboard/src/components/pages/PagePreviewTab.vue`**: Prepends `rootPath` to preview iframe URL and passes `?rootPath=` query param. Looks up website from `websitesStore`.
