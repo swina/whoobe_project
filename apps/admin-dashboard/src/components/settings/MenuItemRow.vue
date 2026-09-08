@@ -95,6 +95,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { usePagesStore } from '../../stores/pagesStore'
+import { useWebsitesStore } from '../../stores/websitesStore'
 import type { MenuItem } from '../../utils/menus-api'
 import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
 
@@ -123,6 +124,7 @@ const emit = defineEmits<{
 }>()
 
 const pagesStore = usePagesStore()
+const websitesStore = useWebsitesStore()
 const editing = ref(false)
 const editItem = ref<MenuItem>({ ...props.item, path: props.item.path ?? '', children: [...(props.item.children || [])] })
 const isDragOver = ref(false)
@@ -168,9 +170,8 @@ function emitInsertBelow() {
 // Preview opens the path in whoobe-one-spike's public renderer (the same
 // iframe source the dashboard's Page Preview tab uses). A linked page's
 // routable slug is preferred; otherwise the menu path, prefixed with '/'.
-// No ?locale= query - the path carries the locale (/it/…) and the renderer
-// derives it from the path; no ?websiteId= needed either, since the public
-// route infers the website from the resolved page.
+// The website's rootPath is prepended and passed as ?rootPath= so the
+// public route can strip the prefix and scope the lookup to the website.
 const previewUrl = computed(() => {
   let target: string | null = null
   if (props.item.pageId) {
@@ -182,7 +183,11 @@ const previewUrl = computed(() => {
     if (!path) return null
     target = path.startsWith('/') ? path : '/' + path
   }
-  return `${getWhoobeOneSpikeUrl()}${target}`
+  const website = props.websiteId ? websitesStore.websites.find((w) => w.id === props.websiteId) : undefined
+  const rootPath = website?.rootPath || ''
+  const locale = props.websiteLocale || 'en'
+  const query = `?locale=${encodeURIComponent(locale)}${rootPath ? `&rootPath=${encodeURIComponent(rootPath)}` : ''}`
+  return `${getWhoobeOneSpikeUrl()}${rootPath}${target}${query}`
 })
 
 function openLinkPage() {

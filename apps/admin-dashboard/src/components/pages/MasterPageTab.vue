@@ -90,6 +90,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { usePagesStore } from '../../stores/pagesStore'
+import { useWebsitesStore } from '../../stores/websitesStore'
 import { useTabsStore, type PageSubTab, pageTabId } from '../../stores/tabsStore'
 import type { WhoobeOnePage } from '../../utils/pages-api'
 import WhoobeOneEmbed from './WhoobeOneEmbed.vue'
@@ -104,6 +105,7 @@ const props = defineProps<{
 }>()
 
 const pagesStore = usePagesStore()
+const websitesStore = useWebsitesStore()
 const tabsStore = useTabsStore()
 const page = ref<WhoobeOnePage | null>(null)
 const isLoading = ref(true)
@@ -138,13 +140,14 @@ function setSubTab(tab: PageSubTab) {
 // URL. A computed, deriving from the same reactive `page`/`currentTab`
 // state load() already sets, updates the anchor automatically.
 const openPreviewUrl = computed(() => {
-  if (!page.value) return ''
-  return (
-    getWhoobeOneSpikeUrl() +
-    (currentTab.value?.pagePreviewPath || page.value.slug || '')
-    //  +
-    // '?locale=' + (currentTab.value?.pagePreviewLocale || page.value.locale || 'en')
-  )
+  const p = page.value
+  if (!p) return ''
+  const slug = currentTab.value?.pagePreviewPath || p.slug || ''
+  const website = p.websiteId ? websitesStore.websites.find((w) => w.id === p.websiteId) : undefined
+  const rootPath = website?.rootPath || ''
+  const locale = currentTab.value?.pagePreviewLocale || p.locale || 'en'
+  const query = `?locale=${encodeURIComponent(locale)}${rootPath ? `&rootPath=${encodeURIComponent(rootPath)}` : ''}`
+  return `${getWhoobeOneSpikeUrl()}${rootPath}${slug}${query}`
 })
 
 async function load() {
