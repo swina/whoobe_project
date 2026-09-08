@@ -54,14 +54,16 @@ const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'pag
 const iframeSrc = computed(() => {
   const base = getWhoobeOneSpikeUrl()
   const tab = currentTab.value
-  // No ?locale= query: pages carry the locale in their path (/it/…), and
-  // the public renderer derives the locale from the path when the query is
-  // absent (a wrong/stale ?locale caused "page not found").
+  // Pass the page's real locale as ?locale= so PublicPage.vue doesn't
+  // extract it from the path — slugs that lack a locale prefix (e.g.
+  // `/whoobecms` with locale `en`) would otherwise get the wrong locale.
   if (tab?.pagePreviewPath) {
     return `${base}${tab.pagePreviewPath}`
   }
   if (page.value?.published && page.value.slug && !page.value.slug.includes('{')) {
-    return `${base}${page.value.slug}`
+    const slug = page.value.slug
+    const locale = page.value.locale || 'en'
+    return `${base}${slug}?locale=${encodeURIComponent(locale)}`
   }
   return null
 })
