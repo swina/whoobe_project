@@ -369,6 +369,7 @@
       </template>
     </div>
     <button title="Browse assets (backend DAM)" class="toolbar-icon" @click="showMediaPicker = true"><FolderOpen class="w-4 h-4" /></button>
+    <button v-if="hasImageRef" title="Remove current image" class="toolbar-icon text-rose-500" @click="clearImage"><X class="w-4 h-4" /></button>
     <div class="relative">
       <button type="button" title="Link URL" class="toolbar-icon" @click="openLinkPicker"><Link class="w-4 h-4" /></button>
       <template v-if="showLinkPicker">
@@ -704,6 +705,11 @@ const isTextEditable = computed(() => !!editor.current?.editable)
 const isVideoEmbed = computed(() => editor.current?.tag === 'youtube' || editor.current?.tag === 'vimeo')
 const isButtonElement = computed(() => editor.current?.tag === 'button' || editor.current?.tag === 'submit' || editor.current?.tag === 'reset')
 const isRoot = computed(() => !editor.document || editor.current?.id === editor.document.id)
+
+const hasImageRef = computed(() => {
+  const el = editor.current as any
+  return !!el?.image?.url
+})
 
 // Auto-detect the binding target based on the current element's nature.
 // This matches the field compatibility table in DataObjectPicker.vue.
