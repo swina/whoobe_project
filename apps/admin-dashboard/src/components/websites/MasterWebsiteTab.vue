@@ -30,6 +30,11 @@
             <input v-model="form.name" type="text" required class="w-full px-3 py-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
           </div>
           <div>
+            <label class="block font-semibold text-slate-400 light:text-slate-600 mb-1">Root preview path <span class="text-rose-400">*</span></label>
+            <input v-model="form.rootPath" type="text" required pattern="^\/[a-z0-9_-]+$" placeholder="/default" title="Must start with / and contain only lowercase letters, digits, hyphens, or underscores" class="w-full px-3 py-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+            <p class="text-[10px] text-slate-500 mt-0.5">All pages from this website are previewed under this path (e.g. /default/about-us). Changing it will break existing bookmarked preview URLs.</p>
+          </div>
+          <div>
             <label class="block font-semibold text-slate-400 light:text-slate-600 mb-1">Domains (one per line)</label>
             <textarea v-model="form.domainsText" rows="3" placeholder="example.com&#10;www.example.com" class="w-full px-3 py-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono resize-none"></textarea>
           </div>
@@ -166,6 +171,7 @@ const pathsLoading = ref(false)
 
 const form = ref({
   name: '',
+  rootPath: '',
   domainsText: '',
   defaultLocale: 'en',
   supportedLocalesText: 'en',
@@ -296,6 +302,7 @@ async function load() {
     website.value = websiteData
     form.value = {
       name: website.value.name,
+      rootPath: website.value.rootPath || '',
       domainsText: website.value.domains.join('\n'),
       defaultLocale: website.value.defaultLocale,
       supportedLocalesText: website.value.supportedLocales.join(', '),
@@ -342,6 +349,7 @@ async function save() {
   try {
     const input = {
       name: form.value.name.trim(),
+      rootPath: form.value.rootPath.trim(),
       domains: form.value.domainsText.split('\n').map((d) => d.trim()).filter(Boolean),
       defaultLocale: form.value.defaultLocale.trim() || 'en',
       supportedLocales: form.value.supportedLocalesText.split(',').map((l) => l.trim()).filter(Boolean),

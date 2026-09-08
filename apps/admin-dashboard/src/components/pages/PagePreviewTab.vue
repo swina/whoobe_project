@@ -38,6 +38,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Eye } from '@lucide/vue'
 import { usePagesStore } from '../../stores/pagesStore'
 import { useTabsStore } from '../../stores/tabsStore'
+import { useWebsitesStore } from '../../stores/websitesStore'
 import type { WhoobeOnePage } from '../../utils/pages-api'
 import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
 
@@ -47,6 +48,7 @@ const props = defineProps<{
 
 const pagesStore = usePagesStore()
 const tabsStore = useTabsStore()
+const websitesStore = useWebsitesStore()
 const page = ref<WhoobeOnePage | null>(null)
 
 const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'page' && t.itemId === props.pageId))
@@ -54,16 +56,22 @@ const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'pag
 const iframeSrc = computed(() => {
   const base = getWhoobeOneSpikeUrl()
   const tab = currentTab.value
-  // Pass the page's real locale as ?locale= so PublicPage.vue doesn't
-  // extract it from the path — slugs that lack a locale prefix (e.g.
-  // `/whoobecms` with locale `en`) would otherwise get the wrong locale.
   if (tab?.pagePreviewPath) {
     return `${base}${tab.pagePreviewPath}`
   }
   if (page.value?.published && page.value.slug && !page.value.slug.includes('{')) {
-    const slug = page.value.slug
-    const locale = page.value.locale || 'en'
-    return `${base}${slug}?locale=${encodeURIComponent(locale)}`
+    const p = page.value
+    const slug = p.slug
+    const locale = p.locale || 'en'
+    // Look up the website's rootPath so the public API can scope the lookup
+    const website = p.websiteId
+      ? websitesStore.websites.find((w) => w.id === p.websiteId)
+      : undefined
+    const rootPath = website?.rootPath || ''
+    // Append ?locale and ?rootPath so whoobe-one-spike passes them to the
+    // public API, which strips rootPath before looking up the page.
+    const query = `?locale=${encodeURIComponent(locale)}${rootPath ? `&rootPath=${encodeURIComponent(rootPath)}` : ''}`
+    return `${base}${rootPath}${slug}${query}`
   }
   return null
 })

@@ -3,6 +3,7 @@ import { getDefaultCoreApiUrl } from './auth-api'
 export interface WebsiteRecord {
   id: string
   name: string
+  rootPath: string
   domains: string[]
   defaultLocale: string
   supportedLocales: string[]
@@ -46,6 +47,7 @@ export async function createWebsite(
   baseUrl: string,
   input: {
     name: string
+    rootPath?: string
     domains?: string[]
     defaultLocale?: string
     supportedLocales?: string[]
@@ -68,6 +70,7 @@ export async function updateWebsite(
   id: string,
   input: {
     name?: string
+    rootPath?: string
     domains?: string[]
     defaultLocale?: string
     supportedLocales?: string[]
