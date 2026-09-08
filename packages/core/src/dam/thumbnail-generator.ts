@@ -62,7 +62,7 @@ export class ThumbnailGenerator {
           fit: dims.fit,
           withoutEnlargement: true,
         })
-        .toFormat('webp', { quality: 80 })
+        .toFormat('webp', { quality: 80, alphaQuality: 100 })
         .toBuffer();
     } catch {
       return buffer;
@@ -106,10 +106,12 @@ export class ThumbnailGenerator {
       canvas.width = dims.fit === 'cover' ? dims.width : width;
       canvas.height = dims.fit === 'cover' ? dims.height : height;
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return uint8Data;
+const ctx = canvas.getContext('2d');
+if (!ctx) return uint8Data;
 
-      ctx.drawImage(imageBitmap, 0, 0, width, height);
+// Clear to transparent so PNG alpha is preserved through the WebP export
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+ctx.drawImage(imageBitmap, 0, 0, width, height);
 
       const webpBlob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob((b) => resolve(b), 'image/webp', 0.8)

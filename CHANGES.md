@@ -4,6 +4,12 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [PNG transparency preserved in thumbnails + checkerboard background] — 2026-09-08
+
+- **`packages/core/src/dam/thumbnail-generator.ts`**: Added `alphaQuality: 100` to WebP output so the alpha channel is preserved at full fidelity. Canvas browser fallback now clears to transparent before drawing.
+- **`apps/admin-dashboard/src/style.css`**: Added `.bg-checkerboard` utility class with a semi-transparent checkerboard pattern to reveal transparency in image containers.
+- **`apps/admin-dashboard/src/components/dam/DamAssetPreviewPanel.vue`**, **`DamThumbnailsPanel.vue`**: Added `bg-checkerboard` to image preview containers so transparent areas are visible instead of appearing solid black/white.
+
 ## [SaveSnippetModal: pre-fill current snippet name when editing] — 2026-09-08
 
 - **`apps/whoobe-one-spike/src/components/SaveSnippetModal.vue`**: When opening the modal while editing an existing snippet (`editor.snippetMode`), defaults to "Update existing" mode with the current snippet's name, category, and icon pre-filled. Switching to "New snippet" clears the name field.
