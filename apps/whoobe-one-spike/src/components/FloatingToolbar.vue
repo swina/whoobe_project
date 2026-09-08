@@ -31,7 +31,7 @@
         </button>
         <template v-if="showSemanticPicker">
           <div class="fixed inset-0 z-[10000]" @click="showSemanticPicker = false"></div>
-          <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-40" :class="toolbarNearRightEdge ? 'right-0 left-auto' : ''" @click.stop>
+          <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-40" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" @click.stop>
             <span class="block text-[10px] text-gray-500 mb-1">Renders as</span>
             <select
               v-model="semanticValue"
@@ -145,7 +145,9 @@
                 />
               </label>
             </label>
-            <label class="flex items-center justify-between bg-slate-200 rounded-lg p-2">
+            
+            </template>
+          <label class="flex items-center justify-between bg-slate-200 rounded-lg p-2">
               Dot indicator
               <input type="checkbox" class="w-4 h-4" v-model="editor.current.slider.showDots" />
             </label>
@@ -176,8 +178,6 @@
                 />
               </label>
             </div>
-            </template>
-
           <template v-else>
             <div class="font-normal bg-slate-200 rounded-lg p-1">
               <p class="text-xs font-normal text-gray-400">
@@ -226,7 +226,7 @@
       <button type="button" title="Button icon" class="toolbar-icon" @click="openButtonIconPicker"><Image class="w-4 h-4" /></button>
       <template v-if="showButtonIconPicker">
         <div class="fixed inset-0 z-[10000]" @click="showButtonIconPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-64 space-y-2" :class="toolbarNearRightEdge ? 'right-0 left-auto' : ''" @click.stop>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-64 space-y-2" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" @click.stop>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">Lucide icon name</label>
             <div class="flex items-center gap-1">
@@ -267,7 +267,7 @@
       <button type="button" title="Text color" class="toolbar-icon" @click="showTextPicker = !showTextPicker"><Type class="w-4 h-4" /></button>
       <template v-if="showTextPicker">
         <div class="fixed inset-0 z-[10000]" @click="showTextPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-80" :class="toolbarNearRightEdge ? 'right-0 left-auto' : ''" @click.stop>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-80" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" @click.stop>
           <label class="block text-[11px] text-gray-500 mb-2 bg-slate-200 rounded p-1">Text Color</label>
           <label class="flex items-center gap-1 mb-2 cursor-pointer text-[10px] text-gray-500">
             Custom
@@ -294,7 +294,7 @@
       <button type="button" title="Fill color" class="toolbar-icon" @click="showFillPicker = !showFillPicker"><PaintBucket class="w-4 h-4" /></button>
       <template v-if="showFillPicker">
         <div class="fixed inset-0 z-[10000]" @click="showFillPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-80" :class="toolbarNearRightEdge ? 'right-0 left-auto' : ''" @click.stop>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-80" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" @click.stop>
           <label class="block text-[11px] text-gray-500 mb-2 bg-slate-200 rounded p-1">Fill Color</label>
           <label class="flex items-center gap-1 mb-2 cursor-pointer text-[10px] text-gray-500">
             Custom
@@ -328,7 +328,7 @@
       </button>
       <template v-if="showImagePicker">
         <div class="fixed inset-0 z-[10000]" @click="showImagePicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" :class="toolbarNearRightEdge ? 'right-0 left-auto' : ''" @click.stop>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" @click.stop>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">Image URL</label>
             <div class="flex items-center gap-1">
@@ -374,7 +374,7 @@
       <button type="button" title="Link URL" class="toolbar-icon" @click="openLinkPicker"><Link class="w-4 h-4" /></button>
       <template v-if="showLinkPicker">
         <div class="fixed inset-0 z-[10000]" @click="showLinkPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" :class="toolbarNearRightEdge ? 'right-0 left-auto' : ''" @click.stop>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" @click.stop>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">URL</label>
             <div class="flex items-center gap-1">
@@ -860,9 +860,18 @@ const sliderPopoverMaxHeight = computed(() => {
   return Math.max(160, available)
 })
 
+// Generic upward-flip for all other popovers: when there's less than 260px
+// below the toolbar AND more space above, flip upward. Same threshold the
+// slider already uses, applied uniformly to every short popover (text color,
+// fill color, image, link, button icon pickers).
+const toolbarNearBottomEdge = computed(() => {
+  const spaceBelow = window.innerHeight - (top.value + TOOLBAR_HEIGHT) - POPOVER_MARGIN
+  return spaceBelow < 260 && top.value > spaceBelow
+})
+
 let rafId: number | null = null
 function loop() {
-  if (!isDragging.value) updatePosition()
+  if (!isDragging.value && !positionPinned.value) updatePosition()
   rafId = requestAnimationFrame(loop)
 }
 onMounted(() => {
@@ -1233,6 +1242,7 @@ function remove() {
 const isDragging = ref(false)
 const dragOffsetX = ref(0)
 const dragOffsetY = ref(0)
+const positionPinned = ref(false)
 
 function onDragStart(e: MouseEvent) {
   if (!editor.current) return
@@ -1241,6 +1251,7 @@ function onDragStart(e: MouseEvent) {
   dragOffsetX.value = e.clientX - rect.left
   dragOffsetY.value = e.clientY - rect.top
   isDragging.value = true
+  positionPinned.value = false
   document.addEventListener('mousemove', onDragMove)
   document.addEventListener('mouseup', onDragEnd)
 }
@@ -1252,6 +1263,7 @@ function onDragMove(e: MouseEvent) {
 
 function onDragEnd() {
   isDragging.value = false
+  positionPinned.value = true
   document.removeEventListener('mousemove', onDragMove)
   document.removeEventListener('mouseup', onDragEnd)
 }
@@ -1264,6 +1276,7 @@ watchEffect(() => {
     currentElementId = id
     if (id) {
       isDragging.value = false
+      positionPinned.value = false
       document.removeEventListener('mousemove', onDragMove)
       document.removeEventListener('mouseup', onDragEnd)
     }
