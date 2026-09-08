@@ -1,6 +1,9 @@
 # Changelog
 
-All notable changes to the Whoobe CMS project.
+## [FloatingToolbar: website paths select in link picker] — 2026-09-08
+
+- **`apps/whoobe-one-spike/src/website-paths-api.ts`**: New API client with `fetchWebsitePaths(websiteId?)` for the whoobe-one-spike app.
+- **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: Added a "Website path" `<select>` dropdown in the link picker popover, filtered by the current page's `websiteId`. Lists all paths from the website's path groups (flattened from the nested MenuItem tree). Selecting a path populates the URL input. Paths are loaded when the link picker opens via a `watch(showLinkPicker, ...)`.
 
 ## [AI Settings: per-user instead of global (API keys are private)] — 2026-09-08
 

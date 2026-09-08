@@ -396,6 +396,18 @@
             </div>
             <div v-if="hrefBindingLabel" class="text-[9px] text-indigo-500 font-mono mt-0.5">{{ hrefBindingLabel }}</div>
           </div>
+          <div v-if="websitePathGroups.length > 0" class="border-t border-gray-100 pt-1.5 mt-1.5">
+            <label class="block text-[10px] text-gray-500 mb-1">Website path</label>
+            <select
+              class="w-full px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+              @change="pickWebsitePath"
+            >
+              <option value="">Select a path…</option>
+              <optgroup v-for="g in websitePathGroups" :key="g.websiteId" :label="g.websiteName">
+                <option v-for="p in g.paths" :key="p.url" :value="p.url">{{ p.label }} ({{ p.url }})</option>
+              </optgroup>
+            </select>
+          </div>
 
           <div class="border-t border-gray-100 pt-2">
             <button
@@ -551,7 +563,7 @@
 // plus two ref writes) rather than wiring explicit scroll/resize/mutation
 // listeners - simpler, and correctly handles content reflow (e.g. editing
 // text changes the element's height) without needing a MutationObserver.
-import { computed, onMounted, onUnmounted, ref, shallowRef, watchEffect } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch, watchEffect } from 'vue'
 import type { Component } from 'vue'
 import Element from '../scripts/ElementsClass.js'
 import animations from '../scripts/animations.js'
@@ -573,6 +585,7 @@ import { resolveDocumentData } from '../scripts/data-resolver'
 import { getDataClass, getDataClassByName } from '../data-objects-api'
 import { listPages } from '../scripts/database-actions'
 import { isDynamicSlug } from '../scripts/path-pattern'
+import { fetchWebsitePaths, type WebsitePathRecord, type MenuItem as PathMenuItem } from '../website-paths-api'
 import {
   ArrowLeftRight,
   ArrowUp,
@@ -618,6 +631,47 @@ const buttonIconWidthDraft = ref(16)
 const buttonIconHeightDraft = ref(16)
 const buttonIconPreview = shallowRef<Component | null>(null)
 const linkTargetDraft = ref('_self')
+const websitePathRecords = ref<WebsitePathRecord[]>([])
+
+interface FlatPath { label: string; url: string }
+interface PathGroup { websiteId: string; websiteName: string; paths: FlatPath[] }
+const websitePathGroups = computed<PathGroup[]>(() => {
+  const groups: PathGroup[] = []
+  for (const rec of websitePathRecords.value) {
+    const flat: FlatPath[] = []
+    const walk = (items: PathMenuItem[], prefix?: string) => {
+      for (const item of items) {
+        const p = item.path?.trim() ? (item.path.startsWith('/') ? item.path : '/' + item.path) : ''
+        const url = prefix ? `${prefix}${p}` : p
+        if (url) flat.push({ label: item.label, url })
+        if (item.children?.length) walk(item.children, url)
+      }
+    }
+    walk(rec.items)
+    if (flat.length > 0) {
+      groups.push({ websiteId: rec.websiteId, websiteName: rec.name, paths: flat })
+    }
+  }
+  return groups
+})
+
+function pickWebsitePath(e: Event) {
+  const url = (e.target as HTMLSelectElement).value
+  if (url) linkUrlDraft.value = url
+}
+
+watch(showLinkPicker, async (open) => {
+  if (open) {
+    const wsId = (editor as any).page?.websiteId
+    if (wsId) {
+      try {
+        websitePathRecords.value = await fetchWebsitePaths(wsId)
+      } catch { websitePathRecords.value = [] }
+    } else {
+      websitePathRecords.value = []
+    }
+  }
+})
 
 // --- List-to-detail linking ("Link to a page") ---
 const showPageLinkPicker = ref(false)
