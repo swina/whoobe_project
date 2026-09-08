@@ -56,7 +56,7 @@
         </div>
         <div v-if="editItem.pageId" class="flex items-center gap-2">
           <span class="text-[12px] text-indigo-400 font-mono">Linked page: {{ editItem.pageId }}</span>
-          <button @click="editItem.pageId = undefined; editItem.url = undefined" class="text-[12px] text-rose-400 hover:text-rose-300">Unlink</button>
+          <button @click="editItem.pageId = undefined; editItem.url = undefined; userUnlinked = true" class="text-[12px] text-rose-400 hover:text-rose-300">Unlink</button>
         </div>
         <div class="flex gap-2">
           <div class="flex-1">
@@ -130,12 +130,17 @@ const editItem = ref<MenuItem>({ ...props.item, path: props.item.path ?? '', chi
 const isDragOver = ref(false)
 const dragSourceIndex = ref<number | null>(null)
 const pathConflict = ref(false)
+const userUnlinked = ref(false)
 
 watch(() => props.item, (newItem) => {
   if (!editing.value) {
     editItem.value = { ...newItem, path: newItem.path ?? '', children: [...(newItem.children || [])] }
   }
 }, { deep: true })
+
+watch(editing, (isEditing) => {
+  if (isEditing) userUnlinked.value = false
+})
 
 const pagePublished = computed(() => {
   if (!props.item.pageId) return false
@@ -211,6 +216,10 @@ function validatePathUniqueness() {
 function saveEdit() {
   const item = { ...editItem.value, children: editItem.value.children }
   item.path = item.path?.trim() || undefined
+  if (!userUnlinked.value) {
+    if (props.item.pageId && !item.pageId) item.pageId = props.item.pageId
+    if (props.item.url && !item.url) item.url = props.item.url
+  }
   emit('update', { index: props.index, item })
   editing.value = false
 }
