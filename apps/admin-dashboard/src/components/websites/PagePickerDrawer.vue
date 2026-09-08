@@ -99,6 +99,7 @@ function onPageDragStart(e: DragEvent, page: WhoobeOnePage) {
   e.dataTransfer.effectAllowed = 'copy'
   e.dataTransfer.setData('application/page-id', page.id)
   e.dataTransfer.setData('application/page-title', page.title)
+  e.dataTransfer.setData('application/page-slug', page.slug)
 }
 
 async function createPage() {

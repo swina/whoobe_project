@@ -410,6 +410,7 @@ async function onPageSelected(page: WhoobeOnePage) {
     ...item,
     pageId: page.id,
     label: page.title,
+    path: page.slug ? page.slug.replace(/^\//, '') : item.path,
   }))
   if (!updated) {
     console.warn('Could not find item at path', itemPath)
