@@ -292,7 +292,8 @@ function onDrop(e: DragEvent) {
   const pageId = e.dataTransfer.getData('application/page-id')
   if (pageId) {
     const pageTitle = e.dataTransfer.getData('application/page-title') || 'Linked Page'
-    const updatedItem = { ...props.item, pageId, label: pageTitle }
+    const pageSlug = e.dataTransfer.getData('application/page-slug') || ''
+    const updatedItem = { ...props.item, pageId, label: pageTitle, path: pageSlug ? pageSlug.replace(/^\//, '') : props.item.path }
     emit('update', { index: props.index, item: updatedItem })
     dragSourceIndex.value = null
     return
