@@ -213,6 +213,7 @@ export async function loadPage(editor: EditorStore, id: string): Promise<void> {
   editor.setCurrent(null)
   editor.setPageThemeId(saved.themeId)
   editor.setWebsiteId(saved.websiteId)
+  editor.setLocale((saved as any).locale || 'en')
 
   if (saved.websiteId) {
     await loadWebsiteTheme(editor, saved.websiteId)

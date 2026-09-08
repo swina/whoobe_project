@@ -665,11 +665,9 @@ function pickWebsitePath(e: Event) {
   const wsId = val.slice(0, sep)
   const path = val.slice(sep + 1)
   const rootPath = websiteRootPathMap.value[wsId] || ''
-  if (rootPath) {
-    linkUrlDraft.value = `${rootPath}${path}?rootPath=${encodeURIComponent(rootPath)}`
-  } else {
-    linkUrlDraft.value = path
-  }
+  const locale = editor.locale || 'en'
+  const query = `?locale=${encodeURIComponent(locale)}${rootPath ? `&rootPath=${encodeURIComponent(rootPath)}` : ''}`
+  linkUrlDraft.value = `${rootPath}${path}${query}`
 }
 
 watch(showLinkPicker, async (open) => {
