@@ -4,6 +4,10 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [MasterWebsiteTab: per-tab paths/pages state — fix data race across tabs] — 2026-09-08
+
+- **`apps/admin-dashboard/src/components/websites/MasterWebsiteTab.vue`**: Replaced shared global `pathsStore.paths` and `pagesStore.pages` with per-tab local `websitePaths` and `websitePages` refs, fetched independently per instance. This fixes switching between multiple website tabs showing the wrong (last-loaded) data.
+
 ## [FloatingToolbar: drag persists + popovers flip upward near bottom] — 2026-09-08
 
 - **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: Fixed drag not persisting — added `positionPinned` flag so the RAF loop stops auto-updating after a manual drag. Position stays until a new element is selected. All popovers (semantic, text color, fill color, image, link, button icon) now flip upward when the toolbar is near the bottom edge, matching the existing slider popover logic.

@@ -1049,7 +1049,7 @@ function clearFill() {
 // concept in HTML at all.
 function openImagePicker() {
   if (!editor.current) return
-  imageUrlDraft.value = editor.current.image?.url || ''
+  imageUrlDraft.value = editor.current.image?.url || 'https://picsum.photos/640/420'
   imageAltDraft.value = editor.current.image?.alt || ''
   showImagePicker.value = true
 }
