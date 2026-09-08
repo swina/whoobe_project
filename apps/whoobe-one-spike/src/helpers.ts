@@ -50,6 +50,7 @@ export function randomID(prefix = 'whoobe'): string {
  * once) or the raw HTML tag name, neither of which told these two builders
  * apart from each other. */
 export function friendlyElementName(el: any): string {
+  if (el.name) return el.name
   if (el.level) return 'Heading'
 
   switch (el.tag) {

@@ -116,7 +116,7 @@
             v-for="page in pagedPages"
             :key="page.id"
             @click="tabsStore.openPage(page.id)"
-            class="cursor-pointer hover:bg-slate-800/50 light:bg-slate-100/50 transition"
+            class="cursor-pointer hover:bg-slate-300/60 light:bg-slate-100/50 transition"
           >
             <td class="py-2.5 px-4 text-center" @click.stop>
               <input type="checkbox" :checked="selectedPageIds.has(page.id)"

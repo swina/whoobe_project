@@ -129,7 +129,7 @@
 // variations. Picking a snippet to update pre-fills Name/Category/Icon
 // from it (still editable - updating can also rename/recategorize) while
 // the node always comes from whatever's currently selected in the canvas.
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { X } from '@lucide/vue'
 import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
@@ -177,6 +177,27 @@ watch(targetSnippetId, (id) => {
   categoryChoice.value = snippet.category
   icon.value = snippet.icon || '📦'
 })
+
+// Editing an existing snippet from admin-dashboard's Snippets list: the
+// whole point of that workflow is tweaking *that* snippet, so the modal
+// defaults to pre-selecting it in "Update existing" mode (name/category/
+// icon pre-filled by the targetSnippetId watcher above) instead of
+// starting as a blind "New snippet". "New snippet" stays fully available
+// by toggling the radio, which clears the pre-filled name so a fresh one
+// can be typed.
+onMounted(() => {
+  if (!editor.snippetMode || !editor.snippetId) return
+  if (!snippetsStore.items.some((s) => s.id === editor.snippetId)) return
+  mode.value = 'update'
+  targetSnippetId.value = editor.snippetId
+})
+
+watch(
+  () => mode.value,
+  (m) => {
+    if (m === 'new') name.value = ''
+  }
+)
 
 async function submit() {
   error.value = ''

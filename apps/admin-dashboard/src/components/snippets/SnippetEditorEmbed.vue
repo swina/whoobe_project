@@ -1,7 +1,7 @@
 <template>
   <div class="h-full flex flex-col">
     <div class="flex-1 min-h-0 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 overflow-hidden relative">
-      <iframe :src="embedSrc" class="w-full h-full border-0" @load="isConnecting = false"></iframe>
+      <iframe :src="embedSrc" :name="props.title" class="w-full h-full border-0" @load="isConnecting = false"></iframe>
 
       <div
         v-if="isConnecting"
@@ -27,6 +27,7 @@ import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
 const props = defineProps<{
   snippetId: string
   websiteId?: string
+  title?: string
 }>()
 
 const isConnecting = ref(true)

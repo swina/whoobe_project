@@ -45,6 +45,7 @@ export default class Element {
         this.helper = null
         this.dialog = null
         this.dataBinding = null
+        this.name = ''
     }
 
     randomID(){
