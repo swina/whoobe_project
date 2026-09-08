@@ -2,6 +2,11 @@
 
 All notable changes to the Whoobe CMS project.
 
+## [AI Generator: fix "did not return valid JSON" parse error] — 2026-09-08
+
+- **`packages/core/src/ai/providers.ts`**: `parseJsonText` now strips non-printable ASCII control characters (0x00-0x1F except `\t\n\r`) before `JSON.parse` — some AI providers inject invisible characters that break parsing.
+- **`apps/core-api/src/server.ts`**: The `POST /ai/generate` page/snippet endpoint now passes `maxTokens: 8192` (was default 4096) — complex pages with many blocks could exceed the token limit and get truncated mid-JSON.
+
 ---
 
 ## [Website Paths & page preview links now include rootPath] — 2026-09-08
