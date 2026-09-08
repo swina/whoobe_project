@@ -88,7 +88,8 @@ onMounted(async () => {
   try {
     const queryLocale = typeof route.query.locale === 'string' && route.query.locale ? route.query.locale : ''
     const locale = queryLocale || route.path.split('/')[1] || 'it'
-    const { page, params, layout: pageLayout } = await getPublicPage(locale, route.path)
+    const rootPath = typeof route.query.rootPath === 'string' ? route.query.rootPath : undefined
+    const { page, params, layout: pageLayout } = await getPublicPage(locale, route.path, rootPath)
     doc.value = page.content
     layout.value = pageLayout ?? null
     // Load the page's theme before resolving data, so theme styles are

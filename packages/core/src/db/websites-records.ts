@@ -5,6 +5,7 @@ import { websites } from './websites-schema.js';
 export interface WebsiteRecord {
   id: string;
   name: string;
+  rootPath: string;
   domains: string[];
   defaultLocale: string;
   supportedLocales: string[];
@@ -25,6 +26,12 @@ export async function getWebsite(id: string): Promise<WebsiteRecord | null> {
   return row ?? null;
 }
 
+export async function getWebsiteByRootPath(rootPath: string): Promise<WebsiteRecord | null> {
+  const db = getDb();
+  const [row] = await db.select().from(websites).where(eq(websites.rootPath, rootPath)).limit(1);
+  return row ?? null;
+}
+
 export async function getWebsiteByDomain(domain: string): Promise<WebsiteRecord | null> {
   const db = getDb();
   const all = await db.select().from(websites);
@@ -33,6 +40,7 @@ export async function getWebsiteByDomain(domain: string): Promise<WebsiteRecord 
 
 export async function createWebsite(input: {
   name: string;
+  rootPath?: string;
   domains?: string[];
   defaultLocale?: string;
   supportedLocales?: string[];
@@ -44,6 +52,7 @@ export async function createWebsite(input: {
     .insert(websites)
     .values({
       name: input.name,
+      rootPath: input.rootPath ?? '',
       domains: input.domains ?? [],
       defaultLocale: input.defaultLocale ?? 'en',
       supportedLocales: input.supportedLocales ?? ['en'],
@@ -58,6 +67,7 @@ export async function updateWebsite(
   id: string,
   input: {
     name?: string;
+    rootPath?: string;
     domains?: string[];
     defaultLocale?: string;
     supportedLocales?: string[];
@@ -68,6 +78,7 @@ export async function updateWebsite(
   const db = getDb();
   const values: Record<string, unknown> = { updatedAt: new Date() };
   if (input.name !== undefined) values.name = input.name;
+  if (input.rootPath !== undefined) values.rootPath = input.rootPath;
   if (input.domains !== undefined) values.domains = input.domains;
   if (input.defaultLocale !== undefined) values.defaultLocale = input.defaultLocale;
   if (input.supportedLocales !== undefined) values.supportedLocales = input.supportedLocales;

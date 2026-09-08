@@ -102,8 +102,9 @@ export interface PublicPageLookup {
  *  apps/core-api/src/server.ts's `GET /public/pages/:locale/*` route.
  *  `path` must start with '/'. `params` holds any {placeholder} values
  *  extracted from a dynamic-pattern match (empty for a static page). */
-export async function getPublicPage(locale: string, path: string): Promise<PublicPageLookup> {
-  const res = await fetch(`${getDefaultCoreApiUrl()}/public/pages/${encodeURIComponent(locale)}${path}`, { credentials: 'include' })
+export async function getPublicPage(locale: string, path: string, rootPath?: string): Promise<PublicPageLookup> {
+  const query = rootPath ? `?rootPath=${encodeURIComponent(rootPath)}` : ''
+  const res = await fetch(`${getDefaultCoreApiUrl()}/public/pages/${encodeURIComponent(locale)}${path}${query}`, { credentials: 'include' })
   return parseJsonOrThrow(res)
 }
 

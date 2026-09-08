@@ -4,6 +4,18 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [Website rootPath: scoped preview URLs per website] — 2026-09-08
+
+- **`docs/plans/website/website-scoped-preview-url.md`**: Implementation plan.
+- **`packages/core/src/db/websites-schema.ts`**: Added `rootPath` column with unique index.
+- **`packages/core/src/db/websites-records.ts`**: Added `rootPath` to `WebsiteRecord`. Added `getWebsiteByRootPath()` helper. Updated `createWebsite`/`updateWebsite` to accept and persist `rootPath`.
+- **`apps/core-api/src/server.ts`**: Accept `rootPath` on website create/update with validation (regex + uniqueness). Public pages handler strips `rootPath` from request path and resolves `websiteId` from it. Imported `getWebsiteByRootPath`.
+- **`apps/admin-dashboard/src/utils/websites-api.ts`**: Added `rootPath` to `WebsiteRecord`, `createWebsite` input, `updateWebsite` input.
+- **`apps/admin-dashboard/src/components/websites/MasterWebsiteTab.vue`**: Added root preview path input in Settings tab with validation. Pre-fills from website data and saves via `rootPath` field.
+- **`apps/admin-dashboard/src/components/pages/PagePreviewTab.vue`**: Prepends `rootPath` to preview iframe URL and passes `?rootPath=` query param. Looks up website from `websitesStore`.
+- **`apps/whoobe-one-spike/src/pages-api.ts`**: `getPublicPage()` accepts optional `rootPath` param, passes as query.
+- **`apps/whoobe-one-spike/src/views/PublicPage.vue`**: Reads `?rootPath=` from route query and forwards to API.
+
 ## [PagePreviewTab: pass locale as query param — fix preview for slugs without locale prefix] — 2026-09-08
 
 - **`apps/admin-dashboard/src/components/pages/PagePreviewTab.vue`**: Added `?locale=` query param to the preview iframe URL, using the page's own locale from the DB. Fixes "Page not found" for pages whose slug doesn't start with a locale prefix (e.g. `/whoobecms` with locale `en`). PublicPage.vue already reads `?locale=` first, so this overrides its fallback path-segment extraction.

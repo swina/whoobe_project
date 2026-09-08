@@ -25,6 +25,7 @@ import {
   listWebsites,
   getWebsite,
   getWebsiteByDomain,
+  getWebsiteByRootPath,
   createWebsite,
   updateWebsite,
   deleteWebsite,
@@ -1416,13 +1417,24 @@ app.get('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_READ), asy
 
 app.post('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, domains, defaultLocale, supportedLocales, settings, themeId } = req.body ?? {};
+    const { name, rootPath, domains, defaultLocale, supportedLocales, settings, themeId } = req.body ?? {};
     if (!name || typeof name !== 'string') {
       res.status(400).json({ error: 'name is required' });
       return;
     }
+    const rp = typeof rootPath === 'string' ? rootPath.trim() : `/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    if (!/^\/[a-z0-9_-]+$/.test(rp)) {
+      res.status(400).json({ error: 'rootPath must start with / and contain only lowercase letters, digits, hyphens, or underscores' });
+      return;
+    }
+    const existingByPath = await getWebsiteByRootPath(rp);
+    if (existingByPath) {
+      res.status(409).json({ error: `rootPath "${rp}" is already taken` });
+      return;
+    }
     const website = await createWebsite({
       name,
+      rootPath: rp,
       domains: Array.isArray(domains) ? domains : undefined,
       defaultLocale: typeof defaultLocale === 'string' ? defaultLocale : undefined,
       supportedLocales: Array.isArray(supportedLocales) ? supportedLocales : undefined,
@@ -1482,9 +1494,21 @@ app.get('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_READ),
 
 app.patch('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, domains, defaultLocale, supportedLocales, settings, themeId } = req.body ?? {};
+    const { name, rootPath, domains, defaultLocale, supportedLocales, settings, themeId } = req.body ?? {};
+    if (rootPath !== undefined) {
+      if (typeof rootPath !== 'string' || !/^\/[a-z0-9_-]+$/.test(rootPath)) {
+        res.status(400).json({ error: 'rootPath must start with / and contain only lowercase letters, digits, hyphens, or underscores' });
+        return;
+      }
+      const existingByPath = await getWebsiteByRootPath(rootPath);
+      if (existingByPath && existingByPath.id !== req.params.id) {
+        res.status(409).json({ error: `rootPath "${rootPath}" is already taken` });
+        return;
+      }
+    }
     const website = await updateWebsite(req.params.id, {
       name: typeof name === 'string' ? name : undefined,
+      rootPath: rootPath !== undefined ? rootPath : undefined,
       domains: Array.isArray(domains) ? domains : undefined,
       defaultLocale: typeof defaultLocale === 'string' ? defaultLocale : undefined,
       supportedLocales: Array.isArray(supportedLocales) ? supportedLocales : undefined,
@@ -1927,9 +1951,20 @@ app.delete('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECT
 // same slug string the old single-segment route would have received.
 app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<void> => {
   try {
-    const websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
-    const requestPath = '/' + (req.params[0] ?? '');
+    let websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
+    const rootPath = typeof req.query.rootPath === 'string' ? req.query.rootPath : null;
+    let requestPath = '/' + (req.params[0] ?? '');
     const locale = req.params.locale;
+
+    // Strip the rootPath prefix from the request path when present and
+    // resolve websiteId from it if not already provided.
+    if (rootPath && requestPath.startsWith(rootPath)) {
+      requestPath = requestPath.slice(rootPath.length) || '/';
+      if (!websiteId) {
+        const site = await getWebsiteByRootPath(rootPath);
+        if (site) websiteId = site.id;
+      }
+    }
 
     // Cheapest, most common case first: exact literal match, identical to
     // the old route's only behavior - zero extra query for any static page.
