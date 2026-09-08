@@ -154,7 +154,7 @@
                     'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
                     page.kind === 'module'
                       ? 'bg-violet-500/20 text-black border-violet-500/30'
-                      : 'bg-slate-500/20 text-slate-100 border-slate-500/30'
+                      : 'bg-slate-500/20 text-slate-500 border-slate-500/30'
                   ]"
                 >
                   {{ page.kind || 'content' }}
@@ -164,7 +164,7 @@
                 <span
                   :class="[
                     'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
-                    page.published ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    page.published ? 'bg-emerald-800/50 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/50 text-amber-100 border-amber-500/30'
                   ]"
                 >
                   {{ page.published ? 'published' : (page.workflowState || 'draft') }}

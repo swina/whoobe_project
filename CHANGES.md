@@ -2,6 +2,15 @@
 
 All notable changes to the Whoobe CMS project.
 
+## [AI Settings: per-user instead of global (API keys are private)] — 2026-09-08
+
+- **`packages/core/src/db/ai-settings-schema.ts`**: Changed `ai_settings` from a single-row table with `id` PK to a per-user table with `user_id` as PK (FK to `users.id` ON DELETE CASCADE). Each user now has their own AI provider configuration.
+- **`packages/core/src/db/ai-settings-records.ts`**: `getAiSettings(userId)` and `upsertAiSettings(userId, input)` now require a `userId` argument. Uses `ON CONFLICT DO UPDATE` instead of separate select-then-insert/replace pattern.
+- **`apps/core-api/src/server.ts`**: All 4 endpoints that interact with AI settings (`GET /ai/settings`, `PUT /ai/settings`, `POST /ai/generate`, `POST /ai/generate-website-structure`) now scope the settings lookup to `req.user.id`.
+- **`packages/core/drizzle/0035_ai_settings_per_user.sql`**: Drops the old global `ai_settings` table and recreates it with `user_id` as PK + FK to users.
+
+---
+
 ## [PagesView: website filter dropdown + server-side websiteId filtering] — 2026-09-08
 
 - **`apps/admin-dashboard/src/views/PagesView.vue`**: Added a website `<select>` filter next to the search input that lists all websites from `websitesStore`. Selecting a website passes its ID to `pagesStore.refreshPages(websiteId)`, so the backend filters by website. The filter modal's `websiteId` field now renders as a website dropdown instead of a text input. A watch on `filterWebsiteId` re-fetches pages on change.

@@ -3392,9 +3392,9 @@ app.post('/mail-log/:id/resend', requirePermission(PERMISSIONS.SETTINGS_MANAGE),
 // same shape as mail-settings: single global row, GET never returns the
 // stored API key (only `hasApiKey`), PUT treats a blank key as
 // "keep the existing one".
-app.get('/ai/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
+app.get('/ai/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const settings = await getAiSettings();
+    const settings = await getAiSettings(req.user!.id);
     if (!settings) {
       res.json(null);
       return;
@@ -3407,15 +3407,15 @@ app.get('/ai/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (_
   }
 });
 
-app.put('/ai/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.put('/ai/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { provider, model, endpoint, apiKey } = req.body ?? {};
     if (!provider || !model) {
       res.status(400).json({ error: 'provider and model are required' });
       return;
     }
-    const existing = await getAiSettings();
-    const updated = await upsertAiSettings({
+    const existing = await getAiSettings(req.user!.id);
+    const updated = await upsertAiSettings(req.user!.id, {
       provider,
       model,
       endpoint: endpoint || null,
@@ -3444,7 +3444,7 @@ app.post('/ai/generate', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (re
     res.status(400).json({ error: 'prompt is required' });
     return;
   }
-  const settings = await getAiSettings();
+  const settings = await getAiSettings(req.user!.id);
   if (!settings || !settings.apiKey) {
     res.status(400).json({ error: 'AI is not configured. Save the provider, model, and API key in Settings → AI first.' });
     return;
@@ -3516,7 +3516,7 @@ app.post('/ai/generate-website-structure', requirePermission(PERMISSIONS.OBJECTS
     res.status(400).json({ error: 'prompt is required' });
     return;
   }
-  const settings = await getAiSettings();
+const settings = await getAiSettings(req.user!.id);
   if (!settings || !settings.apiKey) {
     res.status(400).json({ error: 'AI is not configured. Save the provider, model, and API key in Settings → AI first.' });
     return;

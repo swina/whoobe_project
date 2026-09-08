@@ -218,7 +218,7 @@ const toastStore = useToastStore()
 
 const searchQuery = ref('')
 const categoryFilter = ref('')
-const viewMode = ref<'list' | 'grid'>('grid')
+const viewMode = ref<'list' | 'grid'>('list')
 const fileInput = ref<HTMLInputElement | null>(null)
 const importResult = ref<{ created: number; skipped: number; errors: string[] } | null>(null)
 const selectedIds = ref(new Set<string>())
