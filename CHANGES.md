@@ -2,7 +2,9 @@
 
 All notable changes to the Whoobe CMS project.
 
-## [AI Generator: fix "did not return valid JSON" parse error] — 2026-09-08
+## [PagesView: website filter dropdown + server-side websiteId filtering] — 2026-09-08
+
+- **`apps/admin-dashboard/src/views/PagesView.vue`**: Added a website `<select>` filter next to the search input that lists all websites from `websitesStore`. Selecting a website passes its ID to `pagesStore.refreshPages(websiteId)`, so the backend filters by website. The filter modal's `websiteId` field now renders as a website dropdown instead of a text input. A watch on `filterWebsiteId` re-fetches pages on change.
 
 - **`packages/core/src/ai/providers.ts`**: `parseJsonText` now strips non-printable ASCII control characters (0x00-0x1F except `\t\n\r`) before `JSON.parse` — some AI providers inject invisible characters that break parsing.
 - **`apps/core-api/src/server.ts`**: The `POST /ai/generate` page/snippet endpoint now passes `maxTokens: 8192` (was default 4096) — complex pages with many blocks could exceed the token limit and get truncated mid-JSON.
