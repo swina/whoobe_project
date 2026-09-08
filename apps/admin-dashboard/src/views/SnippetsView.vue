@@ -4,10 +4,10 @@
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-xl font-bold text-slate-100 light:text-slate-900">Snippets</h2>
-        <p class="text-xs text-slate-400 light:text-slate-600">
-          Reusable elements saved from the Whoobe One editor. Click a snippet to edit it, or link it to a website template's header/aside/footer.
-        </p>
-      </div>
+          <p class="text-xs text-slate-400 light:text-slate-600">
+            Reusable elements saved from the Whoobe One editor. Click a snippet to edit it, or link it to a website template's header/aside/footer.
+          </p>
+        </div>
       <div class="flex items-center gap-2">
         <span v-if="selectedIds.size > 0" class="text-xs text-slate-400 light:text-slate-600">
           {{ selectedIds.size }} selected
@@ -47,6 +47,7 @@
           + New Snippet
         </button>
       </div>
+    </div>
     </div>
 
     <div v-if="importResult" class="p-3 rounded-xl text-xs" :class="importResult.errors.length ? 'bg-amber-900/40 border border-amber-700/50 text-amber-200' : 'bg-emerald-900/40 border border-emerald-700/50 text-emerald-200'">
@@ -168,7 +169,7 @@
         @click="openSnippetTab(snippet.id)"
       >
         <div class="relative h-[200px] bg-slate-950/40 light:bg-slate-50">
-          <SnippetPreviewCard :node="snippet.node" />
+          <SnippetPreviewCard :node="snippet.node as Record<string, any>" />
           <div class="absolute top-2 left-2 z-10" @click.stop>
             <input
               type="checkbox"
@@ -197,7 +198,7 @@
       </div>
     </div>
   </div>
-  </div>
+</div>
 </template>
 
 <script setup lang="ts">
