@@ -4,6 +4,10 @@ All notable changes to the Whoobe CMS project.
 
 ---
 
+## [FloatingToolbar: drag persists + popovers flip upward near bottom] — 2026-09-08
+
+- **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: Fixed drag not persisting — added `positionPinned` flag so the RAF loop stops auto-updating after a manual drag. Position stays until a new element is selected. All popovers (semantic, text color, fill color, image, link, button icon) now flip upward when the toolbar is near the bottom edge, matching the existing slider popover logic.
+
 ## [FloatingToolbar: remove current background image button] — 2026-09-08
 
 - **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: Added a "Remove current" (✕) button next to "Browse assets" that clears the element's background/image reference, only shown when an image is already set.
