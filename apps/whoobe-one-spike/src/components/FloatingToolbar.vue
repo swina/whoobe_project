@@ -403,8 +403,8 @@
               @change="pickWebsitePath"
             >
               <option value="">Select a path…</option>
-              <optgroup v-for="g in websitePathGroups" :key="g.websiteId" :label="g.websiteName">
-                <option v-for="p in g.paths" :key="p.url" :value="p.url">{{ p.label }} ({{ p.url }})</option>
+<optgroup v-for="g in websitePathGroups" :key="g.websiteId" :label="g.websiteName">
+                  <option v-for="p in g.paths" :key="p.url" :value="p.websiteId + '|' + p.url">{{ p.label }} ({{ p.url }})</option>
               </optgroup>
             </select>
           </div>
@@ -586,6 +586,7 @@ import { getDataClass, getDataClassByName } from '../data-objects-api'
 import { listPages } from '../scripts/database-actions'
 import { isDynamicSlug } from '../scripts/path-pattern'
 import { fetchWebsitePaths, type WebsitePathRecord, type MenuItem as PathMenuItem } from '../website-paths-api'
+import { fetchWebsites, type WebsiteRecord } from '../websites-api'
 import {
   ArrowLeftRight,
   ArrowUp,
@@ -632,8 +633,9 @@ const buttonIconHeightDraft = ref(16)
 const buttonIconPreview = shallowRef<Component | null>(null)
 const linkTargetDraft = ref('_self')
 const websitePathRecords = ref<WebsitePathRecord[]>([])
+const websiteRootPathMap = ref<Record<string, string>>({})
 
-interface FlatPath { label: string; url: string }
+interface FlatPath { label: string; url: string; websiteId: string }
 interface PathGroup { websiteId: string; websiteName: string; paths: FlatPath[] }
 const websitePathGroups = computed<PathGroup[]>(() => {
   const groups: PathGroup[] = []
@@ -643,7 +645,7 @@ const websitePathGroups = computed<PathGroup[]>(() => {
       for (const item of items) {
         const p = item.path?.trim() ? (item.path.startsWith('/') ? item.path : '/' + item.path) : ''
         const url = prefix ? `${prefix}${p}` : p
-        if (url) flat.push({ label: item.label, url })
+        if (url) flat.push({ label: item.label, url, websiteId: rec.websiteId })
         if (item.children?.length) walk(item.children, url)
       }
     }
@@ -656,14 +658,29 @@ const websitePathGroups = computed<PathGroup[]>(() => {
 })
 
 function pickWebsitePath(e: Event) {
-  const url = (e.target as HTMLSelectElement).value
-  if (url) linkUrlDraft.value = url
+  const val = (e.target as HTMLSelectElement).value
+  if (!val) return
+  const sep = val.indexOf('|')
+  if (sep === -1) { linkUrlDraft.value = val; return }
+  const wsId = val.slice(0, sep)
+  const path = val.slice(sep + 1)
+  const rootPath = websiteRootPathMap.value[wsId] || ''
+  if (rootPath) {
+    linkUrlDraft.value = `${rootPath}${path}?rootPath=${encodeURIComponent(rootPath)}`
+  } else {
+    linkUrlDraft.value = path
+  }
 }
 
 watch(showLinkPicker, async (open) => {
   if (open) {
     try {
-      websitePathRecords.value = await fetchWebsitePaths(editor.websiteId || undefined)
+      const [paths, websites] = await Promise.all([
+        fetchWebsitePaths(editor.websiteId || undefined),
+        fetchWebsites(),
+      ])
+      websitePathRecords.value = paths
+      websiteRootPathMap.value = Object.fromEntries(websites.map((w) => [w.id, w.rootPath || '']))
     } catch { websitePathRecords.value = [] }
   }
 })
