@@ -417,7 +417,7 @@ async function onPageSelected(page: WhoobeOnePage) {
     pendingPagePicker.value = null
     return
   }
-  await updatePathItems(fresh, items)
+  await updatePathItems(fresh, items, true)
   showPagePicker.value = false
   pendingPagePicker.value = null
 }
