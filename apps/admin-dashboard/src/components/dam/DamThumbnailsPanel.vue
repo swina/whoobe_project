@@ -11,7 +11,7 @@
           <span class="font-mono text-slate-500">{{ preset.dimensions }}</span>
         </div>
 
-        <div class="aspect-square w-full rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 flex items-center justify-center overflow-hidden">
+        <div class="aspect-square w-full rounded-lg bg-checkerboard bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 flex items-center justify-center overflow-hidden">
           <img
             :src="asset.thumbnails?.[preset.key]"
             @error="(e) => handleAssetImageError(e, asset)"

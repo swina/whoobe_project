@@ -2,7 +2,7 @@
   <div class="flex flex-col md:flex-row gap-6">
     <!-- Main: Preview Stage -->
     <div class="flex-1 min-w-0">
-      <div class="aspect-video w-full rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 flex items-center justify-center overflow-hidden relative p-4">
+      <div class="aspect-video w-full rounded-xl bg-checkerboard bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 flex items-center justify-center overflow-hidden relative p-4">
         <!-- Image File Preview -->
         <img
           v-if="PREVIEWABLE_IMAGE_TYPES.includes(asset.fileType)"

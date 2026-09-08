@@ -86,3 +86,16 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #404040;
 }
+
+/* Checkerboard pattern for image containers — reveals transparency in
+   PNG/WebP assets instead of blending with solid dark/light backgrounds.
+   Applied as `bg-checkerboard` on any <div> wrapping a transparent image. */
+.bg-checkerboard {
+  background-image:
+    linear-gradient(45deg, rgba(148,163,184,0.15) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(148,163,184,0.15) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(148,163,184,0.15) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(148,163,184,0.15) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
