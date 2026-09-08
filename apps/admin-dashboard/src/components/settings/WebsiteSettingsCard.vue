@@ -6,10 +6,10 @@
         <p class="text-xs text-slate-500 mt-1">Manage websites, domains, and supported locales. Each website can have its own set of pages and menus.</p>
       </div>
       <div class="flex items-center gap-2">
-        <button @click="showAiModal = true" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 flex items-center gap-1.5">
+        <!---<button @click="showAiModal = true" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 flex items-center gap-1.5">
           <Sparkles class="w-3.5 h-3.5" />
           AI Website Wizard
-        </button>
+        </button>--->
         <button @click="createNewWebsite" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">+ New Website</button>
       </div>
     </div>

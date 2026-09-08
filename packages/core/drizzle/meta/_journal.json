@@ -246,6 +246,13 @@
       "when": 1788891406980,
       "tag": "0034_solid_freak",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1788892000000,
+      "tag": "0035_ai_settings_per_user",
+      "breakpoints": true
     }
   ]
 }
