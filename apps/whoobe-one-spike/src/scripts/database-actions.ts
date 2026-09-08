@@ -212,6 +212,7 @@ export async function loadPage(editor: EditorStore, id: string): Promise<void> {
   editor.setDocument(saved.content as any)
   editor.setCurrent(null)
   editor.setPageThemeId(saved.themeId)
+  editor.setWebsiteId(saved.websiteId)
 
   if (saved.websiteId) {
     await loadWebsiteTheme(editor, saved.websiteId)
