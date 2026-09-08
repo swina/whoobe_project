@@ -54,9 +54,11 @@ function requireApiKey(settings: AiProviderSettings, provider: string): string {
   return settings.apiKey;
 }
 
-/** Strips markdown code fences and extracts the first JSON value from a
- *  model reply - providers are instructed to output bare JSON, but most
- *  of them wrap it in ```json fences anyway. */
+/** Strips markdown code fences, non-printable ASCII control characters
+ *  (except \t, \n, \r — valid JSON whitespace), and extracts the first
+ *  JSON value from a model reply. Providers are instructed to output bare
+ *  JSON, but most wrap it in ```json fences, and some inject invisible
+ *  control characters that break JSON.parse. */
 export function parseJsonText(text: string): unknown {
   let cleaned = text.trim();
   const fence = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -66,6 +68,9 @@ export function parseJsonText(text: string): unknown {
   if (start !== -1 && end !== -1 && end > start) {
     cleaned = cleaned.slice(start, end + 1);
   }
+  // Strip non-printable ASCII control characters (0x00-0x1F except \t \n \r)
+  // that some AI providers inject and break JSON.parse.
+  cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
   try {
     return JSON.parse(cleaned);
   } catch {

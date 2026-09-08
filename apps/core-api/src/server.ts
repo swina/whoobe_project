@@ -3461,6 +3461,7 @@ app.post('/ai/generate', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (re
       settings: { provider: settings.provider, model: settings.model, endpoint: settings.endpoint, apiKey: settings.apiKey },
       systemPrompt: buildSystemPrompt(),
       userPrompt: buildUserPrompt(ctx),
+      maxTokens: 8192,
     });
     const validationError = validateElementTree(result.json);
     if (validationError) {
