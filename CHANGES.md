@@ -8,6 +8,7 @@ All notable changes to the Whoobe CMS project.
 
 - **`apps/admin-dashboard/src/components/settings/MenuItemRow.vue`**: `previewUrl` now looks up the website's `rootPath` from `websitesStore` and includes it in the preview URL (path prefix + `?rootPath=` query param), plus `?locale=` — fixes broken "👁" preview links in Website Paths when a website has a non-empty `rootPath`.
 - **`apps/admin-dashboard/src/components/pages/MasterPageTab.vue`**: `openPreviewUrl` computed now includes `rootPath` and `?locale=` query param — fixes "Open in a new tab" link when a website has a non-empty `rootPath`.
+- **`apps/admin-dashboard/src/components/websites/MasterWebsiteTab.vue`**: `onPageSelected` now passes `optimistic = true` to `updatePathItems`, so the linked page appears immediately in the UI instead of requiring a tab switch to re-fetch.
 
 ## [Website rootPath: scoped preview URLs per website] — 2026-09-08
 
