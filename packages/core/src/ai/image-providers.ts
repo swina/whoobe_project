@@ -63,7 +63,11 @@ export async function generateImage(input: AiImageGenerateInput): Promise<AiImag
       }
 
       const images = response.data.map((d: any) => ({
-        url: d.url ?? d.b64_json ?? '',
+        url: d.url
+          ? d.url
+          : d.b64_json
+            ? `data:image/png;base64,${d.b64_json}`
+            : '',
         revisedPrompt: d.revised_prompt ?? undefined,
       }));
 
@@ -72,7 +76,9 @@ export async function generateImage(input: AiImageGenerateInput): Promise<AiImag
         const raw = response as any;
         const rawData = raw?.data ?? [];
         for (let i = 0; i < rawData.length; i++) {
-          const entry = typeof rawData[i] === 'string' ? rawData[i] : rawData[i]?.url ?? rawData[i]?.b64_json ?? '';
+          const entry = typeof rawData[i] === 'string'
+            ? rawData[i]
+            : rawData[i]?.url ?? (rawData[i]?.b64_json ? `data:image/png;base64,${rawData[i].b64_json}` : '');
           if (entry && !images[i]?.url) images[i].url = entry;
         }
       }
