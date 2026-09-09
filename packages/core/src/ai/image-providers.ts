@@ -43,6 +43,7 @@ function buildOpenAiClient(settings: AiImageSettings): OpenAI {
 
 export async function generateImage(input: AiImageGenerateInput): Promise<AiImageGenerateOutput> {
   const { settings, prompt, n, size, quality, style } = input;
+  const isDallE = settings.model.startsWith('dall-e');
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -52,8 +53,8 @@ export async function generateImage(input: AiImageGenerateInput): Promise<AiImag
         prompt,
         n: n ?? 1,
         size: (size ?? '1024x1024') as any,
-        quality: (quality ?? 'standard') as any,
-        style: (style ?? 'vivid') as any,
+        quality: isDallE ? (quality ?? 'standard') as any : undefined,
+        style: isDallE ? (style ?? 'vivid') as any : undefined,
         response_format: 'url',
       });
 
