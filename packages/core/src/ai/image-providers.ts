@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { OPENROUTER_DEFAULT_ENDPOINT } from './providers.js';
 
 export type ImageAiProvider = 'openai' | 'openrouter' | 'custom';
 
@@ -33,9 +34,10 @@ export class AiImageGenerationError extends Error {
 }
 
 function buildOpenAiClient(settings: AiImageSettings): OpenAI {
-  const baseURL = settings.endpoint
-    ? settings.endpoint.replace(/\/+$/, '') + '/v1'
+  const defaultEndpoint = settings.provider === 'openrouter'
+    ? OPENROUTER_DEFAULT_ENDPOINT
     : 'https://api.openai.com/v1';
+  const baseURL = settings.endpoint?.trim() || defaultEndpoint;
   return new OpenAI({ apiKey: settings.apiKey ?? undefined, baseURL });
 }
 
