@@ -62,10 +62,24 @@ export async function generateImage(input: AiImageGenerateInput): Promise<AiImag
         throw new AiImageGenerationError('No image data returned from provider', 500);
       }
 
-      const images = response.data.map((d) => ({
-        url: d.url ?? '',
+      const images = response.data.map((d: any) => ({
+        url: d.url ?? d.b64_json ?? '',
         revisedPrompt: d.revised_prompt ?? undefined,
       }));
+
+      // Fallback: if all urls are empty, try extracting from the raw response
+      if (images.every((img) => !img.url)) {
+        const raw = response as any;
+        const rawData = raw?.data ?? [];
+        for (let i = 0; i < rawData.length; i++) {
+          const entry = typeof rawData[i] === 'string' ? rawData[i] : rawData[i]?.url ?? rawData[i]?.b64_json ?? '';
+          if (entry && !images[i]?.url) images[i].url = entry;
+        }
+      }
+
+      if (images.every((img) => !img.url)) {
+        throw new AiImageGenerationError('Provider returned images without accessible URLs', 500);
+      }
 
       return { images, rawResponse: response };
     } catch (error: any) {
