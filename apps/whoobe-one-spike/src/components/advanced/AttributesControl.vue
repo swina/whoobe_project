@@ -28,7 +28,7 @@
     </div>
     <p class="text-[10px] text-gray-400">
       Custom HTML attributes, added directly to this element's tag.
-      <code>id</code>/<code>class</code>/<code>style</code> are reserved and ignored here.
+      <code>class</code>/<code>style</code> are reserved and ignored here.
     </p>
   </div>
 </template>
