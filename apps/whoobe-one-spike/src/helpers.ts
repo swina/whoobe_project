@@ -245,7 +245,7 @@ export function normalizeGeneratedTree(node: any): any {
 // `id`/`data-id` specifically are load-bearing for the canvas (selection,
 // dragula, gsap-actions.ts's document.getElementById(element.id) lookup),
 // so a user-typed custom attribute of the same name must never win.
-export const RESERVED_ATTRS = ['id', 'class', 'style', 'data-id', 'data-type', 'ref']
+export const RESERVED_ATTRS = ['class', 'style', 'data-id', 'data-type', 'ref']
 
 /** Filters element.data.attributes down to what's safe to v-bind-spread
  * onto a rendered node - see AttributesControl.vue (the editing UI) and
