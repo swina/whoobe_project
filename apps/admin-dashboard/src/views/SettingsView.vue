@@ -66,6 +66,8 @@
 
         <AiSettingsCard v-if="activeSubSection === 'ai'" />
 
+        <AiImageSettingsCard v-if="activeSubSection === 'ai-image'" />
+
         <FigmaSettingsCard v-if="activeSubSection === 'figma'" />
 
         <div v-if="activeSubSection === 'general'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-6">
@@ -99,6 +101,7 @@ import ClassSettingsCard from '../components/objects/ClassSettingsCard.vue'
 import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue'
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'
 import AiSettingsCard from '../components/settings/AiSettingsCard.vue'
+import AiImageSettingsCard from '../components/settings/AiImageSettingsCard.vue'
 import FigmaSettingsCard from '../components/settings/FigmaSettingsCard.vue'
 import UsersView from './UsersView.vue'
 import RolesView from './RolesView.vue'
@@ -119,6 +122,7 @@ import {
   FileJson,
   Sparkles,
   WandSparkles,
+  Image,
   Palette,
   UserRound,
   KeyRound,
@@ -172,6 +176,7 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'ai', name: 'AI', icon: WandSparkles },
+  { key: 'ai-image', name: 'AI Image', icon: Image },
   { key: 'figma', name: 'Figma', icon: Palette },
 ]
 
@@ -232,6 +237,7 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   security: { title: 'Security', description: 'Two-factor authentication and account security.' },
   workflows: { title: 'Workflows', description: 'Author publish/review workflows for Data Object classes.' },
   ai: { title: 'AI Agent', description: 'LLM provider used by the AI page and snippet generator in the Whoobe One composer.' },
+  'ai-image': { title: 'AI Image Generation', description: 'Dedicated AI provider for image generation, or leave blank to use your text AI configuration.' },
   figma: { title: 'Figma Integration', description: 'Figma Personal Access Token configuration for importing designs into the Whoobe One editor.' },
 }
 

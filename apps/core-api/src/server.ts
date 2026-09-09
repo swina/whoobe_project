@@ -143,11 +143,16 @@ import {
   deleteMailTemplate,
   getAiSettings,
   upsertAiSettings,
+  getAiImageSettings,
+  upsertAiImageSettings,
   getFigmaSettings,
   upsertFigmaSettings,
   listAiGenerated,
   createAiGenerated,
   generateAiJson,
+  generateImage,
+  AiImageGenerationError,
+  saveAiImageToDam,
   buildSystemPrompt,
   buildUserPrompt,
   buildWebsiteStructurePrompt,
@@ -3756,6 +3761,142 @@ app.post('/whoobe-one/websites/from-ai', requirePermission(PERMISSIONS.OBJECTS_W
   } catch (error: any) {
     console.error('Create website from AI error:', error);
     res.status(500).json({ error: error.message || 'Failed to create website from AI structure' });
+  }
+});
+
+// AI Image generation config (separate from text AI settings).
+// Same pattern: per-user, GET never returns API key, PUT blank key = keep existing.
+app.get('/ai/image-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const settings = await getAiImageSettings(req.user!.id);
+    if (!settings) {
+      res.json({ settings: null, usingFallback: false });
+      return;
+    }
+    const { apiKey, ...rest } = settings;
+    res.json({ settings: { ...rest, hasApiKey: !!apiKey }, usingFallback: false });
+  } catch (error: any) {
+    console.error('AI image settings fetch error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch AI image settings' });
+  }
+});
+
+app.put('/ai/image-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { provider, model, endpoint, apiKey } = req.body ?? {};
+    if (!provider || !model) {
+      res.status(400).json({ error: 'provider and model are required' });
+      return;
+    }
+    const existing = await getAiImageSettings(req.user!.id);
+    const input: any = { provider, model, endpoint };
+    input.apiKey = apiKey === '' || apiKey == null
+      ? existing?.apiKey ?? null
+      : apiKey;
+    const updated = await upsertAiImageSettings(req.user!.id, input);
+    const { apiKey: _, ...rest } = updated;
+    res.json({ ...rest, hasApiKey: !!updated.apiKey });
+  } catch (error: any) {
+    console.error('AI image settings save error:', error);
+    res.status(500).json({ error: error.message || 'Failed to save AI image settings' });
+  }
+});
+
+app.post('/ai/generate-image', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { prompt, n, size, quality, style, folderPath } = req.body ?? {};
+    if (!prompt) {
+      res.status(400).json({ error: 'prompt is required' });
+      return;
+    }
+
+    // Resolve image AI settings: use image-specific, or fall back to text AI.
+    let imageSettings = await getAiImageSettings(req.user!.id);
+    if (!imageSettings || !imageSettings.apiKey) {
+      const textSettings = await getAiSettings(req.user!.id);
+      if (!textSettings || !textSettings.apiKey) {
+        res.status(400).json({ error: 'No AI configuration found. Configure AI settings first.' });
+        return;
+      }
+      imageSettings = {
+        userId: textSettings.userId,
+        provider: 'openai' as const,
+        model: 'dall-e-3',
+        endpoint: null,
+        apiKey: textSettings.apiKey,
+        updatedAt: new Date(),
+      };
+    }
+
+    // Generate image(s) via the provider.
+    const result = await generateImage({
+      settings: {
+        provider: imageSettings.provider as any,
+        model: imageSettings.model,
+        endpoint: imageSettings.endpoint,
+        apiKey: imageSettings.apiKey,
+      },
+      prompt,
+      n,
+      size,
+      quality,
+      style,
+    });
+
+    // Download temp URLs and save each to DAM.
+    const saveDir = folderPath || '/ai-generated';
+    const slug = prompt.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
+    const saved: { damUrl: string; assetId: string; revisedPrompt?: string; width?: number; height?: number }[] = [];
+
+    for (const img of result.images) {
+      if (!img.url) continue;
+      const damResult = await saveAiImageToDam({
+        url: img.url,
+        folderPath: saveDir,
+        fileName: slug,
+        revisedPrompt: img.revisedPrompt,
+      });
+      saved.push({
+        damUrl: damResult.damUrl,
+        assetId: damResult.assetId,
+        revisedPrompt: img.revisedPrompt,
+      });
+    }
+
+    // Log to audit table.
+    await createAiGenerated({
+      kind: 'image',
+      prompt,
+      provider: imageSettings.provider,
+      model: imageSettings.model,
+      payload: saved,
+      rawResponse: JSON.stringify(result.rawResponse),
+      status: 'success',
+      createdBy: req.user!.id,
+    });
+
+    res.json({ images: saved });
+  } catch (error: any) {
+    const status = typeof error?.status === 'number' ? error.status : 500;
+    const message = error?.message ?? 'Image generation failed';
+    console.error('AI image generation error:', error);
+
+    // Log failures too.
+    try {
+      await createAiGenerated({
+        kind: 'image',
+        prompt: req.body?.prompt ?? '',
+        provider: '',
+        model: '',
+        payload: null,
+        rawResponse: null,
+        status: 'error',
+        error: message,
+        createdBy: req.user!.id,
+      });
+    } catch { /* silent log failure */ }
+
+    res.status(status).json({ error: message });
   }
 });
 
