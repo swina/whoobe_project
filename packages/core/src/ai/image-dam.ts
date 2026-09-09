@@ -51,7 +51,7 @@ export async function saveAiImageToDam(input: AiImageDamInput): Promise<AiImageD
     folderPath,
     sizeBytes: buffer.length,
     mimeType: contentType,
-    fileType: 'image',
+    fileType: ext === 'jpeg' ? 'JPG' : ext.toUpperCase(),
     s3Key,
     isPublic: true,
     metadata: revisedPrompt ? {
