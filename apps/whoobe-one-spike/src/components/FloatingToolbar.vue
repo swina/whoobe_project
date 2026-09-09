@@ -212,6 +212,14 @@
                   monospace
                 />
               </label>
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-500 mb-1.5">Tabs container class</span>
+                <ExpandableTextInput
+                  v-model="editor.current.slider.tabContainerClass"
+                  popup-label="Tabs container class"
+                  monospace
+                />
+              </label>
             <!--</template>-->
           </div>
           </template>
