@@ -1,8 +1,9 @@
 # Changelog
 
-## [Fix: root path / linked page not persisted + auto-publish on link] — 2026-09-09
+## [Fix: root path / linked page not persisted + auto-publish on link, close editor before link] — 2026-09-09
 
 - **`apps/admin-dashboard/src/components/websites/MasterWebsiteTab.vue`**: `onPageSelected` now preserves the menu item's own `path` instead of overwriting it with the page slug — a menu item with path `/` stays `/` after linking. Also auto-publishes the selected page (PagePickerDrawer quick-create creates unpublished pages), so the public endpoint can serve it. Previously, linked unpublished pages always returned "Page not found" on preview.
+- **`apps/admin-dashboard/src/components/settings/MenuItemRow.vue`**: `openLinkPage()` now closes the inline editor (`editing.value = false`) before emitting `link-page`. This prevents the inline editor's `saveEdit()` from racing with the page-linking optimistic update and overwriting the `pageId` with stale data.
 
 ## [Website Paths: zero-query-param /{rootPath}/{slug} URLs with server-side locale resolution] — 2026-09-09
 

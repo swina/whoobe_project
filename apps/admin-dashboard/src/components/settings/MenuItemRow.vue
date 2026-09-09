@@ -198,6 +198,9 @@ const previewUrl = computed(() => {
 })
 
 function openLinkPage() {
+  // Close any pending inline edit to avoid saveEdit() racing with the
+  // page-linking optimistic update that runs after the picker closes.
+  editing.value = false
   emit('link-page', [...props.itemPath, props.index])
 }
 
