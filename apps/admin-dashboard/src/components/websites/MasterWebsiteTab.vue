@@ -413,7 +413,9 @@ async function onPageSelected(page: WhoobeOnePage) {
     ...item,
     pageId: page.id,
     label: page.title,
-    path: page.slug && page.slug !== '/' ? page.slug.replace(/^\//, '') : item.path,
+    // Keep the menu item's own path — only set from page slug when no path
+    // was explicitly set (i.e. the item was freshly created with no path).
+    path: item.path || (page.slug ? page.slug.replace(/^\//, '') : undefined),
   }))
   if (!updated) {
     console.warn('Could not find item at path', itemPath)
@@ -422,6 +424,12 @@ async function onPageSelected(page: WhoobeOnePage) {
     return
   }
   await updatePathItems(fresh, items, true)
+  // Publish the page so the public endpoint can serve it.
+  if (!page.published) {
+    try {
+      await pagesStore.updatePage(page.id, { published: true })
+    } catch { /* silent */ }
+  }
   showPagePicker.value = false
   pendingPagePicker.value = null
 }
