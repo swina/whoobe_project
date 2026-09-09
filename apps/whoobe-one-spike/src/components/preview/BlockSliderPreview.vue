@@ -11,6 +11,7 @@
       :nav-class="settings.navClass"
       :tab-class="settings.tabClass"
       :active-tab-class="settings.activeTabClass"
+      :tab-container-class="settings.tabContainerClass"
       @select="selectTab"
     />
 
@@ -93,6 +94,7 @@
       :nav-class="settings.navClass"
       :tab-class="settings.tabClass"
       :active-tab-class="settings.activeTabClass"
+      :tab-container-class="settings.tabContainerClass"
       @select="selectTab"
     />
   </component>

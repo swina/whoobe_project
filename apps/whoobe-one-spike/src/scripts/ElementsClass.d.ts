@@ -223,6 +223,7 @@ export interface ElementSlider {
   homeClass?: string
   tabClass?: string
   activeTabClass?: string
+  tabContainerClass?: string
   dotClass?: string
   activeDotClass?: string
   dotContainerClass?: string

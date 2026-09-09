@@ -1,5 +1,5 @@
 <template>
-  <div :class="navClass">
+  <div :class="tabContainerClass || navClass">
     <button
       v-for="(slide, index) in slides"
       :key="slide.id"
@@ -47,6 +47,7 @@ defineProps<{
   navClass?: string
   tabClass?: string
   activeTabClass?: string
+  tabContainerClass?: string
 }>()
 
 defineEmits<{
