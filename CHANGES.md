@@ -1,5 +1,9 @@
 # Changelog
 
+## [Fix: root path / linked page not persisted + auto-publish on link] — 2026-09-09
+
+- **`apps/admin-dashboard/src/components/websites/MasterWebsiteTab.vue`**: `onPageSelected` now preserves the menu item's own `path` instead of overwriting it with the page slug — a menu item with path `/` stays `/` after linking. Also auto-publishes the selected page (PagePickerDrawer quick-create creates unpublished pages), so the public endpoint can serve it. Previously, linked unpublished pages always returned "Page not found" on preview.
+
 ## [Website Paths: zero-query-param /{rootPath}/{slug} URLs with server-side locale resolution] — 2026-09-09
 
 - **`apps/admin-dashboard/src/components/settings/MenuItemRow.vue`**: Preview URL is now `/{rootPath}/{slug}` with zero query params (e.g. `/sycore/home`). The page's locale is resolved server-side from the DB record — no `?locale=` or `?rootPath=` needed. Also fixed: when page slug has no leading `/` (PagePickerDrawer quick-create), `target` is now normalized with `slug.startsWith('/') ? slug : '/' + slug` so the URL doesn't produce `/{rootPath}slug` (missing slash). And root-page preview (slug `/`) now works — maps to just `/{rootPath}`.
