@@ -63,6 +63,7 @@ import {
   updateWhoobePage,
   deleteWhoobePage,
   getPublishedWhoobePageBySlug,
+  getPublishedWhoobePageBySlugAnyLocale,
   listPublishedWhoobePages,
   listStagedWhoobePages,
   deleteStagedWhoobePage,
@@ -1952,7 +1953,7 @@ app.delete('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECT
 app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<void> => {
   try {
     let websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
-    const rootPath = typeof req.query.rootPath === 'string' ? req.query.rootPath : null;
+    let rootPath = typeof req.query.rootPath === 'string' ? req.query.rootPath : null;
     let requestPath = '/' + (req.params[0] ?? '');
     const locale = req.params.locale;
 
@@ -1963,6 +1964,22 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
       if (!websiteId) {
         const site = await getWebsiteByRootPath(rootPath);
         if (site) websiteId = site.id;
+      }
+    }
+
+    // When neither rootPath nor websiteId is provided, auto-detect rootPath
+    // from the first path segment — allows clean /{rootPath}/{slug} URLs
+    // from Website > Paths preview links without a ?rootPath= query param.
+    if (!rootPath && !websiteId && requestPath !== '/') {
+      const segs = requestPath.split('/').filter(Boolean);
+      if (segs.length >= 1) {
+        const candidate = '/' + segs[0];
+        const site = await getWebsiteByRootPath(candidate);
+        if (site) {
+          rootPath = candidate;
+          websiteId = site.id;
+          requestPath = requestPath.slice(candidate.length) || '/';
+        }
       }
     }
 
@@ -2049,6 +2066,108 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
     res.json(layout ? { page, params, layout } : { page, params });
   } catch (error: any) {
     console.error('Public page lookup error:', error);
+    res.status(500).json({ error: error.message || 'Failed to look up page' });
+  }
+});
+
+// Public page lookup without locale in the URL — SEO-friendly format
+// /{rootPath}/{slug} used by Website > Paths preview links. The page's
+// own locale is resolved from the DB record.
+app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => {
+  try {
+    let websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
+    let requestPath = '/' + (req.params[0] ?? '');
+
+    // Auto-detect rootPath from the first path segment.
+    if (!websiteId && requestPath !== '/') {
+      const segs = requestPath.split('/').filter(Boolean);
+      if (segs.length >= 1) {
+        const candidate = '/' + segs[0];
+        const site = await getWebsiteByRootPath(candidate);
+        if (site) {
+          websiteId = site.id;
+          requestPath = requestPath.slice(candidate.length) || '/';
+        }
+      }
+    }
+
+    // Look up the page by slug + websiteId without locale filtering.
+    // Try both with and without leading '/' since page slugs may be stored
+    // either way (PageCreateForm prefixes, PagePickerDrawer quick-create does not).
+    let page = await getPublishedWhoobePageBySlugAnyLocale(requestPath, websiteId);
+    if (!page && requestPath.startsWith('/')) {
+      page = await getPublishedWhoobePageBySlugAnyLocale(requestPath.slice(1), websiteId);
+    }
+    let params: Record<string, string> = {};
+
+    if (!page) {
+      // Dynamic-slug fallback: the literal lookup missed, so scan published
+      // pages for a dynamic pattern ({placeholder}) that matches this path.
+      const candidates = await listPublishedWhoobePages(websiteId);
+      const dynamicCandidates = candidates.filter((p) => isDynamicSlug(p.slug));
+      const matched = matchPagePath(dynamicCandidates, requestPath);
+      if (matched) {
+        page = matched.page;
+        params = matched.params;
+      }
+    }
+
+    if (!page) {
+      res.status(404).json({ error: 'Page not found' });
+      return;
+    }
+
+    const locale = page.locale || 'en';
+
+    // Website Template composition (same as the locale-based endpoint).
+    let layout: Record<string, unknown> | null = null;
+    const layoutWebsiteId = websiteId ?? page.websiteId;
+    if (layoutWebsiteId) {
+      try {
+        const template = await getWebsiteTemplateForPath(layoutWebsiteId, requestPath);
+        if (template) {
+          const website = await getWebsite(layoutWebsiteId);
+          const modules = await listPublishedModulePages(layoutWebsiteId, locale, website?.defaultLocale ?? null);
+          const byId = new Map(modules.map((m) => [m.id, m]));
+          const snippetIds = new Set<string>();
+          for (const slot of [template.layout.header, template.layout.aside, template.layout.footer]) {
+            for (const sid of slot?.snippetIds ?? []) snippetIds.add(sid);
+          }
+          const snippets = await Promise.all([...snippetIds].map((id) => getWhoobeOneSnippet(id)));
+          const snippetById = new Map(snippets.filter((s): s is NonNullable<typeof s> => !!s).map((s) => [s.id, s]));
+          const slot = (s: { pageIds: string[]; snippetIds?: string[] | null; className?: string | null; style?: string | null; content?: unknown } | null | undefined) => {
+            if (!s || (s.pageIds.length === 0 && !s.snippetIds?.length && !s.content)) return null;
+            const pages = s.pageIds
+              .map((id) => byId.get(id))
+              .filter((m): m is NonNullable<typeof m> => !!m)
+              .map((m) => ({ id: m.id, title: m.title, content: m.content }));
+            for (const snippetId of s.snippetIds ?? []) {
+              const snippet = snippetById.get(snippetId);
+              if (snippet) pages.push({ id: snippet.id, title: snippet.name, content: snippet.node });
+            }
+            const custom = Array.isArray(s.content) ? s.content : s.content ? [s.content] : [];
+            for (const node of custom) {
+              const id = (node as { id?: unknown } | null)?.id;
+              pages.push({ id: typeof id === 'string' ? id : 'slot-custom', title: 'Custom', content: node });
+            }
+            if (pages.length === 0) return null;
+            return { className: s.className ?? '', style: s.style ?? '', pages };
+          };
+          layout = {
+            template: { id: template.id, name: template.name },
+            header: slot(template.layout.header),
+            aside: slot(template.layout.aside),
+            footer: slot(template.layout.footer),
+          };
+        }
+      } catch (templateError) {
+        console.warn('Website template resolution failed:', templateError);
+      }
+    }
+
+    res.json(layout ? { page, params, layout } : { page, params });
+  } catch (error: any) {
+    console.error('Public page lookup error (no-locale):', error);
     res.status(500).json({ error: error.message || 'Failed to look up page' });
   }
 });

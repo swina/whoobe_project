@@ -172,16 +172,16 @@ function emitInsertBelow() {
   emit('insert-below', [...props.itemPath, props.index])
 }
 
-// Preview opens the path in whoobe-one-spike's public renderer (the same
-// iframe source the dashboard's Page Preview tab uses). A linked page's
-// routable slug is preferred; otherwise the menu path, prefixed with '/'.
-// The website's rootPath is prepended and passed as ?rootPath= so the
-// public route can strip the prefix and scope the lookup to the website.
+// Preview opens the path in whoobe-one-spike's public renderer. A linked
+// page's routable slug is preferred; otherwise the menu path, prefixed
+// with '/'. Clean /{rootPath}/{slug} format — no query params (SEO-friendly).
+// The server auto-detects rootPath from the first path segment and resolves
+// the page's locale from the DB record.
 const previewUrl = computed(() => {
   let target: string | null = null
   if (props.item.pageId) {
     const slug = pagesStore.pages.find((p) => p.id === props.item.pageId)?.slug
-    if (slug && slug !== '/') target = slug
+    if (slug) target = slug.startsWith('/') ? slug : '/' + slug
   }
   if (!target) {
     const path = props.item.path?.trim()
@@ -190,9 +190,11 @@ const previewUrl = computed(() => {
   }
   const website = props.websiteId ? websitesStore.websites.find((w) => w.id === props.websiteId) : undefined
   const rootPath = website?.rootPath || ''
-  const locale = props.websiteLocale || 'en'
-  const query = `?locale=${encodeURIComponent(locale)}${rootPath ? `&rootPath=${encodeURIComponent(rootPath)}` : ''}`
-  return `${getWhoobeOneSpikeUrl()}${rootPath}${target}${query}`
+  // Root page (slug '/') maps to just /{rootPath}
+  const url = target === '/'
+    ? `${getWhoobeOneSpikeUrl()}${rootPath || '/'}`
+    : `${getWhoobeOneSpikeUrl()}${rootPath}${target}`
+  return url
 })
 
 function openLinkPage() {

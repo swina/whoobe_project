@@ -139,6 +139,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useWebsitesStore } from '../../stores/websitesStore'
+import { usePagesStore } from '../../stores/pagesStore'
 import { usePathStore } from '../../stores/menusStore'
 import { useTabsStore, type WebsiteSubTab, websiteTabId } from '../../stores/tabsStore'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
@@ -156,6 +157,7 @@ const props = defineProps<{
 }>()
 
 const websitesStore = useWebsitesStore()
+const pagesStore = usePagesStore()
 const pathsStore = usePathStore()
 const tabsStore = useTabsStore()
 const website = ref<WebsiteRecord | null>(null)
@@ -298,6 +300,7 @@ async function load() {
     const [websiteData] = await Promise.all([
       websitesStore.getWebsite(props.websiteId),
       loadPages(),
+      pagesStore.refreshPages(props.websiteId),
     ])
     website.value = websiteData
     form.value = {
@@ -410,7 +413,7 @@ async function onPageSelected(page: WhoobeOnePage) {
     ...item,
     pageId: page.id,
     label: page.title,
-    path: page.slug ? page.slug.replace(/^\//, '') : item.path,
+    path: page.slug && page.slug !== '/' ? page.slug.replace(/^\//, '') : item.path,
   }))
   if (!updated) {
     console.warn('Could not find item at path', itemPath)
@@ -531,6 +534,7 @@ watch(activeSubTab, (tab) => {
   if (tab === 'paths') {
     loadTemplates()
     loadPaths()
+    pagesStore.refreshPages(props.websiteId)
   }
 })
 </script>

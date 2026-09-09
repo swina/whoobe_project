@@ -181,6 +181,29 @@ export async function getPublishedWhoobePageBySlug(
 }
 
 /**
+ * Find a published page by slug + websiteId, ignoring locale. Returns the
+ * first match — used by the SEO-friendly /{rootPath}/{slug} public endpoint
+ * that doesn't require locale in the URL. The caller receives the page's
+ * own locale from the record.
+ */
+export async function getPublishedWhoobePageBySlugAnyLocale(
+  slug: string,
+  websiteId?: string | null
+): Promise<WhoobePageRecord | null> {
+  const db = getDb();
+  const conditions = [
+    eq(whoobePages.slug, slug),
+    eq(whoobePages.published, true),
+    eq(whoobePages.kind, 'content'),
+  ];
+  if (websiteId) {
+    conditions.push(eq(whoobePages.websiteId, websiteId));
+  }
+  const [row] = await db.select().from(whoobePages).where(and(...conditions)).limit(1);
+  return row ?? null;
+}
+
+/**
  * Promote guard: does a LIVE, PUBLISHED page already exist that promoting
  * this staged row would overwrite? Matches either the same `pimcoreId` (the
  * upsert conflict target of upsertWhoobePageByPimcoreId - the exact case

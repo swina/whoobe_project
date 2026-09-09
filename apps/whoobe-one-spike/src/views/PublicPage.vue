@@ -39,7 +39,7 @@
 // API) renders the header/aside/main/footer shell around the body.
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getPublicPage } from '../pages-api'
+import { getPublicPage, getPublicPageByPath, type PublicPageLookup, type WhoobeOnePage } from '../pages-api'
 import { resolveDocumentData } from '../scripts/data-resolver'
 import BlockContainerPreview from '../components/preview/BlockContainerPreview.vue'
 import { useThemeStyles } from '../composables/useThemeStyles'
@@ -87,9 +87,30 @@ async function loadPageTheme(page: { themeId?: string | null; websiteId?: string
 onMounted(async () => {
   try {
     const queryLocale = typeof route.query.locale === 'string' && route.query.locale ? route.query.locale : ''
-    const locale = queryLocale || route.path.split('/')[1] || 'it'
-    const rootPath = typeof route.query.rootPath === 'string' ? route.query.rootPath : undefined
-    const { page, params, layout: pageLayout } = await getPublicPage(locale, route.path, rootPath)
+
+    let page: WhoobeOnePage
+    let params: Record<string, string>
+    let pageLayout: PublicPageLookup['layout']
+
+    if (queryLocale) {
+      // Legacy: locale as ?locale= query param (childHref, FloatingToolbar,
+      // PagePreviewTab). Full route path (possibly with rootPath prefix) is
+      // sent as-is; the server strips rootPath via ?rootPath=.
+      const rootPath = typeof route.query.rootPath === 'string' ? route.query.rootPath : undefined
+      const result = await getPublicPage(queryLocale, route.path, rootPath)
+      page = result.page
+      params = result.params
+      pageLayout = result.layout ?? null
+    } else {
+      // Clean SEO-friendly URL: /{rootPath}/{slug} with no query params.
+      // Server auto-detects rootPath from the first path segment.
+      const result = await getPublicPageByPath(route.path)
+      page = result.page
+      params = result.params
+      pageLayout = result.layout ?? null
+    }
+
+    const locale = page.locale || 'en'
     doc.value = page.content
     layout.value = pageLayout ?? null
     // Load the page's theme before resolving data, so theme styles are
