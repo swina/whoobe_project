@@ -1,6 +1,6 @@
 <template>
   <div class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="$emit('close')">
-    <div class="bg-slate-900 border border-slate-800 rounded-lg shadow-xl w-full max-w-lg flex flex-col overflow-hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-lg shadow-xl w-full max-w-lg flex flex-col overflow-hidden relative">
       <div class="flex items-center justify-between px-4 py-3 border-b shrink-0">
         <span class="text-sm font-semibold text-slate-200">AI Image Generate</span>
         <button class="text-slate-400 hover:text-slate-200" @click="$emit('close')"><X class="w-4 h-4" /></button>
@@ -42,6 +42,15 @@
               <select v-model="n" class="w-full text-xs rounded px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-200 focus:outline-none focus:border-indigo-500">
                 <option v-for="i in 4" :key="i" :value="i">{{ i }}</option>
               </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Save to DAM folder</label>
+            <div class="flex gap-2">
+              <input v-model="folderPath" type="text" placeholder="/ai-generated"
+                class="flex-1 text-xs rounded px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono" />
+              <button type="button" class="text-xs px-2 py-1 rounded border border-slate-700 text-slate-400 hover:text-slate-200" @click="loadFolders(); showFolderPicker = true">Browse</button>
             </div>
           </div>
 
@@ -101,6 +110,23 @@
         </div>
       </template>
 
+      <!-- Folder picker overlay -->
+      <div v-if="showFolderPicker" class="absolute inset-0 z-10 bg-slate-900/95 flex flex-col" @click.self="showFolderPicker = false">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
+          <span class="text-xs font-semibold text-slate-200">Select DAM folder</span>
+          <button class="text-slate-400 hover:text-slate-200" @click="showFolderPicker = false"><X class="w-4 h-4" /></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-2 space-y-1">
+          <div v-if="foldersLoading" class="text-xs text-slate-500 text-center py-4">Loading folders…</div>
+          <div v-else-if="damFolders.length === 0" class="text-xs text-slate-500 text-center py-4 italic">No folders found</div>
+          <button
+            v-for="f in damFolders" :key="f.path"
+            class="block w-full text-left text-xs px-3 py-2 rounded hover:bg-slate-800 text-slate-300 hover:text-slate-200 font-mono"
+            @click="pickFolder(f)"
+          >{{ f.path }}</button>
+        </div>
+      </div>
+
       <!-- Step 2: Preview -->
       <template v-if="step === 'preview'">
         <div class="p-4 space-y-3">
@@ -134,6 +160,7 @@
 import { onMounted, ref } from 'vue'
 import { X, Loader2, Sparkles } from '@lucide/vue'
 import { generateImage, fetchAiImageInfo, AiApiError, type AiImageInfo } from '../ai-api'
+import { listDamFolders, type DamFolderRecord } from '../dam-api'
 
 const emit = defineEmits<{
   close: []
@@ -150,10 +177,28 @@ const generating = ref(false)
 const error = ref('')
 const info = ref<AiImageInfo | null>(null)
 const generatedImages = ref<{ damUrl: string; assetId: string; revisedPrompt?: string }[]>([])
+const folderPath = ref('/ai-generated')
+const showFolderPicker = ref(false)
+const damFolders = ref<DamFolderRecord[]>([])
+const foldersLoading = ref(false)
 
 onMounted(async () => {
   info.value = await fetchAiImageInfo()
 })
+
+function pickFolder(f: DamFolderRecord) {
+  folderPath.value = f.path
+  showFolderPicker.value = false
+}
+
+async function loadFolders() {
+  if (damFolders.value.length) return
+  foldersLoading.value = true
+  try {
+    damFolders.value = await listDamFolders()
+  } catch { damFolders.value = [] }
+  finally { foldersLoading.value = false }
+}
 
 async function generate() {
   if (!prompt.value.trim() || generating.value) return
@@ -166,6 +211,7 @@ async function generate() {
       size: size.value,
       quality: quality.value,
       style: style.value,
+      folderPath: folderPath.value,
     })
     generatedImages.value = result.images
   } catch (e: any) {
