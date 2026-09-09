@@ -108,6 +108,15 @@ export async function getPublicPage(locale: string, path: string, rootPath?: str
   return parseJsonOrThrow(res)
 }
 
+/** SEO-friendly public page lookup — no locale in the URL. Resolves
+ *  /{rootPath}/{slug} (Website > Paths preview links) by detecting rootPath
+ *  from the first path segment on the server, which returns the page with
+ *  its own locale. Matches apps/core-api/src/server.ts's `GET /public/page/*`. */
+export async function getPublicPageByPath(path: string): Promise<PublicPageLookup> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/public/page${path}`, { credentials: 'include' })
+  return parseJsonOrThrow(res)
+}
+
 export async function listPageTranslations(id: string): Promise<WhoobeOnePage[]> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages/${id}/translations`, { credentials: 'include' })
   const body = await parseJsonOrThrow(res)

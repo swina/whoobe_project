@@ -264,12 +264,9 @@ function childHref(child: WhoobeElement, obj: DataObjectRecord): string {
   if (c.dynamicLink) {
     const resolved = resolveDynamicLinkTarget(child, obj)
     if (!resolved) return '#'
-    // ?locale= is a dev-preview-tool affordance (see PublicPage.vue): the
-    // public page route needs locale as an explicit param, and it's not
-    // reliably derivable from the path itself (the DB's own locale column
-    // doesn't always match a leading path segment) - taken directly from
-    // the target page's own real, already-fetched locale, not guessed.
-    return `${resolved.path}?locale=${encodeURIComponent(resolved.locale)}`
+    // Clean SEO-friendly URL — the server resolves locale from the DB
+    // via GET /public/page/* (no query params needed).
+    return resolved.path
   }
   return c.link || '#'
 }

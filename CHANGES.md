@@ -1,5 +1,20 @@
 # Changelog
 
+## [Website Paths: zero-query-param /{rootPath}/{slug} URLs with server-side locale resolution] — 2026-09-09
+
+- **`apps/admin-dashboard/src/components/settings/MenuItemRow.vue`**: Preview URL is now `/{rootPath}/{slug}` with zero query params (e.g. `/sycore/home`). The page's locale is resolved server-side from the DB record — no `?locale=` or `?rootPath=` needed. Also fixed: when page slug has no leading `/` (PagePickerDrawer quick-create), `target` is now normalized with `slug.startsWith('/') ? slug : '/' + slug` so the URL doesn't produce `/{rootPath}slug` (missing slash). And root-page preview (slug `/`) now works — maps to just `/{rootPath}`.
+- **`apps/core-api/src/server.ts`**: New public route `GET /public/page/*` that resolves pages without locale in the URL. Auto-detects rootPath from the first path segment (via `getWebsiteByRootPath`), strips it, and looks up the page by slug + websiteId ignoring locale (`getPublishedWhoobePageBySlugAnyLocale`). Supports dynamic slug patterns (`{placeholder}`) via the same `matchPagePath` fallback as the existing locale-based endpoint. Also tries slug without leading `/` as fallback for pages created via PagePickerDrawer quick-create.
+- **`apps/admin-dashboard/src/components/websites/MasterWebsiteTab.vue`**: Fixed `onPageSelected` — when the linked page has slug `/` (root page), the menu item's original `path` is preserved instead of being overwritten with an empty string.
+- **`packages/core/src/db/whoobe-pages-records.ts`**: New `getPublishedWhoobePageBySlugAnyLocale(slug, websiteId?)` — finds a published page by slug scoped to website, ignoring locale. Returns the first match.
+- **`apps/whoobe-one-spike/src/pages-api.ts`**: New `getPublicPageByPath(path)` — calls `GET /public/page/{path}` on the server for clean URLs without locale.
+- **`apps/whoobe-one-spike/src/views/PublicPage.vue`**: When no `?locale=` query param is present, calls the new `getPublicPageByPath()` endpoint. The page's locale is taken from the server response. Legacy `?locale=` URLs (PagePreviewTab) still use the old `getPublicPage()` endpoint.
+- **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: `pickWebsitePath()` now generates clean `/{rootPath}/{path}` URLs without `?locale=` or `?rootPath=` query params.
+- **`apps/whoobe-one-spike/src/components/preview/BlockContainerPreview.vue`**: `childHref()` now returns clean URLs without `?locale=` — the server resolves the locale from the DB record.
+
+## [Fix: linked pages missing in Website > Paths after app restart] — 2026-09-09
+
+- **`apps/admin-dashboard/src/components/websites/MasterWebsiteTab.vue`**: The Paths tab's `MenuItemRow` components resolve page titles/status/locale from the shared `pagesStore.pages`, but `MasterWebsiteTab` only fetched pages into a local `websitePages` ref and never populated the Pinia store. On a fresh app load, opening Website → Paths showed path items linked via `pageId` with no page title/status/locale info ("unlinked-looking"). Now `load()` also calls `pagesStore.refreshPages(websiteId)` (alongside `websitesStore.getWebsite` and `loadPages`), and re-fetches the store whenever the Paths subtab is entered. Added `usePagesStore` import and instance.
+
 ## [FloatingToolbar: website paths select in link picker] — 2026-09-08
 
 - **`apps/whoobe-one-spike/src/website-paths-api.ts`**: New API client with `fetchWebsitePaths(websiteId?)` for the whoobe-one-spike app.
