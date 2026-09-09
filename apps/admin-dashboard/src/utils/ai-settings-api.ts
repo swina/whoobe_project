@@ -42,6 +42,39 @@ export async function fetchAiSettings(baseUrl: string): Promise<AiSettingsRecord
   return parseJsonOrThrow(res)
 }
 
+export interface AiImageSettingsRecord {
+  provider: string
+  model: string
+  endpoint: string | null
+  hasApiKey: boolean
+  updatedAt: string
+}
+export interface AiImageSettingsInput {
+  provider: string
+  model: string
+  endpoint?: string | null
+  apiKey?: string
+}
+
+export async function fetchAiImageSettings(baseUrl: string): Promise<{ settings: AiImageSettingsRecord | null; usingFallback: boolean }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/ai/image-settings`, { credentials: 'include' })
+  return res.json()
+}
+
+export async function saveAiImageSettings(baseUrl: string, input: AiImageSettingsInput): Promise<AiImageSettingsRecord> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/ai/image-settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || 'Failed to save AI image settings')
+  }
+  return res.json()
+}
+
 export async function saveAiSettings(baseUrl: string, input: AiSettingsInput): Promise<AiSettingsRecord> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/ai/settings`, {
     method: 'PUT',

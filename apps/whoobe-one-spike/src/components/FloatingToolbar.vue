@@ -350,6 +350,15 @@
             </div>
             <div v-if="srcBindingLabel" class="text-[9px] text-indigo-500 font-mono mt-0.5">{{ srcBindingLabel }}</div>
           </div>
+          <div class="pt-1">
+            <button
+              type="button"
+              class="w-full flex items-center justify-center gap-1 px-2 py-1 text-[10px] rounded bg-indigo-600 text-white hover:bg-indigo-500 font-semibold"
+              @click.stop="showAiImageGenerate = true"
+            >
+              <Wand2 class="w-3 h-3" /> AI Generate
+            </button>
+          </div>
           <div v-if="editor.current?.element === 'img'">
             <label class="block text-[10px] text-gray-500 mb-1">Alt text</label>
             <input
@@ -515,6 +524,12 @@
     @generated="onAiSnippetGenerated"
   />
 
+  <AiImageGenerateModal
+    v-if="showAiImageGenerate"
+    @close="showAiImageGenerate = false"
+    @select="onAiImageSelected"
+  />
+
   <DataObjectPicker
     v-if="showDataPicker && editor.current"
     :target="bindingTarget"
@@ -576,6 +591,7 @@ import TipTapPanel from './TipTapPanel.vue'
 import MediaPickerModal from './MediaPickerModal.vue'
 import SaveSnippetModal from './SaveSnippetModal.vue'
 import AiGenerateModal from './AiGenerateModal.vue'
+import AiImageGenerateModal from './AiImageGenerateModal.vue'
 import DataObjectPicker from './DataObjectPicker.vue'
 import ExpandableTextInput from './ExpandableTextInput.vue'
 import type { ElementDataBinding } from '../scripts/ElementsClass.js'
@@ -624,6 +640,7 @@ const showTextPicker = ref(false)
 const showFillPicker = ref(false)
 const showSaveSnippet = ref(false)
 const showAiGenerate = ref(false)
+const showAiImageGenerate = ref(false)
 const showLinkPicker = ref(false)
 const linkUrlDraft = ref('')
 const showButtonIconPicker = ref(false)
@@ -867,6 +884,14 @@ async function onGenerateTemplate(classId: string) {
 function onAiSnippetGenerated(payload: unknown) {
   showAiGenerate.value = false
   insertGeneratedSnippet(editor, payload)
+}
+
+function onAiImageSelected(result: { damUrl: string; assetId: string }) {
+  if (!editor.current) return
+  editor.current.image = { url: result.damUrl, alt: (editor.current as any).image?.alt || null, assetId: result.assetId }
+  imageUrlDraft.value = result.damUrl
+  showAiImageGenerate.value = false
+  showImagePicker.value = false
 }
 
 const label = computed(() => {

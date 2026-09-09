@@ -1,6 +1,26 @@
 # Changelog
 
-## [Fix: root path / linked page not persisted + auto-publish on link, close editor before link] — 2026-09-09
+## [AI Images Agent: full-stack image generation with DAM auto-upload] — 2026-09-09
+
+- **`packages/core/src/db/ai-image-settings-schema.ts`**: New `ai_image_settings` table (per-user, FK → `users(id)` ON DELETE CASCADE) with `provider`, `model`, `endpoint`, `api_key` — fully independent from the text AI settings.
+- **`packages/core/src/db/ai-image-settings-records.ts`**: `getAiImageSettings(userId)` and `upsertAiImageSettings(userId, input)` — same upsert-on-conflict pattern as `ai_settings`.
+- **`packages/core/drizzle/0036_ai_image_settings.sql`**: Migration to create the `ai_image_settings` table.
+- **`packages/core/drizzle.config.ts`**: Added `ai-image-settings-schema.ts` to the schema list.
+- **`packages/core/drizzle/meta/_journal.json`**: Bumped to idx 36.
+- **`packages/core/src/ai/image-providers.ts`**: New provider layer — `generateImage()` dispatches to OpenAI, OpenRouter, or Custom endpoints via the OpenAI SDK `images.generate()` API. Supports DALL-E 3 (size/style/quality) and DALL-E 2 (multi-image). Retry logic for 429/5xx. `AiImageGenerationError` with status codes for content policy violations (422) and other failures.
+- **`packages/core/src/ai/image-dam.ts`**: `saveAiImageToDam()` — downloads the provider's temp URL server-side, uploads to MinIO via `S3AssetStorageProvider`, creates an asset DB record via `upsertAssetRecord`, and returns the permanent DAM URL + asset ID. No ephemeral URLs ever reach the browser.
+- **`packages/core/src/server.ts`**: Exports the new schema, records, image provider, and image DAM modules.
+- **`apps/core-api/src/server.ts`**: 3 new routes — `GET /ai/image-settings` (returns config without API key, with `usingFallback` indicator), `PUT /ai/image-settings` (upsert, blank key = keep existing), `POST /ai/generate-image` (generate → download → DAM upload → audit log in one call). Falls back to text AI settings when no image-specific config exists. Logs both successes and failures to `whoobe_ai_generated` with kind `'image'`.
+- **`apps/admin-dashboard/src/utils/ai-settings-api.ts`**: Added `AiImageSettingsRecord`, `AiImageSettingsInput`, `fetchAiImageSettings()`, `saveAiImageSettings()`.
+- **`apps/admin-dashboard/src/components/settings/AiImageSettingsCard.vue`**: New settings card for AI image provider config (provider, model, endpoint, API key, fallback notice).
+- **`apps/admin-dashboard/src/stores/tabsStore.ts`**: Added `'ai-image'` to `SettingsSubSection`.
+- **`apps/admin-dashboard/src/views/SettingsView.vue`**: Added AI Image sub-tab with `Image` icon.
+- **`apps/admin-dashboard/src/layouts/DashboardLayout.vue`**: Added "AI image gen" sidebar item.
+- **`apps/whoobe-one-spike/src/ai-api.ts`**: Added `generateImage()`, `fetchAiImageInfo()`.
+- **`apps/whoobe-one-spike/src/components/AiImageGenerateModal.vue`**: New 3-step modal (Generate → Preview → Insert). Prompt controls, provider info, image grid, "Use this image" emits `{ damUrl, assetId }`.
+- **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: "AI Generate" button in the image popover, sets `editor.current.image.url`/`.assetId` on select.
+- **`apps/whoobe-one-spike/src/components/BlockEditor.vue`**: "AI Image" toolbar button, creates and inserts an `<img>` element on select.
+- **`apps/whoobe-one-spike/src/scripts/ElementsClass.d.ts`**: Added `assetId?: string | null` to `ElementImage`.
 
 - **`apps/admin-dashboard/src/components/websites/MasterWebsiteTab.vue`**: `onPageSelected` now preserves the menu item's own `path` instead of overwriting it with the page slug — a menu item with path `/` stays `/` after linking. Also auto-publishes the selected page (PagePickerDrawer quick-create creates unpublished pages), so the public endpoint can serve it. Previously, linked unpublished pages always returned "Page not found" on preview.
 - **`apps/admin-dashboard/src/components/settings/MenuItemRow.vue`**: `openLinkPage()` now closes the inline editor (`editing.value = false`) before emitting `link-page`. This prevents the inline editor's `saveEdit()` from racing with the page-linking optimistic update and overwriting the `pageId` with stale data.

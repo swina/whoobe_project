@@ -430,6 +430,7 @@ import {
   Blocks,
   Globe,
   Palette,
+  Image,
   Table2,
   Mail,
   Sparkles,
@@ -663,6 +664,7 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'ai', name: 'AI agent', icon: Sparkles },
+  { key: 'ai-image', name: 'AI image gen', icon: Image },
   { key: 'figma', name: 'Figma', icon: Palette },
 ]
 
@@ -674,6 +676,7 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   security: 'Security',
   workflows: 'Workflows',
   ai: 'AI agent',
+  'ai-image': 'AI image gen',
   figma: 'Figma',
 }
 

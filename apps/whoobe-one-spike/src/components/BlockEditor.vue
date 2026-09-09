@@ -26,6 +26,7 @@
            app's own Templates gallery would be a redundant second way to
            browse the same content. -->
       <button :class="topbarBtnClass" @click="showAiGeneratePage = true"><Wand2 class="w-3.5 h-3.5" /> AI Page</button>
+      <button :class="topbarBtnClass" @click="showAiGenerateImage = true"><Image class="w-3.5 h-3.5" /> AI Image</button>
       <button :class="topbarBtnClass" @click="showFigmaImport = true"><Palette class="w-3.5 h-3.5" /> Figma</button>
       <button v-if="!editor.embedded" :class="topbarBtnClass" @click="showTemplateGallery = true">
         <FolderOpen class="w-3.5 h-3.5" /> Templates
@@ -164,6 +165,12 @@
       @generated="onAiPageGenerated"
     />
 
+    <AiImageGenerateModal
+      v-if="showAiGenerateImage"
+      @close="showAiGenerateImage = false"
+      @select="onAiImageSelected"
+    />
+
     <FigmaImportModal
       v-if="showFigmaImport"
       @close="showFigmaImport = false"
@@ -213,6 +220,7 @@ import {
   Eye,
   FilePlus,
   FolderOpen,
+  Image,
   ListTree,
   Package,
   PackagePlus,
@@ -240,6 +248,7 @@ import AddToKitModal from './AddToKitModal.vue'
 import TemplateGalleryModal from './TemplateGalleryModal.vue'
 import ThemeModal from './ThemeModal.vue'
 import AiGenerateModal from './AiGenerateModal.vue'
+import AiImageGenerateModal from './AiImageGenerateModal.vue'
 import FigmaImportModal from './FigmaImportModal.vue'
 import AiGeneratedPanel from './AiGeneratedPanel.vue'
 import AiGeneratedPreviewModal from './AiGeneratedPreviewModal.vue'
@@ -247,7 +256,7 @@ import type { AiGeneratedRecord } from '../ai-api'
 import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
 import { useThemeStyles } from '../composables/useThemeStyles'
-import { clean, findNodeById, removeNodeById, applyImagePlaceholder, normalizeGeneratedTree } from '../helpers'
+import { clean, findNodeById, removeNodeById, findParentAndIndex, applyImagePlaceholder, normalizeGeneratedTree } from '../helpers'
 import { editorBus } from '../bus'
 import { exportDocument, importDocument, cloneWithFreshIds, insertGeneratedSnippet } from '../scripts/editor-actions'
 import { savePage, saveMailTemplate, saveSnippet, saveAsNewTemplate, updatePageSlug } from '../scripts/database-actions'
@@ -266,6 +275,7 @@ const showAddToKit = ref(false)
 const showTemplateGallery = ref(false)
 const showThemeModal = ref(false)
 const showAiGeneratePage = ref(false)
+const showAiGenerateImage = ref(false)
 const showFigmaImport = ref(false)
 
 // Inject theme colors as @theme CSS custom properties so @tailwindcss/browser
@@ -507,6 +517,25 @@ function onAiPageGenerated(payload: unknown) {
   page.json.blocks = root
   editor.setPage(page)
   flash('AI page generated')
+}
+
+function onAiImageSelected(result: { damUrl: string; assetId: string }) {
+  showAiGenerateImage.value = false
+  if (!editor.document) return
+  const img = new Element().Image()
+  img.image = { url: result.damUrl, alt: null, assetId: result.assetId }
+  const current = editor.current as (WhoobeElement & { type?: string }) | null
+  if (current && current.type === 'container') {
+    current.blocks.push(img)
+  } else if (current) {
+    const found = findParentAndIndex(editor.document, current.id)
+    if (found) found.parent.blocks.splice(found.index + 1, 0, img)
+    else editor.document.blocks.push(img)
+  } else {
+    editor.document.blocks.push(img)
+  }
+  editor.setCurrent(img)
+  flash('AI image inserted')
 }
 
 // Re-import from the AI history panel (AiGeneratedPanel): a generation can

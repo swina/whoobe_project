@@ -93,6 +93,42 @@ export interface AiGeneratedRecord {
   createdAt: string
 }
 
+export interface AiImageSettings {
+  provider: string
+  model: string
+  hasApiKey: boolean
+}
+
+export interface AiImageInfo {
+  settings: AiImageSettings | null
+  usingFallback: boolean
+}
+
+export async function generateImage(prompt: string, options?: {
+  n?: number
+  size?: string
+  quality?: string
+  style?: string
+  folderPath?: string
+}): Promise<{ images: { damUrl: string; assetId: string; revisedPrompt?: string }[] }> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/ai/generate-image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, ...options }),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body
+}
+
+export async function fetchAiImageInfo(): Promise<AiImageInfo | null> {
+  try {
+    const res = await fetch(`${getDefaultCoreApiUrl()}/ai/image-settings`, { credentials: 'include' })
+    if (!res.ok) return null
+    return res.json()
+  } catch { return null }
+}
+
 /** Recent AI generation history (GET /ai/generated) filtered to records
  *  that actually carry a validated Element-tree payload - the rest (failed
  *  calls, rejected trees) are noise for the editor's re-import panel. */

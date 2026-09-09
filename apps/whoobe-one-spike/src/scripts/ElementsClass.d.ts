@@ -28,6 +28,7 @@ export interface ElementImage {
   // simply unused on a background-image element, since CSS backgrounds
   // have no `alt` concept in HTML at all.
   alt?: string | null
+  assetId?: string | null
 }
 
 export interface ElementGroup {
