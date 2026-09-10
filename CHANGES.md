@@ -1,5 +1,12 @@
 # Changelog
 
+## [Nuxt publishing: @whoobe-cms/nuxt package + Nuxt site scaffold] — 2026-09-10
+
+- **`packages/sdk/nuxt/`**: New `@whoobe-cms/nuxt` package — Nuxt 3 helper library analogous to `@whoobe-cms/next`. Provides `getPageData()`, `getObjectData()`, `generateMetadataFromPage()`, `staticParamsForSlugs()`, `staticParamsForRecords()`, `whoobeApi()`, and re-exports from `@whoobe-cms/vue`. Uses `@whoobe-cms/renderer` for page walking and layout composition.
+- **`packages/publish/src/cli.ts`**: Added `generateNuxtSite()` function and full Nuxt 3 scaffold (`scaffoldNuxtSite()`). Generates a complete Nuxt project with `nuxt.config.ts`, `app.vue` (WhoobeProvider root layout), `pages/index.vue`, `pages/[...slug].vue` (single-locale) or `pages/[locale]/[...slug].vue` (multi-locale), `server/routes/sitemap.xml.ts`, `server/routes/robots.txt.ts`, `composables/useWhoobeApi.ts`, `assets/css/main.css` (Tailwind v4 with theme), and `.env`. Supports single-locale and multi-locale websites with SSR/SSG via Nitro prerender crawling.
+- **`packages/publish/bin/whoobe-publish.js`**: Dispatches to `generateNuxtSite()` when `--framework vue` is passed.
+- **`publish-site.sh`**: Framework selector now maps option 2 to Nuxt/Vue 3 (no longer "coming soon"), shows Nuxt-specific next steps, and builds @whoobe-cms/nuxt when selected.
+
 ## [Public website endpoint returns paths with page IDs; public snippet endpoint] — 2026-09-10
 
 - **`apps/core-api/src/server.ts`**: `GET /public/websites/:id` now returns `paths` (with `pageIds` — flat array of all page IDs referenced recursively in menu items) and `templates` (raw records, no enrichment). Removed `linkedPages` from both. Added `GET /public/snippets/:id` — no-auth endpoint returning a single snippet by ID.

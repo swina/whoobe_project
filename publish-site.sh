@@ -74,8 +74,8 @@ ASSET_URL="${ASSET_URL%/}"
 # ── 4. Target framework ────────────────────────────────────────────────────
 echo ""
 echo "Select target framework:"
-echo "  1) Next.js  (recommended — SSR/ISR, Vercel deployable)"
-echo "  2) Vue 3    (Nuxt SSR — coming soon)"
+echo "  1) Next.js  (React — SSR/ISR, Vercel deployable)"
+echo "  2) Nuxt 3   (Vue 3 — SSR/SSG, Nitro)"
 echo "  3) Svelte   (SvelteKit SSR — coming soon)"
 echo ""
 read -r -p "Framework [1]: " FRAMEWORK_CHOICE
@@ -84,10 +84,8 @@ case "${FRAMEWORK_CHOICE:-1}" in
   1|next|Next|NEXT)
     FRAMEWORK="next"
     ;;
-  2|vue|Vue|VUE)
+  2|vue|Vue|VUE|nuxt|Nuxt|NUXT)
     FRAMEWORK="vue"
-    echo -e "${YELLOW}Note:${NC} Vue framework support is planned. Defaulting to Next.js."
-    FRAMEWORK="next"
     ;;
   3|svelte|Svelte|SVELTE)
     FRAMEWORK="svelte"
@@ -145,8 +143,11 @@ if [ -n "$ASSET_URL" ]; then
   ASSET_ARG="--asset-base-url $ASSET_URL"
 fi
 
-# Build the publish package first, then run
+# Build the publish package and SDK first, then run
 pnpm run --filter @whoobe-cms/publish build
+if [ "$FRAMEWORK" = "vue" ]; then
+  pnpm run --filter @whoobe-cms/nuxt build
+fi
 node packages/publish/bin/whoobe-publish.js \
   --api-url "$API_URL" \
   --website-id "$WEBSITE_ID" \
@@ -163,9 +164,18 @@ echo ""
 echo -e "Next steps:"
 echo -e "  ${CYAN}cd ${CHOOSEN_OUT_DIR}${NC}"
 echo -e "  ${CYAN}pnpm install${NC}"
-echo -e "  ${CYAN}pnpm build${NC}"
-echo -e "  ${CYAN}pnpm start${NC}"
-echo ""
-echo -e "Or deploy to Vercel:"
-echo -e "  ${CYAN}cd ${CHOOSEN_OUT_DIR} && npx vercel --prod${NC}"
+if [ "$FRAMEWORK" = "vue" ]; then
+  echo -e "  ${CYAN}pnpm dev          # start dev server${NC}"
+  echo -e "  ${CYAN}pnpm generate    # static export${NC}"
+  echo -e "  ${CYAN}pnpm build       # SSR build${NC}"
+  echo ""
+  echo -e "Or deploy to Vercel / Netlify:"
+  echo -e "  ${CYAN}cd ${CHOOSEN_OUT_DIR} && npx nuxi build && npx vercel --prod${NC}"
+else
+  echo -e "  ${CYAN}pnpm build${NC}"
+  echo -e "  ${CYAN}pnpm start${NC}"
+  echo ""
+  echo -e "Or deploy to Vercel:"
+  echo -e "  ${CYAN}cd ${CHOOSEN_OUT_DIR} && npx vercel --prod${NC}"
+fi
 echo ""
