@@ -49,7 +49,7 @@ async function resolveNodeLink(
   scope: { ctx: WalkContext; api: RenderApi },
   options: RenderOptions,
 ): Promise<RenderDescriptor['link']> {
-  if (node.link) return { href: node.link, target: node.linkTarget }
+  if (node.link) return { href: node.link ?? '#', target: node.linkTarget ?? undefined }
   if (node.dynamicLink) {
     if (options.resolveTargetPage) {
       const target = await options.resolveTargetPage(node.dynamicLink.targetPageId)

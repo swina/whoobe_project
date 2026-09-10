@@ -1,3 +1,4 @@
+"use client"
 // Core React components: WhoobeNode (recursive descriptor renderer) and
 // WhoobePage (fetch + walk + render, or a pre-walked descriptor for SSR).
 
@@ -53,5 +54,3 @@ export function WhoobePage({ locale, path, websiteId, descriptor: initial, layou
 export function createWhoobeApi(baseUrl: string): WhoobeApi {
   return new ApiClient(baseUrl) as unknown as WhoobeApi
 }
-
-export { WhoobeProvider }

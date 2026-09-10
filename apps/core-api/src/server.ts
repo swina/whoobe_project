@@ -188,6 +188,7 @@ import {
   type AuthenticatedRequest,
   type SearchOptions,
   type SearchDocumentType,
+  type MenuItem,
 } from '@whoobe-cms/core/server';
 // Root package entry, not '/server' - compileDynamicSchema lives in
 // schema/dynamic.ts, exported from index.ts and kept out of the Node-only
@@ -2227,6 +2228,51 @@ app.get('/public/robots.txt', async (_req: Request, res: Response): Promise<void
   res.send(content);
 });
 
+// Public website info endpoint — no auth, returns website config + themes.
+// Used by the publish CLI to fetch website metadata at build time.
+app.get('/public/websites/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const website = await getWebsite(req.params.id);
+    if (!website) {
+      res.status(404).json({ error: 'Website not found' });
+      return;
+    }
+    const themes = (website.settings as Record<string, unknown> ?? {}).themes ?? [];
+    const defaultThemeId = (website.settings as Record<string, unknown> ?? {}).defaultThemeId ?? (Array.isArray(themes) && themes.length > 0 ? themes[0].id : null);
+    // Also include the global theme if the website references one
+    let globalTheme: Record<string, unknown> | null = null;
+    if (website.themeId) {
+      const gt = await getTheme(website.themeId);
+      if (gt) {
+        globalTheme = {
+          id: gt.id,
+          name: gt.name,
+          colors: gt.colors,
+          fonts: gt.fonts,
+          styles: gt.styles,
+          tailwindClasses: gt.tailwindClasses,
+        } as Record<string, unknown>;
+      }
+    }
+    res.json({ website, themes: [...themes, ...(globalTheme ? [globalTheme] : [])], defaultThemeId });
+  } catch (error: any) {
+    console.error('Public website info error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get website info' });
+  }
+});
+
+// Public pages list — no auth, returns all published pages for a website.
+app.get('/public/pages', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
+    const pages = await listPublishedWhoobePages(websiteId);
+    res.json({ pages });
+  } catch (error: any) {
+    console.error('Public pages list error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list pages' });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Public search (headless) - see docs/plans/search-engine/search-engine-plan.md
 // §7. No auth, published-only, respects per-page search.indexable (enforced
@@ -3761,6 +3807,255 @@ app.post('/whoobe-one/websites/from-ai', requirePermission(PERMISSIONS.OBJECTS_W
   } catch (error: any) {
     console.error('Create website from AI error:', error);
     res.status(500).json({ error: error.message || 'Failed to create website from AI structure' });
+  }
+});
+
+// --- Website Export / Import ---
+
+interface WebsiteExport {
+  version: number;
+  website: {
+    name: string;
+    rootPath: string;
+    domains: string[];
+    defaultLocale: string;
+    supportedLocales: string[];
+    settings: Record<string, unknown> | null;
+    themeId: string | null;
+  };
+  pages: {
+    translationGroupId: string;
+    locale: string;
+    slug: string;
+    title: string;
+    category: string;
+    kind: 'content' | 'module';
+    published: boolean;
+    workflowState: string | null;
+    content: unknown;
+    seo: unknown;
+    sitemap: unknown;
+    search: unknown;
+    pimcoreId: string | null;
+    path: string | null;
+    themeId: string | null;
+  }[];
+  websiteTemplates: {
+    name: string;
+    description: string | null;
+    layout: Record<string, unknown>;
+    pathPatterns: string[];
+    isDefault: boolean;
+  }[];
+  websitePaths: {
+    name: string;
+    items: MenuItem[];
+  }[];
+  themes: {
+    name: string;
+    colors: { name: string; hex: string }[];
+    fonts: string[];
+    styles: string;
+    tailwindClasses: string;
+  }[];
+}
+
+app.get('/whoobe-one/websites/:id/export', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const website = await getWebsite(req.params.id);
+    if (!website) {
+      res.status(404).json({ error: 'Website not found' });
+      return;
+    }
+
+    const pages = await listWhoobePages(website.id);
+    const websiteTemplates = await listWebsiteTemplates(website.id);
+    const websitePaths = await listWebsitePaths(website.id);
+
+    // Collect themes — global themes linked via themeId and website-scoped themes
+    const themes: WebsiteExport['themes'] = [];
+    if (website.themeId) {
+      const theme = await getTheme(website.themeId);
+      if (theme) {
+        themes.push({
+          name: theme.name,
+          colors: theme.colors,
+          fonts: theme.fonts,
+          styles: theme.styles,
+          tailwindClasses: theme.tailwindClasses,
+        });
+      }
+    }
+    // Also export any theme referenced by individual pages (content themes)
+    const pageThemeIds = new Set(pages.map((p) => p.themeId).filter(Boolean));
+    for (const tid of pageThemeIds) {
+      if (tid && tid !== website.themeId) {
+        const theme = await getTheme(tid);
+        if (theme && !themes.some((t) => t.name === theme.name)) {
+          themes.push({
+            name: theme.name,
+            colors: theme.colors,
+            fonts: theme.fonts,
+            styles: theme.styles,
+            tailwindClasses: theme.tailwindClasses,
+          });
+        }
+      }
+    }
+
+    const payload: WebsiteExport = {
+      version: 1,
+      website: {
+        name: website.name,
+        rootPath: website.rootPath,
+        domains: website.domains,
+        defaultLocale: website.defaultLocale,
+        supportedLocales: website.supportedLocales,
+        settings: website.settings,
+        themeId: website.themeId,
+      },
+      pages: pages.map((p) => ({
+        translationGroupId: p.translationGroupId,
+        locale: p.locale,
+        slug: p.slug,
+        title: p.title,
+        category: p.category,
+        kind: p.kind,
+        published: p.published,
+        workflowState: p.workflowState,
+        content: p.content,
+        seo: p.seo,
+        sitemap: p.sitemap,
+        search: p.search,
+        pimcoreId: p.pimcoreId,
+        path: p.path,
+        themeId: p.themeId,
+      })),
+      websiteTemplates: websiteTemplates.map((t) => ({
+        name: t.name,
+        description: t.description,
+        layout: t.layout as Record<string, unknown>,
+        pathPatterns: t.pathPatterns,
+        isDefault: t.isDefault,
+      })),
+      websitePaths: websitePaths.map((p) => ({
+        name: p.name,
+        items: p.items as unknown as MenuItem[],
+      })),
+      themes,
+    };
+
+    res.json(payload);
+  } catch (error: any) {
+    console.error('Website export error:', error);
+    res.status(500).json({ error: error.message || 'Failed to export website' });
+  }
+});
+
+app.post('/whoobe-one/websites/import', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const payload = req.body as WebsiteExport;
+    if (!payload || payload.version !== 1 || !payload.website || !payload.website.name) {
+      res.status(400).json({ error: 'Invalid export payload: expected version 1 with website name' });
+      return;
+    }
+
+    // Assign autogenerated unique name and rootPath to prevent conflicts
+    const suffix = randomBytes(4).toString('hex');
+    const importName = `${payload.website.name} (import ${suffix})`;
+    const basePath = payload.website.rootPath || `/${payload.website.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    let importRootPath = `${basePath}-${suffix}`;
+    let counter = 0;
+    while (await getWebsiteByRootPath(importRootPath)) {
+      importRootPath = `${basePath}-${suffix}-${++counter}`;
+    }
+
+    // Import themes first (pages and website may reference them)
+    const themeNameToNewId = new Map<string, string>();
+    for (const theme of payload.themes ?? []) {
+      const created = await createTheme({
+        name: theme.name,
+        colors: theme.colors,
+        fonts: theme.fonts,
+        styles: theme.styles,
+        tailwindClasses: theme.tailwindClasses,
+      });
+      themeNameToNewId.set(theme.name, created.id);
+    }
+
+    // Create the website
+    const website = await createWebsite({
+      name: importName,
+      rootPath: importRootPath,
+      domains: [],
+      defaultLocale: payload.website.defaultLocale ?? 'en',
+      supportedLocales: payload.website.supportedLocales ?? ['en'],
+      settings: payload.website.settings ?? {},
+      themeId: payload.website.themeId && themeNameToNewId.size > 0
+        ? themeNameToNewId.get(payload.website.themeId) ?? null
+        : null,
+    });
+
+    // Map old translationGroupIds to new ones, preserving per-group locality
+    const oldTgIdToNew = new Map<string, string>();
+    for (const p of payload.pages ?? []) {
+      if (!oldTgIdToNew.has(p.translationGroupId)) {
+        oldTgIdToNew.set(p.translationGroupId, randomUUID());
+      }
+    }
+
+    // Import pages
+    const pages = [];
+    for (const p of payload.pages ?? []) {
+      const newThemeId = p.themeId ? (themeNameToNewId.get(p.themeId) ?? null) : null;
+      const page = await createWhoobePage({
+        translationGroupId: oldTgIdToNew.get(p.translationGroupId) ?? randomUUID(),
+        locale: p.locale,
+        slug: p.slug,
+        title: p.title,
+        category: p.category,
+        kind: p.kind,
+        content: p.content,
+        seo: p.seo as any,
+        sitemap: p.sitemap as any,
+        search: p.search as any,
+        pimcoreId: p.pimcoreId,
+        path: p.path,
+        websiteId: website.id,
+        themeId: newThemeId,
+      });
+      pages.push(page);
+    }
+
+    // Import website templates
+    const websiteTemplates = [];
+    for (const t of payload.websiteTemplates ?? []) {
+      const template = await createWebsiteTemplate({
+        websiteId: website.id,
+        name: t.name,
+        description: t.description,
+        layout: t.layout as any,
+        pathPatterns: t.pathPatterns,
+        isDefault: t.isDefault,
+      });
+      websiteTemplates.push(template);
+    }
+
+    // Import website paths (menus)
+    const websitePaths = [];
+    for (const p of payload.websitePaths ?? []) {
+      const wp = await createWebsitePath({
+        websiteId: website.id,
+        name: p.name,
+        items: p.items,
+      });
+      websitePaths.push(wp);
+    }
+
+    res.status(201).json({ website, pages, websiteTemplates, websitePaths, themes: payload.themes ?? [] });
+  } catch (error: any) {
+    console.error('Website import error:', error);
+    res.status(500).json({ error: error.message || 'Failed to import website' });
   }
 });
 

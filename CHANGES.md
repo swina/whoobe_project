@@ -1,6 +1,21 @@
 # Changelog
 
-## [AI Images Agent: full-stack image generation with DAM auto-upload] — 2026-09-09
+## [Website Publish: CLI generator + public API endpoints + guide] — 2026-09-10
+
+- **`packages/publish/`**: New `@whoobe-cms/publish` package with a CLI tool (`whoobe-publish`) that generates a standalone Next.js website from a Whoobe CMS website. Fetches website info + themes + all published pages via the public API, extracts Tailwind classes from element trees for build-time JIT, generates `@theme` CSS variables, and scaffolds a complete Next.js app with ISR, sitemap, robots.txt, SEO metadata, and component registry.
+- **`packages/sdk/renderer/src/api-client.ts`**: Added `listPages(websiteId?)` and `getWebsite(id)` methods to `ApiClient` for fetching all published pages and website theme info.
+- **`apps/core-api/src/server.ts`**: Two new public endpoints — `GET /public/websites/:id` (website info + themes, no auth) and `GET /public/pages?websiteId=...` (list all published pages, no auth).
+- **`docs/guides/publish/website-publishing.md`**: Full guide covering the publish workflow: prerequisites, CLI generation, build, deployment to Vercel/Docker/static, customization, and troubleshooting.
+- **`Root package.json`**: Added `publish:site` script.
+- **`packages/sdk/react/src/hooks.ts`**, **`context.tsx`**, **`components.tsx`**, **`defaults.tsx`**: Added `"use client"` directive so these modules serve as client boundaries in Next.js App Router. Removed duplicate `WhoobeProvider` re-export from `components.tsx` (already exported from `context.tsx`). Fixes SSR/ISR builds where server components import WhoobePage and hooks.
+- **`packages/publish/src/cli.ts`**: Fixed `generateStaticParams` in catch-all page scaffold to pre-render all published pages at build time. Fixed `file:` dependency paths using `relative()`. Added `NEXT_PUBLIC_CMS_API_URL` to `.env.local` for client-side access. Added detailed error messages for DNS/connection failures. Made layout a client component (SSG still runs at build time, preserving SEO).
+
+## [Website Export / Import] — 2026-09-10
+
+- **`apps/core-api/src/server.ts`**: New `GET /whoobe-one/websites/:id/export` endpoint — exports a complete website package: website configuration, all pages (with SEO/sitemap/search metadata), website templates, website paths (menus), and associated themes (global themes referenced by website or pages). Returns a versioned JSON payload.
+- **`apps/core-api/src/server.ts`**: New `POST /whoobe-one/websites/import` endpoint — imports a previously exported website package. Generates a unique suffix for name and rootPath (e.g. `"My Site (import a1b2c3d4)"` with rootPath `/my-site-a1b2c3d4`) to prevent conflicts. Creates themes first, then the website, then pages (preserving translation group locality), then website templates and paths. All existing IDs are regenerated.
+- **`apps/admin-dashboard/src/utils/websites-api.ts`**: Added `WebsiteExportPayload` type, `exportWebsite()` and `importWebsite()` API client functions.
+- **`apps/admin-dashboard/src/components/settings/WebsiteSettingsCard.vue`**: Added "Export" button per website row (downloads JSON), and "Import" button in the toolbar (opens file picker for `.json` upload). After import, the websites list refreshes automatically.
 
 - **`packages/core/src/db/ai-image-settings-schema.ts`**: New `ai_image_settings` table (per-user, FK → `users(id)` ON DELETE CASCADE) with `provider`, `model`, `endpoint`, `api_key` — fully independent from the text AI settings.
 - **`packages/core/src/db/ai-image-settings-records.ts`**: `getAiImageSettings(userId)` and `upsertAiImageSettings(userId, input)` — same upsert-on-conflict pattern as `ai_settings`.

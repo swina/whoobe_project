@@ -1,3 +1,4 @@
+"use client"
 // React hooks wrapping the renderer/api (usePage/useObject/useQuery/useForm).
 
 import { useCallback, useEffect, useState } from 'react'

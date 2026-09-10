@@ -129,4 +129,16 @@ export class ApiClient implements RenderApi {
       body: JSON.stringify({ attributes, formConfig }),
     })
   }
+
+  /** GET /public/pages?websiteId=... - all published pages for a website. */
+  async listPages(websiteId?: string): Promise<PublicPageRecord[]> {
+    const qs = websiteId ? `?websiteId=${encodeURIComponent(websiteId)}` : ''
+    const body = await this.request<{ pages: PublicPageRecord[] }>(`/public/pages${qs}`)
+    return body.pages ?? []
+  }
+
+  /** GET /public/websites/:id - website info including themes. */
+  async getWebsite(id: string): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>(`/public/websites/${encodeURIComponent(id)}`)
+  }
 }

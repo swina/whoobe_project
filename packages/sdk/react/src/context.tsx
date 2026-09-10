@@ -1,3 +1,4 @@
+"use client"
 // React context: WhoobeProvider + useWhoobe hook.
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react'

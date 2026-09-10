@@ -11,6 +11,8 @@
           AI Website Wizard
         </button>--->
         <button @click="createNewWebsite" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">+ New Website</button>
+        <button @click="triggerImport" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200">Import</button>
+        <input ref="importFileInput" type="file" accept=".json" class="hidden" @change="handleImportFile" />
       </div>
     </div>
 
@@ -25,12 +27,14 @@
             <span class="text-sm font-semibold text-slate-200 light:text-slate-800">{{ website.name }}</span>
           </div>
           <div class="text-xs text-slate-500 font-mono mt-0.5 space-x-3">
+            <span>id: <button @click="copyId(website.id)" class="text-indigo-400 hover:text-indigo-300 cursor-pointer" :title="'Click to copy'">{{ website.id.slice(0, 8) }}…</button></span>
             <span>default: {{ website.defaultLocale }}</span>
             <span>locales: {{ website.supportedLocales.join(', ') }}</span>
             <span v-if="website.domains.length">domains: {{ website.domains.join(', ') }}</span>
           </div>
         </div>
         <div class="flex items-center gap-2 shrink-0 ml-3">
+          <button @click="exportWebsiteAction(website)" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">Export</button>
           <button @click="openPaths(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Paths</button>
           <button @click="openTemplates(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Templates</button>
           <button @click="openWebsiteTab(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Edit</button>
@@ -48,12 +52,15 @@ import { ref, onMounted } from 'vue'
 import { Sparkles } from '@lucide/vue'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import { useTabsStore } from '../../stores/tabsStore'
+import { exportWebsite, importWebsite } from '../../utils/websites-api'
+import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
 import AiWebsiteWizardModal from './AiWebsiteWizardModal.vue'
 
 const websitesStore = useWebsitesStore()
 const tabsStore = useTabsStore()
 const showAiModal = ref(false)
+const importFileInput = ref<HTMLInputElement | null>(null)
 
 function openWebsiteTab(website: WebsiteRecord) {
   tabsStore.openWebsite(website.id)
@@ -77,6 +84,61 @@ async function createNewWebsite() {
   } catch (e: any) {
     alert(e?.message || 'Failed to create website')
   }
+}
+
+async function exportWebsiteAction(website: WebsiteRecord) {
+  try {
+    const baseUrl = getDefaultCoreApiUrl()
+    const payload = await exportWebsite(baseUrl, website.id)
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${website.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-export.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e: any) {
+    alert(e?.message || 'Failed to export website')
+  }
+}
+
+function copyId(id: string) {
+  try {
+    navigator.clipboard.writeText(id).then(() => {
+      // success
+    })
+  } catch {
+    // Fallback for older browsers or non-HTTPS
+    const textarea = document.createElement('textarea')
+    textarea.value = id
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+  }
+}
+
+function triggerImport() {
+  importFileInput.value?.click()
+}
+
+async function handleImportFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  try {
+    const text = await file.text()
+    const payload = JSON.parse(text)
+    const baseUrl = getDefaultCoreApiUrl()
+    const result = await importWebsite(baseUrl, payload)
+    await websitesStore.refreshWebsites()
+    alert(`Website imported successfully as "${result.website.name}".`)
+  } catch (e: any) {
+    alert(e?.message || 'Failed to import website')
+  }
+  input.value = ''
 }
 
 async function handleDelete(website: WebsiteRecord) {

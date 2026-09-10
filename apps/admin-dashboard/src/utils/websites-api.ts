@@ -126,6 +126,74 @@ export async function createWebsiteFromAi(
   return parseJsonOrThrow(res)
 }
 
+// --- Website Export / Import ---
+
+export interface WebsiteExportPayload {
+  version: number
+  website: {
+    name: string
+    rootPath: string
+    domains: string[]
+    defaultLocale: string
+    supportedLocales: string[]
+    settings: Record<string, unknown> | null
+    themeId: string | null
+  }
+  pages: {
+    translationGroupId: string
+    locale: string
+    slug: string
+    title: string
+    category: string
+    kind: string
+    published: boolean
+    workflowState: string | null
+    content: unknown
+    seo: unknown
+    sitemap: unknown
+    search: unknown
+    pimcoreId: string | null
+    path: string | null
+    themeId: string | null
+  }[]
+  websiteTemplates: {
+    name: string
+    description: string | null
+    layout: Record<string, unknown>
+    pathPatterns: string[]
+    isDefault: boolean
+  }[]
+  websitePaths: {
+    name: string
+    items: Record<string, unknown>[]
+  }[]
+  themes: {
+    name: string
+    colors: { name: string; hex: string }[]
+    fonts: string[]
+    styles: string
+    tailwindClasses: string
+  }[]
+}
+
+export async function exportWebsite(baseUrl: string, id: string): Promise<WebsiteExportPayload> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${id}/export`, { credentials: 'include' })
+  return parseJsonOrThrow(res)
+}
+
+export async function importWebsite(
+  baseUrl: string,
+  payload: WebsiteExportPayload
+): Promise<{ website: WebsiteRecord; pages: any[]; websiteTemplates: any[]; websitePaths: any[]; themes: any[] }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
 // --- Multi-theme API ---
 
 export interface WebsiteTheme {

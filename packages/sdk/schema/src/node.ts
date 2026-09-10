@@ -15,10 +15,10 @@ export interface ElementImage {
 }
 
 export interface ElementGsap {
-  animation: string | null
-  ease: string | null
-  duration: number
-  delay: number
+  animation?: string | null
+  ease?: string | null
+  duration: number | string
+  delay: number | string
 }
 
 /** Shared `data.options` shape for Select()/RadioGroup(). */
@@ -135,19 +135,19 @@ export interface WhoobeElementNode {
   element?: string // 'p' | 'h1' | 'img' | 'div' | 'search' | ...
   semantic?: string
   level?: number
-  content?: string
+  content?: string | null
   css?: ElementCss
-  style?: string
-  font?: string
+  style?: string | null
+  font?: string | null
   image?: ElementImage
   /** Generic bag: `data.attributes` (DOM attrs, e.g. form input config) and
    *  `data.options` (select/radiogroup options). */
   data?: Record<string, any>
   dataBinding?: ElementDataBinding | null
   dynamicLink?: DynamicLinkBinding | null
-  link?: string
-  linkTarget?: string
-  anchor?: string
+  link?: string | null
+  linkTarget?: string | null
+  anchor?: string | null
   blocks?: WhoobeElementNode[]
   formConfig?: ElementFormConfig
   searchConfig?: ElementSearchConfig
@@ -157,12 +157,12 @@ export interface WhoobeElementNode {
   theme?: { colors: { name: string; hex: string }[]; fonts: string[] }
   helper?: string | null
   editable?: boolean
-  icon?: string
-  label?: string
-  tabLabel?: string
-  src?: string
-  placeholder?: string
-  value?: string
+  icon?: string | null
+  label?: string | null
+  tabLabel?: string | null
+  src?: string | null
+  placeholder?: string | null
+  value?: string | null
   /** Per-node Tailwind utilities the SDK ignores but preserves on parse. */
   [key: string]: unknown
 }
