@@ -11,6 +11,7 @@ import type {
   ElementSearchConfig,
   ElementSlider,
   ElementDataBinding,
+  ElementGsap,
   DynamicLinkBinding,
   FieldOption,
 } from '@whoobe-cms/schema'
@@ -31,12 +32,9 @@ export interface RenderDescriptor {
   attributes: Record<string, unknown>
   /** Raw data bag (data.attributes + data.options + anything else). */
   data: Record<string, unknown> | null
-  /** Resolved display content - always safe to inject as HTML: bound values
-   *  are escaped (and link transforms produce a sanitized <a>), static
-   *  content passes through as authored. */
+  /** Resolved display content - always safe to inject as HTML. */
   content: string
-  /** True when `content` may legitimately contain markup (bound values are
-   *  escaped, so it is always safe either way). */
+  /** True when `content` may legitimately contain markup. */
   contentIsHtml: boolean
   /** Resolved <img> src/alt, or null when nothing resolved. */
   image: { url: string; alt?: string | null } | null
@@ -51,4 +49,6 @@ export interface RenderDescriptor {
   dataBinding: ElementDataBinding | null
   /** Select/radiogroup options (from data.options). */
   options: FieldOption[] | null
+  /** Animation configuration (GSAP). */
+  gsap?: ElementGsap | null
 }

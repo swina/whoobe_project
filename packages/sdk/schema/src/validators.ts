@@ -137,15 +137,20 @@ export const sliderSchema: z.ZodType<ElementSlider> = z.object({
   loop: z.boolean(),
   showNav: z.boolean(),
   showHome: z.boolean(),
+  showDots: z.boolean().optional(),
   mode: z.enum(['standard', 'tabs']).optional(),
   tabsPosition: z.enum(['above', 'below']).optional(),
   navClass: z.string().optional(),
   arrowClass: z.string().optional(),
   homeClass: z.string().optional(),
-  tabClass: z.string().optional(),
-  activeTabClass: z.string().optional(),
   arrowIcon: z.enum(['chevron', 'arrow', 'triangle']).optional(),
   homeIcon: z.enum(['home', 'dot', 'circle']).optional(),
+  tabClass: z.string().optional(),
+  activeTabClass: z.string().optional(),
+  tabContainerClass: z.string().optional(),
+  dotClass: z.string().optional(),
+  activeDotClass: z.string().optional(),
+  dotContainerClass: z.string().optional(),
 })
 
 // --- the node tree ---
