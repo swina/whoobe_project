@@ -101,11 +101,16 @@ export const WhoobePage = defineComponent({
 
     return () => {
       if (status.value === 'error') return h('div', { class: 'whoobe-error' }, error.value ?? 'Failed to load page')
-      if (!descriptor.value) return h('div', { class: 'whoobe-loading' }, 'Loading…')
+      // When descriptor is pre-provided (SSR path), render immediately —
+      // no loading state. This ensures identical server/client trees.
+      if (!descriptor.value) {
+        if (props.descriptor) return h('div', { class: 'whoobe-page' })
+        return h('div', { class: 'whoobe-loading' }, 'Loading…')
+      }
 
-      const region = (d: RenderDescriptor | null) => (d ? h(WhoobeNode, { descriptor: d }) : null)
-      const body = h('main', { class: 'whoobe-page-body' }, [h(WhoobeNode, { descriptor: descriptor.value })])
-      const shell = layout.value ? [region(layout.value.header), region(layout.value.aside), body, region(layout.value.footer)] : body
+      const region = (d: RenderDescriptor | null) => (d ? h(WhoobeNode, { key: d.id, descriptor: d }) : null)
+      const body = h('main', { key: 'body', class: 'whoobe-page-body' }, [h(WhoobeNode, { key: descriptor.value.id, descriptor: descriptor.value })])
+      const shell = layout.value ? [region(layout.value.header), region(layout.value.aside), body, region(layout.value.footer)] : [body]
       return h('div', { class: 'whoobe-page' }, shell)
     }
   },

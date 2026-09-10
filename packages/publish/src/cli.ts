@@ -966,19 +966,16 @@ function nuxtHomePage(opts: ScaffoldOptions): string {
 
   if (homeSlug === '/') {
     return `<template>
-  <div v-if="data" class="whoobe-page">
-    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
-  </div>
-  <div v-else class="p-8 text-center text-gray-400">
-    Home page not available
+  <div class="whoobe-page">
+    <WhoobeNode v-if="data" :descriptor="data.descriptor" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
+import { getPageData, WhoobeNode } from '@whoobe-cms/nuxt'
 
 const config = useRuntimeConfig()
-const { data } = await useAsyncData('home', () =>
+const { data } = useAsyncData('home-page', () =>
   getPageData('${defaultLocale}', '/', {
     baseUrl: config.public.cmsApiUrl,
     websiteId: config.public.cmsWebsiteId,
@@ -987,8 +984,8 @@ const { data } = await useAsyncData('home', () =>
 )
 
 if (data.value) {
-  const meta = (await import('@whoobe-cms/nuxt')).generateMetadataFromPage(data.value.page, config.public.cmsApiUrl)
-  useHead(meta)
+  const seo = data.value.page.seo || {} as any
+  useHead({ title: seo.metaTitle || data.value.page.title })
 }
 </script>
 `
@@ -1007,16 +1004,13 @@ await navigateTo('${actualHomePath}')
 
 function nuxtLocalePage(): string {
   return `<template>
-  <div v-if="data" class="whoobe-page">
-    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
-  </div>
-  <div v-else class="p-8 text-center text-gray-400">
-    Page not found
+  <div class="whoobe-page">
+    <WhoobeNode v-if="data" :descriptor="data.descriptor" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { getPageData, WhoobePage, generateMetadataFromPage } from '@whoobe-cms/nuxt'
+import { getPageData, WhoobeNode } from '@whoobe-cms/nuxt'
 import { ApiClient } from '@whoobe-cms/renderer'
 
 const config = useRuntimeConfig()
@@ -1028,17 +1022,16 @@ const pages = await api.listPages(config.public.cmsWebsiteId)
 const localPages = pages.filter((p) => p.locale === locale)
 
 if (localPages.find((p) => p.slug === '/')) {
-  const { data } = await useAsyncData(\`page-\${locale}-home\`, () =>
+  const { data } = useAsyncData(\`locale-\${locale}-home\`, () =>
     getPageData(locale, '/', {
       baseUrl: config.public.cmsApiUrl,
       websiteId: config.public.cmsWebsiteId,
       assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
     })
   )
-
   if (data.value) {
-    const meta = generateMetadataFromPage(data.value.page, config.public.cmsApiUrl)
-    useHead(meta)
+    const seo = data.value.page.seo || {} as any
+    useHead({ title: seo.metaTitle || data.value.page.title })
   }
 } else {
   const homeSlug = localPages[0]?.slug ?? 'home'
@@ -1052,23 +1045,20 @@ if (localPages.find((p) => p.slug === '/')) {
 function nuxtCatchAllPage(opts: ScaffoldOptions): string {
   const defaultLocale = opts.defaultLocale
   return `<template>
-  <div v-if="data" class="whoobe-page">
-    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
-  </div>
-  <div v-else class="p-8 text-center text-gray-400">
-    Page not found
+  <div class="whoobe-page">
+    <WhoobeNode v-if="data" :descriptor="data.descriptor" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { getPageData, WhoobePage, generateMetadataFromPage } from '@whoobe-cms/nuxt'
+import { getPageData, WhoobeNode } from '@whoobe-cms/nuxt'
 
 const config = useRuntimeConfig()
 const route = useRoute()
 const slug = (route.params.slug as string[]) || []
 const path = '/' + slug.join('/')
 
-const { data } = await useAsyncData(\`page-\${path}\`, () =>
+const { data } = useAsyncData(\`page-\${path}\`, () =>
   getPageData('${defaultLocale}', path, {
     baseUrl: config.public.cmsApiUrl,
     websiteId: config.public.cmsWebsiteId,
@@ -1077,8 +1067,8 @@ const { data } = await useAsyncData(\`page-\${path}\`, () =>
 )
 
 if (data.value) {
-  const meta = generateMetadataFromPage(data.value.page, config.public.cmsApiUrl)
-  useHead(meta)
+  const seo = data.value.page.seo || {} as any
+  useHead({ title: seo.metaTitle || data.value.page.title })
 }
 </script>
 `
@@ -1086,16 +1076,13 @@ if (data.value) {
 
 function nuxtCatchAllPageMulti(): string {
   return `<template>
-  <div v-if="data" class="whoobe-page">
-    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
-  </div>
-  <div v-else class="p-8 text-center text-gray-400">
-    Page not found
+  <div class="whoobe-page">
+    <WhoobeNode v-if="data" :descriptor="data.descriptor" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { getPageData, WhoobePage, generateMetadataFromPage } from '@whoobe-cms/nuxt'
+import { getPageData, WhoobeNode } from '@whoobe-cms/nuxt'
 
 const config = useRuntimeConfig()
 const route = useRoute()
@@ -1103,7 +1090,7 @@ const locale = route.params.locale as string
 const slug = (route.params.slug as string[]) || []
 const path = '/' + slug.join('/')
 
-const { data } = await useAsyncData(\`page-\${locale}-\${path}\`, () =>
+const { data } = useAsyncData(\`page-\${locale}-\${path}\`, () =>
   getPageData(locale, path, {
     baseUrl: config.public.cmsApiUrl,
     websiteId: config.public.cmsWebsiteId,
@@ -1112,8 +1099,8 @@ const { data } = await useAsyncData(\`page-\${locale}-\${path}\`, () =>
 )
 
 if (data.value) {
-  const meta = generateMetadataFromPage(data.value.page, config.public.cmsApiUrl)
-  useHead(meta)
+  const seo = data.value.page.seo || {} as any
+  useHead({ title: seo.metaTitle || data.value.page.title })
 }
 </script>
 `
