@@ -819,6 +819,7 @@ async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
   await writeFile(join(opts.outDir, 'tsconfig.json'), nuxtTsconfig())
   await writeFile(join(opts.outDir, 'app.vue'), nuxtAppVue(opts))
   await writeFile(join(opts.outDir, 'assets/css/main.css'), nuxtGlobalsCss(opts))
+  await writeFile(join(opts.outDir, 'public/safelist.html'), nuxtSafelistHtml(opts))
   await writeFile(join(opts.outDir, 'composables/useWhoobeApi.ts'), nuxtComposable())
   await writeFile(join(opts.outDir, 'pages/index.vue'), nuxtHomePage(opts))
   await writeFile(join(opts.outDir, 'server/routes/sitemap.xml.ts'), nuxtSitemap(opts))
@@ -960,6 +961,18 @@ function nuxtGlobalsCss(opts: ScaffoldOptions): string {
   ].filter(Boolean).join('\n')
 }
 
+/** Writes all extracted Tailwind classes into an HTML file so Tailwind v4's
+ *  JIT scanner detects them (classes come from CMS data, not source code). */
+function nuxtSafelistHtml(opts: ScaffoldOptions): string {
+  const lines: string[] = []
+  // Group into blocks of ~20 to keep lines readable
+  for (let i = 0; i < opts.safelist.length; i += 20) {
+    const chunk = opts.safelist.slice(i, i + 20)
+    lines.push(`  <div class="${chunk.join(' ')}"></div>`)
+  }
+  return `<html>\n<body>\n${lines.join('\n')}\n</body>\n</html>\n`
+}
+
 function nuxtHomePage(opts: ScaffoldOptions): string {
   const defaultLocale = (opts.website.defaultLocale as string) ?? 'en'
   const homeSlug = opts.homePaths[defaultLocale] ?? '/'
@@ -967,15 +980,15 @@ function nuxtHomePage(opts: ScaffoldOptions): string {
   if (homeSlug === '/') {
     return `<template>
   <div class="whoobe-page">
-    <WhoobeNode v-if="data" :descriptor="data.descriptor" />
+    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { getPageData, WhoobeNode } from '@whoobe-cms/nuxt'
+import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
 
 const config = useRuntimeConfig()
-const { data } = useAsyncData('home-page', () =>
+const { data } = await useAsyncData('home-page', () =>
   getPageData('${defaultLocale}', '/', {
     baseUrl: config.public.cmsApiUrl,
     websiteId: config.public.cmsWebsiteId,
@@ -1005,12 +1018,12 @@ await navigateTo('${actualHomePath}')
 function nuxtLocalePage(): string {
   return `<template>
   <div class="whoobe-page">
-    <WhoobeNode v-if="data" :descriptor="data.descriptor" />
+    <WhoobePage v-if="data" :descriptor="data.descriptor" :layout="data.layout" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { getPageData, WhoobeNode } from '@whoobe-cms/nuxt'
+import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
 import { ApiClient } from '@whoobe-cms/renderer'
 
 const config = useRuntimeConfig()
@@ -1022,7 +1035,7 @@ const pages = await api.listPages(config.public.cmsWebsiteId)
 const localPages = pages.filter((p) => p.locale === locale)
 
 if (localPages.find((p) => p.slug === '/')) {
-  const { data } = useAsyncData(\`locale-\${locale}-home\`, () =>
+  const { data } = await useAsyncData(\`locale-\${locale}-home\`, () =>
     getPageData(locale, '/', {
       baseUrl: config.public.cmsApiUrl,
       websiteId: config.public.cmsWebsiteId,
@@ -1046,19 +1059,19 @@ function nuxtCatchAllPage(opts: ScaffoldOptions): string {
   const defaultLocale = opts.defaultLocale
   return `<template>
   <div class="whoobe-page">
-    <WhoobeNode v-if="data" :descriptor="data.descriptor" />
+    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { getPageData, WhoobeNode } from '@whoobe-cms/nuxt'
+import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
 
 const config = useRuntimeConfig()
 const route = useRoute()
 const slug = (route.params.slug as string[]) || []
 const path = '/' + slug.join('/')
 
-const { data } = useAsyncData(\`page-\${path}\`, () =>
+const { data } = await useAsyncData(\`page-\${path}\`, () =>
   getPageData('${defaultLocale}', path, {
     baseUrl: config.public.cmsApiUrl,
     websiteId: config.public.cmsWebsiteId,
@@ -1077,12 +1090,12 @@ if (data.value) {
 function nuxtCatchAllPageMulti(): string {
   return `<template>
   <div class="whoobe-page">
-    <WhoobeNode v-if="data" :descriptor="data.descriptor" />
+    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { getPageData, WhoobeNode } from '@whoobe-cms/nuxt'
+import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
 
 const config = useRuntimeConfig()
 const route = useRoute()
@@ -1090,7 +1103,7 @@ const locale = route.params.locale as string
 const slug = (route.params.slug as string[]) || []
 const path = '/' + slug.join('/')
 
-const { data } = useAsyncData(\`page-\${locale}-\${path}\`, () =>
+const { data } = await useAsyncData(\`page-\${locale}-\${path}\`, () =>
   getPageData(locale, path, {
     baseUrl: config.public.cmsApiUrl,
     websiteId: config.public.cmsWebsiteId,
