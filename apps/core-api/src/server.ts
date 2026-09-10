@@ -2237,7 +2237,7 @@ app.get('/public/websites/:id', async (req: Request, res: Response): Promise<voi
       res.status(404).json({ error: 'Website not found' });
       return;
     }
-    const themes = (website.settings as Record<string, unknown> ?? {}).themes ?? [];
+    const themes = ((website.settings as Record<string, unknown> ?? {}).themes ?? []) as any[];
     const defaultThemeId = (website.settings as Record<string, unknown> ?? {}).defaultThemeId ?? (Array.isArray(themes) && themes.length > 0 ? themes[0].id : null);
     // Also include the global theme if the website references one
     let globalTheme: Record<string, unknown> | null = null;
@@ -2254,7 +2254,21 @@ app.get('/public/websites/:id', async (req: Request, res: Response): Promise<voi
         } as Record<string, unknown>;
       }
     }
-    res.json({ website, themes: [...themes, ...(globalTheme ? [globalTheme] : [])], defaultThemeId });
+    // Fetch paths with page IDs and templates
+    const paths = await listWebsitePaths(website.id);
+    const templates = await listWebsiteTemplates(website.id);
+    const resolvedPaths = paths.map(path => {
+      const ids = new Set<string>();
+      function collect(items: MenuItem[]): void {
+        for (const item of items) {
+          if (item.pageId) ids.add(item.pageId);
+          if (item.children?.length) collect(item.children);
+        }
+      }
+      collect(path.items);
+      return { ...path, pageIds: [...ids] };
+    });
+    res.json({ website, themes: [...themes, ...(globalTheme ? [globalTheme] : [])], defaultThemeId, paths: resolvedPaths, templates });
   } catch (error: any) {
     console.error('Public website info error:', error);
     res.status(500).json({ error: error.message || 'Failed to get website info' });
@@ -2270,6 +2284,21 @@ app.get('/public/pages', async (req: Request, res: Response): Promise<void> => {
   } catch (error: any) {
     console.error('Public pages list error:', error);
     res.status(500).json({ error: error.message || 'Failed to list pages' });
+  }
+});
+
+// Public snippet lookup — no auth.
+app.get('/public/snippets/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const snippet = await getWhoobeOneSnippet(req.params.id);
+    if (!snippet) {
+      res.status(404).json({ error: 'Snippet not found' });
+      return;
+    }
+    res.json({ snippet });
+  } catch (error: any) {
+    console.error('Public snippet lookup error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get snippet' });
   }
 });
 

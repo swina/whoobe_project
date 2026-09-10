@@ -1,5 +1,9 @@
 # Changelog
 
+## [Public website endpoint returns paths with page IDs; public snippet endpoint] — 2026-09-10
+
+- **`apps/core-api/src/server.ts`**: `GET /public/websites/:id` now returns `paths` (with `pageIds` — flat array of all page IDs referenced recursively in menu items) and `templates` (raw records, no enrichment). Removed `linkedPages` from both. Added `GET /public/snippets/:id` — no-auth endpoint returning a single snippet by ID.
+
 ## [SDK renderer fixes: link wrapping, slider carousel, GSAP animations, nullable schema] — 2026-09-10
 
 - **`packages/sdk/react/src/defaults.tsx`**: Added `withLink()` wrapper — `DefaultContainer`, `DefaultImage`, `DefaultIcon`, `DefaultButton`, `DefaultSubmit`, `DefaultReset` now check `descriptor.link` and wrap children in `<a>` when set (matching the editor's BlockContainerPreview behavior). Previously only `DefaultLink` (kind `'link'`) rendered links.
