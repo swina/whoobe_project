@@ -168,6 +168,7 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
     slider: node.slider ?? null,
     dataBinding: node.dataBinding ?? null,
     options: optionsList,
+    ...(node.gsap ? { gsap: node.gsap } : {}),
   }
 }
 

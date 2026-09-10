@@ -1,5 +1,17 @@
 # Changelog
 
+## [SDK renderer fixes: link wrapping, slider carousel, GSAP animations, nullable schema] — 2026-09-10
+
+- **`packages/sdk/react/src/defaults.tsx`**: Added `withLink()` wrapper — `DefaultContainer`, `DefaultImage`, `DefaultIcon`, `DefaultButton`, `DefaultSubmit`, `DefaultReset` now check `descriptor.link` and wrap children in `<a>` when set (matching the editor's BlockContainerPreview behavior). Previously only `DefaultLink` (kind `'link'`) rendered links.
+- **`packages/sdk/react/src/defaults.tsx`**: `DefaultSlider` now renders a functional carousel with sliding track (`translateX`), prev/next arrows, dot indicators, autoplay with configurable interval, and tab navigation — matching the editor's `BlockSliderPreview.vue`. Uses `useWhoobe()` context for registry resolution.
+- **`packages/sdk/react/src/defaults.tsx`**: Added `useGsapAnimation()` hook — dynamically imports `gsap` + `gsap/ScrollTrigger`, registers GSAP effects, applies ScrollTrigger/hover animations on elements with `gsap.animation` set. Wired to `DefaultContainer` and all text components via `useRef`. Gracefully degrades when GSAP is absent.
+- **`packages/sdk/renderer/src/descriptor.ts`**: Added optional `gsap?: ElementGsap | null` to `RenderDescriptor` — GSAP config now carried through the tree walker.
+- **`packages/sdk/renderer/src/walk.ts`**: Passes `node.gsap` into the descriptor output.
+- **`packages/sdk/schema/src/validators.ts`**: Added missing slider fields to `sliderSchema`: `showDots`, `tabClass`, `activeTabClass`, `tabContainerClass`, `dotClass`, `activeDotClass`, `dotContainerClass`.
+- **`packages/sdk/schema/src/validators.ts`**: All optional string fields in `whoobeElementSchema` changed to `.nullable().optional()` to accept JSON `null`. Added `name`, `description` fields.
+- **`packages/sdk/schema/src/node.ts`**: All optional string fields changed to `string | null`. `ElementGsap.duration`/`delay` changed to `number | string`. Added `name`, `description` fields.
+- **`packages/sdk/react/src/defaults.tsx`**: Fixed `children` prop in `DefaultSlider` — removed unused `children` param.
+
 ## [Website Publish: CLI generator + public API endpoints + guide] — 2026-09-10
 
 - **`packages/publish/`**: New `@whoobe-cms/publish` package with a CLI tool (`whoobe-publish`) that generates a standalone Next.js website from a Whoobe CMS website. Fetches website info + themes + all published pages via the public API, extracts Tailwind classes from element trees for build-time JIT, generates `@theme` CSS variables, and scaffolds a complete Next.js app with ISR, sitemap, robots.txt, SEO metadata, and component registry.

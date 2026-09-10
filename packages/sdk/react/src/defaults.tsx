@@ -3,7 +3,7 @@
 // renders with an empty registry. Consumers override any kind via the
 // registry to map it to their own design-system component.
 
-import { useState, useEffect, createElement, type FormEvent, type ReactNode } from 'react'
+import { useState, useEffect, useRef, useCallback, createElement, type FormEvent, type ReactNode } from 'react'
 import type { RenderDescriptor } from '@whoobe-cms/renderer'
 import { useWhoobe } from './context.js'
 import type { NodeComponent } from './types.js'
@@ -29,18 +29,97 @@ function baseProps(d: RenderDescriptor): Record<string, unknown> {
   return props
 }
 
+/** Wraps children in <a> when the descriptor has a link. */
+function withLink(descriptor: RenderDescriptor, children: ReactNode, props?: Record<string, unknown>): ReactNode {
+  if (descriptor.link) {
+    return (
+      <a href={descriptor.link.href} target={descriptor.link.target} {...(props ?? baseProps(descriptor))}>
+        {children}
+      </a>
+    )
+  }
+  return children
+}
+
+/** Mounts GSAP animation on an element ref. */
+function useGsapAnimation(descriptor: RenderDescriptor, ref: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const gsapConfig = (descriptor.node as any)?.gsap
+    const el = ref.current
+    if (!gsapConfig?.animation || !el) return
+    let killed = false
+
+    const run = async () => {
+      try {
+        // @ts-expect-error - gsap is optional, loaded dynamically at runtime
+        const gsapModule = await import('gsap')
+        // @ts-expect-error - gsap/ScrollTrigger is optional, loaded dynamically
+        const stModule = await import('gsap/ScrollTrigger')
+        if (killed || !ref.current) return
+        const gsap = gsapModule.default
+        gsap.registerPlugin(stModule.ScrollTrigger)
+        const effect = (gsap as any).effects?.[gsapConfig.animation]
+        if (!effect) return
+
+        const opts = {
+          duration: parseFloat(String(gsapConfig.duration)) || undefined,
+          delay: parseFloat(String(gsapConfig.delay)) || undefined,
+          ease: gsapConfig.ease || undefined,
+        }
+
+        if (!gsapConfig.trigger) {
+          const animation = effect(ref.current, opts)
+          const trigger = stModule.ScrollTrigger.create({
+            start: 'top 99.99%',
+            trigger: ref.current,
+            toggleActions: 'play pause restart none',
+            animation,
+            onEnter: () => {
+              if (gsapConfig.delay) animation.play()
+              else animation.play(0)
+            },
+          })
+          return () => { trigger.kill(); killed = true }
+        } else {
+          let hoverAnim: any = null
+          const node = ref.current
+          if (!node) return
+          const onEnter = () => { hoverAnim = effect(node, opts); hoverAnim?.play() }
+          const onLeave = () => { hoverAnim?.reverse() }
+          node.addEventListener('mouseenter', onEnter)
+          node.addEventListener('mouseleave', onLeave)
+          return () => {
+            node.removeEventListener('mouseenter', onEnter)
+            node.removeEventListener('mouseleave', onLeave)
+            hoverAnim?.kill()
+            killed = true
+          }
+        }
+      } catch { /* GSAP not available */ }
+    }
+
+    const cleanupPromise = run()
+    return () => { killed = true; cleanupPromise.then((fn) => fn?.()) }
+  }, [ref])
+}
+
 /** Container (grid/flex/section/...): resolves the tag + class/style + children. */
 export const DefaultContainer: NodeComponent = ({ descriptor, children }) => {
+  const rootRef = useRef<HTMLElement | null>(null)
   const Tag = descriptor.tag as any
-  return <Tag {...baseProps(descriptor)}>{children}</Tag>
+  useGsapAnimation(descriptor, rootRef)
+  return <Tag ref={rootRef} {...baseProps(descriptor)}>{withLink(descriptor, children)}</Tag>
 }
 
 /** Text nodes (heading/paragraph/span/blockquote/code): safe HTML. */
 export function makeTextComponent(name: string): NodeComponent {
   const TextComponent: NodeComponent = ({ descriptor }) => {
+    const rootRef = useRef<HTMLElement | null>(null)
     const Tag = descriptor.tag as any
+    useGsapAnimation(descriptor, rootRef)
     return (
       <Tag
+        ref={rootRef}
         {...baseProps(descriptor)}
         dangerouslySetInnerHTML={descriptor.content ? { __html: descriptor.content } : undefined}
       />
@@ -56,9 +135,7 @@ export const DefaultSpan = makeTextComponent('WhoobeSpan')
 export const DefaultBlockquote = makeTextComponent('WhoobeBlockquote')
 export const DefaultCode = makeTextComponent('WhoobeCode')
 
-/** Lucide icon — dynamically imports lucide-react and renders the icon by name.
- *  Falls back to rendering the icon name as text when lucide-react is not installed
- *  or the icon name is unknown. */
+/** Lucide icon — dynamically imports lucide-react and renders the icon by name. */
 export const DefaultIcon: NodeComponent = ({ descriptor }) => {
   const iconCache = useIconCache()
   const iconName = descriptor.content || 'HelpCircle'
@@ -67,10 +144,9 @@ export const DefaultIcon: NodeComponent = ({ descriptor }) => {
   const bp = baseProps(descriptor)
 
   if (IconComp) {
-    return <Tag {...bp}>{createElement(IconComp as any)}</Tag>
+    return <Tag {...bp}>{withLink(descriptor, createElement(IconComp as any))}</Tag>
   }
 
-  // Try to load the icon dynamically
   return <LucideIconLoader name={iconName} tag={Tag} attributes={bp} />
 }
 
@@ -81,7 +157,6 @@ function LucideIconLoader({ name, tag: Tag, attributes }: {
   if (IconComp) {
     return createElement(Tag as any, attributes, createElement(IconComp as any))
   }
-  // Fallback: render icon name
   return createElement(Tag as any, attributes, name)
 }
 
@@ -90,9 +165,7 @@ let lucidePromise: Promise<any> | null = null
 const iconCacheLocal: Record<string, any> = {}
 
 function useIconCache() {
-  useEffect(() => {
-    loadLucide()
-  }, [])
+  useEffect(() => { loadLucide() }, [])
   return iconCacheLocal
 }
 
@@ -113,15 +186,12 @@ async function loadLucide(): Promise<void> {
   try {
     lucidePromise = import('lucide-react')
     lucideModule = await lucidePromise
-    // Pre-populate cache with all icons
     for (const [key, val] of Object.entries(lucideModule)) {
       if (typeof val === 'function' || typeof val === 'object') {
         iconCacheLocal[key] = val
       }
     }
-  } catch {
-    lucideModule = {}
-  }
+  } catch { lucideModule = {} }
   lucidePromise = null
 }
 
@@ -139,19 +209,17 @@ function resolveIconSync(name: string): any {
 /** Image: resolved src/alt (DAM references already resolved by the renderer). */
 export const DefaultImage: NodeComponent = ({ descriptor }) => {
   if (!descriptor.image) return null
-  return <img src={descriptor.image.url} alt={descriptor.image.alt ?? ''} {...baseProps(descriptor)} />
+  const img = <img src={descriptor.image.url} alt={descriptor.image.alt ?? ''} {...baseProps(descriptor)} />
+  return withLink(descriptor, img) as React.ReactElement
 }
 
 /** Link: wraps children in the resolved href/target. */
 export const DefaultLink: NodeComponent = ({ descriptor, children }) => {
+  const bp = baseProps(descriptor)
   if (descriptor.link) {
-    return (
-      <a href={descriptor.link.href} target={descriptor.link.target} {...baseProps(descriptor)}>
-        {children}
-      </a>
-    )
+    return <a href={descriptor.link.href} target={descriptor.link.target} {...bp}>{children}</a>
   }
-  return <span {...baseProps(descriptor)}>{children}</span>
+  return <span {...bp}>{children}</span>
 }
 
 // --- form fields ---
@@ -169,9 +237,7 @@ export const DefaultTextarea: NodeComponent = ({ descriptor }) => (
 export const DefaultSelect: NodeComponent = ({ descriptor }) => (
   <select {...fieldProps(descriptor)}>
     {(descriptor.options ?? []).map((o) => (
-      <option key={o.value} value={o.value}>
-        {o.label}
-      </option>
+      <option key={o.value} value={o.value}>{o.label}</option>
     ))}
   </select>
 )
@@ -190,18 +256,26 @@ export const DefaultRadioGroup: NodeComponent = ({ descriptor }) => {
   )
 }
 
-/** Button: renders optionally with a Lucide icon from buttonIcon on the node. */
-export const DefaultButton: NodeComponent = ({ descriptor }) => {
+/** Button with optional Lucide icon + link support. */
+function buttonWithIcon(descriptor: RenderDescriptor, type: 'button' | 'submit' | 'reset', defaultContent: string): ReactNode {
   const node = descriptor.node as Record<string, unknown> | undefined
   const buttonIcon = (node?.buttonIcon as string) ?? ''
   const iconWidth = (node?.buttonIconWidth as number) ?? 16
   const iconHeight = (node?.buttonIconHeight as number) ?? 16
-  return (
-    <button {...fieldProps(descriptor)} type="button">
+  const bp = fieldProps(descriptor) as Record<string, unknown>
+  const content = descriptor.content || defaultContent
+
+  const inner = (
+    <>
       <ButtonIcon name={buttonIcon} width={iconWidth} height={iconHeight} />
-      {descriptor.content}
-    </button>
+      {content}
+    </>
   )
+
+  if (descriptor.link) {
+    return <a href={descriptor.link.href} target={descriptor.link.target} {...bp} className={(bp.className as string) + ' inline-flex items-center'}>{inner}</a>
+  }
+  return <button {...bp} type={type}>{inner}</button>
 }
 
 function ButtonIcon({ name, width, height }: { name: string; width: number; height: number }) {
@@ -210,34 +284,11 @@ function ButtonIcon({ name, width, height }: { name: string; width: number; heig
   return <IconComp style={{ width, height, display: 'inline-block', verticalAlign: 'middle', marginRight: 4 }} />
 }
 
-export const DefaultSubmit: NodeComponent = ({ descriptor }) => {
-  const node = descriptor.node as Record<string, unknown> | undefined
-  const buttonIcon = (node?.buttonIcon as string) ?? ''
-  const iconWidth = (node?.buttonIconWidth as number) ?? 16
-  const iconHeight = (node?.buttonIconHeight as number) ?? 16
-  return (
-    <button {...fieldProps(descriptor)} type="submit">
-      <ButtonIcon name={buttonIcon} width={iconWidth} height={iconHeight} />
-      {descriptor.content || 'Submit'}
-    </button>
-  )
-}
+export const DefaultButton: NodeComponent = ({ descriptor }) => buttonWithIcon(descriptor, 'button', '') as React.ReactElement
+export const DefaultSubmit: NodeComponent = ({ descriptor }) => buttonWithIcon(descriptor, 'submit', 'Submit') as React.ReactElement
+export const DefaultReset: NodeComponent = ({ descriptor }) => buttonWithIcon(descriptor, 'reset', 'Reset') as React.ReactElement
 
-export const DefaultReset: NodeComponent = ({ descriptor }) => {
-  const node = descriptor.node as Record<string, unknown> | undefined
-  const buttonIcon = (node?.buttonIcon as string) ?? ''
-  const iconWidth = (node?.buttonIconWidth as number) ?? 16
-  const iconHeight = (node?.buttonIconHeight as number) ?? 16
-  return (
-    <button {...fieldProps(descriptor)} type="reset">
-      <ButtonIcon name={buttonIcon} width={iconWidth} height={iconHeight} />
-      {descriptor.content || 'Reset'}
-    </button>
-  )
-}
-
-/** Form: fields inside a <form>, submits to /public/forms/:classId/submit,
- *  injects the honeypot, resets on success and shows a click-to-close popup. */
+/** Form: fields inside a <form>, submits to /public/forms/:classId/submit. */
 export const DefaultForm: NodeComponent = ({ descriptor, children }) => {
   const ctx = useWhoobe()
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
@@ -259,24 +310,14 @@ export const DefaultForm: NodeComponent = ({ descriptor, children }) => {
 
   return (
     <form {...baseProps(descriptor)} onSubmit={onSubmit}>
-      <input
-        name="_hp"
-        type="text"
-        tabIndex={-1}
-        autoComplete="off"
-        aria-hidden="true"
-        style={{ position: 'absolute', left: -9999, width: 1, height: 1, overflow: 'hidden' }}
-      />
+      <input name="_hp" type="text" tabIndex={-1} autoComplete="off" aria-hidden="true"
+        style={{ position: 'absolute', left: -9999, width: 1, height: 1, overflow: 'hidden' }} />
       {children}
       {result && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 100000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, cursor: 'pointer' }}
-          onClick={() => setResult(null)}
-        >
-          <div
-            style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 40px rgba(0,0,0,.2)', maxWidth: 448, width: '100%', padding: 24, fontSize: 14, color: result.ok ? '#047857' : '#be123c' }}
-            dangerouslySetInnerHTML={{ __html: result.message }}
-          />
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, cursor: 'pointer' }}
+          onClick={() => setResult(null)}>
+          <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 40px rgba(0,0,0,.2)', maxWidth: 448, width: '100%', padding: 24, fontSize: 14, color: result.ok ? '#047857' : '#be123c' }}
+            dangerouslySetInnerHTML={{ __html: result.message }} />
         </div>
       )}
     </form>
@@ -301,38 +342,123 @@ export const DefaultSearch: NodeComponent = ({ descriptor }) => {
       <button type="submit">{descriptor.searchConfig?.buttonLabel || 'Search'}</button>
       {results.length > 0 && (
         <ul className={descriptor.searchConfig?.dropdownClass}>
-          {results.map((r, i) => (
-            <li key={i}>{String(r.title ?? r.name ?? r.id)}</li>
-          ))}
+          {results.map((r, i) => <li key={i}>{String(r.title ?? r.name ?? r.id)}</li>)}
         </ul>
       )}
     </form>
   )
 }
 
-// --- media (light built-ins; consumers usually map these) ---
+// --- media ---
 
 export const DefaultVideo: NodeComponent = ({ descriptor }) => (
   <video {...fieldProps(descriptor)} src={descriptor.node.src ?? undefined} controls />
 )
 
 export const DefaultYoutube: NodeComponent = ({ descriptor }) => (
-  <div {...baseProps(descriptor)} data-embed="youtube">
-    {descriptor.content || 'YouTube'}
-  </div>
+  <div {...baseProps(descriptor)} data-embed="youtube">{descriptor.content || 'YouTube'}</div>
 )
 
 export const DefaultVimeo: NodeComponent = ({ descriptor }) => (
-  <div {...baseProps(descriptor)} data-embed="vimeo">
-    {descriptor.content || 'Vimeo'}
-  </div>
+  <div {...baseProps(descriptor)} data-embed="vimeo">{descriptor.content || 'Vimeo'}</div>
 )
 
-export const DefaultSlider: NodeComponent = ({ descriptor, children }) => (
-  <div {...baseProps(descriptor)} data-slider="true">
-    {children}
-  </div>
-)
+// --- slider ---
+
+const DEFAULT_SLIDER_SETTINGS = {
+  autoplay: false,
+  interval: 5000,
+  loop: true,
+  showNav: true,
+  showDots: true,
+  mode: 'standard',
+  navClass: 'flex items-center justify-center gap-1.5 px-2 py-1',
+  arrowClass: 'w-8 h-8 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white',
+  dotClass: 'w-2.5 h-2.5 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors',
+  activeDotClass: 'w-2.5 h-2.5 rounded-full bg-indigo-600 transition-colors',
+  dotContainerClass: 'flex items-center justify-center gap-2 pt-3',
+}
+
+export const DefaultSlider: NodeComponent = ({ descriptor }) => {
+  const ctx = useWhoobe()
+  const slides = descriptor.children ?? []
+  const s = { ...DEFAULT_SLIDER_SETTINGS, ...(descriptor.slider ?? {}) } as any
+  const [current, setCurrent] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const total = slides.length
+
+  const goTo = useCallback((i: number) => {
+    if (s.loop) setCurrent(((i % total) + total) % total)
+    else setCurrent(Math.max(0, Math.min(i, total - 1)))
+  }, [total, s.loop])
+
+  const next = useCallback(() => goTo(current + 1), [current, goTo])
+  const prev = useCallback(() => goTo(current - 1), [current, goTo])
+
+  useEffect(() => {
+    if (!s.autoplay || total <= 1) return
+    timerRef.current = setInterval(next, s.interval)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [s.autoplay, s.interval, next, total])
+
+  if (total === 0) return <div {...baseProps(descriptor)} />
+
+  return (
+    <div {...baseProps(descriptor)}>
+      {/* Sliding track */}
+      <div style={{ overflow: 'hidden', position: 'relative' }}>
+        <div style={{ display: 'flex', transition: 'transform 0.5s ease', transform: `translateX(-${current * 100}%)` }}>
+          {slides.map((child, i) => {
+          const SlideComp = (ctx.registry[child.kind] ?? DefaultContainer) as NodeComponent
+          return (
+            <div key={child.id} style={{ minWidth: '100%', boxSizing: 'border-box' }}>
+              <SlideComp descriptor={child} />
+            </div>
+          )
+        })}
+        </div>
+      </div>
+
+      {/* Tab navigation (mode: tabs) */}
+      {s.mode === 'tabs' && s.tabsPosition === 'above' && (
+        <div className={s.tabContainerClass || 'flex items-center justify-center gap-2'}>
+          {slides.map((_, i) => (
+            <button key={i} onClick={() => goTo(i)}
+              className={i === current ? s.activeTabClass : s.tabClass}>{/* label */}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Arrow navigation (mode: standard) */}
+      {s.showNav && total > 1 && (
+        <div className={s.navClass} style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 8 }}>
+          <button onClick={prev} className={s.arrowClass} aria-label="Previous">‹</button>
+          <button onClick={next} className={s.arrowClass} aria-label="Next">›</button>
+        </div>
+      )}
+
+      {/* Dot navigation */}
+      {s.showDots && total > 1 && (
+        <div className={s.dotContainerClass}>
+          {slides.map((_, i) => (
+            <button key={i} onClick={() => goTo(i)}
+              className={i === current ? s.activeDotClass : s.dotClass} aria-label={`Slide ${i + 1}`} />
+          ))}
+        </div>
+      )}
+
+      {/* Tab navigation (mode: tabs, below) */}
+      {s.mode === 'tabs' && s.tabsPosition === 'below' && (
+        <div className={s.tabContainerClass || 'flex items-center justify-center gap-2'}>
+          {slides.map((_, i) => (
+            <button key={i} onClick={() => goTo(i)}
+              className={i === current ? s.activeTabClass : s.tabClass}>{/* label */}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export const defaults: Record<string, NodeComponent> = {
   container: DefaultContainer,
