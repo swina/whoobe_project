@@ -42,7 +42,7 @@ export const WhoobeNode: NodeComponent = defineComponent({
     return () => {
       const d = props.descriptor
       const comp: NodeComponent = ctx?.registry[d.kind] ?? defaults[d.kind] ?? defaults.container
-      const children = d.children.map((child) => h(WhoobeNode, { key: child.id, descriptor: child }))
+      const children = d.children.map((child) => h(WhoobeNode, { descriptor: child }))
       return h(comp, { descriptor: d, children })
     }
   },
