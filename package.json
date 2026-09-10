@@ -5,7 +5,8 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "publish:site": "pnpm run --filter @whoobe-cms/publish build && node packages/publish/bin/whoobe-publish.js"
   },
   "workspaces": [
     "packages/*",

@@ -1,16 +1,31 @@
+"use client"
 // Built-in default components for every primitive node kind, so a page
 // renders with an empty registry. Consumers override any kind via the
 // registry to map it to their own design-system component.
 
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useState, useEffect, createElement, type FormEvent, type ReactNode } from 'react'
 import type { RenderDescriptor } from '@whoobe-cms/renderer'
 import { useWhoobe } from './context.js'
 import type { NodeComponent } from './types.js'
 
+function cssToReactStyle(css: string): Record<string, string> {
+  const obj: Record<string, string> = {}
+  for (const decl of css.split(';')) {
+    const colon = decl.indexOf(':')
+    if (colon === -1) continue
+    const prop = decl.slice(0, colon).trim()
+    const val = decl.slice(colon + 1).trim()
+    if (!prop || !val) continue
+    const camel = prop.replace(/-([a-z])/g, (_, c) => c.toUpperCase())
+    obj[camel] = val.replace(/^['"]|['"]$/g, '')
+  }
+  return obj
+}
+
 function baseProps(d: RenderDescriptor): Record<string, unknown> {
   const props: Record<string, unknown> = { ...d.attributes }
   if (d.className) props.className = d.className
-  if (d.style) props.style = d.style
+  if (d.style) props.style = cssToReactStyle(d.style)
   return props
 }
 
@@ -20,7 +35,7 @@ export const DefaultContainer: NodeComponent = ({ descriptor, children }) => {
   return <Tag {...baseProps(descriptor)}>{children}</Tag>
 }
 
-/** Text nodes (heading/paragraph/span/blockquote/code/icon): safe HTML. */
+/** Text nodes (heading/paragraph/span/blockquote/code): safe HTML. */
 export function makeTextComponent(name: string): NodeComponent {
   const TextComponent: NodeComponent = ({ descriptor }) => {
     const Tag = descriptor.tag as any
@@ -40,7 +55,86 @@ export const DefaultParagraph = makeTextComponent('WhoobeParagraph')
 export const DefaultSpan = makeTextComponent('WhoobeSpan')
 export const DefaultBlockquote = makeTextComponent('WhoobeBlockquote')
 export const DefaultCode = makeTextComponent('WhoobeCode')
-export const DefaultIcon = makeTextComponent('WhoobeIcon')
+
+/** Lucide icon — dynamically imports lucide-react and renders the icon by name.
+ *  Falls back to rendering the icon name as text when lucide-react is not installed
+ *  or the icon name is unknown. */
+export const DefaultIcon: NodeComponent = ({ descriptor }) => {
+  const iconCache = useIconCache()
+  const iconName = descriptor.content || 'HelpCircle'
+  const IconComp = iconCache[iconName]
+  const Tag = descriptor.tag as any
+  const bp = baseProps(descriptor)
+
+  if (IconComp) {
+    return <Tag {...bp}>{createElement(IconComp as any)}</Tag>
+  }
+
+  // Try to load the icon dynamically
+  return <LucideIconLoader name={iconName} tag={Tag} attributes={bp} />
+}
+
+function LucideIconLoader({ name, tag: Tag, attributes }: {
+  name: string; tag: string; attributes: Record<string, unknown>
+}) {
+  const IconComp = useLucideIcon(name)
+  if (IconComp) {
+    return createElement(Tag as any, attributes, createElement(IconComp as any))
+  }
+  // Fallback: render icon name
+  return createElement(Tag as any, attributes, name)
+}
+
+let lucideModule: any = null
+let lucidePromise: Promise<any> | null = null
+const iconCacheLocal: Record<string, any> = {}
+
+function useIconCache() {
+  useEffect(() => {
+    loadLucide()
+  }, [])
+  return iconCacheLocal
+}
+
+function useLucideIcon(name: string): any {
+  const [Icon, setIcon] = useState<any>(null)
+  useEffect(() => {
+    loadLucide().then(() => {
+      const comp = resolveIconSync(name)
+      if (comp) setIcon(() => comp)
+    })
+  }, [name])
+  return Icon
+}
+
+async function loadLucide(): Promise<void> {
+  if (lucideModule) return
+  if (lucidePromise) return lucidePromise
+  try {
+    lucidePromise = import('lucide-react')
+    lucideModule = await lucidePromise
+    // Pre-populate cache with all icons
+    for (const [key, val] of Object.entries(lucideModule)) {
+      if (typeof val === 'function' || typeof val === 'object') {
+        iconCacheLocal[key] = val
+      }
+    }
+  } catch {
+    lucideModule = {}
+  }
+  lucidePromise = null
+}
+
+function resolveIconSync(name: string): any {
+  if (!lucideModule) return null
+  const pascal = name
+    .trim()
+    .split(/[^a-zA-Z0-9]+|(?<=[a-z])(?=[A-Z])/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+    .join('')
+  return lucideModule[pascal] ?? null
+}
 
 /** Image: resolved src/alt (DAM references already resolved by the renderer). */
 export const DefaultImage: NodeComponent = ({ descriptor }) => {
@@ -96,23 +190,51 @@ export const DefaultRadioGroup: NodeComponent = ({ descriptor }) => {
   )
 }
 
-export const DefaultButton: NodeComponent = ({ descriptor }) => (
-  <button {...fieldProps(descriptor)} type="button">
-    {descriptor.content}
-  </button>
-)
+/** Button: renders optionally with a Lucide icon from buttonIcon on the node. */
+export const DefaultButton: NodeComponent = ({ descriptor }) => {
+  const node = descriptor.node as Record<string, unknown> | undefined
+  const buttonIcon = (node?.buttonIcon as string) ?? ''
+  const iconWidth = (node?.buttonIconWidth as number) ?? 16
+  const iconHeight = (node?.buttonIconHeight as number) ?? 16
+  return (
+    <button {...fieldProps(descriptor)} type="button">
+      <ButtonIcon name={buttonIcon} width={iconWidth} height={iconHeight} />
+      {descriptor.content}
+    </button>
+  )
+}
 
-export const DefaultSubmit: NodeComponent = ({ descriptor }) => (
-  <button {...fieldProps(descriptor)} type="submit">
-    {descriptor.content || 'Submit'}
-  </button>
-)
+function ButtonIcon({ name, width, height }: { name: string; width: number; height: number }) {
+  const IconComp = useLucideIcon(name)
+  if (!name || !IconComp) return null
+  return <IconComp style={{ width, height, display: 'inline-block', verticalAlign: 'middle', marginRight: 4 }} />
+}
 
-export const DefaultReset: NodeComponent = ({ descriptor }) => (
-  <button {...fieldProps(descriptor)} type="reset">
-    {descriptor.content || 'Reset'}
-  </button>
-)
+export const DefaultSubmit: NodeComponent = ({ descriptor }) => {
+  const node = descriptor.node as Record<string, unknown> | undefined
+  const buttonIcon = (node?.buttonIcon as string) ?? ''
+  const iconWidth = (node?.buttonIconWidth as number) ?? 16
+  const iconHeight = (node?.buttonIconHeight as number) ?? 16
+  return (
+    <button {...fieldProps(descriptor)} type="submit">
+      <ButtonIcon name={buttonIcon} width={iconWidth} height={iconHeight} />
+      {descriptor.content || 'Submit'}
+    </button>
+  )
+}
+
+export const DefaultReset: NodeComponent = ({ descriptor }) => {
+  const node = descriptor.node as Record<string, unknown> | undefined
+  const buttonIcon = (node?.buttonIcon as string) ?? ''
+  const iconWidth = (node?.buttonIconWidth as number) ?? 16
+  const iconHeight = (node?.buttonIconHeight as number) ?? 16
+  return (
+    <button {...fieldProps(descriptor)} type="reset">
+      <ButtonIcon name={buttonIcon} width={iconWidth} height={iconHeight} />
+      {descriptor.content || 'Reset'}
+    </button>
+  )
+}
 
 /** Form: fields inside a <form>, submits to /public/forms/:classId/submit,
  *  injects the honeypot, resets on success and shows a click-to-close popup. */
