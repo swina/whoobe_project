@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander'
-import { generateNextSite } from '../dist/cli.js'
+import { generateNextSite, generateNuxtSite } from '../dist/cli.js'
 
 const program = new Command()
 
@@ -18,7 +18,8 @@ program
 program.parse()
 
 const opts = program.opts()
-generateNextSite({
+const generator = opts.framework === 'vue' ? generateNuxtSite : generateNextSite
+generator({
   apiUrl: opts.apiUrl,
   websiteId: opts.websiteId,
   outDir: opts.outDir,

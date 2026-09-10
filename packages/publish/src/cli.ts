@@ -386,10 +386,6 @@ ${opts.safelist.map((c) => `    '${c}',`).join('\n')}
 }
 
 function scaffoldGlobalsCss(opts: ScaffoldOptions): string {
-  const fontLinks = opts.fontFamilies
-    .map((f) => `@import url('https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@300;400;500;600;700&display=swap');`)
-    .join('\n')
-
   const themeVars = opts.themeCss || ''
   const rawStyles = opts.themeRawStyles || ''
   const themeBlock = themeVars ? `@theme {\n${themeVars}\n}` : ''
@@ -401,8 +397,6 @@ function scaffoldGlobalsCss(opts: ScaffoldOptions): string {
     '',
     rawStyles,
     '',
-    fontLinks,
-    '',
     'body {',
     `  font-family: ${opts.fontFamilies.map((f) => `"${f}"`).join(', ') || 'sans-serif'};`,
     '}',
@@ -412,6 +406,9 @@ function scaffoldGlobalsCss(opts: ScaffoldOptions): string {
 
 function scaffoldLayout(opts: ScaffoldOptions): string {
   const defaultLocale = (opts.website.defaultLocale as string) ?? 'en'
+  const fontLinks = opts.fontFamilies
+    .map((f) => `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@300;400;500;600;700&display=swap" />`)
+    .join('\n    ')
 
   return `"use client"
 
@@ -429,6 +426,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="${defaultLocale}">
+      <head>
+        ${fontLinks}
+      </head>
       <body>
         <WhoobeProvider api={api} assetBaseUrl={assetBaseUrl + '/dam-asset'}>
           {children}
@@ -713,5 +713,490 @@ NEXT_PUBLIC_CMS_API_URL=${opts.apiUrl}
 NEXT_PUBLIC_WEBSITE_ID=${opts.websiteId}
 NEXT_PUBLIC_ASSET_BASE_URL=${assetBase}
 ${opts.domain ? `NEXT_PUBLIC_SITE_URL=https://${opts.domain}` : ''}
+`
+}
+
+// --- Nuxt scaffolding ---
+
+export async function generateNuxtSite(options: GenerateOptions): Promise<void> {
+  const { apiUrl, websiteId, outDir, revalidate, domain, assetBaseUrl } = options
+  const client = new ApiClient(apiUrl)
+
+  const assetDomain = assetBaseUrl ?? (() => {
+    if (domain) {
+      const u = new URL(apiUrl)
+      return `${u.protocol}//${domain}${u.port ? ':' + u.port : ''}`
+    }
+    return apiUrl
+  })()
+
+  console.log(`Fetching website ${websiteId}...`)
+  try {
+    const websiteData = await client.getWebsite(websiteId)
+    const website = websiteData.website as Record<string, unknown>
+    const themes = (websiteData.themes ?? []) as Array<{ id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles?: string; tailwindClasses?: string }>
+    const defaultThemeId = websiteData.defaultThemeId as string | null
+
+    console.log('Fetching published pages...')
+    const pages = await client.listPages(websiteId)
+
+    console.log(`Found ${pages.length} pages. Extracting Tailwind classes...`)
+    const classSet = new Set<string>()
+    for (const page of pages) {
+      collectClasses(page.content, classSet)
+    }
+    for (const theme of themes) {
+      if (theme.tailwindClasses) {
+        for (const cls of theme.tailwindClasses.split(/\s+/)) {
+          if (cls) classSet.add(cls)
+        }
+      }
+    }
+
+    const safelist = [...classSet].sort()
+    const themeCss = themes.map((t) => generateThemeCss(t, t.id === defaultThemeId)).join('\n')
+    const themeRawStyles = themes.map((t) => stripThemeBlock(t.styles ?? '')).filter(Boolean).join('\n')
+    const fontFamilies = collectFonts(themes, defaultThemeId)
+    const homePaths = computeHomePaths(pages)
+    const supportedLocales = (website.supportedLocales as string[]) ?? [website.defaultLocale ?? 'en']
+    const defaultLocale = (website.defaultLocale as string) ?? 'en'
+    const singleLocale = supportedLocales.length <= 1
+
+    console.log('Scaffolding Nuxt project...')
+    await scaffoldNuxtSite({
+      outDir,
+      apiUrl,
+      websiteId,
+      website,
+      safelist,
+      themeCss,
+      themeRawStyles,
+      fontFamilies,
+      pages,
+      homePaths,
+      singleLocale,
+      defaultLocale,
+      revalidate,
+      domain,
+      assetBaseUrl: assetDomain,
+    })
+
+    console.log(`\nDone! Generated Nuxt project at: ${outDir}`)
+    console.log('Next steps:')
+    console.log(`  cd ${outDir}`)
+    console.log('  pnpm install')
+    console.log('  pnpm dev          # start dev server')
+    console.log('  pnpm generate     # static export (recommended)')
+    console.log('  pnpm build        # full SSR build')
+  } catch (error: unknown) {
+    const err = error as Error & { cause?: { code?: string } }
+    let detail = err instanceof Error ? err.message : String(error)
+    const cause = err.cause as { code?: string } | undefined
+    if (cause?.code === 'ENOTFOUND') {
+      detail = `DNS lookup failed for "${apiUrl}" — check the host resolves.`
+    } else if (cause?.code === 'ECONNREFUSED') {
+      detail = `Connection refused for "${apiUrl}" — is the core-api running on that host/port?`
+    } else if (cause?.code === 'ERR_TLS_CERT_ALTNAME_INVALID' || cause?.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
+      detail = `TLS certificate issue for "${apiUrl}".`
+    }
+    console.error(`Unable to contact the CMS API at "${apiUrl}". ${detail}`)
+    console.error('Confirm the API URL and that it points to the core-api service.')
+    throw error
+  }
+}
+
+async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
+  const singleLocale = opts.singleLocale
+
+  const dirs = ['pages', 'composables', 'assets/css', 'public', 'server/routes']
+  if (!singleLocale) dirs.push('pages/[locale]')
+  for (const d of dirs) {
+    await mkdir(join(opts.outDir, d), { recursive: true })
+  }
+
+  await writeFile(join(opts.outDir, 'package.json'), nuxtPackageJson(opts))
+  await writeFile(join(opts.outDir, 'nuxt.config.ts'), nuxtConfig(opts))
+  await writeFile(join(opts.outDir, 'tsconfig.json'), nuxtTsconfig())
+  await writeFile(join(opts.outDir, 'app.vue'), nuxtAppVue(opts))
+  await writeFile(join(opts.outDir, 'assets/css/main.css'), nuxtGlobalsCss(opts))
+  await writeFile(join(opts.outDir, 'composables/useWhoobeApi.ts'), nuxtComposable())
+  await writeFile(join(opts.outDir, 'pages/index.vue'), nuxtHomePage(opts))
+  await writeFile(join(opts.outDir, 'server/routes/sitemap.xml.ts'), nuxtSitemap(opts))
+  await writeFile(join(opts.outDir, 'server/routes/robots.txt.ts'), nuxtRobots(opts))
+
+  if (singleLocale) {
+    await writeFile(join(opts.outDir, 'pages/[...slug].vue'), nuxtCatchAllPage(opts))
+  } else {
+    await writeFile(join(opts.outDir, 'pages/[locale]/index.vue'), nuxtLocalePage())
+    await writeFile(join(opts.outDir, 'pages/[locale]/[...slug].vue'), nuxtCatchAllPageMulti())
+  }
+
+  await writeFile(join(opts.outDir, '.env'), nuxtEnv(opts))
+}
+
+function nuxtPackageJson(opts: ScaffoldOptions): string {
+  const repoRoot = join(opts.outDir, '..', '..')
+  const sdkDir = join(repoRoot, 'packages', 'sdk')
+  const rel = (p: string) => relative(opts.outDir, p).replace(/\\/g, '/')
+  return JSON.stringify({
+    name: `whoobe-site-${opts.websiteId.slice(0, 8)}`,
+    version: '0.1.0',
+    private: true,
+    type: 'module',
+    scripts: {
+      dev: 'nuxi dev',
+      build: 'nuxi build',
+      generate: 'nuxi generate',
+      preview: 'nuxi preview',
+    },
+    dependencies: {
+      nuxt: '^3.15.0',
+      vue: '^3.5.0',
+      'vue-router': '^4.5.0',
+      '@whoobe-cms/nuxt': `file:${rel(join(sdkDir, 'nuxt'))}`,
+      '@whoobe-cms/vue': `file:${rel(join(sdkDir, 'vue'))}`,
+      '@whoobe-cms/renderer': `file:${rel(join(sdkDir, 'renderer'))}`,
+      '@whoobe-cms/schema': `file:${rel(join(sdkDir, 'schema'))}`,
+    },
+    devDependencies: {
+      tailwindcss: '^4.0.0',
+      '@tailwindcss/vite': '^4.0.0',
+      typescript: '^5.4.0',
+    },
+  }, null, 2)
+}
+
+function nuxtConfig(opts: ScaffoldOptions): string {
+  return `// https://nuxt.com/docs/api/nuxt-config
+import tailwindcss from '@tailwindcss/vite'
+
+export default defineNuxtConfig({
+  compatibilityDate: '2026-09-10',
+  css: ['~/assets/css/main.css'],
+  vite: {
+    plugins: [tailwindcss()],
+  },
+  nitro: {
+    prerender: {
+      crawlLinks: true,
+    },
+  },
+  runtimeConfig: {
+    public: {
+      cmsApiUrl: '${opts.apiUrl}',
+      cmsWebsiteId: '${opts.websiteId}',
+      cmsAssetBaseUrl: '${opts.assetBaseUrl ?? opts.apiUrl}',
+      cmsDefaultLocale: '${opts.defaultLocale}',
+      cmsRevalidate: ${opts.revalidate},
+      ${opts.domain ? `siteUrl: 'https://${opts.domain}',` : ''}
+    },
+  },
+  app: {
+    head: {
+      link: ${JSON.stringify(opts.fontFamilies.map((f) => ({
+        rel: 'stylesheet',
+        href: `https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@300;400;500;600;700&display=swap`,
+      })))},
+    },
+  },
+})
+`
+}
+
+function nuxtTsconfig(): string {
+  return JSON.stringify({
+    extends: './.nuxt/tsconfig.json',
+    compilerOptions: {
+      strict: true,
+      types: ['nuxt'],
+    },
+  }, null, 2)
+}
+
+function nuxtAppVue(opts: ScaffoldOptions): string {
+  const defaultLocale = (opts.website.defaultLocale as string) ?? 'en'
+  const fontFamilies = opts.fontFamilies
+  const fontFamilyCss = fontFamilies.map((f) => `"${f}"`).join(', ') || 'sans-serif'
+  return `<template>
+  <WhoobeProvider :api="api" :assetBaseUrl="assetBaseUrl + '/dam-asset'">
+    <div>
+      <NuxtPage />
+    </div>
+  </WhoobeProvider>
+</template>
+
+<script setup lang="ts">
+import { WhoobeProvider, createWhoobeApi } from '@whoobe-cms/nuxt'
+
+const config = useRuntimeConfig()
+const apiUrl = config.public.cmsApiUrl
+const assetBaseUrl = config.public.cmsAssetBaseUrl || apiUrl
+const api = createWhoobeApi(apiUrl)
+
+useHead({
+  htmlAttrs: { lang: '${defaultLocale}' },
+  bodyAttrs: { style: 'font-family: ${fontFamilyCss};' },
+})
+</script>
+`
+}
+
+function nuxtGlobalsCss(opts: ScaffoldOptions): string {
+  const themeVars = opts.themeCss || ''
+  const rawStyles = opts.themeRawStyles || ''
+  const themeBlock = themeVars ? `@theme {\n${themeVars}\n}` : ''
+
+  return [
+    '@import "tailwindcss";',
+    '',
+    themeBlock,
+    '',
+    rawStyles,
+    '',
+    'body {',
+    `  font-family: ${opts.fontFamilies.map((f) => `"${f}"`).join(', ') || 'sans-serif'};`,
+    '}',
+    '',
+  ].filter(Boolean).join('\n')
+}
+
+function nuxtHomePage(opts: ScaffoldOptions): string {
+  const defaultLocale = (opts.website.defaultLocale as string) ?? 'en'
+  const homeSlug = opts.homePaths[defaultLocale] ?? '/'
+
+  if (homeSlug === '/') {
+    return `<template>
+  <div v-if="data" class="whoobe-page">
+    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
+  </div>
+  <div v-else class="p-8 text-center text-gray-400">
+    Home page not available
+  </div>
+</template>
+
+<script setup lang="ts">
+import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
+
+const config = useRuntimeConfig()
+const { data } = await useAsyncData('home', () =>
+  getPageData('${defaultLocale}', '/', {
+    baseUrl: config.public.cmsApiUrl,
+    websiteId: config.public.cmsWebsiteId,
+    assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+  })
+)
+
+if (data.value) {
+  const meta = (await import('@whoobe-cms/nuxt')).generateMetadataFromPage(data.value.page, config.public.cmsApiUrl)
+  useHead(meta)
+}
+</script>
+`
+  }
+
+  const actualHomePath = opts.singleLocale ? homeSlug : '/' + defaultLocale + homeSlug
+  return `<template>
+  <div />
+</template>
+
+<script setup lang="ts">
+await navigateTo('${actualHomePath}')
+</script>
+`
+}
+
+function nuxtLocalePage(): string {
+  return `<template>
+  <div v-if="data" class="whoobe-page">
+    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
+  </div>
+  <div v-else class="p-8 text-center text-gray-400">
+    Page not found
+  </div>
+</template>
+
+<script setup lang="ts">
+import { getPageData, WhoobePage, generateMetadataFromPage } from '@whoobe-cms/nuxt'
+import { ApiClient } from '@whoobe-cms/renderer'
+
+const config = useRuntimeConfig()
+const route = useRoute()
+const locale = route.params.locale as string
+
+const api = new ApiClient(config.public.cmsApiUrl)
+const pages = await api.listPages(config.public.cmsWebsiteId)
+const localPages = pages.filter((p) => p.locale === locale)
+
+if (localPages.find((p) => p.slug === '/')) {
+  const { data } = await useAsyncData(\`page-\${locale}-home\`, () =>
+    getPageData(locale, '/', {
+      baseUrl: config.public.cmsApiUrl,
+      websiteId: config.public.cmsWebsiteId,
+      assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+    })
+  )
+
+  if (data.value) {
+    const meta = generateMetadataFromPage(data.value.page, config.public.cmsApiUrl)
+    useHead(meta)
+  }
+} else {
+  const homeSlug = localPages[0]?.slug ?? 'home'
+  const path = homeSlug.startsWith('/') ? homeSlug.slice(1) : homeSlug
+  await navigateTo('/' + locale + '/' + path)
+}
+</script>
+`
+}
+
+function nuxtCatchAllPage(opts: ScaffoldOptions): string {
+  const defaultLocale = opts.defaultLocale
+  return `<template>
+  <div v-if="data" class="whoobe-page">
+    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
+  </div>
+  <div v-else class="p-8 text-center text-gray-400">
+    Page not found
+  </div>
+</template>
+
+<script setup lang="ts">
+import { getPageData, WhoobePage, generateMetadataFromPage } from '@whoobe-cms/nuxt'
+
+const config = useRuntimeConfig()
+const route = useRoute()
+const slug = (route.params.slug as string[]) || []
+const path = '/' + slug.join('/')
+
+const { data } = await useAsyncData(\`page-\${path}\`, () =>
+  getPageData('${defaultLocale}', path, {
+    baseUrl: config.public.cmsApiUrl,
+    websiteId: config.public.cmsWebsiteId,
+    assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+  })
+)
+
+if (data.value) {
+  const meta = generateMetadataFromPage(data.value.page, config.public.cmsApiUrl)
+  useHead(meta)
+}
+</script>
+`
+}
+
+function nuxtCatchAllPageMulti(): string {
+  return `<template>
+  <div v-if="data" class="whoobe-page">
+    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
+  </div>
+  <div v-else class="p-8 text-center text-gray-400">
+    Page not found
+  </div>
+</template>
+
+<script setup lang="ts">
+import { getPageData, WhoobePage, generateMetadataFromPage } from '@whoobe-cms/nuxt'
+
+const config = useRuntimeConfig()
+const route = useRoute()
+const locale = route.params.locale as string
+const slug = (route.params.slug as string[]) || []
+const path = '/' + slug.join('/')
+
+const { data } = await useAsyncData(\`page-\${locale}-\${path}\`, () =>
+  getPageData(locale, path, {
+    baseUrl: config.public.cmsApiUrl,
+    websiteId: config.public.cmsWebsiteId,
+    assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+  })
+)
+
+if (data.value) {
+  const meta = generateMetadataFromPage(data.value.page, config.public.cmsApiUrl)
+  useHead(meta)
+}
+</script>
+`
+}
+
+function nuxtSitemap(opts: ScaffoldOptions): string {
+  const domain = opts.domain ?? new URL(opts.apiUrl).hostname
+  const urlPattern = opts.singleLocale
+    ? `'https://${domain}' + '/' + slug`
+    : `'https://${domain}' + '/' + locale + '/' + slug`
+  return `import { ApiClient } from '@whoobe-cms/renderer'
+
+export default defineEventHandler(async () => {
+  const config = useRuntimeConfig()
+  const api = new ApiClient(config.public.cmsApiUrl)
+  const pages = await api.listPages(config.public.cmsWebsiteId)
+
+  const urls = pages
+    .filter((p) => p.slug !== '')
+    .flatMap((p) => {
+      const locale = p.locale || 'en'
+      const slug = p.slug === '/' ? '' : p.slug.startsWith('/') ? p.slug.slice(1) : p.slug
+      return {
+        url: ${urlPattern},
+        lastModified: typeof p.updatedAt === 'string' ? p.updatedAt : undefined,
+        changeFrequency: 'weekly',
+        priority: slug === '' ? 1.0 : 0.7,
+      }
+    })
+
+  const xml = \`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+\${urls.map((u) => \`  <url>
+    <loc>\${u.url}</loc>
+    <lastmod>\${u.lastModified || new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>\${u.changeFrequency}</changefreq>
+    <priority>\${u.priority}</priority>
+  </url>\`).join('\\n')}
+</urlset>\`
+
+  return xml
+})
+`
+}
+
+function nuxtRobots(opts: ScaffoldOptions): string {
+  const domain = opts.domain ?? new URL(opts.apiUrl).hostname
+  return `export default defineEventHandler(() => {
+  return \`User-agent: *
+Allow: /
+Sitemap: https://${domain}/sitemap.xml
+\`
+})
+`
+}
+
+function nuxtComposable(): string {
+  return `import { ApiClient } from '@whoobe-cms/renderer'
+
+export function useWhoobeApi() {
+  const config = useRuntimeConfig()
+  const api = new ApiClient(config.public.cmsApiUrl)
+
+  return {
+    api,
+    apiUrl: config.public.cmsApiUrl,
+    websiteId: config.public.cmsWebsiteId,
+    revalidate: config.public.cmsRevalidate,
+    assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+  }
+}
+`
+}
+
+function nuxtEnv(opts: ScaffoldOptions): string {
+  const assetBase = opts.assetBaseUrl ?? opts.apiUrl
+  return `# Whoobe CMS — published site configuration (Nuxt)
+# Generated by whoobe-publish on ${new Date().toISOString()}
+
+NUXT_PUBLIC_CMS_API_URL=${opts.apiUrl}
+NUXT_PUBLIC_CMS_WEBSITE_ID=${opts.websiteId}
+NUXT_PUBLIC_CMS_REVALIDATE=${opts.revalidate}
+NUXT_PUBLIC_CMS_ASSET_BASE_URL=${assetBase}
+${opts.domain ? `NUXT_PUBLIC_SITE_URL=https://${opts.domain}` : ''}
 `
 }
