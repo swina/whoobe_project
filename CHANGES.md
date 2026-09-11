@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unified docker-compose for full local stack] — 2026-09-11
+
+- **`docker-compose.yml`**: Rewritten as the full local-development stack. All six services: `postgres` (16-alpine, named volume), `minio` (latest, named volume), `core-api` (port 3003), `asset-processor` (port 3002), `admin-dashboard` (port 3000, nginx), `whoobe-one-spike` (port 3006, nginx), and `whoobe-studio` (port 3004, nginx). Health checks on postgres and minio — Node services wait for healthy DB/S3 via `depends_on:.condition: service_healthy`. Node services override `.env` DB_HOST → `postgres` and S3_ENDPOINT → `http://minio:9000` for internal Docker networking. Build args default VITE_* URLs to `localhost` so the browser reaches published ports.
+- **`Dockerfile`**: Added `whoobe-studio` nginx target.
+- **`docker-compose.apps.yml`**: Unchanged — still available for the apps-only (external DB/S3) use case.
+
 ## [Vue SDK: fix icon rendering as Lucide SVGs, container content output] — 2026-09-11
 
 - **`packages/sdk/vue/src/defaults.ts`**: `DefaultIcon` upgraded from a plain text component (`makeTextComponent`) to a Lucide icon renderer. On mount, it dynamically imports `@lucide/vue` and resolves the icon component by PascalCase name (kebab `"user-check"` → `UserCheck` exported from the module), rendering the actual SVG inline. Falls back gracefully to text when the module is unavailable. Matches the React adapter's `useLucideIcon` dynamic-import pattern.
