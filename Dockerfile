@@ -40,3 +40,8 @@ EXPOSE 80
 FROM nginx:alpine AS whoobe-one-spike
 COPY --from=build /app/apps/whoobe-one-spike/dist /usr/share/nginx/html
 EXPOSE 80
+
+# ─── Whoobe Studio ─────────────────────────────────────────────────────────
+FROM nginx:alpine AS whoobe-studio
+COPY --from=build /app/apps/whoobe-studio/dist /usr/share/nginx/html
+EXPOSE 80
