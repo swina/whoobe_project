@@ -492,6 +492,7 @@
     </label>
     <button v-if="editor.current?.gsap?.animation" title="Preview animation" class="toolbar-icon" @click="replayAnimation"><Play class="w-4 h-4" /></button>
     <button title="AI generate snippet" class="toolbar-icon" @click="showAiGenerate = true"><Wand2 class="w-4 h-4" /></button>
+    <button title="AI generate text" class="toolbar-icon" @click="onAiGenerateText"><Sparkles class="w-3.5 h-3.5" /></button>
     <button title="Save as snippet" class="toolbar-icon" @click="showSaveSnippet = true"><Save class="w-4 h-4" /></button>
     <button
       title="Bind to data object"
@@ -560,6 +561,29 @@
     @generate-template="onGenerateTemplate"
     @close="showFieldDataPicker = false"
   />
+
+  <!-- AI text generation prompt -->
+  <div v-if="showAiTextPrompt && editor.current" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="showAiTextPrompt = false">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-sm font-semibold text-gray-700">AI generate text</span>
+        <button class="text-gray-400 hover:text-gray-700" @click="showAiTextPrompt = false"><X class="w-4 h-4" /></button>
+      </div>
+      <textarea
+        v-model="aiTextPrompt"
+        rows="3"
+        placeholder="e.g. A catchy headline about modern web development…"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 resize-none"
+      />
+      <div class="flex justify-end gap-2 mt-3">
+        <button class="px-3 py-1.5 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50" @click="showAiTextPrompt = false">Cancel</button>
+        <button :disabled="!aiTextPrompt.trim() || generatingAiText" class="px-3 py-1.5 text-xs rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50" @click="runAiGenerateText">
+          <span v-if="generatingAiText">Generating…</span>
+          <span v-else>Generate</span>
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -604,6 +628,7 @@ import DataObjectPicker from './DataObjectPicker.vue'
 import ExpandableTextInput from './ExpandableTextInput.vue'
 import type { ElementDataBinding } from '../scripts/ElementsClass.js'
 import { insertGeneratedSnippet } from '../scripts/editor-actions'
+import { generateAiText } from '../ai-api'
 import { generateTemplateFromClass } from '../scripts/template-generator'
 import { resolveDocumentData } from '../scripts/data-resolver'
 import { getDataClass, getDataClassByName } from '../data-objects-api'
@@ -649,6 +674,9 @@ const showFillPicker = ref(false)
 const showSaveSnippet = ref(false)
 const showAiGenerate = ref(false)
 const showAiImageGenerate = ref(false)
+const showAiTextPrompt = ref(false)
+const aiTextPrompt = ref('')
+const generatingAiText = ref(false)
 const showLinkPicker = ref(false)
 const linkUrlDraft = ref('')
 const showButtonIconPicker = ref(false)
@@ -1004,6 +1032,32 @@ function setDirection(dir: 'row' | 'col') {
 function focusContent() {
   if (!editor.current) return
   document.getElementById(editor.current.id)?.focus()
+}
+
+async function onAiGenerateText() {
+  if (!editor.current) return
+  if (!editor.current.editable) {
+    showAiGenerate.value = true
+    return
+  }
+  aiTextPrompt.value = ''
+  showAiTextPrompt.value = true
+}
+
+async function runAiGenerateText() {
+  if (!editor.current || !aiTextPrompt.value.trim()) return
+  const el = editor.current
+  generatingAiText.value = true
+  const roleHint = el.element === 'h' ? 'a section heading' : undefined
+  try {
+    const text = await generateAiText(el.tag, el.content || '', aiTextPrompt.value.trim(), roleHint)
+    if (text) el.content = text
+    showAiTextPrompt.value = false
+  } catch {
+    // silently ignore — the user can retry
+  } finally {
+    generatingAiText.value = false
+  }
 }
 
 function onEditContent() {

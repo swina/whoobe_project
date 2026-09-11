@@ -10,12 +10,20 @@
 export interface AiGenerationContext {
   kind: 'snippet' | 'page';
   prompt: string;
-  // Snippet-only: the selected node the generated tree will be inserted
-  // next to/inside (tag, e.g. 'flexbox').
   selectedTag?: string | null;
-  // Page-only: existing document metadata the model can use for tone.
   pageTitle?: string | null;
   pageCategory?: string | null;
+}
+
+export interface AiTextContext {
+  /** The HTML tag of the target element (e.g. "h1", "h2", "p", "span", "button"). */
+  tag: string;
+  /** The element's existing content so the model can rewrite or expand it. */
+  existingContent?: string | null;
+  /** A short description of the element's role in the section (e.g. heading for a feature section). */
+  roleHint?: string | null;
+  /** The user's own instruction (may be empty for quick generation). */
+  prompt: string;
 }
 
 const ELEMENT_CONTRACT = `The output must be a JSON object matching the Whoobe One Element tree schema. An Element node has:
@@ -52,6 +60,33 @@ export function buildUserPrompt(context: AiGenerationContext): string {
   const title = context.pageTitle ? ` Title: "${context.pageTitle}".` : '';
   const category = context.pageCategory ? ` Category: "${context.pageCategory}".` : '';
   return `Generate a complete page (a document root Element node with "tag": "document" and its child tree) for the following request: ${context.prompt}${title}${category} Make it a full, cohesive page layout with header, hero, content sections, and footer.`;
+}
+
+/** Builds a prompt for inline text content generation (kind: 'text'). The
+ *  model receives context about the element and is told to output ONLY the
+ *  plain text string — no JSON, no markdown fences, no commentary. */
+export function buildTextPrompt(context: AiTextContext): string {
+  const tagLabels: Record<string, string> = {
+    h1: 'a level-1 heading', h2: 'a level-2 heading', h3: 'a level-3 heading',
+    h4: 'a level-4 heading', h5: 'a level-5 heading', h6: 'a level-6 heading',
+    p: 'a paragraph', span: 'a short inline text fragment',
+    button: 'a button label', blockquote: 'a block quote',
+    a: 'a link label', label: 'a field label',
+  };
+  const label = tagLabels[context.tag] || `a ${context.tag} element`;
+  const role = context.roleHint ? ` Role: ${context.roleHint}.` : '';
+  const existing = context.existingContent
+    ? ` The current content is: "${context.existingContent}". You may rewrite, expand, or replace it.`
+    : '';
+  const instruction = context.prompt.trim()
+    ? context.prompt.trim()
+    : `Write compelling ${label} text${existing ? ' that replaces the current content' : ''}.${role}`;
+  return `You output ONLY a plain text string — no JSON, no markdown fences, no explanation, no extra whitespace.
+
+Generate the text content for ${label} in a web UI.${role}${existing}
+
+User instruction: ${instruction}
+The output must be a single plain-text string.`;
 }
 
 const ALLOWED_TAGS = new Set([

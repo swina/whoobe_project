@@ -41,6 +41,23 @@ async function parseJsonOrThrow(res: Response): Promise<any> {
   return res.json()
 }
 
+/** Generates inline text content for a single element. Returns the
+ *  generated text string, or throws AiApiError on failure. */
+export async function generateAiText(tag: string, existingContent: string | null, prompt: string, roleHint?: string | null): Promise<string> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/ai/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      kind: 'text',
+      prompt,
+      context: { tag, existingContent, roleHint },
+    }),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return (body.text as string) ?? ''
+}
+
 /** Generates a Whoobe One Element tree (snippet or whole-page root) from a
  *  text prompt. Returns the validated payload JSON - a plain object graph
  *  matching ElementsClass.js's Element shape, ready for

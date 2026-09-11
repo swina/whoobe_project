@@ -1,0 +1,58 @@
+# Whoobe CMS - application services only.
+# Postgres and MinIO/S3 are EXCLUDED by design: they run as external
+# infrastructure and are reached through the root .env (DB_HOST, S3_ENDPOINT).
+#
+# Build:
+#   docker compose -f docker-compose.apps.yml build
+# Run:
+#   docker compose -f docker-compose.apps.yml up -d
+#
+# Ports: admin-dashboard 3000, asset-processor 3002, core-api 3003,
+# whoobe-one-spike 8006.
+
+services:
+  core-api:
+    build:
+      context: .
+      target: core-api
+    container_name: whoobe_core_api
+    ports:
+      - "3003:3003"
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
+
+  asset-processor:
+    build:
+      context: .
+      target: asset-processor
+    container_name: whoobe_asset_processor
+    ports:
+      - "3002:3002"
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
+
+  admin-dashboard:
+    build:
+      context: .
+      target: admin-dashboard
+      args:
+        VITE_ASSET_PROCESSOR_URL: http://${WHOOBE_HOSTNAME:-localhost}:3002
+        VITE_CORE_API_URL: http://${WHOOBE_HOSTNAME:-localhost}:3003
+        VITE_FONT_FAMILIES: ${VITE_FONT_FAMILIES}
+    container_name: whoobe_admin_dashboard
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+
+  whoobe-one-spike:
+    build:
+      context: .
+      target: whoobe-one-spike
+    container_name: whoobe_one_spike
+    ports:
+      - "3006:80"
+    restart: unless-stopped
