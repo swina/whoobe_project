@@ -2,7 +2,7 @@
 // renders with an empty registry. Consumers override any kind via the
 // registry to map it to their own design-system component.
 
-import { defineComponent, h, inject, ref, type PropType, type VNode } from 'vue'
+import { defineComponent, h, inject, ref, computed, shallowRef, onMounted, onUnmounted, type PropType, type VNode } from 'vue'
 import type { RenderDescriptor } from '@whoobe-cms/renderer'
 import { WHOOBE_KEY, type NodeComponent, type WhoobeApi } from './types.js'
 
@@ -26,7 +26,12 @@ export const DefaultContainer: NodeComponent = defineComponent({
   setup(props) {
     return () => {
       const d = props.descriptor
-      return h(d.tag, elementProps(d), props.children)
+      const attrs = elementProps(d)
+      const children = props.children?.length ? props.children : undefined
+      if (!children && d.content) {
+        attrs.innerHTML = d.content
+      }
+      return h(d.tag, attrs, children)
     }
   },
 })
@@ -52,7 +57,41 @@ export const DefaultParagraph = makeTextComponent('WhoobeParagraph')
 export const DefaultSpan = makeTextComponent('WhoobeSpan')
 export const DefaultBlockquote = makeTextComponent('WhoobeBlockquote')
 export const DefaultCode = makeTextComponent('WhoobeCode')
-export const DefaultIcon = makeTextComponent('WhoobeIcon')
+export const DefaultIcon: NodeComponent = defineComponent({
+  name: 'WhoobeIcon',
+  props: { ...descriptorProp },
+  setup(props) {
+    const iconComponent = shallowRef<ReturnType<typeof defineComponent> | null>(null)
+
+    function kebabToPascal(name: string): string {
+      return name.split(/[-_]/).map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join('')
+    }
+
+    function loadIcon(name: string) {
+      import('@lucide/vue').then(mod => {
+        const comp = (mod as Record<string, ReturnType<typeof defineComponent>>)[kebabToPascal(name)]
+        if (comp) iconComponent.value = comp
+      }).catch(() => {
+        /* keep fallback */
+      })
+    }
+
+    onMounted(() => {
+      const name = props.descriptor.content
+      if (name) loadIcon(name)
+    })
+
+    return () => {
+      const d = props.descriptor
+      const p = elementProps(d)
+      if (iconComponent.value) {
+        return h(iconComponent.value, { ...p, size: 16 } as any)
+      }
+      if (d.content) p.innerHTML = d.content
+      return h(d.tag === 'lucideicon' ? 'span' : d.tag, p)
+    }
+  },
+})
 
 /** Image: resolved src/alt from the descriptor (DAM references already
  *  resolved by the renderer). */
@@ -298,9 +337,126 @@ export const DefaultSlider: NodeComponent = defineComponent({
   name: 'WhoobeSlider',
   props: { ...descriptorProp, ...childrenProp },
   setup(props) {
+    const current = ref(0)
+    let timer: ReturnType<typeof setInterval> | null = null
+
+    const settings = computed(() => ({
+      autoplay: false,
+      interval: 5000,
+      loop: true,
+      showNav: true,
+      showDots: true,
+      mode: 'standard',
+      tabsPosition: 'below',
+      tabClass: 'px-2.5 py-1 rounded-full text-xs font-medium transition-colors border bg-white text-gray-600 border-gray-300',
+      activeTabClass: 'px-2.5 py-1 rounded-full text-xs font-medium transition-colors border bg-indigo-600 text-white border-indigo-600',
+      navClass: 'flex items-center justify-center gap-1.5 px-2 py-1',
+      arrowClass: 'w-8 h-8 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white',
+      homeClass: 'w-7 h-7 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white',
+      arrowIcon: 'chevron',
+      homeIcon: 'home',
+      tabContainerClass: 'flex items-center justify-center gap-2',
+      dotClass: 'w-2.5 h-2.5 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors',
+      activeDotClass: 'w-2.5 h-2.5 rounded-full bg-indigo-600 transition-colors',
+      dotContainerClass: 'flex items-center justify-center gap-2 pt-3',
+      ...(props.descriptor.slider ?? {}),
+    }))
+
+    function goTo(i: number) {
+      const total = (props.children ?? []).length
+      if (settings.value.loop) {
+        current.value = ((i % total) + total) % total
+      } else {
+        current.value = Math.max(0, Math.min(i, total - 1))
+      }
+      startAutoplay()
+    }
+
+    function next() { goTo(current.value + 1) }
+    function prev() { goTo(current.value - 1) }
+
+    function startAutoplay() {
+      stopAutoplay()
+      const s = settings.value
+      if (s.autoplay && (props.children ?? []).length > 1) {
+        timer = setInterval(() => {
+          const total = (props.children ?? []).length
+          if (current.value < total - 1) current.value++
+          else if (s.loop) current.value = 0
+        }, Math.max(500, s.interval || 5000))
+      }
+    }
+
+    function stopAutoplay() {
+      if (timer !== null) { clearInterval(timer); timer = null }
+    }
+
+    onMounted(startAutoplay)
+    onUnmounted(stopAutoplay)
+
     return () => {
       const d = props.descriptor
-      return h('div', { ...elementProps(d), 'data-slider': 'true' }, props.children)
+      const slides = props.children ?? []
+      const s = settings.value
+      const total = slides.length
+
+      if (total === 0) return h('div', elementProps(d))
+
+      const slideNodes = slides.map((child, i) =>
+        h('div', { key: (child as any)?.key ?? i, style: { minWidth: '100%', boxSizing: 'border-box' } }, child)
+      )
+
+      const track = h('div', {
+        style: { display: 'flex', transition: 'transform 0.5s ease', transform: `translateX(-${current.value * 100}%)` },
+      }, slideNodes)
+
+      const viewport = h('div', { style: { overflow: 'hidden', position: 'relative' } }, track)
+
+      let dots = null
+      if (s.showDots && total > 1) {
+        dots = h('div', {
+          class: s.dotContainerClass,
+        }, slides.map((_, i) =>
+          h('button', {
+            key: i,
+            type: 'button',
+            'aria-label': `Go to slide ${i + 1}`,
+            class: i === current.value ? s.activeDotClass : s.dotClass,
+            onClick: () => goTo(i),
+          })
+        ))
+      }
+
+      let nav = null
+      if (s.mode !== 'tabs' && s.showNav && total > 1) {
+        nav = h('div', {
+          class: s.navClass,
+        }, [
+          h('button', { type: 'button', class: s.arrowClass, onClick: prev, 'aria-label': 'Previous' }, '‹'),
+          h('button', { type: 'button', class: s.arrowClass, onClick: next, 'aria-label': 'Next' }, '›'),
+        ])
+      }
+
+      let tabsAbove = null
+      if (s.mode === 'tabs' && s.tabsPosition === 'above' && total > 1) {
+        tabsAbove = h('div', { class: s.tabContainerClass },
+          slides.map((_, i) =>
+            h('button', { key: i, type: 'button', class: i === current.value ? s.activeTabClass : s.tabClass, onClick: () => goTo(i) })
+          )
+        )
+      }
+
+      let tabsBelow = null
+      if (s.mode === 'tabs' && s.tabsPosition !== 'above' && total > 1) {
+        tabsBelow = h('div', { class: s.tabContainerClass },
+          slides.map((_, i) =>
+            h('button', { key: i, type: 'button', class: i === current.value ? s.activeTabClass : s.tabClass, onClick: () => goTo(i) })
+          )
+        )
+      }
+
+      const children = [tabsAbove, viewport, nav, dots, tabsBelow].filter(Boolean)
+      return h('div', { ...elementProps(d), 'data-slider': 'true' }, children)
     }
   },
 })

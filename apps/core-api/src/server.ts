@@ -155,6 +155,7 @@ import {
   saveAiImageToDam,
   buildSystemPrompt,
   buildUserPrompt,
+  buildTextPrompt,
   buildWebsiteStructurePrompt,
   validateElementTree,
   validateWebsiteStructure,
@@ -3631,12 +3632,12 @@ app.put('/ai/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (r
 // AI generation - POST /ai/generate (gated on OBJECTS_WRITE, same as the
 // whoobe-one page routes it feeds): builds the prompt from the stored
 // settings, calls the configured provider, structurally validates the
-// returned Element tree, and logs the whole exchange into
-// whoobe_ai_generated (successes and failures alike).
+// returned Element tree (snippet/page) or returns the plain text (text),
+// and logs the whole exchange into whoobe_ai_generated.
 app.post('/ai/generate', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const { kind, prompt, context } = req.body ?? {};
-  if (kind !== 'snippet' && kind !== 'page') {
-    res.status(400).json({ error: 'kind must be "snippet" or "page"' });
+  if (kind !== 'snippet' && kind !== 'page' && kind !== 'text') {
+    res.status(400).json({ error: 'kind must be "snippet", "page", or "text"' });
     return;
   }
   if (typeof prompt !== 'string' || !prompt.trim()) {
@@ -3646,6 +3647,28 @@ app.post('/ai/generate', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (re
   const settings = await getAiSettings(req.user!.id);
   if (!settings || !settings.apiKey) {
     res.status(400).json({ error: 'AI is not configured. Save the provider, model, and API key in Settings → AI first.' });
+    return;
+  }
+
+  if (kind === 'text') {
+    try {
+      const result = await generateAiJson({
+        settings: { provider: settings.provider, model: settings.model, endpoint: settings.endpoint, apiKey: settings.apiKey },
+        systemPrompt: '',
+        userPrompt: buildTextPrompt({
+          tag: typeof context?.tag === 'string' ? context.tag : 'p',
+          existingContent: typeof context?.existingContent === 'string' ? context.existingContent : null,
+          roleHint: typeof context?.roleHint === 'string' ? context.roleHint : null,
+          prompt: prompt.trim(),
+        }),
+        maxTokens: 1024,
+      });
+      const text = typeof result.json === 'string' ? result.json : String(result.json ?? '');
+      res.json({ text });
+    } catch (error: any) {
+      const message = error instanceof AiGenerationError ? error.message : (error?.message || 'AI text generation failed');
+      res.status(error instanceof AiGenerationError && error.status ? error.status : 500).json({ error: message });
+    }
     return;
   }
   const ctx = {

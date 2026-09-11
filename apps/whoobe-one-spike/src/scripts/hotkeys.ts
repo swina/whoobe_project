@@ -29,6 +29,8 @@ import { editorBus, dialogBus } from '../bus'
 import { removeNodeById } from '../helpers'
 import { duplicateCurrent, copyCurrentToClipboard, pasteClipboardInto } from './editor-actions'
 
+let copiedCss: { css: { css: string; container: string }; style: string; font: string } | null = null
+
 export const shortcuts: Record<string, string> = {
   R: 'Remove selected block',
   D: 'Duplicate selected block',
@@ -129,12 +131,27 @@ export function setupHotkeys(): void {
     }
 
     if (e.altKey && e.code === 'KeyG') {
-      if (editor.current) editorBus.emit('copyBlockCSS', 'block')
+      if (editor.current) {
+        const el = editor.current
+        copiedCss = {
+          css: { css: el.css.css ?? '', container: el.css.container ?? '' },
+          style: el.style ?? '',
+          font: el.font ?? '',
+        }
+        editorBus.emit('editorMessage', 'CSS & style copied')
+      }
       return
     }
 
     if (e.altKey && e.code === 'KeyH') {
-      if (editor.current) editorBus.emit('pasteBlockCSS', 'block')
+      if (editor.current && copiedCss) {
+        const el = editor.current
+        el.css.css = copiedCss.css.css
+        el.css.container = copiedCss.css.container
+        el.style = copiedCss.style
+        el.font = copiedCss.font
+        editorBus.emit('editorMessage', 'CSS & style pasted')
+      }
       return
     }
 

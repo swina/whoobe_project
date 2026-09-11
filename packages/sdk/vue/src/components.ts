@@ -42,7 +42,7 @@ export const WhoobeNode: NodeComponent = defineComponent({
     return () => {
       const d = props.descriptor
       const comp: NodeComponent = ctx?.registry[d.kind] ?? defaults[d.kind] ?? defaults.container
-      const children = d.children.map((child) => h(WhoobeNode, { descriptor: child }))
+      const children = d.children.map((child) => h(WhoobeNode, { key: child.id, descriptor: child }))
       return h(comp, { descriptor: d, children })
     }
   },
@@ -111,7 +111,13 @@ export const WhoobePage = defineComponent({
       const region = (d: RenderDescriptor | null) => (d ? h(WhoobeNode, { key: d.id, descriptor: d }) : null)
       const body = h('main', { key: 'body', class: 'whoobe-page-body' }, [h(WhoobeNode, { key: descriptor.value.id, descriptor: descriptor.value })])
       const shell = layout.value ? [region(layout.value.header), region(layout.value.aside), body, region(layout.value.footer)] : [body]
-      return h('div', { class: 'whoobe-page' }, shell)
+      // data-allow-mismatch: CMS-authored trees are dynamic by nature (data-bound
+      // repeaters, resolved DAM/themes), so the server render may legitimately emit
+      // a differently-sized subtree than the hydrated vdom. Vue 3.5 honours this
+      // attribute on ascendants: it suppresses the scary "more child nodes than
+      // client vdom" warning for the whole page and drops the surplus SSR nodes.
+      // See https://vuejs.org/guide/scaling-up/ssr.html#hydration-mismatch
+      return h('div', { class: 'whoobe-page', 'data-allow-mismatch': 'children' }, shell)
     }
   },
 })

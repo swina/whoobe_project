@@ -203,6 +203,13 @@ function collectFonts(themes: Array<{ id?: string; name: string; fonts: string[]
   return [...fonts]
 }
 
+/** Converts a font name from Google-Fonts-URL form to CSS font-family form.
+ *  Theme fonts are stored with '+' for spaces (e.g. "Alfa+Slab+One"), but
+ *  the @font-face declared by Google Fonts uses the spaced family name. */
+function fontFamily(f: string): string {
+  return f.replace(/\+/g, ' ')
+}
+
 // --- Scaffolding ---
 
 interface ScaffoldOptions {
@@ -390,6 +397,7 @@ function scaffoldGlobalsCss(opts: ScaffoldOptions): string {
   const rawStyles = opts.themeRawStyles || ''
   const themeBlock = themeVars ? `@theme {\n${themeVars}\n}` : ''
 
+  const fontCss = opts.fontFamilies.map((f) => `"${fontFamily(f)}"`).join(', ') || 'sans-serif'
   return [
     '@import "tailwindcss";',
     '',
@@ -398,7 +406,7 @@ function scaffoldGlobalsCss(opts: ScaffoldOptions): string {
     rawStyles,
     '',
     'body {',
-    `  font-family: ${opts.fontFamilies.map((f) => `"${f}"`).join(', ') || 'sans-serif'};`,
+    `  font-family: ${fontCss};`,
     '}',
     '',
   ].filter(Boolean).join('\n')
@@ -427,6 +435,7 @@ export default function RootLayout({
   return (
     <html lang="${defaultLocale}">
       <head>
+        <!-- Whoobe CMS custom styles are in globals.css (@theme block + raw) -->
         ${fontLinks}
       </head>
       <body>
@@ -898,6 +907,9 @@ export default defineNuxtConfig({
         rel: 'stylesheet',
         href: `https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@300;400;500;600;700&display=swap`,
       })))},
+      meta: [
+        { name: 'whoobe-custom-styles', content: 'globals.css (@theme block + raw)' },
+      ],
     },
   },
 })
@@ -917,7 +929,7 @@ function nuxtTsconfig(): string {
 function nuxtAppVue(opts: ScaffoldOptions): string {
   const defaultLocale = (opts.website.defaultLocale as string) ?? 'en'
   const fontFamilies = opts.fontFamilies
-  const fontFamilyCss = fontFamilies.map((f) => `"${f}"`).join(', ') || 'sans-serif'
+  const fontFamilyCss = fontFamilies.map((f) => `"${fontFamily(f)}"`).join(', ') || 'sans-serif'
   return `<template>
   <WhoobeProvider :api="api" :assetBaseUrl="assetBaseUrl + '/dam-asset'">
     <div>
@@ -946,6 +958,7 @@ function nuxtGlobalsCss(opts: ScaffoldOptions): string {
   const themeVars = opts.themeCss || ''
   const rawStyles = opts.themeRawStyles || ''
   const themeBlock = themeVars ? `@theme {\n${themeVars}\n}` : ''
+  const fontCss = opts.fontFamilies.map((f) => `"${fontFamily(f)}"`).join(', ') || 'sans-serif'
 
   return [
     '@import "tailwindcss";',
@@ -955,7 +968,7 @@ function nuxtGlobalsCss(opts: ScaffoldOptions): string {
     rawStyles,
     '',
     'body {',
-    `  font-family: ${opts.fontFamilies.map((f) => `"${f}"`).join(', ') || 'sans-serif'};`,
+    `  font-family: ${fontCss};`,
     '}',
     '',
   ].filter(Boolean).join('\n')

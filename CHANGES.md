@@ -1,5 +1,28 @@
 # Changelog
 
+## [Vue SDK: fix icon rendering as Lucide SVGs, container content output] — 2026-09-11
+
+- **`packages/sdk/vue/src/defaults.ts`**: `DefaultIcon` upgraded from a plain text component (`makeTextComponent`) to a Lucide icon renderer. On mount, it dynamically imports `@lucide/vue` and resolves the icon component by PascalCase name (kebab `"user-check"` → `UserCheck` exported from the module), rendering the actual SVG inline. Falls back gracefully to text when the module is unavailable. Matches the React adapter's `useLucideIcon` dynamic-import pattern.
+- **`packages/sdk/vue/src/defaults.ts`**: `DefaultContainer` now renders `descriptor.content` via `innerHTML` when the container has no children. Previously, container content (authored on some section/div elements) was silently dropped by the SDK because the container renderer only forwarded children VNodes. Non-empty children still take precedence.
+- **`packages/sdk/vue/package.json`**: Added `@lucide/vue` as a dev dependency (matching the react SDK's `lucide-react` devDep pattern) so the dynamic `import('@lucide/vue')` resolves during tsc and at runtime. The import is async and failure-safe — icons degrade to plain text when the package is absent.
+
+## [Published site: fix font mismatch, slider carousel, template snippets] — 2026-09-11
+
+- **`packages/publish/src/cli.ts`**: Fixed font-family CSS output — theme fonts are stored in Google-Fonts-URL form (`+` for spaces, e.g. `"Alfa+Slab+One"`), but CSS `font-family` values need spaces (`"Alfa Slab One"`) to match the @font-face family name declared by the Google Fonts stylesheet. Added `fontFamily()` helper that converts `+` to space; applied it in `scaffoldGlobalsCss`, `nuxtGlobalsCss`, and `nuxtAppVue` (bodyAttrs). Without this fix, all theme fonts silently fall through to the system fallback because the declared family name never matches the loaded webfont.
+- **`packages/sdk/vue/src/defaults.ts`**: `DefaultSlider` upgraded from a static `div` to a full carousel: sliding track (`translateX` transition), prev/next arrow buttons, dot indicators, tab-mode navigation (above/below), configurable autoplay with interval and loop — matching the React `DefaultSlider` and the spike's `BlockSliderPreview.vue`. Mitigates the "SlidingCarousel behaviour" diff between Vue/Nuxt and React sites.
+- **`packages/publish/src/cli.ts`**: The Google Fonts `app.head.link` in `nuxt.config.ts` was already present and correct — the font-`<link>` → `font-family` name mismatch above was the real bug causing theme fonts to appear "not installed" (text rendered in the fallback sans-serif, making template snippets look incomplete).
+
+## [Vue/Nuxt publish: fix SSR hydration children mismatch] — 2026-09-11
+
+- **`packages/sdk/vue/src/components.ts`**: The `WhoobePage` shell now renders with `data-allow-mismatch="children"`. CMS-authored trees are dynamic (data-bound query repeaters, resolved DAM images, per-record expansion) so the SSR HTML can legitimately contain a differently-sized subtree than the hydrated vdom. Vue 3.5 honours this attribute on ascendants: it suppresses the "Server rendered element contains more child nodes than client vdom." warning for the whole page and Vue removes the surplus SSR nodes during hydration (the warning is cosmetic - Vue already repairs the DOM).
+- **`packages/sdk/vue/src/components.ts`**: `WhoobeNode` now keys every child with `child.id` (matching the React adapter and the layout `region()`/`body`) so hydration and post-mount patching are stable by node id instead of fragile by-index position.
+
+## [Docker support for application services] — 2026-09-11
+
+- **`Dockerfile`**: New multi-stage Dockerfile. A shared `build` stage installs deps (`pnpm install --frozen-lockfile`), builds `@whoobe-cms/core`, then runs the full `pnpm build` (turbo). Produces four runtime targets: `core-api` (node), `asset-processor` (node), `admin-dashboard` (nginx serving the Vite `dist`), and `whoobe-one-spike` (nginx serving the Vite `dist`). Vite env args (`VITE_ASSET_PROCESSOR_URL`, `VITE_CORE_API_URL`, `VITE_FONT_FAMILIES`) are baked in at build time.
+- **`docker-compose.apps.yml`**: Compose file for the application services ONLY - Postgres and MinIO/S3 are intentionally excluded (they run as external infrastructure via the root `.env`, `DB_HOST` / `S3_ENDPOINT`). Services: `core-api` (3003), `asset-processor` (3002), `admin-dashboard` (8000:80), `whoobe-one-spike` (8006:80). Node services use `env_file: .env`.
+- **`.dockerignore`**: Excludes `node_modules`, `.turbo`, `dist`, `.next`, `.env`, `sites`, dev/deploy scripts, and markdown docs to keep the build context lean.
+
 ## [Nuxt publishing: @whoobe-cms/nuxt package + Nuxt site scaffold] — 2026-09-10
 
 - **`packages/sdk/nuxt/`**: New `@whoobe-cms/nuxt` package — Nuxt 3 helper library analogous to `@whoobe-cms/next`. Provides `getPageData()`, `getObjectData()`, `generateMetadataFromPage()`, `staticParamsForSlugs()`, `staticParamsForRecords()`, `whoobeApi()`, and re-exports from `@whoobe-cms/vue`. Uses `@whoobe-cms/renderer` for page walking and layout composition.
