@@ -6,6 +6,16 @@
 - **`Dockerfile`**: Added `whoobe-studio` nginx target.
 - **`docker-compose.apps.yml`**: Unchanged — still available for the apps-only (external DB/S3) use case.
 
+## [AI text generation: show result in modal textarea before applying, fix 500 error] — 2026-09-11
+
+- **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: Changed the AI text generation flow so the generated text appears in a new editable textarea inside the modal, with "Apply" and "Discard" buttons, rather than being written directly to the element's content and closing the modal. Added `aiGeneratedText` ref and `applyAiGeneratedText()` function.
+- **`packages/core/src/ai/providers.ts`**: Added `raw` flag to `AiGenerateInput` interface. When `true`, provider functions skip JSON parsing and use `extractPlainText()` instead. Added `extractPlainText()` helper that strips markdown fences and control chars without JSON.parse. Fixed the 500 error on text generation — `buildTextPrompt` tells models to output plain text, but `parseJsonText` fails on non-JSON output.
+- **`apps/core-api/src/server.ts`**: Pass `raw: true` in the `generateAiJson` call for `kind === 'text'` so the model's plain-text response is not forced through JSON.parse.
+
+- **`docker-compose.yml`**: Rewritten as the full local-development stack. All six services: `postgres` (16-alpine, named volume), `minio` (latest, named volume), `core-api` (port 3003), `asset-processor` (port 3002), `admin-dashboard` (port 3000, nginx), `whoobe-one-spike` (port 3006, nginx), and `whoobe-studio` (port 3004, nginx). Health checks on postgres and minio — Node services wait for healthy DB/S3 via `depends_on:.condition: service_healthy`. Node services override `.env` DB_HOST → `postgres` and S3_ENDPOINT → `http://minio:9000` for internal Docker networking. Build args default VITE_* URLs to `localhost` so the browser reaches published ports.
+- **`Dockerfile`**: Added `whoobe-studio` nginx target.
+- **`docker-compose.apps.yml`**: Unchanged — still available for the apps-only (external DB/S3) use case.
+
 ## [Vue SDK: fix icon rendering as Lucide SVGs, container content output] — 2026-09-11
 
 - **`packages/sdk/vue/src/defaults.ts`**: `DefaultIcon` upgraded from a plain text component (`makeTextComponent`) to a Lucide icon renderer. On mount, it dynamically imports `@lucide/vue` and resolves the icon component by PascalCase name (kebab `"user-check"` → `UserCheck` exported from the module), rendering the actual SVG inline. Falls back gracefully to text when the module is unavailable. Matches the React adapter's `useLucideIcon` dynamic-import pattern.

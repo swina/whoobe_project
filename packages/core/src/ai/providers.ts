@@ -35,6 +35,8 @@ export interface AiGenerateInput {
   systemPrompt: string;
   userPrompt: string;
   maxTokens?: number;
+  /** When true, skip JSON parsing and return the raw text string as json. */
+  raw?: boolean;
 }
 
 export class AiGenerationError extends Error {
@@ -79,6 +81,18 @@ export function parseJsonText(text: string): unknown {
     const preview = cleaned.length > 3000 ? cleaned.substring(0, 3000) + '\n... [truncated]' : cleaned;
     throw new AiGenerationError(`The AI provider did not return valid JSON. Raw output:\n${preview}`);
   }
+}
+
+/** Strips markdown fences and trims whitespace from a model reply,
+ *  without attempting JSON parsing. Used for text-only generation
+ *  (kind: 'text') where the model is instructed to output plain text. */
+export function extractPlainText(text: string): string {
+  let cleaned = text.trim();
+  const fence = cleaned.match(/```(?:text)?\s*([\s\S]*?)```/);
+  if (fence) cleaned = fence[1].trim();
+  // Strip non-printable ASCII control characters (0x00-0x1F except \t \n \r)
+  cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+  return cleaned;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -164,7 +178,7 @@ async function generateOpenAi(input: AiGenerateInput, baseUrl?: string, provider
     ],
   });
   const rawText = completion.choices[0]?.message?.content ?? '';
-  return { json: parseJsonText(rawText), rawText };
+  return { json: input.raw ? extractPlainText(rawText) : parseJsonText(rawText), rawText };
 }
 
 async function generateAnthropic(input: AiGenerateInput): Promise<AiGenerateResult> {
@@ -183,7 +197,7 @@ async function generateAnthropic(input: AiGenerateInput): Promise<AiGenerateResu
     .filter((block) => block.type === 'text')
     .map((block) => (block.type === 'text' ? block.text : ''))
     .join('\n');
-  return { json: parseJsonText(rawText), rawText };
+  return { json: input.raw ? extractPlainText(rawText) : parseJsonText(rawText), rawText };
 }
 
 async function generateGoogle(input: AiGenerateInput): Promise<AiGenerateResult> {
@@ -195,7 +209,7 @@ async function generateGoogle(input: AiGenerateInput): Promise<AiGenerateResult>
   });
   const result = await model.generateContent(input.userPrompt);
   const rawText = result.response.text();
-  return { json: parseJsonText(rawText), rawText };
+  return { json: input.raw ? extractPlainText(rawText) : parseJsonText(rawText), rawText };
 }
 
 /** Dispatches to the configured provider. `custom` reuses the OpenAI SDK

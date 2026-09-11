@@ -582,6 +582,18 @@
           <span v-else>Generate</span>
         </button>
       </div>
+      <div v-if="aiGeneratedText !== null" class="mt-3">
+        <label class="text-xs font-medium text-gray-600 mb-1 block">Generated text:</label>
+        <textarea
+          v-model="aiGeneratedText"
+          rows="4"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 resize-none"
+        />
+        <div class="flex justify-end gap-2 mt-2">
+          <button class="px-3 py-1.5 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50" @click="aiGeneratedText = null">Discard</button>
+          <button class="px-3 py-1.5 text-xs rounded-lg bg-indigo-600 text-white hover:bg-indigo-500" @click="applyAiGeneratedText">Apply</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -676,6 +688,7 @@ const showAiGenerate = ref(false)
 const showAiImageGenerate = ref(false)
 const showAiTextPrompt = ref(false)
 const aiTextPrompt = ref('')
+const aiGeneratedText = ref<string | null>(null)
 const generatingAiText = ref(false)
 const showLinkPicker = ref(false)
 const linkUrlDraft = ref('')
@@ -1046,18 +1059,23 @@ async function onAiGenerateText() {
 
 async function runAiGenerateText() {
   if (!editor.current || !aiTextPrompt.value.trim()) return
-  const el = editor.current
   generatingAiText.value = true
-  const roleHint = el.element === 'h' ? 'a section heading' : undefined
+  const roleHint = editor.current.element === 'h' ? 'a section heading' : undefined
   try {
-    const text = await generateAiText(el.tag, el.content || '', aiTextPrompt.value.trim(), roleHint)
-    if (text) el.content = text
-    showAiTextPrompt.value = false
+    const text = await generateAiText(editor.current.tag, editor.current.content || '', aiTextPrompt.value.trim(), roleHint)
+    if (text) aiGeneratedText.value = text
   } catch {
     // silently ignore — the user can retry
   } finally {
     generatingAiText.value = false
   }
+}
+
+function applyAiGeneratedText() {
+  if (!editor.current || !aiGeneratedText.value) return
+  editor.current.content = aiGeneratedText.value
+  aiGeneratedText.value = null
+  showAiTextPrompt.value = false
 }
 
 function onEditContent() {
