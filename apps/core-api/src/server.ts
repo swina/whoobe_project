@@ -3662,8 +3662,9 @@ app.post('/ai/generate', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (re
           prompt: prompt.trim(),
         }),
         maxTokens: 1024,
+        raw: true,
       });
-      const text = typeof result.json === 'string' ? result.json : String(result.json ?? '');
+      const text = typeof result.json === 'string' ? result.json : (result.rawText || '');
       res.json({ text });
     } catch (error: any) {
       const message = error instanceof AiGenerationError ? error.message : (error?.message || 'AI text generation failed');
