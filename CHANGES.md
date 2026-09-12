@@ -1,5 +1,17 @@
 # Changelog
 
+## [Fix theme styles not injected in website paths preview; ZIP upload flatten mode; Docker fixes] — 2026-09-12
+- **`docker-compose.yml`** — Added `DB_HOST: postgres` and `depends_on: postgres` to asset-processor (was connecting to its own container localhost, session validation always failed → 401)
+- **`docker-compose.yml`, `Dockerfile`** — Removed whoobe-studio service/target (deprecated per migration plan)
+- **`Dockerfile`** — Upgraded base image from `node:20-bookworm-slim` to `node:22-bookworm-slim` (AWS SDK v3 requires node >=22 after Jan 2027)
+- **`apps/whoobe-one-spike/src/views/PublicPage.vue:58-81`** — `loadPageTheme` now fetches the website's `themeId` and loads the linked global theme's `styles`/`tailwindClasses`, so custom CSS and Tailwind classes from the website's associated global theme are injected in public page preview
+- **`apps/whoobe-one-spike/src/scripts/database-actions.ts:103-139`** — Same fix for `loadWebsiteTheme` (editor path)
+- **`apps/core-api/src/server.ts:1553`** — `readThemes()` type includes `styles`/`tailwindClasses`; backward compat fallback passes them through
+- **`apps/core-api/src/server.ts:1591,1615`** — Website theme POST/PUT now accept and persist `styles`/`tailwindClasses`
+- **`apps/admin-dashboard/src/utils/websites-api.ts`** — `WebsiteTheme` interface and `createWebsiteTheme`/`updateWebsiteTheme` include `styles`/`tailwindClasses` fields
+- **`apps/admin-dashboard/src/views/AssetsView.vue:858-902`** — Replaced ZIP auto-extract checkbox with 3-way choice: Extract (preserve folders), Flatten (files only, no folders), Upload (keep .zip as-is)
+- **`apps/admin-dashboard/src/stores/damStore.ts:414-527`** — `uploadZipAsset` refactored to accept `zipMode` param (`'extract'`/`'flatten'`/`'upload'`) instead of boolean `autoExtract`; flatten branch skips folder creation and puts all files directly in target folder
+
 ## [Fix Stack docker configuration for local development] — 2026-09-12
 - **`apps/whoobe-one-spike/package.json:8`** — Removed --base=/whoobe-one/ from build script
 - **`nginx/spa-fallback.conf`** — New file with try_files $uri $uri/ /index.html SPA fallback

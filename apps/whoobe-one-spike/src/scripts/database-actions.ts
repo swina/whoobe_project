@@ -103,15 +103,44 @@ export async function loadAllThemes(editor: EditorStore): Promise<void> {
 export async function loadWebsiteTheme(editor: EditorStore, websiteId: string): Promise<void> {
   try {
     const baseUrl = getDefaultCoreApiUrl()
+
+    // Fetch website to get its global themeId link (has styles/tailwindClasses)
+    let globalStyles = ''
+    let globalTwClasses = ''
+    try {
+      const siteRes = await fetch(`${baseUrl}/whoobe-one/websites/${websiteId}`, { credentials: 'include' })
+      if (siteRes.ok) {
+        const siteBody = await siteRes.json()
+        const siteThemeId: string | null = siteBody.website?.themeId ?? null
+        if (siteThemeId) {
+          const { fetchTheme } = await import('../themes-api')
+          const gt = await fetchTheme(siteThemeId)
+          if (gt) {
+            globalStyles = gt.styles ?? ''
+            globalTwClasses = gt.tailwindClasses ?? ''
+          }
+        }
+      }
+    } catch {
+      // Silent.
+    }
+
     const res = await fetch(`${baseUrl}/whoobe-one/websites/${websiteId}/themes`, { credentials: 'include' })
     if (!res.ok) return
     const body = await res.json()
     const themes = body.themes ?? []
     const defaultId = body.defaultThemeId ?? ''
-    editor.setWebsiteThemes(themes.map((t: any) => ({ id: t.id, name: t.name, colors: t.colors ?? [], fonts: t.fonts ?? [], styles: t.styles ?? '', tailwindClasses: t.tailwindClasses ?? '' })))
+    editor.setWebsiteThemes(themes.map((t: any) => ({ id: t.id, name: t.name, colors: t.colors ?? [], fonts: t.fonts ?? [], styles: (t.styles || globalStyles), tailwindClasses: (t.tailwindClasses || globalTwClasses) })))
     const defaultTheme = themes.find((t: any) => t.id === defaultId) ?? themes[0]
     if (defaultTheme) {
-      editor.setWebsiteTheme({ colors: defaultTheme.colors ?? [], fonts: defaultTheme.fonts ?? [], styles: defaultTheme.styles ?? '', tailwindClasses: defaultTheme.tailwindClasses ?? '' })
+      editor.setWebsiteTheme({
+        colors: defaultTheme.colors ?? [],
+        fonts: defaultTheme.fonts ?? [],
+        styles: globalStyles || (defaultTheme.styles ?? ''),
+        tailwindClasses: globalTwClasses || (defaultTheme.tailwindClasses ?? '')
+      })
+    } else if (globalStyles || globalTwClasses) {
+      editor.setWebsiteTheme({ colors: [], fonts: [], styles: globalStyles, tailwindClasses: globalTwClasses })
     }
   } catch {
     // Silent — website theme is optional; the editor works fine without it.
