@@ -1,6 +1,14 @@
 # Changelog
 
-## [Fix theme styles not injected in website paths preview; ZIP upload flatten mode; Docker fixes; remember last DAM folder in editor] — 2026-09-12
+## [Add main and 404 sections to website templates; fix esbuild binary mismatch] — 2026-09-12
+- **`packages/core/src/db/website-templates-schema.ts`** — Added `main` (no snippets) and `notFound404` (full slot) to `WebsiteTemplateLayout`
+- **`apps/core-api/src/server.ts`** — Public page endpoints no longer return 404 HTTP status. When a page is not found, the server resolves the website's default template, composes its `notFound404` slot (module pages + snippets + custom elements), and returns 200 with the synthetic page content wrapped in the website's header/main/footer layout. Both locale-based and SEO-friendly endpoints are updated. Added `GET /public/404/:websiteId` endpoint as a client-side fallback. Imported `getDefaultWebsiteTemplate`.
+- **`apps/admin-dashboard/src/utils/website-templates-api.ts`** — `WebsiteTemplateLayout` type includes `main` and `notFound404`
+- **`apps/admin-dashboard/src/components/websites/WebsiteTemplatesManager.vue`** — Added slot editors for `main` (no snippet picker) and `notFound404` sections; updated form, save, editTemplate, list summary
+- **`apps/whoobe-one-spike/src/views/PublicPage.vue`** — `<main>` element now receives `layout.main.className/style`; 404 error renders `notFound404` slot via `notFoundLayout` ref; data resolution includes both new slots
+- **`apps/whoobe-one-spike/src/pages-api.ts`** — `PublicPageLookup.layout` type includes `main` and `notFound404`
+- **`packages/sdk/renderer/src/compose-layout.ts`** — `PublicLayout`, `ComposedLayout` and `composeLayout` handle `main` and `notFound404`
+- Fixed esbuild binary mismatch: removed stale hard-linked binaries from pnpm store and reinstalled so `esbuild@0.28.1` runs its own binary instead of `0.25.12`
 - **`docker-compose.yml`** — Added `DB_HOST: postgres` and `depends_on: postgres` to asset-processor (was connecting to its own container localhost, session validation always failed → 401)
 - **`docker-compose.yml`, `Dockerfile`** — Removed whoobe-studio service/target (deprecated per migration plan)
 - **`Dockerfile`** — Upgraded base image from `node:20-bookworm-slim` to `node:22-bookworm-slim` (AWS SDK v3 requires node >=22 after Jan 2027)

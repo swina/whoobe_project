@@ -26,6 +26,12 @@ export interface WebsiteTemplateLayout {
   header?: TemplateSlot | null;
   aside?: TemplateSlot | null;
   footer?: TemplateSlot | null;
+  /** Main body wrapper — className/style applied to the <main> element in
+   *  preview. Same options as header minus snippetIds (not supported). */
+  main?: TemplateSlot | null;
+  /** 404 error page — rendered with module pages when the routed page is
+   *  not found. Same options as header including snippets. */
+  notFound404?: TemplateSlot | null;
 }
 
 export const websiteTemplates = pgTable('website_templates', {

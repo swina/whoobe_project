@@ -1,6 +1,19 @@
 <template>
   <div v-if="loading" class="p-8 text-center text-gray-400 text-sm">Loading…</div>
-  <div v-else-if="error" class="p-8 text-center text-gray-400 text-sm">Page not found</div>
+  <div v-else-if="error">
+    <template v-if="notFoundLayout">
+      <header v-if="notFoundLayout.header" :class="notFoundLayout.header.className" :style="notFoundLayout.header.style">
+        <BlockContainerPreview v-for="m in notFoundLayout.header?.pages ?? []" :key="m.id" :doc="m.content" />
+      </header>
+      <main :class="notFoundLayout.main?.className ?? ''" :style="notFoundLayout.main?.style ?? ''">
+        <BlockContainerPreview v-for="m in notFoundLayout.notFoundPages ?? []" :key="m.id" :doc="m.content" />
+      </main>
+      <footer v-if="notFoundLayout.footer" :class="notFoundLayout.footer.className" :style="notFoundLayout.footer.style">
+        <BlockContainerPreview v-for="m in notFoundLayout.footer?.pages ?? []" :key="m.id" :doc="m.content" />
+      </footer>
+    </template>
+    <div v-else class="p-8 text-center text-gray-400 text-sm">Page not found</div>
+  </div>
   <template v-else-if="doc">
     <!-- Website-template shell (website-templates.md): the routed page is the
          body, wrapped by the template's header/aside/footer module pages. -->
@@ -11,7 +24,7 @@
       <aside v-if="layout.aside" :class="layout.aside.className" :style="layout.aside.style">
         <BlockContainerPreview v-for="m in layout.aside.pages" :key="m.id" :doc="m.content" />
       </aside>
-      <main>
+      <main :class="layout.main?.className ?? ''" :style="layout.main?.style ?? ''">
         <BlockContainerPreview :doc="doc" />
       </main>
       <footer v-if="layout.footer" :class="layout.footer.className" :style="layout.footer.style">
@@ -52,6 +65,7 @@ const loading = ref(true)
 const error = ref(false)
 const doc = ref<any>(null)
 const layout = ref<any>(null)
+const notFoundLayout = ref<any>(null)
 
 useThemeStyles(() => doc.value)
 
@@ -149,7 +163,7 @@ onMounted(async () => {
     // available for the rendered content.
     await loadPageTheme(page)
     await resolveDocumentData(doc.value, locale, params)
-    for (const slot of [pageLayout?.header, pageLayout?.aside, pageLayout?.footer]) {
+    for (const slot of [pageLayout?.header, pageLayout?.aside, pageLayout?.main, pageLayout?.footer, pageLayout?.notFound404]) {
       for (const m of slot?.pages ?? []) {
         try {
           await resolveDocumentData(m.content as any, locale, params, false)
@@ -159,6 +173,53 @@ onMounted(async () => {
       }
     }
   } catch {
+    // On 404, try to load the website's 404 slot via the public API
+    try {
+      const baseUrl = (await import('../core-api-url')).getDefaultCoreApiUrl()
+      const segs = route.path.split('/').filter(Boolean)
+      if (segs.length >= 1) {
+        // Resolve website by rootPath via the same public page path logic
+        const siteRes = await fetch(`${baseUrl}/whoobe-one/websites?rootPath=/${segs[0]}`, { credentials: 'include' })
+        if (siteRes.ok) {
+          const sites = await siteRes.json()
+          const wsId = Array.isArray(sites) ? sites[0]?.id : (sites as any)?.website?.id
+          if (wsId) {
+            const nfRes = await fetch(`${baseUrl}/public/404/${wsId}`, { credentials: 'include' })
+            if (nfRes.ok) {
+              const nfBody = await nfRes.json()
+              if (nfBody.notFound) {
+                // Fetch the website's default template to get the full layout shell
+                const tplRes = await fetch(`${baseUrl}/whoobe-one/websites/${wsId}/templates`, { credentials: 'include' })
+                if (tplRes.ok) {
+                  const tplBody = await tplRes.json()
+                  const tpls: any[] = tplBody.templates ?? []
+                  const defaultTpl = tpls.find((t: any) => t.isDefault) ?? tpls[0]
+                  notFoundLayout.value = {
+                    header: defaultTpl?.layout?.header
+                      ? { className: defaultTpl.layout.header.className ?? '', style: defaultTpl.layout.header.style ?? '', pages: [] }
+                      : null,
+                    main: { className: nfBody.notFound.className ?? '', style: nfBody.notFound.style ?? '' },
+                    footer: defaultTpl?.layout?.footer
+                      ? { className: defaultTpl.layout.footer.className ?? '', style: defaultTpl.layout.footer.style ?? '', pages: [] }
+                      : null,
+                    notFoundPages: nfBody.notFound.pages ?? [],
+                  }
+                } else {
+                  notFoundLayout.value = {
+                    header: null,
+                    main: { className: nfBody.notFound.className ?? '', style: nfBody.notFound.style ?? '' },
+                    footer: null,
+                    notFoundPages: nfBody.notFound.pages ?? [],
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // Silent
+    }
     error.value = true
   } finally {
     loading.value = false

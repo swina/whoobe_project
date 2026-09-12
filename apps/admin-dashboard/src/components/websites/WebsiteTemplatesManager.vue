@@ -44,23 +44,13 @@
         </label>
       </div>
 
-      <div v-for="slotKey in (['header', 'aside', 'footer'] as const)" :key="slotKey" class="border border-slate-800 light:border-slate-200 rounded-lg p-2 space-y-2">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ slotKey }}</div>
-        <!-- <div class="flex flex-wrap items-center gap-1.5">
-          <template v-if="assignedModules(slotKey).length">
-            <span
-              v-for="p in assignedModules(slotKey)"
-              :key="p.id"
-              class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-indigo-600/15 border border-indigo-600/30 text-xs text-indigo-200 light:text-indigo-800"
-            >
-              {{ p.title }}
-              <button type="button" class="text-indigo-300 hover:text-white light:hover:text-black" title="Remove module" @click="removeSlotPage(slotKey, p.id)">×</button>
-            </span>
-          </template>
-          <span v-else class="text-[11px] text-slate-500 italic">No modules assigned.</span>
-          <button type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300" @click="openSlotPicker(slotKey)">+ Add module</button>
-        </div> -->
-        <div class="flex flex-wrap items-center gap-1.5">
+      <div v-for="slotKey in (['header', 'aside', 'main', 'footer', 'notFound404'] as const)" :key="slotKey" class="border border-slate-800 light:border-slate-200 rounded-lg p-2 space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            {{ slotKey === 'notFound404' ? '404' : slotKey }}
+          </div>
+        </div>
+        <div v-if="slotKey !== 'main'" class="flex flex-wrap items-center gap-1.5">
           <template v-if="assignedSnippets(slotKey).length">
             <span
               v-for="s in assignedSnippets(slotKey)"
@@ -131,6 +121,7 @@
           <div class="text-xs text-slate-500 font-mono mt-0.5 space-x-3">
             <span v-if="t.pathPatterns.length">paths: {{ t.pathPatterns.join(', ') }}</span>
             <span>header: {{ slotSummary(t.layout.header) }}</span>
+            <span>main: {{ slotSummary(t.layout.main) }}</span>
             <span>footer: {{ slotSummary(t.layout.footer) }}</span>
           </div>
         </div>
@@ -170,7 +161,7 @@
     </div>
 
     <!-- Snippet picker: click a snippet to add (or remove) it from the slot -->
-    <div v-if="snippetPicker" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="snippetPicker = null">
+    <div v-if="snippetPicker && snippetPicker !== 'main'" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="snippetPicker = null">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[70vh] flex flex-col overflow-hidden">
         <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
           <span class="text-xs font-semibold text-gray-600">Add snippet to {{ snippetPicker }}</span>
@@ -235,7 +226,7 @@ import { fetchSnippets, type WhoobeSnippet } from '../../utils/snippets-api'
 
 const props = defineProps<{ websiteId: string }>()
 
-type SlotKey = 'header' | 'aside' | 'footer'
+type SlotKey = 'header' | 'aside' | 'footer' | 'main' | 'notFound404'
 
 const templates = ref<WebsiteTemplate[]>([])
 const modulePages = ref<WhoobeOnePage[]>([])
@@ -268,7 +259,7 @@ const filteredSnippets = computed(() => {
 
 // Directly-authored slot elements, kept as JSON text per slot (validated on
 // save, mirroring whoobe-studio's raw-JSON editing pattern).
-const slotContentText = reactive<Record<SlotKey, string>>({ header: '', aside: '', footer: '' })
+const slotContentText = reactive<Record<SlotKey, string>>({ header: '', aside: '', footer: '', main: '', notFound404: '' })
 
 function contentToText(content: unknown): string {
   return content != null ? JSON.stringify(content, null, 2) : ''
@@ -284,7 +275,7 @@ const form = reactive({
   description: '',
   pathPatternsText: '',
   isDefault: false,
-  layout: { header: { pageIds: [] as string[], className: '', style: '' }, aside: null as TemplateSlot | null, footer: { pageIds: [] as string[], className: '', style: '' } } as WebsiteTemplateLayout,
+  layout: { header: { pageIds: [] as string[], className: '', style: '' }, aside: null as TemplateSlot | null, main: null as TemplateSlot | null, footer: { pageIds: [] as string[], className: '', style: '' }, notFound404: null as TemplateSlot | null } as WebsiteTemplateLayout,
 })
 
 async function load() {
@@ -317,11 +308,15 @@ function startNew() {
   form.layout = {
     header: { pageIds: [], snippetIds: [], className: '', style: '' },
     aside: null,
+    main: null,
     footer: { pageIds: [], snippetIds: [], className: '', style: '' },
+    notFound404: null,
   }
   slotContentText.header = ''
   slotContentText.aside = ''
+  slotContentText.main = ''
   slotContentText.footer = ''
+  slotContentText.notFound404 = ''
   saveOk.value = false
   saveError.value = ''
 }
@@ -342,11 +337,15 @@ function editTemplate(t: WebsiteTemplate) {
   form.layout = {
     header: blank(t.layout.header),
     aside: t.layout.aside ? blank(t.layout.aside) : null,
+    main: t.layout.main ? blank(t.layout.main) : null,
     footer: blank(t.layout.footer),
+    notFound404: t.layout.notFound404 ? blank(t.layout.notFound404) : null,
   }
   slotContentText.header = contentToText(t.layout.header?.content)
   slotContentText.aside = contentToText(t.layout.aside?.content)
+  slotContentText.main = contentToText(t.layout.main?.content)
   slotContentText.footer = contentToText(t.layout.footer?.content)
+  slotContentText.notFound404 = contentToText(t.layout.notFound404?.content)
   saveOk.value = false
   saveError.value = ''
 }
@@ -437,11 +436,15 @@ async function save() {
   // Validate the custom-elements JSON before hitting the API.
   let headerContent: unknown
   let asideContent: unknown
+  let mainContent: unknown
   let footerContent: unknown
+  let notFound404Content: unknown
   try {
     headerContent = parseSlotContent('header')
     asideContent = parseSlotContent('aside')
+    mainContent = parseSlotContent('main')
     footerContent = parseSlotContent('footer')
+    notFound404Content = parseSlotContent('notFound404')
   } catch (e: any) {
     saveError.value = 'Invalid JSON in custom elements: ' + (e?.message ?? 'invalid')
     return
@@ -467,7 +470,9 @@ async function save() {
       layout: {
         header: buildSlot('header', headerContent),
         aside: buildSlot('aside', asideContent),
+        main: buildSlot('main', mainContent),
         footer: buildSlot('footer', footerContent),
+        notFound404: buildSlot('notFound404', notFound404Content),
       },
     }
     if (editingId.value) {
@@ -499,8 +504,11 @@ async function remove(t: WebsiteTemplate) {
 }
 
 function slotSummary(slot: TemplateSlot | null | undefined): string {
-  if (!slot || slot.pageIds.length === 0) return '—'
-  return modulePages.value.filter((p) => slot.pageIds.includes(p.id)).map((p) => p.title).join(', ') || `${slot.pageIds.length} page(s)`
+  if (!slot) return '—'
+  if (slot.pageIds.length > 0) return modulePages.value.filter((p) => slot.pageIds.includes(p.id)).map((p) => p.title).join(', ') || `${slot.pageIds.length} page(s)`
+  if (slot.snippetIds?.length) return `${slot.snippetIds.length} snippet(s)`
+  if (slot.content) return 'custom'
+  return '—'
 }
 
 onMounted(load)

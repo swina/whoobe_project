@@ -275,23 +275,23 @@
       <button type="button" title="Text color" class="toolbar-icon" @click="showTextPicker = !showTextPicker"><Type class="w-4 h-4" /></button>
       <template v-if="showTextPicker">
         <div class="fixed inset-0 z-[10000]" @click="showTextPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-80" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" @click.stop>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-100" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" @click.stop>
           <label class="block text-[11px] text-gray-500 mb-2 bg-slate-200 rounded p-1">Text Color</label>
           <label class="flex items-center gap-1 mb-2 cursor-pointer text-[10px] text-gray-500">
             Custom
             <input type="color" class="w-6 h-6 border rounded cursor-pointer" @input="pickTextColor" />
           </label>
-          <div class="grid grid-cols-8 gap-1">
+          <div class="grid grid-cols-12 gap-1">
             <button
               v-for="swatch in textSwatches"
               :key="swatch"
               type="button"
               :title="swatch"
-              class="w-6 h-6 rounded-full"
+              class="w-6 h-6 rounded-lg"
               :class="swatchBgClass(swatch)"
               @click="pickTextSwatch(swatch)"
             ></button>
-            <button type="button" title="Clear" class="w-6 h-6 rounded-full border flex items-center justify-center text-gray-400" @click="clearTextColor">
+            <button type="button" title="Clear" class="w-6 h-6 rounded-lg border flex items-center justify-center text-gray-400" @click="clearTextColor">
               <X class="w-2.5 h-2.5" />
             </button>
           </div>
@@ -302,23 +302,23 @@
       <button type="button" title="Fill color" class="toolbar-icon" @click="showFillPicker = !showFillPicker"><PaintBucket class="w-4 h-4" /></button>
       <template v-if="showFillPicker">
         <div class="fixed inset-0 z-[10000]" @click="showFillPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-80" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" @click.stop>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-100" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" @click.stop>
           <label class="block text-[11px] text-gray-500 mb-2 bg-slate-200 rounded p-1">Fill Color</label>
           <label class="flex items-center gap-1 mb-2 cursor-pointer text-[10px] text-gray-500">
             Custom
             <input type="color" class="w-6 h-6 border rounded cursor-pointer" @input="pickFillColor" />
           </label>
-          <div class="grid grid-cols-8 gap-1">
+          <div class="grid grid-cols-12 gap-1">
             <button
               v-for="swatch in fillSwatches"
               :key="swatch"
               type="button"
               :title="swatch"
-              class="w-6 h-6 rounded-full"
+              class="w-6 h-6 rounded-lg"
               :class="swatch"
               @click="pickFillSwatch(swatch)"
             ></button>
-            <button type="button" title="Clear" class="w-6 h-6 rounded-full border flex items-center justify-center text-gray-400" @click="clearFill">
+            <button type="button" title="Clear" class="w-6 h-6 rounded-lg border flex items-center justify-center text-gray-400" @click="clearFill">
               <X class="w-2.5 h-2.5" />
             </button>
           </div>

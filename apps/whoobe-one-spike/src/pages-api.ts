@@ -88,12 +88,14 @@ export interface PublicPageLookup {
   page: WhoobeOnePage
   params: Record<string, string>
   /** Website-template composition (website-templates.md) - the resolved
-   *  template's header/aside/footer module pages + slot styling. */
+   *  template's header/aside/main/footer/404 module pages + slot styling. */
   layout?: {
     template: { id: string; name: string }
     header?: { className: string; style: string; pages: { id: string; title: string; content: unknown }[] } | null
     aside?: { className: string; style: string; pages: { id: string; title: string; content: unknown }[] } | null
+    main?: { className: string; style: string; pages: { id: string; title: string; content: unknown }[] } | null
     footer?: { className: string; style: string; pages: { id: string; title: string; content: unknown }[] } | null
+    notFound404?: { className: string; style: string; pages: { id: string; title: string; content: unknown }[] } | null
   } | null
 }
 

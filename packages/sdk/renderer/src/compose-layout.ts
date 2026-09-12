@@ -20,7 +20,12 @@ export interface PublicLayout {
   template: { id: string; name: string }
   header?: PublicTemplateSlot | null
   aside?: PublicTemplateSlot | null
+  /** Main body wrapper — className/style applied to the <main> element. */
+  main?: PublicTemplateSlot | null
   footer?: PublicTemplateSlot | null
+  /** 404 error page — rendered with module pages when the routed page is
+   *  not found. */
+  notFound404?: PublicTemplateSlot | null
 }
 
 /** A composed page shell: each region is a container descriptor (or null
@@ -28,7 +33,9 @@ export interface PublicLayout {
 export interface ComposedLayout {
   header: RenderDescriptor | null
   aside: RenderDescriptor | null
+  main: RenderDescriptor | null
   footer: RenderDescriptor | null
+  notFound404: RenderDescriptor | null
   body: RenderDescriptor
 }
 
@@ -51,10 +58,12 @@ function slotDescriptor(tag: string, slot: PublicTemplateSlot, options: RenderOp
 /** Wraps the routed body descriptor with the template's slot descriptors.
  *  Empty slots yield null regions. */
 export async function composeLayout(body: RenderDescriptor, layout: PublicLayout, options: RenderOptions): Promise<ComposedLayout> {
-  const [header, aside, footer] = await Promise.all([
+  const [header, aside, main, footer, notFound404] = await Promise.all([
     layout.header && layout.header.pages.length > 0 ? slotDescriptor('header', layout.header, options) : null,
     layout.aside && layout.aside.pages.length > 0 ? slotDescriptor('aside', layout.aside, options) : null,
+    layout.main && layout.main.pages.length > 0 ? slotDescriptor('main', layout.main, options) : null,
     layout.footer && layout.footer.pages.length > 0 ? slotDescriptor('footer', layout.footer, options) : null,
+    layout.notFound404 && layout.notFound404.pages.length > 0 ? slotDescriptor('notFound404', layout.notFound404, options) : null,
   ])
-  return { header, aside, footer, body }
+  return { header, aside, main, footer, notFound404, body }
 }
