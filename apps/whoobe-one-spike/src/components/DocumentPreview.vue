@@ -169,6 +169,10 @@ function storeDocForPreview() {
     // sessionStorage full/unavailable — iframe preview falls back to blank.
   }
 }
+// Serialize on mount (immediate) and whenever switching to tablet/mobile
+// iframe mode, so the iframe always loads the latest content. The shallow
+// watch on props.doc alone would miss nested content changes (edited text,
+// heading content, etc.) because only the reference itself is tracked.
 watch(() => props.doc, () => storeDocForPreview(), { immediate: true })
 
 const editor = useEditorStore()
@@ -211,6 +215,14 @@ type Orientation = 'portrait' | 'landscape'
 
 const deviceMode = ref<DeviceMode>('desktop')
 const orientation = ref<Orientation>('portrait')
+
+// Serialize to sessionStorage when device mode switches to iframe-based
+// (tablet/mobile), so the iframe loads the latest document content. Without
+// this, nested content changes (edited text/heading via onBlur) never
+// trigger the shallow watch on props.doc, and sessionStorage stays stale.
+watch(deviceMode, (mode) => {
+  if (mode !== 'desktop') storeDocForPreview()
+})
 
 const DEVICE_SIZES: Record<Exclude<DeviceMode, 'desktop'>, [number, number]> = {
   tablet: [768, 1024],

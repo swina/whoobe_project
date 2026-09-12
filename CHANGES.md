@@ -1,5 +1,9 @@
 # Changelog
 
+## [Fix preview in whoobe-one-spike: stale content in tablet/mobile iframe mode] — 2026-09-12
+
+- **`apps/whoobe-one-spike/src/components/DocumentPreview.vue`**: Fixed a bug where text/heading edits were not reflected in tablet/mobile iframe preview. The `storeDocForPreview()` function (serializes the document to `sessionStorage` for iframe consumption) was driven by a shallow `watch(() => props.doc, ...)` that only fires when the document reference changes — nested content changes (edited text via contenteditable/onBlur) were silently ignored. Added a `watch(deviceMode, ...)` that re-serializes whenever switching to tablet/mobile mode, ensuring the iframe always loads the latest content.
+
 ## [Unified docker-compose for full local stack] — 2026-09-11
 
 - **`docker-compose.yml`**: Rewritten as the full local-development stack. All six services: `postgres` (16-alpine, named volume), `minio` (latest, named volume), `core-api` (port 3003), `asset-processor` (port 3002), `admin-dashboard` (port 3000, nginx), `whoobe-one-spike` (port 3006, nginx), and `whoobe-studio` (port 3004, nginx). Health checks on postgres and minio — Node services wait for healthy DB/S3 via `depends_on:.condition: service_healthy`. Node services override `.env` DB_HOST → `postgres` and S3_ENDPOINT → `http://minio:9000` for internal Docker networking. Build args default VITE_* URLs to `localhost` so the browser reaches published ports.
