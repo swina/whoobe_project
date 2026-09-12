@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-100 text-black">
+  <div class="h-full flex flex-col bg-gray-100 text-black font-mono text-xs">
     <div class="shrink-0 h-10 px-4 flex items-center gap-2 bg-white border-b shadow-sm text-sm">
       <template v-if="!editor.embedded">
         <span class="font-semibold text-gray-700 bg-violet-600 text-white px-2 py-1 rounded-md">Whoobe One Spike</span>
@@ -25,15 +25,15 @@
            own page-listing view is what's reachable in that case, this
            app's own Templates gallery would be a redundant second way to
            browse the same content. -->
+      <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> {{ editor.mailTemplateId || editor.snippetMode ? 'Save' : 'Save Template' }}</button>
+      <button :class="topbarBtnClass" @click="showThemeModal = true"><Palette class="w-3.5 h-3.5" /> Theme</button>
+      <button v-if="editor.page?.id && !editor.mailTemplateId && !editor.snippetMode" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
       <button :class="topbarBtnClass" @click="showAiGeneratePage = true"><Wand2 class="w-3.5 h-3.5" /> AI Page</button>
       <button :class="topbarBtnClass" @click="showAiGenerateImage = true"><Image class="w-3.5 h-3.5" /> AI Image</button>
       <button :class="topbarBtnClass" @click="showFigmaImport = true"><Palette class="w-3.5 h-3.5" /> Figma</button>
       <button v-if="!editor.embedded" :class="topbarBtnClass" @click="showTemplateGallery = true">
         <FolderOpen class="w-3.5 h-3.5" /> Templates
       </button>
-      <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> {{ editor.mailTemplateId || editor.snippetMode ? 'Save' : 'Save Template' }}</button>
-      <button :class="topbarBtnClass" @click="showThemeModal = true"><Palette class="w-3.5 h-3.5" /> Theme</button>
-      <button v-if="editor.page?.id && !editor.mailTemplateId && !editor.snippetMode" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
       <button :class="topbarBtnClass" @click="showAddToKit = true"><PackagePlus class="w-3.5 h-3.5" /> Add to Kit</button>
       <button :class="topbarBtnClass" @click="exportDocument(editor)"><Download class="w-3.5 h-3.5" /> Export</button>
       <button :class="topbarBtnClass" @click="fileInput?.click()"><Upload class="w-3.5 h-3.5" /> Import</button>
@@ -63,7 +63,7 @@
            Horizontally collapsible - width lives here on the wrapper (not
            on each panel's own root, which used to each hardcode their own
            `w-64`) so collapsing doesn't need to reach into every panel. -->
-      <div class="shrink-0 relative flex border-l" :class="sidebarCollapsed ? 'w-0 border-l-0' : 'w-64'">
+      <div class="shrink-0 relative flex border-l text-xs" :class="sidebarCollapsed ? 'w-0 border-l-0' : 'w-64'">
         <button
           type="button"
           :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
@@ -74,7 +74,7 @@
           <ChevronLeft v-else class="w-3.5 h-3.5" />
         </button>
 
-        <div v-show="!sidebarCollapsed" class="w-64 min-w-0 flex flex-col overflow-hidden">
+        <div v-show="!sidebarCollapsed" class="w-64 min-w-0 flex flex-col overflow-hidden text-xs">
           <div class="flex border-b text-xs shrink-0 bg-violet-200">
             <button
               type="button"
