@@ -26,6 +26,11 @@ Alpine.start()
 // the preview tree always see the fonts without a flash-of-unstyled-text
 // delay. Runs before the app mounts so the font stylesheet is loading in
 // parallel while Vue compiles the component tree.
+const uiFontLink = document.createElement('link')
+uiFontLink.rel = 'stylesheet'
+uiFontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap'
+document.head.appendChild(uiFontLink)
+
 const fontList = (import.meta.env.VITE_FONT_FAMILIES ?? '').trim()
 if (fontList) {
   const fontLink = document.createElement('link')

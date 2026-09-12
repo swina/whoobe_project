@@ -132,9 +132,12 @@ defineEmits<{
   (e: 'close'): void
 }>()
 
+const FOLDER_KEY = 'whoobe:media-picker-last-folder'
+
 const allFolders = ref<DamFolderRecord[]>([])
 const pageAssets = ref<DamAssetRecord[]>([])
-const currentFolderPath = ref('/')
+const savedFolder = localStorage.getItem(FOLDER_KEY)
+const currentFolderPath = ref(savedFolder && savedFolder !== 'null' ? savedFolder : '/')
 const loading = ref(true)
 const error = ref('')
 const viewMode = ref<'grid' | 'list'>('grid')
@@ -217,7 +220,8 @@ async function init() {
   }
 }
 
-watch(currentFolderPath, async () => {
+watch(currentFolderPath, async (path) => {
+  try { localStorage.setItem(FOLDER_KEY, path) } catch { /* ignore */ }
   loading.value = true
   error.value = ''
   try {

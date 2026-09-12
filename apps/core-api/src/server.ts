@@ -1699,7 +1699,7 @@ app.put('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_
       themes[idx].colors = parsed.colors;
       themes[idx].fonts = parsed.fonts;
     } else {
-      themes.unshift({ id: defaultId, name: 'Default', ...parsed });
+      themes.unshift({ id: defaultId, name: 'Default', styles: '', tailwindClasses: '', ...parsed });
     }
     const settings = { ...(website.settings as Record<string, unknown> ?? {}), themes };
     await updateWebsite(req.params.id, { settings });
