@@ -1,9 +1,13 @@
 # Changelog
 
-## [Fix theme styles not injected in website paths preview; ZIP upload flatten mode; Docker fixes] — 2026-09-12
+## [Fix theme styles not injected in website paths preview; ZIP upload flatten mode; Docker fixes; remember last DAM folder in editor] — 2026-09-12
 - **`docker-compose.yml`** — Added `DB_HOST: postgres` and `depends_on: postgres` to asset-processor (was connecting to its own container localhost, session validation always failed → 401)
 - **`docker-compose.yml`, `Dockerfile`** — Removed whoobe-studio service/target (deprecated per migration plan)
 - **`Dockerfile`** — Upgraded base image from `node:20-bookworm-slim` to `node:22-bookworm-slim` (AWS SDK v3 requires node >=22 after Jan 2027)
+- **`apps/whoobe-one-spike/src/components/MediaPickerModal.vue`** — `currentFolderPath` now persists to and restores from `localStorage` key `whoobe:media-picker-last-folder`, so the editor's Browse Assets modal opens on the last browsed folder instead of always root
+- **`apps/whoobe-one-spike/src/components/preview/BlockContainerPreview.vue`** — Strips editor-default classes (`gap-4 min-h-[600px] bg-white p-6`) from container CSS at render time so these don't leak into public page preview
+- **`apps/whoobe-one-spike/src/style.css`** — Added `font-family: Roboto, 'Inter', system-ui, ...` to `body` to match the dashboard's UI font
+- **`apps/whoobe-one-spike/src/main.ts`** — Preloads Inter (300-700 weights) from Google Fonts for the editor's UI chrome
 - **`apps/whoobe-one-spike/src/views/PublicPage.vue:58-81`** — `loadPageTheme` now fetches the website's `themeId` and loads the linked global theme's `styles`/`tailwindClasses`, so custom CSS and Tailwind classes from the website's associated global theme are injected in public page preview
 - **`apps/whoobe-one-spike/src/scripts/database-actions.ts:103-139`** — Same fix for `loadWebsiteTheme` (editor path)
 - **`apps/core-api/src/server.ts:1553`** — `readThemes()` type includes `styles`/`tailwindClasses`; backward compat fallback passes them through

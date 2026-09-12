@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 min-h-0 overflow-y-auto flex flex-col text-sm">
+  <div class="flex-1 min-h-0 overflow-y-auto flex flex-col text-xs font-mono">
     <div v-if="!editor.current" class="p-3 text-gray-400">Select an element to customize</div>
     <template v-else>
       <template v-for="group in visibleGroups" :key="group.label">

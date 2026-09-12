@@ -322,10 +322,12 @@ function childPropsWithContext(child: WhoobeElement): Record<string, unknown> {
 
 const semantic = computed(() => (props.doc as any).semantic || 'div')
 
+const DEFAULT_ROOT_CLASSES = ['gap-4', 'min-h-[600px]', 'bg-white', 'p-6']
+
 const classe = computed(() => {
   const doc = props.doc as any
-  
-  return `${doc.css.css ?? ''} ${doc.css.container ?? ''}`.trim()
+  const raw = `${doc.css.css ?? ''} ${doc.css.container ?? ''}`.trim()
+  return raw.split(' ').filter((c: string) => !DEFAULT_ROOT_CLASSES.includes(c)).join(' ')
 })
 
 const stile = computed(() => {

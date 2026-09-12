@@ -108,7 +108,7 @@ async function createPage() {
     const created = await pagesStore.createPage({
       slug: newSlug.value.trim(),
       title: newTitle.value.trim(),
-      content: { id: 'whoobe-' + Math.random().toString(36).substr(2, 5), tag: 'document', type: 'container', element: 'div', css: { css: '', container: 'flex flex-col gap-4 min-h-[600px] bg-white p-6' }, blocks: [] },
+      content: { id: 'whoobe-' + Math.random().toString(36).substr(2, 5), tag: 'document', type: 'container', element: 'div', css: { css: '', container: 'flex flex-col' }, blocks: [] },
       websiteId: props.websiteId,
     })
     creating.value = false
