@@ -12,7 +12,7 @@
           <ChevronDown v-if="openGroup === group.label" class="w-3.5 h-3.5 text-gray-400" />
           <ChevronRight v-else class="w-3.5 h-3.5 text-gray-400" />
         </button>
-
+        <!-- Tailwind customizer -->
         <div v-if="openGroup === group.label" class="p-2 space-y-3 border-b bg-gray-200">
           <template v-for="control in group.components" :key="control.attr">
             <component
