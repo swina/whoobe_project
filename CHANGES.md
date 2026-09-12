@@ -1,5 +1,11 @@
 # Changelog
 
+## [Fix Stack docker configuration for local development] — 2026-09-12
+- **`apps/whoobe-one-spike/package.json:8`** — Removed --base=/whoobe-one/ from build script
+- **`nginx/spa-fallback.conf`** — New file with try_files $uri $uri/ /index.html SPA fallback
+- **`Dockerfile:37,43,49`** — All three nginx stages now copy the SPA fallback config
+- **`Dockerfile`** - Removed whoobe-studio no longer needed and used
+
 ## [Fix preview in whoobe-one-spike: stale content in tablet/mobile iframe mode] — 2026-09-12
 
 - **`apps/whoobe-one-spike/src/components/DocumentPreview.vue`**: Fixed a bug where text/heading edits were not reflected in tablet/mobile iframe preview. The `storeDocForPreview()` function (serializes the document to `sessionStorage` for iframe consumption) was driven by a shallow `watch(() => props.doc, ...)` that only fires when the document reference changes — nested content changes (edited text via contenteditable/onBlur) were silently ignored. Added a `watch(deviceMode, ...)` that re-serializes whenever switching to tablet/mobile mode, ensuring the iframe always loads the latest content.

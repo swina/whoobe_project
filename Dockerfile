@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:20-bookworm-slim AS base
+FROM node:22-bookworm-slim AS base
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 
@@ -34,14 +34,11 @@ CMD ["node", "apps/asset-processor/dist/server.js"]
 # ─── Admin Dashboard ────────────────────────────────────────────────────────
 FROM nginx:alpine AS admin-dashboard
 COPY --from=build /app/apps/admin-dashboard/dist /usr/share/nginx/html
+COPY nginx/spa-fallback.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 
 # ─── Whoobe One Spike ──────────────────────────────────────────────────────
 FROM nginx:alpine AS whoobe-one-spike
 COPY --from=build /app/apps/whoobe-one-spike/dist /usr/share/nginx/html
-EXPOSE 80
-
-# ─── Whoobe Studio ─────────────────────────────────────────────────────────
-FROM nginx:alpine AS whoobe-studio
-COPY --from=build /app/apps/whoobe-studio/dist /usr/share/nginx/html
+COPY nginx/spa-fallback.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
