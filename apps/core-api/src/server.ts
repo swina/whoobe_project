@@ -31,6 +31,7 @@ import {
   deleteWebsite,
   listWebsiteTemplates,
   getWebsiteTemplate,
+  getDefaultWebsiteTemplate,
   createWebsiteTemplate,
   updateWebsiteTemplate,
   deleteWebsiteTemplate,
@@ -1319,10 +1320,10 @@ app.get(
   async (req: Request, res: Response): Promise<void> => {
     try {
       const page = await getWhoobePage(req.params.id);
-      if (!page) {
-        res.status(404).json({ error: 'Page not found' });
-        return;
-      }
+    if (!page) {
+      res.status(404).json({ error: 'Page not found' });
+      return;
+    }
       const translations = await listWhoobePageTranslations(page.translationGroupId);
       res.json({ translations });
     } catch (error: any) {
@@ -2011,6 +2012,63 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
     }
 
     if (!page) {
+      // Return the website's 404 template content when available
+      const nfWebsiteId = websiteId ?? null;
+      if (nfWebsiteId) {
+        try {
+          const nfWebsite = await getWebsite(nfWebsiteId);
+          const nfTpl = await getDefaultWebsiteTemplate(nfWebsiteId);
+          if (nfTpl?.layout?.notFound404) {
+            const modules = await listPublishedModulePages(nfWebsiteId, locale, nfWebsite?.defaultLocale ?? null);
+            const byId = new Map(modules.map((m: any) => [m.id, m]));
+            const snippetIds = new Set<string>();
+            for (const sid of nfTpl.layout.notFound404.snippetIds ?? []) snippetIds.add(sid);
+            const snippets = await Promise.all([...snippetIds].map((id: string) => getWhoobeOneSnippet(id)));
+            const snippetById = new Map(snippets.filter((s): s is NonNullable<typeof s> => !!s).map((s: any) => [s.id, s]));
+            const slot = (s: any, allowEmptyPages = false) => {
+              if (!s || (s.pageIds?.length === 0 && !s.snippetIds?.length && !s.content && !allowEmptyPages)) return null;
+              const pages = (s.pageIds ?? []).map((id: string) => byId.get(id)).filter(Boolean).map((m: any) => ({ id: m.id, title: m.title, content: m.content }));
+              for (const snippetId of s.snippetIds ?? []) {
+                const snippet = snippetById.get(snippetId);
+                if (snippet) pages.push({ id: snippet.id, title: snippet.name, content: snippet.node });
+              }
+              const custom = Array.isArray(s.content) ? s.content : s.content ? [s.content] : [];
+              for (const node of custom) {
+                const nodeId = (node as any)?.id;
+                pages.push({ id: typeof nodeId === 'string' ? nodeId : 'slot-custom', title: 'Custom', content: node });
+              }
+              if (pages.length === 0 && !allowEmptyPages) return null;
+              return { className: s.className ?? '', style: s.style ?? '', pages };
+            };
+            const nfSlot = slot(nfTpl.layout.notFound404) ?? { className: '', style: '', pages: [] };
+            const contentPage = {
+              id: '404',
+              title: 'Not Found',
+              slug: requestPath,
+              locale,
+              content: { id: 'not-found', type: 'container', blocks: nfSlot.pages.map((p: any) => p.content), css: { css: nfSlot.className, container: '' }, style: nfSlot.style },
+              websiteId: nfWebsiteId,
+              published: true,
+              kind: 'content' as const,
+              seo: null,
+              sitemap: null,
+              themeId: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            const nfLayout = {
+              template: { id: nfTpl.id, name: nfTpl.name },
+              header: slot(nfTpl.layout.header),
+              aside: slot(nfTpl.layout.aside),
+              main: slot(nfTpl.layout.main, true),
+              footer: slot(nfTpl.layout.footer),
+              notFound404: null,
+            };
+            res.json({ page: contentPage, params: {}, layout: nfLayout });
+            return;
+          }
+        } catch { /* fall through to 404 */ }
+      }
       res.status(404).json({ error: 'Page not found' });
       return;
     }
@@ -2034,13 +2092,13 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
           const modules = await listPublishedModulePages(layoutWebsiteId, locale, website?.defaultLocale ?? null);
           const byId = new Map(modules.map((m) => [m.id, m]));
           const snippetIds = new Set<string>();
-          for (const slot of [template.layout.header, template.layout.aside, template.layout.footer]) {
+          for (const slot of [template.layout.header, template.layout.aside, template.layout.footer, template.layout.main, template.layout.notFound404]) {
             for (const sid of slot?.snippetIds ?? []) snippetIds.add(sid);
           }
           const snippets = await Promise.all([...snippetIds].map((id) => getWhoobeOneSnippet(id)));
           const snippetById = new Map(snippets.filter((s): s is NonNullable<typeof s> => !!s).map((s) => [s.id, s]));
-          const slot = (s: { pageIds: string[]; snippetIds?: string[] | null; className?: string | null; style?: string | null; content?: unknown } | null | undefined) => {
-            if (!s || (s.pageIds.length === 0 && !s.snippetIds?.length && !s.content)) return null;
+          const slot = (s: { pageIds: string[]; snippetIds?: string[] | null; className?: string | null; style?: string | null; content?: unknown } | null | undefined, allowEmptyPages = false) => {
+            if (!s || (s.pageIds.length === 0 && !s.snippetIds?.length && !s.content && !allowEmptyPages)) return null;
             const pages = s.pageIds
               .map((id) => byId.get(id))
               .filter((m): m is NonNullable<typeof m> => !!m)
@@ -2058,14 +2116,16 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
               const id = (node as { id?: unknown } | null)?.id;
               pages.push({ id: typeof id === 'string' ? id : 'slot-custom', title: 'Custom', content: node });
             }
-            if (pages.length === 0) return null;
+            if (pages.length === 0 && !allowEmptyPages) return null;
             return { className: s.className ?? '', style: s.style ?? '', pages };
           };
           layout = {
             template: { id: template.id, name: template.name },
             header: slot(template.layout.header),
             aside: slot(template.layout.aside),
+            main: slot(template.layout.main, true),
             footer: slot(template.layout.footer),
+            notFound404: slot(template.layout.notFound404),
           };
         }
       } catch (templateError) {
@@ -2124,13 +2184,69 @@ app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => 
     }
 
     if (!page) {
+      // Return the website's 404 template content when available
+      const nfWebsiteId = websiteId ?? null;
+      if (nfWebsiteId) {
+        try {
+          const nfWebsite = await getWebsite(nfWebsiteId);
+          const nfTpl = await getDefaultWebsiteTemplate(nfWebsiteId);
+          if (nfTpl?.layout?.notFound404) {
+            const nfLocale = nfWebsite?.defaultLocale ?? 'en';
+            const modules = await listPublishedModulePages(nfWebsiteId, nfLocale, nfWebsite?.defaultLocale ?? null);
+            const byId = new Map(modules.map((m: any) => [m.id, m]));
+            const snippetIds = new Set<string>();
+            for (const sid of nfTpl.layout.notFound404.snippetIds ?? []) snippetIds.add(sid);
+            const snippets = await Promise.all([...snippetIds].map((id: string) => getWhoobeOneSnippet(id)));
+            const snippetById = new Map(snippets.filter((s): s is NonNullable<typeof s> => !!s).map((s: any) => [s.id, s]));
+            const slot = (s: any, allowEmptyPages = false) => {
+              if (!s || (s.pageIds?.length === 0 && !s.snippetIds?.length && !s.content && !allowEmptyPages)) return null;
+              const pages = (s.pageIds ?? []).map((id: string) => byId.get(id)).filter(Boolean).map((m: any) => ({ id: m.id, title: m.title, content: m.content }));
+              for (const snippetId of s.snippetIds ?? []) {
+                const snippet = snippetById.get(snippetId);
+                if (snippet) pages.push({ id: snippet.id, title: snippet.name, content: snippet.node });
+              }
+              const custom = Array.isArray(s.content) ? s.content : s.content ? [s.content] : [];
+              for (const node of custom) {
+                const nodeId = (node as any)?.id;
+                pages.push({ id: typeof nodeId === 'string' ? nodeId : 'slot-custom', title: 'Custom', content: node });
+              }
+              if (pages.length === 0 && !allowEmptyPages) return null;
+              return { className: s.className ?? '', style: s.style ?? '', pages };
+            };
+            const nfSlot = slot(nfTpl.layout.notFound404) ?? { className: '', style: '', pages: [] };
+            const contentPage = {
+              id: '404',
+              title: 'Not Found',
+              slug: requestPath,
+              locale: nfWebsite?.defaultLocale ?? 'en',
+              content: { id: 'not-found', type: 'container', blocks: nfSlot.pages.map((p: any) => p.content), css: { css: nfSlot.className, container: '' }, style: nfSlot.style },
+              websiteId: nfWebsiteId,
+              published: true,
+              kind: 'content' as const,
+              seo: null,
+              sitemap: null,
+              themeId: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            const nfLayout = {
+              template: { id: nfTpl.id, name: nfTpl.name },
+              header: slot(nfTpl.layout.header),
+              aside: slot(nfTpl.layout.aside),
+              main: slot(nfTpl.layout.main, true),
+              footer: slot(nfTpl.layout.footer),
+              notFound404: null,
+            };
+            res.json({ page: contentPage, params: {}, layout: nfLayout });
+            return;
+          }
+        } catch { /* fall through to 404 */ }
+      }
       res.status(404).json({ error: 'Page not found' });
       return;
     }
 
     const locale = page.locale || 'en';
-
-    // Website Template composition (same as the locale-based endpoint).
     let layout: Record<string, unknown> | null = null;
     const layoutWebsiteId = websiteId ?? page.websiteId;
     if (layoutWebsiteId) {
@@ -2140,14 +2256,14 @@ app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => 
           const website = await getWebsite(layoutWebsiteId);
           const modules = await listPublishedModulePages(layoutWebsiteId, locale, website?.defaultLocale ?? null);
           const byId = new Map(modules.map((m) => [m.id, m]));
-          const snippetIds = new Set<string>();
-          for (const slot of [template.layout.header, template.layout.aside, template.layout.footer]) {
+const snippetIds = new Set<string>();
+          for (const slot of [template.layout.header, template.layout.aside, template.layout.footer, template.layout.main, template.layout.notFound404]) {
             for (const sid of slot?.snippetIds ?? []) snippetIds.add(sid);
           }
           const snippets = await Promise.all([...snippetIds].map((id) => getWhoobeOneSnippet(id)));
           const snippetById = new Map(snippets.filter((s): s is NonNullable<typeof s> => !!s).map((s) => [s.id, s]));
-          const slot = (s: { pageIds: string[]; snippetIds?: string[] | null; className?: string | null; style?: string | null; content?: unknown } | null | undefined) => {
-            if (!s || (s.pageIds.length === 0 && !s.snippetIds?.length && !s.content)) return null;
+          const slot = (s: { pageIds: string[]; snippetIds?: string[] | null; className?: string | null; style?: string | null; content?: unknown } | null | undefined, allowEmptyPages = false) => {
+            if (!s || (s.pageIds.length === 0 && !s.snippetIds?.length && !s.content && !allowEmptyPages)) return null;
             const pages = s.pageIds
               .map((id) => byId.get(id))
               .filter((m): m is NonNullable<typeof m> => !!m)
@@ -2161,18 +2277,20 @@ app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => 
               const id = (node as { id?: unknown } | null)?.id;
               pages.push({ id: typeof id === 'string' ? id : 'slot-custom', title: 'Custom', content: node });
             }
-            if (pages.length === 0) return null;
+            if (pages.length === 0 && !allowEmptyPages) return null;
             return { className: s.className ?? '', style: s.style ?? '', pages };
           };
           layout = {
             template: { id: template.id, name: template.name },
             header: slot(template.layout.header),
             aside: slot(template.layout.aside),
+            main: slot(template.layout.main, true),
             footer: slot(template.layout.footer),
+            notFound404: slot(template.layout.notFound404),
           };
         }
       } catch (templateError) {
-        console.warn('Website template resolution failed:', templateError);
+        console.warn('Website template resolution failed (no-locale):', templateError);
       }
     }
 
@@ -2180,6 +2298,47 @@ app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => 
   } catch (error: any) {
     console.error('Public page lookup error (no-locale):', error);
     res.status(500).json({ error: error.message || 'Failed to look up page' });
+  }
+});
+
+// Public 404 — returns the default template's notFound404 slot composition
+// so the client can render it with the website's header/footer shell.
+app.get('/public/404/:websiteId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const website = await getWebsite(req.params.websiteId);
+    if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
+    const tpl = await getDefaultWebsiteTemplate(req.params.websiteId);
+    if (!tpl?.layout?.notFound404) { res.json({ notFound: null }); return; }
+    const modules = await listPublishedModulePages(req.params.websiteId, '', website?.defaultLocale ?? null);
+    const byId = new Map(modules.map((m: any) => [m.id, m]));
+    const snippetIds = new Set<string>();
+    for (const sid of tpl.layout.notFound404.snippetIds ?? []) snippetIds.add(sid);
+    const snippets = await Promise.all([...snippetIds].map((id: string) => getWhoobeOneSnippet(id)));
+    const snippetById = new Map(snippets.filter((s): s is NonNullable<typeof s> => !!s).map((s: NonNullable<typeof snippets[number]>) => [s.id, s]));
+    const nf = tpl.layout.notFound404;
+    const pages: { id: string; title: string; content: unknown }[] = (nf.pageIds ?? [])
+      .map((id: string) => byId.get(id) as any)
+      .filter((m): m is NonNullable<typeof m> => !!m)
+      .map((m: any) => ({ id: m.id, title: m.title, content: m.content }));
+    for (const snippetId of nf.snippetIds ?? []) {
+      const snippet = snippetById.get(snippetId);
+      if (snippet) pages.push({ id: snippet.id, title: snippet.name, content: snippet.node });
+    }
+    const custom = Array.isArray(nf.content) ? nf.content : nf.content ? [nf.content] : [];
+    for (const node of custom) {
+      const nodeId = (node as { id?: unknown } | null)?.id;
+      pages.push({ id: typeof nodeId === 'string' ? nodeId : '404-custom', title: 'Custom', content: node });
+    }
+    res.json({
+      notFound: {
+        className: nf.className ?? '',
+        style: nf.style ?? '',
+        pages,
+      },
+    });
+  } catch (error: any) {
+    console.error('Public 404 lookup error:', error);
+    res.status(500).json({ error: error.message || 'Failed to look up 404' });
   }
 });
 
