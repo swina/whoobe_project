@@ -1,0 +1,116 @@
+# Whoobe CMS — full local-development stack.
+#   docker compose up -d --build
+#
+# The Vite frontends (admin-dashboard port 3000, whoobe-one-spike port 3006,
+# whoobe-studio port 3004) are served by nginx. Browser-facing API URLs are
+# baked at build time via --build-arg; they default to localhost so the
+# browser on the host can reach the published ports.
+#
+# One-time MinIO bucket setup (run once after first `up -d`):
+#   docker compose exec minio sh -c "\
+#     mc alias set whoobe http://localhost:9000 minioadmin minioadminpassword && \
+#     mc mb whoobe/whoobe-cms"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: whoobe_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+      POSTGRES_DB: ${POSTGRES_DB:-whoobe_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: whoobe_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # core-api:
+  #   build:
+  #     context: .
+  #     target: core-api
+  #   container_name: whoobe_core_api
+  #   ports:
+  #     - "3003:3003"
+  #   env_file: .env
+  #   environment:
+  #     NODE_ENV: production
+  #     DB_HOST: postgres
+  #     S3_ENDPOINT: http://minio:9000
+  #     S3_PUBLIC_BASE_URL: http://localhost:3002/dam-asset
+  #     SEED_ADMIN_EMAIL: admin@example.com
+  #     SEED_ADMIN_PASSWORD: admin123
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+
+  # asset-processor:
+  #   build:
+  #     context: .
+  #     target: asset-processor
+  #   container_name: whoobe_asset_processor
+  #   ports:
+  #     - "3002:3002"
+  #   env_file: .env
+  #   environment:
+  #     NODE_ENV: production
+  #     DB_HOST: postgres
+  #     S3_ENDPOINT: http://minio:9000
+  #     S3_PUBLIC_BASE_URL: http://localhost:3002/dam-asset
+  #     S3_FORCE_PATH_STYLE: "true"
+  #   depends_on:
+  #     minio:
+  #       condition: service_healthy
+  #     postgres:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+
+  # admin-dashboard:
+  #   build:
+  #     context: .
+  #     target: admin-dashboard
+  #     args:
+  #       VITE_ASSET_PROCESSOR_URL: http://localhost:3002
+  #       VITE_CORE_API_URL: http://localhost:3003
+  #       VITE_FONT_FAMILIES: ${VITE_FONT_FAMILIES}
+  #   container_name: whoobe_admin_dashboard
+  #   ports:
+  #     - "3000:80"
+  #   restart: unless-stopped
+
+  # whoobe-one-spike:
+  #   build:
+  #     context: .
+  #     target: whoobe-one-spike
+  #   container_name: whoobe_one_spike
+  #   ports:
+  #     - "3006:80"
+  #   restart: unless-stopped
+
+volumes:
+  pgdata:
+  miniodata:
