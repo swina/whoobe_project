@@ -78,11 +78,14 @@ services:
     env_file: .env
     environment:
       NODE_ENV: production
+      DB_HOST: postgres
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_BASE_URL: http://localhost:3002/dam-asset
       S3_FORCE_PATH_STYLE: "true"
     depends_on:
       minio:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     restart: unless-stopped
 
@@ -106,15 +109,6 @@ services:
     container_name: whoobe_one_spike
     ports:
       - "3006:80"
-    restart: unless-stopped
-
-  whoobe-studio:
-    build:
-      context: .
-      target: whoobe-studio
-    container_name: whoobe_studio
-    ports:
-      - "3004:80"
     restart: unless-stopped
 
 volumes:
