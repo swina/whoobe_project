@@ -68,6 +68,27 @@ async function loadPageTheme(page: { themeId?: string | null; websiteId?: string
   if (page.websiteId) {
     try {
       const baseUrl = (await import('../core-api-url')).getDefaultCoreApiUrl()
+
+      // Fetch website to get its global themeId link (has styles/tailwindClasses)
+      let globalStyles = ''
+      let globalTwClasses = ''
+      try {
+        const siteRes = await fetch(`${baseUrl}/whoobe-one/websites/${page.websiteId}`, { credentials: 'include' })
+        if (siteRes.ok) {
+          const siteBody = await siteRes.json()
+          const siteThemeId: string | null = siteBody.website?.themeId ?? null
+          if (siteThemeId) {
+            const gt = await fetchTheme(siteThemeId)
+            if (gt) {
+              globalStyles = gt.styles ?? ''
+              globalTwClasses = gt.tailwindClasses ?? ''
+            }
+          }
+        }
+      } catch {
+        // Silent.
+      }
+
       const res = await fetch(`${baseUrl}/whoobe-one/websites/${page.websiteId}/themes`, { credentials: 'include' })
       if (res.ok) {
         const body = await res.json()
@@ -75,8 +96,19 @@ async function loadPageTheme(page: { themeId?: string | null; websiteId?: string
         const defaultId = body.defaultThemeId ?? ''
         const defaultTheme = webThemes.find((t: any) => t.id === defaultId) ?? webThemes[0]
         if (defaultTheme) {
-          editor.setWebsiteTheme({ colors: defaultTheme.colors ?? [], fonts: defaultTheme.fonts ?? [], styles: defaultTheme.styles ?? '', tailwindClasses: defaultTheme.tailwindClasses ?? '' })
+          editor.setWebsiteTheme({
+            colors: defaultTheme.colors ?? [],
+            fonts: defaultTheme.fonts ?? [],
+            styles: globalStyles || (defaultTheme.styles ?? ''),
+            tailwindClasses: globalTwClasses || (defaultTheme.tailwindClasses ?? '')
+          })
+          return
         }
+      }
+
+      // No website themes found, but we have a linked global theme — apply it as standalone
+      if (globalStyles || globalTwClasses) {
+        editor.setWebsiteTheme({ colors: [], fonts: [], styles: globalStyles, tailwindClasses: globalTwClasses })
       }
     } catch {
       // Silent.

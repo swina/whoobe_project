@@ -857,19 +857,34 @@
 
           <!-- ZIP Option if any ZIP file in batch -->
           <div v-if="hasZipInBatch" class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-2 mt-2">
-            <label for="autoExtract" class="text-xs font-semibold text-amber-300 flex items-center gap-1.5 cursor-pointer">
-              <input
-                v-model="autoExtractZip"
-                type="checkbox"
-                id="autoExtract"
-                class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-amber-500/50"
-              />
-              Auto-extract ZIP archives into folders
-            </label>
-            <p class="text-[11px] text-amber-300/80 pl-5">
-              Extracts archive contents into relative subfolders during upload.
-            </p>
-            <div v-if="autoExtractZip" class="pl-5 pt-1 space-y-1.5">
+            <span class="text-xs font-semibold text-amber-300">ZIP archive handling</span>
+            <div class="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                @click="zipMode = 'extract'"
+                :class="['p-2 rounded-lg border text-left transition text-xs', zipMode === 'extract' ? 'bg-amber-500/20 border-amber-500/50 text-amber-200' : 'border-slate-700 text-slate-400 hover:border-slate-600']"
+              >
+                <div class="font-semibold">Extract</div>
+                <div class="text-[10px] text-slate-500">preserve folders</div>
+              </button>
+              <button
+                type="button"
+                @click="zipMode = 'flatten'"
+                :class="['p-2 rounded-lg border text-left transition text-xs', zipMode === 'flatten' ? 'bg-amber-500/20 border-amber-500/50 text-amber-200' : 'border-slate-700 text-slate-400 hover:border-slate-600']"
+              >
+                <div class="font-semibold">Flatten</div>
+                <div class="text-[10px] text-slate-500">files only, no folders</div>
+              </button>
+              <button
+                type="button"
+                @click="zipMode = 'upload'"
+                :class="['p-2 rounded-lg border text-left transition text-xs', zipMode === 'upload' ? 'bg-amber-500/20 border-amber-500/50 text-amber-200' : 'border-slate-700 text-slate-400 hover:border-slate-600']"
+              >
+                <div class="font-semibold">Upload</div>
+                <div class="text-[10px] text-slate-500">keep .zip as-is</div>
+              </button>
+            </div>
+            <div v-if="zipMode !== 'upload'" class="pl-2 pt-1 space-y-1.5">
               <span class="text-[10px] font-semibold text-slate-400 uppercase">Extracted assets visibility</span>
               <div class="flex items-center gap-4">
                 <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
@@ -1485,7 +1500,7 @@ const selectedFiles = ref<File[]>([])
 const selectedAssetForVersion = ref<AssetItem | null>(null)
 const newFolderName = ref('')
 const newFolderIsPublic = ref(false)
-const autoExtractZip = ref(true)
+const zipMode = ref<'extract' | 'flatten' | 'upload'>('extract')
 const zipVisibility = ref<'public' | 'private'>('public')
 const isUploading = ref(false)
 const isRegenerating = ref(false)
@@ -1515,7 +1530,7 @@ function navigateToFolder(path: string) {
 
 function openUploadModal() {
   selectedFiles.value = []
-  autoExtractZip.value = true
+  zipMode.value = 'extract'
   zipVisibility.value = 'public'
   showUploadModal.value = true
 }
@@ -1568,8 +1583,8 @@ async function submitUploadBatch() {
 
   try {
     const hasZip = selectedFiles.value.some((f) => f.name.toLowerCase().endsWith('.zip'))
-    const isPublicOverride = hasZip && autoExtractZip.value ? zipVisibility.value === 'public' : undefined
-    await damStore.uploadMultipleAssets(selectedFiles.value, damStore.currentFolderPath, isPublicOverride)
+    const isPublicOverride = hasZip && zipMode.value !== 'upload' ? zipVisibility.value === 'public' : undefined
+    await damStore.uploadMultipleAssets(selectedFiles.value, damStore.currentFolderPath, isPublicOverride, zipMode.value)
     toastStore.show(`Uploaded ${selectedFiles.value.length} files to ${damStore.currentFolderPath}`)
     selectedFiles.value = []
     showUploadModal.value = false

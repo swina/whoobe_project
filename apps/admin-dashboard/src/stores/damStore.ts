@@ -337,14 +337,14 @@ const uploadProgress = ref<{ current: number; total: number; label: string } | n
 // total file count and per-file details for the progress UI.
 const extractProgress = ref<{ total: number; current: number; filename: string; recent: string[] } | null>(null)
 
-async function uploadMultipleAssets(files: File[], folderPath?: string, isPublicOverride?: boolean): Promise<AssetItem[]> {
+async function uploadMultipleAssets(files: File[], folderPath?: string, isPublicOverride?: boolean, zipMode?: 'extract' | 'flatten' | 'upload'): Promise<AssetItem[]> {
     const uploaded: AssetItem[] = []
     uploadProgress.value = { current: 0, total: files.length, label: 'Starting...' }
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
       uploadProgress.value = { current: i, total: files.length, label: file.name }
       if (file.name.toLowerCase().endsWith('.zip')) {
-        await uploadZipAsset(file, folderPath, true, isPublicOverride)
+        await uploadZipAsset(file, folderPath, zipMode, isPublicOverride)
       } else {
         const item = await uploadAsset(file, folderPath, isPublicOverride)
         uploaded.push(item)
@@ -414,38 +414,74 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
   async function uploadZipAsset(
     zipFile: File,
     folderPath?: string,
-    autoExtract: boolean = true,
+    zipMode?: 'extract' | 'flatten' | 'upload',
     isPublicOverride?: boolean
   ): Promise<{ extractedCount: number; rootAsset?: AssetItem }> {
     const targetFolder = folderPath ?? currentFolderPath.value
 
-    if (!autoExtract) {
+    if (!zipMode || zipMode === 'upload') {
       const asset = await uploadAsset(zipFile, targetFolder, isPublicOverride)
       return { extractedCount: 0, rootAsset: asset }
     }
 
     // Auto-extract zip contents
     const zip = await JSZip.loadAsync(zipFile)
+
+    let extractedCount = 0
+    const entries = Object.keys(zip.files)
+
+    if (zipMode === 'flatten') {
+      // Extract flat — no folder structure, all files go straight into targetFolder
+      const totalFiles = entries.filter((p) => !zip.files[p].dir).length
+      extractProgress.value = { total: totalFiles, current: 0, filename: '', recent: [] }
+
+      for (const relativePath of entries) {
+        const zipEntry = zip.files[relativePath]
+        if (zipEntry.dir) continue
+
+        const blob = await zipEntry.async('blob')
+        const entryFilename = relativePath.split('/').pop() || relativePath
+
+        const extractedFile = new File([blob], entryFilename, { type: blob.type })
+
+        uploadProgress.value = { current: extractedCount, total: totalFiles, label: entryFilename }
+        extractProgress.value = {
+          total: totalFiles,
+          current: extractedCount,
+          filename: entryFilename,
+          recent: [entryFilename, ...(extractProgress.value?.recent ?? [])].slice(0, 20)
+        }
+
+        await uploadAsset(extractedFile, targetFolder, isPublicOverride)
+        extractedCount++
+
+        if (extractProgress.value) {
+          extractProgress.value.current = extractedCount
+        }
+      }
+
+      extractProgress.value = null
+      return { extractedCount }
+    }
+
+    // extract — preserve folder structure
     const extractedFolder = zipFile.name.replace(/\.zip$/i, '')
     const baseExtractPath = targetFolder === '/' ? `/${extractedFolder}` : `${targetFolder}/${extractedFolder}`
 
-    // Ensure folder exists
+    // Ensure parent folder exists
     try {
       await createFolder(extractedFolder, isPublicOverride ?? false, targetFolder)
     } catch {
       // Ignore if folder already exists
     }
 
-    let extractedCount = 0
-    const entries = Object.keys(zip.files)
-    // Count only file entries (non-directory) for total progress
     const totalFiles = entries.filter((p) => !zip.files[p].dir).length
     extractProgress.value = { total: totalFiles, current: 0, filename: '', recent: [] }
 
     for (const relativePath of entries) {
       const zipEntry = zip.files[relativePath]
       if (zipEntry.dir) {
-        // Create directory
+        // Create directory structure
         const dirParts = relativePath.split('/').filter(Boolean)
         let currPath = baseExtractPath
         for (const dirName of dirParts) {
@@ -469,7 +505,6 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
         const extractedFile = new File([blob], entryFilename, { type: blob.type })
         const displayName = `${fileFolderDir ? fileFolderDir + '/' : ''}${entryFilename}`
 
-        // Update both progress indicators for the extraction UI
         uploadProgress.value = { current: extractedCount, total: totalFiles, label: displayName }
         extractProgress.value = {
           total: totalFiles,
@@ -481,7 +516,6 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
         await uploadAsset(extractedFile, entryFolderPath, isPublicOverride)
         extractedCount++
 
-        // Update current count after upload completes
         if (extractProgress.value) {
           extractProgress.value.current = extractedCount
         }

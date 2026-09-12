@@ -201,6 +201,8 @@ export interface WebsiteTheme {
   name: string
   colors: { name: string; hex: string }[]
   fonts: string[]
+  styles: string
+  tailwindClasses: string
 }
 
 export interface WebsiteThemesResponse {
@@ -216,7 +218,7 @@ export async function fetchWebsiteThemes(baseUrl: string, id: string): Promise<W
 export async function createWebsiteTheme(
   baseUrl: string,
   websiteId: string,
-  input: { name: string; colors?: { name: string; hex: string }[]; fonts?: string[] }
+  input: { name: string; colors?: { name: string; hex: string }[]; fonts?: string[]; styles?: string; tailwindClasses?: string }
 ): Promise<WebsiteTheme> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${websiteId}/themes`, {
     method: 'POST',
@@ -232,7 +234,7 @@ export async function updateWebsiteTheme(
   baseUrl: string,
   websiteId: string,
   themeId: string,
-  input: { name?: string; colors?: { name: string; hex: string }[]; fonts?: string[]; isDefault?: boolean }
+  input: { name?: string; colors?: { name: string; hex: string }[]; fonts?: string[]; styles?: string; tailwindClasses?: string; isDefault?: boolean }
 ): Promise<WebsiteTheme> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${websiteId}/themes/${themeId}`, {
     method: 'PUT',

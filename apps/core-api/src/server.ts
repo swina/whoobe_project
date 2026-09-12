@@ -1550,11 +1550,11 @@ app.delete('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRI
  * Reads the themes array from settings, falling back to the old singular
  * `settings.theme` format for backward compatibility.
  */
-function readThemes(settings: Record<string, unknown> | null): { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[] }[] {
+function readThemes(settings: Record<string, unknown> | null): { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles: string; tailwindClasses: string }[] {
   const s = settings ?? {};
   if (Array.isArray(s.themes)) return s.themes as any;
   const old = s.theme as any;
-  if (old) return [{ id: 'default', name: 'Default', colors: old.colors ?? [], fonts: old.fonts ?? [] }];
+  if (old) return [{ id: 'default', name: 'Default', colors: old.colors ?? [], fonts: old.fonts ?? [], styles: old.styles ?? '', tailwindClasses: old.tailwindClasses ?? '' }];
   return [];
 }
 
@@ -1584,7 +1584,7 @@ app.get('/whoobe-one/websites/:id/themes', requirePermission(PERMISSIONS.OBJECTS
 
 app.post('/whoobe-one/websites/:id/themes', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, colors, fonts } = req.body ?? {};
+    const { name, colors, fonts, styles, tailwindClasses } = req.body ?? {};
     const website = await getWebsite(req.params.id);
     if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
     const themes = readThemes(website.settings as Record<string, unknown> | null);
@@ -1593,6 +1593,8 @@ app.post('/whoobe-one/websites/:id/themes', requirePermission(PERMISSIONS.OBJECT
       name: typeof name === 'string' && name.trim() ? name.trim() : 'Untitled',
       colors: Array.isArray(colors) ? colors.filter((c: any) => c && typeof c.name === 'string' && typeof c.hex === 'string') : [],
       fonts: Array.isArray(fonts) ? fonts.filter((f: any) => typeof f === 'string') : [],
+      styles: typeof styles === 'string' ? styles : '',
+      tailwindClasses: typeof tailwindClasses === 'string' ? tailwindClasses : '',
     };
     themes.push(newTheme);
     const settings = { ...(website.settings as Record<string, unknown> ?? {}), themes };
@@ -1606,7 +1608,7 @@ app.post('/whoobe-one/websites/:id/themes', requirePermission(PERMISSIONS.OBJECT
 
 app.put('/whoobe-one/websites/:id/themes/:themeId', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, colors, fonts, isDefault } = req.body ?? {};
+    const { name, colors, fonts, styles, tailwindClasses, isDefault } = req.body ?? {};
     const website = await getWebsite(req.params.id);
     if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
     const themes = readThemes(website.settings as Record<string, unknown> | null);
@@ -1615,6 +1617,8 @@ app.put('/whoobe-one/websites/:id/themes/:themeId', requirePermission(PERMISSION
     if (typeof name === 'string' && name.trim()) themes[idx].name = name.trim();
     if (Array.isArray(colors)) themes[idx].colors = colors.filter((c: any) => c && typeof c.name === 'string' && typeof c.hex === 'string');
     if (Array.isArray(fonts)) themes[idx].fonts = fonts.filter((f: any) => typeof f === 'string');
+    if (typeof styles === 'string') themes[idx].styles = styles;
+    if (typeof tailwindClasses === 'string') themes[idx].tailwindClasses = tailwindClasses;
     const settings: Record<string, unknown> = { ...(website.settings as Record<string, unknown> ?? {}), themes };
     if (isDefault === true) settings.defaultThemeId = req.params.themeId;
     await updateWebsite(req.params.id, { settings });
@@ -1650,7 +1654,7 @@ app.delete('/whoobe-one/websites/:id/themes/:themeId', requirePermission(PERMISS
 app.get('/whoobe-one/themes/all', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
   try {
     const allWebsites = await listWebsites();
-    const allThemes: { websiteId: string; websiteName: string; themes: { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[] }[] }[] = [];
+    const allThemes: { websiteId: string; websiteName: string; themes: { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles: string; tailwindClasses: string }[] }[] = [];
     for (const site of allWebsites) {
       const themes = readThemes(site.settings as Record<string, unknown> | null);
       if (themes.length > 0) {
