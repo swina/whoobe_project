@@ -169,6 +169,8 @@ export async function savePage(editor: EditorStore, path?: string): Promise<void
   if (!editor.page || !editor.document) return
   editor.page.json.blocks = editor.document
   const content = JSON.parse(JSON.stringify(editor.document))
+  content.isAppMode = editor.appMode
+  content.pwaConfig = editor.pwaConfig
 
   if (!editor.page.id) {
     const created = await apiCreatePage({
@@ -244,6 +246,16 @@ export async function loadPage(editor: EditorStore, id: string): Promise<void> {
   editor.setWebsiteId(saved.websiteId)
   editor.setLocale((saved as any).locale || 'en')
 
+  // Restore App Mode from saved page content
+  const content = saved.content as any
+  if (content?.isAppMode) {
+    editor.setAppMode(true)
+    if (content.pwaConfig) editor.setPwaConfig(content.pwaConfig)
+  } else {
+    editor.setAppMode(false)
+    editor.setPwaConfig({})
+  }
+
   if (saved.websiteId) {
     await loadWebsiteTheme(editor, saved.websiteId)
   }
@@ -307,6 +319,7 @@ export async function saveMailTemplate(editor: EditorStore): Promise<void> {
   }
   editor.page.json.blocks = editor.document
   const content = JSON.parse(JSON.stringify(editor.document))
+  content.isAppMode = editor.appMode
 
   if (!editor.page.id) {
     const created = await apiCreateMailTemplate({
@@ -446,6 +459,8 @@ function notifyParentSnippetSaved() {
 export async function saveAsNewTemplate(editor: EditorStore, name: string, path: string): Promise<void> {
   if (!editor.document) return
   const content = JSON.parse(JSON.stringify(editor.document))
+  content.isAppMode = editor.appMode
+  content.pwaConfig = editor.pwaConfig
 
   const created = await apiCreatePage({
     title: name,
