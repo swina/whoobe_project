@@ -35,7 +35,7 @@ export const usePagesStore = defineStore('pages', () => {
       title?: string
       slug?: string
       category?: string
-      kind?: 'content' | 'module'
+      kind?: 'content' | 'module' | 'app'
       published?: boolean
       workflowState?: string | null
       locale?: string
@@ -59,6 +59,7 @@ export const usePagesStore = defineStore('pages', () => {
     slug: string
     title: string
     category?: string
+    kind?: 'content' | 'module' | 'app'
     content: unknown
     websiteId?: string | null
   }): Promise<WhoobeOnePage> {

@@ -1353,7 +1353,7 @@ app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
       slug: slug.trim(),
       title: title.trim(),
       category: typeof category === 'string' ? category : undefined,
-      kind: kind === 'module' ? 'module' : 'content',
+      kind: kind === 'module' ? 'module' : kind === 'app' ? 'app' : 'content',
       content,
       seo: seo ?? null,
       sitemap: sitemap ?? null,
@@ -1382,7 +1382,7 @@ app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE),
       slug: typeof slug === 'string' ? slug : undefined,
       title: typeof title === 'string' ? title : undefined,
       category: typeof category === 'string' ? category : undefined,
-      kind: kind === 'module' ? 'module' : kind === 'content' ? 'content' : undefined,
+      kind: kind === 'module' ? 'module' : kind === 'app' ? 'app' : kind === 'content' ? 'content' : undefined,
       published: typeof published === 'boolean' ? published : undefined,
       workflowState: workflowState === null || typeof workflowState === 'string' ? workflowState : undefined,
       content: content !== undefined ? content : undefined,
@@ -4154,7 +4154,7 @@ interface WebsiteExport {
     slug: string;
     title: string;
     category: string;
-    kind: 'content' | 'module';
+    kind: 'content' | 'module' | 'app';
     published: boolean;
     workflowState: string | null;
     content: unknown;

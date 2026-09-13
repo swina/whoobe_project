@@ -10,7 +10,7 @@ export interface WhoobePageRecord {
   slug: string;
   title: string;
   category: string;
-  kind: 'content' | 'module';
+  kind: 'content' | 'module' | 'app';
   published: boolean;
   workflowState: string | null;
   content: unknown;
@@ -58,7 +58,7 @@ export async function createWhoobePage(input: {
   slug: string;
   title: string;
   category?: string;
-  kind?: 'content' | 'module';
+  kind?: 'content' | 'module' | 'app';
   content: unknown;
   seo?: PageSeo | null;
   sitemap?: PageSitemapSettings | null;
@@ -102,7 +102,7 @@ export async function updateWhoobePage(
     slug?: string;
     title?: string;
     category?: string;
-    kind?: 'content' | 'module';
+    kind?: 'content' | 'module' | 'app';
     published?: boolean;
     workflowState?: string | null;
     content?: unknown;
@@ -171,7 +171,7 @@ export async function getPublishedWhoobePageBySlug(
     eq(whoobePages.slug, slug),
     eq(whoobePages.published, true),
     // Modules fill website-template slots, never routes.
-    eq(whoobePages.kind, 'content'),
+    or(eq(whoobePages.kind, 'content'), eq(whoobePages.kind, 'app')),
   ];
   if (websiteId) {
     conditions.push(eq(whoobePages.websiteId, websiteId));
@@ -194,7 +194,7 @@ export async function getPublishedWhoobePageBySlugAnyLocale(
   const conditions = [
     eq(whoobePages.slug, slug),
     eq(whoobePages.published, true),
-    eq(whoobePages.kind, 'content'),
+    or(eq(whoobePages.kind, 'content'), eq(whoobePages.kind, 'app')),
   ];
   if (websiteId) {
     conditions.push(eq(whoobePages.websiteId, websiteId));
@@ -241,7 +241,7 @@ export async function findPublishedWhoobePageConflict(
  */
 export async function listPublishedWhoobePages(websiteId?: string | null): Promise<WhoobePageRecord[]> {
   const db = getDb();
-  const conditions = [eq(whoobePages.published, true), eq(whoobePages.kind, 'content')];
+  const conditions = [eq(whoobePages.published, true), or(eq(whoobePages.kind, 'content'), eq(whoobePages.kind, 'app'))];
   if (websiteId) {
     conditions.push(eq(whoobePages.websiteId, websiteId));
   }

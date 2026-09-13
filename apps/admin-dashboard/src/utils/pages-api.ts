@@ -39,9 +39,9 @@ export interface WhoobeOnePage {
   slug: string
   title: string
   category: string
-  /** 'content' = routable page; 'module' = reusable website-template fragment
-   *  (docs/plans/cms/website-templates.md). */
-  kind: 'content' | 'module'
+  /** 'content' = routable page; 'module' = reusable website-template fragment;
+   *  'app' = mobile app page (enables App Mode in the editor). */
+  kind: 'content' | 'module' | 'app'
   published: boolean
   workflowState: string | null
   content: unknown
@@ -94,7 +94,7 @@ export async function updatePageById(
     slug?: string
     title?: string
     category?: string
-    kind?: 'content' | 'module'
+    kind?: 'content' | 'module' | 'app'
     published?: boolean
     workflowState?: string | null
     locale?: string
@@ -121,7 +121,7 @@ export async function createPageById(
     slug: string
     title: string
     category?: string
-    kind?: 'content' | 'module'
+    kind?: 'content' | 'module' | 'app'
     content: unknown
     websiteId?: string | null
   }
@@ -157,7 +157,7 @@ export interface StagedWhoobePage {
   slug: string
   title: string
   category: string
-  kind: 'content' | 'module'
+  kind: 'content' | 'module' | 'app'
   published: boolean
   workflowState: string | null
   content: unknown

@@ -41,7 +41,7 @@ export interface WhoobeOnePage {
   category: string
   /** 'content' = routable page; 'module' = reusable template fragment
    *  (website-templates.md). */
-  kind: 'content' | 'module'
+  kind: 'content' | 'module' | 'app'
   published: boolean
   workflowState: string | null
   content: unknown
@@ -131,7 +131,7 @@ export async function createPage(input: {
   slug: string
   title: string
   category?: string
-  kind?: 'content' | 'module'
+  kind?: 'content' | 'module' | 'app'
   content: unknown
   seo?: PageSeo | null
   sitemap?: PageSitemapSettings | null
@@ -155,7 +155,7 @@ export async function updatePage(
     slug?: string
     title?: string
     category?: string
-    kind?: 'content' | 'module'
+    kind?: 'content' | 'module' | 'app'
     published?: boolean
     workflowState?: string | null
     content?: unknown

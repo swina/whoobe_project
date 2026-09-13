@@ -64,7 +64,7 @@ export const whoobePages = pgTable(
     // website template's header/aside/footer slot (never routed, never
     // sitemapped, still authored/translated/published like any page).
     // Plain text, not an enum - new kinds need no migration.
-    kind: text('kind').$type<'content' | 'module'>().notNull().default('content'),
+    kind: text('kind').$type<'content' | 'module' | 'app'>().notNull().default('content'),
     published: boolean('published').notNull().default(false),
     workflowState: text('workflow_state'),
     content: jsonb('content').notNull(),

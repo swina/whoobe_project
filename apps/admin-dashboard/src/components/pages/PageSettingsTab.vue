@@ -250,7 +250,7 @@ const form = reactive({
   title: '',
   slug: '',
   category: '',
-  kind: 'content' as 'content' | 'module',
+  kind: 'content' as 'content' | 'module' | 'app',
   published: false,
   workflowState: '',
   locale: '',

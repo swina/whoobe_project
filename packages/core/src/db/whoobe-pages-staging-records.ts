@@ -23,7 +23,7 @@ export interface WhoobePageStagingRecord {
   slug: string;
   title: string;
   category: string;
-  kind: 'content' | 'module';
+  kind: 'content' | 'module' | 'app';
   published: boolean;
   workflowState: string | null;
   content: unknown;
