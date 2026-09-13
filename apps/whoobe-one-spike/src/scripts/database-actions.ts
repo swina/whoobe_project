@@ -169,14 +169,13 @@ export async function savePage(editor: EditorStore, path?: string): Promise<void
   if (!editor.page || !editor.document) return
   editor.page.json.blocks = editor.document
   const content = JSON.parse(JSON.stringify(editor.document))
-  content.isAppMode = editor.appMode
-  content.pwaConfig = editor.pwaConfig
 
   if (!editor.page.id) {
     const created = await apiCreatePage({
       title: editor.page.name || 'Untitled',
       category: editor.page.category || '',
       slug: path || '',
+      kind: editor.appMode ? 'app' : 'content',
       content,
       themeId: editor.pageThemeId ?? null,
     })
@@ -186,6 +185,7 @@ export async function savePage(editor: EditorStore, path?: string): Promise<void
     await apiUpdatePage(String(editor.page.id), {
       title: editor.page.name || 'Untitled',
       category: editor.page.category || '',
+      kind: editor.appMode ? 'app' : 'content',
       content,
       themeId: editor.pageThemeId ?? null,
     })
@@ -246,14 +246,11 @@ export async function loadPage(editor: EditorStore, id: string): Promise<void> {
   editor.setWebsiteId(saved.websiteId)
   editor.setLocale((saved as any).locale || 'en')
 
-  // Restore App Mode from saved page content
-  const content = saved.content as any
-  if (content?.isAppMode) {
+  // App Mode is determined by the page's kind field
+  if (saved.kind === 'app') {
     editor.setAppMode(true)
-    if (content.pwaConfig) editor.setPwaConfig(content.pwaConfig)
   } else {
     editor.setAppMode(false)
-    editor.setPwaConfig({})
   }
 
   if (saved.websiteId) {
@@ -319,7 +316,6 @@ export async function saveMailTemplate(editor: EditorStore): Promise<void> {
   }
   editor.page.json.blocks = editor.document
   const content = JSON.parse(JSON.stringify(editor.document))
-  content.isAppMode = editor.appMode
 
   if (!editor.page.id) {
     const created = await apiCreateMailTemplate({
@@ -459,13 +455,12 @@ function notifyParentSnippetSaved() {
 export async function saveAsNewTemplate(editor: EditorStore, name: string, path: string): Promise<void> {
   if (!editor.document) return
   const content = JSON.parse(JSON.stringify(editor.document))
-  content.isAppMode = editor.appMode
-  content.pwaConfig = editor.pwaConfig
 
   const created = await apiCreatePage({
     title: name,
     category: editor.page?.category || '',
     slug: path,
+    kind: editor.appMode ? 'app' : 'content',
     content,
   })
 

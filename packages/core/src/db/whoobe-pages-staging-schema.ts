@@ -34,7 +34,7 @@ export const whoobePagesStaging = pgTable(
     slug: text('slug').notNull(),
     title: text('title').notNull(),
     category: text('category').notNull().default(''),
-    kind: text('kind').$type<'content' | 'module'>().notNull().default('content'),
+    kind: text('kind').$type<'content' | 'module' | 'app'>().notNull().default('content'),
     published: boolean('published').notNull().default(false),
     workflowState: text('workflow_state'),
     content: jsonb('content').notNull(),
