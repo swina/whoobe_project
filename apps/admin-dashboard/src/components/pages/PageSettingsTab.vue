@@ -35,9 +35,13 @@
           <select v-model="form.kind" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500">
             <option value="content">Content (routable page)</option>
             <option value="module">Module (website template fragment)</option>
+            <option value="app">App (mobile app page)</option>
           </select>
           <p v-if="form.kind === 'module'" class="text-[10px] text-slate-500 mt-0.5">
             Modules fill a website template's header/aside/footer slots. They are not routable and are excluded from sitemaps.
+          </p>
+          <p v-else-if="form.kind === 'app'" class="text-[10px] text-slate-500 mt-0.5">
+            App pages open the editor in mobile App Mode with a phone-frame canvas and default to mobile preview.
           </p>
         </div>
         <div class="flex items-center gap-4">
