@@ -143,3 +143,16 @@ body {
 .whoobe-canvas-root {
   min-height: 600px;
 }
+
+/* Editor-only root container styles – replaces the old baked-in
+   `gap-4 min-h-[600px] bg-white p-6` classes that were stored in content
+   and then stripped in preview.  Now these styles live in this single
+   custom class so preview only needs to strip one unambiguous selector. */
+.editor-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 600px;
+  background-color: white;
+  padding: 1.5rem;
+}

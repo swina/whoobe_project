@@ -1,11 +1,11 @@
 <template>
   <div
     v-if="editor.current"
-    class="fixed z-[9999] flex items-center gap-1 bg-white text-black shadow-lg border border-gray-200 rounded-md px-1.5 py-1 text-xs"
+    class="fixed z-[9999] flex items-center gap-1 bg-white text-black shadow-lg border border-gray-200 rounded-md px-1.5 py-1 text-xs font-mono"
     :style="{ top: (top-7) + 'px', left: (left+0) + 'px' }"
     @mousedown="onDragStart"
   >
-    <span class="px-1.5 py-0.5 rounded bg-blue-500 text-white capitalize font-semibold cursor-grab active:cursor-grabbing select-none" title="Drag to reposition. Double-click to rename." @dblclick.stop="renameElement">{{ label }}</span>
+    <span class="px-1.5 py-0.5 rounded bg-blue-500 text-white capitalize font-semibold cursor-grab active:cursor-grabbing select-none font-mono" title="Drag to reposition. Double-click to rename." @dblclick.stop="renameElement">{{ label }}</span>
 
     <button title="Rename element" class="toolbar-icon" @click="renameElement"><Pen class="w-3 h-3" /></button>
 
@@ -31,7 +31,7 @@
         </button>
         <template v-if="showSemanticPicker">
           <div class="fixed inset-0 z-[10000]" @click="showSemanticPicker = false"></div>
-          <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-40" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" @click.stop>
+          <div class="absolute z-[10001] top-full left-0 mt-1 bg-slate-100 border border-gray-200 rounded-md shadow-lg p-2 w-40" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" @click.stop>
             <span class="block text-[10px] text-gray-500 mb-1">Renders as</span>
             <select
               v-model="semanticValue"
@@ -720,6 +720,7 @@ const websitePathGroups = computed<PathGroup[]>(() => {
       groups.push({ websiteId: rec.websiteId, websiteName: rec.name, paths: flat })
     }
   }
+  console.log ( 'websitePathGroups', groups )
   return groups
 })
 

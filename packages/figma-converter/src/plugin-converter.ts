@@ -105,7 +105,8 @@ export function convertPluginJson(data: PluginNode[]): { element: WhoobeElementN
       ensureDefaults(converted)
       if (converted.tag === 'document') {
         converted.css = converted.css || { css: '', container: '' }
-        converted.css.container = 'gap-4 min-h-[600px] bg-white'
+        // Editor-only styles (whoobe-canvas-root, editor-custom) are now
+        // applied by the editor itself, not stored in content.
       }
       return { element: converted, name: root.name || 'Imported Figma', warnings }
     }

@@ -32,7 +32,7 @@
   >
     <button
       type="button"
-      class="absolute -top-2.5 -left-2.5 z-50 px-1.5 py-0.5 rounded text-[10px] leading-none font-semibold text-white transition-opacity"
+      class="absolute -top-2.5 -left-2.5 z-50 px-1.5 py-0.5 rounded text-[10px] leading-none font-semibold text-white transition-opacity font-mono"
       :class="[tagOpacityClass, tagBgClass]"
       @click.stop="onSelect"
     >
@@ -298,10 +298,10 @@ const classe = computed(() => {
   // it collapses to a sliver a few px tall, making it practically
   // impossible to see, hover (for the corner tag) or drop into.
   if (!doc.blocks?.length) cls += ' min-h-12 min-w-12'
-  // The document root gets a canvas floor (min-height) as an EDITOR-ONLY
-  // affordance - it is not part of the stored content, so it never renders
-  // in preview/public (the old baked-in `min-h-[600px]` class did).
-  if (doc.tag === 'document') cls += ' whoobe-canvas-root'
+  // The document root gets a canvas floor (min-height) and editor-only
+  // default styling as an EDITOR-ONLY affordance - it is not part of the
+  // stored content, so it never renders in preview/public.
+  if (doc.tag === 'document') cls += ' whoobe-canvas-root editor-custom'
   return cls
 })
 

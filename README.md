@@ -32,28 +32,35 @@ Managed with **pnpm workspaces** + **Turborepo**.
 | `apps/asset-processor` | `@whoobe-cms/asset-processor` | Express microservice for asset upload/processing (Sharp, exiftool, S3) and the public `/dam-asset/*` proxy. |
 | `apps/admin-dashboard` | `@whoobe-cms/admin-dashboard` | Vue 3 + Vite admin UI (overview, data objects, DAM, documents, pages, websites, settings). |
 | `apps/whoobe-one-spike` | `@whoobe-cms/whoobe-one-spike` | Vue 3 visual WYSIWYG block/page builder, embedded in the admin dashboard for pages and HTML mail templates. |
-| `apps/whoobe-studio` | `@whoobe-cms/whoobe-studio` | Legacy standalone document editor (documents pipeline being retired). |
 
 ## Prerequisites
 
 - Node.js 18+
 - [pnpm](https://pnpm.io/) 9.x (`corepack enable` or `npm i -g pnpm`)
-- Docker (for local Postgres + MinIO), or your own Postgres 16 and S3-compatible storage
+- Docker (for local Postgres + MinIO) , or your own Postgres 16 and S3-compatible storage
+- Docker (for the complete stack), suggested for demo or testing.
 
-## Install
+## Install (for local development)
 
 ```bash
-git clone <repo-url> <your_folder>
-cd <your_folder>
+git clone https://github.com/swina/whoobe_cms
+cd whoobe_cms
 pnpm install
 ```
 
 ## Configure
 
+You can run Whoobe CMS in different modes:
+
+- **Evaluation/Testing**: dockerize the complete stack `docker-compose.yml`
+- **Local development**: dockerize PostgresDB `docker-compose.data.yml` and `npm install`
+- **Production**: read the dedicated section
+
+
 Start local infrastructure (Postgres + MinIO):
 
 ```bash
-docker compose up -d
+docker compose -f docker-compose.data.yml up -d --build
 ```
 
 The whole monorepo reads a **single** `.env` at the repo root — docker-compose interpolates its `POSTGRES_*` vars, the Node services (`core-api`, `asset-processor`, `migration-tool`) load it via `@whoobe-cms/core`'s `loadRootEnv()`, and the Vite apps (`admin-dashboard`, `whoobe-one-spike`) load it via `envDir` in their `vite.config.ts`. `${VAR}` references are expanded everywhere (Vite natively, `loadRootEnv()` for Node); shell-exported vars always win.
@@ -102,9 +109,34 @@ VITE_FONT_FAMILIES=Alfa+Slab+One|Asap+Condensed|Abel|Alice|Alegreya|Amethysta|Ar
 
 `core-api` creates the database and applies migrations automatically on startup, so no separate migration step is required for a fresh Postgres instance.
 
-## Run (development)
+## Run
 
-The quickest way to start the core services (admin-dashboard, core-api, asset-processor, whoobe-one-spike) together:
+### Docker
+
+The quickest way to test Whoobe CMS is to run the `docker-compose.yml`
+
+```
+$ git clone https://github.com/swina/whoobe_cms
+$ cd whoobe_cms
+$ docker compose up -d --build
+```
+
+Goto `http://localhost:3000` to login to the dashboard.
+Initial user is `admin@example.com`, password `admin123`
+
+### Development
+
+In a development environment in order to use HMR feature you have to run the app using 
+the development script to run the app. Before to launch the script you need to start the Database and the S3/Minio Storage Engine as docker services.
+
+#### DB and S3/Minio Storage docker
+
+```
+$ docker compose -f docker-compose.data.yml up -d`
+```
+
+
+#### Start the App
 
 ```bash
 ./dev-cms.sh                       # start all

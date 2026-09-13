@@ -44,7 +44,7 @@ const percs =  [ 'full','1/2',
 // never a real Tailwind color in any version - no CSS was ever generated
 // for either class, so those two swatches always silently did nothing.
 // 'stone' is the closest available warm/brown-ish neutral in v4's theme.
-const colors = [ 'red','orange','yellow','lime', 'green' , 'emerald', 'teal', 'cyan', 'sky','blue', 'indigo' ,'violet','purple' , 'fuchsia', 'pink', 'rose','slate' , 'gray','zinc', 'neutral', 'stone' , 'taupe' , 'mauve','mist','olive' ]
+const colors = [ 'white','red','orange','yellow','lime', 'green' , 'emerald', 'teal', 'cyan', 'sky','blue', 'indigo' ,'violet','purple' , 'fuchsia', 'pink', 'rose','slate' , 'gray','zinc', 'neutral', 'stone' , 'taupe' , 'mauve','mist','olive' ]
 
 function setPercs ( prefix ){
     let arr = []

@@ -279,7 +279,7 @@ export async function loadMailTemplate(editor: EditorStore, id: string): Promise
  *  (a col flexbox tagged `document` with the standard minimum height). */
 export function createEmptyMailTemplateRoot(): WhoobeElement {
   const root = new Element().Flexbox({ direction: 'col' }).setIcon('dashboard').setTag('document')
-  root.css.container = clean((root.css.container || '') + ' gap-4 min-h-[600px] bg-white')
+  root.css.container = clean(root.css.container)
   return root
 }
 

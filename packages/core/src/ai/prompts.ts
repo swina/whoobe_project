@@ -39,7 +39,7 @@ const ELEMENT_CONTRACT = `The output must be a JSON object matching the Whoobe O
 - "icon": an emoji or lucide icon name, optional.
 - "editable": true for text elements, false otherwise.
 - "description", "helper", "dialog": optional strings.
-- A page root node additionally has "tag": "document", "type": "container", "element": "div", "icon": "dashboard", and its "css.container" should include "gap-4 min-h-[600px] bg-white".
+- A page root node additionally has "tag": "document", "type": "container", "element": "div", "icon": "dashboard". Its "css.container" is optional (editor applies default styling via `.editor-custom` class).
 - "dataBinding", "gsap", "link", "alpine", "events", "slider", "formConfig" must be OMITTED - the composer sets those manually.
 
 Rules:
@@ -110,7 +110,7 @@ Generate a website structure as this JSON shape:
       "slug": "home", "title": "Home", "category": "main",
       "content": {
         "id": "root", "type": "container", "element": "div", "tag": "document", "icon": "dashboard",
-        "css": { "css": "bg-white", "container": "min-h-[600px] gap-4" },
+        "css": { "css": "bg-white", "container": "" },
         "blocks": [
           {
             "id": "sec1", "type": "container", "element": "div", "tag": "section",
