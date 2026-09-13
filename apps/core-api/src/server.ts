@@ -187,6 +187,12 @@ import {
   updateRole,
   deleteRole as deleteRoleRecord,
   listAllPermissions,
+  listSubscriptions,
+  createSubscription,
+  deleteAllSubscriptions,
+  sendPushNotification,
+  initializePushProvider,
+  type PushProviderName,
   type AuthenticatedRequest,
   type SearchOptions,
   type SearchDocumentType,
@@ -2463,6 +2469,109 @@ app.get('/public/snippets/:id', async (req: Request, res: Response): Promise<voi
   } catch (error: any) {
     console.error('Public snippet lookup error:', error);
     res.status(500).json({ error: error.message || 'Failed to get snippet' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PWA / Mobile app public endpoints
+// ---------------------------------------------------------------------------
+
+// GET /public/apps/:websiteId — returns the full PWA manifest + page tree
+app.get('/public/apps/:websiteId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const website = await getWebsite(req.params.websiteId);
+    if (!website) {
+      res.status(404).json({ error: 'Website not found' });
+      return;
+    }
+    const pages = await listPublishedWhoobePages(website.id);
+    const paths = await listWebsitePaths(website.id);
+    res.json({
+      website: {
+        id: website.id,
+        name: website.name,
+        rootPath: website.rootPath,
+        domains: website.domains,
+      },
+      pwaConfig: website.pwaConfig ?? {},
+      pages,
+      paths,
+    });
+  } catch (error: any) {
+    console.error('Public apps info error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get app info' });
+  }
+});
+
+// POST /pwa/subscribe — subscribe a device to push notifications
+app.post('/pwa/subscribe', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { websiteId, provider, subscription } = req.body;
+    if (!websiteId || !subscription?.endpoint) {
+      res.status(400).json({ error: 'websiteId and subscription.endpoint are required' });
+      return;
+    }
+    const record = await createSubscription({
+      websiteId,
+      provider: provider ?? 'self',
+      endpoint: subscription.endpoint,
+      keys: subscription.keys ?? {},
+      userAgent: req.headers['user-agent'] ?? null,
+    });
+    res.status(201).json({ subscription: record });
+  } catch (error: any) {
+    console.error('Push subscribe error:', error);
+    res.status(500).json({ error: error.message || 'Failed to subscribe' });
+  }
+});
+
+// POST /pwa/send — send a push notification to all subscribers of a website
+app.post('/pwa/send', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { websiteId, title, body, icon, data } = req.body;
+    if (!websiteId || !title || !body) {
+      res.status(400).json({ error: 'websiteId, title, and body are required' });
+      return;
+    }
+
+    const website = await getWebsite(websiteId);
+    if (!website) {
+      res.status(404).json({ error: 'Website not found' });
+      return;
+    }
+
+    const pwaConfig = (website.pwaConfig ?? {}) as Record<string, unknown>;
+    const pushConfig = (pwaConfig.push ?? {}) as Record<string, unknown>;
+    const providerName = (pushConfig.provider ?? 'self') as PushProviderName;
+
+    const initError = initializePushProvider(providerName, pushConfig);
+    if (initError) {
+      res.status(400).json({ error: `Push provider misconfigured: ${initError}` });
+      return;
+    }
+
+    const subscriptions = await listSubscriptions(websiteId);
+    if (subscriptions.length === 0) {
+      res.json({ success: true, sent: 0, failed: 0, message: 'No subscribers' });
+      return;
+    }
+
+    const recipients = subscriptions.map((s) => ({
+      endpoint: s.endpoint,
+      keys: { ...(s.keys ?? {}), provider: s.provider },
+    }));
+
+    const result = await sendPushNotification(providerName, recipients, {
+      title,
+      body,
+      icon,
+      data: data ?? {},
+    }, pushConfig);
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Push send error:', error);
+    res.status(500).json({ error: error.message || 'Failed to send push notification' });
   }
 });
 

@@ -1,4 +1,4 @@
-import { pgTable, text, jsonb, uuid, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, jsonb, uuid, timestamp, boolean, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const websites = pgTable('websites', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -9,6 +9,8 @@ export const websites = pgTable('websites', {
   supportedLocales: text('supported_locales').array().notNull().default(['en']),
   settings: jsonb('settings').$type<Record<string, unknown>>().default({}),
   themeId: uuid('theme_id'),
+  pwaEnabled: boolean('pwa_enabled').notNull().default(false),
+  pwaConfig: jsonb('pwa_config').$type<Record<string, unknown>>().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({

@@ -1,5 +1,31 @@
 # Changelog
 
+## [PWA Mobile — App Mode, push notifications, PWA template] — 2026-09-13
+- **`docs/plans/pwa/pwa-mobile-plan.md`** — New comprehensive English plan for PWA Mobile feature covering DB schema, editor App Mode, bottom navigation, push notification architecture (self/OneSignal/Firebase), PWA template package, and admin dashboard settings.
+- **`packages/core/src/db/websites-schema.ts`** — Added `pwa_enabled` boolean and `pwa_config` jsonb columns.
+- **`packages/core/src/db/websites-records.ts`** — Added `pwaEnabled`/`pwaConfig` to `WebsiteRecord` interface, `createWebsite`, and `updateWebsite`.
+- **`packages/core/src/db/pwa-subscriptions-schema.ts`** — New table `pwa_subscriptions` with `website_id` FK, `provider`, `endpoint`, `keys`, `user_agent`.
+- **`packages/core/src/db/pwa-subscriptions-records.ts`** — CRUD for push subscriptions: `listSubscriptions`, `createSubscription`, `deleteSubscription`, `deleteAllSubscriptions`.
+- **`packages/core/drizzle/0037_pwa_mobile.sql`** — Migration: ALTER websites ADD pwa_enabled/pwa_config, CREATE TABLE pwa_subscriptions.
+- **`packages/core/drizzle/meta/_journal.json`** — Added entry 0037_pwa_mobile.
+- **`packages/core/drizzle.config.ts`** — Added `pwa-subscriptions-schema.ts`.
+- **`packages/core/src/push/provider.ts`** — Push provider interface: `PushProvider`, `PushRecipient`, `PushPayload`, `PushResult`, `PushProviderName`.
+- **`packages/core/src/push/index.ts`** — Provider registry/factory: `getPushProvider`, `initializePushProvider`, `sendPushNotification`.
+- **`packages/core/src/push/providers/self.ts`** — Self-hosted web-push (VAPID) implementation using `web-push` npm package.
+- **`packages/core/src/push/providers/onesignal.ts`** — OneSignal REST API implementation via `POST /api/v1/notifications`.
+- **`packages/core/src/push/providers/firebase.ts`** — Firebase Admin SDK implementation via `firebase-admin` messaging.
+- **`packages/core/src/server.ts`** — Export `push/index.js`, `pwa-subscriptions-schema.js`, `pwa-subscriptions-records.js`.
+- **`apps/core-api/src/server.ts`** — Added `listSubscriptions`, `createSubscription`, `deleteAllSubscriptions`, `sendPushNotification`, `initializePushProvider`, `PushProviderName` imports. Added three new routes: `GET /public/apps/:websiteId` (PWA manifest + page tree), `POST /pwa/subscribe` (public, rate-limited), `POST /pwa/send` (requires OBJECTS_WRITE, dispatches through configured provider).
+- **`apps/whoobe-one-spike/src/store/editor.ts`** — Added `appMode` ref, `pwaConfig` ref, `setAppMode()`, `setPwaConfig()`.
+- **`apps/whoobe-one-spike/src/components/BlockEditor.vue`** — Added "App Mode" toggle button with Smartphone icon; canvas constrains to iPhone frame (390×844, rounded corners, notch + home indicator) when active; added PWA config tab in sidebar (visible only in App Mode). Imported Smartphone from lucide-vue-next, added PwaConfigPanel component.
+- **`apps/whoobe-one-spike/src/components/PwaConfigPanel.vue`** — New sidebar panel for PWA manifest configuration: app name, display mode, orientation, background/theme color pickers, start URL, push provider selector (self/OneSignal/Firebase) with dynamic fields.
+- **`apps/whoobe-one-spike/src/scripts/ElementsClass.js`** — Added `navigation` element group in Groups(); added `BottomNavigation()` constructor with items (Home/Search/Profile), activeColor, inactiveColor, backgroundColor; added `Bottom Navigation` to createElement dispatch.
+- **`apps/whoobe-one-spike/src/scripts/ElementsClass.d.ts`** — Added `BottomNavItem`, `ElementBottomNav` interfaces; added `BottomNavigation()`, `Search()`, `bottomNav` to Element class.
+- **`packages/sdk/pwa-template/`** — New `@whoobe-cms/pwa-template` package with Vite + Vue 3 + Workbox PWA shell: template project structure, `vite.config.ts` with `vite-plugin-pwa`, dynamic route `/public/apps/:appId/*`, AppShell with splash screen + bottom nav + offline indicator, LucideIcon inline SVG component, `useAppData` composable, `usePushNotifications` composable with self/OneSignal/Firebase providers, `useOfflineSync` composable (IndexedDB queue), Workbox service worker with StaleWhileRevalidate/CacheFirst strategies, OneSignal service worker shim, client-side push provider abstraction.
+- **`apps/admin-dashboard/src/components/settings/PwaSettingsCard.vue`** — New settings card: PWA enable/disable toggle, website selector, manifest fields, push provider selector (self VAPID / OneSignal / Firebase) with per-provider credentials.
+- **`apps/admin-dashboard/src/stores/tabsStore.ts`** — Added `'pwa'` to `SettingsSubSection` type.
+- **`apps/admin-dashboard/src/views/SettingsView.vue`** — Added PWA tab button with Smartphone icon, PwaSettingsCard rendering, section title/description. Imported Smartphone icon.
+
 ## [Deployment miniguide] — 2026-09-13
 - **`docs/miniguide-deployment.md`** — New comprehensive deployment guide covering three scenarios: Evaluation/Testing (full Docker stack), Local Development (Dockerized DB + S3, local app servers with HMR), and Production (native services + nginx + PM2 + SSL). Includes a comparison matrix highlighting differences in setup, HMR, process management, security, TLS, URL configuration, and backup strategy across all three modes.
 

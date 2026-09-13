@@ -70,6 +70,8 @@
 
         <FigmaSettingsCard v-if="activeSubSection === 'figma'" />
 
+        <PwaSettingsCard v-if="activeSubSection === 'pwa'" />
+
         <div v-if="activeSubSection === 'general'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-6">
           <div class="space-y-4">
             <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">General Options</h3>
@@ -103,6 +105,7 @@ import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue
 import AiSettingsCard from '../components/settings/AiSettingsCard.vue'
 import AiImageSettingsCard from '../components/settings/AiImageSettingsCard.vue'
 import FigmaSettingsCard from '../components/settings/FigmaSettingsCard.vue'
+import PwaSettingsCard from '../components/settings/PwaSettingsCard.vue'
 import UsersView from './UsersView.vue'
 import RolesView from './RolesView.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
@@ -124,6 +127,7 @@ import {
   WandSparkles,
   Image,
   Palette,
+  Smartphone,
   UserRound,
   KeyRound,
 } from '@lucide/vue'
@@ -178,6 +182,7 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'ai', name: 'AI', icon: WandSparkles },
   { key: 'ai-image', name: 'AI Image', icon: Image },
   { key: 'figma', name: 'Figma', icon: Palette },
+  { key: 'pwa', name: 'PWA', icon: Smartphone },
 ]
 
 type ClassesSubTab = 'classes' | 'pimcore' | 'file'
@@ -239,6 +244,7 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   ai: { title: 'AI Agent', description: 'LLM provider used by the AI page and snippet generator in the Whoobe One composer.' },
   'ai-image': { title: 'AI Image Generation', description: 'Dedicated AI provider for image generation, or leave blank to use your text AI configuration.' },
   figma: { title: 'Figma Integration', description: 'Figma Personal Access Token configuration for importing designs into the Whoobe One editor.' },
+  pwa: { title: 'PWA / Mobile App', description: 'Configure Progressive Web App settings, push notification providers, and manifest options per website.' },
 }
 
 const sectionTitle = computed(() => sectionTitles[activeSubSection.value].title)

@@ -40,6 +40,12 @@
       <input ref="fileInput" type="file" accept="application/json" class="hidden" @change="onImportFile" />
       <button :class="topbarBtnClass" @click="showEditorSettings = true"><Cog class="w-3.5 h-3.5" /> Settings</button>
       <button :class="topbarBtnClass" @click="editor.setPreview('fullscreen')"><Eye class="w-3.5 h-3.5" /> Preview</button>
+      <button
+        :class="[topbarBtnClass, editor.appMode ? 'text-indigo-600 bg-indigo-50' : '']"
+        @click="editor.setAppMode(!editor.appMode)"
+      >
+        <Smartphone class="w-3.5 h-3.5" /> App Mode
+      </button>
     </div>
 
     <div class="flex-1 min-h-0 flex">
@@ -53,8 +59,20 @@
            back to null in the same click. @click.self only fires when
            this exact div was the actual click target - i.e. genuinely
            outside the whole document tree. -->
-      <div class="flex-1 min-h-0 overflow-auto p-6" @click.self="editor.setCurrent(null)">
-        <BlockContainer v-if="editor.document" :doc="editor.document" :level="0" />
+      <div
+        class="flex-1 min-h-0 overflow-auto p-6"
+        :class="editor.appMode ? 'flex justify-center bg-gray-200' : ''"
+        @click.self="editor.setCurrent(null)"
+      >
+        <div v-if="editor.appMode" class="relative bg-white shadow-xl rounded-[32px] overflow-hidden mx-auto my-4"
+          style="width: 390px; height: 844px;">
+          <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[30px] bg-black rounded-b-2xl z-10"></div>
+          <div class="h-full overflow-y-auto p-4 pt-10">
+            <BlockContainer v-if="editor.document" :doc="editor.document" :level="0" />
+          </div>
+          <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-[134px] h-[5px] bg-gray-400 rounded-full"></div>
+        </div>
+        <BlockContainer v-else-if="editor.document" :doc="editor.document" :level="0" />
       </div>
 
       <!-- Right sidebar: a tab switcher between the "add element" palette
@@ -131,6 +149,16 @@
             >
               <WandSparkles class="w-6 h-6" />
             </button>
+            <button
+              v-if="editor.appMode"
+              type="button"
+              title="App Config"
+              class="flex-1 flex items-center justify-center py-2"
+              :class="sidebarTab === 'pwa' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
+              @click="sidebarTab = 'pwa'"
+            >
+              <Smartphone class="w-6 h-6" />
+            </button>
           </div>
           <!-- Real BlockElements.vue port (categorized, drag-to-add) - see
                BlockElementsPalette.vue. Dragging out of it works exactly like
@@ -143,6 +171,7 @@
           <AdvancedPanel v-else-if="sidebarTab === 'advanced'" />
           <DocumentTree v-else-if="sidebarTab === 'tree'" />
           <KitsPanel v-else-if="sidebarTab === 'kits'" @loaded="sidebarTab = 'elements'" />
+          <PwaConfigPanel v-else-if="sidebarTab === 'pwa'" />
           <AiGeneratedPanel v-else @import="onAiGeneratedImport" @preview="onAiGeneratedPreview" />
         </div>
       </div>
@@ -233,6 +262,7 @@ import {
   Save,
   Settings2,
   Shapes,
+  Smartphone,
   Sparkles,
   Upload,
   Wand2,
@@ -257,6 +287,7 @@ import FigmaImportModal from './FigmaImportModal.vue'
 import AiGeneratedPanel from './AiGeneratedPanel.vue'
 import AiGeneratedPreviewModal from './AiGeneratedPreviewModal.vue'
 import EditorSettingsModal from './EditorSettingsModal.vue'
+import PwaConfigPanel from './PwaConfigPanel.vue'
 import type { AiGeneratedRecord } from '../ai-api'
 import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
@@ -274,7 +305,7 @@ const editor = useEditorStore()
 const snippetsStore = useSnippetsStore()
 const message = ref('')
 const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-sm font-semibold bg-violet-500 hover:bg-violet-800 text-white'
-const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'advanced' | 'kits' | 'ai'>('elements')
+const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'advanced' | 'kits' | 'ai' | 'pwa'>('elements')
 const sidebarCollapsed = ref(false)
 const showAddToKit = ref(false)
 const showTemplateGallery = ref(false)

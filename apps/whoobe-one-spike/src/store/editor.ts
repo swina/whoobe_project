@@ -119,6 +119,14 @@ const locale = ref<string>('en')
   // in this app to follow instead.
   const collapsedIds = ref<Set<string>>(new Set())
 
+  // PWA / App Mode — when active, the canvas constrains to mobile
+  // breakpoints and PWA-specific features become available.
+  const appMode = ref<boolean>(false)
+  const pwaConfig = ref<Record<string, unknown>>({})
+
+  function setAppMode(v: boolean) { appMode.value = v }
+  function setPwaConfig(v: Record<string, unknown>) { pwaConfig.value = v }
+
   // Default image placeholder — a DAM asset pimcorePath, fetched from the
   // backend on editor init and used by applyImagePlaceholder() (helpers.ts)
   // as a real image placeholder instead of the hardcoded SVG data URI.
@@ -189,11 +197,13 @@ const locale = ref<string>('en')
     exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
     mailTemplateId, snippetId, snippetMode, pageThemeId, websiteId, locale, websiteTheme, websiteThemes,
     defaultPlaceholderUrl,
+    appMode, pwaConfig,
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
     setParent, setStartTime, setAutosave, setExportMode, setPreview, setSave,
     setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, setPageThemeId, setSnippetId, setSnippetMode, resolvedData,
     collapsedIds, toggleCollapsed, isCollapsed, setWebsiteTheme, setWebsiteThemes, setWebsiteId, setLocale,
     setDefaultPlaceholderUrl,
+    setAppMode, setPwaConfig,
   }
 })
