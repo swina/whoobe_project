@@ -249,6 +249,7 @@ export async function loadPage(editor: EditorStore, id: string): Promise<void> {
   // App Mode is determined by the page's kind field
   if (saved.kind === 'app') {
     editor.setAppMode(true)
+    editor.setPreview('mobile')
   } else {
     editor.setAppMode(false)
   }

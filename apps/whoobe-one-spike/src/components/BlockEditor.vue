@@ -39,7 +39,7 @@
       <button :class="topbarBtnClass" @click="fileInput?.click()"><Upload class="w-3.5 h-3.5" /> Import</button>
       <input ref="fileInput" type="file" accept="application/json" class="hidden" @change="onImportFile" />
       <button :class="topbarBtnClass" @click="showEditorSettings = true"><Cog class="w-3.5 h-3.5" /> Settings</button>
-      <button :class="topbarBtnClass" @click="editor.setPreview('fullscreen')"><Eye class="w-3.5 h-3.5" /> Preview</button>
+      <button :class="topbarBtnClass" @click="editor.setPreview(editor.appMode ? 'mobile' : 'fullscreen')"><Eye class="w-3.5 h-3.5" /> Preview</button>
       <button
         :class="[topbarBtnClass, editor.appMode ? 'text-indigo-600 bg-indigo-50' : '']"
         @click="onToggleAppMode"
