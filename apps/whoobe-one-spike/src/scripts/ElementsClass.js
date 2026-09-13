@@ -195,6 +195,15 @@ export default class Element {
                         icon: 'search'
                     }
                 ]
+            },
+            {
+                label: 'navigation',
+                elements: [
+                    {
+                        name: 'Bottom Navigation',
+                        icon: 'smartphone'
+                    }
+                ]
             }
         ]
     }
@@ -229,7 +238,8 @@ export default class Element {
             element === 'Submit'        ? this.InputSubmit() :
             element === 'Reset'         ? this.InputReset() :
             element === 'Button'        ? this.Button() :
-            element === 'Search'        ? this.Search() : null
+            element === 'Search'        ? this.Search() :
+            element === 'Bottom Navigation' ? this.BottomNavigation() : null
     }
 
     setIcon(icon){
@@ -668,6 +678,26 @@ export default class Element {
             // is shown instead of the text.
             buttonLabel: 'Search',
             buttonIcon: false
+        }
+        return this
+    }
+
+    BottomNavigation(){
+        this.tag = 'bottom-navigation'
+        this.element = 'bottom-navigation'
+        this.css.container = 'fixed bottom-0 left-0 right-0 z-50'
+        this.css.css = 'flex items-center justify-around py-2 px-4 bg-white border-t border-gray-200'
+        this.editable = false
+        this.content = ''
+        this.bottomNav = {
+            items: [
+                { id: this.randomID(), label: 'Home', icon: 'home', link: '/', active: true },
+                { id: this.randomID(), label: 'Search', icon: 'search', link: '/search', active: false },
+                { id: this.randomID(), label: 'Profile', icon: 'user', link: '/profile', active: false },
+            ],
+            activeColor: 'text-indigo-600',
+            inactiveColor: 'text-gray-500',
+            backgroundColor: 'bg-white'
         }
         return this
     }

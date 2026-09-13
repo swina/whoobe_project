@@ -41,6 +41,7 @@ export default defineConfig({
     './src/db/ai-image-settings-schema.ts',
     './src/db/ai-generated-schema.ts',
     './src/db/figma-settings-schema.ts',
+    './src/db/pwa-subscriptions-schema.ts',
   ],
   out: './drizzle',
   dialect: 'postgresql',

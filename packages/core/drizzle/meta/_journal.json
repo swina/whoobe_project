@@ -260,6 +260,13 @@
       "when": 1789200000000,
       "tag": "0036_ai_image_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1789574400000,
+      "tag": "0037_pwa_mobile",
+      "breakpoints": true
     }
   ]
 }

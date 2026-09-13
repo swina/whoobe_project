@@ -11,6 +11,8 @@ export interface WebsiteRecord {
   supportedLocales: string[];
   settings: Record<string, unknown> | null;
   themeId: string | null;
+  pwaEnabled: boolean;
+  pwaConfig: Record<string, unknown> | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +48,8 @@ export async function createWebsite(input: {
   supportedLocales?: string[];
   settings?: Record<string, unknown>;
   themeId?: string | null;
+  pwaEnabled?: boolean;
+  pwaConfig?: Record<string, unknown>;
 }): Promise<WebsiteRecord> {
   const db = getDb();
   const [row] = await db
@@ -58,6 +62,8 @@ export async function createWebsite(input: {
       supportedLocales: input.supportedLocales ?? ['en'],
       settings: input.settings ?? {},
       themeId: input.themeId ?? null,
+      pwaEnabled: input.pwaEnabled ?? false,
+      pwaConfig: input.pwaConfig ?? {},
     })
     .returning();
   return row;
@@ -73,6 +79,8 @@ export async function updateWebsite(
     supportedLocales?: string[];
     settings?: Record<string, unknown>;
     themeId?: string | null;
+    pwaEnabled?: boolean;
+    pwaConfig?: Record<string, unknown>;
   }
 ): Promise<WebsiteRecord | null> {
   const db = getDb();
@@ -84,6 +92,8 @@ export async function updateWebsite(
   if (input.supportedLocales !== undefined) values.supportedLocales = input.supportedLocales;
   if (input.settings !== undefined) values.settings = input.settings;
   if (input.themeId !== undefined) values.themeId = input.themeId;
+  if (input.pwaEnabled !== undefined) values.pwaEnabled = input.pwaEnabled;
+  if (input.pwaConfig !== undefined) values.pwaConfig = input.pwaConfig;
   const [row] = await db.update(websites).set(values).where(eq(websites.id, id)).returning();
   return row ?? null;
 }

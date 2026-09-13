@@ -346,4 +346,22 @@ export default class Element {
   InputSubmit(): this
   InputReset(): this
   Button(): this
+  Search(): this
+  BottomNavigation(): this
+  bottomNav?: ElementBottomNav
+}
+
+export interface BottomNavItem {
+  id: string
+  label: string
+  icon: string
+  link: string
+  active: boolean
+}
+
+export interface ElementBottomNav {
+  items: BottomNavItem[]
+  activeColor: string
+  inactiveColor: string
+  backgroundColor: string
 }
