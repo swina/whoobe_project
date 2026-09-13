@@ -1,5 +1,25 @@
 # Changelog
 
+## [Deployment miniguide] — 2026-09-13
+- **`docs/miniguide-deployment.md`** — New comprehensive deployment guide covering three scenarios: Evaluation/Testing (full Docker stack), Local Development (Dockerized DB + S3, local app servers with HMR), and Production (native services + nginx + PM2 + SSL). Includes a comparison matrix highlighting differences in setup, HMR, process management, security, TLS, URL configuration, and backup strategy across all three modes.
+
+## [General settings: configurable autosave timer] — 2026-09-13
+- **`apps/whoobe-one-spike/src/store/editor.ts`** — Typed `autosave` ref as `{ enabled: boolean; interval: number }` with localStorage persistence; `setAutosave()` persists changes under `whoobe:autosave`
+- **`apps/whoobe-one-spike/src/components/EditorSettingsModal.vue`** — New modal with an autosave toggle and interval input (10–600 seconds)
+- **`apps/whoobe-one-spike/src/components/BlockEditor.vue`** — Added Settings button in the topbar; added autosave timer that calls `onSave()` at the configured interval; timer starts/stops reactively when config changes and is cleared on unmount
+
+## [Editor-only container classes replaced with .editor-custom] — 2026-09-13
+- **`apps/whoobe-one-spike/src/style.css`** — Added `.editor-custom` class (flex flex-col, gap-4, min-h-[600px], bg-white, p-6) to replace the previously baked-in Tailwind classes
+- **`apps/whoobe-one-spike/src/components/BlockContainer.vue`** — Document root now receives `.whoobe-canvas-root .editor-custom` editor-only classes instead of relying on classes stored in content
+- **`apps/whoobe-one-spike/src/components/preview/BlockContainerPreview.vue`** — Strips only `['whoobe-canvas-root', 'editor-custom']` instead of generic Tailwind classes (`gap-4`, `min-h-[600px]`, `bg-white`, `p-6`) — fixes the bug where any element using `gap-4` or `bg-white` would have those classes stripped in preview
+- **`apps/whoobe-one-spike/src/views/PreviewView.vue`** — Same fix: strips `editor-custom` only, not individual Tailwind utilities
+- **`apps/whoobe-one-spike/src/components/BlockEditor.vue`** — AI-generated root no longer bakes `gap-4 min-h-[600px] bg-white` into stored content
+- **`apps/whoobe-one-spike/src/scripts/database-actions.ts`** — `createEmptyMailTemplateRoot` no longer bakes `gap-4 min-h-[600px] bg-white` into stored content
+- **`apps/whoobe-one-spike/src/scripts/figma-actions.ts`** — Figma-imported root no longer bakes `gap-4 min-h-[600px] bg-white` into stored content
+- **`apps/admin-dashboard/src/components/pages/PageCreateForm.vue`** — New page root no longer bakes `flex flex-col gap-4 min-h-[600px] bg-white p-6` into stored content
+- **`packages/figma-converter/src/plugin-converter.ts`** — Figma-converted root no longer bakes `gap-4 min-h-[600px] bg-white` into stored content
+- **`packages/core/src/ai/prompts.ts`** — Updated instructions and example to reflect that `css.container` is optional (editor applies styling via `.editor-custom`)
+
 ## [Add main and 404 sections to website templates; fix esbuild binary mismatch] — 2026-09-12
 - **`packages/core/src/db/website-templates-schema.ts`** — Added `main` (no snippets) and `notFound404` (full slot) to `WebsiteTemplateLayout`
 - **`apps/core-api/src/server.ts`** — Public page endpoints no longer return 404 HTTP status. When a page is not found, the server resolves the website's default template, composes its `notFound404` slot (module pages + snippets + custom elements), and returns 200 with the synthetic page content wrapped in the website's header/main/footer layout. Both locale-based and SEO-friendly endpoints are updated. Added `GET /public/404/:websiteId` endpoint as a client-side fallback. Imported `getDefaultWebsiteTemplate`.

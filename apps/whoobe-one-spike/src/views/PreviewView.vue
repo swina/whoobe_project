@@ -9,7 +9,8 @@ import { ref, onMounted } from 'vue'
 import { useThemeStyles } from '../composables/useThemeStyles'
 import BlockContainerPreview from '../components/preview/BlockContainerPreview.vue'
 
-const DEFAULT_ROOT_CLASSES = ['gap-4', 'min-h-[600px]', 'bg-white', 'p-6']
+const EDITOR_ONLY_CLASSES = ['whoobe-canvas-root', 'editor-custom']
+const LEGACY_ROOT_CLASSES = ['gap-4', 'min-h-[600px]', 'bg-white', 'p-6']
 
 const loading = ref(true)
 const doc = ref<any>(null)
@@ -20,7 +21,7 @@ onMounted(() => {
     if (raw) {
       const parsed = JSON.parse(raw)
       if (parsed.css?.container) {
-        const cls = parsed.css.container.split(' ').filter((c: string) => !DEFAULT_ROOT_CLASSES.includes(c)).join(' ')
+        const cls = parsed.css.container.split(' ').filter((c: string) => ![...EDITOR_ONLY_CLASSES, ...LEGACY_ROOT_CLASSES].includes(c)).join(' ')
         parsed.css.container = cls
       }
       doc.value = parsed

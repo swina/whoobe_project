@@ -23,6 +23,16 @@ import type { ElementGroup } from '../scripts/ElementsClass.js'
 
 type WhoobeElement = InstanceType<typeof Element>
 
+const AUTOSAVE_KEY = 'whoobe:autosave'
+
+function loadAutosaveConfig(): { enabled: boolean; interval: number } {
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch { /* ignore */ }
+  return { enabled: false, interval: 60 }
+}
+
 export const useEditorStore = defineStore('editor', () => {
   const mode = ref<string>('templates')
   const settings = ref<any>(null)
@@ -38,7 +48,7 @@ export const useEditorStore = defineStore('editor', () => {
   const level = ref<number | null>(null)
   const parent = ref<WhoobeElement | null>(null)
   const startTime = ref<number | null>(null)
-  const autosave = ref<any>(null)
+  const autosave = ref<{ enabled: boolean; interval: number }>(loadAutosaveConfig())
   const exportMode = ref<string>('single')
   const preview = ref<boolean | string>(false)
   const fonts = ref<string[]>((import.meta.env.VITE_FONT_FAMILIES ?? '').split('|'))
@@ -128,7 +138,10 @@ const locale = ref<string>('en')
   function setLevel(v: number | null) { level.value = v }
   function setParent(v: WhoobeElement | null) { parent.value = v }
   function setStartTime(v: number | null) { startTime.value = v }
-  function setAutosave(v: any) { autosave.value = v }
+  function setAutosave(v: { enabled: boolean; interval: number }) {
+  autosave.value = v
+  try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(v)) } catch { /* ignore */ }
+}
   function setExportMode(v: string) { exportMode.value = v }
   function setPreview(v: boolean | string) { preview.value = v }
   function setSave(v: boolean) { save.value = v }

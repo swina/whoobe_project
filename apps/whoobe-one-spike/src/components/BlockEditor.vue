@@ -1,6 +1,6 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-100 text-black font-mono text-xs">
-    <div class="shrink-0 h-10 px-4 flex items-center gap-2 bg-white border-b shadow-sm text-sm">
+  <div class="h-full flex flex-col bg-gray-100 text-black">
+    <div class="shrink-0 h-10 px-4 flex items-center gap-2 bg-white border-b shadow-sm text-xs font-mono">
       <template v-if="!editor.embedded">
         <span class="font-semibold text-gray-700 bg-violet-600 text-white px-2 py-1 rounded-md">Whoobe One Spike</span>
         <span class="text-gray-400">|</span>
@@ -25,7 +25,7 @@
            own page-listing view is what's reachable in that case, this
            app's own Templates gallery would be a redundant second way to
            browse the same content. -->
-      <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> {{ editor.mailTemplateId || editor.snippetMode ? 'Save' : 'Save Template' }}</button>
+      <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> {{ editor.mailTemplateId || editor.snippetMode ? 'Save' : 'Save' }}</button>
       <button :class="topbarBtnClass" @click="showThemeModal = true"><Palette class="w-3.5 h-3.5" /> Theme</button>
       <button v-if="editor.page?.id && !editor.mailTemplateId && !editor.snippetMode" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
       <button :class="topbarBtnClass" @click="showAiGeneratePage = true"><Wand2 class="w-3.5 h-3.5" /> AI Page</button>
@@ -38,6 +38,7 @@
       <button :class="topbarBtnClass" @click="exportDocument(editor)"><Download class="w-3.5 h-3.5" /> Export</button>
       <button :class="topbarBtnClass" @click="fileInput?.click()"><Upload class="w-3.5 h-3.5" /> Import</button>
       <input ref="fileInput" type="file" accept="application/json" class="hidden" @change="onImportFile" />
+      <button :class="topbarBtnClass" @click="showEditorSettings = true"><Cog class="w-3.5 h-3.5" /> Settings</button>
       <button :class="topbarBtnClass" @click="editor.setPreview('fullscreen')"><Eye class="w-3.5 h-3.5" /> Preview</button>
     </div>
 
@@ -184,6 +185,8 @@
       @import="onAiGeneratedImportIntoCurrent"
     />
 
+    <EditorSettingsModal v-if="showEditorSettings" @close="showEditorSettings = false" />
+
     <div v-if="message" class="shrink-0 px-4 py-1.5 text-white text-xs" :class="messageKind === 'error' ? 'bg-rose-600' : 'bg-emerald-600'">
       {{ message }}
     </div>
@@ -220,6 +223,7 @@ import {
   Eye,
   FilePlus,
   FolderOpen,
+  Cog,
   Image,
   ListTree,
   Package,
@@ -252,6 +256,7 @@ import AiImageGenerateModal from './AiImageGenerateModal.vue'
 import FigmaImportModal from './FigmaImportModal.vue'
 import AiGeneratedPanel from './AiGeneratedPanel.vue'
 import AiGeneratedPreviewModal from './AiGeneratedPreviewModal.vue'
+import EditorSettingsModal from './EditorSettingsModal.vue'
 import type { AiGeneratedRecord } from '../ai-api'
 import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
@@ -277,6 +282,7 @@ const showThemeModal = ref(false)
 const showAiGeneratePage = ref(false)
 const showAiGenerateImage = ref(false)
 const showFigmaImport = ref(false)
+const showEditorSettings = ref(false)
 
 // Inject theme colors as @theme CSS custom properties so @tailwindcss/browser
 // recognizes named classes like `bg-light-grey`. Watches editor.document
@@ -506,7 +512,7 @@ function onAiPageGenerated(payload: unknown) {
   root.icon = 'dashboard'
   root.css = {
     css: clean(root.css?.css || ''),
-    container: clean((root.css?.container || '') + ' gap-4 min-h-[600px] bg-white'),
+    container: clean(root.css?.container || ''),
   }
   applyImagePlaceholder(root)
   editor.setDocument(root)
@@ -593,6 +599,33 @@ async function onImportFile(e: Event) {
   if (fileInput.value) fileInput.value.value = ''
   flash('Imported')
 }
+
+// Autosave timer - periodically calls onSave() when enabled.
+// The timer interval is read reactively from the store so changing the
+// setting takes effect without a page reload. The timer is started/restarted
+// whenever the config changes, and cleared on unmount.
+const autosaveTimer = ref<ReturnType<typeof setInterval> | null>(null)
+
+function startAutosave() {
+  stopAutosave()
+  if (!editor.autosave.enabled) return
+  const ms = editor.autosave.interval * 1000
+  if (ms < 10000) return
+  autosaveTimer.value = setInterval(() => {
+    if (editor.document && editor.page) onSave()
+  }, ms)
+}
+
+function stopAutosave() {
+  if (autosaveTimer.value !== null) {
+    clearInterval(autosaveTimer.value)
+    autosaveTimer.value = null
+  }
+}
+
+watch(() => editor.autosave, startAutosave, { deep: true, immediate: true })
+
+onUnmounted(stopAutosave)
 
 // Alt+N (hotkeys.ts) has emitted this since Phase 1 with nothing
 // listening - this is the first real listener, matching hotkeys.ts's own

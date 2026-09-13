@@ -78,6 +78,6 @@ function createFigmaDocumentRoot(name: string): any {
     icon: 'dashboard',
     label: name,
     blocks: [],
-    css: { css: '', container: 'gap-4 min-h-[600px] bg-white' },
+    css: { css: '', container: '' },
   }
 }

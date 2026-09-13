@@ -322,12 +322,22 @@ function childPropsWithContext(child: WhoobeElement): Record<string, unknown> {
 
 const semantic = computed(() => (props.doc as any).semantic || 'div')
 
-const DEFAULT_ROOT_CLASSES = ['gap-4', 'min-h-[600px]', 'bg-white', 'p-6']
+// Editor-only classes that the canvas adds at edit time
+// (BlockContainer.vue adds `whoobe-canvas-root editor-custom` for the
+// document root). Strip them from preview so they never leak to the
+// public page. Legacy baked-in classes (`gap-4 min-h-[600px] bg-white
+// p-6`) are stripped only from the document root — child containers
+// that happen to use `gap-4` or `bg-white` are never affected.
+const EDITOR_ONLY_CLASSES = ['whoobe-canvas-root', 'editor-custom']
+
+const LEGACY_ROOT_CLASSES = ['gap-4', 'min-h-[600px]', 'bg-white', 'p-6']
 
 const classe = computed(() => {
   const doc = props.doc as any
   const raw = `${doc.css.css ?? ''} ${doc.css.container ?? ''}`.trim()
-  return raw.split(' ').filter((c: string) => !DEFAULT_ROOT_CLASSES.includes(c)).join(' ')
+  const isRoot = doc.tag === 'document'
+  const strip = isRoot ? [...EDITOR_ONLY_CLASSES, ...LEGACY_ROOT_CLASSES] : EDITOR_ONLY_CLASSES
+  return raw.split(' ').filter((c: string) => !strip.includes(c)).join(' ')
 })
 
 const stile = computed(() => {
