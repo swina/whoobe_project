@@ -42,7 +42,7 @@
       <button :class="topbarBtnClass" @click="editor.setPreview('fullscreen')"><Eye class="w-3.5 h-3.5" /> Preview</button>
       <button
         :class="[topbarBtnClass, editor.appMode ? 'text-indigo-600 bg-indigo-50' : '']"
-        @click="editor.setAppMode(!editor.appMode)"
+        @click="onToggleAppMode"
       >
         <Smartphone class="w-3.5 h-3.5" /> App Mode
       </button>
@@ -67,7 +67,7 @@
         <div v-if="editor.appMode" class="relative bg-white shadow-xl rounded-[32px] overflow-hidden mx-auto my-4"
           style="width: 390px; height: 844px;">
           <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[30px] bg-black rounded-b-2xl z-10"></div>
-          <div class="h-full overflow-y-auto p-4 pt-10">
+          <div class="h-full overflow-y-auto">
             <BlockContainer v-if="editor.document" :doc="editor.document" :level="0" />
           </div>
           <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-[134px] h-[5px] bg-gray-400 rounded-full"></div>
@@ -664,6 +664,16 @@ onUnmounted(stopAutosave)
 // targets is actually built".
 function onPreviewEvent(mode: string) {
   editor.setPreview(mode)
+}
+
+function onToggleAppMode() {
+  const next = !editor.appMode
+  editor.setAppMode(next)
+  if (next) {
+    editor.setPreview('mobile')
+  } else {
+    editor.setPreview(false)
+  }
 }
 onMounted(() => editorBus.on('preview', onPreviewEvent))
 onUnmounted(() => editorBus.off('preview', onPreviewEvent))

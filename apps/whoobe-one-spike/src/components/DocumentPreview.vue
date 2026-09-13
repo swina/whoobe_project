@@ -213,7 +213,10 @@ watch(
 type DeviceMode = 'desktop' | 'tablet' | 'mobile'
 type Orientation = 'portrait' | 'landscape'
 
-const deviceMode = ref<DeviceMode>('desktop')
+const deviceMode = ref<DeviceMode>(
+  editor.preview === 'mobile' ? 'mobile' :
+  editor.preview === 'tablet' ? 'tablet' : 'desktop'
+)
 const orientation = ref<Orientation>('portrait')
 
 // Serialize to sessionStorage when device mode switches to iframe-based
