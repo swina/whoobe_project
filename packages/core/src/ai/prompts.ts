@@ -39,7 +39,7 @@ const ELEMENT_CONTRACT = `The output must be a JSON object matching the Whoobe O
 - "icon": an emoji or lucide icon name, optional.
 - "editable": true for text elements, false otherwise.
 - "description", "helper", "dialog": optional strings.
-- A page root node additionally has "tag": "document", "type": "container", "element": "div", "icon": "dashboard". Its "css.container" is optional (editor applies default styling via `.editor-custom` class).
+- A page root node additionally has "tag": "document", "type": "container", "element": "div", "icon": "dashboard". Its "css.container" is optional (editor applies default styling via '.editor-custom' class).
 - "dataBinding", "gsap", "link", "alpine", "events", "slider", "formConfig" must be OMITTED - the composer sets those manually.
 
 Rules:
