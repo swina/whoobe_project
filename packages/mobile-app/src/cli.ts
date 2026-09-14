@@ -119,6 +119,7 @@ async function scaffoldMobileApp(opts: ScaffoldOptions): Promise<void> {
   await writeFile(join(opts.outDir, 'vite.config.ts'), viteConfig())
   await writeFile(join(opts.outDir, 'tsconfig.json'), tsconfig())
   await writeFile(join(opts.outDir, 'tsconfig.node.json'), tsconfigNode())
+  await writeFile(join(opts.outDir, 'src/env.d.ts'), envDts())
   await writeFile(join(opts.outDir, 'index.html'), indexHtml(opts))
   await writeFile(join(opts.outDir, 'capacitor.config.ts'), capacitorConfig(opts))
   await writeFile(join(opts.outDir, '.env'), dotEnv(opts))
@@ -153,12 +154,14 @@ function pkgJson(opts: ScaffoldOptions): string {
       '@capacitor/status-bar': '^7.0.0',
       '@capacitor/push-notifications': '^7.0.0',
       '@capacitor/network': '^7.0.0',
+      '@tailwindcss/browser': '^4.0.0',
     },
     devDependencies: {
       '@vitejs/plugin-vue': '^5.0.0',
       vite: '^6.0.0',
       'vue-tsc': '^2.0.0',
       typescript: '^5.4.0',
+      '@types/alpinejs': '^3.13.0',
       '@capacitor/cli': '^7.0.0',
     },
   }, null, 2)
@@ -215,6 +218,23 @@ function tsconfigNode(): string {
   }, null, 2)
 }
 
+function envDts(): string {
+  return `/// <reference types="vite/client" />
+
+declare module '*.vue' {
+  import type { DefineComponent } from 'vue'
+  const component: DefineComponent<{}, {}, any>
+  export default component
+}
+
+declare module 'alpinejs' {
+  import type { Alpine as AlpineType } from 'alpinejs'
+  const Alpine: AlpineType
+  export default Alpine
+}
+`
+}
+
 function indexHtml(opts: ScaffoldOptions): string {
   const fontLinks = opts.fontFamilies
     .map((f) => `<link href="https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@300;400;500;600;700&display=swap" rel="stylesheet">`)
@@ -227,6 +247,7 @@ function indexHtml(opts: ScaffoldOptions): string {
     <meta name="theme-color" content="${(opts.pwaConfig?.themeColor as string) ?? '#6366f1'}" />
     <title>${opts.appName}</title>
     ${fontLinks}
+    <style id="theme-styles">${opts.themeCss}</style>
   </head>
   <body>
     <div id="app"></div>
@@ -279,28 +300,32 @@ VITE_DEFAULT_LOCALE=${opts.defaultLocale}
 
 function mainTs(_opts: ScaffoldOptions): string {
   return `import { createApp } from 'vue'
-import { createPinia } from 'pinia'
 import Alpine from 'alpinejs'
 import App from './App.vue'
 import router from './router'
 import './assets/main.css'
 
-// Alpine for client-side interactivity
+// Tailwind v4 browser runtime — same approach as whoobe-one-spike
+;(async () => {
+  const { default: tailwindUrl } = await import('@tailwindcss/browser?url')
+  const s = document.createElement('script')
+  s.src = tailwindUrl
+  document.head.appendChild(s)
+})()
+
 ;(window as any).Alpine = Alpine
 Alpine.start()
 
-// Capacitor platform detection
 import { Capacitor } from '@capacitor/core'
 const isNative = Capacitor.isNativePlatform()
 if (isNative) {
   import('@capacitor/splash-screen').then(({ SplashScreen }) => SplashScreen.hide())
   import('@capacitor/status-bar').then(({ StatusBar }) => {
-    StatusBar.setStyle({ style: 'DARK' })
+    ;(StatusBar as any).setStyle({ style: 'DARK' })
   })
 }
 
 const app = createApp(App)
-app.use(createPinia())
 app.use(router)
 app.mount('#app')
 `
@@ -340,20 +365,19 @@ function useApiTs(opts: ScaffoldOptions): string {
   return `import { Capacitor } from '@capacitor/core'
 
 export function getApiUrl(): string {
-  // Build-time env var takes precedence
-  if (import.meta.env.VITE_CORE_API_URL) {
-    return import.meta.env.VITE_CORE_API_URL
+  const env = (import.meta as any).env
+  if (env.VITE_CORE_API_URL) {
+    return env.VITE_CORE_API_URL
   }
-  // Fallback to the compiled-in default
   return '${opts.apiUrl}'
 }
 
 export function getWebsiteId(): string {
-  return import.meta.env.VITE_WEBSITE_ID || '${opts.websiteId}'
+  return (import.meta as any).env?.VITE_WEBSITE_ID || '${opts.websiteId}'
 }
 
 export function getDefaultLocale(): string {
-  return import.meta.env.VITE_DEFAULT_LOCALE || '${opts.defaultLocale}'
+  return (import.meta as any).env?.VITE_DEFAULT_LOCALE || '${opts.defaultLocale}'
 }
 
 export function isNative(): boolean {
@@ -365,7 +389,8 @@ export function isNative(): boolean {
 
 function mainCss(opts: ScaffoldOptions): string {
   const themeBlock = opts.themeCss ? `@theme {\n${opts.themeCss}\n}` : ''
-  return `@import "tailwindcss";
+  return `/* Tailwind v4 browser runtime is loaded via <script> in index.html */
+/* Theme variables are inlined in main.ts via a <style> tag */
 
 ${themeBlock}
 
