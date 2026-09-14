@@ -1509,7 +1509,7 @@ app.get('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_READ),
 
 app.patch('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, rootPath, domains, defaultLocale, supportedLocales, settings, themeId } = req.body ?? {};
+    const { name, rootPath, domains, defaultLocale, supportedLocales, settings, themeId, pwaEnabled, pwaConfig } = req.body ?? {};
     if (rootPath !== undefined) {
       if (typeof rootPath !== 'string' || !/^\/[a-z0-9_-]+$/.test(rootPath)) {
         res.status(400).json({ error: 'rootPath must start with / and contain only lowercase letters, digits, hyphens, or underscores' });
@@ -1529,6 +1529,8 @@ app.patch('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRIT
       supportedLocales: Array.isArray(supportedLocales) ? supportedLocales : undefined,
       settings: settings !== undefined ? settings : undefined,
       themeId: themeId !== undefined ? (typeof themeId === 'string' ? themeId : null) : undefined,
+      pwaEnabled: pwaEnabled !== undefined ? !!pwaEnabled : undefined,
+      pwaConfig: pwaConfig !== undefined ? pwaConfig : undefined,
     });
     if (!website) {
       res.status(404).json({ error: 'Website not found' });
@@ -2104,7 +2106,7 @@ const snippetIds = new Set<string>();
           }
           const snippets = await Promise.all([...snippetIds].map((id) => getWhoobeOneSnippet(id)));
           const snippetById = new Map(snippets.filter((s): s is NonNullable<typeof s> => !!s).map((s) => [s.id, s]));
-          const slot = (s: { pageIds: string[]; snippetIds?: string[] | null; className?: string | null; style?: string | null; content?: unknown } | null | undefined, allowEmptyPages = false) => {
+          const slot = (s: { pageIds: string[]; snippetIds?: string[] | null; className?: string | null; style?: string | null; content?: unknown; alpine?: Record<string, string> | null } | null | undefined, allowEmptyPages = false) => {
             if (!s || (s.pageIds.length === 0 && !s.snippetIds?.length && !s.content && !allowEmptyPages)) return null;
             const pages = s.pageIds
               .map((id) => byId.get(id))
@@ -2271,7 +2273,7 @@ const snippetIds = new Set<string>();
           }
           const snippets = await Promise.all([...snippetIds].map((id) => getWhoobeOneSnippet(id)));
           const snippetById = new Map(snippets.filter((s): s is NonNullable<typeof s> => !!s).map((s) => [s.id, s]));
-          const slot = (s: { pageIds: string[]; snippetIds?: string[] | null; className?: string | null; style?: string | null; content?: unknown } | null | undefined, allowEmptyPages = false) => {
+          const slot = (s: { pageIds: string[]; snippetIds?: string[] | null; className?: string | null; style?: string | null; content?: unknown; alpine?: Record<string, string> | null } | null | undefined, allowEmptyPages = false) => {
             if (!s || (s.pageIds.length === 0 && !s.snippetIds?.length && !s.content && !allowEmptyPages)) return null;
             const pages = s.pageIds
               .map((id) => byId.get(id))
@@ -2576,6 +2578,118 @@ app.post('/pwa/send', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: 
   } catch (error: any) {
     console.error('Push send error:', error);
     res.status(500).json({ error: error.message || 'Failed to send push notification' });
+  }
+});
+
+// POST /whoobe-one/websites/:id/generate-pwa — generate a PWA Nuxt site for
+// preview. Runs the publish generator in a temp directory, returns the file
+// tree and contents of key files so the admin can inspect the output.
+app.post('/whoobe-one/websites/:id/generate-pwa', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { mkdtemp, readdir, readFile, rm } = await import('node:fs/promises');
+    const { generateNuxtSite } = await import('@whoobe-cms/publish');
+    const { existsSync } = await import('node:fs');
+
+    const websiteId = req.params.id;
+    const website = await getWebsite(websiteId);
+    if (!website) {
+      res.status(404).json({ error: 'Website not found' });
+      return;
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const outDir = await mkdtemp(join(tmpdir(), 'whoobe-pwa-'));
+
+    // Stream logs via response.write for real-time progress
+    const log = (msg: string) => {
+      res.write(JSON.stringify({ type: 'log', message: msg }) + '\n');
+    };
+
+    res.writeHead(200, {
+      'Content-Type': 'application/x-ndjson',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    });
+
+    log(`Generating PWA site for "${website.name}"...`);
+    log(`Output directory: ${outDir}`);
+
+    // Override console.log to capture generator output
+    const origLog = console.log;
+    console.log = (...args: unknown[]) => {
+      log(args.map((a) => String(a)).join(' '));
+    };
+
+    try {
+      await generateNuxtSite({
+        apiUrl: baseUrl,
+        websiteId,
+        outDir,
+        framework: 'vue',
+        revalidate: 60,
+        domain: req.hostname,
+      });
+
+      // Read generated file tree
+      const fileTree: Array<{ path: string; size: number }> = [];
+      async function walkDir(dir: string, prefix: string): Promise<void> {
+        const entries = await readdir(dir, { withFileTypes: true });
+        for (const e of entries) {
+          const fullPath = join(dir, e.name);
+          const relPath = prefix ? `${prefix}/${e.name}` : e.name;
+          if (e.isDirectory()) {
+            if (!relPath.startsWith('node_modules')) {
+              await walkDir(fullPath, relPath);
+            }
+          } else {
+            const stat = await import('node:fs').then((fs) => fs.promises.stat(fullPath));
+            fileTree.push({ path: relPath, size: stat.size });
+          }
+        }
+      }
+      await walkDir(outDir, '');
+
+      // Read key files for preview
+      const keyFiles = [
+        'nuxt.config.ts',
+        'public/manifest.json',
+        'app.vue',
+        'pages/[...slug].vue',
+        'error.vue',
+        'components/AppShell.vue',
+        'components/BottomNav.vue',
+        'components/InstallPrompt.vue',
+        'composables/useInstallPrompt.ts',
+        'composables/useOfflineQueue.ts',
+        'composables/usePushNotifications.ts',
+      ];
+
+      const fileContents: Record<string, string> = {};
+      for (const f of keyFiles) {
+        const fullPath = join(outDir, f);
+        if (existsSync(fullPath)) {
+          fileContents[f] = await readFile(fullPath, 'utf-8');
+        }
+      }
+
+      res.write(JSON.stringify({
+        type: 'done',
+        fileTree,
+        fileContents,
+        outDir,
+        websiteName: website.name,
+      }) + '\n');
+      res.end();
+    } finally {
+      console.log = origLog;
+      // Cleanup after 5 minutes (allow time for the admin to inspect)
+      setTimeout(() => rm(outDir, { recursive: true, force: true }).catch(() => {}), 5 * 60 * 1000);
+    }
+  } catch (error: any) {
+    console.error('Generate PWA error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate PWA site' });
   }
 });
 

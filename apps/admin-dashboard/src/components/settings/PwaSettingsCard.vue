@@ -131,6 +131,64 @@
           <span v-if="error" class="text-xs text-rose-400">{{ error }}</span>
         </div>
       </form>
+
+      <!-- Generate preview -->
+      <div v-if="selectedWebsiteId" class="border-t border-slate-700 light:border-slate-300 pt-4 mt-4">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Generate Mobile App Preview</h4>
+            <p class="text-xs text-slate-500 mt-0.5">Generate a Nuxt PWA project to inspect the output before deployment.</p>
+          </div>
+          <button
+            type="button"
+            :disabled="generating"
+            class="px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50 flex items-center gap-2"
+            @click="generatePwa"
+          >
+            <span v-if="generating" class="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            {{ generating ? 'Generating...' : 'Generate Mobile App' }}
+          </button>
+        </div>
+
+        <!-- Log viewer -->
+        <div v-if="logs.length" class="mb-3 bg-slate-950 rounded-lg p-3 font-mono text-[11px] leading-relaxed max-h-48 overflow-y-auto">
+          <div v-for="(log, i) in logs" :key="i" class="text-emerald-400/80">
+            <span class="text-slate-600">[{{ i + 1 }}]</span> {{ log }}
+          </div>
+        </div>
+
+        <!-- File tree + preview -->
+        <div v-if="result" class="border border-slate-700 rounded-lg overflow-hidden">
+          <div class="flex items-center gap-2 bg-slate-800/50 px-3 py-2 border-b border-slate-700">
+            <span class="text-xs font-semibold text-slate-300">{{ result.websiteName }} — PWA site</span>
+            <span class="text-[10px] text-slate-500">{{ result.fileTree.length }} files</span>
+            <button
+              type="button"
+              class="ml-auto text-xs text-indigo-400 hover:text-indigo-300"
+              @click="downloadZip"
+            >Download Project</button>
+          </div>
+          <div class="grid grid-cols-[1fr_2fr] divide-x divide-slate-700 max-h-96 overflow-hidden">
+            <div class="overflow-y-auto p-2 space-y-0.5 bg-slate-900/30">
+              <div
+                v-for="f in result.fileTree"
+                :key="f.path"
+                class="text-[11px] font-mono cursor-pointer hover:text-indigo-300 truncate rounded px-1 py-0.5"
+                :class="selectedFile === f.path ? 'bg-indigo-600/20 text-indigo-300' : 'text-slate-400'"
+                @click="selectedFile = f.path"
+              >
+                <span class="text-slate-600 mr-1">{{ fileIcon(f.path) }}</span>
+                {{ f.path }}
+                <span class="text-[10px] text-slate-600 ml-1">({{ f.size }}B)</span>
+              </div>
+            </div>
+            <div class="overflow-y-auto p-3 bg-slate-950">
+              <pre v-if="result.fileContents[selectedFile]" class="text-[11px] font-mono text-slate-300 whitespace-pre-wrap">{{ result.fileContents[selectedFile] }}</pre>
+              <div v-else class="text-xs text-slate-500 italic">Select a file to preview</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -235,5 +293,96 @@ async function save() {
   } finally {
     saving.value = false
   }
+}
+
+// ── PWA Generate & Preview ─────────────────────────────────────────────────
+
+const generating = ref(false)
+const logs = ref<string[]>([])
+const result = ref<{ websiteName: string; fileTree: { path: string; size: number }[]; fileContents: Record<string, string>; outDir: string } | null>(null)
+const selectedFile = ref('')
+
+async function generatePwa() {
+  if (!selectedWebsiteId.value) return
+  generating.value = true
+  logs.value = []
+  result.value = null
+  selectedFile.value = ''
+
+  try {
+    const baseUrl = authStore.config.coreApiUrl
+    const res = await fetch(`${baseUrl}/whoobe-one/websites/${selectedWebsiteId.value}/generate-pwa`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Generation failed' }))
+      logs.value.push(`Error: ${err.error}`)
+      return
+    }
+
+    const reader = res.body?.getReader()
+    if (!reader) return
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+
+      for (const line of lines) {
+        if (!line.trim()) continue
+        try {
+          const parsed = JSON.parse(line)
+          if (parsed.type === 'log') {
+            logs.value.push(parsed.message)
+          } else if (parsed.type === 'done') {
+            result.value = parsed
+            if (parsed.fileTree.length > 0) {
+              selectedFile.value = parsed.fileContents ? Object.keys(parsed.fileContents)[0] : parsed.fileTree[0].path
+            }
+          }
+        } catch { /* ignore parse errors */ }
+      }
+    }
+  } catch (e: any) {
+    logs.value.push(`Error: ${e?.message || 'Network error'}`)
+  } finally {
+    generating.value = false
+  }
+}
+
+function fileIcon(path: string): string {
+  if (path.endsWith('.vue')) return '🟢'
+  if (path.endsWith('.ts')) return '🔵'
+  if (path.endsWith('.css')) return '🟣'
+  if (path.endsWith('.json')) return '🟡'
+  if (path.endsWith('.html')) return '🟠'
+  if (path.endsWith('.js')) return '🟤'
+  if (path.endsWith('.env') || path.endsWith('.txt')) return '⚪'
+  return '📄'
+}
+
+async function downloadZip() {
+  if (!result.value?.outDir) return
+  // The outDir is server-side, so we'd need a zip download endpoint.
+  // For now, copy the generated file contents as a JSON bundle.
+  const blob = new Blob([JSON.stringify({
+    website: result.value.websiteName,
+    files: result.value.fileContents,
+    fileTree: result.value.fileTree,
+  }, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `pwa-${result.value.websiteName.toLowerCase().replace(/\s+/g, '-')}.json`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 </script>

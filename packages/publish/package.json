@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "dist/cli.js",
+  "types": "dist/cli.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js",
+      "default": "./dist/cli.js"
+    }
+  },
   "bin": {
     "whoobe-publish": "./bin/whoobe-publish.js"
   },
