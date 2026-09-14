@@ -28,6 +28,8 @@ Managed with **pnpm workspaces** + **Turborepo**.
 | --- | --- | --- |
 | `packages/core` | `@whoobe-cms/core` | Shared domain layer: Drizzle ORM schema/migrations (Postgres), Zod validation, auth, S3 client, XState workflows, mail rendering. |
 | `packages/migration-tool` | `@whoobe-cms/migration-tool` | ETL CLI for migrating Documents/Classes/Objects/Assets out of Pimcore. |
+| `packages/publish` | `@whoobe-cms/publish` | CLI generator that scaffolds a full Nuxt 3 or Next.js project from a CMS website (SSR with Tailwind v4, theme CSS, ISR). |
+| `packages/mobile-app` | `@whoobe-cms/mobile-app` | CLI generator that scaffolds a Capacitor native mobile app (iOS/Android) from a CMS website's app pages. |
 | `apps/core-api` | `@whoobe-cms/core-api` | Main Express backend API (data, DAM URLs, pages, forms, mail, search, AI). |
 | `apps/asset-processor` | `@whoobe-cms/asset-processor` | Express microservice for asset upload/processing (Sharp, exiftool, S3) and the public `/dam-asset/*` proxy. |
 | `apps/admin-dashboard` | `@whoobe-cms/admin-dashboard` | Vue 3 + Vite admin UI (overview, data objects, DAM, documents, pages, websites, settings). |
@@ -186,3 +188,48 @@ pnpm dev         # dev mode for all apps/packages
 pnpm lint        # lint all apps/packages
 pnpm typecheck   # typecheck all apps/packages
 ```
+
+## Publish a Mobile App (iOS/Android)
+
+Generate a native mobile app from your CMS website's app pages using Capacitor:
+
+```bash
+# Interactive script (recommended)
+./publish-mobile.sh
+
+# Or directly via CLI
+pnpm run --filter @whoobe-cms/mobile-app build
+node packages/mobile-app/bin/whoobe-mobile.js \
+  --api-url https://cms.example.com \
+  --website-id <uuid> \
+  --out-dir ./sites/my-mobile-app
+
+cd ./sites/my-mobile-app
+npm install
+npm run build
+npx cap add android
+npx cap add ios      # macOS only
+npx cap sync
+npx cap open android # or: npx cap open ios
+```
+
+The generated app is a minimal Vite + Vue 3 SPA with hash routing, Alpine.js, Tailwind (browser runtime), and Capacitor v7. It fetches pages live from the CMS public API — same renderer that powers the browser preview. See `docs/guides/publish/capacitor-mobile-app.md` for the full guide.
+
+## Publish a Website (SSR)
+
+Generate a standalone Nuxt 3 or Next.js site for production deployment:
+
+```bash
+# Interactive script
+./publish-site.sh
+
+# Or directly via CLI
+pnpm run --filter @whoobe-cms/publish build
+node packages/publish/bin/whoobe-publish.js \
+  --api-url https://cms.example.com \
+  --website-id <uuid> \
+  --out-dir ./sites/my-site \
+  --framework vue
+```
+
+See `docs/guides/publish/website-publishing.md` for the full guide.
