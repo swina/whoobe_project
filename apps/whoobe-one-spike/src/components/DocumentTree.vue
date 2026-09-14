@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 min-h-0 flex flex-col text-xs">
+  <div class="flex-1 min-h-0 flex flex-col text-xs font-mono">
     <div class="flex items-center gap-1.5 px-3 py-2 border-b shrink-0 text-[10px] text-gray-400">
       <span>Tree of</span>
       <span class="font-semibold text-gray-600 capitalize">{{ rootLabel }}</span>

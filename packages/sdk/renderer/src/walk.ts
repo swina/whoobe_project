@@ -41,7 +41,16 @@ function buildStyle(node: WhoobeElementNode): string {
 
 function buildAttributes(node: WhoobeElementNode): Record<string, unknown> {
   const attrs = node.data?.attributes
-  return attrs && typeof attrs === 'object' ? (attrs as Record<string, unknown>) : {}
+  const base = attrs && typeof attrs === 'object' ? (attrs as Record<string, unknown>) : {}
+  // Merge Alpine.js directives from the node's native `alpine` field,
+  // safely coercing non-string values to empty string so Alpine never
+  // receives `x-data="[object Object]"`.
+  if (node.alpine && typeof node.alpine === 'object') {
+    for (const [k, v] of Object.entries(node.alpine)) {
+      base[k] = typeof v === 'string' ? v : ''
+    }
+  }
+  return base
 }
 
 async function resolveNodeLink(

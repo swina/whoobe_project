@@ -8,6 +8,8 @@ export interface TemplateSlot {
   snippetIds?: string[] | null
   className?: string | null
   style?: string | null
+  /** Alpine.js directives applied to the slot wrapper element. */
+  alpine?: Record<string, string> | null
   /** Directly-authored Element tree(s) rendered in the slot alongside the
    *  module pages (a single node or an array of nodes). */
   content?: unknown | null
@@ -15,11 +17,15 @@ export interface TemplateSlot {
 
 export interface WebsiteTemplateLayout {
   header?: TemplateSlot | null
+  appHeader?: TemplateSlot | null
   aside?: TemplateSlot | null
   footer?: TemplateSlot | null
+  appFooter?: TemplateSlot | null
   /** Main body wrapper — className/style applied to the <main> element in
    *  preview. Same options as header minus snippetIds. */
   main?: TemplateSlot | null
+  /** Body element — className/style/alpine applied to the root page wrapper. */
+  body?: TemplateSlot | null
   /** 404 error page — rendered with module pages when the routed page is
    *  not found. Same options as header including snippets. */
   notFound404?: TemplateSlot | null

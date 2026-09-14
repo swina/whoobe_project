@@ -1,5 +1,52 @@
 # Changelog
 
+## [Template per-page-type slots: appHeader/appFooter for app/mobile pages] — 2026-09-14
+- **`packages/core/src/db/website-templates-schema.ts`**: Added `appHeader?` and `appFooter?` optional slots to `WebsiteTemplateLayout`. When set, these override `header`/`footer` for pages with `kind === 'app'`, enabling a bottom navigation bar for mobile pages while the desktop header stays unchanged.
+- **`apps/core-api/src/server.ts`**: Both public page endpoints (locale-based and SEO-friendly) now check `page.kind === 'app'` and prefer `template.layout.appHeader`/`appFooter` over `header`/`footer` when composing the layout. The snippet collection loop also includes the new slots so their snippets are resolved.
+- **`apps/admin-dashboard/src/utils/website-templates-api.ts`**: Added `appHeader` and `appFooter` to the client-side `WebsiteTemplateLayout` type.
+- **`apps/admin-dashboard/src/components/websites/WebsiteTemplatesManager.vue`**: Added slot editors for `appHeader` and `appFooter` in the template form, including snippet assignments, wrapper classes/style, and custom elements JSON. List view shows an "app:" summary when app-specific slots are configured. Snippet chips now display in `snippetIds` array order (respecting the render order), and are draggable via HTML5 drag-and-drop to reorder them within each slot. Added an Alpine.js directives JSON textarea to every slot editor — directives are parsed on save and applied to the slot wrapper element via `v-bind`.
+
+## [Template body slot: Alpine directives on the root page wrapper] — 2026-09-14
+- **`packages/core/src/db/website-templates-schema.ts`**: Added `body?: TemplateSlot | null` to `WebsiteTemplateLayout`.
+- **`apps/core-api/src/server.ts`**: Both layout composition blocks include `body: slot(template.layout.body, true)` in the response.
+- **`packages/sdk/renderer/src/walk.ts`**: Fixed `buildAttributes` to merge `node.alpine` into the descriptor attributes — Alpine directives are now rendered correctly as element attributes instead of being incorrectly nested inside `data.attributes`.
+- **`packages/sdk/renderer/src/compose-layout.ts`**: `slotDescriptor` now uses the native `alpine` field on the element node instead of `data.attributes`. Body slot is excluded from SDK composition (handled directly by PublicPage.vue via `v-bind`).
+- **`apps/whoobe-one-spike/src/pages-api.ts`**: Added `body` to the inline slot types.
+- **`apps/whoobe-one-spike/src/views/PublicPage.vue`**: Added `v-bind="slotAlpine(layout.body)"` on the root `<div class="whoobe-page">` wrapper. `slotAlpine` now coerces non-string values to prevent `x-data="[object Object]"`.
+
+## [Fix Alpine value coercion: guard against non-string values in directives] — 2026-09-14
+- **`packages/sdk/renderer/src/walk.ts`**: `buildAttributes` already coerces non-string Alpine values to empty string, preventing `x-data="[object Object]"` at the SDK descriptor level.
+- **`apps/admin-dashboard/src/components/websites/WebsiteTemplatesManager.vue`**: `parseSlotAlpine` now validates that the parsed JSON is an object with only string values — saves with non-string values (e.g. `"x-data": {"open": false}`) now throw a clear validation error.
+- **`apps/admin-dashboard/src/utils/website-templates-api.ts`**: Added `body` to the client-side layout type.
+- **`apps/admin-dashboard/src/components/websites/WebsiteTemplatesManager.vue`**: Added `body` to the slot list with only className/style/alpine fields (no snippets/modules/custom elements).
+
+## [Fix Alpine directive guard: safeAlpineValue in slotAlpine, missing body in reactive] — 2026-09-14
+- **`apps/whoobe-one-spike/src/views/PublicPage.vue`**: `slotAlpine` now applies `safeAlpineValue()` to string Alpine directive values, matching the preview components' behavior and preventing bare identifiers like `appMenu` from causing ReferenceErrors.
+- **`apps/admin-dashboard/src/components/websites/WebsiteTemplatesManager.vue`**: Added missing `body` key to `slotAlpineText` and `slotContentText` reactive initializers. Updated the Alpine directives textarea placeholder to show the correct format (`"x-data": "{ open: false }"` instead of `"x-data": ""`).
+- **`apps/admin-dashboard/src/utils/website-templates-api.ts`**: Added `body` to the client-side layout type.
+
+## [Template slots: Alpine.js directives per section] — 2026-09-14
+- **`packages/core/src/db/website-templates-schema.ts`**: Added optional `alpine?: Record<string, string>` field to `TemplateSlot` — each slot can carry Alpine.js directives (`x-data`, `x-show`, `x-collapse`, etc.) applied to the wrapper element.
+- **`apps/core-api/src/server.ts`**: All 4 `slot()` inner functions now include `alpine: s.alpine ?? {}` in the returned slot object, so Alpine directives flow from template storage to the API response.
+- **`packages/sdk/renderer/src/compose-layout.ts`**: Added `alpine` to `PublicTemplateSlot` interface; `slotDescriptor` merges Alpine directives into the slot wrapper's `data.attributes` so they render as element attributes in both Vue and React adapters.
+- **`apps/whoobe-one-spike/src/pages-api.ts`**: Added `alpine?: Record<string, string>` to each inline slot type in `PublicPageLookup.layout`.
+- **`apps/whoobe-one-spike/src/views/PublicPage.vue`**: Added `slotAlpine()` helper and `v-bind="slotAlpine(slot)"` on all slot wrapper elements (`<header>`, `<aside>`, `<main>`, `<footer>`) in both the normal layout and not-found fallback paths.
+- **`apps/admin-dashboard/src/utils/website-templates-api.ts`**: Added optional `alpine` to the client-side `TemplateSlot` type.
+- **`apps/admin-dashboard/src/components/websites/WebsiteTemplatesManager.vue`**: Added an Alpine directives JSON textarea to each slot editor, with parse-on-save and load-on-edit support. The slot summary in the list view shows `⚡ alpine` when directives are set.
+
+## [Install Alpine.js collapse plugin] — 2026-09-14
+- **`apps/whoobe-one-spike/package.json`**: Added `@alpinejs/collapse` dependency and `@types/alpinejs__collapse` dev dependency.
+- **`apps/whoobe-one-spike/src/main.ts`**: Imported `@alpinejs/collapse` and registered via `Alpine.plugin(collapse)`. The `x-collapse` directive (no value required) is now available for toggling element visibility with a smooth slide animation.
+
+## [Fix Alpine directives: allow valueless directives like x-collapse] — 2026-09-14
+- **`apps/whoobe-one-spike/src/components/advanced/AlpineControl.vue`**: Removed `.filter((name) => alpine[name])` from the `rows` computed so valueless directives (e.g. `x-collapse`, `x-cloak`) are shown and editable in the UI. Added `x-collapse.duration` to the `DIRECTIVES` preset list. When `x-collapse.duration` is selected, the value is appended to the directive key as `x-collapse.duration.{value}` (e.g. `x-collapse.duration.2000ms`) — this matches how Alpine's collapse plugin expects the duration modifier.
+- **`apps/whoobe-one-spike/src/components/preview/BlockElementPreview.vue`**: Changed `alpineAttrs` to emit directives with empty string values instead of filtering them out — `x-collapse` (no value) now renders in the DOM.
+- **`apps/whoobe-one-spike/src/components/preview/BlockContainerPreview.vue`**: Same fix.
+- **`apps/whoobe-one-spike/src/components/preview/BlockSliderPreview.vue`**: Same fix.
+
+## [Fix template pattern matching: use original path before rootPath stripping] — 2026-09-14
+- **`apps/core-api/src/server.ts`**: Template path patterns (e.g. `/app*`) were matched against `requestPath` **after** rootPath stripping, so a pattern like `/app*` would never match `/app/settings` (rootPath `/app` stripped the path to `/settings`). Fixed both public page endpoints (`/public/pages/:locale/*` and `/public/page/*`) by saving the original path in `templatePath` before rootPath stripping, and using it for `getWebsiteTemplateForPath()`.
+
 ## [Fix local dev: base path conditional via VITE_BASE_URL env var] — 2026-09-14
 - **`apps/whoobe-one-spike/vite.config.ts`**: Changed base from hardcoded `/whoobe-one/` to `process.env.VITE_BASE_URL || '/'`. Local dev (`npm run dev`) now serves at `/` again — asset paths work without the nginx proxy prefix.
 - **`Dockerfile`**: Added `ARG VITE_BASE_URL` and `ENV VITE_BASE_URL=$VITE_BASE_URL` to the build stage so Docker builds pass the correct base path.

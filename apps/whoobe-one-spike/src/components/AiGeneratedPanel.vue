@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 min-h-0 flex flex-col text-sm">
+  <div class="flex-1 min-h-0 flex flex-col text-xs font-mono">
     <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
       <span class="text-xs font-semibold text-gray-600">AI generations</span>
       <button

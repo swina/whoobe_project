@@ -10,6 +10,7 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@alpinejs/collapse": "^3.17.2",
     "@lucide/vue": "^1.1.0",
     "@tailwindcss/browser": "^4.3.3",
     "@tiptap/extension-image": "^2.11.5",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@types/alpinejs": "^3.13.11",
+    "@types/alpinejs__collapse": "^3.13.4",
     "@types/dragula": "^3.7.5",
     "@types/file-saver": "^2.0.7",
     "@types/jsonpath": "^0.2.4",

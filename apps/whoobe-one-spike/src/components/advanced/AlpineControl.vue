@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-2">
+  <div class="flex flex-col gap-2 font-mono text-xs">
     <div v-if="rows.length" class="flex flex-col gap-1">
       <div v-for="row in rows" :key="row.name" class="flex flex-col gap-0.5 border rounded bg-white p-1.5">
         <div class="flex items-center gap-1">
@@ -44,7 +44,7 @@ import { X } from '@lucide/vue'
 import { useEditorStore } from '../../store/editor'
 
 const DIRECTIVES = [
-  'x-data', 'x-init', 'x-show', 'x-bind', 'x-bind:class', 'x-on', 'x-on:click',
+  'x-data', 'x-init', 'x-show', 'x-collapse', 'x-collapse.duration' , 'x-bind', 'x-bind:class', 'x-on', 'x-on:click',
   'x-text', 'x-html', 'x-model', 'x-for', 'x-transition', 'x-transition:enter',
   'x-transition:enter-start', 'x-transition:enter-end', 'x-transition:leave',
   'x-transition:leave-start', 'x-transition:leave-end', 'x-effect', 'x-ignore',
@@ -60,7 +60,6 @@ const rows = computed(() => {
   const alpine = (editor.current as any)?.alpine as Record<string, string> | undefined
   if (!alpine) return []
   return Object.keys(alpine)
-    .filter((name) => alpine[name])
     .map((name) => ({ name, value: alpine[name] }))
 })
 
@@ -70,7 +69,10 @@ function addDirective() {
   if (!name) return
   const current = editor.current as any
   if (!current.alpine) current.alpine = {}
-  current.alpine[name] = newValue.value
+  const key = name === 'x-collapse.duration' && newValue.value
+    ? `x-collapse.duration.${newValue.value}`
+    : name
+  current.alpine[key] = newValue.value
   newDirective.value = ''
   customDirective.value = ''
   newValue.value = ''
@@ -79,7 +81,12 @@ function addDirective() {
 function setDirective(name: string, value: string) {
   const current = editor.current as any
   if (!current?.alpine) return
-  current.alpine[name] = value
+  if (name === 'x-collapse.duration') {
+    current.alpine[`x-collapse.duration.${value}`] = value
+    delete current.alpine[name]
+  } else {
+    current.alpine[name] = value
+  }
 }
 
 function removeDirective(name: string) {

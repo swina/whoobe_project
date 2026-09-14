@@ -1973,6 +1973,7 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
     let websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
     let rootPath = typeof req.query.rootPath === 'string' ? req.query.rootPath : null;
     let requestPath = '/' + (req.params[0] ?? '');
+    const templatePath = requestPath;
     const locale = req.params.locale;
 
     // Strip the rootPath prefix from the request path when present and
@@ -2044,7 +2045,7 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
                 pages.push({ id: typeof nodeId === 'string' ? nodeId : 'slot-custom', title: 'Custom', content: node });
               }
               if (pages.length === 0 && !allowEmptyPages) return null;
-              return { className: s.className ?? '', style: s.style ?? '', pages };
+              return { className: s.className ?? '', style: s.style ?? '', alpine: s.alpine ?? {}, pages };
             };
             const nfSlot = slot(nfTpl.layout.notFound404) ?? { className: '', style: '', pages: [] };
             const contentPage = {
@@ -2092,13 +2093,13 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
     const layoutWebsiteId = websiteId ?? page.websiteId;
     if (layoutWebsiteId) {
       try {
-        const template = await getWebsiteTemplateForPath(layoutWebsiteId, requestPath);
+        const template = await getWebsiteTemplateForPath(layoutWebsiteId, templatePath);
         if (template) {
           const website = await getWebsite(layoutWebsiteId);
           const modules = await listPublishedModulePages(layoutWebsiteId, locale, website?.defaultLocale ?? null);
           const byId = new Map(modules.map((m) => [m.id, m]));
-          const snippetIds = new Set<string>();
-          for (const slot of [template.layout.header, template.layout.aside, template.layout.footer, template.layout.main, template.layout.notFound404]) {
+const snippetIds = new Set<string>();
+          for (const slot of [template.layout.header, template.layout.appHeader, template.layout.aside, template.layout.footer, template.layout.appFooter, template.layout.main, template.layout.notFound404]) {
             for (const sid of slot?.snippetIds ?? []) snippetIds.add(sid);
           }
           const snippets = await Promise.all([...snippetIds].map((id) => getWhoobeOneSnippet(id)));
@@ -2123,15 +2124,16 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
               pages.push({ id: typeof id === 'string' ? id : 'slot-custom', title: 'Custom', content: node });
             }
             if (pages.length === 0 && !allowEmptyPages) return null;
-            return { className: s.className ?? '', style: s.style ?? '', pages };
+            return { className: s.className ?? '', style: s.style ?? '', alpine: s.alpine ?? {}, pages };
           };
           layout = {
             template: { id: template.id, name: template.name },
-            header: slot(template.layout.header),
+            header: slot(page.kind === 'app' && template.layout.appHeader ? template.layout.appHeader : template.layout.header),
             aside: slot(template.layout.aside),
             main: slot(template.layout.main, true),
-            footer: slot(template.layout.footer),
+            footer: slot(page.kind === 'app' && template.layout.appFooter ? template.layout.appFooter : template.layout.footer),
             notFound404: slot(template.layout.notFound404),
+            body: slot(template.layout.body, true),
           };
         }
       } catch (templateError) {
@@ -2154,6 +2156,7 @@ app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => 
   try {
     let websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
     let requestPath = '/' + (req.params[0] ?? '');
+    const templatePath = requestPath;
 
     // Auto-detect rootPath from the first path segment.
     if (!websiteId && requestPath !== '/') {
@@ -2217,7 +2220,7 @@ app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => 
                 pages.push({ id: typeof nodeId === 'string' ? nodeId : 'slot-custom', title: 'Custom', content: node });
               }
               if (pages.length === 0 && !allowEmptyPages) return null;
-              return { className: s.className ?? '', style: s.style ?? '', pages };
+              return { className: s.className ?? '', style: s.style ?? '', alpine: s.alpine ?? {}, pages };
             };
             const nfSlot = slot(nfTpl.layout.notFound404) ?? { className: '', style: '', pages: [] };
             const contentPage = {
@@ -2257,13 +2260,13 @@ app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => 
     const layoutWebsiteId = websiteId ?? page.websiteId;
     if (layoutWebsiteId) {
       try {
-        const template = await getWebsiteTemplateForPath(layoutWebsiteId, requestPath);
+        const template = await getWebsiteTemplateForPath(layoutWebsiteId, templatePath);
         if (template) {
           const website = await getWebsite(layoutWebsiteId);
           const modules = await listPublishedModulePages(layoutWebsiteId, locale, website?.defaultLocale ?? null);
           const byId = new Map(modules.map((m) => [m.id, m]));
 const snippetIds = new Set<string>();
-          for (const slot of [template.layout.header, template.layout.aside, template.layout.footer, template.layout.main, template.layout.notFound404]) {
+          for (const slot of [template.layout.header, template.layout.appHeader, template.layout.aside, template.layout.footer, template.layout.appFooter, template.layout.main, template.layout.notFound404]) {
             for (const sid of slot?.snippetIds ?? []) snippetIds.add(sid);
           }
           const snippets = await Promise.all([...snippetIds].map((id) => getWhoobeOneSnippet(id)));
@@ -2284,15 +2287,16 @@ const snippetIds = new Set<string>();
               pages.push({ id: typeof id === 'string' ? id : 'slot-custom', title: 'Custom', content: node });
             }
             if (pages.length === 0 && !allowEmptyPages) return null;
-            return { className: s.className ?? '', style: s.style ?? '', pages };
+            return { className: s.className ?? '', style: s.style ?? '', alpine: s.alpine ?? {}, pages };
           };
           layout = {
             template: { id: template.id, name: template.name },
-            header: slot(template.layout.header),
+            header: slot(page.kind === 'app' && template.layout.appHeader ? template.layout.appHeader : template.layout.header),
             aside: slot(template.layout.aside),
             main: slot(template.layout.main, true),
-            footer: slot(template.layout.footer),
+            footer: slot(page.kind === 'app' && template.layout.appFooter ? template.layout.appFooter : template.layout.footer),
             notFound404: slot(template.layout.notFound404),
+            body: slot(template.layout.body, true),
           };
         }
       } catch (templateError) {
