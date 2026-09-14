@@ -14,6 +14,8 @@
     "@whoobe-cms/core": "workspace:*",
     "@whoobe-cms/figma-converter": "workspace:*",
     "@whoobe-cms/migration-tool": "workspace:*",
+    "@whoobe-cms/publish": "workspace:*",
+    "@whoobe-cms/renderer": "workspace:*",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^4.21.2"
