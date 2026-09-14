@@ -1,0 +1,30 @@
+{
+  "name": "@whoobe-cms/mobile-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/cli.js",
+  "types": "dist/cli.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js",
+      "default": "./dist/cli.js"
+    }
+  },
+  "bin": {
+    "whoobe-mobile": "./bin/whoobe-mobile.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@whoobe-cms/renderer": "workspace:*",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  }
+}
