@@ -52,9 +52,10 @@
   - Added `pwaConfig` field to `ScaffoldOptions` interface.
 
 ## [Generate Mobile App button with preview in PWA settings] — 2026-09-14
-- **`apps/core-api/src/server.ts`**: Fixed PATCH `/whoobe-one/websites/:id` to forward `pwaEnabled`/`pwaConfig` to `updateWebsite()` (was silently ignored). Added `alpine?` to both `slot()` function parameter types. Added `POST /whoobe-one/websites/:id/generate-pwa` endpoint that runs the publish generator in a temp directory and streams the file tree + key file contents as NDJSON for in-browser preview.
+- **`apps/core-api/src/server.ts`**: Fixed PATCH `/whoobe-one/websites/:id` to forward `pwaEnabled`/`pwaConfig` to `updateWebsite()` (was silently ignored). Added `alpine?` to both `slot()` function parameter types. Added `POST /whoobe-one/websites/:id/generate-pwa` endpoint that runs the publish generator in a temp directory and streams the file tree + key file contents as NDJSON for in-browser preview. Passes `appOnly: true` so only `kind === 'app'` pages are included in the generated mobile app preview.
 - **`apps/core-api/package.json`**: Added `@whoobe-cms/publish` and `@whoobe-cms/renderer` dependencies.
 - **`packages/publish/package.json`**: Added `main`, `types`, and `exports` fields so the package can be imported programmatically (not just CLI).
+- **`packages/publish/src/cli.ts`**: Added `appOnly` to `GenerateOptions` and `ScaffoldOptions`. When true, `generateNuxtSite` filters pages to only `kind === 'app'`. The generated site wraps all pages in `AppShell` unconditionally (no `v-if="page.kind === 'app'"` runtime check), and PWA is always enabled.
 - **`apps/admin-dashboard/src/components/settings/PwaSettingsCard.vue`**: Added "Generate Mobile App Preview" section below the config form with a Generate button, real-time log viewer (NDJSON stream), file tree sidebar, and file content preview pane.
 
 ## [Fix package resolution in temp dir: add monorepoRoot option] — 2026-09-14
