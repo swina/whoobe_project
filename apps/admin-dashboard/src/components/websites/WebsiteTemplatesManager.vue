@@ -44,25 +44,32 @@
         </label>
       </div>
 
-      <div v-for="slotKey in (['header', 'aside', 'main', 'footer', 'notFound404'] as const)" :key="slotKey" class="border border-slate-800 light:border-slate-200 rounded-lg p-2 space-y-2">
+      <div v-for="slotKey in (['header', 'appHeader', 'aside', 'footer', 'appFooter', 'main', 'body', 'notFound404'] as const)" :key="slotKey" class="border border-slate-800 light:border-slate-200 rounded-lg p-2 space-y-2">
         <div class="flex items-center justify-between">
           <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            {{ slotKey === 'notFound404' ? '404' : slotKey }}
+            {{ slotKey === 'notFound404' ? '404' : slotKey === 'appHeader' ? 'App header' : slotKey === 'appFooter' ? 'App footer' : slotKey === 'body' ? 'Body' : slotKey }}
           </div>
         </div>
-        <div v-if="slotKey !== 'main'" class="flex flex-wrap items-center gap-1.5">
-          <template v-if="assignedSnippets(slotKey).length">
-            <span
-              v-for="s in assignedSnippets(slotKey)"
-              :key="s.id"
-              class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-teal-600/15 border border-teal-600/30 text-xs text-teal-200 light:text-teal-800"
-            >
-              {{ s.name }}
-              <button type="button" class="text-teal-300 hover:text-white light:hover:text-black" title="Remove snippet" @click="removeSnippet(slotKey, s.id)">×</button>
-            </span>
-          </template>
-          <span v-else class="text-[11px] text-slate-500 italic">No snippets assigned.</span>
-          <button type="button" class="text-xs font-semibold text-teal-400 hover:text-teal-300" @click="snippetPicker = slotKey">+ Add snippet</button>
+        <div v-if="slotKey !== 'main' && slotKey !== 'body'" class="flex flex-col gap-1.5">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <template v-if="orderedSnippets(slotKey).length">
+              <span
+                v-for="(s, si) in orderedSnippets(slotKey)"
+                :key="s.id"
+                draggable="true"
+                @dragstart="onDragStart(slotKey, si)"
+                @dragover.prevent="onDragOver(slotKey, si)"
+                @dragend="onDragEnd(slotKey)"
+                class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-teal-600/15 border border-teal-600/30 text-xs text-teal-200 light:text-teal-800 cursor-grab active:cursor-grabbing"
+              >
+                <span class="text-teal-400/60 text-[10px]">⠿</span>
+                {{ s.name }}
+                <button type="button" class="text-teal-300 hover:text-white light:hover:text-black" title="Remove snippet" @click="removeSnippet(slotKey, s.id)">×</button>
+              </span>
+            </template>
+            <span v-else class="text-[11px] text-slate-500 italic">No snippets assigned.</span>
+            <button type="button" class="text-xs font-semibold text-teal-400 hover:text-teal-300" @click="snippetPicker = slotKey">+ Add snippet</button>
+          </div>
         </div>
         <div class="flex items-center gap-3 pt-1 w-full">
         <label class="flex flex-col gap-1 w-1/2 text-xs text-slate-400">
@@ -86,14 +93,24 @@
           />
         </label>
         </div>
-        <label class="flex flex-col gap-1 text-xs text-slate-400">
-          Custom elements (JSON - an Element tree from the Whoobe One editor, or an array of them)
+        <label v-if="slotKey !== 'body'" class="flex flex-col gap-1 text-xs text-slate-400">
+          Custom elements (JSON — an Element tree or array of trees)
           <textarea
             :value="slotContentText[slotKey]"
             @input="slotContentText[slotKey] = ($event.target as HTMLTextAreaElement).value"
             rows="3"
             class="w-full px-2 py-1 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800 font-mono resize-none"
             placeholder='{ "id": "logo", "type": "element", "element": "img", "image": { "url": "/logo.png" } }'
+          ></textarea>
+        </label>
+        <label class="flex flex-col gap-1 text-xs text-slate-400">
+          Alpine.js directives (JSON object — x-data value must be a JS expression string, e.g. "x-data": "{ open: false }")
+          <textarea
+            :value="slotAlpineText[slotKey]"
+            @input="slotAlpineText[slotKey] = ($event.target as HTMLTextAreaElement).value"
+            rows="2"
+            class="w-full px-2 py-1 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800 font-mono resize-none"
+            placeholder='{ "x-data": "{ appMenu: false, appPage: true }", "x-show": "open" }'
           ></textarea>
         </label>
       </div>
@@ -123,6 +140,8 @@
             <span>header: {{ slotSummary(t.layout.header) }}</span>
             <span>main: {{ slotSummary(t.layout.main) }}</span>
             <span>footer: {{ slotSummary(t.layout.footer) }}</span>
+            <span v-if="t.layout.appHeader || t.layout.appFooter">app: {{ slotSummary(t.layout.appHeader) }} / {{ slotSummary(t.layout.appFooter) }}</span>
+            <span v-if="t.layout.body">body: {{ slotSummary(t.layout.body) }}</span>
           </div>
         </div>
         <div class="flex items-center gap-2 shrink-0 ml-3">
@@ -226,7 +245,7 @@ import { fetchSnippets, type WhoobeSnippet } from '../../utils/snippets-api'
 
 const props = defineProps<{ websiteId: string }>()
 
-type SlotKey = 'header' | 'aside' | 'footer' | 'main' | 'notFound404'
+type SlotKey = 'header' | 'appHeader' | 'aside' | 'footer' | 'appFooter' | 'main' | 'body' | 'notFound404'
 
 const templates = ref<WebsiteTemplate[]>([])
 const modulePages = ref<WhoobeOnePage[]>([])
@@ -259,7 +278,9 @@ const filteredSnippets = computed(() => {
 
 // Directly-authored slot elements, kept as JSON text per slot (validated on
 // save, mirroring whoobe-studio's raw-JSON editing pattern).
-const slotContentText = reactive<Record<SlotKey, string>>({ header: '', aside: '', footer: '', main: '', notFound404: '' })
+const slotContentText = reactive<Record<SlotKey, string>>({ header: '', appHeader: '', aside: '', footer: '', appFooter: '', main: '', body: '', notFound404: '' })
+// Alpine directives JSON text per slot — kept as raw JSON text, validated on save.
+const slotAlpineText = reactive<Record<SlotKey, string>>({ header: '', appHeader: '', aside: '', footer: '', appFooter: '', main: '', body: '', notFound404: '' })
 
 function contentToText(content: unknown): string {
   return content != null ? JSON.stringify(content, null, 2) : ''
@@ -268,6 +289,25 @@ function contentToText(content: unknown): string {
 function parseSlotContent(slot: SlotKey): unknown {
   const text = slotContentText[slot].trim()
   return text ? JSON.parse(text) : null
+}
+
+function alpineToText(alpine: Record<string, string> | null | undefined): string {
+  return alpine && Object.keys(alpine).length > 0 ? JSON.stringify(alpine, null, 2) : ''
+}
+
+function parseSlotAlpine(slot: SlotKey): Record<string, string> | null {
+  const text = slotAlpineText[slot].trim()
+  if (!text) return null
+  const parsed = JSON.parse(text)
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`Alpine directives must be a JSON object, got ${typeof parsed}`)
+  }
+  for (const [k, v] of Object.entries(parsed)) {
+    if (typeof v !== 'string') {
+      throw new Error(`Alpine directive "${k}" value must be a string, got ${typeof v}`)
+    }
+  }
+  return parsed as Record<string, string>
 }
 
 const form = reactive({
@@ -307,16 +347,30 @@ function startNew() {
   form.isDefault = false
   form.layout = {
     header: { pageIds: [], snippetIds: [], className: '', style: '' },
+    appHeader: null,
     aside: null,
-    main: null,
     footer: { pageIds: [], snippetIds: [], className: '', style: '' },
+    appFooter: null,
+    main: null,
+    body: null,
     notFound404: null,
   }
   slotContentText.header = ''
+  slotContentText.appHeader = ''
   slotContentText.aside = ''
   slotContentText.main = ''
   slotContentText.footer = ''
+  slotContentText.appFooter = ''
   slotContentText.notFound404 = ''
+  slotContentText.body = ''
+  slotAlpineText.header = ''
+  slotAlpineText.appHeader = ''
+  slotAlpineText.aside = ''
+  slotAlpineText.main = ''
+  slotAlpineText.footer = ''
+  slotAlpineText.appFooter = ''
+  slotAlpineText.notFound404 = ''
+  slotAlpineText.body = ''
   saveOk.value = false
   saveError.value = ''
 }
@@ -333,19 +387,34 @@ function editTemplate(t: WebsiteTemplate) {
     snippetIds: s?.snippetIds ?? [],
     className: s?.className ?? '',
     style: s?.style ?? '',
+    alpine: s?.alpine ?? null,
   })
   form.layout = {
     header: blank(t.layout.header),
+    appHeader: t.layout.appHeader ? blank(t.layout.appHeader) : null,
     aside: t.layout.aside ? blank(t.layout.aside) : null,
     main: t.layout.main ? blank(t.layout.main) : null,
     footer: blank(t.layout.footer),
+    appFooter: t.layout.appFooter ? blank(t.layout.appFooter) : null,
+    body: t.layout.body ? blank(t.layout.body) : null,
     notFound404: t.layout.notFound404 ? blank(t.layout.notFound404) : null,
   }
   slotContentText.header = contentToText(t.layout.header?.content)
+  slotContentText.appHeader = contentToText(t.layout.appHeader?.content)
   slotContentText.aside = contentToText(t.layout.aside?.content)
   slotContentText.main = contentToText(t.layout.main?.content)
   slotContentText.footer = contentToText(t.layout.footer?.content)
+  slotContentText.appFooter = contentToText(t.layout.appFooter?.content)
   slotContentText.notFound404 = contentToText(t.layout.notFound404?.content)
+  slotContentText.body = contentToText(t.layout.body?.content)
+  slotAlpineText.header = alpineToText(t.layout.header?.alpine)
+  slotAlpineText.appHeader = alpineToText(t.layout.appHeader?.alpine)
+  slotAlpineText.aside = alpineToText(t.layout.aside?.alpine)
+  slotAlpineText.main = alpineToText(t.layout.main?.alpine)
+  slotAlpineText.footer = alpineToText(t.layout.footer?.alpine)
+  slotAlpineText.appFooter = alpineToText(t.layout.appFooter?.alpine)
+  slotAlpineText.notFound404 = alpineToText(t.layout.notFound404?.alpine)
+  slotAlpineText.body = alpineToText(t.layout.body?.alpine)
   saveOk.value = false
   saveError.value = ''
 }
@@ -395,21 +464,49 @@ function slotSnippetIds(slot: SlotKey): string[] {
   return form.layout[slot]?.snippetIds ?? []
 }
 
-function assignedSnippets(slot: SlotKey): WhoobeSnippet[] {
-  return snippets.value.filter((s) => slotSnippetIds(slot).includes(s.id))
+/** Snippets in the exact order of the slot's snippetIds array. */
+function orderedSnippets(slot: SlotKey): WhoobeSnippet[] {
+  const byId = new Map(snippets.value.map((s) => [s.id, s]))
+  return slotSnippetIds(slot)
+    .map((id) => byId.get(id))
+    .filter((s): s is WhoobeSnippet => !!s)
 }
 
 function toggleSnippet(slot: SlotKey, snippetId: string) {
   const s = ensureSlot(slot)
-  const next = new Set(s.snippetIds ?? [])
-  if (next.has(snippetId)) next.delete(snippetId)
-  else next.add(snippetId)
-  s.snippetIds = [...next]
+  const ids = s.snippetIds ?? []
+  if (ids.includes(snippetId)) {
+    s.snippetIds = ids.filter((id) => id !== snippetId)
+  } else {
+    s.snippetIds = [...ids, snippetId]
+  }
 }
 
 function removeSnippet(slot: SlotKey, snippetId: string) {
   const s = ensureSlot(slot)
   s.snippetIds = (s.snippetIds ?? []).filter((id) => id !== snippetId)
+}
+
+// Drag-and-drop reorder of snippet chips
+const dragState = ref<{ slot: SlotKey; from: number } | null>(null)
+
+function onDragStart(slot: SlotKey, from: number) {
+  dragState.value = { slot, from }
+}
+
+function onDragOver(slot: SlotKey, to: number) {
+  const state = dragState.value
+  if (!state || state.slot !== slot || state.from === to) return
+  const s = ensureSlot(slot)
+  const ids = s.snippetIds ?? []
+  const [moved] = ids.splice(state.from, 1)
+  ids.splice(to, 0, moved)
+  s.snippetIds = ids
+  dragState.value = { slot, from: to }
+}
+
+function onDragEnd(_slot: SlotKey) {
+  dragState.value = null
 }
 
 function slotClassName(slot: SlotKey): string {
@@ -433,28 +530,50 @@ async function save() {
     saveError.value = 'Name is required'
     return
   }
-  // Validate the custom-elements JSON before hitting the API.
+  // Validate the custom-elements and Alpine directives JSON before hitting the API.
   let headerContent: unknown
+  let appHeaderContent: unknown
   let asideContent: unknown
   let mainContent: unknown
   let footerContent: unknown
+  let appFooterContent: unknown
   let notFound404Content: unknown
+  let bodyContent: unknown
+  let headerAlpine: Record<string, string> | null = null
+  let appHeaderAlpine: Record<string, string> | null = null
+  let asideAlpine: Record<string, string> | null = null
+  let mainAlpine: Record<string, string> | null = null
+  let footerAlpine: Record<string, string> | null = null
+  let appFooterAlpine: Record<string, string> | null = null
+  let notFound404Alpine: Record<string, string> | null = null
+  let bodyAlpine: Record<string, string> | null = null
   try {
     headerContent = parseSlotContent('header')
+    appHeaderContent = parseSlotContent('appHeader')
     asideContent = parseSlotContent('aside')
     mainContent = parseSlotContent('main')
     footerContent = parseSlotContent('footer')
+    appFooterContent = parseSlotContent('appFooter')
     notFound404Content = parseSlotContent('notFound404')
+    bodyContent = parseSlotContent('body')
+    headerAlpine = parseSlotAlpine('header')
+    appHeaderAlpine = parseSlotAlpine('appHeader')
+    asideAlpine = parseSlotAlpine('aside')
+    mainAlpine = parseSlotAlpine('main')
+    footerAlpine = parseSlotAlpine('footer')
+    appFooterAlpine = parseSlotAlpine('appFooter')
+    notFound404Alpine = parseSlotAlpine('notFound404')
+    bodyAlpine = parseSlotAlpine('body')
   } catch (e: any) {
-    saveError.value = 'Invalid JSON in custom elements: ' + (e?.message ?? 'invalid')
+    saveError.value = 'Invalid JSON: ' + (e?.message ?? 'invalid')
     return
   }
 
-  const buildSlot = (slot: SlotKey, content: unknown): TemplateSlot | null => {
+  const buildSlot = (slot: SlotKey, content: unknown, alpine: Record<string, string> | null): TemplateSlot | null => {
     const existing = form.layout[slot]
-    if (!existing && content == null) return null
+    if (!existing && content == null && !alpine) return null
     const base = existing ?? { pageIds: [], snippetIds: [], className: '', style: '' }
-    return { ...base, content: content ?? null }
+    return { ...base, content: content ?? null, alpine }
   }
 
   saving.value = true
@@ -468,11 +587,14 @@ async function save() {
       pathPatterns: form.pathPatternsText.split('\n').map((p) => p.trim()).filter(Boolean),
       isDefault: form.isDefault,
       layout: {
-        header: buildSlot('header', headerContent),
-        aside: buildSlot('aside', asideContent),
-        main: buildSlot('main', mainContent),
-        footer: buildSlot('footer', footerContent),
-        notFound404: buildSlot('notFound404', notFound404Content),
+        header: buildSlot('header', headerContent, headerAlpine),
+        appHeader: buildSlot('appHeader', appHeaderContent, appHeaderAlpine),
+        aside: buildSlot('aside', asideContent, asideAlpine),
+        main: buildSlot('main', mainContent, mainAlpine),
+        footer: buildSlot('footer', footerContent, footerAlpine),
+        appFooter: buildSlot('appFooter', appFooterContent, appFooterAlpine),
+        body: buildSlot('body', bodyContent, bodyAlpine),
+        notFound404: buildSlot('notFound404', notFound404Content, notFound404Alpine),
       },
     }
     if (editingId.value) {
@@ -508,6 +630,7 @@ function slotSummary(slot: TemplateSlot | null | undefined): string {
   if (slot.pageIds.length > 0) return modulePages.value.filter((p) => slot.pageIds.includes(p.id)).map((p) => p.title).join(', ') || `${slot.pageIds.length} page(s)`
   if (slot.snippetIds?.length) return `${slot.snippetIds.length} snippet(s)`
   if (slot.content) return 'custom'
+  if (slot.alpine && Object.keys(slot.alpine).length > 0) return '⚡ alpine'
   return '—'
 }
 

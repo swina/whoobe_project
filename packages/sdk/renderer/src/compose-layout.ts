@@ -12,6 +12,8 @@ import type { RenderDescriptor } from './descriptor.js'
 export interface PublicTemplateSlot {
   className: string
   style: string
+  /** Alpine.js directives applied to the wrapper element. */
+  alpine?: Record<string, string>
   pages: { id: string; title: string; content: unknown }[]
 }
 
@@ -23,6 +25,8 @@ export interface PublicLayout {
   /** Main body wrapper — className/style applied to the <main> element. */
   main?: PublicTemplateSlot | null
   footer?: PublicTemplateSlot | null
+  /** Body wrapper — className/style/alpine on the outermost container. */
+  body?: PublicTemplateSlot | null
   /** 404 error page — rendered with module pages when the routed page is
    *  not found. */
   notFound404?: PublicTemplateSlot | null
@@ -35,6 +39,9 @@ export interface ComposedLayout {
   aside: RenderDescriptor | null
   main: RenderDescriptor | null
   footer: RenderDescriptor | null
+  /** Root page wrapper descriptor (class/style/alpine on the outermost
+   *  container). Null when no body slot is configured. */
+  bodyWrap: RenderDescriptor | null
   notFound404: RenderDescriptor | null
   body: RenderDescriptor
 }
@@ -48,6 +55,7 @@ function slotDescriptor(tag: string, slot: PublicTemplateSlot, options: RenderOp
       semantic: tag,
       css: { css: slot.className ?? '', container: '' },
       style: slot.style ?? '',
+      alpine: slot.alpine ?? undefined,
       blocks: slot.pages.map((p) => p.content as never),
     },
     {},
@@ -65,5 +73,5 @@ export async function composeLayout(body: RenderDescriptor, layout: PublicLayout
     layout.footer && layout.footer.pages.length > 0 ? slotDescriptor('footer', layout.footer, options) : null,
     layout.notFound404 && layout.notFound404.pages.length > 0 ? slotDescriptor('notFound404', layout.notFound404, options) : null,
   ])
-  return { header, aside, main, footer, notFound404, body }
+  return { header, aside, main, footer, bodyWrap: null, notFound404, body }
 }

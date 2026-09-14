@@ -2,13 +2,13 @@
   <div v-if="loading" class="p-8 text-center text-gray-400 text-sm">Loading…</div>
   <div v-else-if="error">
     <template v-if="notFoundLayout">
-      <header v-if="notFoundLayout.header" :class="notFoundLayout.header.className" :style="notFoundLayout.header.style">
+      <header v-if="notFoundLayout.header" :class="notFoundLayout.header.className" :style="notFoundLayout.header.style" v-bind="slotAlpine(notFoundLayout.header)">
         <BlockContainerPreview v-for="m in notFoundLayout.header?.pages ?? []" :key="m.id" :doc="m.content" />
       </header>
-      <main :class="notFoundLayout.main?.className ?? ''" :style="notFoundLayout.main?.style ?? ''">
+      <main :class="notFoundLayout.main?.className ?? ''" :style="notFoundLayout.main?.style ?? ''" v-bind="slotAlpine(notFoundLayout.main)">
         <BlockContainerPreview v-for="m in notFoundLayout.notFoundPages ?? []" :key="m.id" :doc="m.content" />
       </main>
-      <footer v-if="notFoundLayout.footer" :class="notFoundLayout.footer.className" :style="notFoundLayout.footer.style">
+      <footer v-if="notFoundLayout.footer" :class="notFoundLayout.footer.className" :style="notFoundLayout.footer.style" v-bind="slotAlpine(notFoundLayout.footer)">
         <BlockContainerPreview v-for="m in notFoundLayout.footer?.pages ?? []" :key="m.id" :doc="m.content" />
       </footer>
     </template>
@@ -17,17 +17,17 @@
   <template v-else-if="doc">
     <!-- Website-template shell (website-templates.md): the routed page is the
          body, wrapped by the template's header/aside/footer module pages. -->
-    <div v-if="layout" class="whoobe-page">
-      <header v-if="layout.header" :class="layout.header.className" :style="layout.header.style">
+    <div v-if="layout" class="whoobe-page" v-bind="slotAlpine(layout.body)">
+      <header v-if="layout.header" :class="layout.header.className" :style="layout.header.style" v-bind="slotAlpine(layout.header)">
         <BlockContainerPreview v-for="m in layout.header.pages" :key="m.id" :doc="m.content" />
       </header>
-      <aside v-if="layout.aside" :class="layout.aside.className" :style="layout.aside.style">
+      <aside v-if="layout.aside" :class="layout.aside.className" :style="layout.aside.style" v-bind="slotAlpine(layout.aside)">
         <BlockContainerPreview v-for="m in layout.aside.pages" :key="m.id" :doc="m.content" />
       </aside>
-      <main :class="layout.main?.className ?? ''" :style="layout.main?.style ?? ''">
+      <main :class="layout.main?.className ?? ''" :style="layout.main?.style ?? ''" v-bind="slotAlpine(layout.main)">
         <BlockContainerPreview :doc="doc" />
       </main>
-      <footer v-if="layout.footer" :class="layout.footer.className" :style="layout.footer.style">
+      <footer v-if="layout.footer" :class="layout.footer.className" :style="layout.footer.style" v-bind="slotAlpine(layout.footer)">
         <BlockContainerPreview v-for="m in layout.footer.pages" :key="m.id" :doc="m.content" />
       </footer>
     </div>
@@ -58,6 +58,7 @@ import BlockContainerPreview from '../components/preview/BlockContainerPreview.v
 import { useThemeStyles } from '../composables/useThemeStyles'
 import { useEditorStore } from '../store/editor'
 import { fetchTheme } from '../themes-api'
+import { safeAlpineValue } from '../helpers'
 
 const route = useRoute()
 const editor = useEditorStore()
@@ -66,6 +67,20 @@ const error = ref(false)
 const doc = ref<any>(null)
 const layout = ref<any>(null)
 const notFoundLayout = ref<any>(null)
+
+/** Extract Alpine.js directives from a slot object for v-bind on wrappers.
+ *  Coerces non-string values to empty string to avoid `[object Object]`,
+ *  and applies safeAlpineValue() on string values so bare identifiers like
+ *  `appMenu` get quoted rather than causing ReferenceErrors. */
+function slotAlpine(slot: { alpine?: Record<string, string> } | null | undefined): Record<string, string> {
+  const src = slot?.alpine
+  if (!src) return {}
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(src)) {
+    out[k] = typeof v === 'string' ? safeAlpineValue(v) : ''
+  }
+  return out
+}
 
 useThemeStyles(() => doc.value)
 

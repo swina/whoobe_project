@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import Alpine from 'alpinejs'
+import collapse from '@alpinejs/collapse'
 import App from './App.vue'
 import router from './router'
 import './style.css'
@@ -19,6 +20,7 @@ import SearchElement from './components/SearchElement.vue'
 // (components/preview/*Preview.vue) does, so Alpine's own MutationObserver
 // simply finds nothing to activate while the editor canvas is showing.
 ;(window as any).Alpine = Alpine
+Alpine.plugin(collapse)
 Alpine.start()
 
 // Preload all available fonts from the build-time font list so the editor

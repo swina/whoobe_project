@@ -94,7 +94,7 @@ const alpineAttrs = computed(() => {
   if (!alpine) return {}
   const result: Record<string, string> = {}
   for (const key of Object.keys(alpine)) {
-    if (alpine[key]) result[key] = safeAlpineValue(alpine[key])
+    result[key] = alpine[key] ? safeAlpineValue(alpine[key]) : ''
   }
   return result
 })

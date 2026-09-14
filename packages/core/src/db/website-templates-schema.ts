@@ -17,6 +17,9 @@ export interface TemplateSlot {
   snippetIds?: string[] | null;
   className?: string | null;
   style?: string | null;
+  /** Alpine.js directives applied to the slot wrapper element (e.g.
+   *  { "x-data": "", "x-show": "open", "x-collapse": "" }). */
+  alpine?: Record<string, string> | null;
   /** A single Element node, or an array of Element nodes (the same JSON
    *  shape whoobe-one-spike's editor produces). Rendered after pageIds. */
   content?: unknown | null;
@@ -24,11 +27,22 @@ export interface TemplateSlot {
 
 export interface WebsiteTemplateLayout {
   header?: TemplateSlot | null;
+  /** Header override for app/mobile pages (kind === 'app'). When set, used
+   *  instead of `header` for app-type pages. */
+  appHeader?: TemplateSlot | null;
   aside?: TemplateSlot | null;
   footer?: TemplateSlot | null;
+  /** Footer override for app/mobile pages (kind === 'app'). When set, used
+   *  instead of `footer` for app-type pages. Use this to show a bottom
+   *  navigation bar instead of a desktop footer. */
+  appFooter?: TemplateSlot | null;
   /** Main body wrapper — className/style applied to the <main> element in
    *  preview. Same options as header minus snippetIds (not supported). */
   main?: TemplateSlot | null;
+  /** Body element — className/style/alpine applied to the root page wrapper.
+   *  Pages/snippets/content are ignored; only className, style, and alpine
+   *  are used. */
+  body?: TemplateSlot | null;
   /** 404 error page — rendered with module pages when the routed page is
    *  not found. Same options as header including snippets. */
   notFound404?: TemplateSlot | null;
