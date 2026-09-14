@@ -2630,6 +2630,7 @@ app.post('/whoobe-one/websites/:id/generate-pwa', requirePermission(PERMISSIONS.
         framework: 'vue',
         revalidate: 60,
         domain: req.hostname,
+        monorepoRoot: join(import.meta.dirname, '..', '..', '..'),
       });
 
       // Read generated file tree

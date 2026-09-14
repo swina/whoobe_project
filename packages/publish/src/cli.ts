@@ -10,6 +10,9 @@ export interface GenerateOptions {
   revalidate: number
   domain?: string
   assetBaseUrl?: string
+  /** Monorepo root for resolving workspace SDK packages. Required when outDir
+   *  is a temp directory outside the monorepo (e.g. /tmp/...). */
+  monorepoRoot?: string
 }
 
 export async function generateNextSite(options: GenerateOptions): Promise<void> {
@@ -74,6 +77,7 @@ export async function generateNextSite(options: GenerateOptions): Promise<void> 
       revalidate,
       domain,
       assetBaseUrl: assetDomain,
+      monorepoRoot: options.monorepoRoot,
     })
 
     console.log(`\nDone! Generated project at: ${outDir}`)
@@ -232,6 +236,11 @@ interface ScaffoldOptions {
   defaultLocale: string
   /** PWA config from website.pwaConfig — { enabled, display, orientation, icons, ... }. */
   pwaConfig?: Record<string, unknown>
+  /** Monorepo root for resolving workspace SDK packages. When not provided,
+   *  defaults to two directories above outDir (legacy behaviour for
+   *  sites/ subdirectory). When outDir is a temp directory outside the
+   *  monorepo (e.g. /tmp/...), this must be set explicitly. */
+  monorepoRoot?: string
 }
 
 /** Determines the home page path for each locale. Tries '/' first (now that
@@ -290,7 +299,7 @@ async function scaffoldNextSite(opts: ScaffoldOptions): Promise<void> {
 
 function scaffoldPackageJson(opts: ScaffoldOptions): string {
   // Resolve SDK paths relative to the generated site dir (e.g. ../../packages/sdk/next)
-  const repoRoot = join(opts.outDir, '..', '..')
+  const repoRoot = opts.monorepoRoot ?? join(opts.outDir, '..', '..')
   const sdkDir = join(repoRoot, 'packages', 'sdk')
   const rel = (p: string) => relative(opts.outDir, p).replace(/\\/g, '/')
   return JSON.stringify({
@@ -793,6 +802,7 @@ export async function generateNuxtSite(options: GenerateOptions): Promise<void> 
       domain,
       assetBaseUrl: assetDomain,
       pwaConfig,
+      monorepoRoot: options.monorepoRoot,
     })
 
     console.log(`\nDone! Generated Nuxt project at: ${outDir}`)
@@ -864,7 +874,7 @@ async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
 }
 
 function nuxtPackageJson(opts: ScaffoldOptions): string {
-  const repoRoot = join(opts.outDir, '..', '..')
+  const repoRoot = opts.monorepoRoot ?? join(opts.outDir, '..', '..')
   const sdkDir = join(repoRoot, 'packages', 'sdk')
   const rel = (p: string) => relative(opts.outDir, p).replace(/\\/g, '/')
   const deps: Record<string, string> = {
