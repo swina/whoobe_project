@@ -94,7 +94,8 @@
 - **`docker-compose.yml`**, **`docker-compose.apps.yml`**: Pass `VITE_BASE_URL: /whoobe-one/` build arg to whoobe-one-spike so Docker builds still produce assets with the correct `/whoobe-one/` prefix for the nginx reverse proxy.
 
 ## [Implement Capacitor mobile app generator] — 2026-09-14
-- **`packages/mobile-app/`**: New package `@whoobe-cms/mobile-app` that scaffolds a standalone Vite + Vue 3 mobile app for a Whoobe CMS website. Uses hash-based routing (for Capacitor compatibility), Alpine.js for interactivity, and the Tailwind browser runtime. The generated app includes Capacitor v7 with plugins for splash screen, status bar, push notifications, and network detection. A minimal `PublicPage.vue` renderes CMS pages via the public API with no editor dependencies. CLI: `whoobe-mobile generate --api-url <url> --website-id <id> --out-dir <path>`.
+- **`packages/mobile-app/`**: New package `@whoobe-cms/mobile-app` that scaffolds a standalone Vite + Vue 3 mobile app for a CMS website. Uses hash-based routing (for Capacitor compatibility), Alpine.js for interactivity, and the Tailwind browser runtime. The generated app includes Capacitor v7 with plugins for splash screen, status bar, push notifications, and network detection. A minimal `PublicPage.vue` renderes CMS pages via the public API with no editor dependencies. CLI: `whoobe-mobile generate --api-url <url> --website-id <id> --out-dir <path>`.
+- **`packages/mobile-app/src/cli.ts`**: Generator fetches all published pages, filters to `kind === 'app'`, and generates explicit routes for each app page with a redirect from `/` to the first app page. The generated `PublicPage.vue` also verifies `page.kind === 'app'` at runtime and shows an error for non-app pages.
 - **`pnpm-lock.yaml`**: Updated with `@capacitor/*` and `alpinejs` dependencies for the new mobile-app package.
 
 ## [LucideIcon editor: edit modal + live icon preview in canvas] — 2026-09-14
