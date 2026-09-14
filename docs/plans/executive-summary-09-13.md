@@ -30,12 +30,13 @@ A differenza dei tradizionali sistemi headless modulari, Whoobe automatizza la p
 * Frictionless: Una licenza open-source permissiva (MIT) azzera il vendor lock-in. Inoltre, include un tool CLI ETL di migrazione nativa che permette di estrarre e importare database legacy Pimcore con un solo click.
 
 ------------------------------
-## 4. Innovazione Mobile: Native PWA Integration ("App Mode")
+## 4. Innovazione Mobile: Native App Delivery ("App Mode")
 Attualmente in fase attiva di sviluppo, l'App Mode eleva Whoobe OP da gestore di contenuti a piattaforma di No-Code/Low-Code Application Delivery aziendale.
-Attivando il layout mobile nel visual builder, la piattaforma genera applicazioni PWA (Progressive Web App) ad alte prestazioni specifiche per smartphone e tablet.
+Attivando il layout mobile nel visual builder, la piattaforma genera applicazioni native per iOS e Android tramite Capacitor.
 
-* Offline-First via SDK: Utilizza un template PWA dedicato (@whoobe-cms/pwa-template) che sfrutta Service Workers (Workbox) per archiviare in locale (caching aggressivo) i dati del PIM e gli asset del DAM compressi.
-* Casi d'uso aziendali: Ideale per creare in pochi minuti app per la forza vendita, cataloghi d'ordine offline per agenti di commercio in mobilità e portali logistici interni, eliminando i costi astronomici dello sviluppo nativo iOS/Android.
+* **Capacitor Native App**: Il generatore CLI (`whoobe-mobile`) produce un'app Vite + Vue 3 standalone con routing hash-based, Alpine.js e Tailwind (runtime CDN). L'app viene poi wrappata con Capacitor v7 per il deploy su App Store e Google Play. Lo stesso renderer `PublicPage.vue` del browser preview garantisce rendering identico senza bug di SSR.
+* **Supporto offline**: Il WebView nativo gestisce la cache HTTP; plugin Capacitor per push notifications, splash screen e status bar.
+* **Casi d'uso aziendali**: Ideale per creare in pochi minuti app per la forza vendita, cataloghi d'ordine offline per agenti di commercio in mobilità e portali logistici interni, eliminando i costi astronomici dello sviluppo nativo iOS/Android puro.
 
 ------------------------------
 ## 5. Target Audience (A chi si rivolge)
