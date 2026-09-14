@@ -52,6 +52,8 @@ services:
     build:
       context: .
       target: whoobe-one-spike
+      args:
+        VITE_BASE_URL: /whoobe-one/
     container_name: whoobe_one_spike
     ports:
       - "3006:80"
