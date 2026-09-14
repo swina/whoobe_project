@@ -163,6 +163,8 @@ function pkgJson(opts: ScaffoldOptions): string {
       typescript: '^5.4.0',
       '@types/alpinejs': '^3.13.0',
       '@capacitor/cli': '^7.0.0',
+      '@capacitor/android': '^7.0.0',
+      '@capacitor/ios': '^7.0.0',
     },
   }, null, 2)
 }
