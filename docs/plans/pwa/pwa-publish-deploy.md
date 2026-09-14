@@ -2,15 +2,17 @@
 
 ## Goal
 
-Extend the Next.js site generator (docs/plans/website-publish.md) so the **published website** is a fully installable Progressive Web App: with a manifest, service worker, offline fallback, and install prompt. The PWA must work for **all page types** — standard pages (desktop layout, header/footer) and app pages (mobile layout, appHeader/appFooter, bottom navigation).
+Generate a **standalone Nuxt site** from a Whoobe CMS website that is a fully installable Progressive Web App: manifest, service worker, offline fallback, and install prompt. The PWA must work for **all page types** — standard pages (desktop layout, header/footer) and app pages (mobile layout, appHeader/appFooter, bottom navigation).
 
-This is **not** the "App Mode" editor feature (pwa-mobile-plan.md) — that's about building mobile-first content. This is about the **deployment artifact** — the generated Next.js site — becoming a PWA itself.
+**Framework choice: Nuxt (Vue)** — the codebase already has `@whoobe-cms/vue` with ready components (`WhoobeProvider`, `WhoobeNode`, etc.). Next.js is a documented alternative (see §14) but Nuxt is the default deploy target because the Vue SDK is feature-complete and maintained.
+
+This is **not** the "App Mode" editor feature (pwa-mobile-plan.md) — that's about building mobile-first content. This is about the **deployment artifact** — the generated Nuxt site — becoming a PWA itself.
 
 ---
 
 ## 1. PWA Manifest
 
-The generated Next.js site needs a `manifest.json` that makes the browser offer the "Add to Home Screen" prompt.
+The generated Nuxt site needs a `manifest.json` that makes the browser offer the "Add to Home Screen" prompt.
 
 ### Schema
 
@@ -45,7 +47,22 @@ From pwa-mobile-plan.md, `websites` already planned for a `pwa_config` jsonb col
 ```
 CLI reads website.pwa_config
   → writes public/manifest.json with name/short_name/icons from config
-  → writes app/layout.tsx with <link rel="manifest"> in <head>
+  → nuxt.config.ts includes app.head.link for <link rel="manifest">
+```
+
+Nuxt already merges `public/` files into the root. The manifest at `public/manifest.json` is served at `/manifest.json` with no extra config. The generator sets `app.head.link` in `nuxt.config.ts` to register it:
+
+```typescript
+// Generated: nuxt.config.ts
+export default defineNuxtConfig({
+  app: {
+    head: {
+      link: [
+        { rel: 'manifest', href: '/manifest.json' }
+      ]
+    }
+  }
+})
 ```
 
 ### Start URL & scope
@@ -61,7 +78,7 @@ For a mixed site (standard + app pages), `start_url = '/'` and `scope = '/'`. Th
 
 ## 2. Service Worker
 
-The generated Next.js site must register a service worker that:
+The generated Nuxt site must register a service worker that:
 
 - **Precaches** the app shell (layout, critical CSS, manifest)
 - **Stale-while-revalidates** page data from the CMS public API
@@ -72,8 +89,8 @@ The generated Next.js site must register a service worker that:
 
 | Resource | Strategy | Cache | Notes |
 |----------|----------|-------|-------|
-| App shell (HTML, CSS, JS) | `precache` (Workbox injectManifest) | `precache` | Built at `next build` time |
-| Page API data (`/public/pages/*`) | `StaleWhileRevalidate` | `whoobe-pages` | ISR-compatible; serve cached, update in background |
+| App shell (HTML, CSS, JS) | `precache` (Workbox injectManifest) | `precache` | Built at `nuxt generate/build` time |
+| Page API data (`/public/pages/*`) | `StaleWhileRevalidate` | `whoobe-pages` | Serve cached, update in background |
 | DAM assets (`/dam-asset/*`) | `CacheFirst` | `whoobe-assets` | Immutable content-hashed URLs; cache forever |
 | Data Objects (`/public/objects/*`) | `NetworkFirst` | `whoobe-objects` | Fresh data preferred; serve cache when offline |
 | Search (`/public/search`) | `NetworkOnly` | — | No offline search; show offline message |
@@ -81,114 +98,71 @@ The generated Next.js site must register a service worker that:
 
 ### Service worker generation
 
-The next-site generator (`@whoobe-cms/publish`) creates:
+Use **`@vite-pwa/nuxt`** — the standard Nuxt PWA module (powered by Vite PWA / Workbox under the hood). It supports both `generateSW` and `injectManifest` modes, handles dev-server SW injection, and requires minimal config.
 
 ```
-sites/my-site/
-├── public/
-│   ├── manifest.json
-│   └── sw.js                        # Generated service worker
-├── src/
-│   └── lib/
-│       └── sw-register.ts            # Registration + update handling
+npm install @vite-pwa/nuxt
 ```
 
-**Options for service worker generation:**
-
-#### Option A: Workbox `generateSW` (recommended)
-
-The generator uses Workbox's `generateSW` mode via a `workbox-config.js`:
-
-```javascript
-// Generated: sites/my-site/workbox-config.js
-module.exports = {
-  globDirectory: '.next',
-  globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
-  swDest: 'public/sw.js',
-  runtimeCaching: [
-    {
-      urlPattern: /\/public\/pages\//,
-      handler: 'StaleWhileRevalidate',
-      cacheName: 'whoobe-pages',
+```typescript
+// Generated: nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['@vite-pwa/nuxt'],
+  pwa: {
+    registerType: 'autoUpdate',
+    workbox: {
+      globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
+      runtimeCaching: [
+        {
+          urlPattern: /\/public\/pages\//,
+          handler: 'StaleWhileRevalidate',
+          options: { cacheName: 'whoobe-pages' },
+        },
+        {
+          urlPattern: /\/dam-asset\//,
+          handler: 'CacheFirst',
+          options: { cacheName: 'whoobe-assets' },
+        },
+        {
+          urlPattern: /\/public\/objects\//,
+          handler: 'NetworkFirst',
+          options: { cacheName: 'whoobe-objects' },
+        },
+      ],
     },
-    {
-      urlPattern: /\/dam-asset\//,
-      handler: 'CacheFirst',
-      cacheName: 'whoobe-assets',
-    },
-    {
-      urlPattern: /\/public\/objects\//,
-      handler: 'NetworkFirst',
-      cacheName: 'whoobe-objects',
-    },
-  ],
-}
-```
-
-The generator also creates an npm script in package.json:
-```json
-{
-  "scripts": {
-    "build:sw": "workbox generateSW workbox-config.js"
-  }
-}
-```
-
-The build pipeline in `next.config.js` runs Workbox as a post-build step:
-```javascript
-const withPWA = require('next-pwa')  // alternative: next-pwa plugin
-
-module.exports = {
-  // ... existing config
-}
-```
-
-**Recommendation:** Use the `@serwist/next` package (modern fork of `next-pwa`, actively maintained, supports App Router):
-
-```bash
-npm install @serwist/next
-```
-
-```javascript
-// next.config.js (generated)
-import withSerwist from '@serwist/next'
-
-const config = {
-  // ... existing next config
-}
-
-export default withSerwist({
-  ...config,
-  swSrc: 'src/sw.ts',     // Service worker source
-  swDest: 'public/sw.js', // Output
+    manifest: false,  // We write manifest.json ourselves from pwa_config
+  },
 })
 ```
 
-#### Option B: Manual Workbox injection
+`@vite-pwa/nuxt` handles:
+- SW registration via `registerType: 'autoUpdate'` (registers on first load, updates silently)
+- Precaching of all build assets
+- Runtime caching for API routes
+- Dev-mode SW injection (no manual registration in dev)
 
-Generate `src/sw.ts` directly and use `injectManifest` mode for full control:
+### Manual Workbox injection (alternative)
+
+For full control, `injectManifest` mode reads a source `sw.ts`:
 
 ```typescript
-// Generated: sites/my-site/src/sw.ts
+// Generated: sw.ts
 import { precacheAndRoute } from 'workbox-precaching'
 import { registerRoute } from 'workbox-routing'
 import { StaleWhileRevalidate, CacheFirst, NetworkFirst } from 'workbox-strategies'
 
 precacheAndRoute(self.__WB_MANIFEST)
 
-// CMS page data
 registerRoute(
   ({ url }) => url.origin === API_ORIGIN && url.pathname.startsWith('/public/pages/'),
   new StaleWhileRevalidate({ cacheName: 'whoobe-pages' })
 )
 
-// DAM assets
 registerRoute(
   ({ url }) => url.pathname.startsWith('/dam-asset/'),
   new CacheFirst({ cacheName: 'whoobe-assets' })
 )
 
-// Data Objects
 registerRoute(
   ({ url }) => url.pathname.startsWith('/public/objects/'),
   new NetworkFirst({ cacheName: 'whoobe-objects' })
@@ -199,51 +173,54 @@ registerRoute(
 
 ## 3. Page Types — Standard vs App Pages
 
-The PWA must handle both page types seamlessly.
+### Reusable SDK components
+
+The generated site imports ready-made components from `@whoobe-cms/vue`:
+
+| Component | Package | Purpose |
+|-----------|---------|---------|
+| `WhoobeProvider` | `@whoobe-cms/vue` | Provides registry + api + options via provide/inject |
+| `WhoobeNode` | `@whoobe-cms/vue` | Maps `RenderDescriptor.kind` → registered component → renders recursively |
+| `WhoobePage` | `@whoobe-cms/vue` | Fetches page + walks + renders with layout shell |
+
+These already exist and are actively used in `whoobe-one-spike`. The generated site reuses them unchanged.
 
 ### Detection at render time
 
-`getPageData()` in `@whoobe-cms/next` already returns `page.kind` (`'standard' | 'module' | 'app'`). The generated layout uses this to switch layouts.
+`getPageData()` in `@whoobe-cms/nuxt` returns `page.kind` (`'standard' | 'module' | 'app'`). The generated layout uses this to switch layouts.
 
 ### Layout switching
 
-```tsx
-// Generated: app/[...slug]/page.tsx (simplified)
-export default async function Page({ params }) {
-  const { page, descriptor, layout } = await getPageData(params.locale, params.slug)
+```vue
+<!-- Generated: pages/[...slug].vue -->
+<template>
+  <AppShell v-if="page.kind === 'app'" :pwa-config="pwaConfig">
+    <WhoobePage :descriptor="descriptor" />
+  </AppShell>
+  <TemplateShell v-else :layout="layout">
+    <WhoobePage :descriptor="descriptor" />
+  </TemplateShell>
+</template>
 
-  if (page.kind === 'app') {
-    return (
-      <AppShell>
-        <WhoobePage descriptor={descriptor} />
-      </AppShell>
-    )
-  }
-
-  return (
-    <TemplateShell layout={layout}>
-      <WhoobePage descriptor={descriptor} />
-    </TemplateShell>
-  )
-}
+<script setup lang="ts">
+const { page, descriptor, layout } = await getPageData(route.params)
+</script>
 ```
 
 ### `AppShell` component (bundled in the generated site)
 
-```tsx
-interface AppShellProps {
-  children: ReactNode
-  pwaConfig?: PwaConfig
-}
+```vue
+<!-- Generated: components/AppShell.vue -->
+<template>
+  <div class="app-shell min-h-screen pb-safe">
+    <slot />
+    <BottomNav v-if="items.length" :items="items" />
+  </div>
+</template>
 
-function AppShell({ children, pwaConfig }: AppShellProps) {
-  return (
-    <div className="app-shell min-h-screen pb-16">
-      {children}
-      <BottomNav items={pwaConfig?.bottomNav ?? []} />
-    </div>
-  )
-}
+<script setup lang="ts">
+defineProps<{ pwaConfig?: PwaConfig }>()
+</script>
 ```
 
 ### Mobile-first layout in app mode
@@ -259,7 +236,7 @@ The `composeLayout()` function in `@whoobe-cms/renderer` already supports `appHe
 
 ### Page type routing
 
-Standard pages and app pages share the same URL space (`/{locale}/[...slug]`). The differentiation is purely in the metadata:
+Standard pages and app pages share the same URL space (`/:locale/[...slug]`). The differentiation is purely in the metadata:
 
 | Metadata field | Standard page | App page |
 |----------------|---------------|----------|
@@ -275,38 +252,33 @@ The service worker handles both identically — caching strategy is URL-based, n
 
 ### `beforeinstallprompt` handling
 
-Generated component `src/components/InstallPrompt.tsx`:
+Composable `composables/useInstallPrompt.ts`:
 
-```tsx
-function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null)
-  const [show, setShow] = useState(false)
+```typescript
+export function useInstallPrompt() {
+  const deferredPrompt = ref<Event | null>(null)
+  const show = ref(false)
 
-  useEffect(() => {
-    const handler = (e: Event) => {
-      e.preventDefault()
-      setDeferredPrompt(e)
-      setShow(true)
-    }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
-  }, [])
+  function onBeforeInstallPrompt(e: Event) {
+    e.preventDefault()
+    deferredPrompt.value = e
+    show.value = true
+  }
 
-  if (!show) return null
+  onMounted(() => window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt))
+  onUnmounted(() => window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt))
 
-  return (
-    <div className="install-prompt">
-      <p>Install this app on your home screen</p>
-      <button onClick={async () => {
-        if (deferredPrompt) {
-          (deferredPrompt as any).prompt()
-          const result = await (deferredPrompt as any).userChoice
-          setShow(false)
-        }
-      }}>Install</button>
-      <button onClick={() => setShow(false)}>Not now</button>
-    </div>
-  )
+  async function install() {
+    if (!deferredPrompt.value) return
+    ;(deferredPrompt.value as any).prompt()
+    await (deferredPrompt.value as any).userChoice
+    deferredPrompt.value = null
+    show.value = false
+  }
+
+  function dismiss() { show.value = false }
+
+  return { show, install, dismiss }
 }
 ```
 
@@ -327,40 +299,28 @@ function InstallPrompt() {
 
 ### Offline fallback page
 
-The service worker serves a cached fallback when the network is unavailable:
+The service worker serves a cached fallback when the network is unavailable. The generated `error.vue` in Nuxt handles this:
 
-```
-Generated: public/offline.html
-```
-
-This page:
-- Shows a "You're offline" message with the app's theme styling
-- Lists the last visited pages (from IndexedDB)
-- Has a "Retry" button that checks connectivity and navigates to the last page
-
-The layout (`app/layout.tsx`) includes the offline page in precache:
-```typescript
-// In the service worker
-const OFFLINE_URL = '/offline.html'
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open('whoobe-offline').then((cache) => cache.add(OFFLINE_URL))
-  )
-})
-
-self.addEventListener('fetch', (event) => {
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(OFFLINE_URL))
-    )
-  }
-})
+```vue
+<!-- Generated: error.vue -->
+<template>
+  <div class="offline-page">
+    <h1>You're offline</h1>
+    <p>Check your connection and try again.</p>
+    <ul v-if="recentPages.length">
+      <li v-for="p in recentPages" :key="p.path">
+        <NuxtLink :to="p.path">{{ p.title }}</NuxtLink>
+      </li>
+    </ul>
+    <button @click="retry">Retry</button>
+  </div>
+</template>
 ```
 
 ### Cached page browsing (optional, Phase 2)
 
 Store page metadata in IndexedDB at visit time:
+
 ```typescript
 interface CachedPage {
   path: string
@@ -377,7 +337,7 @@ The offline page reads this store and shows a "Recently viewed" list the user ca
 Already covered in pwa-mobile-plan.md (§3, Offline sync). The generated site includes the same IndexedDB queue:
 
 ```typescript
-// Generated: src/lib/offline-queue.ts
+// Generated: composables/useOfflineQueue.ts
 import { openDB } from 'idb'
 
 const db = await openDB('whoobe-offline-queue', 1, {
@@ -394,16 +354,18 @@ export async function replayQueue(apiClient: ApiClient) {
   const all = await db.getAll('mutations')
   for (const item of all) {
     try {
-      await apiClient.submitForm(item.payload)  // or updateObject, etc.
+      await apiClient.submitForm(item.payload)
       await db.delete('mutations', item.id)
     } catch {
-      break // Stop replay on first failure — next online event will retry
+      break
     }
   }
 }
 
-// Register online listener in layout.tsx
-window.addEventListener('online', () => replayQueue(apiClient))
+// Register online listener in app.vue or layout
+if (process.client) {
+  window.addEventListener('online', () => replayQueue(apiClient))
+}
 ```
 
 ---
@@ -412,15 +374,14 @@ window.addEventListener('online', () => replayQueue(apiClient))
 
 ### Integration with existing push architecture
 
-The generated site reuses the push provider abstraction from pwa-mobile-plan.md (§4):
+The generated site reuses the push provider abstraction from pwa-mobile-plan.md (§4).
 
-1. **In the generated `src/sw.ts`:**
+1. **In the service worker** (generated by `@vite-pwa/nuxt` or manual sw.ts):
    - Listen for push events
    - Extract notification payload
    - Show notification
 
 ```typescript
-// In service worker
 self.addEventListener('push', (event) => {
   const data = event.data?.json() ?? {}
   self.registration.showNotification(data.title, {
@@ -434,97 +395,117 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const urlToOpen = event.notification.data?.url ?? '/'
-  event.waitUntil(
-    clients.openWindow(urlToOpen)
-  )
+  event.waitUntil(clients.openWindow(urlToOpen))
 })
 ```
 
-2. **In the generated app:**
-   - Import push subscription logic from a generated `src/lib/push.ts`
+2. **In the generated app** — composable `composables/usePushNotifications.ts`:
    - Subscribe/unsubscribe based on user preference
    - Send subscription to endpoint: `POST /public/pwa/subscriptions`
 
 3. **Push subscription management:**
-
-The generated site has a "Notification Settings" page or modal that:
-- Checks Notification permission status
-- Provides toggle to enable/disable push
-- Calls `self.registration.pushManager.subscribe()` with VAPID key from `pwa_config`
-- Sends the subscription object to the CMS API
+   - Checks Notification permission status
+   - Provides toggle to enable/disable push
+   - Calls `self.registration.pushManager.subscribe()` with VAPID key from `pwa_config`
+   - Sends the subscription object to the CMS API
 
 ---
 
-## 7. Generator Changes (`@whoobe-cms/publish`)
+## 7. Generator Package (`@whoobe-cms/publish`)
 
-### New scaffold template files
+### Project structure
 
 ```
-packages/publish/src/templates/
-├── public/
-│   ├── manifest.json.hbs         # PWA manifest template
-│   ├── offline.html.hbs          # Offline fallback page
-│   └── sw.js.hbs                 # Service worker (or src/sw.ts.hbs)
+packages/publish/
+├── package.json
+├── tsconfig.json
 ├── src/
-│   ├── components/
-│   │   ├── InstallPrompt.tsx.hbs
-│   │   └── AppShell.tsx.hbs      # For app page rendering
-│   ├── lib/
-│   │   ├── sw-register.ts.hbs
-│   │   ├── push.ts.hbs
-│   │   └── offline-queue.ts.hbs
-│   └── sw.ts.hbs                 # Service worker source (for @serwist)
-├── workbox-config.js.hbs         # Workbox config
-└── package.json.hbs              # Updated with PWA deps
+│   ├── index.ts             # Public API (generate function)
+│   ├── cli.ts               # CLI entry point (bin)
+│   ├── scaffold.ts          # Generates the Nuxt project structure
+│   ├── class-extractor.ts   # Recursively collects all CSS classes from element trees
+│   ├── theme-css.ts         # Generates CSS variables from website theme
+│   ├── api.ts               # Fetches pages, theme, pwa_config from public API
+│   └── templates/
+│       ├── nuxt.config.ts.hbs
+│       ├── app.vue.hbs
+│       ├── pages/
+│       │   └── [...slug].vue.hbs
+│       ├── components/
+│       │   ├── AppShell.vue.hbs
+│       │   ├── BottomNav.vue.hbs
+│       │   └── InstallPrompt.vue.hbs
+│       ├── composables/
+│       │   ├── useInstallPrompt.ts.hbs
+│       │   ├── useOfflineQueue.ts.hbs
+│       │   └── usePushNotifications.ts.hbs
+│       ├── layouts/
+│       │   └── default.vue.hbs
+│       ├── public/
+│       │   ├── manifest.json.hbs
+│       │   └── sw.ts.hbs          # For injectManifest mode
+│       ├── error.vue.hbs
+│       ├── package.json.hbs
+│       └── tsconfig.json.hbs
+└── bin/
+    └── publish-site.js          # CLI entry: tsx src/cli.ts
 ```
 
-### Updated CLI flags
+### CLI usage
 
 ```bash
-pnpm publish:next-site \
+pnpm publish:site \
   --api-url https://cms.example.com \
   --website-id <uuid> \
   --out-dir ./sites/my-site \
-  --revalidate 60 \
-  --domain example.com \
-  --pwa                          # Enable PWA features
-  --pwa-display standalone       # Manifest display mode
-  --pwa-orientation portrait     # Manifest orientation
-  --pwa-background '#ffffff'     # Splash background
-  --pwa-theme '#6366f1'          # Status bar color
+  --domain example.com
 ```
 
-Or, more practically: PWA config is read from `website.pwa_config` at generation time, so no CLI flags are needed — the generator just checks `pwaConfig.enabled` and generates the extra files when true.
+PWA config is read from `website.pwa_config` at generation time — no extra CLI flags needed. The generator checks `pwaConfig.enabled` and generates the extra files when true.
 
 ### Generator logic
 
 ```typescript
-// In scaffold.ts — when website.pwaConfig?.enabled is true
+// In scaffold.ts
 if (pwaConfig?.enabled) {
-  // 1. Write manifest.json from pwaConfig
-  await writeManifest(outDir, pwaConfig, website)
-
-  // 2. Write service worker
-  await writeServiceWorker(outDir, apiUrl, pwaConfig)
-
-  // 3. Write SW registration script
-  await writeSwRegister(outDir)
-
-  // 4. Write install prompt component
-  await writeInstallPrompt(outDir, pwaConfig)
-
-  // 5. Write offline fallback
-  await writeOfflinePage(outDir, pwaConfig)
-
-  // 6. Write push subscription lib
-  await writePushLib(outDir, apiUrl, pwaConfig)
-
-  // 7. Update layout.tsx to include <link rel="manifest"> + SW registration
-  await patchLayout(outDir, pwaConfig)
-
-  // 8. Update next.config.js with @serwist/next
-  await patchNextConfig(outDir)
+  await writeManifest(outDir, pwaConfig, website)      // public/manifest.json
+  await patchNuxtConfig(outDir, pwaConfig)               // nuxt.config.ts → @vite-pwa/nuxt + manifest link
+  await writeInstallPrompt(outDir)                        // components/InstallPrompt.vue
+  await writePushComposable(outDir, pwaConfig)            // composables/usePushNotifications.ts
+  await patchAppVue(outDir, pwaConfig)                    // app.vue → SW registration + InstallPrompt
 }
+```
+
+### Output structure
+
+```
+sites/my-site/
+├── nuxt.config.ts             # With @vite-pwa/nuxt module + runtime caching config
+├── package.json               # nuxt, @whoobe-cms/vue, @vite-pwa/nuxt, etc.
+├── tsconfig.json
+├── app.vue                    # Root: <WhoobeProvider> + <NuxtPage> + InstallPrompt
+├── error.vue                  # Offline/error page
+├── pages/
+│   └── [...slug].vue          # Catch-all: resolves locale + slug → renders page
+├── layouts/
+│   └── default.vue            # Theme CSS, Google Fonts, <link rel="manifest">
+├── components/
+│   ├── AppShell.vue           # App page shell (bottom nav + safe area)
+│   ├── BottomNav.vue          # Fixed bottom navigation bar
+│   └── InstallPrompt.vue      # "Add to Home Screen" banner/modal
+├── composables/
+│   ├── useInstallPrompt.ts
+│   ├── useOfflineQueue.ts
+│   └── usePushNotifications.ts
+├── public/
+│   ├── manifest.json          # PWA manifest from pwa_config
+│   └── favicon.ico
+├── lib/
+│   ├── api.ts                 # ApiClient singleton
+│   └── registry.ts            # Component registry with defaults
+└── assets/
+    └── css/
+        └── theme.css          # @theme CSS variables + theme.styles
 ```
 
 ---
@@ -533,7 +514,7 @@ if (pwaConfig?.enabled) {
 
 ### Bottom Navigation in PWA shell
 
-When the PWA serves an app page, the generated `AppShell` component renders a bottom navigation bar. The items come from **two sources**:
+When the PWA serves an app page, the `AppShell` component renders a bottom navigation bar. The items come from **two sources**:
 
 | Source | Priority | When used |
 |--------|----------|-----------|
@@ -544,11 +525,11 @@ If both are present, merge them: the PWA config items are always visible, the el
 
 ### Splash screen
 
-The generated PWA uses manifest properties (`background_color`, `theme_color`, `icons`) for the native splash screen (iOS/Android show this automatically on cold start). No custom splash component needed at the web app level.
+The generated PWA uses manifest properties (`background_color`, `theme_color`, `icons`) for the native splash screen. iOS/Android show this automatically on cold start — no custom splash component needed at the web app level.
 
 ### App page routing
 
-App pages get a `start_url` that opens directly to the first app page, with a `scope` that covers all app pages:
+App pages get a `start_url` that opens directly to the first app page:
 
 ```json
 {
@@ -559,22 +540,14 @@ App pages get a `start_url` that opens directly to the first app page, with a `s
 
 ### Safe area insets
 
-The generated Tailwind CSS includes safe area utilities:
+The generated CSS includes safe area utilities:
 
 ```css
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .pb-safe {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  .pt-safe {
-    padding-top: env(safe-area-inset-top);
-  }
-  .pl-safe {
-    padding-left: env(safe-area-inset-left);
-  }
-  .pr-safe {
-    padding-right: env(safe-area-inset-right);
-  }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pl-safe { padding-left: env(safe-area-inset-left); }
+  .pr-safe { padding-right: env(safe-area-inset-right); }
 }
 ```
 
@@ -588,22 +561,24 @@ Bottom navigation and `AppShell` use `pb-safe` to avoid notch/gesture bar overla
 
 | Target | PWA support | Notes |
 |--------|-------------|-------|
-| **Vercel** | Full | SW works with serverless functions; ISR + SW compatible |
-| **Docker (Node server)** | Full | Standard Node.js + SW; works out of the box |
-| **Static export** | Partial | `next export` + `workbox generateSW` for precache-only; dynamic routes need client-side routing |
-| **Cloudflare Pages** | Partial | SW must be manually configured; no Node.js ISR |
+| **Node server** (`nuxt build`) | Full | `@vite-pwa/nuxt` SW works out of the box |
+| **Static export** (`nuxt generate`) | Full | Pre-rendered HTML + SW + precache; dynamic routes via client-side fallback |
+| **Vercel** | Full | Nuxt Nitro serverless + SW compatible |
+| **Cloudflare Pages** | Full | Nuxt Nitro + `@vite-pwa/nuxt` work with CF Workers |
+| **Docker** | Full | Containerized Node server with SW |
 
 ### Build pipeline
 
 ```
-1. pnpm build                          → next build
-2. pnpm build:sw                       → workbox generateSW (or @serwist injectManifest)
-3. Output: .next/ + public/sw.js + public/manifest.json
+1. pnpm install
+2. pnpm generate           → nuxt generate (static) or pnpm build (server)
+3. @vite-pwa/nuxt handles SW injection automatically during build
+4. Output: .output/public/ + public/sw.js + public/manifest.json
 
-Deploy: .next/ as Node server or serverless functions
+Deploy: .output/ as Node server, static files, or serverless functions
 ```
 
-### Dockerfile (updated)
+### Dockerfile (Nuxt)
 
 ```dockerfile
 FROM node:20-alpine AS builder
@@ -611,15 +586,13 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN npm run build && npm run build:sw
+RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
-COPY --from=builder /app/.next .next
-COPY --from=builder /app/public public
-COPY --from=builder /app/package.json .
+COPY --from=builder /app/.output .output
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["node", ".output/server/index.mjs"]
 ```
 
 ---
@@ -628,17 +601,17 @@ CMD ["npm", "start"]
 
 | Case | Handling |
 |------|----------|
-| **PWA disabled** | Generator skips all PWA files; site works as normal SSR Next.js |
+| **PWA disabled** | Generator skips all PWA files; site works as normal Nuxt SSR |
 | **No app pages** | PWA still works; install prompt shows, SW caches standard pages. `AppShell` never renders |
 | **Only app pages** | PWA treats every page as mobile-first; `start_url` points to first app page |
 | **Mixed (standard + app)** | Layout router switches based on `page.kind`; same SW caches both |
-| **PWA config changed after deploy** | User must re-generate and redeploy the Next.js site. ISR doesn't affect manifest/SW — they're build-time artifacts |
-| **Custom domain** | `manifest.json` `scope` and `start_url` must use the custom domain. The generator reads `--domain` flag |
-| **No HTTPS** | Service worker requires HTTPS (or localhost). Fail early: skip SW generation, warn the user |
+| **PWA config changed after deploy** | User must re-generate and redeploy. Manifest/SW are build-time artifacts |
+| **Custom domain** | `manifest.json` `scope` and `start_url` use the custom domain |
+| **No HTTPS** | Service worker requires HTTPS (or localhost). Fail early: skip SW generation, warn |
 | **Multiple languages** | All locales served under same scope. SW handles all locale paths |
 | **DAM proxy down** | SW serves cached assets. Form submissions fail with offline queue |
 | **Large assets (videos)** | Exclude from SW cache. Only cache images (< 5MB). Add `maxEntries: 100` to CacheFirst |
-| **Service worker update** | Standard update flow: `skipWaiting()` + `clients.claim()`. Show "Update available" toast to user |
+| **Service worker update** | `@vite-pwa/nuxt` with `registerType: 'autoUpdate'` handles this silently; alternative: show "Update available" toast |
 
 ---
 
@@ -647,44 +620,50 @@ CMD ["npm", "start"]
 | Phase | What | Depends on |
 |-------|------|------------|
 | **P1** | Read `pwa_config` from website, generate `manifest.json` in scaffold | `@whoobe-cms/publish` package exists |
-| **P2** | Generate service worker with @serwist/next, SW registration script | P1 |
-| **P3** | InstallPrompt component, beforeinstallprompt handling | P2 |
-| **P4** | Offline fallback page + IndexedDB mutation queue | P2 |
-| **P5** | AppShell component, layout switching by `page.kind`, bottom nav | P2, existing template layout code |
-| **P6** | Push notification subscription in generated site + SW push handler | P5, existing push architecture |
-| **P7** | `--pwa` CLI flag + manifest override CLI flags | P1 |
-| **P8** | Safe area CSS, splash screen polish, update prompt UI | P3, P5 |
+| **P2** | Generate `nuxt.config.ts` with `@vite-pwa/nuxt` module and runtime caching | P1 |
+| **P3** | InstallPrompt component + `useInstallPrompt` composable | P2 |
+| **P4** | Offline fallback (`error.vue`) + `useOfflineQueue` composable | P2 |
+| **P5** | `AppShell` + `BottomNav` components, layout switching by `page.kind` | P2, existing `@whoobe-cms/vue` SDK |
+| **P6** | Push notification composable + SW push handler | P5, existing push architecture |
+| **P7** | Safe area CSS, splash screen polish, update prompt UI | P3, P5 |
+| **P8** | `@whoobe-cms/nuxt` helper package (getPageData, metadata, static params) | P5 |
 
 ---
 
 ## 12. Files to Create/Modify
 
-### New files
+### New packages
+
+| Package | Purpose |
+|---------|---------|
+| `packages/publish/` | Nuxt site generator with PWA support |
+| `packages/sdk/nuxt/` | Nuxt-specific helpers: `getPageData()`, `generateMetadata()`, `staticParams()` |
+
+### Template files
 
 | File | Purpose |
 |------|---------|
-| `packages/publish/src/templates/public/manifest.json.hbs` | PWA manifest template |
-| `packages/publish/src/templates/public/offline.html.hbs` | Offline fallback page |
-| `packages/publish/src/templates/src/sw.ts.hbs` | Service worker source |
-| `packages/publish/src/templates/src/lib/sw-register.ts.hbs` | SW registration + update handling |
-| `packages/publish/src/templates/src/components/InstallPrompt.tsx.hbs` | Install banner component |
-| `packages/publish/src/templates/src/components/AppShell.tsx.hbs` | App page shell with bottom nav |
-| `packages/publish/src/templates/src/lib/push.ts.hbs` | Push subscription client |
-| `packages/publish/src/templates/src/lib/offline-queue.ts.hbs` | IndexedDB offline mutation queue |
-| `packages/publish/src/templates/workbox-config.js.hbs` | Workbox generateSW config |
+| `packages/publish/src/templates/nuxt.config.ts.hbs` | Nuxt config with `@vite-pwa/nuxt` + Tailwind + manifest link |
+| `packages/publish/src/templates/app.vue.hbs` | Root component: `<WhoobeProvider>` + `<NuxtPage>` + InstallPrompt |
+| `packages/publish/src/templates/error.vue.hbs` | Offline/error page |
+| `packages/publish/src/templates/pages/[...slug].vue.hbs` | Catch-all page with layout switching |
+| `packages/publish/src/templates/layouts/default.vue.hbs` | Theme CSS + Google Fonts + `<link rel="manifest">` |
+| `packages/publish/src/templates/components/AppShell.vue.hbs` | App page shell with bottom nav |
+| `packages/publish/src/templates/components/BottomNav.vue.hbs` | Bottom navigation bar |
+| `packages/publish/src/templates/components/InstallPrompt.vue.hbs` | Install banner/prompt |
+| `packages/publish/src/templates/composables/useInstallPrompt.ts.hbs` | beforeinstallprompt logic |
+| `packages/publish/src/templates/composables/useOfflineQueue.ts.hbs` | IndexedDB offline mutation queue |
+| `packages/publish/src/templates/composables/usePushNotifications.ts.hbs` | Push subscription client |
+| `packages/publish/src/templates/public/manifest.json.hbs` | PWA manifest |
+| `packages/publish/src/templates/public/sw.ts.hbs` | InjectManifest service worker source |
 
 ### Modified files
 
 | File | Change |
 |------|--------|
-| `packages/publish/src/scaffold.ts` | Add PWA generation pipeline (manifest, SW, components) when `pwaConfig.enabled` |
-| `packages/publish/src/api.ts` | Fetch `pwaConfig` from website + theme for manifest icons |
-| `packages/publish/src/templates/app/layout.tsx.hbs` | Add `<link rel="manifest">`, SW registration script, InstallPrompt |
-| `packages/publish/src/templates/next.config.js.hbs` | Add `@serwist/next` wrapper when PWA enabled |
-| `packages/publish/src/templates/package.json.hbs` | Add `@serwist/next`, `workbox-*` or `idb` deps when PWA enabled |
-| `packages/publish/src/templates/app/\[locale\]/\[...slug\]/page.tsx.hbs` | Add layout switching by `page.kind` |
-| `packages/core/src/db/website-templates-schema.ts` | Ensure `pwa_config` is typed (already planned in pwa-mobile-plan.md) |
+| `apps/core-api/src/server.ts` | Add `GET /public/pwa/config/:websiteId` endpoint returning `pwa_config` |
 | `apps/whoobe-one-spike/src/pages-api.ts` | Expose `pwa_config` in public API response |
+| `packages/sdk/vue/src/` | Verify `WhoobePage` and `WhoobeNode` work in a Nuxt SSR context |
 
 ---
 
@@ -692,14 +671,43 @@ CMD ["npm", "start"]
 
 | Test | Method |
 |------|--------|
-| Manifest loads | `curl /manifest.json` returns valid JSON; Chrome DevTools → Application → Manifest |
+| Manifest loads | `curl /manifest.json` returns valid JSON; DevTools → Application → Manifest |
 | SW registers | DevTools → Application → Service Workers → registered + active |
-| Offline page rendering | DevTools → Network → Offline → navigate → see offline page |
-| Page cache | Visit a page, go offline, reload → page still renders from cache |
-| Asset cache | Visit a page with images, go offline → images still load |
-| Install prompt | Trigger `beforeinstallprompt` manually via DevTools → Application → Manifest → "Add to Home Screen" |
+| Offline page rendering | DevTools → Network → Offline → navigate → see error.vue |
+| Page cache | Visit page, go offline, reload → page renders from cache |
+| Asset cache | Visit page with images, go offline → images still load |
+| Install prompt | Trigger `beforeinstallprompt` via DevTools → Application → Manifest → "Add to Home Screen" |
 | App shell for app pages | Navigate to app page → verify bottom nav, appHeader, full-width layout |
-| Safe area | Use iOS Simulator or Android emulator → verify bottom nav respects safe area |
+| Safe area | iOS Simulator or Android emulator → verify bottom nav respects safe area |
 | Push notification | Send test push via CMS → notification appears on registered device |
 | Offline queue | Submit form while offline → go online → form submits automatically |
-| SW update | Deploy new SW → "Update available" toast appears → user can activate update |
+| SW update | Deploy new SW → verify `autoUpdate` activates new version |
+
+---
+
+## 14. Alternative: Next.js Deploy Target
+
+While Nuxt is the default, the same architecture works for Next.js. The differences:
+
+| Aspect | Nuxt (default) | Next.js (alternative) |
+|--------|---------------|----------------------|
+| PWA module | `@vite-pwa/nuxt` | `@serwist/next` |
+| Renderer SDK | `@whoobe-cms/vue` | `@whoobe-cms/react` |
+| Layout components | Vue SFCs | React TSX |
+| Routing | `pages/[...slug].vue` | `app/\[locale\]/\[...slug\]/page.tsx` |
+| Build output | `.output/` | `.next/` |
+| CLI flag | `--framework nuxt` (default) | `--framework next` |
+
+The scaffold can support both via a `--framework` flag, swapping template directories:
+
+```
+packages/publish/src/templates/
+├── nuxt/              # Default — Vue templates
+│   ├── nuxt.config.ts.hbs
+│   ├── pages/[...slug].vue.hbs
+│   └── ...
+└── next/              # Alternative — React templates
+    ├── next.config.js.hbs
+    ├── app/[...slug]/page.tsx.hbs
+    └── ...
+```

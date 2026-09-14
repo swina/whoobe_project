@@ -34,6 +34,9 @@
 - **`apps/admin-dashboard/src/utils/website-templates-api.ts`**: Added optional `alpine` to the client-side `TemplateSlot` type.
 - **`apps/admin-dashboard/src/components/websites/WebsiteTemplatesManager.vue`**: Added an Alpine directives JSON textarea to each slot editor, with parse-on-save and load-on-edit support. The slot summary in the list view shows `⚡ alpine` when directives are set. Slot sections are now collapsible: each slot header has a `▸` toggle that collapses/expands the slot body; `appHeader`, `aside`, `appFooter`, and `notFound404` start collapsed by default for a less cluttered editing experience.
 
+## [PWA publish/deploy plan: Nuxt default, all page types] — 2026-09-14
+- **`docs/plans/pwa/pwa-publish-deploy.md`**: Replaced Next.js with Nuxt as the default PWA deploy target. Uses `@vite-pwa/nuxt` for service workers, `@whoobe-cms/vue` SDK for rendering, Vue SFCs for all generated components. Added §14 documenting Next.js as an alternative with `--framework` flag.
+
 ## [Install Alpine.js collapse plugin] — 2026-09-14
 - **`apps/whoobe-one-spike/package.json`**: Added `@alpinejs/collapse` dependency and `@types/alpinejs__collapse` dev dependency.
 - **`apps/whoobe-one-spike/src/main.ts`**: Imported `@alpinejs/collapse` and registered via `Alpine.plugin(collapse)`. The `x-collapse` directive (no value required) is now available for toggling element visibility with a smooth slide animation.
