@@ -228,7 +228,38 @@
         </div>
       </template>
     </div>
-    <button v-if="isTextEditable || isVideoEmbed" title="Edit content" class="toolbar-icon" @click="onEditContent"><Pencil class="w-4 h-4" /></button>
+    <template v-if="isLucideIcon">
+      <button title="Edit icon" class="toolbar-icon" @click="openIconPicker"><Image class="w-4 h-4" /></button>
+      <template v-if="showIconPicker">
+        <div class="fixed inset-0 z-[10000]" @click="showIconPicker = false"></div>
+        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-64 space-y-2" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" @click.stop>
+          <div>
+            <label class="block text-[10px] text-gray-500 mb-1">Lucide icon name</label>
+            <div class="flex items-center gap-1">
+              <input
+                v-model="iconDraft"
+                type="text"
+                placeholder="ArrowRight, Settings, …"
+                class="flex-1 px-2 py-1 text-xs rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+                @input="previewIcon"
+              />
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+              <span v-if="iconPreview" class="inline-flex items-center justify-center text-gray-600 w-6 h-6">
+                <component :is="iconPreview" class="w-6 h-6" />
+              </span>
+              <span v-else class="text-[10px] text-gray-400">No icon</span>
+              <span class="text-[10px] text-gray-500 font-mono">{{ iconDraft }}</span>
+            </div>
+          </div>
+          <div class="flex justify-between pt-1">
+            <button type="button" class="px-2 py-1 text-[10px] rounded bg-gray-100 hover:bg-gray-200 text-gray-500" @click="clearIcon">Clear</button>
+            <button type="button" class="px-2 py-1 text-[10px] rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold" @click="applyIcon">Apply</button>
+          </div>
+        </div>
+      </template>
+    </template>
+    <button v-if="(isTextEditable && !isLucideIcon) || isVideoEmbed" title="Edit content" class="toolbar-icon" @click="onEditContent"><Pencil class="w-4 h-4" /></button>
     <button v-if="isVideoEmbed && editor.current?.content" title="Play video" class="toolbar-icon" @click="playVideoEmbed"><Play class="w-4 h-4" /></button>
     <div v-if="isButtonElement" class="relative">
       <button type="button" title="Button icon" class="toolbar-icon" @click="openButtonIconPicker"><Image class="w-4 h-4" /></button>
@@ -697,6 +728,9 @@ const buttonIconDraft = ref('')
 const buttonIconWidthDraft = ref(16)
 const buttonIconHeightDraft = ref(16)
 const buttonIconPreview = shallowRef<Component | null>(null)
+const showIconPicker = ref(false)
+const iconDraft = ref('')
+const iconPreview = shallowRef<Component | null>(null)
 const linkTargetDraft = ref('_self')
 const websitePathRecords = ref<WebsitePathRecord[]>([])
 const websiteRootPathMap = ref<Record<string, string>>({})
@@ -833,6 +867,7 @@ const isSlider = computed(() => editor.current?.tag === 'slider')
 const isTextEditable = computed(() => !!editor.current?.editable)
 const isVideoEmbed = computed(() => editor.current?.tag === 'youtube' || editor.current?.tag === 'vimeo')
 const isButtonElement = computed(() => editor.current?.tag === 'button' || editor.current?.tag === 'submit' || editor.current?.tag === 'reset')
+const isLucideIcon = computed(() => editor.current?.tag === 'lucideicon')
 const isRoot = computed(() => !editor.document || editor.current?.id === editor.document.id)
 
 const hasImageRef = computed(() => {
@@ -1322,6 +1357,43 @@ function openButtonIconPicker() {
   buttonIconHeightDraft.value = el?.buttonIconHeight ?? 16
   previewButtonIcon()
   showButtonIconPicker.value = true
+}
+
+// --- LucideIcon icon picker ---
+
+async function previewIcon() {
+  const name = iconDraft.value.trim()
+  if (!name) {
+    iconPreview.value = null
+    return
+  }
+  try {
+    const resolved = await resolveLucideIcon(name)
+    iconPreview.value = resolved
+  } catch {
+    iconPreview.value = null
+  }
+}
+
+function applyIcon() {
+  if (!editor.current) return
+  editor.current.content = iconDraft.value.trim()
+  showIconPicker.value = false
+}
+
+function clearIcon() {
+  iconDraft.value = ''
+  iconPreview.value = null
+  showIconPicker.value = false
+  if (!editor.current) return
+  editor.current.content = ''
+}
+
+function openIconPicker() {
+  const el = editor.current as any
+  iconDraft.value = el?.content || ''
+  previewIcon()
+  showIconPicker.value = true
 }
 
 // Nearest ancestor container (walking up from the selected element) whose

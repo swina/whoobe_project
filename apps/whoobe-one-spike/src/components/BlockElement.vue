@@ -37,7 +37,20 @@
       data-type="element"
       @click.stop="selectSearchElement"
     />
-<component
+    <span
+      v-else-if="element.tag === 'lucideicon'"
+      :id="element.id"
+      :ref="element.id"
+      :class="classe"
+      :style="stile"
+      :data-id="element.id"
+      data-type="element"
+      @click="onClick"
+    >
+      <component :is="iconComponent" v-if="iconComponent" class="w-6 h-6" style="display:inline-block" />
+      <span v-else class="text-gray-300">—</span>
+    </span>
+    <component
       v-else
       :is="component"
       :id="element.id"
@@ -78,7 +91,8 @@
 //   BlockContainer.vue's @click.self approach instead, which makes the
 //   whole "which element did the click actually land on" question a
 //   native DOM concern rather than a manually-maintained z-index ladder.
-import { computed } from 'vue'
+import { computed, onMounted, shallowRef, watch } from 'vue'
+import type { Component } from 'vue'
 import type Element from '../scripts/ElementsClass.js'
 import { useEditorStore } from '../store/editor'
 import { imageURL } from '../helpers'
@@ -87,7 +101,7 @@ import { resolveFieldValue } from '../scripts/data-resolver'
 import type { DataObjectRecord } from '../data-objects-api'
 import { editorBus } from '../bus'
 import { applyTransform, escapeHtml } from '../scripts/field-transforms'
-import { customAttrs, renderSelectOptionsHtml, renderRadioGroupHtml } from '../helpers'
+import { customAttrs, renderSelectOptionsHtml, renderRadioGroupHtml, resolveLucideIcon } from '../helpers'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -98,6 +112,31 @@ const props = defineProps<{
 }>()
 
 const editor = useEditorStore()
+
+const iconComponent = shallowRef<Component | null>(null)
+
+function resolveIcon() {
+  const el = props.element as any
+  if (el.tag !== 'lucideicon') return
+  const name = (el.content || '').trim()
+  if (!name) {
+    iconComponent.value = null
+    return
+  }
+  resolveLucideIcon(name).then((comp) => {
+    iconComponent.value = comp
+  }).catch(() => {
+    iconComponent.value = null
+  })
+}
+
+onMounted(() => {
+  resolveIcon()
+})
+
+watch(() => (props.element as any).content, () => {
+  resolveIcon()
+})
 
 const isSelected = computed(() => editor.current?.id === props.element.id)
 const isCollapsedNode = computed(() => editor.isCollapsed(props.element.id))

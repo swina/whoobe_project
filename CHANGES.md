@@ -1,5 +1,9 @@
 # Changelog
 
+## [LucideIcon editor: edit modal + live icon preview in canvas] — 2026-09-14
+- **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: Added LucideIcon edit button in the floating toolbar that opens a popover with an icon name input and live preview (using `resolveLucideIcon`). Apply/Clear buttons update `element.content`. Icon resolves asynchronously with the same lazy-loaded `@lucide/vue` chunk used by the preview renderer.
+- **`apps/whoobe-one-spike/src/components/BlockElement.vue`**: LucideIcon elements now render the actual resolved icon component (`<component :is="iconComponent">`) in the editor canvas, instead of showing the raw icon name string as text. Uses `shallowRef` + `watch` to re-resolve when `content` changes. Shows a muted placeholder dash while loading or when no icon name is set.
+
 ## [PWA Mobile — App Mode, push notifications, PWA template] — 2026-09-13
 - **`docs/plans/pwa/pwa-mobile-plan.md`** — New comprehensive English plan for PWA Mobile feature covering DB schema, editor App Mode, bottom navigation, push notification architecture (self/OneSignal/Firebase), PWA template package, and admin dashboard settings.
 - **`packages/core/src/db/websites-schema.ts`** — Added `pwa_enabled` boolean and `pwa_config` jsonb columns.
