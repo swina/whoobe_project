@@ -897,6 +897,7 @@ function nuxtPackageJson(opts: ScaffoldOptions): string {
     nuxt: '^3.15.0',
     vue: '^3.5.0',
     'vue-router': '^4.5.0',
+    'alpinejs': '^3.16.0',
     '@whoobe-cms/nuxt': `file:${rel(join(sdkDir, 'nuxt'))}`,
     '@whoobe-cms/vue': `file:${rel(join(sdkDir, 'vue'))}`,
     '@whoobe-cms/renderer': `file:${rel(join(sdkDir, 'renderer'))}`,
@@ -1043,9 +1044,16 @@ function nuxtAppVue(opts: ScaffoldOptions): string {
 </template>
 
 <script setup lang="ts">
+import Alpine from 'alpinejs'
 import { WhoobeProvider, createWhoobeApi } from '@whoobe-cms/nuxt'
 ${pwaEnabled ? "import InstallPrompt from '~/components/InstallPrompt.vue'" : ''}
 ${pwaEnabled ? "import { useOnlineStatus } from '~/composables/useOfflineQueue'" : ''}
+
+// Start Alpine.js for client-side interactivity (x-data, x-show, etc.)
+if (import.meta.client) {
+  window.Alpine = Alpine as any
+  Alpine.start()
+}
 
 const config = useRuntimeConfig()
 const apiUrl = config.public.cmsApiUrl
@@ -1114,6 +1122,7 @@ function nuxtHomePage(opts: ScaffoldOptions): string {
 
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
+import { resolveAssetUuid } from '~/composables/useWhoobeApi'
 ${pwaEnabled ? "import AppShell from '~/components/AppShell.vue'" : ''}
 
 const config = useRuntimeConfig()
@@ -1122,6 +1131,7 @@ const { data } = await useAsyncData('home-page', () =>
     baseUrl: config.public.cmsApiUrl,
     websiteId: config.public.cmsWebsiteId,
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+    resolveAssetUuid,
   })
 )
 
@@ -1154,6 +1164,7 @@ function nuxtLocalePage(): string {
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
 import { ApiClient } from '@whoobe-cms/renderer'
+import { resolveAssetUuid } from '~/composables/useWhoobeApi'
 
 const config = useRuntimeConfig()
 const route = useRoute()
@@ -1169,6 +1180,7 @@ if (localPages.find((p) => p.slug === '/')) {
       baseUrl: config.public.cmsApiUrl,
       websiteId: config.public.cmsWebsiteId,
       assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+      resolveAssetUuid,
     })
   )
   if (data.value) {
@@ -1203,6 +1215,7 @@ function nuxtCatchAllPage(opts: ScaffoldOptions): string {
 
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
+import { resolveAssetUuid } from '~/composables/useWhoobeApi'
 ${pwaEnabled ? "import AppShell from '~/components/AppShell.vue'" : ''}
 
 const config = useRuntimeConfig()
@@ -1215,6 +1228,7 @@ const { data } = await useAsyncData(\`page-\${path}\`, () =>
     baseUrl: config.public.cmsApiUrl,
     websiteId: config.public.cmsWebsiteId,
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+    resolveAssetUuid,
   })
 )
 
@@ -1245,6 +1259,7 @@ ${appShell}
 
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
+import { resolveAssetUuid } from '~/composables/useWhoobeApi'
 import AppShell from '~/components/AppShell.vue'
 
 const config = useRuntimeConfig()
@@ -1258,6 +1273,7 @@ const { data } = await useAsyncData(\`page-\${locale}-\${path}\`, () =>
     baseUrl: config.public.cmsApiUrl,
     websiteId: config.public.cmsWebsiteId,
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+    resolveAssetUuid,
   })
 )
 
@@ -1336,6 +1352,16 @@ export function useWhoobeApi() {
     revalidate: config.public.cmsRevalidate,
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
   }
+}
+
+export async function resolveAssetUuid(uuid: string): Promise<string | null> {
+  const config = useRuntimeConfig()
+  try {
+    const res = await fetch(\`\${config.public.cmsApiUrl}/public/assets/\${uuid}\`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.url ?? null
+  } catch { return null }
 }
 `
 }
