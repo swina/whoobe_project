@@ -1,5 +1,5 @@
 ------------------------------
-## EXECUTIVE SUMMARY: Whoobe OP (Open Platform)
+## EXECUTIVE SUMMARY: Whoobe
 The Unified Open-Source Composite Data & Application Platform
 ------------------------------
 ## 1. Il Problema del Mercato Enterprise
@@ -11,7 +11,7 @@ Questa disconnessione genera:
 * Un collo di bottiglia operativo (Figma-to-Code) che rallenta i team di marketing, costretti a dipendere continuamente dagli sviluppatori per pubblicare una landing page o lanciare un catalogo.
 
 ------------------------------
-## 2. La Soluzione: Cos'è Whoobe OP
+## 2. La Soluzione: Cos'è Whoobe
 
 Whoobe OP è una piattaforma open-source e TypeScript-native che unifica all'interno di un unico monorepo ad alte prestazioni tre pilastri aziendali: 
 
