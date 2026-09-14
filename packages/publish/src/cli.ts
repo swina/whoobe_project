@@ -13,6 +13,8 @@ export interface GenerateOptions {
   /** Monorepo root for resolving workspace SDK packages. Required when outDir
    *  is a temp directory outside the monorepo (e.g. /tmp/...). */
   monorepoRoot?: string
+  /** When true, only include pages with kind === 'app' (PWA/mobile-only site). */
+  appOnly?: boolean
 }
 
 export async function generateNextSite(options: GenerateOptions): Promise<void> {
@@ -241,6 +243,8 @@ interface ScaffoldOptions {
    *  sites/ subdirectory). When outDir is a temp directory outside the
    *  monorepo (e.g. /tmp/...), this must be set explicitly. */
   monorepoRoot?: string
+  /** When true, only page with kind === 'app' are included. */
+  appOnly?: boolean
 }
 
 /** Determines the home page path for each locale. Tries '/' first (now that
@@ -758,7 +762,18 @@ export async function generateNuxtSite(options: GenerateOptions): Promise<void> 
     const defaultThemeId = websiteData.defaultThemeId as string | null
 
     console.log('Fetching published pages...')
-    const pages = await client.listPages(websiteId)
+    let pages = await client.listPages(websiteId)
+
+    const appOnly = options.appOnly ?? false
+    if (appOnly) {
+      pages = pages.filter((p) => (p as any).kind === 'app')
+      if (pages.length === 0) {
+        console.log('No app pages found — generating with standard pages as fallback.')
+        pages = await client.listPages(websiteId)
+      } else {
+        console.log(`Found ${pages.length} app pages.`)
+      }
+    }
 
     console.log(`Found ${pages.length} pages. Extracting Tailwind classes...`)
     const classSet = new Set<string>()
@@ -781,7 +796,7 @@ export async function generateNuxtSite(options: GenerateOptions): Promise<void> 
     const supportedLocales = (website.supportedLocales as string[]) ?? [website.defaultLocale ?? 'en']
     const defaultLocale = (website.defaultLocale as string) ?? 'en'
     const singleLocale = supportedLocales.length <= 1
-    const pwaEnabled = (website.pwaEnabled as boolean) ?? false
+    const pwaEnabled = appOnly || ((website.pwaEnabled as boolean) ?? false)
     const pwaConfig = pwaEnabled ? (website.pwaConfig as Record<string, unknown> ?? {}) : undefined
 
     console.log('Scaffolding Nuxt project...')
@@ -803,6 +818,7 @@ export async function generateNuxtSite(options: GenerateOptions): Promise<void> 
       assetBaseUrl: assetDomain,
       pwaConfig,
       monorepoRoot: options.monorepoRoot,
+      appOnly,
     })
 
     console.log(`\nDone! Generated Nuxt project at: ${outDir}`)
@@ -854,7 +870,7 @@ async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
     await writeFile(join(opts.outDir, 'pages/[...slug].vue'), nuxtCatchAllPage(opts))
   } else {
     await writeFile(join(opts.outDir, 'pages/[locale]/index.vue'), nuxtLocalePage())
-    await writeFile(join(opts.outDir, 'pages/[locale]/[...slug].vue'), nuxtCatchAllPageMulti())
+    await writeFile(join(opts.outDir, 'pages/[locale]/[...slug].vue'), nuxtCatchAllPageMulti(opts))
   }
 
   await writeFile(join(opts.outDir, '.env'), nuxtEnv(opts))
@@ -1087,16 +1103,13 @@ function nuxtSafelistHtml(opts: ScaffoldOptions): string {
 function nuxtHomePage(opts: ScaffoldOptions): string {
   const defaultLocale = (opts.website.defaultLocale as string) ?? 'en'
   const homeSlug = opts.homePaths[defaultLocale] ?? '/'
-  const pwaEnabled = !!opts.pwaConfig
+  const pwaEnabled = !!opts.pwaConfig || !!opts.appOnly
 
   if (homeSlug === '/') {
     return `<template>
-  <AppShell v-if="data?.page?.kind === 'app'" :pwaConfig="pwaConfig">
+  <AppShell>
     <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
   </AppShell>
-  <div v-else class="whoobe-page">
-    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -1116,7 +1129,6 @@ if (data.value) {
   const seo = data.value.page.seo || {} as any
   useHead({ title: seo.metaTitle || data.value.page.title })
 }
-${pwaEnabled ? `const pwaConfig = ${JSON.stringify(opts.pwaConfig)}` : ''}
 </script>
 `
   }
@@ -1174,15 +1186,12 @@ if (localPages.find((p) => p.slug === '/')) {
 
 function nuxtCatchAllPage(opts: ScaffoldOptions): string {
   const defaultLocale = opts.defaultLocale
-  const pwaEnabled = !!opts.pwaConfig
+  const pwaEnabled = !!opts.pwaConfig || !!opts.appOnly
   const wrapper = pwaEnabled
     ? `<template>
-  <AppShell v-if="data?.page?.kind === 'app'" :pwaConfig="pwaConfig">
+  <AppShell>
     <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
   </AppShell>
-  <div v-else class="whoobe-page">
-    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
-  </div>
 </template>`
     : `<template>
   <div class="whoobe-page">
@@ -1213,27 +1222,25 @@ if (data.value) {
   const seo = data.value.page.seo || {} as any
   useHead({ title: seo.metaTitle || data.value.page.title })
 }
-
-${pwaEnabled ? `const runtimeConfig = useRuntimeConfig()
-const pwaConfig = {
-  display: 'standalone',
-  themeColor: '#6366f1',
-  backgroundColor: '#ffffff',
-  bottomNav: [],
-  ...(runtimeConfig.public as any),
-}` : ''}
 </script>
 `
 }
 
-function nuxtCatchAllPageMulti(): string {
-  return `<template>
-  <AppShell v-if="data?.page?.kind === 'app'" :pwaConfig="pwaConfig">
+function nuxtCatchAllPageMulti(opts: ScaffoldOptions): string {
+  const pwaApp = !!opts.pwaConfig || !!opts.appOnly
+  const appShell = pwaApp
+    ? `  <AppShell>
+    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
+  </AppShell>`
+    : `  <AppShell v-if="data?.page?.kind === 'app'" :pwaConfig="pwaConfig">
     <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
   </AppShell>
   <div v-else class="whoobe-page">
     <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
-  </div>
+  </div>`
+
+  return `<template>
+${appShell}
 </template>
 
 <script setup lang="ts">

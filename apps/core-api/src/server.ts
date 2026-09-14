@@ -2636,6 +2636,7 @@ app.post('/whoobe-one/websites/:id/generate-pwa', requirePermission(PERMISSIONS.
         revalidate: 60,
         domain: req.hostname,
         monorepoRoot: join(import.meta.dirname, '..', '..', '..'),
+        appOnly: true,
       });
 
       // Read generated file tree
