@@ -58,7 +58,8 @@
 - **`packages/publish/src/cli.ts`**: Added `appOnly` to `GenerateOptions` and `ScaffoldOptions`. When true, `generateNuxtSite` filters pages to only `kind === 'app'`. The generated site wraps all pages in `AppShell` unconditionally (no `v-if="page.kind === 'app'"` runtime check), and PWA is always enabled.
 - **`apps/admin-dashboard/src/components/settings/PwaSettingsCard.vue`**: Added "Generate Mobile App Preview" section below the config form with a Generate button, real-time log viewer (NDJSON stream), file tree sidebar, and file content preview pane.
 
-## [Fix package resolution in temp dir: add monorepoRoot option] — 2026-09-14
+## [Capacitor mobile app plan — replace PWA deploy with native app] — 2026-09-14
+- **`docs/plans/pwa/capacitor-mobile-app.md`**: New plan. Instead of generating a Nuxt SSR PWA site (which has rendering bugs with images, Alpine.js, and content), wrap the existing `PublicPage.vue` renderer in Capacitor for native iOS/Android apps. The same Vue renderer that works perfectly in the browser works identically in the native app. Uses hash routing, Capacitor push notifications, simple HTTP caching, and standard app store deployment.
 - **`packages/publish/src/cli.ts`**: Added `monorepoRoot` to `GenerateOptions` and `ScaffoldOptions`. When the generator runs in a temp directory outside the monorepo (e.g. `/tmp/whoobe-pwa-*` from the generate-pwa endpoint), the SDK package references in `package.json` resolve via the explicitly provided monorepo root instead of the broken `../../packages/sdk` relative path.
 - **`apps/core-api/src/server.ts`**: `generate-pwa` endpoint now passes `monorepoRoot: join(import.meta.dirname, '../../..')` so the generated `package.json` correctly references workspace SDK packages.
 
