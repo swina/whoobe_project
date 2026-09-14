@@ -36,6 +36,7 @@
 
 ## [PWA publish/deploy plan: Nuxt default, all page types] — 2026-09-14
 - **`docs/plans/pwa/pwa-publish-deploy.md`**: Replaced Next.js with Nuxt as the default PWA deploy target. Uses `@vite-pwa/nuxt` for service workers, `@whoobe-cms/vue` SDK for rendering, Vue SFCs for all generated components. Added §14 documenting Next.js as an alternative with `--framework` flag.
+- **`publish-site.sh`**: Made Nuxt the default framework (option 1) instead of Next.js. Updated default fallback from `next` to `vue`.
 
 ## [Install Alpine.js collapse plugin] — 2026-09-14
 - **`apps/whoobe-one-spike/package.json`**: Added `@alpinejs/collapse` dependency and `@types/alpinejs__collapse` dev dependency.

@@ -74,26 +74,26 @@ ASSET_URL="${ASSET_URL%/}"
 # ── 4. Target framework ────────────────────────────────────────────────────
 echo ""
 echo "Select target framework:"
-echo "  1) Next.js  (React — SSR/ISR, Vercel deployable)"
-echo "  2) Nuxt 3   (Vue 3 — SSR/SSG, Nitro)"
+echo "  1) Nuxt 3   (Vue 3 — SSR/SSG, Nitro)  [default]"
+echo "  2) Next.js  (React — SSR/ISR, Vercel)"
 echo "  3) Svelte   (SvelteKit SSR — coming soon)"
 echo ""
 read -r -p "Framework [1]: " FRAMEWORK_CHOICE
 
 case "${FRAMEWORK_CHOICE:-1}" in
-  1|next|Next|NEXT)
-    FRAMEWORK="next"
-    ;;
-  2|vue|Vue|VUE|nuxt|Nuxt|NUXT)
+  1|vue|Vue|VUE|nuxt|Nuxt|NUXT)
     FRAMEWORK="vue"
+    ;;
+  2|next|Next|NEXT)
+    FRAMEWORK="next"
     ;;
   3|svelte|Svelte|SVELTE)
     FRAMEWORK="svelte"
-    echo -e "${YELLOW}Note:${NC} Svelte framework support is planned. Defaulting to Next.js."
-    FRAMEWORK="next"
+    echo -e "${YELLOW}Note:${NC} Svelte framework support is planned. Defaulting to Nuxt."
+    FRAMEWORK="vue"
     ;;
   *)
-    FRAMEWORK="next"
+    FRAMEWORK="vue"
     ;;
 esac
 
@@ -103,7 +103,7 @@ read -r -p "Output directory [$DEFAULT_OUT_DIR]: " CHOOSEN_OUT_DIR
 CHOOSEN_OUT_DIR="${CHOOSEN_OUT_DIR:-$DEFAULT_OUT_DIR}"
 
 # ── 6. ISR revalidate ──────────────────────────────────────────────────────
-read -r -p "ISR revalidate (seconds) [60]: " REVALIDATE
+read -r -p "Revalidate (seconds) [60]: " REVALIDATE
 REVALIDATE="${REVALIDATE:-60}"
 
 # ── Summary ─────────────────────────────────────────────────────────────────
