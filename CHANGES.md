@@ -56,6 +56,10 @@
 - **`apps/core-api/package.json`**: Added `@whoobe-cms/publish` and `@whoobe-cms/renderer` dependencies.
 - **`packages/publish/package.json`**: Added `main`, `types`, and `exports` fields so the package can be imported programmatically (not just CLI).
 - **`apps/admin-dashboard/src/components/settings/PwaSettingsCard.vue`**: Added "Generate Mobile App Preview" section below the config form with a Generate button, real-time log viewer (NDJSON stream), file tree sidebar, and file content preview pane.
+
+## [Fix package resolution in temp dir: add monorepoRoot option] — 2026-09-14
+- **`packages/publish/src/cli.ts`**: Added `monorepoRoot` to `GenerateOptions` and `ScaffoldOptions`. When the generator runs in a temp directory outside the monorepo (e.g. `/tmp/whoobe-pwa-*` from the generate-pwa endpoint), the SDK package references in `package.json` resolve via the explicitly provided monorepo root instead of the broken `../../packages/sdk` relative path.
+- **`apps/core-api/src/server.ts`**: `generate-pwa` endpoint now passes `monorepoRoot: join(__dirname, '../../..')` so the generated `package.json` correctly references workspace SDK packages.
 - **`apps/whoobe-one-spike/package.json`**: Added `@alpinejs/collapse` dependency and `@types/alpinejs__collapse` dev dependency.
 - **`apps/whoobe-one-spike/src/main.ts`**: Imported `@alpinejs/collapse` and registered via `Alpine.plugin(collapse)`. The `x-collapse` directive (no value required) is now available for toggling element visibility with a smooth slide animation.
 
