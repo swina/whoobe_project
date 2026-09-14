@@ -46,10 +46,12 @@
 
       <div v-for="slotKey in (['header', 'appHeader', 'aside', 'footer', 'appFooter', 'main', 'body', 'notFound404'] as const)" :key="slotKey" class="border border-slate-800 light:border-slate-200 rounded-lg p-2 space-y-2">
         <div class="flex items-center justify-between">
-          <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 cursor-pointer select-none flex items-center gap-1.5" @click="toggleSlotCollapsed(slotKey)">
+            <span class="text-slate-500 transition-transform" :class="slotCollapsed[slotKey] ? '' : 'rotate-90'">▸</span>
             {{ slotKey === 'notFound404' ? '404' : slotKey === 'appHeader' ? 'App header' : slotKey === 'appFooter' ? 'App footer' : slotKey === 'body' ? 'Body' : slotKey }}
           </div>
         </div>
+        <template v-if="!slotCollapsed[slotKey]">
         <div v-if="slotKey !== 'main' && slotKey !== 'body'" class="flex flex-col gap-1.5">
           <div class="flex flex-wrap items-center gap-1.5">
             <template v-if="orderedSnippets(slotKey).length">
@@ -113,6 +115,7 @@
             placeholder='{ "x-data": "{ appMenu: false, appPage: true }", "x-show": "open" }'
           ></textarea>
         </label>
+        </template>
       </div>
 
       <div class="flex items-center gap-3 pt-1">
@@ -281,6 +284,15 @@ const filteredSnippets = computed(() => {
 const slotContentText = reactive<Record<SlotKey, string>>({ header: '', appHeader: '', aside: '', footer: '', appFooter: '', main: '', body: '', notFound404: '' })
 // Alpine directives JSON text per slot — kept as raw JSON text, validated on save.
 const slotAlpineText = reactive<Record<SlotKey, string>>({ header: '', appHeader: '', aside: '', footer: '', appFooter: '', main: '', body: '', notFound404: '' })
+// Collapse state per slot — starts collapsed for the lengthy ones, expanded
+// for the core slots snippet editors need quick access to.
+const slotCollapsed = reactive<Record<SlotKey, boolean>>({
+  header: false, appHeader: true, aside: true, footer: false, appFooter: true, main: false, body: false, notFound404: true,
+})
+
+function toggleSlotCollapsed(slot: SlotKey) {
+  slotCollapsed[slot] = !slotCollapsed[slot]
+}
 
 function contentToText(content: unknown): string {
   return content != null ? JSON.stringify(content, null, 2) : ''

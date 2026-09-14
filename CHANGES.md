@@ -32,7 +32,7 @@
 - **`apps/whoobe-one-spike/src/pages-api.ts`**: Added `alpine?: Record<string, string>` to each inline slot type in `PublicPageLookup.layout`.
 - **`apps/whoobe-one-spike/src/views/PublicPage.vue`**: Added `slotAlpine()` helper and `v-bind="slotAlpine(slot)"` on all slot wrapper elements (`<header>`, `<aside>`, `<main>`, `<footer>`) in both the normal layout and not-found fallback paths.
 - **`apps/admin-dashboard/src/utils/website-templates-api.ts`**: Added optional `alpine` to the client-side `TemplateSlot` type.
-- **`apps/admin-dashboard/src/components/websites/WebsiteTemplatesManager.vue`**: Added an Alpine directives JSON textarea to each slot editor, with parse-on-save and load-on-edit support. The slot summary in the list view shows `⚡ alpine` when directives are set.
+- **`apps/admin-dashboard/src/components/websites/WebsiteTemplatesManager.vue`**: Added an Alpine directives JSON textarea to each slot editor, with parse-on-save and load-on-edit support. The slot summary in the list view shows `⚡ alpine` when directives are set. Slot sections are now collapsible: each slot header has a `▸` toggle that collapses/expands the slot body; `appHeader`, `aside`, `appFooter`, and `notFound404` start collapsed by default for a less cluttered editing experience.
 
 ## [Install Alpine.js collapse plugin] — 2026-09-14
 - **`apps/whoobe-one-spike/package.json`**: Added `@alpinejs/collapse` dependency and `@types/alpinejs__collapse` dev dependency.
