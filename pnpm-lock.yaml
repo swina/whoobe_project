@@ -411,6 +411,22 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@20.19.43)(lightningcss@1.32.0)(terser@5.51.2)
 
+  packages/mobile-app:
+    dependencies:
+      '@whoobe-cms/renderer':
+        specifier: workspace:*
+        version: link:../sdk/renderer
+      commander:
+        specifier: ^12.0.0
+        version: 12.1.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.43
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+
   packages/publish:
     dependencies:
       '@whoobe-cms/renderer':
@@ -623,46 +639,6 @@ importers:
       vue:
         specifier: ^3.4.0
         version: 3.5.40(typescript@5.9.3)
-
-  sites/_preview:
-    dependencies:
-      '@vite-pwa/nuxt':
-        specifier: ^0.10.0
-        version: 0.10.8(magicast@0.5.5)(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.1)(yaml@2.9.0))(workbox-build@7.4.1)(workbox-window@7.4.1)
-      '@whoobe-cms/nuxt':
-        specifier: file:../../packages/sdk/nuxt
-        version: file:packages/sdk/nuxt(vue@3.5.40(typescript@5.9.3))
-      '@whoobe-cms/renderer':
-        specifier: file:../../packages/sdk/renderer
-        version: file:packages/sdk/renderer
-      '@whoobe-cms/schema':
-        specifier: file:../../packages/sdk/schema
-        version: link:../../packages/sdk/schema
-      '@whoobe-cms/vue':
-        specifier: file:../../packages/sdk/vue
-        version: file:packages/sdk/vue(vue@3.5.40(typescript@5.9.3))
-      idb:
-        specifier: ^8.0.0
-        version: 8.0.3
-      nuxt:
-        specifier: ^3.15.0
-        version: 3.21.11(@oxc-project/types@0.143.0)(@types/node@20.19.43)(@vue/compiler-sfc@3.5.40)(cac@7.0.0)(commander@12.1.0)(db0@0.3.4(drizzle-orm@0.36.4(@types/pg@8.20.3)(@types/react@18.3.31)(mysql2@3.23.2(@types/node@20.19.43))(pg@8.22.0)(react@18.3.1))(mysql2@3.23.2(@types/node@20.19.43)))(drizzle-orm@0.36.4(@types/pg@8.20.3)(@types/react@18.3.31)(mysql2@3.23.2(@types/node@20.19.43))(pg@8.22.0)(react@18.3.1))(esbuild@0.28.1)(ioredis@5.11.1)(lightningcss@1.32.0)(magicast@0.5.5)(mysql2@3.23.2(@types/node@20.19.43))(rollup-plugin-visualizer@7.1.1(rollup@4.62.3))(rollup@4.62.3)(srvx@0.11.22)(terser@5.51.2)(tsx@4.23.1)(typescript@5.9.3)(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.1)(yaml@2.9.0))(vue-tsc@2.2.12(typescript@5.9.3))(yaml@2.9.0)
-      vue:
-        specifier: ^3.5.0
-        version: 3.5.40(typescript@5.9.3)
-      vue-router:
-        specifier: ^4.5.0
-        version: 4.6.4(vue@3.5.40(typescript@5.9.3))
-    devDependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.3.3(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.1)(yaml@2.9.0))
-      tailwindcss:
-        specifier: ^4.0.0
-        version: 4.3.3
-      typescript:
-        specifier: ^5.4.0
-        version: 5.9.3
 
   sites/fbecf7bf:
     dependencies:
@@ -3456,14 +3432,6 @@ packages:
     resolution: {integrity: sha512-m1QFg+U+3yPOnP1xSYJ73UIRxLOXdts1JOhiOiyPYqEsALgrXFFINvgUaD6R6iNvaBFAjHllBCbkfx4FuOdpaA==}
     engines: {node: '>=20'}
     hasBin: true
-
-  '@vite-pwa/nuxt@0.10.8':
-    resolution: {integrity: sha512-nC7Zv13AbUHXg7JgPZEILi4sQ9I7KwFsUm3M82PKApW5q3nIRI8q6djQ2+3ep3HIk+RtbL6hhmGcnqmtSmPMBA==}
-    peerDependencies:
-      '@vite-pwa/assets-generator': ^0.2.6
-    peerDependenciesMeta:
-      '@vite-pwa/assets-generator':
-        optional: true
 
   '@vitejs/plugin-vue-jsx@5.1.6':
     resolution: {integrity: sha512-YXvi4as2clxt6DFw5+a0tTA97ntiQXm/raR8ofNj3aNwwdlVGTiG2gp7EvfZW17P50acL/9bP0ccF4XnqNmlgA==}
@@ -10425,19 +10393,6 @@ snapshots:
       - rollup
       - supports-color
 
-  '@vite-pwa/nuxt@0.10.8(magicast@0.5.5)(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.1)(yaml@2.9.0))(workbox-build@7.4.1)(workbox-window@7.4.1)':
-    dependencies:
-      '@nuxt/kit': 3.21.11(magicast@0.5.5)
-      pathe: 1.1.2
-      ufo: 1.6.4
-      vite-plugin-pwa: 0.21.2(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.1)(yaml@2.9.0))(workbox-build@7.4.1)(workbox-window@7.4.1)
-    transitivePeerDependencies:
-      - magicast
-      - supports-color
-      - vite
-      - workbox-build
-      - workbox-window
-
   '@vitejs/plugin-vue-jsx@5.1.6(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.1)(yaml@2.9.0))(vue@3.5.40(typescript@5.9.3))':
     dependencies:
       '@babel/core': 7.29.7
@@ -14785,17 +14740,6 @@ snapshots:
       pretty-bytes: 6.1.1
       tinyglobby: 0.2.17
       vite: 6.4.3(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.1)(yaml@2.9.0)
-      workbox-build: 7.4.1
-      workbox-window: 7.4.1
-    transitivePeerDependencies:
-      - supports-color
-
-  vite-plugin-pwa@0.21.2(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.1)(yaml@2.9.0))(workbox-build@7.4.1)(workbox-window@7.4.1):
-    dependencies:
-      debug: 4.4.3
-      pretty-bytes: 6.1.1
-      tinyglobby: 0.2.17
-      vite: 7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.1)(yaml@2.9.0)
       workbox-build: 7.4.1
       workbox-window: 7.4.1
     transitivePeerDependencies:
