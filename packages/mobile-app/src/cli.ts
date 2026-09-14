@@ -110,7 +110,7 @@ export async function generateMobileApp(options: GenerateOptions): Promise<void>
 }
 
 async function scaffoldMobileApp(opts: ScaffoldOptions): Promise<void> {
-  const dirs = ['src/views', 'src/router', 'src/composables', 'src/assets', 'public']
+  const dirs = ['src/views', 'src/router', 'src/composables', 'src/assets', 'src/components', 'public']
   for (const d of dirs) {
     await mkdir(join(opts.outDir, d), { recursive: true })
   }
@@ -127,6 +127,7 @@ async function scaffoldMobileApp(opts: ScaffoldOptions): Promise<void> {
   await writeFile(join(opts.outDir, 'src/App.vue'), appVue())
   await writeFile(join(opts.outDir, 'src/router/index.ts'), routerTs(opts))
   await writeFile(join(opts.outDir, 'src/views/PublicPage.vue'), publicPageVue(opts))
+  await writeFile(join(opts.outDir, 'src/components/PageRenderer.vue'), pageRendererVue())
   await writeFile(join(opts.outDir, 'src/composables/useApi.ts'), useApiTs(opts))
   await writeFile(join(opts.outDir, 'src/assets/main.css'), mainCss(opts))
   await writeFile(join(opts.outDir, 'public/favicon.ico'), '')
@@ -422,12 +423,59 @@ body {
 `
 }
 
+function pageRendererVue(): string {
+  return `<template>
+  <img v-if="isImage" :src="imgSrc" :alt="imgAlt" :class="nodeClass" :style="nodeStyle" />
+  <component :is="tag" v-else :class="nodeClass" :style="nodeStyle" v-bind="attrs">
+    <template v-if="node.content && !hasBlocks">{{ node.content }}</template>
+    <PageRenderer v-for="child in nodeBlocks" :key="child.id" :node="child" />
+  </component>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+
+const props = defineProps<{ node: any }>()
+
+const isImage = computed(() => props.node?.element === 'img' || props.node?.tag === 'img')
+const imgSrc = computed(() => props.node?.image?.url || props.node?.src || '')
+const imgAlt = computed(() => props.node?.image?.alt || props.node?.alt || '')
+
+const tag = computed(() => {
+  const t = props.node?.tag || props.node?.element || 'div'
+  if (['p', 'h', 'span', 'button', 'input', 'textarea', 'a', 'ul', 'ol', 'li', 'header', 'footer', 'nav', 'section', 'main', 'aside'].includes(t)) return t
+  return 'div'
+})
+
+const attrs = computed(() => {
+  const a: Record<string, any> = {}
+  if (props.node?.link) a.href = props.node.link
+  if (props.node?.linkTarget) a.target = props.node.linkTarget
+  return a
+})
+
+const nodeClass = computed(() => props.node?.css?.css || props.node?.className || '')
+const nodeStyle = computed(() => props.node?.style || '')
+
+const hasBlocks = computed(() => {
+  const b = props.node?.blocks
+  return Array.isArray(b) && b.length > 0
+})
+
+const nodeBlocks = computed(() => {
+  const blocks = props.node?.blocks ?? []
+  return Array.isArray(blocks) ? blocks : []
+})
+</script>
+`
+}
+
 function publicPageVue(_opts: ScaffoldOptions): string {
   return `<template>
   <div v-if="loading" class="p-8 text-center text-gray-400 text-sm">Loading\u2026</div>
-  <div v-else-if="error" class="p-8 text-center text-rose-400 text-sm">{{ errorMsg }}</div>
+  <div v-else-if="error" class="p-8 text-center text-rose-400 text-sm whitespace-pre-line">{{ errorMsg }}</div>
   <div v-else-if="pageContent" class="whoobe-page">
-    <BlockContainerPreview :doc="pageContent" />
+    <PageRenderer :node="pageContent" />
   </div>
 </template>
 
@@ -435,6 +483,7 @@ function publicPageVue(_opts: ScaffoldOptions): string {
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getApiUrl, getWebsiteId, getDefaultLocale, isNative } from '../composables/useApi'
+import PageRenderer from '../components/PageRenderer.vue'
 
 const loading = ref(true)
 const error = ref(false)
@@ -473,7 +522,7 @@ onMounted(async () => {
   } catch (e: any) {
     error.value = true
     errorMsg.value = isNative()
-      ? \`Cannot reach the CMS.\\n\\nCheck that:\\n1. The CMS server is running\\n2. The API URL (\${getApiUrl()}) is correct\\n3. For Android emulator, use 10.0.2.2 instead of localhost\\n4. The .env file has the correct VITE_CORE_API_URL\`
+      ? \`Cannot reach the CMS.\\n\\nCheck that:\\n1. The CMS server is running\\n2. The API URL is correct\\n3. For Android emulator, forward WSL2 port:\\n   netsh interface portproxy add v4tov4\\n     listenport=3003 listenaddress=0.0.0.0\\n     connectport=3003 connectaddress=<WSL2-IP>\`
       : e?.message || 'Failed to load page'
   } finally {
     loading.value = false
