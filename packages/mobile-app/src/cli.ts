@@ -262,6 +262,9 @@ function indexHtml(opts: ScaffoldOptions): string {
 function capacitorConfig(opts: ScaffoldOptions): string {
   const bgColor = (opts.pwaConfig?.backgroundColor as string) ?? '#ffffff'
   const themeColor = (opts.pwaConfig?.themeColor as string) ?? '#6366f1'
+  const androidUrl = opts.apiUrl
+    .replace(/localhost/g, '10.0.2.2')
+    .replace(/127\.0\.0\.1/g, '10.0.2.2')
   return `import { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
@@ -270,6 +273,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     cleartext: process.env.NODE_ENV === 'development',
+    androidScheme: 'https',
   },
   plugins: {
     SplashScreen: {
@@ -367,11 +371,17 @@ function useApiTs(opts: ScaffoldOptions): string {
   return `import { Capacitor } from '@capacitor/core'
 
 export function getApiUrl(): string {
-  const env = (import.meta as any).env
-  if (env.VITE_CORE_API_URL) {
-    return env.VITE_CORE_API_URL
+  let url = (import.meta as any).env?.VITE_CORE_API_URL as string | undefined
+  if (!url) {
+    url = '${opts.apiUrl}'
   }
-  return '${opts.apiUrl}'
+  // Android emulator cannot reach host localhost — use 10.0.2.2 instead
+  if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
+    url = url
+      .replace(/\\blocalhost\\b/g, '10.0.2.2')
+      .replace(/\\b127\\.0\\.0\\.1\\b/g, '10.0.2.2')
+  }
+  return url
 }
 
 export function getWebsiteId(): string {
@@ -424,7 +434,7 @@ function publicPageVue(_opts: ScaffoldOptions): string {
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getApiUrl, getWebsiteId, getDefaultLocale } from '../composables/useApi'
+import { getApiUrl, getWebsiteId, getDefaultLocale, isNative } from '../composables/useApi'
 
 const loading = ref(true)
 const error = ref(false)
@@ -442,7 +452,7 @@ onMounted(async () => {
     const res = await fetch(\`\${apiUrl}/public/pages/\${locale}/\${encodeURIComponent(path)}?websiteId=\${websiteId}\`)
     if (!res.ok) {
       error.value = true
-      errorMsg.value = \`Page not found (\${res.status})\`
+      errorMsg.value = \`Failed to load page (\${res.status})\`
       return
     }
 
@@ -462,7 +472,9 @@ onMounted(async () => {
     }
   } catch (e: any) {
     error.value = true
-    errorMsg.value = e?.message || 'Failed to load page'
+    errorMsg.value = isNative()
+      ? \`Cannot reach the CMS.\\n\\nCheck that:\\n1. The CMS server is running\\n2. The API URL (\${getApiUrl()}) is correct\\n3. For Android emulator, use 10.0.2.2 instead of localhost\\n4. The .env file has the correct VITE_CORE_API_URL\`
+      : e?.message || 'Failed to load page'
   } finally {
     loading.value = false
   }
