@@ -230,6 +230,8 @@ interface ScaffoldOptions {
   /** When only one locale is configured, routes are clean (/{slug} instead of /{locale}/{slug}). */
   singleLocale: boolean
   defaultLocale: string
+  /** PWA config from website.pwaConfig — { enabled, display, orientation, icons, ... }. */
+  pwaConfig?: Record<string, unknown>
 }
 
 /** Determines the home page path for each locale. Tries '/' first (now that
@@ -770,6 +772,8 @@ export async function generateNuxtSite(options: GenerateOptions): Promise<void> 
     const supportedLocales = (website.supportedLocales as string[]) ?? [website.defaultLocale ?? 'en']
     const defaultLocale = (website.defaultLocale as string) ?? 'en'
     const singleLocale = supportedLocales.length <= 1
+    const pwaEnabled = (website.pwaEnabled as boolean) ?? false
+    const pwaConfig = pwaEnabled ? (website.pwaConfig as Record<string, unknown> ?? {}) : undefined
 
     console.log('Scaffolding Nuxt project...')
     await scaffoldNuxtSite({
@@ -788,6 +792,7 @@ export async function generateNuxtSite(options: GenerateOptions): Promise<void> 
       revalidate,
       domain,
       assetBaseUrl: assetDomain,
+      pwaConfig,
     })
 
     console.log(`\nDone! Generated Nuxt project at: ${outDir}`)
@@ -819,6 +824,7 @@ async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
 
   const dirs = ['pages', 'composables', 'assets/css', 'public', 'server/routes']
   if (!singleLocale) dirs.push('pages/[locale]')
+  if (opts.pwaConfig) dirs.push('components')
   for (const d of dirs) {
     await mkdir(join(opts.outDir, d), { recursive: true })
   }
@@ -842,12 +848,43 @@ async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
   }
 
   await writeFile(join(opts.outDir, '.env'), nuxtEnv(opts))
+
+  // PWA files
+  const pwa = opts.pwaConfig
+  if (pwa) {
+    await writeFile(join(opts.outDir, 'public/manifest.json'), nuxtPwaManifest(pwa, opts))
+    await writeFile(join(opts.outDir, 'error.vue'), nuxtErrorVue(opts))
+    await writeFile(join(opts.outDir, 'components/AppShell.vue'), nuxtAppShell(opts))
+    await writeFile(join(opts.outDir, 'components/BottomNav.vue'), nuxtBottomNav())
+    await writeFile(join(opts.outDir, 'components/InstallPrompt.vue'), nuxtInstallPrompt())
+    await writeFile(join(opts.outDir, 'composables/useInstallPrompt.ts'), nuxtInstallPromptComposable())
+    await writeFile(join(opts.outDir, 'composables/useOfflineQueue.ts'), nuxtOfflineQueue())
+    await writeFile(join(opts.outDir, 'composables/usePushNotifications.ts'), nuxtPushNotifications(pwa))
+  }
 }
 
 function nuxtPackageJson(opts: ScaffoldOptions): string {
   const repoRoot = join(opts.outDir, '..', '..')
   const sdkDir = join(repoRoot, 'packages', 'sdk')
   const rel = (p: string) => relative(opts.outDir, p).replace(/\\/g, '/')
+  const deps: Record<string, string> = {
+    nuxt: '^3.15.0',
+    vue: '^3.5.0',
+    'vue-router': '^4.5.0',
+    '@whoobe-cms/nuxt': `file:${rel(join(sdkDir, 'nuxt'))}`,
+    '@whoobe-cms/vue': `file:${rel(join(sdkDir, 'vue'))}`,
+    '@whoobe-cms/renderer': `file:${rel(join(sdkDir, 'renderer'))}`,
+    '@whoobe-cms/schema': `file:${rel(join(sdkDir, 'schema'))}`,
+  }
+  const devDeps: Record<string, string> = {
+    tailwindcss: '^4.0.0',
+    '@tailwindcss/vite': '^4.0.0',
+    typescript: '^5.4.0',
+  }
+  if (opts.pwaConfig) {
+    deps['@vite-pwa/nuxt'] = '^0.10.0'
+    deps['idb'] = '^8.0.0'
+  }
   return JSON.stringify({
     name: `whoobe-site-${opts.websiteId.slice(0, 8)}`,
     version: '0.1.0',
@@ -859,24 +896,62 @@ function nuxtPackageJson(opts: ScaffoldOptions): string {
       generate: 'nuxi generate',
       preview: 'nuxi preview',
     },
-    dependencies: {
-      nuxt: '^3.15.0',
-      vue: '^3.5.0',
-      'vue-router': '^4.5.0',
-      '@whoobe-cms/nuxt': `file:${rel(join(sdkDir, 'nuxt'))}`,
-      '@whoobe-cms/vue': `file:${rel(join(sdkDir, 'vue'))}`,
-      '@whoobe-cms/renderer': `file:${rel(join(sdkDir, 'renderer'))}`,
-      '@whoobe-cms/schema': `file:${rel(join(sdkDir, 'schema'))}`,
-    },
-    devDependencies: {
-      tailwindcss: '^4.0.0',
-      '@tailwindcss/vite': '^4.0.0',
-      typescript: '^5.4.0',
-    },
+    dependencies: deps,
+    devDependencies: devDeps,
   }, null, 2)
 }
 
 function nuxtConfig(opts: ScaffoldOptions): string {
+  const pwaEnabled = !!opts.pwaConfig
+  const pwa = opts.pwaConfig ?? {}
+  const display = (pwa.display as string) ?? 'standalone'
+  const themeColor = (pwa.themeColor as string) ?? '#6366f1'
+  const bgColor = (pwa.backgroundColor as string) ?? '#ffffff'
+  const pwaModule = pwaEnabled ? `\n  modules: ['@vite-pwa/nuxt'],` : ''
+
+  let pwaConfigBlock = ''
+  if (pwaEnabled) {
+    pwaConfigBlock = `
+  pwa: {
+    registerType: 'autoUpdate',
+    workbox: {
+      globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
+      runtimeCaching: [
+        {
+          urlPattern: /\\\/public\\\/pages\\\//,
+          handler: 'StaleWhileRevalidate',
+          options: { cacheName: 'whoobe-pages' },
+        },
+        {
+          urlPattern: /\\\/dam-asset\\\//,
+          handler: 'CacheFirst',
+          options: { cacheName: 'whoobe-assets' },
+        },
+        {
+          urlPattern: /\\\/public\\\/objects\\\//,
+          handler: 'NetworkFirst',
+          options: { cacheName: 'whoobe-objects' },
+        },
+      ],
+    },
+    manifest: false,
+    injectManifest: {
+      swSrc: 'public/sw.ts',
+      swDest: 'public/sw.js',
+    },
+  },`
+  }
+
+  const safeAreaCss = pwaEnabled ? `
+  app: {
+    head: {
+      style: [
+        { children: \`.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pl-safe { padding-left: env(safe-area-inset-left); }
+.pr-safe { padding-right: env(safe-area-inset-right); }\` },
+      ],` : ''
+
   return `// https://nuxt.com/docs/api/nuxt-config
 import tailwindcss from '@tailwindcss/vite'
 
@@ -885,7 +960,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   vite: {
     plugins: [tailwindcss()],
-  },
+  },${pwaModule}
   nitro: {
     prerender: {
       crawlLinks: true,
@@ -901,16 +976,23 @@ export default defineNuxtConfig({
       ${opts.domain ? `siteUrl: 'https://${opts.domain}',` : ''}
     },
   },
+  ${pwaConfigBlock ? ` ${pwaConfigBlock}` : ''}
   app: {
     head: {
-      link: ${JSON.stringify(opts.fontFamilies.map((f) => ({
-        rel: 'stylesheet',
-        href: `https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@300;400;500;600;700&display=swap`,
-      })))},
+      link: ${JSON.stringify([
+        ...opts.fontFamilies.map((f) => ({
+          rel: 'stylesheet',
+          href: `https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@300;400;500;600;700&display=swap`,
+        })),
+        ...(pwaEnabled ? [{ rel: 'manifest', href: '/manifest.json' }] : []),
+      ])},
       meta: [
         { name: 'whoobe-custom-styles', content: 'globals.css (@theme block + raw)' },
+        ${pwaEnabled ? `{ name: 'theme-color', content: '${themeColor}' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: '${display === 'standalone' ? 'black-translucent' : 'default'}' },` : ''}
       ],
-    },
+    },${pwaEnabled ? `\n    ${safeAreaCss}` : ''}
   },
 })
 `
@@ -930,21 +1012,33 @@ function nuxtAppVue(opts: ScaffoldOptions): string {
   const defaultLocale = (opts.website.defaultLocale as string) ?? 'en'
   const fontFamilies = opts.fontFamilies
   const fontFamilyCss = fontFamilies.map((f) => `"${fontFamily(f)}"`).join(', ') || 'sans-serif'
+  const pwaEnabled = !!opts.pwaConfig
   return `<template>
   <WhoobeProvider :api="api" :assetBaseUrl="assetBaseUrl + '/dam-asset'">
     <div>
       <NuxtPage />
+      ${pwaEnabled ? '<InstallPrompt />' : ''}
     </div>
   </WhoobeProvider>
 </template>
 
 <script setup lang="ts">
 import { WhoobeProvider, createWhoobeApi } from '@whoobe-cms/nuxt'
+${pwaEnabled ? "import InstallPrompt from '~/components/InstallPrompt.vue'" : ''}
+${pwaEnabled ? "import { useOnlineStatus } from '~/composables/useOfflineQueue'" : ''}
 
 const config = useRuntimeConfig()
 const apiUrl = config.public.cmsApiUrl
 const assetBaseUrl = config.public.cmsAssetBaseUrl || apiUrl
 const api = createWhoobeApi(apiUrl)
+
+${pwaEnabled ? `const { online } = useOnlineStatus()
+// Replay offline mutation queue when coming back online
+watch(online, (isOnline) => {
+  if (isOnline) {
+    import('~/composables/useOfflineQueue').then(({ replayQueue }) => replayQueue(api))
+  }
+})` : ''}
 
 useHead({
   htmlAttrs: { lang: '${defaultLocale}' },
@@ -989,16 +1083,21 @@ function nuxtSafelistHtml(opts: ScaffoldOptions): string {
 function nuxtHomePage(opts: ScaffoldOptions): string {
   const defaultLocale = (opts.website.defaultLocale as string) ?? 'en'
   const homeSlug = opts.homePaths[defaultLocale] ?? '/'
+  const pwaEnabled = !!opts.pwaConfig
 
   if (homeSlug === '/') {
     return `<template>
-  <div class="whoobe-page">
+  <AppShell v-if="data?.page?.kind === 'app'" :pwaConfig="pwaConfig">
+    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
+  </AppShell>
+  <div v-else class="whoobe-page">
     <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
+${pwaEnabled ? "import AppShell from '~/components/AppShell.vue'" : ''}
 
 const config = useRuntimeConfig()
 const { data } = await useAsyncData('home-page', () =>
@@ -1013,6 +1112,7 @@ if (data.value) {
   const seo = data.value.page.seo || {} as any
   useHead({ title: seo.metaTitle || data.value.page.title })
 }
+${pwaEnabled ? `const pwaConfig = ${JSON.stringify(opts.pwaConfig)}` : ''}
 </script>
 `
   }
@@ -1070,14 +1170,27 @@ if (localPages.find((p) => p.slug === '/')) {
 
 function nuxtCatchAllPage(opts: ScaffoldOptions): string {
   const defaultLocale = opts.defaultLocale
-  return `<template>
+  const pwaEnabled = !!opts.pwaConfig
+  const wrapper = pwaEnabled
+    ? `<template>
+  <AppShell v-if="data?.page?.kind === 'app'" :pwaConfig="pwaConfig">
+    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
+  </AppShell>
+  <div v-else class="whoobe-page">
+    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
+  </div>
+</template>`
+    : `<template>
   <div class="whoobe-page">
     <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
   </div>
-</template>
+</template>`
+
+  return `${wrapper}
 
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
+${pwaEnabled ? "import AppShell from '~/components/AppShell.vue'" : ''}
 
 const config = useRuntimeConfig()
 const route = useRoute()
@@ -1096,19 +1209,32 @@ if (data.value) {
   const seo = data.value.page.seo || {} as any
   useHead({ title: seo.metaTitle || data.value.page.title })
 }
+
+${pwaEnabled ? `const runtimeConfig = useRuntimeConfig()
+const pwaConfig = {
+  display: 'standalone',
+  themeColor: '#6366f1',
+  backgroundColor: '#ffffff',
+  bottomNav: [],
+  ...(runtimeConfig.public as any),
+}` : ''}
 </script>
 `
 }
 
 function nuxtCatchAllPageMulti(): string {
   return `<template>
-  <div class="whoobe-page">
+  <AppShell v-if="data?.page?.kind === 'app'" :pwaConfig="pwaConfig">
+    <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
+  </AppShell>
+  <div v-else class="whoobe-page">
     <WhoobePage :descriptor="data.descriptor" :layout="data.layout" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
+import AppShell from '~/components/AppShell.vue'
 
 const config = useRuntimeConfig()
 const route = useRoute()
@@ -1128,6 +1254,8 @@ if (data.value) {
   const seo = data.value.page.seo || {} as any
   useHead({ title: seo.metaTitle || data.value.page.title })
 }
+
+const pwaConfig = (config.public as Record<string, unknown>)?.pwaConfig ?? {}
 </script>
 `
 }
@@ -1211,5 +1339,304 @@ NUXT_PUBLIC_CMS_WEBSITE_ID=${opts.websiteId}
 NUXT_PUBLIC_CMS_REVALIDATE=${opts.revalidate}
 NUXT_PUBLIC_CMS_ASSET_BASE_URL=${assetBase}
 ${opts.domain ? `NUXT_PUBLIC_SITE_URL=https://${opts.domain}` : ''}
+`
+}
+
+// ── PWA template functions ─────────────────────────────────────────────────
+
+function nuxtPwaManifest(pwa: Record<string, unknown>, opts: ScaffoldOptions): string {
+  const domain = opts.domain ?? new URL(opts.apiUrl).hostname
+  const name = (pwa.name as string) ?? (opts.website.name as string) ?? 'Whoobe Site'
+  const shortName = (pwa.shortName as string) ?? name.slice(0, 12)
+  const display = (pwa.display as string) ?? 'standalone'
+  const orientation = (pwa.orientation as string) ?? 'portrait'
+  const bgColor = (pwa.backgroundColor as string) ?? '#ffffff'
+  const themeColor = (pwa.themeColor as string) ?? '#6366f1'
+  const icons = (pwa.icons as Array<{ src: string; sizes: string; type: string }>) ?? [
+    { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+  ]
+  return JSON.stringify({
+    name,
+    short_name: shortName,
+    description: (pwa.description as string) ?? '',
+    start_url: '/',
+    scope: '/',
+    display,
+    orientation,
+    background_color: bgColor,
+    theme_color: themeColor,
+    icons,
+    lang: opts.defaultLocale,
+  }, null, 2)
+}
+
+function nuxtAppShell(_opts: ScaffoldOptions): string {
+  return `<template>
+  <div class="app-shell min-h-screen pb-safe">
+    <slot />
+    <BottomNav v-if="items.length" :items="items" />
+  </div>
+</template>
+
+<script setup lang="ts">
+import BottomNav from '~/components/BottomNav.vue'
+
+const props = defineProps<{ pwaConfig?: Record<string, unknown> }>()
+const items = (props.pwaConfig?.bottomNav as Array<{ label: string; icon: string; link?: string; active?: boolean }>) ?? []
+</script>
+`
+}
+
+function nuxtBottomNav(): string {
+  return `<template>
+  <nav class="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 pb-safe pt-1">
+    <a
+      v-for="item in items"
+      :key="item.label"
+      :href="item.link || '#'"
+      class="flex flex-col items-center gap-0.5 text-[10px] font-medium transition-colors"
+      :class="item.active ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'"
+    >
+      <span class="text-lg" v-html="lucideIcon(item.icon)"></span>
+      <span>{{ item.label }}</span>
+    </a>
+  </nav>
+</template>
+
+<script setup lang="ts">
+defineProps<{ items: Array<{ label: string; icon: string; link?: string; active?: boolean }> }>()
+
+function lucideIcon(name: string): string {
+  const icons: Record<string, string> = {
+    home: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+    search: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
+    heart: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
+    user: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    settings: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+    bell: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 4 9 4 9H2s4-2 4-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+    plus: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+    menu: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>',
+    arrow_left: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>',
+    arrow_right: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
+    info: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+    check: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>',
+    x: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+  }
+  return icons[name.toLowerCase()] ?? \`<span style="font-size:14px">\${name}</span>\`
+}
+</script>
+`
+}
+
+function nuxtInstallPrompt(): string {
+  return `<template>
+  <div v-if="show" class="fixed bottom-20 left-4 right-4 z-50 p-4 rounded-xl bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700 flex items-center gap-3 animate-slide-up">
+    <div class="flex-1 text-sm text-gray-700 dark:text-gray-200">
+      <p class="font-semibold">Install this app</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">Add to your home screen for a better experience</p>
+    </div>
+    <button @click="install" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-500 shrink-0">Install</button>
+    <button @click="dismiss" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0">×</button>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { useInstallPrompt } from '~/composables/useInstallPrompt'
+const { show, install, dismiss } = useInstallPrompt()
+</script>
+
+<style scoped>
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-up { animation: slide-up 0.3s ease-out; }
+</style>
+`
+}
+
+function nuxtInstallPromptComposable(): string {
+  return `export function useInstallPrompt() {
+  const show = ref(false)
+  const deferredPrompt = ref<Event | null>(null)
+
+  function handler(e: Event) {
+    e.preventDefault()
+    deferredPrompt.value = e
+    show.value = true
+  }
+
+  if (import.meta.client) {
+    window.addEventListener('beforeinstallprompt', handler)
+  }
+
+  async function install() {
+    if (!deferredPrompt.value) return
+    ;(deferredPrompt.value as any).prompt()
+    await (deferredPrompt.value as any).userChoice
+    deferredPrompt.value = null
+    show.value = false
+  }
+
+  function dismiss() {
+    show.value = false
+    deferredPrompt.value = null
+  }
+
+  return { show, install, dismiss }
+}
+`
+}
+
+function nuxtOfflineQueue(): string {
+  return `import { openDB } from 'idb'
+import { ref } from 'vue'
+import type { ApiClient } from '@whoobe-cms/renderer'
+
+export function useOnlineStatus() {
+  const online = ref(true)
+
+  if (import.meta.client) {
+    online.value = navigator.onLine
+    window.addEventListener('online', () => { online.value = true })
+    window.addEventListener('offline', () => { online.value = false })
+  }
+
+  return { online }
+}
+
+export async function enqueueMutation(payload: unknown) {
+  const db = await openDB('whoobe-offline-queue', 1, {
+    upgrade(db) { db.createObjectStore('mutations', { keyPath: 'id', autoIncrement: true }) },
+  })
+  await db.add('mutations', { payload, createdAt: Date.now() })
+}
+
+export async function replayQueue(api: ApiClient) {
+  const db = await openDB('whoobe-offline-queue', 1)
+  const all = await db.getAll('mutations')
+  for (const item of all) {
+    try {
+      const formPayload = (item.payload as Record<string, unknown>)?.form
+        ? { classId: (item.payload as Record<string, unknown>).classId as string, form: (item.payload as Record<string, unknown>).form as Record<string, unknown> }
+        : item.payload
+      await api.submitForm(formPayload as any)
+      await db.delete('mutations', item.id)
+    } catch {
+      break
+    }
+  }
+}
+`
+}
+
+function nuxtPushNotifications(pwa: Record<string, unknown>): string {
+  const vapidKey = ((pwa.push as Record<string, unknown> ?? {})?.vapidPublicKey as string) ?? ''
+  return `export function usePushNotifications() {
+  const supported = ref(false)
+  const subscribed = ref(false)
+  const permission = ref<NotificationPermission>('default')
+
+  if (import.meta.client && 'Notification' in window && 'serviceWorker' in navigator) {
+    supported.value = true
+    permission.value = Notification.permission
+
+    navigator.serviceWorker.ready.then((reg) => {
+      reg.pushManager.getSubscription().then((sub) => {
+        subscribed.value = !!sub
+      })
+    })
+  }
+
+  async function subscribe(apiUrl: string, websiteId: string) {
+    if (!supported.value) return false
+
+    const result = await Notification.requestPermission()
+    permission.value = result
+    if (result !== 'granted') return false
+
+    const reg = await navigator.serviceWorker.ready
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: '${vapidKey}',
+    })
+
+    await fetch(\`\${apiUrl}/public/pwa/subscriptions\`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        websiteId,
+        endpoint: sub.endpoint,
+        keys: sub.toJSON().keys,
+      }),
+    })
+
+    subscribed.value = true
+    return true
+  }
+
+  async function unsubscribe(apiUrl: string, websiteId: string) {
+    const reg = await navigator.serviceWorker.ready
+    const sub = await reg.pushManager.getSubscription()
+    if (sub) {
+      await sub.unsubscribe()
+      await fetch(\`\${apiUrl}/public/pwa/unsubscribe\`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ websiteId, endpoint: sub.endpoint }),
+      })
+    }
+    subscribed.value = false
+  }
+
+  return { supported, subscribed, permission, subscribe, unsubscribe }
+}
+`
+}
+
+function nuxtErrorVue(_opts: ScaffoldOptions): string {
+  return `<template>
+  <div class="flex items-center justify-center min-h-screen p-8 bg-gray-50 dark:bg-gray-950">
+    <div class="text-center max-w-md">
+      <div class="text-6xl mb-4">📡</div>
+      <h1 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">You're offline</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+        Check your connection and try again.
+      </p>
+      <div v-if="recentPages.length" class="mb-6 text-left">
+        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Recently viewed</p>
+        <ul class="space-y-1">
+          <li v-for="p in recentPages" :key="p.path">
+            <NuxtLink :to="p.path" class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">{{ p.title }}</NuxtLink>
+          </li>
+        </ul>
+      </div>
+      <button @click="retry" class="px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-500">
+        Retry
+      </button>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+const recentPages = ref<Array<{ path: string; title: string }>>([])
+
+// Attempt to load last visited pages from IndexedDB
+if (import.meta.client) {
+  try {
+    import('idb').then(async ({ openDB }) => {
+      const db = await openDB('whoobe-page-history', 1, {
+        upgrade(db) { db.createObjectStore('pages', { keyPath: 'path' }) },
+      })
+      recentPages.value = await db.getAll('pages')
+    })
+  } catch {}
+}
+
+function retry() {
+  window.location.reload()
+}
+</script>
 `
 }

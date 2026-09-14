@@ -38,6 +38,19 @@
 - **`docs/plans/pwa/pwa-publish-deploy.md`**: Replaced Next.js with Nuxt as the default PWA deploy target. Uses `@vite-pwa/nuxt` for service workers, `@whoobe-cms/vue` SDK for rendering, Vue SFCs for all generated components. Added §14 documenting Next.js as an alternative with `--framework` flag.
 - **`publish-site.sh`**: Made Nuxt the default framework (option 1) instead of Next.js. Updated default fallback from `next` to `vue`.
 
+## [Implement PWA publish: manifest, service worker, offline, install prompt] — 2026-09-14
+- **`packages/publish/src/cli.ts`**: Full PWA implementation in the Nuxt site generator. When `website.pwaEnabled` and `website.pwaConfig` are present:
+  - **Manifest**: generates `public/manifest.json` from `pwaConfig` fields (name, icons, colors, display, orientation).
+  - **Service Worker**: adds `@vite-pwa/nuxt` module to `nuxt.config.ts` with runtime caching for pages, DAM assets, and data objects.
+  - **Safe area CSS**: injects `env(safe-area-inset-*)` utility classes in the app head.
+  - **InstallPrompt**: generates `components/InstallPrompt.vue` + `composables/useInstallPrompt.ts` with `beforeinstallprompt` handling.
+  - **Offline queue**: generates `composables/useOfflineQueue.ts` with IndexedDB mutation queue and online status watcher.
+  - **Push notifications**: generates `composables/usePushNotifications.ts` with VAPID subscription, permission management, and API sync.
+  - **AppShell**: generates `components/AppShell.vue` + `components/BottomNav.vue` for app pages with bottom navigation and safe-area padding.
+  - **Layout switching**: page templates (home, catch-all, multi-locale) now check `page.kind === 'app'` and wrap in `AppShell` for app pages.
+  - **Error page**: generates `error.vue` with offline fallback and recently-viewed page list from IndexedDB.
+  - Added `pwaConfig` field to `ScaffoldOptions` interface.
+
 ## [Install Alpine.js collapse plugin] — 2026-09-14
 - **`apps/whoobe-one-spike/package.json`**: Added `@alpinejs/collapse` dependency and `@types/alpinejs__collapse` dev dependency.
 - **`apps/whoobe-one-spike/src/main.ts`**: Imported `@alpinejs/collapse` and registered via `Alpine.plugin(collapse)`. The `x-collapse` directive (no value required) is now available for toggling element visibility with a smooth slide animation.
