@@ -24,6 +24,9 @@ export interface ScaffoldOptions {
   themeCss: string
   fontFamilies: string[]
   pwaConfig?: Record<string, unknown>
+  /** Slugs of the app pages to include (kind === 'app'), used to filter
+   *  the catch-all route so only app pages are rendered. */
+  appPageSlugs: string[]
 }
 
 export async function generateMobileApp(options: GenerateOptions): Promise<void> {
@@ -53,6 +56,23 @@ export async function generateMobileApp(options: GenerateOptions): Promise<void>
   const slug = websiteId.slice(0, 8)
   const finalAppId = appId ?? `com.whoobe.mobile.${slug}`
 
+  // Fetch published pages and filter to app-kind only
+  console.log('Fetching published pages...')
+  const allPages = await client.listPages(websiteId)
+  const appPages = allPages.filter((p) => (p as any).kind === 'app')
+  if (appPages.length === 0) {
+    console.log('No app pages found for this website.')
+    console.log('Generate some pages with kind "app" in the editor first.')
+    throw new Error('No app pages found')
+  }
+  console.log(`Found ${appPages.length} app page(s):`)
+  for (const p of appPages) {
+    console.log(`  ${p.locale} ${p.slug} — ${p.title}`)
+  }
+  const appPageSlugs = appPages
+    .filter((p) => p.locale === defaultLocale)
+    .map((p) => p.slug)
+
   // Theme CSS for the generated app
   const colorVars = (defaultTheme?.colors ?? [])
     .map((c: { name: string; hex: string }) => `  --color-${c.name}: ${c.hex};`)
@@ -74,6 +94,7 @@ export async function generateMobileApp(options: GenerateOptions): Promise<void>
     themeCss,
     fontFamilies,
     pwaConfig,
+    appPageSlugs,
   })
 
   console.log(`\nDone! Mobile app generated at: ${outDir}`)
@@ -103,7 +124,7 @@ async function scaffoldMobileApp(opts: ScaffoldOptions): Promise<void> {
   await writeFile(join(opts.outDir, '.env'), dotEnv(opts))
   await writeFile(join(opts.outDir, 'src/main.ts'), mainTs(opts))
   await writeFile(join(opts.outDir, 'src/App.vue'), appVue())
-  await writeFile(join(opts.outDir, 'src/router/index.ts'), routerTs())
+  await writeFile(join(opts.outDir, 'src/router/index.ts'), routerTs(opts))
   await writeFile(join(opts.outDir, 'src/views/PublicPage.vue'), publicPageVue(opts))
   await writeFile(join(opts.outDir, 'src/composables/useApi.ts'), useApiTs(opts))
   await writeFile(join(opts.outDir, 'src/assets/main.css'), mainCss(opts))
@@ -292,17 +313,22 @@ function appVue(): string {
 `
 }
 
-function routerTs(): string {
+function routerTs(opts: ScaffoldOptions): string {
+  const slugs = opts.appPageSlugs
+  const homeSlug = slugs.find((s) => s === '/') ?? slugs[0] ?? '/'
+  const routes = slugs
+    .filter((s) => s !== '/')
+    .map((s) => `    { path: '${s}', name: '${s.replace(/[^a-zA-Z0-9]/g, '_')}', component: PublicPage },`)
+    .join('\n')
   return `import { createRouter, createWebHashHistory } from 'vue-router'
+import PublicPage from '../views/PublicPage.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
-    {
-      path: '/:pathMatch(.*)*',
-      name: 'PublicPage',
-      component: () => import('../views/PublicPage.vue'),
-    },
+    { path: '/', redirect: '${homeSlug}' },
+${routes}
+    { path: '/:pathMatch(.*)*', name: 'PublicPage', component: PublicPage },
   ],
 })
 
@@ -360,8 +386,6 @@ body {
 }
 
 function publicPageVue(_opts: ScaffoldOptions): string {
-  // Minimal standalone PublicPage — no editor dependencies, no auth,
-  // fetches pages directly from the public API.
   return `<template>
   <div v-if="loading" class="p-8 text-center text-gray-400 text-sm">Loading\u2026</div>
   <div v-else-if="error" class="p-8 text-center text-rose-400 text-sm">{{ errorMsg }}</div>
@@ -372,6 +396,7 @@ function publicPageVue(_opts: ScaffoldOptions): string {
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { getApiUrl, getWebsiteId, getDefaultLocale } from '../composables/useApi'
 
 const loading = ref(true)
@@ -384,7 +409,8 @@ onMounted(async () => {
     const apiUrl = getApiUrl()
     const websiteId = getWebsiteId()
     const locale = getDefaultLocale()
-    const path = window.location.hash.replace(/^#/, '') || '/'
+    const route = useRoute()
+    const path = route.path
 
     const res = await fetch(\`\${apiUrl}/public/pages/\${locale}/\${encodeURIComponent(path)}?websiteId=\${websiteId}\`)
     if (!res.ok) {
@@ -394,9 +420,14 @@ onMounted(async () => {
     }
 
     const data = await res.json()
-    pageContent.value = data.page?.content ?? null
+    const kind = data.page?.kind
+    if (kind && kind !== 'app') {
+      error.value = true
+      errorMsg.value = 'This page is not available in the mobile app.'
+      return
+    }
 
-    // Set page title from SEO
+    pageContent.value = data.page?.content ?? null
     if (data.page?.seo?.metaTitle) {
       document.title = data.page.seo.metaTitle
     } else if (data.page?.title) {
