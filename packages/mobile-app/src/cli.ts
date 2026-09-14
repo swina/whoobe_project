@@ -263,9 +263,6 @@ function indexHtml(opts: ScaffoldOptions): string {
 function capacitorConfig(opts: ScaffoldOptions): string {
   const bgColor = (opts.pwaConfig?.backgroundColor as string) ?? '#ffffff'
   const themeColor = (opts.pwaConfig?.themeColor as string) ?? '#6366f1'
-  const androidUrl = opts.apiUrl
-    .replace(/localhost/g, '10.0.2.2')
-    .replace(/127\.0\.0\.1/g, '10.0.2.2')
   return `import { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
@@ -273,8 +270,7 @@ const config: CapacitorConfig = {
   appName: '${opts.appName}',
   webDir: 'dist',
   server: {
-    cleartext: process.env.NODE_ENV === 'development',
-    androidScheme: 'https',
+    cleartext: true,
   },
   plugins: {
     SplashScreen: {
@@ -375,12 +371,6 @@ export function getApiUrl(): string {
   let url = (import.meta as any).env?.VITE_CORE_API_URL as string | undefined
   if (!url) {
     url = '${opts.apiUrl}'
-  }
-  // Android emulator cannot reach host localhost — use 10.0.2.2 instead
-  if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
-    url = url
-      .replace(/\\blocalhost\\b/g, '10.0.2.2')
-      .replace(/\\b127\\.0\\.0\\.1\\b/g, '10.0.2.2')
   }
   return url
 }
@@ -521,9 +511,11 @@ onMounted(async () => {
     }
   } catch (e: any) {
     error.value = true
-    errorMsg.value = isNative()
-      ? \`Cannot reach the CMS.\\n\\nCheck that:\\n1. The CMS server is running\\n2. The API URL is correct\\n3. For Android emulator, forward WSL2 port:\\n   netsh interface portproxy add v4tov4\\n     listenport=3003 listenaddress=0.0.0.0\\n     connectport=3003 connectaddress=<WSL2-IP>\`
-      : e?.message || 'Failed to load page'
+    errorMsg.value = 'Cannot reach the CMS.\\n\\n' + (
+      isNative()
+        ? \`For Android emulator with WSL2:\\n1. Edit .env, set VITE_CORE_API_URL to your WSL2 IP\\n   (find it via: wsl hostname -I)\\n2. Rebuild: npm run build && npx cap sync\\n3. Ensure core-api is running on port 3003\`
+        : \`Check that:\\n1. The CMS is running (pnpm run dev)\\n2. The API URL is correct in .env\`
+    )
   } finally {
     loading.value = false
   }
