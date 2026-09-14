@@ -63,6 +63,9 @@
 
 ## [Fix pnpm install in generated PWA preview: use monorepo sites/ dir] — 2026-09-14
 - **`apps/core-api/src/server.ts`**: Changed `generate-pwa` output directory from `/tmp/whoobe-pwa-*` (outside monorepo, breaks `workspace:*` dep resolution) to `sites/_preview` inside the monorepo where pnpm resolves workspace packages correctly. Directory is cleaned up after 5 minutes.
+
+## [Fix nuxt.config.ts generation: safe area CSS in wrong head object] — 2026-09-14
+- **`packages/publish/src/cli.ts`**: Fixed `nuxtConfig()` to inline the safe-area `style` array inside the same `app.head` object as `link` and `meta`, instead of generating a duplicate `app { head { style } }` block that caused a `ParseError: Unexpected token` at build time.
 - **`apps/whoobe-one-spike/package.json`**: Added `@alpinejs/collapse` dependency and `@types/alpinejs__collapse` dev dependency.
 - **`apps/whoobe-one-spike/src/main.ts`**: Imported `@alpinejs/collapse` and registered via `Alpine.plugin(collapse)`. The `x-collapse` directive (no value required) is now available for toggling element visibility with a smooth slide animation.
 
