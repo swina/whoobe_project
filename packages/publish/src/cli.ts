@@ -916,7 +916,6 @@ function nuxtConfig(opts: ScaffoldOptions): string {
   const pwa = opts.pwaConfig ?? {}
   const display = (pwa.display as string) ?? 'standalone'
   const themeColor = (pwa.themeColor as string) ?? '#6366f1'
-  const bgColor = (pwa.backgroundColor as string) ?? '#ffffff'
   const pwaModule = pwaEnabled ? `\n  modules: ['@vite-pwa/nuxt'],` : ''
 
   let pwaConfigBlock = ''
@@ -952,16 +951,6 @@ function nuxtConfig(opts: ScaffoldOptions): string {
   },`
   }
 
-  const safeAreaCss = pwaEnabled ? `
-  app: {
-    head: {
-      style: [
-        { children: \`.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-.pt-safe { padding-top: env(safe-area-inset-top); }
-.pl-safe { padding-left: env(safe-area-inset-left); }
-.pr-safe { padding-right: env(safe-area-inset-right); }\` },
-      ],` : ''
-
   return `// https://nuxt.com/docs/api/nuxt-config
 import tailwindcss from '@tailwindcss/vite'
 
@@ -985,8 +974,7 @@ export default defineNuxtConfig({
       cmsRevalidate: ${opts.revalidate},
       ${opts.domain ? `siteUrl: 'https://${opts.domain}',` : ''}
     },
-  },
-  ${pwaConfigBlock ? ` ${pwaConfigBlock}` : ''}
+  },${pwaConfigBlock ? `\n${pwaConfigBlock}` : ''}
   app: {
     head: {
       link: ${JSON.stringify([
@@ -1001,8 +989,14 @@ export default defineNuxtConfig({
         ${pwaEnabled ? `{ name: 'theme-color', content: '${themeColor}' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-status-bar-style', content: '${display === 'standalone' ? 'black-translucent' : 'default'}' },` : ''}
-      ],
-    },${pwaEnabled ? `\n    ${safeAreaCss}` : ''}
+      ],${pwaEnabled ? `
+      style: [
+        { children: \`.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pl-safe { padding-left: env(safe-area-inset-left); }
+.pr-safe { padding-right: env(safe-area-inset-right); }\` },
+      ],` : ''}
+    },
   },
 })
 `
