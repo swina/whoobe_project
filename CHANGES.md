@@ -62,6 +62,14 @@
 - **`packages/publish/src/cli.ts`**: Added `monorepoRoot` to `GenerateOptions` and `ScaffoldOptions`. When the generator runs in a temp directory outside the monorepo (e.g. `/tmp/whoobe-pwa-*` from the generate-pwa endpoint), the SDK package references in `package.json` resolve via the explicitly provided monorepo root instead of the broken `../../packages/sdk` relative path.
 - **`apps/core-api/src/server.ts`**: `generate-pwa` endpoint now passes `monorepoRoot: join(import.meta.dirname, '../../..')` so the generated `package.json` correctly references workspace SDK packages.
 
+## [Fix images skipped, Alpine directives missing, add asset UUID resolution] — 2026-09-14
+- **`apps/core-api/src/server.ts`**: Added `GET /public/assets/:uuid` endpoint that resolves a DAM asset UUID to its public DAM proxy URL. Assets must be public; returns 404 for unknown UUIDs, 403 for non-public assets.
+- **`packages/sdk/renderer/src/walk.ts`**: Added `resolveAssetUuid` callback to `RenderOptions`. `resolveNodeImage` now falls back to this callback when an image URL is a UUID and `resolveImageUrl` returns null.
+- **`packages/sdk/renderer/src/url.ts`**: Updated doc comment to reflect that UUIDs are now resolvable via the callback.
+- **`packages/sdk/vue/src/types.ts`**: Added `resolveAssetUuid` to `WhoobeAdapterOptions`.
+- **`packages/sdk/nuxt/src/index.ts`**: `getPageData` now passes `resolveAssetUuid` from options through to the walker.
+- **`packages/publish/src/cli.ts`**: Generated Nuxt site now includes `alpinejs` as a dependency, imports and starts Alpine.js in `app.vue` for client-side directive handling. All page templates import `resolveAssetUuid` from the composable and pass it to `getPageData`. Added `resolveAssetUuid` to the generated `useWhoobeApi` composable.
+
 ## [Fix pnpm install in generated PWA preview: use monorepo sites/ dir] — 2026-09-14
 - **`apps/core-api/src/server.ts`**: Changed `generate-pwa` output directory from `/tmp/whoobe-pwa-*` (outside monorepo, breaks `workspace:*` dep resolution) to `sites/_preview` inside the monorepo where pnpm resolves workspace packages correctly. Directory is cleaned up after 5 minutes.
 

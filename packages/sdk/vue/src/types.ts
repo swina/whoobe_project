@@ -16,6 +16,7 @@ export interface WhoobeAdapterOptions {
   assetBaseUrl?: string
   keyPrefix?: string
   resolveTargetPage?: (id: string) => Promise<{ slug: string; locale: string } | null>
+  resolveAssetUuid?: (uuid: string) => Promise<string | null>
 }
 
 export interface WhoobeApi {

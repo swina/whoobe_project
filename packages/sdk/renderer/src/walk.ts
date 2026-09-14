@@ -30,6 +30,9 @@ export interface RenderOptions {
   /** Resolves a dynamicLink's target page by id to its slug pattern +
    *  locale; when absent, dynamic links resolve to '#'. */
   resolveTargetPage?: (id: string) => Promise<{ slug: string; locale: string } | null>
+  /** Resolves a DAM asset UUID to a public URL. When present, UUID image
+   *  references are resolved via this callback instead of being dropped. */
+  resolveAssetUuid?: (uuid: string) => Promise<string | null>
 }
 
 function buildStyle(node: WhoobeElementNode): string {
@@ -86,6 +89,11 @@ async function resolveNodeImage(
     if (typeof value === 'string') url = resolveImageUrl(value, options.assetBaseUrl, options.keyPrefix)
   } else if (node.image?.url) {
     url = resolveImageUrl(node.image.url, options.assetBaseUrl, options.keyPrefix)
+    // UUID references need the asset resolver callback
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!url && UUID_RE.test(node.image.url) && options.resolveAssetUuid) {
+      url = await options.resolveAssetUuid(node.image.url)
+    }
   }
   if (!url) return null
   alt = node.image?.alt ?? undefined

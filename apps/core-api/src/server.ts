@@ -192,6 +192,7 @@ import {
   deleteAllSubscriptions,
   sendPushNotification,
   initializePushProvider,
+  getAssetById,
   type PushProviderName,
   type AuthenticatedRequest,
   type SearchOptions,
@@ -2475,6 +2476,27 @@ app.get('/public/snippets/:id', async (req: Request, res: Response): Promise<voi
   } catch (error: any) {
     console.error('Public snippet lookup error:', error);
     res.status(500).json({ error: error.message || 'Failed to get snippet' });
+  }
+});
+
+// GET /public/assets/:uuid — resolve a DAM asset UUID to its public URL.
+// Used by the headless SDK's resolvers when images are stored as UUIDs.
+app.get('/public/assets/:uuid', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const asset = await getAssetById(req.params.uuid);
+    if (!asset) {
+      res.status(404).json({ error: 'Asset not found' });
+      return;
+    }
+    if (!asset.isPublic) {
+      res.status(403).json({ error: 'Asset is not public' });
+      return;
+    }
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    res.json({ url: `${baseUrl}/dam-asset/${asset.s3Key}` });
+  } catch (error: any) {
+    console.error('Public asset lookup error:', error);
+    res.status(500).json({ error: error.message || 'Failed to resolve asset' });
   }
 });
 
