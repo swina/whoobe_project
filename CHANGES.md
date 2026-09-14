@@ -1,5 +1,10 @@
 # Changelog
 
+## [Fix local dev: base path conditional via VITE_BASE_URL env var] — 2026-09-14
+- **`apps/whoobe-one-spike/vite.config.ts`**: Changed base from hardcoded `/whoobe-one/` to `process.env.VITE_BASE_URL || '/'`. Local dev (`npm run dev`) now serves at `/` again — asset paths work without the nginx proxy prefix.
+- **`Dockerfile`**: Added `ARG VITE_BASE_URL` and `ENV VITE_BASE_URL=$VITE_BASE_URL` to the build stage so Docker builds pass the correct base path.
+- **`docker-compose.yml`**, **`docker-compose.apps.yml`**: Pass `VITE_BASE_URL: /whoobe-one/` build arg to whoobe-one-spike so Docker builds still produce assets with the correct `/whoobe-one/` prefix for the nginx reverse proxy.
+
 ## [LucideIcon editor: edit modal + live icon preview in canvas] — 2026-09-14
 - **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: Added LucideIcon edit button in the floating toolbar that opens a popover with an icon name input and live preview (using `resolveLucideIcon`). Apply/Clear buttons update `element.content`. Icon resolves asynchronously with the same lazy-loaded `@lucide/vue` chunk used by the preview renderer.
 - **`apps/whoobe-one-spike/src/components/BlockElement.vue`**: LucideIcon elements now render the actual resolved icon component (`<component :is="iconComponent">`) in the editor canvas, instead of showing the raw icon name string as text. Uses `shallowRef` + `watch` to re-resolve when `content` changes. Shows a muted placeholder dash while loading or when no icon name is set.
