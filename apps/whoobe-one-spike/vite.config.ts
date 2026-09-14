@@ -14,7 +14,6 @@ import vue from '@vitejs/plugin-vue'
 // runtime engine watches the live DOM directly and generates real CSS for
 // whatever classes actually appear, immediately, with no such limitation.
 export default defineConfig({
-  base: '/whoobe-one/',
   // Single source of truth for env vars: the repo-root .env (see
   // docs/plans/environment/env-optimization.md). Vite natively expands
   // ${VAR} references (dotenv-expand) and shell-exported vars win.
