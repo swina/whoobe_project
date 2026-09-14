@@ -59,7 +59,10 @@
 
 ## [Fix package resolution in temp dir: add monorepoRoot option] — 2026-09-14
 - **`packages/publish/src/cli.ts`**: Added `monorepoRoot` to `GenerateOptions` and `ScaffoldOptions`. When the generator runs in a temp directory outside the monorepo (e.g. `/tmp/whoobe-pwa-*` from the generate-pwa endpoint), the SDK package references in `package.json` resolve via the explicitly provided monorepo root instead of the broken `../../packages/sdk` relative path.
-- **`apps/core-api/src/server.ts`**: `generate-pwa` endpoint now passes `monorepoRoot: join(__dirname, '../../..')` so the generated `package.json` correctly references workspace SDK packages.
+- **`apps/core-api/src/server.ts`**: `generate-pwa` endpoint now passes `monorepoRoot: join(import.meta.dirname, '../../..')` so the generated `package.json` correctly references workspace SDK packages.
+
+## [Fix pnpm install in generated PWA preview: use monorepo sites/ dir] — 2026-09-14
+- **`apps/core-api/src/server.ts`**: Changed `generate-pwa` output directory from `/tmp/whoobe-pwa-*` (outside monorepo, breaks `workspace:*` dep resolution) to `sites/_preview` inside the monorepo where pnpm resolves workspace packages correctly. Directory is cleaned up after 5 minutes.
 - **`apps/whoobe-one-spike/package.json`**: Added `@alpinejs/collapse` dependency and `@types/alpinejs__collapse` dev dependency.
 - **`apps/whoobe-one-spike/src/main.ts`**: Imported `@alpinejs/collapse` and registered via `Alpine.plugin(collapse)`. The `x-collapse` directive (no value required) is now available for toggling element visibility with a smooth slide animation.
 

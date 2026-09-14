@@ -2582,13 +2582,13 @@ app.post('/pwa/send', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: 
 });
 
 // POST /whoobe-one/websites/:id/generate-pwa — generate a PWA Nuxt site for
-// preview. Runs the publish generator in a temp directory, returns the file
-// tree and contents of key files so the admin can inspect the output.
+// preview. Runs the publish generator inside the monorepo's sites/ directory
+// so workshop: workspace:* dependencies resolve correctly. Cleanup happens
+// after 5 minutes.
 app.post('/whoobe-one/websites/:id/generate-pwa', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { tmpdir } = await import('node:os');
     const { join } = await import('node:path');
-    const { mkdtemp, readdir, readFile, rm } = await import('node:fs/promises');
+    const { mkdir, readdir, readFile, rm } = await import('node:fs/promises');
     const { generateNuxtSite } = await import('@whoobe-cms/publish');
     const { existsSync } = await import('node:fs');
 
@@ -2600,7 +2600,12 @@ app.post('/whoobe-one/websites/:id/generate-pwa', requirePermission(PERMISSIONS.
     }
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const outDir = await mkdtemp(join(tmpdir(), 'whoobe-pwa-'));
+    const monorepoRoot = join(import.meta.dirname, '..', '..', '..');
+    const outDir = join(monorepoRoot, 'sites', '_preview');
+
+    // Ensure the output directory exists (clean slate)
+    await rm(outDir, { recursive: true, force: true });
+    await mkdir(outDir, { recursive: true });
 
     // Stream logs via response.write for real-time progress
     const log = (msg: string) => {
