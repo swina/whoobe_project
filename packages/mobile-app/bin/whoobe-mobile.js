@@ -13,6 +13,7 @@ program
   .option('--domain <domain>', 'Custom domain for the API (defaults to api-url host)')
   .option('--app-name <name>', 'Display name for the mobile app (defaults to website name)')
   .option('--app-id <id>', 'Bundle identifier (defaults to com.whoobe.mobile.<website-slug>)')
+  .option('--static', 'Inline all page content and images — fully offline, no CMS needed at runtime')
 
 program.parse()
 
@@ -25,6 +26,7 @@ generateMobileApp({
   domain: opts.domain,
   appName: opts.appName,
   appId: opts.appId,
+  static: opts.static ?? false,
 }).catch((err) => {
   console.error('Mobile app generation failed:', err instanceof Error ? err.message : err)
   process.exit(1)

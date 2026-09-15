@@ -12,29 +12,48 @@ Generate a **native iOS/Android mobile app** from your Whoobe CMS website using 
 
 ## Quick Start
 
+The easiest way to generate the project is the interactive script at the repo root — it builds the
+generator, prompts for everything below, and prints the next steps when it's done:
+
 ```bash
-# 1. Generate the mobile app project
-whoobe-mobile generate \
+./publish-mobile.sh
+```
+
+It asks for: the CMS API URL, the website ID (Websites → click the truncated ID to copy the full
+UUID), an app display name, a bundle identifier, an output directory, and whether to generate a
+**fully static (offline)** build (see [Static vs. Dynamic Mode](#static-vs-dynamic-mode) below).
+The admin dashboard's **Settings → PWA / Mobile App** page (once a website is selected) shows this
+same command plus a ready-to-copy non-interactive version pre-filled with that website's ID.
+
+Equivalently, to script it non-interactively:
+
+```bash
+# 1. Build the generator once (publish-mobile.sh does this for you automatically)
+pnpm run --filter @whoobe-cms/mobile-app build
+
+# 2. Generate the mobile app project
+node packages/mobile-app/bin/whoobe-mobile.js \
   --api-url https://cms.example.com \
   --website-id <uuid> \
   --out-dir ./sites/my-mobile-app \
   --app-name "My Brand"
+  # add --static for a fully offline build
 
-# 2. Install dependencies
+# 3. Install dependencies
 cd ./sites/my-mobile-app
 npm install
 
-# 3. Build the web app
+# 4. Build the web app
 npm run build
 
-# 4. Add native platforms
+# 5. Add native platforms
 npx cap add android
 npx cap add ios          # macOS only
 
-# 5. Sync web build to native projects
+# 6. Sync web build to native projects
 npx cap sync
 
-# 6. Open in native IDE
+# 7. Open in native IDE
 npx cap open android     # Opens Android Studio
 npx cap open ios         # Opens Xcode (macOS only)
 ```
@@ -43,33 +62,52 @@ npx cap open ios         # Opens Xcode (macOS only)
 
 ```
 sites/my-mobile-app/
-├── package.json              # Dependencies: Vue 3, Vue Router, Alpine.js, Capacitor v7
-├── vite.config.ts            # Vite config with base: './' for file:// compatibility
+├── package.json                    # Vue 3, Vue Router, Alpine.js, @lucide/vue, Capacitor v7
+├── vite.config.ts                  # Vite config with base: './' for file:// compatibility
 ├── tsconfig.json
-├── capacitor.config.ts       # App name, ID, splash screen, status bar, push config
-├── index.html                # HTML shell with Google Fonts, viewport-fit=cover
+├── capacitor.config.ts             # App name, ID, splash screen, status bar, push config
+├── index.html                      # HTML shell with Google Fonts, viewport-fit=cover
 ├── src/
-│   ├── main.ts               # App bootstrap: Vue + Pinia + Alpine.js + Capacitor plugins
-│   ├── App.vue               # Root component: <router-view />
-│   ├── router/index.ts       # Hash-based router with routes for each app page
-│   ├── views/PublicPage.vue  # Page renderer — fetches content from CMS public API
-│   ├── composables/useApi.ts # API URL and website ID from env / compiled-in defaults
-│   └── assets/main.css       # Tailwind CSS + theme variables + safe area utilities
+│   ├── main.ts                     # App bootstrap: Vue + Alpine.js (+ Collapse plugin) + Capacitor plugins
+│   ├── App.vue                     # Root component: <router-view /> + in-page anchor scroll handling
+│   ├── router/index.ts             # Hash-based router with routes for each app page
+│   ├── views/PublicPage.vue        # Fetches page + template layout, binds Alpine x-data from the layout's body slot
+│   ├── components/PageRenderer.vue # Recursive block renderer — icons, images, links, containers
+│   ├── composables/useApi.ts       # API URL, website ID, root path, asset-processor URL
+│   └── assets/main.css             # Tailwind CSS + theme variables + safe area utilities
 └── public/
     └── favicon.ico
 ```
 
+In `--static` mode, two extra files replace the runtime API calls with data baked in at generation
+time: `src/assets/pagesData.ts` (every app page's content + layout, inlined) and
+`src/assets/images.ts` (a map from original image reference to a locally-downloaded, bundled file
+under `public/images/`).
+
 ## CLI Reference
 
+There is no subcommand — `whoobe-mobile` (or `node packages/mobile-app/bin/whoobe-mobile.js`
+inside the monorepo, after running `pnpm run --filter @whoobe-cms/mobile-app build` once) takes
+flags directly:
+
 ```bash
-whoobe-mobile generate \
+whoobe-mobile \
   --api-url <url>           # Base URL of the CMS public API (required)
   --website-id <id>         # UUID of the website (required)
   --out-dir <path>          # Output directory (required)
   --app-name <name>         # Display name for the app (defaults to website name)
   --app-id <id>             # Bundle identifier (defaults to com.whoobe.mobile.<slug>)
   --domain <domain>         # Custom domain for API (defaults to api-url host)
+  --static                  # Inline all page content + images so the app works fully offline
 ```
+
+### Static vs. Dynamic Mode
+
+By default (no `--static`) the generated app fetches page content live from the CMS public API at
+runtime — content updates show up without rebuilding, but the app needs network access to the CMS.
+`--static` instead bakes every app page's content, layout, and images into the build at generation
+time: the app works fully offline, but picking up CMS content changes means re-running the
+generator and rebuilding.
 
 ## How It Works
 
@@ -111,6 +149,16 @@ If no app pages exist, the generator fails with a clear error message.
 ### Hash Routing
 
 The app uses `createWebHashHistory()` instead of HTML5 history mode. This is required because Capacitor loads the app from `http://localhost` (dev) or `file://` (production), and hash mode works everywhere without a server.
+
+Two consequences of this, both handled automatically by the generator:
+
+- **In-page anchor links** (e.g. a slider's `href="#slide2"`) would otherwise be swallowed by the
+  router as a navigation to a non-existent route. `App.vue` intercepts these clicks and scrolls to
+  the target element manually instead.
+- **Internal page-to-page links** authored in the editor are stored as
+  `{website.rootPath}{page.slug}` (e.g. `/en/app/home`) — not routable as-is under hash history.
+  `PageRenderer.vue` strips the website's `rootPath` and prepends `#` when rendering `<a>` hrefs, so
+  `/en/app/home` becomes `#/app/home`, matching the route the app actually registered for that page.
 
 ### API URL Resolution
 
@@ -247,6 +295,8 @@ Re-run `npx cap open android` (or iOS) and rebuild the native app for store dist
 | **Blank screen on device** | Check `VITE_CORE_API_URL` in `.env` — must be reachable from the device |
 | **"No app pages found"** | Create pages with kind "app" in the editor's page settings |
 | **CORS errors** | Ensure your CMS API allows requests from the app's origin (or `*`) |
-| **Images not loading** | Check that the CMS DAM proxy is publicly accessible |
+| **Images not loading** | Check that the CMS DAM proxy (`/dam-asset/*`, `/public/assets/:uuid`) is reachable from the device; in local dev this is a separate port (3002) from core-api |
+| **Icons not loading** | The generated app dynamically imports `@lucide/vue` on first icon render — check the WebView console for a failed chunk load, and confirm `npm install` completed |
+| **Internal links go to a blank/404 page** | The link's `href` must be under this website's `rootPath` for the generator to route it internally — a link authored for a different website's `rootPath` can't be resolved inside this app |
 | **Hash route not working** | Verify `vite.config.ts` has `base: './'` |
 | **Splash screen stays visible** | The app hides it in `main.ts` — check for JS errors in the WebView |

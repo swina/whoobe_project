@@ -111,6 +111,13 @@ if [ -n "$APP_NAME" ]; then
   APP_NAME_ARG="--app-name $APP_NAME"
 fi
 
+STATIC_FLAG=""
+echo ""
+read -r -p "Generate fully static app (no CMS runtime needed)? [y/N]: " STATIC_ANSWER
+case "$STATIC_ANSWER" in
+  y|Y|yes|Yes) STATIC_FLAG="--static" ;;
+esac
+
 # Build the mobile-app package first
 pnpm run --filter @whoobe-cms/mobile-app build
 
@@ -119,7 +126,8 @@ node packages/mobile-app/bin/whoobe-mobile.js \
   --website-id "$WEBSITE_ID" \
   --out-dir "$CHOOSEN_OUT_DIR" \
   --app-id "$APP_ID" \
-  $APP_NAME_ARG
+  $APP_NAME_ARG \
+  $STATIC_FLAG
 
 # ── Done ────────────────────────────────────────────────────────────────────
 echo ""
