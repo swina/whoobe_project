@@ -667,7 +667,7 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'ai', name: 'AI agent', icon: Sparkles },
   { key: 'ai-image', name: 'AI image gen', icon: Image },
   { key: 'figma', name: 'Figma', icon: Palette },
-  { key: 'pwa', name: 'PWA / Mobile App', icon: Smartphone },
+  { key: 'pwa', name: 'Mobile App', icon: Smartphone },
 ]
 
 const settingsSubLabels: Record<SettingsSubSection, string> = {
@@ -680,7 +680,7 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   ai: 'AI agent',
   'ai-image': 'AI image gen',
   figma: 'Figma',
-  pwa: 'PWA / Mobile App',
+  pwa: 'Mobile App',
 }
 
 function isSettingsSubSectionActive(key: SettingsSubSection): boolean {

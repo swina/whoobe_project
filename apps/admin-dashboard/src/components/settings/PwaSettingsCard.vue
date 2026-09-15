@@ -3,10 +3,11 @@
     <div v-if="loading" class="text-xs text-slate-400">Loading PWA configuration...</div>
 
     <template v-else>
+      
       <div class="flex items-center justify-between">
         <div>
-          <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">PWA / Mobile App</h3>
-          <p class="text-xs text-slate-500">Configure Progressive Web App settings for your websites.</p>
+          <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">Mobile App</h3>
+          <p class="text-xs text-slate-500">Configure App settings for your websites.</p>
         </div>
         <label class="flex items-center gap-2 cursor-pointer">
           <span class="text-xs text-slate-400">Enabled</span>
@@ -125,15 +126,17 @@
 
         <div class="flex items-center gap-3 pt-2">
           <button type="submit" :disabled="saving" class="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50">
-            {{ saving ? 'Saving...' : 'Save PWA Configuration' }}
+            {{ saving ? 'Saving...' : 'Save Configuration' }}
           </button>
           <span v-if="savedAt" class="text-xs text-emerald-400">Saved at {{ savedAt }}</span>
           <span v-if="error" class="text-xs text-rose-400">{{ error }}</span>
         </div>
       </form>
-
       <!-- Generate preview -->
+      <!--
       <div v-if="selectedWebsiteId" class="border-t border-slate-700 light:border-slate-300 pt-4 mt-4">
+      -->
+        <!--
         <div class="flex items-center justify-between mb-3">
           <div>
             <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Generate Mobile App Preview</h4>
@@ -149,15 +152,17 @@
             {{ generating ? 'Generating...' : 'Generate Mobile App' }}
           </button>
         </div>
-
+        -->
         <!-- Log viewer -->
+         <!--
         <div v-if="logs.length" class="mb-3 bg-slate-950 rounded-lg p-3 font-mono text-[11px] leading-relaxed max-h-48 overflow-y-auto">
           <div v-for="(log, i) in logs" :key="i" class="text-emerald-400/80">
             <span class="text-slate-600">[{{ i + 1 }}]</span> {{ log }}
           </div>
         </div>
-
+        -->
         <!-- File tree + preview -->
+         <!--
         <div v-if="result" class="border border-slate-700 rounded-lg overflow-hidden">
           <div class="flex items-center gap-2 bg-slate-800/50 px-3 py-2 border-b border-slate-700">
             <span class="text-xs font-semibold text-slate-300">{{ result.websiteName }} — PWA site</span>
@@ -189,11 +194,12 @@
           </div>
         </div>
       </div>
-
+      -->
+    
       <!-- Native mobile app (Capacitor) -->
       <div v-if="selectedWebsiteId" class="border-t border-slate-700 light:border-slate-300 pt-4 mt-4">
         <div class="mb-3">
-          <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Native Mobile App (Capacitor)</h4>
+          <h4 class="text-lg font-semibold text-slate-600 uppercase tracking-wider">Native Mobile App (Capacitor)</h4>
           <p class="text-xs text-slate-500 mt-0.5">
             Generates a real, installable Android/iOS project — a separate native pipeline from the Nuxt PWA
             preview above. This needs a local <code class="text-slate-400">npm install</code> and Android
@@ -228,10 +234,13 @@
               <pre class="flex-1 text-[11px] font-mono text-emerald-400/90 whitespace-pre-wrap">{{ capacitorCliCommand }}</pre>
               <button type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 shrink-0" @click="copyToClipboard(capacitorCliCommand)">Copy</button>
             </div>
-            <p class="text-[11px] text-slate-500 mt-1">
-              Add <code class="text-slate-400">--static</code> for a fully offline build. Run
-              <code class="text-slate-400">pnpm run --filter @whoobe-cms/mobile-app build</code> once first if
+            <p class="text-[11px] text-slate-200 mt-1 bg-slate-800/50 rounded-lg p-2">
+              Add <code class="text-slate-300">--static</code> for a fully offline build.<br>
+              Run <code class="text-slate-300">pnpm run --filter @whoobe-cms/mobile-app build</code> once first if
               you haven't (publish-mobile.sh does this for you automatically).
+            </p>
+            <p class="text-[11px] text-slate-200 mt-1 bg-slate-800/50 rounded-lg p-2">
+              If you are in a WSL environment, you may need to run the script from a Windows terminal instead of WSL for Android Studio/Xcode to work properly. In this case set <code class="text-slate-300">--out-dir</code> to a Windows path from WSL (e.g., <code class="text-slate-300">/mnt/c/_some_path_/mobile-app</code>).
             </p>
           </div>
 

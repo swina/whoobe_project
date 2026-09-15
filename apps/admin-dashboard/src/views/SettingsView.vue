@@ -244,7 +244,8 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   ai: { title: 'AI Agent', description: 'LLM provider used by the AI page and snippet generator in the Whoobe One composer.' },
   'ai-image': { title: 'AI Image Generation', description: 'Dedicated AI provider for image generation, or leave blank to use your text AI configuration.' },
   figma: { title: 'Figma Integration', description: 'Figma Personal Access Token configuration for importing designs into the Whoobe One editor.' },
-  pwa: { title: 'PWA / Mobile App', description: 'Configure Progressive Web App settings, push notification providers, and manifest options per website.' },
+  //pwa: { title: 'Mobile App', description: 'Configure Progressive Web App settings, push notification providers, and manifest options per website.' },
+  pwa: { title: 'Mobile App', description: 'Publish your website as a mobile app.' },
 }
 
 const sectionTitle = computed(() => sectionTitles[activeSubSection.value].title)
