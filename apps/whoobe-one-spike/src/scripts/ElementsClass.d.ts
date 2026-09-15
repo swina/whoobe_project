@@ -105,6 +105,13 @@ export interface ElementSearchConfig {
   buttonIcon?: boolean
 }
 
+export interface GatewayBinding {
+  endpointName: string
+  routePath: string
+  fieldPath: string
+  params?: Record<string, string> | null
+}
+
 import type { FieldTransform } from './field-transforms.js'
 
 export interface DataBindingFilter {
@@ -293,6 +300,7 @@ export default class Element {
   helper: string | null
   dialog: string | null
   dataBinding?: ElementDataBinding | null
+  gatewayBinding?: GatewayBinding | null
 
   // Only present on nodes built via .Heading()/.Video()/input-family
   // builders - not part of the base shape, hence optional here.

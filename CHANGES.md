@@ -1,7 +1,35 @@
 # Changelog
 
-## [API Gateway implementation plan] — 2026-09-15
-- **`docs/plans/api gateway/api-gateway-plan.md`**: Replaced the 8-line outline with a full implementation plan covering: new `apps/gateway` workspace (Express, port 3001) as unified entry point proxying internal services (core-api, asset-processor) and external remote APIs; DB-backed endpoint/route/schema registry (`gateway_endpoints`, `gateway_routes`, `gateway_schemas` tables); auto-inferred response shapes for CMS data binding; convention-based plugin autoloading system; admin-dashboard UI for endpoint CRUD, schema viewer, and binding picker; new `GATEWAY_MANAGE` permission; rate limiting, auth secret encryption, Docker/nginx integration; phased 7-step rollout plan.
+## [API Gateway implementation] — 2026-09-15
+- **`docs/plans/api gateway/api-gateway-plan.md`**: Replaced the 8-line outline with a full implementation plan.
+- **`apps/gateway/`**: New workspace — Express service (port 3001) with proxy engine, remote router, schema inferrer, rate limiter, plugin loader, admin CRUD routes, and resolve handler.
+- **`apps/gateway/package.json`**, **`tsconfig.json`**: Scaffolded workspace matching existing app conventions.
+- **`apps/gateway/plugins/.gitkeep`**: Plugin autoload directory.
+- **`packages/core/src/db/gateway-schema.ts`**: New Drizzle schemas for `gateway_endpoints`, `gateway_routes`, `gateway_schemas` tables.
+- **`packages/core/src/db/gateway-records.ts`**: CRUD records functions for all three gateway tables.
+- **`packages/core/src/cms/gateway-binding.ts`**: Binding parser (`gateway:endpoint:path:field`) and resolver — browser-safe for SDKs.
+- **`packages/core/src/auth/permissions.ts`**: Added `GATEWAY_MANAGE: 'gateway:manage'` permission key.
+- **`packages/core/src/server.ts`**, **`index.ts`**: Barrel exports for gateway schemas, records, and binding module.
+- **`packages/core/drizzle/0038_gateway.sql`**: Migration for gateway tables. Updated `_journal.json`.
+- **`apps/admin-dashboard/src/views/GatewayEndpointsView.vue`**: Self-contained CRUD view for endpoints + routes with expandable rows, schema viewer modal, and test/infer workflow.
+- **`apps/admin-dashboard/src/views/GatewayPluginsView.vue`**: Plugin listing view.
+- **`apps/admin-dashboard/src/utils/gateway-api.ts`**: API client functions for all gateway admin endpoints.
+- **`apps/admin-dashboard/src/stores/gatewayStore.ts`**: Pinia store wrapping gateway API calls with local state.
+- **`apps/admin-dashboard/src/layouts/DashboardLayout.vue`**: Added `gateway` and `gateway-plugins` sections, `Network` icon import, nav item for API Gateway.
+- **`apps/admin-dashboard/src/stores/tabsStore.ts`**: Added `gateway` and `gateway-plugins` to `SectionKind`.
+- **`Dockerfile`**: Added `gateway` build target.
+- **`docker-compose.yml`**: Added `gateway` service (port 3001).
+- **`dev-cms.sh`**: Added `gateway` to APPS array, port 3001 to stop list, `VITE_GATEWAY_URL` to hostname export.
+- **`packages/core/src/cms/block-schema.ts`**, **`packages/sdk/schema/src/node.ts`**, **`apps/whoobe-one-spike/src/scripts/ElementsClass.d.ts`**: Added `GatewayBinding` interface and `gatewayBinding?: GatewayBinding | null` field to block/element node types (separate from `dataBinding`).
+- **`packages/core/src/cms/gateway-binding.ts`**: Updated with `resolveGatewayUrl()`, `extractGatewayParams()` helpers.
+- **`apps/gateway/src/admin-routes.ts`**: Execute route now supports dynamic `{param}` substitution in route paths via `params` field in request body.
+- **`apps/admin-dashboard/src/views/GatewayEndpointsView.vue`**: Send Request modal shows dynamic param input fields when the route path contains `{param}` patterns, URL updates live as params change.
+- **`apps/admin-dashboard/src/utils/gateway-api.ts`**: `executeRoute()` accepts optional `params` parameter.
+- **`apps/whoobe-one-spike/src/components/GatewayBindingPicker.vue`**: New modal — pick endpoint, route, fill dynamic params, select response field, produces `gateway:endpointName:routePath:fieldPath` binding expression.
+- **`apps/whoobe-one-spike/src/components/FloatingToolbar.vue`**: Added gateway binding button (Network icon) next to data object binding button; imports and renders `GatewayBindingPicker`.
+- **`apps/whoobe-one-spike/src/scripts/data-resolver.ts`**: Added `resolveGatewayBinding()`, `resolveGatewayFieldValue()`; `resolveTree()` now resolves `gatewayBinding` on nodes.
+- **`packages/sdk/renderer/src/resolve.ts`**: Added `resolveGatewayBinding()`, `resolveGatewayFieldValue()`, re-added `formatBoundContent()`.
+- **`packages/sdk/renderer/src/walk.ts`**: `walkNode()` resolves `gatewayBinding` content via gateway resolve endpoint.
 
 ## [Mobile app: fix Alpine x-data, Lucide icons, background images, container-content leak, in-page anchors, internal links] — 2026-09-15
 - **`packages/mobile-app/src/cli.ts`**: the generated Capacitor app reimplements page rendering from scratch (it can't reuse `apps/whoobe-one-spike`'s `BlockContainerPreview`/`BlockElementPreview`, which depend on editor-store internals) — that reimplementation had drifted from the real renderer in several ways, all fixed here:

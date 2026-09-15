@@ -39,6 +39,7 @@ import { useEditorStore } from '../store/editor'
 import { loadPage, loadMailTemplate, loadSnippet, loadWebsiteTheme, loadAllThemes, createEmptyMailTemplateRoot, createEmptyDocumentRoot } from '../scripts/database-actions'
 import { clean } from '../helpers'
 import { getDefaultCoreApiUrl } from '../core-api-url'
+import { resolveDocumentData } from '../scripts/data-resolver'
 
 const editor = useEditorStore()
 const route = useRoute()
@@ -103,6 +104,7 @@ onMounted(async () => {
     page.json.blocks = root
     editor.setPage(page)
     editor.setDocument(root)
+    resolveDocumentData(root)
     editor.setCurrent(null)
     editor.setSnippetMode(true)
     const wsId = typeof route.query.websiteId === 'string' ? route.query.websiteId : null
@@ -130,6 +132,7 @@ onMounted(async () => {
       page.json.blocks = root
       editor.setPage(page)
       editor.setDocument(root)
+      resolveDocumentData(root)
       editor.setCurrent(null)
       editor.setMailTemplateId(mailTemplateId)
     }
@@ -178,6 +181,7 @@ onMounted(async () => {
   root.blocks.push(row, image, button)
 
   editor.setDocument(root)
+  resolveDocumentData(root)
 
   const page = new Block()
   page.name = 'My Page'

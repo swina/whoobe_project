@@ -38,6 +38,7 @@
     >
       {{ doc.tag || 'container' }}
       <span v-if="(doc as any).dataBinding" class="text-[9px] opacity-80 ml-1">{{ ((doc as any).dataBinding?.className || '?') }}</span>
+      <span v-else-if="(doc as any).gatewayBinding" class="text-[9px] opacity-80 ml-1">gateway:{{ ((doc as any).gatewayBinding?.endpointName || '?') }}</span>
     </button>
     <button
       v-if="(doc as any).semantic"
@@ -164,10 +165,16 @@ const props = defineProps<{
 const resolvedContext = computed<DataObjectRecord | null>(() => {
   const editor = useEditorStore()
   const db = (props.doc as any).dataBinding
-  if (!db || db.field) return null
-  const resolved = editor.resolvedData[props.doc.id]
-  if (!resolved || Array.isArray(resolved)) return null
-  return resolved as DataObjectRecord
+  if (db && !db.field) {
+    const resolved = editor.resolvedData[props.doc.id]
+    if (resolved && !Array.isArray(resolved)) return resolved as DataObjectRecord
+  }
+  const gb = (props.doc as any).gatewayBinding
+  if (gb && !gb.fieldPath) {
+    const resolved = editor.resolvedData[props.doc.id]
+    if (resolved && !Array.isArray(resolved)) return resolved as DataObjectRecord
+  }
+  return null
 })
 
 const childContext = computed(() => props.dataContext ?? resolvedContext.value)
@@ -181,9 +188,16 @@ const childContext = computed(() => props.dataContext ?? resolvedContext.value)
 const collectionResolved = computed<DataObjectRecord[]>(() => {
   const editor = useEditorStore()
   const db = (props.doc as any).dataBinding
-  if (!db || db.field) return []
-  const resolved = editor.resolvedData[props.doc.id]
-  return Array.isArray(resolved) ? resolved : []
+  if (db && !db.field) {
+    const resolved = editor.resolvedData[props.doc.id]
+    return Array.isArray(resolved) ? resolved : []
+  }
+  const gb = (props.doc as any).gatewayBinding
+  if (gb) {
+    const resolved = editor.resolvedData[props.doc.id]
+    return Array.isArray(resolved) ? resolved : []
+  }
+  return []
 })
 
 // Client-side pagination over collectionResolved - same pattern as

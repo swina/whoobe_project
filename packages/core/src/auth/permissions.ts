@@ -45,6 +45,9 @@ export const PERMISSIONS = {
   COMPONENTS_EDIT: 'components:edit',
   COMPONENTS_CREATE: 'components:create',
   COMPONENTS_DELETE: 'components:delete',
+
+  // Gateway management
+  GATEWAY_MANAGE: 'gateway:manage',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

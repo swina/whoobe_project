@@ -23,6 +23,7 @@ APPS=(
   "admin-dashboard"
   "core-api"
   "asset-processor"
+  "gateway"
   "whoobe-one-spike"
 )
 
@@ -55,7 +56,7 @@ if [ "$STOP" = "1" ]; then
     pkill -f ".*tsx.*$app.*" 2>/dev/null || true
     pkill -f ".*vite.*$app.*" 2>/dev/null || true
   done
-  lsof -ti:3000,3002,3003,3006 2>/dev/null | xargs kill -9 2>/dev/null || true
+  lsof -ti:3000,3001,3002,3003,3006 2>/dev/null | xargs kill -9 2>/dev/null || true
   echo "Stopped."
   exit 0
 fi
@@ -70,13 +71,15 @@ fi
 if [ -n "$HOSTNAME" ]; then
   export VITE_ASSET_PROCESSOR_URL="http://$HOSTNAME:3002"
   export VITE_CORE_API_URL="http://$HOSTNAME:3003"
+  export VITE_GATEWAY_URL="http://$HOSTNAME:3001"
   echo "App endpoints use hostname: $HOSTNAME"
 fi
 
 echo "Starting CMS dev servers..."
 echo "  admin-dashboard  → http://localhost:3000"
-echo "  core-api         → http://localhost:3003"
+echo "  gateway          → http://localhost:3001"
 echo "  asset-processor  → http://localhost:3002"
+echo "  core-api         → http://localhost:3003"
 echo "  whoobe-one-spike → http://localhost:3006"
 echo ""
 

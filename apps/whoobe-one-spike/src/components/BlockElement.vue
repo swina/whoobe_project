@@ -113,6 +113,34 @@ const props = defineProps<{
 
 const editor = useEditorStore()
 
+// Resolve a dot-path field from a record (gateway response item)
+function resolveFieldFromRecord(record: any, fieldPath: string): unknown {
+  if (!record || !fieldPath) return record
+  const parts = fieldPath.split('.')
+  let current: any = record
+  for (const part of parts) {
+    if (current === null || current === undefined) return undefined
+    const m = part.match(/^(\w+)\[(\d+)\]$/)
+    if (m) {
+      const arr = current[m[1]]
+      if (!Array.isArray(arr)) return undefined
+      current = arr[parseInt(m[2], 10)]
+    } else if (typeof current === 'object') {
+      current = current[part]
+    } else {
+      return undefined
+    }
+  }
+  if (current !== undefined) return current
+  // Fallback: try just the last segment — handles the case where a child
+  // inside a container repeater inherits a dataContext that is the
+  // individual array item, but the fieldPath still includes the parent's
+  // prefix (e.g. fieldPath "products.title" vs dataContext = { title }).
+  const last = parts[parts.length - 1]
+  if (last && typeof record === 'object') return record[last]
+  return undefined
+}
+
 const iconComponent = shallowRef<Component | null>(null)
 
 function resolveIcon() {
@@ -146,34 +174,48 @@ function showAgain() {
 }
 
 const db = computed(() => (props.element as any).dataBinding)
+const gb = computed(() => (props.element as any).gatewayBinding)
 
 // Resolved data value: explicit bindings (with objectId) use the store's
 // resolved data. Relative bindings (no objectId, e.g. generated template
 // fields) resolve against the nearest container's dataContext.
 const resolvedDataValue = computed(() => {
   const binding = db.value
-  if (!binding) return null
-  if (binding.objectId) {
+  if (binding) {
+    if (binding.objectId) {
+      const resolved = editor.resolvedData[props.element.id]
+      if (!resolved) return null
+      return resolveFieldValue(resolved, binding)
+    }
+    if (props.dataContext && binding.field) {
+      return (props.dataContext.attributes as any)?.[binding.field]
+    }
+    if (props.dataContext && !binding.field) {
+      return props.dataContext
+    }
+    return null
+  }
+  // Gateway binding: resolve field from container's dataContext (repeater item)
+  const gateway = gb.value
+  if (gateway) {
+    if (props.dataContext && gateway.fieldPath) {
+      return resolveFieldFromRecord(props.dataContext, gateway.fieldPath)
+    }
+    if (props.dataContext && !gateway.fieldPath) {
+      return props.dataContext
+    }
     const resolved = editor.resolvedData[props.element.id]
-    if (!resolved) return null
-    return resolveFieldValue(resolved, binding)
-  }
-  // Relative binding: inherit from container's dataContext.
-  if (props.dataContext && binding.field) {
-    return (props.dataContext.attributes as any)?.[binding.field]
-  }
-  if (props.dataContext && !binding.field) {
-    return props.dataContext
+    return resolved
   }
   return null
 })
 
-const hasResolvedData = computed(() => db.value && resolvedDataValue.value !== null)
+const hasResolvedData = computed(() => (db.value || gb.value) && resolvedDataValue.value !== null)
 
 // Show the abstract {Class.field} overlay only when binding exists but data
 // hasn't resolved yet (loading / not yet fetched). Once resolved, the real
 // value is shown inline below.
-const showOverlay = computed(() => db.value && !hasResolvedData.value)
+const showOverlay = computed(() => (db.value || gb.value) && !hasResolvedData.value)
 
 const bindingPlaceholder = computed(() => {
   const binding = db.value

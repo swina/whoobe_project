@@ -145,10 +145,18 @@ const editor = useEditorStore()
 const collectionResolved = computed<DataObjectRecord[]>(() => {
   const el = props.doc as any
   const db = el.dataBinding
-  if (!db || db.field) return []
-  const resolved = editor.resolvedData[el.id]
-  if (!Array.isArray(resolved)) return []
-  return resolved
+  if (db && !db.field) {
+    const resolved = editor.resolvedData[el.id]
+    if (!Array.isArray(resolved)) return []
+    return resolved
+  }
+  const gb = el.gatewayBinding
+  if (gb) {
+    const resolved = editor.resolvedData[el.id]
+    if (!Array.isArray(resolved)) return []
+    return resolved
+  }
+  return []
 })
 
 // Client-side pagination over collectionResolved - the binding's own
@@ -205,10 +213,18 @@ watch(totalPages, (p) => {
 const singleObjectContext = computed<DataObjectRecord | null>(() => {
   const el = props.doc as any
   const db = el.dataBinding
-  if (!db || db.field) return null
-  const resolved = editor.resolvedData[el.id]
-  if (!resolved || Array.isArray(resolved)) return null
-  return resolved as DataObjectRecord
+  if (db && !db.field) {
+    const resolved = editor.resolvedData[el.id]
+    if (!resolved || Array.isArray(resolved)) return null
+    return resolved as DataObjectRecord
+  }
+  const gb = el.gatewayBinding
+  if (gb && !gb.fieldPath) {
+    const resolved = editor.resolvedData[el.id]
+    if (!resolved || Array.isArray(resolved)) return null
+    return resolved as DataObjectRecord
+  }
+  return null
 })
 
 function boundChildProps(child: WhoobeElement, obj: DataObjectRecord): Record<string, unknown> {
