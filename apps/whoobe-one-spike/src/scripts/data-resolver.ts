@@ -1,4 +1,4 @@
-import type { DataBindingFilter, DataBindingOrderBy, ElementDataBinding } from './ElementsClass.js'
+import type { DataBindingFilter, DataBindingOrderBy, ElementDataBinding, GatewayBinding } from './ElementsClass.js'
 import {
   getDataObject,
   getDataClassByName,
@@ -35,6 +35,15 @@ async function resolveTree(
       editor.resolvedData[node.id] = await resolveBinding(db, locale, urlParams)
     } catch (err: any) {
       console.error(`[data-resolver] Failed to resolve binding for element ${node.id}:`, err)
+      editor.resolvedData[node.id] = null
+    }
+  }
+  const gb = (node as any).gatewayBinding as GatewayBinding | undefined
+  if (gb) {
+    try {
+      editor.resolvedData[node.id] = await resolveGatewayBinding(gb)
+    } catch (err: any) {
+      console.error(`[data-resolver] Failed to resolve gateway binding for element ${node.id}:`, err)
       editor.resolvedData[node.id] = null
     }
   }
@@ -228,4 +237,49 @@ export function resolveFieldValue(
     return getFieldValueClientSide(resolved as DataObjectRecord, field)
   }
   return resolved
+}
+
+export function resolveGatewayFieldValue(resolved: unknown, fieldPath: string): unknown {
+  if (!resolved || !fieldPath) return resolved
+  const parts = fieldPath.split('.')
+  let current: unknown = resolved
+  for (const part of parts) {
+    if (current === null || current === undefined) return undefined
+    const arrayMatch = /^(\w+)\[(\d+)\]$/.exec(part)
+    if (arrayMatch) {
+      const [, key, indexStr] = arrayMatch
+      const index = parseInt(indexStr, 10)
+      if (typeof current !== 'object') return undefined
+      const arr = (current as Record<string, unknown>)[key]
+      if (!Array.isArray(arr)) return undefined
+      current = arr[index]
+    } else if (typeof current === 'object') {
+      current = (current as Record<string, unknown>)[part]
+    } else {
+      return undefined
+    }
+  }
+  return current
+}
+
+async function resolveGatewayBinding(gb: GatewayBinding): Promise<unknown> {
+  const baseUrl = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:3001'
+  const url = `${baseUrl.replace(/\/+$/, '')}/api/v1/gateway/resolve`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpointName: gb.endpointName,
+      routePath: gb.routePath,
+      fieldPath: gb.fieldPath || undefined,
+      params: gb.params || undefined,
+    }),
+    credentials: 'include',
+  })
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}))
+    throw new Error((errBody as any).error || `Gateway resolve failed: ${res.status}`)
+  }
+  const data = (await res.json()) as { value?: unknown; found?: boolean }
+  return data.value
 }

@@ -44,3 +44,10 @@ FROM nginx:alpine AS whoobe-one-spike
 COPY --from=build /app/apps/whoobe-one-spike/dist /usr/share/nginx/html
 COPY nginx/spa-fallback.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
+
+# ─── API Gateway ────────────────────────────────────────────────────────────
+FROM base AS gateway
+COPY --from=build /app /app
+ENV NODE_ENV=production
+EXPOSE 3001
+CMD ["node", "apps/gateway/dist/server.js"]

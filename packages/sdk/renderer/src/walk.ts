@@ -8,7 +8,7 @@ import type { RenderDescriptor } from './descriptor.js'
 import { normalizeKind, resolveTag } from './kind.js'
 import { resolveImageUrl } from './url.js'
 import { resolveDynamicLinkPath } from './path-pattern.js'
-import { formatBoundContent, resolveDataBinding, resolveFieldValue, resolveRecordField } from './resolve.js'
+import { formatBoundContent, resolveDataBinding, resolveFieldValue, resolveRecordField, resolveGatewayBinding, resolveGatewayFieldValue, resolveFieldFromRecord } from './resolve.js'
 import type { RenderApi } from './api-client.js'
 
 /** The data in scope for relative bindings - a consumer supplies the page's
@@ -17,6 +17,9 @@ import type { RenderApi } from './api-client.js'
 export interface WalkContext {
   record?: Record<string, unknown> | null
   form?: Record<string, unknown>
+  /** Resolved gateway response for the current container scope, so child
+   *  elements can read fields without re-fetching. */
+  gatewayResponse?: unknown
   [key: string]: unknown
 }
 
@@ -128,6 +131,30 @@ async function walkChildren(node: WhoobeElementNode, ctx: WalkContext, options: 
     return children
   }
 
+  // A container with a gatewayBinding resolves the endpoint and repeats
+  // children for each item if the result is an array, or sets the context
+  // record to the resolved value for child field bindings.
+  if (node.type === 'container' && node.gatewayBinding) {
+    const gatewayUrl = options.api.gatewayUrl || 'http://localhost:3001'
+    const resolved = await resolveGatewayBinding(node.gatewayBinding, gatewayUrl)
+    if (Array.isArray(resolved)) {
+      for (const item of resolved) {
+        for (const child of node.blocks ?? []) {
+          const record = typeof item === 'object' && item ? (item as Record<string, unknown>) : undefined
+          children.push(await walkNode(child, { ...ctx, record, gatewayResponse: resolved }, options))
+        }
+      }
+      return children
+    }
+    if (typeof resolved === 'object' && resolved) {
+      const record = resolved as Record<string, unknown>
+      for (const child of node.blocks ?? []) {
+        children.push(await walkNode(child, { ...ctx, record, gatewayResponse: resolved }, options))
+      }
+      return children
+    }
+  }
+
   for (const child of node.blocks ?? []) {
     children.push(await walkNode(child, ctx, options))
   }
@@ -148,6 +175,23 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
     content = formatted.content
     contentIsHtml = true
     transformClassName = formatted.className
+  } else if (node.gatewayBinding?.fieldPath) {
+    // If we're inside a container repeater, resolve the field from the
+    // context record instead of hitting the gateway again.
+    if (ctx.record) {
+      const value = resolveFieldFromRecord(ctx.record, node.gatewayBinding.fieldPath)
+      content = typeof value === 'string' ? value : value !== undefined ? JSON.stringify(value) : ''
+      contentIsHtml = true
+    } else {
+      try {
+        const gatewayUrl = options.api.gatewayUrl || 'http://localhost:3001'
+        const value = await resolveGatewayBinding(node.gatewayBinding, gatewayUrl)
+        content = typeof value === 'string' ? value : JSON.stringify(value)
+        contentIsHtml = true
+      } catch {
+        content = ''
+      }
+    }
   } else if (typeof node.content === 'string') {
     content = node.content
     contentIsHtml = true // static content is authored HTML

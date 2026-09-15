@@ -85,6 +85,29 @@ const props = defineProps<{
 
 const editor = useEditorStore()
 
+function resolveFieldFromRecord(record: any, fieldPath: string): unknown {
+  if (!record || !fieldPath) return record
+  const parts = fieldPath.split('.')
+  let current: any = record
+  for (const part of parts) {
+    if (current === null || current === undefined) return undefined
+    const m = part.match(/^(\w+)\[(\d+)\]$/)
+    if (m) {
+      const arr = current[m[1]]
+      if (!Array.isArray(arr)) return undefined
+      current = arr[parseInt(m[2], 10)]
+    } else if (typeof current === 'object') {
+      current = current[part]
+    } else {
+      return undefined
+    }
+  }
+  if (current !== undefined) return current
+  const last = parts[parts.length - 1]
+  if (last && typeof record === 'object') return record[last]
+  return undefined
+}
+
 // Empty-value entries are dropped (matches the reference's own `if
 // (element.data.alpine[attr])` check in preview/BlockElement.vue) so an
 // added-then-cleared directive doesn't leave a stray `x-show=""` attribute
@@ -149,21 +172,35 @@ watch(
 const resolvedData = computed(() => {
   const el = props.element as any
   const db = el.dataBinding
-  if (!db) return null
-  // If the binding has an explicit objectId, use the store's resolved data
-  // (fetched by data-resolver.ts). Otherwise, use the dataContext from the
-  // nearest collection ancestor (for relative bindings inside a repeater).
-  if (db.objectId) {
+  if (db) {
+    // If the binding has an explicit objectId, use the store's resolved data
+    // (fetched by data-resolver.ts). Otherwise, use the dataContext from the
+    // nearest collection ancestor (for relative bindings inside a repeater).
+    if (db.objectId) {
+      const resolved = editor.resolvedData[el.id]
+      if (!resolved) return null
+      return resolveFieldValue(resolved, db)
+    }
+    if (props.dataContext && db.field) {
+      return (props.dataContext.attributes as any)?.[db.field]
+    }
+    if (props.dataContext && !db.field) {
+      return props.dataContext
+    }
     const resolved = editor.resolvedData[el.id]
-    if (!resolved) return null
-    return resolveFieldValue(resolved, db)
+    return resolved || null
   }
-  // Relative binding: resolve against the dataContext prop.
-  if (props.dataContext && db.field) {
-    return (props.dataContext.attributes as any)?.[db.field]
-  }
-  if (props.dataContext && !db.field) {
-    return props.dataContext
+  // Gateway binding: resolve from dataContext (repeater item) or store
+  const gb = el.gatewayBinding
+  if (gb) {
+    if (props.dataContext && gb.fieldPath) {
+      return resolveFieldFromRecord(props.dataContext, gb.fieldPath)
+    }
+    if (props.dataContext && !gb.fieldPath) {
+      return props.dataContext
+    }
+    const resolved = editor.resolvedData[el.id]
+    return resolved || null
   }
   return null
 })
@@ -186,6 +223,8 @@ const displayContent = computed(() => {
       return `<a href="${escapeHtml(result.href)}"${targetAttr}>${escapeHtml(result.text)}</a>`
     }
     return result.text
+  }
+  if (el.gatewayBinding) {    return typeof resolvedData.value === 'string' ? resolvedData.value : JSON.stringify(resolvedData.value ?? '')
   }
   // See ../BlockElement.vue's identical branch - a select/radio group's
   // options list (FormFieldControl.vue) generates real markup instead of
@@ -273,11 +312,9 @@ function getButtonIconStyle(): Record<string, string> {
 
 const displaySrc = computed(() => {
   const el = props.element as any
-  if (el.dataBinding && resolvedData.value !== null) {
-    const v = resolvedData.value
-    // Image/asset field values can be { assetId: '...' } / { url: '...' }
-    // objects, or a plain URL string. Pass through resolveDisplayUrl which
-    // handles both Pimcore paths and asset-record UUIDs via the DAM API.
+  const resolved = resolvedData.value
+  if (resolved !== null && (el.dataBinding || el.gatewayBinding)) {
+    const v = resolved
     if (typeof v === 'string') return resolveDisplayUrl(v)
     if (v && typeof v === 'object') {
       if (typeof (v as any).url === 'string') return (v as any).url
@@ -291,9 +328,9 @@ const displaySrc = computed(() => {
 
 const displayAlt = computed(() => {
   const el = props.element as any
-  if (el.dataBinding && resolvedData.value !== null) {
+  if (resolvedData.value !== null && (el.dataBinding || el.gatewayBinding)) {
     const v = resolvedData.value
-    if (el.dataBinding.transform && el.dataBinding.transform.type !== 'none') {
+    if (el.dataBinding?.transform && el.dataBinding.transform.type !== 'none') {
       const text = applyTransform(v, el.dataBinding.transform, editor.page?.locale).text
       return text || undefined
     }
@@ -330,7 +367,7 @@ const stile = computed(() => {
   // When this element is data-bound with a resolved src, don't layer the
   // editor's placeholder SVG on as a background - the real resolved image
   // (or the broken-image state) is what should show.
-  const showBg = el.element !== 'img' && !(el.dataBinding && el.dataBinding.target === 'src' && resolvedData.value !== null)
+  const showBg = el.element !== 'img' && !((el.dataBinding || el.gatewayBinding) && resolvedData.value !== null)
   if (showBg) {
     const bgUrl = resolveDisplayUrl(el.image?.url)
     if (bgUrl) st += `background-image:url(${bgUrl});`

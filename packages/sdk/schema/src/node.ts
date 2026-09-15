@@ -107,6 +107,13 @@ export interface DynamicLinkBinding {
   valueField: string
 }
 
+export interface GatewayBinding {
+  endpointName: string
+  routePath: string
+  fieldPath: string
+  params?: Record<string, string> | null
+}
+
 export interface ElementSlider {
   autoplay: boolean
   interval: number
@@ -144,6 +151,7 @@ export interface WhoobeElementNode {
    *  `data.options` (select/radiogroup options). */
   data?: Record<string, any>
   dataBinding?: ElementDataBinding | null
+  gatewayBinding?: GatewayBinding | null
   dynamicLink?: DynamicLinkBinding | null
   link?: string | null
   linkTarget?: string | null

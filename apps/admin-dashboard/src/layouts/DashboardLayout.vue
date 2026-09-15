@@ -435,7 +435,8 @@ import {
   Table2,
   Mail,
   Sparkles,
-  X
+  X,
+  Network,
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
@@ -464,6 +465,8 @@ import ComponentsView from '../views/ComponentsView.vue'
 import MailSettingsView from '../views/MailSettingsView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import ThemesView from '../components/themes/ThemesView.vue'
+import GatewayEndpointsView from '../views/GatewayEndpointsView.vue'
+import GatewayPluginsView from '../views/GatewayPluginsView.vue'
 import { usePagesStore } from '../stores/pagesStore'
 import { useSnippetsStore } from '../stores/snippetsStore'
 import { adminSearch, reindexSearchIndex, type SearchResult } from '../utils/search-api'
@@ -699,6 +702,7 @@ const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Documents', section: 'documents', icon: FileText },
   { name: 'Outgoing Mail', section: 'mail', icon: Mail },
   { name: 'Themes', section: 'themes', icon: Palette },
+  { name: 'API Gateway', section: 'gateway', icon: Network },
   { name: 'Settings', section: 'settings', icon: Settings }
 ]
 
@@ -713,7 +717,9 @@ const sectionComponents: Record<SectionKind, any> = {
   components: ComponentsView,
   themes: ThemesView,
   mail: MailSettingsView,
-  settings: SettingsView
+  settings: SettingsView,
+  gateway: GatewayEndpointsView,
+  'gateway-plugins': GatewayPluginsView,
 }
 
 const sectionLabels: Record<SectionKind, string> = {
@@ -727,6 +733,8 @@ const sectionLabels: Record<SectionKind, string> = {
   components: 'Components',
   mail: 'Outgoing Mail',
   themes: 'Themes',
+  gateway: 'API Gateway',
+  'gateway-plugins': 'Gateway Plugins',
   settings: 'Settings'
 }
 
@@ -741,6 +749,8 @@ const sectionIcons: Record<SectionKind, any> = {
   components: Blocks,
   mail: Mail,
   themes: Palette,
+  gateway: Network,
+  'gateway-plugins': Network,
   settings: Settings
 }
 

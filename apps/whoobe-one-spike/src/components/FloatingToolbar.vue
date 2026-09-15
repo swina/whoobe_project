@@ -533,6 +533,14 @@
     >
       <Database class="w-4 h-4" />
     </button>
+    <button
+      title="Bind to gateway endpoint"
+      class="toolbar-icon"
+      :class="editor.current?.gatewayBinding ? 'text-amber-600' : ''"
+      @click="showGatewayPicker = true"
+    >
+      <Network class="w-4 h-4" />
+    </button>
     <button title="Delete" class="toolbar-icon text-rose-500" :disabled="isRoot" @click="remove"><Trash2 class="w-4 h-4" /></button>
   </div>
 
@@ -591,6 +599,14 @@
     @clear="onFieldDataClear"
     @generate-template="onGenerateTemplate"
     @close="showFieldDataPicker = false"
+  />
+
+  <GatewayBindingPicker
+    v-if="showGatewayPicker && editor.current"
+    :initial="editor.current.gatewayBinding"
+    @select="onGatewayBound"
+    @clear="onGatewayClear"
+    @close="showGatewayPicker = false"
   />
 
   <!-- AI text generation prompt -->
@@ -668,6 +684,7 @@ import SaveSnippetModal from './SaveSnippetModal.vue'
 import AiGenerateModal from './AiGenerateModal.vue'
 import AiImageGenerateModal from './AiImageGenerateModal.vue'
 import DataObjectPicker from './DataObjectPicker.vue'
+import GatewayBindingPicker from './GatewayBindingPicker.vue'
 import ExpandableTextInput from './ExpandableTextInput.vue'
 import type { ElementDataBinding } from '../scripts/ElementsClass.js'
 import { insertGeneratedSnippet } from '../scripts/editor-actions'
@@ -689,6 +706,7 @@ import {
   FolderOpen,
   Image,
   Link,
+  Network,
   PaintBucket,
   Pen,
   Pencil,
@@ -794,6 +812,7 @@ const imageAltDraft = ref('')
 const showSliderSettings = ref(false)
 const showSemanticPicker = ref(false)
 const showDataPicker = ref(false)
+const showGatewayPicker = ref(false)
 const showFieldDataPicker = ref(false)
 const fieldDataTarget = ref<'src' | 'href'>('src')
 
@@ -897,6 +916,18 @@ function onDataBound(binding: ElementDataBinding) {
 function onDataClear() {
   if (editor.current) (editor.current as any).dataBinding = null
   showDataPicker.value = false
+  if (editor.document) resolveDocumentData(editor.document)
+}
+
+function onGatewayBound(binding: any) {
+  if (editor.current) (editor.current as any).gatewayBinding = binding
+  showGatewayPicker.value = false
+  if (editor.document) resolveDocumentData(editor.document)
+}
+
+function onGatewayClear() {
+  if (editor.current) (editor.current as any).gatewayBinding = null
+  showGatewayPicker.value = false
   if (editor.document) resolveDocumentData(editor.document)
 }
 

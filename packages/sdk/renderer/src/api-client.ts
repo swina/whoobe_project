@@ -10,6 +10,8 @@ import type { PublicLayout } from './compose-layout.js'
 export interface RenderApi {
   getObject(id: string): Promise<Record<string, unknown> | null>
   queryObjects(params: QueryObjectsParams): Promise<Record<string, unknown>[]>
+  /** Base URL of the API Gateway for gateway binding resolution. */
+  gatewayUrl?: string
 }
 
 export interface QueryObjectsParams {

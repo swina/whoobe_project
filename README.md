@@ -32,7 +32,8 @@ Managed with **pnpm workspaces** + **Turborepo**.
 | `packages/mobile-app` | `@whoobe-cms/mobile-app` | CLI generator that scaffolds a Capacitor native mobile app (iOS/Android) from a CMS website's app pages. |
 | `apps/core-api` | `@whoobe-cms/core-api` | Main Express backend API (data, DAM URLs, pages, forms, mail, search, AI). |
 | `apps/asset-processor` | `@whoobe-cms/asset-processor` | Express microservice for asset upload/processing (Sharp, exiftool, S3) and the public `/dam-asset/*` proxy. |
-| `apps/admin-dashboard` | `@whoobe-cms/admin-dashboard` | Vue 3 + Vite admin UI (overview, data objects, DAM, documents, pages, websites, settings). |
+| `apps/gateway` | `@whoobe-cms/gateway` | Express API gateway — unified entry point proxying internal services (core-api, asset-processor) and external remote APIs with auth injection, rate limiting, response schema inference, and a plugin system. |
+| `apps/admin-dashboard` | `@whoobe-cms/admin-dashboard` | Vue 3 + Vite admin UI (overview, data objects, DAM, documents, pages, websites, API Gateway, settings). |
 | `apps/whoobe-one-spike` | `@whoobe-cms/whoobe-one-spike` | Vue 3 visual WYSIWYG block/page builder, embedded in the admin dashboard for pages and HTML mail templates. |
 
 ## Prerequisites
@@ -104,6 +105,13 @@ S3_PUBLIC_BASE_URL=http://${WHOOBE_HOSTNAME}:3002/dam-asset
 # --- admin-dashboard (Vite) ---
 VITE_ASSET_PROCESSOR_URL=http://${WHOOBE_HOSTNAME}:3002
 VITE_CORE_API_URL=http://${WHOOBE_HOSTNAME}:3003
+VITE_GATEWAY_URL=http://${WHOOBE_HOSTNAME}:3001
+
+# --- gateway ---
+GATEWAY_PORT=3001
+GATEWAY_CORE_API_URL=http://${WHOOBE_HOSTNAME}:3003
+GATEWAY_ASSET_PROCESSOR_URL=http://${WHOOBE_HOSTNAME}:3002
+GATEWAY_DEFAULT_RATE_LIMIT_RPS=10
 
 # --- whoobe-one-spike (Vite) ---
 VITE_FONT_FAMILIES=Alfa+Slab+One|Asap+Condensed|Abel|Alice|Alegreya|Amethysta|Archivo+Black|Barlow|Barlow+Condensed|Bungee+Inline|Expletus+Sans|Lora|Montserrat|Nunito+Sans|Oi|Open+Sans|PT+Sans|Roboto|Roboto+Condensed|Quattrocento|Raleway|Ultra|Yatra+One

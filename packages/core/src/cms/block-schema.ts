@@ -18,6 +18,13 @@ export interface WhoobeDataBinding {
   locale?: string;
 }
 
+export interface GatewayBinding {
+  endpointName: string;
+  routePath: string;
+  fieldPath: string;
+  params?: Record<string, string> | null;
+}
+
 export interface WhoobeBlockNode {
   id: string;
   type: WhoobeBlockType;
@@ -28,6 +35,7 @@ export interface WhoobeBlockNode {
   content?: string;
   children?: WhoobeBlockNode[];
   dataBinding?: WhoobeDataBinding;
+  gatewayBinding?: GatewayBinding;
 }
 
 export const WhoobeDataBindingSchema = z.object({
@@ -47,6 +55,12 @@ export const WhoobeBlockNodeSchema: z.ZodType<WhoobeBlockNode> = z.lazy(() =>
     content: z.string().optional(),
     children: z.array(WhoobeBlockNodeSchema).optional(),
     dataBinding: WhoobeDataBindingSchema.optional(),
+    gatewayBinding: z.object({
+      endpointName: z.string(),
+      routePath: z.string(),
+      fieldPath: z.string(),
+      params: z.record(z.string()).optional().nullable(),
+    }).optional(),
   })
 );
 

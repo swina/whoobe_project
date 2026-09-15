@@ -77,16 +77,90 @@ export async function resolveFieldValue(binding: ElementDataBinding, scope: Reso
   return resolveRecordField(resolved.record, binding.field)
 }
 
+export interface GatewayBinding {
+  endpointName: string
+  routePath: string
+  fieldPath: string
+  params?: Record<string, string> | null
+}
+
+/** Resolves a gateway binding value by calling the gateway's resolve endpoint. */
+export async function resolveGatewayBinding(
+  binding: GatewayBinding,
+  gatewayUrl: string
+): Promise<unknown> {
+  const url = `${gatewayUrl.replace(/\/+$/, '')}/api/v1/gateway/resolve`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpointName: binding.endpointName,
+      routePath: binding.routePath,
+      fieldPath: binding.fieldPath || undefined,
+      params: binding.params || undefined,
+    }),
+  })
+  if (!res.ok) {
+    throw new Error(`Gateway resolve failed: ${res.status}`)
+  }
+  const data = await res.json() as { value?: unknown; found?: boolean }
+  return data.value
+}
+
+export async function resolveGatewayFieldValue(resolved: unknown, fieldPath: string): Promise<unknown> {
+  if (!resolved || !fieldPath) return resolved
+  const parts = fieldPath.split('.')
+  let current: unknown = resolved
+  for (const part of parts) {
+    if (current === null || current === undefined) return undefined
+    const arrayMatch = /^(\w+)\[(\d+)\]$/.exec(part)
+    if (arrayMatch) {
+      const [, key, indexStr] = arrayMatch
+      const index = parseInt(indexStr, 10)
+      if (typeof current !== 'object') return undefined
+      const arr = (current as Record<string, unknown>)[key]
+      if (!Array.isArray(arr)) return undefined
+      current = arr[index]
+    } else if (typeof current === 'object') {
+      current = (current as Record<string, unknown>)[part]
+    } else {
+      return undefined
+    }
+  }
+  return current
+}
+
 export interface FormattedContent {
-  /** Safe-to-inject HTML (bound text escaped; link transforms produce a
-   *  sanitized anchor). */
   content: string
-  /** valueMap transforms may add a className (badge styling). */
   className?: string
 }
 
-/** Applies the binding's transform and formats the value for display,
- *  mirroring the editor's displayContent/escapeHtml rules. */
+/** Resolves a dot-path field from a record, with fallback to the last path
+ *  segment. Used for gateway binding field resolution where the context
+ *  record may be a repeater item (stripped of the parent's field prefix). */
+export function resolveFieldFromRecord(record: Record<string, unknown> | null | undefined, fieldPath: string): unknown {
+  if (!record || !fieldPath) return undefined
+  const parts = fieldPath.split('.')
+  let current: unknown = record
+  for (const part of parts) {
+    if (current === null || current === undefined) return undefined
+    const m = part.match(/^(\w+)\[(\d+)\]$/)
+    if (m) {
+      const arr = (current as Record<string, unknown>)[m[1]]
+      if (!Array.isArray(arr)) return undefined
+      current = arr[parseInt(m[2], 10)]
+    } else if (typeof current === 'object') {
+      current = (current as Record<string, unknown>)[part]
+    } else {
+      return undefined
+    }
+  }
+  if (current !== undefined) return current
+  const last = parts[parts.length - 1]
+  if (last && typeof record === 'object') return record[last]
+  return undefined
+}
+
 export function formatBoundContent(value: unknown, transform: FieldTransform | null | undefined): FormattedContent {
   const result: TransformResult = applyTransform(value, transform)
   if (result.kind === 'link') {

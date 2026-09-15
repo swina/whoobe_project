@@ -18,3 +18,4 @@ export * from './cms/data-binding.js';
 // exact same way core-api's own /transition route does, rather than
 // duplicating this logic in the UI layer.
 export * from './workflow/workflow-engine.js';
+export * from './cms/gateway-binding.js';

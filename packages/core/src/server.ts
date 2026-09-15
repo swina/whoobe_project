@@ -85,4 +85,7 @@ export * from './auth/mfa.js';
 export * from './auth/reset-password.js';
 export * from './auth/admin-users.js';
 export * from './push/index.js';
+export * from './db/gateway-schema.js';
+export * from './db/gateway-records.js';
+export * from './cms/gateway-binding.js';
 export * from './env.js';
