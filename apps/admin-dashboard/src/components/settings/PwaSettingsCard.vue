@@ -189,6 +189,61 @@
           </div>
         </div>
       </div>
+
+      <!-- Native mobile app (Capacitor) -->
+      <div v-if="selectedWebsiteId" class="border-t border-slate-700 light:border-slate-300 pt-4 mt-4">
+        <div class="mb-3">
+          <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Native Mobile App (Capacitor)</h4>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Generates a real, installable Android/iOS project — a separate native pipeline from the Nuxt PWA
+            preview above. This needs a local <code class="text-slate-400">npm install</code> and Android
+            Studio/Xcode, so it's run from a terminal rather than the browser.
+          </p>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <div class="text-[11px] text-slate-400 mb-1">1. From the CMS repo root, run the interactive script:</div>
+            <div class="flex items-center gap-2 bg-slate-950 rounded-lg px-3 py-2">
+              <code class="flex-1 text-[11px] font-mono text-emerald-400/90">./publish-mobile.sh</code>
+              <button type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 shrink-0" @click="copyToClipboard('./publish-mobile.sh')">Copy</button>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">
+              It'll prompt for the CMS API URL, the website ID below, an app name/bundle identifier, an output
+              directory, and whether to build a fully static (offline) version.
+            </p>
+          </div>
+
+          <div>
+            <div class="text-[11px] text-slate-400 mb-1">This website's ID (for the prompt above):</div>
+            <div class="flex items-center gap-2 bg-slate-950 rounded-lg px-3 py-2">
+              <code class="flex-1 text-[11px] font-mono text-slate-300 truncate">{{ selectedWebsiteId }}</code>
+              <button type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 shrink-0" @click="copyToClipboard(selectedWebsiteId)">Copy</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="text-[11px] text-slate-400 mb-1">Or skip the prompts with a single non-interactive command:</div>
+            <div class="flex items-start gap-2 bg-slate-950 rounded-lg px-3 py-2">
+              <pre class="flex-1 text-[11px] font-mono text-emerald-400/90 whitespace-pre-wrap">{{ capacitorCliCommand }}</pre>
+              <button type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 shrink-0" @click="copyToClipboard(capacitorCliCommand)">Copy</button>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">
+              Add <code class="text-slate-400">--static</code> for a fully offline build. Run
+              <code class="text-slate-400">pnpm run --filter @whoobe-cms/mobile-app build</code> once first if
+              you haven't (publish-mobile.sh does this for you automatically).
+            </p>
+          </div>
+
+          <div>
+            <div class="text-[11px] text-slate-400 mb-1">2. Build the generated project and open it natively:</div>
+            <div class="flex items-start gap-2 bg-slate-950 rounded-lg px-3 py-2">
+              <pre class="flex-1 text-[11px] font-mono text-emerald-400/90 whitespace-pre-wrap">{{ capacitorNextStepsCommand }}</pre>
+              <button type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 shrink-0" @click="copyToClipboard(capacitorNextStepsCommand)">Copy</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -384,5 +439,40 @@ async function downloadZip() {
   a.download = `pwa-${result.value.websiteName.toLowerCase().replace(/\s+/g, '-')}.json`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+// ── Native mobile app (Capacitor) — instructions only, no backend call.
+// publish-mobile.sh needs a local npm install + Android Studio/Xcode, so
+// (unlike the Nuxt PWA preview above) it can't be triggered from here yet.
+
+const capacitorSlug = computed(() => selectedWebsiteId.value.slice(0, 8))
+
+const capacitorCliCommand = computed(() => {
+  const apiUrl = authStore.config.coreApiUrl
+  return [
+    'node packages/mobile-app/bin/whoobe-mobile.js \\',
+    `  --api-url "${apiUrl}" \\`,
+    `  --website-id "${selectedWebsiteId.value}" \\`,
+    `  --out-dir "./sites/mobile-${capacitorSlug.value}" \\`,
+    `  --app-id "com.whoobe.mobile.${capacitorSlug.value}"`,
+  ].join('\n')
+})
+
+const capacitorNextStepsCommand = computed(() => [
+  `cd ./sites/mobile-${capacitorSlug.value}`,
+  'npm install',
+  'npm run build',
+  'npx cap add android   # or ios (macOS only)',
+  'npx cap sync',
+  'npx cap open android',
+].join('\n'))
+
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    toastStore.show('Copied to clipboard')
+  } catch {
+    toastStore.show('Could not copy — copy manually')
+  }
 }
 </script>

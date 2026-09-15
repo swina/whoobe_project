@@ -41,6 +41,20 @@ import Element from './ElementsClass.js'
 import type { useEditorStore } from '../store/editor'
 import { randomID, clean } from '../helpers'
 import { cloneWithFreshIds } from './editor-actions'
+
+/** Null content on container-type elements — containers render their children,
+ *  not their own content field. Also strips any node that has child blocks
+ *  (legacy data that stored content on containers alongside children). */
+function stripContentFromContainers(node: unknown): void {
+  if (!node || typeof node !== 'object') return
+  const obj = node as Record<string, unknown>
+  if (obj.type === 'container' || (Array.isArray(obj.blocks) && obj.blocks.length > 0)) {
+    obj.content = null
+  }
+  const blocks = obj.blocks
+  if (Array.isArray(blocks)) for (const child of blocks) stripContentFromContainers(child)
+}
+
 import {
   listPages as apiListPages,
   getPage as apiGetPage,
@@ -168,6 +182,10 @@ export interface SavedTemplateSummary {
 export async function savePage(editor: EditorStore, path?: string): Promise<void> {
   if (!editor.page || !editor.document) return
   editor.page.json.blocks = editor.document
+  // Null content on container-type elements before serializing — containers
+  // render their children, not their own content. Stale content strings from
+  // older editor versions (whoobe-one-studio) would otherwise persist forever.
+  stripContentFromContainers(editor.document)
   const content = JSON.parse(JSON.stringify(editor.document))
 
   if (!editor.page.id) {
