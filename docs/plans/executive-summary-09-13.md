@@ -1,6 +1,6 @@
 ------------------------------
 ## EXECUTIVE SUMMARY: Whoobe
-The Unified Open-Source Composite Data & Application Platform
+The Unified Open-Source Composite Data & Full-CRUD Application Platform
 ------------------------------
 ## 1. Il Problema del Mercato Enterprise
 L'attuale panorama tecnologico soffre di una profonda frammentazione tra sistemi PIM (gestione dati di prodotto complessi come Pimcore), soluzioni DAM (archiviazione asset come S3 isolati) e strumenti CMS Headless (creazione di contenuti come Contentful).
@@ -17,6 +17,7 @@ Whoobe OP è una piattaforma open-source e TypeScript-native che unifica all'int
 
     - PIM/MDM guidato da Postgres JSONB 
     - DAM integrato scalabile 
+    - orchestrazione API
     - Visual Headless CMS con un builder drag-and-drop integrato
 
 A differenza dei tradizionali sistemi headless modulari, Whoobe automatizza la pipeline di delivery del frontend. Gli sviluppatori scrivono il Design System aziendale una sola volta; i content editor e i marketer compongono l'esperienza utente agganciando visivamente i componenti direttamente ai dati reali del database (Data-Binding in tempo reale).
