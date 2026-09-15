@@ -1,22 +1,65 @@
-# Whoobe CMS
+------------------------------
+# Whoobe 
+The Unified Open-Source Composite Data & Full-CRUD Application Platform
+------------------------------
+
 
 A TypeScript-native, open-source **PIM/MDM** (flexible product/data modeling) + **DAM** (digital asset management) + **headless CMS** with a visual block builder — plus a built-in ETL pipeline for a loss-less migration path off legacy instances.
 
-The product itself is branded **Whoobe CMS** (npm scope `@whoobe-cms/*`).
+The product itself is branded **Whoobe** (npm scope `@whoobe-cms/*`).
 
 ## Main features
 
-- **Data Objects & Classes (PIM/MDM)** — define custom data classes ("Class Definitions") with arbitrary field layouts (text, rich-text/WYSIWYG, numbers, dates, selects, assets, relations, `fieldcollections`) through the admin UI, including reusable structured sub-schemas ("Components"). Objects get per-class listing views with ordering and filtering, multiple locales/translations, and CSV export.
-- **Digital Asset Management (DAM)** — S3/MinIO-backed asset storage with Sharp-powered image processing (configurable thumb/medium/large presets) and EXIF/IPTC metadata extraction; public/private folder visibility rules, folder management, versioning, and presigned URLs for private assets.
-- **Headless CMS & visual page builder** — a Vue-based WYSIWYG block/page editor (`whoobe-one-spike`, embedded in the admin dashboard) that outputs structured, Zod-validated JSON layout trees. Pages carry SEO/sitemap/search settings, per-locale translations, a publish gate + workflow state, and render publicly through dynamic URL path patterns.
-- **Forms** — a Form element in the page builder that submits to a public endpoint, storing submissions as draft (unpublished) Data Objects; honeypot spam trap and per-IP rate limiting; success/error feedback as a click-to-close popup on the page.
-- **Email notifications & mail templates** — global SMTP configuration (Settings → Mail), reusable **mail templates** (HTML authored in the page-builder editor, or plain text) with `{form.field}` token personalization and dynamic `to`/`bcc`; a "BCC the from address" audit flag; DAM images and web-font handling in sent emails; and a full **mail log** (preview, resend, search, pagination, bulk delete).
-- **Publishing workflow engine** — XState-driven publish/draft workflows with configurable states and transitions, plus a transition audit log.
-- **Auth & permissions** — session-based authentication shared across backend services, with 2FA (TOTP via QR code, recovery codes) and role-based permissions.
-- **AI agent** — LLM-powered page/snippet generator (OpenAI / Anthropic / Google) with a generation history panel in the editor.
-- **Site search** — headless public search across published pages and Data Objects, with type/class filtering.
-- **Websites & URL paths** — manage multiple websites with default/supported locales, and dynamic URL path patterns (`/it/news/{slug}`) served by the public page route.
-- **Pimcore migration tool** — a CLI ETL pipeline that imports legacy Pimcore Documents, Class Definitions, Data Objects, and Assets (from a source MySQL database and/or `var/classes` PHP files) directly into this system's Postgres schema.
+- **Data Objects & Classes (PIM/MDM)** 
+  
+  Define custom data classes ("Class Definitions") with arbitrary field layouts (text, rich-text/WYSIWYG, numbers, dates, selects, assets, relations, `fieldcollections`) through the admin UI, including reusable structured sub-schemas ("Components"). Objects get per-class listing views with ordering and filtering, multiple locales/translations, and CSV export.
+
+- **Digital Asset Management (DAM)** 
+  
+  S3/MinIO-backed asset storage with Sharp-powered image processing (configurable thumb/medium/large presets) and EXIF/IPTC metadata extraction; public/private folder visibility rules, folder management, versioning, and presigned URLs for private assets.
+
+- **Headless CMS & visual page builder** 
+
+  A Vue-based WYSIWYG block/page editor (`whoobe-one-spike`, embedded in the admin dashboard) that outputs structured, Zod-validated JSON layout trees. Pages carry SEO/sitemap/search settings, per-locale translations, a publish gate + workflow state, and render publicly through dynamic URL path patterns.
+
+
+- **API Gateway** 
+  
+  a unified Express gateway (port 3001) that proxies internal services (core-api, asset-processor) and external remote APIs with authentication injection, rate limiting, response schema inference, and a convention-based plugin system. Gateway endpoints and routes are configured through the admin UI, and inferred response schemas can be bound to page builder blocks via `{{ gateway:... }}` expressions.
+
+- **Forms** 
+  
+  A Form element in the page builder that submits to a public endpoint, storing submissions as draft (unpublished) Data Objects; honeypot spam trap and per-IP rate limiting; success/error feedback as a click-to-close popup on the page.
+
+- **Email notifications & mail templates** 
+  
+  Global SMTP configuration (Settings → Mail), reusable **mail templates** (HTML authored in the page-builder editor, or plain text) with `{form.field}` token personalization and dynamic `to`/`bcc`; a "BCC the from address" audit flag; DAM images and web-font handling in sent emails; and a full **mail log** (preview, resend, search, pagination, bulk delete).
+
+- **Publishing workflow engine** 
+  
+  XState-driven publish/draft workflows with configurable states and transitions, plus a transition audit log.
+
+- **Auth & permissions** 
+  
+  session-based authentication shared across backend services, with 2FA (TOTP via QR code, recovery codes) and role-based permissions.
+
+- **AI agent** 
+
+  LLM-powered page/snippet/image/text generator (OpenAI / Anthropic / Google) with a generation history panel in the editor.
+
+- **Site search** 
+  
+  headless public search across published pages and Data Objects, with type/class filtering.
+
+- **Websites & URL paths** 
+
+  manage multiple websites with default/supported locales, and dynamic URL path patterns (`/it/news/{slug}`) served by the public page route.
+
+- **Pimcore migration tool** 
+
+  a CLI ETL pipeline that imports legacy Pimcore Documents, Class Definitions, Data Objects, and Assets (from a source MySQL database and/or `var/classes` PHP files) directly into this system's Postgres schema.
+
+
 
 > Some admin sections are still placeholders pending future work — e.g. Roles/Users management and file-based migration — while the rest above are implemented end to end.
 
@@ -53,7 +96,7 @@ pnpm install
 
 ## Configure
 
-You can run Whoobe CMS in different modes:
+You can run Whoobe in different modes:
 
 - **Evaluation/Testing**: dockerize the complete stack `docker-compose.yml`
 - **Local development**: dockerize PostgresDB `docker-compose.data.yml` and `npm install`
