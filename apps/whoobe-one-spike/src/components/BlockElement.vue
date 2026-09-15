@@ -290,7 +290,8 @@ const component = computed(() => {
 
 const classe = computed(() => {
   const el = props.element as any
-  let cls = `${el.css.css} ${el.css.container}`
+  const css = el.css || { css: '', container: '' }
+  let cls = `${css.css} ${css.container}`
   // Keep a bound element with no content visible/selectable in the editor
   // canvas (data not yet resolved, or resolves to empty/null).
   if (db.value && !el.content && el.element !== 'img') cls += ' min-h-8'
