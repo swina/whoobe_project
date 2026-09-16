@@ -3,7 +3,7 @@
 // tree of RenderDescriptors with data/image/link resolution applied. Async
 // because object/query data bindings hit the public API.
 
-import { parsePageContent, type WhoobeElementNode } from '@whoobe-cms/schema'
+import { parsePageContent, escapeHtml, type WhoobeElementNode } from '@whoobe-cms/schema'
 import type { RenderDescriptor } from './descriptor.js'
 import { normalizeKind, resolveTag } from './kind.js'
 import { resolveImageUrl } from './url.js'
@@ -20,6 +20,12 @@ export interface WalkContext {
   /** Resolved gateway response for the current container scope, so child
    *  elements can read fields without re-fetching. */
   gatewayResponse?: unknown
+  /** The current page's own matched dynamic-slug params (e.g. `{id: '123'}`
+   *  for a page routed at `/product/{id}`), as returned alongside `page` by
+   *  the public pages lookup. Lets a `{name}`-placeholder dataBinding filter
+   *  value or gatewayBinding param resolve to the record the visitor
+   *  actually requested - see resolve.ts's substituteUrlParam(). */
+  urlParams?: Record<string, string>
   [key: string]: unknown
 }
 
@@ -75,7 +81,7 @@ async function resolveNodeLink(
         : undefined
       if (target && value != null) {
         const href = resolveDynamicLinkPath(target.slug, String(value))
-        if (href) return { href, dynamic: node.dynamicLink }
+        if (href) return { href, target: node.linkTarget ?? undefined, dynamic: node.dynamicLink }
       }
     }
     return { href: '#', dynamic: node.dynamicLink }
@@ -140,7 +146,7 @@ async function walkChildren(node: WhoobeElementNode, ctx: WalkContext, options: 
   // record to the resolved value for child field bindings.
   if (node.type === 'container' && node.gatewayBinding) {
     const gatewayUrl = options.api.gatewayUrl || 'http://localhost:3001'
-    const resolved = await resolveGatewayBinding(node.gatewayBinding, gatewayUrl)
+    const resolved = await resolveGatewayBinding(node.gatewayBinding, gatewayUrl, ctx.urlParams)
     if (Array.isArray(resolved)) {
       for (const item of resolved) {
         for (const child of node.blocks ?? []) {
@@ -180,20 +186,33 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
     contentIsHtml = true
     transformClassName = formatted.className
   } else if (node.gatewayBinding?.fieldPath) {
+    const transform = node.gatewayBinding.transform
+    const format = (value: unknown) => {
+      if (transform && transform.type !== 'none') {
+        const formatted = formatBoundContent(value, transform)
+        content = formatted.content
+        transformClassName = formatted.className
+      } else {
+        // No transform configured - same raw/JSON fallback as a "no
+        // transform" dataBinding would get from formatBoundContent, escaped
+        // (this is emitted as HTML) since an unformatted gateway response
+        // value is untrusted external content, not authored HTML.
+        content = escapeHtml(typeof value === 'string' ? value : value !== undefined ? JSON.stringify(value) : '')
+      }
+      contentIsHtml = true
+    }
     // If we're inside a container repeater, resolve the field from the
     // context record instead of hitting the gateway again.
     if (ctx.record) {
-      const value = resolveFieldFromRecord(ctx.record, node.gatewayBinding.fieldPath)
-      content = typeof value === 'string' ? value : value !== undefined ? JSON.stringify(value) : ''
-      contentIsHtml = true
+      format(resolveFieldFromRecord(ctx.record, node.gatewayBinding.fieldPath))
     } else {
       try {
         const gatewayUrl = options.api.gatewayUrl || 'http://localhost:3001'
-        const value = await resolveGatewayBinding(node.gatewayBinding, gatewayUrl)
-        content = typeof value === 'string' ? value : JSON.stringify(value)
-        contentIsHtml = true
+        const value = await resolveGatewayBinding(node.gatewayBinding, gatewayUrl, ctx.urlParams)
+        format(value)
       } catch {
         content = ''
+        contentIsHtml = true
       }
     }
   } else if (typeof node.content === 'string') {

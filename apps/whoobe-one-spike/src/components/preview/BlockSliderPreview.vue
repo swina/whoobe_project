@@ -304,7 +304,7 @@ const semantic = computed(() => (props.doc as any).semantic || 'div')
 
 const classe = computed(() => {
   const doc = props.doc as any
-  return `${doc.css.css ?? ''} ${doc.css.container ?? ''}`.trim()
+  return `${doc.css?.css ?? ''} ${doc.css?.container ?? ''}`.trim()
 })
 
 const stile = computed(() => {

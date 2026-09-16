@@ -225,7 +225,7 @@ const bindingPlaceholder = computed(() => {
 
 // Computed once and reused by displayContent/transformClassName below,
 // rather than calling applyTransform twice per render.
-const transformResult = computed(() => (hasResolvedData.value ? applyTransform(resolvedDataValue.value, db.value?.transform, editor.page?.locale) : null))
+const transformResult = computed(() => (hasResolvedData.value ? applyTransform(resolvedDataValue.value, db.value?.transform ?? gb.value?.transform, editor.page?.locale) : null))
 
 const displayContent = computed(() => {
   const result = transformResult.value
@@ -266,8 +266,9 @@ const displaySrc = computed(() => {
 const displayAlt = computed(() => {
   if (hasResolvedData.value && (props.element as any).element === 'img') {
     const v = resolvedDataValue.value
-    if (db.value?.transform && db.value.transform.type !== 'none') {
-      const text = applyTransform(v, db.value.transform, editor.page?.locale).text
+    const transform = db.value?.transform ?? gb.value?.transform
+    if (transform && transform.type !== 'none') {
+      const text = applyTransform(v, transform, editor.page?.locale).text
       return text || undefined
     }
     if (typeof v === 'string') return v

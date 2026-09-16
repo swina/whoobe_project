@@ -116,6 +116,7 @@ export interface GatewayBinding {
   routePath: string
   fieldPath: string
   params?: Record<string, string> | null
+  transform?: import('./transform.js').FieldTransform | null
 }
 
 export interface ElementSlider {

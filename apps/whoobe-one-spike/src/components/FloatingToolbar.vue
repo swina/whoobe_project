@@ -481,16 +481,9 @@
                   <option value="">Select a field…</option>
                   <option v-for="f in ancestorClassFields" :key="f.name" :value="f.name">{{ f.title || f.name }}</option>
                 </select>
-                <div class="flex justify-between pt-1">
+                <div class="text-[9px] text-gray-400">Click Apply below to save.</div>
+                <div class="flex justify-end pt-1">
                   <button type="button" class="px-2 py-1 text-[10px] rounded bg-gray-100 hover:bg-gray-200 text-gray-500" @click="clearPageLink">Clear</button>
-                  <button
-                    type="button"
-                    class="px-2 py-1 text-[10px] rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-40"
-                    :disabled="!pageLinkTargetPageId || !pageLinkValueField"
-                    @click="applyPageLink"
-                  >
-                    Apply
-                  </button>
                 </div>
               </div>
             </template>
@@ -1323,17 +1316,39 @@ function openLinkPicker() {
   if (!editor.current) return
   linkUrlDraft.value = editor.current.link || ''
   linkTargetDraft.value = (editor.current as any).linkTarget || '_self'
+  // Pre-fill the per-record draft from any existing dynamicLink so the one
+  // Apply button below correctly re-saves it (instead of wiping it out) if
+  // the user only came here to change "Opens in" and never touches the
+  // "Link to a page" section at all - see applyLink().
+  const existing = (editor.current as any).dynamicLink
+  pageLinkTargetPageId.value = existing?.targetPageId || ''
+  pageLinkValueField.value = existing?.valueField || ''
+  pageLinkSource.value = existing?.source || 'dataObject'
   showLinkPicker.value = true
   showPageLinkPicker.value = false
 }
 
+// Single Apply for the whole popover: a plain URL and a per-record page
+// link are mutually exclusive (one unambiguous source of truth per
+// element), decided by whether the page-link draft is filled in - filled
+// either by actively picking a page/field below, or by openLinkPicker()
+// pre-filling it from an already-saved dynamicLink. "Opens in" applies to
+// whichever kind ends up saved.
 function applyLink() {
   if (!editor.current) return
-  editor.current.link = linkUrlDraft.value
+  if (pageLinkTargetPageId.value && pageLinkValueField.value) {
+    ;(editor.current as any).dynamicLink = {
+      targetPageId: pageLinkTargetPageId.value,
+      valueField: pageLinkValueField.value,
+      source: pageLinkSource.value,
+    }
+    editor.current.link = ''
+  } else {
+    editor.current.link = linkUrlDraft.value
+    ;(editor.current as any).dynamicLink = null
+  }
   ;(editor.current as any).linkTarget = linkTargetDraft.value
-  // Mutually exclusive with "link to a page" - one unambiguous source of
-  // truth per element.
-  ;(editor.current as any).dynamicLink = null
+  showPageLinkPicker.value = false
   showLinkPicker.value = false
 }
 
@@ -1547,21 +1562,6 @@ async function togglePageLinkPicker() {
     ancestorClassFields.value = []
   }
   showPageLinkPicker.value = true
-}
-
-function applyPageLink() {
-  if (!editor.current || !pageLinkTargetPageId.value || !pageLinkValueField.value) return
-  ;(editor.current as any).dynamicLink = {
-    targetPageId: pageLinkTargetPageId.value,
-    valueField: pageLinkValueField.value,
-    source: pageLinkSource.value,
-  }
-  // Mutually exclusive with the plain URL link.
-  editor.current.link = ''
-  ;(editor.current as any).linkTarget = '_self'
-  linkUrlDraft.value = ''
-  showPageLinkPicker.value = false
-  showLinkPicker.value = false
 }
 
 function clearPageLink() {

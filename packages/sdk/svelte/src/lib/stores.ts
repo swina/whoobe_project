@@ -40,7 +40,7 @@ function storeValue<T>(store: { subscribe: (fn: (v: T) => void) => () => void })
 export function createPageStore(api: WhoobeApi, options: WhoobeAdapterOptions, locale: string, path: string, websiteId?: string) {
   return makeStore<ReturnType<typeof walkTree> extends Promise<infer R> ? R : never>(async () => {
     const lookup = await api.getPage(locale, path, websiteId)
-    return walkTree(lookup.page.content, {}, {
+    return walkTree(lookup.page.content, { urlParams: lookup.params }, {
       api: api as never,
       assetBaseUrl: options.assetBaseUrl,
       keyPrefix: options.keyPrefix,

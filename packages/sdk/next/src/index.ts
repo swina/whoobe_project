@@ -69,7 +69,7 @@ export async function getPageData(
     keyPrefix: options.keyPrefix,
     resolveTargetPage: options.resolveTargetPage,
   }
-  const descriptor = await walkTree(page.content, {}, walkOptions)
+  const descriptor = await walkTree(page.content, { urlParams: params }, walkOptions)
   const layout = publicLayout ? await composeLayout(descriptor, publicLayout, walkOptions) : null
   return { page, params, descriptor, layout }
 }

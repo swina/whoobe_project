@@ -61,14 +61,19 @@ const openSection = ref<string | null>('customClasses')
 // tw.groups.js utility groups. Data Binding keeps the exact same visibility
 // condition that control had there (see its own removal comment in
 // TailwindCustomizer.vue for why: 'content'-target bindings, plus 'src'-
-// target bindings specifically on an <img> element).
+// target bindings specifically on an <img> element) - extended to gateway
+// bindings too (any gatewayBinding bound to a specific response field, not
+// a "Whole response" binding, since there's no single value to format).
 const sections = computed(() => {
   const current = editor.current as any
   const isCheckbox = current?.tag === 'input' && current?.type === 'checkbox'
   const isOptionsField = current?.tag === 'select' || current?.tag === 'radiogroup'
   const db = current?.dataBinding
   const isImgSrcBinding = db?.target === 'src' && current?.element === 'img'
-  const showDataBinding = db && (db.target === 'content' || isImgSrcBinding)
+  const showDataObjectBinding = db && (db.target === 'content' || isImgSrcBinding)
+  const gb = current?.gatewayBinding
+  const showGatewayBinding = Boolean(gb && gb.fieldPath)
+  const showDataBinding = showDataObjectBinding || showGatewayBinding
   return [
     { key: 'customClasses', label: 'Custom Classes', component: CustomClassesControl },
     { key: 'style', label: 'Style', component: StyleControl },

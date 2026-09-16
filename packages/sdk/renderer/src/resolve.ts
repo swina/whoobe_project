@@ -25,11 +25,26 @@ export interface ResolutionScope {
   api: RenderApi
 }
 
+/** A value that IS, whole-string, a `{name}` placeholder gets substituted
+ *  from the current page's own matched urlParams (ctx.urlParams) - e.g. a
+ *  container bound with filter `id = {id}` on a page routed at
+ *  `/product/{id}` resolves to the one record matching whatever the visitor
+ *  actually requested. A value merely CONTAINING a brace elsewhere, or with
+ *  no matching param, is left untouched (mirrors the editor's
+ *  data-resolver.ts substituteUrlParam, which this is the production
+ *  counterpart of). */
+function substituteUrlParam(value: unknown, urlParams: Record<string, string> | undefined): unknown {
+  if (typeof value !== 'string') return value
+  const m = /^\{(\w+)\}$/.exec(value.trim())
+  if (!m) return value
+  return urlParams?.[m[1]] ?? value
+}
+
 function resolveFilterValue(filter: { field: string; operator: string; value?: unknown; valueIsBinding?: boolean }, scope: ResolutionScope): unknown {
   if (filter.valueIsBinding && scope.ctx.record) {
     return resolveRecordField(scope.ctx.record, String(filter.value))
   }
-  return filter.value
+  return substituteUrlParam(filter.value, scope.ctx.urlParams)
 }
 
 /** Resolves a container's dataBinding to the record(s) it selects.
@@ -84,10 +99,25 @@ export interface GatewayBinding {
   params?: Record<string, string> | null
 }
 
+/** Substitutes `{name}`-placeholder GatewayBinding.params values from the
+ *  current page's urlParams, same rule as substituteUrlParam() above. */
+function substituteGatewayParams(
+  params: Record<string, string> | null | undefined,
+  urlParams: Record<string, string> | undefined
+): Record<string, string> | undefined {
+  if (!params) return undefined
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(params)) {
+    out[key] = String(substituteUrlParam(value, urlParams))
+  }
+  return out
+}
+
 /** Resolves a gateway binding value by calling the gateway's resolve endpoint. */
 export async function resolveGatewayBinding(
   binding: GatewayBinding,
-  gatewayUrl: string
+  gatewayUrl: string,
+  urlParams?: Record<string, string>
 ): Promise<unknown> {
   const url = `${gatewayUrl.replace(/\/+$/, '')}/api/v1/gateway/resolve`
   const res = await fetch(url, {
@@ -97,7 +127,7 @@ export async function resolveGatewayBinding(
       endpointName: binding.endpointName,
       routePath: binding.routePath,
       fieldPath: binding.fieldPath || undefined,
-      params: binding.params || undefined,
+      params: substituteGatewayParams(binding.params, urlParams),
     }),
   })
   if (!res.ok) {

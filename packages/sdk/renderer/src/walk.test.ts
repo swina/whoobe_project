@@ -98,6 +98,98 @@ describe('walkTree', () => {
     expect(out.children[0].link?.href).toBe('/product/42')
   })
 
+  it('carries linkTarget ("Opens in") through on a resolved per-record dynamic link', async () => {
+    const api = makeApi()
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      blocks: [{ id: 'a', type: 'element', tag: 'element', element: 'p', dynamicLink: { targetPageId: 'detail', valueField: 'slug' }, linkTarget: '_blank' }],
+    }
+    const resolveTargetPage = async () => ({ slug: '/product/{slug}', locale: 'en' })
+    const out = await walkTree(tree, { record: { attributes: { slug: 'widget' } } }, { api, resolveTargetPage })
+    expect(out.children[0].link?.href).toBe('/product/widget')
+    expect(out.children[0].link?.target).toBe('_blank')
+  })
+
+  it('substitutes a {param}-placeholder filter value from ctx.urlParams (list->detail page binding)', async () => {
+    const api = makeApi({
+      queryObjects: async (params) => {
+        expect(params.filters).toEqual([{ field: 'slug', operator: 'eq', value: 'antonio' }])
+        return [{ id: 'r1', attributes: { name: 'Antonio', slug: 'antonio' } }]
+      },
+    })
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      dataBinding: { className: 'Newsletter', target: 'object', resolveMode: 'first', filters: [{ field: 'slug', operator: 'eq', value: '{slug}' }] },
+      blocks: [{ id: 'p', type: 'element', tag: 'element', element: 'p', dataBinding: { className: 'Newsletter', target: 'text', resolveMode: 'explicit', field: 'name' } }],
+    }
+    const out = await walkTree(tree, { urlParams: { slug: 'antonio' } }, { api })
+    expect(out.children[0].content).toBe('Antonio')
+  })
+
+  it('leaves a {param} filter literal when urlParams has no matching key', async () => {
+    const api = makeApi({
+      queryObjects: async (params) => {
+        expect(params.filters).toEqual([{ field: 'slug', operator: 'eq', value: '{slug}' }])
+        return []
+      },
+    })
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      dataBinding: { className: 'Newsletter', target: 'object', resolveMode: 'first', filters: [{ field: 'slug', operator: 'eq', value: '{slug}' }] },
+      blocks: [],
+    }
+    await walkTree(tree, {}, { api })
+  })
+
+  it('substitutes {param}-placeholder gatewayBinding.params from ctx.urlParams (gateway detail page binding)', async () => {
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string)
+      expect(body.params).toEqual({ id: '42' })
+      return {
+        ok: true,
+        json: async () => ({ value: { id: 42, title: 'Widget' } }),
+      } as Response
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      const tree = {
+        id: 'root', type: 'container', tag: 'document',
+        gatewayBinding: { endpointName: 'shop', routePath: '/products/{id}', fieldPath: '', params: { id: '{id}' } },
+        blocks: [{ id: 'p', type: 'element', tag: 'element', element: 'p', gatewayBinding: { endpointName: 'shop', routePath: '/products/{id}', fieldPath: 'title' } }],
+      }
+      const out = await walkTree(tree, { urlParams: { id: '42' } }, { api: makeApi() })
+      expect(out.children[0].content).toBe('Widget')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('applies a configured transform to a gatewayBinding field value, resolved from the context record', async () => {
+    const api = makeApi()
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      blocks: [{
+        id: 'p', type: 'element', tag: 'element', element: 'p',
+        gatewayBinding: {
+          endpointName: 'shop', routePath: '/products', fieldPath: 'price',
+          transform: { type: 'number', options: { style: 'currency', currency: 'USD', useGrouping: true } },
+        },
+      }],
+    }
+    const out = await walkTree(tree, { record: { price: 19.9 } }, { api })
+    expect(out.children[0].content).toBe('$19.90')
+  })
+
+  it('escapes an untransformed gatewayBinding value instead of emitting it as raw HTML', async () => {
+    const api = makeApi()
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      blocks: [{ id: 'p', type: 'element', tag: 'element', element: 'p', gatewayBinding: { endpointName: 'shop', routePath: '/products', fieldPath: 'name' } }],
+    }
+    const out = await walkTree(tree, { record: { name: '<script>alert(1)</script>' } }, { api })
+    expect(out.children[0].content).toBe('&lt;script&gt;alert(1)&lt;/script&gt;')
+  })
+
   it('passes through form/search/slider configs', async () => {
     const tree = {
       id: 'root', type: 'container', tag: 'document',

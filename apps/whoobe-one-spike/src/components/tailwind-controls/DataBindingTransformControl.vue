@@ -136,11 +136,24 @@ defineProps<{ attr?: string; title?: string }>()
 const editor = useEditorStore()
 
 const dataBinding = computed(() => (editor.current as any)?.dataBinding ?? null)
+const gatewayBinding = computed(() => (editor.current as any)?.gatewayBinding ?? null)
+// Whichever kind of binding is active on the selected element - mutually
+// exclusive per element in practice (a node has either dataBinding or
+// gatewayBinding, never both), Data Object binding checked first as the
+// more established/common case.
+const activeBinding = computed(() => dataBinding.value ?? gatewayBinding.value)
+
 // Falls back to a Data Class lookup for bindings saved before fieldType was
 // denormalized onto them - see resolve-binding-field-type.ts's own header.
+// Gateway bindings have no equivalent Data-Class-quality field type
+// metadata (only the gateway's own loosely-inferred JSON response type, not
+// surfaced here), so every transformer is offered for them rather than
+// type-gating like Data Object bindings do.
 const effectiveFieldType = useEffectiveFieldType(dataBinding)
-const availableTransformers = computed(() => transformersForFieldType(effectiveFieldType.value))
-const transformType = computed<TransformType | 'none'>(() => dataBinding.value?.transform?.type ?? 'none')
+const availableTransformers = computed(() =>
+  gatewayBinding.value ? Object.values(TRANSFORMERS) : transformersForFieldType(effectiveFieldType.value)
+)
+const transformType = computed<TransformType | 'none'>(() => activeBinding.value?.transform?.type ?? 'none')
 
 const summaryLabel = computed(() => {
   const t = transformType.value
@@ -159,8 +172,8 @@ function cloneOptions(o: unknown): Record<string, any> {
 function openModal() {
   draftType.value = transformType.value
   draftOptions.value =
-    dataBinding.value?.transform && dataBinding.value.transform.type !== 'none'
-      ? cloneOptions((dataBinding.value.transform as any).options)
+    activeBinding.value?.transform && activeBinding.value.transform.type !== 'none'
+      ? cloneOptions((activeBinding.value.transform as any).options)
       : {}
   showModal.value = true
 }
@@ -170,8 +183,8 @@ function cancel() {
 }
 
 function apply() {
-  if (!dataBinding.value) return
-  dataBinding.value.transform =
+  if (!activeBinding.value) return
+  activeBinding.value.transform =
     draftType.value === 'none' ? { type: 'none' } : { type: draftType.value, options: draftOptions.value }
   showModal.value = false
 }

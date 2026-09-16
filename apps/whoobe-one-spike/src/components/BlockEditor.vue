@@ -95,6 +95,7 @@
 
         <div v-show="!sidebarCollapsed" class="w-64 min-w-0 flex flex-col overflow-hidden text-xs">
           <div class="flex border-b text-xs shrink-0 bg-violet-200">
+
             <button
               type="button"
               title="Elements"
@@ -104,6 +105,17 @@
             >
               <Shapes class="w-6 h-6" />
             </button>
+
+            <button
+              type="button"
+              title="Snippets"
+              class="flex-1 flex items-center justify-center py-2"
+              :class="sidebarTab === 'snippets' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
+              @click="sidebarTab = 'snippets'"
+            >
+              <Component class="w-6 h-6" />
+            </button>
+
             <button
               type="button"
               title="Customize"
@@ -113,6 +125,7 @@
             >
               <Palette class="w-6 h-6" />
             </button>
+
             <button
               type="button"
               title="Advanced"
@@ -122,6 +135,7 @@
             >
               <Settings2 class="w-6 h-6" />
             </button>
+
             <button
               type="button"
               title="Tree"
@@ -131,6 +145,7 @@
             >
               <ListTree class="w-6 h-6" />
             </button>
+            
             <button
               type="button"
               title="Kits"
@@ -140,6 +155,7 @@
             >
               <Package class="w-6 h-6" />
             </button>
+
             <button
               type="button"
               title="AI generations"
@@ -149,6 +165,7 @@
             >
               <WandSparkles class="w-6 h-6" />
             </button>
+
             <button
               v-if="editor.appMode"
               type="button"
@@ -170,6 +187,7 @@
           <TailwindCustomizer v-else-if="sidebarTab === 'customize'" />
           <AdvancedPanel v-else-if="sidebarTab === 'advanced'" />
           <DocumentTree v-else-if="sidebarTab === 'tree'" />
+          <SnippetsPanel v-else-if="sidebarTab === 'snippets'" />
           <KitsPanel v-else-if="sidebarTab === 'kits'" @loaded="sidebarTab = 'elements'" />
           <PwaConfigPanel v-else-if="sidebarTab === 'pwa'" />
           <AiGeneratedPanel v-else @import="onAiGeneratedImport" @preview="onAiGeneratedPreview" />
@@ -247,6 +265,7 @@ import dragula from 'dragula'
 import {
   ChevronLeft,
   ChevronRight,
+  Component,
   CopyPlus,
   Download,
   Eye,
@@ -278,6 +297,7 @@ import DocumentTree from './DocumentTree.vue'
 import AdvancedPanel from './AdvancedPanel.vue'
 import DocumentPreview from './DocumentPreview.vue'
 import KitsPanel from './KitsPanel.vue'
+import SnippetsPanel from './SnippetsPanel.vue'
 import AddToKitModal from './AddToKitModal.vue'
 import TemplateGalleryModal from './TemplateGalleryModal.vue'
 import ThemeModal from './ThemeModal.vue'
@@ -305,7 +325,7 @@ const editor = useEditorStore()
 const snippetsStore = useSnippetsStore()
 const message = ref('')
 const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-sm font-semibold bg-violet-500 hover:bg-violet-800 text-white'
-const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'advanced' | 'kits' | 'ai' | 'pwa'>('elements')
+const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'advanced' | 'snippets' | 'kits' | 'ai' | 'pwa'>('elements')
 const sidebarCollapsed = ref(false)
 const showAddToKit = ref(false)
 const showTemplateGallery = ref(false)
@@ -677,6 +697,12 @@ function onToggleAppMode() {
 }
 onMounted(() => editorBus.on('preview', onPreviewEvent))
 onUnmounted(() => editorBus.off('preview', onPreviewEvent))
+
+// Loaded eagerly here, not lazily by SnippetsPanel.vue's own onMounted -
+// the drop handler below and SaveSnippetModal.vue's "Update existing" list
+// both need snippetsStore.items populated regardless of whether the user
+// has ever opened the Snippets sidebar tab.
+onMounted(() => snippetsStore.refresh())
 
 onMounted(() => {
   const drake = dragula({

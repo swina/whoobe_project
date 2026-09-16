@@ -209,22 +209,35 @@ const resolvedData = computed(() => {
 // rather than calling applyTransform twice per render.
 const transformResult = computed(() => {
   const el = props.element as any
-  if (!el.dataBinding || resolvedData.value === null) return null
-  return applyTransform(resolvedData.value, el.dataBinding.transform, editor.page?.locale)
+  if (resolvedData.value === null) return null
+  if (el.dataBinding) return applyTransform(resolvedData.value, el.dataBinding.transform, editor.page?.locale)
+  // Only applied for gatewayBinding when a real transform is configured -
+  // unlike dataBinding, an unconfigured gateway binding falls through to
+  // displayContent's own JSON.stringify fallback below (a gateway response
+  // field has no Data-Class-quality "this is text/none" default the way a
+  // dataBinding field does).
+  if (el.gatewayBinding?.transform && el.gatewayBinding.transform.type !== 'none') {
+    return applyTransform(resolvedData.value, el.gatewayBinding.transform, editor.page?.locale)
+  }
+  return null
 })
 
 const displayContent = computed(() => {
   const el = props.element as any
-  if (el.dataBinding) {
+  if (el.dataBinding || el.gatewayBinding) {
     const result = transformResult.value
-    if (!result) return ''
-    if (result.kind === 'link') {
-      const targetAttr = result.target ? ` target="${result.target}" rel="noopener noreferrer"` : ''
-      return `<a href="${escapeHtml(result.href)}"${targetAttr}>${escapeHtml(result.text)}</a>`
+    if (result) {
+      if (result.kind === 'link') {
+        const targetAttr = result.target ? ` target="${result.target}" rel="noopener noreferrer"` : ''
+        return `<a href="${escapeHtml(result.href)}"${targetAttr}>${escapeHtml(result.text)}</a>`
+      }
+      return result.text
     }
-    return result.text
-  }
-  if (el.gatewayBinding) {    return typeof resolvedData.value === 'string' ? resolvedData.value : JSON.stringify(resolvedData.value ?? '')
+    if (el.dataBinding) return ''
+    // gatewayBinding with no transform configured - same raw/JSON fallback
+    // as before, but escaped: this is rendered via v-html, and an
+    // unescaped external API response string here would be an XSS hole.
+    return escapeHtml(typeof resolvedData.value === 'string' ? resolvedData.value : JSON.stringify(resolvedData.value ?? ''))
   }
   // See ../BlockElement.vue's identical branch - a select/radio group's
   // options list (FormFieldControl.vue) generates real markup instead of
@@ -330,8 +343,9 @@ const displayAlt = computed(() => {
   const el = props.element as any
   if (resolvedData.value !== null && (el.dataBinding || el.gatewayBinding)) {
     const v = resolvedData.value
-    if (el.dataBinding?.transform && el.dataBinding.transform.type !== 'none') {
-      const text = applyTransform(v, el.dataBinding.transform, editor.page?.locale).text
+    const transform = el.dataBinding?.transform ?? el.gatewayBinding?.transform
+    if (transform && transform.type !== 'none') {
+      const text = applyTransform(v, transform, editor.page?.locale).text
       return text || undefined
     }
     if (typeof v === 'string') return v
@@ -356,7 +370,7 @@ const component = computed(() => {
 
 const classe = computed(() => {
   const el = props.element as any
-  let cls = `${el.css.css} ${el.css.container}`
+  let cls = `${el.css?.css ?? ''} ${el.css?.container ?? ''}`
   if (transformClassName.value) cls += ` ${transformClassName.value}`
   return cls
 })
