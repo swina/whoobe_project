@@ -2,6 +2,9 @@ import { eq } from 'drizzle-orm';
 import { getDb, closeDb } from '../client.js';
 import { users } from '../auth-schema.js';
 import { hashPassword } from '../../auth/password.js';
+import { loadRootEnv } from '../../env.js';
+
+loadRootEnv();
 
 /**
  * Manual account-recovery script for when the SMTP-based forgot-password
