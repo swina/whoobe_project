@@ -6,7 +6,16 @@ export const gatewayEndpoints = pgTable('gateway_endpoints', {
   description: text('description').notNull().default(''),
   baseUrl: text('base_url').notNull(),
   authType: text('auth_type').notNull().default('none'),
+  /** Deprecated - plaintext legacy column, kept only so a row written before
+   *  the auth_config_encrypted migration (0039_gateway_auth_encrypted.sql)
+   *  still reads correctly until it's next saved or backfilled (see
+   *  gateway-records.ts's toRecord()/toRow()). Every write now clears this
+   *  and stores ciphertext in authConfigEncrypted instead - never read or
+   *  write this column directly outside gateway-records.ts. Drop once all
+   *  environments have backfilled (packages/core/src/db/scripts/backfill-
+   *  gateway-auth-encryption.ts) and this column is confirmed empty. */
   authConfig: jsonb('auth_config').$type<Record<string, unknown>>().default({}),
+  authConfigEncrypted: text('auth_config_encrypted'),
   requestTimeoutMs: integer('request_timeout_ms').notNull().default(30000),
   rateLimitRps: integer('rate_limit_rps').notNull().default(0),
   rateLimitBurst: integer('rate_limit_burst').notNull().default(0),

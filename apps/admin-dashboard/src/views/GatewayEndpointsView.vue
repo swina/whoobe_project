@@ -260,6 +260,9 @@
               <option value="bearer">Bearer Token</option>
               <option value="basic">Basic Auth</option>
             </select>
+            <p v-if="isEditingEndpoint && epForm.authType !== 'none'" class="text-[11px] text-slate-500 mt-1">
+              Stored credentials aren't shown here - leave a field blank to keep its current value, or fill it in to replace it.
+            </p>
           </div>
           <div v-if="epForm.authType === 'api-key'">
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">API Key Header</label>
@@ -626,7 +629,10 @@ function openEdit(ep: GatewayEndpoint) {
   isEditingEndpoint.value = true
   editingEndpointId.value = ep.id
   epForm.name = ep.name; epForm.description = ep.description; epForm.baseUrl = ep.baseUrl
-  epForm.authType = ep.authType; epForm.authConfig = { ...(ep.authConfig || {}) }
+  // The API never returns stored credentials (see gateway-api.ts's
+  // GatewayEndpoint.authConfig comment), so these fields start blank -
+  // leaving them blank on save keeps the existing stored credentials.
+  epForm.authType = ep.authType; epForm.authConfig = {}
   epForm.rateLimitRps = ep.rateLimitRps; epForm.isActive = ep.isActive
   showEndpointModal.value = true
 }

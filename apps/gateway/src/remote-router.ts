@@ -3,6 +3,7 @@ import { PERMISSIONS, requirePermission } from './auth.js';
 import { proxyFetch } from './proxy-engine.js';
 import { checkRateLimit } from './rate-limiter.js';
 import type { GatewayPlugin, RequestContext, ResponseContext } from './plugin-types.js';
+import { logGatewayError } from './log-error.js';
 
 const loadedPlugins: GatewayPlugin[] = [];
 
@@ -109,7 +110,8 @@ export function createRemoteRouter(): Router {
 
       res.status(result.status).json(responseBody);
     } catch (err) {
-      res.status(502).json({ error: 'Upstream request failed', details: String(err) });
+      logGatewayError('remote gateway request', err);
+      res.status(502).json({ error: 'Upstream request failed' });
     }
   });
 

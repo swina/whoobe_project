@@ -45,7 +45,11 @@ export interface GatewayEndpoint {
   description: string
   baseUrl: string
   authType: 'none' | 'api-key' | 'bearer' | 'basic'
-  authConfig: Record<string, unknown>
+  /** Never present on data read from the API - the server strips stored
+   *  credentials before sending an endpoint back (see admin-routes.ts's
+   *  redactEndpoint()). Only used to submit new/changed credentials on
+   *  create/update; a blank field on update keeps the stored value. */
+  authConfig?: Record<string, unknown>
   requestTimeoutMs: number
   rateLimitRps: number
   rateLimitBurst: number

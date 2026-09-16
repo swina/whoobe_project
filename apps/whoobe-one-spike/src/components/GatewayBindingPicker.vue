@@ -218,7 +218,7 @@ const bindingExpression = computed(() => {
 })
 
 watch(bindingExpression, (val) => {
-  if (val && !editableExpression.value) editableExpression.value = val
+  if (val) editableExpression.value = val
 })
 
 function buildExpression(endpointName: string, routePath: string, fieldPath: string, params?: Record<string, string>): string {
@@ -373,9 +373,5 @@ onMounted(async () => {
       }
     }
   }
-  // Initialize editable expression from binding expression
-  watch(bindingExpression, (val: string) => {
-    if (val && !editableExpression.value) editableExpression.value = val
-  }, { immediate: true })
 })
 </script>

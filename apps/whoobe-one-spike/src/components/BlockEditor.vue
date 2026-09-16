@@ -820,6 +820,7 @@ const bindingSignature = computed(() => {
   const parts: string[] = []
   const walk = (node: any) => {
     if (node?.dataBinding) parts.push(`${node.id}:${JSON.stringify(node.dataBinding)}`)
+    if (node?.gatewayBinding) parts.push(`${node.id}:${JSON.stringify(node.gatewayBinding)}`)
     for (const child of node?.blocks ?? []) walk(child)
   }
   walk(editor.document)
@@ -828,5 +829,5 @@ const bindingSignature = computed(() => {
 
 watch(bindingSignature, async () => {
   if (editor.document) await resolveDocumentData(editor.document)
-})
+}, { immediate: true })
 </script>

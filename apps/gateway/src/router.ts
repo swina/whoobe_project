@@ -8,6 +8,7 @@ import { createResolveHandler } from './resolve-handler.js';
 import { loadPlugins } from './plugin-loader.js';
 import type { GatewayPlugin } from './plugin-types.js';
 import { PERMISSIONS, requirePermission } from './auth.js';
+import { logGatewayError } from './log-error.js';
 
 export function createRouter(): Router {
   const router = Router();
@@ -44,7 +45,8 @@ export function createRouter(): Router {
 
       res.status(result.status).json(result.body);
     } catch (err) {
-      res.status(502).json({ error: 'Internal proxy failed', details: String(err) });
+      logGatewayError('internal proxy request', err);
+      res.status(502).json({ error: 'Internal proxy failed' });
     }
   });
 
@@ -66,7 +68,8 @@ export function createRouter(): Router {
 
       res.status(result.status).json(result.body);
     } catch (err) {
-      res.status(502).json({ error: 'DAM proxy failed', details: String(err) });
+      logGatewayError('DAM proxy request', err);
+      res.status(502).json({ error: 'DAM proxy failed' });
     }
   });
 
@@ -92,7 +95,8 @@ export function createRouter(): Router {
         res.status(result.status).type(contentType).send(result.body as string);
       }
     } catch (err) {
-      res.status(502).json({ error: 'Public proxy failed', details: String(err) });
+      logGatewayError('public proxy request', err);
+      res.status(502).json({ error: 'Public proxy failed' });
     }
   });
 
