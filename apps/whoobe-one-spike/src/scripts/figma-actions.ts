@@ -13,7 +13,7 @@ function ensureNodeDefaults(node: any): void {
 }
 
 export function insertFigmaAsPage(editor: EditorStore, payload: any, name: string): void {
-  const normalized = normalizeGeneratedTree(cloneWithFreshIds(payload)) as any
+  const normalized = normalizeGeneratedTree(cloneWithFreshIds(payload), { replacePlaceholderImages: false }) as any
   ensureNodeDefaults(normalized)
 
   normalized.css.css = clean(normalized.css.css || '')
@@ -35,7 +35,7 @@ export function insertFigmaAsPage(editor: EditorStore, payload: any, name: strin
 }
 
 export function insertFigmaAsSnippet(editor: EditorStore, payload: any): boolean {
-  const created = normalizeGeneratedTree(cloneWithFreshIds(payload)) as any
+  const created = normalizeGeneratedTree(cloneWithFreshIds(payload), { replacePlaceholderImages: false }) as any
   ensureNodeDefaults(created)
 
   created.css.css = clean(created.css.css || '')

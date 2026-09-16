@@ -1,6 +1,6 @@
 # Capacitor Mobile App — Publishing Guide
 
-Generate a **native iOS/Android mobile app** from your Whoobe CMS website using Capacitor. The app renders only `kind: "app"` pages (mobile-first layouts with bottom navigation) and connects to your CMS via the public API.
+Generate a **native iOS/Android mobile app** from your Whoobe website using Capacitor. The app renders only `kind: "app"` pages (mobile-first layouts with bottom navigation) and connects to your CMS via the public API.
 
 ## Prerequisites
 

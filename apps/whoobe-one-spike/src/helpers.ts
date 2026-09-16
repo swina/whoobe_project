@@ -221,8 +221,9 @@ const TAG_TO_ELEMENT: Record<string, string> = {
   input: 'input', textarea: 'textarea', select: 'select', blockquote: 'blockquote',
   pre: 'pre', ul: 'ul', ol: 'ol', li: 'li', video: 'video', form: 'form', hr: 'hr',
 }
-export function normalizeGeneratedTree(node: any): any {
+export function normalizeGeneratedTree(node: any, options?: { replacePlaceholderImages?: boolean }): any {
   if (!node || typeof node !== 'object') return node
+  const replacePlaceholderImages = options?.replacePlaceholderImages ?? true
   if (!node.element) node.element = TAG_TO_ELEMENT[node.tag] ?? 'div'
   if (node.type !== 'container' && node.type !== 'element') {
     node.type = Array.isArray(node.blocks) && node.blocks.length ? 'container' : 'element'
@@ -230,12 +231,13 @@ export function normalizeGeneratedTree(node: any): any {
   // Same guarantee as the server's sanitizeGeneratedImages(): models invent
   // unsplash.com URLs whose photo IDs don't exist - swap any image URL for
   // a deterministic, always-valid placeholder so imported pages (incl. old
-  // stored records) never render broken <img>s.
-  if (node.element === 'img' && node.image?.url) {
+  // stored records) never render broken <img>s. Callers with real image
+  // URLs (e.g. Figma imports) pass replacePlaceholderImages: false.
+  if (replacePlaceholderImages && node.element === 'img' && node.image?.url) {
     node.image.url = `https://picsum.photos/seed/${node.id}/1200/800`
   }
   if (Array.isArray(node.blocks)) {
-    for (const child of node.blocks) normalizeGeneratedTree(child)
+    for (const child of node.blocks) normalizeGeneratedTree(child, options)
   }
   return node
 }
