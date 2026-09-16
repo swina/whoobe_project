@@ -1,13 +1,13 @@
 <template>
   <div class="flex flex-col gap-1">
     <span class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">{{ title }}</span>
-    <div class="grid grid-cols-8 gap-1">
+    <div class="grid grid-cols-9 gap-0.5">
       <button
         v-for="swatch in swatches"
         :key="swatch.value"
         type="button"
         :title="swatch.value"
-        class="w-5 h-5 rounded-full border-2"
+        class="w-5 h-5 rounded border-1"
         :class="swatch.previewClass"
         @click="pick(swatch.value)"
       ></button>
@@ -67,7 +67,7 @@ import { clean } from '../../helpers'
 const props = defineProps<{ attr: string; prefix: string; title?: string }>()
 const editor = useEditorStore()
 
-const SHADES = [300, 500, 700]
+const SHADES = [100, 300, 500, 700]
 const OPACITY_LEVELS = [0, 25, 50, 75, 100]
 
 // Matches a currently-applied swatch class for this prefix - a system
