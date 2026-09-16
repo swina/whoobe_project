@@ -232,6 +232,9 @@ importers:
       '@tiptap/vue-3':
         specifier: ^2.11.5
         version: 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2)(vue@3.5.40(typescript@5.9.3))
+      '@whoobe-cms/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@whoobe-cms/figma-converter':
         specifier: workspace:*
         version: link:../../packages/figma-converter
@@ -10223,7 +10226,7 @@ snapshots:
     dependencies:
       '@types/estree': 1.0.9
       estree-walker: 2.0.2
-      picomatch: 4.0.5
+      picomatch: 4.0.7
     optionalDependencies:
       rollup: 4.62.3
 

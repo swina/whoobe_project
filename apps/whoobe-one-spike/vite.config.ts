@@ -1,5 +1,14 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { loadRootEnv } from '@whoobe-cms/core/server'
+
+// vite.config.ts is evaluated by Node directly, before Vite's own env
+// pipeline runs - `envDir` below only wires up `import.meta.env.VITE_*`
+// for CLIENT code, it does NOT populate `process.env` for reads made
+// here in the config file itself (see `base` below). Load the repo-root
+// .env explicitly so process.env.VITE_BASE_URL is actually set by the
+// time `base` is computed.
+loadRootEnv()
 
 // No @tailwindcss/vite plugin here - Tailwind runs entirely at runtime, in
 // the browser, via @tailwindcss/browser (see main.ts). That's a deliberate
