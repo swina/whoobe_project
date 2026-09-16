@@ -38,7 +38,7 @@ export function getConnectionConfig(): ConnectionConfig {
     port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432,
     user: process.env.DB_USER ?? 'postgres',
     password: process.env.DB_PASSWORD ?? 'postgrespassword',
-    database: process.env.DB_NAME ?? process.env.POSTGRES_DB ?? 'pimcore_custom',
+    database: process.env.DB_NAME ?? process.env.POSTGRES_DB ?? 'whoobe_db',
   };
 }
 
