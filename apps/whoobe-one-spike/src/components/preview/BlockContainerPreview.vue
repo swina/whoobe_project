@@ -119,6 +119,7 @@ import { customAttrs, safeAlpineValue } from '../../helpers'
 import { mountAnimation } from '../../scripts/gsap-actions'
 import { mountFormSubmit, type FormSubmitResult } from '../../scripts/form-actions'
 import { extractPlaceholderNames, substitutePattern } from '../../scripts/path-pattern'
+import { resolveGatewayFieldValue } from '../../scripts/data-resolver'
 import BlockElementPreview from './BlockElementPreview.vue'
 import BlockIFramePreview from './BlockIFramePreview.vue'
 import BlockSliderPreview from './BlockSliderPreview.vue'
@@ -266,7 +267,9 @@ function resolveDynamicLinkTarget(child: WhoobeElement, obj: DataObjectRecord): 
   if (!c.dynamicLink) return null
   ensureTargetPageLoaded(c.dynamicLink.targetPageId)
   const target = targetPageCache.value.get(c.dynamicLink.targetPageId)
-  const value = (obj.attributes as any)?.[c.dynamicLink.valueField]
+  const value = c.dynamicLink.source === 'gateway'
+    ? resolveGatewayFieldValue(obj, c.dynamicLink.valueField)
+    : (obj.attributes as any)?.[c.dynamicLink.valueField]
   if (!target || value == null) return null
   const [placeholderName] = extractPlaceholderNames(target.slug)
   if (!placeholderName) return null

@@ -186,7 +186,17 @@ export interface ElementDataBinding {
 // BlockContainerPreview.vue's repeater (childHref()).
 export interface DynamicLinkBinding {
   targetPageId: string
-  valueField: string // a field name on the CURRENT container's bound Data Class
+  // Interpreted differently per `source`: a Data Class attribute name
+  // (dataObject, the original/default) or a dot-path field on the
+  // gateway route's response schema (gateway) - see resolveNodeLink()
+  // in packages/sdk/renderer/src/walk.ts and BlockContainerPreview.vue's
+  // resolveDynamicLinkTarget() for how each is resolved against the
+  // CURRENT record.
+  valueField: string
+  // Which kind of bound list this element sits inside. Optional and
+  // defaults to 'dataObject' for content saved before this existed -
+  // that was the only source dynamicLink ever supported.
+  source?: 'dataObject' | 'gateway'
 }
 
 // Only present on nodes built via .Slider() - a full redesign, not a port
