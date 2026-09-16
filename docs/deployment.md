@@ -173,8 +173,13 @@ S3_PUBLIC_BASE_URL=https://${WHOOBE_HOSTNAME}/dam-asset
 # admin-dashboard (Vite)
 VITE_ASSET_PROCESSOR_URL=https://${WHOOBE_HOSTNAME}
 VITE_CORE_API_URL=https://${WHOOBE_HOSTNAME}
+VITE_GATEWAY_URL=https://${WHOOBE_HOSTNAME}
 
 # whoobe-one-spike
+# Must match the nginx location it's proxied under (see the nginx config
+# below) or its built JS/CSS chunks 404 - they resolve against the
+# embedding page's origin (admin-dashboard's root) instead of their own.
+VITE_BASE_URL=/whoobe-one/
 VITE_FONT_FAMILIES=Alfa+Slab+One|Asap+Condensed|Abel|Alice|Alegreya|...
 ```
 
@@ -226,6 +231,13 @@ module.exports = {
       cwd: '/opt/whoobe/cms',
       script: 'pnpm',
       args: '--filter @whoobe-cms/asset-processor start',
+      env: { NODE_ENV: 'production' },
+    },
+    {
+      name: 'gateway',
+      cwd: '/opt/whoobe/cms',
+      script: 'pnpm',
+      args: '--filter @whoobe-cms/gateway start',
       env: { NODE_ENV: 'production' },
     },
     {
@@ -295,6 +307,25 @@ server {
     # core-api routes
     location ~ ^/(auth|documents|snippets|data-classes|data-components|data-objects|mail-settings|mail-log|mail-templates|migration-sources|health|search|themes|public|ai|figma|preview|sites|pages|settings|workflows|users|roles)(/.*)?$ {
         proxy_pass http://127.0.0.1:3003;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # gateway API routes (must come before the /api/v1/ block below -
+    # nginx picks the longest matching prefix, but keeping the more
+    # specific location first avoids any ambiguity)
+    location /api/v1/gateway/ {
+        proxy_pass http://127.0.0.1:3001/api/v1/gateway/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/remote/ {
+        proxy_pass http://127.0.0.1:3001/api/remote/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
