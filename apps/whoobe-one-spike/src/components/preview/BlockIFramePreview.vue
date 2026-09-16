@@ -29,6 +29,6 @@ const props = defineProps<{
 
 const classe = computed(() => {
   const el = props.element as any
-  return `${el.css.css} ${el.css.container}`
+  return `${el.css?.css ?? ''} ${el.css?.container ?? ''}`
 })
 </script>

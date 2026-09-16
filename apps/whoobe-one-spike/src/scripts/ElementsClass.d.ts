@@ -105,14 +105,15 @@ export interface ElementSearchConfig {
   buttonIcon?: boolean
 }
 
+import type { FieldTransform } from './field-transforms.js'
+
 export interface GatewayBinding {
   endpointName: string
   routePath: string
   fieldPath: string
   params?: Record<string, string> | null
+  transform?: FieldTransform | null
 }
-
-import type { FieldTransform } from './field-transforms.js'
 
 export interface DataBindingFilter {
   field: string

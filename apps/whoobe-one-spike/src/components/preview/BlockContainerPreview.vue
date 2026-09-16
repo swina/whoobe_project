@@ -10,7 +10,7 @@
           <a
           v-if="(child as any).link || (child as any).dynamicLink"
           :href="childHref(child, obj)"
-          :target="(child as any).dynamicLink ? '_blank' : (child as any).linkTarget || undefined"
+          :target="(child as any).dynamicLink ? ((child as any).linkTarget || '_blank') : (child as any).linkTarget || undefined"
           :rel="(child as any).dynamicLink ? 'noopener noreferrer' : undefined"
           @click="onDynamicLinkClick($event, child, obj)"
           >
@@ -294,8 +294,10 @@ function childHref(child: WhoobeElement, obj: DataObjectRecord): string {
 // list-to-detail link opens as a tab in admin-dashboard's own tab strip
 // instead of a real new browser tab - see docs/plans (list-to-detail-tabs
 // plan) and DashboardLayout.vue's matching message listener. Standalone
-// (:3006 direct, no parent to message) falls through to the normal
-// target="_blank" navigation, unchanged.
+// (:3006 direct, no parent to message) falls through to the anchor's own
+// `target` - which defaults to `_blank` (see the template) so a real click
+// doesn't navigate the standalone editor preview away from itself, but
+// honors the element's own `linkTarget` ("Opens in") when the user set one.
 function onDynamicLinkClick(e: MouseEvent, child: WhoobeElement, obj: DataObjectRecord) {
   const c = child as any
   if (!c.dynamicLink || !editor.embedded) return
@@ -353,7 +355,7 @@ const LEGACY_ROOT_CLASSES = ['gap-4', 'min-h-[600px]', 'bg-white', 'p-6']
 
 const classe = computed(() => {
   const doc = props.doc as any
-  const raw = `${doc.css.css ?? ''} ${doc.css.container ?? ''}`.trim()
+  const raw = `${doc.css?.css ?? ''} ${doc.css?.container ?? ''}`.trim()
   const isRoot = doc.tag === 'document'
   const strip = isRoot ? [...EDITOR_ONLY_CLASSES, ...LEGACY_ROOT_CLASSES] : EDITOR_ONLY_CLASSES
   return raw.split(' ').filter((c: string) => !strip.includes(c)).join(' ')

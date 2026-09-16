@@ -39,6 +39,9 @@
               <input v-model="paramValues[p]" type="text" :placeholder="p" class="w-full text-xs border rounded px-2 py-1" />
             </div>
           </div>
+          <div class="text-[10px] text-gray-400 mt-1">
+            Type a literal value, or type <code class="font-mono">{paramName}</code> matching this page's own dynamic slug segment (e.g. a page at <code class="font-mono">/product/{id}</code> can use <code class="font-mono">{id}</code>) to fetch the record matching whatever the visitor actually requested.
+          </div>
         </div>
 
         <!-- Step 4: Field -->
@@ -148,6 +151,7 @@ interface GatewayBinding {
   routePath: string
   fieldPath: string
   params?: Record<string, string> | null
+  transform?: Record<string, unknown> | null
 }
 
 const emit = defineEmits<{
@@ -338,12 +342,21 @@ function confirm() {
   const routePath = rest.slice(0, lastColonIndex)
   const fieldPath = rest.slice(lastColonIndex + 1)
   if (!endpointName || !routePath) return
+  const resolvedFieldPath = fieldPath === 'response' ? '' : fieldPath
 
-const binding: GatewayBinding = {
+  // Transform config lives in the sidebar (DataBindingTransformControl.vue),
+  // not this modal - preserve it only when rebinding to the SAME field
+  // (a different field's transform options would be nonsensical), same
+  // rule as DataObjectPicker.vue's confirm().
+  const transform =
+    props.initial && resolvedFieldPath === props.initial.fieldPath ? props.initial.transform ?? null : null
+
+  const binding: GatewayBinding = {
     endpointName,
     routePath,
-    fieldPath: fieldPath === 'response' ? '' : fieldPath,
+    fieldPath: resolvedFieldPath,
     params: params && Object.keys(params).length > 0 ? params : null,
+    transform,
   }
   emit('select', binding)
 }

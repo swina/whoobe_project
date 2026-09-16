@@ -87,7 +87,7 @@ export const WhoobePage = defineComponent({
           keyPrefix: ctx.options.keyPrefix,
           resolveTargetPage: ctx.options.resolveTargetPage,
         }
-        const walked = await walkTree(lookup.page.content, {}, walkOptions)
+        const walked = await walkTree(lookup.page.content, { urlParams: lookup.params }, walkOptions)
         descriptor.value = walked
         layout.value = lookup.layout ? await composeLayout(walked, lookup.layout, walkOptions) : null
         status.value = 'ready'

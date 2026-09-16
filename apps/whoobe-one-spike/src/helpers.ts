@@ -225,6 +225,15 @@ export function normalizeGeneratedTree(node: any, options?: { replacePlaceholder
   if (!node || typeof node !== 'object') return node
   const replacePlaceholderImages = options?.replacePlaceholderImages ?? true
   if (!node.element) node.element = TAG_TO_ELEMENT[node.tag] ?? 'div'
+  // Same gap as `element` above: the AI prompt contract doesn't guarantee a
+  // `css` object either, but every renderer/editing path in this app (the
+  // canvas, Preview, FloatingToolbar.vue's style controls) assumes it's
+  // always there the way `new Element()` (ElementsClass.js) guarantees for
+  // manually-created elements - some of them assign into it directly
+  // (`el.css.css = ...`) with no optional chaining at all. A generated node
+  // missing it crashes rather than just rendering with no classes (the
+  // reported "AI-generated element -> Preview" TypeError).
+  if (!node.css || typeof node.css !== 'object') node.css = { css: '', container: '' }
   if (node.type !== 'container' && node.type !== 'element') {
     node.type = Array.isArray(node.blocks) && node.blocks.length ? 'container' : 'element'
   }

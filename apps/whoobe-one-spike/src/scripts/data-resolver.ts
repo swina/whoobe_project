@@ -41,7 +41,7 @@ async function resolveTree(
   const gb = (node as any).gatewayBinding as GatewayBinding | undefined
   if (gb) {
     try {
-      editor.resolvedData[node.id] = await resolveGatewayBinding(gb)
+      editor.resolvedData[node.id] = await resolveGatewayBinding(gb, urlParams)
     } catch (err: any) {
       console.error(`[data-resolver] Failed to resolve gateway binding for element ${node.id}:`, err)
       editor.resolvedData[node.id] = null
@@ -262,7 +262,26 @@ export function resolveGatewayFieldValue(resolved: unknown, fieldPath: string): 
   return current
 }
 
-async function resolveGatewayBinding(gb: GatewayBinding): Promise<unknown> {
+/** A gateway path/query param value that IS, whole-string, a `{name}`
+ *  placeholder gets substituted from urlParams - same rule as
+ *  substituteUrlParam() above, but for GatewayBinding.params. This lets a
+ *  detail page's own dynamic slug param (e.g. the `id` in a page whose slug
+ *  is `/product/{id}`) flow into a gateway route's `{id}` path parameter,
+ *  so the same container/field binding fetches the one record matching
+ *  whatever the visitor actually requested instead of a hard-coded value. */
+function substituteGatewayParams(
+  params: Record<string, string> | null | undefined,
+  urlParams: Record<string, string> | undefined
+): Record<string, string> | undefined {
+  if (!params) return undefined
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(params)) {
+    out[key] = String(substituteUrlParam(value, urlParams))
+  }
+  return out
+}
+
+async function resolveGatewayBinding(gb: GatewayBinding, urlParams?: Record<string, string>): Promise<unknown> {
   const baseUrl = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:3001'
   const url = `${baseUrl.replace(/\/+$/, '')}/api/v1/gateway/resolve`
   const res = await fetch(url, {
@@ -272,7 +291,7 @@ async function resolveGatewayBinding(gb: GatewayBinding): Promise<unknown> {
       endpointName: gb.endpointName,
       routePath: gb.routePath,
       fieldPath: gb.fieldPath || undefined,
-      params: gb.params || undefined,
+      params: substituteGatewayParams(gb.params, urlParams),
     }),
     credentials: 'include',
   })

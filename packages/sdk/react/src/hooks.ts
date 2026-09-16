@@ -44,7 +44,7 @@ export function usePage(
         keyPrefix: ctx.options.keyPrefix,
         resolveTargetPage: ctx.options.resolveTargetPage,
       }
-      const descriptor = await walkTree(lookup.page.content, {}, walkOptions)
+      const descriptor = await walkTree(lookup.page.content, { urlParams: lookup.params }, walkOptions)
       setData(descriptor)
       setLayout(lookup.layout ? await composeLayout(descriptor, lookup.layout, walkOptions) : null)
       setStatus('ready')

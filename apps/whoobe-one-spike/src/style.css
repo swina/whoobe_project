@@ -164,3 +164,7 @@ body {
 .dollar::before {
   content: "$ ";
 }
+
+.tlira::before {
+  content: "₺ ";
+}
