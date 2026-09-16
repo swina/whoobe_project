@@ -4985,6 +4985,14 @@ app.post('/figma/import', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
       fileKey,
       nodeIds,
       mode,
+      imageUploadFn: async (imageRef: string, tempUrl: string) => {
+        const damResult = await saveAiImageToDam({
+          url: tempUrl,
+          folderPath: `/figma-imports/${fileKey}`,
+          fileName: imageRef,
+        });
+        return damResult.damUrl;
+      },
     });
 
     res.json(result);

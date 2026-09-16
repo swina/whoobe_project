@@ -25,7 +25,12 @@ The product itself is branded **Whoobe** (npm scope `@whoobe-cms/*`).
 
 - **API Gateway** 
   
-  a unified Express gateway (port 3001) that proxies internal services (core-api, asset-processor) and external remote APIs with authentication injection, rate limiting, response schema inference, and a convention-based plugin system. Gateway endpoints and routes are configured through the admin UI, and inferred response schemas can be bound to page builder blocks via `{{ gateway:... }}` expressions.
+  A unified Express gateway (port 3001) that proxies internal services (core-api, asset-processor) and external remote APIs with authentication injection, rate limiting, response schema inference, and a convention-based plugin system. Gateway endpoints and routes are configured through the admin UI, and inferred response schemas can be bound to page builder blocks via `{{ gateway:... }}` expressions.
+
+- **Mobile App Publishing**
+
+  Generate a **native iOS/Android mobile app** from your Whoobe website using Capacitor. The app renders only `kind: "app"` pages (mobile-first layouts with bottom navigation) and connects to your CMS via the public API.
+
 
 - **Forms** 
   
@@ -54,6 +59,10 @@ The product itself is branded **Whoobe** (npm scope `@whoobe-cms/*`).
 - **Websites & URL paths** 
 
   manage multiple websites with default/supported locales, and dynamic URL path patterns (`/it/news/{slug}`) served by the public page route.
+
+- **Figma → Whoobe Converter**
+
+  Import from Figma content into the Whoobe editor
 
 - **Pimcore migration tool** 
 

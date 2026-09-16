@@ -10,6 +10,12 @@ interface PositionContext {
   y: number
   width: number
   height: number
+  parentIsAutoLayout: boolean
+}
+
+function shouldAbsolutelyPosition(node: Partial<LayoutMixin>, parentBounds: PositionContext): boolean {
+  if (!parentBounds.parentIsAutoLayout) return true
+  return node.layoutPositioning === 'ABSOLUTE'
 }
 
 export function convertFigmaNode(node: FigmaNode, options?: FigmaConversionOptions): ConversionResult {
@@ -21,6 +27,7 @@ export function convertFigmaNode(node: FigmaNode, options?: FigmaConversionOptio
     y: 'absoluteBoundingBox' in node ? (node as any).absoluteBoundingBox?.y ?? 0 : 0,
     width: 'absoluteBoundingBox' in node ? (node as any).absoluteBoundingBox?.width ?? 1440 : 1440,
     height: 'absoluteBoundingBox' in node ? (node as any).absoluteBoundingBox?.height ?? 900 : 900,
+    parentIsAutoLayout: false,
   }
 
   const element = convertNode(node as SubcanvasNode, warnings, rootBounds, true)
@@ -76,7 +83,7 @@ function convertNode(node: SubcanvasNode, warnings: string[], parentBounds: Posi
 function convertFrame(node: FrameNode, warnings: string[], parentBounds: PositionContext, isRoot: boolean): WhoobeElementNode | null {
   const children = node.children || []
   const layout = convertLayout(node, isRoot ? undefined : parentBounds)
-  const childElements = convertChildren(children, warnings, getNodeBounds(node))
+  const childElements = convertChildren(children, warnings, { ...getNodeBounds(node), parentIsAutoLayout: layout.isFlex })
 
   const bgStyle = node.fills ? convertFillsToBg(node.fills as Paint[]) : null
   const strokeStyle = node.strokes ? convertStrokeStyle(node.strokes as Paint[], node.strokeWeight) : null
@@ -126,16 +133,11 @@ function convertFrame(node: FrameNode, warnings: string[], parentBounds: Positio
 
 function convertGroup(node: GroupNode, warnings: string[], parentBounds: PositionContext): WhoobeElementNode | null {
   const children = node.children || []
-  const childElements = convertChildren(children, warnings, getNodeBounds(node))
+  // Figma groups have no auto-layout concept of their own - their children
+  // are always freeform, positioned relative to the group's own bounds.
+  const childElements = convertChildren(children, warnings, { ...getNodeBounds(node), parentIsAutoLayout: false })
 
   if (childElements.length === 0) return null
-  if (childElements.length === 1) {
-    const single = childElements[0]
-    if (node.absoluteBoundingBox && single.style) {
-      single.style = `width: ${Math.round(node.absoluteBoundingBox.width)}px; height: ${Math.round(node.absoluteBoundingBox.height)}px; ${single.style}`
-    }
-    return single
-  }
 
   const el: WhoobeElementNode = {
     id: randomId(),
@@ -146,9 +148,24 @@ function convertGroup(node: GroupNode, warnings: string[], parentBounds: Positio
     css: { css: '', container: '' },
   }
 
+  const inlineParts: string[] = []
   if (node.absoluteBoundingBox) {
-    el.style = `width: ${Math.round(node.absoluteBoundingBox.width)}px; height: ${Math.round(node.absoluteBoundingBox.height)}px`
+    inlineParts.push(`width: ${Math.round(node.absoluteBoundingBox.width)}px`, `height: ${Math.round(node.absoluteBoundingBox.height)}px`)
+    if (shouldAbsolutelyPosition(node, parentBounds)) {
+      // Also a positioning context for the absolutely-positioned children
+      // added above - no separate "relative" needed alongside "absolute".
+      const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
+      inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    } else {
+      // Flows within an auto-layout parent, but must still anchor its own
+      // absolutely-positioned children (see figma-node-converter's leaf
+      // converters) rather than leaving them to escape to whatever
+      // ancestor happens to be positioned further up the tree.
+      inlineParts.push('position: relative')
+    }
   }
+
+  el.style = inlineParts.join('; ')
 
   return el
 }
@@ -193,8 +210,10 @@ function convertTextNode(node: TextNode, parentBounds: PositionContext): WhoobeE
   }
 
   if (node.absoluteBoundingBox && parentBounds) {
-    const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
-    inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    if (shouldAbsolutelyPosition(node, parentBounds)) {
+      const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
+      inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    }
     inlineParts.push(`width: ${Math.round(node.absoluteBoundingBox.width)}px`)
   }
 
@@ -238,8 +257,10 @@ function convertRectangle(node: RectangleNode, warnings: string[], parentBounds:
 
   if (node.absoluteBoundingBox) {
     inlineParts.push(`width: ${Math.round(node.absoluteBoundingBox.width)}px`, `height: ${Math.round(node.absoluteBoundingBox.height)}px`)
-    const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
-    inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    if (shouldAbsolutelyPosition(node, parentBounds)) {
+      const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
+      inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    }
   }
 
   return {
@@ -257,8 +278,10 @@ function convertImageRect(node: RectangleNode, imagePaint: ImagePaint, parentBou
 
   if (node.absoluteBoundingBox) {
     inlineParts.push(`width: ${Math.round(node.absoluteBoundingBox.width)}px`, `height: ${Math.round(node.absoluteBoundingBox.height)}px`, 'object-fit: cover')
-    const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
-    inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    if (shouldAbsolutelyPosition(node, parentBounds)) {
+      const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
+      inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    }
   }
 
   const cornerStyle = convertCornerRadius(node as unknown as CornerMixin)
@@ -299,8 +322,10 @@ function convertEllipse(node: EllipseNode, parentBounds: PositionContext): Whoob
 
   if (node.absoluteBoundingBox) {
     inlineParts.push(`width: ${Math.round(node.absoluteBoundingBox.width)}px`, `height: ${Math.round(node.absoluteBoundingBox.height)}px`)
-    const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
-    inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    if (shouldAbsolutelyPosition(node, parentBounds)) {
+      const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
+      inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    }
   }
 
   return {
@@ -319,8 +344,10 @@ function convertLine(node: LineNode, parentBounds: PositionContext): WhoobeEleme
   const inlineParts = [...(strokeStyle?.inline || [])]
   if (node.absoluteBoundingBox) {
     inlineParts.push(`width: ${Math.round(node.absoluteBoundingBox.width)}px`, `height: ${Math.round(node.absoluteBoundingBox.height)}px`)
-    const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
-    inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    if (shouldAbsolutelyPosition(node, parentBounds)) {
+      const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
+      inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    }
   }
 
   return {
@@ -339,8 +366,10 @@ function convertVector(node: VectorNode, warnings: string[], parentBounds: Posit
   const inlineParts: string[] = []
   if (node.absoluteBoundingBox) {
     inlineParts.push(`width: ${Math.round(node.absoluteBoundingBox.width)}px`, `height: ${Math.round(node.absoluteBoundingBox.height)}px`)
-    const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
-    inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    if (shouldAbsolutelyPosition(node, parentBounds)) {
+      const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
+      inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    }
   }
 
   return {
@@ -359,8 +388,10 @@ function convertBooleanOperation(node: BooleanOperationNode, warnings: string[],
   const inlineParts: string[] = []
   if (node.absoluteBoundingBox) {
     inlineParts.push(`width: ${Math.round(node.absoluteBoundingBox.width)}px`, `height: ${Math.round(node.absoluteBoundingBox.height)}px`)
-    const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
-    inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    if (shouldAbsolutelyPosition(node, parentBounds)) {
+      const rel = computeRelativePosition(node.absoluteBoundingBox, parentBounds)
+      inlineParts.push('position: absolute', `left: ${rel.left}px`, `top: ${rel.top}px`)
+    }
   }
 
   return {
@@ -390,6 +421,7 @@ function getNodeBounds(node: SubcanvasNode): PositionContext {
     y: bounds?.y ?? 0,
     width: bounds?.width ?? 0,
     height: bounds?.height ?? 0,
+    parentIsAutoLayout: false,
   }
 }
 

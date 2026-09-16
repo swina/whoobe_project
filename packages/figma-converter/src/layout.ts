@@ -16,6 +16,14 @@ export function convertLayout(props: FrameProperties & Partial<LayoutMixin>, par
 
   const { layoutMode, primaryAxisAlignItems, counterAxisAlignItems, itemSpacing, paddingLeft, paddingRight, paddingTop, paddingBottom, layoutWrap, clipsContent, absoluteBoundingBox } = props
 
+  // Always a positioning context (position: relative has no effect on a
+  // container's own layout without an offset) so any descendant that opts
+  // out of the flow via layoutPositioning: 'ABSOLUTE' - or any leaf placed
+  // here because this frame itself has layoutMode: 'NONE' - positions
+  // relative to *this* container instead of escaping to whatever ancestor
+  // happens to be positioned further up the tree.
+  tailwind.push('relative')
+
   if (layoutMode === 'HORIZONTAL' || layoutMode === 'VERTICAL') {
     isFlex = true
     tailwind.push('flex')
@@ -52,7 +60,6 @@ export function convertLayout(props: FrameProperties & Partial<LayoutMixin>, par
     }
   } else if (layoutMode === 'NONE' || !layoutMode) {
     isAbsolute = true
-    tailwind.push('relative')
   }
 
   if (paddingLeft != null || paddingRight != null) {
