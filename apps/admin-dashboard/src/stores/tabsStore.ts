@@ -102,8 +102,13 @@ export function classListTabId(classId: string): string {
 }
 
 export const useTabsStore = defineStore('tabs', () => {
-  const tabs = ref<MainTab[]>([{ id: sectionTabId('overview'), type: 'section', section: 'overview' }])
-  const activeTabId = ref<string>(sectionTabId('overview'))
+  // No hardcoded default tab - the app starts with zero tabs open, and
+  // DashboardLayout.vue renders OverviewView directly (not as a tab) as the
+  // fallback for that empty state. The Overview sidebar menu item is
+  // hidden for the same reason: there's nothing to "open" it into, it's
+  // just what you see until you open something.
+  const tabs = ref<MainTab[]>([])
+  const activeTabId = ref<string | null>(null)
 
   function findIndex(id: string): number {
     return tabs.value.findIndex((t) => t.id === id)
@@ -281,16 +286,14 @@ export const useTabsStore = defineStore('tabs', () => {
     if (activeTabId.value !== id) return
 
     const fallback = tabs.value[idx - 1] || tabs.value[0]
-    if (fallback) {
-      activeTabId.value = fallback.id
-    } else {
-      openSection('overview')
-    }
+    // No more tabs left - fall back to the empty state (DashboardLayout.vue
+    // renders OverviewView directly for this), not a forced Overview tab.
+    activeTabId.value = fallback ? fallback.id : null
   }
 
   function closeAllTabs() {
     tabs.value.splice(0, tabs.value.length)
-    openSection('overview')
+    activeTabId.value = null
   }
 
   function closeOtherTabs(id: string) {
