@@ -23,6 +23,7 @@ EXCLUDES=(
   --exclude 'node_modules'
   --exclude 'deploy.sh'
   --exclude '*.log'
+  --exclude 'sites'
 )
 
 DRY_RUN=""
