@@ -15,6 +15,13 @@ module.exports = {
       env: { NODE_ENV: 'production' },
     },
     {
+      name: 'gateway',
+      cwd: '/opt/whoobe/whoobe_cms',
+      script: 'pnpm',
+      args: '--filter @whoobe-cms/gateway start',
+      env: { NODE_ENV: 'production' },
+    },
+    {
       name: 'admin-dashboard',
       cwd: '/opt/whoobe/whoobe_cms',
       script: 'pnpm',

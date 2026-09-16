@@ -25,7 +25,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seed.ts",
-    "db:backfill-gateway-auth": "tsx src/db/scripts/backfill-gateway-auth-encryption.ts"
+    "db:backfill-gateway-auth": "tsx src/db/scripts/backfill-gateway-auth-encryption.ts",
+    "db:reset-password": "tsx src/db/scripts/reset-user-password.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",
