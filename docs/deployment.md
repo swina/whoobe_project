@@ -296,8 +296,12 @@ server {
     }
 
     # Whoobe One editor (embedded in admin dashboard, direct access)
+    # No trailing slash on proxy_pass - do NOT strip the /whoobe-one/
+    # prefix here. vite preview is built with base: '/whoobe-one/' (see
+    # VITE_BASE_URL above) and only serves correctly when it receives
+    # requests with that full prefix intact.
     location /whoobe-one/ {
-        proxy_pass http://127.0.0.1:3006/;
+        proxy_pass http://127.0.0.1:3006;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
