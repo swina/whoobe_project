@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { requirePermission, PERMISSIONS } from './auth.js';
 import { proxyFetch } from './proxy-engine.js';
+import { logGatewayError } from './log-error.js';
 
 export function createResolveHandler(): Router {
   const router = Router();
@@ -67,7 +68,8 @@ export function createResolveHandler(): Router {
         found: resolvedValue !== undefined,
       });
     } catch (err) {
-      res.status(502).json({ error: 'Resolution failed', details: String(err) });
+      logGatewayError('resolve gateway binding', err);
+      res.status(502).json({ error: 'Resolution failed' });
     }
   });
 

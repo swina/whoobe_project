@@ -1,6 +1,20 @@
 import { Router, type Request, type Response } from 'express';
 import { requirePermission, PERMISSIONS } from './auth.js';
 import type { GatewayPlugin } from './plugin-types.js';
+import { logGatewayError } from './log-error.js';
+import { redactSensitiveValues, pickSafeResponseHeaders } from './redact.js';
+
+/** Strips `authConfig` (raw API keys / bearer tokens / basic-auth
+ *  credentials) before an endpoint record is ever sent to a client - these
+ *  routes are consumed by the admin-dashboard's Gateway Endpoints page,
+ *  which fetches the full endpoint list just to render it, not only when
+ *  editing credentials. Auth is applied server-side (resolve-handler.ts,
+ *  remote-router.ts, and the test/execute/refresh-schema routes below all
+ *  read authConfig directly from the DB) so the client never needs it. */
+function redactEndpoint<T extends { authConfig?: unknown }>(endpoint: T): Omit<T, 'authConfig'> {
+  const { authConfig, ...safe } = endpoint;
+  return safe;
+}
 
 export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
   const router = Router();
@@ -9,9 +23,10 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
     try {
       const { listGatewayEndpoints } = await import('@whoobe-cms/core/server');
       const endpoints = await listGatewayEndpoints();
-      res.json(endpoints);
+      res.json(endpoints.map(redactEndpoint));
     } catch (err) {
-      res.status(500).json({ error: 'Failed to list endpoints', details: String(err) });
+      logGatewayError('list gateway endpoints', err);
+      res.status(500).json({ error: 'Failed to list endpoints' });
     }
   });
 
@@ -19,9 +34,10 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
     try {
       const { createGatewayEndpoint } = await import('@whoobe-cms/core/server');
       const endpoint = await createGatewayEndpoint(req.body);
-      res.status(201).json(endpoint);
+      res.status(201).json(redactEndpoint(endpoint));
     } catch (err) {
-      res.status(400).json({ error: 'Failed to create endpoint', details: String(err) });
+      logGatewayError('create gateway endpoint', err);
+      res.status(400).json({ error: 'Failed to create endpoint' });
     }
   });
 
@@ -30,20 +46,38 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
       const { getGatewayEndpoint } = await import('@whoobe-cms/core/server');
       const endpoint = await getGatewayEndpoint(req.params.id);
       if (!endpoint) { res.status(404).json({ error: 'Not found' }); return; }
-      res.json(endpoint);
+      res.json(redactEndpoint(endpoint));
     } catch (err) {
-      res.status(500).json({ error: String(err) });
+      logGatewayError('get gateway endpoint', err);
+      res.status(500).json({ error: 'Failed to load endpoint' });
     }
   });
 
   router.patch('/endpoints/:id', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
     try {
-      const { updateGatewayEndpoint } = await import('@whoobe-cms/core/server');
-      const endpoint = await updateGatewayEndpoint(req.params.id, req.body);
+      const { getGatewayEndpoint, updateGatewayEndpoint } = await import('@whoobe-cms/core/server');
+
+      const input = { ...req.body };
+      // authConfig never round-trips back to the client (see redactEndpoint),
+      // so the edit form only ever sends fields the user actually retyped.
+      // A blank/missing field means "keep the stored value" - merge onto the
+      // existing config instead of overwriting it wholesale.
+      if (input.authConfig && typeof input.authConfig === 'object') {
+        const existing = await getGatewayEndpoint(req.params.id);
+        const merged: Record<string, unknown> = { ...(existing?.authConfig as Record<string, unknown> | undefined || {}) };
+        for (const [key, value] of Object.entries(input.authConfig as Record<string, unknown>)) {
+          if (value === '' || value === undefined || value === null) continue;
+          merged[key] = value;
+        }
+        input.authConfig = merged;
+      }
+
+      const endpoint = await updateGatewayEndpoint(req.params.id, input);
       if (!endpoint) { res.status(404).json({ error: 'Not found' }); return; }
-      res.json(endpoint);
+      res.json(redactEndpoint(endpoint));
     } catch (err) {
-      res.status(400).json({ error: String(err) });
+      logGatewayError('update gateway endpoint', err);
+      res.status(400).json({ error: 'Failed to update endpoint' });
     }
   });
 
@@ -53,7 +87,8 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
       await deleteGatewayEndpoint(req.params.id);
       res.status(204).end();
     } catch (err) {
-      res.status(500).json({ error: String(err) });
+      logGatewayError('delete gateway endpoint', err);
+      res.status(500).json({ error: 'Failed to delete endpoint' });
     }
   });
 
@@ -63,7 +98,8 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
       const routes = await listGatewayRoutes(req.params.id);
       res.json(routes);
     } catch (err) {
-      res.status(500).json({ error: String(err) });
+      logGatewayError('list gateway routes', err);
+      res.status(500).json({ error: 'Failed to list routes' });
     }
   });
 
@@ -73,7 +109,8 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
       const route = await createGatewayRoute({ ...req.body, endpointId: req.params.id });
       res.status(201).json(route);
     } catch (err) {
-      res.status(400).json({ error: String(err) });
+      logGatewayError('create gateway route', err);
+      res.status(400).json({ error: 'Failed to create route' });
     }
   });
 
@@ -84,7 +121,8 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
       if (!route) { res.status(404).json({ error: 'Not found' }); return; }
       res.json(route);
     } catch (err) {
-      res.status(400).json({ error: String(err) });
+      logGatewayError('update gateway route', err);
+      res.status(400).json({ error: 'Failed to update route' });
     }
   });
 
@@ -94,7 +132,8 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
       await deleteGatewayRoute(req.params.id);
       res.status(204).end();
     } catch (err) {
-      res.status(500).json({ error: String(err) });
+      logGatewayError('delete gateway route', err);
+      res.status(500).json({ error: 'Failed to delete route' });
     }
   });
 
@@ -128,14 +167,19 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
       const result = await proxyFetch(upstreamUrl, route.method, headers, undefined, 15000);
 
       const schema = inferSchema(result.body) as unknown as Record<string, unknown>;
+      // The sample is persisted (for the schema/field-picker UI to re-fetch
+      // later) and shown in this response - scrub anything shaped like a
+      // credential before either happens.
+      const sanitizedSample = redactSensitiveValues(result.body);
 
       const { upsertGatewaySchema } = await import('@whoobe-cms/core/server');
-      const schemaRecord = await upsertGatewaySchema(route.id, schema, result.body);
+      const schemaRecord = await upsertGatewaySchema(route.id, schema, sanitizedSample);
       await updateGatewayRoute(route.id, { responseSchemaId: schemaRecord.id });
 
-      res.json({ status: result.status, schema, sample: result.body });
+      res.json({ status: result.status, schema, sample: sanitizedSample });
     } catch (err) {
-      res.status(502).json({ error: 'Proxy test failed', details: String(err) });
+      logGatewayError('test gateway route', err);
+      res.status(502).json({ error: 'Proxy test failed' });
     }
   });
 
@@ -177,16 +221,16 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
       const requestBody = body?.requestBody;
       const result = await proxyFetch(upstreamUrl, route.method, headers, requestBody, 15000);
 
-      const responseHeaders: Record<string, string> = {};
-      if (result.headers) {
-        for (const [k, v] of Object.entries(result.headers)) {
-          if (typeof v === 'string') responseHeaders[k] = v;
-        }
-      }
+      // Only relay a safe allow-list of response headers - the upstream API
+      // is untrusted from the browser's point of view, and a raw pass-through
+      // could hand it a Set-Cookie, trace/rate-limit token, or (on a
+      // misconfigured upstream) an echoed Authorization header.
+      const responseHeaders = pickSafeResponseHeaders(result.headers || {});
 
       res.json({ error: false, upstreamStatus: result.status, headers: responseHeaders, body: result.body });
     } catch (err) {
-      res.json({ error: true, upstreamStatus: 0, headers: {}, body: String(err) });
+      logGatewayError('execute gateway route', err);
+      res.json({ error: true, upstreamStatus: 0, headers: {}, body: 'Request to the upstream endpoint failed.' });
     }
   });
 
@@ -197,7 +241,8 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
       if (!schema) { res.status(404).json({ error: 'Schema not found. Test the route first.' }); return; }
       res.json(schema);
     } catch (err) {
-      res.status(500).json({ error: String(err) });
+      logGatewayError('get gateway route schema', err);
+      res.status(500).json({ error: 'Failed to load schema' });
     }
   });
 
@@ -229,14 +274,16 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
 
       const result = await proxyFetch(upstreamUrl, route.method, headers, undefined, 15000);
       const schema = inferSchema(result.body) as unknown as Record<string, unknown>;
+      const sanitizedSample = redactSensitiveValues(result.body);
 
       const { upsertGatewaySchema } = await import('@whoobe-cms/core/server');
-      const schemaRecord = await upsertGatewaySchema(route.id, schema, result.body);
+      const schemaRecord = await upsertGatewaySchema(route.id, schema, sanitizedSample);
       await updateGatewayRoute(route.id, { responseSchemaId: schemaRecord.id });
 
       res.json({ status: result.status, schema });
     } catch (err) {
-      res.status(502).json({ error: 'Schema refresh failed', details: String(err) });
+      logGatewayError('refresh gateway route schema', err);
+      res.status(502).json({ error: 'Schema refresh failed' });
     }
   });
 
