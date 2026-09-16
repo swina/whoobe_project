@@ -14,7 +14,7 @@
             <Layers class="w-5 h-5" />
           </div>
           <span v-if="!isSidebarCollapsed" class="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-slate-400 light:from-slate-900 light:to-slate-600 bg-clip-text text-transparent truncate">
-            Whoobe
+            WhooBe
           </span>
         </div>
         <button
@@ -181,7 +181,7 @@
     <!-- Main Content Area -->
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
       <!-- Top Header -->
-      <header class="flex items-center justify-between h-16 px-6 bg-slate-900/60 light:bg-white/60 backdrop-blur-md border-b border-slate-800 light:border-slate-200 z-20 shrink-0">
+      <header class="flex items-center justify-between h-16 px-6 bg-slate-900/60 light:bg-white/60 backdrop-blur-md border-b-0 border-slate-800 light:border-slate-200 z-20 shrink-0">
         <!-- Page Title & Search -->
         <div class="flex items-center space-x-6 flex-1 max-w-3xl">
           <h1 class="text-lg font-semibold text-slate-100 light:text-slate-900 truncate hidden md:block">
@@ -319,7 +319,7 @@
       </header>
 
       <!-- Main Tab Strip: one tab per open section + one per opened master item (asset) -->
-      <div class="flex items-center gap-1 px-4 pt-2 overflow-x-auto bg-slate-950/60 light:bg-white/60 border-b border-slate-800 light:border-slate-200 shrink-0">
+      <div class="flex items-center gap-1 px-4 pt-0 overflow-x-auto bg-slate-950/60 light:bg-white/60 border-b border-slate-800 light:border-slate-200 shrink-0">
         <div
           v-for="tab in tabsStore.tabs"
           :key="tab.id"
@@ -374,6 +374,12 @@
            Each tab manages its own scrolling: section views scroll as a whole page, while
            MasterAssetTab keeps its sub-tab nav fixed and scrolls only its sub-tab content. -->
       <main class="flex-1 min-h-0 overflow-hidden bg-slate-950 light:bg-slate-50">
+        <!-- Zero-tabs fallback: Overview renders directly here, not as a
+             tab in tabsStore.tabs - see tabsStore.ts's own comment on why
+             there's no hardcoded default tab anymore. -->
+        <div v-if="tabsStore.tabs.length === 0" class="h-full overflow-hidden -mt-4">
+          <OverviewView />
+        </div>
         <template v-for="tab in tabsStore.tabs" :key="tab.id">
           <div v-show="tabsStore.activeTabId === tab.id" class="h-full">
             <div v-if="tab.type === 'section' && tab.section" class="h-full overflow-y-auto p-6">
@@ -691,8 +697,13 @@ function isSettingsSubSectionActive(key: SettingsSubSection): boolean {
   return isSectionActive('settings') && (tab?.settingsSubSection ?? 'general') === key
 }
 
+// Overview has no menu item - there's nothing to "open" it into, it's just
+// what renders (directly, not as a tab - see the zero-tabs branch in the
+// template's <main>) until the user opens something. sectionComponents/
+// sectionLabels/sectionIcons below still carry an 'overview' entry since
+// SectionKind still includes it and that fallback rendering reuses
+// sectionComponents.overview.
 const navItems: { name: string; section: SectionKind; icon: any }[] = [
-  { name: 'Overview', section: 'overview', icon: LayoutDashboard },
   { name: 'Websites', section: 'websites', icon: Globe },
   { name: 'Pages', section: 'pages', icon: FileStack },
   { name: 'Snippets', section: 'snippets', icon: Puzzle },
