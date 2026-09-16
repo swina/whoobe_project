@@ -20,7 +20,7 @@ The product itself is branded **Whoobe** (npm scope `@whoobe-cms/*`).
 
 - **Headless CMS & visual page builder** 
 
-  A Vue-based WYSIWYG block/page editor (`whoobe-one-spike`, embedded in the admin dashboard) that outputs structured, Zod-validated JSON layout trees. Pages carry SEO/sitemap/search settings, per-locale translations, a publish gate + workflow state, and render publicly through dynamic URL path patterns.
+  A Vue-based WYSIWYG block/page editor (`whoobe-one-spike`, embedded in the admin dashboard) that outputs structured, Zod-validated JSON layout trees. Pages carry SEO/sitemap/search settings, per-locale translations, a publish gate + workflow state, and render publicly through dynamic URL path patterns. Blocks data binding to Data Object classes and API Gateway whit schema inferrer.
 
 
 - **API Gateway** 

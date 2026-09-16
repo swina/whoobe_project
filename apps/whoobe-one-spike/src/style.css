@@ -156,3 +156,11 @@ body {
   background-color: white;
   padding: 1.5rem;
 }
+
+.euro::before {
+  content: "€ ";
+}
+
+.dollar::before {
+  content: "$ ";
+}
