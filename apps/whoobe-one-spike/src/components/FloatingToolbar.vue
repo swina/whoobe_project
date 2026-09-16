@@ -1444,14 +1444,17 @@ const ancestorCollectionClassName = computed<string | null>(() => {
 
 // Same idea as ancestorCollectionClassName above, for a repeater bound to
 // an API Gateway endpoint instead of a Data Class (a container's own
-// gatewayBinding, with an empty fieldPath, marks it as a repeater - see
-// walk.ts's walkChildren()/BlockContainerPreview.vue's collectionResolved).
-const ancestorGatewayBinding = computed<{ endpointName: string; routePath: string } | null>(() => {
+// gatewayBinding marks it as a repeater regardless of fieldPath - a
+// non-empty fieldPath just means the array lives at a nested path in the
+// response, e.g. "data.products" - see walk.ts's walkChildren() and
+// BlockContainerPreview.vue's collectionResolved, both of which key off
+// `gb` alone, not `gb && !gb.fieldPath`).
+const ancestorGatewayBinding = computed<{ endpointName: string; routePath: string; fieldPath: string } | null>(() => {
   if (!editor.document || !editor.current) return null
   const chain = findAncestorChain(editor.document, editor.current.id)
   for (let i = chain.length - 1; i >= 0; i--) {
     const gb = (chain[i] as any).gatewayBinding
-    if (gb && !gb.fieldPath) return { endpointName: gb.endpointName, routePath: gb.routePath }
+    if (gb) return { endpointName: gb.endpointName, routePath: gb.routePath, fieldPath: gb.fieldPath || '' }
   }
   return null
 })
@@ -1477,6 +1480,23 @@ function flattenGatewaySchemaFields(schema: Record<string, any> | null | undefin
   }
   walk(schema, '')
   return out
+}
+
+// Descends into a gateway route's schema following a dot-path (e.g.
+// "data.products"), returning the sub-schema node at that path. Used to
+// scope the per-record field list to the array a repeater actually
+// iterates over when gatewayBinding.fieldPath points at a nested array
+// rather than the whole response being the array.
+function navigateSchemaPath(schema: Record<string, any> | null | undefined, path: string): Record<string, any> | null {
+  if (!schema || !path) return schema ?? null
+  let node: any = schema
+  for (const key of path.split('.')) {
+    const fields = node?.fields || (node?.type === 'object' ? [] : node?.items?.fields)
+    const next = Array.isArray(fields) ? fields.find((f: any) => f.key === key) : null
+    if (!next) return null
+    node = next
+  }
+  return node
 }
 
 // Which kind of bound list the currently-open picker is reading fields
@@ -1512,7 +1532,14 @@ async function togglePageLinkPicker() {
       const routes = endpoint ? await listRoutes(endpoint.id) : []
       const route = routes.find((r) => r.path === gatewayAncestor.routePath)
       const schema = route ? await getRouteSchema(route.id) : null
-      ancestorClassFields.value = flattenGatewaySchemaFields(schema?.schema)
+      const itemSchema = navigateSchemaPath(schema?.schema, gatewayAncestor.fieldPath)
+      // Flatten the array's item fields (relative to one record), not the
+      // route's full response shape - matches resolveFieldFromRecord at
+      // render time (walk.ts), which resolves valueField against a single
+      // record, never the full response.
+      ancestorClassFields.value = flattenGatewaySchemaFields(
+        itemSchema?.type === 'array' ? itemSchema.items : itemSchema
+      )
     }
   } catch (err) {
     console.error('[FloatingToolbar] Failed to load pages/fields for page link:', err)
