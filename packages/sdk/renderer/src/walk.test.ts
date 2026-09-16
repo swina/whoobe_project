@@ -84,6 +84,20 @@ describe('walkTree', () => {
     expect(out.children[0].link?.href).toBe('#')
   })
 
+  it('resolves gateway-sourced dynamic links from the raw context record, not .attributes', async () => {
+    const api = makeApi()
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      blocks: [{ id: 'a', type: 'element', tag: 'element', element: 'p', dynamicLink: { targetPageId: 'detail', valueField: 'id', source: 'gateway' } }],
+    }
+    // A gateway-resolved record is the raw API row (no .attributes wrapper),
+    // unlike a Data Object record - resolveNodeLink's 'gateway' branch must
+    // read `id` directly off the record, not `.attributes.id`.
+    const resolveTargetPage = async () => ({ slug: '/product/{id}', locale: 'en' })
+    const out = await walkTree(tree, { record: { id: 42, name: 'Widget' } }, { api, resolveTargetPage })
+    expect(out.children[0].link?.href).toBe('/product/42')
+  })
+
   it('passes through form/search/slider configs', async () => {
     const tree = {
       id: 'root', type: 'container', tag: 'document',

@@ -463,13 +463,13 @@
               title="Link each record in this list to its own detail page"
               class="w-full flex items-center gap-1.5 px-1.5 py-1 text-[10px] rounded font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
               :class="hasDynamicLink ? 'text-indigo-600 bg-indigo-50 border border-indigo-200' : 'text-gray-500 hover:text-indigo-500 bg-gray-50 hover:bg-indigo-50 border border-gray-200 hover:border-indigo-200'"
-              :disabled="!ancestorCollectionClassName"
+              :disabled="!ancestorCollectionClassName && !ancestorGatewayBinding"
               @click.stop="togglePageLinkPicker"
             >
               <FileText class="w-3 h-3" /> Link to a page (per record)
             </button>
-            <div v-if="!ancestorCollectionClassName" class="text-[9px] text-gray-400 mt-0.5">
-              Only available inside a data-bound list.
+            <div v-if="!ancestorCollectionClassName && !ancestorGatewayBinding" class="text-[9px] text-gray-400 mt-0.5">
+              Only available inside a data-bound or gateway-bound list.
             </div>
             <template v-else-if="showPageLinkPicker">
               <div class="mt-1.5 space-y-1.5">
@@ -693,6 +693,7 @@ import { generateTemplateFromClass } from '../scripts/template-generator'
 import { resolveDocumentData } from '../scripts/data-resolver'
 import { getDataClass, getDataClassByName } from '../data-objects-api'
 import { listPages } from '../scripts/database-actions'
+import { listEndpoints, listRoutes, getRouteSchema } from '../gateway-api'
 import { isDynamicSlug } from '../scripts/path-pattern'
 import { fetchWebsitePaths, type WebsitePathRecord, type MenuItem as PathMenuItem } from '../website-paths-api'
 import { fetchWebsites, type WebsiteRecord } from '../websites-api'
@@ -1441,10 +1442,53 @@ const ancestorCollectionClassName = computed<string | null>(() => {
   return null
 })
 
+// Same idea as ancestorCollectionClassName above, for a repeater bound to
+// an API Gateway endpoint instead of a Data Class (a container's own
+// gatewayBinding, with an empty fieldPath, marks it as a repeater - see
+// walk.ts's walkChildren()/BlockContainerPreview.vue's collectionResolved).
+const ancestorGatewayBinding = computed<{ endpointName: string; routePath: string } | null>(() => {
+  if (!editor.document || !editor.current) return null
+  const chain = findAncestorChain(editor.document, editor.current.id)
+  for (let i = chain.length - 1; i >= 0; i--) {
+    const gb = (chain[i] as any).gatewayBinding
+    if (gb && !gb.fieldPath) return { endpointName: gb.endpointName, routePath: gb.routePath }
+  }
+  return null
+})
+
 const hasDynamicLink = computed(() => !!(editor.current as any)?.dynamicLink)
 
+// Flattens a gateway route's inferred response schema into the same
+// { name, title } shape ancestorClassFields already uses for Data Class
+// fields, so the template's field <select> needs no branching - same
+// walk GatewayBindingPicker.vue's own flatFields does.
+function flattenGatewaySchemaFields(schema: Record<string, any> | null | undefined): { name: string; title?: string }[] {
+  const out: { name: string; title?: string }[] = []
+  function walk(obj: any, prefix: string) {
+    if (!obj || typeof obj !== 'object') return
+    const fields = obj.fields || (obj.type === 'object' ? [] : obj.items?.fields)
+    if (!Array.isArray(fields)) return
+    for (const f of fields) {
+      const path = prefix ? `${prefix}.${f.key}` : f.key
+      out.push({ name: path, title: path })
+      if (f.type === 'object' && f.fields) walk(f, path)
+      if (f.type === 'array' && f.items?.fields) walk(f.items, path)
+    }
+  }
+  walk(schema, '')
+  return out
+}
+
+// Which kind of bound list the currently-open picker is reading fields
+// from - set by togglePageLinkPicker, read by applyPageLink so the saved
+// dynamicLink.source matches whichever ancestor list actually supplied
+// ancestorClassFields this time.
+const pageLinkSource = ref<'dataObject' | 'gateway'>('dataObject')
+
 async function togglePageLinkPicker() {
-  if (!editor.current || !ancestorCollectionClassName.value) return
+  const gatewayAncestor = ancestorGatewayBinding.value
+  const dataClassName = ancestorCollectionClassName.value
+  if (!editor.current || (!dataClassName && !gatewayAncestor)) return
   if (showPageLinkPicker.value) {
     showPageLinkPicker.value = false
     return
@@ -1453,9 +1497,23 @@ async function togglePageLinkPicker() {
   pageLinkTargetPageId.value = existing?.targetPageId || ''
   pageLinkValueField.value = existing?.valueField || ''
   try {
-    const [pages, dataClass] = await Promise.all([listPages(), getDataClassByName(ancestorCollectionClassName.value)])
+    const pages = await listPages()
     dynamicPagesList.value = pages.filter((p) => isDynamicSlug(p.path))
-    ancestorClassFields.value = dataClass?.fields ?? []
+    // Prefer whichever kind of bound list is actually nearest; a leaf can
+    // only sit inside one repeater at a time in practice.
+    if (dataClassName) {
+      pageLinkSource.value = 'dataObject'
+      const dataClass = await getDataClassByName(dataClassName)
+      ancestorClassFields.value = dataClass?.fields ?? []
+    } else if (gatewayAncestor) {
+      pageLinkSource.value = 'gateway'
+      const endpoints = await listEndpoints()
+      const endpoint = endpoints.find((e) => e.name === gatewayAncestor.endpointName)
+      const routes = endpoint ? await listRoutes(endpoint.id) : []
+      const route = routes.find((r) => r.path === gatewayAncestor.routePath)
+      const schema = route ? await getRouteSchema(route.id) : null
+      ancestorClassFields.value = flattenGatewaySchemaFields(schema?.schema)
+    }
   } catch (err) {
     console.error('[FloatingToolbar] Failed to load pages/fields for page link:', err)
     dynamicPagesList.value = []
@@ -1469,6 +1527,7 @@ function applyPageLink() {
   ;(editor.current as any).dynamicLink = {
     targetPageId: pageLinkTargetPageId.value,
     valueField: pageLinkValueField.value,
+    source: pageLinkSource.value,
   }
   // Mutually exclusive with the plain URL link.
   editor.current.link = ''

@@ -68,7 +68,11 @@ async function resolveNodeLink(
   if (node.dynamicLink) {
     if (options.resolveTargetPage) {
       const target = await options.resolveTargetPage(node.dynamicLink.targetPageId)
-      const value = scope.ctx.record ? resolveRecordField(scope.ctx.record, node.dynamicLink.valueField) : undefined
+      const value = scope.ctx.record
+        ? node.dynamicLink.source === 'gateway'
+          ? resolveFieldFromRecord(scope.ctx.record, node.dynamicLink.valueField)
+          : resolveRecordField(scope.ctx.record, node.dynamicLink.valueField)
+        : undefined
       if (target && value != null) {
         const href = resolveDynamicLinkPath(target.slug, String(value))
         if (href) return { href, dynamic: node.dynamicLink }

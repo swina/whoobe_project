@@ -101,10 +101,14 @@ export interface ElementDataBinding {
 
 /** List-to-detail linking: builds a per-record detail URL by substituting
  *  `valueField`'s resolved value (on THIS record) into `targetPageId`'s
- *  dynamic slug pattern. */
+ *  dynamic slug pattern. `valueField` is a Data Class attribute name
+ *  (source 'dataObject', the default) or a dot-path field on a gateway
+ *  route's response schema (source 'gateway') - see walk.ts's
+ *  resolveNodeLink() for how each is resolved against the current record. */
 export interface DynamicLinkBinding {
   targetPageId: string
   valueField: string
+  source?: 'dataObject' | 'gateway'
 }
 
 export interface GatewayBinding {

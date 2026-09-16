@@ -127,6 +127,7 @@ export const dataBindingSchema: z.ZodType<ElementDataBinding> = z.object({
 export const dynamicLinkSchema: z.ZodType<DynamicLinkBinding> = z.object({
   targetPageId: z.string(),
   valueField: z.string(),
+  source: z.enum(['dataObject', 'gateway']).optional(),
 })
 
 // --- slider ---
