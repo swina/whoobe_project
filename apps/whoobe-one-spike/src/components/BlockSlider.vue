@@ -35,7 +35,7 @@
          its corner tag overlap the last couple pixels of these nav
          buttons - "partially hidden", not a rendering bug, just not
          enough room. mb-4 (16px) clears it with margin to spare. -->
-    <div class="flex flex-wrap items-center gap-1 mb-4" @click.stop>
+    <div class="flex flex-wrap items-center gap-1 mb-8 bg-slate-100 p-1 rounded" @click.stop>
       <span class="text-[10px] text-gray-400 mr-1">{{ mode === 'tabs' ? 'Tabs' : 'Slide' }}</span>
       <button
         v-for="(slide, index) in doc.blocks"

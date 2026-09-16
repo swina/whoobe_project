@@ -1,7 +1,14 @@
 <template>
-  <div class="space-y-6">
+  <div class="from-gray-700 via-gray-700 to-gray-500 bg-gradient-to-tr -mt-4 z-[1000]">
+    <div class="flex items-center justify-center h-[100vh] flex flex-col gap-1">
+      <div class="flex items-center justify-center w-20 h-20 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-bold shadow-lg shadow-indigo-500/20 shrink-0">
+        <Layers class="w-15 h-15" />
+      </div>
+      <div class="text-5xl font-bold text-slate-200 light:text-slate-200 tracking-tight font-mono">WhooBe</div>
+      <div class="text-slate-400">Unified Architecture</div>
+    </div>
     <!-- Header Banner -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 light:from-white light:via-indigo-50 light:to-white border border-slate-800 light:border-slate-200 shadow-xl relative overflow-hidden">
+    <!--<div class="flex flex-col md:flex-row md:items-center justify-between p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 light:from-white light:via-indigo-50 light:to-white border border-slate-800 light:border-slate-200 shadow-xl relative overflow-hidden">
       <div class="absolute -right-10 -bottom-10 w-60 h-60 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
       <div class="relative z-10 space-y-1">
         <h2 class="text-2xl font-bold text-white light:text-black tracking-tight">Welcome back, Administrator 👋</h2>
@@ -16,7 +23,7 @@
         </button>
       </div>
     </div>
-
+    -->
     <!-- Metrics Cards Grid -->
     <!---<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
       <div 
@@ -42,6 +49,7 @@
     <!-- Data Grid & Activity Panel -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Recent Data Objects Table (2 Cols) -->
+       <!---
       <div class="lg:col-span-2 rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800/80 light:border-slate-400/80 p-5 flex flex-col">
         <div class="flex items-center justify-between pb-4 border-b border-slate-800 light:border-slate-400">
           <div>
@@ -98,8 +106,9 @@
           </table>
         </div>
       </div>
-
+      -->
       <!-- Activity & System Feed (1 Col) -->
+      <!--
       <div class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800/80 light:border-slate-400/80 p-5 flex flex-col">
         <div class="flex items-center justify-between pb-4 border-b border-slate-800 light:border-slate-400">
           <h3 class="font-semibold text-slate-100 light:text-slate-900">System Activity</h3>
@@ -124,6 +133,7 @@
           </div>
         </div>
       </div>
+      -->
     </div>
   </div>
 </template>
@@ -137,7 +147,8 @@ import {
   Activity,
   PlusCircle,
   RefreshCw,
-  CheckCircle2
+  CheckCircle2,
+  Layers
 } from '@lucide/vue'
 import { useTabsStore } from '../stores/tabsStore'
 
