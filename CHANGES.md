@@ -1,5 +1,11 @@
 # Changelog
 
+## [Fix video element rendering: use <source> child instead of src attribute] — 2026-09-17
+- **`apps/whoobe-one-spike/src/components/preview/BlockElementPreview.vue`**, **`apps/whoobe-one-spike/src/components/BlockElement.vue`**: Added a dedicated `v-else-if="element.element === 'video'"` branch that renders `<video controls><source :src="displaySrc" type="video/mp4"></video>` instead of the generic `<component :is="'video'" :src="displaySrc">` — `<source>` child element pattern ensures broader browser compatibility for local DAM mp4 assets.
+
+## [Fix video element not rendering in preview] — 2026-09-17
+- **`apps/whoobe-one-spike/src/components/preview/BlockElementPreview.vue`**: `displaySrc` computed at line 338 only resolved src for `img` elements, returning `undefined` for video — native `<video>` elements with a local DAM asset had no `src` in preview. Added `|| el.element === 'video'` so video elements also resolve their source via `imageURL` + `resolveDisplayUrl`.
+
 ## [AI image generation: fix broken MinIO presigned URLs in preview] — 2026-09-17
 - **`apps/admin-dashboard/src/components/dam/AiImageGenerateModal.vue`**, **`apps/whoobe-one-spike/src/components/AiImageGenerateModal.vue`**: Preview `<img :src>` now extracts the s3Key from the raw S3 presigned URL (strips the bucket prefix from the pathname, discards query params) and constructs a clean proxy URL `{assetProcessorUrl}/dam-asset/{s3Key}` — no server rebuild needed.
 

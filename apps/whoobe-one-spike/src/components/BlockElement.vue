@@ -50,6 +50,20 @@
       <component :is="iconComponent" v-if="iconComponent" class="w-6 h-6" style="display:inline-block" />
       <span v-else class="text-gray-300">—</span>
     </span>
+    <video
+      v-else-if="element.element === 'video'"
+      :id="element.id"
+      :ref="element.id"
+      :class="classe"
+      :style="stile"
+      :data-id="element.id"
+      data-type="element"
+      v-bind="elementAttrs"
+      controls
+      @click="onClick"
+    >
+      <source :src="displaySrc" type="video/mp4" />
+    </video>
     <component
       v-else
       :is="component"
