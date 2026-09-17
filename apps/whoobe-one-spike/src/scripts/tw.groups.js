@@ -19,6 +19,7 @@ const twgroups = [
         { name: 'Grid' , attr: 'gridcols' , title: 'column span'}
     ]},
     { label: 'flex' , filter: ['flex','mansory' ] , components: [
+        { name: 'Options' , attr: 'flexgap' , title: 'gap'},
         { name: 'Options' , attr: 'flexdirection' , title: 'direction'},
         { name: 'Options' , attr: 'flexwrap' , title: 'wrap'},
         { name: 'Options' , attr: 'flexgrow' , title: 'grow'},
@@ -58,6 +59,7 @@ const twgroups = [
         { name: 'Button' , group: 'text-decoration' , attr: 'lowercase' , title : 'lowercase' , icon: 'arrow_downward', css: 'float-left'},
         { name: 'Button' , group: 'text-decoration' , attr: 'capitalize' , title : 'capitalize' , icon: 'text_fields' , css: 'float-none'},
         { name: 'Color' , attr: 'textcolor' , title: 'color' , prefix: 'text' },
+        { name: 'Color' , attr: 'textcolorhover' , title: 'hover color' , prefix: 'hover:text' },
         { name: 'Options' , attr: 'textSize' , title: 'size' },
         { name: 'Options' , attr: 'textAlign' , title: 'Align' },
         { name: 'Options' , attr: 'fontWeight' , title: 'weight' },
