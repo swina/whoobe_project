@@ -350,6 +350,20 @@ const displaySrc = computed(() => {
   return undefined
 })
 
+// resolveDisplayUrl() resolves asset references asynchronously - displaySrc
+// is undefined on first render and only picks up the real URL once the
+// fetch lands (see resolve-display-url.ts). Vue reactively patches the
+// <source> child's src attribute when that happens, but a <video> only
+// re-reads its <source> children on initial parse or an explicit .load()
+// call - without this, the element sits on its first (sourceless) load
+// forever: controls render, but play does nothing because nothing was ever
+// actually loaded.
+watch(displaySrc, (src) => {
+  if (props.element.element === 'video' && src && rootEl.value instanceof HTMLVideoElement) {
+    rootEl.value.load()
+  }
+})
+
 const displayAlt = computed(() => {
   const el = props.element as any
   if (resolvedData.value !== null && (el.dataBinding || el.gatewayBinding)) {

@@ -53,7 +53,7 @@
     <video
       v-else-if="element.element === 'video'"
       :id="element.id"
-      :ref="element.id"
+      ref="videoEl"
       :class="classe"
       :style="stile"
       :data-id="element.id"
@@ -114,7 +114,7 @@
 //   BlockContainer.vue's @click.self approach instead, which makes the
 //   whole "which element did the click actually land on" question a
 //   native DOM concern rather than a manually-maintained z-index ladder.
-import { computed, onMounted, shallowRef, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import type { Component } from 'vue'
 import type Element from '../scripts/ElementsClass.js'
 import { useEditorStore } from '../store/editor'
@@ -285,6 +285,15 @@ const displaySrc = computed(() => {
     if (v && typeof v === 'object' && typeof (v as any).assetId === 'string') return resolveDisplayUrl((v as any).assetId)
   }
   return resolveDisplayUrl(imageURL((props.element as any).image))
+})
+
+// resolveDisplayUrl() resolves asset references asynchronously - see the
+// identical watcher/comment in ../preview/BlockElementPreview.vue. Without
+// this, a <video> whose <source src> only lands after the initial parse
+// never actually loads it: controls render, but play does nothing.
+const videoEl = ref<HTMLVideoElement | null>(null)
+watch(displaySrc, (src) => {
+  if ((props.element as any).element === 'video' && src) videoEl.value?.load()
 })
 
 const displayAlt = computed(() => {
