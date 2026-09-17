@@ -1360,7 +1360,7 @@ const unifiedItems = computed<UnifiedItem[]>(() => {
     version: a.version,
     url: a.url,
     dataUrl: a.dataUrl,
-    thumbnailUrl: a.thumbnails.medium,//thumbnailUrl,
+    thumbnailUrl: a.thumbnails?.medium || a.thumbnailUrl,//thumbnailUrl,
     uploadedAt: a.uploadedAt,
     updatedAt: a.updatedAt,
     s3Key: a.s3Key,
