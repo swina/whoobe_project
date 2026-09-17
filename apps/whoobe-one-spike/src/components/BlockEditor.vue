@@ -1,6 +1,6 @@
 <template>
   <div class="h-full flex flex-col bg-gray-100 text-black">
-    <div class="shrink-0 h-10 px-4 flex items-center gap-2 bg-white border-b shadow-sm text-xs font-mono">
+    <div class="fixed bottom-0 z-[100000] w-full h-10 px-4 flex items-center justify-start gap-2 bg-slate-200 border-t border-slate-300 shadow-sm text-[8px] font-mono">
       <template v-if="!editor.embedded">
         <span class="font-semibold text-gray-700 bg-violet-600 text-white px-2 py-1 rounded-md">Whoobe One Spike</span>
         <span class="text-gray-400">|</span>
@@ -8,7 +8,7 @@
           selected: <b>{{ editor.current ? editor.current.element + ' (' + editor.current.id + ')' : 'none' }}</b>
         </span>
       </template>
-      <div class="flex-1"></div>
+      <!---<div class="flex-1"></div>-->
 
       <span v-if="saveState" class="text-[11px] text-gray-400 mr-1">{{ saveState }}</span>
       <button
@@ -48,7 +48,7 @@
       </button>
     </div>
 
-    <div class="flex-1 min-h-0 flex">
+    <div class="flex-1 min-h-0 flex pb-10">
       <!-- @click.self, not plain @click: a plain @click here would also
            fire on the way up from a click already handled deeper in the
            tree (e.g. BlockContainer's own @click.self selecting a
@@ -82,15 +82,16 @@
            Horizontally collapsible - width lives here on the wrapper (not
            on each panel's own root, which used to each hardcode their own
            `w-64`) so collapsing doesn't need to reach into every panel. -->
-      <div class="shrink-0 relative flex border-l text-xs" :class="sidebarCollapsed ? 'w-0 border-l-0' : 'w-64'">
+      <div class="shrink-0 relative flex border border-slate-300 text-xs" :class="sidebarCollapsed ? 'w-0 border-l-0' : 'w-64'">
         <button
           type="button"
           :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-          class="absolute top-1/2 -translate-y-1/2 -left-3 z-10 w-6 h-6 rounded-full border bg-white shadow flex items-center justify-center text-gray-400 hover:text-indigo-600"
+          class="absolute top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full border bg-white shadow flex items-center justify-center text-gray-400 hover:text-indigo-600"
+          :class="sidebarCollapsed ? '-left-5' : '-left-4'"
           @click="sidebarCollapsed = !sidebarCollapsed"
         >
-          <ChevronRight v-if="sidebarCollapsed" class="w-3.5 h-3.5" />
-          <ChevronLeft v-else class="w-3.5 h-3.5" />
+          <ChevronLeft v-if="sidebarCollapsed" class="w-3.5 h-3.5" />
+          <ChevronRight v-else class="w-3.5 h-3.5" />
         </button>
 
         <div v-show="!sidebarCollapsed" class="w-64 min-w-0 flex flex-col overflow-hidden text-xs">
@@ -324,7 +325,7 @@ type WhoobeElement = InstanceType<typeof Element>
 const editor = useEditorStore()
 const snippetsStore = useSnippetsStore()
 const message = ref('')
-const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-sm font-semibold bg-violet-500 hover:bg-violet-800 text-white'
+const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-violet-400 hover:bg-violet-800 text-white'
 const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'advanced' | 'snippets' | 'kits' | 'ai' | 'pwa'>('elements')
 const sidebarCollapsed = ref(false)
 const showAddToKit = ref(false)
