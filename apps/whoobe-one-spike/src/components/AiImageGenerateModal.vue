@@ -136,7 +136,7 @@
           <template v-else>
             <div class="flex flex-wrap gap-3">
               <div v-for="(img, i) in generatedImages" :key="i" class="flex flex-col items-center gap-2 bg-slate-800 rounded-lg p-2 border border-slate-700">
-                <img :src="proxyBase + '/dam-asset/' + img.s3Key" class="w-48 h-48 object-cover rounded" />
+                <img :src="assetPreviewUrl(img.damUrl)" class="w-48 h-48 object-cover rounded" />
                 <p v-if="img.revisedPrompt && img.revisedPrompt !== prompt" class="text-[10px] text-slate-500 text-center max-w-48 line-clamp-2">{{ img.revisedPrompt }}</p>
                 <button
                   type="button"
@@ -165,7 +165,7 @@ import { getDefaultAssetProcessorUrl } from '../dam-api'
 
 const emit = defineEmits<{
   close: []
-  select: [value: { damUrl: string; s3Key: string; assetId: string; revisedPrompt?: string }]
+  select: [value: { damUrl: string; assetId: string; revisedPrompt?: string }]
 }>()
 
 const step = ref<'generate' | 'preview'>('generate')
@@ -177,9 +177,21 @@ const n = ref(1)
 const generating = ref(false)
 const error = ref('')
 const info = ref<AiImageInfo | null>(null)
-const generatedImages = ref<{ damUrl: string; s3Key: string; assetId: string; revisedPrompt?: string }[]>([])
+const generatedImages = ref<{ damUrl: string; assetId: string; revisedPrompt?: string }[]>([])
 const folderPath = ref('/ai-generated')
 const proxyBase = getDefaultAssetProcessorUrl().replace(/\/+$/, '')
+
+function assetPreviewUrl(damUrl: string): string {
+  try {
+    const u = new URL(damUrl)
+    const parts = u.pathname.split('/')
+    const s3Key = parts.slice(2).join('/')
+    if (!s3Key) return damUrl
+    return `${proxyBase}/dam-asset/${s3Key}`
+  } catch {
+    return damUrl
+  }
+}
 const showFolderPicker = ref(false)
 const damFolders = ref<DamFolderRecord[]>([])
 const foldersLoading = ref(false)
@@ -228,7 +240,7 @@ async function generate() {
   }
 }
 
-function selectImage(img: { damUrl: string; s3Key: string; assetId: string; revisedPrompt?: string }) {
+function selectImage(img: { damUrl: string; assetId: string; revisedPrompt?: string }) {
   emit('select', img)
 }
 </script>

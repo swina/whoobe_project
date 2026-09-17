@@ -4623,10 +4623,8 @@ app.post('/ai/generate-image', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
         fileName: slug,
         revisedPrompt: img.revisedPrompt,
       });
-      const proto = (req.headers['x-forwarded-proto'] as string) ?? req.protocol;
-      const host = (req.headers['x-forwarded-host'] as string) ?? req.get('host') ?? 'localhost';
       saved.push({
-        damUrl: `${proto}://${host}/dam-asset/${damResult.s3Key}`,
+        damUrl: damResult.damUrl,
         assetId: damResult.assetId,
         revisedPrompt: img.revisedPrompt,
       });
@@ -4982,8 +4980,6 @@ app.post('/figma/import', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
     }
 
     const nodeIds = nodeId ? [nodeId] : undefined;
-    const figmaProto = (req.headers['x-forwarded-proto'] as string) ?? req.protocol;
-    const figmaHost = (req.headers['x-forwarded-host'] as string) ?? req.get('host') ?? 'localhost';
     const result = await fetchAndConvert({
       accessToken: settings.accessToken,
       fileKey,
@@ -4995,7 +4991,7 @@ app.post('/figma/import', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
           folderPath: `/figma-imports/${fileKey}`,
           fileName: imageRef,
         });
-        return `${figmaProto}://${figmaHost}/dam-asset/${damResult.s3Key}`;
+        return damResult.damUrl;
       },
     });
 

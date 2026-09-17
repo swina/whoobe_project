@@ -87,7 +87,6 @@ export async function saveAiSettings(baseUrl: string, input: AiSettingsInput): P
 
 export interface AiGeneratedImage {
   damUrl: string
-  s3Key: string
   assetId: string
   revisedPrompt?: string
 }

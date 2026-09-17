@@ -97,7 +97,7 @@
       <template v-else>
         <div class="flex flex-wrap gap-3">
           <div v-for="(img, i) in generatedImages" :key="i" class="flex flex-col items-center gap-1.5 bg-slate-950 light:bg-slate-50 rounded-xl p-2 border border-slate-800 light:border-slate-200">
-            <img :src="proxyBase + '/dam-asset/' + img.s3Key" class="w-40 h-40 object-cover rounded-lg" />
+            <img :src="assetPreviewUrl(img.damUrl)" class="w-40 h-40 object-cover rounded-lg" />
             <p v-if="img.revisedPrompt && img.revisedPrompt !== prompt" class="text-[10px] text-slate-500 text-center max-w-40 line-clamp-2">{{ img.revisedPrompt }}</p>
           </div>
         </div>
@@ -146,7 +146,20 @@ const generatedImages = ref<AiGeneratedImage[]>([])
 
 const folderPath = ref(damStore.currentFolderPath)
 
-const proxyBase = computed(() => damStore.config.assetProcessorUrl.replace(/\/+$/, ''))
+const assetProcessorBase = computed(() => damStore.config.assetProcessorUrl.replace(/\/+$/, ''))
+
+function assetPreviewUrl(damUrl: string): string {
+  try {
+    const u = new URL(damUrl)
+    const parts = u.pathname.split('/')
+    // S3 URL format: /{bucket}/{s3Key} — strip the bucket prefix
+    const s3Key = parts.slice(2).join('/')
+    if (!s3Key) return damUrl
+    return `${assetProcessorBase.value}/dam-asset/${s3Key}`
+  } catch {
+    return damUrl
+  }
+}
 
 async function loadInfo() {
   try {
