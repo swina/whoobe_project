@@ -1,6 +1,14 @@
 # Changelog
 
-## [Code element: add Copy to clipboard button - REMOVED] — 2026-09-17
+## [AI image generation: fix broken MinIO URLs returned as damUrl] — 2026-09-17
+- **`packages/core/src/ai/image-dam.ts`**: Added `s3Key` to `AiImageDamOutput` return type so callers can construct proper proxy URLs instead of relying on the raw S3 URL from `uploadAsset()`.
+- **`apps/core-api/src/server.ts`**: `POST /ai/generate-image` constructs `damUrl` as `{origin}/dam-asset/{s3Key}` using `x-forwarded-proto`/`x-forwarded-host` headers (with fallbacks), rather than returning the raw MinIO/S3 endpoint URL. Same fix for `POST /figma/import`'s `imageUploadFn` callback.
+- **`apps/admin-dashboard/src/utils/ai-settings-api.ts`**: Added `s3Key` to `AiGeneratedImage` interface.
+- **`apps/admin-dashboard/src/components/dam/AiImageGenerateModal.vue`**: Changed preview `<img :src>` to construct URL via `damStore.config.assetProcessorUrl/dam-asset/{s3Key}` instead of raw `damUrl`.
+- **`apps/whoobe-one-spike/src/ai-api.ts`**: Added `s3Key` to `generateImage()` response type.
+- **`apps/whoobe-one-spike/src/components/AiImageGenerateModal.vue`**: Changed preview `<img :src>` to construct URL via `getDefaultAssetProcessorUrl()/dam-asset/{s3Key}` instead of raw `damUrl`. Added `s3Key` to emitted `select` event payload.
+
+## [Code element: add Copy to clipboard button] — 2026-09-17
 - **`apps/admin-dashboard/src/components/dam/MoveAssetsModal.vue`**: Added move assets to a folder
 - **`apps/whoobe-one-spike/src/components/BlockElement.vue`**: Added a Copy button (positioned absolute top-left, visible on group hover) on `pre` (Code) elements that copies the element's content to clipboard via `navigator.clipboard.writeText()`. Imported `Copy` from `@lucide/vue`. Root wrapper div gains `group` class for hover visibility control.
 
