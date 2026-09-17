@@ -1,5 +1,8 @@
 # Changelog
 
+## [System Logger plan: structured pino logging per app with DAM upload] — 2026-09-18
+- **`docs/plans/system/system-logger.md`**: New plan for a structured logging system. Server apps (core-api, asset-processor, gateway) log via pino with pino-roll daily rotation; browser apps (admin-dashboard, whoobe-editor/whoobe-one-spike) use a lightweight console wrapper. Rotated log files are uploaded to DAM's private S3 storage via the asset-processor. Includes a full-featured admin UI log viewer. Six implementation phases defined.
+
 ## [Fix video element rendering: use <source> child instead of src attribute] — 2026-09-17
 - **`apps/whoobe-one-spike/src/components/preview/BlockElementPreview.vue`**, **`apps/whoobe-one-spike/src/components/BlockElement.vue`**: Added a dedicated `v-else-if="element.element === 'video'"` branch that renders `<video controls><source :src="displaySrc" type="video/mp4"></video>` instead of the generic `<component :is="'video'" :src="displaySrc">` — `<source>` child element pattern ensures broader browser compatibility for local DAM mp4 assets.
 
