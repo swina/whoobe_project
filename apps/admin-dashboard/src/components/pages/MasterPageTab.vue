@@ -1,6 +1,6 @@
 <template>
   <div v-if="page || isNewPage" class="h-full flex flex-col">
-    <div class="flex shrink-0 px-6 pt-2 pb-2 space-y-1 gap-6">
+    <div class="flex shrink-0 px-6 pt-2 space-y-1 gap-6">
       <div class="flex items-center gap-2">
         <h4 v-if="page" class="text-lg font-bold text-slate-100 light:text-slate-900">{{ page.title }}</h4>
         <h4 v-else class="text-lg font-bold text-slate-100 light:text-slate-900">New Page</h4>
