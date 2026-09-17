@@ -33,6 +33,18 @@ function loadAutosaveConfig(): { enabled: boolean; interval: number } {
   return { enabled: false, interval: 60 }
 }
 
+// Whether this browser has ever saved its own autosave preference (via
+// EditorSettingsModal). Computed once at store init, before setAutosaveDefault
+// may run — used to avoid a fetched org-wide default clobbering a user's own
+// per-browser override (see setAutosaveDefault below).
+function hasStoredAutosaveConfig(): boolean {
+  try {
+    return localStorage.getItem(AUTOSAVE_KEY) !== null
+  } catch {
+    return false
+  }
+}
+
 export const useEditorStore = defineStore('editor', () => {
   const mode = ref<string>('templates')
   const settings = ref<any>(null)
@@ -49,6 +61,12 @@ export const useEditorStore = defineStore('editor', () => {
   const parent = ref<WhoobeElement | null>(null)
   const startTime = ref<number | null>(null)
   const autosave = ref<{ enabled: boolean; interval: number }>(loadAutosaveConfig())
+  const autosaveHasLocalOverride = ref<boolean>(hasStoredAutosaveConfig())
+  // Settings > General "Remove HTML Comments in Page Preview" - org-wide,
+  // fetched from core-api on route mount (Editor.vue/PublicPage.vue), no
+  // per-browser override (unlike autosave). Defaults off so existing
+  // previews render unchanged until an admin opts in.
+  const stripHtmlComments = ref<boolean>(false)
   const exportMode = ref<string>('single')
   const preview = ref<boolean | string>(false)
   const fonts = ref<string[]>((import.meta.env.VITE_FONT_FAMILIES ?? '').split('|'))
@@ -148,8 +166,19 @@ const locale = ref<string>('en')
   function setStartTime(v: number | null) { startTime.value = v }
   function setAutosave(v: { enabled: boolean; interval: number }) {
   autosave.value = v
+  autosaveHasLocalOverride.value = true
   try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(v)) } catch { /* ignore */ }
 }
+  // Applies the org-wide autosave default fetched from core-api. Only takes
+  // effect when the user hasn't already saved their own preference in this
+  // browser via setAutosave/EditorSettingsModal - a local override always wins.
+  function setAutosaveDefault(v: { enabled: boolean; interval: number }) {
+    if (autosaveHasLocalOverride.value) return
+    autosave.value = v
+  }
+  function setStripHtmlComments(v: boolean) {
+    stripHtmlComments.value = v
+  }
   function setExportMode(v: string) { exportMode.value = v }
   function setPreview(v: boolean | string) { preview.value = v }
   function setSave(v: boolean) { save.value = v }
@@ -193,14 +222,14 @@ const locale = ref<string>('en')
 
   return {
     mode, settings, elements, document, project, selected, page, current,
-    component, action, subaction, level, parent, startTime, autosave,
+    component, action, subaction, level, parent, startTime, autosave, stripHtmlComments,
     exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
     mailTemplateId, snippetId, snippetMode, pageThemeId, websiteId, locale, websiteTheme, websiteThemes,
     defaultPlaceholderUrl,
     appMode, pwaConfig,
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
-    setParent, setStartTime, setAutosave, setExportMode, setPreview, setSave,
+    setParent, setStartTime, setAutosave, setAutosaveDefault, setStripHtmlComments, setExportMode, setPreview, setSave,
     setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, setPageThemeId, setSnippetId, setSnippetMode, resolvedData,
     collapsedIds, toggleCollapsed, isCollapsed, setWebsiteTheme, setWebsiteThemes, setWebsiteId, setLocale,
     setDefaultPlaceholderUrl,

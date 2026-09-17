@@ -1494,6 +1494,71 @@ app.put('/whoobe-one/settings/default-placeholder-image', requirePermission(PERM
   }
 });
 
+// No auth guard (unlike the other /whoobe-one/settings/* GETs): this value
+// also needs to be readable by anonymous visitors of the live public page
+// (whoobe-one-spike's PublicPage.vue, which doubles as the admin's Page
+// Preview iframe target - see PagePreviewTab.vue), not just logged-in
+// editor users.
+app.get('/whoobe-one/settings/strip-html-comments', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const all = await listWebsites();
+    const first = all[0];
+    const value = first?.settings && typeof first.settings === 'object' && !Array.isArray(first.settings)
+      ? (first.settings as Record<string, unknown>).stripHtmlComments
+      : null;
+    res.json({ enabled: typeof value === 'boolean' ? value : false });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to read HTML comment stripping setting' });
+  }
+});
+
+app.put('/whoobe-one/settings/strip-html-comments', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { enabled } = req.body ?? {};
+    const all = await listWebsites();
+    if (!all.length) { res.status(404).json({ error: 'No website found' }); return; }
+    const first = all[0];
+    const settings = { ...(first.settings as Record<string, unknown> ?? {}), stripHtmlComments: !!enabled };
+    await updateWebsite(first.id, { settings });
+    res.json({ enabled: !!enabled });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to save HTML comment stripping setting' });
+  }
+});
+
+app.get('/whoobe-one/settings/autosave', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const all = await listWebsites();
+    const first = all[0];
+    const raw = first?.settings && typeof first.settings === 'object' && !Array.isArray(first.settings)
+      ? (first.settings as Record<string, unknown>).autosave
+      : null;
+    const autosave = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
+    res.json({
+      enabled: typeof autosave.enabled === 'boolean' ? autosave.enabled : false,
+      interval: typeof autosave.interval === 'number' ? autosave.interval : 60,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to read autosave settings' });
+  }
+});
+
+app.put('/whoobe-one/settings/autosave', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { enabled, interval } = req.body ?? {};
+    const all = await listWebsites();
+    if (!all.length) { res.status(404).json({ error: 'No website found' }); return; }
+    const first = all[0];
+    const clampedInterval = Math.max(10, Math.min(600, Math.round(Number(interval) || 60)));
+    const nextAutosave = { enabled: !!enabled, interval: clampedInterval };
+    const settings = { ...(first.settings as Record<string, unknown> ?? {}), autosave: nextAutosave };
+    await updateWebsite(first.id, { settings });
+    res.json(nextAutosave);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to save autosave settings' });
+  }
+});
+
 app.get('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const website = await getWebsite(req.params.id);

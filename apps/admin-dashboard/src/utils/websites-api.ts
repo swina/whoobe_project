@@ -267,6 +267,44 @@ export async function saveDefaultPlaceholderImage(baseUrl: string, pimcorePath: 
   })
 }
 
+export interface AutosaveSettings {
+  enabled: boolean
+  interval: number
+}
+
+export async function fetchAutosaveSettings(baseUrl: string): Promise<AutosaveSettings> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/autosave`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return {
+    enabled: !!body.enabled,
+    interval: typeof body.interval === 'number' ? body.interval : 60,
+  }
+}
+
+export async function saveAutosaveSettings(baseUrl: string, settings: AutosaveSettings): Promise<void> {
+  await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/autosave`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+    credentials: 'include',
+  })
+}
+
+export async function fetchStripHtmlCommentsSetting(baseUrl: string): Promise<boolean> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/strip-html-comments`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return !!body.enabled
+}
+
+export async function saveStripHtmlCommentsSetting(baseUrl: string, enabled: boolean): Promise<void> {
+  await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/strip-html-comments`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+    credentials: 'include',
+  })
+}
+
 // Legacy single-theme API (backward-compatible) — reads/writes the default theme.
 export interface WebsiteThemeLegacy {
   colors: { name: string; hex: string }[]
