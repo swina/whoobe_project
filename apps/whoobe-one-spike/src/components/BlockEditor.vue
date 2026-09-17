@@ -1,6 +1,6 @@
 <template>
   <div class="h-full flex flex-col bg-gray-100 text-black">
-    <div class="fixed bottom-0 z-[100000] w-full h-10 px-4 flex items-center justify-start gap-2 bg-slate-200 border-t border-slate-300 shadow-sm text-[8px] font-mono">
+    <div class="w-full h-10 px-4 flex items-center justify-start gap-2 bg-slate-200 border-t border-slate-300 shadow-sm text-[8px] font-mono">
       <template v-if="!editor.embedded">
         <span class="font-semibold text-gray-700 bg-violet-600 text-white px-2 py-1 rounded-md">Whoobe One Spike</span>
         <span class="text-gray-400">|</span>
@@ -48,7 +48,7 @@
       </button>
     </div>
 
-    <div class="flex-1 min-h-0 flex pb-10">
+    <div class="flex-1 min-h-0 flex pb-5">
       <!-- @click.self, not plain @click: a plain @click here would also
            fire on the way up from a click already handled deeper in the
            tree (e.g. BlockContainer's own @click.self selecting a
@@ -60,7 +60,7 @@
            this exact div was the actual click target - i.e. genuinely
            outside the whole document tree. -->
       <div
-        class="flex-1 min-h-0 overflow-auto p-6"
+        class="flex-1 min-h-0 overflow-auto p-6 pt-10"
         :class="editor.appMode ? 'flex justify-center bg-gray-200' : ''"
         @click.self="editor.setCurrent(null)"
       >

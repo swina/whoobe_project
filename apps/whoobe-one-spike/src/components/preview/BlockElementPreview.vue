@@ -29,7 +29,7 @@
   v-bind="extraAttrs"
 >
   <span v-if="buttonIconComponent" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" :style="getButtonIconStyle()" /></span>
-  <span v-html="displayContent"></span>
+  <span v-html="renderedContent"></span>
 </component>
 <video
   v-else-if="element.element === 'video'"
@@ -53,7 +53,7 @@
   :alt="displayAlt"
   :placeholder="element.placeholder"
   v-bind="extraAttrs"
-  v-html="displayContent"
+  v-html="renderedContent"
 ></component>
 </template>
 
@@ -84,7 +84,7 @@ import { resolveDisplayUrl } from '../../resolve-display-url'
 import { useEditorStore } from '../../store/editor'
 import { resolveFieldValue } from '../../scripts/data-resolver'
 import type { DataObjectRecord } from '../../data-objects-api'
-import { applyTransform, escapeHtml } from '../../scripts/field-transforms'
+import { applyTransform, escapeHtml, stripHtmlComments } from '../../scripts/field-transforms'
 import { mountAnimation } from '../../scripts/gsap-actions'
 
 type WhoobeElement = InstanceType<typeof Element>
@@ -257,6 +257,16 @@ const displayContent = computed(() => {
   if (el.tag === 'radiogroup') return renderRadioGroupHtml(el.data?.options, el.data?.attributes?.name)
   return el.content
 })
+
+// Settings > General "Remove HTML Comments in Page Preview" - applied here
+// rather than baked into displayContent so displayContent's own watcher
+// (Alpine re-init below) still fires off the same raw value regardless of
+// the toggle.
+const renderedContent = computed(() => (
+  editor.stripHtmlComments && typeof displayContent.value === 'string'
+    ? stripHtmlComments(displayContent.value)
+    : displayContent.value
+))
 
 // 'valueMap' transform's per-value className (e.g. a status badge's
 // background color) - applied via native :class below instead of baking

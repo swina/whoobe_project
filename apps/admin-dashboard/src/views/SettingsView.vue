@@ -87,6 +87,43 @@
                 <button v-if="placeholderPimcorePath" @click="clearPlaceholder" class="text-xs text-rose-400 hover:text-rose-300">Clear</button>
               </div>
             </div>
+
+            <div class="flex items-center justify-between py-2">
+              <div>
+                <div class="text-sm font-medium text-slate-200 light:text-slate-800">Autosave Interval (Pages/Snippets)</div>
+                <div class="text-xs text-slate-500">Default autosave behavior for the Whoobe One page/snippet editor. Users can still override this for their own session from the editor's own settings.</div>
+              </div>
+              <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1.5 text-xs text-slate-300 light:text-slate-700">
+                  <input type="checkbox" v-model="autosaveEnabled" class="rounded" />
+                  Enabled
+                </label>
+                <input
+                  type="number"
+                  min="10"
+                  max="600"
+                  step="5"
+                  v-model.number="autosaveInterval"
+                  :disabled="!autosaveEnabled"
+                  class="w-20 px-2 py-1.5 rounded-lg text-xs bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-slate-200 light:text-slate-800 text-center disabled:opacity-50"
+                />
+                <span class="text-xs text-slate-500">sec</span>
+                <button @click="saveAutosave" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40">Save</button>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between py-2 border-t border-slate-800 light:border-slate-200">
+              <div>
+                <div class="text-sm font-medium text-slate-200 light:text-slate-800">Remove HTML Comments in Page Preview</div>
+                <div class="text-xs text-slate-500">Strips &lt;!-- --&gt; comments (e.g. left over from pasted content) out of rendered text before it's shown in page preview.</div>
+              </div>
+              <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1.5 text-xs text-slate-300 light:text-slate-700">
+                  <input type="checkbox" v-model="stripHtmlComments" @change="saveStripHtmlComments" class="rounded" />
+                  Enabled
+                </label>
+              </div>
+            </div>
           </div>
           <AssetPickerModal :is-open="pickerOpen" @close="pickerOpen = false" @select="onPlaceholderSelected" />
         </div>
@@ -110,7 +147,7 @@ import UsersView from './UsersView.vue'
 import RolesView from './RolesView.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
 import { useAuthStore } from '../stores/authStore'
-import { fetchDefaultPlaceholderImage, saveDefaultPlaceholderImage } from '../utils/websites-api'
+import { fetchDefaultPlaceholderImage, saveDefaultPlaceholderImage, fetchAutosaveSettings, saveAutosaveSettings, fetchStripHtmlCommentsSetting, saveStripHtmlCommentsSetting } from '../utils/websites-api'
 import { useToastStore } from '../stores/toastStore'
 import AssetPickerModal from '../components/dam/AssetPickerModal.vue'
 import type { AssetItem } from '../stores/damStore'
@@ -170,7 +207,50 @@ async function clearPlaceholder() {
   }
 }
 
-onMounted(loadPlaceholder)
+const autosaveEnabled = ref(false)
+const autosaveInterval = ref(60)
+
+async function loadAutosave() {
+  try {
+    const settings = await fetchAutosaveSettings(authStore.config.coreApiUrl)
+    autosaveEnabled.value = settings.enabled
+    autosaveInterval.value = settings.interval
+  } catch { /* ignore */ }
+}
+
+async function saveAutosave() {
+  const interval = Math.max(10, Math.min(600, Math.round(autosaveInterval.value || 60)))
+  autosaveInterval.value = interval
+  try {
+    await saveAutosaveSettings(authStore.config.coreApiUrl, { enabled: autosaveEnabled.value, interval })
+    toastStore.show('Autosave settings updated')
+  } catch (e: any) {
+    toastStore.show(e?.message || 'Failed to save autosave settings')
+  }
+}
+
+const stripHtmlComments = ref(false)
+
+async function loadStripHtmlComments() {
+  try {
+    stripHtmlComments.value = await fetchStripHtmlCommentsSetting(authStore.config.coreApiUrl)
+  } catch { /* ignore */ }
+}
+
+async function saveStripHtmlComments() {
+  try {
+    await saveStripHtmlCommentsSetting(authStore.config.coreApiUrl, stripHtmlComments.value)
+    toastStore.show('Page preview settings updated')
+  } catch (e: any) {
+    toastStore.show(e?.message || 'Failed to save page preview settings')
+  }
+}
+
+onMounted(() => {
+  loadPlaceholder()
+  loadAutosave()
+  loadStripHtmlComments()
+})
 
 const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'general', name: 'General', icon: Sliders },

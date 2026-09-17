@@ -66,8 +66,36 @@ async function fetchDefaultPlaceholder() {
   }
 }
 
+async function fetchAutosaveDefault() {
+  try {
+    const base = getDefaultCoreApiUrl()
+    const res = await fetch(`${base}/whoobe-one/settings/autosave`, { credentials: 'include' })
+    if (res.ok) {
+      const body = await res.json()
+      editor.setAutosaveDefault({ enabled: !!body.enabled, interval: typeof body.interval === 'number' ? body.interval : 60 })
+    }
+  } catch {
+    // Non-critical — falls back to the local/hardcoded default.
+  }
+}
+
+async function fetchStripHtmlComments() {
+  try {
+    const base = getDefaultCoreApiUrl()
+    const res = await fetch(`${base}/whoobe-one/settings/strip-html-comments`, { credentials: 'include' })
+    if (res.ok) {
+      const body = await res.json()
+      editor.setStripHtmlComments(!!body.enabled)
+    }
+  } catch {
+    // Non-critical — falls back to leaving comments in place.
+  }
+}
+
 onMounted(async () => {
   await fetchDefaultPlaceholder()
+  await fetchAutosaveDefault()
+  await fetchStripHtmlComments()
   const parentOrigin = typeof route.query.parentOrigin === 'string' ? route.query.parentOrigin : null
   if (parentOrigin) editor.setEmbedded(true, parentOrigin)
 

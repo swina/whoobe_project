@@ -210,3 +210,12 @@ export function applyTransform(value: unknown, transform: FieldTransform | null 
 export function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
+
+// Strips `<!-- ... -->` comment nodes (e.g. Word/HTML paste artifacts like
+// `<!--[if ...]-->` or `<!--StartFragment-->`) out of a rich-text field's
+// raw HTML before it's rendered via v-html. Gated behind the Settings >
+// General "Remove HTML Comments in Page Preview" toggle - see editor.ts's
+// `stripHtmlComments` and BlockElementPreview.vue's `renderedContent`.
+export function stripHtmlComments(html: string): string {
+  return html.replace(/<!--[\s\S]*?-->/g, '')
+}

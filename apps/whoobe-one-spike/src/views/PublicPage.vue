@@ -145,7 +145,21 @@ async function loadPageTheme(page: { themeId?: string | null; websiteId?: string
   }
 }
 
+async function fetchStripHtmlComments() {
+  try {
+    const baseUrl = (await import('../core-api-url')).getDefaultCoreApiUrl()
+    const res = await fetch(`${baseUrl}/whoobe-one/settings/strip-html-comments`)
+    if (res.ok) {
+      const body = await res.json()
+      editor.setStripHtmlComments(!!body.enabled)
+    }
+  } catch {
+    // Non-critical — falls back to leaving comments in place.
+  }
+}
+
 onMounted(async () => {
+  fetchStripHtmlComments()
   try {
     const queryLocale = typeof route.query.locale === 'string' && route.query.locale ? route.query.locale : ''
 
