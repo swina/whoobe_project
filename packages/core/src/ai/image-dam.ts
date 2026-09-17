@@ -12,6 +12,7 @@ export interface AiImageDamInput {
 export interface AiImageDamOutput {
   damUrl: string;
   assetId: string;
+  s3Key: string;
 }
 
 export async function saveAiImageToDam(input: AiImageDamInput): Promise<AiImageDamOutput> {
@@ -60,5 +61,5 @@ export async function saveAiImageToDam(input: AiImageDamInput): Promise<AiImageD
     } : null,
   });
 
-  return { damUrl: s3Url, assetId: record.id };
+  return { damUrl: s3Url, assetId: record.id, s3Key };
 }

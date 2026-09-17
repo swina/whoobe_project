@@ -39,7 +39,7 @@ export interface DamFolderRecord {
   isPublic: boolean | null
 }
 
-function getDefaultAssetProcessorUrl(): string {
+export function getDefaultAssetProcessorUrl(): string {
   if (typeof import.meta !== 'undefined' && import.meta.env.VITE_ASSET_PROCESSOR_URL) {
     return import.meta.env.VITE_ASSET_PROCESSOR_URL.replace(/\/+$/, '')
   }

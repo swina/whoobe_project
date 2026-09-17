@@ -127,7 +127,7 @@ export async function generateImage(prompt: string, options?: {
   quality?: string
   style?: string
   folderPath?: string
-}): Promise<{ images: { damUrl: string; assetId: string; revisedPrompt?: string }[] }> {
+}): Promise<{ images: { damUrl: string; s3Key: string; assetId: string; revisedPrompt?: string }[] }> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/ai/generate-image`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
