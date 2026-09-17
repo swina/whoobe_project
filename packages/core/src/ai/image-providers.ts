@@ -1,7 +1,12 @@
 import OpenAI from 'openai';
 import { OPENROUTER_DEFAULT_ENDPOINT } from './providers.js';
 
-export type ImageAiProvider = 'openai' | 'openrouter' | 'custom';
+export type ImageAiProvider = 'openai' | 'openrouter' | 'google' | 'custom';
+
+// Google Gemini's native image-generation model (generateContent with
+// responseModalities: ['IMAGE'] - returns inline base64 image parts, unlike
+// the Imagen family which uses a separate :predict endpoint).
+export const GOOGLE_IMAGE_DEFAULT_MODEL = 'gemini-2.5-flash-image';
 
 export interface AiImageSettings {
   provider: ImageAiProvider;
@@ -41,7 +46,72 @@ function buildOpenAiClient(settings: AiImageSettings): OpenAI {
   return new OpenAI({ apiKey: settings.apiKey ?? undefined, baseURL });
 }
 
+/** Gemini's native image-generation models (e.g. gemini-2.5-flash-image)
+ *  are called through generateContent, not the OpenAI-compatible
+ *  images.generate() endpoint used by the other providers - the response
+ *  carries inline base64 image parts alongside any text the model emits. */
+async function generateGoogleImage(input: AiImageGenerateInput): Promise<AiImageGenerateOutput> {
+  const { settings, prompt, n } = input;
+  if (!settings.apiKey) {
+    throw new AiImageGenerationError('No API key configured for the AI image provider (google). Save it in Settings → AI Image.', 401);
+  }
+  const model = settings.model || GOOGLE_IMAGE_DEFAULT_MODEL;
+  const endpoint = (settings.endpoint?.trim() || 'https://generativelanguage.googleapis.com/v1beta')
+    .replace(/\/+$/, '');
+  const url = `${endpoint}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(settings.apiKey)}`;
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseModalities: ['IMAGE'], candidateCount: n ?? 1 },
+        }),
+      });
+    } catch (error: any) {
+      throw new AiImageGenerationError(error?.message || 'Image generation request failed', 500);
+    }
+
+    if (!response.ok) {
+      const status = response.status;
+      if ((status === 429 || (status >= 500 && status < 600)) && attempt < 3) {
+        await new Promise((r) => setTimeout(r, 2000 * attempt));
+        continue;
+      }
+      const body = await response.json().catch(() => null);
+      throw new AiImageGenerationError(
+        body?.error?.message || `Image generation failed (${status})`,
+        status
+      );
+    }
+
+    const body: any = await response.json();
+    const candidates = body?.candidates ?? [];
+    const images = candidates
+      .flatMap((c: any) => c?.content?.parts ?? [])
+      .filter((part: any) => part?.inlineData?.data)
+      .map((part: any) => ({
+        url: `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`,
+      }));
+
+    if (images.length === 0) {
+      throw new AiImageGenerationError('Provider returned no image data', 500);
+    }
+
+    return { images, rawResponse: body };
+  }
+
+  throw new AiImageGenerationError('Image generation failed after 3 retries', 500);
+}
+
 export async function generateImage(input: AiImageGenerateInput): Promise<AiImageGenerateOutput> {
+  if (input.settings.provider === 'google') {
+    return generateGoogleImage(input);
+  }
+
   const { settings, prompt, n, size, quality, style } = input;
   const isDallE = settings.model.startsWith('dall-e');
 

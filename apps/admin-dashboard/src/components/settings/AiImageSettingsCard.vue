@@ -20,6 +20,7 @@
           class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800">
           <option value="">— Leave empty (use text AI config) —</option>
           <option value="openai">OpenAI</option>
+          <option value="google">Google (Gemini)</option>
           <option value="openrouter">OpenRouter (openrouter.ai)</option>
           <option value="custom">Custom (OpenAI-compatible endpoint)</option>
         </select>
@@ -27,13 +28,13 @@
 
       <label class="flex flex-col gap-1 text-xs text-slate-400">
         Model (image generation)
-        <input v-model="form.model" type="text" placeholder="dall-e-3, black-forest-labs/flux-schnell, flux-dev…"
+        <input v-model="form.model" type="text" placeholder="dall-e-3, gemini-2.5-flash-image, black-forest-labs/flux-schnell, flux-dev…"
           class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
       </label>
 
       <label v-if="showEndpoint" class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
-        Endpoint (required for "Custom", optional for OpenRouter — leave blank for the provider default)
-        <input v-model="form.endpoint" type="text" placeholder="https://api.openai.com/v1, https://openrouter.ai/api/v1 or http://localhost:1234/v1"
+        Endpoint (required for "Custom", optional otherwise — leave blank for the provider default)
+        <input v-model="form.endpoint" type="text" placeholder="https://api.openai.com/v1, https://generativelanguage.googleapis.com/v1beta, https://openrouter.ai/api/v1 or http://localhost:1234/v1"
           class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
       </label>
 
@@ -55,9 +56,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useAuthStore } from '../../stores/authStore'
 import { fetchAiImageSettings, saveAiImageSettings, type AiImageSettingsRecord } from '../../utils/ai-settings-api'
+
+const DEFAULT_MODELS: Record<string, string> = {
+  google: 'gemini-2.5-flash-image',
+}
 
 const authStore = useAuthStore()
 const loading = ref(true)
@@ -74,7 +79,17 @@ const form = reactive({
   apiKey: '',
 })
 
-const showEndpoint = computed(() => form.provider === 'openrouter' || form.provider === 'custom')
+const showEndpoint = computed(() => form.provider === 'openrouter' || form.provider === 'google' || form.provider === 'custom')
+
+watch(
+  () => form.provider,
+  (provider) => {
+    const suggested = DEFAULT_MODELS[provider]
+    if (suggested && form.model === '') {
+      form.model = suggested
+    }
+  }
+)
 
 onMounted(async () => {
   try {
