@@ -19,6 +19,7 @@ import {
   createFolderApi,
   deleteFolderApi,
   fetchAssets,
+  moveAssetApi,
   updateAssetMetadataApi,
   transformAssetOnDam,
   regenerateThumbnailsApi,
@@ -552,6 +553,20 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
   }
 
   // --- Delete Asset ---
+  // Moves a single asset to a different folder (server-side S3 copy+delete
+  // - see asset-processor's POST /api/v1/dam/assets/move). The pimcorePath
+  // is unique, so the backend returns a *new* asset row (new id) at the
+  // destination path; the old array entry is dropped and replaced.
+  async function moveAsset(assetId: string, targetFolderPath: string): Promise<AssetItem> {
+    const target = assets.value.find((a) => a.id === assetId)
+    if (!target) throw new Error('Asset not found')
+    const record = await moveAssetApi(config.value.assetProcessorUrl, target.pimcorePath, targetFolderPath, config.value.folderRules)
+    const newAsset = toAssetItem(record, target.dataUrl)
+    assets.value = assets.value.filter((a) => a.id !== assetId)
+    assets.value.unshift(newAsset)
+    return newAsset
+  }
+
   async function deleteAsset(assetId: string): Promise<void> {
     const target = assets.value.find((a) => a.id === assetId)
     if (target) {
@@ -706,6 +721,7 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
     extractProgress,
     uploadNewVersion,
     deleteAsset,
+    moveAsset,
     regenerateThumbnails,
     updateAssetMetadata,
     transformAsset,

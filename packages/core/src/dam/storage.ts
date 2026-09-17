@@ -35,6 +35,10 @@ export interface AssetStorageProvider {
 
   deleteAsset(pimcorePath: string): Promise<void>;
 
+  /** Moves an asset (and its thumbnails) to a new pimcorePath, e.g. when
+   *  relocating it to a different folder. */
+  moveAsset(oldPimcorePath: string, newPimcorePath: string, isPublic: boolean): Promise<{ s3Key: string }>;
+
   existsAsset(pimcorePath: string): Promise<boolean>;
 
   /** Download the original file from storage as a Buffer. */

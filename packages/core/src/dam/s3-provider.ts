@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  CopyObjectCommand,
   HeadObjectCommand,
   CreateBucketCommand,
   HeadBucketCommand,
@@ -238,6 +239,44 @@ export class S3AssetStorageProvider implements AssetStorageProvider {
         // Ignore errors if thumbnail variant doesn't exist
       }
     }
+  }
+
+  /** Moves an asset (and any generated thumbnail variants) to a new
+   *  pimcorePath via server-side S3 copy + delete of the old keys - no
+   *  bytes are downloaded through this process. Missing thumbnail variants
+   *  are skipped rather than failing the move (mirrors deleteAsset's
+   *  tolerance for partially-generated thumbnail sets). */
+  public async moveAsset(oldPimcorePath: string, newPimcorePath: string, isPublic: boolean): Promise<{ s3Key: string }> {
+    const oldKey = this.getS3Key(oldPimcorePath);
+    const newKey = this.getS3Key(newPimcorePath);
+    const acl = isPublic ? 'public-read' : 'private';
+
+    await this.client.send(new CopyObjectCommand({
+      Bucket: this.bucket,
+      CopySource: `${this.bucket}/${oldKey}`,
+      Key: newKey,
+      ACL: acl,
+    }));
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: oldKey }));
+
+    const presets: ThumbnailPreset[] = ['thumb', 'medium', 'large'];
+    for (const preset of presets) {
+      const oldThumbKey = this.getThumbnailS3Key(oldPimcorePath, preset);
+      const newThumbKey = this.getThumbnailS3Key(newPimcorePath, preset);
+      try {
+        await this.client.send(new CopyObjectCommand({
+          Bucket: this.bucket,
+          CopySource: `${this.bucket}/${oldThumbKey}`,
+          Key: newThumbKey,
+          ACL: acl,
+        }));
+        await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: oldThumbKey }));
+      } catch {
+        // Ignore errors if thumbnail variant doesn't exist.
+      }
+    }
+
+    return { s3Key: newKey };
   }
 
   public async existsAsset(pimcorePath: string): Promise<boolean> {
