@@ -31,6 +31,17 @@
   <span v-if="buttonIconComponent" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" :style="getButtonIconStyle()" /></span>
   <span v-html="displayContent"></span>
 </component>
+<video
+  v-else-if="element.element === 'video'"
+  :id="element.id"
+  ref="rootEl"
+  :class="classe"
+  :style="stile"
+  v-bind="extraAttrs"
+  controls
+>
+  <source :src="displaySrc" type="video/mp4" />
+</video>
 <component
   v-else
   :is="component"
@@ -335,7 +346,7 @@ const displaySrc = computed(() => {
     }
     return undefined
   }
-  if (el.element === 'img') return resolveDisplayUrl(imageURL(el.image))
+  if (el.element === 'img' || el.element === 'video') return resolveDisplayUrl(imageURL(el.image))
   return undefined
 })
 
