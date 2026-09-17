@@ -1,5 +1,5 @@
 <template>
-  <div class="relative">
+  <div class="relative group">
     <!-- Collapsed via FloatingToolbar.vue's "Hide content" toggle - see
          BlockContainer.vue's own comment on the same mechanism (store/
          editor.ts's collapsedIds), applied here to leaf elements too (an
@@ -68,6 +68,15 @@
       @click="onClick"
       @blur="onBlur"
     ></component>
+    <!--<button
+      v-if="element.element === 'pre'"
+      type="button"
+      class="absolute -top-2.5 -left-2.5 z-50 px-1 py-0.5 rounded text-[10px] leading-none text-white bg-blue-500 hover:bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
+      title="Copy code"
+      @click.stop="copyCode"
+    >
+      <Copy class="w-3 h-3" />
+    </button>-->
     <div
       v-if="showOverlay"
       class="absolute inset-0 z-10 flex items-center justify-center bg-indigo-50/80 text-indigo-500 text-[10px] font-mono pointer-events-none select-none rounded"
@@ -101,6 +110,7 @@ import { resolveFieldValue } from '../scripts/data-resolver'
 import type { DataObjectRecord } from '../data-objects-api'
 import { editorBus } from '../bus'
 import { applyTransform, escapeHtml } from '../scripts/field-transforms'
+import { Copy } from '@lucide/vue'
 import { customAttrs, renderSelectOptionsHtml, renderRadioGroupHtml, resolveLucideIcon } from '../helpers'
 
 type WhoobeElement = InstanceType<typeof Element>
@@ -335,6 +345,20 @@ function onClick(e: MouseEvent) {
   e.stopPropagation()
   editor.setCurrent(isSelected.value ? null : props.element)
   if (!isSelected.value) editorBus.emit('floatingElement', props.element.id)
+}
+
+function copyCode(e: MouseEvent) {
+  e.stopPropagation()
+  const text = typeof props.element.content === 'string' ? props.element.content : ''
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  textarea.style.pointerEvents = 'none'
+  document.body.appendChild(textarea)
+  textarea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textarea)
 }
 
 function onBlur(e: FocusEvent) {

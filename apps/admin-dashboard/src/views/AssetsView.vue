@@ -31,6 +31,15 @@
         </button>
 
         <button
+          @click="showAiImageModal = true"
+          class="px-4 py-2 text-xs font-semibold rounded-xl bg-violet-600 hover:bg-violet-500 text-white shadow-lg transition flex items-center gap-1.5"
+          title="Generate an image with AI into the current folder"
+        >
+          <Sparkles class="w-4 h-4" />
+          <span>Generate with AI</span>
+        </button>
+
+        <button
           @click="regenerateAllThumbnails"
           :disabled="isRegenerating"
           class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-700 hover:bg-slate-600 text-white shadow-lg transition flex items-center gap-1.5 disabled:opacity-50"
@@ -256,6 +265,13 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <button
+            @click="showMoveModal = true"
+            class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-indigo-300 hover:text-indigo-200 transition flex items-center gap-1.5 shadow-md border border-slate-700 light:border-slate-300"
+          >
+            <FolderInput class="w-3.5 h-3.5" />
+            <span>Move Selected</span>
+          </button>
           <button
             @click="downloadSelectedAssets"
             :disabled="isDownloadingZip"
@@ -1035,6 +1051,20 @@
       </div>
     </div>
 
+    <!-- Modal 4: Generate Image with AI -->
+    <AiImageGenerateModal
+      :is-open="showAiImageModal"
+      @close="showAiImageModal = false"
+    />
+
+    <!-- Modal 5: Move Selected Assets -->
+    <MoveAssetsModal
+      :is-open="showMoveModal"
+      :asset-ids="selectedAssetIds"
+      @close="showMoveModal = false"
+      @moved="clearSelection"
+    />
+
     <!-- Modal 3: Upload New Version -->
     <DamVersionUploadModal
       :is-open="showVersionModal"
@@ -1070,13 +1100,17 @@ import {
   X,
   ExternalLink,
   Download,
-  CheckSquare
+  CheckSquare,
+  Sparkles,
+  FolderInput
 } from '@lucide/vue'
 import JSZip from 'jszip'
 import { useDamStore, AssetItem } from '../stores/damStore'
 import { useTabsStore } from '../stores/tabsStore'
 import { useToastStore } from '../stores/toastStore'
 import DamVersionUploadModal from '../components/dam/DamVersionUploadModal.vue'
+import AiImageGenerateModal from '../components/dam/AiImageGenerateModal.vue'
+import MoveAssetsModal from '../components/dam/MoveAssetsModal.vue'
 import { getIconForFileType, getIconForFilename, PREVIEWABLE_IMAGE_TYPES } from '../utils/asset-file-icons'
 import { handleAssetImageError } from '../utils/asset-image-heal'
 
@@ -1087,6 +1121,8 @@ const toastStore = useToastStore()
 const showUploadModal = ref(false)
 const showCreateFolderModal = ref(false)
 const showVersionModal = ref(false)
+const showAiImageModal = ref(false)
+const showMoveModal = ref(false)
 const showColumnConfig = ref(false)
 
 async function openAssetInNewTab(item: UnifiedItem) {
@@ -1324,7 +1360,7 @@ const unifiedItems = computed<UnifiedItem[]>(() => {
     version: a.version,
     url: a.url,
     dataUrl: a.dataUrl,
-    thumbnailUrl: a.thumbnailUrl,
+    thumbnailUrl: a.thumbnails.medium,//thumbnailUrl,
     uploadedAt: a.uploadedAt,
     updatedAt: a.updatedAt,
     s3Key: a.s3Key,

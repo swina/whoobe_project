@@ -281,6 +281,22 @@ export async function fetchAssets(
   return data.assets
 }
 
+export async function moveAssetApi(
+  baseUrl: string,
+  pimcorePath: string,
+  targetFolderPath: string,
+  folderRules: FolderVisibilityRule[]
+): Promise<DamAssetRecordWithUrls> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/assets/move`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pimcorePath, targetFolderPath, folderRules }),
+    credentials: 'include',
+  })
+  const data = await parseJsonOrThrow(res)
+  return data.asset
+}
+
 export async function updateAssetMetadataApi(
   baseUrl: string,
   pimcorePath: string,

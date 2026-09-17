@@ -429,6 +429,70 @@ app.delete('/api/v1/dam/asset', requirePermission(PERMISSIONS.ASSETS_DELETE), as
   }
 });
 
+// Moves an asset to a different folder: server-side S3 copy + delete (no
+// bytes round-trip through this process), then replaces the Postgres row -
+// pimcorePath is unique, so a move is a new row at the destination path
+// plus deletion of the row at the old one, not an in-place update.
+app.post('/api/v1/dam/assets/move', requirePermission(PERMISSIONS.ASSETS_UPLOAD), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pimcorePath = req.body?.pimcorePath as string | undefined;
+    const targetFolderPath = req.body?.targetFolderPath as string | undefined;
+    if (!pimcorePath || !targetFolderPath) {
+      res.status(400).json({ error: 'Missing pimcorePath or targetFolderPath' });
+      return;
+    }
+
+    const existing = await getAssetByPath(pimcorePath);
+    if (!existing) {
+      res.status(404).json({ error: `Asset not found: ${pimcorePath}` });
+      return;
+    }
+
+    const cleanTarget = targetFolderPath === '/' ? '/' : targetFolderPath.replace(/\/+$/, '');
+    const newPimcorePath = cleanTarget === '/' ? `/${existing.filename}` : `${cleanTarget}/${existing.filename}`;
+
+    if (newPimcorePath === pimcorePath) {
+      res.status(400).json({ error: 'Asset is already in that folder' });
+      return;
+    }
+    if (await getAssetByPath(newPimcorePath)) {
+      res.status(409).json({ error: `An asset named "${existing.filename}" already exists in ${cleanTarget}` });
+      return;
+    }
+
+    const provider = createDamProvider(parseFolderRules(req.body?.folderRules));
+    const newIsPublic = provider.visibilityManager.isPathPublic(newPimcorePath);
+    const { s3Key } = await provider.moveAsset(pimcorePath, newPimcorePath, newIsPublic);
+
+    const assetRecord = await upsertAssetRecord({
+      pimcorePath: newPimcorePath,
+      filename: existing.filename,
+      folderPath: cleanTarget,
+      sizeBytes: existing.sizeBytes,
+      mimeType: existing.mimeType,
+      fileType: existing.fileType,
+      s3Key,
+      isPublic: newIsPublic,
+      metadata: existing.metadata,
+    });
+    await deleteAssetRecord(pimcorePath);
+
+    const origin = forwardOrigin(req);
+    const thumbKey = provider.getThumbnailS3Key(newPimcorePath, 'thumb');
+    const mediumKey = provider.getThumbnailS3Key(newPimcorePath, 'medium');
+    const largeKey = provider.getThumbnailS3Key(newPimcorePath, 'large');
+    const thumbnails = { thumb: proxyUrl(thumbKey, origin), medium: proxyUrl(mediumKey, origin), large: proxyUrl(largeKey, origin) };
+
+    res.json({
+      success: true,
+      asset: { ...assetRecord, url: proxyUrl(s3Key, origin), thumbnailUrl: proxyUrl(thumbKey, origin), thumbnails },
+    });
+  } catch (error: any) {
+    console.error('DAM move error:', error);
+    res.status(500).json({ error: error.message || 'Asset move failed' });
+  }
+});
+
 // --- Folder & asset records (Postgres) - the multi-user source of truth
 // for what exists, replacing the browser-localStorage-only bookkeeping
 // damStore.ts used to do. ---

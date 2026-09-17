@@ -84,3 +84,23 @@ export async function saveAiSettings(baseUrl: string, input: AiSettingsInput): P
   })
   return parseJsonOrThrow(res)
 }
+
+export interface AiGeneratedImage {
+  damUrl: string
+  assetId: string
+  revisedPrompt?: string
+}
+
+export async function generateAiImage(
+  baseUrl: string,
+  prompt: string,
+  options?: { n?: number; size?: string; quality?: string; style?: string; folderPath?: string }
+): Promise<{ images: AiGeneratedImage[] }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/ai/generate-image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, ...options }),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
