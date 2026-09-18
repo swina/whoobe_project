@@ -1,0 +1,11 @@
+{
+  "name": "mock-erp-service",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node mock-erp-service.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
