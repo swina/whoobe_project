@@ -209,6 +209,13 @@ import { runClassMigration, runObjectMigration, runDocumentMigration, runPromote
 import { fetchAndConvert } from '@whoobe-cms/figma-converter';
 
 
+import { createLogger } from '@whoobe-cms/logger';
+
+const logger = await createLogger('core-api', {
+  file: true,
+  damUpload: true,
+});
+
 function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
@@ -221,13 +228,7 @@ function escapeXml(s: string): string {
 loadRootEnv();
 
 const cfg = getConnectionConfig();
-console.log('');
-console.log('=== Database Connection ===');
-console.log(`  Host: ${cfg.host}`);
-console.log(`  Port: ${cfg.port}`);
-console.log(`  DB:   ${cfg.database}`);
-console.log(`  User: ${cfg.user}`);
-console.log('==========================\n');
+logger.info({ host: cfg.host, port: cfg.port, db: cfg.database, user: cfg.user }, 'Database connection configured');
 
 const app = express();
 const port = process.env.PORT || 3003;
@@ -387,14 +388,14 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
     const user = await findUserByEmail(email);
 
     if (!user) {
-      console.warn(`Login failed: user not found for email "${email.toLowerCase()}"`);
+      logger.warn(`Login failed: user not found for email "${email.toLowerCase()}"`);
       recordFailedAttempt(rateLimitKey);
       res.status(401).json({ error: 'Invalid email or password' });
       return;
     }
 
     if (!user.isActive) {
-      console.warn(`Login failed: user "${user.id}" is inactive`);
+      logger.warn(`Login failed: user "${user.id}" is inactive`);
       recordFailedAttempt(rateLimitKey);
       res.status(401).json({ error: 'Invalid email or password' });
       return;
@@ -402,7 +403,7 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
 
     const passwordOk = await verifyPassword(user.passwordHash, password);
     if (!passwordOk) {
-      console.warn(
+      logger.warn(
         `Login failed: wrong password for user "${user.id}" ` +
         `(hash prefix: ${user.passwordHash.slice(0, 16)}..., email: "${user.email}")`
       );
@@ -421,7 +422,7 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
 
     await completeLogin(res, user.id, req);
   } catch (error: any) {
-    console.error('Login error:', error);
+    logger.error({ err: error }, 'Login error');
     res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -469,7 +470,7 @@ app.post('/auth/mfa/challenge', async (req: Request, res: Response): Promise<voi
     recordMfaFailure(mfaToken);
     res.status(401).json({ error: 'Invalid code' });
   } catch (error: any) {
-    console.error('MFA challenge error:', error);
+    logger.error({ err: error }, 'MFA challenge error');
     res.status(500).json({ error: 'MFA verification failed' });
   }
 });
@@ -490,7 +491,7 @@ app.post('/auth/mfa/setup', requireAuth, async (req: AuthenticatedRequest, res: 
     const qrCodeDataUrl = await totpQrCodeDataUrl(otpauthUrl);
     res.json({ secret, otpauthUrl, qrCodeDataUrl });
   } catch (error: any) {
-    console.error('MFA setup error:', error);
+    logger.error({ err: error }, 'MFA setup error');
     res.status(500).json({ error: 'Failed to start MFA setup' });
   }
 });
@@ -521,7 +522,7 @@ app.post('/auth/mfa/verify-setup', requireAuth, async (req: AuthenticatedRequest
     await enableTotp(user.id, await hashRecoveryCodes(recoveryCodes));
     res.json({ success: true, recoveryCodes });
   } catch (error: any) {
-    console.error('MFA verify-setup error:', error);
+    logger.error({ err: error }, 'MFA verify-setup error');
     res.status(500).json({ error: 'Failed to verify MFA setup' });
   }
 });
@@ -542,7 +543,7 @@ app.post('/auth/mfa/disable', requireAuth, async (req: AuthenticatedRequest, res
     await disableTotp(user.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('MFA disable error:', error);
+    logger.error({ err: error }, 'MFA disable error');
     res.status(500).json({ error: 'Failed to disable MFA' });
   }
 });
@@ -631,7 +632,7 @@ app.post('/auth/forgot-password', async (req: Request, res: Response): Promise<v
       }
     }
   } catch (error: any) {
-    console.error('Forgot-password error:', error);
+    logger.error({ err: error }, 'Forgot-password error');
     // Still return success - don't leak whether the account exists.
   }
 
@@ -664,7 +665,7 @@ app.post('/auth/reset-password', async (req: Request, res: Response): Promise<vo
     await clearResetToken(user.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Reset-password error:', error);
+    logger.error({ err: error }, 'Reset-password error');
     res.status(500).json({ error: 'Password reset failed' });
   }
 });
@@ -676,7 +677,7 @@ app.get('/auth/users', requirePermission(PERMISSIONS.USERS_MANAGE), async (_req:
     const usersList = await listUsers();
     res.json({ users: usersList });
   } catch (error: any) {
-    console.error('List users error:', error);
+    logger.error({ err: error }, 'List users error');
     res.status(500).json({ error: error.message || 'Failed to list users' });
   }
 });
@@ -699,7 +700,7 @@ app.post('/auth/users', requirePermission(PERMISSIONS.USERS_MANAGE), async (req:
       res.status(409).json({ error: 'A user with this email already exists' });
       return;
     }
-    console.error('Create user error:', error);
+    logger.error({ err: error }, 'Create user error');
     res.status(500).json({ error: error.message || 'Failed to create user' });
   }
 });
@@ -710,7 +711,7 @@ app.get('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (r
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
     res.json({ user });
   } catch (error: any) {
-    console.error('Get user error:', error);
+    logger.error({ err: error }, 'Get user error');
     res.status(500).json({ error: error.message || 'Failed to get user' });
   }
 });
@@ -727,7 +728,7 @@ app.patch('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async 
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
     res.json({ user });
   } catch (error: any) {
-    console.error('Update user error:', error);
+    logger.error({ err: error }, 'Update user error');
     res.status(500).json({ error: error.message || 'Failed to update user' });
   }
 });
@@ -737,7 +738,7 @@ app.delete('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async
     await deleteUserRecord(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete user error:', error);
+    logger.error({ err: error }, 'Delete user error');
     res.status(500).json({ error: error.message || 'Failed to delete user' });
   }
 });
@@ -750,7 +751,7 @@ app.post('/auth/users/:id/reset-password', requirePermission(PERMISSIONS.USERS_M
     console.log(`Admin-triggered password reset for user ${req.params.id}: ${resetUrl}`);
     res.json({ resetUrl, token });
   } catch (error: any) {
-    console.error('Admin reset password error:', error);
+    logger.error({ err: error }, 'Admin reset password error');
     res.status(500).json({ error: error.message || 'Failed to reset password' });
   }
 });
@@ -760,7 +761,7 @@ app.get('/auth/roles', requirePermission(PERMISSIONS.USERS_MANAGE), async (_req:
     const rolesList = await listRoles();
     res.json({ roles: rolesList });
   } catch (error: any) {
-    console.error('List roles error:', error);
+    logger.error({ err: error }, 'List roles error');
     res.status(500).json({ error: error.message || 'Failed to list roles' });
   }
 });
@@ -779,7 +780,7 @@ app.post('/auth/roles', requirePermission(PERMISSIONS.USERS_MANAGE), async (req:
       res.status(409).json({ error: 'A role with this name already exists' });
       return;
     }
-    console.error('Create role error:', error);
+    logger.error({ err: error }, 'Create role error');
     res.status(500).json({ error: error.message || 'Failed to create role' });
   }
 });
@@ -790,7 +791,7 @@ app.get('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (r
     if (!role) { res.status(404).json({ error: 'Role not found' }); return; }
     res.json({ role });
   } catch (error: any) {
-    console.error('Get role error:', error);
+    logger.error({ err: error }, 'Get role error');
     res.status(500).json({ error: error.message || 'Failed to get role' });
   }
 });
@@ -806,7 +807,7 @@ app.patch('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async 
     if (!role) { res.status(404).json({ error: 'Role not found' }); return; }
     res.json({ role });
   } catch (error: any) {
-    console.error('Update role error:', error);
+    logger.error({ err: error }, 'Update role error');
     res.status(500).json({ error: error.message || 'Failed to update role' });
   }
 });
@@ -820,7 +821,7 @@ app.delete('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async
     }
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete role error:', error);
+    logger.error({ err: error }, 'Delete role error');
     res.status(500).json({ error: error.message || 'Failed to delete role' });
   }
 });
@@ -830,7 +831,7 @@ app.get('/auth/permissions', requirePermission(PERMISSIONS.USERS_MANAGE), async 
     const allPerms = await listAllPermissions();
     res.json({ permissions: allPerms });
   } catch (error: any) {
-    console.error('List permissions error:', error);
+    logger.error({ err: error }, 'List permissions error');
     res.status(500).json({ error: error.message || 'Failed to list permissions' });
   }
 });
@@ -844,7 +845,7 @@ app.get('/documents', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: 
     const documents = await listDocuments();
     res.json({ documents });
   } catch (error: any) {
-    console.error('List documents error:', error);
+    logger.error({ err: error }, 'List documents error');
     res.status(500).json({ error: error.message || 'Failed to list documents' });
   }
 });
@@ -858,7 +859,7 @@ app.get('/documents/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (re
     }
     res.json({ document });
   } catch (error: any) {
-    console.error('Get document error:', error);
+    logger.error({ err: error }, 'Get document error');
     res.status(500).json({ error: error.message || 'Failed to get document' });
   }
 });
@@ -894,7 +895,7 @@ app.patch('/documents/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async 
     }
     res.json({ document });
   } catch (error: any) {
-    console.error('Update document error:', error);
+    logger.error({ err: error }, 'Update document error');
     res.status(500).json({ error: error.message || 'Failed to update document' });
   }
 });
@@ -908,7 +909,7 @@ app.get('/snippets', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: R
     const snippets = await listSnippets();
     res.json({ snippets });
   } catch (error: any) {
-    console.error('List snippets error:', error);
+    logger.error({ err: error }, 'List snippets error');
     res.status(500).json({ error: error.message || 'Failed to list snippets' });
   }
 });
@@ -924,7 +925,7 @@ app.post('/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: 
     const snippet = await createSnippet({ name: name.trim(), icon: typeof icon === 'string' ? icon : null, node });
     res.status(201).json({ snippet });
   } catch (error: any) {
-    console.error('Create snippet error:', error);
+    logger.error({ err: error }, 'Create snippet error');
     res.status(500).json({ error: error.message || 'Failed to create snippet' });
   }
 });
@@ -934,7 +935,7 @@ app.delete('/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async 
     await deleteSnippet(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete snippet error:', error);
+    logger.error({ err: error }, 'Delete snippet error');
     res.status(500).json({ error: error.message || 'Failed to delete snippet' });
   }
 });
@@ -951,7 +952,7 @@ app.get('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_READ), asy
     const snippets = await listWhoobeOneSnippets();
     res.json({ snippets });
   } catch (error: any) {
-    console.error('List whoobe-one snippets error:', error);
+    logger.error({ err: error }, 'List whoobe-one snippets error');
     res.status(500).json({ error: error.message || 'Failed to list snippets' });
   }
 });
@@ -973,7 +974,7 @@ app.post('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), a
     });
     res.status(201).json({ snippet });
   } catch (error: any) {
-    console.error('Create whoobe-one snippet error:', error);
+    logger.error({ err: error }, 'Create whoobe-one snippet error');
     res.status(500).json({ error: error.message || 'Failed to create snippet' });
   }
 });
@@ -990,7 +991,7 @@ app.get('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_READ),
     }
     res.json({ snippet });
   } catch (error: any) {
-    console.error('Get whoobe-one snippet error:', error);
+    logger.error({ err: error }, 'Get whoobe-one snippet error');
     res.status(500).json({ error: error.message || 'Failed to get snippet' });
   }
 });
@@ -1017,7 +1018,7 @@ app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRIT
     }
     res.json({ snippet });
   } catch (error: any) {
-    console.error('Update whoobe-one snippet error:', error);
+    logger.error({ err: error }, 'Update whoobe-one snippet error');
     res.status(500).json({ error: error.message || 'Failed to update snippet' });
   }
 });
@@ -1027,7 +1028,7 @@ app.delete('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRI
     await deleteWhoobeOneSnippet(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete whoobe-one snippet error:', error);
+    logger.error({ err: error }, 'Delete whoobe-one snippet error');
     res.status(500).json({ error: error.message || 'Failed to delete snippet' });
   }
 });
@@ -1045,7 +1046,7 @@ app.get('/whoobe-one/templates', requirePermission(PERMISSIONS.OBJECTS_READ), as
     const templates = await listWhoobeOneTemplates();
     res.json({ templates });
   } catch (error: any) {
-    console.error('List whoobe-one templates error:', error);
+    logger.error({ err: error }, 'List whoobe-one templates error');
     res.status(500).json({ error: error.message || 'Failed to list templates' });
   }
 });
@@ -1059,7 +1060,7 @@ app.get('/whoobe-one/templates/:id', requirePermission(PERMISSIONS.OBJECTS_READ)
     }
     res.json({ template });
   } catch (error: any) {
-    console.error('Get whoobe-one template error:', error);
+    logger.error({ err: error }, 'Get whoobe-one template error');
     res.status(500).json({ error: error.message || 'Failed to get template' });
   }
 });
@@ -1085,7 +1086,7 @@ app.post('/whoobe-one/templates', requirePermission(PERMISSIONS.OBJECTS_WRITE), 
       res.status(409).json({ error: `A template with path "${req.body?.path}" already exists` });
       return;
     }
-    console.error('Create whoobe-one template error:', error);
+    logger.error({ err: error }, 'Create whoobe-one template error');
     res.status(500).json({ error: error.message || 'Failed to create template' });
   }
 });
@@ -1110,7 +1111,7 @@ app.patch('/whoobe-one/templates/:id', requirePermission(PERMISSIONS.OBJECTS_WRI
     }
     res.json({ template });
   } catch (error: any) {
-    console.error('Update whoobe-one template error:', error);
+    logger.error({ err: error }, 'Update whoobe-one template error');
     res.status(500).json({ error: error.message || 'Failed to update template' });
   }
 });
@@ -1120,7 +1121,7 @@ app.delete('/whoobe-one/templates/:id', requirePermission(PERMISSIONS.OBJECTS_WR
     await deleteWhoobeOneTemplate(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete whoobe-one template error:', error);
+    logger.error({ err: error }, 'Delete whoobe-one template error');
     res.status(500).json({ error: error.message || 'Failed to delete template' });
   }
 });
@@ -1137,7 +1138,7 @@ app.get('/whoobe-one/kits', requirePermission(PERMISSIONS.OBJECTS_READ), async (
     const kits = await listWhoobeOneKits();
     res.json({ kits });
   } catch (error: any) {
-    console.error('List whoobe-one kits error:', error);
+    logger.error({ err: error }, 'List whoobe-one kits error');
     res.status(500).json({ error: error.message || 'Failed to list kits' });
   }
 });
@@ -1151,7 +1152,7 @@ app.get('/whoobe-one/kits/:id', requirePermission(PERMISSIONS.OBJECTS_READ), asy
     }
     res.json({ kit });
   } catch (error: any) {
-    console.error('Get whoobe-one kit error:', error);
+    logger.error({ err: error }, 'Get whoobe-one kit error');
     res.status(500).json({ error: error.message || 'Failed to get kit' });
   }
 });
@@ -1172,7 +1173,7 @@ app.post('/whoobe-one/kits', requirePermission(PERMISSIONS.OBJECTS_WRITE), async
     });
     res.status(201).json({ kit });
   } catch (error: any) {
-    console.error('Create whoobe-one kit error:', error);
+    logger.error({ err: error }, 'Create whoobe-one kit error');
     res.status(500).json({ error: error.message || 'Failed to create kit' });
   }
 });
@@ -1195,7 +1196,7 @@ app.post('/whoobe-one/kits/:id/templates', requirePermission(PERMISSIONS.OBJECTS
     }
     res.json({ kit });
   } catch (error: any) {
-    console.error('Add template to whoobe-one kit error:', error);
+    logger.error({ err: error }, 'Add template to whoobe-one kit error');
     res.status(500).json({ error: error.message || 'Failed to add template to kit' });
   }
 });
@@ -1205,7 +1206,7 @@ app.delete('/whoobe-one/kits/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE),
     await deleteWhoobeOneKit(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete whoobe-one kit error:', error);
+    logger.error({ err: error }, 'Delete whoobe-one kit error');
     res.status(500).json({ error: error.message || 'Failed to delete kit' });
   }
 });
@@ -1220,7 +1221,7 @@ app.get('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_READ), async 
     const pages = await listWhoobePages(websiteId);
     res.json({ pages });
   } catch (error: any) {
-    console.error('List whoobe-one pages error:', error);
+    logger.error({ err: error }, 'List whoobe-one pages error');
     res.status(500).json({ error: error.message || 'Failed to list pages' });
   }
 });
@@ -1237,7 +1238,7 @@ app.get('/whoobe-one/pages/staged', requirePermission(PERMISSIONS.OBJECTS_READ),
     const staged = await listStagedWhoobePages();
     res.json({ pages: staged });
   } catch (error: any) {
-    console.error('List staged whoobe-one pages error:', error);
+    logger.error({ err: error }, 'List staged whoobe-one pages error');
     res.status(500).json({ error: error.message || 'Failed to list staged pages' });
   }
 });
@@ -1250,7 +1251,7 @@ app.delete(
       await deleteStagedWhoobePage(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
-      console.error('Delete staged whoobe-one page error:', error);
+      logger.error({ err: error }, 'Delete staged whoobe-one page error');
       res.status(500).json({ error: error.message || 'Failed to delete staged page' });
     }
   }
@@ -1274,7 +1275,7 @@ app.post(
       });
       res.json({ result });
     } catch (error: any) {
-      console.error('Promote staged whoobe-one pages error:', error);
+      logger.error({ err: error }, 'Promote staged whoobe-one pages error');
       res.status(500).json({ error: error.message || 'Failed to promote staged pages' });
     }
   }
@@ -1298,7 +1299,7 @@ app.post(
       });
       res.json({ result });
     } catch (error: any) {
-      console.error('Promote staged whoobe-one page error:', error);
+      logger.error({ err: error }, 'Promote staged whoobe-one page error');
       res.status(500).json({ error: error.message || 'Failed to promote staged page' });
     }
   }
@@ -1313,7 +1314,7 @@ app.get('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_READ), as
     }
     res.json({ page });
   } catch (error: any) {
-    console.error('Get whoobe-one page error:', error);
+    logger.error({ err: error }, 'Get whoobe-one page error');
     res.status(500).json({ error: error.message || 'Failed to get page' });
   }
 });
@@ -1334,7 +1335,7 @@ app.get(
       const translations = await listWhoobePageTranslations(page.translationGroupId);
       res.json({ translations });
     } catch (error: any) {
-      console.error('List whoobe-one page translations error:', error);
+      logger.error({ err: error }, 'List whoobe-one page translations error');
       res.status(500).json({ error: error.message || 'Failed to list page translations' });
     }
   }
@@ -1370,7 +1371,7 @@ app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
       res.status(409).json({ error: `A page with slug "${req.body?.slug}" already exists for this locale` });
       return;
     }
-    console.error('Create whoobe-one page error:', error);
+    logger.error({ err: error }, 'Create whoobe-one page error');
     res.status(500).json({ error: error.message || 'Failed to create page' });
   }
 });
@@ -1405,7 +1406,7 @@ app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE),
       res.status(409).json({ error: `A page with slug "${req.body?.slug}" already exists for this locale` });
       return;
     }
-    console.error('Update whoobe-one page error:', error);
+    logger.error({ err: error }, 'Update whoobe-one page error');
     res.status(500).json({ error: error.message || 'Failed to update page' });
   }
 });
@@ -1415,7 +1416,7 @@ app.delete('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE)
     await deleteWhoobePage(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete whoobe-one page error:', error);
+    logger.error({ err: error }, 'Delete whoobe-one page error');
     res.status(500).json({ error: error.message || 'Failed to delete page' });
   }
 });
@@ -1426,7 +1427,7 @@ app.get('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_READ), asy
     const result = await listWebsites();
     res.json({ websites: result });
   } catch (error: any) {
-    console.error('List websites error:', error);
+    logger.error({ err: error }, 'List websites error');
     res.status(500).json({ error: error.message || 'Failed to list websites' });
   }
 });
@@ -1459,7 +1460,7 @@ app.post('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_WRITE), a
     });
     res.status(201).json({ website });
   } catch (error: any) {
-    console.error('Create website error:', error);
+    logger.error({ err: error }, 'Create website error');
     res.status(500).json({ error: error.message || 'Failed to create website' });
   }
 });
@@ -1568,7 +1569,7 @@ app.get('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_READ),
     }
     res.json({ website });
   } catch (error: any) {
-    console.error('Get website error:', error);
+    logger.error({ err: error }, 'Get website error');
     res.status(500).json({ error: error.message || 'Failed to get website' });
   }
 });
@@ -1604,7 +1605,7 @@ app.patch('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRIT
     }
     res.json({ website });
   } catch (error: any) {
-    console.error('Update website error:', error);
+    logger.error({ err: error }, 'Update website error');
     res.status(500).json({ error: error.message || 'Failed to update website' });
   }
 });
@@ -1614,7 +1615,7 @@ app.delete('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRI
     await deleteWebsite(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete website error:', error);
+    logger.error({ err: error }, 'Delete website error');
     res.status(500).json({ error: error.message || 'Failed to delete website' });
   }
 });
@@ -1652,7 +1653,7 @@ app.get('/whoobe-one/websites/:id/themes', requirePermission(PERMISSIONS.OBJECTS
     const defaultThemeId = readDefaultThemeId(website.settings as Record<string, unknown> | null);
     res.json({ themes, defaultThemeId });
   } catch (error: any) {
-    console.error('List website themes error:', error);
+    logger.error({ err: error }, 'List website themes error');
     res.status(500).json({ error: error.message || 'Failed to list themes' });
   }
 });
@@ -1676,7 +1677,7 @@ app.post('/whoobe-one/websites/:id/themes', requirePermission(PERMISSIONS.OBJECT
     await updateWebsite(req.params.id, { settings });
     res.status(201).json({ theme: newTheme });
   } catch (error: any) {
-    console.error('Create website theme error:', error);
+    logger.error({ err: error }, 'Create website theme error');
     res.status(500).json({ error: error.message || 'Failed to create theme' });
   }
 });
@@ -1699,7 +1700,7 @@ app.put('/whoobe-one/websites/:id/themes/:themeId', requirePermission(PERMISSION
     await updateWebsite(req.params.id, { settings });
     res.json({ theme: themes[idx] });
   } catch (error: any) {
-    console.error('Update website theme error:', error);
+    logger.error({ err: error }, 'Update website theme error');
     res.status(500).json({ error: error.message || 'Failed to update theme' });
   }
 });
@@ -1719,7 +1720,7 @@ app.delete('/whoobe-one/websites/:id/themes/:themeId', requirePermission(PERMISS
     await updateWebsite(req.params.id, { settings });
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete website theme error:', error);
+    logger.error({ err: error }, 'Delete website theme error');
     res.status(500).json({ error: error.message || 'Failed to delete theme' });
   }
 });
@@ -1738,7 +1739,7 @@ app.get('/whoobe-one/themes/all', requirePermission(PERMISSIONS.OBJECTS_READ), a
     }
     res.json({ websites: allThemes });
   } catch (error: any) {
-    console.error('List all themes error:', error);
+    logger.error({ err: error }, 'List all themes error');
     res.status(500).json({ error: error.message || 'Failed to list themes' });
   }
 });
@@ -1753,7 +1754,7 @@ app.get('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_
     const theme = themes.find((t) => t.id === defaultId) ?? themes[0] ?? { colors: [], fonts: [] };
     res.json({ theme: { colors: theme.colors, fonts: theme.fonts } });
   } catch (error: any) {
-    console.error('Get website theme error:', error);
+    logger.error({ err: error }, 'Get website theme error');
     res.status(500).json({ error: error.message || 'Failed to get website theme' });
   }
 });
@@ -1780,7 +1781,7 @@ app.put('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_
     await updateWebsite(req.params.id, { settings });
     res.json({ theme: parsed });
   } catch (error: any) {
-    console.error('Update website theme error:', error);
+    logger.error({ err: error }, 'Update website theme error');
     res.status(500).json({ error: error.message || 'Failed to update website theme' });
   }
 });
@@ -1792,7 +1793,7 @@ app.get('/whoobe-one/themes', requirePermission(PERMISSIONS.OBJECTS_READ), async
     const result = await listThemes();
     res.json({ themes: result });
   } catch (error: any) {
-    console.error('List themes error:', error);
+    logger.error({ err: error }, 'List themes error');
     res.status(500).json({ error: error.message || 'Failed to list themes' });
   }
 });
@@ -1813,7 +1814,7 @@ app.post('/whoobe-one/themes', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
     });
     res.status(201).json({ theme });
   } catch (error: any) {
-    console.error('Create theme error:', error);
+    logger.error({ err: error }, 'Create theme error');
     res.status(500).json({ error: error.message || 'Failed to create theme' });
   }
 });
@@ -1827,7 +1828,7 @@ app.get('/whoobe-one/themes/:id', requirePermission(PERMISSIONS.OBJECTS_READ), a
     }
     res.json({ theme });
   } catch (error: any) {
-    console.error('Get theme error:', error);
+    logger.error({ err: error }, 'Get theme error');
     res.status(500).json({ error: error.message || 'Failed to get theme' });
   }
 });
@@ -1848,7 +1849,7 @@ app.put('/whoobe-one/themes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), 
     }
     res.json({ theme });
   } catch (error: any) {
-    console.error('Update theme error:', error);
+    logger.error({ err: error }, 'Update theme error');
     res.status(500).json({ error: error.message || 'Failed to update theme' });
   }
 });
@@ -1858,7 +1859,7 @@ app.delete('/whoobe-one/themes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE
     await deleteTheme(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete theme error:', error);
+    logger.error({ err: error }, 'Delete theme error');
     res.status(500).json({ error: error.message || 'Failed to delete theme' });
   }
 });
@@ -1874,7 +1875,7 @@ app.get('/whoobe-one/websites/:websiteId/templates', requirePermission(PERMISSIO
     const templates = await listWebsiteTemplates(req.params.websiteId);
     res.json({ templates });
   } catch (error: any) {
-    console.error('List website templates error:', error);
+    logger.error({ err: error }, 'List website templates error');
     res.status(500).json({ error: error.message || 'Failed to list website templates' });
   }
 });
@@ -1896,7 +1897,7 @@ app.post('/whoobe-one/websites/:websiteId/templates', requirePermission(PERMISSI
     });
     res.status(201).json({ template });
   } catch (error: any) {
-    console.error('Create website template error:', error);
+    logger.error({ err: error }, 'Create website template error');
     res.status(500).json({ error: error.message || 'Failed to create website template' });
   }
 });
@@ -1910,7 +1911,7 @@ app.get('/whoobe-one/websites/:websiteId/templates/:id', requirePermission(PERMI
     }
     res.json({ template });
   } catch (error: any) {
-    console.error('Get website template error:', error);
+    logger.error({ err: error }, 'Get website template error');
     res.status(500).json({ error: error.message || 'Failed to get website template' });
   }
 });
@@ -1932,7 +1933,7 @@ app.patch('/whoobe-one/websites/:websiteId/templates/:id', requirePermission(PER
     });
     res.json({ template });
   } catch (error: any) {
-    console.error('Update website template error:', error);
+    logger.error({ err: error }, 'Update website template error');
     res.status(500).json({ error: error.message || 'Failed to update website template' });
   }
 });
@@ -1947,7 +1948,7 @@ app.delete('/whoobe-one/websites/:websiteId/templates/:id', requirePermission(PE
     await deleteWebsiteTemplate(req.params.id);
     res.json({ ok: true });
   } catch (error: any) {
-    console.error('Delete website template error:', error);
+    logger.error({ err: error }, 'Delete website template error');
     res.status(500).json({ error: error.message || 'Failed to delete website template' });
   }
 });
@@ -1959,7 +1960,7 @@ app.get('/whoobe-one/website-paths', requirePermission(PERMISSIONS.OBJECTS_READ)
     const result = await listWebsitePaths(websiteId);
     res.json({ paths: result });
   } catch (error: any) {
-    console.error('List website paths error:', error);
+    logger.error({ err: error }, 'List website paths error');
     res.status(500).json({ error: error.message || 'Failed to list website paths' });
   }
 });
@@ -1982,7 +1983,7 @@ app.post('/whoobe-one/website-paths', requirePermission(PERMISSIONS.OBJECTS_WRIT
     });
     res.status(201).json({ path });
   } catch (error: any) {
-    console.error('Create website path error:', error);
+    logger.error({ err: error }, 'Create website path error');
     res.status(500).json({ error: error.message || 'Failed to create website path' });
   }
 });
@@ -1996,7 +1997,7 @@ app.get('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECTS_R
     }
     res.json({ path });
   } catch (error: any) {
-    console.error('Get website path error:', error);
+    logger.error({ err: error }, 'Get website path error');
     res.status(500).json({ error: error.message || 'Failed to get website path' });
   }
 });
@@ -2014,7 +2015,7 @@ app.patch('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECTS
     }
     res.json({ path });
   } catch (error: any) {
-    console.error('Update website path error:', error);
+    logger.error({ err: error }, 'Update website path error');
     res.status(500).json({ error: error.message || 'Failed to update website path' });
   }
 });
@@ -2024,7 +2025,7 @@ app.delete('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECT
     await deleteWebsitePath(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete website path error:', error);
+    logger.error({ err: error }, 'Delete website path error');
     res.status(500).json({ error: error.message || 'Failed to delete menu' });
   }
 });
@@ -2206,13 +2207,13 @@ const snippetIds = new Set<string>();
         }
       } catch (templateError) {
         // A broken template must never turn a valid page into a 500.
-        console.warn('Website template resolution failed:', templateError);
+        logger.warn({ err: templateError }, 'Website template resolution failed');
       }
     }
 
     res.json(layout ? { page, params, layout } : { page, params });
   } catch (error: any) {
-    console.error('Public page lookup error:', error);
+    logger.error({ err: error }, 'Public page lookup error');
     res.status(500).json({ error: error.message || 'Failed to look up page' });
   }
 });
@@ -2368,13 +2369,13 @@ const snippetIds = new Set<string>();
           };
         }
       } catch (templateError) {
-        console.warn('Website template resolution failed (no-locale):', templateError);
+        logger.warn({ err: templateError }, 'Website template resolution failed (no-locale)');
       }
     }
 
     res.json(layout ? { page, params, layout } : { page, params });
   } catch (error: any) {
-    console.error('Public page lookup error (no-locale):', error);
+    logger.error({ err: error }, 'Public page lookup error (no-locale)');
     res.status(500).json({ error: error.message || 'Failed to look up page' });
   }
 });
@@ -2415,7 +2416,7 @@ app.get('/public/404/:websiteId', async (req: Request, res: Response): Promise<v
       },
     });
   } catch (error: any) {
-    console.error('Public 404 lookup error:', error);
+    logger.error({ err: error }, 'Public 404 lookup error');
     res.status(500).json({ error: error.message || 'Failed to look up 404' });
   }
 });
@@ -2451,7 +2452,7 @@ app.get('/public/sitemap.xml', async (req: Request, res: Response): Promise<void
     res.set('Content-Type', 'application/xml');
     res.send(xml);
   } catch (error: any) {
-    console.error('Sitemap generation error:', error);
+    logger.error({ err: error }, 'Sitemap generation error');
     res.status(500).json({ error: error.message || 'Failed to generate sitemap' });
   }
 });
@@ -2512,7 +2513,7 @@ app.get('/public/websites/:id', async (req: Request, res: Response): Promise<voi
     });
     res.json({ website, themes: [...themes, ...(globalTheme ? [globalTheme] : [])], defaultThemeId, paths: resolvedPaths, templates });
   } catch (error: any) {
-    console.error('Public website info error:', error);
+    logger.error({ err: error }, 'Public website info error');
     res.status(500).json({ error: error.message || 'Failed to get website info' });
   }
 });
@@ -2524,7 +2525,7 @@ app.get('/public/pages', async (req: Request, res: Response): Promise<void> => {
     const pages = await listPublishedWhoobePages(websiteId);
     res.json({ pages });
   } catch (error: any) {
-    console.error('Public pages list error:', error);
+    logger.error({ err: error }, 'Public pages list error');
     res.status(500).json({ error: error.message || 'Failed to list pages' });
   }
 });
@@ -2539,7 +2540,7 @@ app.get('/public/snippets/:id', async (req: Request, res: Response): Promise<voi
     }
     res.json({ snippet });
   } catch (error: any) {
-    console.error('Public snippet lookup error:', error);
+    logger.error({ err: error }, 'Public snippet lookup error');
     res.status(500).json({ error: error.message || 'Failed to get snippet' });
   }
 });
@@ -2560,7 +2561,7 @@ app.get('/public/assets/:uuid', async (req: Request, res: Response): Promise<voi
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     res.json({ url: `${baseUrl}/dam-asset/${asset.s3Key}` });
   } catch (error: any) {
-    console.error('Public asset lookup error:', error);
+    logger.error({ err: error }, 'Public asset lookup error');
     res.status(500).json({ error: error.message || 'Failed to resolve asset' });
   }
 });
@@ -2591,7 +2592,7 @@ app.get('/public/apps/:websiteId', async (req: Request, res: Response): Promise<
       paths,
     });
   } catch (error: any) {
-    console.error('Public apps info error:', error);
+    logger.error({ err: error }, 'Public apps info error');
     res.status(500).json({ error: error.message || 'Failed to get app info' });
   }
 });
@@ -2613,7 +2614,7 @@ app.post('/pwa/subscribe', async (req: Request, res: Response): Promise<void> =>
     });
     res.status(201).json({ subscription: record });
   } catch (error: any) {
-    console.error('Push subscribe error:', error);
+    logger.error({ err: error }, 'Push subscribe error');
     res.status(500).json({ error: error.message || 'Failed to subscribe' });
   }
 });
@@ -2663,7 +2664,7 @@ app.post('/pwa/send', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: 
 
     res.json(result);
   } catch (error: any) {
-    console.error('Push send error:', error);
+    logger.error({ err: error }, 'Push send error');
     res.status(500).json({ error: error.message || 'Failed to send push notification' });
   }
 });
@@ -2782,7 +2783,7 @@ app.post('/whoobe-one/websites/:id/generate-pwa', requirePermission(PERMISSIONS.
       setTimeout(() => rm(outDir, { recursive: true, force: true }).catch(() => {}), 5 * 60 * 1000);
     }
   } catch (error: any) {
-    console.error('Generate PWA error:', error);
+    logger.error({ err: error }, 'Generate PWA error');
     res.status(500).json({ error: error.message || 'Failed to generate PWA site' });
   }
 });
@@ -2852,7 +2853,7 @@ app.get('/public/search', async (req: Request, res: Response): Promise<void> => 
     const results = await searchContent(parsed.options);
     res.json({ ...results, results: withSearchUrls(results.results, parsed.options.locale ?? 'en') });
   } catch (error: any) {
-    console.error('Public search error:', error);
+    logger.error({ err: error }, 'Public search error');
     res.status(500).json({ error: error.message || 'Search failed' });
   }
 });
@@ -2869,7 +2870,7 @@ app.get('/data-classes', requirePermission(PERMISSIONS.OBJECTS_READ), async (_re
     const classes = await listDataClasses();
     res.json({ classes });
   } catch (error: any) {
-    console.error('List data classes error:', error);
+    logger.error({ err: error }, 'List data classes error');
     res.status(500).json({ error: error.message || 'Failed to list classes' });
   }
 });
@@ -2883,7 +2884,7 @@ app.get('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async 
     }
     res.json({ class: dataClass });
   } catch (error: any) {
-    console.error('Get data class error:', error);
+    logger.error({ err: error }, 'Get data class error');
     res.status(500).json({ error: error.message || 'Failed to get class' });
   }
 });
@@ -2909,7 +2910,7 @@ app.post('/data-classes', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
       res.status(409).json({ error: `A class named "${req.body?.name}" already exists` });
       return;
     }
-    console.error('Create data class error:', error);
+    logger.error({ err: error }, 'Create data class error');
     res.status(500).json({ error: error.message || 'Failed to create class' });
   }
 });
@@ -2964,7 +2965,7 @@ app.patch('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
       res.status(409).json({ error: `A class named "${req.body?.name}" already exists` });
       return;
     }
-    console.error('Update data class error:', error);
+    logger.error({ err: error }, 'Update data class error');
     res.status(500).json({ error: error.message || 'Failed to update class' });
   }
 });
@@ -2984,7 +2985,7 @@ app.delete('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), as
     await deleteDataClass(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete data class error:', error);
+    logger.error({ err: error }, 'Delete data class error');
     res.status(500).json({ error: error.message || 'Failed to delete class' });
   }
 });
@@ -3002,7 +3003,7 @@ app.get('/data-components', requirePermission(PERMISSIONS.OBJECTS_READ), async (
     const components = await listDataComponents();
     res.json({ components });
   } catch (error: any) {
-    console.error('List data components error:', error);
+    logger.error({ err: error }, 'List data components error');
     res.status(500).json({ error: error.message || 'Failed to list components' });
   }
 });
@@ -3016,7 +3017,7 @@ app.get('/data-components/:id', requirePermission(PERMISSIONS.OBJECTS_READ), asy
     }
     res.json({ component });
   } catch (error: any) {
-    console.error('Get data component error:', error);
+    logger.error({ err: error }, 'Get data component error');
     res.status(500).json({ error: error.message || 'Failed to get component' });
   }
 });
@@ -3035,7 +3036,7 @@ app.get('/data-components/:id/usage', requirePermission(PERMISSIONS.OBJECTS_READ
     const inUse = await isDataComponentInUse(component.name);
     res.json({ inUse });
   } catch (error: any) {
-    console.error('Get data component usage error:', error);
+    logger.error({ err: error }, 'Get data component usage error');
     res.status(500).json({ error: error.message || 'Failed to check component usage' });
   }
 });
@@ -3055,7 +3056,7 @@ app.post('/data-components', requirePermission(PERMISSIONS.OBJECTS_WRITE), async
       res.status(409).json({ error: `A component named "${req.body?.name}" already exists` });
       return;
     }
-    console.error('Create data component error:', error);
+    logger.error({ err: error }, 'Create data component error');
     res.status(500).json({ error: error.message || 'Failed to create component' });
   }
 });
@@ -3107,7 +3108,7 @@ app.patch('/data-components/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), 
       res.status(409).json({ error: `A component named "${req.body?.name}" already exists` });
       return;
     }
-    console.error('Update data component error:', error);
+    logger.error({ err: error }, 'Update data component error');
     res.status(500).json({ error: error.message || 'Failed to update component' });
   }
 });
@@ -3127,7 +3128,7 @@ app.delete('/data-components/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE),
     await deleteDataComponent(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete data component error:', error);
+    logger.error({ err: error }, 'Delete data component error');
     res.status(500).json({ error: error.message || 'Failed to delete component' });
   }
 });
@@ -3146,7 +3147,7 @@ app.get('/migration-sources', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
     const sources = await listMigrationSources();
     res.json({ sources });
   } catch (error: any) {
-    console.error('List migration sources error:', error);
+    logger.error({ err: error }, 'List migration sources error');
     res.status(500).json({ error: error.message || 'Failed to list migration sources' });
   }
 });
@@ -3176,7 +3177,7 @@ app.post('/migration-sources', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
     });
     res.status(201).json({ source });
   } catch (error: any) {
-    console.error('Create migration source error:', error);
+    logger.error({ err: error }, 'Create migration source error');
     res.status(500).json({ error: error.message || 'Failed to create migration source' });
   }
 });
@@ -3201,7 +3202,7 @@ app.patch('/migration-sources/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE)
     }
     res.json({ source });
   } catch (error: any) {
-    console.error('Update migration source error:', error);
+    logger.error({ err: error }, 'Update migration source error');
     res.status(500).json({ error: error.message || 'Failed to update migration source' });
   }
 });
@@ -3211,7 +3212,7 @@ app.delete('/migration-sources/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE
     await deleteMigrationSource(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete migration source error:', error);
+    logger.error({ err: error }, 'Delete migration source error');
     res.status(500).json({ error: error.message || 'Failed to delete migration source' });
   }
 });
@@ -3239,7 +3240,7 @@ app.post(
       });
       res.json({ result });
     } catch (error: any) {
-      console.error('Import classes error:', error);
+      logger.error({ err: error }, 'Import classes error');
       res.status(500).json({ error: error.message || 'Failed to import classes' });
     }
   }
@@ -3275,7 +3276,7 @@ app.post(
       });
       res.json({ result });
     } catch (error: any) {
-      console.error('Import objects error:', error);
+      logger.error({ err: error }, 'Import objects error');
       res.status(500).json({ error: error.message || 'Failed to import objects' });
     }
   }
@@ -3307,7 +3308,7 @@ app.post(
       });
       res.json({ result });
     } catch (error: any) {
-      console.error('Import documents error:', error);
+      logger.error({ err: error }, 'Import documents error');
       res.status(500).json({ error: error.message || 'Failed to import documents' });
     }
   }
@@ -3325,7 +3326,7 @@ app.post(
       });
       res.json({ result });
     } catch (error: any) {
-      console.error('Promote documents error:', error);
+      logger.error({ err: error }, 'Promote documents error');
       res.status(500).json({ error: error.message || 'Failed to promote documents' });
     }
   }
@@ -3349,7 +3350,7 @@ app.post(
       });
       res.json({ result });
     } catch (error: any) {
-      console.error('Extract components error:', error);
+      logger.error({ err: error }, 'Extract components error');
       res.status(500).json({ error: error.message || 'Failed to extract components' });
     }
   }
@@ -3365,7 +3366,7 @@ app.get('/data-objects', requirePermission(PERMISSIONS.OBJECTS_READ), async (req
     const objects = await listDataObjects(classId);
     res.json({ objects });
   } catch (error: any) {
-    console.error('List data objects error:', error);
+    logger.error({ err: error }, 'List data objects error');
     res.status(500).json({ error: error.message || 'Failed to list objects' });
   }
 });
@@ -3432,7 +3433,7 @@ app.post(
           res.status(400).json({ error: `Unknown action "${action}". Use publish, unpublish, or delete.` });
       }
     } catch (error: any) {
-      console.error('Batch action error:', error);
+      logger.error({ err: error }, 'Batch action error');
       res.status(500).json({ error: error.message || 'Failed to process batch action' });
     }
   }
@@ -3454,7 +3455,7 @@ app.get(
       const objects = await getDataObjectsByIds(ids);
       res.json({ objects });
     } catch (error: any) {
-      console.error('Batch get data objects error:', error);
+      logger.error({ err: error }, 'Batch get data objects error');
       res.status(500).json({ error: error.message || 'Failed to batch get objects' });
     }
   }
@@ -3469,7 +3470,7 @@ app.get('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async 
     }
     res.json({ object: dataObject });
   } catch (error: any) {
-    console.error('Get data object error:', error);
+    logger.error({ err: error }, 'Get data object error');
     res.status(500).json({ error: error.message || 'Failed to get object' });
   }
 });
@@ -3489,7 +3490,7 @@ app.get(
       const translations = await listDataObjectTranslations(dataObject.translationGroupId);
       res.json({ translations });
     } catch (error: any) {
-      console.error('List data object translations error:', error);
+      logger.error({ err: error }, 'List data object translations error');
       res.status(500).json({ error: error.message || 'Failed to list object translations' });
     }
   }
@@ -3511,7 +3512,7 @@ app.get(
       const translations = await listDataObjectTranslations(req.params.translationGroupId);
       res.json({ translations });
     } catch (error: any) {
-      console.error('List data object translations by group error:', error);
+      logger.error({ err: error }, 'List data object translations by group error');
       res.status(500).json({ error: error.message || 'Failed to list object translations' });
     }
   }
@@ -3541,7 +3542,7 @@ app.post('/data-objects', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
       res.status(409).json({ error: `An object with key "${req.body?.key}" already exists for this class` });
       return;
     }
-    console.error('Create data object error:', error);
+    logger.error({ err: error }, 'Create data object error');
     res.status(500).json({ error: error.message || 'Failed to create object' });
   }
 });
@@ -3568,7 +3569,7 @@ app.patch('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
       res.status(409).json({ error: `An object with key "${req.body?.key}" already exists for this class` });
       return;
     }
-    console.error('Update data object error:', error);
+    logger.error({ err: error }, 'Update data object error');
     res.status(500).json({ error: error.message || 'Failed to update object' });
   }
 });
@@ -3578,7 +3579,7 @@ app.delete('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), as
     await deleteDataObject(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete data object error:', error);
+    logger.error({ err: error }, 'Delete data object error');
     res.status(500).json({ error: error.message || 'Failed to delete object' });
   }
 });
@@ -3609,7 +3610,7 @@ app.get('/public/data-objects', async (req: Request, res: Response): Promise<voi
     const objects = await listPublishedDataObjects(classId, locale);
     res.json({ objects });
   } catch (error: any) {
-    console.error('List public data objects error:', error);
+    logger.error({ err: error }, 'List public data objects error');
     res.status(500).json({ error: error.message || 'Failed to list objects' });
   }
 });
@@ -3625,7 +3626,7 @@ app.get('/public/data-objects/batch', async (req: Request, res: Response): Promi
     const objects = await getPublishedDataObjectsByIds(ids);
     res.json({ objects });
   } catch (error: any) {
-    console.error('Batch get public data objects error:', error);
+    logger.error({ err: error }, 'Batch get public data objects error');
     res.status(500).json({ error: error.message || 'Failed to batch get objects' });
   }
 });
@@ -3662,7 +3663,7 @@ app.post(
       });
       res.json({ objects });
     } catch (error: any) {
-      console.error('Query data objects error:', error);
+      logger.error({ err: error }, 'Query data objects error');
       res.status(500).json({ error: error.message || 'Failed to query objects' });
     }
   }
@@ -3697,7 +3698,7 @@ app.post('/public/data-objects/query', async (req: Request, res: Response): Prom
     });
     res.json({ objects });
   } catch (error: any) {
-    console.error('Query public data objects error:', error);
+    logger.error({ err: error }, 'Query public data objects error');
     res.status(500).json({ error: error.message || 'Failed to query objects' });
   }
 });
@@ -3789,7 +3790,7 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
               subject: notify.subject || undefined,
             });
           } else {
-            console.warn(`Form notify: mail template ${notify.mailTemplateId} not found`);
+            logger.warn(`Form notify: mail template ${notify.mailTemplateId} not found`);
           }
         } else if (notify.templatePageId && notify.recipientEmail) {
           const page = await getWhoobePage(notify.templatePageId);
@@ -3805,17 +3806,17 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
               html,
             });
           } else {
-            console.warn(`Form notify: template page ${notify.templatePageId} not found`);
+            logger.warn(`Form notify: template page ${notify.templatePageId} not found`);
           }
         }
       } catch (notifyError) {
-        console.warn('Form notify email failed:', notifyError);
+        logger.warn({ err: notifyError }, 'Form notify email failed');
       }
     }
 
     res.status(201).json({ success: true });
   } catch (error: any) {
-    console.error('Form submit error:', error);
+    logger.error({ err: error }, 'Form submit error');
     res.status(500).json({ error: 'Failed to submit form' });
   }
 });
@@ -3833,7 +3834,7 @@ app.get('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async 
     const { password, ...rest } = settings;
     res.json({ ...rest, hasPassword: !!password });
   } catch (error) {
-    console.error('Mail settings fetch error:', error);
+    logger.error({ err: error }, 'Mail settings fetch error');
     res.status(500).json({ error: 'Failed to fetch mail settings' });
   }
 });
@@ -3862,7 +3863,7 @@ app.put('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async 
     const { password: _pw, ...rest } = updated;
     res.json({ ...rest, hasPassword: !!updated.password });
   } catch (error) {
-    console.error('Mail settings update error:', error);
+    logger.error({ err: error }, 'Mail settings update error');
     res.status(500).json({ error: 'Failed to update mail settings' });
   }
 });
@@ -3888,7 +3889,7 @@ app.post('/mail-settings/test', requirePermission(PERMISSIONS.SETTINGS_MANAGE), 
     });
     res.json({ ok: true });
   } catch (error: any) {
-    console.error('Mail test error:', error);
+    logger.error({ err: error }, 'Mail test error');
     res.status(500).json({ error: error?.message || 'Failed to send test email' });
   }
 });
@@ -3913,7 +3914,7 @@ app.get('/mail-log', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req:
     const records = result.records.map(({ html: _h, text: _t, ...rest }) => rest);
     res.json({ records, total: result.total });
   } catch (error: any) {
-    console.error('Mail log fetch error:', error);
+    logger.error({ err: error }, 'Mail log fetch error');
     res.status(500).json({ error: error.message || 'Failed to fetch mail log' });
   }
 });
@@ -3932,7 +3933,7 @@ app.post('/mail-log/delete', requirePermission(PERMISSIONS.SETTINGS_MANAGE), asy
     const deleted = await deleteMailLogEntries(validIds);
     res.json({ deleted });
   } catch (error: any) {
-    console.error('Mail log delete error:', error);
+    logger.error({ err: error }, 'Mail log delete error');
     res.status(500).json({ error: error.message || 'Failed to delete mail log entries' });
   }
 });
@@ -3946,7 +3947,7 @@ app.get('/mail-templates', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async
     const templates = await listMailTemplates();
     res.json({ templates });
   } catch (error: any) {
-    console.error('Mail templates fetch error:', error);
+    logger.error({ err: error }, 'Mail templates fetch error');
     res.status(500).json({ error: error.message || 'Failed to fetch mail templates' });
   }
 });
@@ -3974,7 +3975,7 @@ app.post('/mail-templates', requirePermission(PERMISSIONS.SETTINGS_MANAGE), asyn
     });
     res.status(201).json({ template });
   } catch (error: any) {
-    console.error('Mail template create error:', error);
+    logger.error({ err: error }, 'Mail template create error');
     res.status(500).json({ error: error.message || 'Failed to create mail template' });
   }
 });
@@ -3988,7 +3989,7 @@ app.get('/mail-templates/:id', requirePermission(PERMISSIONS.SETTINGS_MANAGE), a
     }
     res.json({ template });
   } catch (error: any) {
-    console.error('Mail template fetch error:', error);
+    logger.error({ err: error }, 'Mail template fetch error');
     res.status(500).json({ error: error.message || 'Failed to fetch mail template' });
   }
 });
@@ -4017,7 +4018,7 @@ app.patch('/mail-templates/:id', requirePermission(PERMISSIONS.SETTINGS_MANAGE),
     });
     res.json({ template });
   } catch (error: any) {
-    console.error('Mail template update error:', error);
+    logger.error({ err: error }, 'Mail template update error');
     res.status(500).json({ error: error.message || 'Failed to update mail template' });
   }
 });
@@ -4027,7 +4028,7 @@ app.delete('/mail-templates/:id', requirePermission(PERMISSIONS.SETTINGS_MANAGE)
     await deleteMailTemplate(req.params.id);
     res.json({ ok: true });
   } catch (error: any) {
-    console.error('Mail template delete error:', error);
+    logger.error({ err: error }, 'Mail template delete error');
     res.status(500).json({ error: error.message || 'Failed to delete mail template' });
   }
 });
@@ -4042,7 +4043,7 @@ app.get('/mail-log/:id', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (
     }
     res.json(entry);
   } catch (error: any) {
-    console.error('Mail log entry fetch error:', error);
+    logger.error({ err: error }, 'Mail log entry fetch error');
     res.status(500).json({ error: error.message || 'Failed to fetch mail log entry' });
   }
 });
@@ -4067,7 +4068,7 @@ app.post('/mail-log/:id/resend', requirePermission(PERMISSIONS.SETTINGS_MANAGE),
     });
     res.json({ ok: true });
   } catch (error: any) {
-    console.error('Mail resend error:', error);
+    logger.error({ err: error }, 'Mail resend error');
     res.status(500).json({ error: error.message || 'Failed to resend email' });
   }
 });
@@ -4086,7 +4087,7 @@ app.get('/ai/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (r
     const { apiKey, ...rest } = settings;
     res.json({ ...rest, hasApiKey: !!apiKey });
   } catch (error) {
-    console.error('AI settings fetch error:', error);
+    logger.error({ err: error }, 'AI settings fetch error');
     res.status(500).json({ error: 'Failed to fetch AI settings' });
   }
 });
@@ -4108,7 +4109,7 @@ app.put('/ai/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (r
     const { apiKey: _ak, ...rest } = updated;
     res.json({ ...rest, hasApiKey: !!updated.apiKey });
   } catch (error) {
-    console.error('AI settings update error:', error);
+    logger.error({ err: error }, 'AI settings update error');
     res.status(500).json({ error: 'Failed to update AI settings' });
   }
 });
@@ -4197,7 +4198,7 @@ app.post('/ai/generate', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (re
         status: 'error', error: message, createdBy: req.user?.id ?? null,
       });
     } catch (logError) {
-      console.error('AI generation audit log write error:', logError);
+      logger.error({ err: logError }, 'AI generation audit log write error');
     }
     const status = error instanceof AiGenerationError && error.status ? error.status : 500;
     res.status(status).json({ error: message });
@@ -4210,7 +4211,7 @@ app.get('/ai/generated', requirePermission(PERMISSIONS.OBJECTS_READ), async (_re
     const records = await listAiGenerated();
     res.json({ records });
   } catch (error: any) {
-    console.error('List AI generated error:', error);
+    logger.error({ err: error }, 'List AI generated error');
     res.status(500).json({ error: error.message || 'Failed to list AI generations' });
   }
 });
@@ -4298,7 +4299,7 @@ const settings = await getAiSettings(req.user!.id);
         kind: 'website-structure', prompt: prompt.trim(), status: 'error', error: message, createdBy: req.user?.id ?? null,
       });
     } catch (logError) {
-      console.error('AI website-structure audit log write error:', logError);
+      logger.error({ err: logError }, 'AI website-structure audit log write error');
     }
     const status = error instanceof AiGenerationError && error.status ? error.status : 500;
     res.status(status).json({ error: message });
@@ -4342,7 +4343,7 @@ app.post('/whoobe-one/websites/from-ai', requirePermission(PERMISSIONS.OBJECTS_W
     }
     res.status(201).json({ website, pages, snippets });
   } catch (error: any) {
-    console.error('Create website from AI error:', error);
+    logger.error({ err: error }, 'Create website from AI error');
     res.status(500).json({ error: error.message || 'Failed to create website from AI structure' });
   }
 });
@@ -4484,7 +4485,7 @@ app.get('/whoobe-one/websites/:id/export', requirePermission(PERMISSIONS.OBJECTS
 
     res.json(payload);
   } catch (error: any) {
-    console.error('Website export error:', error);
+    logger.error({ err: error }, 'Website export error');
     res.status(500).json({ error: error.message || 'Failed to export website' });
   }
 });
@@ -4591,7 +4592,7 @@ app.post('/whoobe-one/websites/import', requirePermission(PERMISSIONS.OBJECTS_WR
 
     res.status(201).json({ website, pages, websiteTemplates, websitePaths, themes: payload.themes ?? [] });
   } catch (error: any) {
-    console.error('Website import error:', error);
+    logger.error({ err: error }, 'Website import error');
     res.status(500).json({ error: error.message || 'Failed to import website' });
   }
 });
@@ -4608,7 +4609,7 @@ app.get('/ai/image-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), as
     const { apiKey, ...rest } = settings;
     res.json({ settings: { ...rest, hasApiKey: !!apiKey }, usingFallback: false });
   } catch (error: any) {
-    console.error('AI image settings fetch error:', error);
+    logger.error({ err: error }, 'AI image settings fetch error');
     res.status(500).json({ error: error.message || 'Failed to fetch AI image settings' });
   }
 });
@@ -4629,7 +4630,7 @@ app.put('/ai/image-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), as
     const { apiKey: _, ...rest } = updated;
     res.json({ ...rest, hasApiKey: !!updated.apiKey });
   } catch (error: any) {
-    console.error('AI image settings save error:', error);
+    logger.error({ err: error }, 'AI image settings save error');
     res.status(500).json({ error: error.message || 'Failed to save AI image settings' });
   }
 });
@@ -4711,7 +4712,7 @@ app.post('/ai/generate-image', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
   } catch (error: any) {
     const status = typeof error?.status === 'number' ? error.status : 500;
     const message = error?.message ?? 'Image generation failed';
-    console.error('AI image generation error:', error);
+    logger.error({ err: error }, 'AI image generation error');
 
     // Log failures too.
     try {
@@ -4743,7 +4744,7 @@ app.get('/public/data-objects/:id', async (req: Request, res: Response): Promise
     }
     res.json({ object });
   } catch (error: any) {
-    console.error('Get public data object error:', error);
+    logger.error({ err: error }, 'Get public data object error');
     res.status(500).json({ error: error.message || 'Failed to get object' });
   }
 });
@@ -4769,7 +4770,7 @@ app.post(
       const previewToken = await createPreviewToken({ objectId: object.id, createdBy: req.user?.id ?? null, expiresInDays });
       res.status(201).json({ token: previewToken.token, expiresAt: previewToken.expiresAt });
     } catch (error: any) {
-      console.error('Create preview link error:', error);
+      logger.error({ err: error }, 'Create preview link error');
       res.status(500).json({ error: error.message || 'Failed to create preview link' });
     }
   }
@@ -4783,7 +4784,7 @@ app.get(
       const tokens = await listPreviewTokensForObject(req.params.id);
       res.json({ tokens });
     } catch (error: any) {
-      console.error('List preview links error:', error);
+      logger.error({ err: error }, 'List preview links error');
       res.status(500).json({ error: error.message || 'Failed to list preview links' });
     }
   }
@@ -4797,7 +4798,7 @@ app.delete(
       await revokePreviewToken(req.params.token);
       res.json({ success: true });
     } catch (error: any) {
-      console.error('Revoke preview link error:', error);
+      logger.error({ err: error }, 'Revoke preview link error');
       res.status(500).json({ error: error.message || 'Failed to revoke preview link' });
     }
   }
@@ -4822,7 +4823,7 @@ app.get('/preview/objects/:token', async (req: Request, res: Response): Promise<
     await incrementPreviewTokenViewCount(previewToken.token);
     res.json({ object });
   } catch (error: any) {
-    console.error('Resolve preview link error:', error);
+    logger.error({ err: error }, 'Resolve preview link error');
     res.status(500).json({ error: error.message || 'Failed to resolve preview link' });
   }
 });
@@ -4840,7 +4841,7 @@ app.get(
       const definition = await getWorkflowDefinitionByClassId(req.params.id);
       res.json({ workflow: definition });
     } catch (error: any) {
-      console.error('Get workflow definition error:', error);
+      logger.error({ err: error }, 'Get workflow definition error');
       res.status(500).json({ error: error.message || 'Failed to get workflow definition' });
     }
   }
@@ -4863,7 +4864,7 @@ app.put(
       const definition = await upsertWorkflowDefinition({ classId: req.params.id, initialPlace, places, transitions });
       res.json({ workflow: definition });
     } catch (error: any) {
-      console.error('Save workflow definition error:', error);
+      logger.error({ err: error }, 'Save workflow definition error');
       res.status(500).json({ error: error.message || 'Failed to save workflow definition' });
     }
   }
@@ -4877,7 +4878,7 @@ app.delete(
       await deleteWorkflowDefinition(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
-      console.error('Delete workflow definition error:', error);
+      logger.error({ err: error }, 'Delete workflow definition error');
       res.status(500).json({ error: error.message || 'Failed to delete workflow definition' });
     }
   }
@@ -4939,7 +4940,7 @@ app.post(
 
       res.json({ object: updated });
     } catch (error: any) {
-      console.error('Transition object workflow error:', error);
+      logger.error({ err: error }, 'Transition object workflow error');
       res.status(500).json({ error: error.message || 'Failed to transition object' });
     }
   }
@@ -4953,7 +4954,7 @@ app.get(
       const transitions = await listWorkflowTransitionsForObject(req.params.id);
       res.json({ transitions });
     } catch (error: any) {
-      console.error('List object transitions error:', error);
+      logger.error({ err: error }, 'List object transitions error');
       res.status(500).json({ error: error.message || 'Failed to list transitions' });
     }
   }
@@ -4976,7 +4977,7 @@ app.get(
       const results = await searchContent(parsed.options);
       res.json({ ...results, results: withSearchUrls(results.results, parsed.options.locale ?? 'en') });
     } catch (error: any) {
-      console.error('Admin search error:', error);
+      logger.error({ err: error }, 'Admin search error');
       res.status(500).json({ error: error.message || 'Search failed' });
     }
   }
@@ -4992,7 +4993,7 @@ app.post(
       const counts = await reindexAll();
       res.json({ ok: true, ...counts });
     } catch (error: any) {
-      console.error('Search reindex error:', error);
+      logger.error({ err: error }, 'Search reindex error');
       res.status(500).json({ error: error.message || 'Reindex failed' });
     }
   }
@@ -5008,7 +5009,7 @@ app.get('/figma/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async
     const { accessToken, ...rest } = settings;
     res.json({ ...rest, hasToken: !!accessToken });
   } catch (error) {
-    console.error('Figma settings fetch error:', error);
+    logger.error({ err: error }, 'Figma settings fetch error');
     res.status(500).json({ error: 'Failed to fetch Figma settings' });
   }
 });
@@ -5024,7 +5025,7 @@ app.put('/figma/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async
     const { accessToken: _at, ...rest } = updated;
     res.json({ ...rest, hasToken: !!updated.accessToken });
   } catch (error) {
-    console.error('Figma settings update error:', error);
+    logger.error({ err: error }, 'Figma settings update error');
     res.status(500).json({ error: 'Failed to update Figma settings' });
   }
 });
@@ -5062,7 +5063,7 @@ app.post('/figma/import', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
 
     res.json(result);
   } catch (error: any) {
-    console.error('Figma import error:', error);
+    logger.error({ err: error }, 'Figma import error');
     res.status(500).json({ error: error?.message || 'Failed to import from Figma' });
   }
 });
@@ -5076,10 +5077,10 @@ app.post('/figma/import', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
 bootstrapDatabase()
   .then(() => {
     app.listen(port, () => {
-      console.log(`🔐 Core API listening on port ${port}`);
+      logger.info({ port }, 'Core API started');
     });
   })
   .catch((error) => {
-    console.error('Database bootstrap failed - core-api cannot start:', error);
+    logger.fatal({ err: error }, 'Database bootstrap failed - core-api cannot start');
     process.exit(1);
   });

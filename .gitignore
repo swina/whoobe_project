@@ -4,6 +4,7 @@ dist
 .next
 .ds_store
 *.log
+logs/
 .env
 .env.local
 .claude/settings.local.json

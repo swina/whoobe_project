@@ -1,9 +1,9 @@
 <template>
-  <div class="flex-1 min-h-0 overflow-y-auto text-xs font-mono">
+  <div class="flex-1 min-h-0 overflow-y-auto text-[10px] font-normal">
     <div v-if="loading" class="p-3 text-gray-400">Loading kits…</div>
     <div v-else-if="!kits.length" class="p-3 text-gray-400">No kits yet</div>
     <template v-for="kit in kits" :key="kit.id">
-      <div class="w-full flex items-center gap-1 px-3 py-1.5 border-b hover:bg-violet-500 hover:text-white" :class="{ 'bg-violet-500 text-white': openKitId === kit.id }">
+      <div class="w-full flex items-center gap-1 px-3 py-1.5 border-b border-slate-300 hover:bg-violet-500 hover:text-white" :class="{ 'bg-violet-500 text-white': openKitId === kit.id }">
         <button type="button" class="flex-1 min-w-0 flex items-center justify-between font-semibold capitalize text-left" @click="toggleKit(kit.id)">
           <span class="truncate">{{ kit.name }} <span class="text-gray-400 font-normal">({{ kit.templateCount }})</span></span>
           <ChevronDown v-if="openKitId === kit.id" class="w-3.5 h-3.5 text-gray-400 shrink-0 ml-1" />
@@ -13,17 +13,17 @@
           <LayoutGrid class="w-3.5 h-3.5" />
         </button>
       </div>
-      <div v-if="openKitId === kit.id" class="border-b bg-gray-50 text-xs hover:bg-violet-100 cursor-pointer">
+      <div v-if="openKitId === kit.id" class="border-b border-slate-300 bg-gray-50 text-[10px] cursor-pointer">
         <p v-if="kit.description" class="px-3 pt-2 text-gray-500">{{ kit.description }}</p>
         <div v-if="!(templatesByKit[kit.id]?.length)" class="px-3 py-2 text-gray-400">Loading templates…</div>
         <div
           v-for="template in templatesByKit[kit.id]"
           :key="template.id"
-          class="flex items-center justify-between gap-1 px-3 py-1.5 hover:bg-white"
+          class="flex items-center justify-between gap-1 px-3 py-1.5 hover:bg-slate-200"
         >
           <span class="truncate" :title="template.name">{{ template.name }}</span>
           <div class="flex items-center gap-1 shrink-0">
-            <button type="button" title="Preview" class="px-1 py-0.5 rounded hover:bg-gray-200" @click="preview(kit.id, template.id)"><Eye class="w-3.5 h-3.5" /></button>
+            <button type="button" title="Preview" class="px-1 py-0.5 rounded hover:bg-gray-400" @click="preview(kit.id, template.id)"><Eye class="w-3.5 h-3.5" /></button>
             <button
               type="button"
               title="Load into the currently selected container"

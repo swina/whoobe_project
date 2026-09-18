@@ -1,18 +1,18 @@
 <template>
-  <div class="flex-1 min-h-0 overflow-y-auto flex flex-col text-xs font-mono">
+  <div class="flex-1 min-h-0 overflow-y-auto flex flex-col text-[10px] font-normal">
     <div v-if="!editor.current" class="p-3 text-gray-400">Select an element to edit its style, attributes, animation or AlpineJS directives</div>
     <template v-else>
       <template v-for="section in sections" :key="section.key">
         <button
           type="button"
-          class="w-full flex items-center justify-between px-3 py-1.5 font-semibold text-gray-600 hover:bg-violet-500 hover:text-white border-b" :class="{ 'bg-violet-500 text-white': openSection === section.key }"
+          class="w-full flex items-center justify-between px-3 py-1.5 font-semibold text-gray-600 hover:bg-violet-500 hover:text-white border-b border-slate-300" :class="{ 'bg-violet-500 text-white': openSection === section.key }"
           @click="openSection = openSection === section.key ? null : section.key"
         >
           {{ section.label }}
           <ChevronDown v-if="openSection === section.key" class="w-3.5 h-3.5 text-gray-400" />
           <ChevronRight v-else class="w-3.5 h-3.5 text-gray-400" />
         </button>
-        <div v-if="openSection === section.key" class="p-2 border-b bg-gray-200">
+        <div v-if="openSection === section.key" class="p-2 border-b border-slate-300 bg-gray-200">
           <component :is="section.component" />
         </div>
       </template>
