@@ -1,8 +1,6 @@
 const ASSET_PROCESSOR_URL = (typeof window !== 'undefined'
-  ? (import.meta as any).env?.VITE_ASSET_PROCESSOR_URL
-  : process.env.ASSET_PROCESSOR_URL) ?? 'http://localhost:3002'
-
-const DAM_SERVICE_TOKEN = (typeof window !== 'undefined' ? '' : process.env.DAM_SERVICE_TOKEN) ?? ''
+  ? (import.meta as any).env?.VITE_CORE_API_URL
+  : process.env.CORE_API_URL) ?? 'http://localhost:3003'
 
 export interface LogFileInfo {
   filename: string
@@ -15,32 +13,17 @@ export async function listLogFiles(
   appName: string,
   yearMonth?: string
 ): Promise<LogFileInfo[]> {
-  const folderPrefix = yearMonth
-    ? `private/logs/${appName}/${yearMonth}/`
-    : `private/logs/${appName}/`
-
   try {
-    const url = new URL(`${ASSET_PROCESSOR_URL}/api/v1/dam/assets`)
-    url.searchParams.set('folderPath', folderPrefix)
-
-    const headers: Record<string, string> = {}
-    if (DAM_SERVICE_TOKEN && typeof window === 'undefined') {
-      headers['Authorization'] = `Bearer ${DAM_SERVICE_TOKEN}`
-    }
+    const url = new URL(`${ASSET_PROCESSOR_URL}/api/v1/system/logs`)
+    url.searchParams.set('app', appName)
+    if (yearMonth) url.searchParams.set('month', yearMonth)
 
     const response = await fetch(url.toString(), {
       credentials: 'include',
-      headers,
     })
     if (!response.ok) return []
-
     const data = await response.json()
-    return (data.assets ?? []).map((a: any) => ({
-      filename: a.filename,
-      path: a.pimcorePath,
-      size: a.sizeBytes,
-      uploadedAt: a.createdAt,
-    }))
+    return data.files ?? []
   } catch {
     return []
   }
@@ -48,27 +31,14 @@ export async function listLogFiles(
 
 export async function downloadLogFile(pimcorePath: string): Promise<string | null> {
   try {
-    const url = new URL(`${ASSET_PROCESSOR_URL}/api/v1/dam/asset-urls`)
-    url.searchParams.set('pimcorePath', pimcorePath)
-
-    const headers: Record<string, string> = {}
-    if (DAM_SERVICE_TOKEN && typeof window === 'undefined') {
-      headers['Authorization'] = `Bearer ${DAM_SERVICE_TOKEN}`
-    }
+    const url = new URL(`${ASSET_PROCESSOR_URL}/api/v1/system/logs/download`)
+    url.searchParams.set('path', pimcorePath)
 
     const response = await fetch(url.toString(), {
       credentials: 'include',
-      headers,
     })
     if (!response.ok) return null
-
-    const data = await response.json()
-    if (!data.url) return null
-
-    const contentResponse = await fetch(data.url)
-    if (!contentResponse.ok) return null
-
-    return contentResponse.text()
+    return response.text()
   } catch {
     return null
   }

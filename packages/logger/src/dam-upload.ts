@@ -1,7 +1,8 @@
 import { createReadStream, unlinkSync, existsSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
+import { resolveLogDir } from './paths.js'
 
-const LOG_DIR = resolve(process.env.LOG_DIR ?? './logs')
+const LOG_DIR = resolveLogDir()
 const ASSET_PROCESSOR_URL = process.env.ASSET_PROCESSOR_URL ?? 'http://localhost:3002'
 const DAM_SERVICE_TOKEN = process.env.DAM_SERVICE_TOKEN ?? ''
 

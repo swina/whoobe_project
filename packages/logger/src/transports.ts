@@ -1,11 +1,12 @@
 import { mkdirSync, existsSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import pino from 'pino'
 import roll, { type RollStream } from 'pino-roll'
 import type { LoggerConfig, LogLevel } from './types.js'
 import { uploadRotatedLog } from './dam-upload.js'
+import { resolveLogDir } from './paths.js'
 
-const LOG_DIR = resolve(process.env.LOG_DIR ?? './logs')
+const LOG_DIR = resolveLogDir()
 const LOG_LEVEL: LogLevel = (process.env.LOG_LEVEL as LogLevel) ?? 'info'
 const NODE_ENV = process.env.NODE_ENV ?? 'development'
 

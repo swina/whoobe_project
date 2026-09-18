@@ -89,6 +89,18 @@ export async function listAssets(folderPath?: string): Promise<AssetRecord[]> {
   return db.select().from(assets);
 }
 
+/**
+ * Like listAssets, but matches the given folder and every descendant
+ * folder (e.g. "private/logs/core-api" also matches
+ * "private/logs/core-api/2026-09"). Callers should pass the prefix
+ * without a trailing slash.
+ */
+export async function listAssetsUnderFolder(folderPrefix: string): Promise<AssetRecord[]> {
+  const db = getDb();
+  const normalized = folderPrefix.replace(/\/+$/, '');
+  return db.select().from(assets).where(pathOrDescendant(assets.folderPath, normalized));
+}
+
 export async function getAssetByPath(pimcorePath: string): Promise<AssetRecord | null> {
   const db = getDb();
   const [row] = await db.select().from(assets).where(eq(assets.pimcorePath, pimcorePath)).limit(1);

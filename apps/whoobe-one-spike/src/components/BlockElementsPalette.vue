@@ -11,7 +11,7 @@
         <ChevronDown v-if="openGroup === label" class="w-3.5 h-3.5 text-gray-400" />
         <ChevronRight v-else class="w-3.5 h-3.5 text-gray-400" />
       </button>
-      <div v-if="openGroup === label" class="grid grid-cols-3 gap-1.5 p-2 border-b border-slate-300 bg-gray-50 dragula-source-container">
+      <div v-if="openGroup === label" class="grid grid-cols-3 gap-1.5 p-2 border-b border-slate-300 bg-gray-50 dragula-source-container transition-opacity ease-out duration-1500">
         <div
           v-for="item in builtInElementsFor(label)"
           :key="'el-' + item.name"

@@ -135,8 +135,8 @@ const filteredLogs = computed(() => {
 function levelColor(level: string): string {
   if (level === 'error' || level === 'fatal') return 'bg-red-900/10 border-red-900/30'
   if (level === 'warn') return 'bg-amber-900/10 border-amber-900/30'
-  if (level === 'info') return 'bg-slate-800/40 border-slate-700/30'
-  return 'bg-slate-900/30 border-slate-800/20'
+  if (level === 'info') return 'bg-slate-100/40 border-slate-700/30'
+  return 'bg-slate-100/30 border-slate-800/20'
 }
 
 function levelTextColor(level: string): string {
