@@ -44,7 +44,7 @@ export interface GatewayEndpoint {
   name: string
   description: string
   baseUrl: string
-  authType: 'none' | 'api-key' | 'bearer' | 'basic'
+  authType: 'none' | 'api-key' | 'bearer' | 'basic' | 'oauth2'
   /** Never present on data read from the API - the server strips stored
    *  credentials before sending an endpoint back (see admin-routes.ts's
    *  redactEndpoint()). Only used to submit new/changed credentials on
@@ -195,6 +195,22 @@ export async function getRouteSchema(id: string): Promise<GatewaySchema> {
 export async function refreshSchema(id: string): Promise<{ status: number; schema: Record<string, unknown> }> {
   const res = await fetch(`${baseUrl()}/api/v1/gateway/routes/${id}/refresh-schema`, {
     method: 'POST',
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
+export interface ImportOpenApiResult {
+  created: number
+  updated: number
+  skipped: { path: string; method: string; reason: string }[]
+}
+
+export async function importOpenApi(endpointId: string, input: { specUrl?: string; specRaw?: string }): Promise<ImportOpenApiResult> {
+  const res = await fetch(`${baseUrl()}/api/v1/gateway/endpoints/${endpointId}/import-openapi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
     credentials: 'include',
   })
   return parseJsonOrThrow(res)

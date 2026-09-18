@@ -124,6 +124,19 @@
                 </label>
               </div>
             </div>
+
+            <div class="flex items-center justify-between py-2 border-t border-slate-800 light:border-slate-200">
+              <div>
+                <div class="text-sm font-medium text-slate-200 light:text-slate-800">System Logging</div>
+                <div class="text-xs text-slate-500">Turns logging off across core-api, gateway, and asset-processor. Takes effect within ~30 seconds, no restart needed.</div>
+              </div>
+              <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1.5 text-xs text-slate-300 light:text-slate-700">
+                  <input type="checkbox" v-model="loggingEnabled" @change="saveLogging" class="rounded" />
+                  Enabled
+                </label>
+              </div>
+            </div>
           </div>
           <AssetPickerModal :is-open="pickerOpen" @close="pickerOpen = false" @select="onPlaceholderSelected" />
         </div>
@@ -147,7 +160,7 @@ import UsersView from './UsersView.vue'
 import RolesView from './RolesView.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
 import { useAuthStore } from '../stores/authStore'
-import { fetchDefaultPlaceholderImage, saveDefaultPlaceholderImage, fetchAutosaveSettings, saveAutosaveSettings, fetchStripHtmlCommentsSetting, saveStripHtmlCommentsSetting } from '../utils/websites-api'
+import { fetchDefaultPlaceholderImage, saveDefaultPlaceholderImage, fetchAutosaveSettings, saveAutosaveSettings, fetchStripHtmlCommentsSetting, saveStripHtmlCommentsSetting, fetchLoggingEnabled, saveLoggingEnabled } from '../utils/websites-api'
 import { useToastStore } from '../stores/toastStore'
 import AssetPickerModal from '../components/dam/AssetPickerModal.vue'
 import type { AssetItem } from '../stores/damStore'
@@ -246,10 +259,28 @@ async function saveStripHtmlComments() {
   }
 }
 
+const loggingEnabled = ref(true)
+
+async function loadLogging() {
+  try {
+    loggingEnabled.value = await fetchLoggingEnabled(authStore.config.coreApiUrl)
+  } catch { /* ignore */ }
+}
+
+async function saveLogging() {
+  try {
+    await saveLoggingEnabled(authStore.config.coreApiUrl, loggingEnabled.value)
+    toastStore.show(loggingEnabled.value ? 'Logging enabled' : 'Logging disabled - takes effect within ~30 seconds')
+  } catch (e: any) {
+    toastStore.show(e?.message || 'Failed to save logging setting')
+  }
+}
+
 onMounted(() => {
   loadPlaceholder()
   loadAutosave()
   loadStripHtmlComments()
+  loadLogging()
 })
 
 const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [

@@ -3,6 +3,7 @@ import { requirePermission, PERMISSIONS } from './auth.js';
 import type { GatewayPlugin } from './plugin-types.js';
 import { logGatewayError } from './log-error.js';
 import { redactSensitiveValues, pickSafeResponseHeaders } from './redact.js';
+import { buildAuthHeaders } from './gateway-auth-headers.js';
 
 /** Strips `authConfig` (raw API keys / bearer tokens / basic-auth
  *  credentials) before an endpoint record is ever sent to a client - these
@@ -152,17 +153,7 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
       const upstreamUrl = `${endpoint.baseUrl.replace(/\/$/, '')}/${route.path.replace(/^\//, '')}`;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
-      if (endpoint.authType === 'api-key' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        headers[config.keyHeader || 'X-API-Key'] = config.keyValue || '';
-      } else if (endpoint.authType === 'bearer' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        headers['Authorization'] = `Bearer ${config.token || ''}`;
-      } else if (endpoint.authType === 'basic' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        const encoded = Buffer.from(`${config.username || ''}:${config.password || ''}`).toString('base64');
-        headers['Authorization'] = `Basic ${encoded}`;
-      }
+      Object.assign(headers, await buildAuthHeaders(endpoint));
 
       const result = await proxyFetch(upstreamUrl, route.method, headers, undefined, 15000);
 
@@ -206,17 +197,7 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
       const upstreamUrl = `${endpoint.baseUrl.replace(/\/$/, '')}/${resolvedPath.replace(/^\//, '')}`;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
-      if (endpoint.authType === 'api-key' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        headers[config.keyHeader || 'X-API-Key'] = config.keyValue || '';
-      } else if (endpoint.authType === 'bearer' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        headers['Authorization'] = `Bearer ${config.token || ''}`;
-      } else if (endpoint.authType === 'basic' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        const encoded = Buffer.from(`${config.username || ''}:${config.password || ''}`).toString('base64');
-        headers['Authorization'] = `Basic ${encoded}`;
-      }
+      Object.assign(headers, await buildAuthHeaders(endpoint));
 
       const requestBody = body?.requestBody;
       const result = await proxyFetch(upstreamUrl, route.method, headers, requestBody, 15000);
@@ -260,17 +241,7 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
 
       const upstreamUrl = `${endpoint.baseUrl.replace(/\/$/, '')}/${route.path.replace(/^\//, '')}`;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (endpoint.authType === 'api-key' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        headers[config.keyHeader || 'X-API-Key'] = config.keyValue || '';
-      } else if (endpoint.authType === 'bearer' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        headers['Authorization'] = `Bearer ${config.token || ''}`;
-      } else if (endpoint.authType === 'basic' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        const encoded = Buffer.from(`${config.username || ''}:${config.password || ''}`).toString('base64');
-        headers['Authorization'] = `Basic ${encoded}`;
-      }
+      Object.assign(headers, await buildAuthHeaders(endpoint));
 
       const result = await proxyFetch(upstreamUrl, route.method, headers, undefined, 15000);
       const schema = inferSchema(result.body) as unknown as Record<string, unknown>;
@@ -284,6 +255,28 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
     } catch (err) {
       logGatewayError('refresh gateway route schema', err);
       res.status(502).json({ error: 'Schema refresh failed' });
+    }
+  });
+
+  router.post('/endpoints/:id/import-openapi', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { getGatewayEndpoint } = await import('@whoobe-cms/core/server');
+      const endpoint = await getGatewayEndpoint(req.params.id);
+      if (!endpoint) { res.status(404).json({ error: 'Endpoint not found' }); return; }
+
+      const { specUrl, specRaw } = req.body as { specUrl?: string; specRaw?: string };
+      if ((!specUrl && !specRaw) || (specUrl && specRaw)) {
+        res.status(400).json({ error: 'Provide exactly one of specUrl or specRaw' });
+        return;
+      }
+
+      const { parseOpenApiSpec, importOpenApiToEndpoint } = await import('./openapi-importer.js');
+      const doc = await parseOpenApiSpec({ url: specUrl, raw: specRaw });
+      const result = await importOpenApiToEndpoint(req.params.id, doc);
+      res.json(result);
+    } catch (err) {
+      logGatewayError('import openapi spec', err);
+      res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to import OpenAPI spec' });
     }
   });
 

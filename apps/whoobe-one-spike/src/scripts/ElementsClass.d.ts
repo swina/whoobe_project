@@ -107,19 +107,24 @@ export interface ElementSearchConfig {
 
 import type { FieldTransform } from './field-transforms.js'
 
-export interface GatewayBinding {
-  endpointName: string
-  routePath: string
-  fieldPath: string
-  params?: Record<string, string> | null
-  transform?: FieldTransform | null
-}
-
 export interface DataBindingFilter {
   field: string
   operator: 'eq' | 'neq' | 'in' | 'contains' | 'gt' | 'lt'
   value: unknown
   valueIsBinding?: boolean
+}
+
+export interface GatewayBinding {
+  endpointName: string
+  routePath: string
+  fieldPath: string
+  params?: Record<string, string> | null
+  /** Only meaningful when fieldPath resolves to an array (a container
+   *  repeater) - filters the resolved items server-side before rendering.
+   *  `field` is a dot-path relative to one array item, never prefixed with
+   *  fieldPath itself. All filters must match (AND). */
+  filters?: DataBindingFilter[] | null
+  transform?: FieldTransform | null
 }
 
 export interface DataBindingOrderBy {

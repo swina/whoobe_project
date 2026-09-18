@@ -31,6 +31,7 @@ import {
   createWebsite,
   updateWebsite,
   deleteWebsite,
+  isLoggingEnabled,
   listWebsiteTemplates,
   getWebsiteTemplate,
   getDefaultWebsiteTemplate,
@@ -213,7 +214,7 @@ import { runClassMigration, runObjectMigration, runDocumentMigration, runPromote
 import { fetchAndConvert } from '@whoobe-cms/figma-converter';
 
 
-import { createLogger, resolveLogDir } from '@whoobe-cms/logger';
+import { createLogger, resolveLogDir, attachLoggingToggle } from '@whoobe-cms/logger';
 
 const logger = await createLogger('core-api', {
   file: true,
@@ -230,6 +231,10 @@ function escapeXml(s: string): string {
 // WHOOBE_HOSTNAME-derived values. No .env present -> fall back to whatever
 // is already in process.env.
 loadRootEnv();
+
+// Wired up after loadRootEnv() so the first poll's DB connection has its
+// env vars (DB_HOST etc.) in place.
+attachLoggingToggle(logger, isLoggingEnabled);
 
 const cfg = getConnectionConfig();
 logger.info({ host: cfg.host, port: cfg.port, db: cfg.database, user: cfg.user }, 'Database connection configured');
@@ -1528,6 +1533,32 @@ app.put('/whoobe-one/settings/strip-html-comments', requirePermission(PERMISSION
     res.json({ enabled: !!enabled });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to save HTML comment stripping setting' });
+  }
+});
+
+// No auth guard on GET, same reasoning as strip-html-comments above: every
+// backend service (core-api, gateway, asset-processor) reads this directly
+// via isLoggingEnabled() to decide whether to mute its own logger, so it
+// can't be gated behind an admin session.
+app.get('/whoobe-one/settings/logging', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    res.json({ enabled: await isLoggingEnabled() });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to read logging setting' });
+  }
+});
+
+app.put('/whoobe-one/settings/logging', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { enabled } = req.body ?? {};
+    const all = await listWebsites();
+    if (!all.length) { res.status(404).json({ error: 'No website found' }); return; }
+    const first = all[0];
+    const settings = { ...(first.settings as Record<string, unknown> ?? {}), logging: { enabled: !!enabled } };
+    await updateWebsite(first.id, { settings });
+    res.json({ enabled: !!enabled });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to save logging setting' });
   }
 });
 

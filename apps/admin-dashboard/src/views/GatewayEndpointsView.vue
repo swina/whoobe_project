@@ -4,7 +4,7 @@
     <div class="rounded-2xl border border-slate-800 light:border-slate-200 bg-slate-900/40 light:bg-slate-50 p-4 space-y-3">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800">API Gateway</h3>
+          <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800">Integrations</h3>
           <span v-if="gatewayStatus === true" class="flex items-center gap-1 text-xs text-emerald-400">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span> Online
           </span>
@@ -107,9 +107,14 @@
           <div class="border-t border-slate-800 light:border-slate-200">
             <div class="px-4 py-2 flex items-center justify-between bg-slate-900/30 light:bg-slate-50/30">
               <span class="text-xs text-slate-500">Routes</span>
-              <button @click="openCreateRoute(ep)" class="text-xs text-indigo-400 hover:text-indigo-300 transition flex items-center gap-1">
-                <Plus class="w-3 h-3" /> Add Route
-              </button>
+              <div class="flex items-center gap-3">
+                <button @click="openImportOpenApi(ep)" class="text-xs text-emerald-400 hover:text-emerald-300 transition flex items-center gap-1">
+                  <FileUp class="w-3 h-3" /> Import OpenAPI/Swagger
+                </button>
+                <button @click="openCreateRoute(ep)" class="text-xs text-indigo-400 hover:text-indigo-300 transition flex items-center gap-1">
+                  <Plus class="w-3 h-3" /> Add Route
+                </button>
+              </div>
             </div>
 
             <div v-if="routesByEndpoint[ep.id]?.length" class="divide-y divide-slate-800/50 light:divide-slate-200/50">
@@ -239,6 +244,26 @@
     <div v-if="showEndpointModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="closeEndpointModal">
       <div class="w-full max-w-lg p-6 rounded-2xl bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-2xl space-y-4">
         <h3 class="text-sm font-bold text-slate-100 light:text-slate-900">{{ isEditingEndpoint ? 'Edit Endpoint' : 'Add Endpoint' }}</h3>
+        <div v-if="!isEditingEndpoint" class="space-y-1.5">
+          <label class="block text-xs font-medium text-slate-300 light:text-slate-700">Start from a template</label>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="preset in GATEWAY_PRESETS" :key="preset.id"
+              @click="applyPreset(preset)"
+              :class="['px-2.5 py-1 rounded-lg text-xs font-medium border transition', selectedPresetId === preset.id ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 light:bg-slate-100 border-slate-700 light:border-slate-300 text-slate-300 light:text-slate-700 hover:bg-slate-700 light:hover:bg-slate-200']"
+              :title="preset.description"
+            >
+              {{ preset.label }}
+            </button>
+            <button
+              @click="applyPreset(null)"
+              :class="['px-2.5 py-1 rounded-lg text-xs font-medium border transition', selectedPresetId === null ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 light:bg-slate-100 border-slate-700 light:border-slate-300 text-slate-300 light:text-slate-700 hover:bg-slate-700 light:hover:bg-slate-200']"
+            >
+              Blank
+            </button>
+          </div>
+          <p v-if="selectedPresetId" class="text-[11px] text-slate-500">{{ starterRoutesForSelectedPreset.length }} starter route(s) will be added after creation. Fill in your credentials below.</p>
+        </div>
         <div class="space-y-3">
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Name</label>
@@ -259,6 +284,7 @@
               <option value="api-key">API Key</option>
               <option value="bearer">Bearer Token</option>
               <option value="basic">Basic Auth</option>
+              <option value="oauth2">OAuth2 (Client Credentials)</option>
             </select>
             <p v-if="isEditingEndpoint && epForm.authType !== 'none'" class="text-[11px] text-slate-500 mt-1">
               Stored credentials aren't shown here - leave a field blank to keep its current value, or fill it in to replace it.
@@ -279,6 +305,25 @@
             <input v-model="epForm.authConfig.username" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1 mt-2">Password</label>
             <input v-model="epForm.authConfig.password" type="password" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div v-if="epForm.authType === 'oauth2'" class="space-y-2">
+            <p class="text-[11px] text-slate-500">Client-credentials grant: the gateway fetches and caches an access token server-side, refreshing it automatically before it expires.</p>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Client ID</label>
+              <input v-model="epForm.authConfig.clientId" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Client Secret</label>
+              <input v-model="epForm.authConfig.clientSecret" type="password" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Token URL</label>
+              <input v-model="epForm.authConfig.tokenUrl" type="url" placeholder="https://api.example.com/oauth/token" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Scope <span class="text-slate-600">(optional)</span></label>
+              <input v-model="epForm.authConfig.scope" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            </div>
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Rate Limit (requests/sec)</label>
@@ -336,20 +381,53 @@
         </div>
       </div>
     </div>
+
+    <!-- Import OpenAPI/Swagger Modal -->
+    <div v-if="showImportModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="closeImportModal">
+      <div class="w-full max-w-lg p-6 rounded-2xl bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-2xl space-y-4">
+        <h3 class="text-sm font-bold text-slate-100 light:text-slate-900">Import OpenAPI/Swagger for {{ importEndpointName }}</h3>
+        <p class="text-xs text-slate-500">Bulk-creates routes and inferred response schemas from a spec. Provide either a URL or paste the spec directly — not both.</p>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Spec URL</label>
+            <input v-model="importSpecUrl" type="url" placeholder="https://api.example.com/openapi.json" :disabled="!!importSpecRaw" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 disabled:opacity-50" />
+          </div>
+          <div class="text-center text-xs text-slate-600">— or —</div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Paste Spec (JSON or YAML)</label>
+            <textarea v-model="importSpecRaw" rows="6" :disabled="!!importSpecUrl" placeholder='{ "openapi": "3.0.0", ... }' class="w-full px-3 py-2 text-xs font-mono rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 disabled:opacity-50"></textarea>
+          </div>
+        </div>
+        <div v-if="importError" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">{{ importError }}</div>
+        <div v-if="importResult" class="px-3 py-2 rounded-lg bg-emerald-950/40 border border-emerald-800 text-emerald-300 text-xs">
+          {{ importResult.created }} route(s) created, {{ importResult.updated }} updated{{ importResult.skipped.length ? `, ${importResult.skipped.length} skipped` : '' }}.
+          <div v-if="importResult.skipped.length" class="mt-1 space-y-0.5 text-rose-300">
+            <div v-for="(s, i) in importResult.skipped" :key="i">{{ s.method }} {{ s.path }} — {{ s.reason }}</div>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button @click="closeImportModal" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-200 text-slate-300 light:text-slate-700 hover:bg-slate-700 light:hover:bg-slate-300 transition">Close</button>
+          <button @click="submitImportOpenApi" :disabled="importSubmitting || (!importSpecUrl && !importSpecRaw)" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-50">
+            {{ importSubmitting ? 'Importing...' : 'Import' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { Plus, Pencil, Trash2, ChevronRight, RefreshCw, TestTube, Loader, FileJson, Send, X } from '@lucide/vue'
+import { Plus, Pencil, Trash2, ChevronRight, RefreshCw, TestTube, Loader, FileJson, FileUp, Send, X } from '@lucide/vue'
 import {
   listEndpoints, getEndpoint, createEndpoint, updateEndpoint, deleteEndpoint,
   listRoutes, createRoute, updateRoute, deleteRoute,
   testRoute as testRouteApi, getRouteSchema, refreshSchema,
   getDefaultGatewayUrl, getDefaultGatewayUpstreams, getDefaultGatewayRateLimit,
-  executeRoute,
-  type GatewayEndpoint, type GatewayRoute,
+  executeRoute, importOpenApi,
+  type GatewayEndpoint, type GatewayRoute, type ImportOpenApiResult,
 } from '../utils/gateway-api'
+import { GATEWAY_PRESETS, type GatewayPreset } from '../utils/gateway-presets'
 
 // Gateway info
 const gatewayUrl = getDefaultGatewayUrl()
@@ -554,9 +632,49 @@ const isEditingEndpoint = ref(false)
 const editingEndpointId = ref<string | null>(null)
 const epSubmitting = ref(false)
 const epForm = reactive({
-  name: '', description: '', baseUrl: '', authType: 'none' as 'none' | 'api-key' | 'bearer' | 'basic',
+  name: '', description: '', baseUrl: '', authType: 'none' as 'none' | 'api-key' | 'bearer' | 'basic' | 'oauth2',
   authConfig: {} as Record<string, any>, rateLimitRps: 0, isActive: true,
 })
+
+// Import OpenAPI/Swagger modal
+const showImportModal = ref(false)
+const importEndpointId = ref('')
+const importEndpointName = ref('')
+const importSpecUrl = ref('')
+const importSpecRaw = ref('')
+const importSubmitting = ref(false)
+const importError = ref('')
+const importResult = ref<ImportOpenApiResult | null>(null)
+
+function openImportOpenApi(ep: GatewayEndpoint) {
+  importEndpointId.value = ep.id
+  importEndpointName.value = ep.name
+  importSpecUrl.value = ''
+  importSpecRaw.value = ''
+  importError.value = ''
+  importResult.value = null
+  showImportModal.value = true
+}
+
+function closeImportModal() { showImportModal.value = false }
+
+async function submitImportOpenApi() {
+  importSubmitting.value = true
+  importError.value = ''
+  importResult.value = null
+  try {
+    const result = await importOpenApi(importEndpointId.value, {
+      specUrl: importSpecUrl.value || undefined,
+      specRaw: importSpecRaw.value || undefined,
+    })
+    importResult.value = result
+    routesByEndpoint.value[importEndpointId.value] = await listRoutes(importEndpointId.value)
+  } catch (e: any) {
+    importError.value = e?.message || 'Import failed'
+  } finally {
+    importSubmitting.value = false
+  }
+}
 
 // Route form
 const showRouteModal = ref(false)
@@ -572,6 +690,7 @@ function authBadgeClass(type: string): string {
     'api-key': 'bg-amber-950/60 text-amber-300 border border-amber-800',
     'bearer': 'bg-violet-950/60 text-violet-300 border border-violet-800',
     'basic': 'bg-blue-950/60 text-blue-300 border border-blue-800',
+    'oauth2': 'bg-emerald-950/60 text-emerald-300 border border-emerald-800',
   }
   return map[type] || 'bg-slate-800 text-slate-400 border border-slate-700'
 }
@@ -616,9 +735,30 @@ async function toggleExpand(id: string) {
 
 // --- Endpoint CRUD ---
 
+const selectedPresetId = ref<string | null>(null)
+const starterRoutesForSelectedPreset = ref<GatewayPreset['starterRoutes']>([])
+
+function applyPreset(preset: GatewayPreset | null) {
+  if (!preset) {
+    selectedPresetId.value = null
+    starterRoutesForSelectedPreset.value = []
+    epForm.name = ''; epForm.baseUrl = ''; epForm.authType = 'none'; epForm.authConfig = {}
+    return
+  }
+  selectedPresetId.value = preset.id
+  starterRoutesForSelectedPreset.value = preset.starterRoutes
+  epForm.name = preset.label
+  epForm.description = preset.description
+  epForm.baseUrl = preset.baseUrl
+  epForm.authType = preset.authType
+  epForm.authConfig = {}
+}
+
 function openCreate() {
   isEditingEndpoint.value = false
   editingEndpointId.value = null
+  selectedPresetId.value = null
+  starterRoutesForSelectedPreset.value = []
   epForm.name = ''; epForm.description = ''; epForm.baseUrl = ''
   epForm.authType = 'none'; epForm.authConfig = {}
   epForm.rateLimitRps = 0; epForm.isActive = true
@@ -651,7 +791,10 @@ async function saveEndpoint() {
     if (isEditingEndpoint.value && editingEndpointId.value) {
       await updateEndpoint(editingEndpointId.value, payload)
     } else {
-      await createEndpoint(payload)
+      const created = await createEndpoint(payload)
+      for (const route of starterRoutesForSelectedPreset.value) {
+        await createRoute({ endpointId: created.id, method: route.method, path: route.path, description: route.description })
+      }
     }
     closeEndpointModal()
     await loadAll()

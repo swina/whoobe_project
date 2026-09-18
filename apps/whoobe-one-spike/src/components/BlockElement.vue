@@ -120,7 +120,7 @@ import type Element from '../scripts/ElementsClass.js'
 import { useEditorStore } from '../store/editor'
 import { imageURL } from '../helpers'
 import { resolveDisplayUrl } from '../resolve-display-url'
-import { resolveFieldValue } from '../scripts/data-resolver'
+import { resolveFieldValue, resolveFieldFromRecord } from '../scripts/data-resolver'
 import type { DataObjectRecord } from '../data-objects-api'
 import { editorBus } from '../bus'
 import { applyTransform, escapeHtml } from '../scripts/field-transforms'
@@ -136,34 +136,6 @@ const props = defineProps<{
 }>()
 
 const editor = useEditorStore()
-
-// Resolve a dot-path field from a record (gateway response item)
-function resolveFieldFromRecord(record: any, fieldPath: string): unknown {
-  if (!record || !fieldPath) return record
-  const parts = fieldPath.split('.')
-  let current: any = record
-  for (const part of parts) {
-    if (current === null || current === undefined) return undefined
-    const m = part.match(/^(\w+)\[(\d+)\]$/)
-    if (m) {
-      const arr = current[m[1]]
-      if (!Array.isArray(arr)) return undefined
-      current = arr[parseInt(m[2], 10)]
-    } else if (typeof current === 'object') {
-      current = current[part]
-    } else {
-      return undefined
-    }
-  }
-  if (current !== undefined) return current
-  // Fallback: try just the last segment — handles the case where a child
-  // inside a container repeater inherits a dataContext that is the
-  // individual array item, but the fieldPath still includes the parent's
-  // prefix (e.g. fieldPath "products.title" vs dataContext = { title }).
-  const last = parts[parts.length - 1]
-  if (last && typeof record === 'object') return record[last]
-  return undefined
-}
 
 const iconComponent = shallowRef<Component | null>(null)
 

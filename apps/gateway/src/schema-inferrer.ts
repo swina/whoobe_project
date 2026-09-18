@@ -1,4 +1,4 @@
-interface SchemaField {
+export interface SchemaField {
   key: string;
   type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'any' | 'null';
   nullable: boolean;
@@ -7,7 +7,7 @@ interface SchemaField {
   fields?: SchemaField[];
 }
 
-interface InferredSchema {
+export interface InferredSchema {
   type: 'object' | 'array';
   fields?: SchemaField[];
   items?: { type: string; nullable: boolean; fields?: SchemaField[]; sample?: unknown };

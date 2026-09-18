@@ -17,7 +17,7 @@
             <option value="">-- Select endpoint --</option>
             <option v-for="ep in endpoints" :key="ep.id" :value="ep.id">{{ ep.name }} — {{ ep.baseUrl }}</option>
           </select>
-          <div v-if="!endpoints.length" class="text-xs text-gray-400 mt-1">No endpoints configured. Add one in API Gateway settings.</div>
+          <div v-if="!endpoints.length" class="text-xs text-gray-400 mt-1">No endpoints configured. Add one in Integrations settings.</div>
         </div>
 
         <!-- Step 2: Route -->
@@ -54,7 +54,7 @@
               type="button"
               class="w-full text-xs text-left px-3 py-1.5 hover:bg-indigo-50 flex items-center gap-2"
               :class="selectedFieldPath === field.path ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600'"
-              @click="selectedFieldPath = field.path"
+              @click="selectField(field.path)"
             >
               <span class="font-mono">{{ field.path }}</span>
               <span class="text-[9px] text-gray-400 font-mono">{{ field.type }}</span>
@@ -63,12 +63,39 @@
               type="button"
               class="w-full text-xs text-left px-3 py-1.5 hover:bg-indigo-50"
               :class="selectedFieldPath === '' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600'"
-              @click="selectedFieldPath = ''"
+              @click="selectField('')"
             >
               Whole response
             </button>
           </div>
           <div v-if="!schemaData" class="text-xs text-gray-400 mt-1">No schema yet. Test the route first to see available fields.</div>
+        </div>
+
+        <!-- Step 5: Result filters - only when the selected field is a list
+             (a repeater), since filtering a single object/scalar value has
+             nothing to filter. -->
+        <div v-if="filterableFields">
+          <label class="text-xs font-medium text-gray-600 mb-1 block">Filter results <span class="text-gray-400 font-normal">(all conditions must match)</span></label>
+          <div v-if="!filters.length" class="text-xs text-gray-400 mb-1.5">No filters - every item is included.</div>
+          <div v-for="(f, i) in filters" :key="i" class="flex items-center gap-1.5 mb-1.5">
+            <select v-model="f.field" class="text-xs border rounded px-1.5 py-1 min-w-[6rem]">
+              <option v-for="field in filterableFields" :key="field.key" :value="field.key">{{ field.key }}</option>
+            </select>
+            <select v-model="f.operator" class="text-xs border rounded px-1.5 py-1">
+              <option value="eq">=</option>
+              <option value="neq">≠</option>
+              <option value="contains">contains</option>
+              <option value="gt">&gt;</option>
+              <option value="lt">&lt;</option>
+            </select>
+            <input v-model="f.value" type="text" placeholder="value" class="text-xs border rounded px-1.5 py-1 flex-1" />
+            <button type="button" class="text-gray-400 hover:text-rose-500 shrink-0" @click="filters.splice(i, 1)">
+              <Trash2 class="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <button type="button" class="flex items-center gap-1 text-xs text-indigo-600" @click="addFilter">
+            <Plus class="w-3.5 h-3.5" /> Add filter
+          </button>
         </div>
 
 <!-- Preview binding expression -->
@@ -123,7 +150,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { Play, Unlink, X } from '@lucide/vue'
+import { Play, Plus, Trash2, Unlink, X } from '@lucide/vue'
+import { flattenSchemaFields, itemFieldsForArrayPath, type FlatSchemaField } from '../utils/gateway-schema-walk'
 
 interface EndpointInfo {
   id: string
@@ -140,10 +168,10 @@ interface RouteInfo {
   responseSchemaId: string | null
 }
 
-interface SchemaField {
-  key: string
-  path: string
-  type: string
+interface GatewayResultFilter {
+  field: string
+  operator: 'eq' | 'neq' | 'in' | 'contains' | 'gt' | 'lt'
+  value?: unknown
 }
 
 interface GatewayBinding {
@@ -151,6 +179,7 @@ interface GatewayBinding {
   routePath: string
   fieldPath: string
   params?: Record<string, string> | null
+  filters?: GatewayResultFilter[] | null
   transform?: Record<string, unknown> | null
 }
 
@@ -190,24 +219,32 @@ const dynamicParams = computed(() => {
   return params
 })
 
-const flatFields = computed(() => {
-  const data = schemaData.value
-  if (!data) return []
-  const out: SchemaField[] = []
-  function walk(obj: any, prefix: string) {
-    if (!obj || typeof obj !== 'object') return
-    const fields = obj.fields || (obj.type === 'object' ? [] : obj.items?.fields)
-    if (!Array.isArray(fields)) return
-    for (const f of fields) {
-      const path = prefix ? `${prefix}.${f.key}` : f.key
-      out.push({ key: f.key, path, type: f.type || 'any' })
-      if (f.type === 'object' && f.fields) walk(f, path)
-      if (f.type === 'array' && f.items?.fields) walk(f.items, path)
-    }
-  }
-  walk(data, '')
-  return out
-})
+const flatFields = computed<FlatSchemaField[]>(() => flattenSchemaFields(schemaData.value))
+
+// Only non-null when the currently selected field resolves to an array -
+// filtering a single object/scalar has nothing to filter. Field candidates
+// are the array item's own relative keys (e.g. "category"), never prefixed
+// with selectedFieldPath (see gateway-schema-walk.ts's own doc comment).
+const filterableFields = computed<FlatSchemaField[] | null>(() =>
+  itemFieldsForArrayPath(schemaData.value, selectedFieldPath.value)
+)
+
+const filters = ref<GatewayResultFilter[]>([])
+
+function addFilter() {
+  filters.value.push({ field: filterableFields.value?.[0]?.key ?? '', operator: 'eq', value: '' })
+}
+
+// Explicit reset on user field selection (not a global watch(selectedFieldPath)
+// - that would also fire during onMounted's programmatic restoration below
+// and wipe the very filters being restored, since a watcher can't tell "the
+// user picked a different field" apart from "we're replaying a saved one").
+// A different field means a different item shape, so any existing filters
+// (relative to the PREVIOUS field's items) are meaningless and cleared.
+function selectField(path: string) {
+  selectedFieldPath.value = path
+  filters.value = []
+}
 
 const canConfirm = computed(() => Boolean(selectedEndpointId.value && selectedRouteId.value))
 
@@ -269,6 +306,7 @@ async function fetchPreview() {
         routePath: selectedRoute.value?.path,
         fieldPath: selectedFieldPath.value || undefined,
         params: Object.keys(paramValues.value).length > 0 ? paramValues.value : undefined,
+        filters: filters.value.length > 0 ? filters.value : undefined,
       }),
       credentials: 'include',
     })
@@ -290,6 +328,7 @@ async function onEndpointChange() {
   selectedFieldPath.value = ''
   schemaData.value = null
   paramValues.value = {}
+  filters.value = []
   previewValue.value = undefined
   if (!selectedEndpointId.value) return
   loading.value = true
@@ -307,6 +346,7 @@ async function onRouteChange() {
   selectedFieldPath.value = ''
   schemaData.value = null
   paramValues.value = {}
+  filters.value = []
   previewValue.value = undefined
   if (!selectedRouteId.value) return
   try {
@@ -356,6 +396,7 @@ function confirm() {
     routePath,
     fieldPath: resolvedFieldPath,
     params: params && Object.keys(params).length > 0 ? params : null,
+    filters: filters.value.length > 0 ? filters.value : null,
     transform,
   }
   emit('select', binding)
@@ -382,6 +423,9 @@ onMounted(async () => {
         selectedFieldPath.value = props.initial!.fieldPath
         if (props.initial!.params) {
           paramValues.value = { ...props.initial!.params }
+        }
+        if (props.initial!.filters?.length) {
+          filters.value = props.initial!.filters.map((f) => ({ ...f }))
         }
       }
     }

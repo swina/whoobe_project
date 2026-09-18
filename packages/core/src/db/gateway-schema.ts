@@ -16,6 +16,12 @@ export const gatewayEndpoints = pgTable('gateway_endpoints', {
    *  gateway-auth-encryption.ts) and this column is confirmed empty. */
   authConfig: jsonb('auth_config').$type<Record<string, unknown>>().default({}),
   authConfigEncrypted: text('auth_config_encrypted'),
+  /** OAuth2 client-credentials token cache (authType='oauth2' only) - see
+   *  0040_gateway_oauth_tokens.sql and gateway-auth-headers.ts's
+   *  buildAuthHeaders(). Kept separate from authConfigEncrypted because it's
+   *  server-managed state rewritten on refresh, not user-entered config. */
+  oauthTokenEncrypted: text('oauth_token_encrypted'),
+  oauthTokenExpiresAt: timestamp('oauth_token_expires_at', { withTimezone: true }),
   requestTimeoutMs: integer('request_timeout_ms').notNull().default(30000),
   rateLimitRps: integer('rate_limit_rps').notNull().default(0),
   rateLimitBurst: integer('rate_limit_burst').notNull().default(0),

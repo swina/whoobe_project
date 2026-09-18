@@ -239,6 +239,52 @@ export function resolveFieldValue(
   return resolved
 }
 
+/** Resolves a dot-path field from a record, with fallback to the last path
+ *  segment. Used by BlockElement.vue/BlockElementPreview.vue for a
+ *  gatewayBinding child inside a container repeater: a route whose response
+ *  is `{ products: [...] }` produces field paths like "products.title" in
+ *  GatewayBindingPicker.vue/GatewayPanel.vue's field list (there's no UI to
+ *  pick a path relative to a repeater item), but once BlockContainerPreview.
+ *  vue repeats over "products", each child's dataContext IS one item -
+ *  `{ title: ... }`, not `{ products: { title: ... } }` - so the full
+ *  path's first segment doesn't exist on it and the walk must fall back to
+ *  just the last segment ("title") against that same record. Mirrors
+ *  packages/sdk/renderer/src/resolve.ts's function of the same name (the
+ *  production/published-page counterpart of this editor-side one) - keep
+ *  both in sync if this changes. */
+export function resolveFieldFromRecord(record: any, fieldPath: string): unknown {
+  if (!record || !fieldPath) return undefined
+  const parts = fieldPath.split('.')
+  let current: unknown = record
+  let walkFailed = false
+  for (const part of parts) {
+    if (current === null || current === undefined) {
+      walkFailed = true
+      break
+    }
+    const m = part.match(/^(\w+)\[(\d+)\]$/)
+    if (m) {
+      const arr = (current as Record<string, unknown>)[m[1]]
+      if (!Array.isArray(arr)) {
+        walkFailed = true
+        break
+      }
+      current = arr[parseInt(m[2], 10)]
+    } else if (typeof current === 'object') {
+      current = (current as Record<string, unknown>)[part]
+    } else {
+      walkFailed = true
+      break
+    }
+  }
+  if (!walkFailed && current !== undefined) return current
+  // The full-path walk didn't land - retry as a repeater-item-relative
+  // lookup, directly against the record with just the path's last segment.
+  const last = parts[parts.length - 1]
+  if (last && typeof record === 'object') return (record as Record<string, unknown>)[last]
+  return undefined
+}
+
 export function resolveGatewayFieldValue(resolved: unknown, fieldPath: string): unknown {
   if (!resolved || !fieldPath) return resolved
   const parts = fieldPath.split('.')
@@ -292,6 +338,7 @@ async function resolveGatewayBinding(gb: GatewayBinding, urlParams?: Record<stri
       routePath: gb.routePath,
       fieldPath: gb.fieldPath || undefined,
       params: substituteGatewayParams(gb.params, urlParams),
+      filters: gb.filters?.length ? gb.filters : undefined,
     }),
     credentials: 'include',
   })

@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6">
     <div>
-      <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800">API Gateway — Plugins</h3>
+      <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800">Integrations — Plugins</h3>
       <p class="text-xs text-slate-500">{{ store.plugins.length }} plugin(s) loaded</p>
     </div>
 

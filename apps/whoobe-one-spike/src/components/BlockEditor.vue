@@ -63,6 +63,8 @@
         class="flex-1 min-h-0 overflow-auto p-6 pt-10"
         :class="editor.appMode ? 'flex justify-center bg-gray-200' : ''"
         @click.self="editor.setCurrent(null)"
+        @dragover="onGatewayFieldDragOver"
+        @drop="onGatewayFieldDrop"
       >
         <div v-if="editor.appMode" class="relative bg-white shadow-xl rounded-[32px] overflow-hidden mx-auto my-4"
           style="width: 390px; height: 844px;">
@@ -168,6 +170,16 @@
             </button>
 
             <button
+              type="button"
+              title="Integrations"
+              class="flex-1 flex items-center justify-center py-2"
+              :class="sidebarTab === 'gateway' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
+              @click="sidebarTab = 'gateway'"
+            >
+              <Plug class="w-6 h-6" />
+            </button>
+
+            <button
               v-if="editor.appMode"
               type="button"
               title="App Config"
@@ -190,6 +202,7 @@
           <DocumentTree v-else-if="sidebarTab === 'tree'" />
           <SnippetsPanel v-else-if="sidebarTab === 'snippets'" />
           <KitsPanel v-else-if="sidebarTab === 'kits'" @loaded="sidebarTab = 'elements'" />
+          <GatewayPanel v-else-if="sidebarTab === 'gateway'" />
           <PwaConfigPanel v-else-if="sidebarTab === 'pwa'" />
           <AiGeneratedPanel v-else @import="onAiGeneratedImport" @preview="onAiGeneratedPreview" />
         </div>
@@ -279,6 +292,7 @@ import {
   PackagePlus,
   Palette,
   Pencil,
+  Plug,
   Save,
   Settings2,
   Shapes,
@@ -309,7 +323,9 @@ import AiGeneratedPanel from './AiGeneratedPanel.vue'
 import AiGeneratedPreviewModal from './AiGeneratedPreviewModal.vue'
 import EditorSettingsModal from './EditorSettingsModal.vue'
 import PwaConfigPanel from './PwaConfigPanel.vue'
+import GatewayPanel from './GatewayPanel.vue'
 import type { AiGeneratedRecord } from '../ai-api'
+import { GATEWAY_FIELD_DRAG_MIME_TYPE, type GatewayFieldDragPayload } from '../utils/gateway-drag'
 import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
 import { useThemeStyles } from '../composables/useThemeStyles'
@@ -326,7 +342,7 @@ const editor = useEditorStore()
 const snippetsStore = useSnippetsStore()
 const message = ref('')
 const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-violet-400 hover:bg-violet-800 text-white'
-const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'advanced' | 'snippets' | 'kits' | 'ai' | 'pwa'>('elements')
+const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'advanced' | 'snippets' | 'kits' | 'ai' | 'pwa' | 'gateway'>('elements')
 const sidebarCollapsed = ref(false)
 const showAddToKit = ref(false)
 const showTemplateGallery = ref(false)
@@ -835,6 +851,42 @@ onMounted(() => {
     flash('Moved')
   })
 })
+
+// Dragging a field chip from GatewayPanel.vue's sidebar tab onto a block on
+// the canvas - a separate, native HTML5 drag (see gateway-drag.ts) from the
+// dragula-driven element/snippet drag above, since this isn't an "insert at
+// this position" drop but a "bind this field to whatever element is under
+// the cursor" one. Resolves the nearest ancestor with a data-id (every
+// BlockContainer.vue instance sets one on its own root) rather than
+// requiring a drop exactly on the element's own outer edge.
+function onGatewayFieldDragOver(event: DragEvent) {
+  if (!event.dataTransfer?.types.includes(GATEWAY_FIELD_DRAG_MIME_TYPE)) return
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'copy'
+}
+
+function onGatewayFieldDrop(event: DragEvent) {
+  const raw = event.dataTransfer?.getData(GATEWAY_FIELD_DRAG_MIME_TYPE)
+  if (!raw || !editor.document) return
+  event.preventDefault()
+
+  const targetEl = (event.target as HTMLElement | null)?.closest('[data-id]')
+  const targetId = targetEl?.getAttribute('data-id')
+  if (!targetId) return
+  const targetNode = findNodeById(editor.document, targetId)
+  if (!targetNode) return
+
+  let payload: GatewayFieldDragPayload
+  try {
+    payload = JSON.parse(raw)
+  } catch {
+    return
+  }
+
+  ;(targetNode as any).gatewayBinding = { endpointName: payload.endpointName, routePath: payload.routePath, fieldPath: payload.fieldPath, params: null, transform: null }
+  editor.setCurrent(targetNode)
+  flash(`Bound to ${payload.endpointName}${payload.fieldPath ? '.' + payload.fieldPath : ''}`)
+}
 
 // Data binding preview in the editor canvas: whenever the document's set of
 // data bindings changes (a binding added/edited/removed, or a new page
