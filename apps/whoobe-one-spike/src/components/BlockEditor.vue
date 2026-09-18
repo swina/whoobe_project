@@ -593,8 +593,11 @@ function onAiPageGenerated(payload: unknown) {
   flash('AI page generated')
 }
 
-function onAiImageSelected(result: { damUrl: string; assetId: string }) {
-  showAiGenerateImage.value = false
+// Shared by the live AI-image-generate modal (onAiImageSelected) and the AI
+// history panel's image-kind re-import (onAiGeneratedImport) - inserts one
+// generated image at the current selection (into it when it's a real
+// container, after it otherwise, falling back to the document root).
+function insertImageAtCurrent(result: { damUrl: string; assetId: string }) {
   if (!editor.document) return
   const img = new Element().Image()
   img.image = { url: result.damUrl, alt: null, assetId: result.assetId }
@@ -609,6 +612,11 @@ function onAiImageSelected(result: { damUrl: string; assetId: string }) {
     editor.document.blocks.push(img)
   }
   editor.setCurrent(img)
+}
+
+function onAiImageSelected(result: { damUrl: string; assetId: string }) {
+  showAiGenerateImage.value = false
+  insertImageAtCurrent(result)
   flash('AI image inserted')
 }
 
@@ -617,10 +625,22 @@ function onAiImageSelected(result: { damUrl: string; assetId: string }) {
 // whoobe_ai_generated) and the client actually inserting it into the
 // canvas - this is the recovery path. Pages replace the document (same as
 // a fresh generation), snippets insert at the current selection (same as
-// the FloatingToolbar's flow).
-function onAiGeneratedImport(record: { kind: 'snippet' | 'page'; payload: unknown }) {
+// the FloatingToolbar's flow), images insert each generated image at the
+// current selection (same as the live AI-image-generate modal's flow) -
+// record.payload for an image-kind record is an array of
+// { damUrl, assetId, revisedPrompt } (see core-api's POST /ai/generate-image),
+// not a snippet/element tree, so it must never fall into
+// insertGeneratedSnippet() the way the other two kinds do.
+function onAiGeneratedImport(record: AiGeneratedRecord) {
   if (record.kind === 'page') {
     onAiPageGenerated(record.payload)
+    return
+  }
+  if (record.kind === 'image') {
+    const images = record.payload as { damUrl: string; assetId: string }[] | null
+    if (!images?.length) return
+    for (const image of images) insertImageAtCurrent(image)
+    flash(images.length > 1 ? `${images.length} AI images imported` : 'AI image imported')
     return
   }
   insertGeneratedSnippet(editor, record.payload)
