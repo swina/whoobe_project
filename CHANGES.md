@@ -1,5 +1,27 @@
 # Changelog
 
+## [System Logger implementation: pino logging per app with DAM upload + log viewer] — 2026-09-18
+- **`packages/logger/`** (new): `@whoobe-cms/logger` package — `createLogger(appName, config?)` factory using pino with pino-roll daily rotation, pino-pretty dev console output, and DAM upload callback on file rotation. Exports: main (`createLogger`, DAM upload functions), `./browser` (`createBrowserLogger` console wrapper), `./dam-client` (browser-safe `listLogFiles`/`downloadLogFile`).
+- **`packages/logger/src/transports.ts`**: pino-roll file rotation (daily, 10MB max, 7 files retention), multi-stream setup (console + file).
+- **`packages/logger/src/dam-upload.ts`**: Rotation callback uploads rotated log files to DAM private folder via `POST /api/v1/dam/upload` on asset-processor. Local file deleted after successful upload.
+- **`packages/logger/src/dam-client.ts`**: Browser-safe `listLogFiles()` and `downloadLogFile()` using fetch against asset-processor DAM API.
+- **`packages/logger/src/browser-logger.ts`**: `createBrowserLogger(appName)` — thin wrapper around `console.groupCollapsed`/`console.error`/`console.warn`/`console.info` with structured JSON payloads and timestamps.
+- **`apps/asset-processor/src/server.ts`**: Added `serviceTokenAuth` middleware on `/api/v1/dam/upload` — accepts `DAM_SERVICE_TOKEN` Bearer token for server-to-server log uploads, falls through to `requirePermission` for browser sessions if token is unset or wrong.
+- **`apps/gateway/src/log-error.ts`**: Replaced `console.error` with `logger.error`. Exported `logger` instance for use across gateway modules.
+- **`apps/gateway/src/server.ts`**: Startup banner replaced with `logger.info`.
+- **`apps/core-api/src/server.ts`**: Wired `createLogger('core-api')` after imports. Replaced all 163 `console.error` and 8 `console.warn` calls with `logger.error`/`logger.warn`. Database connection banner and listen banner replaced with `logger.info`.
+- **`apps/admin-dashboard/src/main.ts`**: Wired `createBrowserLogger('admin-dashboard')`, exposed on `window.__logger`.
+- **`apps/admin-dashboard/src/env.d.ts`**: Added `window.__logger` type declaration.
+- **`apps/whoobe-one-spike/src/main.ts`**: Wired `createBrowserLogger('whoobe-editor')`, exposed on `window.__logger`.
+- **`apps/whoobe-one-spike/src/env.d.ts`**: Added `window.__logger` type declaration.
+- **`apps/admin-dashboard/src/stores/logStore.ts`** (new): Pinia store for log file listing, content fetching, filtering by app/date/level/module.
+- **`apps/admin-dashboard/src/views/SystemLogsView.vue`** (new): Full-featured log viewer with app selector, date picker, log file list, level/module/search filters, expandable JSON entries, and copy-to-clipboard.
+- **`apps/admin-dashboard/src/stores/tabsStore.ts`**: Added `'system-logs'` to `SectionKind`.
+- **`apps/admin-dashboard/src/layouts/DashboardLayout.vue`**: Added System Logs nav item with `ScrollText` icon between API Gateway and Settings. Registered `SystemLogsView` in section components/labels/icons.
+- **`.env.example`**: Added `LOG_LEVEL`, `LOG_DIR`, `ASSET_PROCESSOR_URL`, `DAM_SERVICE_TOKEN`.
+- **`ecosystem.config.cjs`**: Added `LOG_LEVEL` env var to core-api, asset-processor, gateway PM2 processes.
+- **`.gitignore`**: Added `logs/` directory.
+
 ## [System Logger plan: structured pino logging per app with DAM upload] — 2026-09-18
 - **`docs/plans/system/system-logger.md`**: New plan for a structured logging system. Server apps (core-api, asset-processor, gateway) log via pino with pino-roll daily rotation; browser apps (admin-dashboard, whoobe-editor/whoobe-one-spike) use a lightweight console wrapper. Rotated log files are uploaded to DAM's private S3 storage via the asset-processor. Includes a full-featured admin UI log viewer. Six implementation phases defined.
 

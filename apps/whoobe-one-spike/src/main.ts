@@ -7,6 +7,10 @@ import router from './router'
 import './style.css'
 import tailwindBrowserUrl from '@tailwindcss/browser?url'
 import SearchElement from './components/SearchElement.vue'
+import { createBrowserLogger } from '@whoobe-cms/logger/browser'
+
+const logger = createBrowserLogger('whoobe-editor')
+;(window as any).__logger = logger
 
 // AlpineJS (docs/plans/cms/whoobe-one-spike-missing-features.md) - a real
 // ESM import + Alpine.start(), not the reference's CDN-<script>-in-iframe-

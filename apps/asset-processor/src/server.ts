@@ -30,6 +30,12 @@ import {
   updateAssetMetadata,
   loadRootEnv,
 } from '@whoobe-cms/core/server';
+import { createLogger } from '@whoobe-cms/logger';
+
+const logger = await createLogger('asset-processor', {
+  file: true,
+  damUpload: true,
+});
 
 // Load the repo-root .env (single source of truth for all apps, see
 // docs/plans/environment/env-optimization.md) with ${VAR} expansion so
@@ -217,7 +223,7 @@ app.post('/api/v1/process', upload.single('file'), async (req: Request, res: Res
 
     res.type(`image/${format}`).send(processedBuffer);
   } catch (error: any) {
-    console.error('Processing error:', error);
+    logger.error({ err: error }, 'Processing error');
     res.status(500).json({ error: error.message || 'Image processing failed' });
   }
 });
@@ -241,7 +247,7 @@ app.post('/api/v1/metadata', upload.single('file'), async (req: Request, res: Re
     const metadata = await AssetMetadataExtractor.extractMetadata(inputBuffer, mimeType);
     res.json({ success: true, metadata });
   } catch (error: any) {
-    console.error('Metadata extraction error:', error);
+    logger.error({ err: error }, 'Metadata extraction error');
     res.status(500).json({ error: error.message || 'Metadata extraction failed' });
   }
 });
@@ -276,7 +282,7 @@ app.post(
 
       res.type(`image/${format}`).send(processedBuffer);
     } catch (error: any) {
-      console.error('Watermark error:', error);
+      logger.error({ err: error }, 'Watermark error');
       res.status(500).json({ error: error.message || 'Watermarking failed' });
     }
   }
@@ -292,8 +298,24 @@ app.get('/api/v1/dam/info', requireAuth, (_req: Request, res: Response) => {
   });
 });
 
+// Service-to-service auth for log uploads: if the DAM_SERVICE_TOKEN env var
+// is set and the request carries a matching Bearer token, skip session auth
+// (server-to-server, no browser session). If the token is absent or wrong,
+// fall through to requirePermission (backward-compatible with browser users).
+function serviceTokenAuth(req: Request, res: Response, next: any): void {
+  const token = process.env.DAM_SERVICE_TOKEN;
+  if (token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader === `Bearer ${token}`) {
+      next();
+      return;
+    }
+  }
+  requirePermission(PERMISSIONS.ASSETS_UPLOAD)(req, res, next);
+}
+
 // Upload an asset to S3/MinIO. Credentials never leave this process.
-app.post('/api/v1/dam/upload', requirePermission(PERMISSIONS.ASSETS_UPLOAD), upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+app.post('/api/v1/dam/upload', serviceTokenAuth, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
   try {
     const pimcorePath = req.body?.pimcorePath as string | undefined;
     if (!req.file) {
@@ -331,7 +353,7 @@ app.post('/api/v1/dam/upload', requirePermission(PERMISSIONS.ASSETS_UPLOAD), upl
 
     res.json(response);
   } catch (error: any) {
-    console.error('DAM upload error:', error);
+    logger.error({ err: error }, 'DAM upload error');
     res.status(500).json({ error: error.message || 'Asset upload failed' });
   }
 });
@@ -406,7 +428,7 @@ app.post('/api/v1/dam/transform', requirePermission(PERMISSIONS.ASSETS_UPLOAD), 
 
     res.json(response);
   } catch (error: any) {
-    console.error('DAM transform error:', error);
+    logger.error({ err: error }, 'DAM transform error');
     res.status(500).json({ error: error.message || 'Image transform failed' });
   }
 });
@@ -424,7 +446,7 @@ app.delete('/api/v1/dam/asset', requirePermission(PERMISSIONS.ASSETS_DELETE), as
     await deleteAssetRecord(pimcorePath);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('DAM delete error:', error);
+    logger.error({ err: error }, 'DAM delete error');
     res.status(500).json({ error: error.message || 'Asset delete failed' });
   }
 });
@@ -488,7 +510,7 @@ app.post('/api/v1/dam/assets/move', requirePermission(PERMISSIONS.ASSETS_UPLOAD)
       asset: { ...assetRecord, url: proxyUrl(s3Key, origin), thumbnailUrl: proxyUrl(thumbKey, origin), thumbnails },
     });
   } catch (error: any) {
-    console.error('DAM move error:', error);
+    logger.error({ err: error }, 'DAM move error');
     res.status(500).json({ error: error.message || 'Asset move failed' });
   }
 });
@@ -502,7 +524,7 @@ app.get('/api/v1/dam/folders', requireAuth, async (_req: Request, res: Response)
     const folders = await listFolders();
     res.json({ folders });
   } catch (error: any) {
-    console.error('DAM list folders error:', error);
+    logger.error({ err: error }, 'DAM list folders error');
     res.status(500).json({ error: error.message || 'Failed to list folders' });
   }
 });
@@ -517,7 +539,7 @@ app.post('/api/v1/dam/folders', requirePermission(PERMISSIONS.ASSETS_UPLOAD), as
     const folder = await createFolderRecord({ path, name, parentPath, isPublic });
     res.json({ folder });
   } catch (error: any) {
-    console.error('DAM create folder error:', error);
+    logger.error({ err: error }, 'DAM create folder error');
     res.status(400).json({ error: error.message || 'Failed to create folder' });
   }
 });
@@ -538,13 +560,13 @@ app.delete('/api/v1/dam/folders', requirePermission(PERMISSIONS.ASSETS_DELETE), 
       try {
         await provider.deleteAsset(assetPath);
       } catch (e) {
-        console.warn(`Could not delete S3 object for ${assetPath}:`, e);
+        logger.warn({ err: e }, `Could not delete S3 object for ${assetPath}`);
       }
     }
 
     res.json({ success: true, deletedAssetCount: deletedAssetPaths.length });
   } catch (error: any) {
-    console.error('DAM delete folder error:', error);
+    logger.error({ err: error }, 'DAM delete folder error');
     res.status(500).json({ error: error.message || 'Failed to delete folder' });
   }
 });
@@ -569,7 +591,7 @@ app.get('/api/v1/dam/assets', requireAuth, async (req: Request, res: Response): 
 
     res.json({ assets: withUrls });
   } catch (error: any) {
-    console.error('DAM list assets error:', error);
+    logger.error({ err: error }, 'DAM list assets error');
     res.status(500).json({ error: error.message || 'Failed to list assets' });
   }
 });
@@ -593,7 +615,7 @@ app.post('/api/v1/dam/assets', requireAuth, async (req: Request, res: Response):
 
     res.json({ assets: withUrls });
   } catch (error: any) {
-    console.error('DAM list assets error:', error);
+    logger.error({ err: error }, 'DAM list assets error');
     res.status(500).json({ error: error.message || 'Failed to list assets' });
   }
 });
@@ -617,7 +639,7 @@ app.get('/api/v1/dam/assets/:id', requireAuth, async (req: Request, res: Respons
     const l = provider.getThumbnailS3Key(record.pimcorePath, 'large');
     res.json({ asset: { ...record, url: proxyUrl(k, origin), thumbnailUrl: proxyUrl(t, origin), thumbnails: { thumb: proxyUrl(t, origin), medium: proxyUrl(m, origin), large: proxyUrl(l, origin) } } });
   } catch (error: any) {
-    console.error('DAM get asset by id error:', error);
+    logger.error({ err: error }, 'DAM get asset by id error');
     res.status(500).json({ error: error.message || 'Failed to get asset' });
   }
 });
@@ -636,7 +658,7 @@ app.patch('/api/v1/dam/assets/metadata', requirePermission(PERMISSIONS.ASSETS_UP
     }
     res.json({ asset: updated });
   } catch (error: any) {
-    console.error('DAM update metadata error:', error);
+    logger.error({ err: error }, 'DAM update metadata error');
     res.status(500).json({ error: error.message || 'Failed to update metadata' });
   }
 });
@@ -674,7 +696,7 @@ app.get('/api/v1/dam/asset-urls', requireAuth, async (req: Request, res: Respons
       }
     });
   } catch (error: any) {
-    console.error('DAM asset-urls error:', error);
+    logger.error({ err: error }, 'DAM asset-urls error');
     res.status(500).json({ error: error.message || 'Failed to resolve asset URL' });
   }
 });
@@ -717,7 +739,7 @@ app.post('/api/v1/dam/asset-urls', requireAuth, async (req: Request, res: Respon
       }
     });
   } catch (error: any) {
-    console.error('DAM asset-urls error:', error);
+    logger.error({ err: error }, 'DAM asset-urls error');
     res.status(500).json({ error: error.message || 'Failed to resolve asset URL' });
   }
 });
@@ -734,7 +756,7 @@ app.get('/api/v1/dam/exists', requireAuth, async (req: Request, res: Response): 
     const exists = await provider.existsAsset(pimcorePath);
     res.json({ exists });
   } catch (error: any) {
-    console.error('DAM exists error:', error);
+    logger.error({ err: error }, 'DAM exists error');
     res.status(500).json({ error: error.message || 'Failed to check asset existence' });
   }
 });
@@ -751,7 +773,7 @@ app.post('/api/v1/dam/exists', requireAuth, async (req: Request, res: Response):
     const exists = await provider.existsAsset(pimcorePath);
     res.json({ exists });
   } catch (error: any) {
-    console.error('DAM exists error:', error);
+    logger.error({ err: error }, 'DAM exists error');
     res.status(500).json({ error: error.message || 'Failed to check asset existence' });
   }
 });
@@ -777,7 +799,7 @@ app.post('/api/v1/dam/regenerate-thumbnails', requireAuth, async (req: Request, 
     const succeeded = results.filter((r) => r.success).length;
     res.json({ succeeded, failed: results.length - succeeded, results });
   } catch (error: any) {
-    console.error('Regenerate thumbnails error:', error);
+    logger.error({ err: error }, 'Regenerate thumbnails error');
     res.status(500).json({ error: error.message || 'Failed to regenerate thumbnails' });
   }
 });
@@ -789,7 +811,7 @@ app.post('/api/v1/dam/ensure-bucket', requireAuth, async (req: Request, res: Res
     await provider.ensureBucket();
     res.json({ success: true, bucket: damBaseConfig.bucket });
   } catch (error: any) {
-    console.error('DAM ensure-bucket error:', error);
+    logger.error({ err: error }, 'DAM ensure-bucket error');
     res.status(500).json({ error: error.message || 'Failed to ensure bucket' });
   }
 });
@@ -886,11 +908,11 @@ app.get('/dam-asset/*', async (req: Request, res: Response): Promise<void> => {
       res.status(404).json({ error: 'Asset not found' });
       return;
     }
-    console.error('DAM proxy error:', error);
+    logger.error({ err: error }, 'DAM proxy error');
     res.status(500).json({ error: error.message || 'Failed to serve asset' });
   }
 });
 
 app.listen(port, () => {
-  console.log(`🚀 DAM Asset Processor Microservice listening on port ${port}`);
+  logger.info(`DAM Asset Processor Microservice listening on port ${port}`);
 });

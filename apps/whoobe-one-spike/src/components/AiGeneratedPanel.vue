@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 min-h-0 flex flex-col text-xs font-mono">
+  <div class="flex-1 min-h-0 flex flex-col text-[10px] font-normal">
     <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
       <span class="text-xs font-semibold text-gray-600">AI generations</span>
       <button
@@ -33,7 +33,7 @@
           <span class="truncate text-gray-400">{{ record.model }}</span>
           <span class="ml-auto shrink-0 text-gray-400">{{ formatDate(record.createdAt) }}</span>
         </div>
-        <p class="text-xs text-gray-700 line-clamp-2">{{ record.prompt }}</p>
+        <p class="text-[11px] text-gray-700 line-clamp-2">{{ record.prompt }}</p>
         <div class="flex gap-1 mt-1.5">
           <button
             type="button"

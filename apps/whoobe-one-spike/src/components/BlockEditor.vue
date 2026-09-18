@@ -82,7 +82,7 @@
            Horizontally collapsible - width lives here on the wrapper (not
            on each panel's own root, which used to each hardcode their own
            `w-64`) so collapsing doesn't need to reach into every panel. -->
-      <div class="shrink-0 relative flex border border-slate-300 text-xs" :class="sidebarCollapsed ? 'w-0 border-l-0' : 'w-64'">
+      <div class="shrink-0 relative flex border border-slate-300 text-[9px] font-medium" :class="sidebarCollapsed ? 'w-0 border-l-0' : 'w-64'">
         <button
           type="button"
           :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"

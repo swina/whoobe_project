@@ -13,6 +13,7 @@
   "dependencies": {
     "@whoobe-cms/core": "workspace:*",
     "@whoobe-cms/figma-converter": "workspace:*",
+    "@whoobe-cms/logger": "workspace:^",
     "@whoobe-cms/migration-tool": "workspace:*",
     "@whoobe-cms/publish": "workspace:*",
     "@whoobe-cms/renderer": "workspace:*",

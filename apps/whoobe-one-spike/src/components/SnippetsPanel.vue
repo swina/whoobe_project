@@ -1,19 +1,19 @@
 <template>
-  <div class="flex-1 min-h-0 overflow-y-auto text-xs font-mono">
+  <div class="flex-1 min-h-0 overflow-y-auto text-[10px] font-normal">
     <div v-if="!snippetsStore.items.length" class="p-3 text-xs text-gray-400">
       No snippets yet. Select an element on the canvas and use its "Save as snippet" action (the link icon's neighbor in the floating toolbar) to create one.
     </div>
     <template v-for="category in categories" :key="category">
       <button
         type="button"
-        class="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold capitalize text-gray-600 hover:bg-violet-500 hover:text-white border-b" :class="{ 'bg-violet-500 text-white': openGroup === category }"
+        class="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-semibold capitalize text-gray-600 hover:bg-violet-500 hover:text-white border-b border-slate-300" :class="{ 'bg-violet-500 text-white': openGroup === category }"
         @click="openGroup = openGroup === category ? null : category"
       >
         {{ category }}
         <ChevronDown v-if="openGroup === category" class="w-3.5 h-3.5 text-gray-400" />
         <ChevronRight v-else class="w-3.5 h-3.5 text-gray-400" />
       </button>
-      <div v-if="openGroup === category" class="grid grid-cols-3 gap-1.5 p-2 border-b bg-gray-50 dragula-source-container">
+      <div v-if="openGroup === category" class="grid grid-cols-3 gap-1.5 p-2 border-b border-slate-300 bg-gray-50 dragula-source-container">
         <div
           v-for="snippet in snippetsFor(category)"
           :key="snippet.id"

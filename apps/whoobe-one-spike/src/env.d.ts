@@ -8,3 +8,9 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+declare global {
+  interface Window {
+    __logger?: import('@whoobe-cms/logger/browser').BrowserLogger
+  }
+}
