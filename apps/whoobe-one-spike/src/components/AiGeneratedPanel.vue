@@ -20,7 +20,6 @@
       </div>
       <button
         v-for="record in records"
-        v-if="record.kind != 'image'"
         :key="record.id"
         :data-type="record.kind"
         type="button"
