@@ -50,6 +50,38 @@ describe('applyTransform', () => {
     expect(r).toEqual({ kind: 'text', text: 'Yes', className: 'bg-green-500' })
   })
 
+  it('valueMap treats an omitted operator as exact string match, same as before this field existed', () => {
+    const r = applyTransform('a', {
+      type: 'valueMap',
+      options: { rules: [{ match: 'a', label: 'Yes', className: '' }], fallbackLabel: 'No', fallbackClassName: '' },
+    })
+    expect(r).toEqual({ kind: 'text', text: 'Yes' })
+  })
+
+  it('valueMap "<" and ">" compare numerically', () => {
+    const rules = [
+      { match: '10', label: 'Low', className: '', operator: '<' as const },
+      { match: '90', label: 'High', className: '', operator: '>' as const },
+    ]
+    expect(applyTransform(5, { type: 'valueMap', options: { rules, fallbackLabel: 'Mid', fallbackClassName: '' } })).toEqual({ kind: 'text', text: 'Low' })
+    expect(applyTransform(95, { type: 'valueMap', options: { rules, fallbackLabel: 'Mid', fallbackClassName: '' } })).toEqual({ kind: 'text', text: 'High' })
+    expect(applyTransform(50, { type: 'valueMap', options: { rules, fallbackLabel: 'Mid', fallbackClassName: '' } })).toEqual({ kind: 'text', text: 'Mid' })
+  })
+
+  it('valueMap "=" still does exact string comparison, not numeric, even for numeric-looking values', () => {
+    const r = applyTransform('007', {
+      type: 'valueMap',
+      options: { rules: [{ match: '7', label: 'Seven', className: '', operator: '=' as const }], fallbackLabel: 'Other', fallbackClassName: '' },
+    })
+    expect(r).toEqual({ kind: 'text', text: 'Other' })
+  })
+
+  it('valueMap "<"/">" never match when either side is non-numeric', () => {
+    const rules = [{ match: '10', label: 'Low', className: '', operator: '<' as const }]
+    const r = applyTransform('n/a', { type: 'valueMap', options: { rules, fallbackLabel: 'Fallback', fallbackClassName: '' } })
+    expect(r).toEqual({ kind: 'text', text: 'Fallback' })
+  })
+
   it('never throws on bad input', () => {
     expect(() => applyTransform({ weird: true }, { type: 'date', options: { dateStyle: 'full' as any, includeTime: false } })).not.toThrow()
   })

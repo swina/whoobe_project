@@ -82,7 +82,7 @@ import type Element from '../../scripts/ElementsClass.js'
 import { customAttrs, imageURL, resolveLucideIcon, renderSelectOptionsHtml, renderRadioGroupHtml, safeAlpineValue } from '../../helpers'
 import { resolveDisplayUrl } from '../../resolve-display-url'
 import { useEditorStore } from '../../store/editor'
-import { resolveFieldValue } from '../../scripts/data-resolver'
+import { resolveFieldValue, resolveFieldFromRecord } from '../../scripts/data-resolver'
 import type { DataObjectRecord } from '../../data-objects-api'
 import { applyTransform, escapeHtml, stripHtmlComments } from '../../scripts/field-transforms'
 import { mountAnimation } from '../../scripts/gsap-actions'
@@ -95,29 +95,6 @@ const props = defineProps<{
 }>()
 
 const editor = useEditorStore()
-
-function resolveFieldFromRecord(record: any, fieldPath: string): unknown {
-  if (!record || !fieldPath) return record
-  const parts = fieldPath.split('.')
-  let current: any = record
-  for (const part of parts) {
-    if (current === null || current === undefined) return undefined
-    const m = part.match(/^(\w+)\[(\d+)\]$/)
-    if (m) {
-      const arr = current[m[1]]
-      if (!Array.isArray(arr)) return undefined
-      current = arr[parseInt(m[2], 10)]
-    } else if (typeof current === 'object') {
-      current = current[part]
-    } else {
-      return undefined
-    }
-  }
-  if (current !== undefined) return current
-  const last = parts[parts.length - 1]
-  if (last && typeof record === 'object') return record[last]
-  return undefined
-}
 
 // Empty-value entries are dropped (matches the reference's own `if
 // (element.data.alpine[attr])` check in preview/BlockElement.vue) so an

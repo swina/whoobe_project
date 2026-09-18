@@ -83,9 +83,14 @@
 
             <div v-else-if="draftType === 'valueMap'" class="flex flex-col gap-1.5">
               <div v-for="(rule, i) in draftOptions.rules" :key="i" class="flex items-center gap-1">
-                <input v-model="rule.match" type="text" placeholder="value" class="text-xs border rounded px-1.5 py-1 w-30" />
+                <select v-model="rule.operator" class="text-xs border rounded px-1 py-1 shrink-0" title="Condition">
+                  <option value="=">=</option>
+                  <option value="<">&lt;</option>
+                  <option value=">">&gt;</option>
+                </select>
+                <input v-model="rule.match" type="text" placeholder="value" class="text-xs border rounded px-1.5 py-1 w-24" />
                 <span class="text-[10px] text-gray-400">→</span>
-                <input v-model="rule.label" type="text" placeholder="label" class="text-xs border rounded px-1.5 py-1 w-30" />
+                <input v-model="rule.label" type="text" placeholder="label" class="text-xs border rounded px-1.5 py-1 w-24" />
                 <input v-model="rule.className" type="text" placeholder="css class" class="text-xs border rounded px-1.5 py-1 flex-1" />
                 <button type="button" class="text-gray-400 hover:text-rose-500 shrink-0" @click="draftOptions.rules.splice(i, 1)">
                   <Trash2 class="w-3.5 h-3.5" />
@@ -175,6 +180,16 @@ function openModal() {
     activeBinding.value?.transform && activeBinding.value.transform.type !== 'none'
       ? cloneOptions((activeBinding.value.transform as any).options)
       : {}
+  // A rule saved before the operator field existed has no `operator` at
+  // all - default it to '=' explicitly here so the select shows the right
+  // option immediately, rather than relying on every rule getting re-saved
+  // before it displays correctly (applyTransform already treats a missing
+  // operator as '=', this is purely about the edit UI reflecting that).
+  if (draftType.value === 'valueMap' && Array.isArray(draftOptions.value.rules)) {
+    for (const rule of draftOptions.value.rules) {
+      if (!rule.operator) rule.operator = '='
+    }
+  }
   showModal.value = true
 }
 
@@ -199,6 +214,6 @@ function onTypeChange(newType: TransformType | 'none') {
 
 function addValueMapRule() {
   if (!draftOptions.value.rules) draftOptions.value.rules = []
-  draftOptions.value.rules.push({ match: '', label: '', className: '' })
+  draftOptions.value.rules.push({ match: '', label: '', className: '', operator: '=' })
 }
 </script>

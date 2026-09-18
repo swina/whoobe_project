@@ -31,9 +31,16 @@ export interface TruncateTransformOptions {
 }
 
 export interface ValueMapRule {
+  /** Compared against the resolved value per `operator`. */
   match: string
   label: string
   className: string
+  /** Defaults to '=' (exact string match, the original behavior) when
+   *  omitted, so every rule saved before this field existed keeps behaving
+   *  exactly as before. '<'/'>' compare numerically - a rule with a
+   *  non-numeric `match` or a non-numeric resolved value never matches for
+   *  those operators (no crash, no coercion surprises). */
+  operator?: '=' | '<' | '>'
 }
 
 export interface ValueMapTransformOptions {
@@ -146,6 +153,15 @@ const truncateTransformer: TransformerDefinition<TruncateTransformOptions> = {
   },
 }
 
+function matchesValueMapRule(str: string, rule: ValueMapRule): boolean {
+  const operator = rule.operator ?? '='
+  if (operator === '=') return rule.match === str
+  const numericValue = Number(str)
+  const numericMatch = Number(rule.match)
+  if (Number.isNaN(numericValue) || Number.isNaN(numericMatch)) return false
+  return operator === '<' ? numericValue < numericMatch : numericValue > numericMatch
+}
+
 const valueMapTransformer: TransformerDefinition<ValueMapTransformOptions> = {
   type: 'valueMap',
   label: 'Map value to label/class',
@@ -153,7 +169,7 @@ const valueMapTransformer: TransformerDefinition<ValueMapTransformOptions> = {
   defaultOptions: { rules: [], fallbackLabel: '', fallbackClassName: '' },
   apply(value, options) {
     const str = value == null ? '' : String(value)
-    const rule = options.rules?.find((r) => r.match === str)
+    const rule = options.rules?.find((r) => matchesValueMapRule(str, r))
     if (rule) return textResult(rule.label || str, rule.className)
     return textResult(options.fallbackLabel || str, options.fallbackClassName)
   },
