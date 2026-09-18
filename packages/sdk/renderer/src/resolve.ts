@@ -3,7 +3,7 @@
 // the public API, formats bound values with the shared transform engine, and
 // mirrors the editor's escaping rules.
 
-import { applyTransform, escapeHtml, type ElementDataBinding, type FieldTransform, type TransformResult } from '@whoobe-cms/schema'
+import { applyTransform, escapeHtml, type DataBindingFilter, type ElementDataBinding, type FieldTransform, type TransformResult } from '@whoobe-cms/schema'
 import type { RenderApi } from './api-client.js'
 import type { WalkContext } from './walk.js'
 
@@ -97,6 +97,7 @@ export interface GatewayBinding {
   routePath: string
   fieldPath: string
   params?: Record<string, string> | null
+  filters?: DataBindingFilter[] | null
 }
 
 /** Substitutes `{name}`-placeholder GatewayBinding.params values from the
@@ -128,6 +129,7 @@ export async function resolveGatewayBinding(
       routePath: binding.routePath,
       fieldPath: binding.fieldPath || undefined,
       params: substituteGatewayParams(binding.params, urlParams),
+      filters: binding.filters?.length ? binding.filters : undefined,
     }),
   })
   if (!res.ok) {
@@ -167,27 +169,44 @@ export interface FormattedContent {
 
 /** Resolves a dot-path field from a record, with fallback to the last path
  *  segment. Used for gateway binding field resolution where the context
- *  record may be a repeater item (stripped of the parent's field prefix). */
+ *  record may be a repeater item (stripped of the parent's field prefix) -
+ *  e.g. a route whose response is `{ products: [...] }` produces field
+ *  paths like "products.title" in the picker (there's no UI to pick a path
+ *  relative to a repeater item), but once a container repeats over
+ *  "products", each child's ctx.record IS one item - `{ title: ... }`, not
+ *  `{ products: { title: ... } }` - so the full path's first segment
+ *  ("products") doesn't exist on it and the walk must fall back to just the
+ *  last segment ("title") against that same record. */
 export function resolveFieldFromRecord(record: Record<string, unknown> | null | undefined, fieldPath: string): unknown {
   if (!record || !fieldPath) return undefined
   const parts = fieldPath.split('.')
   let current: unknown = record
+  let walkFailed = false
   for (const part of parts) {
-    if (current === null || current === undefined) return undefined
+    if (current === null || current === undefined) {
+      walkFailed = true
+      break
+    }
     const m = part.match(/^(\w+)\[(\d+)\]$/)
     if (m) {
       const arr = (current as Record<string, unknown>)[m[1]]
-      if (!Array.isArray(arr)) return undefined
+      if (!Array.isArray(arr)) {
+        walkFailed = true
+        break
+      }
       current = arr[parseInt(m[2], 10)]
     } else if (typeof current === 'object') {
       current = (current as Record<string, unknown>)[part]
     } else {
-      return undefined
+      walkFailed = true
+      break
     }
   }
-  if (current !== undefined) return current
+  if (!walkFailed && current !== undefined) return current
+  // The full-path walk didn't land - retry as a repeater-item-relative
+  // lookup, directly against the record with just the path's last segment.
   const last = parts[parts.length - 1]
-  if (last && typeof record === 'object') return record[last]
+  if (last && typeof record === 'object') return (record as Record<string, unknown>)[last]
   return undefined
 }
 

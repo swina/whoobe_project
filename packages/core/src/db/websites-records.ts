@@ -102,3 +102,21 @@ export async function deleteWebsite(id: string): Promise<void> {
   const db = getDb();
   await db.delete(websites).where(eq(websites.id, id));
 }
+
+/**
+ * System-wide logging on/off switch, controlled from the admin dashboard
+ * (Settings > General). Stored on the first website's settings blob, same
+ * as the other global toggles (autosave, stripHtmlComments). Every backend
+ * service (core-api, gateway, asset-processor) polls this directly to mute
+ * or restore its own Pino logger - see packages/logger's attachLoggingToggle.
+ * Defaults to enabled so logging behaves as before until someone opts out.
+ */
+export async function isLoggingEnabled(): Promise<boolean> {
+  const all = await listWebsites();
+  const first = all[0];
+  const raw = first?.settings && typeof first.settings === 'object' && !Array.isArray(first.settings)
+    ? (first.settings as Record<string, unknown>).logging
+    : null;
+  const enabled = raw && typeof raw === 'object' ? (raw as Record<string, unknown>).enabled : null;
+  return typeof enabled === 'boolean' ? enabled : true;
+}

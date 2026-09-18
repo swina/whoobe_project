@@ -1,7 +1,7 @@
 import { getDb } from './client.js';
 import { gatewayEndpoints, gatewayRoutes, gatewaySchemas } from './gateway-schema.js';
 import { eq } from 'drizzle-orm';
-import { encryptGatewayAuthConfig, decryptGatewayAuthConfig } from './gateway-auth-crypto.js';
+import { encryptGatewayAuthConfig, decryptGatewayAuthConfig, encryptGatewayOAuthToken, decryptGatewayOAuthToken } from './gateway-auth-crypto.js';
 
 // --- Endpoints ---
 
@@ -11,12 +11,16 @@ type GatewayEndpointRowInput = typeof gatewayEndpoints.$inferInsert;
 // The public shape every caller outside this file works with: `authConfig`
 // is always the plaintext object, decrypted on read. `authConfigEncrypted`
 // (and the deprecated plaintext `authConfig` DB column - see gateway-
-// schema.ts) never leave this module.
-export type GatewayEndpointRecord = Omit<GatewayEndpointRow, 'authConfigEncrypted'>;
-export type GatewayEndpointInput = Omit<GatewayEndpointRowInput, 'authConfigEncrypted'>;
+// schema.ts) never leave this module. The OAuth2 token cache
+// (oauthTokenEncrypted/oauthTokenExpiresAt) is deliberately excluded too -
+// unlike authConfig, it has no plaintext counterpart on this type at all,
+// so there's nothing for a route handler to accidentally forward to a
+// client; use getGatewayEndpointOAuthToken/setGatewayEndpointOAuthToken.
+export type GatewayEndpointRecord = Omit<GatewayEndpointRow, 'authConfigEncrypted' | 'oauthTokenEncrypted' | 'oauthTokenExpiresAt'>;
+export type GatewayEndpointInput = Omit<GatewayEndpointRowInput, 'authConfigEncrypted' | 'oauthTokenEncrypted' | 'oauthTokenExpiresAt'>;
 
 function toRecord(row: GatewayEndpointRow): GatewayEndpointRecord {
-  const { authConfigEncrypted, authConfig, ...rest } = row;
+  const { authConfigEncrypted, authConfig, oauthTokenEncrypted, oauthTokenExpiresAt, ...rest } = row;
   return {
     ...rest,
     // A row already backfilled (see scripts/backfill-gateway-auth-
@@ -70,6 +74,34 @@ export async function updateGatewayEndpoint(id: string, input: Partial<GatewayEn
 export async function deleteGatewayEndpoint(id: string): Promise<void> {
   const db = getDb();
   await db.delete(gatewayEndpoints).where(eq(gatewayEndpoints.id, id));
+}
+
+/** Reads the cached OAuth2 access token for an endpoint (authType='oauth2'),
+ *  decrypted, or null if none is cached yet. Deliberately separate from
+ *  getGatewayEndpoint/GatewayEndpointRecord - see the comment on that type. */
+export async function getGatewayEndpointOAuthToken(id: string): Promise<{ token: string; expiresAt: Date } | null> {
+  const db = getDb();
+  const rows = await db
+    .select({ oauthTokenEncrypted: gatewayEndpoints.oauthTokenEncrypted, oauthTokenExpiresAt: gatewayEndpoints.oauthTokenExpiresAt })
+    .from(gatewayEndpoints)
+    .where(eq(gatewayEndpoints.id, id))
+    .limit(1);
+  const row = rows[0];
+  if (!row?.oauthTokenEncrypted || !row.oauthTokenExpiresAt) return null;
+  const token = decryptGatewayOAuthToken(row.oauthTokenEncrypted);
+  if (!token) return null;
+  return { token, expiresAt: row.oauthTokenExpiresAt };
+}
+
+/** Persists a freshly-fetched OAuth2 access token, encrypted. Called by
+ *  gateway-auth-headers.ts's refreshOAuthToken after a successful
+ *  client-credentials request. */
+export async function setGatewayEndpointOAuthToken(id: string, token: string, expiresAt: Date): Promise<void> {
+  const db = getDb();
+  await db
+    .update(gatewayEndpoints)
+    .set({ oauthTokenEncrypted: encryptGatewayOAuthToken(token), oauthTokenExpiresAt: expiresAt })
+    .where(eq(gatewayEndpoints.id, id));
 }
 
 // --- Routes ---

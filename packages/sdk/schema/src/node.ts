@@ -116,6 +116,14 @@ export interface GatewayBinding {
   routePath: string
   fieldPath: string
   params?: Record<string, string> | null
+  /** Only meaningful when fieldPath resolves to an array (a container
+   *  repeater) - filters the resolved items server-side (apps/gateway's
+   *  /api/v1/gateway/resolve) before rendering, since there's no upstream
+   *  "WHERE clause" for an arbitrary third-party API. `field` is a dot-path
+   *  relative to one array item (e.g. "category", never prefixed with
+   *  fieldPath itself). All filters must match (AND), same operator
+   *  vocabulary as DataBindingFilter for consistency. */
+  filters?: DataBindingFilter[] | null
   transform?: import('./transform.js').FieldTransform | null
 }
 

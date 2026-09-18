@@ -4,6 +4,7 @@ import { proxyFetch } from './proxy-engine.js';
 import { checkRateLimit } from './rate-limiter.js';
 import type { GatewayPlugin, RequestContext, ResponseContext } from './plugin-types.js';
 import { logGatewayError } from './log-error.js';
+import { buildAuthHeaders } from './gateway-auth-headers.js';
 
 const loadedPlugins: GatewayPlugin[] = [];
 
@@ -49,17 +50,7 @@ export function createRemoteRouter(): Router {
       const accept = req.headers['accept'];
       if (accept) upstreamHeaders['Accept'] = Array.isArray(accept) ? accept[0] : accept;
 
-      if (endpoint.authType === 'api-key' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        upstreamHeaders[config.keyHeader || 'X-API-Key'] = config.keyValue || '';
-      } else if (endpoint.authType === 'bearer' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        upstreamHeaders['Authorization'] = `Bearer ${config.token || ''}`;
-      } else if (endpoint.authType === 'basic' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        const encoded = Buffer.from(`${config.username || ''}:${config.password || ''}`).toString('base64');
-        upstreamHeaders['Authorization'] = `Basic ${encoded}`;
-      }
+      Object.assign(upstreamHeaders, await buildAuthHeaders(endpoint));
 
       const requestContext: RequestContext = {
         req: req as unknown as Request,

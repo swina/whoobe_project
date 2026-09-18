@@ -2,6 +2,9 @@ import { Router, type Request, type Response } from 'express';
 import { requirePermission, PERMISSIONS } from './auth.js';
 import { proxyFetch } from './proxy-engine.js';
 import { logGatewayError } from './log-error.js';
+import { buildAuthHeaders } from './gateway-auth-headers.js';
+import { resolveFieldPath } from './resolve-field-path.js';
+import { applyResultFilters, type GatewayResultFilter } from './gateway-result-filters.js';
 
 export function createResolveHandler(): Router {
   const router = Router();
@@ -11,8 +14,8 @@ export function createResolveHandler(): Router {
       const { getGatewayEndpointByName, listGatewayRoutes } = await import('@whoobe-cms/core/server');
       const { resolveGatewayUrl } = await import('./resolve-gateway-url.js');
 
-      const { endpointName, fieldPath, routePath, params } = req.body as {
-        endpointName?: string; fieldPath?: string; routePath?: string; params?: Record<string, string>;
+      const { endpointName, fieldPath, routePath, params, filters } = req.body as {
+        endpointName?: string; fieldPath?: string; routePath?: string; params?: Record<string, string>; filters?: GatewayResultFilter[];
       };
 
       if (!endpointName) {
@@ -44,22 +47,17 @@ export function createResolveHandler(): Router {
       }
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-
-      if (endpoint.authType === 'api-key' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        headers[config.keyHeader || 'X-API-Key'] = config.keyValue || '';
-      } else if (endpoint.authType === 'bearer' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        headers['Authorization'] = `Bearer ${config.token || ''}`;
-      } else if (endpoint.authType === 'basic' && endpoint.authConfig) {
-        const config = endpoint.authConfig as Record<string, string>;
-        const encoded = Buffer.from(`${config.username || ''}:${config.password || ''}`).toString('base64');
-        headers['Authorization'] = `Basic ${encoded}`;
-      }
+      Object.assign(headers, await buildAuthHeaders(endpoint));
 
       const result = await proxyFetch(upstreamUrl, routeMethod, headers, undefined, 15000);
 
-      const resolvedValue = fieldPath ? resolveFieldPath(result.body, fieldPath) : result.body;
+      let resolvedValue = fieldPath ? resolveFieldPath(result.body, fieldPath) : result.body;
+
+      // Result filters only make sense against an array (the repeater
+      // case) - a scalar/object resolvedValue passes through unfiltered.
+      if (filters?.length && Array.isArray(resolvedValue)) {
+        resolvedValue = applyResultFilters(resolvedValue, filters);
+      }
 
       res.json({
         endpointName,
@@ -74,30 +72,4 @@ export function createResolveHandler(): Router {
   });
 
   return router;
-}
-
-function resolveFieldPath(data: unknown, path: string): unknown {
-  const parts = path.split('.');
-  let current: unknown = data;
-
-  for (const part of parts) {
-    if (current === null || current === undefined) return undefined;
-    const arrayMatch = part.match(/^(\w+)\[(\d+)\]$/);
-    if (arrayMatch) {
-      const [, key, indexStr] = arrayMatch;
-      const index = parseInt(indexStr, 10);
-      if (typeof current !== 'object') return undefined;
-      const arr = (current as Record<string, unknown>)[key];
-      if (!Array.isArray(arr)) return undefined;
-      current = arr[index];
-    } else if (Array.isArray(current)) {
-      return undefined;
-    } else if (typeof current === 'object') {
-      current = (current as Record<string, unknown>)[part];
-    } else {
-      return undefined;
-    }
-  }
-
-  return current;
 }

@@ -715,7 +715,7 @@ const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Documents', section: 'documents', icon: FileText },
   { name: 'Outgoing Mail', section: 'mail', icon: Mail },
   { name: 'Themes', section: 'themes', icon: Palette },
-  { name: 'API Gateway', section: 'gateway', icon: Network },
+  { name: 'Integrations', section: 'gateway', icon: Network },
   { name: 'System Logs', section: 'system-logs', icon: ScrollText },
   { name: 'Settings', section: 'settings', icon: Settings }
 ]
@@ -748,8 +748,8 @@ const sectionLabels: Record<SectionKind, string> = {
   components: 'Components',
   mail: 'Outgoing Mail',
   themes: 'Themes',
-  gateway: 'API Gateway',
-  'gateway-plugins': 'Gateway Plugins',
+  gateway: 'Integrations',
+  'gateway-plugins': 'Integration Plugins',
   'system-logs': 'System Logs',
   settings: 'Settings'
 }

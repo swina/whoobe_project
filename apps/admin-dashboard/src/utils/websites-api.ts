@@ -305,6 +305,21 @@ export async function saveStripHtmlCommentsSetting(baseUrl: string, enabled: boo
   })
 }
 
+export async function fetchLoggingEnabled(baseUrl: string): Promise<boolean> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/logging`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return typeof body.enabled === 'boolean' ? body.enabled : true
+}
+
+export async function saveLoggingEnabled(baseUrl: string, enabled: boolean): Promise<void> {
+  await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/logging`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+    credentials: 'include',
+  })
+}
+
 // Legacy single-theme API (backward-compatible) — reads/writes the default theme.
 export interface WebsiteThemeLegacy {
   colors: { name: string; hex: string }[]

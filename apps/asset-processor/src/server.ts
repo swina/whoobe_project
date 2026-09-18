@@ -29,8 +29,9 @@ import {
   deleteAssetRecord,
   updateAssetMetadata,
   loadRootEnv,
+  isLoggingEnabled,
 } from '@whoobe-cms/core/server';
-import { createLogger } from '@whoobe-cms/logger';
+import { createLogger, attachLoggingToggle } from '@whoobe-cms/logger';
 
 const logger = await createLogger('asset-processor', {
   file: true,
@@ -43,6 +44,10 @@ const logger = await createLogger('asset-processor', {
 // instead of one-off shell vars. Shell-exported vars win, which is how
 // ./dev-cms.sh --hostname overrides WHOOBE_HOSTNAME-derived values.
 loadRootEnv();
+
+// Wired up after loadRootEnv() so the first poll's DB connection has its
+// env vars (DB_HOST etc.) in place.
+attachLoggingToggle(logger, isLoggingEnabled);
 
 const app = express();
 const port = process.env.PORT || 3002;
