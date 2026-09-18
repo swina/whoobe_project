@@ -100,7 +100,7 @@ export async function fetchAiInfo(): Promise<AiInfo | null> {
 
 export interface AiGeneratedRecord {
   id: string
-  kind: 'snippet' | 'page'
+  kind: 'snippet' | 'page' | 'image'
   prompt: string
   provider: string | null
   model: string | null

@@ -20,10 +20,13 @@
       </div>
       <button
         v-for="record in records"
+        v-if="record.kind != 'image'"
         :key="record.id"
+        :data-type="record.kind"
         type="button"
         class="w-full text-left px-3 py-2 border-b hover:bg-violet-50 cursor-pointer"
         :title="`Import as ${record.kind} (${record.provider} · ${record.model})`"
+        
         @click="emit('import', record)"
       >
         <div class="flex items-center gap-1.5 text-[9px] mb-1">

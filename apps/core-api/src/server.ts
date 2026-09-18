@@ -1,6 +1,8 @@
 import {
   randomBytes, randomUUID
 } from 'node:crypto';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import express, { Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -193,6 +195,8 @@ import {
   sendPushNotification,
   initializePushProvider,
   getAssetById,
+  getAssetByPath,
+  listAssetsUnderFolder,
   type PushProviderName,
   type AuthenticatedRequest,
   type SearchOptions,
@@ -209,7 +213,7 @@ import { runClassMigration, runObjectMigration, runDocumentMigration, runPromote
 import { fetchAndConvert } from '@whoobe-cms/figma-converter';
 
 
-import { createLogger } from '@whoobe-cms/logger';
+import { createLogger, resolveLogDir } from '@whoobe-cms/logger';
 
 const logger = await createLogger('core-api', {
   file: true,
@@ -5067,6 +5071,111 @@ app.post('/figma/import', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
     res.status(500).json({ error: error?.message || 'Failed to import from Figma' });
   }
 });
+
+// System log viewer endpoints — proxy to asset-processor DAM data using the
+// service token. These sit on core-api so the admin-dashboard's session
+// cookie (same origin as core-api) authenticates the user, then core-api
+// fetches from asset-processor with the DAM_SERVICE_TOKEN.
+const DAM_SERVICE_TOKEN = process.env.DAM_SERVICE_TOKEN ?? ''
+const ASSET_PROCESSOR_URL = process.env.ASSET_PROCESSOR_URL ?? 'http://localhost:3002'
+
+// Local, not-yet-rotated (or not-yet-uploaded) log files live on disk under
+// LOG_DIR/<appName>. These are the freshest logs - DAM only receives a file
+// once pino-roll rotates it - so the viewer reads this directory directly
+// rather than waiting on rotation/upload. Entries are addressed with a
+// "local:" path prefix so /download can tell them apart from DAM paths.
+const SYSTEM_LOG_DIR = resolveLogDir()
+
+function listLocalLogFiles(appName: string): { filename: string; path: string; size: number; uploadedAt?: string }[] {
+  const dir = join(SYSTEM_LOG_DIR, appName)
+  if (!existsSync(dir)) return []
+  return readdirSync(dir)
+    .filter((filename) => !filename.startsWith('.'))
+    .map((filename) => {
+      const stat = statSync(join(dir, filename))
+      return {
+        filename,
+        path: `local:${appName}/${filename}`,
+        size: stat.size,
+        uploadedAt: stat.mtime.toISOString(),
+      }
+    })
+}
+
+app.get('/api/v1/system/logs', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const appName = req.query.app as string
+    const month = req.query.month as string | undefined
+    if (!appName) {
+      res.status(400).json({ error: 'Missing app query param' })
+      return
+    }
+    const folderPrefix = month
+      ? `private/logs/${appName}/${month}`
+      : `private/logs/${appName}`
+    const records = await listAssetsUnderFolder(folderPrefix)
+    const archived = records.map((a: any) => ({
+      filename: a.filename,
+      path: a.pimcorePath,
+      size: a.sizeBytes,
+      uploadedAt: a.createdAt,
+    }))
+    const local = listLocalLogFiles(appName)
+    const archivedFilenames = new Set(archived.map((f) => f.filename))
+    const files = [...local.filter((f) => !archivedFilenames.has(f.filename)), ...archived]
+    res.json({ files })
+  } catch (error: any) {
+    logger.error({ err: error, module: 'system-logs' }, 'Failed to list log files')
+    res.status(500).json({ error: 'Failed to list log files' })
+  }
+})
+
+app.get('/api/v1/system/logs/download', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const logPath = req.query.path as string
+    if (!logPath) {
+      res.status(400).json({ error: 'Missing path query param' })
+      return
+    }
+
+    if (logPath.startsWith('local:')) {
+      const relative = logPath.slice('local:'.length)
+      const resolved = resolve(SYSTEM_LOG_DIR, relative)
+      if (!resolved.startsWith(resolve(SYSTEM_LOG_DIR) + '/')) {
+        res.status(400).json({ error: 'Invalid path' })
+        return
+      }
+      if (!existsSync(resolved)) {
+        res.status(404).json({ error: 'Log file not found' })
+        return
+      }
+      res.type('text/plain').send(readFileSync(resolved, 'utf-8'))
+      return
+    }
+
+    const asset = await getAssetByPath(logPath)
+    if (!asset) {
+      res.status(404).json({ error: 'Log file not found' })
+      return
+    }
+    const s3Key = asset.s3Key
+    const url = `${ASSET_PROCESSOR_URL}/dam-asset/${encodeURIComponent(s3Key)}`
+    const headers: Record<string, string> = {}
+    if (DAM_SERVICE_TOKEN) {
+      headers['Authorization'] = `Bearer ${DAM_SERVICE_TOKEN}`
+    }
+    const upstream = await fetch(url, { headers })
+    if (!upstream.ok) {
+      res.status(502).json({ error: 'Failed to fetch log content from storage' })
+      return
+    }
+    const text = await upstream.text()
+    res.type('text/plain').send(text)
+  } catch (error: any) {
+    logger.error({ err: error, module: 'system-logs' }, 'Failed to download log file')
+    res.status(500).json({ error: 'Failed to download log file' })
+  }
+})
 
 // On-the-fly bootstrap: create the database if it doesn't exist, apply any
 // pending migrations, and seed default roles/permissions/admin user. Runs
