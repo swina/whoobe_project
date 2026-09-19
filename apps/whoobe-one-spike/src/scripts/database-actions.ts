@@ -391,6 +391,32 @@ export async function loadSnippet(editor: EditorStore, id: string): Promise<void
   editor.setSnippetId(id)
 }
 
+/** Unwraps a document root (as produced by createEmptyDocumentRoot()/
+ *  loadSnippet()) down to the plain node a snippet actually stores: the
+ *  document's single child, or - if the user arranged multiple top-level
+ *  blocks - a single container subtree holding them all, or a fresh empty
+ *  container if the document has no children yet (a brand-new, never-
+ *  edited snippet). A non-document node (already a plain element) passes
+ *  through unchanged. Shared by saveSnippet() below and SaveSnippetModal.vue
+ *  (which falls back to the whole document when no specific element was
+ *  selected to save). */
+export function nodeFromDocument(doc: unknown): unknown {
+  if (doc && typeof doc === 'object' && (doc as any).tag === 'document') {
+    const children = Array.isArray((doc as any).blocks) ? (doc as any).blocks : []
+    if (children.length === 1) {
+      return children[0]
+    } else if (children.length > 1) {
+      const wrapper = new Element().Flexbox({ direction: 'col' })
+      wrapper.css.css = clean(wrapper.css.css)
+      wrapper.blocks = children
+      return wrapper
+    } else {
+      return new Element().Flexbox({ direction: 'col' })
+    }
+  }
+  return doc
+}
+
 /** Saves the current document as a whoobe_one_snippets subtree - create on
  *  first save (no id yet), overwrite in place after that. Mirrors
  *  saveMailTemplate() but for snippets; never asks for a name/path (the
@@ -404,23 +430,7 @@ export async function loadSnippet(editor: EditorStore, id: string): Promise<void
 export async function saveSnippet(editor: EditorStore): Promise<void> {
   if (!editor.page || !editor.document) return
   editor.page.json.blocks = editor.document
-  const doc = editor.document as any
-  let node: unknown = doc
-
-  if (doc && typeof doc === 'object' && doc.tag === 'document') {
-    const children = Array.isArray(doc.blocks) ? doc.blocks : []
-    if (children.length === 1) {
-      node = children[0]
-    } else if (children.length > 1) {
-      const wrapper = new Element().Flexbox({ direction: 'col' })
-      wrapper.css.css = clean(wrapper.css.css)
-      wrapper.blocks = children
-      node = wrapper
-    } else {
-      node = new Element().Flexbox({ direction: 'col' })
-    }
-  }
-
+  const node = nodeFromDocument(editor.document)
   const storedNode = JSON.parse(JSON.stringify(node))
 
   if (!editor.page.id) {
@@ -431,27 +441,39 @@ export async function saveSnippet(editor: EditorStore): Promise<void> {
     })
     editor.page.id = created.id
     editor.setSnippetId(created.id)
+    notifyParentSnippetSaved({ id: created.id, name: created.name, category: created.category, created: true, ownDocument: true })
   } else {
-    await apiUpdateSnippet(String(editor.page.id), {
+    const updated = await apiUpdateSnippet(String(editor.page.id), {
       name: editor.page.name || 'Untitled',
       category: editor.page.category || '',
       node: storedNode,
     })
+    notifyParentSnippetSaved({ id: updated.id, name: updated.name, category: updated.category, created: false, ownDocument: true })
   }
-
-  // Notify the embedding admin-dashboard that a snippet was saved, so it
-  // can refresh its snippet list.
-  notifyParentSnippetSaved()
 }
 
 /** Posts a 'whoobe-one:snippet-saved' message to the parent window (the
- *  admin-dashboard that embeds this editor), so the dashboard can refresh
- *  its snippet list. Only fires when running inside an iframe (parentOrigin
- *  is set by ?parentOrigin= in Editor.vue). */
-function notifyParentSnippetSaved() {
+ *  admin-dashboard that embeds this editor) - SnippetEditorEmbed.vue's own
+ *  listener uses `created`/`ownDocument`/`id` to rekey a brand-new snippet
+ *  tab onto its real backend id (mirroring MasterPageTab.vue's own
+ *  onPageCreated()), and DashboardLayout.vue's separate global listener
+ *  refreshes the Snippets list on either create or update. Only fires when
+ *  running inside an iframe (parentOrigin is set by ?parentOrigin= in
+ *  Editor.vue). Exported so SaveSnippetModal.vue (a second, independent
+ *  snippet-saving path) can post the same notification after its own
+ *  create/update calls.
+ *
+ *  `ownDocument` distinguishes "this editor's own open document" (this
+ *  function's only caller, saveSnippet(), always operates on it - always
+ *  true here) from SaveSnippetModal.vue's OTHER use: carving an arbitrary
+ *  selected sub-block out into a separate, unrelated saved snippet while
+ *  editing some other document/page. Only an own-document *create* means
+ *  "this tab's placeholder id just became real" - an unrelated sub-block
+ *  save must never rekey whatever tab happens to be open. */
+export function notifyParentSnippetSaved(snippet: { id: string; name: string; category: string; created: boolean; ownDocument: boolean }) {
   if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
     try {
-      window.parent.postMessage({ type: 'whoobe-one:snippet-saved' }, '*')
+      window.parent.postMessage({ type: 'whoobe-one:snippet-saved', ...snippet }, '*')
     } catch {
       // Silently ignore cross-origin posting errors.
     }

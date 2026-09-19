@@ -2,12 +2,12 @@
   <div class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="$emit('close')">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col overflow-hidden">
       <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
-        <span class="text-xs font-semibold text-gray-600">{{ mode === 'update' ? 'Update snippet' : 'Save as snippet' }}</span>
+        <span class="text-xs font-semibold text-gray-600">{{ modalTitle }}</span>
         <button class="flex items-center gap-1 text-gray-400 hover:text-gray-700 text-xs" @click="$emit('close')"><X class="w-3.5 h-3.5" /> Close</button>
       </div>
 
       <form class="p-4 space-y-4 text-xs" @submit.prevent="submit">
-        <div v-if="snippetsStore.items.length" class="flex gap-4 text-gray-600">
+        <div v-if="props.element && snippetsStore.items.length" class="flex gap-4 text-gray-600">
           <label class="flex items-center gap-1.5 cursor-pointer">
             <input type="radio" value="new" v-model="mode" />
             New snippet
@@ -133,9 +133,15 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { X } from '@lucide/vue'
 import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
+import { nodeFromDocument, notifyParentSnippetSaved } from '../scripts/database-actions'
 
 const props = defineProps<{
-  element: any
+  // Omitted when there's nothing specific selected to save - the brand-new-
+  // snippet flow (BlockEditor.vue auto-opens this modal for a freshly
+  // created, never-saved snippet document, see its own comment) falls back
+  // to the whole current document via nodeFromDocument() below rather than
+  // erroring on an undefined element.
+  element?: any
 }>()
 
 const emit = defineEmits<{
@@ -169,6 +175,14 @@ const categoryOptions = computed(() => {
   const fromSnippets = snippetsStore.items.map((s) => s.category)
   return Array.from(new Set([...builtIn, ...fromSnippets]))
 })
+
+// No element given at all means this is the brand-new-snippet flow
+// (BlockEditor.vue auto-opens this modal for a freshly created, never-
+// saved snippet document) rather than "save this selected block as a
+// snippet" - "New snippet" reads correctly for that case regardless of
+// `mode`, since the "Update existing" toggle is hidden in the template
+// when there's no element to offer as an alternative to it.
+const modalTitle = computed(() => (mode.value === 'update' ? 'Update snippet' : props.element ? 'Save as snippet' : 'New snippet'))
 
 watch(targetSnippetId, (id) => {
   const snippet = snippetsStore.items.find((s) => s.id === id)
@@ -210,16 +224,49 @@ async function submit() {
 
   submitting.value = true
   try {
+    // No element selected - the brand-new-snippet flow - falls back to
+    // the whole current document, unwrapped the same way saveSnippet()
+    // (BlockEditor.vue's own top-bar Save, in snippet mode) unwraps it, so
+    // both paths store the identical shape for a snippet with no explicit
+    // sub-selection.
+    const rawNode = props.element ?? nodeFromDocument(editor.document)
     // Deep-snapshot to plain JSON - strips Vue's reactivity proxy so what
     // gets stored (and later re-cloned on every drop, see BlockEditor.vue)
     // is an ordinary object graph, not a Proxy tied to this component's
     // lifetime.
-    const node = JSON.parse(JSON.stringify(props.element))
+    const node = JSON.parse(JSON.stringify(rawNode))
     const input = { name: name.value.trim(), category, icon: icon.value || null, node }
+    // Whether this save is naming/updating the editor's own open document
+    // (no specific element given) rather than carving an unrelated
+    // sub-block out as a separate saved snippet - see
+    // notifyParentSnippetSaved()'s own comment for why this matters (only
+    // an own-document *create* should ever rekey a dashboard tab).
+    const isOwnDocument = !props.element
     if (mode.value === 'update') {
-      await snippetsStore.update(targetSnippetId.value, input)
+      // Only reachable with an element given - the "Update existing" radio
+      // is hidden in the template otherwise (see the `v-if` above it).
+      const updated = await snippetsStore.update(targetSnippetId.value, input)
+      notifyParentSnippetSaved({ id: updated.id, name: updated.name, category: updated.category, created: false, ownDocument: isOwnDocument })
     } else {
-      await snippetsStore.save(input)
+      const created = await snippetsStore.save(input)
+      // No element given means this modal *is* the current snippet
+      // document being named for the first time (not a separate reusable
+      // block carved out of a bigger page) - point editor.page/snippetId
+      // at the row we just created so the top-bar Save button updates it
+      // in place afterward instead of creating a second, duplicate
+      // snippet the next time it's clicked.
+      if (isOwnDocument && editor.page && !editor.page.id) {
+        editor.page.id = created.id
+        editor.page.name = created.name
+        editor.page.category = created.category
+        editor.setSnippetId(created.id)
+      }
+      // Notify the embedding admin-dashboard the same way saveSnippet()
+      // (the top-bar Save button, in snippet mode) already does - without
+      // this, the Snippets list stays stale and, for the brand-new-snippet
+      // flow, the tab never rekeys off its `new:<uuid>` placeholder id
+      // (SnippetEditorEmbed.vue's own listener).
+      notifyParentSnippetSaved({ id: created.id, name: created.name, category: created.category, created: true, ownDocument: isOwnDocument })
     }
     emit('close')
   } catch (e: any) {

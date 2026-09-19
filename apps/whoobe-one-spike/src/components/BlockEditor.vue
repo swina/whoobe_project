@@ -248,6 +248,15 @@
 
     <EditorSettingsModal v-if="showEditorSettings" @close="showEditorSettings = false" />
 
+    <!-- Auto-opened for a brand-new, never-saved snippet (admin-dashboard's
+         "+ New Snippet" - see showNewSnippetModal's own watcher below): no
+         `element` prop, so it falls back to the whole (still empty)
+         document and, on submit, points editor.page/snippetId at the row
+         it creates - the same modal FloatingToolbar.vue opens for "Save as
+         snippet" on a selected block mid-page, reused here rather than a
+         second bespoke naming dialog. -->
+    <SaveSnippetModal v-if="showNewSnippetModal" @close="showNewSnippetModal = false" />
+
     <div v-if="message" class="shrink-0 px-4 py-1.5 text-white text-xs" :class="messageKind === 'error' ? 'bg-rose-600' : 'bg-emerald-600'">
       {{ message }}
     </div>
@@ -322,6 +331,7 @@ import FigmaImportModal from './FigmaImportModal.vue'
 import AiGeneratedPanel from './AiGeneratedPanel.vue'
 import AiGeneratedPreviewModal from './AiGeneratedPreviewModal.vue'
 import EditorSettingsModal from './EditorSettingsModal.vue'
+import SaveSnippetModal from './SaveSnippetModal.vue'
 import PwaConfigPanel from './PwaConfigPanel.vue'
 import GatewayPanel from './GatewayPanel.vue'
 import type { AiGeneratedRecord } from '../ai-api'
@@ -351,6 +361,24 @@ const showAiGeneratePage = ref(false)
 const showAiGenerateImage = ref(false)
 const showFigmaImport = ref(false)
 const showEditorSettings = ref(false)
+const showNewSnippetModal = ref(false)
+
+// Auto-opens SaveSnippetModal the moment a brand-new snippet session starts
+// (Editor.vue's `snippetNew` query-param branch calls setSnippetMode(true)
+// on a page with no id yet) - admin-dashboard's "+ New Snippet" used to drop
+// straight into a blank canvas with no prompt for a name/category at all,
+// so the very first Save (previously the only path that worked - see
+// SaveSnippetModal.vue's own header comment on the `element` prop) silently
+// created a snippet named "Untitled snippet". Fires once per page: it
+// re-arms itself if `onNew()` starts a fresh snippet-less document and the
+// user later re-enters snippet mode some other way (rare, but Editor.vue
+// itself does this on route param changes within the same iframe).
+watch(
+  () => [editor.snippetMode, editor.page?.id] as const,
+  ([inSnippetMode, pageId]) => {
+    showNewSnippetModal.value = !!inSnippetMode && !pageId
+  }
+)
 
 // Inject theme colors as @theme CSS custom properties so @tailwindcss/browser
 // recognizes named classes like `bg-light-grey`. Watches editor.document
