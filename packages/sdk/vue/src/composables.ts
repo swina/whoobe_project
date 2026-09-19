@@ -100,7 +100,7 @@ export function useQuery(params: { class: string; filters?: unknown[]; orderBy?:
 
 /** Form submission helper mirroring DefaultForm's behavior: resets on
  *  success, keeps values on error, exposes the result popup state. */
-export function useForm(formConfig: { targetClassId: string; successMessage?: string; errorMessage?: string; notify?: unknown }) {
+export function useForm(formConfig: { targetClassId: string; gatewayEndpointName?: string; gatewayRoutePath?: string; successMessage?: string; errorMessage?: string; notify?: unknown }) {
   const ctx = useWhoobe()
   const submitting = ref(false)
   const result = ref<{ ok: boolean; message: string } | null>(null)
@@ -109,7 +109,11 @@ export function useForm(formConfig: { targetClassId: string; successMessage?: st
     submitting.value = true
     result.value = null
     try {
-      await ctx.api.submitForm(formConfig.targetClassId, attributes, { notify: formConfig.notify })
+      await ctx.api.submitForm(formConfig.targetClassId, attributes, {
+        notify: formConfig.notify,
+        gatewayEndpointName: formConfig.gatewayEndpointName,
+        gatewayRoutePath: formConfig.gatewayRoutePath,
+      })
       formEl?.reset()
       result.value = { ok: true, message: formConfig.successMessage || 'Submitted.' }
       return { ok: true }

@@ -1,4 +1,4 @@
-function gatewayBaseUrl(): string {
+export function gatewayBaseUrl(): string {
   if (typeof import.meta !== 'undefined' && import.meta.env.VITE_GATEWAY_URL) {
     return import.meta.env.VITE_GATEWAY_URL
   }

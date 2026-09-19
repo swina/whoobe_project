@@ -5,6 +5,7 @@ import { GATEWAY_CORE_API_URL, GATEWAY_ASSET_PROCESSOR_URL } from './config.js';
 import { createAdminRoutes } from './admin-routes.js';
 import { createRemoteRouter, setLoadedPlugins } from './remote-router.js';
 import { createResolveHandler } from './resolve-handler.js';
+import { createSubmitHandler } from './submit-handler.js';
 import { loadPlugins } from './plugin-loader.js';
 import type { GatewayPlugin } from './plugin-types.js';
 import { PERMISSIONS, requirePermission } from './auth.js';
@@ -108,6 +109,7 @@ export function createRouter(): Router {
   router.use('/api/v1/gateway', createAdminRoutes(plugins));
   router.use('/api/remote', createRemoteRouter());
   router.use('/api/v1/gateway/resolve', createResolveHandler());
+  router.use('/api/v1/gateway/submit', createSubmitHandler());
 
   return router;
 }

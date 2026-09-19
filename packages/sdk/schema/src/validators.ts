@@ -39,6 +39,8 @@ export const formNotifySchema = z.object({
 export const formConfigSchema: z.ZodType<ElementFormConfig> = z.object({
   enabled: z.boolean(),
   targetClassId: z.string(),
+  gatewayEndpointName: z.string().optional(),
+  gatewayRoutePath: z.string().optional(),
   successMessage: z.string(),
   errorMessage: z.string(),
   successRedirectUrl: z.string(),

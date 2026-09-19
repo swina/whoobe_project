@@ -874,6 +874,13 @@ async function testRoute(route: GatewayRoute) {
   testingId.value = route.id
   try {
     const result = await testRouteApi(route.id)
+    if (result.error) {
+      // Upstream rejected the call (e.g. bad/expired auth) - the route's
+      // existing schema (if any) is left untouched server-side, so don't
+      // clobber the modal with the error's own shape either.
+      errorMsg.value = `Upstream returned ${result.status} - schema not updated: ${JSON.stringify(result.body)}`
+      return
+    }
     schemaData.value = result.schema
     schemaRouteId.value = route.id
     showSchemaModal.value = true
@@ -900,6 +907,10 @@ async function viewRouteSchema(route: GatewayRoute) {
 async function refreshRouteSchema(routeId: string) {
   try {
     const result = await refreshSchema(routeId)
+    if (result.error) {
+      errorMsg.value = `Upstream returned ${result.status} - schema not updated: ${JSON.stringify(result.body)}`
+      return
+    }
     schemaData.value = result.schema
   } catch (e: any) {
     errorMsg.value = e?.message || 'Refresh failed'

@@ -169,7 +169,7 @@ export async function deleteRoute(id: string): Promise<void> {
   }
 }
 
-export async function testRoute(id: string): Promise<{ status: number; schema: Record<string, unknown>; sample: unknown }> {
+export async function testRoute(id: string): Promise<{ status: number; error?: boolean; body?: unknown; schema?: Record<string, unknown>; sample?: unknown }> {
   const res = await fetch(`${baseUrl()}/api/v1/gateway/routes/${id}/test`, {
     method: 'POST',
     credentials: 'include',
@@ -192,7 +192,7 @@ export async function getRouteSchema(id: string): Promise<GatewaySchema> {
   return parseJsonOrThrow(res)
 }
 
-export async function refreshSchema(id: string): Promise<{ status: number; schema: Record<string, unknown> }> {
+export async function refreshSchema(id: string): Promise<{ status: number; error?: boolean; body?: unknown; schema?: Record<string, unknown> }> {
   const res = await fetch(`${baseUrl()}/api/v1/gateway/routes/${id}/refresh-schema`, {
     method: 'POST',
     credentials: 'include',
