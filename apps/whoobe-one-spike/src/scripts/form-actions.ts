@@ -5,6 +5,7 @@
 // wiring, not a Vue directive or component of its own.
 import type Element from './ElementsClass.js'
 import { getDefaultCoreApiUrl } from '../core-api-url'
+import { gatewayBaseUrl } from '../gateway-api'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -14,9 +15,10 @@ export interface FormSubmitResult {
 }
 
 /** Attaches a submit handler to `formEl`, gated on `doc.formConfig.enabled`
- *  + a chosen target class - a no-op mount (returns a no-op cleanup) for
- *  any Form that isn't configured yet, same "absent config does nothing"
- *  convention as mountAnimation()'s `!element.gsap?.animation` guard.
+ *  + a chosen target (a data class or a gateway endpoint) - a no-op mount
+ *  (returns a no-op cleanup) for any Form that isn't configured yet, same
+ *  "absent config does nothing" convention as mountAnimation()'s
+ *  `!element.gsap?.animation` guard.
  *
  *  On submit: collects every input's value by its `name` attribute via the
  *  browser's own FormData serialization (no manual DOM walk, and this is
@@ -36,7 +38,7 @@ export function mountFormSubmit(
   onResult: (result: FormSubmitResult | null) => void
 ): () => void {
   const config = (doc as any).formConfig
-  if (!config?.enabled || !config.targetClassId) return () => {}
+  if (!config?.enabled || (!config.targetClassId && !config.gatewayEndpointName)) return () => {}
 
   // A hidden decoy field bots tend to fill in, real visitors never see or
   // touch - injected directly rather than as a real Element/input type so
@@ -57,15 +59,29 @@ export function mountFormSubmit(
     onResult(null)
     const attributes = Object.fromEntries(new FormData(formEl).entries())
     try {
-      const res = await fetch(`${getDefaultCoreApiUrl()}/public/forms/${config.targetClassId}/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // notify is included here (rather than looked up server-side by
-        // classId) since the editor already has this Form's own config in
-        // hand at submit time - see docs/plans/forms/cms-forms.md's Phase 2
-        // section 4.
-        body: JSON.stringify({ attributes, formConfig: { notify: config.notify } }),
-      })
+      // Gateway-targeted Forms (config.gatewayEndpointName set) forward
+      // straight to the Gateway's public submit route instead of core-api's
+      // Data Object one - same fork ApiClient.submitForm() makes for
+      // published sites (packages/sdk/renderer/src/api-client.ts).
+      const res = config.gatewayEndpointName
+        ? await fetch(`${gatewayBaseUrl()}/api/v1/gateway/submit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              endpointName: config.gatewayEndpointName,
+              routePath: config.gatewayRoutePath || undefined,
+              attributes,
+            }),
+          })
+        : await fetch(`${getDefaultCoreApiUrl()}/public/forms/${config.targetClassId}/submit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // notify is included here (rather than looked up server-side by
+            // classId) since the editor already has this Form's own config in
+            // hand at submit time - see docs/plans/forms/cms-forms.md's Phase 2
+            // section 4.
+            body: JSON.stringify({ attributes, formConfig: { notify: config.notify } }),
+          })
       if (!res.ok) throw new Error(`status ${res.status}`)
       if (config.successRedirectUrl) {
         window.location.href = config.successRedirectUrl

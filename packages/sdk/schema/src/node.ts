@@ -41,6 +41,10 @@ export interface ElementFormNotifyConfig {
 export interface ElementFormConfig {
   enabled: boolean
   targetClassId: string
+  /** When set, submissions POST to this Gateway endpoint/route instead of
+   *  creating a Data Object - targetClassId is ignored. */
+  gatewayEndpointName?: string
+  gatewayRoutePath?: string
   successMessage: string
   errorMessage: string
   successRedirectUrl: string

@@ -53,12 +53,15 @@ export interface SearchParams {
 
 export class ApiClient implements RenderApi {
   private readonly base: string
+  gatewayUrl?: string
 
   constructor(
     baseUrl: string,
     private readonly fetchImpl: typeof fetch = globalThis.fetch,
+    gatewayUrl?: string,
   ) {
     this.base = baseUrl.replace(/\/+$/, '')
+    this.gatewayUrl = gatewayUrl
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -120,12 +123,41 @@ export class ApiClient implements RenderApi {
     return this.request<Record<string, unknown>>(`/public/search?${qs.toString()}`)
   }
 
-  /** POST /public/forms/:classId/submit - submits a form element's values. */
+  /** POST /public/forms/:classId/submit - submits a form element's values.
+   *  When `formConfig.gatewayEndpointName` is set, `classId` is ignored and
+   *  the values are forwarded to the Gateway's public submit endpoint
+   *  instead (a write to a third-party API/ERP rather than a Data Object) -
+   *  same "gatewayUrl falls back to :3001" convention as walk.ts's
+   *  resolveGatewayBinding() call for the read side. */
   async submitForm(
     classId: string,
     attributes: Record<string, unknown>,
-    formConfig?: unknown,
+    formConfig?: { gatewayEndpointName?: string; gatewayRoutePath?: string } & Record<string, unknown>,
   ): Promise<{ success: boolean }> {
+    if (formConfig?.gatewayEndpointName) {
+      const gatewayBase = (this.gatewayUrl || 'http://localhost:3001').replace(/\/+$/, '')
+      const res = await this.fetchImpl(`${gatewayBase}/api/v1/gateway/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpointName: formConfig.gatewayEndpointName,
+          routePath: formConfig.gatewayRoutePath || undefined,
+          attributes,
+        }),
+      })
+      if (!res.ok) {
+        let message = `Gateway submit ${res.status}`
+        try {
+          const body = await res.json()
+          if (body?.error) message = body.error
+        } catch {
+          // Keep the generic message.
+        }
+        throw new Error(message)
+      }
+      return res.json() as Promise<{ success: boolean }>
+    }
+
     return this.request<{ success: boolean }>(`/public/forms/${encodeURIComponent(classId)}/submit`, {
       method: 'POST',
       body: JSON.stringify({ attributes, formConfig }),

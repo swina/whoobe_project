@@ -92,10 +92,18 @@ export const useGatewayStore = defineStore('gateway', () => {
 
   async function testRouteAndGetSchema(routeId: string): Promise<GatewaySchema> {
     const result = await testRoute(routeId)
+    if (result.error) {
+      // Upstream rejected the call - the route's existing schema (if any)
+      // was left untouched server-side, so don't overwrite currentSchema
+      // with the error response's own shape.
+      throw new Error(`Upstream returned ${result.status} - schema not updated.`)
+    }
     currentSchema.value = {
       id: '',
       routeId,
-      schema: result.schema,
+      // Guaranteed present: the guard above already returned on `error`,
+      // and the server only omits `schema` on that branch.
+      schema: result.schema!,
       samplePayload: result.sample,
       inferredAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -113,6 +121,9 @@ export const useGatewayStore = defineStore('gateway', () => {
 
   async function refreshRouteSchema(routeId: string): Promise<void> {
     const result = await refreshSchema(routeId)
+    if (result.error) {
+      throw new Error(`Upstream returned ${result.status} - schema not updated.`)
+    }
     currentSchema.value = {
       id: '',
       routeId,

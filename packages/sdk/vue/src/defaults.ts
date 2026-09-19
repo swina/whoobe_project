@@ -216,7 +216,11 @@ export const DefaultForm: NodeComponent = defineComponent({
       const formEl = e.currentTarget as HTMLFormElement
       const attributes = Object.fromEntries(new FormData(formEl).entries())
       try {
-        await (ctx.api as WhoobeApi).submitForm(fc.targetClassId, attributes, { notify: fc.notify })
+        await (ctx.api as WhoobeApi).submitForm(fc.targetClassId, attributes, {
+          notify: fc.notify,
+          gatewayEndpointName: fc.gatewayEndpointName,
+          gatewayRoutePath: fc.gatewayRoutePath,
+        })
         formEl.reset()
         result.value = { ok: true, message: fc.successMessage || 'Submitted.' }
       } catch {

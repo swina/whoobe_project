@@ -157,6 +157,18 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
 
       const result = await proxyFetch(upstreamUrl, route.method, headers, undefined, 15000);
 
+      // An error response (bad/expired auth, 4xx/5xx from the upstream) has
+      // a completely different shape from what a real success response
+      // looks like - inferring and persisting a schema from it would
+      // silently corrupt the route's schema (and every field-picker/data-
+      // binding UI built on top of it) with e.g. {status,message,
+      // correlationId,...} instead of the actual resource shape. Report the
+      // failure and leave whatever schema is already stored untouched.
+      if (result.status < 200 || result.status >= 300) {
+        res.json({ status: result.status, error: true, body: result.body });
+        return;
+      }
+
       const schema = inferSchema(result.body) as unknown as Record<string, unknown>;
       // The sample is persisted (for the schema/field-picker UI to re-fetch
       // later) and shown in this response - scrub anything shaped like a
@@ -244,6 +256,14 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
       Object.assign(headers, await buildAuthHeaders(endpoint));
 
       const result = await proxyFetch(upstreamUrl, route.method, headers, undefined, 15000);
+
+      // Same guard as /test above - never let an error response's shape
+      // overwrite a route's real, previously-inferred schema.
+      if (result.status < 200 || result.status >= 300) {
+        res.json({ status: result.status, error: true, body: result.body });
+        return;
+      }
+
       const schema = inferSchema(result.body) as unknown as Record<string, unknown>;
       const sanitizedSample = redactSensitiveValues(result.body);
 

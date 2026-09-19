@@ -25,15 +25,48 @@
 
             <template v-if="formConfig.enabled">
               <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
-                Target class
-                <select v-model="formConfig.targetClassId" class="text-xs border rounded px-1.5 py-1 bg-white">
-                  <option value="">select a data class...</option>
-                  <option v-for="c in classes" :key="c.id" :value="c.id">{{ c.label }}</option>
+                Target
+                <select v-model="targetType" class="text-xs border rounded px-1.5 py-1 bg-white">
+                  <option value="database">Data class (create a record)</option>
+                  <option value="gateway">Gateway endpoint (forward to a third-party API)</option>
                 </select>
               </label>
-              <p class="text-[10px] text-gray-400">
-                Each input's Name attribute (Advanced &gt; Attributes) must match a field name on the target class.
-              </p>
+
+              <template v-if="targetType === 'database'">
+                <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
+                  Target class
+                  <select v-model="formConfig.targetClassId" class="text-xs border rounded px-1.5 py-1 bg-white">
+                    <option value="">select a data class...</option>
+                    <option v-for="c in classes" :key="c.id" :value="c.id">{{ c.label }}</option>
+                  </select>
+                </label>
+                <p class="text-[10px] text-gray-400">
+                  Each input's Name attribute (Advanced &gt; Attributes) must match a field name on the target class.
+                </p>
+              </template>
+
+              <template v-else>
+                <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
+                  Gateway endpoint
+                  <select v-model="formConfig.gatewayEndpointName" class="text-xs border rounded px-1.5 py-1 bg-white" @change="formConfig.gatewayRoutePath = ''">
+                    <option value="">select an endpoint...</option>
+                    <option v-for="e in endpoints" :key="e.id" :value="e.name">{{ e.name }}</option>
+                  </select>
+                </label>
+                <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
+                  Route
+                  <select v-model="formConfig.gatewayRoutePath" class="text-xs border rounded px-1.5 py-1 bg-white" :disabled="!writeRoutes.length">
+                    <option value="">first configured write route</option>
+                    <option v-for="r in writeRoutes" :key="r.id" :value="r.path">{{ r.method }} {{ r.path }}</option>
+                  </select>
+                </label>
+                <p v-if="formConfig.gatewayEndpointName && !writeRoutes.length" class="text-[10px] text-amber-600">
+                  This endpoint has no POST/PUT/PATCH route configured yet - add one in Gateway &gt; Endpoints.
+                </p>
+                <p class="text-[10px] text-gray-400">
+                  Each input's Name attribute (Advanced &gt; Attributes) must match a field the upstream API expects.
+                </p>
+              </template>
 
               <div class="flex flex-col gap-1 border rounded p-1.5">
                 <span class="text-[10px] font-semibold text-emerald-700 uppercase">On success</span>
@@ -116,12 +149,13 @@
 // writes straight through the same way AlpineControl.vue's fields do, and
 // there's no per-keystroke live-canvas side effect to defer here the way
 // DataBindingTransformControl.vue's per-keystroke valueMap rule editing had.
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { X } from '@lucide/vue'
 import { useEditorStore } from '../../store/editor'
 import { listDataClasses, type DataClassRecord } from '../../data-objects-api'
 import { listPages, type WhoobeOnePage } from '../../pages-api'
 import { listMailTemplates, type MailTemplateSummary } from '../../mail-templates-api'
+import { listEndpoints, listRoutes, type GatewayEndpoint, type GatewayRoute } from '../../gateway-api'
 import type { ElementFormConfig } from '../../scripts/ElementsClass.js'
 
 defineProps<{ attr?: string; title?: string }>()
@@ -130,6 +164,8 @@ const editor = useEditorStore()
 const classes = ref<DataClassRecord[]>([])
 const pages = ref<WhoobeOnePage[]>([])
 const mailTemplates = ref<MailTemplateSummary[]>([])
+const endpoints = ref<GatewayEndpoint[]>([])
+const routesByEndpoint = ref<Record<string, GatewayRoute[]>>({})
 const showModal = ref(false)
 
 onMounted(async () => {
@@ -147,6 +183,11 @@ onMounted(async () => {
     mailTemplates.value = await listMailTemplates()
   } catch (e) {
     console.warn('[FormConfigControl] Failed to load mail templates:', e)
+  }
+  try {
+    endpoints.value = await listEndpoints()
+  } catch (e) {
+    console.warn('[FormConfigControl] Failed to load gateway endpoints:', e)
   }
 })
 
@@ -168,8 +209,45 @@ const formConfig = computed(() => {
   return config
 })
 
+// Own ref rather than a plain computed off gatewayEndpointName: picking
+// "Gateway" from the dropdown before an endpoint is chosen would otherwise
+// have nothing to make the getter return 'gateway', snapping the <select>
+// straight back to 'database'. Re-synced only when the *selected element*
+// changes (formConfig's own identity, via the watch below) - never on a
+// field edit within the same Form, so the manual toggle sticks while the
+// user is still filling in the modal.
+const targetType = ref<'database' | 'gateway'>('database')
+watch(formConfig, (fc) => {
+  targetType.value = fc?.gatewayEndpointName ? 'gateway' : 'database'
+}, { immediate: true })
+
+watch(targetType, (v) => {
+  if (v === 'database' && formConfig.value) {
+    formConfig.value.gatewayEndpointName = ''
+    formConfig.value.gatewayRoutePath = ''
+  }
+})
+
+const writeRoutes = computed(() => {
+  const name = formConfig.value?.gatewayEndpointName
+  if (!name) return []
+  const endpoint = endpoints.value.find((e) => e.name === name)
+  if (!endpoint) return []
+  const routes = routesByEndpoint.value[endpoint.id]
+  if (routes === undefined) {
+    // Fire-and-forget: seeds the cache once, re-render picks it up when it
+    // resolves - same lazy, per-endpoint load as GatewayBindingPicker.vue.
+    listRoutes(endpoint.id)
+      .then((r) => { routesByEndpoint.value = { ...routesByEndpoint.value, [endpoint.id]: r } })
+      .catch((e) => console.warn('[FormConfigControl] Failed to load routes:', e))
+    return []
+  }
+  return routes.filter((r) => r.method !== 'GET')
+})
+
 const summaryLabel = computed(() => {
   if (!formConfig.value?.enabled) return 'Not configured'
+  if (formConfig.value.gatewayEndpointName) return `→ ${formConfig.value.gatewayEndpointName} (gateway)`
   const cls = classes.value.find((c) => c.id === formConfig.value?.targetClassId)
   return cls ? `→ ${cls.label}` : 'Enabled'
 })
