@@ -315,6 +315,14 @@
                 <td class="py-2 pr-3 text-slate-400 whitespace-nowrap">{{ formatLogTime(t.updatedAt) }}</td>
                 <td class="py-2 flex items-center gap-2">
                   <button type="button" class="px-2 py-0.5 rounded text-[11px] font-semibold text-indigo-300 hover:bg-indigo-600/20" @click="editTemplate(t.id)">Edit</button>
+                  <button
+                    v-if="t.kind === 'html'"
+                    type="button"
+                    class="px-2 py-0.5 rounded text-[11px] font-semibold text-emerald-300 hover:bg-emerald-600/20"
+                    @click="campaignModalTemplate = t"
+                  >
+                    Send as campaign
+                  </button>
                   <button type="button" class="px-2 py-0.5 rounded text-[11px] font-semibold text-rose-400 hover:bg-rose-600/20" @click="removeTemplate(t)">Delete</button>
                 </td>
               </tr>
@@ -377,6 +385,15 @@
       <MailTemplateEditorEmbed :template-id="editingId" />
     </div>
   </div>
+
+  <BrevoCampaignModal
+    v-if="campaignModalTemplate"
+    source-kind="mail-template"
+    :source-id="campaignModalTemplate.id"
+    :source-label="campaignModalTemplate.name"
+    :source-subject="campaignModalTemplate.subject"
+    @close="campaignModalTemplate = null"
+  />
 </template>
 
 <script setup lang="ts">
@@ -385,6 +402,7 @@ import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import { fetchMailSettings, saveMailSettings, sendTestMail, fetchMailLog, fetchMailLogEntry, resendMail, deleteMailLogEntries, type MailSettingsRecord, type MailLogEntry } from '../../utils/mail-settings-api'
 import { fetchMailTemplates, fetchMailTemplate, createMailTemplate, updateMailTemplate, deleteMailTemplate, type MailTemplateSummary } from '../../utils/mail-templates-api'
 import MailTemplateEditorEmbed from './MailTemplateEditorEmbed.vue'
+import BrevoCampaignModal from './BrevoCampaignModal.vue'
 
 const loading = ref(true)
 const saving = ref(false)
@@ -569,6 +587,7 @@ const testForm = reactive({
 })
 
 const templates = ref<MailTemplateSummary[]>([])
+const campaignModalTemplate = ref<MailTemplateSummary | null>(null)
 const templateLoading = ref(false)
 const templateError = ref('')
 const editingId = ref('')

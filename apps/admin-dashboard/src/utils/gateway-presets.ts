@@ -10,6 +10,13 @@ export interface GatewayPreset {
    *  blank for the user to fill in, this only pre-selects which fields
    *  matter (e.g. a Shopify preset doesn't need a Token URL / Scope). */
   authConfigFields: string[]
+  /** Pre-filled values for some of authConfigFields - only for values that
+   *  are the same for every installation of this vendor (an exact header
+   *  name the vendor's docs mandate), never a secret. Brevo's `api-key`
+   *  header name is easy to get wrong (case/spelling) and silently break
+   *  every request, so it's worth pre-filling; a per-account secret like
+   *  `keyValue` never belongs here. */
+  defaultAuthConfig?: Record<string, string>
   starterRoutes: { method: string; path: string; description: string }[]
 }
 
@@ -60,9 +67,20 @@ export const GATEWAY_PRESETS: GatewayPreset[] = [
     baseUrl: 'https://api.brevo.com/v3',
     authType: 'api-key',
     authConfigFields: ['keyHeader', 'keyValue'],
+    defaultAuthConfig: { keyHeader: 'api-key' },
     starterRoutes: [
       { method: 'GET', path: 'contacts', description: 'List contacts' },
       { method: 'POST', path: 'smtp/email', description: 'Send a transactional email' },
+      // Campaign endpoints (Whoobe → Brevo campaign integration).
+      // BrevoCampaignModal.vue POSTs a rendered mail template's HTML to
+      // 'emailCampaigns' to create a draft, and reads 'contacts/lists' to
+      // populate its recipient-list picker (Phase 2); the get/send routes
+      // are added now so they're one click away for later phases (checking
+      // status, sending) without editing the preset again.
+      { method: 'POST', path: 'emailCampaigns', description: 'Create an email campaign (draft)' },
+      { method: 'GET', path: 'emailCampaigns', description: 'List email campaigns' },
+      { method: 'POST', path: 'emailCampaigns/{campaignId}/sendNow', description: 'Send a campaign immediately' },
+      { method: 'GET', path: 'contacts/lists', description: 'List contact lists (campaign recipients)' },
     ],
   },
 ]

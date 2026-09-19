@@ -751,7 +751,7 @@ function applyPreset(preset: GatewayPreset | null) {
   epForm.description = preset.description
   epForm.baseUrl = preset.baseUrl
   epForm.authType = preset.authType
-  epForm.authConfig = {}
+  epForm.authConfig = { ...preset.defaultAuthConfig }
 }
 
 function openCreate() {

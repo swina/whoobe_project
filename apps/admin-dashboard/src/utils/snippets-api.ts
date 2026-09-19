@@ -54,6 +54,21 @@ export async function createSnippet(baseUrl: string, input: WhoobeSnippetInput):
   return data.snippet
 }
 
+// Renders a snippet's node to standalone email markup (DAM images
+// resolved, Tailwind inlined, no `{namespace.field}` substitution - see
+// core-api's own /whoobe-one/snippets/:id/render for why) - the content
+// source BrevoCampaignModal.vue uses when sending a snippet as a Brevo
+// campaign rather than a full Mail Template.
+export async function renderSnippet(baseUrl: string, id: string, embedImages = true): Promise<{ html: string; text: string }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/snippets/${id}/render`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ embedImages }),
+  })
+  return parseJsonOrThrow(res)
+}
+
 export async function deleteSnippet(baseUrl: string, id: string): Promise<void> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/snippets/${id}`, {
     method: 'DELETE',

@@ -134,9 +134,12 @@ import {
   sendMail,
   sendMailFromTemplate,
   renderMailTemplate,
+  renderStaticHtml,
   collectMailFonts,
   buildMailDocument,
   resolveMailImageUrls,
+  resolveMailImageDataUris,
+  htmlToPlainText,
   listMailLog,
   getMailLogEntry,
   deleteMailLogEntries,
@@ -225,6 +228,31 @@ function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
+// Shared by the three "render this Element tree for an ESP campaign"
+// endpoints (mail templates, snippets, pages) - fetching the record itself
+// differs per source, but resolving images/fonts and wrapping the result
+// in a standalone <!DOCTYPE html> document is identical for all three.
+//
+// `embedImages: true` inlines every DAM image as a base64 data: URI
+// instead of a proxy URL - the correct default for a destination outside
+// this install's own network (an ESP like Brevo), which may not be able to
+// reach a local/dev DAM at all (localhost, a private LAN address);
+// pass false only when the caller knows the image host is genuinely
+// publicly reachable and wants the smaller payload instead.
+//
+// Wrapping in buildMailDocument() (with collectMailFonts()'s own Google
+// Fonts <link> tags in <head>) was missing from all three endpoints until
+// now - they returned a bare body fragment, so any custom font the
+// template/snippet/page used silently fell back to the destination's
+// default font, exactly like an unresolved image silently fell back to no
+// image at all before the classAndStyleAttrs() background-image fix.
+async function renderElementTreeForEmail(content: unknown, embedImages: boolean): Promise<{ html: string; text: string }> {
+  const imageUrls = embedImages ? await resolveMailImageDataUris(content) : await resolveMailImageUrls(content);
+  const bodyHtml = renderStaticHtml(content, imageUrls);
+  const html = buildMailDocument({ bodyHtml, fonts: collectMailFonts(content) });
+  return { html, text: htmlToPlainText(html) };
+}
+
 // Load the repo-root .env (single source of truth for all apps, see
 // docs/plans/environment/env-optimization.md) with ${VAR} expansion.
 // Shell-exported vars win, which is how ./dev-cms.sh --hostname overrides
@@ -243,7 +271,11 @@ const app = express();
 const port = process.env.PORT || 3003;
 const isProduction = process.env.NODE_ENV === 'production';
 
-app.use(express.json());
+// Same reasoning as apps/gateway's own express.json() limit bump: Express's
+// 100kb default is too small once a request/response body can contain
+// base64 image data (e.g. a snippet/page/mail-template with several
+// embedded images, or its own base64-image render option).
+app.use(express.json({ limit: '25mb' }));
 app.use(cookieParser());
 // origin: true reflects the request's own Origin header, which is required
 // for credentialed (cookie-carrying) CORS requests - "*" is rejected by
@@ -1005,6 +1037,27 @@ app.get('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_READ),
   }
 });
 
+// Renders a saved snippet's node to standalone email markup, the same way
+// /mail-templates/:id/render does for a mail template - BrevoCampaignModal.vue's
+// second content source (a snippet is a smaller, more likely-to-be-reused
+// unit than a whole mail template for a campaign's body). Uses
+// renderStaticHtml() for the same reason: no context to substitute
+// against, and an ESP's own merge-tag syntax must reach it untouched.
+app.post('/whoobe-one/snippets/:id/render', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const snippet = await getWhoobeOneSnippet(req.params.id);
+    if (!snippet) {
+      res.status(404).json({ error: 'Snippet not found' });
+      return;
+    }
+    const embedImages = req.body?.embedImages !== false;
+    res.json(await renderElementTreeForEmail(snippet.node, embedImages));
+  } catch (error: any) {
+    logger.error({ err: error }, 'Snippet render error');
+    res.status(500).json({ error: error.message || 'Failed to render snippet' });
+  }
+});
+
 app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, category, icon, node, themeId } = req.body ?? {};
@@ -1325,6 +1378,29 @@ app.get('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_READ), as
   } catch (error: any) {
     logger.error({ err: error }, 'Get whoobe-one page error');
     res.status(500).json({ error: error.message || 'Failed to get page' });
+  }
+});
+
+// Renders a page's content to standalone email markup - BrevoCampaignModal.vue's
+// third content source, alongside mail templates and snippets. Same
+// renderStaticHtml() pipeline/reasoning as those two: no trigger context to
+// substitute against, and an ESP's own merge-tag syntax must survive
+// untouched. Deliberately renders whatever `content` holds regardless of
+// `kind` ('content'/'module'/'app') - a genuinely nonsensical source (an
+// app-kind page with no static markup) just renders to near-empty HTML
+// rather than needing a special-cased rejection here.
+app.post('/whoobe-one/pages/:id/render', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page = await getWhoobePage(req.params.id);
+    if (!page) {
+      res.status(404).json({ error: 'Page not found' });
+      return;
+    }
+    const embedImages = req.body?.embedImages !== false;
+    res.json(await renderElementTreeForEmail(page.content, embedImages));
+  } catch (error: any) {
+    logger.error({ err: error }, 'Page render error');
+    res.status(500).json({ error: error.message || 'Failed to render page' });
   }
 });
 
@@ -4065,6 +4141,38 @@ app.delete('/mail-templates/:id', requirePermission(PERMISSIONS.SETTINGS_MANAGE)
   } catch (error: any) {
     logger.error({ err: error }, 'Mail template delete error');
     res.status(500).json({ error: error.message || 'Failed to delete mail template' });
+  }
+});
+
+// Renders an HTML mail template through the exact same DAM/Tailwind
+// pipeline a Form notification's own send uses, plus a plain-text
+// fallback - the shared step any campaign-sending integration needs before
+// handing the result to an ESP's own API (BrevoCampaignModal.vue's "Send
+// as Brevo Campaign" action is the first caller). Uses renderStaticHtml()
+// rather than renderMailTemplate(), and returns `subject` completely raw -
+// this app's own `{namespace.field}` token pass has no context to resolve
+// here (no form/site/user - a campaign isn't triggered by any of those)
+// and, worse, its regex matches ANY bare `{word}`/`{word.word}` substring
+// with no namespace check, including one embedded inside an ESP's own
+// `{{ }}` syntax - running it here wouldn't leave an ESP's own merge tags
+// (e.g. Brevo's required `{unsubscribe}`) alone, it would blank them out.
+app.post('/mail-templates/:id/render', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const template = await getMailTemplate(req.params.id);
+    if (!template) {
+      res.status(404).json({ error: 'Mail template not found' });
+      return;
+    }
+    if (template.kind !== 'html') {
+      res.status(400).json({ error: 'Only HTML templates can be rendered' });
+      return;
+    }
+    const embedImages = req.body?.embedImages !== false;
+    const rendered = await renderElementTreeForEmail(template.content, embedImages);
+    res.json({ ...rendered, subject: template.subject });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Mail template render error');
+    res.status(500).json({ error: error.message || 'Failed to render mail template' });
   }
 });
 

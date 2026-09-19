@@ -134,6 +134,13 @@
               <template v-if="col.name === 'title'">
                 <span class="font-semibold text-slate-100 light:text-slate-900 inline-flex items-center gap-2">
                   <FileText class="w-4 h-4 text-indigo-400 inline" /> {{ page.title }}
+                  <button
+                    @click.stop="campaignModalPage = page"
+                    class="text-slate-500 hover:text-emerald-400 transition"
+                    title="Send as Brevo campaign"
+                  >
+                    <Send class="w-3.5 h-3.5" />
+                  </button>
                 </span>
               </template>
               <template v-else-if="col.name === 'slug'">
@@ -368,11 +375,19 @@
       </div>
     </div>
   </div>
+
+  <BrevoCampaignModal
+    v-if="campaignModalPage"
+    source-kind="page"
+    :source-id="campaignModalPage.id"
+    :source-label="campaignModalPage.title"
+    @close="campaignModalPage = null"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { FileText, ChevronUp, ChevronDown, Filter, Plus, Trash2, X } from '@lucide/vue'
+import { FileText, ChevronUp, ChevronDown, Filter, Plus, Trash2, X, Send } from '@lucide/vue'
 import { usePagesStore } from '../stores/pagesStore'
 import { useTabsStore } from '../stores/tabsStore'
 import { useToastStore } from '../stores/toastStore'
@@ -380,6 +395,7 @@ import { useWebsitesStore } from '../stores/websitesStore'
 import { useAuthStore } from '../stores/authStore'
 import { randomUUID } from '../utils/random-id'
 import { fetchStagedPages, deleteStagedPageById, promoteStagedPages, promoteStagedPageById, type StagedWhoobePage, type WhoobeOnePage } from '../utils/pages-api'
+import BrevoCampaignModal from '../components/settings/BrevoCampaignModal.vue'
 
 const pagesStore = usePagesStore()
 const tabsStore = useTabsStore()
@@ -623,6 +639,7 @@ const sortedPages = computed(() => {
 
 // Batch selection
 const selectedPageIds = ref<Set<string>>(new Set())
+const campaignModalPage = ref<WhoobeOnePage | null>(null)
 
 function toggleSelectPage(id: string) {
   const next = new Set(selectedPageIds.value)

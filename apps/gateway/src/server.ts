@@ -8,7 +8,14 @@ import { logger } from './log-error.js';
 const app: Express = express();
 const port = GATEWAY_PORT;
 
-app.use(express.json());
+// Default (100kb) is far too small for POST /routes/:id/execute once a
+// caller's requestBody embeds base64 image data (BrevoCampaignModal.vue's
+// embedImages option can easily produce several MB of htmlContent) -
+// without this, Express itself rejects the request with a 413 "payload too
+// large" before it ever reaches buildAuthHeaders()/proxyFetch(), let alone
+// the upstream API. 25mb comfortably covers a multi-image campaign body
+// while still bounding worst-case memory use per request.
+app.use(express.json({ limit: '25mb' }));
 app.use(cookieParser());
 app.use(cors({ origin: true, credentials: true }));
 
