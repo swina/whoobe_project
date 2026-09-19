@@ -94,3 +94,27 @@ export async function deleteMailTemplate(baseUrl: string, id: string): Promise<{
   })
   return parseJsonOrThrow(res)
 }
+
+export interface RenderedMailTemplate {
+  html: string
+  text: string
+  subject: string | null
+}
+
+// Renders an HTML template's Element tree to a standalone <!DOCTYPE html>
+// email document (DAM images resolved, Tailwind inlined, Google Fonts
+// linked in <head>) plus a plain-text fallback - the step
+// BrevoCampaignModal.vue needs before it can hand htmlContent/textContent
+// to Brevo's own campaign-create API. `embedImages` (default true) inlines
+// images as base64 data: URIs rather than proxy URLs - the only choice
+// that works when this install's own DAM isn't publicly reachable (a
+// local/dev environment), which an ESP's servers never are.
+export async function renderMailTemplate(baseUrl: string, id: string, embedImages = true): Promise<RenderedMailTemplate> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/mail-templates/${id}/render`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ embedImages }),
+  })
+  return parseJsonOrThrow(res)
+}

@@ -62,6 +62,7 @@ export * from './mail/token-substitution.js';
 export * from './mail/tailwind-inline.js';
 export * from './mail/mail-document.js';
 export * from './mail/mail-image-urls.js';
+export * from './mail/html-to-text.js';
 export * from './db/mail-log-schema.js';
 export * from './db/mail-log-records.js';
 export * from './db/mail-templates-schema.js';

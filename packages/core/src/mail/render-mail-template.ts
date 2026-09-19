@@ -64,6 +64,22 @@ export function renderTemplateContent(
   return substituteTokens(html, context)
 }
 
+/** Renders a mail template's Element tree with NO token-substitution pass -
+ *  for a destination that has no `context` to resolve at all (a campaign
+ *  send is triggered by nobody's form submission/site/user) AND has its
+ *  own per-recipient merge-tag syntax the result must reach untouched
+ *  (e.g. Brevo's required `{unsubscribe}` tag, or `{{ contact.ATTRIBUTE
+ *  }}`). Deliberately a separate function rather than `renderTemplateContent
+ *  (pageContent, {})`: TOKEN_RE matches any bare `{word}` or `{word.word}`
+ *  substring with no namespace check, including one embedded inside an
+ *  ESP's own `{{ }}` syntax - running the substitution pass over an empty
+ *  context wouldn't just leave those tags unresolved, it would blank them
+ *  out (a missing path resolves to ''), silently corrupting the exact tags
+ *  the destination needs. */
+export function renderStaticHtml(pageContent: unknown, imageUrls?: Record<string, string>): string {
+  return renderNode(pageContent as MailElementNode | null | undefined, {}, imageUrls)
+}
+
 function renderNode(
   node: MailElementNode | null | undefined,
   context: Record<string, unknown>,
@@ -80,7 +96,7 @@ function renderNode(
   if (node.type === 'container') {
     const tag = node.semantic || 'div'
     const inner = (node.blocks ?? []).map((child) => renderNode(child, context, imageUrls)).join('')
-    return `<${tag}${classAndStyleAttrs(node)}>${inner}</${tag}>`
+    return `<${tag}${classAndStyleAttrs(node, imageUrls)}>${inner}</${tag}>`
   }
 
   return renderLeaf(node, context, imageUrls)
@@ -96,7 +112,7 @@ function renderLeaf(node: MailElementNode, context: Record<string, unknown>, ima
     tag = 'h' + (Number.isInteger(level) && level >= 1 && level <= 6 ? level : 1)
   }
 
-  return `<${tag}${classAndStyleAttrs(node)}>${resolveDisplayHtml(node, context)}</${tag}>`
+  return `<${tag}${classAndStyleAttrs(node, imageUrls)}>${resolveDisplayHtml(node, context)}</${tag}>`
 }
 
 /** Resolves a dataBinding `field` against the context: an unnamespaced
@@ -132,10 +148,23 @@ function resolveDisplayHtml(node: MailElementNode, context: Record<string, unkno
   return sanitizeInlineHtml(node.content ?? '')
 }
 
+/** Resolves a static (non-data-bound) `image.url` to a usable src: a full
+ *  http(s) URL passes through as-is, a DAM reference (Pimcore-style path or
+ *  asset UUID) resolves through the `imageUrls` map (see mail-image-urls.
+ *  ts). Returns undefined for anything unresolvable, so callers render no
+ *  image at all rather than a broken one. Shared by renderImage() (an
+ *  `<img>` element's own `src`) and classAndStyleAttrs() (a container's or
+ *  non-`<img>` leaf's CSS background-image - see its own comment). */
+function resolveStaticImageSrc(url: string | null | undefined, imageUrls?: Record<string, string>): string | undefined {
+  if (typeof url !== 'string') return undefined
+  if (/^https?:\/\//i.test(url)) return url
+  if (looksLikeDamReference(url) && imageUrls?.[url]) return imageUrls[url]
+  return undefined
+}
+
 /** Image `src` resolution: a data-bound string value is used as-is; a
- *  static `image.url` works when it's a full http(s) URL or a DAM reference
- *  that has a resolved URL in the `imageUrls` map (see mail-image-urls.ts).
- *  Anything unresolvable renders no <img> at all rather than a broken src. */
+ *  static `image.url` goes through resolveStaticImageSrc(). Anything
+ *  unresolvable renders no <img> at all rather than a broken src. */
 function renderImage(node: MailElementNode, context: Record<string, unknown>, imageUrls?: Record<string, string>): string {
   const db = node.dataBinding
   let src: string | undefined
@@ -147,20 +176,14 @@ function renderImage(node: MailElementNode, context: Record<string, unknown>, im
       src = value
       alt = db.transform && db.transform.type !== 'none' ? applyTransform(value, db.transform).text || undefined : value
     }
-  } else if (typeof node.image?.url === 'string') {
-    const url = node.image.url
-    if (/^https?:\/\//i.test(url)) {
-      src = url
-      alt = node.image.alt ?? undefined
-    } else if (looksLikeDamReference(url) && imageUrls?.[url]) {
-      src = imageUrls[url]
-      alt = node.image.alt ?? undefined
-    }
+  } else {
+    src = resolveStaticImageSrc(node.image?.url, imageUrls)
+    if (src) alt = node.image?.alt ?? undefined
   }
 
   if (!src) return ''
   const altAttr = alt ? ` alt="${escapeHtml(alt)}"` : ''
-  return `<img src="${escapeHtml(src)}"${altAttr}${classAndStyleAttrs(node)}>`
+  return `<img src="${escapeHtml(src)}"${altAttr}${classAndStyleAttrs(node, imageUrls)}>`
 }
 
 // Static content is admin-authored HTML (the editor stores contenteditable
@@ -195,9 +218,18 @@ function sanitizeInlineHtml(text: string): string {
   })
 }
 
-function classAndStyleAttrs(node: MailElementNode): string {
+/** Mirrors BlockContainer.vue/BlockElement.vue's own `stile` computed: a
+ *  container or non-`<img>` leaf's `image.url` doubles as a CSS
+ *  background-image (an `<img>` element uses the same field as its own
+ *  `src` instead, via renderImage() - never both). This was previously
+ *  missing entirely from static rendering, so any editor-set background
+ *  image silently disappeared once rendered for email/a campaign, even
+ *  though a plain `<img>` element right next to it rendered fine. */
+function classAndStyleAttrs(node: MailElementNode, imageUrls?: Record<string, string>): string {
   const cls = `${node.css?.css ?? ''} ${node.css?.container ?? ''}`.trim()
   let style = ''
+  const bgUrl = node.element !== 'img' ? resolveStaticImageSrc(node.image?.url, imageUrls) : undefined
+  if (bgUrl) style += `background-image:url(${bgUrl});`
   if (node.font) style += `font-family:${fontFamilyStack(node.font)};`
   if (node.style) style += node.style
   let attrs = ''

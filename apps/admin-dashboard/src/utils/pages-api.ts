@@ -87,6 +87,21 @@ export async function fetchPageById(baseUrl: string, id: string): Promise<Whoobe
   return body.page
 }
 
+// Renders a page's content to standalone email markup (DAM images
+// resolved, Tailwind inlined, no `{namespace.field}` substitution - see
+// core-api's own /whoobe-one/pages/:id/render for why) - the content
+// source BrevoCampaignModal.vue uses when sending a page as a Brevo
+// campaign rather than a full Mail Template.
+export async function renderPageContent(baseUrl: string, id: string, embedImages = true): Promise<{ html: string; text: string }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/pages/${id}/render`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ embedImages }),
+  })
+  return parseJsonOrThrow(res)
+}
+
 export async function updatePageById(
   baseUrl: string,
   id: string,
