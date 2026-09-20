@@ -1,0 +1,17 @@
+{
+  "id": "brevo",
+  "label": "Brevo",
+  "description": "Marketing/transactional email & contacts API.",
+  "baseUrl": "https://api.brevo.com/v3",
+  "authType": "api-key",
+  "authConfigFields": ["keyHeader", "keyValue"],
+  "defaultAuthConfig": { "keyHeader": "api-key" },
+  "starterRoutes": [
+    { "method": "GET", "path": "contacts", "description": "List contacts" },
+    { "method": "POST", "path": "smtp/email", "description": "Send a transactional email" },
+    { "method": "POST", "path": "emailCampaigns", "description": "Create an email campaign (draft)" },
+    { "method": "GET", "path": "emailCampaigns", "description": "List email campaigns" },
+    { "method": "POST", "path": "emailCampaigns/{campaignId}/sendNow", "description": "Send a campaign immediately" },
+    { "method": "GET", "path": "contacts/lists", "description": "List contact lists (campaign recipients)" }
+  ]
+}

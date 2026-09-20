@@ -1,0 +1,11 @@
+{
+  "id": "cloudinary",
+  "label": "Cloudinary",
+  "description": "Image/video CDN - mirrors DAM assets to a public, stable delivery URL (docs/plans/assets/assets-cdn.md).",
+  "baseUrl": "https://api.cloudinary.com/v1_1/{cloud_name}",
+  "authType": "none",
+  "authConfigFields": [],
+  "starterRoutes": [
+    { "method": "POST", "path": "image/upload", "description": "Upload/mirror an image (unsigned upload preset)" }
+  ]
+}

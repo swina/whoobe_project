@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { requirePermission, PERMISSIONS } from './auth.js';
 import type { GatewayPlugin } from './plugin-types.js';
+import type { GatewayPreset } from './preset-types.js';
 import { logGatewayError } from './log-error.js';
 import { redactSensitiveValues, pickSafeResponseHeaders } from './redact.js';
 import { buildAuthHeaders } from './gateway-auth-headers.js';
@@ -17,7 +18,7 @@ function redactEndpoint<T extends { authConfig?: unknown }>(endpoint: T): Omit<T
   return safe;
 }
 
-export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
+export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPreset[] = []): Router {
   const router = Router();
 
   router.get('/endpoints', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (_req: Request, res: Response): Promise<void> => {
@@ -308,6 +309,16 @@ export function createAdminRoutes(plugins: GatewayPlugin[]): Router {
       hasResponseMiddleware: !!p.responseMiddleware,
     }));
     res.json(pluginInfo);
+  });
+
+  // Vendor endpoint presets (apps/gateway/presets/*.json, README.md there)
+  // - data only, loaded once at startup by preset-loader.ts. Moved here
+  // from a hardcoded array in admin-dashboard's own bundle so adding a
+  // vendor is a data change (a new JSON file) rather than a frontend code
+  // change, and the gateway - not one specific frontend - is the source
+  // of truth for what it can talk to out of the box.
+  router.get('/presets', requirePermission(PERMISSIONS.GATEWAY_MANAGE), (_req: Request, res: Response): void => {
+    res.json(presets);
   });
 
   return router;

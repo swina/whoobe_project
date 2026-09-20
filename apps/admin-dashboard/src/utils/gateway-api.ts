@@ -90,6 +90,28 @@ export interface GatewayPluginInfo {
   hasResponseMiddleware: boolean
 }
 
+// Vendor endpoint presets (apps/gateway/presets/*.json) - data-only starter
+// templates for the "Add Endpoint" form, previously a hardcoded array in
+// this app's own bundle (utils/gateway-presets.ts), now served by the
+// gateway itself so adding a vendor is a data change there, not a frontend
+// code change here.
+export interface GatewayPreset {
+  id: string
+  label: string
+  description: string
+  baseUrl: string
+  authType: GatewayEndpoint['authType']
+  /** Field names the form should show for this auth type - values are left
+   *  blank for the user to fill in, this only pre-selects which fields
+   *  matter (e.g. a Shopify preset doesn't need a Token URL / Scope). */
+  authConfigFields: string[]
+  /** Pre-filled values for some of authConfigFields - only for values that
+   *  are the same for every installation of this vendor (an exact header
+   *  name the vendor's docs mandate), never a secret. */
+  defaultAuthConfig?: Record<string, string>
+  starterRoutes: { method: string; path: string; description: string }[]
+}
+
 export async function listEndpoints(): Promise<GatewayEndpoint[]> {
   const res = await fetch(`${baseUrl()}/api/v1/gateway/endpoints`, { credentials: 'include' })
   return parseJsonOrThrow(res)
@@ -218,5 +240,10 @@ export async function importOpenApi(endpointId: string, input: { specUrl?: strin
 
 export async function listPlugins(): Promise<GatewayPluginInfo[]> {
   const res = await fetch(`${baseUrl()}/api/v1/gateway/plugins`, { credentials: 'include' })
+  return parseJsonOrThrow(res)
+}
+
+export async function listPresets(): Promise<GatewayPreset[]> {
+  const res = await fetch(`${baseUrl()}/api/v1/gateway/presets`, { credentials: 'include' })
   return parseJsonOrThrow(res)
 }

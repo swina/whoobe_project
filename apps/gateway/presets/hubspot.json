@@ -1,0 +1,12 @@
+{
+  "id": "hubspot",
+  "label": "HubSpot",
+  "description": "CRM API using a private app access token.",
+  "baseUrl": "https://api.hubapi.com",
+  "authType": "bearer",
+  "authConfigFields": ["token"],
+  "starterRoutes": [
+    { "method": "GET", "path": "crm/v3/objects/contacts", "description": "List contacts" },
+    { "method": "POST", "path": "crm/v3/objects/contacts", "description": "Create a contact" }
+  ]
+}

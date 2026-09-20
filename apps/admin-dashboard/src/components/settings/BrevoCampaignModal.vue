@@ -135,7 +135,8 @@
 // already-generic, already-authenticated POST /routes/:id/execute (the
 // exact function GatewayEndpointsView.vue's own "Test" action already
 // calls) rather than adding any Brevo-specific server code - the Brevo
-// preset (gateway-presets.ts) is what actually knows the endpoint shape.
+// preset (apps/gateway/presets/brevo.json) is what actually knows the
+// endpoint shape.
 //
 // Phase 2 additions on top of Phase 1's bare "create a nameless draft":
 // a recipient-list picker (GET contacts/lists) and auto-injecting Brevo's

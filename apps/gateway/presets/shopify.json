@@ -1,0 +1,12 @@
+{
+  "id": "shopify",
+  "label": "Shopify",
+  "description": "Admin API for a Shopify store (private/custom app access token).",
+  "baseUrl": "https://{shop}.myshopify.com/admin/api/2024-10",
+  "authType": "api-key",
+  "authConfigFields": ["keyHeader", "keyValue"],
+  "starterRoutes": [
+    { "method": "GET", "path": "products.json", "description": "List products" },
+    { "method": "GET", "path": "orders.json", "description": "List orders" }
+  ]
+}
