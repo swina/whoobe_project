@@ -7,6 +7,7 @@ import {
   ThumbnailPreset,
   ExtractedAssetMetadata,
   AssetMetadataExtractor,
+  CdnMirrorRecord,
   getFileTypeFromFilename
 } from '@whoobe-cms/core'
 import {
@@ -23,6 +24,7 @@ import {
   updateAssetMetadataApi,
   transformAssetOnDam,
   regenerateThumbnailsApi,
+  mirrorAssetToCdnApi,
   DamBackendInfo,
   DamFolderRecord,
   DamAssetRecordWithUrls,
@@ -78,6 +80,7 @@ export interface AssetItem {
   thumbnailUrl?: string
   thumbnails?: Record<ThumbnailPreset, string>
   metadata?: ExtractedAssetMetadata
+  cdnMirrors?: Record<string, CdnMirrorRecord>
 }
 
 const defaultConfig: DamConfigState = {
@@ -159,7 +162,8 @@ function toAssetItem(record: DamAssetRecordWithUrls, dataUrl?: string): AssetIte
     dataUrl,
     thumbnailUrl: record.thumbnailUrl,
     thumbnails: record.thumbnails,
-    metadata: record.metadata ?? undefined
+    metadata: record.metadata ?? undefined,
+    cdnMirrors: record.cdnMirrors
   }
 }
 
@@ -579,6 +583,20 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
     assets.value = assets.value.filter((a) => a.id !== assetId)
   }
 
+  // --- CDN Mirroring (docs/plans/assets/assets-cdn.md) ---
+  // Patches `cdnMirrors` onto the existing local item in place rather than
+  // replacing it via toAssetItem() - mirroring never changes pimcorePath/
+  // s3Key/url, so there's nothing else worth re-fetching.
+  async function mirrorAssetToCdn(
+    assetId: string,
+    options: { gatewayRouteId: string; uploadPreset?: string | null; provider?: string }
+  ): Promise<void> {
+    const target = assets.value.find((a) => a.id === assetId)
+    if (!target) throw new Error('Asset not found')
+    const record = await mirrorAssetToCdnApi(config.value.assetProcessorUrl, assetId, options)
+    target.cdnMirrors = record.cdnMirrors
+  }
+
   // --- Regenerate Thumbnails ---
   async function regenerateThumbnails(paths: string[]): Promise<{ succeeded: number; failed: number }> {
     const result = await regenerateThumbnailsApi(config.value.assetProcessorUrl, paths, config.value.folderRules)
@@ -722,6 +740,7 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
     uploadNewVersion,
     deleteAsset,
     moveAsset,
+    mirrorAssetToCdn,
     regenerateThumbnails,
     updateAssetMetadata,
     transformAsset,

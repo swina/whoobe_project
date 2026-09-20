@@ -20,6 +20,19 @@ export interface DamAssetThumbnails {
   large: string
 }
 
+// One provider's CDN mirror of an asset (docs/plans/assets/assets-cdn.md) -
+// mirrors packages/core/src/dam/cdn-mirror.ts's CdnMirrorRecord shape,
+// duplicated here (not imported from @whoobe-cms/core) to keep this
+// hand-rolled client file self-contained, matching its existing pattern
+// (DamAssetThumbnails is the same kind of local shape).
+export interface DamCdnMirror {
+  provider: string
+  url: string
+  providerAssetId?: string
+  mirroredAt: string
+  bytesSent: number
+}
+
 export interface DamAssetRecord {
   pimcorePath: string
   filename: string
@@ -30,6 +43,7 @@ export interface DamAssetRecord {
   url: string
   thumbnailUrl: string
   thumbnails: DamAssetThumbnails
+  cdnMirrors?: Record<string, DamCdnMirror>
 }
 
 export interface DamFolderRecord {

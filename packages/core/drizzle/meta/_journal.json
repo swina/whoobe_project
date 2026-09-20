@@ -288,6 +288,13 @@
       "when": 1789710000000,
       "tag": "0040_gateway_oauth_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1789720000000,
+      "tag": "0041_asset_cdn_mirrors",
+      "breakpoints": true
     }
   ]
 }

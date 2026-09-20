@@ -78,13 +78,19 @@
               </label>
             </div>
           </div>
-
+          <!--- sending error --->
+          <div v-if="error" class="px-3 py-2 rounded-lg bg-rose-900/30 border border-rose-700/40 text-rose-300 whitespace-pre-wrap">{{ error }}</div>
+          <!--- sending success --->
+          <div v-if="createdCampaignId" class="px-3 py-2 rounded-lg bg-emerald-900/30 border border-emerald-700/40 text-emerald-300 light:text-emerald-800">
+          Draft campaign created in Brevo (id {{ createdCampaignId }}). Finish setting it up (recipients, scheduling) in Brevo.
+          </div>
           <label class="flex items-start gap-2 text-slate-400 pt-1">
             <input type="checkbox" v-model="embedImages" class="mt-0.5 rounded border-slate-600" />
             <span>
-              Embed images directly (base64) instead of linking to this install's DAM - required if the DAM isn't
-              publicly reachable (e.g. a local/dev environment), otherwise images just won't load for Brevo/recipients.
-              Uncheck only if you know the DAM is public and want a smaller draft.
+              For any image with no CDN mirror yet, embed it directly (base64) instead of linking to this install's
+              DAM - required if the DAM isn't publicly reachable (e.g. a local/dev environment). An image already
+              published to a CDN (Assets → "Publish to CDN") always uses its stable CDN URL regardless of this
+              setting - no size limit, no quality loss. Uncheck only if you know the DAM itself is also public.
             </span>
           </label>
 
@@ -97,10 +103,7 @@
           </label>
         </template>
 
-        <div v-if="error" class="px-3 py-2 rounded-lg bg-rose-900/30 border border-rose-700/40 text-rose-300 whitespace-pre-wrap">{{ error }}</div>
-        <div v-if="createdCampaignId" class="px-3 py-2 rounded-lg bg-emerald-900/30 border border-emerald-700/40 text-emerald-300">
-          Draft campaign created in Brevo (id {{ createdCampaignId }}). Finish setting it up (recipients, scheduling) in Brevo.
-        </div>
+       
       </div>
 
       <div class="flex items-center gap-3 px-5 py-3 border-t border-slate-800 light:border-slate-200">

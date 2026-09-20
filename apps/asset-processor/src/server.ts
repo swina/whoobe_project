@@ -28,6 +28,7 @@ import {
   upsertAssetRecord,
   deleteAssetRecord,
   updateAssetMetadata,
+  updateAssetCdnMirror,
   loadRootEnv,
   isLoggingEnabled,
 } from '@whoobe-cms/core/server';
@@ -86,6 +87,30 @@ function createDamProvider(folderRules: FolderVisibilityRule[]): S3AssetStorageP
     ...damBaseConfig,
     visibilityManager: new FolderVisibilityManager(folderRules),
   });
+}
+
+// A configured S3_PUBLIC_BASE_URL isn't necessarily reachable from OUTSIDE
+// this install - a local/dev setup commonly points it at 'localhost' (or a
+// bare Docker service name, or a private-network address), which only
+// ever means "loopback of whoever's asking," never "this Whoobe server,"
+// to an external caller like Cloudinary. Handing that URL to an ESP/CDN
+// for it to fetch itself fails - not always cleanly (a connection refused/
+// timeout on Cloudinary's own end can surface as a generic upstream 403 or
+// 400 rather than an obvious DNS/network error). This is a best-effort
+// heuristic (hostname shape only, no actual reachability probe), not a
+// substitute for a genuinely public origin in production.
+function isPubliclyReachableUrl(url: string): boolean {
+  try {
+    const { hostname } = new URL(url);
+    if (['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(hostname)) return false;
+    if (/^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return false;
+    // No dot at all (a bare Docker Compose service name like
+    // 'asset-processor') is never a real, externally-resolvable domain.
+    if (!hostname.includes('.')) return false;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function forwardOrigin(req: Request): string {
@@ -665,6 +690,115 @@ app.patch('/api/v1/dam/assets/metadata', requirePermission(PERMISSIONS.ASSETS_UP
   } catch (error: any) {
     logger.error({ err: error }, 'DAM update metadata error');
     res.status(500).json({ error: error.message || 'Failed to update metadata' });
+  }
+});
+
+// CDN mirroring (docs/plans/assets/assets-cdn.md, Phase 1): pushes an
+// asset to an external image CDN (Cloudinary first, others via the same
+// Gateway preset mechanism) so consumers that can't reach this install's
+// own DAM (a local/VPN-only deployment, an ESP building an email campaign)
+// get a stable, public URL instead of a local-only one or an embedded
+// base64 copy. This endpoint only orchestrates: it builds the upload
+// payload and hands it to the already-generic, already-authenticated
+// Gateway route executor - no Cloudinary-specific request/response
+// handling belongs here beyond reading back `secure_url`/`public_id`,
+// which are Cloudinary's own field names (a second provider added later
+// may need a small per-provider mapping here, but never new Gateway code).
+app.post('/api/v1/dam/assets/:id/mirror-cdn', requirePermission(PERMISSIONS.ASSETS_UPLOAD), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const asset = await getAssetById(req.params.id);
+    if (!asset) {
+      res.status(404).json({ error: 'Asset not found' });
+      return;
+    }
+
+    const { gatewayRouteId, uploadPreset, provider } = req.body as {
+      gatewayRouteId?: string;
+      uploadPreset?: string;
+      provider?: string;
+    };
+    if (!gatewayRouteId) {
+      res.status(400).json({ error: 'gatewayRouteId is required' });
+      return;
+    }
+
+    // Cloudinary's upload API accepts `file` as a URL it fetches itself, or
+    // as a base64 data: URI - the same fork resolveMailImageUrls() vs
+    // resolveMailImageDataUris() already makes for email, for the same
+    // reason: a public URL only works if the *destination* (here,
+    // Cloudinary's servers) can actually reach it.
+    //
+    // Deliberately NOT re-encoded/resized either way, unlike the email
+    // base64 path (reencodeImage() with its email-tuned caps - see
+    // mail-image-urls.ts): a CDN mirror's whole point is to be the
+    // quality source of truth Cloudinary itself can transform on the fly
+    // for whoever needs it later - shrinking it before it even arrives
+    // would defeat that, and would mean re-mirroring the same asset with
+    // different caps for different consumers instead of one mirror
+    // everyone shares (an email that ends up using the CDN URL - Phase 2 -
+    // gets the real original, not a second, separately-capped copy).
+    const publicBaseUrl = process.env.S3_PUBLIC_BASE_URL;
+    let file: string;
+    let bytesSent: number;
+    if (publicBaseUrl && isPubliclyReachableUrl(publicBaseUrl)) {
+      file = `${publicBaseUrl.replace(/\/+$/, '')}/${asset.s3Key}`;
+      bytesSent = asset.sizeBytes;
+    } else {
+      const command = new GetObjectCommand({ Bucket: damBaseConfig.bucket, Key: asset.s3Key });
+      const object = await s3ClientForProxy.send(command);
+      if (!object.Body) {
+        res.status(502).json({ error: 'Could not read asset bytes from storage' });
+        return;
+      }
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of object.Body as any) {
+        chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk));
+      }
+      const rawBuffer = Buffer.concat(chunks);
+      file = `data:${asset.mimeType};base64,${rawBuffer.toString('base64')}`;
+      bytesSent = rawBuffer.byteLength;
+    }
+
+    const requestBody: Record<string, unknown> = { file };
+    if (uploadPreset) requestBody.upload_preset = uploadPreset;
+
+    // Server-to-server call to the Gateway's own generic route executor -
+    // forwards this same request's session cookie (this action only ever
+    // runs synchronously inside an authenticated admin request, so there's
+    // always one to forward) rather than a separate service token, since
+    // the Gateway endpoint being called is the ordinary, already-existing
+    // POST /routes/:id/execute (requirePermission(GATEWAY_MANAGE)), not a
+    // dedicated internal-only route.
+    const gatewayUrl = (process.env.GATEWAY_URL ?? 'http://localhost:3001').replace(/\/+$/, '');
+    const execRes = await fetch(`${gatewayUrl}/api/v1/gateway/routes/${gatewayRouteId}/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: req.headers.cookie ?? '' },
+      body: JSON.stringify({ requestBody }),
+    });
+    const execBody = (await execRes.json()) as { error?: boolean; upstreamStatus?: number; body?: unknown };
+    if (!execRes.ok || execBody.error || (execBody.upstreamStatus ?? 0) < 200 || (execBody.upstreamStatus ?? 0) >= 300) {
+      res.status(502).json({ error: 'CDN mirror upload failed', detail: execBody });
+      return;
+    }
+
+    const uploadResult = execBody.body as { secure_url?: string; public_id?: string };
+    if (!uploadResult?.secure_url) {
+      res.status(502).json({ error: 'CDN provider did not return a URL', detail: uploadResult });
+      return;
+    }
+
+    const updated = await updateAssetCdnMirror(asset.id, {
+      provider: provider || 'cloudinary',
+      url: uploadResult.secure_url,
+      providerAssetId: uploadResult.public_id,
+      mirroredAt: new Date().toISOString(),
+      bytesSent,
+    });
+
+    res.json({ asset: updated });
+  } catch (error: any) {
+    logger.error({ err: error }, 'CDN mirror error');
+    res.status(500).json({ error: error.message || 'CDN mirror failed' });
   }
 });
 

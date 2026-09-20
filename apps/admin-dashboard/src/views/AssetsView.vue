@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full min-h-0 gap-6">
     <!-- shrink-0: header, filters, selection bar -->
-    <div class="shrink-0 flex flex-col gap-6">
+    <div class="shrink-0 flex flex-col gap-1">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h2 class="text-xl font-bold text-slate-100 light:text-slate-900 flex items-center gap-2">
@@ -10,7 +10,7 @@
             DAM Storage
           </span>
         </h2>
-        <p class="text-xs text-slate-400 light:text-slate-600">Manage S3/MinIO media assets, virtual folders, visibility strategies, versioning, and ZIP archives.</p>
+        <p class="text-[10px] text-slate-400 light:text-slate-600">Manage S3/MinIO media assets, virtual folders, visibility strategies, versioning, and ZIP archives.</p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
@@ -91,7 +91,7 @@
     <div class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600 overflow-x-auto py-1">
       <button
         @click="navigateToFolder('/')"
-        :class="['hover:text-indigo-400 font-medium transition flex items-center gap-1', damStore.currentFolderPath === '/' ? 'text-indigo-400 font-bold' : '']"
+        :class="['hover:text-indigo-400 text-sm font-medium transition flex items-center gap-1', damStore.currentFolderPath === '/' ? 'text-indigo-400 font-bold' : '']"
       >
         <Folder class="w-3.5 h-3.5" />
         Root
@@ -101,7 +101,7 @@
         <ChevronRight class="w-3.5 h-3.5 text-slate-600 light:text-slate-400" />
         <button
           @click="navigateToFolder(crumb.path)"
-          :class="['hover:text-indigo-400 font-medium transition', damStore.currentFolderPath === crumb.path ? 'text-indigo-400 font-bold' : '']"
+          :class="['hover:text-indigo-400 font-medium transition text-sm', damStore.currentFolderPath === crumb.path ? 'text-indigo-400 font-bold' : '']"
         >
           {{ crumb.name }}
         </button>
@@ -112,7 +112,7 @@
     <!-- no separate subfolders block here -->
 
     <!-- Asset Section Header with View Mode & Column Config Controls -->
-    <div class="space-y-3">
+    <div class="space-y-1">
       <div class="flex items-center justify-between flex-wrap gap-2">
         <h3 class="text-xs font-semibold text-slate-400 light:text-slate-600 uppercase tracking-wider">
           Assets ({{ unifiedItems.length }})
@@ -173,11 +173,26 @@
               <span class="hidden sm:inline">List</span>
             </button>
           </div>
+
+          <!-- Filter Bar Collapse Toggle -->
+          <button
+            @click="showFilterBar = !showFilterBar"
+            :class="[
+              'relative p-1.5 rounded-xl border transition',
+              showFilterBar
+                ? 'bg-indigo-600 border-indigo-500 text-white shadow'
+                : 'bg-slate-900 light:bg-white border-slate-800 light:border-slate-200 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800'
+            ]"
+            :title="showFilterBar ? 'Hide filters' : 'Show filters'"
+          >
+            <Filter class="w-3.5 h-3.5" />
+            <span v-if="!showFilterBar && hasActiveFilters" class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 border border-slate-950"></span>
+          </button>
         </div>
       </div>
 
       <!-- Filter Bar (Text Search & Multi-Column Filters) -->
-      <div class="p-3 rounded-xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div v-show="showFilterBar" class="p-1 rounded-xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div class="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
           <!-- Text Search Filter -->
           <div class="relative flex-1 min-w-[200px]">
@@ -273,6 +288,15 @@
             <span>Move Selected</span>
           </button>
           <button
+            @click="publishSelectedToCdn"
+            :disabled="!cdnMirrorConfigured || isPublishingToCdn"
+            :title="cdnMirrorConfigured ? '' : 'Configure a CDN mirror endpoint under Settings > DAM first'"
+            class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-emerald-300 light:text-stone-500 hover:text-emerald-200 transition flex items-center gap-1.5 shadow-md border border-slate-700 light:border-slate-300 disabled:opacity-40"
+          >
+            <CloudUpload class="w-3.5 h-3.5" />
+            <span>{{ isPublishingToCdn ? 'Publishing…' : 'Publish to CDN' }}</span>
+          </button>
+          <button
             @click="downloadSelectedAssets"
             :disabled="isDownloadingZip"
             class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 shadow-md border border-indigo-400/30"
@@ -280,6 +304,7 @@
             <Download class="w-3.5 h-3.5" />
             <span>{{ isDownloadingZip ? 'Preparing ZIP...' : 'Download Selected' }}</span>
           </button>
+          
           <button
             @click="deleteSelectedAssets"
             class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-500 text-white transition flex items-center gap-1.5 shadow-md border border-rose-400/30"
@@ -295,7 +320,7 @@
     <!-- Scrollable + Pagination container -->
     <div class="flex flex-col flex-1 min-h-0 gap-3">
       <!-- scrollable: grid or list -->
-      <div class="flex-1 overflow-y-auto min-h-0">
+      <div class="flex flex-col flex-1 overflow-y-auto min-h-0">
         <!-- no results within scrollable -->
         <div v-if="paginatedItems.length === 0" class="rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center space-y-3">
           <Folder class="w-12 h-12 text-slate-600 light:text-slate-400 mx-auto" />
@@ -369,6 +394,18 @@
             <span v-if="item.kind !== 'folder'" class="absolute top-2 right-2 px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-slate-900 light:bg-white text-indigo-300 border border-slate-800 light:border-slate-200 z-10">
               v{{ item.version }}
             </span>
+
+            <!-- CDN Mirror indicator (docs/plans/assets/assets-cdn.md) -
+                 doubles as the action to view it: opens the actual CDN
+                 URL (not the local DAM) in a new tab. -->
+            <button
+              v-if="item.kind !== 'folder' && cdnMirrorUrl(item.cdnMirrors)"
+              @click.stop="openCdnMirrorInNewTab(item)"
+              :title="`Mirrored to CDN - click to open: ${cdnMirrorUrl(item.cdnMirrors)}`"
+              class="absolute bottom-2 right-2 w-6 h-6 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 flex items-center justify-center z-10 transition"
+            >
+              <Cloud class="w-3.5 h-3.5" />
+            </button>
           </div>
 
           <div>
@@ -439,11 +476,11 @@
       </div>
 
       <!-- LIST / TABLE VIEW WITH CLICKABLE SORT HEADERS -->
-      <div v-else-if="viewMode === 'list' && paginatedItems.length > 0" class="overflow-x-auto rounded-xl border border-slate-800 light:border-slate-200 bg-slate-900/60 light:bg-white/60 shadow-xl">
+      <div v-else-if="viewMode === 'list' && paginatedItems.length > 0" class="flex-1 min-h-0 overflow-auto rounded-xl border border-slate-800 light:border-slate-200 bg-slate-900/60 light:bg-white/60 shadow-xl">
         <table class="w-full text-left text-xs text-slate-300 light:text-slate-700">
-          <thead class="bg-slate-950/80 light:bg-white/80 border-b border-slate-800 light:border-slate-200 text-[11px] font-semibold text-slate-400 light:text-slate-600 uppercase tracking-wider select-none">
+          <thead class="text-[11px] font-semibold text-slate-400 light:text-slate-600 uppercase tracking-wider select-none">
             <tr>
-              <th class="py-3 px-3 w-10 text-center select-none" @click.stop>
+              <th class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm border-b border-slate-800 light:border-slate-200 py-3 px-3 w-10 text-center select-none" @click.stop>
                 <input
                   type="checkbox"
                   :checked="isAllPageSelected"
@@ -452,9 +489,9 @@
                   title="Select all on this page"
                 />
               </th>
-              <th v-if="visibleColumns.thumbnail" class="py-3 px-4 w-12 text-center">Preview</th>
+              <th v-if="visibleColumns.thumbnail" class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm border-b border-slate-800 light:border-slate-200 py-3 px-4 w-12 text-center">Preview</th>
 
-              <th v-if="visibleColumns.filename" @click="toggleSort('filename')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
+              <th v-if="visibleColumns.filename" @click="toggleSort('filename')" class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm border-b border-slate-800 light:border-slate-200 py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Filename</span>
                   <ArrowUp v-if="sortColumn === 'filename' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
@@ -463,7 +500,7 @@
                 </div>
               </th>
 
-              <th v-if="visibleColumns.path" @click="toggleSort('pimcorePath')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
+              <th v-if="visibleColumns.path" @click="toggleSort('pimcorePath')" class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm border-b border-slate-800 light:border-slate-200 py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Asset Path</span>
                   <ArrowUp v-if="sortColumn === 'pimcorePath' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
@@ -472,7 +509,7 @@
                 </div>
               </th>
 
-              <th v-if="visibleColumns.fileType" @click="toggleSort('fileType')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
+              <th v-if="visibleColumns.fileType" @click="toggleSort('fileType')" class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm border-b border-slate-800 light:border-slate-200 py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Type</span>
                   <ArrowUp v-if="sortColumn === 'fileType' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
@@ -481,9 +518,9 @@
                 </div>
               </th>
 
-              <th v-if="visibleColumns.dimensions" class="py-3 px-4">Dimensions</th>
+              <th v-if="visibleColumns.dimensions" class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm border-b border-slate-800 light:border-slate-200 py-3 px-4">Dimensions</th>
 
-              <th v-if="visibleColumns.size" @click="toggleSort('sizeBytes')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
+              <th v-if="visibleColumns.size" @click="toggleSort('sizeBytes')" class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm border-b border-slate-800 light:border-slate-200 py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Size</span>
                   <ArrowUp v-if="sortColumn === 'sizeBytes' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
@@ -492,7 +529,7 @@
                 </div>
               </th>
 
-              <th v-if="visibleColumns.visibility" @click="toggleSort('isPublic')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
+              <th v-if="visibleColumns.visibility" @click="toggleSort('isPublic')" class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm border-b border-slate-800 light:border-slate-200 py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Visibility</span>
                   <ArrowUp v-if="sortColumn === 'isPublic' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
@@ -501,7 +538,7 @@
                 </div>
               </th>
 
-              <th v-if="visibleColumns.version" @click="toggleSort('version')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
+              <th v-if="visibleColumns.version" @click="toggleSort('version')" class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm border-b border-slate-800 light:border-slate-200 py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Version</span>
                   <ArrowUp v-if="sortColumn === 'version' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
@@ -510,7 +547,7 @@
                 </div>
               </th>
 
-              <th v-if="visibleColumns.uploadedAt" @click="toggleSort('uploadedAt')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
+              <th v-if="visibleColumns.uploadedAt" @click="toggleSort('uploadedAt')" class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm border-b border-slate-800 light:border-slate-200 py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Uploaded</span>
                   <ArrowUp v-if="sortColumn === 'uploadedAt' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
@@ -519,7 +556,7 @@
                 </div>
               </th>
 
-              <th v-if="visibleColumns.updatedAt" @click="toggleSort('updatedAt')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
+              <th v-if="visibleColumns.updatedAt" @click="toggleSort('updatedAt')" class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm border-b border-slate-800 light:border-slate-200 py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>Updated</span>
                   <ArrowUp v-if="sortColumn === 'updatedAt' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
@@ -528,7 +565,7 @@
                 </div>
               </th>
 
-              <th v-if="visibleColumns.s3Key" @click="toggleSort('s3Key')" class="py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
+              <th v-if="visibleColumns.s3Key" @click="toggleSort('s3Key')" class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm border-b border-slate-800 light:border-slate-200 py-3 px-4 cursor-pointer hover:text-slate-200 light:text-slate-800 transition">
                 <div class="flex items-center gap-1">
                   <span>S3 Key</span>
                   <ArrowUp v-if="sortColumn === 's3Key' && sortDirection === 'asc'" class="w-3 h-3 text-indigo-400" />
@@ -537,7 +574,7 @@
                 </div>
               </th>
 
-              <th v-if="visibleColumns.actions" class="py-3 px-4 text-right">Actions</th>
+              <th v-if="visibleColumns.actions" class="sticky top-0 z-10 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm border-b border-slate-800 light:border-slate-200 py-3 px-4 text-right">Actions</th>
             </tr>
           </thead>
 <tbody class="divide-y divide-slate-800/60 light:divide-slate-200/60">
@@ -587,7 +624,7 @@
                 @click="tabsStore.openAsset(item.id)"
                 :class="[
                   'transition cursor-pointer',
-                  selectedAssetIds.includes(item.id) ? 'bg-indigo-950/40 hover:bg-indigo-900/50' : 'hover:bg-slate-800/10 light:bg-slate-100/50'
+                  selectedAssetIds.includes(item.id) ? 'bg-indigo-950/40 hover:bg-indigo-900/50' : 'hover:bg-slate-800/50 light:hover:bg-slate-500/20 light:bg-slate-100/50'
                 ]"
               >
                 <td class="py-2.5 px-3 text-center" @click.stop>
@@ -634,7 +671,7 @@
                   <span
                     :class="[
                       'px-2 py-0.5 text-[10px] font-bold rounded-full border',
-                      item.isPublic ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      item.isPublic ? 'bg-emerald-500/60 text-emerald-100 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                     ]"
                   >
                     {{ item.isPublic ? 'PUBLIC' : 'PRIVATE' }}
@@ -667,6 +704,14 @@
                       title="Open Asset URL in New Tab"
                     >
                       <ExternalLink class="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      v-if="cdnMirrorUrl(item.cdnMirrors)"
+                      @click="openCdnMirrorInNewTab(item)"
+                      class="p-1.5 rounded hover:bg-emerald-950 text-emerald-400 hover:text-emerald-300 transition"
+                      :title="`Mirrored to CDN - open in new tab: ${cdnMirrorUrl(item.cdnMirrors)}`"
+                    >
+                      <Cloud class="w-3.5 h-3.5" />
                     </button>
                     <button
                       @click="copyAssetUrl(item)"
@@ -712,11 +757,17 @@
           <span>Upload Multiple Files or ZIP</span>
         </button>
       </div>
+      </div>
+      <!-- (scroll area, opened above at "flex-1 overflow-y-auto min-h-0",
+           closes right here - the pagination bar below was previously
+           nested inside it by mistake (no explicit close between the
+           empty state and here), so it scrolled away with the content
+           instead of staying fixed as a footer.) -->
 
       <!-- Pagination Controls Bar -->
       <div
         v-if="filteredAndSortedAssets.length > 0"
-        class="rounded-xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 p-3 flex flex-wrap items-center justify-between gap-3 text-xs"
+        class="shrink-0 rounded-xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 p-1 flex flex-wrap items-center justify-between gap-3 text-xs"
       >
         <!-- Summary -->
         <div class="text-slate-400 light:text-slate-600 font-mono">
@@ -820,7 +871,6 @@
           </div>
         </div>
       </div>
-    </div>
 
     <!-- Modal 1: Upload Multiple Assets (with ZIP Support) -->
     <div v-if="showUploadModal" class="fixed inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -1076,7 +1126,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import {
   Folder,
   FolderPlus,
@@ -1093,6 +1143,7 @@ import {
   LayoutGrid,
   List,
   SlidersHorizontal,
+  Filter,
   Search,
   ArrowUpDown,
   ArrowUp,
@@ -1102,7 +1153,9 @@ import {
   Download,
   CheckSquare,
   Sparkles,
-  FolderInput
+  FolderInput,
+  CloudUpload,
+  Cloud
 } from '@lucide/vue'
 import JSZip from 'jszip'
 import { useDamStore, AssetItem } from '../stores/damStore'
@@ -1113,6 +1166,8 @@ import AiImageGenerateModal from '../components/dam/AiImageGenerateModal.vue'
 import MoveAssetsModal from '../components/dam/MoveAssetsModal.vue'
 import { getIconForFileType, getIconForFilename, PREVIEWABLE_IMAGE_TYPES } from '../utils/asset-file-icons'
 import { handleAssetImageError } from '../utils/asset-image-heal'
+import { getDefaultCoreApiUrl } from '../utils/auth-api'
+import { fetchCdnMirrorSettings, type CdnMirrorSettings } from '../utils/websites-api'
 
 const damStore = useDamStore()
 const tabsStore = useTabsStore()
@@ -1133,6 +1188,21 @@ async function openAssetInNewTab(item: UnifiedItem) {
   window.open(targetUrl, '_blank', 'noopener,noreferrer')
 }
 
+// CDN mirror indicator (docs/plans/assets/assets-cdn.md) - the icon shown
+// on a mirrored asset doubles as the action to view it: clicking opens the
+// actual CDN URL (Cloudinary's own, not the local DAM) in a new tab.
+function cdnMirrorUrl(cdnMirrors: Record<string, unknown> | undefined): string | null {
+  if (!cdnMirrors) return null
+  const first = Object.values(cdnMirrors)[0] as { url?: string } | undefined
+  return first?.url ?? null
+}
+
+function openCdnMirrorInNewTab(item: UnifiedItem) {
+  const url = cdnMirrorUrl(item.cdnMirrors)
+  if (!url) return
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
 const VIEW_MODE_KEY = 'whoobe_custom_dam_view_mode'
 const COLUMNS_KEY = 'whoobe_custom_dam_columns'
 
@@ -1144,6 +1214,14 @@ function setViewMode(mode: 'grid' | 'list') {
   viewMode.value = mode
   localStorage.setItem(VIEW_MODE_KEY, mode)
 }
+
+const FILTER_BAR_VISIBLE_KEY = 'whoobe_custom_dam_filter_bar_visible'
+
+const showFilterBar = ref(localStorage.getItem(FILTER_BAR_VISIBLE_KEY) !== 'false')
+
+watch(showFilterBar, (visible) => {
+  localStorage.setItem(FILTER_BAR_VISIBLE_KEY, String(visible))
+})
 
 export interface ColumnConfig {
   thumbnail: boolean
@@ -1337,6 +1415,7 @@ interface UnifiedItem {
   updatedAt?: string
   s3Key?: string
   metadata?: { technical?: { width?: number; height?: number } }
+  cdnMirrors?: Record<string, unknown>
 }
 
 const unifiedItems = computed<UnifiedItem[]>(() => {
@@ -1365,6 +1444,7 @@ const unifiedItems = computed<UnifiedItem[]>(() => {
     updatedAt: a.updatedAt,
     s3Key: a.s3Key,
     metadata: a.metadata,
+    cdnMirrors: a.cdnMirrors,
   }))
   return [...folders, ...assets].sort((a, b) => a.filename.localeCompare(b.filename))
 })
@@ -1407,6 +1487,45 @@ function goToPage(page: number) {
 // --- Selection State & Actions ---
 const selectedAssetIds = ref<string[]>([])
 const isDownloadingZip = ref(false)
+
+// CDN mirroring (docs/plans/assets/assets-cdn.md) - loaded once so the
+// "Publish to CDN" button knows whether it's usable at all, without
+// re-fetching Settings > DAM's config on every click.
+const cdnMirrorSettings = ref<CdnMirrorSettings | null>(null)
+const isPublishingToCdn = ref(false)
+
+onMounted(async () => {
+  try {
+    cdnMirrorSettings.value = await fetchCdnMirrorSettings(getDefaultCoreApiUrl())
+  } catch {
+    // Non-critical - the button just stays disabled with its own tooltip.
+  }
+})
+
+const cdnMirrorConfigured = computed(() => !!cdnMirrorSettings.value?.gatewayRouteId)
+
+async function publishSelectedToCdn() {
+  const ids = [...selectedAssetIds.value]
+  if (ids.length === 0 || !cdnMirrorSettings.value?.gatewayRouteId) return
+  const settings = cdnMirrorSettings.value
+  isPublishingToCdn.value = true
+  let succeeded = 0
+  let failed = 0
+  for (const id of ids) {
+    try {
+      await damStore.mirrorAssetToCdn(id, {
+        gatewayRouteId: settings.gatewayRouteId!,
+        uploadPreset: settings.uploadPreset,
+        provider: settings.provider,
+      })
+      succeeded++
+    } catch {
+      failed++
+    }
+  }
+  isPublishingToCdn.value = false
+  toastStore.show(failed > 0 ? `${succeeded} mirrored, ${failed} failed.` : `${succeeded} asset(s) published to CDN.`)
+}
 
 const isAllPageSelected = computed(() => {
   const pageAssetIds = paginatedItems.value.filter((a) => a.kind === 'asset')

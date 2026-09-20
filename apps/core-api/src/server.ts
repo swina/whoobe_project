@@ -1671,6 +1671,47 @@ app.put('/whoobe-one/settings/autosave', requirePermission(PERMISSIONS.OBJECTS_W
   }
 });
 
+// CDN mirror endpoint/route to use for "Publish to CDN" (docs/plans/assets/
+// assets-cdn.md) - configured once (Settings > DAM), same "configure once,
+// reuse everywhere" pattern as the mail settings and the toggles above,
+// rather than asking for it on every mirror action.
+app.get('/whoobe-one/settings/cdn-mirror', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const all = await listWebsites();
+    const first = all[0];
+    const raw = first?.settings && typeof first.settings === 'object' && !Array.isArray(first.settings)
+      ? (first.settings as Record<string, unknown>).cdnMirror
+      : null;
+    const cdnMirror = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+    res.json({
+      gatewayRouteId: typeof cdnMirror.gatewayRouteId === 'string' ? cdnMirror.gatewayRouteId : null,
+      uploadPreset: typeof cdnMirror.uploadPreset === 'string' ? cdnMirror.uploadPreset : null,
+      provider: typeof cdnMirror.provider === 'string' ? cdnMirror.provider : 'cloudinary',
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to read CDN mirror settings' });
+  }
+});
+
+app.put('/whoobe-one/settings/cdn-mirror', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { gatewayRouteId, uploadPreset, provider } = req.body ?? {};
+    const all = await listWebsites();
+    if (!all.length) { res.status(404).json({ error: 'No website found' }); return; }
+    const first = all[0];
+    const nextCdnMirror = {
+      gatewayRouteId: typeof gatewayRouteId === 'string' && gatewayRouteId ? gatewayRouteId : null,
+      uploadPreset: typeof uploadPreset === 'string' && uploadPreset ? uploadPreset : null,
+      provider: typeof provider === 'string' && provider ? provider : 'cloudinary',
+    };
+    const settings = { ...(first.settings as Record<string, unknown> ?? {}), cdnMirror: nextCdnMirror };
+    await updateWebsite(first.id, { settings });
+    res.json(nextCdnMirror);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to save CDN mirror settings' });
+  }
+});
+
 app.get('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const website = await getWebsite(req.params.id);
