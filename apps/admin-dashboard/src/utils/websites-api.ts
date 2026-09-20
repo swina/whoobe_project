@@ -320,6 +320,33 @@ export async function saveLoggingEnabled(baseUrl: string, enabled: boolean): Pro
   })
 }
 
+// CDN mirror endpoint/route to use for "Publish to CDN" (docs/plans/assets/
+// assets-cdn.md) - configured once here, reused by every mirror action.
+export interface CdnMirrorSettings {
+  gatewayRouteId: string | null
+  uploadPreset: string | null
+  provider: string
+}
+
+export async function fetchCdnMirrorSettings(baseUrl: string): Promise<CdnMirrorSettings> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/cdn-mirror`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return {
+    gatewayRouteId: typeof body.gatewayRouteId === 'string' ? body.gatewayRouteId : null,
+    uploadPreset: typeof body.uploadPreset === 'string' ? body.uploadPreset : null,
+    provider: typeof body.provider === 'string' ? body.provider : 'cloudinary',
+  }
+}
+
+export async function saveCdnMirrorSettings(baseUrl: string, settings: CdnMirrorSettings): Promise<void> {
+  await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/cdn-mirror`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+    credentials: 'include',
+  })
+}
+
 // Legacy single-theme API (backward-compatible) — reads/writes the default theme.
 export interface WebsiteThemeLegacy {
   colors: { name: string; hex: string }[]

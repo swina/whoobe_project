@@ -1,5 +1,6 @@
 import { pgTable, text, boolean, integer, timestamp, jsonb, uuid } from 'drizzle-orm/pg-core';
 import type { ExtractedAssetMetadata } from '../dam/metadata-extractor.js';
+import type { CdnMirrorRecord } from '../dam/cdn-mirror.js';
 
 /**
  * DAM records: which assets/folders exist and their metadata. This is the
@@ -9,6 +10,12 @@ import type { ExtractedAssetMetadata } from '../dam/metadata-extractor.js';
  * tables never store URLs (public links are stable but presigned private
  * links expire in ~1h, so they're always resolved fresh - see
  * apps/asset-processor's /api/v1/dam/asset-urls).
+ *
+ * `assets.cdnMirrors` is a deliberate exception to "never store URLs": a
+ * CDN mirror's URL (Cloudinary's `secure_url` or equivalent) is a stable,
+ * permanent delivery link, not a presigned one - it doesn't expire, so
+ * caching it is correct rather than a violation of the rule above. See
+ * docs/plans/assets/assets-cdn.md.
  */
 
 export const folders = pgTable('folders', {
@@ -35,6 +42,11 @@ export const assets = pgTable('assets', {
   s3Key: text('s3_key').notNull(),
   isPublic: boolean('is_public').notNull().default(false),
   metadata: jsonb('metadata').$type<ExtractedAssetMetadata | null>(),
+  // Not part of ExtractedAssetMetadata (that's strictly EXIF/camera/GPS/
+  // rights data extracted from the file itself) - this is system state
+  // about where else the asset lives, keyed by provider id so a second
+  // provider added later doesn't clobber the first's record.
+  cdnMirrors: jsonb('cdn_mirrors').$type<Record<string, CdnMirrorRecord>>().notNull().default({}),
   uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

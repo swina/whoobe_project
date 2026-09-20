@@ -2,6 +2,7 @@ import { eq, or, like } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { folders, assets } from './dam-schema.js';
 import type { ExtractedAssetMetadata } from '../dam/metadata-extractor.js';
+import type { CdnMirrorRecord } from '../dam/cdn-mirror.js';
 import { indexAsset, deleteIndexedByDocument } from '../search/indexer.js';
 
 export interface FolderRecord {
@@ -25,6 +26,7 @@ export interface AssetRecord {
   s3Key: string;
   isPublic: boolean;
   metadata: ExtractedAssetMetadata | null;
+  cdnMirrors: Record<string, CdnMirrorRecord>;
   uploadedAt: Date;
   updatedAt: Date;
 }
@@ -111,6 +113,27 @@ export async function getAssetById(id: string): Promise<AssetRecord | null> {
   const db = getDb();
   const [row] = await db.select().from(assets).where(eq(assets.id, id)).limit(1);
   return row ?? null;
+}
+
+/** Records (or replaces) one provider's CDN mirror for an asset -
+ *  docs/plans/assets/assets-cdn.md. Merges into the existing `cdnMirrors`
+ *  map keyed by `mirror.provider` rather than replacing the whole map, so
+ *  mirroring to a second provider later doesn't lose the first's record.
+ *  Throws if the asset doesn't exist (callers already have it loaded by
+ *  this point - there's no sensible "create" fallback here). */
+export async function updateAssetCdnMirror(id: string, mirror: CdnMirrorRecord): Promise<AssetRecord> {
+  const db = getDb();
+  const existing = await getAssetById(id);
+  if (!existing) {
+    throw new Error(`Asset not found: ${id}`);
+  }
+  const cdnMirrors = { ...existing.cdnMirrors, [mirror.provider]: mirror };
+  const [row] = await db
+    .update(assets)
+    .set({ cdnMirrors, updatedAt: new Date() })
+    .where(eq(assets.id, id))
+    .returning();
+  return row;
 }
 
 /**

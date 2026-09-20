@@ -83,4 +83,24 @@ export const GATEWAY_PRESETS: GatewayPreset[] = [
       { method: 'GET', path: 'contacts/lists', description: 'List contact lists (campaign recipients)' },
     ],
   },
+  {
+    id: 'cloudinary',
+    label: 'Cloudinary',
+    description: 'Image/video CDN - mirrors DAM assets to a public, stable delivery URL (docs/plans/assets/assets-cdn.md).',
+    baseUrl: 'https://api.cloudinary.com/v1_1/{cloud_name}',
+    // Cloudinary's primary upload API needs a per-request HMAC signature
+    // (api_key + timestamp + everything else, signed with api_secret) -
+    // not something the Gateway's static-header auth types can produce.
+    // This preset instead assumes an *unsigned* upload preset (configured
+    // once in Cloudinary's own dashboard, marked "unsigned") - every
+    // upload just POSTs `file` + `upload_preset=<name>`, no signature and
+    // no secret in the request at all, so `authType: 'none'` is correct
+    // here rather than a misleading api-key/bearer field that would go
+    // unused.
+    authType: 'none',
+    authConfigFields: [],
+    starterRoutes: [
+      { method: 'POST', path: 'image/upload', description: 'Upload/mirror an image (unsigned upload preset)' },
+    ],
+  },
 ]

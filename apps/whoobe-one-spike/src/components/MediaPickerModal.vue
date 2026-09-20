@@ -77,14 +77,24 @@
                   :key="asset.pimcorePath"
                   type="button"
                   class="flex flex-col gap-1 border rounded-md p-1.5 hover:border-indigo-400 text-left"
+                  :class="isCdnMirrored(asset) ? 'border-emerald-300' : 'border-gray-200'"
                   :title="asset.pimcorePath"
                   @click="$emit('select', asset.pimcorePath)"
                 >
-                  <div class="w-full h-20 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
+                  <div class="relative w-full h-20 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
                     <img v-if="hasPreview(asset)" :src="asset.thumbnailUrl" :alt="asset.filename" class="w-full h-full object-cover" />
                     <FileText v-else class="w-8 h-8 text-gray-300" />
+                    <span
+                      v-if="isCdnMirrored(asset)"
+                      title="Mirrored to CDN"
+                      class="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow"
+                    >
+                      <Cloud class="w-2.5 h-2.5" />
+                    </span>
                   </div>
-                  <span class="text-[10px] text-gray-500 truncate">{{ asset.filename }}</span>
+                  <span class="text-[10px] text-gray-500 truncate flex items-center gap-1">
+                    {{ asset.filename }}
+                  </span>
                   <span class="text-[9px] text-gray-400">{{ formatSize(asset.sizeBytes) }}</span>
                 </button>
               </div>
@@ -105,7 +115,10 @@
                     <FileText v-else class="w-5 h-5 text-gray-300" />
                   </div>
                   <div class="min-w-0 flex-1">
-                    <div class="text-xs font-medium text-gray-800 truncate">{{ asset.filename }}</div>
+                    <div class="text-xs font-medium text-gray-800 truncate flex items-center gap-1.5">
+                      {{ asset.filename }}
+                      <Cloud v-if="isCdnMirrored(asset)" class="w-3 h-3 text-emerald-500 shrink-0" title="Mirrored to CDN" />
+                    </div>
                     <div class="text-[10px] text-gray-400 flex items-center gap-2">
                       <span>{{ asset.mimeType }}</span>
                       <span>{{ formatSize(asset.sizeBytes) }}</span>
@@ -124,7 +137,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Folder, Image as ImageIcon, Grid, List, X, ChevronDown, ChevronRight, FileText } from '@lucide/vue'
+import { Folder, Image as ImageIcon, Grid, List, X, ChevronDown, ChevronRight, FileText, Cloud } from '@lucide/vue'
 import { listDamAssets, listDamFolders, type DamAssetRecord, type DamFolderRecord } from '../dam-api'
 
 defineEmits<{
@@ -194,6 +207,14 @@ function hasPreview(asset: DamAssetRecord): boolean {
   if (!asset.thumbnailUrl) return false
   const ext = asset.filename.split('.').pop()?.toLowerCase()
   return ext ? ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'svg', 'bmp', 'tiff', 'tif'].includes(ext) : false
+}
+
+// CDN mirroring (docs/plans/assets/assets-cdn.md) - an asset published to a
+// CDN (Dashboard > Assets > "Publish to CDN") gets a badge/border here too,
+// so picking an image for a page/snippet makes it visible up front which
+// ones already have a stable, permanent delivery URL.
+function isCdnMirrored(asset: DamAssetRecord): boolean {
+  return !!asset.cdnMirrors && Object.keys(asset.cdnMirrors).length > 0
 }
 
 function formatSize(bytes: number): string {

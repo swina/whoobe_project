@@ -1,7 +1,20 @@
 <template>
   <div class="space-y-6">
+    <!-- Tab Navigation -->
+    <div class="flex gap-1 border-b border-slate-800 light:border-slate-200">
+      <button
+        v-for="tab in tabs" :key="tab.key"
+        type="button"
+        class="px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition"
+        :class="activeTab === tab.key ? 'border-indigo-500 text-indigo-300' : 'border-transparent text-slate-500 hover:text-slate-300 light:text-slate-700'"
+        @click="activeTab = tab.key"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
     <!-- Header Card -->
-    <div class="rounded-2xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 p-6 shadow-xl">
+    <div v-show="activeTab === 'storage'" class="rounded-2xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 p-6 shadow-xl">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
@@ -97,7 +110,7 @@
     </div>
 
     <!-- Folder Visibility Strategy Manager -->
-    <div class="rounded-2xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 p-6 shadow-xl space-y-4">
+    <div v-show="activeTab === 'visibility'" class="rounded-2xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 p-6 shadow-xl space-y-4">
       <div class="flex items-center justify-between">
         <div>
           <h4 class="text-sm font-bold text-slate-100 light:text-slate-900 uppercase tracking-wider text-xs">Folder Visibility Rules Engine</h4>
@@ -177,16 +190,29 @@
         </div>
       </div>
     </div>
+
+    <!-- CDN Mirroring (docs/plans/assets/assets-cdn.md) -->
+    <div v-show="activeTab === 'cdn'">
+      <CdnMirrorSettingsCard />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useDamStore } from '../../stores/damStore'
+import CdnMirrorSettingsCard from './CdnMirrorSettingsCard.vue'
 
 const damStore = useDamStore()
 const newRulePath = ref('')
 const newRuleIsPublic = ref(true)
+
+const tabs: { key: 'storage' | 'visibility' | 'cdn'; label: string }[] = [
+  { key: 'storage', label: 'DAM Storage' },
+  { key: 'visibility', label: 'Folder Visibility' },
+  { key: 'cdn', label: 'CDN Mirroring' },
+]
+const activeTab = ref<'storage' | 'visibility' | 'cdn'>('storage')
 
 function submitAddRule() {
   if (newRulePath.value.trim()) {

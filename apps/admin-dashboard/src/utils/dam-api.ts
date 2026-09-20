@@ -1,4 +1,4 @@
-import type { FolderVisibilityRule, ThumbnailPreset, ExtractedAssetMetadata, SupportedImageFormat } from '@whoobe-cms/core'
+import type { FolderVisibilityRule, ThumbnailPreset, ExtractedAssetMetadata, SupportedImageFormat, CdnMirrorRecord } from '@whoobe-cms/core'
 
 // Thin HTTP client for the asset-processor DAM endpoints. S3/MinIO
 // credentials never touch the browser: the backend owns them via its
@@ -52,6 +52,7 @@ export interface DamAssetRecord {
   s3Key: string
   isPublic: boolean
   metadata: ExtractedAssetMetadata | null
+  cdnMirrors: Record<string, CdnMirrorRecord>
   uploadedAt: string
   updatedAt: string
 }
@@ -291,6 +292,24 @@ export async function moveAssetApi(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pimcorePath, targetFolderPath, folderRules }),
+    credentials: 'include',
+  })
+  const data = await parseJsonOrThrow(res)
+  return data.asset
+}
+
+// Mirrors an asset to the configured CDN (docs/plans/assets/assets-cdn.md)
+// via the Gateway route picked in Settings > DAM - AssetsView.vue's
+// "Publish to CDN" bulk action calls this once per selected asset.
+export async function mirrorAssetToCdnApi(
+  baseUrl: string,
+  assetId: string,
+  options: { gatewayRouteId: string; uploadPreset?: string | null; provider?: string }
+): Promise<DamAssetRecord> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/assets/${assetId}/mirror-cdn`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(options),
     credentials: 'include',
   })
   const data = await parseJsonOrThrow(res)
