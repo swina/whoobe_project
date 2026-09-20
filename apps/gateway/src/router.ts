@@ -8,6 +8,7 @@ import { createResolveHandler } from './resolve-handler.js';
 import { createSubmitHandler } from './submit-handler.js';
 import { loadPlugins } from './plugin-loader.js';
 import type { GatewayPlugin } from './plugin-types.js';
+import { loadPresets } from './preset-loader.js';
 import { PERMISSIONS, requirePermission } from './auth.js';
 import { logGatewayError } from './log-error.js';
 
@@ -106,7 +107,9 @@ export function createRouter(): Router {
   plugins.push(...loadedPlugins);
   setLoadedPlugins(plugins);
 
-  router.use('/api/v1/gateway', createAdminRoutes(plugins));
+  const presets = loadPresets(process.env.GATEWAY_PRESETS_PATH);
+
+  router.use('/api/v1/gateway', createAdminRoutes(plugins, presets));
   router.use('/api/remote', createRemoteRouter());
   router.use('/api/v1/gateway/resolve', createResolveHandler());
   router.use('/api/v1/gateway/submit', createSubmitHandler());

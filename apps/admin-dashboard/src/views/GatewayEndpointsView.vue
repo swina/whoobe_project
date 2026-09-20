@@ -248,7 +248,7 @@
           <label class="block text-xs font-medium text-slate-300 light:text-slate-700">Start from a template</label>
           <div class="flex flex-wrap gap-1.5">
             <button
-              v-for="preset in GATEWAY_PRESETS" :key="preset.id"
+              v-for="preset in presets" :key="preset.id"
               @click="applyPreset(preset)"
               :class="['px-2.5 py-1 rounded-lg text-xs font-medium border transition', selectedPresetId === preset.id ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 light:bg-slate-100 border-slate-700 light:border-slate-300 text-slate-300 light:text-slate-700 hover:bg-slate-700 light:hover:bg-slate-200']"
               :title="preset.description"
@@ -424,10 +424,9 @@ import {
   listRoutes, createRoute, updateRoute, deleteRoute,
   testRoute as testRouteApi, getRouteSchema, refreshSchema,
   getDefaultGatewayUrl, getDefaultGatewayUpstreams, getDefaultGatewayRateLimit,
-  executeRoute, importOpenApi,
-  type GatewayEndpoint, type GatewayRoute, type ImportOpenApiResult,
+  executeRoute, importOpenApi, listPresets,
+  type GatewayEndpoint, type GatewayRoute, type ImportOpenApiResult, type GatewayPreset,
 } from '../utils/gateway-api'
-import { GATEWAY_PRESETS, type GatewayPreset } from '../utils/gateway-presets'
 
 // Gateway info
 const gatewayUrl = getDefaultGatewayUrl()
@@ -735,6 +734,19 @@ async function toggleExpand(id: string) {
 
 // --- Endpoint CRUD ---
 
+// Vendor presets (apps/gateway/presets/*.json) - fetched from the gateway
+// rather than a hardcoded local array, so adding a vendor is a data change
+// there, not a frontend code change here.
+const presets = ref<GatewayPreset[]>([])
+
+async function loadPresets() {
+  try {
+    presets.value = await listPresets()
+  } catch {
+    // Non-critical - "Start from a template" just shows no options.
+  }
+}
+
 const selectedPresetId = ref<string | null>(null)
 const starterRoutesForSelectedPreset = ref<GatewayPreset['starterRoutes']>([])
 
@@ -920,5 +932,6 @@ async function refreshRouteSchema(routeId: string) {
 onMounted(() => {
   loadAll()
   checkHealth()
+  loadPresets()
 })
 </script>
