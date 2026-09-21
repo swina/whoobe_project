@@ -14,9 +14,11 @@ The product itself is branded **Whoobe** (npm scope `@whoobe-cms/*`).
   
   Define custom data classes ("Class Definitions") with arbitrary field layouts (text, rich-text/WYSIWYG, numbers, dates, selects, assets, relations, `fieldcollections`) through the admin UI, including reusable structured sub-schemas ("Components"). Objects get per-class listing views with ordering and filtering, multiple locales/translations, and CSV export.
 
+  Dynamic Injection into the Editor: Data Objects exposes visual keys in the visual builder (whoobe-one-spike). The designer drags and drops a graphical element and connects it in real time to live data from the Data Object classes.
+
 - **Digital Asset Management (DAM)** 
-  
-  S3/MinIO-backed asset storage with Sharp-powered image processing (configurable thumb/medium/large presets) and EXIF/IPTC metadata extraction; public/private folder visibility rules, folder management, versioning, and presigned URLs for private assets.
+  S3/MinIO-backed asset storage with Sharp-powered image processing (configurable thumb/medium/large presets) and EXIF/IPTC metadata extraction; public/private folder visibility rules, folder management, versioning, and presigned URLs for private assets. 
+  Includes asynchronous integration via API Gateway with Cloudinary; selected assets can be pushed to the public cloud, storing the CDN URL in the metadata. At publish time, the user chooses the media source (Local S3 vs. Cloudinary CDN), enabling offline/local preview architectures connected to public front-end distribution channels
 
 - **Headless CMS & visual page builder** 
 
@@ -26,6 +28,9 @@ The product itself is branded **Whoobe** (npm scope `@whoobe-cms/*`).
 - **API Gateway** 
   
   A unified Express gateway (port 3001) that proxies internal services (core-api, asset-processor) and external remote APIs with authentication injection, rate limiting, response schema inference, and a convention-based plugin system. Gateway endpoints and routes are configured through the admin UI, and inferred response schemas can be bound to page builder blocks via `{{ gateway:... }}` expressions.
+  Built-in vendor preset for : Shopify, HubSpot, Brevo, Stripe.
+
+  Dynamic Injection into the Editor: The Gateway queries the remote endpoint (or reads its OpenAPI/Swagger specifications), validates its contract at runtime, and exposes it as visual keys in the visual builder (whoobe-one-spike). The designer drags and drops a graphical element and connects it in real time to live data from the external system (e.g., inventory from an ERP).
 
 - **Mobile App Publishing**
 
@@ -60,7 +65,7 @@ The product itself is branded **Whoobe** (npm scope `@whoobe-cms/*`).
 
   manage multiple websites with default/supported locales, and dynamic URL path patterns (`/it/news/{slug}`) served by the public page route.
 
-- **Figma → Whoobe Converter**
+- **Figma → Whoobe Converter (BETA)**
 
   Import from Figma content into the Whoobe editor
 

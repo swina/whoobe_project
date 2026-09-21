@@ -44,7 +44,7 @@ import { X } from '@lucide/vue'
 import { useEditorStore } from '../../store/editor'
 
 const DIRECTIVES = [
-  'x-data', 'x-init', 'x-show', 'x-collapse', 'x-collapse.duration' , 'x-bind', 'x-bind:class', 'x-on', 'x-on:click',
+  'x-data', 'x-init', 'x-show', 'x-collapse', 'x-collapse.duration' , 'x-bind', 'x-bind:class', 'x-bind:autoplay', 'x-on', 'x-on:click',
   'x-text', 'x-html', 'x-model', 'x-for', 'x-transition', 'x-transition:enter',
   'x-transition:enter-start', 'x-transition:enter-end', 'x-transition:leave',
   'x-transition:leave-start', 'x-transition:leave-end', 'x-effect', 'x-ignore',

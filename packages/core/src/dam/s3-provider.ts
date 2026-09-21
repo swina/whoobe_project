@@ -12,6 +12,7 @@ import {
   S3ClientConfig,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import {
   AssetStorageProvider,
   GetAssetUrlOptions,
@@ -53,6 +54,21 @@ export class S3AssetStorageProvider implements AssetStorageProvider {
       region: config.region ?? 'us-east-1',
       endpoint: config.endpoint,
       forcePathStyle: config.forcePathStyle ?? true, // Default to true for MinIO compatibility
+      // AWS SDK v3's default connection/socket timeouts are 0 (disabled) -
+      // a stalled (not refused/reset) S3/MinIO connection would otherwise
+      // hang the calling await forever with no error, silently occupying a
+      // pool slot. socketTimeout is inactivity-based (won't kill a large
+      // file that's still actively streaming), unlike a flat total-duration
+      // timeout. keepAlive: false - see server.ts's s3ClientForProxy comment
+      // (apps/asset-processor): a pooled keep-alive socket can go silently
+      // stale under WSL2/Docker Desktop's network layer; no pool, no stale
+      // socket to hang on.
+      requestHandler: new NodeHttpHandler({
+        connectionTimeout: 5_000,
+        socketTimeout: 30_000,
+        httpAgent: { keepAlive: false },
+        httpsAgent: { keepAlive: false },
+      }),
     };
 
     if (config.accessKeyId && config.secretAccessKey) {
