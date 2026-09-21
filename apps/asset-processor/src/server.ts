@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import { Readable } from 'node:stream';
 import { S3Client, GetObjectCommand, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import {
   ImageProcessingPipeline,
   AssetMetadataExtractor,
@@ -957,11 +958,33 @@ app.post('/api/v1/dam/ensure-bucket', requireAuth, async (req: Request, res: Res
 
 // S3 client for the proxy — created once with the same credentials as the
 // DAM provider, so the proxy can serve authenticated requests to MinIO.
+// requestHandler timeouts: without them (the SDK's default is 0/disabled),
+// a stalled-but-not-refused MinIO connection hangs the awaiting request
+// forever with no error, permanently occupying one of this shared client's
+// pooled sockets - repeated often enough, the whole pool wedges and every
+// subsequent /dam-asset/* request queues forever too, with nothing ever
+// logged. socketTimeout is inactivity-based, so it won't kill a large video
+// that's still actively streaming, only a genuinely stalled one.
+// keepAlive: false - observed live (2026-09-21): this proxy's keep-alive
+// connection pool can end up holding a socket the WSL2/Docker Desktop
+// network layer has silently reset (no FIN/RST reaches Node), so it sits in
+// the pool looking alive; the next request to reuse it hangs until
+// connectionTimeout. Restarting the process "fixed" it only because that
+// throws away the pool and its zombie sockets. Disabling keep-alive opens a
+// fresh TCP connection per request instead of reusing pooled ones - there's
+// no pool left to go stale. MinIO is local (sub-millisecond connect), so
+// the per-request handshake cost is negligible.
 const s3ClientForProxy = new S3Client({
   region: damBaseConfig.region,
   endpoint: damBaseConfig.endpoint,
   credentials: { accessKeyId: damBaseConfig.accessKeyId, secretAccessKey: damBaseConfig.secretAccessKey },
   forcePathStyle: damBaseConfig.forcePathStyle !== false,
+  requestHandler: new NodeHttpHandler({
+    connectionTimeout: 5_000,
+    socketTimeout: 30_000,
+    httpAgent: { keepAlive: false },
+    httpsAgent: { keepAlive: false },
+  }),
 });
 
 const THUMB_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'tiff', 'svg'];
@@ -1009,7 +1032,17 @@ app.get('/dam-asset/*', async (req: Request, res: Response): Promise<void> => {
     if (response.Body) {
       res.setHeader('Content-Type', response.ContentType || 'application/octet-stream');
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-      (response.Body as Readable).pipe(res);
+      const bodyStream = response.Body as Readable;
+      // A stream 'error' (e.g. the socketTimeout above firing mid-transfer)
+      // is not forwarded to `res` by .pipe() - left unhandled, it's an
+      // uncaught exception that would crash the whole asset-processor
+      // process instead of just failing this one request.
+      bodyStream.on('error', (err) => {
+        logger.error({ err, s3Key }, 'DAM asset proxy stream error');
+        if (!res.headersSent) res.status(502).end();
+        else res.destroy();
+      });
+      bodyStream.pipe(res);
     } else {
       res.status(404).end();
     }

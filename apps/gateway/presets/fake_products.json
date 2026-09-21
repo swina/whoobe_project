@@ -1,0 +1,12 @@
+{
+  "id": "fake_products",
+  "label": "Fake Products",
+  "description": "A fake products API for testing purposes.",
+  "baseUrl": "https://dummyjson.com",
+  "authType": "none",
+  "authConfigFields": ["token"],
+  "starterRoutes": [
+    { "method": "GET", "path": "products", "description": "List products" },
+    { "method": "POST", "path": "products/{id}", "description": "Get a product by ID" }
+  ]
+}

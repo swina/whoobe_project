@@ -91,6 +91,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.700.0
         version: 3.1101.0
+      '@smithy/node-http-handler':
+        specifier: ^4.9.13
+        version: 4.9.13
       '@whoobe-cms/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -372,6 +375,9 @@ importers:
       '@google/generative-ai':
         specifier: ^0.24.1
         version: 0.24.1
+      '@smithy/node-http-handler':
+        specifier: ^4.9.13
+        version: 4.9.13
       argon2:
         specifier: ^0.41.1
         version: 0.41.1
