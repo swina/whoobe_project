@@ -70,7 +70,9 @@ const twgroups = [
     { label: 'background' , components: [
         { name: 'Color' , attr: 'bgcolor' , title: 'color' , prefix: 'bg' },
         { name: 'Color' , attr: 'bgcolorhover' , title: 'hover color' , prefix: 'hover:bg' },
-        { name: 'BgPosition' , attr: 'bgposition' },
+        { name: 'Options' , attr: 'bgimg' , title: 'image' },
+        { name: 'Options' , attr: 'bgposition' , title: 'position' },
+        { name: 'Options' , attr: 'bgrepeat' , title: 'repeat'  },
         { name: 'Options' , attr: 'blur' , title: 'filter blur' }
     ]},
     { label: 'gradient' , components: [ 

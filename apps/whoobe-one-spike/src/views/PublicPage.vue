@@ -17,7 +17,7 @@
   <template v-else-if="doc">
     <!-- Website-template shell (website-templates.md): the routed page is the
          body, wrapped by the template's header/aside/footer module pages. -->
-    <div v-if="layout" class="whoobe-page" v-bind="slotAlpine(layout.body)">
+    <div v-if="layout" :class="['whoobe-page', layout.body?.className]" :style="layout.body?.style ?? ''" v-bind="slotAlpine(layout.body)">
       <header v-if="layout.header" :class="layout.header.className" :style="layout.header.style" v-bind="slotAlpine(layout.header)">
         <BlockContainerPreview v-for="m in layout.header.pages" :key="m.id" :doc="m.content" />
       </header>
