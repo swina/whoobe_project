@@ -29,133 +29,175 @@
 
       <!-- Navigation -->
       <nav class="flex-1 py-4 px-3 space-y-1.5 overflow-y-auto">
-        <div v-for="item in navItems" :key="item.section" class="space-y-1">
+        <!-- Nav layout toggle: flat list vs grouped-by-category. Hidden
+             (and forced flat, see navRows) while the sidebar is collapsed,
+             since group headers have nowhere to go in icon-only mode.
+             Choice remembered per browser via localStorage. -->
+        <div v-if="!isSidebarCollapsed" class="flex items-center gap-1 p-0.5 mb-2 rounded-lg bg-slate-800/50 light:bg-slate-100/70">
           <button
-            @click="tabsStore.openSection(item.section)"
-            :title="item.name"
+            @click="setNavGrouped(false)"
             :class="[
-              'w-full text-[10px] flex items-center px-3 py-2 rounded-xl font-medium transition-all group relative text-left',
-              isSectionActive(item.section)
-                ? 'bg-gradient-to-r from-indigo-600/90 to-violet-600/90 text-white shadow-md shadow-indigo-500/10'
-                : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/50 light:bg-slate-100/50'
+              'flex-1 py-1 rounded-md text-[11px] font-semibold transition',
+              !isNavGrouped
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 light:text-slate-500 hover:text-slate-200 light:text-slate-700'
             ]"
           >
-            <component :is="item.icon" class="w-5 h-5 shrink-0 transition-transform group-hover:scale-110" />
-            <span v-if="!isSidebarCollapsed" class="ml-3 text-xs truncate flex-1">{{ item.name }}</span>
+            Flat
+          </button>
+          <button
+            @click="setNavGrouped(true)"
+            :class="[
+              'flex-1 py-1 rounded-md text-[11px] font-semibold transition',
+              isNavGrouped
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 light:text-slate-500 hover:text-slate-200 light:text-slate-700'
+            ]"
+          >
+            Grouped
+          </button>
+        </div>
 
-            <!-- Expand/Collapse Objects Class Tree Toggle -->
-            <button
-              v-if="item.section === 'objects' && !isSidebarCollapsed"
-              @click.stop="isObjectsTreeExpanded = !isObjectsTreeExpanded"
-              class="p-1 rounded text-slate-400 light:text-slate-600 hover:text-white hover:bg-slate-700/60 light:bg-slate-200/60 transition ml-1 shrink-0"
-              title="Toggle Classes Tree"
-            >
-              <ChevronDown v-if="isObjectsTreeExpanded" class="w-4 h-4 text-indigo-400" />
-              <ChevronRight v-else class="w-4 h-4 text-slate-500" />
-            </button>
-
-            <!-- Expand/Collapse Assets Tree Toggle -->
-            <button
-              v-if="item.section === 'assets' && !isSidebarCollapsed"
-              @click.stop="isAssetsTreeExpanded = !isAssetsTreeExpanded"
-              class="p-1 rounded text-slate-400 light:text-slate-600 hover:text-white hover:bg-slate-700/60 light:bg-slate-200/60 transition ml-1 shrink-0"
-              title="Toggle Folders Tree"
-            >
-              <ChevronDown v-if="isAssetsTreeExpanded" class="w-4 h-4 text-indigo-400" />
-              <ChevronRight v-else class="w-4 h-4 text-slate-500" />
-            </button>
-
-            <!-- Expand/Collapse Settings Submenu Toggle -->
-            <button
-              v-if="item.section === 'settings' && !isSidebarCollapsed"
-              @click.stop="isSettingsMenuExpanded = !isSettingsMenuExpanded"
-              class="p-1 rounded text-slate-400 light:text-slate-600 hover:text-white hover:bg-slate-700/60 light:bg-slate-200/60 transition ml-1 shrink-0"
-              title="Toggle Settings Menu"
-            >
-              <ChevronDown v-if="isSettingsMenuExpanded" class="w-4 h-4 text-indigo-400" />
-              <ChevronRight v-else class="w-4 h-4 text-slate-500" />
-            </button>
-
-            <!-- Tooltip on collapsed state -->
-            <div
-              v-if="isSidebarCollapsed"
-              class="absolute left-full ml-2 px-2.5 py-1 bg-slate-800 light:bg-slate-100 text-slate-200 light:text-slate-800 text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50 border border-slate-700 light:border-slate-300 shadow-xl"
-            >
-              {{ item.name }}
-            </div>
+        <template v-for="row in navRows" :key="row.kind === 'header' ? `group-${row.id}` : row.item.section">
+          <button
+            v-if="row.kind === 'header'"
+            @click="toggleNavGroup(row.id)"
+            class="w-full flex items-center justify-between px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500 light:text-slate-400 hover:text-slate-300 light:hover:text-slate-600 select-none first:pt-1 transition-colors"
+            :title="collapsedNavGroups.has(row.id) ? `Expand ${row.label}` : `Collapse ${row.label}`"
+          >
+            <span>{{ row.label }}</span>
+            <ChevronDown v-if="!collapsedNavGroups.has(row.id)" class="w-3 h-3" />
+            <ChevronRight v-else class="w-3 h-3" />
           </button>
 
-          <!-- Sidebar DAM Folders Tree -->
-          <div
-            v-if="item.section === 'assets' && isAssetsTreeExpanded && !isSidebarCollapsed"
-            class="ml-3 pl-2.5 border-l border-slate-800/80 light:border-slate-200/80 space-y-1 py-1"
-          >
-            <!-- Root Folder Node -->
-            <div
-              @click="handleSelectSidebarFolder('/')"
-              :class="[
-                'flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none group',
-                damStore.currentFolderPath === '/'
-                  ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
-                  : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
-              ]"
-            >
-              <Folder class="w-3.5 h-3.5 mr-1.5 text-indigo-400 shrink-0" />
-              <span class="truncate flex-1">/ (Root)</span>
-            </div>
-
-            <!-- Root Subfolders Tree Nodes -->
-            <SidebarFolderNode
-              v-for="subfolder in rootSubfolders"
-              :key="subfolder.path"
-              :folder="subfolder"
-              :all-folders="damStore.folders"
-              :current-path="damStore.currentFolderPath"
-              @select="handleSelectSidebarFolder"
-            />
-          </div>
-
-          <!-- Settings Submenu - docs/plans/UI/settings-ui-plan.md -->
-          <div
-            v-if="item.section === 'settings' && isSettingsMenuExpanded && !isSidebarCollapsed"
-            class="ml-3 pl-2.5 border-l border-slate-800/80 light:border-slate-200/80 space-y-1 py-1"
-          >
+          <div v-else class="space-y-1">
             <button
-              v-for="sub in settingsSubItems" :key="sub.key"
-              @click="tabsStore.openSettingsSubSection(sub.key)"
+              @click="tabsStore.openSection(row.item.section)"
+              :title="row.item.name"
               :class="[
-                'w-full flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none text-left',
-                isSettingsSubSectionActive(sub.key)
-                  ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
-                  : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
+                'w-full text-[10px] flex items-center px-3 py-2 rounded-xl font-medium transition-all group relative text-left',
+                isSectionActive(row.item.section)
+                  ? 'bg-gradient-to-r from-indigo-600/90 to-violet-600/90 text-white shadow-md shadow-indigo-500/10'
+                  : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/50 light:bg-slate-100/50'
               ]"
             >
-              <component :is="sub.icon" class="w-3.5 h-3.5 mr-1.5 shrink-0" />
-              <span class="truncate flex-1">{{ sub.name }}</span>
-            </button>
-          </div>
+              <component :is="row.item.icon" class="w-5 h-5 shrink-0 transition-transform group-hover:scale-110" />
+              <span v-if="!isSidebarCollapsed" class="ml-3 text-xs truncate flex-1">{{ row.item.name }}</span>
 
-          <!-- Data Objects Class Tree -->
-          <div
-            v-if="item.section === 'objects' && isObjectsTreeExpanded && !isSidebarCollapsed"
-            class="ml-3 pl-2.5 border-l border-slate-800/80 light:border-slate-200/80 space-y-1 py-1"
-          >
+              <!-- Expand/Collapse Objects Class Tree Toggle -->
+              <button
+                v-if="row.item.section === 'objects' && !isSidebarCollapsed"
+                @click.stop="isObjectsTreeExpanded = !isObjectsTreeExpanded"
+                class="p-1 rounded text-slate-400 light:text-slate-600 hover:text-white hover:bg-slate-700/60 light:bg-slate-200/60 transition ml-1 shrink-0"
+                title="Toggle Classes Tree"
+              >
+                <ChevronDown v-if="isObjectsTreeExpanded" class="w-4 h-4 text-indigo-400" />
+                <ChevronRight v-else class="w-4 h-4 text-slate-500" />
+              </button>
+
+              <!-- Expand/Collapse Assets Tree Toggle -->
+              <button
+                v-if="row.item.section === 'assets' && !isSidebarCollapsed"
+                @click.stop="isAssetsTreeExpanded = !isAssetsTreeExpanded"
+                class="p-1 rounded text-slate-400 light:text-slate-600 hover:text-white hover:bg-slate-700/60 light:bg-slate-200/60 transition ml-1 shrink-0"
+                title="Toggle Folders Tree"
+              >
+                <ChevronDown v-if="isAssetsTreeExpanded" class="w-4 h-4 text-indigo-400" />
+                <ChevronRight v-else class="w-4 h-4 text-slate-500" />
+              </button>
+
+              <!-- Expand/Collapse Settings Submenu Toggle -->
+              <button
+                v-if="row.item.section === 'settings' && !isSidebarCollapsed"
+                @click.stop="isSettingsMenuExpanded = !isSettingsMenuExpanded"
+                class="p-1 rounded text-slate-400 light:text-slate-600 hover:text-white hover:bg-slate-700/60 light:bg-slate-200/60 transition ml-1 shrink-0"
+                title="Toggle Settings Menu"
+              >
+                <ChevronDown v-if="isSettingsMenuExpanded" class="w-4 h-4 text-indigo-400" />
+                <ChevronRight v-else class="w-4 h-4 text-slate-500" />
+              </button>
+
+              <!-- Tooltip on collapsed state -->
+              <div
+                v-if="isSidebarCollapsed"
+                class="absolute left-full ml-2 px-2.5 py-1 bg-slate-800 light:bg-slate-100 text-slate-200 light:text-slate-800 text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50 border border-slate-700 light:border-slate-300 shadow-xl"
+              >
+                {{ row.item.name }}
+              </div>
+            </button>
+
+            <!-- Sidebar DAM Folders Tree -->
             <div
-              v-for="dataClass in dataClassesStore.classes"
-              :key="dataClass.id"
-              @click="handleSelectSidebarClass(dataClass.id)"
-              :class="[
-                'flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none group',
-                dataClassesStore.selectedClassId === dataClass.id
-                  ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
-                  : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
-              ]"
+              v-if="row.item.section === 'assets' && isAssetsTreeExpanded && !isSidebarCollapsed"
+              class="ml-3 pl-2.5 border-l border-slate-800/80 light:border-slate-200/80 space-y-1 py-1"
             >
-              <Table2 class="w-3.5 h-3.5 mr-1.5 text-indigo-400 shrink-0" />
-              <span class="truncate flex-1">{{ dataClass.label }}</span>
+              <!-- Root Folder Node -->
+              <div
+                @click="handleSelectSidebarFolder('/')"
+                :class="[
+                  'flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none group',
+                  damStore.currentFolderPath === '/'
+                    ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
+                    : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
+                ]"
+              >
+                <Folder class="w-3.5 h-3.5 mr-1.5 text-indigo-400 shrink-0" />
+                <span class="truncate flex-1">/ (Root)</span>
+              </div>
+
+              <!-- Root Subfolders Tree Nodes -->
+              <SidebarFolderNode
+                v-for="subfolder in rootSubfolders"
+                :key="subfolder.path"
+                :folder="subfolder"
+                :all-folders="damStore.folders"
+                :current-path="damStore.currentFolderPath"
+                @select="handleSelectSidebarFolder"
+              />
+            </div>
+
+            <!-- Settings Submenu - docs/plans/UI/settings-ui-plan.md -->
+            <div
+              v-if="row.item.section === 'settings' && isSettingsMenuExpanded && !isSidebarCollapsed"
+              class="ml-3 pl-2.5 border-l border-slate-800/80 light:border-slate-200/80 space-y-1 py-1"
+            >
+              <button
+                v-for="sub in settingsSubItems" :key="sub.key"
+                @click="tabsStore.openSettingsSubSection(sub.key)"
+                :class="[
+                  'w-full flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none text-left',
+                  isSettingsSubSectionActive(sub.key)
+                    ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
+                    : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
+                ]"
+              >
+                <component :is="sub.icon" class="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                <span class="truncate flex-1">{{ sub.name }}</span>
+              </button>
+            </div>
+
+            <!-- Data Objects Class Tree -->
+            <div
+              v-if="row.item.section === 'objects' && isObjectsTreeExpanded && !isSidebarCollapsed"
+              class="ml-3 pl-2.5 border-l border-slate-800/80 light:border-slate-200/80 space-y-1 py-1"
+            >
+              <div
+                v-for="dataClass in dataClassesStore.classes"
+                :key="dataClass.id"
+                @click="handleSelectSidebarClass(dataClass.id)"
+                :class="[
+                  'flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none group',
+                  dataClassesStore.selectedClassId === dataClass.id
+                    ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
+                    : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
+                ]"
+              >
+                <Table2 class="w-3.5 h-3.5 mr-1.5 text-indigo-400 shrink-0" />
+                <span class="truncate flex-1">{{ dataClass.label }}</span>
+              </div>
             </div>
           </div>
-        </div>
+        </template>
       </nav>
 
       <!-- Sidebar Footer / System Health Indicator -->
@@ -668,6 +710,42 @@ const isObjectsTreeExpanded = ref(true)
 const isAssetsTreeExpanded = ref(true)
 const isSettingsMenuExpanded = ref(true)
 
+// Flat vs grouped-by-category sidebar layout. Per-browser preference, not a
+// server setting - defaults to grouped (the requested improvement) but
+// stays a real toggle rather than replacing the old flat list outright.
+const NAV_MODE_STORAGE_KEY = 'whoobe-admin-sidebar-nav-mode'
+function readStoredNavGrouped(): boolean {
+  try {
+    return localStorage.getItem(NAV_MODE_STORAGE_KEY) !== 'flat'
+  } catch {
+    return true
+  }
+}
+const isNavGrouped = ref(readStoredNavGrouped())
+function setNavGrouped(grouped: boolean) {
+  isNavGrouped.value = grouped
+  try {
+    localStorage.setItem(NAV_MODE_STORAGE_KEY, grouped ? 'grouped' : 'flat')
+  } catch {
+    // Private browsing / storage disabled - the toggle still works for
+    // this session, it just won't be remembered next time.
+  }
+}
+
+// Which group headers are collapsed, grouped-view only. Session-only (not
+// persisted), same as the existing objects/assets/settings tree toggles
+// above.
+const collapsedNavGroups = ref<Set<NavGroupId>>(new Set())
+function toggleNavGroup(groupId: NavGroupId) {
+  const next = new Set(collapsedNavGroups.value)
+  if (next.has(groupId)) {
+    next.delete(groupId)
+  } else {
+    next.add(groupId)
+  }
+  collapsedNavGroups.value = next
+}
+
 const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'general', name: 'General settings', icon: Sliders },
   { key: 'dam', name: 'DAM configuration', icon: HardDrive },
@@ -719,6 +797,57 @@ const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'System Logs', section: 'system-logs', icon: ScrollText },
   { name: 'Settings', section: 'settings', icon: Settings }
 ]
+
+// Grouped-view categories for the sidebar toggle above. Assets stays its
+// own group (rather than folded into Content) since it already carries
+// its own DAM folder sub-tree in the nav. Sections with no entry here
+// (currently none) would simply not render a header in grouped mode.
+type NavGroupId = 'content' | 'assets' | 'data' | 'system'
+const navGroupOrder: NavGroupId[] = ['content', 'assets', 'data', 'system']
+const navGroupLabels: Record<NavGroupId, string> = {
+  content: 'Content',
+  assets: 'Assets',
+  data: 'Data & Communication',
+  system: 'System'
+}
+const sectionGroup: Partial<Record<SectionKind, NavGroupId>> = {
+  websites: 'content',
+  pages: 'content',
+  snippets: 'content',
+  components: 'content',
+  themes: 'content',
+  assets: 'assets',
+  objects: 'data',
+  documents: 'data',
+  mail: 'data',
+  gateway: 'data',
+  'system-logs': 'system',
+  settings: 'system'
+}
+
+type NavRow =
+  | { kind: 'header'; id: NavGroupId; label: string }
+  | { kind: 'item'; item: (typeof navItems)[number] }
+
+// Sidebar renders this single list, not navItems directly, so the flat and
+// grouped layouts share one row of markup instead of two duplicated blocks.
+// Collapsed sidebar always renders flat: group headers have no room in
+// icon-only mode.
+const navRows = computed<NavRow[]>(() => {
+  if (!isNavGrouped.value || isSidebarCollapsed.value) {
+    return navItems.map((item) => ({ kind: 'item', item }))
+  }
+  const rows: NavRow[] = []
+  for (const groupId of navGroupOrder) {
+    const items = navItems.filter((item) => sectionGroup[item.section] === groupId)
+    if (items.length === 0) continue
+    rows.push({ kind: 'header', id: groupId, label: navGroupLabels[groupId] })
+    if (!collapsedNavGroups.value.has(groupId)) {
+      for (const item of items) rows.push({ kind: 'item', item })
+    }
+  }
+  return rows
+})
 
 const sectionComponents: Record<SectionKind, any> = {
   overview: OverviewView,
