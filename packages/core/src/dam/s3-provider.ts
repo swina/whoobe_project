@@ -12,7 +12,6 @@ import {
   S3ClientConfig,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { NodeHttpHandler } from '@smithy/node-http-handler';
 import {
   AssetStorageProvider,
   GetAssetUrlOptions,
@@ -63,12 +62,22 @@ export class S3AssetStorageProvider implements AssetStorageProvider {
       // (apps/asset-processor): a pooled keep-alive socket can go silently
       // stale under WSL2/Docker Desktop's network layer; no pool, no stale
       // socket to hang on.
-      requestHandler: new NodeHttpHandler({
+      //
+      // A plain options object here, deliberately NOT `new NodeHttpHandler(...)`:
+      // this file is reachable from admin-dashboard's browser bundle (this
+      // package is shared), and an explicit `import ... from
+      // '@smithy/node-http-handler'` pulls that Node-only module (raw
+      // `node:stream`/`node:http` imports, no browser fallback) into the
+      // Vite build, breaking it. Passing options lets the S3 client resolve
+      // the right handler for whichever runtime it actually ends up in
+      // (Node here; a browser build never constructs/uses this class at
+      // all, so the options are simply inert dead code there).
+      requestHandler: {
         connectionTimeout: 5_000,
         socketTimeout: 30_000,
         httpAgent: { keepAlive: false },
         httpsAgent: { keepAlive: false },
-      }),
+      },
     };
 
     if (config.accessKeyId && config.secretAccessKey) {
