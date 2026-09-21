@@ -1023,21 +1023,42 @@ async function findOriginalS3Key(basePath: string): Promise<string | null> {
 // browser never hits S3/MinIO directly (avoids CORS, presigned URL expiry,
 // and cross-host issues). Uses a signed GetObjectCommand so MinIO
 // authenticated access works (the bucket is not publicly readable).
+//
+// Range support matters specifically for video/audio: a <video> element
+// issues HTTP Range requests for seeking and progressive loading (often
+// several in flight/cancelled-and-reissued in a row) - without it, every
+// one of those gets the full file back at 200 instead of a 206 partial
+// response, which browsers generally don't tolerate well for media and
+// frequently react to by aborting and retrying, which multiplies how many
+// connections to MinIO a single video load can open.
 app.get('/dam-asset/*', async (req: Request, res: Response): Promise<void> => {
   const s3Key = req.params[0];
   if (!s3Key) { res.status(400).end(); return; }
   try {
-    const command = new GetObjectCommand({ Bucket: damBaseConfig.bucket, Key: s3Key });
+    const range = req.headers.range;
+    const command = new GetObjectCommand({ Bucket: damBaseConfig.bucket, Key: s3Key, Range: range });
     const response = await s3ClientForProxy.send(command);
     if (response.Body) {
       res.setHeader('Content-Type', response.ContentType || 'application/octet-stream');
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.setHeader('Accept-Ranges', 'bytes');
+      if (response.ContentLength != null) res.setHeader('Content-Length', String(response.ContentLength));
+      if (range && response.ContentRange) {
+        res.status(206);
+        res.setHeader('Content-Range', response.ContentRange);
+      }
       const bodyStream = response.Body as Readable;
       // A stream 'error' (e.g. the socketTimeout above firing mid-transfer)
       // is not forwarded to `res` by .pipe() - left unhandled, it's an
       // uncaught exception that would crash the whole asset-processor
-      // process instead of just failing this one request.
-      bodyStream.on('error', (err) => {
+      // process instead of just failing this one request. A client
+      // aborting its own request (very normal for a <video> superseding an
+      // in-flight Range request with a new one) also surfaces here as a
+      // stream error, but isn't a real failure - `res` is already
+      // destroyed/closed by the time that happens, so it's excluded from
+      // the logged/reported error case.
+      bodyStream.on('error', (err: any) => {
+        if (res.destroyed || req.destroyed) return;
         logger.error({ err, s3Key }, 'DAM asset proxy stream error');
         if (!res.headersSent) res.status(502).end();
         else res.destroy();
@@ -1047,6 +1068,10 @@ app.get('/dam-asset/*', async (req: Request, res: Response): Promise<void> => {
       res.status(404).end();
     }
   } catch (error: any) {
+    if (error.name === 'InvalidRange') {
+      res.status(416).end();
+      return;
+    }
     if (error.name === 'NoSuchKey') {
       const parsed = parseThumbnailKey(s3Key);
       if (parsed) {
