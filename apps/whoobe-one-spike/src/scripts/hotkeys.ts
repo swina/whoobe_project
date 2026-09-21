@@ -26,7 +26,7 @@
 import Element from './ElementsClass.js'
 import { useEditorStore } from '../store/editor'
 import { editorBus, dialogBus } from '../bus'
-import { removeNodeById } from '../helpers'
+import { removeNodeById, applyImagePlaceholder } from '../helpers'
 import { duplicateCurrent, copyCurrentToClipboard, pasteClipboardInto } from './editor-actions'
 
 let copiedCss: { css: { css: string; container: string }; style: string; font: string } | null = null
@@ -215,7 +215,13 @@ export function setupHotkeys(): void {
       return
     }
     if (e.altKey && e.key === '6' && editor.current?.blocks) {
-      editor.current.blocks.push(new Element().Image())
+      // Without a placeholder this renders as an empty/broken <img> with no
+      // src - invisible on the canvas, indistinguishable from the hotkey
+      // doing nothing at all (see BlockEditor.vue's own drop-handler call
+      // to the same helper, and applyImagePlaceholder()'s own doc comment).
+      const img = new Element().Image()
+      applyImagePlaceholder(img)
+      editor.current.blocks.push(img)
       return
     }
     if (e.altKey && e.key === '7' && editor.current?.blocks) {
