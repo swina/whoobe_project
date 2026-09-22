@@ -108,6 +108,32 @@
             <button type="button" class="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 shrink-0" @click="addFont">+ Add</button>
           </div>
         </section>
+
+        <hr class="border-gray-200" />
+
+        <!-- Canvas background: editor-only appearance for the document root
+             (canvas + this editor's own Preview modal/iframe). The live
+             public site never reads this - it always renders the site
+             template's own body slot directly. -->
+        <section class="space-y-2">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Canvas background</h3>
+          <p class="text-[11px] text-gray-400">Editor canvas &amp; preview only — the live site always uses the site template's body background.</p>
+
+          <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+            <input type="checkbox" class="w-3.5 h-3.5 rounded accent-indigo-600" :checked="useTemplateBackground" @change="toggleUseTemplateBackground" />
+            Use site template background
+          </label>
+
+          <div v-if="!useTemplateBackground" class="space-y-1">
+            <textarea
+              class="w-full text-xs font-mono border rounded p-2 h-20 resize-y"
+              placeholder="e.g. background: #111; background-image: url(...);"
+              :value="canvasBackgroundStyle"
+              @change="setCanvasBackgroundStyle"
+            ></textarea>
+            <p class="text-[10px] text-gray-400">Raw CSS declarations, applied to the canvas root only in this editor.</p>
+          </div>
+        </section>
       </div>
     </div>
   </div>
@@ -236,5 +262,31 @@ function removeFont(font: string) {
   const theme = ensureFonts()
   if (!theme) return
   theme.fonts = theme.fonts.filter((f: string) => f !== font)
+}
+
+// Canvas background (editor-only document appearance - see BlockContainer.
+// vue/BlockContainerPreview.vue's canvasBackground handling and Element
+// sClass.d.ts's field comment). Lazily created the same way ensureTheme()
+// creates doc.theme - absent until this section is actually used.
+function ensureCanvasBackground() {
+  const doc = editor.document as any
+  if (!doc) return null
+  if (!doc.canvasBackground) doc.canvasBackground = { useTemplate: true, style: '' }
+  return doc.canvasBackground
+}
+
+const useTemplateBackground = computed(() => (editor.document as any)?.canvasBackground?.useTemplate ?? true)
+const canvasBackgroundStyle = computed(() => (editor.document as any)?.canvasBackground?.style ?? '')
+
+function toggleUseTemplateBackground() {
+  const cb = ensureCanvasBackground()
+  if (!cb) return
+  cb.useTemplate = !cb.useTemplate
+}
+
+function setCanvasBackgroundStyle(e: Event) {
+  const cb = ensureCanvasBackground()
+  if (!cb) return
+  cb.style = (e.target as HTMLTextAreaElement).value
 }
 </script>

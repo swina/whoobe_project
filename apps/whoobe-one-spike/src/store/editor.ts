@@ -80,6 +80,15 @@ export const useEditorStore = defineStore('editor', () => {
   // via the Theme modal which can save back to the website.
   const websiteTheme = ref<{ colors: { name: string; hex: string }[]; fonts: string[]; styles: string; tailwindClasses: string }>({ colors: [], fonts: [], styles: '', tailwindClasses: '' })
 
+  // The current page's website-template body slot (className/style) -
+  // fetched via database-actions.ts's loadPageTemplateBody() when a page
+  // belonging to a website loads. Null when the page has no website or no
+  // template resolves. Consumed by BlockContainer.vue/BlockContainerPreview.
+  // vue as the default canvas background, so the editor matches the live
+  // site's body wrapper (WebsiteTemplateLayout.body) unless a page overrides
+  // it via document.canvasBackground.
+  const templateBody = ref<{ className: string; style: string } | null>(null)
+
   // All available themes for the current website (multiple named themes).
   const websiteThemes = ref<{ id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles: string; tailwindClasses: string }[]>([])
 
@@ -212,6 +221,7 @@ const locale = ref<string>('en')
   function setWebsiteTheme(v: { colors: { name: string; hex: string }[]; fonts: string[]; styles?: string; tailwindClasses?: string }) {
     websiteTheme.value = { colors: v.colors, fonts: v.fonts, styles: v.styles ?? '', tailwindClasses: v.tailwindClasses ?? '' }
   }
+  function setTemplateBody(v: { className: string; style: string } | null) { templateBody.value = v }
   function setWebsiteThemes(v: { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles?: string; tailwindClasses?: string }[]) {
     websiteThemes.value = v.map((t) => ({ ...t, styles: t.styles ?? '', tailwindClasses: t.tailwindClasses ?? '' }))
   }
@@ -224,14 +234,14 @@ const locale = ref<string>('en')
     mode, settings, elements, document, project, selected, page, current,
     component, action, subaction, level, parent, startTime, autosave, stripHtmlComments,
     exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
-    mailTemplateId, snippetId, snippetMode, pageThemeId, websiteId, locale, websiteTheme, websiteThemes,
+    mailTemplateId, snippetId, snippetMode, pageThemeId, websiteId, locale, websiteTheme, websiteThemes, templateBody,
     defaultPlaceholderUrl,
     appMode, pwaConfig,
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
     setParent, setStartTime, setAutosave, setAutosaveDefault, setStripHtmlComments, setExportMode, setPreview, setSave,
     setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, setPageThemeId, setSnippetId, setSnippetMode, resolvedData,
-    collapsedIds, toggleCollapsed, isCollapsed, setWebsiteTheme, setWebsiteThemes, setWebsiteId, setLocale,
+    collapsedIds, toggleCollapsed, isCollapsed, setWebsiteTheme, setWebsiteThemes, setTemplateBody, setWebsiteId, setLocale,
     setDefaultPlaceholderUrl,
     setAppMode, setPwaConfig,
   }

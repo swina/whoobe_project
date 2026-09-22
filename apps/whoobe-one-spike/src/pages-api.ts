@@ -120,6 +120,20 @@ export async function getPublicPageByPath(path: string): Promise<PublicPageLooku
   return parseJsonOrThrow(res)
 }
 
+export interface PageLayoutBody {
+  body: { className: string; style: string; alpine?: Record<string, string> } | null
+}
+
+/** Authenticated counterpart of `getPublicPage`'s `layout.body` - resolves
+ *  just the website template's body slot (className/style) for the given
+ *  page, so the editor's canvas/preview can default to matching the live
+ *  site's body wrapper. See apps/core-api/src/server.ts's
+ *  `GET /whoobe-one/pages/:id/layout`. */
+export async function getPageLayoutBody(id: string): Promise<PageLayoutBody> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages/${id}/layout`, { credentials: 'include' })
+  return parseJsonOrThrow(res)
+}
+
 export async function listPageTranslations(id: string): Promise<WhoobeOnePage[]> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages/${id}/translations`, { credentials: 'include' })
   const body = await parseJsonOrThrow(res)

@@ -1,5 +1,18 @@
 # Changelog
 
+## [Editor canvas background, defaulting to the site template's body] — 2026-09-22
+- Branch: `master`.
+- New editor-only feature: the page builder's canvas (and its own Preview modal/iframe) can now show a background — by default inherited from the page's website template body slot (`WebsiteTemplateLayout.body`), with an optional per-page custom-CSS override — while the live public site is completely unaffected (it already renders the template's body slot directly and continues to do so, unchanged).
+- `apps/core-api/src/server.ts`: added `GET /whoobe-one/pages/:id/layout`, an authenticated counterpart to the public page routes' template-body resolution, returning just the resolved `{ className, style, alpine }` body slot for a page.
+- `apps/whoobe-one-spike/src/pages-api.ts`: added `getPageLayoutBody()`.
+- `apps/whoobe-one-spike/src/scripts/database-actions.ts`: added `loadPageTemplateBody()`, called from `loadPage()` whenever the page belongs to a website.
+- `apps/whoobe-one-spike/src/store/editor.ts`: added `templateBody` state + `setTemplateBody()`.
+- `apps/whoobe-one-spike/src/scripts/ElementsClass.d.ts`: added optional `canvasBackground?: { useTemplate: boolean; style?: string }` on the document root (lazily created, same convention as the existing `theme` field).
+- `apps/whoobe-one-spike/src/components/BlockContainer.vue` (editing canvas) and `apps/whoobe-one-spike/src/components/preview/BlockContainerPreview.vue` (new `editorPreview` prop, set only by `DocumentPreview.vue`/`PreviewView.vue` — never by `PublicPage.vue`): apply `editor.templateBody` by default, or `document.canvasBackground.style` when the document opts out of the template default.
+- `apps/whoobe-one-spike/src/components/ThemeModal.vue`: added a "Canvas background" section — a "Use site template background" toggle plus a raw-CSS textarea for the override, following the same lazy-init pattern as the existing per-page theme controls.
+- Fix (same day, follow-up): `.editor-custom`'s hardcoded `background-color: white` was masking the site-template/custom background whenever it came from a class rather than an inline style. Moved that white floor out of `.editor-custom` into a new `.editor-canvas-bg-fallback` class (`style.css`), added by `BlockContainer.vue`'s `classe` computed only when the document has no effective canvas background (no template className/style, no custom override) - so a configured background now actually shows.
+- Verified: `vue-tsc --noEmit` (whoobe-one-spike) and `tsc --noEmit` (core-api) both clean.
+
 ## [Added workspace creation guide] — 2026-09-22
 - Branch: `feat/09-22/workspaces`.
 - Added `docs/guides/system/creating-workspaces.md`: operational how-to for `scripts/provision-workspace.sh` — picking a slug/hostname/index, provisioning, wiring nginx + SSL, verifying isolation, managing (logs/restart/rebuild), removing a workspace, backups, and troubleshooting (port collisions, stale nginx config, the `.env.example` trailing-newline bug fixed earlier today).

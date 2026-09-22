@@ -136,6 +136,12 @@ type WhoobeElement = InstanceType<typeof Element>
 const props = defineProps<{
   doc: WhoobeElement
   dataContext?: DataObjectRecord | null
+  // Set only by DocumentPreview.vue/PreviewView.vue (the editor's own
+  // Preview modal/iframe) - gates document.canvasBackground/
+  // editor.templateBody application below so it never reaches PublicPage.
+  // vue's live render, which composes the real body slot itself
+  // (see PublicPage.vue's `layout.body`).
+  editorPreview?: boolean
 }>()
 
 const editor = useEditorStore()
@@ -358,7 +364,17 @@ const classe = computed(() => {
   const raw = `${doc.css?.css ?? ''} ${doc.css?.container ?? ''}`.trim()
   const isRoot = doc.tag === 'document'
   const strip = isRoot ? [...EDITOR_ONLY_CLASSES, ...LEGACY_ROOT_CLASSES] : EDITOR_ONLY_CLASSES
-  return raw.split(' ').filter((c: string) => !strip.includes(c)).join(' ')
+  let cls = raw.split(' ').filter((c: string) => !strip.includes(c)).join(' ')
+  // Editor-preview-only canvas background (see BlockContainer.vue's matching
+  // comment) - props.editorPreview keeps this out of PublicPage.vue's live
+  // render, which reuses this exact component for the routed page's body.
+  if (isRoot && props.editorPreview) {
+    const cb = doc.canvasBackground
+    if (!(cb && cb.useTemplate === false) && editor.templateBody?.className) {
+      cls += ' ' + editor.templateBody.className
+    }
+  }
+  return cls
 })
 
 const stile = computed(() => {
@@ -367,6 +383,14 @@ const stile = computed(() => {
   const bgUrl = resolveDisplayUrl(doc.image?.url)
   if (bgUrl) st += `background-image:url(${bgUrl});`
   if (doc.font) st += `font-family:"${doc.font.replaceAll('+', ' ')}";`
+  if (doc.tag === 'document' && props.editorPreview) {
+    const cb = doc.canvasBackground
+    if (cb && cb.useTemplate === false) {
+      st += cb.style ?? ''
+    } else if (editor.templateBody?.style) {
+      st += editor.templateBody.style
+    }
+  }
   return st + (doc.style ?? '')
 })
 
