@@ -61,6 +61,7 @@ import {
   createPage as apiCreatePage,
   updatePage as apiUpdatePage,
   deletePage as apiDeletePage,
+  getPageLayoutBody as apiGetPageLayoutBody,
 } from '../pages-api'
 import {
   getMailTemplate as apiGetMailTemplate,
@@ -274,6 +275,22 @@ export async function loadPage(editor: EditorStore, id: string): Promise<void> {
 
   if (saved.websiteId) {
     await loadWebsiteTheme(editor, saved.websiteId)
+    await loadPageTemplateBody(editor, saved.id)
+  }
+}
+
+/** Fetches the current page's resolved website-template body slot
+ *  (className/style) and stores it as editor.templateBody - the canvas
+ *  background default that BlockContainer.vue/BlockContainerPreview.vue
+ *  fall back to unless the document overrides it via canvasBackground.
+ *  Silent on failure (a broken/missing template must never block loading
+ *  the page itself), leaving templateBody null. */
+export async function loadPageTemplateBody(editor: EditorStore, pageId: string): Promise<void> {
+  try {
+    const { body } = await apiGetPageLayoutBody(pageId)
+    editor.setTemplateBody(body ? { className: body.className, style: body.style } : null)
+  } catch {
+    editor.setTemplateBody(null)
   }
 }
 

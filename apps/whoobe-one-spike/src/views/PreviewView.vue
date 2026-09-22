@@ -1,6 +1,6 @@
 <template>
   <div v-if="loading" class="p-8 text-center text-gray-400 text-sm">Loading preview...</div>
-  <BlockContainerPreview v-else-if="doc" :doc="doc" />
+  <BlockContainerPreview v-else-if="doc" :doc="doc" editor-preview />
   <div v-else class="p-8 text-center text-gray-400 text-sm">No document to preview</div>
 </template>
 

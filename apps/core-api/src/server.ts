@@ -1381,6 +1381,34 @@ app.get('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_READ), as
   }
 });
 
+// Resolved website-template body slot for a page (className/style/alpine on
+// the root page wrapper, WebsiteTemplateLayout.body) - the authenticated
+// editor's own counterpart of the `body` field the public page routes
+// already resolve (see GET /public/pages/:locale/*), so the page builder's
+// canvas/editor-preview can default to matching the live site's body
+// background instead of starting blank. Only the body slot is resolved
+// here - the editor canvas has no use for header/aside/footer module pages.
+app.get('/whoobe-one/pages/:id/layout', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page = await getWhoobePage(req.params.id);
+    if (!page) {
+      res.status(404).json({ error: 'Page not found' });
+      return;
+    }
+    if (!page.websiteId) {
+      res.json({ body: null });
+      return;
+    }
+    const template = await getWebsiteTemplateForPath(page.websiteId, page.slug);
+    const bodySlot = template?.layout?.body;
+    const body = bodySlot ? { className: bodySlot.className ?? '', style: bodySlot.style ?? '', alpine: bodySlot.alpine ?? {} } : null;
+    res.json({ body });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Get page layout body error');
+    res.status(500).json({ error: error.message || 'Failed to get page layout' });
+  }
+});
+
 // Renders a page's content to standalone email markup - BrevoCampaignModal.vue's
 // third content source, alongside mail templates and snippets. Same
 // renderStaticHtml() pipeline/reasoning as those two: no trigger context to

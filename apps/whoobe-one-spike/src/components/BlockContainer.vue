@@ -315,7 +315,24 @@ const classe = computed(() => {
   // The document root gets a canvas floor (min-height) and editor-only
   // default styling as an EDITOR-ONLY affordance - it is not part of the
   // stored content, so it never renders in preview/public.
-  if (doc.tag === 'document') cls += ' whoobe-canvas-root editor-custom'
+  if (doc.tag === 'document') {
+    cls += ' whoobe-canvas-root editor-custom'
+    // Canvas background (see ElementsClass.d.ts's canvasBackground field
+    // comment): defaults to the site template's body className unless the
+    // document opts out with canvasBackground.useTemplate === false.
+    const cb = doc.canvasBackground
+    const useTemplate = !(cb && cb.useTemplate === false)
+    if (useTemplate && editor.templateBody?.className) {
+      cls += ' ' + editor.templateBody.className
+    }
+    // .editor-custom carries no background of its own (see style.css) - add
+    // the plain white floor only when nothing above actually provides a
+    // background, so a real template/custom background isn't masked by it.
+    const hasBackground = useTemplate
+      ? !!(editor.templateBody?.className || editor.templateBody?.style)
+      : !!cb?.style?.trim()
+    if (!hasBackground) cls += ' editor-canvas-bg-fallback'
+  }
   return cls
 })
 
@@ -325,6 +342,14 @@ const stile = computed(() => {
   const bgUrl = resolveDisplayUrl(doc.image?.url)
   if (bgUrl) st += `background-image:url(${bgUrl});`
   if (doc.font) st += `font-family:"${doc.font.replaceAll('+', ' ')}";`
+  if (doc.tag === 'document') {
+    const cb = doc.canvasBackground
+    if (cb && cb.useTemplate === false) {
+      st += cb.style ?? ''
+    } else if (editor.templateBody?.style) {
+      st += editor.templateBody.style
+    }
+  }
   return st + (doc.style ?? '')
 })
 

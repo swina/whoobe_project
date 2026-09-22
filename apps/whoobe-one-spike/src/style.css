@@ -147,14 +147,24 @@ body {
 /* Editor-only root container styles – replaces the old baked-in
    `gap-4 min-h-[600px] bg-white p-6` classes that were stored in content
    and then stripped in preview.  Now these styles live in this single
-   custom class so preview only needs to strip one unambiguous selector. */
+   custom class so preview only needs to strip one unambiguous selector.
+   No background-color here anymore - see .editor-canvas-bg-fallback below,
+   which BlockContainer.vue only adds when there's no site-template/custom
+   canvas background configured, so that background can actually show
+   through instead of being masked by a fixed white floor. */
 .editor-custom {
   display: flex;
   flex-direction: column;
   gap: 1rem;
   min-height: 600px;
-  background-color: white;
   padding: 1.5rem;
+}
+
+/* Canvas floor color, added only when the document root has no effective
+   canvasBackground (no site-template body className/style, no custom
+   override) - see BlockContainer.vue's `classe` computed. */
+.editor-canvas-bg-fallback {
+  background-color: white;
 }
 
 .euro::before {

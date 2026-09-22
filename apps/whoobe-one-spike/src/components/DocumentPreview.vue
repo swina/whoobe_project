@@ -78,7 +78,7 @@
       <button class="flex items-center gap-1 px-2 py-1 rounded bg-gray-700 hover:bg-gray-600" @click="$emit('close')"><X class="w-3.5 h-3.5" /> Close</button>
     </div>
 
-    <BlockContainerPreview v-if="doc && deviceMode === 'desktop'" :doc="doc" />
+    <BlockContainerPreview v-if="doc && deviceMode === 'desktop'" :doc="doc" editor-preview />
 
     <!-- Tablet/mobile: a real iframe at 1:1 device dimensions, so
          @tailwindcss/browser inside the iframe correctly resolves responsive

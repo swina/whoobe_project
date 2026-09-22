@@ -309,6 +309,16 @@ export default class Element {
   // defensively (`document?.theme?.colors ?? []`) everywhere it's
   // consumed (ColorControl.vue's swatches, FontControl.vue's font list).
   theme?: { colors: { name: string; hex: string }[]; fonts: string[] }
+  // Not in the source, and not set by any builder - only meaningful on the
+  // document root, same "absent until actually set" treatment as `theme`
+  // above. Governs the EDITOR-ONLY canvas background (BlockEditor.vue's
+  // canvas + the editor's own Preview modal/iframe) - never the live public
+  // site, which renders the website template's body slot
+  // (WebsiteTemplateLayout.body) directly instead, unaffected by this field.
+  // `useTemplate: false` (unset/true defaults to inheriting the site
+  // template's body className/style, via editor.templateBody) switches to
+  // `style`, a raw CSS declarations string local to this document.
+  canvasBackground?: { useTemplate: boolean; style?: string }
   image: ElementImage
   type: string
   tag: string
