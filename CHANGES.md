@@ -1,5 +1,9 @@
 # Changelog
 
+## [Added workspace creation guide] — 2026-09-22
+- Branch: `feat/09-22/workspaces`.
+- Added `docs/guides/system/creating-workspaces.md`: operational how-to for `scripts/provision-workspace.sh` — picking a slug/hostname/index, provisioning, wiring nginx + SSL, verifying isolation, managing (logs/restart/rebuild), removing a workspace, backups, and troubleshooting (port collisions, stale nginx config, the `.env.example` trailing-newline bug fixed earlier today).
+
 ## [Implemented per-workspace stack provisioning] — 2026-09-22
 - Branch: `feat/09-22/workspaces`.
 - `docker-compose.yml`: turned the dev-only stack definition into a reusable per-workspace template per `docs/plans/system/workspaces-plan.md` — removed all `container_name:` fields (Compose's own per-project naming avoids collisions when the file is brought up more than once under different `-p` project names), made every host-side port overridable (`WS_POSTGRES_PORT`, `WS_MINIO_API_PORT`, `WS_MINIO_CONSOLE_PORT`, `WS_ADMIN_DASHBOARD_PORT`, `WS_CORE_API_PORT`, `WS_ASSET_PROCESSOR_PORT`, `WS_GATEWAY_PORT`, `WS_WHOOBE_ONE_SPIKE_PORT`, all defaulting to today's fixed dev ports), made `env_file:` selectable via `${ENV_FILE:-.env}`, wired `VITE_ASSET_PROCESSOR_URL`/`VITE_CORE_API_URL`/`VITE_GATEWAY_URL` build args and MinIO root credentials from the active env file instead of hardcoded `localhost` values, and dropped the `S3_PUBLIC_BASE_URL`/`SEED_ADMIN_*` hardcoded environment overrides that were silently shadowing the `.env` file's own values.
