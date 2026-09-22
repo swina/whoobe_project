@@ -1,5 +1,12 @@
 # Changelog
 
+## [Added workspaces architecture plan] — 2026-09-22
+- Branch: `master`.
+- Added `docs/plans/system/workspaces-plan.md`: plan for hosting multiple clients as fully isolated "workspaces," each a fully independent stack (own Postgres DB, own MinIO bucket, own core-api/asset-processor/gateway/admin-dashboard/whoobe-one-spike processes, own users/roles/sessions, own hostname) rather than a shared-DB `workspaceId`-scoped model or a shared identity/login layer.
+- Decision drivers: existing `websites` table (`packages/core/src/db/websites-schema.ts`) already scopes Content per site but Assets/DAM, Data Objects/Classes, Gateway, Settings, and Users/Roles/Sessions are all global; requested isolation level required infra-level separation rather than row-level scoping.
+- Plan reuses the existing `docker-compose.yml`/`Dockerfile` (currently dev-only) as a per-workspace template, containerizing what is today a bare-metal PM2 + hand-maintained nginx production deploy, plus a new provisioning script and per-workspace nginx host-based routing.
+- No code changes yet — plan only.
+
 ## [Fixed production build break: admin-dashboard's Vite bundle pulled in a Node-only module] — 2026-09-21
 - Broke production deploy (`DEPLOY_HOST=oracle ./deploy.sh`, `@whoobe-cms/admin-dashboard:build` failing: `"Readable" is not exported by "__vite-browser-external"`, from `@smithy/node-http-handler/dist-es/write-request-body.js`).
 - Root cause: `packages/core` is a shared package imported both by server-only apps AND by `admin-dashboard` (a Vite/browser SPA). Earlier today's DAM-proxy timeout fix added `import { NodeHttpHandler } from '@smithy/node-http-handler'` directly into `packages/core/src/dam/s3-provider.ts`. Before that, `S3Client`'s own internal per-runtime resolution picked a browser-safe request handler automatically when bundled for the browser (which is why the `@aws-sdk/client-s3` import itself was never a problem) - but an explicit, direct import of the Node-specific handler class bypasses that resolution entirely, forcing Vite to bundle a module that does a bare `import { Readable } from "node:stream"` with no browser fallback, which fails to resolve at build time (not just a runtime warning - a hard Rollup error).
