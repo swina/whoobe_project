@@ -1,0 +1,35 @@
+# Workspaces: fully isolated per-client stacks, independent logins
+
+## Context
+
+Whoobe CMS is currently a single-tenant install: one shared Postgres database, one shared MinIO bucket, and one running set of services (core-api, asset-processor, gateway, admin-dashboard, whoobe-one-spike). The codebase already has a `websites` table (`packages/core/src/db/websites-schema.ts`) that scopes **Content** (pages, paths, templates, PWA, search) per site, but Assets/DAM, Data Objects/Classes, Gateway ("Data Communication") config, Settings, and Users/Roles/Sessions are all global — there is no tenant boundary anywhere below the `websites` row.
+
+We want to host multiple clients ("workspaces") with **hard isolation** — separate Content, Assets, Data Communication, and Settings per workspace — for a handful of workspaces provisioned internally (not self-serve signup), with each workspace fully independent, including its own users/login. A single shared Postgres DB with a `workspaceId` column on every table (the lighter-weight option) doesn't meet the isolation bar we need, so this plan goes with **one fully separate stack per workspace** — effectively N independent installs of the existing app, run from one shared codebase/deploy tooling.
+
+## Decision: one fully independent stack per workspace, no shared services
+
+- Every workspace gets its own Postgres database, its own MinIO bucket, its own core-api/asset-processor/gateway/admin-dashboard/whoobe-one-spike processes, its own users/roles/sessions, and its own hostname. Nothing is shared between workspaces — not data, not auth, not infrastructure state. No workspace can query or touch another workspace's data.
+- No new identity/auth code is needed: `packages/core/src/db/client.ts` (`getDb()`, one shared pool per process) and `packages/core/src/auth/session.ts`/`express-guards.ts` already work correctly *per stack* today — running N stacks means N independent copies of this exact same, unmodified code, each pointed at its own database via that workspace's own `.env`. A user logs into each workspace separately, like N separate CMS installs.
+- The existing `websites` table and its per-site Content scoping (pages/paths/templates/PWA) is **unchanged and stays inside each workspace** — a workspace can still contain multiple websites, exactly as today. Workspaces are a layer *above* that (infra-level), not a replacement for it.
+- Production today is bare-metal PM2 (`ecosystem.config.cjs`) + a hand-maintained, unversioned nginx config (`docs/deployment.md`) — there's no repeatable way to stand up a second stack right now. This plan containerizes production using the already-built, already-tested `docker-compose.yml`/`Dockerfile` (currently dev-only) as the per-workspace template, run as a separate Compose project per workspace. This is a deliberate scope addition beyond "just add workspaces" but is required to make "one stack per workspace" an operable, repeatable action rather than a hand-built one-off each time; flag if PM2 should be kept instead, replicating ecosystem entries/nginx blocks by hand.
+
+## Components
+
+### 1. Per-workspace stack template & provisioning
+- Use the existing `docker-compose.yml` and multi-stage `Dockerfile` (already define postgres, minio, core-api, asset-processor, admin-dashboard, whoobe-one-spike, gateway) as the per-workspace template — these already work today for dev, so this is packaging, not new service code.
+- Each workspace gets its own `.env.<slug>` (based on `.env.example`) with workspace-specific `DB_NAME`/credentials, `S3_BUCKET`, `WHOOBE_HOSTNAME`, and the `VITE_CORE_API_URL`/`VITE_ASSET_PROCESSOR_URL`/`VITE_GATEWAY_URL` baked in at that workspace's image build time (this sidesteps the current build-time-only URL limitation — since each workspace already gets its own image build, per-workspace URLs fall out for free).
+- Stack is brought up as its own Compose project: `docker compose -p ws-<slug> -f docker-compose.yml --env-file .env.<slug> up -d`, with host ports assigned per workspace (or a fixed internal port with only nginx exposed, see below).
+- A small provisioning script (new, e.g. `scripts/provision-workspace.sh`) wraps: generate `.env.<slug>` from a template + slug/hostname/port inputs, `docker compose up` that project, and run DB migrations against the new workspace DB. Given "handful, internal" scale, this can stay a CLI script rather than a self-service UI.
+
+### 2. Shared ingress
+- One nginx (or equivalent) in front of everything, doing **host-based routing**: `client-a.<domain>` → workspace `ws-client-a`'s admin-dashboard/core-api/asset-processor/gateway ports; `client-b.<domain>` → `ws-client-b`, etc. Each workspace is reached at its own hostname and logged into independently — there is no cross-workspace navigation or account. This nginx config should move from the current hand-maintained, unversioned state (noted in `docs/deployment.md`) into the repo (e.g. `deploy/nginx/<slug>.conf` generated by the provisioning script) so adding a workspace is a reviewable diff, not a manual server edit.
+
+## What does NOT change
+- `packages/core/src/db/websites-schema.ts` and every table that already carries `websiteId` (pages, paths, templates, PWA subscriptions, search documents) — a workspace can hold multiple websites exactly as today.
+- DAM/asset schema, data-objects/classes schema, gateway schema, mail/AI/Figma settings schema, auth-schema (users/roles/sessions) — no `workspaceId` column needed on any of these, and no auth code changes, because isolation comes from each workspace having its own database and its own running processes entirely, not from row scoping or shared identity.
+
+## Verification
+- Spin up two workspaces locally via `provision-workspace.sh` with different slugs/ports, confirm each has its own Postgres/MinIO and that content/assets/gateway config created in one is invisible from the other's admin-dashboard.
+- Confirm each workspace requires its own separate login (no account overlap) and that a user created in one workspace does not exist in another.
+- Kill/restart one workspace's containers and confirm the other workspace is unaffected.
+- Confirm existing single-workspace behavior (Websites view, per-site Content scoping) is unchanged within a workspace.
