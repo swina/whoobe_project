@@ -1,12 +1,30 @@
-# Whoobe - full local-development stack.
-#   docker compose up -d --build
+# Whoobe - stack definition, shared by local dev and per-workspace deploys.
+#   Local dev:        docker compose up -d --build
+#   Per workspace:    docker compose -p ws-<slug> --env-file .env.<slug> up -d --build
+#                      (see scripts/provision-workspace.sh and
+#                      docs/plans/system/workspaces-plan.md)
 #
-# The Vite frontends (admin-dashboard port 3000, whoobe-one-spike port 3006,
-# whoobe-studio port 3004) are served by nginx. Browser-facing API URLs are
-# baked at build time via --build-arg; they default to localhost so the
-# browser on the host can reach the published ports.
+# No `container_name:` on any service - each is left to Compose's own
+# per-project naming (<project>-<service>-<n>) so the same file can be
+# brought up more than once under different -p project names without
+# colliding on container names, one running stack per workspace.
 #
-# One-time MinIO bucket setup (run once after first `up -d`):
+# Host-side ports are all overridable (WS_*_PORT, default = today's fixed
+# dev ports) for the same reason - only the host side needs to be unique
+# per workspace; every service inside one workspace's project talks to the
+# others over that project's own private network on its fixed internal
+# port, so internal ports never need to change.
+#
+# The Vite frontends (admin-dashboard port 3000, whoobe-one-spike port 3006)
+# are served by nginx. Browser-facing API URLs are baked at build time via
+# --build-arg, sourced from VITE_ASSET_PROCESSOR_URL / VITE_CORE_API_URL /
+# VITE_GATEWAY_URL in the env file in use (.env for dev, .env.<slug> for a
+# workspace) - see .env.example for the dev default (per-port localhost
+# URLs) vs. docs/deployment.md's production convention (bare hostname,
+# nginx path-routes to the right upstream).
+#
+# One-time MinIO bucket setup (run once after first `up -d`, substituting
+# the project's own S3_BUCKET/credentials for a workspace):
 #   docker compose exec minio sh -c "\
 #     mc alias set whoobe http://localhost:9000 minioadmin minioadminpassword && \
 #     mc mb whoobe/whoobe-cms"
@@ -14,13 +32,12 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: whoobe_postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
       POSTGRES_DB: ${POSTGRES_DB:-whoobe_db}
     ports:
-      - "5432:5432"
+      - "${WS_POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -31,15 +48,14 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: whoobe_minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadminpassword
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minioadminpassword}
       MINIO_API_CORS_ALLOW_ORIGIN: "*"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${WS_MINIO_API_PORT:-9000}:9000"
+      - "${WS_MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - miniodata:/data
     healthcheck:
@@ -52,17 +68,15 @@ services:
     build:
       context: .
       target: core-api
-    container_name: whoobe_core_api
     ports:
-      - "3003:3003"
-    env_file: .env
+      - "${WS_CORE_API_PORT:-3003}:3003"
+    env_file: ${ENV_FILE:-.env}
     environment:
       NODE_ENV: production
       DB_HOST: postgres
       S3_ENDPOINT: http://minio:9000
-      S3_PUBLIC_BASE_URL: http://localhost:3002/dam-asset
-      SEED_ADMIN_EMAIL: admin@example.com
-      SEED_ADMIN_PASSWORD: admin123
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@example.com}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin123}
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,15 +86,13 @@ services:
     build:
       context: .
       target: asset-processor
-    container_name: whoobe_asset_processor
     ports:
-      - "3002:3002"
-    env_file: .env
+      - "${WS_ASSET_PROCESSOR_PORT:-3002}:3002"
+    env_file: ${ENV_FILE:-.env}
     environment:
       NODE_ENV: production
       DB_HOST: postgres
       S3_ENDPOINT: http://minio:9000
-      S3_PUBLIC_BASE_URL: http://localhost:3002/dam-asset
       S3_FORCE_PATH_STYLE: "true"
     depends_on:
       minio:
@@ -94,12 +106,12 @@ services:
       context: .
       target: admin-dashboard
       args:
-        VITE_ASSET_PROCESSOR_URL: http://localhost:3002
-        VITE_CORE_API_URL: http://localhost:3003
+        VITE_ASSET_PROCESSOR_URL: ${VITE_ASSET_PROCESSOR_URL}
+        VITE_CORE_API_URL: ${VITE_CORE_API_URL}
+        VITE_GATEWAY_URL: ${VITE_GATEWAY_URL}
         VITE_FONT_FAMILIES: ${VITE_FONT_FAMILIES}
-    container_name: whoobe_admin_dashboard
     ports:
-      - "3000:80"
+      - "${WS_ADMIN_DASHBOARD_PORT:-3000}:80"
     restart: unless-stopped
 
   whoobe-one-spike:
@@ -108,19 +120,17 @@ services:
       target: whoobe-one-spike
       args:
         VITE_BASE_URL: /whoobe-one/
-    container_name: whoobe_one_spike
     ports:
-      - "3006:80"
+      - "${WS_WHOOBE_ONE_SPIKE_PORT:-3006}:80"
     restart: unless-stopped
 
   gateway:
     build:
       context: .
       target: gateway
-    container_name: whoobe_gateway
     ports:
-      - "3001:3001"
-    env_file: .env
+      - "${WS_GATEWAY_PORT:-3001}:3001"
+    env_file: ${ENV_FILE:-.env}
     environment:
       NODE_ENV: production
       DB_HOST: postgres
