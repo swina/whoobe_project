@@ -27,6 +27,7 @@ export type EditorEvents = {
   addBlock: string
   cssBlock: string
   preview: string
+  save: string
 }
 
 export const editorBus = mitt<EditorEvents>()

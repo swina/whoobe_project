@@ -10,7 +10,14 @@
       </template>
       <!---<div class="flex-1"></div>-->
 
-      <span v-if="saveState" class="text-[11px] text-gray-400 mr-1">{{ saveState }}</span>
+      <button
+        title="Keyboard shortcuts"
+        class="text-gray-400 hover:text-indigo-600 mr-1"
+        @click="showShortcuts = true"
+      >
+        <Keyboard class="w-3.5 h-3.5" />
+      </button>
+
       <button
         v-if="editor.page?.id && !editor.mailTemplateId && !editor.snippetMode"
         title="Edit this page's path"
@@ -46,7 +53,10 @@
       >
         <Smartphone class="w-3.5 h-3.5" /> App Mode
       </button>
+      <span v-if="saveState" class="text-[11px] text-gray-400 ml-1">{{ saveState }}</span>
     </div>
+
+    <ShortcutsModal v-if="showShortcuts" @close="showShortcuts = false" />
 
     <div class="flex-1 min-h-0 flex pb-5">
       <!-- @click.self, not plain @click: a plain @click here would also
@@ -296,6 +306,7 @@ import {
   FolderOpen,
   Cog,
   Image,
+  Keyboard,
   ListTree,
   Package,
   PackagePlus,
@@ -332,6 +343,7 @@ import AiGeneratedPanel from './AiGeneratedPanel.vue'
 import AiGeneratedPreviewModal from './AiGeneratedPreviewModal.vue'
 import EditorSettingsModal from './EditorSettingsModal.vue'
 import SaveSnippetModal from './SaveSnippetModal.vue'
+import ShortcutsModal from './ShortcutsModal.vue'
 import PwaConfigPanel from './PwaConfigPanel.vue'
 import GatewayPanel from './GatewayPanel.vue'
 import type { AiGeneratedRecord } from '../ai-api'
@@ -340,7 +352,7 @@ import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
 import { useThemeStyles } from '../composables/useThemeStyles'
 import { clean, findNodeById, removeNodeById, findParentAndIndex, applyImagePlaceholder, normalizeGeneratedTree } from '../helpers'
-import { editorBus } from '../bus'
+import { editorBus, dialogBus } from '../bus'
 import { exportDocument, importDocument, cloneWithFreshIds, insertGeneratedSnippet } from '../scripts/editor-actions'
 import { savePage, saveMailTemplate, saveSnippet, saveAsNewTemplate, updatePageSlug } from '../scripts/database-actions'
 import { resolveDocumentData } from '../scripts/data-resolver'
@@ -407,6 +419,7 @@ function flash(text: string, kind: 'success' | 'error' = 'success') {
 // (a real gallery, same as Kits) rather than the plain text dropdown this
 // used to be - see that file's own header comment.
 const saveState = ref('')
+const showShortcuts = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 
 // Not a port - BlocksClass.js's own model has no URL-routing concept at
@@ -482,6 +495,7 @@ async function onSave() {
     try {
       await saveSnippet(editor)
       saveState.value = 'saved ' + new Date().toLocaleTimeString()
+      flash('Snippet saved')
     } catch (e: any) {
       saveState.value = ''
       flash(e?.message || 'Failed to save snippet', 'error')
@@ -496,6 +510,7 @@ async function onSave() {
     try {
       await saveMailTemplate(editor)
       saveState.value = 'saved ' + new Date().toLocaleTimeString()
+      flash('Mail template saved')
     } catch (e: any) {
       saveState.value = ''
       flash(e?.message || 'Failed to save mail template', 'error')
@@ -522,6 +537,7 @@ async function onSave() {
   try {
     await savePage(editor, path)
     saveState.value = 'saved ' + new Date().toLocaleTimeString()
+    flash('Saved')
   } catch (e: any) {
     // A real, expected failure mode now that this is a network call
     // against a real database, not local storage - most commonly the
@@ -762,6 +778,15 @@ function onToggleAppMode() {
 }
 onMounted(() => editorBus.on('preview', onPreviewEvent))
 onUnmounted(() => editorBus.off('preview', onPreviewEvent))
+
+onMounted(() => editorBus.on('save', onSave))
+onUnmounted(() => editorBus.off('save', onSave))
+
+function onShortcutsEvent() {
+  showShortcuts.value = true
+}
+onMounted(() => dialogBus.on('shortcuts', onShortcutsEvent))
+onUnmounted(() => dialogBus.off('shortcuts', onShortcutsEvent))
 
 // Loaded eagerly here, not lazily by SnippetsPanel.vue's own onMounted -
 // the drop handler below and SaveSnippetModal.vue's "Update existing" list
