@@ -1,4 +1,5 @@
 import { pgTable, text, jsonb, uuid, boolean, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 /**
  * The CMS's real, published website pages - see docs/plans/cms/whoobe-one-
@@ -90,9 +91,27 @@ export const whoobePages = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    // (locale, slug), not slug alone - two different locales can
-    // legitimately reuse the same slug string.
-    localeSlugIdx: uniqueIndex('whoobe_pages_locale_slug_idx').on(table.locale, table.slug),
+    // Scoped by website, not global: two different WEBSITES routinely both
+    // want a page at slug "/" (their own home page) in the same locale -
+    // getPublishedWhoobePageBySlug/listPublishedWhoobePages/etc. already
+    // scope every query by websiteId, but the uniqueness constraint itself
+    // used to be a plain (locale, slug) index with no websiteId, so it
+    // blocked that legitimate case with a misleading "already exists"
+    // error that had nothing to do with the target website. Split into two
+    // indexes because websiteId is nullable (single-site installs, or
+    // pages not yet assigned to a website): a plain unique index already
+    // treats every NULL websiteId as distinct from every other NULL, so
+    // this first index alone would silently stop enforcing (locale, slug)
+    // uniqueness at all for those pages - the second, partial index closes
+    // that gap by scoping specifically to the NULL-website bucket.
+    websiteLocaleSlugIdx: uniqueIndex('whoobe_pages_website_locale_slug_idx').on(
+      table.websiteId,
+      table.locale,
+      table.slug
+    ),
+    noWebsiteLocaleSlugIdx: uniqueIndex('whoobe_pages_no_website_locale_slug_idx')
+      .on(table.locale, table.slug)
+      .where(sql`${table.websiteId} IS NULL`),
     // Doubles as the "all translations of this page" lookup index (its own
     // leading column), so no separate plain index on translationGroupId
     // alone is needed.

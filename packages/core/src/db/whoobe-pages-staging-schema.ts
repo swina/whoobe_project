@@ -1,4 +1,5 @@
 import { pgTable, text, jsonb, uuid, boolean, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import type { PageSeo, PageSitemapSettings, PageSearchSettings } from './whoobe-pages-schema.js';
 
 /**
@@ -50,7 +51,17 @@ export const whoobePagesStaging = pgTable(
     stagedAt: timestamp('staged_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    localeSlugIdx: uniqueIndex('whoobe_pages_staging_locale_slug_idx').on(table.locale, table.slug),
+    // Mirrors whoobe_pages' own website-scoped uniqueness (see that
+    // schema's own comment) - same reasoning, same split for the same
+    // nullable-websiteId reason.
+    websiteLocaleSlugIdx: uniqueIndex('whoobe_pages_staging_website_locale_slug_idx').on(
+      table.websiteId,
+      table.locale,
+      table.slug
+    ),
+    noWebsiteLocaleSlugIdx: uniqueIndex('whoobe_pages_staging_no_website_locale_slug_idx')
+      .on(table.locale, table.slug)
+      .where(sql`${table.websiteId} IS NULL`),
     translationGroupLocaleIdx: uniqueIndex('whoobe_pages_staging_translation_group_locale_idx').on(
       table.translationGroupId,
       table.locale
