@@ -112,8 +112,12 @@ export async function loadAllThemes(editor: EditorStore): Promise<void> {
 
 /**
  * Fetches the website themes from the backend (stored in websites.settings.themes)
- * and sets them in the editor store. The default theme is set as the active
- * websiteTheme, and all themes are available for the user to pick from.
+ * and sets them in the editor store as the fallback/default theme. This is
+ * a DIFFERENT theme catalog than ThemeModal.vue's picker (GET /whoobe-one/
+ * themes, a real `themes` DB table - see themes-api.ts's fetchTheme()) -
+ * the two don't share ids, so a page's own `themeId` (which points into
+ * the modal's global catalog) can never be looked up in here; applying it
+ * is loadPage()'s job, after this function has set the website default.
  */
 export async function loadWebsiteTheme(editor: EditorStore, websiteId: string): Promise<void> {
   try {
@@ -276,6 +280,26 @@ export async function loadPage(editor: EditorStore, id: string): Promise<void> {
   if (saved.websiteId) {
     await loadWebsiteTheme(editor, saved.websiteId)
     await loadPageTemplateBody(editor, saved.id)
+  }
+
+  // The page's own theme (if any) always wins over the website default
+  // just loaded above - same "last write to editor.websiteTheme wins" as
+  // ThemeModal.vue's pickTheme(), fetched from the same global themes
+  // catalog (GET /whoobe-one/themes/:id) that modal reads, not the
+  // per-website settings.themes array loadWebsiteTheme() uses (a real bug
+  // fixed here: the two catalogs don't share ids, so a lookup against the
+  // wrong one - tried and reverted above - could never have matched).
+  if (saved.themeId) {
+    const { fetchTheme } = await import('../themes-api')
+    const pageTheme = await fetchTheme(saved.themeId)
+    if (pageTheme) {
+      editor.setWebsiteTheme({
+        colors: pageTheme.colors ?? [],
+        fonts: pageTheme.fonts ?? [],
+        styles: pageTheme.styles ?? '',
+        tailwindClasses: pageTheme.tailwindClasses ?? '',
+      })
+    }
   }
 }
 
