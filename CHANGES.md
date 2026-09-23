@@ -1,5 +1,12 @@
 # Changelog
 
+## [Added a Heading level (H1-H6) selector - there was no way to set or change it] — 2026-09-24
+- Branch: `master`.
+- User question: can a Heading element's level (H1-H6) be assigned, and is that done through "semantic"?
+- Answer/finding: no, and no. `ElementsClass.js`'s `Heading(level=1)` sets a plain `level` field that `BlockElement.vue`/`BlockElementPreview.vue` already turn into the real rendered tag (`'h' + level`, clamped to 1-6) - so the data model and rendering were already correct - but nothing anywhere in the editor UI ever let a user set or change that field. Both ways to create a heading (dragging "Heading" from the palette, and the Alt+1 quick-add hotkey) call `Heading()`/`Heading(1)` with no level argument, always producing an H1, permanently, with no property panel control to change it afterward. "Semantic" is a separate, unrelated mechanism (`setSemantic()`) some containers and `Form()` use to pick their own rendered tag (`<header>`, `<nav>`, `<form>`, ...) - it has nothing to do with heading level.
+- Added a small H1-H6 `<select>` to `FloatingToolbar.vue`, shown whenever the selected element has a `level` field, writing directly to `editor.current.level` - the same reactive field the existing rendering logic already reads, so no rendering-side changes were needed at all.
+- Typechecked `apps/whoobe-one-spike` clean (`vue-tsc --noEmit`), rebuilt/redeployed `ws-aura`'s `whoobe-one-spike` container, verified it's healthy and the new "Heading level" control is present in the built bundle.
+
 ## [Button element: added icon position (before/after text), and rendered it on the editing canvas] — 2026-09-24
 - Branch: `master`.
 - User request: a Button element that can carry an icon alongside its text, positioned before or after the label.
