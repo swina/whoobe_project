@@ -1,5 +1,13 @@
 # Changelog
 
+## [Added a Label element to the page builder] — 2026-09-24
+- Branch: `master`.
+- User request: add a "label" element.
+- Added `Label()` to `ElementsClass.js` (renders `<label>`, editable text via `content` like every other simple text element - Span/InlineText - and a `for` attribute in `data.attributes` for the standard HTML label-to-control association, matching a paired Input*()/Select's own `id` attribute). Registered in the constructor's `createElement()` dispatch and as a new palette entry in the "form" group, right after Form.
+- `BlockElementsPalette.vue`: added a real `@lucide/vue` icon (`Tag`) for it in the palette's own name→icon map - without this it would've silently fallen back to the generic `Shapes` icon (that map's own documented fallback for any element type it doesn't recognize).
+- No renderer changes needed: `Label()` sets no special `tag`, so it renders through the existing generic contenteditable-element branch in both `BlockElement.vue` and `BlockElementPreview.vue`, exactly like Span/Paragraph/InlineText already do.
+- Typechecked `apps/whoobe-one-spike` clean (`vue-tsc --noEmit`), full build succeeded, rebuilt/redeployed `ws-aura`'s `whoobe-one-spike` container, verified it's healthy.
+
 ## [Website > Templates: locale-assigned templates now bypass path patterns] — 2026-09-24
 - Branch: `master`.
 - User request: let a template be assigned to a specific page locale (e.g. "it") so that assignment takes PRIORITY over path patterns - every page of that locale uses that template, regardless of what path it's at.
