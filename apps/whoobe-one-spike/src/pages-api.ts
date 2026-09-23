@@ -190,6 +190,21 @@ export async function updatePage(
   return body.page
 }
 
+/** Translates a page into a new locale via the configured AI provider
+ *  (apps/core-api's `POST /whoobe-one/pages/:id/translate`) and creates it
+ *  as a new, unpublished page in the same translation group - a draft for
+ *  a human editor to review before publishing, not a live swap. */
+export async function translatePage(id: string, locale: string): Promise<WhoobeOnePage> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages/${id}/translate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ locale }),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.page
+}
+
 export async function deletePage(id: string): Promise<void> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages/${id}`, {
     method: 'DELETE',

@@ -35,6 +35,7 @@
       <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> {{ editor.mailTemplateId || editor.snippetMode ? 'Save' : 'Save' }}</button>
       <button :class="topbarBtnClass" @click="showThemeModal = true"><Palette class="w-3.5 h-3.5" /> Theme</button>
       <button v-if="editor.page?.id && !editor.mailTemplateId && !editor.snippetMode" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
+      <button v-if="editor.page?.id && !editor.mailTemplateId && !editor.snippetMode" :class="topbarBtnClass" @click="showTranslatePage = true"><Languages class="w-3.5 h-3.5" /> Translate</button>
       <button :class="topbarBtnClass" @click="showAiGeneratePage = true"><Wand2 class="w-3.5 h-3.5" /> AI Page</button>
       <button :class="topbarBtnClass" @click="showAiGenerateImage = true"><Image class="w-3.5 h-3.5" /> AI Image</button>
       <button :class="topbarBtnClass" @click="showFigmaImport = true"><Palette class="w-3.5 h-3.5" /> Figma</button>
@@ -229,6 +230,15 @@
 
     <ThemeModal v-if="showThemeModal" @close="showThemeModal = false" />
 
+    <TranslatePageModal
+      v-if="showTranslatePage && editor.page?.id"
+      :page-id="editor.page.id"
+      :page-title="editor.page.name"
+      :current-locale="editor.locale"
+      @close="showTranslatePage = false"
+      @translated="onPageTranslated"
+    />
+
     <AiGenerateModal
       v-if="showAiGeneratePage"
       kind="page"
@@ -307,6 +317,7 @@ import {
   Cog,
   Image,
   Keyboard,
+  Languages,
   ListTree,
   Package,
   PackagePlus,
@@ -336,6 +347,7 @@ import SnippetsPanel from './SnippetsPanel.vue'
 import AddToKitModal from './AddToKitModal.vue'
 import TemplateGalleryModal from './TemplateGalleryModal.vue'
 import ThemeModal from './ThemeModal.vue'
+import TranslatePageModal from './TranslatePageModal.vue'
 import AiGenerateModal from './AiGenerateModal.vue'
 import AiImageGenerateModal from './AiImageGenerateModal.vue'
 import FigmaImportModal from './FigmaImportModal.vue'
@@ -347,6 +359,7 @@ import ShortcutsModal from './ShortcutsModal.vue'
 import PwaConfigPanel from './PwaConfigPanel.vue'
 import GatewayPanel from './GatewayPanel.vue'
 import type { AiGeneratedRecord } from '../ai-api'
+import type { WhoobeOnePage } from '../pages-api'
 import { GATEWAY_FIELD_DRAG_MIME_TYPE, type GatewayFieldDragPayload } from '../utils/gateway-drag'
 import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
@@ -367,6 +380,7 @@ const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text
 const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'advanced' | 'snippets' | 'kits' | 'ai' | 'pwa' | 'gateway'>('elements')
 const sidebarCollapsed = ref(false)
 const showAddToKit = ref(false)
+const showTranslatePage = ref(false)
 const showTemplateGallery = ref(false)
 const showThemeModal = ref(false)
 const showAiGeneratePage = ref(false)
@@ -606,6 +620,15 @@ async function onSaveAs() {
 
 function onTemplateLoaded() {
   flash('Loaded')
+}
+
+// The translated page is a *different* page (own id, own locale) - left
+// unopened here rather than swapping the editor onto it, so an in-progress
+// edit of the source page is never interrupted by its own "Translate"
+// action. The user opens the new draft from the page list to review it.
+function onPageTranslated(page: WhoobeOnePage) {
+  showTranslatePage.value = false
+  flash(`Translated into "${page.locale}" - review the new draft "${page.title}" from the page list`)
 }
 
 // AI-generated whole-page replacement - mirrors onNew()'s document swap

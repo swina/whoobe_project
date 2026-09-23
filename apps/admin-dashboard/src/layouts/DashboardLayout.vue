@@ -479,6 +479,7 @@ import {
   Globe,
   Palette,
   Image,
+  Languages,
   Smartphone,
   Table2,
   Mail,
@@ -755,6 +756,7 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'ai', name: 'AI agent', icon: Sparkles },
   { key: 'ai-image', name: 'AI image gen', icon: Image },
+  { key: 'ai-translate', name: 'AI translation', icon: Languages },
   { key: 'figma', name: 'Figma', icon: Palette },
   { key: 'pwa', name: 'Mobile App', icon: Smartphone },
 ]
@@ -768,6 +770,7 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   workflows: 'Workflows',
   ai: 'AI agent',
   'ai-image': 'AI image gen',
+  'ai-translate': 'AI translation',
   figma: 'Figma',
   pwa: 'Mobile App',
 }
