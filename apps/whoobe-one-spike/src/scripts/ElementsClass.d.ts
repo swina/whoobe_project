@@ -334,6 +334,7 @@ export default class Element {
   editable: boolean
   icon: string
   buttonIcon?: string
+  buttonIconPosition?: 'before' | 'after'
   buttonIconWidth?: number
   buttonIconHeight?: number
   helper: string | null

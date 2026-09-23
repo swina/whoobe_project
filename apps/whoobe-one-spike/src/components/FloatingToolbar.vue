@@ -285,6 +285,23 @@
               <span class="text-[10px] text-gray-500 font-mono">{{ buttonIconDraft }}</span>
             </div>
           </div>
+          <div>
+            <label class="block text-[10px] text-gray-500 mb-1">Position</label>
+            <div class="flex gap-1">
+              <button
+                type="button"
+                class="flex-1 px-2 py-1 text-[10px] rounded border"
+                :class="buttonIconPositionDraft === 'before' ? 'bg-indigo-600 border-indigo-600 text-white font-semibold' : 'bg-white border-gray-300 text-gray-600 hover:border-indigo-400'"
+                @click="buttonIconPositionDraft = 'before'"
+              >Before text</button>
+              <button
+                type="button"
+                class="flex-1 px-2 py-1 text-[10px] rounded border"
+                :class="buttonIconPositionDraft === 'after' ? 'bg-indigo-600 border-indigo-600 text-white font-semibold' : 'bg-white border-gray-300 text-gray-600 hover:border-indigo-400'"
+                @click="buttonIconPositionDraft = 'after'"
+              >After text</button>
+            </div>
+          </div>
           <div class="flex items-center gap-2">
             <div class="flex-1">
               <label class="block text-[10px] text-gray-500 mb-0.5">Width</label>
@@ -776,6 +793,7 @@ const showLinkPicker = ref(false)
 const linkUrlDraft = ref('')
 const showButtonIconPicker = ref(false)
 const buttonIconDraft = ref('')
+const buttonIconPositionDraft = ref<'before' | 'after'>('before')
 const buttonIconWidthDraft = ref(16)
 const buttonIconHeightDraft = ref(16)
 const buttonIconPreview = shallowRef<Component | null>(null)
@@ -1440,6 +1458,7 @@ async function previewButtonIcon() {
 function applyButtonIcon() {
   if (!editor.current) return
   editor.current.buttonIcon = buttonIconDraft.value.trim()
+  ;(editor.current as any).buttonIconPosition = buttonIconPositionDraft.value
   editor.current.buttonIconWidth = buttonIconWidthDraft.value
   editor.current.buttonIconHeight = buttonIconHeightDraft.value
   showButtonIconPicker.value = false
@@ -1447,12 +1466,14 @@ function applyButtonIcon() {
 
 function clearButtonIcon() {
   buttonIconDraft.value = ''
+  buttonIconPositionDraft.value = 'before'
   buttonIconWidthDraft.value = 16
   buttonIconHeightDraft.value = 16
   buttonIconPreview.value = null
   showButtonIconPicker.value = false
   if (!editor.current) return
   editor.current.buttonIcon = ''
+  ;(editor.current as any).buttonIconPosition = 'before'
   editor.current.buttonIconWidth = 16
   editor.current.buttonIconHeight = 16
 }
@@ -1460,6 +1481,7 @@ function clearButtonIcon() {
 function openButtonIconPicker() {
   const el = editor.current as any
   buttonIconDraft.value = el?.buttonIcon || ''
+  buttonIconPositionDraft.value = el?.buttonIconPosition === 'after' ? 'after' : 'before'
   buttonIconWidthDraft.value = el?.buttonIconWidth ?? 16
   buttonIconHeightDraft.value = el?.buttonIconHeight ?? 16
   previewButtonIcon()
