@@ -89,6 +89,128 @@ User instruction: ${instruction}
 The output must be a single plain-text string.`;
 }
 
+export interface TranslatableString {
+  id: string;
+  text: string;
+}
+
+/** Collects every translatable string out of an Element tree: each node's
+ *  own "content" text (skipping empty/whitespace-only ones), tagged by the
+ *  node's id. Used instead of sending the whole tree to the model - the
+ *  real Element schema (ElementsClass.js) carries many more fields than
+ *  this file's own generation contract documents (data/font/gsap/icon/
+ *  link/image/style/alpine/anchor/dialog/events/helper/tailwind/
+ *  categories/dataBinding/description, ...), and asking a model to retype
+ *  all of it verbatim on a non-trivial page reliably produced truncated,
+ *  invalid JSON. Sending just {id, text} pairs keeps the payload small
+ *  regardless of how rich the tree's other fields are, and the structure
+ *  is then restored losslessly by applyTranslatedStrings() below - never
+ *  round-tripped through the model at all. */
+export function collectTranslatableStrings(root: Record<string, unknown>): TranslatableString[] {
+  const out: TranslatableString[] = [];
+  for (const node of collectNodes(root)) {
+    const id = node.id;
+    const content = node.content;
+    if (typeof id === 'string' && typeof content === 'string' && content.trim()) {
+      out.push({ id, text: content });
+    }
+  }
+  return out;
+}
+
+/** Applies a { id -> translated text } map onto a deep clone of the given
+ *  Element tree, overwriting only each matching node's "content" field -
+ *  every other field is left exactly as it was in the source, since it was
+ *  never sent to the model. An id missing from `translations` (a partial
+ *  or failed batch) keeps that node's original text rather than blanking
+ *  it out. */
+export function applyTranslatedStrings<T>(root: T, translations: Record<string, string>): T {
+  const clone = JSON.parse(JSON.stringify(root)) as Record<string, any>;
+  function walk(node: Record<string, any>): void {
+    if (typeof node.id === 'string' && typeof node.content === 'string' && typeof translations[node.id] === 'string') {
+      node.content = translations[node.id];
+    }
+    if (Array.isArray(node.blocks)) {
+      for (const child of node.blocks) {
+        if (child && typeof child === 'object') walk(child);
+      }
+    }
+  }
+  walk(clone);
+  return clone as T;
+}
+
+export interface AiTranslateBatchContext {
+  /** BCP-47 locale code of the language to translate into (e.g. "it", "fr-CA"). */
+  targetLocale: string;
+  strings: TranslatableString[];
+}
+
+export function buildTranslateSystemPrompt(): string {
+  return 'You are a professional translator and localization expert. You output ONLY plain text in the exact block format requested, no JSON, no markdown fences, no commentary.';
+}
+
+/** A block-marker per id ("@@<id>@@" on its own line, followed by that
+ *  entry's text) rather than JSON. Deliberately not JSON: asking the model
+ *  to balance braces/quotes/escaping around dozens of arbitrary translated
+ *  strings (which may themselves contain quotes, apostrophes, or line
+ *  breaks) was a real, repeated source of "invalid JSON"/truncated/empty
+ *  responses even after batching down to a handful of short strings per
+ *  call - some (especially free/small) models simply produce more
+ *  reliable output when they don't have to think about JSON escaping at
+ *  all. A real node id (e.g. "whoobe-tyqty") never contains "@@", so it's
+ *  safe to use directly as the delimiter with no extra encoding needed on
+ *  either side. */
+function formatBlocks(strings: TranslatableString[]): string {
+  return strings.map((s) => `@@${s.id}@@\n${s.text}`).join('\n\n');
+}
+
+/** Prompt for one batch of {id, text} strings (kind: 'page-translation') -
+ *  see collectTranslatableStrings()'s comment for why this sends strings,
+ *  not the whole page tree. Callers batch large string lists into several
+ *  calls of this prompt rather than one huge one, for the same reason. */
+export function buildTranslateUserPrompt(context: AiTranslateBatchContext): string {
+  return `Translate each numbered block below into the language identified by the BCP-47 locale code "${context.targetLocale}".
+
+Output ONLY plain text in this exact format - one block per input id, the exact same "@@id@@" markers, same order, nothing added or removed, no JSON, no markdown fences, no explanations before/after:
+
+@@<id>@@
+<translated text>
+
+@@<id>@@
+<translated text>
+
+Rules:
+- Translate naturally and idiomatically for the target locale, not word-for-word.
+- Keep the same tone/register, and roughly the same length where the target language allows it.
+- Do NOT translate numbers, code, URLs, or template placeholders like {slug} - copy them through unchanged.
+- A block's text may itself span multiple lines - keep it as one block, don't split or merge blocks.
+- Every input id must appear exactly once in the output, even if its text needs no change.
+
+Blocks to translate:
+
+${formatBlocks(context.strings)}`;
+}
+
+/** Parses buildTranslateUserPrompt()'s expected reply format back into an
+ *  { id -> translated text } map. Permissive by construction: no escaping
+ *  to get right, embedded newlines/quotes inside a block are just part of
+ *  its text, and any stray commentary the model adds before the first
+ *  marker or after the last one is simply outside every captured range and
+ *  ignored - none of that could make this throw the way JSON.parse would. */
+export function parseTranslatedBlocks(raw: string): Record<string, string> {
+  const markerRe = /^@@(.+?)@@[ \t]*$/gm;
+  const matches = [...raw.matchAll(markerRe)];
+  const out: Record<string, string> = {};
+  for (let i = 0; i < matches.length; i++) {
+    const id = matches[i][1].trim();
+    const start = matches[i].index! + matches[i][0].length;
+    const end = i + 1 < matches.length ? matches[i + 1].index! : raw.length;
+    out[id] = raw.slice(start, end).trim();
+  }
+  return out;
+}
+
 const ALLOWED_TAGS = new Set([
   'document', 'div', 'section', 'header', 'footer', 'nav', 'main', 'aside', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
   'p', 'span', 'img', 'a', 'button', 'input', 'textarea', 'select', 'option', 'label', 'blockquote', 'pre',

@@ -85,6 +85,39 @@ export async function saveAiSettings(baseUrl: string, input: AiSettingsInput): P
   return parseJsonOrThrow(res)
 }
 
+export interface AiTranslateSettingsRecord {
+  provider: string
+  model: string
+  endpoint: string | null
+  hasApiKey: boolean
+  updatedAt: string
+}
+export interface AiTranslateSettingsInput {
+  provider: string
+  model: string
+  endpoint?: string | null
+  apiKey?: string
+}
+
+export async function fetchAiTranslateSettings(baseUrl: string): Promise<{ settings: AiTranslateSettingsRecord | null; usingFallback: boolean }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/ai/translate-settings`, { credentials: 'include' })
+  return res.json()
+}
+
+export async function saveAiTranslateSettings(baseUrl: string, input: AiTranslateSettingsInput): Promise<AiTranslateSettingsRecord> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/ai/translate-settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || 'Failed to save AI translation settings')
+  }
+  return res.json()
+}
+
 export interface AiGeneratedImage {
   damUrl: string
   assetId: string

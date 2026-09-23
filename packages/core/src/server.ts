@@ -42,6 +42,8 @@ export * from './db/ai-settings-schema.js';
 export * from './db/ai-settings-records.js';
 export * from './db/ai-image-settings-schema.js';
 export * from './db/ai-image-settings-records.js';
+export * from './db/ai-translate-settings-schema.js';
+export * from './db/ai-translate-settings-records.js';
 export * from './db/figma-settings-schema.js';
 export * from './db/figma-settings-records.js';
 export * from './db/ai-generated-schema.js';

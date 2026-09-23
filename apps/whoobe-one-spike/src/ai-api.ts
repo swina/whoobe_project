@@ -98,6 +98,34 @@ export async function fetchAiInfo(): Promise<AiInfo | null> {
   }
 }
 
+export interface AiTranslateInfo {
+  provider: string
+  model: string
+  hasApiKey: boolean
+  usingFallback: boolean
+}
+
+/** Same idea as fetchAiInfo(), but for the dedicated translate-settings
+ *  slot (Settings → AI Translation) - falls back to the text AI config
+ *  server-side when unset, so `usingFallback` tells the modal which one is
+ *  actually about to be used. */
+export async function fetchAiTranslateInfo(): Promise<AiTranslateInfo | null> {
+  try {
+    const res = await fetch(`${getDefaultCoreApiUrl()}/ai/translate-settings`, {
+      method: 'GET',
+      credentials: 'include',
+    })
+    if (!res.ok) return null
+    const body = await res.json()
+    if (body?.settings) {
+      return { provider: body.settings.provider, model: body.settings.model, hasApiKey: !!body.settings.hasApiKey, usingFallback: !!body.usingFallback }
+    }
+    return await fetchAiInfo().then((info) => (info ? { ...info, usingFallback: true } : null))
+  } catch {
+    return null
+  }
+}
+
 export interface AiGeneratedRecord {
   id: string
   kind: 'snippet' | 'page' | 'image'

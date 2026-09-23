@@ -68,6 +68,8 @@
 
         <AiImageSettingsCard v-if="activeSubSection === 'ai-image'" />
 
+        <AiTranslateSettingsCard v-if="activeSubSection === 'ai-translate'" />
+
         <FigmaSettingsCard v-if="activeSubSection === 'figma'" />
 
         <PwaSettingsCard v-if="activeSubSection === 'pwa'" />
@@ -154,6 +156,7 @@ import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'
 import AiSettingsCard from '../components/settings/AiSettingsCard.vue'
 import AiImageSettingsCard from '../components/settings/AiImageSettingsCard.vue'
+import AiTranslateSettingsCard from '../components/settings/AiTranslateSettingsCard.vue'
 import FigmaSettingsCard from '../components/settings/FigmaSettingsCard.vue'
 import PwaSettingsCard from '../components/settings/PwaSettingsCard.vue'
 import UsersView from './UsersView.vue'
@@ -176,6 +179,7 @@ import {
   Sparkles,
   WandSparkles,
   Image,
+  Languages,
   Palette,
   Smartphone,
   UserRound,
@@ -292,6 +296,7 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'ai', name: 'AI', icon: WandSparkles },
   { key: 'ai-image', name: 'AI Image', icon: Image },
+  { key: 'ai-translate', name: 'AI Translation', icon: Languages },
   { key: 'figma', name: 'Figma', icon: Palette },
   { key: 'pwa', name: 'PWA', icon: Smartphone },
 ]
@@ -354,6 +359,7 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   workflows: { title: 'Workflows', description: 'Author publish/review workflows for Data Object classes.' },
   ai: { title: 'AI Agent', description: 'LLM provider used by the AI page and snippet generator in the Whoobe One composer.' },
   'ai-image': { title: 'AI Image Generation', description: 'Dedicated AI provider for image generation, or leave blank to use your text AI configuration.' },
+  'ai-translate': { title: 'AI Translation', description: 'Dedicated AI provider for the page editor\'s "Translate" action, or leave blank to use your AI Agent configuration.' },
   figma: { title: 'Figma Integration', description: 'Figma Personal Access Token configuration for importing designs into the Whoobe One editor.' },
   //pwa: { title: 'Mobile App', description: 'Configure Progressive Web App settings, push notification providers, and manifest options per website.' },
   pwa: { title: 'Mobile App', description: 'Publish your website as a mobile app.' },

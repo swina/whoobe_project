@@ -152,6 +152,8 @@ import {
   upsertAiSettings,
   getAiImageSettings,
   upsertAiImageSettings,
+  getAiTranslateSettings,
+  upsertAiTranslateSettings,
   getFigmaSettings,
   upsertFigmaSettings,
   listAiGenerated,
@@ -163,6 +165,12 @@ import {
   buildSystemPrompt,
   buildUserPrompt,
   buildTextPrompt,
+  buildTranslateSystemPrompt,
+  buildTranslateUserPrompt,
+  parseTranslatedBlocks,
+  collectTranslatableStrings,
+  applyTranslatedStrings,
+  type TranslatableString,
   buildWebsiteStructurePrompt,
   validateElementTree,
   validateWebsiteStructure,
@@ -1452,6 +1460,209 @@ app.get(
     } catch (error: any) {
       logger.error({ err: error }, 'List whoobe-one page translations error');
       res.status(500).json({ error: error.message || 'Failed to list page translations' });
+    }
+  }
+);
+
+// AI page translation - creates a new locale variant of an existing page
+// (same translationGroupId, so it shows up alongside it in the
+// translations picker) by asking the configured AI provider to translate
+// its title + Element tree content. Gated on OBJECTS_WRITE like page
+// creation, since a successful call does create a page row. The new page
+// always lands unpublished (createWhoobePage's own default) so an editor
+// reviews/edits it like any other draft before it goes live - translation
+// quality isn't guaranteed, this just gets a first draft into the same
+// page/publish workflow every other page already goes through.
+app.post(
+  '/whoobe-one/pages/:id/translate',
+  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { locale } = req.body ?? {};
+    if (typeof locale !== 'string' || !locale.trim()) {
+      res.status(400).json({ error: 'locale is required' });
+      return;
+    }
+    const targetLocale = locale.trim();
+
+    let source;
+    try {
+      source = await getWhoobePage(req.params.id);
+    } catch (error: any) {
+      logger.error({ err: error }, 'Translate whoobe-one page lookup error');
+      res.status(500).json({ error: error.message || 'Failed to load page' });
+      return;
+    }
+    if (!source) {
+      res.status(404).json({ error: 'Page not found' });
+      return;
+    }
+    if (targetLocale === source.locale) {
+      res.status(400).json({ error: `Page is already in locale "${targetLocale}"` });
+      return;
+    }
+    const existingTranslations = await listWhoobePageTranslations(source.translationGroupId);
+    if (existingTranslations.some((p) => p.locale === targetLocale)) {
+      res.status(409).json({ error: `A translation into "${targetLocale}" already exists for this page` });
+      return;
+    }
+
+    // Resolve translation AI settings: use the dedicated translate-specific
+    // config if one is set, else fall back to the shared text AI config -
+    // same fallback shape as /ai/generate-image. A dedicated slot exists
+    // because translation and generation have different reliability
+    // profiles on the same free/small models (see this route's own CHANGES.md
+    // entries: the same model that produced malformed/empty output while
+    // being asked to reproduce a whole Element tree can still be a fine
+    // choice for page generation, and a user may want a different, more
+    // translation-reliable free model without touching that config).
+    let translateSettings = await getAiTranslateSettings(req.user!.id);
+    if (!translateSettings || !translateSettings.apiKey) {
+      const textSettings = await getAiSettings(req.user!.id);
+      if (!textSettings || !textSettings.apiKey) {
+        res.status(400).json({ error: 'AI is not configured. Save a provider, model, and API key in Settings → AI (or Settings → AI Translation) first.' });
+        return;
+      }
+      translateSettings = { ...textSettings };
+    }
+    // Re-shaped into a plain, non-nullable object so translateBatch()'s
+    // closure below doesn't lose the null-check narrowing TypeScript
+    // doesn't carry across nested function boundaries for the original.
+    const aiSettings = { provider: translateSettings.provider, model: translateSettings.model, endpoint: translateSettings.endpoint, apiKey: translateSettings.apiKey };
+
+    // Only the page's actual text round-trips through the model - every
+    // other field (ids, css, nesting, ...) is restored by our own code
+    // afterward via applyTranslatedStrings, never re-typed by the LLM (see
+    // collectTranslatableStrings' own comment: sending the whole tree
+    // reliably got truncated/invalid JSON back on any non-trivial page).
+    // Also batched - a page with hundreds of text nodes would still make
+    // for a large single prompt even as {id, text} pairs.
+    const TITLE_ID = '__page_title__';
+    const allStrings = [
+      { id: TITLE_ID, text: source.title },
+      ...collectTranslatableStrings(source.content as Record<string, unknown>),
+    ];
+    const TRANSLATE_BATCH_SIZE = 40;
+
+    // Plain-text block format, not JSON (raw: true skips parseJsonText()
+    // entirely - see buildTranslateUserPrompt/parseTranslatedBlocks' own
+    // comments): asking the model to balance braces/quotes/escaping around
+    // dozens of arbitrary translated strings was a real, repeated source
+    // of invalid-JSON and even outright empty responses (some free/small
+    // models appear to buckle on structured output for this particular
+    // task). Still retries with feedback (same pattern as
+    // /ai/generate-website-structure below) for the remaining failure
+    // modes this doesn't eliminate on its own - a genuinely empty reply,
+    // or the model dropping/renumbering a block.
+    async function translateBatch(batch: TranslatableString[]): Promise<Record<string, string>> {
+      let lastError = '';
+      let lastRaw = '';
+      const basePrompt = buildTranslateUserPrompt({ targetLocale, strings: batch });
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const prompt = attempt === 1
+          ? basePrompt
+          : `Your previous answer was rejected for this reason:\n${lastError}\n\nYour previous output (start):\n${lastRaw.substring(0, 1500)}\n\nOutput ONLY the corrected, complete reply in the exact format requested below - every "@@id@@" marker present, same order, no JSON, no markdown fences, no explanations:\n\n${basePrompt}`;
+        try {
+          const result = await generateAiJson({
+            settings: aiSettings,
+            systemPrompt: buildTranslateSystemPrompt(),
+            userPrompt: prompt,
+            maxTokens: 4096,
+            raw: true,
+          });
+          lastRaw = typeof result.json === 'string' ? result.json : (result.rawText || '');
+          if (!lastRaw.trim()) {
+            lastError = 'The AI provider returned an empty response for this batch.';
+            if (attempt === 3) {
+              await createAiGenerated({
+                kind: 'page-translation', prompt, provider: aiSettings.provider, model: aiSettings.model,
+                rawResponse: lastRaw, status: 'error', error: lastError, createdBy: req.user?.id ?? null,
+              });
+              throw new AiGenerationError(
+                `${lastError} Try a different model in Settings → AI - some free or smaller models struggle with this task.`
+              );
+            }
+            continue;
+          }
+          const parsed = parseTranslatedBlocks(lastRaw);
+          const missing = batch.filter((s) => typeof parsed[s.id] !== 'string' || !parsed[s.id].trim());
+          if (missing.length > 0) {
+            lastError = `Response is missing translations for ${missing.length} of ${batch.length} block(s).`;
+            if (attempt === 3) {
+              // A partial batch degrades gracefully - keep whatever the
+              // model did translate rather than discarding the batch
+              // entirely; applyTranslatedStrings() falls back to each
+              // untranslated node's original text for the rest.
+              await createAiGenerated({
+                kind: 'page-translation', prompt, provider: aiSettings.provider, model: aiSettings.model,
+                payload: parsed, rawResponse: lastRaw, status: missing.length === batch.length ? 'error' : 'success',
+                error: missing.length === batch.length ? lastError : null, createdBy: req.user?.id ?? null,
+              });
+              return parsed;
+            }
+            continue;
+          }
+          await createAiGenerated({
+            kind: 'page-translation', prompt, provider: aiSettings.provider, model: aiSettings.model,
+            payload: parsed, rawResponse: lastRaw, status: 'success', createdBy: req.user?.id ?? null,
+          });
+          return parsed;
+        } catch (error: any) {
+          const message = error instanceof AiGenerationError ? error.message : (error?.message || 'AI translation failed');
+          lastError = message;
+          if (attempt === 3) {
+            try {
+              await createAiGenerated({
+                kind: 'page-translation', prompt, provider: aiSettings.provider, model: aiSettings.model,
+                rawResponse: lastRaw, status: 'error', error: message, createdBy: req.user?.id ?? null,
+              });
+            } catch (logError) {
+              logger.error({ err: logError }, 'AI translation audit log write error');
+            }
+            throw error instanceof AiGenerationError ? error : new AiGenerationError(message);
+          }
+        }
+      }
+      throw new AiGenerationError(lastError || 'AI translation failed');
+    }
+
+    const translations: Record<string, string> = {};
+    try {
+      for (let i = 0; i < allStrings.length; i += TRANSLATE_BATCH_SIZE) {
+        Object.assign(translations, await translateBatch(allStrings.slice(i, i + TRANSLATE_BATCH_SIZE)));
+      }
+    } catch (error: any) {
+      const message = error instanceof AiGenerationError ? error.message : (error?.message || 'AI translation failed');
+      const status = error instanceof AiGenerationError && error.status ? error.status : 500;
+      res.status(status).json({ error: message });
+      return;
+    }
+
+    const translatedTitle = translations[TITLE_ID]?.trim() || source.title;
+    const translatedContent = applyTranslatedStrings(source.content, translations);
+
+    try {
+      const page = await createWhoobePage({
+        translationGroupId: source.translationGroupId,
+        locale: targetLocale,
+        slug: source.slug,
+        title: translatedTitle,
+        category: source.category,
+        kind: source.kind,
+        content: translatedContent,
+        seo: source.seo,
+        sitemap: source.sitemap,
+        search: source.search,
+        websiteId: source.websiteId,
+        themeId: source.themeId,
+      });
+      res.status(201).json({ page });
+    } catch (error: any) {
+      if (error?.code === '23505') {
+        res.status(409).json({ error: `A page with slug "${source.slug}" already exists for locale "${targetLocale}"` });
+        return;
+      }
+      logger.error({ err: error }, 'Translate whoobe-one page create error');
+      res.status(500).json({ error: error.message || 'Failed to create translated page' });
     }
   }
 );
@@ -4846,6 +5057,47 @@ app.put('/ai/image-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), as
   } catch (error: any) {
     logger.error({ err: error }, 'AI image settings save error');
     res.status(500).json({ error: error.message || 'Failed to save AI image settings' });
+  }
+});
+
+// Dedicated per-user AI config for page translation - same GET/PUT shape
+// as /ai/image-settings, own row in ai_translate_settings so translation
+// can use a different provider/model than page/snippet generation without
+// touching that config (docs/CHANGES.md: translation and generation have
+// different reliability profiles on the same free/small models).
+app.get('/ai/translate-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const settings = await getAiTranslateSettings(req.user!.id);
+    if (!settings) {
+      res.json({ settings: null, usingFallback: true });
+      return;
+    }
+    const { apiKey, ...rest } = settings;
+    res.json({ settings: { ...rest, hasApiKey: !!apiKey }, usingFallback: !apiKey });
+  } catch (error: any) {
+    logger.error({ err: error }, 'AI translate settings fetch error');
+    res.status(500).json({ error: error.message || 'Failed to fetch AI translate settings' });
+  }
+});
+
+app.put('/ai/translate-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { provider, model, endpoint, apiKey } = req.body ?? {};
+    if (!provider || !model) {
+      res.status(400).json({ error: 'provider and model are required' });
+      return;
+    }
+    const existing = await getAiTranslateSettings(req.user!.id);
+    const input: any = { provider, model, endpoint };
+    input.apiKey = apiKey === '' || apiKey == null
+      ? existing?.apiKey ?? null
+      : apiKey;
+    const updated = await upsertAiTranslateSettings(req.user!.id, input);
+    const { apiKey: _, ...rest } = updated;
+    res.json({ ...rest, hasApiKey: !!updated.apiKey });
+  } catch (error: any) {
+    logger.error({ err: error }, 'AI translate settings save error');
+    res.status(500).json({ error: error.message || 'Failed to save AI translate settings' });
   }
 });
 
