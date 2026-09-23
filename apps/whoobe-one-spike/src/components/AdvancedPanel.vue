@@ -34,6 +34,7 @@ import { computed, ref } from 'vue'
 import { ChevronDown, ChevronRight } from '@lucide/vue'
 import { useEditorStore } from '../store/editor'
 import StyleControl from './advanced/StyleControl.vue'
+import InfoControl from './advanced/InfoControl.vue'
 import AttributesControl from './advanced/AttributesControl.vue'
 import AnimationControl from './advanced/AnimationControl.vue'
 import AlpineControl from './advanced/AlpineControl.vue'
@@ -75,6 +76,7 @@ const sections = computed(() => {
   const showGatewayBinding = Boolean(gb && gb.fieldPath)
   const showDataBinding = showDataObjectBinding || showGatewayBinding
   return [
+    ...(current?.sourceSnippetId ? [{ key: 'info', label: 'Info', component: InfoControl }] : []),
     { key: 'customClasses', label: 'Custom Classes', component: CustomClassesControl },
     { key: 'style', label: 'Style', component: StyleControl },
     ...(showDataBinding ? [{ key: 'dataBinding', label: 'Data Binding', component: DataBindingTransformControl }] : []),

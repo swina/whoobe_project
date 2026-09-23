@@ -26,6 +26,16 @@
           <Package v-else class="w-5 h-5" />
           <span class="truncate w-full">{{ snippet.name }}</span>
           <button
+            v-if="snippet.notes"
+            type="button"
+            title="View usage notes"
+            class="absolute -top-1.5 -left-1.5 w-4 h-4 rounded-full bg-indigo-500 text-white flex items-center justify-center"
+            @mousedown.stop
+            @click.stop="notesSnippet = snippet"
+          >
+            <Info class="w-2.5 h-2.5" />
+          </button>
+          <button
             type="button"
             title="Delete snippet"
             class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center opacity-0 group-hover/chip:opacity-100"
@@ -37,6 +47,22 @@
         </div>
       </div>
     </template>
+
+    <!-- Usage notes overlay - the snippets-list counterpart of
+         AdvancedPanel.vue's Info section, for a snippet not yet dropped
+         into the canvas. -->
+    <div v-if="notesSnippet" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="notesSnippet = null">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-sm flex flex-col overflow-hidden">
+        <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
+          <span class="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+            <span v-if="notesSnippet.icon">{{ notesSnippet.icon }}</span>
+            {{ notesSnippet.name }}
+          </span>
+          <button class="flex items-center gap-1 text-gray-400 hover:text-gray-700 text-xs" @click="notesSnippet = null"><X class="w-3.5 h-3.5" /> Close</button>
+        </div>
+        <p class="p-4 text-xs text-gray-600 whitespace-pre-wrap">{{ notesSnippet.notes }}</p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -56,11 +82,13 @@
 // that handler's data-snippet-id branch), same delete-in-place button, same
 // one-category-open-at-a-time accordion.
 import { computed, onMounted, ref, watch } from 'vue'
-import { ChevronDown, ChevronRight, Package, X } from '@lucide/vue'
+import { ChevronDown, ChevronRight, Info, Package, X } from '@lucide/vue'
 import { useSnippetsStore } from '../store/snippets'
+import type { WhoobeOneSnippet } from '../snippets-api'
 
 const snippetsStore = useSnippetsStore()
 const openGroup = ref<string | null>(null)
+const notesSnippet = ref<WhoobeOneSnippet | null>(null)
 
 const categories = computed(() =>
   Array.from(new Set(snippetsStore.items.map((s) => s.category))).sort((a, b) => a.localeCompare(b))

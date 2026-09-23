@@ -15,6 +15,10 @@ export interface WhoobeOneSnippet {
   category: string
   icon: string | null
   node: unknown
+  // Free-text usage notes (SaveSnippetModal.vue) - shown from the snippets
+  // list and, once dropped into a document, in the inserted element's
+  // Advanced > Info panel (see AdvancedPanel.vue's InfoControl).
+  notes: string | null
 }
 
 import { getDefaultCoreApiUrl } from './core-api-url'
@@ -50,6 +54,7 @@ export async function createSnippet(input: {
   category: string
   icon?: string | null
   node: unknown
+  notes?: string | null
 }): Promise<WhoobeOneSnippet> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/snippets`, {
     method: 'POST',
@@ -66,7 +71,7 @@ export async function createSnippet(input: {
 // already saved rather than piling up another near-duplicate snippet.
 export async function updateSnippet(
   id: string,
-  input: { name: string; category: string; icon?: string | null; node: unknown }
+  input: { name: string; category: string; icon?: string | null; node: unknown; notes?: string | null }
 ): Promise<WhoobeOneSnippet> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/snippets/${id}`, {
     method: 'PATCH',

@@ -80,6 +80,17 @@
           />
         </div>
 
+        <div>
+          <label class="block font-semibold text-gray-600 mb-1">Usage notes</label>
+          <textarea
+            v-model="notes"
+            rows="3"
+            placeholder="Optional — how/when to use this snippet, what it expects (e.g. a hero image, a CTA link)…"
+            class="w-full px-2 py-1.5 rounded-md border border-gray-300 focus:outline-none focus:border-indigo-500"
+          ></textarea>
+          <p class="text-[10px] text-gray-400 mt-1">Shown from the snippets list and, once inserted, in the element's Advanced &gt; Info panel.</p>
+        </div>
+
         <div v-if="error" class="px-2 py-1.5 rounded-md bg-rose-50 border border-rose-200 text-rose-600">{{ error }}</div>
 
         <div class="flex justify-end gap-2 pt-1">
@@ -167,6 +178,7 @@ const name = ref('')
 const categoryChoice = ref('containers')
 const newCategory = ref('')
 const icon = ref('📦')
+const notes = ref('')
 const error = ref('')
 const submitting = ref(false)
 
@@ -190,6 +202,7 @@ watch(targetSnippetId, (id) => {
   name.value = snippet.name
   categoryChoice.value = snippet.category
   icon.value = snippet.icon || '📦'
+  notes.value = snippet.notes || ''
 })
 
 // Editing an existing snippet from admin-dashboard's Snippets list: the
@@ -209,7 +222,10 @@ onMounted(() => {
 watch(
   () => mode.value,
   (m) => {
-    if (m === 'new') name.value = ''
+    if (m === 'new') {
+      name.value = ''
+      notes.value = ''
+    }
   }
 )
 
@@ -235,7 +251,7 @@ async function submit() {
     // is an ordinary object graph, not a Proxy tied to this component's
     // lifetime.
     const node = JSON.parse(JSON.stringify(rawNode))
-    const input = { name: name.value.trim(), category, icon: icon.value || null, node }
+    const input = { name: name.value.trim(), category, icon: icon.value || null, node, notes: notes.value.trim() || null }
     // Whether this save is naming/updating the editor's own open document
     // (no specific element given) rather than carving an unrelated
     // sub-block out as a separate saved snippet - see

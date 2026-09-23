@@ -30,7 +30,7 @@ export const useSnippetsStore = defineStore('snippets', () => {
     }
   }
 
-  async function save(input: { name: string; category: string; icon?: string | null; node: unknown }): Promise<WhoobeOneSnippet> {
+  async function save(input: { name: string; category: string; icon?: string | null; node: unknown; notes?: string | null }): Promise<WhoobeOneSnippet> {
     const created = await apiCreateSnippet(input)
     items.value.unshift(created)
     return created
@@ -38,7 +38,7 @@ export const useSnippetsStore = defineStore('snippets', () => {
 
   async function update(
     id: string,
-    input: { name: string; category: string; icon?: string | null; node: unknown }
+    input: { name: string; category: string; icon?: string | null; node: unknown; notes?: string | null }
   ): Promise<WhoobeOneSnippet> {
     const updated = await apiUpdateSnippet(id, input)
     const index = items.value.findIndex((s) => s.id === id)

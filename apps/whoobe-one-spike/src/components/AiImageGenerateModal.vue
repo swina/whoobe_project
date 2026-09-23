@@ -1,22 +1,33 @@
 <template>
-  <div class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="$emit('close')">
-    <div class="bg-slate-900 border border-slate-800 rounded-lg shadow-xl w-full max-w-lg flex flex-col overflow-hidden relative">
-      <div class="flex items-center justify-between px-4 py-3 border-b shrink-0">
-        <span class="text-sm font-semibold text-slate-200">AI Image Generate</span>
-        <button class="text-slate-400 hover:text-slate-200" @click="$emit('close')"><X class="w-4 h-4" /></button>
+  <div class="fixed inset-0 z-[10000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4" @click.self="$emit('close')">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full shadow-2xl flex flex-col overflow-hidden relative">
+      <div class="flex items-center justify-between px-6 pt-6">
+        <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+          <Sparkles class="w-4 h-4 text-indigo-400" />
+          Generate Image with AI
+        </h3>
+        <button class="text-slate-400 hover:text-slate-200 transition text-sm" @click="$emit('close')"><X class="w-4 h-4" /></button>
       </div>
 
-      <!-- Step 1: Generate -->
+      <!-- Step 1: Prompt & options -->
       <template v-if="step === 'generate'">
-        <div class="p-4 space-y-3">
-          <div v-if="info" class="inline-flex items-center gap-1.5 text-xs text-slate-400 bg-slate-800 rounded px-2 py-1">
-            <Sparkles class="w-3 h-3 text-indigo-400" />
+        <div class="p-6 space-y-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Save to DAM folder</label>
+            <div class="flex gap-2">
+              <input v-model="folderPath" type="text" placeholder="/ai-generated"
+                class="flex-1 text-xs rounded-lg px-2.5 py-1.5 bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono" />
+              <button type="button" class="text-xs px-2.5 py-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-slate-200" @click="loadFolders(); showFolderPicker = true">Browse</button>
+            </div>
+          </div>
+
+          <div v-if="info" class="inline-flex items-center gap-1.5 text-xs text-slate-400 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5">
             <template v-if="info.settings?.hasApiKey">
-              Provider: <span class="font-medium text-slate-200">{{ info.settings.provider }}</span>
+              <span>Provider: <span class="font-medium text-slate-200">{{ info.settings.provider }}</span></span>
               <span class="text-slate-600">·</span>
-              Model: <span class="font-medium text-slate-200">{{ info.settings.model }}</span>
+              <span>Model: <span class="font-medium text-slate-200">{{ info.settings.model }}</span></span>
             </template>
-            <span v-else class="text-amber-400">Not configured yet</span>
+            <span v-else class="text-amber-400">No AI image provider configured — set one in Settings → AI Image Generation.</span>
           </div>
 
           <textarea
@@ -24,88 +35,67 @@
             rows="4"
             required
             placeholder="Describe the image you want to generate…"
-            class="w-full text-sm border rounded-lg px-3 py-2 bg-slate-800 border-slate-700 text-slate-200 focus:outline-none focus:border-indigo-500 placeholder-slate-500"
+            class="w-full text-sm rounded-xl px-3 py-2 bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500 placeholder-slate-500"
           />
 
           <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs text-slate-400 mb-1">Size</label>
-              <select v-model="size" class="w-full text-xs rounded px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-200 focus:outline-none focus:border-indigo-500">
+            <label class="flex flex-col gap-1 text-xs text-slate-400">
+              Size
+              <select v-model="size" class="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-indigo-500">
                 <option value="256x256">256×256</option>
                 <option value="512x512">512×512</option>
-                <option value="1024x1024" selected>1024×1024</option>
+                <option value="1024x1024">1024×1024</option>
                 <option value="1792x1024">1792×1024</option>
               </select>
-            </div>
-            <div>
-              <label class="block text-xs text-slate-400 mb-1">Images</label>
-              <select v-model="n" class="w-full text-xs rounded px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-200 focus:outline-none focus:border-indigo-500">
+            </label>
+            <label class="flex flex-col gap-1 text-xs text-slate-400">
+              Images
+              <select v-model="n" class="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-indigo-500">
                 <option v-for="i in 4" :key="i" :value="i">{{ i }}</option>
               </select>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Save to DAM folder</label>
-            <div class="flex gap-2">
-              <input v-model="folderPath" type="text" placeholder="/ai-generated"
-                class="flex-1 text-xs rounded px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono" />
-              <button type="button" class="text-xs px-2 py-1 rounded border border-slate-700 text-slate-400 hover:text-slate-200" @click="loadFolders(); showFolderPicker = true">Browse</button>
-            </div>
+            </label>
           </div>
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Style</label>
-              <div class="flex rounded border border-slate-700 overflow-hidden">
-                <button
-                  type="button"
-                  class="flex-1 py-1 text-xs font-medium"
-                  :class="style === 'vivid' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'"
-                  @click="style = 'vivid'"
-                >Vivid</button>
-                <button
-                  type="button"
-                  class="flex-1 py-1 text-xs font-medium"
-                  :class="style === 'natural' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'"
-                  @click="style = 'natural'"
-                >Natural</button>
+              <label class="block text-xs text-slate-400 mb-1">Style (DALL·E only)</label>
+              <div class="flex rounded-lg border border-slate-800 overflow-hidden">
+                <button type="button" class="flex-1 py-1.5 text-xs font-medium transition"
+                  :class="style === 'vivid' ? 'bg-indigo-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-slate-200'"
+                  @click="style = 'vivid'">Vivid</button>
+                <button type="button" class="flex-1 py-1.5 text-xs font-medium transition"
+                  :class="style === 'natural' ? 'bg-indigo-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-slate-200'"
+                  @click="style = 'natural'">Natural</button>
               </div>
             </div>
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Quality</label>
-              <div class="flex rounded border border-slate-700 overflow-hidden">
-                <button
-                  type="button"
-                  class="flex-1 py-1 text-xs font-medium"
-                  :class="quality === 'standard' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'"
-                  @click="quality = 'standard'"
-                >Standard</button>
-                <button
-                  type="button"
-                  class="flex-1 py-1 text-xs font-medium"
-                  :class="quality === 'hd' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'"
-                  @click="quality = 'hd'"
-                >HD</button>
+              <label class="block text-xs text-slate-400 mb-1">Quality (DALL·E only)</label>
+              <div class="flex rounded-lg border border-slate-800 overflow-hidden">
+                <button type="button" class="flex-1 py-1.5 text-xs font-medium transition"
+                  :class="quality === 'standard' ? 'bg-indigo-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-slate-200'"
+                  @click="quality = 'standard'">Standard</button>
+                <button type="button" class="flex-1 py-1.5 text-xs font-medium transition"
+                  :class="quality === 'hd' ? 'bg-indigo-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-slate-200'"
+                  @click="quality = 'hd'">HD</button>
               </div>
             </div>
           </div>
 
-          <div v-if="error" class="text-xs text-rose-400">{{ error }}</div>
+          <div v-if="error" class="text-xs text-rose-400 bg-rose-400/10 border border-rose-400/30 rounded-lg px-3 py-2">{{ error }}</div>
 
-          <div class="flex items-center justify-between pt-1">
-            <span v-if="generating" class="text-xs text-slate-400 inline-flex items-center gap-2">
-              <Loader2 class="w-3.5 h-3.5 animate-spin" /> Generating…
-            </span>
-            <div v-else class="flex items-center gap-2 ml-auto">
-              <button type="button" class="text-xs px-3 py-1.5 rounded border border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-800" @click="$emit('close')">Cancel</button>
-              <button
-                type="button"
-                class="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50"
-                :disabled="!prompt.trim() || generating"
-                @click="generate"
-              >Generate</button>
-            </div>
+          <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+            <button type="button" class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 hover:text-slate-200 transition" @click="$emit('close')">
+              Cancel
+            </button>
+            <button
+              type="button"
+              :disabled="!prompt.trim() || generating"
+              class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition disabled:opacity-50 flex items-center gap-1.5"
+              @click="generate"
+            >
+              <Loader2 v-if="generating" class="w-3.5 h-3.5 animate-spin" />
+              <span>{{ generating ? 'Generating…' : 'Generate' }}</span>
+            </button>
           </div>
         </div>
       </template>
@@ -129,25 +119,30 @@
 
       <!-- Step 2: Preview -->
       <template v-if="step === 'preview'">
-        <div class="p-4 space-y-3">
+        <div class="p-6 space-y-3">
           <div v-if="generating" class="flex items-center justify-center py-8">
             <Loader2 class="w-6 h-6 animate-spin text-indigo-400" />
           </div>
           <template v-else>
             <div class="flex flex-wrap gap-3">
-              <div v-for="(img, i) in generatedImages" :key="i" class="flex flex-col items-center gap-2 bg-slate-800 rounded-lg p-2 border border-slate-700">
-                <img :src="assetPreviewUrl(img.damUrl)" class="w-48 h-48 object-cover rounded" />
-                <p v-if="img.revisedPrompt && img.revisedPrompt !== prompt" class="text-[10px] text-slate-500 text-center max-w-48 line-clamp-2">{{ img.revisedPrompt }}</p>
+              <div v-for="(img, i) in generatedImages" :key="i" class="flex flex-col items-center gap-1.5 bg-slate-950 rounded-xl p-2 border border-slate-800">
+                <img :src="assetPreviewUrl(img.damUrl)" class="w-40 h-40 object-cover rounded-lg" />
+                <p v-if="img.revisedPrompt && img.revisedPrompt !== prompt" class="text-[10px] text-slate-500 text-center max-w-40 line-clamp-2">{{ img.revisedPrompt }}</p>
                 <button
                   type="button"
-                  class="text-xs px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-500"
+                  class="text-xs px-3 py-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 font-semibold"
                   @click="selectImage(img)"
-                >Use this image</button>
+                >Select This</button>
               </div>
             </div>
-            <div class="flex justify-between pt-1">
-              <button type="button" class="text-xs px-3 py-1.5 rounded border border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-800" @click="step = 'generate'">Back</button>
-              <button type="button" class="text-xs px-3 py-1.5 rounded text-slate-400 hover:text-slate-200" @click="$emit('close')">Close</button>
+            <p class="text-xs text-slate-400">Saved to <code class="font-mono text-indigo-300">{{ folderPath }}</code>.</p>
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button type="button" class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 hover:text-slate-200 transition" @click="step = 'generate'">
+                Generate more
+              </button>
+              <button type="button" class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition" @click="$emit('close')">
+                Done
+              </button>
             </div>
           </template>
         </div>
@@ -157,6 +152,28 @@
 </template>
 
 <script setup lang="ts">
+// Aligned with apps/admin-dashboard/src/components/dam/AiImageGenerateModal.
+// vue's layout/copy/step flow (same "Generate" / "Preview" two-step shape,
+// same field labels and button wording) - see that file's own header for
+// the generation options. Two real differences stay, both required by this
+// app running standalone with no admin-dashboard store context: the DAM
+// destination folder is a plain editable/browsable input here (rather than
+// a read-only chip sourced from damStore.currentFolderPath, which doesn't
+// exist in this app), and 401s get an explicit "log into the admin
+// dashboard first" message (ai-api.ts/dam-api.ts's session-cookie
+// dependency, documented in their own header comments). The one capability
+// admin-dashboard's modal doesn't need at all - picking a generated image
+// back into the caller - is this file's `select` emit/"Select This" button,
+// wired by FloatingToolbar.vue's onAiImageSelected (sets the selected
+// element's image.url) and BlockEditor.vue's onAiGeneratedImport/
+// insertImageAtCurrent (inserts a new Image element).
+//
+// Saving the generated image into the DAM itself is NOT done here at all -
+// core-api's POST /ai/generate-image route (apps/core-api/src/server.ts)
+// downloads the provider's image and calls saveAiImageToDam() server-side
+// on every request regardless of which frontend called it, so both this
+// modal and admin-dashboard's already get that "auto-save" for free from
+// the same backend route.
 import { onMounted, ref } from 'vue'
 import { X, Loader2, Sparkles } from '@lucide/vue'
 import { generateImage, fetchAiImageInfo, AiApiError, type AiImageInfo } from '../ai-api'
