@@ -38,6 +38,7 @@ export const shortcuts: Record<string, string> = {
   V: 'Paste block',
   G: 'Copy block CSS and style',
   H: 'Paste CSS and style',
+  S: 'Save',
   K: 'Keyboard Shortcuts',
   Z: 'Customizer',
   '+': 'Add element',
@@ -50,6 +51,8 @@ export const shortcuts: Record<string, string> = {
   '5': 'Add Inline Text',
   '6': 'Add Image',
   '7': 'Add Button',
+  '8': 'Add Span',
+  '9': 'Add Lucide Icon',
 }
 
 let installed = false
@@ -155,6 +158,16 @@ export function setupHotkeys(): void {
       return
     }
 
+    // Bus-routed, not a direct call - BlockEditor.vue owns onSave() (save-
+    // state indicator, snippet/mail-template/page branching) and is always
+    // the mounted listener while the editor is open, same as Alt+N/preview
+    // just below.
+    if (e.altKey && e.code === 'KeyS') {
+      e.preventDefault()
+      editorBus.emit('save', 'block')
+      return
+    }
+
     if (e.altKey && e.code === 'KeyK') {
       dialogBus.emit('shortcuts', 'block')
       return
@@ -227,7 +240,7 @@ export function setupHotkeys(): void {
     if (e.altKey && e.key === '7' && editor.current?.blocks) {
       editor.current.blocks.push(new Element().Button())
       return
-    }
+    }  
     if (e.altKey && e.key === '8' && editor.current?.blocks) {
       editor.current.blocks.push(new Element().Span())
       return

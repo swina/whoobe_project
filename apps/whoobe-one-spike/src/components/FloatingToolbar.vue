@@ -543,13 +543,48 @@
        the plain textarea/contenteditable path). Shown as an inline modal
        owned directly by this component rather than routed through a
        dialog-bus system that doesn't exist yet (Phase 3). -->
-  <div v-if="showTipTap && editor.current" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="showTipTap = false">
+  <!-- @mousedown.self, not @click.self: a click's target is resolved from
+       where the mouse comes UP, not down - selecting text inside
+       TipTapPanel by dragging often ends with the pointer having drifted
+       past the panel's edge onto this backdrop, so a self-only @click
+       closed the modal mid-selection. @mousedown.self instead reads the
+       target where the gesture started, which is only ever the backdrop
+       itself for a genuine outside click. -->
+  <div v-if="showTipTap && editor.current" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @mousedown.self="showTipTap = false">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl h-96 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
         <span class="text-xs font-semibold text-gray-600">Rich text editor</span>
         <button class="flex items-center gap-1 text-gray-400 hover:text-gray-700 text-xs" @click="showTipTap = false"><X class="w-3.5 h-3.5" /> Close</button>
       </div>
       <TipTapPanel v-model="editor.current.content" />
+    </div>
+  </div>
+
+  <!-- Alt+< - Custom Classes + Style, the same two fields AdvancedPanel's
+       CustomClassesControl.vue/StyleControl.vue edit, as a quick-access
+       modal. Style's textarea is deliberately shorter than Custom
+       Classes' - inline style overrides are typically a line or two,
+       classes lists run longer. -->
+  <div v-if="showCssStyle && editor.current" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @mousedown.self="showCssStyle = false">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-sm font-semibold text-gray-700">Edit CSS and style</span>
+        <button class="text-gray-400 hover:text-gray-700" @click="showCssStyle = false"><X class="w-4 h-4" /></button>
+      </div>
+      <label class="block text-[11px] font-medium text-gray-500 mb-1">Custom Classes</label>
+      <textarea
+        class="w-full text-xs font-mono border rounded p-2 h-24 resize-y mb-3"
+        placeholder="e.g. flex items-center gap-4 shadow-lg"
+        :value="editor.current.css.css"
+        @change="onCustomClassesChange"
+      ></textarea>
+      <label class="block text-[11px] font-medium text-gray-500 mb-1">Style</label>
+      <textarea
+        class="w-full text-xs font-mono border rounded p-2 h-12 resize-y"
+        placeholder="e.g. color: #333; padding: 4px 8px;"
+        :value="editor.current.style"
+        @change="onStyleChange"
+      ></textarea>
     </div>
   </div>
 
@@ -603,7 +638,9 @@
   />
 
   <!-- AI text generation prompt -->
-  <div v-if="showAiTextPrompt && editor.current" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="showAiTextPrompt = false">
+  <!-- @mousedown.self - same text-selection-vs-backdrop-click reasoning as
+       the TipTap modal above (this one has a textarea, same risk). -->
+  <div v-if="showAiTextPrompt && editor.current" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @mousedown.self="showAiTextPrompt = false">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4">
       <div class="flex items-center justify-between mb-3">
         <span class="text-sm font-semibold text-gray-700">AI generate text</span>
@@ -670,6 +707,7 @@ import twclasses from '../scripts/tw.classes.js'
 import { previewAnimation } from '../scripts/gsap-actions'
 import { playYouTubeVideo } from '../scripts/youtube-player'
 import { useEditorStore } from '../store/editor'
+import { editorBus } from '../bus'
 import { clean, findParentAndIndex, findAncestorChain, removeNodeById, friendlyElementName, resolveLucideIcon } from '../helpers'
 import TipTapPanel from './TipTapPanel.vue'
 import MediaPickerModal from './MediaPickerModal.vue'
@@ -723,6 +761,7 @@ const editor = useEditorStore()
 const top = ref(0)
 const left = ref(0)
 const showTipTap = ref(false)
+const showCssStyle = ref(false)
 const showMediaPicker = ref(false)
 const showTextPicker = ref(false)
 const showFillPicker = ref(false)
@@ -1079,6 +1118,27 @@ onUnmounted(() => {
   document.removeEventListener('mousemove', onDragMove)
   document.removeEventListener('mouseup', onDragEnd)
 })
+
+// Alt+< (hotkeys.ts) - was emitting into the void until now, per that
+// file's own header comment ("custom-JS/CSS editors... staying inert
+// until the feature it targets is actually built"). Opens the same two
+// fields AdvancedPanel's Custom Classes/Style controls already edit
+// (CustomClassesControl.vue/StyleControl.vue), just as a quick-access
+// modal instead of having to open the Advanced panel and scroll to them.
+function onCssBlockEvent() {
+  if (editor.current) showCssStyle.value = true
+}
+onMounted(() => editorBus.on('cssBlock', onCssBlockEvent))
+onUnmounted(() => editorBus.off('cssBlock', onCssBlockEvent))
+
+function onCustomClassesChange(e: Event) {
+  if (!editor.current) return
+  editor.current.css.css = clean((e.target as HTMLTextAreaElement).value)
+}
+function onStyleChange(e: Event) {
+  if (!editor.current) return
+  editor.current.style = (e.target as HTMLTextAreaElement).value
+}
 
 function moveUp() {
   if (!editor.document || !editor.current) return

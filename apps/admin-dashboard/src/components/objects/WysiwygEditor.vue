@@ -24,8 +24,16 @@
       <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('blockquote') }" title="Blockquote" @click="editor.chain().focus().toggleBlockquote().run()"><Quote class="w-3.5 h-3.5" /></button>
       <button type="button" class="tt-btn" title="Horizontal rule" @click="editor.chain().focus().setHorizontalRule().run()"><SeparatorHorizontal class="w-3.5 h-3.5" /></button>
       <button type="button" class="tt-btn" title="Insert image" @click="setImage"><ImageIcon class="w-3.5 h-3.5" /></button>
+      <span class="w-px h-4 bg-slate-800 light:bg-slate-200 mx-0.5"></span>
+      <button type="button" class="tt-btn" :class="{ 'tt-active': showHtmlSource }" title="Edit HTML source" @click="toggleHtmlSource"><Braces class="w-3.5 h-3.5" /></button>
     </div>
-    <editor-content :editor="editor" class="tt-content px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 max-h-96 overflow-y-auto" />
+    <editor-content v-if="!showHtmlSource" :editor="editor" class="tt-content px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 max-h-96 overflow-y-auto" />
+    <textarea
+      v-else
+      v-model="htmlSource"
+      class="w-full px-3 py-2 text-xs font-mono bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 max-h-96 min-h-24 overflow-y-auto resize-y outline-none border-0"
+      spellcheck="false"
+    ></textarea>
   </div>
 </template>
 
@@ -37,12 +45,12 @@
 // third port in this monorepo, not a fresh editor-library evaluation),
 // restyled to this app's own slate/indigo dark+light theme instead of
 // that component's plain gray/indigo one.
-import { onBeforeUnmount, onMounted, shallowRef, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { Component } from 'vue'
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import TipTapImage from '@tiptap/extension-image'
-import { Bold, Code, Heading1, Heading2, Heading3, Heading4, Image as ImageIcon, Italic, List, ListOrdered, Pilcrow, Quote, SeparatorHorizontal, Strikethrough } from '@lucide/vue'
+import { Bold, Braces, Code, Heading1, Heading2, Heading3, Heading4, Image as ImageIcon, Italic, List, ListOrdered, Pilcrow, Quote, SeparatorHorizontal, Strikethrough } from '@lucide/vue'
 
 const HEADING_ICONS: Record<1 | 2 | 3 | 4, Component> = {
   1: Heading1,
@@ -87,6 +95,26 @@ watch(
     editor.value.commands.setContent(value, false)
   }
 )
+
+// HTML source mode: swaps <editor-content> for a plain <textarea> bound to
+// the current document's serialized HTML. Toggling back re-parses whatever
+// was typed via setContent(html, true) - the `true` (unlike the sync
+// watcher above, which deliberately passes false) means this DOES emit
+// onUpdate, so v-model picks up the edit the same way a WYSIWYG change
+// would. TipTap/ProseMirror's own HTML parser handles the actual
+// sanitizing - unknown tags/attributes are dropped, not executed.
+const showHtmlSource = ref(false)
+const htmlSource = ref('')
+
+function toggleHtmlSource() {
+  if (!editor.value) return
+  if (showHtmlSource.value) {
+    editor.value.commands.setContent(htmlSource.value, true)
+  } else {
+    htmlSource.value = editor.value.getHTML()
+  }
+  showHtmlSource.value = !showHtmlSource.value
+}
 
 // Bare URL prompt, same as the source component - a real DAM asset-picker
 // wiring (admin-dashboard has one, whoobe-one-spike doesn't) is Phase 2

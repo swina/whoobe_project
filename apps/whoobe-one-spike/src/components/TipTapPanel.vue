@@ -24,8 +24,16 @@
       <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('blockquote') }" title="Blockquote" @click="editor.chain().focus().toggleBlockquote().run()"><Quote class="w-3.5 h-3.5" /></button>
       <button type="button" class="tt-btn" title="Horizontal rule" @click="editor.chain().focus().setHorizontalRule().run()"><SeparatorHorizontal class="w-3.5 h-3.5" /></button>
       <button type="button" class="tt-btn" title="Insert image" @click="setImage"><Image class="w-3.5 h-3.5" /></button>
+      <span class="w-px h-4 bg-gray-200 mx-0.5"></span>
+      <button type="button" class="tt-btn" :class="{ 'tt-active': showHtmlSource }" title="Edit HTML source" @click="toggleHtmlSource"><Braces class="w-3.5 h-3.5" /></button>
     </div>
-    <editor-content :editor="editor" class="flex-1 min-h-0 overflow-y-auto p-3 text-sm prose-sm" />
+    <editor-content v-if="!showHtmlSource" :editor="editor" class="flex-1 min-h-0 overflow-y-auto p-3 text-sm prose-sm" />
+    <textarea
+      v-else
+      v-model="htmlSource"
+      class="flex-1 min-h-0 overflow-y-auto p-3 text-xs font-mono resize-none outline-none border-0"
+      spellcheck="false"
+    ></textarea>
   </div>
 </template>
 
@@ -47,12 +55,12 @@
 // dual-mode $attrs.value-or-store-mutation content binding (Vue 2 idiom,
 // not needed here - the caller always binds v-model to editor.current.
 // content, see FloatingToolbar.vue).
-import { onBeforeUnmount, onMounted, shallowRef, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { Component } from 'vue'
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import TipTapImage from '@tiptap/extension-image'
-import { Bold, Code, Heading1, Heading2, Heading3, Heading4, Image, Italic, List, ListOrdered, Pilcrow, Quote, SeparatorHorizontal, Strikethrough } from '@lucide/vue'
+import { Bold, Braces, Code, Heading1, Heading2, Heading3, Heading4, Image, Italic, List, ListOrdered, Pilcrow, Quote, SeparatorHorizontal, Strikethrough } from '@lucide/vue'
 
 const HEADING_ICONS: Record<1 | 2 | 3 | 4, Component> = {
   1: Heading1,
@@ -101,6 +109,26 @@ watch(
   }
 )
 
+// HTML source mode: swaps <editor-content> for a plain <textarea> bound to
+// the current document's serialized HTML. Toggling back re-parses whatever
+// was typed via setContent(html, true) - the `true` (unlike the sync
+// watcher above, which deliberately passes false) means this DOES emit
+// onUpdate, so v-model picks up the edit the same way a WYSIWYG change
+// would. TipTap/ProseMirror's own HTML parser handles the actual
+// sanitizing - unknown tags/attributes are dropped, not executed.
+const showHtmlSource = ref(false)
+const htmlSource = ref('')
+
+function toggleHtmlSource() {
+  if (!editor.value) return
+  if (showHtmlSource.value) {
+    editor.value.commands.setContent(htmlSource.value, true)
+  } else {
+    htmlSource.value = editor.value.getHTML()
+  }
+  showHtmlSource.value = !showHtmlSource.value
+}
+
 function setImage() {
   const url = window.prompt('Image URL')
   if (url) editor.value?.chain().focus().setImage({ src: url }).run()
@@ -126,4 +154,27 @@ function setImage() {
   background: #eef2ff;
   color: #4f46e5;
 }
+/* Without these, toggleBulletList()/toggleOrderedList() etc. still create
+   real <ul>/<ol>/<h1-4>/<blockquote> nodes (TipTap's StarterKit includes
+   them by default) - they're just visually indistinguishable from plain
+   paragraphs, because @tailwindcss/browser's runtime preflight (loaded in
+   main.ts) resets list-style/margin on every <ul>/<ol> site-wide,
+   including inside this editor's own content. admin-dashboard's sibling
+   port of this component (WysiwygEditor.vue) already has the equivalent
+   of these rules for the same reason. */
+:deep(.ProseMirror) {
+  outline: none;
+}
+:deep(.ProseMirror p) {
+  margin: 0.5em 0;
+}
+:deep(.ProseMirror h1) { font-size: 1.5em; font-weight: 700; margin: 0.6em 0 0.3em; }
+:deep(.ProseMirror h2) { font-size: 1.3em; font-weight: 700; margin: 0.6em 0 0.3em; }
+:deep(.ProseMirror h3) { font-size: 1.15em; font-weight: 600; margin: 0.6em 0 0.3em; }
+:deep(.ProseMirror h4) { font-size: 1em; font-weight: 600; margin: 0.6em 0 0.3em; }
+:deep(.ProseMirror ul) { list-style: disc; padding-left: 1.25em; }
+:deep(.ProseMirror ol) { list-style: decimal; padding-left: 1.25em; }
+:deep(.ProseMirror blockquote) { border-left: 2px solid #94a3b8; padding-left: 0.75em; opacity: 0.85; }
+:deep(.ProseMirror code) { background: #f1f5f9; padding: 0.1em 0.35em; border-radius: 0.25em; font-size: 0.9em; }
+:deep(.ProseMirror img) { max-width: 100%; border-radius: 0.375em; }
 </style>
