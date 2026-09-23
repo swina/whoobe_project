@@ -16,7 +16,7 @@
           <span class="text-[14px] text-slate-300 light:text-slate-700 truncate">{{ item.label }}</span>
           <span v-if="item.pageId" :class="['inline-block w-1.5 h-1.5 rounded-full shrink-0', pagePublished ? 'bg-emerald-400' : 'bg-amber-400']" :title="pagePublished ? 'Published' : 'Draft'"></span>
         </div>
-        <div class="text-[14px] text-slate-500 font-mono truncate" @click="editing = !editing">/{{ item.path }}</div>
+        <div class="text-[14px] text-slate-500 font-mono truncate" @click="editing = !editing">/{{ displayPath }}</div>
         <span v-if="resolvedTemplateName" class="text-[10px] font-mono text-indigo-400 light:text-indigo-700 truncate shrink-0" title="Website template for this route">{{ resolvedTemplateName }}</span>
       </div>
       <div class="flex items-center gap-2 w-1/2 justify-start" @click="openLinkPage">
@@ -48,10 +48,15 @@
         </div>
         <div>
           <label class="block text-[12px] font-semibold text-slate-500 mb-0.5">Path</label>
-          <div class="flex items-center gap-1">
+          <div v-if="editItem.pageId" class="flex items-center gap-1">
+            <span class="text-[12px] text-slate-500 font-mono shrink-0">/</span>
+            <span class="flex-1 px-2 py-1 bg-slate-900 light:bg-slate-100 border border-slate-800 light:border-slate-200 rounded text-slate-400 light:text-slate-600 font-mono text-[12px]">{{ linkedPageSlug || '—' }}</span>
+          </div>
+          <div v-else class="flex items-center gap-1">
             <span class="text-[12px] text-slate-500 font-mono shrink-0">/</span>
             <input v-model="editItem.path" type="text" placeholder="my-page-path" class="flex-1 px-2 py-1 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono text-[12px]" @input="validatePathUniqueness" />
           </div>
+          <div v-if="editItem.pageId" class="text-[11px] text-slate-500 mt-0.5">Set automatically from the linked page's own URL - unlink the page to set a custom path.</div>
           <div v-if="pathConflict" class="text-[12px] text-rose-400 mt-0.5">Path already used within this group</div>
         </div>
         <div v-if="editItem.pageId" class="flex items-center gap-2">
@@ -166,6 +171,18 @@ const pageUpdatedText = computed(() => {
   return new Date(linkedPage.value.updatedAt).toLocaleDateString()
 })
 
+// A linked item's real, reachable path is always the linked page's own
+// current slug (see previewUrl below, and GET /public/page/* server-side) -
+// resolved live here, in the picker's onPageSelected, and in this row's own
+// drag-drop handler, rather than trusted from a possibly-stale item.path,
+// which self-heals a page whose slug changed after it was linked.
+const linkedPageSlug = computed(() => {
+  const slug = props.item.pageId ? pagesStore.pages.find((p) => p.id === props.item.pageId)?.slug : null
+  return slug ? slug.replace(/^\//, '') : ''
+})
+
+const displayPath = computed(() => (props.item.pageId ? (linkedPageSlug.value || props.item.path) : props.item.path))
+
 const resolvedTemplateName = computed(() => (props.resolveTemplateForItem ? props.resolveTemplateForItem(props.item) : null))
 
 function emitInsertBelow() {
@@ -224,6 +241,12 @@ function saveEdit() {
   if (!userUnlinked.value) {
     if (props.item.pageId && !item.pageId) item.pageId = props.item.pageId
     if (props.item.url && !item.url) item.url = props.item.url
+  }
+  // The path field is read-only in the editor while linked (see template),
+  // but re-derive it here too rather than trust whatever was last stored -
+  // self-heals a linked page whose slug changed since this item was linked.
+  if (item.pageId && linkedPageSlug.value) {
+    item.path = linkedPageSlug.value
   }
   emit('update', { index: props.index, item })
   editing.value = false

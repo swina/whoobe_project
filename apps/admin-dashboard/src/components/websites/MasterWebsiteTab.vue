@@ -413,9 +413,16 @@ async function onPageSelected(page: WhoobeOnePage) {
     ...item,
     pageId: page.id,
     label: page.title,
-    // Keep the menu item's own path — only set from page slug when no path
-    // was explicitly set (i.e. the item was freshly created with no path).
-    path: item.path || (page.slug ? page.slug.replace(/^\//, '') : undefined),
+    // A linked item's path is always the linked page's own slug, never a
+    // separately-kept value - both the Preview link (MenuItemRow.vue's
+    // previewUrl) and the real public route (GET /public/page/* in
+    // core-api) resolve a linked item purely by the page's slug, ignoring
+    // whatever was stored here. Keeping a divergent path around let a user
+    // set e.g. "/home/tr" and see it saved, while every actual consumer
+    // silently used the page's real slug instead - confusing with no
+    // upside. See CHANGES.md's "Website > Paths: path field is decorative
+    // once linked" entry.
+    path: page.slug ? page.slug.replace(/^\//, '') : undefined,
   }))
   if (!updated) {
     console.warn('Could not find item at path', itemPath)
