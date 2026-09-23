@@ -1,5 +1,12 @@
 # Changelog
 
+## [Fixed AI page translation mangling Lucide icon names and code snippets] — 2026-09-23
+- Branch: `master`.
+- User report (left as a handoff task, offline for the night): "la AI Translation traduce anche le LucideIcon" - a Lucide icon element's icon name (e.g. "arrow-right") was getting sent to the translation model like any other text, which reliably "translates" it into a string Lucide doesn't recognize, silently falling back to a generic placeholder glyph (`helpers.ts`'s `resolveLucideIcon()`).
+- Root cause, confirmed against `ElementsClass.js`'s `LucideIcon()` builder and its own header comment: for a `tag: 'lucideicon'` node, the Lucide icon key IS stored directly in `content` (not a separate `icon`/`data.icon` field - that unrelated field is an internal builder-palette icon, never the Lucide render key). `collectTranslatableStrings()` (packages/core/src/ai/prompts.ts, added for the translate feature earlier today) treats any non-empty `content` string as prose text to translate, with no notion of "this content isn't prose" - so it scooped up icon keys right along with real headings/paragraphs. Same risk identified for `element: 'pre'` nodes (`Code()` builder) - a literal code snippet stored in `content`, which translating would corrupt just the same way.
+- Fix: `collectTranslatableStrings()` now skips nodes matching `tag === 'lucideicon'` or `element === 'pre'` before collecting their `content` as a translatable string - both a literal-value tag/element carrying a non-prose payload in the one field this feature otherwise assumes is always free text. `applyTranslatedStrings()` needed no change - it only overwrites a node whose id appears in the returned translations map, so an id never collected in the first place is simply never touched, left exactly as the source page had it.
+- Rebuilt `packages/core` (`tsc`), typechecked `apps/core-api` (`tsc --noEmit`) clean, rebuilt/redeployed `ws-aura`'s `core-api` container, verified it's healthy.
+
 ## [Fixed page theme on load, take 2 - the first fix targeted the wrong theme catalog] — 2026-09-23
 - Branch: `master`.
 - User confirmed the previous fix (below) changed nothing - still had to click Theme → {name} manually, and specifically flagged fonts as the visible symptom.
