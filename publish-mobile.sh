@@ -54,7 +54,9 @@ echo ""
 echo -e "${YELLOW}Tip:${NC} Find the website ID in the admin dashboard → Websites."
 echo -e "     Click the truncated ID (e.g. ${CYAN}abc12345…${NC}) to copy the full UUID."
 echo ""
-read -r -p "Website ID: " WEBSITE_ID
+DEFAULT_WEBSITE_ID="${MOBILE_WEBSITE_ID:-}"
+read -r -p "Website ID${DEFAULT_WEBSITE_ID:+ [$DEFAULT_WEBSITE_ID]}: " WEBSITE_ID
+WEBSITE_ID="${WEBSITE_ID:-$DEFAULT_WEBSITE_ID}"
 if [ -z "$WEBSITE_ID" ]; then
   echo -e "${BOLD}Error:${NC} Website ID is required." >&2
   exit 1

@@ -25,9 +25,20 @@
 #      core-api creates/migrates its own database schema on first boot,
 #      so there is no separate migration step (see docs/deployment.md).
 #   3. Creates the workspace's MinIO bucket.
-#   4. Renders deploy/nginx/<slug>.conf from
-#      deploy/nginx/workspace.conf.template, ready to symlink into
-#      nginx's sites-enabled on the host.
+#   4. Renders deploy/nginx/_locations-<slug>.inc (the actual proxy_pass
+#      routing, shared by the HTTP and future HTTPS vhosts) and
+#      deploy/nginx/<slug>.conf (HTTP-only bootstrap, from
+#      deploy/nginx/workspace.conf.template), then wires up the reverse
+#      proxy: if nginx is installed on the host, prints the symlink
+#      command to add it manually; otherwise brings up (or reloads) a
+#      single shared containerized nginx (docker-compose.proxy.yml,
+#      project "whoobe-proxy") that serves every workspace's vhost with
+#      no host nginx install required.
+#
+# HTTPS is a separate opt-in step (not part of provisioning, since it
+# needs a real public hostname reachable on port 80) - run
+# ./scripts/enable-tls.sh <slug> --email <email> once DNS points at this
+# host, or answer yes when scripts/create-workspace.sh asks.
 #
 # Refuses to run if .env.<slug> already exists, so re-running never
 # clobbers a provisioned workspace's secrets.
@@ -144,16 +155,55 @@ echo ">>> Creating MinIO bucket whoobe-cms-${SLUG} ..."
 docker compose -p "ws-${SLUG}" --env-file "$ENV_FILE" exec -T minio sh -c \
   "mc alias set whoobe http://localhost:9000 'whoobe_${DB_SAFE_SLUG}' '${S3_SECRET}' && mc mb whoobe/whoobe-cms-${SLUG} --ignore-existing"
 
-echo ">>> Rendering deploy/nginx/${SLUG}.conf ..."
-mkdir -p deploy/nginx
+# Detected once, up front, since it decides which literal filesystem
+# paths get baked into the rendered vhost (host-nginx reads deploy/nginx
+# directly off the host filesystem; the containerized proxy sees the same
+# directory bind-mounted at /etc/nginx/conf.d - see docker-compose.proxy.yml).
+HOST_NGINX=false
+command -v nginx >/dev/null 2>&1 && HOST_NGINX=true
+
+mkdir -p deploy/nginx deploy/certbot/webroot deploy/certbot/conf
+
+if $HOST_NGINX; then
+  CERTBOT_WEBROOT="$ROOT_DIR/deploy/certbot/webroot"
+  LOCATIONS_INCLUDE="$ROOT_DIR/deploy/nginx/_locations-${SLUG}.inc"
+else
+  CERTBOT_WEBROOT="/var/www/certbot"
+  LOCATIONS_INCLUDE="/etc/nginx/conf.d/_locations-${SLUG}.inc"
+fi
+
+echo ">>> Rendering deploy/nginx/_locations-${SLUG}.inc ..."
 sed \
-  -e "s/__HOSTNAME__/${HOSTNAME_ARG}/g" \
   -e "s/__ADMIN_PORT__/${P_ADMIN}/g" \
   -e "s/__CORE_API_PORT__/${P_CORE}/g" \
   -e "s/__ASSET_PROCESSOR_PORT__/${P_ASSET}/g" \
   -e "s/__GATEWAY_PORT__/${P_GATEWAY}/g" \
   -e "s/__WHOOBE_ONE_PORT__/${P_WHOOBE_ONE}/g" \
+  deploy/nginx/_locations.conf.template > "deploy/nginx/_locations-${SLUG}.inc"
+
+echo ">>> Rendering deploy/nginx/${SLUG}.conf ..."
+sed \
+  -e "s/__HOSTNAME__/${HOSTNAME_ARG}/g" \
+  -e "s|__CERTBOT_WEBROOT__|${CERTBOT_WEBROOT}|g" \
+  -e "s|__LOCATIONS_INCLUDE__|${LOCATIONS_INCLUDE}|g" \
   deploy/nginx/workspace.conf.template > "deploy/nginx/${SLUG}.conf"
+
+echo ">>> Wiring up the reverse proxy for ${HOSTNAME_ARG} ..."
+if $HOST_NGINX; then
+  PROXY_NOTE="nginx trovato sull'host - collega il vhost a mano:
+                       sudo ln -sf \"$ROOT_DIR/deploy/nginx/${SLUG}.conf\" /etc/nginx/sites-enabled/${SLUG}
+                       sudo nginx -t && sudo systemctl reload nginx"
+else
+  echo "    nginx non trovato sull'host - uso il reverse-proxy condiviso containerizzato (whoobe-proxy) ..."
+  docker compose -p whoobe-proxy -f "$ROOT_DIR/docker-compose.proxy.yml" up -d
+  # deploy/nginx is bind-mounted live into that container, so reload just
+  # picks up this workspace's new vhost (plus any added since the proxy
+  # last started) with no downtime for already-running workspaces.
+  docker compose -p whoobe-proxy -f "$ROOT_DIR/docker-compose.proxy.yml" exec -T nginx nginx -s reload
+  PROXY_NOTE="reverse-proxy condiviso 'whoobe-proxy' (container, porta host 80) - nessuna azione manuale richiesta."
+fi
+
+echo ">>> Per abilitare HTTPS (richiede un hostname pubblico reale, risolvibile via DNS e raggiungibile su porta 80): ./scripts/enable-tls.sh ${SLUG} --email <tua-email>"
 
 cat <<SUMMARY
 
@@ -164,8 +214,7 @@ cat <<SUMMARY
   Seed admin login:  ${SEED_EMAIL} / ${SEED_PASSWORD}
   Env file:          ${ENV_FILE}  (back this up - it holds this workspace's only credentials)
   Nginx config:      deploy/nginx/${SLUG}.conf
-                       sudo ln -s "$ROOT_DIR/deploy/nginx/${SLUG}.conf" /etc/nginx/sites-enabled/${SLUG}
-                       sudo nginx -t && sudo systemctl reload nginx
+  Reverse proxy:     ${PROXY_NOTE}
   Compose project:   ws-${SLUG}  (docker compose -p ws-${SLUG} --env-file ${ENV_FILE} ...)
 
 SUMMARY

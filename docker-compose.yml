@@ -120,6 +120,9 @@ services:
       target: whoobe-one-spike
       args:
         VITE_BASE_URL: /whoobe-one/
+        VITE_ASSET_PROCESSOR_URL: ${VITE_ASSET_PROCESSOR_URL}
+        VITE_CORE_API_URL: ${VITE_CORE_API_URL}
+        VITE_GATEWAY_URL: ${VITE_GATEWAY_URL}
     ports:
       - "${WS_WHOOBE_ONE_SPIKE_PORT:-3006}:80"
     restart: unless-stopped

@@ -228,5 +228,13 @@ export function setupHotkeys(): void {
       editor.current.blocks.push(new Element().Button())
       return
     }
+    if (e.altKey && e.key === '8' && editor.current?.blocks) {
+      editor.current.blocks.push(new Element().Span())
+      return
+    }
+    if (e.altKey && e.key === '9' && editor.current?.blocks) {
+      editor.current.blocks.push(new Element().LucideIcon())
+      return
+    }
   })
 }

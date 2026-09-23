@@ -1,0 +1,29 @@
+# Single shared reverse-proxy for every workspace on this host, used only
+# when no nginx is installed on the host itself (see the proxy-wiring step
+# in scripts/provision-workspace.sh). Runs with network_mode: host so it
+# reaches each workspace's containers exactly the way a host-installed
+# nginx would - via 127.0.0.1:<WS_*_PORT> - so deploy/nginx/*.conf (one
+# per workspace, rendered from workspace.conf.template by
+# provision-workspace.sh) works unmodified as this container's conf.d.
+#
+# The two extra mounts below are for scripts/enable-tls.sh's Let's
+# Encrypt flow (real public hostnames only): deploy/certbot/webroot
+# serves the /.well-known/acme-challenge/ location every vhost has, and
+# deploy/certbot/conf holds the issued certificates
+# (workspace-ssl.conf.template's ssl_certificate*/live/<hostname>/...
+# paths). Both are harmless no-ops for workspaces that never enable TLS.
+#
+# Brought up / reloaded automatically by provision-workspace.sh /
+# enable-tls.sh. To do it by hand:
+#   docker compose -p whoobe-proxy -f docker-compose.proxy.yml up -d
+#   docker compose -p whoobe-proxy -f docker-compose.proxy.yml exec nginx nginx -s reload
+name: whoobe-proxy
+services:
+  nginx:
+    image: nginx:alpine
+    network_mode: host
+    volumes:
+      - ./deploy/nginx:/etc/nginx/conf.d:ro
+      - ./deploy/certbot/webroot:/var/www/certbot:ro
+      - ./deploy/certbot/conf:/etc/letsencrypt:ro
+    restart: unless-stopped
