@@ -94,24 +94,45 @@ export interface TranslatableString {
   text: string;
 }
 
+/** Element tags/elements whose "content" is NOT prose, even though it's a
+ *  non-empty string - translating it would corrupt the page rather than
+ *  localize it:
+ *  - "lucideicon": content IS the Lucide icon key itself (e.g.
+ *    "arrow-right"), not a separate icon field (see ElementsClass.js's
+ *    LucideIcon() builder and its own comment on that field). A model
+ *    "translating" an icon name reliably produces a string Lucide doesn't
+ *    recognize, silently falling back to a generic placeholder icon
+ *    (helpers.ts's resolveLucideIcon()) - discovered when a translated
+ *    page's icons all turned into the same fallback glyph.
+ *  - element "pre": a literal code snippet (ElementsClass.js's Code()
+ *    builder), not prose - translating it would corrupt the code. */
+const NON_PROSE_CONTENT_TAGS = new Set(['lucideicon']);
+const NON_PROSE_CONTENT_ELEMENTS = new Set(['pre']);
+
+function isNonProseContentNode(node: Record<string, unknown>): boolean {
+  return NON_PROSE_CONTENT_TAGS.has(String(node.tag)) || NON_PROSE_CONTENT_ELEMENTS.has(String(node.element));
+}
+
 /** Collects every translatable string out of an Element tree: each node's
- *  own "content" text (skipping empty/whitespace-only ones), tagged by the
- *  node's id. Used instead of sending the whole tree to the model - the
- *  real Element schema (ElementsClass.js) carries many more fields than
- *  this file's own generation contract documents (data/font/gsap/icon/
- *  link/image/style/alpine/anchor/dialog/events/helper/tailwind/
- *  categories/dataBinding/description, ...), and asking a model to retype
- *  all of it verbatim on a non-trivial page reliably produced truncated,
- *  invalid JSON. Sending just {id, text} pairs keeps the payload small
- *  regardless of how rich the tree's other fields are, and the structure
- *  is then restored losslessly by applyTranslatedStrings() below - never
- *  round-tripped through the model at all. */
+ *  own "content" text (skipping empty/whitespace-only ones, and non-prose
+ *  content like Lucide icon keys or code snippets - see
+ *  isNonProseContentNode() above), tagged by the node's id. Used instead of
+ *  sending the whole tree to the model - the real Element schema
+ *  (ElementsClass.js) carries many more fields than this file's own
+ *  generation contract documents (data/font/gsap/icon/link/image/style/
+ *  alpine/anchor/dialog/events/helper/tailwind/categories/dataBinding/
+ *  description, ...), and asking a model to retype all of it verbatim on a
+ *  non-trivial page reliably produced truncated, invalid JSON. Sending
+ *  just {id, text} pairs keeps the payload small regardless of how rich
+ *  the tree's other fields are, and the structure is then restored
+ *  losslessly by applyTranslatedStrings() below - never round-tripped
+ *  through the model at all. */
 export function collectTranslatableStrings(root: Record<string, unknown>): TranslatableString[] {
   const out: TranslatableString[] = [];
   for (const node of collectNodes(root)) {
     const id = node.id;
     const content = node.content;
-    if (typeof id === 'string' && typeof content === 'string' && content.trim()) {
+    if (typeof id === 'string' && typeof content === 'string' && content.trim() && !isNonProseContentNode(node)) {
       out.push({ id, text: content });
     }
   }
