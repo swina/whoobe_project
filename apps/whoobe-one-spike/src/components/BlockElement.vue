@@ -356,8 +356,20 @@ function copyCode(e: MouseEvent) {
   document.body.removeChild(textarea)
 }
 
+// Always commits on blur - `contenteditable` (template, above) is gated on
+// `element.editable`, not on `isSelected`, so this can genuinely lose focus
+// while still holding an in-progress edit the user never got to save: click
+// once inside an already-selected text element to reposition the cursor
+// mid-edit (completely normal while typing/correcting a typo) and onClick's
+// own toggle logic (`editor.setCurrent(isSelected.value ? null : ...)`,
+// above) deselects it, without blurring the DOM node or discarding
+// whatever's already been typed into it. A later `isSelected.value` guard
+// here then silently threw that edit away the next time blur actually
+// fired - reproducibly losing content that never even made it into
+// `editor.document`, so Save persisted the stale value too (not a preview-
+// only bug). Selection state has no bearing on whether a real edit
+// happened in this DOM node; only `blur` itself does.
 function onBlur(e: FocusEvent) {
-  if (!isSelected.value) return
   const target = e.target as HTMLElement
   const text = target.innerHTML.replace(/style="[^"]*"/gm, '')
   props.element.content = text
