@@ -18,7 +18,7 @@ Whoobe is built for teams that want SaaS-grade authoring UX without giving up co
 4. **Multi-framework Headless SDK.** First-class adapters for React, Vue, Next.js, Nuxt, and Svelte let development teams consume content and gateway-bound data directly via API when the visual builder isn't the right tool for a given surface.
 5. **Native Digital Asset Management.** S3/MinIO-backed storage, folder-level visibility rules, on-demand image transforms and thumbnailing, versioning — built in, not a bolted-on media library.
 6. **One-click native mobile apps.** A Capacitor-based generator turns a published site into an installable iOS/Android app from the same content and component tree used on the web.
-7. **AI-native authoring.** AI-assisted page, snippet, and image generation, plus Figma-to-page import, live inside the builder rather than as a separate tool.
+7. **AI-native authoring.** AI-assisted page, snippet, image generation and translations (pages/snippets), plus Figma-to-page import (beta), live inside the builder rather than as a separate tool.
 8. **Security and operations by default.** Role/permission-gated access, encrypted credential storage, structured per-service logging with a live on/off switch (no restart required), and publish/workflow states for content review.
 
 ## Competitive Landscape

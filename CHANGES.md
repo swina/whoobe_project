@@ -1,5 +1,11 @@
 # Changelog
 
+## [Documented AI Translation in README and executive summary] — 2026-09-23
+- Branch: `master`.
+- Leftover documentation from the AI Translation feature (page/snippet translation via a dedicated AI provider, Settings → AI Translation) - the feature itself shipped in an earlier commit, but the README's "AI agent" bullet and the executive summary's "AI-native authoring" bullet hadn't been updated to mention it yet.
+- `README.md`: added a line under the existing "AI agent" feature bullet noting the dedicated AI Translations capability.
+- `docs/guides/executive-summary.md`: extended bullet 7 ("AI-native authoring") to mention translations alongside page/snippet/image generation, and noted Figma import is beta.
+
 ## [Added a dedicated AI provider/model for translation (Settings → AI Translation)] — 2026-09-23
 - Branch: `master`.
 - User confirmed the empty-response failure persisted even after the plain-text-block rewrite, and asked for exactly what they'd suspected from the start: a translation-specific model slot, the same way image generation already has its own (`ai_image_settings`), plus pointers to free models worth trying - since a model that's fine for page/snippet generation isn't necessarily fine for translation, and vice versa.
