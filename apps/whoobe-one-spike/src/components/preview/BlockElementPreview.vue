@@ -28,8 +28,9 @@
   :style="stile"
   v-bind="extraAttrs"
 >
-  <span v-if="buttonIconComponent" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" :style="getButtonIconStyle()" /></span>
+  <span v-if="buttonIconComponent && buttonIconPosition !== 'after'" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" :style="getButtonIconStyle()" /></span>
   <span v-html="renderedContent"></span>
+  <span v-if="buttonIconComponent && buttonIconPosition === 'after'" class="inline-flex items-center ml-1.5"><component :is="buttonIconComponent" :style="getButtonIconStyle()" /></span>
 </component>
 <video
   v-else-if="element.element === 'video'"
@@ -318,6 +319,7 @@ function getButtonIconStyle(): Record<string, string> {
     height: ((props.element as any)?.buttonIconHeight ?? 16) + 'px',
   }
 }
+const buttonIconPosition = computed(() => (props.element as any)?.buttonIconPosition ?? 'before')
 
 // A UUID (asset reference) is not a URL - resolved via resolveDisplayUrl.
 

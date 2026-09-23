@@ -836,6 +836,7 @@ export default class Element {
         this.value = 'Submit'
         this.content = 'Submit'
         this.buttonIcon = ''
+        this.buttonIconPosition = 'before'
         this.buttonIconWidth = 16
         this.buttonIconHeight = 16
         // Not in the original - see Button()'s own comment below, same fix,
@@ -868,6 +869,7 @@ export default class Element {
         this.content = 'button'
         this.value = 'button'
         this.buttonIcon = ''
+        this.buttonIconPosition = 'before'
         this.buttonIconWidth = 16
         this.buttonIconHeight = 16
         // Not in the original: Heading()/Paragraph()/InlineText()/Span()/

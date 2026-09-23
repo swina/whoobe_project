@@ -50,6 +50,34 @@
       <component :is="iconComponent" v-if="iconComponent" class="w-6 h-6" style="display:inline-block" />
       <span v-else class="text-gray-300">—</span>
     </span>
+    <!-- Button/submit/reset with an optional Lucide icon before/after the
+         label (FloatingToolbar.vue's "Button icon" picker). A dedicated
+         branch, like lucideicon/search above, for the same reason: v-html
+         on the outer tag (the generic branch below) would wipe out a real
+         Vue-rendered icon component the instant it ran. contenteditable
+         moves to the inner text span instead of the button itself, so
+         onBlur still commits exactly `element.content` (plain text/HTML),
+         untouched by the icon markup around it. -->
+    <component
+      v-else-if="element.tag === 'button' || element.tag === 'submit' || element.tag === 'reset'"
+      :is="component"
+      :id="element.id"
+      :ref="element.id"
+      :class="classe"
+      :style="stile"
+      :data-id="element.id"
+      data-type="element"
+      v-bind="elementAttrs"
+      @click="onClick"
+    >
+      <span v-if="buttonIconComponent && buttonIconPosition !== 'after'" class="inline-flex items-center mr-1.5" contenteditable="false"><component :is="buttonIconComponent" :style="buttonIconStyle" /></span>
+      <span
+        :contenteditable="!resolvedDataValue && element.editable"
+        v-html="displayContent"
+        @blur="onBlur"
+      ></span>
+      <span v-if="buttonIconComponent && buttonIconPosition === 'after'" class="inline-flex items-center ml-1.5" contenteditable="false"><component :is="buttonIconComponent" :style="buttonIconStyle" /></span>
+    </component>
     <video
       v-else-if="element.element === 'video'"
       :id="element.id"
@@ -161,6 +189,29 @@ onMounted(() => {
 watch(() => (props.element as any).content, () => {
   resolveIcon()
 })
+
+// Button icon (mirrors BlockElementPreview.vue's own copy of this - see
+// this file's button branch above for why the canvas needs its own,
+// separate from the lucideicon-content resolver above).
+const buttonIconComponent = shallowRef<Component | null>(null)
+watch(
+  () => (props.element as any).buttonIcon,
+  (name) => {
+    buttonIconComponent.value = null
+    if (!name) return
+    resolveLucideIcon(name).then((comp) => {
+      buttonIconComponent.value = comp
+    }).catch(() => {
+      buttonIconComponent.value = null
+    })
+  },
+  { immediate: true }
+)
+const buttonIconPosition = computed(() => (props.element as any).buttonIconPosition ?? 'before')
+const buttonIconStyle = computed(() => ({
+  width: ((props.element as any).buttonIconWidth ?? 16) + 'px',
+  height: ((props.element as any).buttonIconHeight ?? 16) + 'px',
+}))
 
 const isSelected = computed(() => editor.current?.id === props.element.id)
 const isCollapsedNode = computed(() => editor.isCollapsed(props.element.id))

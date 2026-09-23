@@ -1,5 +1,13 @@
 # Changelog
 
+## [Button element: added icon position (before/after text), and rendered it on the editing canvas] — 2026-09-24
+- Branch: `master`.
+- User request: a Button element that can carry an icon alongside its text, positioned before or after the label.
+- Found the underlying feature was already half-built: `ElementsClass.js`'s `Button()`/`InputSubmit()` already carry `buttonIcon`/`buttonIconWidth`/`buttonIconHeight` fields, `FloatingToolbar.vue` already has a full "Button icon" picker (Lucide icon name, live preview, width/height, Clear/Apply), and `BlockElementPreview.vue` already renders the resolved icon - always immediately before the text, no position field existed at all. Critically, `BlockElement.vue` (the actual editing canvas, not preview) never rendered `buttonIcon` at all - a button's icon was only ever visible in Preview, invisible while actually editing.
+- Added `buttonIconPosition: 'before' | 'after'` (defaulting to `'before'`) to both builders, `ElementsClass.d.ts`, and a Before/After toggle in `FloatingToolbar.vue`'s existing icon picker popover. `BlockElementPreview.vue` now renders the icon on the side the field actually says, instead of always before.
+- Added a dedicated button-rendering branch to `BlockElement.vue` (canvas), mirroring the preview's icon+text layout - needed as its own branch (like the existing lucideicon/search branches) rather than folding into the generic element branch, because that generic branch's `v-html` sets the whole tag's innerHTML, which would wipe out a real Vue-rendered icon component the instant it ran. `contenteditable` now lives on an inner text `<span>` instead of the button itself, so `onBlur` still commits exactly `element.content` (plain text), unaffected by the icon markup around it - editing a button's label on the canvas now looks exactly like it will in Preview and on the published page.
+- Typechecked `apps/whoobe-one-spike` clean (`vue-tsc --noEmit`), full build succeeded, rebuilt/redeployed `ws-aura`'s `whoobe-one-spike` container, verified it's healthy and the new "Before text"/"After text" toggle copy is present in the built bundle. Not verified interactively in a live browser (no interactive browser access this session) - worth a quick hands-on check (add an icon, toggle position, confirm canvas/preview/published page all agree) before considering it fully done.
+
 ## [Fixed Website > Templates: no reachable way back to the list while editing] — 2026-09-24
 - Branch: `master`.
 - User report: "creando un nuovo template o modificando uno esistente non è possibile tornare alla lista dei template" - no way back to the templates list from the create/edit form.
