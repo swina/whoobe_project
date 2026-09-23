@@ -12,16 +12,24 @@
 
     <!-- Edit panel -->
     <div v-else-if="editingId !== '' || creating" class="rounded-xl border border-slate-800 light:border-slate-200 p-4 space-y-3">
-      <div class="flex items-center justify-between">
+      <!-- sticky: this panel (8 slot sections, each with several fields) runs
+           much taller than the viewport, and the only way back to the list
+           used to live solely in this header - scroll down to edit a lower
+           slot and it scrolled out of view with it, with no equivalent
+           affordance at the bottom either, so there was no reachable way
+           back without manually scrolling all the way back up. Pinning the
+           header keeps Back/Save reachable at any scroll position; the
+           bottom Cancel button (next to the bottom Save, further down) is a
+           second, redundant way back for the same reason. -->
+      <div class="sticky top-0 z-10 -mx-4 -mt-4 px-4 pt-4 pb-3 bg-slate-900 light:bg-white flex items-center justify-between border-b border-slate-800 light:border-slate-200">
         <h4 class="text-xs font-semibold text-slate-200 light:text-slate-800">{{ editingId ? 'Edit template' : 'New template' }}</h4>
         <div class="flex items-center gap-3 pt-1">
           <span v-if="saveOk" class="text-xs text-emerald-400">Saved.</span>
           <span v-if="saveError" class="text-xs text-rose-400">{{ saveError }}</span>
+          <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 border border-slate-700 hover:border-slate-500" @click="closeEditor">← Back to list</button>
           <button type="button" :disabled="saving" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white" @click="save">
             {{ saving ? 'Saving…' : 'Save' }}
           </button>
-          
-          <button type="button" class="text-slate-500 hover:text-slate-300 text-3xl leading-none " @click="closeEditor">×</button>
         </div>
       </div>
 
@@ -122,6 +130,7 @@
         <button type="button" :disabled="saving" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white" @click="save">
           {{ saving ? 'Saving…' : 'Save' }}
         </button>
+        <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 border border-slate-700 hover:border-slate-500" @click="closeEditor">← Back to list</button>
         <span v-if="saveOk" class="text-xs text-emerald-400">Saved.</span>
         <span v-if="saveError" class="text-xs text-rose-400">{{ saveError }}</span>
       </div>
