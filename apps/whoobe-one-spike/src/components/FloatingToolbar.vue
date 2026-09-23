@@ -261,6 +261,15 @@
     </template>
     <button v-if="(isTextEditable && !isLucideIcon) || isVideoEmbed" title="Edit content" class="toolbar-icon" @click="onEditContent"><Pencil class="w-4 h-4" /></button>
     <button v-if="isVideoEmbed && editor.current?.content" title="Play video" class="toolbar-icon" @click="playVideoEmbed"><Play class="w-4 h-4" /></button>
+    <select
+      v-if="isHeadingElement"
+      :value="headingLevel"
+      title="Heading level"
+      class="h-7 px-1 text-[11px] rounded border border-gray-300 bg-white text-gray-700 focus:outline-none focus:border-indigo-500"
+      @change="setHeadingLevel(($event.target as HTMLSelectElement).value)"
+    >
+      <option v-for="n in 6" :key="n" :value="n">H{{ n }}</option>
+    </select>
     <div v-if="isButtonElement" class="relative">
       <button type="button" title="Button icon" class="toolbar-icon" @click="openButtonIconPicker"><Image class="w-4 h-4" /></button>
       <template v-if="showButtonIconPicker">
@@ -938,6 +947,22 @@ const isTextEditable = computed(() => !!editor.current?.editable)
 const isVideoEmbed = computed(() => editor.current?.tag === 'youtube' || editor.current?.tag === 'vimeo')
 const isButtonElement = computed(() => editor.current?.tag === 'button' || editor.current?.tag === 'submit' || editor.current?.tag === 'reset')
 const isLucideIcon = computed(() => editor.current?.tag === 'lucideicon')
+
+// Heading level (H1-H6) - ElementsClass.js's Heading() sets `level` once at
+// creation (always 1, from both the palette and the Alt+1 hotkey) and
+// BlockElement.vue/BlockElementPreview.vue derive the actual rendered tag
+// from it ('h' + level), but until now nothing in the editor UI could ever
+// change it afterward - not a "semantic" field (that's a separate
+// mechanism containers/Form use to pick their own rendered tag), just a
+// plain numeric field with no control wired to it.
+const isHeadingElement = computed(() => 'level' in (editor.current as any ?? {}) && !!(editor.current as any)?.level)
+const headingLevel = computed(() => Number((editor.current as any)?.level) || 1)
+function setHeadingLevel(value: string) {
+  if (!editor.current) return
+  const level = Number(value)
+  if (!Number.isInteger(level) || level < 1 || level > 6) return
+  ;(editor.current as any).level = level
+}
 const isRoot = computed(() => !editor.document || editor.current?.id === editor.document.id)
 
 const hasImageRef = computed(() => {
