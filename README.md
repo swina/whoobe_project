@@ -56,7 +56,8 @@ The product itself is branded **Whoobe** (npm scope `@whoobe-cms/*`).
 - **AI agent** 
 
   LLM-powered page/snippet/image/text generator (OpenAI / Anthropic / Google) with a generation history panel in the editor.
-
+  Dedicated AI Translations. Translate automatically pages and snippets creating new localized versions.
+  
 - **Site search** 
   
   headless public search across published pages and Data Objects, with type/class filtering.
