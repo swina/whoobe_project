@@ -216,10 +216,17 @@ function pathPatternToRegExp(pattern: string): RegExp {
   return new RegExp(`^${source}$`)
 }
 
-/** The template that applies to a request path: longest path-pattern match
- *  wins, else the website's default. */
-function templateForPath(path: string): WebsiteTemplate | null {
+/** The template that applies to a request path + the linked page's locale -
+ *  matching the server's own priority (website-templates-records.ts's
+ *  getWebsiteTemplateForPath): a template whose `locale` matches wins
+ *  outright, bypassing path patterns entirely; else longest path-pattern
+ *  match wins; else the website's default. */
+function templateForPath(path: string, locale?: string | null): WebsiteTemplate | null {
   if (websiteTemplates.value.length === 0) return null
+  if (locale) {
+    const localeMatch = websiteTemplates.value.find((t) => t.locale === locale)
+    if (localeMatch) return localeMatch
+  }
   let best: WebsiteTemplate | null = null
   let bestLen = -1
   for (const t of websiteTemplates.value) {
@@ -247,20 +254,28 @@ function itemPath(item: MenuItem): string | null {
   return raw.startsWith('/') ? raw : '/' + raw
 }
 
+/** A linked item's page's own locale, for the same locale-priority
+ *  resolution templateForPath() applies - null for unlinked items or
+ *  external URLs, which fall back to plain path-pattern resolution. */
+function itemLocale(item: MenuItem): string | null {
+  if (!item.pageId) return null
+  return websitePages.value.find((p) => p.id === item.pageId)?.locale ?? null
+}
+
 /** Per-route template label for a menu item (shown in each row). */
 function resolveTemplateForItem(item: MenuItem): string | null {
   const p = itemPath(item)
   if (!p) return null
-  const t = templateForPath(p)
+  const t = templateForPath(p, itemLocale(item))
   return t ? (t.isDefault ? `${t.name} (default)` : t.name) : null
 }
 
-function collectItemPaths(items: MenuItem[]): string[] {
-  const out: string[] = []
+function collectItemContexts(items: MenuItem[]): { path: string; locale: string | null }[] {
+  const out: { path: string; locale: string | null }[] = []
   for (const item of items) {
     const p = itemPath(item)
-    if (p) out.push(p)
-    if (item.children?.length) out.push(...collectItemPaths(item.children))
+    if (p) out.push({ path: p, locale: itemLocale(item) })
+    if (item.children?.length) out.push(...collectItemContexts(item.children))
   }
   return out
 }
@@ -274,8 +289,8 @@ const groupTemplates = computed(() => {
   for (const pg of websitePaths.value) {
     const tpls: WebsiteTemplate[] = []
     const seen = new Set<string>()
-    for (const p of collectItemPaths(pg.items)) {
-      const t = templateForPath(p)
+    for (const { path: p, locale } of collectItemContexts(pg.items)) {
+      const t = templateForPath(p, locale)
       if (t && !seen.has(t.id)) {
         seen.add(t.id)
         tpls.push(t)

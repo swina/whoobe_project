@@ -1409,7 +1409,7 @@ app.get('/whoobe-one/pages/:id/layout', requirePermission(PERMISSIONS.OBJECTS_RE
       res.json({ body: null });
       return;
     }
-    const template = await getWebsiteTemplateForPath(page.websiteId, page.slug);
+    const template = await getWebsiteTemplateForPath(page.websiteId, page.slug, page.locale);
     const bodySlot = template?.layout?.body;
     const body = bodySlot ? { className: bodySlot.className ?? '', style: bodySlot.style ?? '', alpine: bodySlot.alpine ?? {} } : null;
     res.json({ body });
@@ -2275,7 +2275,7 @@ app.get('/whoobe-one/websites/:websiteId/templates', requirePermission(PERMISSIO
 
 app.post('/whoobe-one/websites/:websiteId/templates', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description, layout, pathPatterns, isDefault } = req.body ?? {};
+    const { name, description, layout, pathPatterns, locale, isDefault } = req.body ?? {};
     if (typeof name !== 'string' || !name.trim()) {
       res.status(400).json({ error: 'name is required' });
       return;
@@ -2286,6 +2286,7 @@ app.post('/whoobe-one/websites/:websiteId/templates', requirePermission(PERMISSI
       description: typeof description === 'string' ? description : null,
       layout: layout !== undefined ? layout : undefined,
       pathPatterns: Array.isArray(pathPatterns) ? pathPatterns.filter((p): p is string => typeof p === 'string') : undefined,
+      locale: typeof locale === 'string' && locale.trim() ? locale.trim() : null,
       isDefault: !!isDefault,
     });
     res.status(201).json({ template });
@@ -2316,12 +2317,13 @@ app.patch('/whoobe-one/websites/:websiteId/templates/:id', requirePermission(PER
       res.status(404).json({ error: 'Website template not found' });
       return;
     }
-    const { name, description, layout, pathPatterns, isDefault } = req.body ?? {};
+    const { name, description, layout, pathPatterns, locale, isDefault } = req.body ?? {};
     const template = await updateWebsiteTemplate(req.params.id, {
       ...(name !== undefined ? { name: typeof name === 'string' ? name : existing.name } : {}),
       ...(description !== undefined ? { description: typeof description === 'string' ? description : null } : {}),
       ...(layout !== undefined ? { layout: layout ?? {} } : {}),
       ...(pathPatterns !== undefined ? { pathPatterns: Array.isArray(pathPatterns) ? pathPatterns.filter((p): p is string => typeof p === 'string') : [] } : {}),
+      ...(locale !== undefined ? { locale: typeof locale === 'string' && locale.trim() ? locale.trim() : null } : {}),
       ...(isDefault !== undefined ? { isDefault: !!isDefault } : {}),
     });
     res.json({ template });
@@ -2555,7 +2557,7 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
     const layoutWebsiteId = websiteId ?? page.websiteId;
     if (layoutWebsiteId) {
       try {
-        const template = await getWebsiteTemplateForPath(layoutWebsiteId, templatePath);
+        const template = await getWebsiteTemplateForPath(layoutWebsiteId, templatePath, locale);
         if (template) {
           const website = await getWebsite(layoutWebsiteId);
           const modules = await listPublishedModulePages(layoutWebsiteId, locale, website?.defaultLocale ?? null);
@@ -2722,7 +2724,7 @@ app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => 
     const layoutWebsiteId = websiteId ?? page.websiteId;
     if (layoutWebsiteId) {
       try {
-        const template = await getWebsiteTemplateForPath(layoutWebsiteId, templatePath);
+        const template = await getWebsiteTemplateForPath(layoutWebsiteId, templatePath, locale);
         if (template) {
           const website = await getWebsite(layoutWebsiteId);
           const modules = await listPublishedModulePages(layoutWebsiteId, locale, website?.defaultLocale ?? null);

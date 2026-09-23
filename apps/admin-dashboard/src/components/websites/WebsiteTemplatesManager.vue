@@ -43,7 +43,11 @@
           <input v-model="form.description" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
         </label>
         <label class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
-          Path patterns (one per line, glob: /it/news/*) - routes this template applies to, overriding the default
+          Locale (e.g. "it") - when set, this template applies to EVERY page of that locale, unconditionally. Bypasses path patterns entirely - leave blank to use path patterns / default instead.
+          <input v-model="form.locale" type="text" placeholder="it" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800 font-mono" />
+        </label>
+        <label class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
+          Path patterns (one per line, glob: /it/news/*) - routes this template applies to, overriding the default (ignored for pages matched by Locale above)
           <textarea v-model="form.pathPatternsText" rows="3" class="w-full px-3 py-2 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800 resize-none font-mono" placeholder="/it/news/*"></textarea>
         </label>
         <label class="flex items-center gap-2 text-xs text-slate-400 col-span-2">
@@ -146,6 +150,7 @@
           <div class="flex items-center gap-2">
             <span class="text-sm font-semibold text-slate-200 light:text-slate-800">{{ t.name }}</span>
             <span v-if="t.isDefault" class="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">default</span>
+            <span v-if="t.locale" class="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" title="Applies to every page of this locale, bypassing path patterns">locale: {{ t.locale }}</span>
           </div>
           <div class="text-xs text-slate-500 font-mono mt-0.5 space-x-3">
             <span v-if="t.pathPatterns.length">paths: {{ t.pathPatterns.join(', ') }}</span>
@@ -334,6 +339,7 @@ function parseSlotAlpine(slot: SlotKey): Record<string, string> | null {
 const form = reactive({
   name: '',
   description: '',
+  locale: '',
   pathPatternsText: '',
   isDefault: false,
   layout: { header: { pageIds: [] as string[], className: '', style: '' }, aside: null as TemplateSlot | null, main: null as TemplateSlot | null, footer: { pageIds: [] as string[], className: '', style: '' }, notFound404: null as TemplateSlot | null } as WebsiteTemplateLayout,
@@ -364,6 +370,7 @@ function startNew() {
   editingId.value = ''
   form.name = ''
   form.description = ''
+  form.locale = ''
   form.pathPatternsText = ''
   form.isDefault = false
   form.layout = {
@@ -401,6 +408,7 @@ function editTemplate(t: WebsiteTemplate) {
   editingId.value = t.id
   form.name = t.name
   form.description = t.description ?? ''
+  form.locale = t.locale ?? ''
   form.pathPatternsText = (t.pathPatterns ?? []).join('\n')
   form.isDefault = t.isDefault
   const blank = (s: TemplateSlot | null | undefined): TemplateSlot => ({
@@ -605,6 +613,7 @@ async function save() {
     const payload = {
       name: form.name.trim(),
       description: form.description.trim() || null,
+      locale: form.locale.trim() || null,
       pathPatterns: form.pathPatternsText.split('\n').map((p) => p.trim()).filter(Boolean),
       isDefault: form.isDefault,
       layout: {
