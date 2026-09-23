@@ -1,8 +1,14 @@
 // Returns the URL for whoobe-one-spike. Uses direct port 3006 on localhost
-// (Vite dev server needs its own origin for HMR/asset paths). On HTTP (local
-// LAN dev, e.g. http://whoobecms.local:3000), also uses direct port 3006
-// since there's no nginx to proxy /whoobe-one/. Only uses the nginx-proxied
-// /whoobe-one/ path on HTTPS (production behind nginx on port 443).
+// only - that's the native single-instance dev setup (Vite dev server
+// needs its own origin for HMR/asset paths, and its port is fixed/known).
+// Everywhere else (any other hostname, HTTP or HTTPS) goes through the
+// nginx-proxied /whoobe-one/ path on the current origin instead: a
+// same-host workspace can have its own whoobe-one-spike on any port (see
+// scripts/provision-workspace.sh's per-workspace port offsets), so a
+// hardcoded direct port here would silently hit an unrelated instance
+// (e.g. the local dev server on 3006) rather than this workspace's own -
+// deploy/nginx/_locations.conf.template proxies /whoobe-one/ correctly
+// regardless of protocol, so there's no HTTP-only special case anymore.
 export function getWhoobeOneSpikeUrl(): string {
   if (typeof window === 'undefined') return 'http://localhost:3006'
   const hostname = window.location.hostname
@@ -10,11 +16,8 @@ export function getWhoobeOneSpikeUrl(): string {
   if (isLocalhost) {
     return `${window.location.protocol}//${hostname}:3006`
   }
-  if (window.location.protocol === 'https:') {
-    const port = window.location.port
-    return `${window.location.protocol}//${hostname}${port ? `:${port}` : ''}/whoobe-one`
-  }
-  return `${window.location.protocol}//${hostname}:3006`
+  const port = window.location.port
+  return `${window.location.protocol}//${hostname}${port ? `:${port}` : ''}/whoobe-one`
 }
 
 // Same for whoobe-studio (port 3004).

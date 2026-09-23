@@ -1,0 +1,18 @@
+# Per-workspace nginx vhost - port 80 side, once TLS is enabled
+# (scripts/enable-tls.sh). Replaces workspace.conf.template's rendering
+# of deploy/nginx/<slug>.conf: everything except a Let's Encrypt renewal
+# challenge now redirects to HTTPS, where deploy/nginx/<slug>-ssl.conf
+# (workspace-ssl.conf.template) does the actual proxying.
+
+server {
+    listen 80;
+    server_name __HOSTNAME__;
+
+    location /.well-known/acme-challenge/ {
+        root __CERTBOT_WEBROOT__;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}

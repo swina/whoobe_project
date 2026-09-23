@@ -1,0 +1,15 @@
+# Per-workspace nginx vhost - port 443 side, only rendered once TLS is
+# enabled for this workspace (scripts/enable-tls.sh), into
+# deploy/nginx/<slug>-ssl.conf. Shares the exact same routing rules as
+# the plain-HTTP vhost via the same deploy/nginx/_locations-<slug>.inc
+# include - only the listen/server_name/ssl_* directives differ.
+
+server {
+    listen 443 ssl;
+    server_name __HOSTNAME__;
+
+    ssl_certificate     __CERT_DIR__/live/__HOSTNAME__/fullchain.pem;
+    ssl_certificate_key __CERT_DIR__/live/__HOSTNAME__/privkey.pem;
+
+    include __LOCATIONS_INCLUDE__;
+}
