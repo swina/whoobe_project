@@ -1,5 +1,12 @@
 # Changelog
 
+## [Fixed Website > Templates: no reachable way back to the list while editing] — 2026-09-24
+- Branch: `master`.
+- User report: "creando un nuovo template o modificando uno esistente non è possibile tornare alla lista dei template" - no way back to the templates list from the create/edit form.
+- Root cause, `apps/admin-dashboard/src/components/websites/WebsiteTemplatesManager.vue`: the edit panel is a genuinely tall form (up to 8 template slot sections - header/appHeader/aside/footer/appFooter/main/body/404 - each with its own snippet picker, wrapper class/style fields, custom-elements JSON, and Alpine directives JSON), and the *only* way back to the list was a small, unlabeled "×" at the very top of the panel, in a plain (non-sticky) header. Scroll down to edit a lower slot - the entire point of the form - and that "×" scrolls out of view with it; the bottom of the form only has a "Save" button, no equivalent way back. A user editing anything below the first slot or two would find themselves with no back-to-list control anywhere in the visible viewport.
+- Fix: the panel's header is now `sticky top-0` (with a solid background and bottom border) so Save/Back stay reachable at any scroll position, the "×" is now a clearly labeled "← Back to list" button, and a second, identical "← Back to list" button was added next to the bottom Save button as a redundant, always-reachable affordance regardless of the sticky header's behavior across viewports/zoom levels. `closeEditor()` itself (resets `editingId`/`creating`, reloads the list) was already correct - this was a reachability/discoverability bug, not a broken handler.
+- Typechecked `apps/admin-dashboard` clean (`vue-tsc --noEmit`), rebuilt/redeployed `ws-aura`'s `admin-dashboard` container, verified it's healthy and the new "Back to list" copy is present in the built bundle.
+
 ## [Fixed edited text silently failing to save - onBlur discarded the edit if the element had been deselected first] — 2026-09-23
 - Branch: `master`.
 - User report (handoff task, offline for the night): editing a text element's content often didn't show up in the editor's own preview, and - critically - **not even after Save and reload**, meaning the edit never reached the saved page at all, not just a preview-refresh issue. Reported workaround: giving the element a unique "name" attribute made it work.
