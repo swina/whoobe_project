@@ -139,9 +139,13 @@ export default class Element {
                 elements: [ 
                     {
                         name: 'Form' ,
-                        icon: 'call_to_action' 
-                    }, 
-                    { 
+                        icon: 'call_to_action'
+                    },
+                    {
+                        name: 'Label',
+                        icon: 'label'
+                    },
+                    {
                         name: 'Input Text',
                         icon: 'input'
                     },
@@ -227,6 +231,7 @@ export default class Element {
             element === 'LucideIcon'    ? this.LucideIcon() :
             element === 'Download'      ? this.Download() :
             element === 'Form'          ? this.Form() :
+            element === 'Label'         ? this.Label() :
             element === 'Input Text'    ? this.InputText() :
             element === 'Email'         ? this.InputEmail() :
             element === 'Textarea'      ? this.InputTextarea() :
@@ -699,6 +704,21 @@ export default class Element {
             inactiveColor: 'text-gray-500',
             backgroundColor: 'bg-white'
         }
+        return this
+    }
+
+    // A <label> for a form control - `for` (data.attributes) matches the
+    // paired control's own `id` (also a data.attributes field on Input*()/
+    // Select/etc.), the standard HTML association. Editable text, exactly
+    // like Span/InlineText - not a dedicated `text` field, `content` is
+    // reused directly per this file's own convention for every editable
+    // leaf element.
+    Label(){
+        this.element = 'label'
+        this.icon = 'label'
+        this.content = 'Label'
+        this.editable = true
+        this.data.attributes = { for: '' }
         return this
     }
 
