@@ -150,12 +150,16 @@
               <button @click="openSnippetTab(snippet.id)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 mr-3" title="Edit snippet">
                 <PencilSparkles class="w-4 h-4"/>
               </button>
+              <button v-if="snippet.notes" @click="notesSnippet = snippet" class="text-xs font-semibold text-sky-400 hover:text-sky-300 mr-3" title="View usage notes">
+                <Info class="w-4 h-4"/>
+              </button>
               <button @click="campaignModalSnippet = snippet" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 mr-3" title="Send as Brevo campaign">
                 <Send class="w-4 h-4"/>
               </button>
               <button @click="handleDelete(snippet.id, snippet.name)" class="text-xs font-semibold text-rose-400 hover:text-rose-300" title="Delete snippet">
                 <Trash class="w-4 h-4"/>
               </button>
+
             </td>
           </tr>
         </tbody>
@@ -193,6 +197,9 @@
             <button @click="openSnippetTab(snippet.id)" class="p-1.5 rounded text-slate-400 light:text-slate-600 hover:text-indigo-400 hover:bg-slate-400/60 light:bg-slate-100/60 transition" title="Edit snippet">
               <PencilSparkles class="w-3.5 h-3.5" />
             </button>
+            <button v-if="snippet.notes" @click="notesSnippet = snippet" class="p-1.5 rounded text-slate-400 light:text-slate-600 hover:text-sky-400 hover:bg-slate-400/60 light:bg-slate-100/60 transition" title="View usage notes">
+              <Info class="w-3.5 h-3.5" />
+            </button>
             <button @click="campaignModalSnippet = snippet" class="p-1.5 rounded text-slate-400 light:text-slate-600 hover:text-emerald-400 hover:bg-slate-400/60 light:bg-slate-100/60 transition" title="Send as Brevo campaign">
               <Send class="w-3.5 h-3.5" />
             </button>
@@ -213,11 +220,26 @@
   :source-label="campaignModalSnippet.name"
   @close="campaignModalSnippet = null"
 />
+
+<!-- Usage notes overlay - the snippets-manager counterpart of the
+     whoobe-one-spike editor's own snippet-notes affordances (its Snippets
+     sidebar chip icon and the inserted element's Advanced > Info panel). -->
+<div v-if="notesSnippet" class="fixed inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 z-50" @click.self="notesSnippet = null">
+  <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 rounded-2xl max-w-md w-full shadow-2xl">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800 light:border-slate-200">
+      <span class="text-sm font-semibold text-slate-100 light:text-slate-900 flex items-center gap-2">
+        <Puzzle class="w-4 h-4 text-teal-400" /> {{ notesSnippet.name }}
+      </span>
+      <button class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition text-sm" @click="notesSnippet = null">✕</button>
+    </div>
+    <p class="p-4 text-sm text-slate-300 light:text-slate-700 whitespace-pre-wrap">{{ notesSnippet.notes }}</p>
+  </div>
+</div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Puzzle, PencilSparkles, Trash, List, LayoutGrid, Send } from '@lucide/vue'
+import { Puzzle, PencilSparkles, Trash, List, LayoutGrid, Send, Info } from '@lucide/vue'
 import { useSnippetsStore } from '../stores/snippetsStore'
 import { useTabsStore } from '../stores/tabsStore'
 import { useToastStore } from '../stores/toastStore'
@@ -239,6 +261,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const importResult = ref<{ created: number; skipped: number; errors: string[] } | null>(null)
 const selectedIds = ref(new Set<string>())
 const campaignModalSnippet = ref<WhoobeSnippet | null>(null)
+const notesSnippet = ref<WhoobeSnippet | null>(null)
 
 const categories = computed(() => {
   const set = new Set(snippetsStore.snippets.map((s) => s.category).filter(Boolean))
@@ -327,6 +350,7 @@ async function handleExport() {
       icon: s.icon ?? undefined,
       node: await embedNodeImages(s.node),
       themeId: s.themeId ?? undefined,
+      notes: s.notes ?? undefined,
     }))
   )
 

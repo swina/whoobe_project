@@ -1000,7 +1000,7 @@ app.get('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_READ), asy
 
 app.post('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, category, icon, node, themeId } = req.body ?? {};
+    const { name, category, icon, node, themeId, notes } = req.body ?? {};
     if (typeof name !== 'string' || !name.trim() || typeof category !== 'string' || !category.trim() || node == null) {
       res.status(400).json({ error: 'name, category, and node are required' });
       return;
@@ -1012,6 +1012,7 @@ app.post('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), a
       icon: typeof icon === 'string' ? icon : null,
       node,
       themeId: typeof themeId === 'string' ? themeId : null,
+      notes: typeof notes === 'string' ? notes : null,
     });
     res.status(201).json({ snippet });
   } catch (error: any) {
@@ -1060,7 +1061,7 @@ app.post('/whoobe-one/snippets/:id/render', requirePermission(PERMISSIONS.OBJECT
 
 app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, category, icon, node, themeId } = req.body ?? {};
+    const { name, category, icon, node, themeId, notes } = req.body ?? {};
     // category may be empty (an uncategorised snippet), name/node required.
     if (typeof name !== 'string' || !name.trim() || typeof category !== 'string' || node == null) {
       res.status(400).json({ error: 'name, category, and node are required' });
@@ -1073,6 +1074,7 @@ app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRIT
       icon: typeof icon === 'string' ? icon : null,
       node,
       themeId: themeId !== undefined ? (typeof themeId === 'string' ? themeId : null) : undefined,
+      notes: notes !== undefined ? (typeof notes === 'string' ? notes : null) : undefined,
     });
     if (!snippet) {
       res.status(404).json({ error: 'Snippet not found' });

@@ -319,6 +319,15 @@ export default class Element {
   // template's body className/style, via editor.templateBody) switches to
   // `style`, a raw CSS declarations string local to this document.
   canvasBackground?: { useTemplate: boolean; style?: string }
+  // Not in the source, and not set by any builder - stamped only by
+  // BlockEditor.vue's snippet-drop handler, onto the clone's root node,
+  // right after cloneWithFreshIds() (which only rewrites keys literally
+  // named `id`, so this survives untouched). Lets AdvancedPanel.vue's Info
+  // section resolve the originating whoobe_one_snippets row's `notes` back
+  // for a selected element that came from a snippet drop - absent on any
+  // element built from the palette/AI import/etc, same "absent until
+  // actually set" treatment as `theme`/`canvasBackground` above.
+  sourceSnippetId?: string
   image: ElementImage
   type: string
   tag: string

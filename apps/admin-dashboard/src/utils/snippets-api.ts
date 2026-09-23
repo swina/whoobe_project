@@ -7,6 +7,10 @@ export interface WhoobeSnippet {
   icon: string | null
   node: unknown
   themeId?: string | null
+  // Free-text usage notes (set from the whoobe-one-spike editor's "Save as
+  // snippet" modal) - shown here via SnippetsView.vue's info icon (list and
+  // grid views).
+  notes?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -17,6 +21,7 @@ export interface WhoobeSnippetInput {
   icon?: string | null
   node: unknown
   themeId?: string | null
+  notes?: string | null
 }
 
 function normalizeBaseUrl(baseUrl: string): string {

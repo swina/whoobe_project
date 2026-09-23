@@ -837,6 +837,10 @@ onMounted(() => {
       const snippet = snippetsStore.items.find((s) => s.id === snippetId)
       if (!snippet) return
       const created = cloneWithFreshIds(snippet.node) as WhoobeElement
+      // Tags the clone with where it came from, so selecting it later can
+      // resolve the snippet's usage notes back (see AdvancedPanel.vue's
+      // Info section / ElementsClass.d.ts's sourceSnippetId comment).
+      ;(created as any).sourceSnippetId = snippet.id
       insertAt(created)
       editor.setCurrent(created)
       flash(`Added "${snippet.name}"`)

@@ -18,6 +18,13 @@ export const whoobeOneSnippets = pgTable('whoobe_one_snippets', {
   icon: text('icon'),
   node: jsonb('node').notNull(),
   themeId: uuid('theme_id'),
+  // Free-text usage notes for whoever picks this snippet later (e.g. "use
+  // for the top of a product page, expects a hero image and a CTA link") -
+  // shown from the snippets list (an info icon per chip) and, once a
+  // snippet has been dropped into a document, in the selected element's
+  // Advanced > Info panel (see ElementsClass.d.ts's sourceSnippetId field,
+  // stamped onto the clone at drop time in BlockEditor.vue).
+  notes: text('notes'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
