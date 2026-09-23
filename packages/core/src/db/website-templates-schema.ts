@@ -58,6 +58,14 @@ export const websiteTemplates = pgTable('website_templates', {
   // when any match, this template wins over the website's default. Empty =
   // only ever used as the default.
   pathPatterns: text('path_patterns').array().notNull().default([]),
+  // When set (e.g. "it"), this template applies to EVERY page of that
+  // locale, unconditionally - it wins outright over pathPatterns/isDefault
+  // rather than acting as just another pattern to match, so a page's own
+  // locale can pin its template regardless of which path it lives at. Null
+  // = not locale-restricted (falls through to normal pattern/isDefault
+  // resolution). At most one template per (websiteId, locale) - enforced
+  // app-level in the records layer, same pattern as isDefault below.
+  locale: text('locale'),
   // Fallback template for the website; at most one true per website
   // (enforced app-level in the records/API layer).
   isDefault: boolean('is_default').notNull().default(false),

@@ -38,6 +38,10 @@ export interface WebsiteTemplate {
   description: string | null
   layout: WebsiteTemplateLayout
   pathPatterns: string[]
+  /** When set (e.g. "it"), this template applies to every page of that
+   *  locale unconditionally, bypassing pathPatterns entirely. Null = not
+   *  locale-restricted. */
+  locale: string | null
   isDefault: boolean
   updatedAt: string
   createdAt: string
@@ -48,6 +52,7 @@ export interface WebsiteTemplateInput {
   description?: string | null
   layout?: WebsiteTemplateLayout
   pathPatterns?: string[]
+  locale?: string | null
   isDefault?: boolean
 }
 
