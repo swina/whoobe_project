@@ -1128,43 +1128,47 @@ const POPOVER_MARGIN = 12
 // to open from the right edge (`right-0`) so they don't overflow offscreen.
 const toolbarNearRightEdge = computed(() => window.innerWidth - left.value < 400)
 
-const sliderPopoverOpensUpward = computed(() => {
-  const spaceBelow = window.innerHeight - (top.value + TOOLBAR_HEIGHT) - POPOVER_MARGIN
-  return spaceBelow < 320 && top.value > spaceBelow
-})
-const sliderPopoverMaxHeight = computed(() => {
-  const available = sliderPopoverOpensUpward.value
-    ? top.value - POPOVER_MARGIN
-    : window.innerHeight - (top.value + TOOLBAR_HEIGHT) - POPOVER_MARGIN
-  return Math.max(160, available)
-})
+// Popovers must stay within the visible editor CANVAS (BlockEditor.vue's
+// #whoobe-editor-canvas, a scrollable region below the editor's own topbar),
+// not the raw browser viewport - the canvas is smaller than
+// window.innerHeight, so measuring "space below" against the full window
+// overstated how much room there really was and could still squeeze a
+// popover into a sliver of space even after it was capped to "available"
+// height. Measured fresh on every read (not cached), so it stays correct
+// as the canvas/window resizes.
+function canvasBounds(): { top: number; bottom: number } {
+  const el = document.getElementById('whoobe-editor-canvas')
+  if (!el) return { top: 0, bottom: window.innerHeight }
+  const rect = el.getBoundingClientRect()
+  return { top: rect.top, bottom: rect.bottom }
+}
 
-// Generic upward-flip for all other popovers: when there's less than 260px
-// below the toolbar AND more space above, flip upward. Same threshold the
-// slider already uses, applied uniformly to every short popover (text color,
-// fill color, image, link, button icon pickers).
-const toolbarNearBottomEdge = computed(() => {
-  const spaceBelow = window.innerHeight - (top.value + TOOLBAR_HEIGHT) - POPOVER_MARGIN
-  return spaceBelow < 260 && top.value > spaceBelow
-})
+const toolbarSpaceAbove = computed(() => top.value - canvasBounds().top - POPOVER_MARGIN)
+const toolbarSpaceBelow = computed(() => canvasBounds().bottom - (top.value + TOOLBAR_HEIGHT) - POPOVER_MARGIN)
+
+// Open upward whenever there's more real room above the toolbar (down to
+// the canvas's own top edge) than below it (up to the canvas's own bottom
+// edge) - not a fixed distance guess (260px/320px), which could still pick
+// "below" even when "above" had considerably more room, capping the
+// popover's max-height to whatever tiny sliver of space happened to be
+// below the toolbar rather than the much larger space actually available
+// above it.
+const toolbarNearBottomEdge = computed(() => toolbarSpaceBelow.value < toolbarSpaceAbove.value)
 
 // Every popover's actual content height varies (a color picker with swatches
-// runs much taller than a plain text field), but none of them were ever
-// height-capped - only sliderPopoverMaxHeight (above) got this treatment.
-// The 260px flip threshold above is just a heuristic for "is there probably
-// enough room" - it doesn't guarantee the popover that actually opens fits,
-// so a tall one could still run past the viewport edge with nothing to stop
-// it (reported: content "illegible" near the bottom edge - actually a panel
-// extending off-screen with no scroll, not literal transparency). Capping
-// every popover's height to whatever space is actually available - flipped
-// up or not - and letting it scroll internally past that means a popover
-// can never extend past the viewport, however tall its content is.
-const popoverMaxHeight = computed(() => {
-  const available = toolbarNearBottomEdge.value
-    ? top.value - POPOVER_MARGIN
-    : window.innerHeight - (top.value + TOOLBAR_HEIGHT) - POPOVER_MARGIN
-  return Math.max(160, available)
-})
+// runs much taller than a plain text field). Capping every popover's height
+// to whichever direction has more real room - and letting it scroll
+// internally past that - means a popover can never run past the canvas
+// edge, however tall its content is, while also never being squeezed into
+// less room than the toolbar's position actually allows.
+const popoverMaxHeight = computed(() => Math.max(160, toolbarNearBottomEdge.value ? toolbarSpaceAbove.value : toolbarSpaceBelow.value))
+
+// The slider popover used its own, taller-content-tuned thresholds before
+// this all became threshold-free (see above) - now identical to every
+// other popover's own flip/height logic, kept as separate names only
+// because the template already refers to them.
+const sliderPopoverOpensUpward = toolbarNearBottomEdge
+const sliderPopoverMaxHeight = popoverMaxHeight
 
 let rafId: number | null = null
 function loop() {

@@ -71,6 +71,7 @@
            this exact div was the actual click target - i.e. genuinely
            outside the whole document tree. -->
       <div
+        id="whoobe-editor-canvas"
         class="flex-1 min-h-0 overflow-auto p-6 pt-10"
         :class="editor.appMode ? 'flex justify-center bg-gray-200' : ''"
         @click.self="editor.setCurrent(null)"
