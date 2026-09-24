@@ -40,7 +40,9 @@ The product itself is branded **Whoobe** (npm scope `@whoobe-cms/*`).
 - **Forms** 
   
   A Form element in the page builder that submits to a public endpoint, storing submissions as draft (unpublished) Data Objects; honeypot spam trap and per-IP rate limiting; success/error feedback as a click-to-close popup on the page.
-
+  
+  Form connector to API Gateway endpoints. Brevo create contact tested.
+  
 - **Email notifications & mail templates** 
   
   Global SMTP configuration (Settings → Mail), reusable **mail templates** (HTML authored in the page-builder editor, or plain text) with `{form.field}` token personalization and dynamic `to`/`bcc`; a "BCC the from address" audit flag; DAM images and web-font handling in sent emails; and a full **mail log** (preview, resend, search, pagination, bulk delete).
@@ -57,7 +59,7 @@ The product itself is branded **Whoobe** (npm scope `@whoobe-cms/*`).
 
   LLM-powered page/snippet/image/text generator (OpenAI / Anthropic / Google) with a generation history panel in the editor.
   Dedicated AI Translations. Translate automatically pages and snippets creating new localized versions.
-  
+
 - **Site search** 
   
   headless public search across published pages and Data Objects, with type/class filtering.
