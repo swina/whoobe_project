@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { proxyFetch } from './proxy-engine.js';
-import { logGatewayError } from './log-error.js';
+import { logGatewayError, logger } from './log-error.js';
 import { buildAuthHeaders } from './gateway-auth-headers.js';
 import { resolveGatewayUrl } from './resolve-gateway-url.js';
 
@@ -30,6 +30,35 @@ function recordFormSubmit(key: string): void {
     return;
   }
   entry.count += 1;
+}
+
+// Brevo's POST /contacts only recognizes these keys at the top level of the
+// request body (https://developers.brevo.com/reference/createcontact); any
+// custom contact field must be nested under "attributes" or Brevo silently
+// drops it (no error - the contact is still created, just without that
+// data). A CMS Form's fields are always flat (name -> string value), so
+// anything outside this allowlist is moved into "attributes" before the
+// request leaves the gateway.
+const BREVO_CONTACT_TOP_LEVEL_FIELDS = new Set([
+  'email', 'ext_id', 'attributes', 'emailBlacklisted', 'smsBlacklisted',
+  'listIds', 'updateEnabled', 'smtpBlacklistSender',
+]);
+
+function nestBrevoContactAttributes(body: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  const attributes: Record<string, unknown> = { ...(body.attributes as Record<string, unknown> | undefined) };
+  for (const [key, value] of Object.entries(body)) {
+    if (key === 'attributes') continue;
+    if (BREVO_CONTACT_TOP_LEVEL_FIELDS.has(key)) {
+      result[key] = value;
+    } else {
+      attributes[key] = value;
+    }
+  }
+  if (Object.keys(attributes).length > 0) {
+    result.attributes = attributes;
+  }
+  return result;
 }
 
 /** Public (unauthenticated) counterpart to resolve-handler.ts: forwards a
@@ -99,11 +128,37 @@ export function createSubmitHandler(): Router {
       const submitted = { ...(attributes as Record<string, unknown>) };
       delete submitted._hp;
 
-      const result = await proxyFetch(upstreamUrl, route.method, headers, submitted, 15000);
+      // Form fields only ever produce strings (browser FormData has no
+      // concept of arrays/objects), but upstream JSON APIs like Brevo's
+      // contacts endpoint require e.g. listIds as a real array. A field
+      // written as JSON (starts with [ or {) is parsed back into its
+      // intended type before forwarding.
+      for (const [key, value] of Object.entries(submitted)) {
+        if (typeof value !== 'string') continue;
+        const trimmed = value.trim();
+        if (!trimmed.startsWith('[') && !trimmed.startsWith('{')) continue;
+        try {
+          submitted[key] = JSON.parse(trimmed);
+        } catch {
+          // Not valid JSON - leave as the original string.
+        }
+      }
+
+      const isBrevoCreateContact =
+        endpoint.baseUrl.includes('api.brevo.com') &&
+        route.path.replace(/^\/+/, '') === 'contacts' &&
+        route.method === 'POST';
+      const requestBody = isBrevoCreateContact ? nestBrevoContactAttributes(submitted) : submitted;
+
+      const result = await proxyFetch(upstreamUrl, route.method, headers, requestBody, 15000);
 
       if (result.status >= 200 && result.status < 300) {
         res.status(result.status).json({ success: true, response: result.body });
       } else {
+        logger.error(
+          { upstreamStatus: result.status, upstreamBody: result.body, endpointName, routePath: route.path },
+          '[gateway] form submit rejected by upstream'
+        );
         res.status(502).json({ success: false, error: 'Upstream rejected the submission' });
       }
     } catch (err) {
