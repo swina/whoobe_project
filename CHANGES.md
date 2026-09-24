@@ -1,5 +1,12 @@
 # Changelog
 
+## [Fixed floating-toolbar dropdown panels overflowing the viewport near the bottom edge] — 2026-09-24
+- Branch: `master`.
+- User report: a floating-toolbar dropdown ("layers" - one of the several popover panels the toolbar opens, e.g. semantic tag, text/fill color, link, button icon) becomes illegible when open near the bottom of the viewport - the panel's own content runs past the visible area with nothing stopping it, not a literal transparency bug.
+- Root cause, `FloatingToolbar.vue`: `toolbarNearBottomEdge` (the flip-to-open-upward heuristic) only checks whether there's *roughly* 260px of space below - it was never told how tall the popover that's about to open actually is, and none of the 7 popover panels sharing this flip logic had any `max-height`/scroll cap at all (only the slider popover, a documented one-off, already had this). A popover taller than the available space - in either direction, flipped or not - had nothing to stop it running past the viewport edge.
+- Fix: generalized the slider popover's own `sliderPopoverMaxHeight` formula into a shared `popoverMaxHeight` computed (available space in whichever direction the popover is about to open, minimum 160px), and applied `max-height` + `overflow-y: auto` to all 7 popover panels uniformly. A popover can no longer extend past the viewport regardless of its content height - it scrolls internally instead.
+- Typechecked `apps/whoobe-one-spike` clean (`vue-tsc --noEmit`), full build succeeded, rebuilt/redeployed `ws-aura`'s `whoobe-one-spike` container, verified it's healthy.
+
 ## [Added a Label element to the page builder] — 2026-09-24
 - Branch: `master`.
 - User request: add a "label" element.
@@ -7,7 +14,7 @@
 - `BlockElementsPalette.vue`: added a real `@lucide/vue` icon (`Tag`) for it in the palette's own name→icon map - without this it would've silently fallen back to the generic `Shapes` icon (that map's own documented fallback for any element type it doesn't recognize).
 - No renderer changes needed: `Label()` sets no special `tag`, so it renders through the existing generic contenteditable-element branch in both `BlockElement.vue` and `BlockElementPreview.vue`, exactly like Span/Paragraph/InlineText already do.
 - Typechecked `apps/whoobe-one-spike` clean (`vue-tsc --noEmit`), full build succeeded, rebuilt/redeployed `ws-aura`'s `whoobe-one-spike` container, verified it's healthy.
-
+ 
 ## [Website > Templates: locale-assigned templates now bypass path patterns] — 2026-09-24
 - Branch: `master`.
 - User request: let a template be assigned to a specific page locale (e.g. "it") so that assignment takes PRIORITY over path patterns - every page of that locale uses that template, regardless of what path it's at.
