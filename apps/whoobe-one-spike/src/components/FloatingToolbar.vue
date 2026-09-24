@@ -31,7 +31,7 @@
         </button>
         <template v-if="showSemanticPicker">
           <div class="fixed inset-0 z-[10000]" @click="showSemanticPicker = false"></div>
-          <div class="absolute z-[10001] top-full left-0 mt-1 bg-slate-100 border border-gray-200 rounded-md shadow-lg p-2 w-40" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
+          <div class="absolute z-[10001] left-0 bg-slate-100 border border-gray-200 rounded-md shadow-lg p-2 w-40" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1' : 'top-full mt-1']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
             <span class="block text-[10px] text-gray-500 mb-1">Renders as</span>
             <select
               v-model="semanticValue"
@@ -232,7 +232,7 @@
       <button title="Edit icon" class="toolbar-icon" @click="openIconPicker"><Image class="w-4 h-4" /></button>
       <template v-if="showIconPicker">
         <div class="fixed inset-0 z-[10000]" @click="showIconPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-64 space-y-2" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
+        <div class="absolute z-[10001] left-0 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-64 space-y-2" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1' : 'top-full mt-1']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">Lucide icon name</label>
             <div class="flex items-center gap-1">
@@ -274,7 +274,7 @@
       <button type="button" title="Button icon" class="toolbar-icon" @click="openButtonIconPicker"><Image class="w-4 h-4" /></button>
       <template v-if="showButtonIconPicker">
         <div class="fixed inset-0 z-[10000]" @click="showButtonIconPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-64 space-y-2" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
+        <div class="absolute z-[10001] left-0 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-64 space-y-2" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1' : 'top-full mt-1']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">Lucide icon name</label>
             <div class="flex items-center gap-1">
@@ -332,7 +332,7 @@
       <button type="button" title="Text color" class="toolbar-icon" @click="showTextPicker = !showTextPicker"><Type class="w-4 h-4" /></button>
       <template v-if="showTextPicker">
         <div class="fixed inset-0 z-[10000]" @click="showTextPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-100" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
+        <div class="absolute z-[10001] left-0 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-100" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1' : 'top-full mt-1']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
           <label class="block text-[11px] text-gray-500 mb-2 bg-slate-200 rounded p-1">Text Color</label>
           <label class="flex items-center gap-1 mb-2 cursor-pointer text-[10px] text-gray-500">
             Custom
@@ -359,7 +359,7 @@
       <button type="button" title="Fill color" class="toolbar-icon" @click="showFillPicker = !showFillPicker"><PaintBucket class="w-4 h-4" /></button>
       <template v-if="showFillPicker">
         <div class="fixed inset-0 z-[10000]" @click="showFillPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-100" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
+        <div class="absolute z-[10001] left-0 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-100" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1' : 'top-full mt-1']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
           <label class="block text-[11px] text-gray-500 mb-2 bg-slate-200 rounded p-1">Fill Color</label>
           <label class="flex items-center gap-1 mb-2 cursor-pointer text-[10px] text-gray-500">
             Custom
@@ -393,7 +393,7 @@
       </button>
       <template v-if="showImagePicker">
         <div class="fixed inset-0 z-[10000]" @click="showImagePicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
+        <div class="absolute z-[10001] left-0 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1' : 'top-full mt-1']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">Image URL</label>
             <div class="flex items-center gap-1">
@@ -448,7 +448,7 @@
       <button type="button" title="Link URL" class="toolbar-icon" @click="openLinkPicker"><Link class="w-4 h-4" /></button>
       <template v-if="showLinkPicker">
         <div class="fixed inset-0 z-[10000]" @click="showLinkPicker = false"></div>
-        <div class="absolute z-[10001] top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1 top-auto' : '']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
+        <div class="absolute z-[10001] left-0 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-56 space-y-2" :class="[toolbarNearRightEdge ? 'right-0 left-auto' : '', toolbarNearBottomEdge ? 'bottom-full mb-1' : 'top-full mt-1']" :style="{ maxHeight: popoverMaxHeight + 'px', overflowY: 'auto' }" @click.stop>
           <div>
             <label class="block text-[10px] text-gray-500 mb-1">URL</label>
             <div class="flex items-center gap-1">
