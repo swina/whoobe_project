@@ -1,5 +1,14 @@
 # Changelog
 
+## [Fixed floating-toolbar popovers being squeezed to a few pixels instead of opening upward] — 2026-09-24
+- Branch: `master`.
+- User follow-up: after the previous overflow fix, a popover near the bottom now shrinks to "practically a few pixels" instead of opening above the toolbar. User's own diagnosis: the relevant boundary is the editor CANVAS's lower edge, not the browser viewport, and a popover taller than the remaining canvas space should flip above the toolbar.
+- Two compounding bugs, both now fixed:
+  1. The flip decision used a fixed distance guess (260px, 320px for the slider) completely independent from the height cap that followed it - "below" could still be chosen even when "above" had far more room, as long as "below" measured over the threshold. The popover then got capped to whatever sliver of space was below, even though a much larger space was available above.
+  2. Both the flip decision and the height cap measured against `window.innerHeight` - the full browser viewport - not the actual editor canvas (`BlockEditor.vue`'s `#whoobe-editor-canvas`, a scrollable region below the editor's own topbar, smaller than the window). Confirming the user's own diagnosis.
+- Fix: added the `whoobe-editor-canvas` id to the canvas container, and `FloatingToolbar.vue` now measures its real `getBoundingClientRect()` (falling back to the full window if not found) instead of `window.innerHeight`. The flip decision is now threshold-free - it always opens toward whichever direction (up to the canvas's top edge, or down to its bottom edge) has more actual room - and the height cap always matches that same, larger space, so a popover is never squeezed smaller than the room that's genuinely available. The slider popover's separate, differently-tuned thresholds collapsed into the same shared logic, since the new approach no longer needs per-popover tuning to be correct.
+- Typechecked `apps/whoobe-one-spike` clean (`vue-tsc --noEmit`), full build succeeded, rebuilt/redeployed `ws-aura`'s `whoobe-one-spike` container, verified it's healthy.
+
 ## [Fixed floating-toolbar dropdown panels overflowing the viewport near the bottom edge] — 2026-09-24
 - Branch: `master`.
 - User report: a floating-toolbar dropdown ("layers" - one of the several popover panels the toolbar opens, e.g. semantic tag, text/fill color, link, button icon) becomes illegible when open near the bottom of the viewport - the panel's own content runs past the visible area with nothing stopping it, not a literal transparency bug.
