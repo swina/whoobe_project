@@ -58,16 +58,18 @@ export async function getPageData(
   const base = options.baseUrl.replace(/\/+$/, '')
   const p = path.startsWith('/') ? path : `/${path}`
   const qs = options.websiteId ? `?websiteId=${encodeURIComponent(options.websiteId)}` : ''
-  const { page, params, layout: publicLayout } = await fetchJson<{
+  const { page, params, layout: publicLayout, cdnMirrors } = await fetchJson<{
     page: PublicPageRecord
     params: Record<string, string>
     layout: { template: { id: string; name: string }; header?: any; aside?: any; footer?: any } | null
+    cdnMirrors?: Record<string, string>
   }>(`${base}/public/pages/${encodeURIComponent(locale)}${p}${qs}`, fetchInit(options))
   const walkOptions = {
-    api: new ApiClient(base),
+    api: new ApiClient(base, undefined, options.gatewayUrl),
     assetBaseUrl: options.assetBaseUrl,
     keyPrefix: options.keyPrefix,
     resolveTargetPage: options.resolveTargetPage,
+    cdnMirrors,
   }
   const descriptor = await walkTree(page.content, { urlParams: params }, walkOptions)
   const layout = publicLayout ? await composeLayout(descriptor, publicLayout, walkOptions) : null
@@ -128,8 +130,8 @@ export function staticParamsForRecords(records: Record<string, unknown>[], field
 
 /** Convenience: an ApiClient over a base URL (use in route handlers /
  *  client components instead of the server helpers). */
-export function whoobeApi(baseUrl: string): WhoobeApi {
-  return new ApiClient(baseUrl) as unknown as WhoobeApi
+export function whoobeApi(baseUrl: string, gatewayUrl?: string): WhoobeApi {
+  return new ApiClient(baseUrl, undefined, gatewayUrl) as unknown as WhoobeApi
 }
 
 export {

@@ -25,7 +25,7 @@ NC='\033[0m' # No Color
 
 echo ""
 echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${CYAN}║     Whoobe CMS — Publish Website            ║${NC}"
+echo -e "${BOLD}${CYAN}║     Whoobe CMS — Publish Website             ║${NC}"
 echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -73,6 +73,27 @@ read -r -p "Public Asset Base URL [${DEFAULT_ASSET_URL}]: " ASSET_URL
 ASSET_URL="${ASSET_URL:-$DEFAULT_ASSET_URL}"
 ASSET_URL="${ASSET_URL%/}"
 
+# ── 4b. Gateway URL ─────────────────────────────────────────────────────────
+echo ""
+DEFAULT_GATEWAY_URL="${PUBLISH_GATEWAY_URL:-${API_URL%/}}"
+echo -e "${YELLOW}Tip:${NC} The public URL of the API Gateway (Brevo forms, other gateway-backed"
+echo -e "     data bindings). Without this, those features silently fall back to"
+echo -e "     localhost and only work when the published site runs on the CMS's own host."
+echo ""
+read -r -p "Gateway API URL [${DEFAULT_GATEWAY_URL}]: " GATEWAY_URL
+GATEWAY_URL="${GATEWAY_URL:-$DEFAULT_GATEWAY_URL}"
+GATEWAY_URL="${GATEWAY_URL%/}"
+
+# ── 4c. Base path ───────────────────────────────────────────────────────────
+echo ""
+DEFAULT_BASE_PATH="${PUBLISH_BASE_PATH:-/}"
+echo -e "${YELLOW}Tip:${NC} Path this site will be mounted under behind nginx in production"
+echo -e "     (e.g. /blog). Leave as / to serve it at the domain root."
+echo -e "     Independent from the CMS's own website rootPath."
+echo ""
+read -r -p "Base path [${DEFAULT_BASE_PATH}]: " BASE_PATH
+BASE_PATH="${BASE_PATH:-$DEFAULT_BASE_PATH}"
+
 # ── 4. Target framework ────────────────────────────────────────────────────
 echo ""
 echo "Select target framework:"
@@ -117,6 +138,8 @@ echo -e "  ${BOLD}CMS API URL:${NC}     $API_URL"
 echo -e "  ${BOLD}Website ID:${NC}      $WEBSITE_ID"
 echo -e "  ${BOLD}Domain:${NC}          ${DOMAIN:-(CMS hostname)}"
 echo -e "  ${BOLD}Asset Base URL:${NC}  $ASSET_URL"
+echo -e "  ${BOLD}Gateway URL:${NC}     $GATEWAY_URL"
+echo -e "  ${BOLD}Base path:${NC}       $BASE_PATH"
 echo -e "  ${BOLD}Framework:${NC}       $FRAMEWORK"
 echo -e "  ${BOLD}Output dir:${NC}      $CHOOSEN_OUT_DIR"
 echo -e "  ${BOLD}ISR revalidate:${NC}  ${REVALIDATE}s"
@@ -145,6 +168,16 @@ if [ -n "$ASSET_URL" ]; then
   ASSET_ARG="--asset-base-url $ASSET_URL"
 fi
 
+GATEWAY_ARG=""
+if [ -n "$GATEWAY_URL" ]; then
+  GATEWAY_ARG="--gateway-url $GATEWAY_URL"
+fi
+
+BASE_PATH_ARG=""
+if [ -n "$BASE_PATH" ]; then
+  BASE_PATH_ARG="--base-path $BASE_PATH"
+fi
+
 # Build the publish package and SDK first, then run
 pnpm run --filter @whoobe-cms/publish build
 if [ "$FRAMEWORK" = "vue" ]; then
@@ -157,7 +190,9 @@ node packages/publish/bin/whoobe-publish.js \
   --framework "$FRAMEWORK" \
   --revalidate "$REVALIDATE" \
   $DOMAIN_ARG \
-  $ASSET_ARG
+  $ASSET_ARG \
+  $GATEWAY_ARG \
+  $BASE_PATH_ARG
 
 # ── Done ────────────────────────────────────────────────────────────────────
 echo ""

@@ -123,7 +123,7 @@ export const WhoobePage = defineComponent({
 })
 
 /** Convenience: build an ApiClient from a base URL and pass it as `api`. */
-export function createWhoobeApi(baseUrl: string): WhoobeApi {
-  const client = new ApiClient(baseUrl)
+export function createWhoobeApi(baseUrl: string, gatewayUrl?: string): WhoobeApi {
+  const client = new ApiClient(baseUrl, undefined, gatewayUrl)
   return client as WhoobeApi
 }

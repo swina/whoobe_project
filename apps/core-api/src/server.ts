@@ -209,6 +209,7 @@ import {
   getAssetById,
   getAssetByPath,
   listAssetsUnderFolder,
+  resolveContentCdnMirrors,
   type PushProviderName,
   type AuthenticatedRequest,
   type SearchOptions,
@@ -2606,7 +2607,11 @@ const snippetIds = new Set<string>();
       }
     }
 
-    res.json(layout ? { page, params, layout } : { page, params });
+    const cdnMirrors = await resolveContentCdnMirrors(page.content);
+    const body: Record<string, unknown> = { page, params };
+    if (layout) body.layout = layout;
+    if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;
+    res.json(body);
   } catch (error: any) {
     logger.error({ err: error }, 'Public page lookup error');
     res.status(500).json({ error: error.message || 'Failed to look up page' });
@@ -2768,7 +2773,11 @@ const snippetIds = new Set<string>();
       }
     }
 
-    res.json(layout ? { page, params, layout } : { page, params });
+    const cdnMirrors = await resolveContentCdnMirrors(page.content);
+    const body: Record<string, unknown> = { page, params };
+    if (layout) body.layout = layout;
+    if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;
+    res.json(body);
   } catch (error: any) {
     logger.error({ err: error }, 'Public page lookup error (no-locale)');
     res.status(500).json({ error: error.message || 'Failed to look up page' });
@@ -2958,6 +2967,35 @@ app.get('/public/assets/:uuid', async (req: Request, res: Response): Promise<voi
   } catch (error: any) {
     logger.error({ err: error }, 'Public asset lookup error');
     res.status(500).json({ error: error.message || 'Failed to resolve asset' });
+  }
+});
+
+// GET /public/dam/assets/mirror-status?paths=/uploads/a.jpg,<uuid>,...
+// Reports whether each given DAM reference (pimcore path or asset UUID)
+// already has a CDN mirror, and its asset id — used by the publish CDN-sync
+// tooling (packages/publish's sync-cdn-assets) to know which referenced
+// assets still need POST /api/v1/dam/assets/:id/mirror-cdn, without needing
+// its own DB access or exposing anything not already public once mirrored.
+const MIRROR_STATUS_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+app.get('/public/dam/assets/mirror-status', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const raw = typeof req.query.paths === 'string' ? req.query.paths : '';
+    const refs = raw.split(',').map((r) => r.trim()).filter(Boolean);
+    const status: Record<string, { mirrored: boolean; assetId: string | null }> = {};
+    await Promise.all(
+      refs.map(async (ref) => {
+        try {
+          const asset = MIRROR_STATUS_UUID_RE.test(ref) ? await getAssetById(ref) : await getAssetByPath(ref);
+          status[ref] = { mirrored: !!asset && Object.keys(asset.cdnMirrors ?? {}).length > 0, assetId: asset?.id ?? null };
+        } catch {
+          status[ref] = { mirrored: false, assetId: null };
+        }
+      }),
+    );
+    res.json({ status });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Mirror status lookup error');
+    res.status(500).json({ error: error.message || 'Failed to resolve mirror status' });
   }
 });
 

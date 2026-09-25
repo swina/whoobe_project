@@ -2,9 +2,37 @@
 // renders with an empty registry. Consumers override any kind via the
 // registry to map it to their own design-system component.
 
-import { defineComponent, h, inject, ref, computed, shallowRef, onMounted, onUnmounted, type PropType, type VNode } from 'vue'
+import { defineComponent, h, inject, ref, computed, onMounted, onUnmounted, type PropType, type VNode } from 'vue'
+import { icons as lucideIcons } from '@lucide/vue'
 import type { RenderDescriptor } from '@whoobe-cms/renderer'
 import { WHOOBE_KEY, type NodeComponent, type WhoobeApi } from './types.js'
+
+// Resolves a Lucide icon by name synchronously (mirrors
+// apps/whoobe-one-spike/src/helpers.ts's resolveLucideIcon, which is async
+// - fine there since that app is a pure client SPA, never SSR/static-
+// exported). A published site's icon/buttonIcon elements render server-side
+// (SSR) or at build time (static export), where a client-only hook
+// (onMounted/watch) never fires - loading the icon lazily there meant the
+// server-rendered/static HTML permanently showed the fallback (the icon's
+// raw name as text) instead of the SVG. `@lucide/vue`'s `icons` export is
+// already the full set (same one the async path eventually loaded), so
+// importing it at module scope costs nothing at runtime beyond what the
+// async version already paid for - just synchronously, so SSR output is
+// correct on the very first render.
+function toPascalCase(input: string): string {
+  return input
+    .trim()
+    .split(/[^a-zA-Z0-9]+|(?<=[a-z])(?=[A-Z])/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+    .join('')
+}
+
+function resolveLucideIcon(name: string | null | undefined) {
+  const icons = lucideIcons as Record<string, ReturnType<typeof defineComponent>>
+  const key = toPascalCase(name ?? '')
+  return icons[key] ?? icons.HelpCircle
+}
 
 const descriptorProp = { descriptor: { type: Object as PropType<RenderDescriptor>, required: true } }
 const childrenProp = { children: { type: Array as PropType<VNode[]>, default: () => [] } }
@@ -61,34 +89,10 @@ export const DefaultIcon: NodeComponent = defineComponent({
   name: 'WhoobeIcon',
   props: { ...descriptorProp },
   setup(props) {
-    const iconComponent = shallowRef<ReturnType<typeof defineComponent> | null>(null)
-
-    function kebabToPascal(name: string): string {
-      return name.split(/[-_]/).map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join('')
-    }
-
-    function loadIcon(name: string) {
-      import('@lucide/vue').then(mod => {
-        const comp = (mod as Record<string, ReturnType<typeof defineComponent>>)[kebabToPascal(name)]
-        if (comp) iconComponent.value = comp
-      }).catch(() => {
-        /* keep fallback */
-      })
-    }
-
-    onMounted(() => {
-      const name = props.descriptor.content
-      if (name) loadIcon(name)
-    })
-
     return () => {
       const d = props.descriptor
       const p = elementProps(d)
-      if (iconComponent.value) {
-        return h(iconComponent.value, { ...p, size: 16 } as any)
-      }
-      if (d.content) p.innerHTML = d.content
-      return h(d.tag === 'lucideicon' ? 'span' : d.tag, p)
+      return h(resolveLucideIcon(d.content), { ...p, size: 16 } as any)
     }
   },
 })
@@ -175,11 +179,45 @@ export const DefaultRadioGroup: NodeComponent = defineComponent({
   },
 })
 
+/** Button/submit/reset content: an optional Lucide icon before/after the
+ *  label (FloatingToolbar.vue's "Button icon" picker - node.buttonIcon/
+ *  buttonIconPosition/buttonIconWidth/buttonIconHeight), matching the
+ *  editor's own markup (BlockElementPreview.vue) so a published button
+ *  looks the same as its editor preview. */
+function buttonChildren(d: RenderDescriptor): (VNode | string)[] {
+  const node = d.node as Record<string, unknown> | undefined
+  const iconName = (node?.buttonIcon as string) ?? ''
+  const position = (node?.buttonIconPosition as string) ?? 'before'
+  const iconStyle = {
+    width: ((node?.buttonIconWidth as number) ?? 16) + 'px',
+    height: ((node?.buttonIconHeight as number) ?? 16) + 'px',
+  }
+  const icon = iconName
+    ? h('span', { class: `inline-flex items-center ${position === 'after' ? 'ml-1.5' : 'mr-1.5'}` }, [
+        h(resolveLucideIcon(iconName), { style: iconStyle } as any),
+      ])
+    : null
+  const label = d.content || undefined
+  return [
+    position !== 'after' ? icon : null,
+    label,
+    position === 'after' ? icon : null,
+  ].filter((v): v is VNode | string => v != null)
+}
+
+function buttonOrLink(d: RenderDescriptor, type: 'button' | 'submit' | 'reset', defaultLabel: string): VNode {
+  const attrs = fieldAttrs(d)
+  const children = buttonChildren(d)
+  const content = children.length ? children : [defaultLabel]
+  if (d.link) return h('a', { href: d.link.href, target: d.link.target, ...attrs }, content)
+  return h('button', { ...attrs, type }, content)
+}
+
 export const DefaultButton: NodeComponent = defineComponent({
   name: 'WhoobeButton',
   props: fieldProps,
   setup(props) {
-    return () => h('button', { ...fieldAttrs(props.descriptor), type: 'button' }, props.descriptor.content)
+    return () => buttonOrLink(props.descriptor, 'button', '')
   },
 })
 
@@ -187,7 +225,7 @@ export const DefaultSubmit: NodeComponent = defineComponent({
   name: 'WhoobeSubmit',
   props: fieldProps,
   setup(props) {
-    return () => h('button', { ...fieldAttrs(props.descriptor), type: 'submit' }, props.descriptor.content || 'Submit')
+    return () => buttonOrLink(props.descriptor, 'submit', 'Submit')
   },
 })
 
@@ -195,7 +233,7 @@ export const DefaultReset: NodeComponent = defineComponent({
   name: 'WhoobeReset',
   props: fieldProps,
   setup(props) {
-    return () => h('button', { ...fieldAttrs(props.descriptor), type: 'reset' }, props.descriptor.content || 'Reset')
+    return () => buttonOrLink(props.descriptor, 'reset', 'Reset')
   },
 })
 
