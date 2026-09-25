@@ -39,4 +39,21 @@ describe('composeLayout', () => {
     expect(composed.header).toBeNull()
     expect(composed.footer).toBeNull()
   })
+
+  it('resolves the body slot into bodyWrap even though it has no content pages', async () => {
+    const body = await walkTree({ id: 'b', type: 'container', tag: 'document', element: 'div' }, {}, options)
+    const composed = await composeLayout(body, {
+      template: { id: 't', name: 'X' },
+      body: { className: 'bg-black text-white', style: 'min-height: 100vh', pages: [] },
+    }, options)
+    expect(composed.bodyWrap).not.toBeNull()
+    expect(composed.bodyWrap?.className).toBe('bg-black text-white')
+    expect(composed.bodyWrap?.style).toBe('min-height: 100vh')
+  })
+
+  it('leaves bodyWrap null when no body slot is configured', async () => {
+    const body = await walkTree({ id: 'b', type: 'container', tag: 'document', element: 'div' }, {}, options)
+    const composed = await composeLayout(body, { template: { id: 't', name: 'X' } }, options)
+    expect(composed.bodyWrap).toBeNull()
+  })
 })

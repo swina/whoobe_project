@@ -44,6 +44,7 @@ export async function getPageData(
     keyPrefix: options.keyPrefix,
     resolveTargetPage: options.resolveTargetPage,
     resolveAssetUuid: options.resolveAssetUuid,
+    rootPath: options.rootPath,
     cdnMirrors,
   }
   const descriptor = await walkTree(page.content, { urlParams: params }, walkOptions)

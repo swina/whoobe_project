@@ -153,7 +153,7 @@ import type { DataObjectRecord } from '../data-objects-api'
 import { editorBus } from '../bus'
 import { applyTransform, escapeHtml } from '../scripts/field-transforms'
 import { Copy } from '@lucide/vue'
-import { customAttrs, renderSelectOptionsHtml, renderRadioGroupHtml, resolveLucideIcon } from '../helpers'
+import { customAttrs, renderSelectOptionsHtml, renderRadioGroupHtml, resolveLucideIcon, stripBlockLevelTags, PHRASING_ONLY_ELEMENTS } from '../helpers'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -422,7 +422,14 @@ function copyCode(e: MouseEvent) {
 // happened in this DOM node; only `blur` itself does.
 function onBlur(e: FocusEvent) {
   const target = e.target as HTMLElement
-  const text = target.innerHTML.replace(/style="[^"]*"/gm, '')
+  let text = target.innerHTML.replace(/style="[^"]*"/gm, '')
+  // A native paste into contenteditable doesn't enforce the real HTML
+  // content model - a pasted <div> lands fine in a <p>/<h1>/<span> here,
+  // then silently breaks once actually parsed (published site SSR/static
+  // output) - see stripBlockLevelTags()'s own comment.
+  if (PHRASING_ONLY_ELEMENTS.has(props.element.element ?? '')) {
+    text = stripBlockLevelTags(text)
+  }
   props.element.content = text
 }
 

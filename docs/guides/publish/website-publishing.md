@@ -367,6 +367,10 @@ Almost always a missing/unreachable `--gateway-url`. Check the deployed site's e
 
 `cdnMirrors` is only populated for a reference once it's actually been mirrored (Step 1b) - check `GET /public/dam/assets/mirror-status?paths=<the DAM path>` against the CMS API directly to confirm. A ref with no mirror correctly falls back to the DAM proxy - that's not a bug.
 
+### Internal links/nav 404, or a whole locale's pages are missing from a static export
+
+Regenerate the site (Step 1) - `whoobe-publish` now strips the website's CMS-internal `rootPath` (e.g. `/aura-network`) from every stored link before baking it into the site, and renders a locale's home page directly instead of redirecting when it's authored at slug `/{locale}` rather than `/`. Both bugs compound: an unstripped link pointing outside the site's own routes means the static crawler (`nitro.prerender.crawlLinks`) never finds - and therefore never generates - whatever page it pointed to, even if that page exists and is published. If a link still doesn't work after regenerating, check whether it's set on a container/icon/image (not just a text link or button) - `@whoobe-cms/vue`'s default components only wrap a node in a clickable `<a>` when its own `descriptor.link` is set; a link inherited from something other than the node's own `link`/`dynamicLink` field won't render.
+
 ### `pnpm install`/`docker build` fails with `ERR_PNPM_FETCH_404` on a `@whoobe-cms/*` package
 
 `pnpm pack` didn't run, or `vendor/*.tgz` is missing/incomplete - re-run `whoobe-publish` (Step 1), which packs the SDK dependencies fresh every time. If `vendor/` has the tarballs but this still happens, check `package.json`'s `pnpm.overrides` block actually lists them (it should, generated automatically) - a nested dependency like `@whoobe-cms/renderer` needs that override to resolve locally instead of trying the public npm registry (where it doesn't exist).

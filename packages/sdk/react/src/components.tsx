@@ -4,7 +4,7 @@
 
 import { ApiClient, walkTree, composeLayout, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
 import { WhoobeProvider, useWhoobe } from './context.js'
-import { defaults } from './defaults.js'
+import { defaults, cssToReactStyle } from './defaults.js'
 import { usePage } from './hooks.js'
 import type { WhoobeApi } from './types.js'
 import type { ReactNode } from 'react'
@@ -38,8 +38,16 @@ export function WhoobePage({ locale, path, websiteId, descriptor: initial, layou
   if (!resolvedLayout) return <WhoobeNode descriptor={data} />
 
   const region = (d: RenderDescriptor | null): ReactNode => (d ? <WhoobeNode descriptor={d} /> : null)
+  // The template's body-wrapper slot (className/style/alpine on the
+  // outermost container, configured under Website Template > body) -
+  // merged onto this div itself, same as the fixed 'whoobe-page' class.
+  // composeLayout() previously never populated bodyWrap at all, so this
+  // was dead regardless - found live (a template's body wrapper class
+  // never reached any published page).
+  const bodyWrap = resolvedLayout.bodyWrap
+  const wrapClassName = ['whoobe-page', bodyWrap?.className].filter(Boolean).join(' ')
   return (
-    <div className="whoobe-page">
+    <div className={wrapClassName} style={bodyWrap?.style ? cssToReactStyle(bodyWrap.style) : undefined} {...(bodyWrap?.attributes as Record<string, unknown> | undefined)}>
       {region(resolvedLayout.header)}
       {region(resolvedLayout.aside)}
       <main className="whoobe-page-body">
