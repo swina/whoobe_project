@@ -51,6 +51,6 @@ export function WhoobePage({ locale, path, websiteId, descriptor: initial, layou
 }
 
 /** Convenience: build an ApiClient from a base URL and use it as `api`. */
-export function createWhoobeApi(baseUrl: string): WhoobeApi {
-  return new ApiClient(baseUrl) as unknown as WhoobeApi
+export function createWhoobeApi(baseUrl: string, gatewayUrl?: string): WhoobeApi {
+  return new ApiClient(baseUrl, undefined, gatewayUrl) as unknown as WhoobeApi
 }

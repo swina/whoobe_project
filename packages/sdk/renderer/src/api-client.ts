@@ -40,6 +40,10 @@ export interface PublicPageLookup {
   /** Website-template composition (website-templates.md) - present only when
    *  the website has a template for this path. */
   layout?: PublicLayout | null
+  /** ref -> CDN mirror URL for this page's image references that have one
+   *  (docs/plans/assets/assets-cdn.md) - pass through to walkTree()'s
+   *  RenderOptions.cdnMirrors so resolveImageUrl() prefers it. */
+  cdnMirrors?: Record<string, string>
 }
 
 export interface SearchParams {

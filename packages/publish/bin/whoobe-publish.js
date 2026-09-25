@@ -14,6 +14,8 @@ program
   .option('--revalidate <seconds>', 'ISR revalidate time in seconds', '60')
   .option('--domain <domain>', 'Custom domain for the published site')
   .option('--asset-base-url <url>', 'Public base URL for DAM assets (e.g. https://media.example.com). Defaults to the API URL host.')
+  .option('--gateway-url <url>', 'Base URL of the API Gateway (e.g. https://cms.example.com:3001), needed for Gateway-backed forms/bindings (Brevo, etc.) to work from the published site. Defaults to none (Gateway calls fall back to localhost).')
+  .option('--base-path <path>', 'Path this site is mounted under behind nginx in production (e.g. /blog). Independent from the CMS\'s own website rootPath. Defaults to / (domain root).', '/')
 
 program.parse()
 
@@ -27,6 +29,8 @@ generator({
   revalidate: parseInt(opts.revalidate, 10),
   domain: opts.domain,
   assetBaseUrl: opts.assetBaseUrl,
+  gatewayUrl: opts.gatewayUrl,
+  basePath: opts.basePath,
 }).catch((err) => {
   console.error('Publish failed:', err instanceof Error ? err.message : err)
   process.exit(1)

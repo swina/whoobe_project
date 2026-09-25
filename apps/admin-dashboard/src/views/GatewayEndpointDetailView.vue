@@ -42,7 +42,10 @@
             <td class="px-4 py-3">
               <span class="px-2 py-0.5 rounded text-xs font-mono font-bold" :class="methodBadgeClass(route.method)">{{ route.method }}</span>
             </td>
-            <td class="px-4 py-3 text-slate-200 light:text-slate-800 font-mono">{{ route.path }}</td>
+            <td class="px-4 py-3 text-slate-200 light:text-slate-800 font-mono">
+              {{ route.path }}
+              <div class="text-slate-500 font-mono mt-0.5">id: <button @click="copyId(route.id)" class="text-indigo-400 hover:text-indigo-300 cursor-pointer" :title="'Click to copy'">{{ route.id.slice(0, 8) }}…</button></div>
+            </td>
             <td class="px-4 py-3 text-slate-400 light:text-slate-600">{{ route.description || '—' }}</td>
             <td class="px-4 py-3">
               <span v-if="route.responseSchemaId" class="text-emerald-400">Inferred</span>
@@ -157,6 +160,24 @@ function authBadgeClass(type: string): string {
     'basic': 'bg-blue-950/60 text-blue-300 border border-blue-800',
   }
   return map[type] || 'bg-slate-800 text-slate-400 border border-slate-700'
+}
+
+function copyId(id: string) {
+  try {
+    navigator.clipboard.writeText(id).then(() => {
+      // success
+    })
+  } catch {
+    // Fallback for older browsers or non-HTTPS
+    const textarea = document.createElement('textarea')
+    textarea.value = id
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+  }
 }
 
 function methodBadgeClass(method: string): string {

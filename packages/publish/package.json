@@ -13,7 +13,8 @@
     }
   },
   "bin": {
-    "whoobe-publish": "./bin/whoobe-publish.js"
+    "whoobe-publish": "./bin/whoobe-publish.js",
+    "whoobe-sync-cdn": "./bin/whoobe-sync-cdn.js"
   },
   "scripts": {
     "build": "tsc",

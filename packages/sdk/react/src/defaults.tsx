@@ -4,9 +4,36 @@
 // registry to map it to their own design-system component.
 
 import { useState, useEffect, useRef, useCallback, createElement, type FormEvent, type ReactNode } from 'react'
+import * as LucideIcons from 'lucide-react'
 import type { RenderDescriptor } from '@whoobe-cms/renderer'
 import { useWhoobe } from './context.js'
 import type { NodeComponent } from './types.js'
+
+// Resolves a Lucide icon by name synchronously (mirrors
+// apps/whoobe-one-spike/src/helpers.ts's resolveLucideIcon, which is async
+// - fine there since that app is a pure client SPA, never SSR/static-
+// exported). A published site's icon/buttonIcon elements render server-side
+// (SSR) or at build time (static export) - "use client" above only affects
+// the RSC bundling boundary, Next still SSRs a client component's initial
+// HTML - so a useEffect-gated dynamic import (the previous approach here)
+// never fires before that HTML is produced, permanently showing the
+// fallback (the icon's raw name as text) instead of the SVG. lucide-react's
+// module already is the full icon set regardless; importing it at module
+// scope costs nothing beyond what the async version already paid for -
+// just synchronously, so SSR output is correct on the very first render.
+function toPascalCase(input: string): string {
+  return input
+    .trim()
+    .split(/[^a-zA-Z0-9]+|(?<=[a-z])(?=[A-Z])/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+    .join('')
+}
+
+function resolveLucideIcon(name: string | null | undefined): any {
+  const key = toPascalCase(name ?? '')
+  return (LucideIcons as any)[key] ?? (LucideIcons as any).HelpCircle
+}
 
 function cssToReactStyle(css: string): Record<string, string> {
   const obj: Record<string, string> = {}
@@ -135,75 +162,12 @@ export const DefaultSpan = makeTextComponent('WhoobeSpan')
 export const DefaultBlockquote = makeTextComponent('WhoobeBlockquote')
 export const DefaultCode = makeTextComponent('WhoobeCode')
 
-/** Lucide icon — dynamically imports lucide-react and renders the icon by name. */
+/** Lucide icon — resolved synchronously (see resolveLucideIcon above). */
 export const DefaultIcon: NodeComponent = ({ descriptor }) => {
-  const iconCache = useIconCache()
-  const iconName = descriptor.content || 'HelpCircle'
-  const IconComp = iconCache[iconName]
+  const IconComp = resolveLucideIcon(descriptor.content)
   const Tag = descriptor.tag as any
   const bp = baseProps(descriptor)
-
-  if (IconComp) {
-    return <Tag {...bp}>{withLink(descriptor, createElement(IconComp as any))}</Tag>
-  }
-
-  return <LucideIconLoader name={iconName} tag={Tag} attributes={bp} />
-}
-
-function LucideIconLoader({ name, tag: Tag, attributes }: {
-  name: string; tag: string; attributes: Record<string, unknown>
-}) {
-  const IconComp = useLucideIcon(name)
-  if (IconComp) {
-    return createElement(Tag as any, attributes, createElement(IconComp as any))
-  }
-  return createElement(Tag as any, attributes, name)
-}
-
-let lucideModule: any = null
-let lucidePromise: Promise<any> | null = null
-const iconCacheLocal: Record<string, any> = {}
-
-function useIconCache() {
-  useEffect(() => { loadLucide() }, [])
-  return iconCacheLocal
-}
-
-function useLucideIcon(name: string): any {
-  const [Icon, setIcon] = useState<any>(null)
-  useEffect(() => {
-    loadLucide().then(() => {
-      const comp = resolveIconSync(name)
-      if (comp) setIcon(() => comp)
-    })
-  }, [name])
-  return Icon
-}
-
-async function loadLucide(): Promise<void> {
-  if (lucideModule) return
-  if (lucidePromise) return lucidePromise
-  try {
-    lucidePromise = import('lucide-react')
-    lucideModule = await lucidePromise
-    for (const [key, val] of Object.entries(lucideModule)) {
-      if (typeof val === 'function' || typeof val === 'object') {
-        iconCacheLocal[key] = val
-      }
-    }
-  } catch { lucideModule = {} }
-  lucidePromise = null
-}
-
-function resolveIconSync(name: string): any {
-  if (!lucideModule) return null
-  const pascal = name
-    .trim()
-    .split(/[^a-zA-Z0-9]+|(?<=[a-z])(?=[A-Z])/)
-    .filter(Boolean)
-    .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
-    .join('')
-  return lucideModule[pascal] ?? null
+  return <Tag {...bp}>{withLink(descriptor, createElement(IconComp as any))}</Tag>
 }
 
 /** Image: resolved src/alt (DAM references already resolved by the renderer). */
@@ -256,19 +220,24 @@ export const DefaultRadioGroup: NodeComponent = ({ descriptor }) => {
   )
 }
 
-/** Button with optional Lucide icon + link support. */
+/** Button with optional Lucide icon (before/after the label, matching the
+ *  editor's own markup - BlockElementPreview.vue's buttonIcon/
+ *  buttonIconPosition/buttonIconWidth/buttonIconHeight) + link support. */
 function buttonWithIcon(descriptor: RenderDescriptor, type: 'button' | 'submit' | 'reset', defaultContent: string): ReactNode {
   const node = descriptor.node as Record<string, unknown> | undefined
   const buttonIcon = (node?.buttonIcon as string) ?? ''
+  const position = (node?.buttonIconPosition as string) ?? 'before'
   const iconWidth = (node?.buttonIconWidth as number) ?? 16
   const iconHeight = (node?.buttonIconHeight as number) ?? 16
   const bp = fieldProps(descriptor) as Record<string, unknown>
   const content = descriptor.content || defaultContent
+  const icon = buttonIcon ? <ButtonIcon name={buttonIcon} width={iconWidth} height={iconHeight} position={position} /> : null
 
   const inner = (
     <>
-      <ButtonIcon name={buttonIcon} width={iconWidth} height={iconHeight} />
+      {position !== 'after' ? icon : null}
       {content}
+      {position === 'after' ? icon : null}
     </>
   )
 
@@ -278,10 +247,13 @@ function buttonWithIcon(descriptor: RenderDescriptor, type: 'button' | 'submit' 
   return <button {...bp} type={type}>{inner}</button>
 }
 
-function ButtonIcon({ name, width, height }: { name: string; width: number; height: number }) {
-  const IconComp = useLucideIcon(name)
-  if (!name || !IconComp) return null
-  return <IconComp style={{ width, height, display: 'inline-block', verticalAlign: 'middle', marginRight: 4 }} />
+function ButtonIcon({ name, width, height, position }: { name: string; width: number; height: number; position: string }) {
+  const IconComp = resolveLucideIcon(name)
+  return (
+    <span className={`inline-flex items-center ${position === 'after' ? 'ml-1.5' : 'mr-1.5'}`}>
+      <IconComp style={{ width, height }} />
+    </span>
+  )
 }
 
 export const DefaultButton: NodeComponent = ({ descriptor }) => buttonWithIcon(descriptor, 'button', '') as React.ReactElement

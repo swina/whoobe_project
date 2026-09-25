@@ -1,7 +1,11 @@
-import { formatS3ObjectKey } from '../dam/storage.js';
-import { getAssetById, getAssetByPath } from '../db/asset-records.js';
 import { reencodeImage } from '../dam/image-reencode.js';
-import type { CdnMirrorRecord } from '../dam/cdn-mirror.js';
+import {
+  looksLikeDamReference,
+  collectImageRefs,
+  resolveImageRef,
+} from '../dam/resolve-content-image-refs.js';
+
+export { looksLikeDamReference };
 
 // Email images and the DAM (docs/plans/forms/mail-templates.md): the
 // editor stores a *stable reference*, never a resolved URL, when an admin
@@ -22,62 +26,11 @@ import type { CdnMirrorRecord } from '../dam/cdn-mirror.js';
 //     install itself has a genuinely public origin.
 //  3. A base64-embedded, re-encoded copy (resolveMailImageDataUris() only)
 //     - the fallback of last resort for a reference with neither of the above.
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-/** True when a string is a DAM reference (raw Pimcore path or asset UUID)
- *  rather than an already-resolved http(s)/data: URL. */
-export function looksLikeDamReference(value: string): boolean {
-  return (value.startsWith('/') && !value.startsWith('//')) || UUID_RE.test(value)
-}
-
-function damPathToProxyUrl(pimcorePath: string): string {
-  const publicBaseUrl = (process.env.S3_PUBLIC_BASE_URL ?? '').replace(/\/+$/, '')
-  if (!publicBaseUrl) return ''
-  const keyPrefix = process.env.S3_KEY_PREFIX ?? ''
-  return `${publicBaseUrl}/${formatS3ObjectKey(pimcorePath, keyPrefix)}`
-}
-
-/** Picks a mirror to use when an asset has more than one provider mirrored
- *  - no per-provider preference exists yet (realistically only one
- *  provider is configured at a time today), so this just takes whichever
- *  entry comes first. Revisit once a second provider is actually in use. */
-function pickCdnMirrorUrl(mirrors: Record<string, CdnMirrorRecord> | null | undefined): string | null {
-  if (!mirrors) return null
-  const first = Object.values(mirrors)[0]
-  return first?.url ?? null
-}
-
-interface ResolvedImageRef {
-  url: string
-  /** True when `url` is already a CDN mirror - callers that would
-   *  otherwise base64-embed the image can skip that entirely, since a
-   *  mirror URL is already stable and publicly reachable on its own. */
-  isCdnMirror: boolean
-}
-
-async function resolveImageRef(ref: string): Promise<ResolvedImageRef | null> {
-  const record = UUID_RE.test(ref) ? await getAssetById(ref) : await getAssetByPath(ref)
-  const cdnUrl = pickCdnMirrorUrl(record?.cdnMirrors)
-  if (cdnUrl) return { url: cdnUrl, isCdnMirror: true }
-
-  const path = UUID_RE.test(ref) ? record?.pimcorePath ?? null : ref
-  if (!path) return null
-  const url = damPathToProxyUrl(path)
-  return url ? { url, isCdnMirror: false } : null
-}
-
-function collectImageRefs(content: unknown): Set<string> {
-  const refs = new Set<string>()
-  const walk = (node: any): void => {
-    if (!node || typeof node !== 'object') return
-    const url = node.image?.url
-    if (typeof url === 'string' && looksLikeDamReference(url)) refs.add(url)
-    if (Array.isArray(node.blocks)) node.blocks.forEach(walk)
-  }
-  walk(content)
-  return refs
-}
+//
+// The reference walk/lookup itself (looksLikeDamReference, collectImageRefs,
+// resolveImageRef) lives in ../dam/resolve-content-image-refs.js - shared
+// with the public page-serving endpoints (apps/core-api/src/server.ts) so a
+// published site's images can prefer a CDN mirror too, not just email.
 
 /** Walks an Element tree and resolves every DAM image reference to a stable
  *  public URL - a CDN mirror when the asset has one, otherwise the DAM's

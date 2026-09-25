@@ -23,9 +23,15 @@ export function objectKeyForPath(pimcorePath: string, keyPrefix = ''): string {
 }
 
 /** Resolves an image reference to a renderable URL. Returns null when
- *  unresolvable (missing asset base, UUID reference, non-string). */
-export function resolveImageUrl(ref: unknown, assetBaseUrl?: string, keyPrefix?: string): string | null {
+ *  unresolvable (missing asset base, UUID reference, non-string).
+ *  `cdnMirrors` (ref -> CDN URL, from the public page-serving API's own
+ *  response) is checked first when given - a mirrored asset always wins
+ *  over the DAM proxy URL, same priority as resolveMailImageUrls()
+ *  (packages/core/src/dam/resolve-content-image-refs.ts) applies server-side
+ *  for email. */
+export function resolveImageUrl(ref: unknown, assetBaseUrl?: string, keyPrefix?: string, cdnMirrors?: Record<string, string>): string | null {
   if (typeof ref !== 'string' || !ref) return null
+  if (cdnMirrors?.[ref]) return cdnMirrors[ref]
   if (/^https?:\/\//i.test(ref) || /^data:/i.test(ref)) return ref
   if (!looksLikeDamReference(ref)) return null
   // Asset UUIDs have no public lookup endpoint - document as unresolvable.

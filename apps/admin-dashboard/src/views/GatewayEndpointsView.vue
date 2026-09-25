@@ -122,6 +122,7 @@
                 <div class="flex items-center gap-3 min-w-0">
                   <span :class="['px-2 py-0.5 rounded text-xs font-mono font-bold shrink-0', methodBadgeClass(route.method)]">{{ route.method }}</span>
                   <span class="text-xs font-mono text-slate-200 light:text-slate-800 truncate">{{ route.path }}</span>
+                  <button @click="copyId(route.id)" class="text-xs font-mono text-slate-600 hover:text-indigo-400 transition shrink-0" :title="'Click to copy id: ' + route.id">id: {{ route.id.slice(0, 8) }}…</button>
                   <span v-if="route.description" class="text-xs text-slate-500 truncate hidden sm:inline">{{ route.description }}</span>
                   <span v-if="route.responseSchemaId" class="text-xs text-emerald-500 shrink-0">schema</span>
                   <span v-else class="text-xs text-slate-600 shrink-0">no schema</span>
@@ -692,6 +693,24 @@ function authBadgeClass(type: string): string {
     'oauth2': 'bg-emerald-950/60 text-emerald-300 border border-emerald-800',
   }
   return map[type] || 'bg-slate-800 text-slate-400 border border-slate-700'
+}
+
+function copyId(id: string) {
+  try {
+    navigator.clipboard.writeText(id).then(() => {
+      // success
+    })
+  } catch {
+    // Fallback for older browsers or non-HTTPS
+    const textarea = document.createElement('textarea')
+    textarea.value = id
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+  }
 }
 
 function methodBadgeClass(method: string): string {

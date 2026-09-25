@@ -8,6 +8,10 @@ import type { RenderDescriptor, PublicLayout } from '@whoobe-cms/renderer'
 export interface WhoobeAdapterOptions {
   assetBaseUrl?: string
   keyPrefix?: string
+  /** Base URL of the API Gateway - needed for Gateway-backed forms and data
+   *  bindings to work from a published site (falls back to localhost:3001
+   *  otherwise, only reachable when the site runs on the CMS's own host). */
+  gatewayUrl?: string
   resolveTargetPage?: (id: string) => Promise<{ slug: string; locale: string } | null>
 }
 

@@ -36,6 +36,10 @@ export interface RenderOptions {
   assetBaseUrl?: string
   /** S3 key prefix applied to DAM path references. */
   keyPrefix?: string
+  /** ref -> CDN mirror URL, from the public page-serving API's own response
+   *  (apps/core-api/src/server.ts's `cdnMirrors` field) - takes priority
+   *  over assetBaseUrl when a reference has one. */
+  cdnMirrors?: Record<string, string>
   /** Resolves a dynamicLink's target page by id to its slug pattern +
    *  locale; when absent, dynamic links resolve to '#'. */
   resolveTargetPage?: (id: string) => Promise<{ slug: string; locale: string } | null>
@@ -99,9 +103,9 @@ async function resolveNodeImage(
   let alt: string | undefined
   if (node.dataBinding?.field) {
     const value = await resolveFieldValue(node.dataBinding, scope)
-    if (typeof value === 'string') url = resolveImageUrl(value, options.assetBaseUrl, options.keyPrefix)
+    if (typeof value === 'string') url = resolveImageUrl(value, options.assetBaseUrl, options.keyPrefix, options.cdnMirrors)
   } else if (node.image?.url) {
-    url = resolveImageUrl(node.image.url, options.assetBaseUrl, options.keyPrefix)
+    url = resolveImageUrl(node.image.url, options.assetBaseUrl, options.keyPrefix, options.cdnMirrors)
     // UUID references need the asset resolver callback
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     if (!url && UUID_RE.test(node.image.url) && options.resolveAssetUuid) {

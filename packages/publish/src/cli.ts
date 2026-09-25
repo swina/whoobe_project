@@ -1,6 +1,107 @@
-import { mkdir, writeFile } from 'node:fs/promises'
-import { join, relative } from 'node:path'
+import { mkdir, writeFile, readFile } from 'node:fs/promises'
+import { join, relative, resolve } from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { ApiClient } from '@whoobe-cms/renderer'
+
+export interface VendoredSdkPackage {
+  /** e.g. '@whoobe-cms/renderer'. */
+  name: string
+  /** Path to the packed .tgz, relative to outDir (e.g. 'vendor/whoobe-cms-renderer-0.1.0.tgz'). */
+  relPath: string
+}
+
+/** SDK packages (relative to packages/sdk/) a generated site depends on,
+ *  for each framework - includes every package in the internal dependency
+ *  chain (not just the one directly imported in generated app code), since
+ *  every one of them needs to be vendored + overridden for the site to
+ *  install without the monorepo present (see packSdkDependencies). */
+const SDK_PACKAGES_BY_FRAMEWORK: Record<'next' | 'vue', string[]> = {
+  next: ['schema', 'renderer', 'react', 'next'],
+  vue: ['schema', 'renderer', 'vue', 'nuxt'],
+}
+
+/** Packs the SDK packages a generated site depends on into real, portable
+ *  npm tarballs (`pnpm pack`) instead of leaving `file:../../packages/sdk/
+ *  ...` references into the monorepo. This is what actually makes a
+ *  generated site buildable/deployable on ANY host - not even the monorepo
+ *  itself is needed there, Docker included: `pnpm pack` rewrites each
+ *  package's own internal `workspace:*` dependencies (e.g. @whoobe-cms/
+ *  nuxt's own dependency on @whoobe-cms/renderer) to the real resolved
+ *  version number inside the tarball's package.json - verified live before
+ *  relying on it, not assumed. Without this, a generated site's
+ *  package.json could only ever be installed from inside a real pnpm
+ *  workspace containing these packages (this was this project's actual,
+ *  more complicated state for a while - see CHANGES.md - until this was
+ *  fixed in favor of the simpler, genuinely portable approach here).
+ *  Pairs with each generated package.json's `pnpm.overrides` block (see
+ *  scaffoldPackageJson/nuxtPackageJson) - without the override, a nested
+ *  requirement like "@whoobe-cms/renderer@0.1.0" would still try to
+ *  resolve from the public npm registry (where these packages don't
+ *  exist) rather than reuse the local tarball - also verified live. */
+async function packSdkDependencies(outDir: string, framework: 'next' | 'vue', monorepoRoot: string): Promise<VendoredSdkPackage[]> {
+  // Absolute: `pnpm pack --pack-destination` (run with cwd set to each SDK
+  // package's own directory, below) resolves a relative destination against
+  // THAT cwd, not the original process's - a relative outDir here silently
+  // wrote every tarball under packages/sdk/<pkg>/<outDir>/vendor instead of
+  // <outDir>/vendor (found live: the site's own vendor/ came out empty).
+  const vendorDir = resolve(join(outDir, 'vendor'))
+  await mkdir(vendorDir, { recursive: true })
+  const sdkDir = resolve(join(monorepoRoot, 'packages', 'sdk'))
+  const packages = SDK_PACKAGES_BY_FRAMEWORK[framework]
+  const result: VendoredSdkPackage[] = []
+  for (const pkg of packages) {
+    const pkgDir = join(sdkDir, pkg)
+    const output = execFileSync('pnpm', ['pack', '--pack-destination', vendorDir], { cwd: pkgDir, encoding: 'utf-8' })
+    const tarballPath = output.trim().split('\n').pop()!.trim()
+    const pkgJson = JSON.parse(await readFile(join(pkgDir, 'package.json'), 'utf-8')) as { name: string }
+    result.push({ name: pkgJson.name, relPath: `vendor/${tarballPath.split('/').pop()}` })
+  }
+  return result
+}
+
+/** Builds the `dependencies` entries + the `pnpm.overrides` block for a
+ *  generated site's package.json from its vendored SDK tarballs - every
+ *  vendored package is overridden (not just the ones a quick read of the
+ *  current dependency graph shows are needed) so this doesn't silently
+ *  break if that graph changes later. */
+function vendoredDependenciesAndOverrides(vendoredPackages: VendoredSdkPackage[]): {
+  dependencies: Record<string, string>
+  overrides: Record<string, string>
+} {
+  const dependencies: Record<string, string> = {}
+  const overrides: Record<string, string> = {}
+  for (const pkg of vendoredPackages) {
+    const ref = `file:./${pkg.relPath}`
+    dependencies[pkg.name] = ref
+    overrides[pkg.name] = ref
+  }
+  return { dependencies, overrides }
+}
+
+/** pnpm 10+ no longer reads `pnpm.overrides` from package.json at all - even
+ *  for a standalone (non-workspace) project - it must live in a
+ *  pnpm-workspace.yaml `overrides:` map instead (see
+ *  https://pnpm.io/settings#overrides). package.json's own `pnpm.overrides`
+ *  is kept too (scaffoldPackageJson/nuxtPackageJson) since the site's
+ *  Dockerfile pins pnpm 9 via corepack and older pnpm only reads it from
+ *  there; this file covers a user running a newer global `pnpm install`
+ *  directly on the generated site outside Docker. Found live: reproduced
+ *  ERR_PNPM_FETCH_404 on @whoobe-cms/schema with pnpm 11 in a copy of the
+ *  site outside the monorepo (no parent pnpm-workspace.yaml), even though
+ *  package.json's pnpm.overrides was present and correct. */
+function scaffoldPnpmWorkspaceYaml(overrides: Record<string, string>): string {
+  const lines = ['packages: []', '', 'overrides:']
+  for (const [name, ref] of Object.entries(overrides)) {
+    lines.push(`  '${name}': '${ref}'`)
+  }
+  // pnpm 10+ also refuses to run a dependency's install/postinstall scripts
+  // (e.g. esbuild's native-binary fetch) unless explicitly allowed, and
+  // `pnpm build` fails outright with ERR_PNPM_IGNORED_BUILDS rather than just
+  // warning - found live via the same standalone-site build. `esbuild` is
+  // the one every framework here (Next/Vite/Nuxt/Nitro) pulls in transitively.
+  lines.push('', 'allowBuilds:', '  esbuild: true')
+  return lines.join('\n') + '\n'
+}
 
 export interface GenerateOptions {
   apiUrl: string
@@ -10,6 +111,16 @@ export interface GenerateOptions {
   revalidate: number
   domain?: string
   assetBaseUrl?: string
+  /** Base URL of the API Gateway (e.g. Brevo form submissions) reachable
+   *  from the published site at runtime - without this, Gateway-backed
+   *  forms/bindings fall back to a localhost-only URL and never work once
+   *  deployed outside the CMS's own host. */
+  gatewayUrl?: string
+  /** Path prefix the site is mounted under behind nginx in production
+   *  (e.g. '/blog'), independent from the CMS's own `websites.rootPath`
+   *  (a different concept - multi-site routing within the CMS itself).
+   *  Defaults to '/' (domain root) when omitted. */
+  basePath?: string
   /** Monorepo root for resolving workspace SDK packages. Required when outDir
    *  is a temp directory outside the monorepo (e.g. /tmp/...). */
   monorepoRoot?: string
@@ -62,6 +173,10 @@ export async function generateNextSite(options: GenerateOptions): Promise<void> 
     const defaultLocale = (website.defaultLocale as string) ?? 'en'
     const singleLocale = supportedLocales.length <= 1
 
+    console.log('Packing SDK dependencies (makes the site installable anywhere, no monorepo needed)...')
+    const monorepoRoot = options.monorepoRoot ?? join(outDir, '..', '..')
+    const vendoredPackages = await packSdkDependencies(outDir, 'next', monorepoRoot)
+
     console.log('Scaffolding project...')
     await scaffoldNextSite({
       outDir,
@@ -79,7 +194,10 @@ export async function generateNextSite(options: GenerateOptions): Promise<void> 
       revalidate,
       domain,
       assetBaseUrl: assetDomain,
+      gatewayUrl: options.gatewayUrl,
+      basePath: options.basePath,
       monorepoRoot: options.monorepoRoot,
+      vendoredPackages,
     })
 
     console.log(`\nDone! Generated project at: ${outDir}`)
@@ -90,17 +208,24 @@ export async function generateNextSite(options: GenerateOptions): Promise<void> 
     console.log('  pnpm start          # or deploy to Vercel')
   } catch (error: unknown) {
     const err = error as Error & { cause?: { code?: string } }
-    let detail = err instanceof Error ? err.message : String(error)
     const cause = err.cause as { code?: string } | undefined
+    // Only frame this as an API-connectivity problem when it demonstrably
+    // is one (a fetch()-level cause code) - this whole try wraps the local
+    // filesystem scaffold step too, and misdiagnosing e.g. an ENOENT while
+    // writing a file as "can't reach the CMS API" wastes real debugging
+    // time chasing the wrong cause (found live, not hypothetical).
     if (cause?.code === 'ENOTFOUND') {
-      detail = `DNS lookup failed for "${apiUrl}" — check the host resolves. In local dev, the API runs on port 3003 (e.g. http://whoobecms.local:3003), not 3000.`
+      console.error(`Unable to contact the CMS API at "${apiUrl}". DNS lookup failed for "${apiUrl}" — check the host resolves. In local dev, the API runs on port 3003 (e.g. http://whoobecms.local:3003), not 3000.`)
+      console.error('Confirm the API URL and that it points to the core-api service, not the admin dashboard.')
     } else if (cause?.code === 'ECONNREFUSED') {
-      detail = `Connection refused for "${apiUrl}" — is the core-api running on that host/port? (core-api is on port 3003, e.g. http://whoobecms.local:3003)`
+      console.error(`Unable to contact the CMS API at "${apiUrl}". Connection refused for "${apiUrl}" — is the core-api running on that host/port? (core-api is on port 3003, e.g. http://whoobecms.local:3003)`)
+      console.error('Confirm the API URL and that it points to the core-api service, not the admin dashboard.')
     } else if (cause?.code === 'ERR_TLS_CERT_ALTNAME_INVALID' || cause?.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
-      detail = `TLS certificate issue for "${apiUrl}" — the server's certificate doesn't match.`
+      console.error(`Unable to contact the CMS API at "${apiUrl}". TLS certificate issue for "${apiUrl}" — the server's certificate doesn't match.`)
+      console.error('Confirm the API URL and that it points to the core-api service, not the admin dashboard.')
+    } else {
+      console.error(`Site generation failed: ${err instanceof Error ? err.message : String(error)}`)
     }
-    console.error(`Unable to contact the CMS API at "${apiUrl}". ${detail}`)
-    console.error('Confirm the API URL and that it points to the core-api service, not the admin dashboard.')
     throw error
   }
 }
@@ -177,16 +302,29 @@ function stripThemeBlock(styles: string): string {
     .replace(/@import\s+url\([^)]+\)\s*;?/gi, '')
     .replace(/@import\s+"[^"]+"\s*;?/g, '')
     .replace(/@tailwind\s+[^;]+;/g, '')
-  // Brace-counting to remove @theme { ... } with arbitrary nesting
+  // Brace-counting to remove @theme { ... } with arbitrary nesting.
   let result = ''
   let i = 0
   while (i < s.length) {
     if (s[i] === '@' && s.slice(i, i + 6) === '@theme' && !/[a-zA-Z]/.test(s[i - 1] ?? ' ')) {
-      let depth = 1
       i += 6
-      while (i < s.length && depth > 0) {
+      // Skip past any whitespace before the block's own opening brace -
+      // depth starts at 0 and is incremented when that brace is actually
+      // encountered below, not before: starting it at 1 here double-counted
+      // the opening brace (once via this initial value, once when the loop
+      // itself saw '{'), so depth never returned to 0 after the block's real
+      // close - it kept decrementing into the rest of the file, silently
+      // deleting everything after @theme{} instead of just the block itself
+      // (found live: a theme's custom classes/rules past its @theme block
+      // never survived into a published site at all).
+      while (i < s.length && s[i] !== '{') i++
+      let depth = 0
+      while (i < s.length) {
         if (s[i] === '{') depth++
-        else if (s[i] === '}') depth--
+        else if (s[i] === '}') {
+          depth--
+          if (depth === 0) { i++; break }
+        }
         i++
       }
       continue
@@ -233,6 +371,8 @@ interface ScaffoldOptions {
   revalidate: number
   domain?: string
   assetBaseUrl?: string
+  gatewayUrl?: string
+  basePath?: string
   /** When only one locale is configured, routes are clean (/{slug} instead of /{locale}/{slug}). */
   singleLocale: boolean
   defaultLocale: string
@@ -245,6 +385,8 @@ interface ScaffoldOptions {
   monorepoRoot?: string
   /** When true, only page with kind === 'app' are included. */
   appOnly?: boolean
+  /** SDK packages packed into outDir/vendor/*.tgz - see packSdkDependencies. */
+  vendoredPackages: VendoredSdkPackage[]
 }
 
 /** Determines the home page path for each locale. Tries '/' first (now that
@@ -279,6 +421,10 @@ async function scaffoldNextSite(opts: ScaffoldOptions): Promise<void> {
 
   // Write files
   await writeFile(join(opts.outDir, 'package.json'), scaffoldPackageJson(opts))
+  await writeFile(
+    join(opts.outDir, 'pnpm-workspace.yaml'),
+    scaffoldPnpmWorkspaceYaml(vendoredDependenciesAndOverrides(opts.vendoredPackages).overrides)
+  )
   await writeFile(join(opts.outDir, 'tsconfig.json'), scaffoldTsconfig())
   await writeFile(join(opts.outDir, 'next.config.ts'), scaffoldNextConfig(opts))
   await writeFile(join(opts.outDir, 'postcss.config.mjs'), scaffoldPostcss())
@@ -299,13 +445,16 @@ async function scaffoldNextSite(opts: ScaffoldOptions): Promise<void> {
   await writeFile(join(opts.outDir, 'src/lib/api.ts'), scaffoldApi(opts))
   await writeFile(join(opts.outDir, 'src/lib/registry.ts'), scaffoldRegistry())
   await writeFile(join(opts.outDir, '.env.local'), scaffoldEnv(opts))
+
+  // Self-contained deploy (Docker + nginx) - see each function's own comment.
+  await writeFile(join(opts.outDir, 'Dockerfile'), scaffoldDockerfile('next'))
+  await writeFile(join(opts.outDir, 'nginx.conf'), scaffoldNginxConf(opts))
+  await writeFile(join(opts.outDir, 'deploy.sh'), scaffoldDeployScript(opts, 'next'), { mode: 0o755 })
+  await writeFile(join(opts.outDir, '.dockerignore'), scaffoldSiteDockerignore())
 }
 
 function scaffoldPackageJson(opts: ScaffoldOptions): string {
-  // Resolve SDK paths relative to the generated site dir (e.g. ../../packages/sdk/next)
-  const repoRoot = opts.monorepoRoot ?? join(opts.outDir, '..', '..')
-  const sdkDir = join(repoRoot, 'packages', 'sdk')
-  const rel = (p: string) => relative(opts.outDir, p).replace(/\\/g, '/')
+  const { dependencies: vendoredDeps, overrides } = vendoredDependenciesAndOverrides(opts.vendoredPackages)
   return JSON.stringify({
     name: `whoobe-site-${opts.websiteId.slice(0, 8)}`,
     version: '0.1.0',
@@ -320,10 +469,7 @@ function scaffoldPackageJson(opts: ScaffoldOptions): string {
       react: '^18.3.0',
       'react-dom': '^18.3.0',
       'lucide-react': '^0.400.0',
-      '@whoobe-cms/next': `file:${rel(join(sdkDir, 'next'))}`,
-      '@whoobe-cms/react': `file:${rel(join(sdkDir, 'react'))}`,
-      '@whoobe-cms/renderer': `file:${rel(join(sdkDir, 'renderer'))}`,
-      '@whoobe-cms/schema': `file:${rel(join(sdkDir, 'schema'))}`,
+      ...vendoredDeps,
     },
     devDependencies: {
       '@types/node': '^20.0.0',
@@ -333,7 +479,173 @@ function scaffoldPackageJson(opts: ScaffoldOptions): string {
       '@tailwindcss/postcss': '^4.0.0',
       typescript: '^5.4.0',
     },
+    // Forces every (including nested/transitive) resolution of these
+    // package names to use the local tarball, instead of trying the public
+    // npm registry (where they don't exist) for a nested "workspace:*"
+    // dependency that `pnpm pack` already rewrote to a real version number
+    // - see packSdkDependencies's own comment. Verified live: omitting this
+    // fails with ERR_PNPM_FETCH_404 on the first nested package.
+    pnpm: { overrides },
   }, null, 2)
+}
+
+/** Standalone, framework-agnostic Dockerfile - no reference to the
+ *  monorepo at all (relies entirely on vendor/*.tgz, see
+ *  packSdkDependencies), so it builds from this directory alone on any
+ *  host with Docker. Next's `NEXT_PUBLIC_*` vars are inlined at build time
+ *  (Next has no runtime env story for them), so they're declared as ARGs;
+ *  Nuxt's `NUXT_PUBLIC_*` runtimeConfig is read at container start instead
+ *  (see nuxtEnv's own comment), so no build ARGs are needed there. */
+function scaffoldDockerfile(framework: 'next' | 'vue'): string {
+  const nextArgs = framework === 'next'
+    ? `ARG NEXT_PUBLIC_CMS_API_URL
+ARG NEXT_PUBLIC_WEBSITE_ID
+ARG NEXT_PUBLIC_ASSET_BASE_URL
+ARG NEXT_PUBLIC_GATEWAY_URL
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_CMS_API_URL=$NEXT_PUBLIC_CMS_API_URL \\
+    NEXT_PUBLIC_WEBSITE_ID=$NEXT_PUBLIC_WEBSITE_ID \\
+    NEXT_PUBLIC_ASSET_BASE_URL=$NEXT_PUBLIC_ASSET_BASE_URL \\
+    NEXT_PUBLIC_GATEWAY_URL=$NEXT_PUBLIC_GATEWAY_URL \\
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+`
+    : ''
+  return `# syntax=docker/dockerfile:1
+# Standalone image for this published site - no monorepo checkout needed
+# anywhere, on this host or any other: package.json's dependencies are
+# vendor/*.tgz tarballs already bundled alongside this Dockerfile (see
+# CHANGES.md - "pnpm pack" rewrites their own internal workspace:*
+# references to real version numbers, so a plain \`pnpm install\` here
+# resolves everything from this directory alone).
+FROM node:22-bookworm-slim AS base
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+WORKDIR /app
+
+FROM base AS build
+COPY . .
+${nextArgs}RUN pnpm install
+RUN pnpm build
+
+FROM base AS run
+ENV NODE_ENV=production
+COPY --from=build /app ./
+EXPOSE 3000
+CMD ["pnpm", "start"]
+`
+}
+
+/** Location path for the nginx proxy block - a trailing slash so nginx
+ *  strips the matched prefix before forwarding (needed whenever basePath
+ *  isn't '/', to match the framework's own basePath/app.baseURL already
+ *  having stripped it from its own asset URLs - see scaffoldNextConfig/
+ *  nuxtConfig). */
+function nginxLocationPath(basePath: string): string {
+  const trimmed = basePath.trim() || '/'
+  return trimmed.endsWith('/') ? trimmed : `${trimmed}/`
+}
+
+/** nginx server block for this site - domain and base path are already
+ *  known at publish time, so both are baked in directly; only the
+ *  container's host port is left as a __PORT__ placeholder, substituted by
+ *  deploy.sh at actual deploy time (a port is a deploy-time choice, chosen
+ *  by whoever deploys, never auto-detected). Self-contained: doesn't
+ *  depend on anything in the monorepo. */
+function scaffoldNginxConf(opts: ScaffoldOptions): string {
+  const domain = opts.domain || '_'
+  return `server {
+    listen 80;
+    server_name ${domain};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location ${nginxLocationPath(opts.basePath ?? '/')} {
+        proxy_pass http://127.0.0.1:__PORT__/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+`
+}
+
+/** Self-contained deploy script shipped inside the generated site itself -
+ *  builds the Docker image, runs the container, and wires up nginx (host
+ *  nginx's sites-enabled convention if present, otherwise prints manual
+ *  instructions instead of guessing at an unfamiliar host's setup). Needs
+ *  only Docker (+ optionally nginx) on the target host - never this
+ *  monorepo. Run as `PORT=3100 ./deploy.sh` (or edit the PORT default
+ *  below). */
+function scaffoldDeployScript(opts: ScaffoldOptions, framework: 'next' | 'vue'): string {
+  const slug = `whoobe-site-${opts.websiteId.slice(0, 8)}`
+  const envFile = framework === 'next' ? '.env.local' : '.env'
+  const buildArgsBlock = framework === 'next'
+    ? `BUILD_ARGS=()
+if [ -f ${envFile} ]; then
+  while IFS='=' read -r key value; do
+    case "$key" in
+      NEXT_PUBLIC_*) BUILD_ARGS+=(--build-arg "\${key}=\${value}") ;;
+    esac
+  done < ${envFile}
+fi
+`
+    : ''
+  const buildCmd = framework === 'next'
+    ? `docker build --network host "\${BUILD_ARGS[@]}" -t "$IMAGE_NAME" .`
+    : `docker build --network host -t "$IMAGE_NAME" .`
+  const runEnvFlag = framework === 'vue' ? `--env-file "${envFile}" ` : ''
+
+  return `#!/usr/bin/env bash
+# Self-contained deploy: build the image, run the container, wire up
+# nginx. Only Docker (+ optionally nginx) required on this host - no
+# whoobe_cms checkout needed here, not for this or anything else.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+PORT="\${PORT:-3100}"
+IMAGE_NAME="${slug}"
+CONTAINER_NAME="${slug}"
+
+echo ">>> Building Docker image \${IMAGE_NAME} ..."
+# --network host: the build-time prerender/crawl step (Nuxt) or page data
+# fetches (Next) may need to reach the CMS API URL configured in ${envFile} -
+# harmless when that URL is genuinely public.
+${buildArgsBlock}${buildCmd}
+
+echo ">>> Starting container \${CONTAINER_NAME} on port \${PORT} ..."
+docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+docker run -d --name "$CONTAINER_NAME" --restart unless-stopped -p "\${PORT}:3000" ${runEnvFlag}"$IMAGE_NAME"
+
+echo ">>> Configuring nginx ..."
+sed "s/__PORT__/\${PORT}/g" nginx.conf > /tmp/\${IMAGE_NAME}-nginx.conf
+SUDO=""
+[ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1 && SUDO="sudo"
+if [ -d /etc/nginx/sites-enabled ]; then
+  $SUDO cp /tmp/\${IMAGE_NAME}-nginx.conf "/etc/nginx/sites-available/${slug}"
+  $SUDO ln -sf "/etc/nginx/sites-available/${slug}" "/etc/nginx/sites-enabled/${slug}"
+  $SUDO nginx -t && $SUDO systemctl reload nginx
+  echo ""
+  echo "Done. nginx configured and reloaded - ${opts.domain || '<domain>'} -> 127.0.0.1:\${PORT}"
+else
+  echo ""
+  echo "nginx sites-enabled directory not found - the container is running on port \${PORT}."
+  echo "Rendered nginx config is at /tmp/\${IMAGE_NAME}-nginx.conf - add it to your reverse proxy manually."
+fi
+`
+}
+
+/** Keeps local build artifacts (from `pnpm dev`/`pnpm build` run directly on
+ *  this machine before deploying) out of the Docker build context - COPY .
+ *  . in scaffoldDockerfile would otherwise ship a stale local build. */
+function scaffoldSiteDockerignore(): string {
+  return `node_modules
+.next
+.nuxt
+.output
+.git
+`
 }
 
 function scaffoldTsconfig(): string {
@@ -361,8 +673,13 @@ function scaffoldTsconfig(): string {
 }
 
 function scaffoldNextConfig(opts: ScaffoldOptions): string {
+  // Next's basePath must have no trailing slash; omitted entirely when the
+  // site is mounted at the domain root ('/' or unset) - a literal '/' is
+  // rejected by Next itself.
+  const basePath = opts.basePath && opts.basePath !== '/' ? opts.basePath.replace(/\/+$/, '') : ''
   return `/** @type {import('next').NextConfig} */
 const nextConfig = {
+  ${basePath ? `basePath: '${basePath}',` : ''}
   images: {
     remotePatterns: [
       {
@@ -440,7 +757,7 @@ import './globals.css'
 
 const apiUrl = process.env.NEXT_PUBLIC_CMS_API_URL || ''
 const assetBaseUrl = process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl
-const api = createWhoobeApi(apiUrl)
+const api = createWhoobeApi(apiUrl, process.env.NEXT_PUBLIC_GATEWAY_URL)
 
 export default function RootLayout({
   children,
@@ -481,6 +798,7 @@ export default async function HomePage() {
       websiteId: process.env.CMS_WEBSITE_ID,
       revalidate: parseInt(process.env.CMS_REVALIDATE || '60', 10),
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || process.env.CMS_API_URL!) + '/dam-asset',
+      gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
     })
     return <WhoobePage descriptor={descriptor} layout={layout} />
   } catch {
@@ -566,6 +884,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       websiteId,
       revalidate,
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl) + '/dam-asset',
+      gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
     })
     return generateMetadataFromPage(page, apiUrl)
   } catch {
@@ -586,6 +905,7 @@ export default async function CatchAllPage({ params }: { params: Promise<{ local
       websiteId,
       revalidate,
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl) + '/dam-asset',
+      gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
     })
     return <WhoobePage descriptor={descriptor} layout={layout} />
   } catch {
@@ -625,6 +945,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       websiteId,
       revalidate,
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl) + '/dam-asset',
+      gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
     })
     return generateMetadataFromPage(page, apiUrl)
   } catch {
@@ -645,6 +966,7 @@ export default async function CatchAllPage({ params }: { params: Promise<{ slug:
       websiteId,
       revalidate,
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl) + '/dam-asset',
+      gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
     })
     return <WhoobePage descriptor={descriptor} layout={layout} />
   } catch {
@@ -699,12 +1021,13 @@ export default function robots(): MetadataRoute.Robots {
 function scaffoldApi(opts: ScaffoldOptions): string {
   return `import { ApiClient } from '@whoobe-cms/renderer'
 
-export const api = new ApiClient(process.env.CMS_API_URL!)
+export const api = new ApiClient(process.env.CMS_API_URL!, undefined, process.env.NEXT_PUBLIC_GATEWAY_URL)
 
 export const siteConfig = {
   apiUrl: process.env.CMS_API_URL!,
   websiteId: process.env.CMS_WEBSITE_ID!,
   revalidate: parseInt(process.env.CMS_REVALIDATE || '60', 10),
+  gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
   ${opts.domain ? `domain: '${opts.domain}',` : ''}
 }
 `
@@ -736,6 +1059,7 @@ CMS_REVALIDATE=${opts.revalidate}
 NEXT_PUBLIC_CMS_API_URL=${opts.apiUrl}
 NEXT_PUBLIC_WEBSITE_ID=${opts.websiteId}
 NEXT_PUBLIC_ASSET_BASE_URL=${assetBase}
+NEXT_PUBLIC_GATEWAY_URL=${opts.gatewayUrl ?? ''}
 ${opts.domain ? `NEXT_PUBLIC_SITE_URL=https://${opts.domain}` : ''}
 `
 }
@@ -799,6 +1123,10 @@ export async function generateNuxtSite(options: GenerateOptions): Promise<void> 
     const pwaEnabled = appOnly || ((website.pwaEnabled as boolean) ?? false)
     const pwaConfig = pwaEnabled ? (website.pwaConfig as Record<string, unknown> ?? {}) : undefined
 
+    console.log('Packing SDK dependencies (makes the site installable anywhere, no monorepo needed)...')
+    const monorepoRoot = options.monorepoRoot ?? join(outDir, '..', '..')
+    const vendoredPackages = await packSdkDependencies(outDir, 'vue', monorepoRoot)
+
     console.log('Scaffolding Nuxt project...')
     await scaffoldNuxtSite({
       outDir,
@@ -816,9 +1144,12 @@ export async function generateNuxtSite(options: GenerateOptions): Promise<void> 
       revalidate,
       domain,
       assetBaseUrl: assetDomain,
+      gatewayUrl: options.gatewayUrl,
+      basePath: options.basePath,
       pwaConfig,
       monorepoRoot: options.monorepoRoot,
       appOnly,
+      vendoredPackages,
     })
 
     console.log(`\nDone! Generated Nuxt project at: ${outDir}`)
@@ -830,17 +1161,21 @@ export async function generateNuxtSite(options: GenerateOptions): Promise<void> 
     console.log('  pnpm build        # full SSR build')
   } catch (error: unknown) {
     const err = error as Error & { cause?: { code?: string } }
-    let detail = err instanceof Error ? err.message : String(error)
     const cause = err.cause as { code?: string } | undefined
+    // See the matching comment in generateNextSite's catch above - only
+    // frame this as an API-connectivity problem when it actually is one.
     if (cause?.code === 'ENOTFOUND') {
-      detail = `DNS lookup failed for "${apiUrl}" — check the host resolves.`
+      console.error(`Unable to contact the CMS API at "${apiUrl}". DNS lookup failed for "${apiUrl}" — check the host resolves.`)
+      console.error('Confirm the API URL and that it points to the core-api service.')
     } else if (cause?.code === 'ECONNREFUSED') {
-      detail = `Connection refused for "${apiUrl}" — is the core-api running on that host/port?`
+      console.error(`Unable to contact the CMS API at "${apiUrl}". Connection refused for "${apiUrl}" — is the core-api running on that host/port?`)
+      console.error('Confirm the API URL and that it points to the core-api service.')
     } else if (cause?.code === 'ERR_TLS_CERT_ALTNAME_INVALID' || cause?.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
-      detail = `TLS certificate issue for "${apiUrl}".`
+      console.error(`Unable to contact the CMS API at "${apiUrl}". TLS certificate issue for "${apiUrl}".`)
+      console.error('Confirm the API URL and that it points to the core-api service.')
+    } else {
+      console.error(`Site generation failed: ${err instanceof Error ? err.message : String(error)}`)
     }
-    console.error(`Unable to contact the CMS API at "${apiUrl}". ${detail}`)
-    console.error('Confirm the API URL and that it points to the core-api service.')
     throw error
   }
 }
@@ -848,14 +1183,20 @@ export async function generateNuxtSite(options: GenerateOptions): Promise<void> 
 async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
   const singleLocale = opts.singleLocale
 
-  const dirs = ['pages', 'composables', 'assets/css', 'public', 'server/routes']
+  // 'components' is unconditional, not gated on pwaConfig - AppShell.vue/
+  // BottomNav.vue are always written there now (see the comment above their
+  // writeFile calls below).
+  const dirs = ['pages', 'composables', 'assets/css', 'public', 'server/routes', 'components']
   if (!singleLocale) dirs.push('pages/[locale]')
-  if (opts.pwaConfig) dirs.push('components')
   for (const d of dirs) {
     await mkdir(join(opts.outDir, d), { recursive: true })
   }
 
   await writeFile(join(opts.outDir, 'package.json'), nuxtPackageJson(opts))
+  await writeFile(
+    join(opts.outDir, 'pnpm-workspace.yaml'),
+    scaffoldPnpmWorkspaceYaml(vendoredDependenciesAndOverrides(opts.vendoredPackages).overrides)
+  )
   await writeFile(join(opts.outDir, 'nuxt.config.ts'), nuxtConfig(opts))
   await writeFile(join(opts.outDir, 'tsconfig.json'), nuxtTsconfig())
   await writeFile(join(opts.outDir, 'app.vue'), nuxtAppVue(opts))
@@ -875,33 +1216,46 @@ async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
 
   await writeFile(join(opts.outDir, '.env'), nuxtEnv(opts))
 
-  // PWA files
+  // AppShell.vue (+ its own BottomNav.vue dependency) is written
+  // unconditionally, regardless of pwaConfig: nuxtCatchAllPageMulti()
+  // (multi-locale sites) and nuxtHomePage()'s slug==='/' branch both
+  // reference <AppShell> in their template even when PWA isn't configured
+  // (a page individually marked kind:'app' can still use it) - gating this
+  // write on pwaConfig alone left those imports pointing at a file that was
+  // never written, breaking `nuxi generate`/`nuxi build` with ENOENT for
+  // any non-PWA multi-locale site (found live, not hypothetical). Both
+  // generators already handle an absent/undefined pwaConfig gracefully
+  // (an empty bottom nav).
+  await writeFile(join(opts.outDir, 'components/AppShell.vue'), nuxtAppShell(opts))
+  await writeFile(join(opts.outDir, 'components/BottomNav.vue'), nuxtBottomNav())
+
+  // PWA-only files
   const pwa = opts.pwaConfig
   if (pwa) {
     await writeFile(join(opts.outDir, 'public/manifest.json'), nuxtPwaManifest(pwa, opts))
     await writeFile(join(opts.outDir, 'error.vue'), nuxtErrorVue(opts))
-    await writeFile(join(opts.outDir, 'components/AppShell.vue'), nuxtAppShell(opts))
-    await writeFile(join(opts.outDir, 'components/BottomNav.vue'), nuxtBottomNav())
     await writeFile(join(opts.outDir, 'components/InstallPrompt.vue'), nuxtInstallPrompt())
     await writeFile(join(opts.outDir, 'composables/useInstallPrompt.ts'), nuxtInstallPromptComposable())
     await writeFile(join(opts.outDir, 'composables/useOfflineQueue.ts'), nuxtOfflineQueue())
     await writeFile(join(opts.outDir, 'composables/usePushNotifications.ts'), nuxtPushNotifications(pwa))
   }
+
+  // Self-contained deploy (Docker + nginx) - see each function's own comment.
+  await writeFile(join(opts.outDir, 'Dockerfile'), scaffoldDockerfile('vue'))
+  await writeFile(join(opts.outDir, 'nginx.conf'), scaffoldNginxConf(opts))
+  await writeFile(join(opts.outDir, 'deploy.sh'), scaffoldDeployScript(opts, 'vue'), { mode: 0o755 })
+  await writeFile(join(opts.outDir, '.dockerignore'), scaffoldSiteDockerignore())
 }
 
 function nuxtPackageJson(opts: ScaffoldOptions): string {
-  const repoRoot = opts.monorepoRoot ?? join(opts.outDir, '..', '..')
-  const sdkDir = join(repoRoot, 'packages', 'sdk')
-  const rel = (p: string) => relative(opts.outDir, p).replace(/\\/g, '/')
+  const { dependencies: vendoredDeps, overrides } = vendoredDependenciesAndOverrides(opts.vendoredPackages)
   const deps: Record<string, string> = {
     nuxt: '^3.15.0',
     vue: '^3.5.0',
     'vue-router': '^4.5.0',
     'alpinejs': '^3.16.0',
-    '@whoobe-cms/nuxt': `file:${rel(join(sdkDir, 'nuxt'))}`,
-    '@whoobe-cms/vue': `file:${rel(join(sdkDir, 'vue'))}`,
-    '@whoobe-cms/renderer': `file:${rel(join(sdkDir, 'renderer'))}`,
-    '@whoobe-cms/schema': `file:${rel(join(sdkDir, 'schema'))}`,
+    '@lucide/vue': '^1.1.0',
+    ...vendoredDeps,
   }
   const devDeps: Record<string, string> = {
     tailwindcss: '^4.0.0',
@@ -922,9 +1276,15 @@ function nuxtPackageJson(opts: ScaffoldOptions): string {
       build: 'nuxi build',
       generate: 'nuxi generate',
       preview: 'nuxi preview',
+      // Production server (node-server preset, the default for `nuxi build`)
+      // - `nuxi preview` is dev-only, never for production.
+      start: 'node .output/server/index.mjs',
     },
     dependencies: deps,
     devDependencies: devDeps,
+    // See scaffoldPackageJson's matching comment (Next side) - same reason,
+    // same fix, needed here too.
+    pnpm: { overrides },
   }, null, 2)
 }
 
@@ -989,10 +1349,12 @@ export default defineNuxtConfig({
       cmsAssetBaseUrl: '${opts.assetBaseUrl ?? opts.apiUrl}',
       cmsDefaultLocale: '${opts.defaultLocale}',
       cmsRevalidate: ${opts.revalidate},
+      gatewayUrl: '${opts.gatewayUrl ?? ''}',
       ${opts.domain ? `siteUrl: 'https://${opts.domain}',` : ''}
     },
   },${pwaConfigBlock ? `\n${pwaConfigBlock}` : ''}
   app: {
+    ${opts.basePath && opts.basePath !== '/' ? `baseURL: '${opts.basePath.replace(/\/+$/, '')}/',` : ''}
     head: {
       link: ${JSON.stringify([
         ...opts.fontFamilies.map((f) => ({
@@ -1058,7 +1420,7 @@ if (import.meta.client) {
 const config = useRuntimeConfig()
 const apiUrl = config.public.cmsApiUrl
 const assetBaseUrl = config.public.cmsAssetBaseUrl || apiUrl
-const api = createWhoobeApi(apiUrl)
+const api = createWhoobeApi(apiUrl, config.public.gatewayUrl)
 
 ${pwaEnabled ? `const { online } = useOnlineStatus()
 // Replay offline mutation queue when coming back online
@@ -1131,6 +1493,7 @@ const { data } = await useAsyncData('home-page', () =>
     baseUrl: config.public.cmsApiUrl,
     websiteId: config.public.cmsWebsiteId,
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+    gatewayUrl: config.public.gatewayUrl,
     resolveAssetUuid,
   })
 )
@@ -1180,6 +1543,7 @@ if (localPages.find((p) => p.slug === '/')) {
       baseUrl: config.public.cmsApiUrl,
       websiteId: config.public.cmsWebsiteId,
       assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+      gatewayUrl: config.public.gatewayUrl,
       resolveAssetUuid,
     })
   )
@@ -1228,6 +1592,7 @@ const { data } = await useAsyncData(\`page-\${path}\`, () =>
     baseUrl: config.public.cmsApiUrl,
     websiteId: config.public.cmsWebsiteId,
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+    gatewayUrl: config.public.gatewayUrl,
     resolveAssetUuid,
   })
 )
@@ -1273,6 +1638,7 @@ const { data } = await useAsyncData(\`page-\${locale}-\${path}\`, () =>
     baseUrl: config.public.cmsApiUrl,
     websiteId: config.public.cmsWebsiteId,
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+    gatewayUrl: config.public.gatewayUrl,
     resolveAssetUuid,
   })
 )
@@ -1343,7 +1709,7 @@ function nuxtComposable(): string {
 
 export function useWhoobeApi() {
   const config = useRuntimeConfig()
-  const api = new ApiClient(config.public.cmsApiUrl)
+  const api = new ApiClient(config.public.cmsApiUrl, undefined, config.public.gatewayUrl)
 
   return {
     api,
@@ -1351,6 +1717,7 @@ export function useWhoobeApi() {
     websiteId: config.public.cmsWebsiteId,
     revalidate: config.public.cmsRevalidate,
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
+    gatewayUrl: config.public.gatewayUrl,
   }
 }
 
@@ -1375,6 +1742,7 @@ NUXT_PUBLIC_CMS_API_URL=${opts.apiUrl}
 NUXT_PUBLIC_CMS_WEBSITE_ID=${opts.websiteId}
 NUXT_PUBLIC_CMS_REVALIDATE=${opts.revalidate}
 NUXT_PUBLIC_CMS_ASSET_BASE_URL=${assetBase}
+NUXT_PUBLIC_GATEWAY_URL=${opts.gatewayUrl ?? ''}
 ${opts.domain ? `NUXT_PUBLIC_SITE_URL=https://${opts.domain}` : ''}
 `
 }

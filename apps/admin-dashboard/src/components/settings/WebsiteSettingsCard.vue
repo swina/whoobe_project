@@ -34,6 +34,7 @@
           </div>
         </div>
         <div class="flex items-center gap-2 shrink-0 ml-3">
+          <button @click="openPublish(website)" class="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1"><Rocket class="w-3 h-3" />Publish</button>
           <button @click="exportWebsiteAction(website)" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">Export</button>
           <button @click="openPaths(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Paths</button>
           <button @click="openTemplates(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Templates</button>
@@ -44,23 +45,32 @@
     </div>
 
     <AiWebsiteWizardModal :is-open="showAiModal" @close="showAiModal = false" />
+    <WebsitePublishModal :is-open="showPublishModal" :website="publishTarget" @close="showPublishModal = false" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Sparkles } from '@lucide/vue'
+import { Sparkles, Rocket } from '@lucide/vue'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import { useTabsStore } from '../../stores/tabsStore'
 import { exportWebsite, importWebsite } from '../../utils/websites-api'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
 import AiWebsiteWizardModal from './AiWebsiteWizardModal.vue'
+import WebsitePublishModal from './WebsitePublishModal.vue'
 
 const websitesStore = useWebsitesStore()
 const tabsStore = useTabsStore()
 const showAiModal = ref(false)
+const showPublishModal = ref(false)
+const publishTarget = ref<WebsiteRecord | null>(null)
 const importFileInput = ref<HTMLInputElement | null>(null)
+
+function openPublish(website: WebsiteRecord) {
+  publishTarget.value = website
+  showPublishModal.value = true
+}
 
 function openWebsiteTab(website: WebsiteRecord) {
   tabsStore.openWebsite(website.id)

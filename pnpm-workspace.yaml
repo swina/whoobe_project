@@ -2,4 +2,18 @@ packages:
   - 'packages/*'
   - 'packages/sdk/*'
   - 'apps/*'
-  - 'sites/*'
+  # sites/* (whoobe-publish output, gitignored) is deliberately NOT a
+  # workspace member: it used to need to be, back when a generated site
+  # depended on packages/sdk/* via workspace:*/file: references into this
+  # repo - now that whoobe-publish vendors its SDK dependencies as plain
+  # tarballs (packSdkDependencies, see CHANGES.md), a generated site is
+  # fully self-contained and installs on its own (`cd sites/<hash> && pnpm
+  # install`). Listing it here did active harm: a plain `pnpm install` at
+  # the repo root tried to resolve every sites/* member together with
+  # everything else, and a workspace member's own `pnpm.overrides` (which
+  # is how a generated site points its internal @whoobe-cms/* deps at its
+  # local vendor/*.tgz instead of the public npm registry) is only read
+  # from the WORKSPACE ROOT, never from the member's own package.json -
+  # so the override silently never applied, and the whole repo's install
+  # failed with ERR_PNPM_FETCH_404 the moment any site existed under
+  # sites/ (found live, not hypothetical).
