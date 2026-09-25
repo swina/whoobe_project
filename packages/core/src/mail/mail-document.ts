@@ -28,11 +28,15 @@ export function fontFamilyStack(font: string): string {
  *  support web fonts; the fallback stacks above cover the rest). */
 export function buildMailDocument(input: { bodyHtml: string; fonts?: string[] }): string {
   const families = (input.fonts ?? []).filter(Boolean)
+  // One <link> per family, not one combined request - a single bad/unknown
+  // family name can make Google Fonts reject the whole css2 request,
+  // taking every family down with it (found live in the editor's font
+  // loading, same underlying API).
   const fontLinks = families.length
     ? `
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?${families.map((f) => `family=${f}`).join('&')}&display=swap" rel="stylesheet">`
+    ${families.map((f) => `<link href="https://fonts.googleapis.com/css2?family=${f}&display=swap" rel="stylesheet">`).join('\n    ')}`
     : ''
   return `<!DOCTYPE html>
 <html lang="en">
