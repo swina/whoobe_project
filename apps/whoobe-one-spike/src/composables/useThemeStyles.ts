@@ -21,7 +21,7 @@ const TAILWIND_CLASSES_ID = 'whoobe-tailwind-classes'
  */
 export function useThemeStyles(getDoc: () => any) {
   const editor = useEditorStore()
-  let fontLink: HTMLLinkElement | null = null
+  let fontLinks: HTMLLinkElement[] = []
 
   function update() {
     const doc = getDoc()
@@ -61,19 +61,20 @@ export function useThemeStyles(getDoc: () => any) {
       : webFonts?.length
         ? webFonts
         : (editor.fonts as string[])
-    const fontKey = fontList.join('|')
 
-    fontLink?.remove()
-    fontLink = null
-    if (fontKey) {
+    // One <link> per family, not one combined request - Google Fonts can
+    // reject the whole css2 request over a single bad/unknown family name
+    // (found live: a theme with a typo'd family and a non-Google system
+    // font name in the same list 403'd, taking down every family with it).
+    // Isolating requests means one bad name only loses that one font.
+    for (const link of fontLinks) link.remove()
+    fontLinks = []
+    for (const f of fontList) {
       const link = document.createElement('link')
       link.rel = 'stylesheet'
-      link.href = `https://fonts.googleapis.com/css2?${fontKey
-        .split('|')
-        .map((f) => `family=${f}`)
-        .join('&')}&display=swap`
+      link.href = `https://fonts.googleapis.com/css2?family=${f}&display=swap`
       document.head.appendChild(link)
-      fontLink = link
+      fontLinks.push(link)
     }
 
     // --- Custom styles: inject raw CSS from the active theme ---
