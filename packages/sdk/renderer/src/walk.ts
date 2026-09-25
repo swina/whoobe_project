@@ -46,6 +46,19 @@ export interface RenderOptions {
   /** Resolves a DAM asset UUID to a public URL. When present, UUID image
    *  references are resolved via this callback instead of being dropped. */
   resolveAssetUuid?: (uuid: string) => Promise<string | null>
+  /** The website's CMS-internal `rootPath` (e.g. '/aura-network'). When set,
+   *  stripped from the front of any stored `node.link` href that starts
+   *  with it - see WhoobeAdapterOptions.rootPath for why. */
+  rootPath?: string
+}
+
+/** Strips a website's CMS-internal `rootPath` prefix from a stored link
+ *  href, when present - see RenderOptions.rootPath. Leaves the href alone
+ *  otherwise (external URLs, hashes, links already relative to the site
+ *  root, or when no rootPath is configured for this render). */
+function stripRootPath(href: string, rootPath?: string): string {
+  if (!rootPath || !href.startsWith(rootPath)) return href
+  return href.slice(rootPath.length) || '/'
 }
 
 function buildStyle(node: WhoobeElementNode): string {
@@ -74,7 +87,7 @@ async function resolveNodeLink(
   scope: { ctx: WalkContext; api: RenderApi },
   options: RenderOptions,
 ): Promise<RenderDescriptor['link']> {
-  if (node.link) return { href: node.link ?? '#', target: node.linkTarget ?? undefined }
+  if (node.link) return { href: stripRootPath(node.link, options.rootPath), target: node.linkTarget ?? undefined }
   if (node.dynamicLink) {
     if (options.resolveTargetPage) {
       const target = await options.resolveTargetPage(node.dynamicLink.targetPageId)

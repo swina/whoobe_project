@@ -66,12 +66,20 @@ function slotDescriptor(tag: string, slot: PublicTemplateSlot, options: RenderOp
 /** Wraps the routed body descriptor with the template's slot descriptors.
  *  Empty slots yield null regions. */
 export async function composeLayout(body: RenderDescriptor, layout: PublicLayout, options: RenderOptions): Promise<ComposedLayout> {
-  const [header, aside, main, footer, notFound404] = await Promise.all([
+  const [header, aside, main, footer, notFound404, bodyWrap] = await Promise.all([
     layout.header && layout.header.pages.length > 0 ? slotDescriptor('header', layout.header, options) : null,
     layout.aside && layout.aside.pages.length > 0 ? slotDescriptor('aside', layout.aside, options) : null,
     layout.main && layout.main.pages.length > 0 ? slotDescriptor('main', layout.main, options) : null,
     layout.footer && layout.footer.pages.length > 0 ? slotDescriptor('footer', layout.footer, options) : null,
     layout.notFound404 && layout.notFound404.pages.length > 0 ? slotDescriptor('notFound404', layout.notFound404, options) : null,
+    // Unlike the other slots, `body` never has content pages of its own
+    // (WebsiteTemplatesManager.vue hides that field for it) - it's a pure
+    // className/style/alpine wrapper, so it's built whenever the slot
+    // itself is configured, not gated on `pages.length > 0`. This was
+    // previously always hardcoded to null - composeLayout() never even
+    // looked at `layout.body` - so a template's body-wrapper class/style
+    // never reached any published site, for any page. Found live.
+    layout.body ? slotDescriptor('bodyWrap', layout.body, options) : null,
   ])
-  return { header, aside, main, footer, bodyWrap: null, notFound404, body }
+  return { header, aside, main, footer, bodyWrap, notFound404, body }
 }

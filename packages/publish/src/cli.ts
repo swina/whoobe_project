@@ -799,6 +799,7 @@ export default async function HomePage() {
       revalidate: parseInt(process.env.CMS_REVALIDATE || '60', 10),
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || process.env.CMS_API_URL!) + '/dam-asset',
       gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
+      rootPath: process.env.NEXT_PUBLIC_WEBSITE_ROOT_PATH,
     })
     return <WhoobePage descriptor={descriptor} layout={layout} />
   } catch {
@@ -831,14 +832,22 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
   const pages = await api.listPages(process.env.CMS_WEBSITE_ID)
   const localPages = pages.filter((p) => p.locale === locale)
 
-  // Try rendering a page at slug '/' directly. If schema fails, fall back.
-  if (localPages.find((p) => p.slug === '/')) {
+  // A locale's home page is authored either at slug '/' or, when the editor
+  // entered the locale segment itself as the path (e.g. a 'tr' page with
+  // slug '/tr'), at slug '/{locale}' - render either directly instead of
+  // redirecting: a redirect isn't real prerenderable content, so if nothing
+  // else links to the '/{locale}/{locale}' target it never gets generated
+  // during static export - found live on a real multi-locale site.
+  const homePage = localPages.find((p) => p.slug === '/') ?? localPages.find((p) => p.slug === '/' + locale)
+  if (homePage) {
     try {
-      const { descriptor, layout } = await getPageData(locale, '/', {
+      const { descriptor, layout } = await getPageData(locale, homePage.slug, {
         baseUrl: process.env.CMS_API_URL!,
         websiteId: process.env.CMS_WEBSITE_ID,
         revalidate: parseInt(process.env.CMS_REVALIDATE || '60', 10),
         assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || process.env.CMS_API_URL!) + '/dam-asset',
+        gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
+        rootPath: process.env.NEXT_PUBLIC_WEBSITE_ROOT_PATH,
       })
       return <WhoobePage descriptor={descriptor} layout={layout} />
     } catch {
@@ -885,6 +894,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       revalidate,
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl) + '/dam-asset',
       gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
+      rootPath: process.env.NEXT_PUBLIC_WEBSITE_ROOT_PATH,
     })
     return generateMetadataFromPage(page, apiUrl)
   } catch {
@@ -906,6 +916,7 @@ export default async function CatchAllPage({ params }: { params: Promise<{ local
       revalidate,
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl) + '/dam-asset',
       gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
+      rootPath: process.env.NEXT_PUBLIC_WEBSITE_ROOT_PATH,
     })
     return <WhoobePage descriptor={descriptor} layout={layout} />
   } catch {
@@ -946,6 +957,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       revalidate,
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl) + '/dam-asset',
       gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
+      rootPath: process.env.NEXT_PUBLIC_WEBSITE_ROOT_PATH,
     })
     return generateMetadataFromPage(page, apiUrl)
   } catch {
@@ -967,6 +979,7 @@ export default async function CatchAllPage({ params }: { params: Promise<{ slug:
       revalidate,
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl) + '/dam-asset',
       gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
+      rootPath: process.env.NEXT_PUBLIC_WEBSITE_ROOT_PATH,
     })
     return <WhoobePage descriptor={descriptor} layout={layout} />
   } catch {
@@ -1060,6 +1073,7 @@ NEXT_PUBLIC_CMS_API_URL=${opts.apiUrl}
 NEXT_PUBLIC_WEBSITE_ID=${opts.websiteId}
 NEXT_PUBLIC_ASSET_BASE_URL=${assetBase}
 NEXT_PUBLIC_GATEWAY_URL=${opts.gatewayUrl ?? ''}
+NEXT_PUBLIC_WEBSITE_ROOT_PATH=${(opts.website.rootPath as string) ?? ''}
 ${opts.domain ? `NEXT_PUBLIC_SITE_URL=https://${opts.domain}` : ''}
 `
 }
@@ -1350,6 +1364,7 @@ export default defineNuxtConfig({
       cmsDefaultLocale: '${opts.defaultLocale}',
       cmsRevalidate: ${opts.revalidate},
       gatewayUrl: '${opts.gatewayUrl ?? ''}',
+      rootPath: '${(opts.website.rootPath as string) ?? ''}',
       ${opts.domain ? `siteUrl: 'https://${opts.domain}',` : ''}
     },
   },${pwaConfigBlock ? `\n${pwaConfigBlock}` : ''}
@@ -1494,6 +1509,7 @@ const { data } = await useAsyncData('home-page', () =>
     websiteId: config.public.cmsWebsiteId,
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
     gatewayUrl: config.public.gatewayUrl,
+    rootPath: config.public.rootPath,
     resolveAssetUuid,
   })
 )
@@ -1520,7 +1536,7 @@ await navigateTo('${actualHomePath}')
 function nuxtLocalePage(): string {
   return `<template>
   <div class="whoobe-page">
-    <WhoobePage v-if="data" :descriptor="data.descriptor" :layout="data.layout" />
+    <WhoobePage v-if="data?.kind === 'page'" :descriptor="data.page.descriptor" :layout="data.page.layout" />
   </div>
 </template>
 
@@ -1533,28 +1549,48 @@ const config = useRuntimeConfig()
 const route = useRoute()
 const locale = route.params.locale as string
 
-const api = new ApiClient(config.public.cmsApiUrl)
-const pages = await api.listPages(config.public.cmsWebsiteId)
-const localPages = pages.filter((p) => p.locale === locale)
+// The whole resolution (which page is this locale's home, then fetch it)
+// runs inside ONE useAsyncData, not a bare top-level await - a bare await
+// here would still run again, unserialized, on the client during
+// hydration (Nuxt only skips re-running data fetches wrapped in
+// useAsyncData/useFetch), which can diverge from the server render
+// (different network reachability, timing, or just a second live query
+// racing the first) and surfaces as "Hydration completed but contains
+// mismatches" - found live. Wrapping it means hydration reuses the exact
+// SSR-serialized result instead of re-fetching and re-branching client-side.
+const { data } = await useAsyncData(\`locale-\${locale}\`, async () => {
+  const api = new ApiClient(config.public.cmsApiUrl)
+  const pages = await api.listPages(config.public.cmsWebsiteId)
+  const localPages = pages.filter((p) => p.locale === locale)
 
-if (localPages.find((p) => p.slug === '/')) {
-  const { data } = await useAsyncData(\`locale-\${locale}-home\`, () =>
-    getPageData(locale, '/', {
+  // A locale's home page is authored either at slug '/' or, when the editor
+  // entered the locale segment itself as the path (e.g. a 'tr' page with
+  // slug '/tr'), at slug '/{locale}' - render either directly instead of
+  // redirecting: a redirect isn't real prerenderable content, so if nothing
+  // else links to the '/{locale}/{locale}' target the static crawler never
+  // discovers or generates it - found live on a real multi-locale site.
+  const homePage = localPages.find((p) => p.slug === '/') ?? localPages.find((p) => p.slug === '/' + locale)
+  if (homePage) {
+    const page = await getPageData(locale, homePage.slug, {
       baseUrl: config.public.cmsApiUrl,
       websiteId: config.public.cmsWebsiteId,
       assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
       gatewayUrl: config.public.gatewayUrl,
+      rootPath: config.public.rootPath,
       resolveAssetUuid,
     })
-  )
-  if (data.value) {
-    const seo = data.value.page.seo || {} as any
-    useHead({ title: seo.metaTitle || data.value.page.title })
+    return { kind: 'page' as const, page }
   }
-} else {
   const homeSlug = localPages[0]?.slug ?? 'home'
   const path = homeSlug.startsWith('/') ? homeSlug.slice(1) : homeSlug
-  await navigateTo('/' + locale + '/' + path)
+  return { kind: 'redirect' as const, target: '/' + locale + '/' + path }
+})
+
+if (data.value?.kind === 'redirect') {
+  await navigateTo(data.value.target)
+} else if (data.value?.kind === 'page') {
+  const seo = data.value.page.page.seo || {} as any
+  useHead({ title: seo.metaTitle || data.value.page.page.title })
 }
 </script>
 `
@@ -1593,6 +1629,7 @@ const { data } = await useAsyncData(\`page-\${path}\`, () =>
     websiteId: config.public.cmsWebsiteId,
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
     gatewayUrl: config.public.gatewayUrl,
+    rootPath: config.public.rootPath,
     resolveAssetUuid,
   })
 )
@@ -1639,6 +1676,7 @@ const { data } = await useAsyncData(\`page-\${locale}-\${path}\`, () =>
     websiteId: config.public.cmsWebsiteId,
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
     gatewayUrl: config.public.gatewayUrl,
+    rootPath: config.public.rootPath,
     resolveAssetUuid,
   })
 )
@@ -1743,6 +1781,7 @@ NUXT_PUBLIC_CMS_WEBSITE_ID=${opts.websiteId}
 NUXT_PUBLIC_CMS_REVALIDATE=${opts.revalidate}
 NUXT_PUBLIC_CMS_ASSET_BASE_URL=${assetBase}
 NUXT_PUBLIC_GATEWAY_URL=${opts.gatewayUrl ?? ''}
+NUXT_PUBLIC_ROOT_PATH=${(opts.website.rootPath as string) ?? ''}
 ${opts.domain ? `NUXT_PUBLIC_SITE_URL=https://${opts.domain}` : ''}
 `
 }

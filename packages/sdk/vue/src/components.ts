@@ -111,13 +111,23 @@ export const WhoobePage = defineComponent({
       const region = (d: RenderDescriptor | null) => (d ? h(WhoobeNode, { key: d.id, descriptor: d }) : null)
       const body = h('main', { key: 'body', class: 'whoobe-page-body' }, [h(WhoobeNode, { key: descriptor.value.id, descriptor: descriptor.value })])
       const shell = layout.value ? [region(layout.value.header), region(layout.value.aside), body, region(layout.value.footer)] : [body]
+      // The template's body-wrapper slot (className/style/alpine on the
+      // outermost container, configured under Website Template > body) -
+      // merged onto this div itself, same as the fixed 'whoobe-page' class.
+      // composeLayout() previously never populated bodyWrap at all, so this
+      // was dead regardless - found live (a template's body wrapper class
+      // never reached any published page).
+      const bodyWrap = layout.value?.bodyWrap
+      const wrapAttrs: Record<string, unknown> = { ...(bodyWrap?.attributes as Record<string, unknown> | undefined) }
+      wrapAttrs.class = ['whoobe-page', bodyWrap?.className].filter(Boolean).join(' ')
+      if (bodyWrap?.style) wrapAttrs.style = bodyWrap.style
       // data-allow-mismatch: CMS-authored trees are dynamic by nature (data-bound
       // repeaters, resolved DAM/themes), so the server render may legitimately emit
       // a differently-sized subtree than the hydrated vdom. Vue 3.5 honours this
       // attribute on ascendants: it suppresses the scary "more child nodes than
       // client vdom" warning for the whole page and drops the surplus SSR nodes.
       // See https://vuejs.org/guide/scaling-up/ssr.html#hydration-mismatch
-      return h('div', { class: 'whoobe-page', 'data-allow-mismatch': 'children' }, shell)
+      return h('div', { ...wrapAttrs, 'data-allow-mismatch': 'children' }, shell)
     }
   },
 })

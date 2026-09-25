@@ -12,6 +12,13 @@ export interface WhoobeAdapterOptions {
    *  bindings to work from a published site (falls back to localhost:3001
    *  otherwise, only reachable when the site runs on the CMS's own host). */
   gatewayUrl?: string
+  /** The website's CMS-internal `rootPath` (e.g. '/aura-network'), stripped
+   *  from any stored `node.link` href that starts with it. Editor-authored
+   *  links are stored as `{rootPath}{path}` (needed for the link to resolve
+   *  correctly inside the CMS's own multi-site preview routing) - a
+   *  published/generated site has no such prefix, so left un-stripped every
+   *  internal link/menu item 404s once deployed standalone. */
+  rootPath?: string
   resolveTargetPage?: (id: string) => Promise<{ slug: string; locale: string } | null>
 }
 

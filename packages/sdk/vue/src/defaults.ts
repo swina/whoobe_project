@@ -46,6 +46,21 @@ function elementProps(d: RenderDescriptor): Record<string, unknown> {
   return props
 }
 
+/** Wraps `children` in an `<a href>` when the descriptor has a resolved
+ *  link, else returns them unwrapped - mirrors the editor's own preview
+ *  (BlockContainerPreview.vue wraps ANY child with a `link` field in an
+ *  `<a>`, not just `element === 'a'` nodes) and matches
+ *  @whoobe-cms/react's own `withLink()`. Without this, a container/icon/
+ *  image made clickable via the link picker (a common pattern - e.g. a
+ *  locale-switcher built from linkable flex boxes) silently rendered as
+ *  inert, non-clickable markup in every published Vue site - found live:
+ *  an unreachable `/tr` page turned out to be a link that never existed in
+ *  the output at all, not just a wrong href. */
+function withLink(d: RenderDescriptor, children: VNode | VNode[] | undefined): VNode | VNode[] | undefined {
+  if (d.link) return h('a', { href: d.link.href, target: d.link.target }, children)
+  return children
+}
+
 /** Container (grid/flex/section/...): renders the resolved tag + class/style
  *  and the resolved children. */
 export const DefaultContainer: NodeComponent = defineComponent({
@@ -59,7 +74,7 @@ export const DefaultContainer: NodeComponent = defineComponent({
       if (!children && d.content) {
         attrs.innerHTML = d.content
       }
-      return h(d.tag, attrs, children)
+      return h(d.tag, attrs, withLink(d, children))
     }
   },
 })
@@ -92,7 +107,7 @@ export const DefaultIcon: NodeComponent = defineComponent({
     return () => {
       const d = props.descriptor
       const p = elementProps(d)
-      return h(resolveLucideIcon(d.content), { ...p, size: 16 } as any)
+      return withLink(d, h(resolveLucideIcon(d.content), { ...p, size: 16 } as any)) as VNode
     }
   },
 })
@@ -106,7 +121,8 @@ export const DefaultImage: NodeComponent = defineComponent({
     return () => {
       const d = props.descriptor
       if (!d.image) return null
-      return h('img', { src: d.image.url, alt: d.image.alt ?? '', ...elementProps(d) })
+      const img = h('img', { src: d.image.url, alt: d.image.alt ?? '', ...elementProps(d) })
+      return withLink(d, img) as VNode
     }
   },
 })

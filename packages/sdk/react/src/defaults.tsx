@@ -35,7 +35,7 @@ function resolveLucideIcon(name: string | null | undefined): any {
   return (LucideIcons as any)[key] ?? (LucideIcons as any).HelpCircle
 }
 
-function cssToReactStyle(css: string): Record<string, string> {
+export function cssToReactStyle(css: string): Record<string, string> {
   const obj: Record<string, string> = {}
   for (const decl of css.split(';')) {
     const colon = decl.indexOf(':')

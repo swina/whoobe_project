@@ -61,7 +61,15 @@ export class ApiClient implements RenderApi {
 
   constructor(
     baseUrl: string,
-    private readonly fetchImpl: typeof fetch = globalThis.fetch,
+    // .bind(globalThis), not the bare reference - native fetch requires its
+    // receiver to be the real global object; stored as a plain instance
+    // property and later invoked as `this.fetchImpl(...)`, the receiver is
+    // the ApiClient instance instead, and real browsers (unlike Node/
+    // undici, which tolerate it) throw "Failed to execute 'fetch' on
+    // 'Window': Illegal invocation" - found live, client-side, on a route
+    // that happens to construct its own ApiClient directly instead of
+    // going through getPageData()'s bare top-level `fetch(...)` call.
+    private readonly fetchImpl: typeof fetch = globalThis.fetch?.bind(globalThis),
     gatewayUrl?: string,
   ) {
     this.base = baseUrl.replace(/\/+$/, '')

@@ -256,6 +256,56 @@ export function normalizeGeneratedTree(node: any, options?: { replacePlaceholder
 // `id`/`data-id` specifically are load-bearing for the canvas (selection,
 // dragula, gsap-actions.ts's document.getElementById(element.id) lookup),
 // so a user-typed custom attribute of the same name must never win.
+/** Element `element` values (BlockElement.vue's `props.element.element`,
+ *  same field kind.ts's normalizeKind() switches on) whose HTML content
+ *  model is "phrasing content" only - a real `<p>`/`<h1>`/`<span>` cannot
+ *  legitimately contain a block-level child like `<div>`. `blockquote` is
+ *  deliberately excluded: its content model is flow content, so nested
+ *  divs/paragraphs are valid there. Used by stripBlockLevelTags() below to
+ *  decide when to sanitize. */
+export const PHRASING_ONLY_ELEMENTS = new Set(['p', 'h', 'span', 'pre'])
+
+const BLOCK_LEVEL_TAGS = new Set([
+  'DIV', 'P', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'MAIN', 'NAV', 'ASIDE',
+  'UL', 'OL', 'LI', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH',
+  'FORM', 'FIELDSET', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'PRE', 'HR', 'FIGURE', 'FIGCAPTION',
+])
+
+/** Unwraps any block-level tag out of a captured contenteditable HTML
+ * string, keeping its inline content in place (with a `<br>` where the
+ * block boundary was, so unwrapped content doesn't silently run into its
+ * neighbor with zero separation). Native browser paste into a
+ * `contenteditable` element does NOT enforce the target tag's real HTML
+ * content model - pasting a `<div>` (from another site, Word, Google Docs,
+ * or even another block copied within the editor) straight into a
+ * `<p>`/`<h1>`/`<span>` succeeds silently in the DOM and gets captured
+ * verbatim by BlockElement.vue's onBlur. The browser only enforces the
+ * real content model when that HTML is later parsed fresh (a published
+ * site's SSR/static output, or any `innerHTML =` assignment) - where it
+ * auto-closes the `<p>` the moment it hits the nested block tag, silently
+ * dropping/reordering content. Found live: a real paragraph in a
+ * published site was missing its text because of exactly this. Call only
+ * for a node whose own `element` is in PHRASING_ONLY_ELEMENTS. */
+export function stripBlockLevelTags(html: string): string {
+  const container = document.createElement('div')
+  container.innerHTML = html
+  // globalThis.Element, not this file's own `Element` (ElementsClass.js's
+  // block-model type, imported above) - a plain DOM node here.
+  const unwrap = (node: globalThis.Element) => {
+    for (const child of Array.from(node.children)) {
+      unwrap(child)
+      if (BLOCK_LEVEL_TAGS.has(child.tagName)) {
+        const frag = document.createDocumentFragment()
+        while (child.firstChild) frag.appendChild(child.firstChild)
+        frag.appendChild(document.createElement('br'))
+        child.replaceWith(frag)
+      }
+    }
+  }
+  unwrap(container)
+  return container.innerHTML
+}
+
 export const RESERVED_ATTRS = ['class', 'style', 'data-id', 'data-type', 'ref']
 
 /** Filters element.data.attributes down to what's safe to v-bind-spread
