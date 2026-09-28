@@ -172,14 +172,14 @@ onMounted(async () => {
       // PagePreviewTab). Full route path (possibly with rootPath prefix) is
       // sent as-is; the server strips rootPath via ?rootPath=.
       const rootPath = typeof route.query.rootPath === 'string' ? route.query.rootPath : undefined
-      const result = await getPublicPage(queryLocale, route.path, rootPath)
+      const result = await getPublicPage(queryLocale, route.path, rootPath, true)
       page = result.page
       params = result.params
       pageLayout = result.layout ?? null
     } else {
       // Clean SEO-friendly URL: /{rootPath}/{slug} with no query params.
       // Server auto-detects rootPath from the first path segment.
-      const result = await getPublicPageByPath(route.path)
+      const result = await getPublicPageByPath(route.path, true)
       page = result.page
       params = result.params
       pageLayout = result.layout ?? null

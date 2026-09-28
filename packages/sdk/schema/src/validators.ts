@@ -5,7 +5,7 @@
 // fields survive a round-trip unchanged.
 
 import { z } from 'zod'
-import type { WhoobeElementNode, ElementDataBinding, ElementFormConfig, ElementSearchConfig, ElementSlider, DynamicLinkBinding } from './node.js'
+import type { WhoobeElementNode, ElementDataBinding, ElementFormConfig, ElementSearchConfig, ElementSlider, DynamicLinkBinding, GatewayBinding } from './node.js'
 
 // --- primitives ---
 
@@ -41,6 +41,7 @@ export const formConfigSchema: z.ZodType<ElementFormConfig> = z.object({
   targetClassId: z.string(),
   gatewayEndpointName: z.string().optional(),
   gatewayRoutePath: z.string().optional(),
+  gatewayBindingId: z.string().optional(),
   successMessage: z.string(),
   errorMessage: z.string(),
   successRedirectUrl: z.string(),
@@ -78,6 +79,35 @@ export const dataBindingOrderBySchema = z.object({
   direction: z.enum(['asc', 'desc']),
 })
 
+export const fieldTransformSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('none') }),
+  z.object({ type: z.literal('date'), options: z.object({
+    dateStyle: z.enum(['short', 'medium', 'long', 'full']),
+    includeTime: z.boolean(),
+  }) }),
+  z.object({ type: z.literal('url'), options: z.object({
+    linkText: z.enum(['value', 'custom']),
+    customText: z.string().optional(),
+    openInNewTab: z.boolean(),
+  }) }),
+  z.object({ type: z.literal('number'), options: z.object({
+    style: z.enum(['decimal', 'currency', 'percent']),
+    currency: z.string().optional(),
+    minimumFractionDigits: z.number().optional(),
+    maximumFractionDigits: z.number().optional(),
+    useGrouping: z.boolean(),
+  }) }),
+  z.object({ type: z.literal('truncate'), options: z.object({
+    maxLength: z.number(),
+    ellipsis: z.string(),
+  }) }),
+  z.object({ type: z.literal('valueMap'), options: z.object({
+    rules: z.array(z.object({ match: z.string(), label: z.string(), className: z.string() })),
+    fallbackLabel: z.string(),
+    fallbackClassName: z.string(),
+  }) }),
+]).nullable().optional()
+
 export const dataBindingSchema: z.ZodType<ElementDataBinding> = z.object({
   className: z.string(),
   objectId: z.string().nullable().optional(),
@@ -96,40 +126,28 @@ export const dataBindingSchema: z.ZodType<ElementDataBinding> = z.object({
   loadMoreClass: z.string().nullable().optional(),
   paginationContainerClass: z.string().nullable().optional(),
   locale: z.string().nullable().optional(),
-  transform: z.discriminatedUnion('type', [
-    z.object({ type: z.literal('none') }),
-    z.object({ type: z.literal('date'), options: z.object({
-      dateStyle: z.enum(['short', 'medium', 'long', 'full']),
-      includeTime: z.boolean(),
-    }) }),
-    z.object({ type: z.literal('url'), options: z.object({
-      linkText: z.enum(['value', 'custom']),
-      customText: z.string().optional(),
-      openInNewTab: z.boolean(),
-    }) }),
-    z.object({ type: z.literal('number'), options: z.object({
-      style: z.enum(['decimal', 'currency', 'percent']),
-      currency: z.string().optional(),
-      minimumFractionDigits: z.number().optional(),
-      maximumFractionDigits: z.number().optional(),
-      useGrouping: z.boolean(),
-    }) }),
-    z.object({ type: z.literal('truncate'), options: z.object({
-      maxLength: z.number(),
-      ellipsis: z.string(),
-    }) }),
-    z.object({ type: z.literal('valueMap'), options: z.object({
-      rules: z.array(z.object({ match: z.string(), label: z.string(), className: z.string() })),
-      fallbackLabel: z.string(),
-      fallbackClassName: z.string(),
-    }) }),
-  ]).nullable().optional(),
+  transform: fieldTransformSchema,
 })
 
 export const dynamicLinkSchema: z.ZodType<DynamicLinkBinding> = z.object({
   targetPageId: z.string(),
   valueField: z.string(),
   source: z.enum(['dataObject', 'gateway']).optional(),
+})
+
+// --- gateway binding ---
+// Was previously validated only by whoobeElementSchema's .passthrough() -
+// any shape survived. Explicit now so a malformed/tampered gatewayBinding
+// fails page-save validation instead of reaching bind-page-content.ts.
+
+export const gatewayBindingSchema: z.ZodType<GatewayBinding> = z.object({
+  endpointName: z.string().optional(),
+  routePath: z.string().optional(),
+  fieldPath: z.string(),
+  params: z.record(z.string()).nullable().optional(),
+  filters: z.array(dataBindingFilterSchema).nullable().optional(),
+  transform: fieldTransformSchema,
+  bindingId: z.string().optional(),
 })
 
 // --- slider ---
@@ -175,6 +193,7 @@ export const whoobeElementSchema: z.ZodType<WhoobeElementNode> = z.lazy(() =>
       data: z.record(z.unknown()).optional(),
       dataBinding: dataBindingSchema.nullable().optional(),
       dynamicLink: dynamicLinkSchema.nullable().optional(),
+      gatewayBinding: gatewayBindingSchema.nullable().optional(),
       link: z.string().nullable().optional(),
       linkTarget: z.string().nullable().optional(),
       anchor: z.string().nullable().optional(),

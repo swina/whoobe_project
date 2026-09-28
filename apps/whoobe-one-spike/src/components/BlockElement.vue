@@ -17,6 +17,11 @@
     >
       &lt;{{ component }}&gt;
     </button>
+    <span
+      v-else-if="hasHiddenClass"
+      class="absolute -top-2.5 left-1/2 -translate-x-1/2 z-50 px-1.5 py-0.5 rounded text-[10px] leading-none font-semibold bg-black text-white font-mono"
+      title="This element is hidden in the published view (has 'hidden' class)"
+    >hidden</span>
     <!-- The "Search" element is a live component, not a native tag - a
          dedicated branch (like lucideicon) so the generic <component>
          branch's v-html/contenteditable never touch its interactive
@@ -153,7 +158,7 @@ import type { DataObjectRecord } from '../data-objects-api'
 import { editorBus } from '../bus'
 import { applyTransform, escapeHtml } from '../scripts/field-transforms'
 import { Copy } from '@lucide/vue'
-import { customAttrs, renderSelectOptionsHtml, renderRadioGroupHtml, resolveLucideIcon, stripBlockLevelTags, PHRASING_ONLY_ELEMENTS } from '../helpers'
+import { customAttrs, renderSelectOptionsHtml, renderRadioGroupHtml, resolveLucideIcon, stripBlockLevelTags, stripEditorHidden, PHRASING_ONLY_ELEMENTS } from '../helpers'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -348,13 +353,22 @@ const component = computed(() => {
 const classe = computed(() => {
   const el = props.element as any
   const css = el.css || { css: '', container: '' }
-  let cls = `${css.css} ${css.container}`
+  const raw = `${css.css} ${css.container}`
+  const { cleaned } = stripEditorHidden(raw)
+  let cls = cleaned
   // Keep a bound element with no content visible/selectable in the editor
   // canvas (data not yet resolved, or resolves to empty/null).
   if (db.value && !el.content && el.element !== 'img') cls += ' min-h-8'
   if (transformClassName.value) cls += ` ${transformClassName.value}`
   if (isSelected.value) cls += ' shadow-lg ring-2 ring-indigo-500'
   return cls
+})
+
+const hasHiddenClass = computed(() => {
+  const el = props.element as any
+  const css = el.css || { css: '', container: '' }
+  const raw = `${css.css} ${css.container}`
+  return stripEditorHidden(raw).hasHidden
 })
 
 const stile = computed(() => {

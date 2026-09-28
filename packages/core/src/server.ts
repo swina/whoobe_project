@@ -92,4 +92,6 @@ export * from './push/index.js';
 export * from './db/gateway-schema.js';
 export * from './db/gateway-records.js';
 export * from './cms/gateway-binding.js';
+export * from './gateway/bind-page-content.js';
+export * from './gateway/sanitize-public-content.js';
 export * from './env.js';

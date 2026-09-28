@@ -274,8 +274,7 @@ export const DefaultForm: NodeComponent = ({ descriptor, children }) => {
     try {
       await ctx.api.submitForm(fc.targetClassId, attributes, {
         notify: fc.notify,
-        gatewayEndpointName: fc.gatewayEndpointName,
-        gatewayRoutePath: fc.gatewayRoutePath,
+        gatewayBindingId: fc.gatewayBindingId,
       })
       formEl.reset()
       setResult({ ok: true, message: fc.successMessage || 'Submitted.' })

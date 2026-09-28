@@ -58,7 +58,14 @@ export function WhoobePage({ locale, path, websiteId, descriptor: initial, layou
   )
 }
 
-/** Convenience: build an ApiClient from a base URL and use it as `api`. */
-export function createWhoobeApi(baseUrl: string, gatewayUrl?: string): WhoobeApi {
-  return new ApiClient(baseUrl, undefined, gatewayUrl) as unknown as WhoobeApi
+/** Convenience: build an ApiClient from a base URL and use it as `api`.
+ *  `submitProxyPath`, when given, routes ApiClient.submitForm() through a
+ *  same-origin route on this site's own server instead of calling the
+ *  Gateway directly from the browser - see docs/plans/api-gateway/gateway-
+ *  auth-authz.md and packages/publish/src/cli.ts's generated
+ *  app/api/whoobe-gateway-submit route. This function only ever runs
+ *  client-side ("use client" file), so it must never be handed a real site
+ *  key directly - only this public, harmless proxy path. */
+export function createWhoobeApi(baseUrl: string, gatewayUrl?: string, submitProxyPath?: string): WhoobeApi {
+  return new ApiClient(baseUrl, undefined, gatewayUrl, { gatewaySubmitProxyPath: submitProxyPath }) as unknown as WhoobeApi
 }

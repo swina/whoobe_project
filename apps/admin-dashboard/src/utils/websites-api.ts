@@ -11,6 +11,7 @@ export interface WebsiteRecord {
   themeId: string | null
   pwaEnabled: boolean
   pwaConfig: Record<string, unknown> | null
+  gatewayApiKeyPrefix: string | null
   createdAt: string
   updatedAt: string
 }
@@ -343,6 +344,26 @@ export async function saveCdnMirrorSettings(baseUrl: string, settings: CdnMirror
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(settings),
+    credentials: 'include',
+  })
+}
+
+// --- Gateway API key (docs/plans/api-gateway/gateway-auth-authz.md) ---
+// The plaintext is returned exactly once by regenerate() and never again -
+// callers must show it to the admin immediately and never persist it
+// client-side beyond that single display.
+
+export async function regenerateWebsiteGatewayApiKey(baseUrl: string, id: string): Promise<{ key: string; prefix: string }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${id}/gateway-api-key/regenerate`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
+export async function clearWebsiteGatewayApiKey(baseUrl: string, id: string): Promise<void> {
+  await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${id}/gateway-api-key`, {
+    method: 'DELETE',
     credentials: 'include',
   })
 }

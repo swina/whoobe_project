@@ -76,6 +76,10 @@ export interface ElementFormConfig {
    *  creating a Data Object - targetClassId is ignored. */
   gatewayEndpointName?: string
   gatewayRoutePath?: string
+  /** Server-resolved at page-save time - see docs/plans/api-gateway/
+   *  gateway-auth-authz.md. Absent until the page has been saved at least
+   *  once with a gateway target configured. */
+  gatewayBindingId?: string
   successMessage: string
   errorMessage: string
   successRedirectUrl: string
@@ -129,6 +133,9 @@ export interface GatewayBinding {
    *  fieldPath itself. All filters must match (AND). */
   filters?: DataBindingFilter[] | null
   transform?: FieldTransform | null
+  /** Server-resolved at page-save time - see docs/plans/api-gateway/
+   *  gateway-auth-authz.md and data-resolver.ts's resolveGatewayBinding(). */
+  bindingId?: string
 }
 
 export interface DataBindingOrderBy {

@@ -7,12 +7,15 @@
 #
 # Prerequisites:
 #   - Node.js 20+ and pnpm 9+
-#   - A running Whoobe CMS with public API access
-#   - The website UUID (available in admin dashboard → Websites)
-#   - At least one page with kind "app" in the website
+#   - A running Whoobe CMS with public API access (default: localhost:3003)
 #
 # For iOS: macOS + Xcode
 # For Android: Android Studio
+#
+# Environment variables:
+#   MOBILE_API_URL       Default CMS API URL (default: http://localhost:3003)
+#   MOBILE_OUT_DIR       Default output directory (default: ./sites)
+#   MOBILE_GATEWAY_URL   Default Gateway URL
 
 set -euo pipefail
 
@@ -34,10 +37,10 @@ echo -e "${BOLD}${CYAN}╚══════════════════
 echo ""
 
 # ── 1. CMS API URL ─────────────────────────────────────────────────────────
-DEFAULT_API_URL="${MOBILE_API_URL:-https://whoobecms.example.com}"
+DEFAULT_API_URL="${MOBILE_API_URL:-http://localhost:3003}"
 echo -e "${YELLOW}Tip:${NC} This must be the core-api URL, not the admin dashboard."
-echo -e "     Production: ${CYAN}https://cms.example.com${NC}  (no port)"
-echo -e "     Local dev:  ${CYAN}http://whoobecms.local:3003${NC}  (port 3003)"
+echo -e "     Local dev:  ${CYAN}http://localhost:3003${NC}"
+echo -e "     Production: ${CYAN}https://cms.example.com${NC}"
 echo ""
 read -r -p "CMS API URL [$DEFAULT_API_URL]: " API_URL
 API_URL="${API_URL:-$DEFAULT_API_URL}"
@@ -49,25 +52,82 @@ if ! echo "$API_URL" | grep -q '://'; then
   echo -e "  → ${CYAN}$API_URL${NC}"
 fi
 
-# ── 2. Website ID ──────────────────────────────────────────────────────────
+# ── 2. Fetch website list ───────────────────────────────────────────────────
 echo ""
-echo -e "${YELLOW}Tip:${NC} Find the website ID in the admin dashboard → Websites."
-echo -e "     Click the truncated ID (e.g. ${CYAN}abc12345…${NC}) to copy the full UUID."
+echo -e "Fetching website list from ${CYAN}${API_URL}/public/websites${NC}..."
 echo ""
-DEFAULT_WEBSITE_ID="${MOBILE_WEBSITE_ID:-}"
-read -r -p "Website ID${DEFAULT_WEBSITE_ID:+ [$DEFAULT_WEBSITE_ID]}: " WEBSITE_ID
-WEBSITE_ID="${WEBSITE_ID:-$DEFAULT_WEBSITE_ID}"
-if [ -z "$WEBSITE_ID" ]; then
-  echo -e "${BOLD}Error:${NC} Website ID is required." >&2
+
+WEBSITES_JSON="$(curl -sf "${API_URL}/public/websites" 2>/dev/null || true)"
+if [ -z "$WEBSITES_JSON" ]; then
+  echo -e "${BOLD}Error:${NC} Could not reach ${API_URL}/public/websites"
+  echo "  Is the CMS API running and accessible?"
   exit 1
 fi
 
-# ── 3. App name ────────────────────────────────────────────────────────────
-DEFAULT_APP_NAME=""
-echo -e "${YELLOW}Tip:${NC} This is the display name users see on their home screen."
-echo -e "     Leave empty to use the website name from the CMS."
+# Parse into lines: number | name | id
+WEBSITE_COUNT="$(echo "$WEBSITES_JSON" | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('websites',[])))" 2>/dev/null || echo 0)"
+if [ "$WEBSITE_COUNT" -eq 0 ]; then
+  echo -e "${BOLD}Error:${NC} No websites found on this CMS."
+  exit 1
+fi
+
+echo -e "Found ${CYAN}${WEBSITE_COUNT}${NC} website(s):"
 echo ""
-read -r -p "App display name [${DEFAULT_APP_NAME:-website name}]: " APP_NAME
+echo "$WEBSITES_JSON" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for i, w in enumerate(data.get('websites', []), 1):
+    print(f'  {i}. {w[\"name\"]}  ({w[\"id\"]})')
+"
+
+echo ""
+read -r -p "Select website number [1-${WEBSITE_COUNT}]: " WEBSITE_NUM
+if ! [[ "$WEBSITE_NUM" =~ ^[0-9]+$ ]] || [ "$WEBSITE_NUM" -lt 1 ] || [ "$WEBSITE_NUM" -gt "$WEBSITE_COUNT" ]; then
+  echo -e "${BOLD}Error:${NC} Invalid selection."
+  exit 1
+fi
+
+WEBSITE_ID="$(echo "$WEBSITES_JSON" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+print(data['websites'][$((WEBSITE_NUM - 1))]['id'])
+")"
+WEBSITE_NAME="$(echo "$WEBSITES_JSON" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+print(data['websites'][$((WEBSITE_NUM - 1))]['name'])
+")"
+
+echo -e "  → Selected: ${CYAN}${WEBSITE_NAME}${NC}  (${WEBSITE_ID})"
+
+# ── Check if website has a gateway API key configured ───────────────────────
+echo ""
+echo -e "Checking website configuration..."
+WEBSITE_JSON="$(curl -sf "${API_URL}/public/websites/${WEBSITE_ID}" 2>/dev/null || true)"
+HAS_GATEWAY_KEY="$(echo "$WEBSITE_JSON" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    prefix = data.get('website', {}).get('gatewayApiKeyPrefix')
+    print('true' if prefix else 'false')
+except: print('false')
+" 2>/dev/null || echo "false")"
+GATEWAY_KEY_PREFIX="$(echo "$WEBSITE_JSON" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    prefix = data.get('website', {}).get('gatewayApiKeyPrefix')
+    print(prefix or '')
+except: print('')
+" 2>/dev/null || echo "")"
+
+# ── 3. App name ────────────────────────────────────────────────────────────
+DEFAULT_APP_NAME="${WEBSITE_NAME}"
+echo ""
+echo -e "${YELLOW}Tip:${NC} This is the display name users see on their home screen."
+echo ""
+read -r -p "App display name [${DEFAULT_APP_NAME}]: " APP_NAME
+APP_NAME="${APP_NAME:-$DEFAULT_APP_NAME}"
 
 # ── 4. Bundle identifier ────────────────────────────────────────────────────
 DEFAULT_APP_ID="com.whoobe.mobile.$(echo "${WEBSITE_ID}" | tr '[:upper:]' '[:lower:]' | cut -c1-8)"
@@ -80,8 +140,35 @@ APP_ID="${APP_ID:-$DEFAULT_APP_ID}"
 
 # ── 5. Output directory ────────────────────────────────────────────────────
 DEFAULT_OUT_DIR="${OUT_DIR}/mobile-$(echo "${WEBSITE_ID}" | tr '[:upper:]' '[:lower:]' | cut -c1-8)"
-read -r -p "Output directory [$DEFAULT_OUT_DIR]: " CHOOSEN_OUT_DIR
+echo ""
+echo -e "${YELLOW}Tip:${NC} For Android Studio from Windows, use a Windows path"
+echo -e "     like ${CYAN}/mnt/c/Users/YourName/projects/my-mobile-app${NC}"
+echo ""
+read -r -p "Output directory [${DEFAULT_OUT_DIR}]: " CHOOSEN_OUT_DIR
 CHOOSEN_OUT_DIR="${CHOOSEN_OUT_DIR:-$DEFAULT_OUT_DIR}"
+
+# ── 6. Gateway URL (optional) ──────────────────────────────────────────────
+DEFAULT_GATEWAY_URL="${MOBILE_GATEWAY_URL:-}"
+echo ""
+echo -e "${YELLOW}Tip:${NC} Base URL of the API Gateway, needed for gateway-backed forms/bindings."
+echo -e "     Example: ${CYAN}https://cms.example.com:3001${NC}"
+echo -e "     Leave empty if the website has no Gateway bindings."
+echo ""
+read -r -p "Gateway URL${DEFAULT_GATEWAY_URL:+ [$DEFAULT_GATEWAY_URL]}: " GATEWAY_URL
+GATEWAY_URL="${GATEWAY_URL:-$DEFAULT_GATEWAY_URL}"
+
+# ── 7. Site API key (optional) ─────────────────────────────────────────────
+echo ""
+if [ "$HAS_GATEWAY_KEY" = "true" ] && [ -n "$GATEWAY_KEY_PREFIX" ]; then
+  echo -e "${YELLOW}This website has a Gateway API key configured${NC} (prefix: ${CYAN}${GATEWAY_KEY_PREFIX}...${NC})"
+  echo -e "     Paste it below, or leave empty to skip."
+  echo -e "     To find the key: admin dashboard → Settings → Publish → Gateway site key."
+  echo -e "     If you lost it, generate a new one from the dashboard (this invalidates the old one)."
+else
+  echo -e "${YELLOW}Gateway API key${NC} — leave empty if the website has no Gateway key configured."
+fi
+echo ""
+read -r -p "Site API key: " SITE_API_KEY
 
 # ── Summary ─────────────────────────────────────────────────────────────────
 echo ""
@@ -89,10 +176,12 @@ echo -e "${BOLD}${CYAN}┌──────────────────
 echo -e "${BOLD}${CYAN}│              Publishing Summary              │${NC}"
 echo -e "${BOLD}${CYAN}└─────────────────────────────────────────────┘${NC}"
 echo -e "  ${BOLD}CMS API URL:${NC}     $API_URL"
-echo -e "  ${BOLD}Website ID:${NC}      $WEBSITE_ID"
-echo -e "  ${BOLD}App name:${NC}        ${APP_NAME:-(website name)}"
+echo -e "  ${BOLD}Website:${NC}         $WEBSITE_NAME  ($WEBSITE_ID)"
+echo -e "  ${BOLD}App name:${NC}        $APP_NAME"
 echo -e "  ${BOLD}Bundle ID:${NC}       $APP_ID"
 echo -e "  ${BOLD}Output dir:${NC}      $CHOOSEN_OUT_DIR"
+echo -e "  ${BOLD}Gateway URL:${NC}     ${GATEWAY_URL:-(none)}"
+echo -e "  ${BOLD}Site API key:${NC}    ${SITE_API_KEY:+(set)}${SITE_API_KEY:-"(none)"}"
 echo ""
 
 # ── Confirm ─────────────────────────────────────────────────────────────────
@@ -120,6 +209,16 @@ case "$STATIC_ANSWER" in
   y|Y|yes|Yes) STATIC_FLAG="--static" ;;
 esac
 
+GATEWAY_URL_ARG=""
+if [ -n "$GATEWAY_URL" ]; then
+  GATEWAY_URL_ARG="--gateway-url $GATEWAY_URL"
+fi
+
+SITE_API_KEY_ARG=""
+if [ -n "$SITE_API_KEY" ]; then
+  SITE_API_KEY_ARG="--site-api-key $SITE_API_KEY"
+fi
+
 # Build the mobile-app package first
 pnpm run --filter @whoobe-cms/mobile-app build
 
@@ -129,7 +228,9 @@ node packages/mobile-app/bin/whoobe-mobile.js \
   --out-dir "$CHOOSEN_OUT_DIR" \
   --app-id "$APP_ID" \
   $APP_NAME_ARG \
-  $STATIC_FLAG
+  $STATIC_FLAG \
+  $GATEWAY_URL_ARG \
+  $SITE_API_KEY_ARG
 
 # ── Done ────────────────────────────────────────────────────────────────────
 echo ""

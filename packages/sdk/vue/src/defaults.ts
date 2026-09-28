@@ -272,8 +272,7 @@ export const DefaultForm: NodeComponent = defineComponent({
       try {
         await (ctx.api as WhoobeApi).submitForm(fc.targetClassId, attributes, {
           notify: fc.notify,
-          gatewayEndpointName: fc.gatewayEndpointName,
-          gatewayRoutePath: fc.gatewayRoutePath,
+          gatewayBindingId: fc.gatewayBindingId,
         })
         formEl.reset()
         result.value = { ok: true, message: fc.successMessage || 'Submitted.' }

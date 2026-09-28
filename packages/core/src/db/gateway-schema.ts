@@ -60,3 +60,40 @@ export const gatewaySchemas = pgTable('gateway_schemas', {
 }, (table) => ({
   routeIdIdx: uniqueIndex('gateway_schema_route_idx').on(table.routeId),
 }));
+
+/** A published Website's authored gateway usage (a Form's gateway target, or
+ *  a container's gatewayBinding), pinned server-side at page-save time to one
+ *  fixed (endpointId, routeId) - see docs/plans/api-gateway/gateway-auth-
+ *  authz.md. This row's `id` is the opaque "bindingId" published site content
+ *  carries instead of the raw endpointName/routePath, so a visitor can never
+ *  choose which endpoint/route/website a request actually reaches - the
+ *  public gateway routes (submit-handler.ts/resolve-handler.ts) resolve
+ *  everything from this row, never from the client's own request body. */
+export const gatewayBindings = pgTable('gateway_bindings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  endpointId: uuid('endpoint_id').notNull().references(() => gatewayEndpoints.id, { onDelete: 'cascade' }),
+  routeId: uuid('route_id').notNull().references(() => gatewayRoutes.id, { onDelete: 'cascade' }),
+  websiteId: uuid('website_id').notNull(),
+  /** 'resolve' bindings may only reference a GET route; 'submit' bindings may
+   *  only reference a non-GET route - enforced in gateway-records.ts's
+   *  findOrCreateGatewayBinding(), not just trusted from the caller. */
+  kind: text('kind').notNull(),
+  /** resolve only - dot-path into the upstream response, applied server-side
+   *  before the value ever reaches the client. */
+  fieldPath: text('field_path'),
+  /** resolve only - the placeholder names (e.g. "id" for a route path
+   *  containing `{id}`) the client is allowed to fill in per-request; any
+   *  other key in a request's `params` is dropped server-side. */
+  paramKeys: text('param_keys').array().notNull().default([]),
+  /** resolve only - result filters, fixed at authoring time (no longer
+   *  client-suppliable). */
+  filters: jsonb('filters').$type<unknown>(),
+  /** Content-addressed dedup key (hash of endpointId+routeId+kind+fieldPath+
+   *  paramKeys+filters+websiteId) so re-saving a page with the same authored
+   *  gateway config reuses one row instead of growing this table unbounded. */
+  configHash: text('config_hash').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  configHashIdx: uniqueIndex('gateway_binding_config_hash_idx').on(table.websiteId, table.configHash),
+}));

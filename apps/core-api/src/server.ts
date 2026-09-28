@@ -210,6 +210,10 @@ import {
   getAssetByPath,
   listAssetsUnderFolder,
   resolveContentCdnMirrors,
+  bindPageGatewayContent,
+  sanitizePublicGatewayContent,
+  setWebsiteGatewayApiKey,
+  clearWebsiteGatewayApiKey,
   type PushProviderName,
   type AuthenticatedRequest,
   type SearchOptions,
@@ -1676,6 +1680,12 @@ app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
       return;
     }
 
+    let bindingWarnings: { nodeId: string; reason: string }[] = [];
+    if (typeof websiteId === 'string' && websiteId) {
+      const bound = await bindPageGatewayContent(content, websiteId);
+      bindingWarnings = bound.warnings;
+    }
+
     const page = await createWhoobePage({
       translationGroupId: typeof translationGroupId === 'string' ? translationGroupId : undefined,
       locale: typeof locale === 'string' ? locale : undefined,
@@ -1692,7 +1702,7 @@ app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
       websiteId: typeof websiteId === 'string' ? websiteId : null,
       themeId: typeof themeId === 'string' ? themeId : null,
     });
-    res.status(201).json({ page });
+    res.status(201).json({ page, gatewayBindingWarnings: bindingWarnings.length ? bindingWarnings : undefined });
   } catch (error: any) {
     if (error?.code === '23505') {
       res.status(409).json({ error: `A page with slug "${req.body?.slug}" already exists for this locale` });
@@ -1706,6 +1716,17 @@ app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
 app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { slug, title, category, kind, published, workflowState, content, locale, path, websiteId, themeId, seo, sitemap, search } = req.body ?? {};
+
+    let bindingWarnings: { nodeId: string; reason: string }[] = [];
+    if (content !== undefined) {
+      const effectiveWebsiteId = typeof websiteId === 'string' && websiteId
+        ? websiteId
+        : (await getWhoobePage(req.params.id))?.websiteId ?? null;
+      if (effectiveWebsiteId) {
+        const bound = await bindPageGatewayContent(content, effectiveWebsiteId);
+        bindingWarnings = bound.warnings;
+      }
+    }
 
     const page = await updateWhoobePage(req.params.id, {
       slug: typeof slug === 'string' ? slug : undefined,
@@ -1727,7 +1748,7 @@ app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE),
       res.status(404).json({ error: 'Page not found' });
       return;
     }
-    res.json({ page });
+    res.json({ page, gatewayBindingWarnings: bindingWarnings.length ? bindingWarnings : undefined });
   } catch (error: any) {
     if (error?.code === '23505') {
       res.status(409).json({ error: `A page with slug "${req.body?.slug}" already exists for this locale` });
@@ -1789,6 +1810,34 @@ app.post('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_WRITE), a
   } catch (error: any) {
     logger.error({ err: error }, 'Create website error');
     res.status(500).json({ error: error.message || 'Failed to create website' });
+  }
+});
+
+// Generates (or rotates) a website's Gateway API key - the plaintext is
+// returned exactly once and never stored (only its hash is) - see docs/
+// plans/api-gateway/gateway-auth-authz.md. Overwrites any previous key,
+// immediately invalidating it for any already-deployed site still using it.
+app.post('/whoobe-one/websites/:id/gateway-api-key/regenerate', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await setWebsiteGatewayApiKey(req.params.id);
+    if (!result) {
+      res.status(404).json({ error: 'Website not found' });
+      return;
+    }
+    res.json({ key: result.plaintext, prefix: result.prefix });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Regenerate website gateway API key error');
+    res.status(500).json({ error: error.message || 'Failed to regenerate key' });
+  }
+});
+
+app.delete('/whoobe-one/websites/:id/gateway-api-key', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    await clearWebsiteGatewayApiKey(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Clear website gateway API key error');
+    res.status(500).json({ error: error.message || 'Failed to clear key' });
   }
 });
 
@@ -2536,7 +2585,7 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
               footer: slot(nfTpl.layout.footer),
               notFound404: null,
             };
-            res.json({ page: contentPage, params: {}, layout: nfLayout });
+            res.json(sanitizePublicGatewayContent({ page: contentPage, params: {}, layout: nfLayout }));
             return;
           }
         } catch { /* fall through to 404 */ }
@@ -2593,10 +2642,10 @@ const snippetIds = new Set<string>();
           };
           layout = {
             template: { id: template.id, name: template.name },
-            header: slot(page.kind === 'app' && template.layout.appHeader ? template.layout.appHeader : template.layout.header),
+            header: slot(template.layout.appHeader ?? template.layout.header),
             aside: slot(template.layout.aside),
             main: slot(template.layout.main, true),
-            footer: slot(page.kind === 'app' && template.layout.appFooter ? template.layout.appFooter : template.layout.footer),
+            footer: slot(template.layout.appFooter ?? template.layout.footer),
             notFound404: slot(template.layout.notFound404),
             body: slot(template.layout.body, true),
           };
@@ -2611,7 +2660,8 @@ const snippetIds = new Set<string>();
     const body: Record<string, unknown> = { page, params };
     if (layout) body.layout = layout;
     if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;
-    res.json(body);
+    const isEditor = req.query.editor === 'true';
+    res.json(isEditor ? body : sanitizePublicGatewayContent(body));
   } catch (error: any) {
     logger.error({ err: error }, 'Public page lookup error');
     res.status(500).json({ error: error.message || 'Failed to look up page' });
@@ -2715,7 +2765,7 @@ app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => 
               footer: slot(nfTpl.layout.footer),
               notFound404: null,
             };
-            res.json({ page: contentPage, params: {}, layout: nfLayout });
+            res.json(sanitizePublicGatewayContent({ page: contentPage, params: {}, layout: nfLayout }));
             return;
           }
         } catch { /* fall through to 404 */ }
@@ -2760,10 +2810,10 @@ const snippetIds = new Set<string>();
           };
           layout = {
             template: { id: template.id, name: template.name },
-            header: slot(page.kind === 'app' && template.layout.appHeader ? template.layout.appHeader : template.layout.header),
+            header: slot(template.layout.appHeader ?? template.layout.header),
             aside: slot(template.layout.aside),
             main: slot(template.layout.main, true),
-            footer: slot(page.kind === 'app' && template.layout.appFooter ? template.layout.appFooter : template.layout.footer),
+            footer: slot(template.layout.appFooter ?? template.layout.footer),
             notFound404: slot(template.layout.notFound404),
             body: slot(template.layout.body, true),
           };
@@ -2777,7 +2827,8 @@ const snippetIds = new Set<string>();
     const body: Record<string, unknown> = { page, params };
     if (layout) body.layout = layout;
     if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;
-    res.json(body);
+    const isEditor = req.query.editor === 'true';
+    res.json(isEditor ? body : sanitizePublicGatewayContent(body));
   } catch (error: any) {
     logger.error({ err: error }, 'Public page lookup error (no-locale)');
     res.status(500).json({ error: error.message || 'Failed to look up page' });
@@ -2812,13 +2863,13 @@ app.get('/public/404/:websiteId', async (req: Request, res: Response): Promise<v
       const nodeId = (node as { id?: unknown } | null)?.id;
       pages.push({ id: typeof nodeId === 'string' ? nodeId : '404-custom', title: 'Custom', content: node });
     }
-    res.json({
+    res.json(sanitizePublicGatewayContent({
       notFound: {
         className: nf.className ?? '',
         style: nf.style ?? '',
         pages,
       },
-    });
+    }));
   } catch (error: any) {
     logger.error({ err: error }, 'Public 404 lookup error');
     res.status(500).json({ error: error.message || 'Failed to look up 404' });
@@ -2875,6 +2926,18 @@ app.get('/public/robots.txt', async (_req: Request, res: Response): Promise<void
   res.send(content);
 });
 
+// Public website list — no auth, returns all websites with id/name/slug.
+// Used by publish-mobile.sh to let the user pick a website interactively.
+app.get('/public/websites', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const all = await listWebsites();
+    res.json({ websites: all.map((w) => ({ id: w.id, name: w.name })) });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Public websites list error');
+    res.status(500).json({ error: error.message || 'Failed to list websites' });
+  }
+});
+
 // Public website info endpoint — no auth, returns website config + themes.
 // Used by the publish CLI to fetch website metadata at build time.
 app.get('/public/websites/:id', async (req: Request, res: Response): Promise<void> => {
@@ -2915,7 +2978,7 @@ app.get('/public/websites/:id', async (req: Request, res: Response): Promise<voi
       collect(path.items);
       return { ...path, pageIds: [...ids] };
     });
-    res.json({ website, themes: [...themes, ...(globalTheme ? [globalTheme] : [])], defaultThemeId, paths: resolvedPaths, templates });
+    res.json(sanitizePublicGatewayContent({ website, themes: [...themes, ...(globalTheme ? [globalTheme] : [])], defaultThemeId, paths: resolvedPaths, templates }));
   } catch (error: any) {
     logger.error({ err: error }, 'Public website info error');
     res.status(500).json({ error: error.message || 'Failed to get website info' });
@@ -2927,7 +2990,7 @@ app.get('/public/pages', async (req: Request, res: Response): Promise<void> => {
   try {
     const websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
     const pages = await listPublishedWhoobePages(websiteId);
-    res.json({ pages });
+    res.json(sanitizePublicGatewayContent({ pages }));
   } catch (error: any) {
     logger.error({ err: error }, 'Public pages list error');
     res.status(500).json({ error: error.message || 'Failed to list pages' });
@@ -2942,7 +3005,7 @@ app.get('/public/snippets/:id', async (req: Request, res: Response): Promise<voi
       res.status(404).json({ error: 'Snippet not found' });
       return;
     }
-    res.json({ snippet });
+    res.json(sanitizePublicGatewayContent({ snippet }));
   } catch (error: any) {
     logger.error({ err: error }, 'Public snippet lookup error');
     res.status(500).json({ error: error.message || 'Failed to get snippet' });
@@ -3013,7 +3076,7 @@ app.get('/public/apps/:websiteId', async (req: Request, res: Response): Promise<
     }
     const pages = await listPublishedWhoobePages(website.id);
     const paths = await listWebsitePaths(website.id);
-    res.json({
+    res.json(sanitizePublicGatewayContent({
       website: {
         id: website.id,
         name: website.name,
@@ -3023,7 +3086,7 @@ app.get('/public/apps/:websiteId', async (req: Request, res: Response): Promise<
       pwaConfig: website.pwaConfig ?? {},
       pages,
       paths,
-    });
+    }));
   } catch (error: any) {
     logger.error({ err: error }, 'Public apps info error');
     res.status(500).json({ error: error.message || 'Failed to get app info' });

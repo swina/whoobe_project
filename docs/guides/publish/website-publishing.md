@@ -95,7 +95,8 @@ pnpm publish:site \
   --framework next \
   --domain www.example.com \
   --gateway-url https://cms.example.com:3001 \
-  --revalidate 60
+  --revalidate 60 \
+  --site-api-key "whb_site_<your-site-secret-key>"
 ```
 
 Or run `./publish-site.sh` for an interactive prompt (asks for all of the below, including the Gateway URL and base path, with sensible defaults) instead of passing flags directly.
@@ -103,7 +104,7 @@ Or run `./publish-site.sh` for an interactive prompt (asks for all of the below,
 ### Options
 
 | Flag | Default | Description |
-|---|---|---|
+|---|---|---|---|
 | `--api-url` | (required) | Base URL of the CMS public API |
 | `--website-id` | (required) | UUID of the website to publish |
 | `--out-dir` | (required) | Output directory for the generated project |
@@ -113,6 +114,7 @@ Or run `./publish-site.sh` for an interactive prompt (asks for all of the below,
 | `--gateway-url` | *(none)* | Base URL of the API Gateway. **Set this** whenever the site uses a Gateway-backed form (Brevo, etc.) or data binding - without it those fall back to `http://localhost:3001` |
 | `--base-path` | `/` | Path the site is mounted under behind nginx in production (e.g. `/blog`) - independent from the CMS's own `websites.rootPath` field, which is a different concept (multi-site routing within the CMS itself). Must match whatever path you actually mount the site at (see [Step 3](#step-3-deploy)) or the framework's own static asset URLs will 404. |
 | `--revalidate` | `60` | ISR/revalidate time in seconds (Next: build-time default; Nuxt: read at request time from `runtimeConfig`) |
+| `--site-api-key` | *(none)* | Optional Gateway API key for this website (Settings > Publish > Gateway site key). Stored server-only (`cmsSiteApiKey` in Nuxt private runtimeConfig, `CMS_SITE_API_KEY` in Next env) — never baked into the client bundle. Required for Gateway-backed form submissions to authenticate the site to the Gateway (see `docs/plans/api-gateway/gateway-auth-authz.md`). Omit to rely on `gateway_bindings` checks alone. |
 
 ### What happens
 
@@ -240,12 +242,15 @@ certbot certonly --webroot -w /var/www/certbot -d www.example.com
 
 This works today because Nuxt's prerender crawler (`nitro.prerender.crawlLinks: true`, already set in the generated `nuxt.config.ts`) doesn't just copy files - it actually **executes** each page's `<script setup>` during the crawl, which runs `getPageData()`, fetches `/public/pages/...`, reads `cdnMirrors`, and lets `resolveImageUrl()` pick the CDN URL - all *before* the static HTML is written to disk. The resulting files reference the CDN directly; nothing in them points back at your local instance.
 
-Procedure:
+Procedure — build locally where your CMS is reachable, then transfer a minimal nginx container to the remote host:
 
 ```bash
-# 1. Mirror every image the site references to the CDN - run against your
-#    LOCAL instance (this is where the asset rows/bytes actually live).
-#    No public exposure needed - see Prerequisites above.
+# 0. Prerequisites: local CMS API running, remote host with podman
+#    Remote host architecture (arm64/aarch64) may differ from local (amd64) —
+#    the workflow below builds the image natively on the remote host
+#    to avoid architecture mismatch.
+
+# 1. Mirror every image the site references to the CDN (same as Option B step 1b)
 WHOOBE_SYNC_EMAIL=service-account@example.com \
 WHOOBE_SYNC_PASSWORD=... \
 pnpm publish:sync-cdn \
@@ -253,26 +258,44 @@ pnpm publish:sync-cdn \
   --website-id <uuid> \
   --gateway-route-id <cloudinary-upload-route-id>
 
-# 2. Generate the site - api-url still points at your LOCAL instance
-#    (only used during this step, on this machine), gateway-url points at
-#    wherever the PUBLIC Gateway actually is (this one IS used at runtime,
-#    client-side, by submitForm()).
+# 2. Generate the site — api-url points at your LOCAL instance
 pnpm publish:site \
   --api-url http://localhost:3003 \
   --website-id <uuid> \
   --out-dir ./sites/my-company-site \
   --framework vue \
   --domain www.example.com \
-  --gateway-url https://public-instance.example.com:3001
+  --gateway-url https://public-gateway.example.com:3001 \
+  --site-api-key "whb_site_<your-site-secret-key>"
 
-# 3. Build - the static crawl runs now, against your still-running local
-#    instance, baking the already-mirrored CDN URLs into the output.
+# 3. Deploy using the static workflow
 cd ./sites/my-company-site
-pnpm install
-pnpm generate   # nuxi generate, a genuine static export via Nitro
-# Static files in ./.output/public/ - copy/rsync/deploy these anywhere
-# (nginx serving plain files, S3+CloudFront, Netlify, Cloudflare Pages...).
-# Your local Whoobe instance can be shut down after this step.
+PORT=3100 ./deploy-static.sh
+```
+
+What `deploy-static.sh` does:
+
+1. **Builds the site locally** — runs `pnpm generate` (Nuxt's static export), which prerenders every page against your local CMS API. All content, CDN URLs, and SEO metadata are baked into static HTML at this step.
+2. **Syncs the static files** to the remote host via `rsync` — only the pre-built `.output/public/`, `Dockerfile.static`, and `nginx-static.conf` are transferred, no source code.
+3. **Builds a minimal nginx image natively on the remote** — uses `podman build` on the remote host's own architecture (e.g. arm64), avoiding cross-architecture compatibility issues. The image is ~25MB (`nginx:alpine`).
+4. **Runs the container** — serves the static files on the configured port.
+5. **Installs the host nginx site config** — creates a reverse proxy vhost for the domain pointing at the container's port.
+
+The result: a static site served by nginx, with **zero CMS API or Node.js dependency at runtime**. Your local Whoobe instance can be shut down after step 3.
+
+**Files for this workflow** (generated alongside the site):
+
+| File | Purpose |
+|---|---|
+| `Dockerfile.static` | Minimal `nginx:alpine` image copying `.output/public/` |
+| `nginx-static.conf` | Static file config with Nuxt SPA fallback and aggressive caching for `/_nuxt/` and `/_payload.json` |
+| `deploy-static.sh` | End-to-end deploy script (local build → rsync → remote build → run → host nginx config) |
+
+**Redeploying after content changes**:
+
+```bash
+cd ./sites/my-company-site
+pnpm generate && PORT=3100 ./deploy-static.sh
 ```
 
 Verify before shutting down the local instance: open a generated HTML file (or a deployed page) and check an `<img src>` in devtools - it should be a CDN URL (e.g. `https://res.cloudinary.com/...`), not `/dam-asset/...` or `http://localhost:3003/...`. If it's still pointing at localhost, that image wasn't mirrored yet (step 1 didn't cover it - check `GET /public/dam/assets/mirror-status`) or the crawler never reached that page (no internal link to it - `crawlLinks` only discovers pages reachable via navigation; a truly orphaned page needs to be added to `nitro.prerender.routes` manually in `nuxt.config.ts`, not something `whoobe-publish` generates for you today).

@@ -42,9 +42,16 @@ export interface ElementFormConfig {
   enabled: boolean
   targetClassId: string
   /** When set, submissions POST to this Gateway endpoint/route instead of
-   *  creating a Data Object - targetClassId is ignored. */
+   *  creating a Data Object - targetClassId is ignored. Authoring-only
+   *  (kept for the editor's own selection UI/preview); the public gateway
+   *  submit route never reads these two, only gatewayBindingId. */
   gatewayEndpointName?: string
   gatewayRoutePath?: string
+  /** Server-resolved at page-save time (core-api's bind-page-content.ts)
+   *  from gatewayEndpointName/gatewayRoutePath - the opaque id a published
+   *  site actually sends to POST /api/v1/gateway/submit. Absent until the
+   *  page has been saved at least once with a gateway target configured. */
+  gatewayBindingId?: string
   successMessage: string
   errorMessage: string
   successRedirectUrl: string
@@ -116,10 +123,24 @@ export interface DynamicLinkBinding {
 }
 
 export interface GatewayBinding {
-  endpointName: string
-  routePath: string
+  /** Authoring-only - stripped from public content (core-api's
+   *  sanitizePublicGatewayContent) once `bindingId` has been resolved, so a
+   *  published site's own copy of this object never has these two. Present
+   *  only inside the CMS (editor's current in-memory document, or content
+   *  fetched through an authenticated endpoint), for the editor's own UI/
+   *  preview to show the current selection. */
+  endpointName?: string
+  routePath?: string
   fieldPath: string
   params?: Record<string, string> | null
+  /** Server-resolved at page-save time from endpointName/routePath/fieldPath/
+   *  filters (core-api's bind-page-content.ts) - the opaque id a published
+   *  site actually sends to POST /api/v1/gateway/resolve. Absent until the
+   *  page has been saved at least once with this binding configured. The
+   *  editor's own live preview (GatewayBindingPicker.vue/GatewayPanel.vue)
+   *  ignores this and keeps using endpointName/routePath directly against
+   *  the admin-authenticated /api/v1/gateway/preview-resolve. */
+  bindingId?: string
   /** Only meaningful when fieldPath resolves to an array (a container
    *  repeater) - filters the resolved items server-side (apps/gateway's
    *  /api/v1/gateway/resolve) before rendering, since there's no upstream
