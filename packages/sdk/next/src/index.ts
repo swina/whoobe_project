@@ -17,6 +17,11 @@ export interface WhoobeNextOptions extends WhoobeAdapterOptions {
   websiteId?: string
   /** ISR revalidate seconds - omit for no-store (always fresh). */
   revalidate?: number
+  /** This website's Gateway API key (docs/plans/api-gateway/gateway-auth-
+   *  authz.md) - pass process.env.CMS_SITE_API_KEY here (a server-only var,
+   *  never NEXT_PUBLIC_*), since getPageData() only ever runs in a Server
+   *  Component / route handler. */
+  siteApiKey?: string
 }
 
 type NextFetchInit = RequestInit & { next?: { revalidate?: number } }
@@ -65,7 +70,11 @@ export async function getPageData(
     cdnMirrors?: Record<string, string>
   }>(`${base}/public/pages/${encodeURIComponent(locale)}${p}${qs}`, fetchInit(options))
   const walkOptions = {
-    api: new ApiClient(base, undefined, options.gatewayUrl),
+    api: new ApiClient(base, undefined, options.gatewayUrl, {
+      gatewaySiteAuth: options.siteApiKey && options.websiteId
+        ? { siteId: options.websiteId, siteKey: options.siteApiKey }
+        : undefined,
+    }),
     assetBaseUrl: options.assetBaseUrl,
     keyPrefix: options.keyPrefix,
     resolveTargetPage: options.resolveTargetPage,

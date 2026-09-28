@@ -144,6 +144,10 @@ describe('walkTree', () => {
   it('substitutes {param}-placeholder gatewayBinding.params from ctx.urlParams (gateway detail page binding)', async () => {
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(init.body as string)
+      // bindingId-only (docs/plans/api-gateway/gateway-auth-authz.md) -
+      // endpointName/routePath/fieldPath are resolved server-side from it,
+      // never sent by the client.
+      expect(body.bindingId).toBe('binding-1')
       expect(body.params).toEqual({ id: '42' })
       return {
         ok: true,
@@ -154,11 +158,27 @@ describe('walkTree', () => {
     try {
       const tree = {
         id: 'root', type: 'container', tag: 'document',
-        gatewayBinding: { endpointName: 'shop', routePath: '/products/{id}', fieldPath: '', params: { id: '{id}' } },
+        gatewayBinding: { endpointName: 'shop', routePath: '/products/{id}', fieldPath: '', params: { id: '{id}' }, bindingId: 'binding-1' },
         blocks: [{ id: 'p', type: 'element', tag: 'element', element: 'p', gatewayBinding: { endpointName: 'shop', routePath: '/products/{id}', fieldPath: 'title' } }],
       }
       const out = await walkTree(tree, { urlParams: { id: '42' } }, { api: makeApi() })
       expect(out.children[0].content).toBe('Widget')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('gatewayBinding with no bindingId resolves to no content instead of calling the gateway (unsaved/unbound content)', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      const tree = {
+        id: 'root', type: 'container', tag: 'document',
+        blocks: [{ id: 'p', type: 'element', tag: 'element', element: 'p', gatewayBinding: { endpointName: 'shop', routePath: '/products', fieldPath: 'name' } }],
+      }
+      const out = await walkTree(tree, {}, { api: makeApi() })
+      expect(out.children[0].content).toBe('')
+      expect(fetchMock).not.toHaveBeenCalled()
     } finally {
       vi.unstubAllGlobals()
     }

@@ -116,6 +116,12 @@ export interface GenerateOptions {
    *  forms/bindings fall back to a localhost-only URL and never work once
    *  deployed outside the CMS's own host. */
   gatewayUrl?: string
+  /** Optional Gateway API key for this website (docs/plans/api-gateway/
+   *  gateway-auth-authz.md) - written to a server-only env var, never a
+   *  NEXT_PUBLIC_- or NUXT_PUBLIC_-prefixed one, so it never reaches the
+   *  client bundle. Omit to rely on the mandatory gateway_bindings checks
+   *  alone (this key is an optional second layer, not a replacement). */
+  siteApiKey?: string
   /** Path prefix the site is mounted under behind nginx in production
    *  (e.g. '/blog'), independent from the CMS's own `websites.rootPath`
    *  (a different concept - multi-site routing within the CMS itself).
@@ -195,6 +201,7 @@ export async function generateNextSite(options: GenerateOptions): Promise<void> 
       domain,
       assetBaseUrl: assetDomain,
       gatewayUrl: options.gatewayUrl,
+      siteApiKey: options.siteApiKey,
       basePath: options.basePath,
       monorepoRoot: options.monorepoRoot,
       vendoredPackages,
@@ -372,6 +379,7 @@ interface ScaffoldOptions {
   domain?: string
   assetBaseUrl?: string
   gatewayUrl?: string
+  siteApiKey?: string
   basePath?: string
   /** When only one locale is configured, routes are clean (/{slug} instead of /{locale}/{slug}). */
   singleLocale: boolean
@@ -413,7 +421,7 @@ async function scaffoldNextSite(opts: ScaffoldOptions): Promise<void> {
 
   // Create directory structure — single locale gets clean /{slug} routes
   const slugDir = singleLocale ? 'app/[...slug]' : 'app/[locale]/[...slug]'
-  const dirs = [slugDir, 'src/lib', 'public']
+  const dirs = [slugDir, 'app/api/whoobe-gateway-submit', 'src/lib', 'public']
   if (!singleLocale) dirs.push('app/[locale]')
   for (const d of dirs) {
     await mkdir(join(opts.outDir, d), { recursive: true })
@@ -442,6 +450,7 @@ async function scaffoldNextSite(opts: ScaffoldOptions): Promise<void> {
     await writeFile(join(opts.outDir, 'app/[locale]/[...slug]/page.tsx'), scaffoldCatchAllPage(opts))
   }
 
+  await writeFile(join(opts.outDir, 'app/api/whoobe-gateway-submit/route.ts'), scaffoldGatewaySubmitRoute())
   await writeFile(join(opts.outDir, 'src/lib/api.ts'), scaffoldApi(opts))
   await writeFile(join(opts.outDir, 'src/lib/registry.ts'), scaffoldRegistry())
   await writeFile(join(opts.outDir, '.env.local'), scaffoldEnv(opts))
@@ -451,6 +460,10 @@ async function scaffoldNextSite(opts: ScaffoldOptions): Promise<void> {
   await writeFile(join(opts.outDir, 'nginx.conf'), scaffoldNginxConf(opts))
   await writeFile(join(opts.outDir, 'deploy.sh'), scaffoldDeployScript(opts, 'next'), { mode: 0o755 })
   await writeFile(join(opts.outDir, '.dockerignore'), scaffoldSiteDockerignore())
+  // Static deploy (nginx-only, no Node at runtime) - Nuxt only for now
+  await writeFile(join(opts.outDir, 'Dockerfile.static'), scaffoldDockerfileStatic('next'))
+  await writeFile(join(opts.outDir, 'nginx-static.conf'), scaffoldNginxStaticConf('next'))
+  await writeFile(join(opts.outDir, 'deploy-static.sh'), scaffoldDeployStaticScript(opts, 'next'), { mode: 0o755 })
 }
 
 function scaffoldPackageJson(opts: ScaffoldOptions): string {
@@ -552,6 +565,13 @@ function nginxLocationPath(basePath: string): string {
  *  depend on anything in the monorepo. */
 function scaffoldNginxConf(opts: ScaffoldOptions): string {
   const domain = opts.domain || '_'
+  const locationBlock = (basePath: string) => `${nginxLocationPath(basePath)} {
+        proxy_pass http://127.0.0.1:__PORT__/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }`
   return `server {
     listen 80;
     server_name ${domain};
@@ -560,13 +580,20 @@ function scaffoldNginxConf(opts: ScaffoldOptions): string {
         root /var/www/certbot;
     }
 
-    location ${nginxLocationPath(opts.basePath ?? '/')} {
-        proxy_pass http://127.0.0.1:__PORT__/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
+    location ${locationBlock(opts.basePath ?? '/')}
+}
+
+server {
+    listen 443 ssl;
+    server_name ${domain};
+
+    ssl_certificate /etc/letsencrypt/live/${domain}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${domain}/privkey.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/${domain}/chain.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    location ${locationBlock(opts.basePath ?? '/')}
 }
 `
 }
@@ -645,6 +672,135 @@ function scaffoldSiteDockerignore(): string {
 .nuxt
 .output
 .git
+`
+}
+
+/** Minimal nginx image for a pre-built static site — expects the framework's
+ *  static export output to already exist locally (`.output/public/` for Nuxt,
+ *  `out/` for Next). Build locally first (e.g. `pnpm generate`), then build
+ *  this image — no Node.js or CMS API needed at runtime. */
+function scaffoldDockerfileStatic(framework: 'next' | 'vue'): string {
+  const staticDir = framework === 'next' ? 'out' : 'public'
+  const warn = framework === 'next'
+    ? '# Next.js static export (`output: \'export\'`) is not yet auto-configured'
+    : ''
+  const sourceDir = framework === 'next' ? 'out' : '.output/public'
+  return `# syntax=docker/dockerfile:1
+${warn}
+# Minimal image for a pre-built static site — expects ${staticDir}/ to
+# already exist locally.  Build locally (pnpm generate for Nuxt), then
+# build this image — no Node.js or CMS API needed at runtime.
+FROM docker.io/library/nginx:alpine
+# NOTE: this directory must be named '${staticDir}' in the build context
+# (deploy-static.sh rsyncs ${sourceDir} as '${staticDir}/' onto the remote)
+COPY ${staticDir} /usr/share/nginx/html/static
+COPY nginx-static.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+`
+}
+
+/** Static-file nginx config for the published site container. The host nginx
+ *  (system service) handles SSL termination — only HTTP inside the container. */
+function scaffoldNginxStaticConf(framework: 'next' | 'vue'): string {
+  const buildDir = framework === 'next' ? '_next' : '_nuxt'
+  const payloadFile = framework === 'next' ? '__NEXT_DATA__' : '_payload.json'
+  return `# Static-file nginx config for the published site container.
+# The host nginx (system service) handles SSL termination — only HTTP inside.
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html/static;
+
+    # SPA fallback — Nuxt/Next pre-rendered pages hydrate from here
+    location / {
+        try_files $uri $uri/ /200.html;
+    }
+
+    # Long-lived build artefacts
+    location /${buildDir}/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Pre-rendered payload — cache aggressively
+    location /${payloadFile} {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Error pages
+    error_page 404 /404.html;
+    location = /404.html {
+        internal;
+    }
+}
+`
+}
+
+/** Self-contained deploy script for the STATIC (pre-rendered) workflow:
+ *  builds the site locally (where the CMS API is reachable), rsyncs the
+ *  static files to the remote host, builds the minimal nginx image natively
+ *  on the remote host's architecture (avoids cross-arch issues), runs the
+ *  container, and wires up host nginx.  Run as `PORT=3100 ./deploy-static.sh`. */
+function scaffoldDeployStaticScript(opts: ScaffoldOptions, framework: 'next' | 'vue'): string {
+  const slug = `whoobe-site-${opts.websiteId.slice(0, 8)}`
+  const buildCmd = framework === 'next'
+    ? '# Next.js static export not yet auto-configured — run `next build` manually'
+    : 'pnpm generate'
+  const dockerBuildContext = framework === 'next' ? 'out' : '.output/public'
+  return `#!/usr/bin/env bash
+# Self-contained deploy for a STATIC (pre-rendered) site: build locally
+# where the CMS API is reachable, rsync the static files to the remote
+# host, build the image natively on the remote (avoids arch mismatch),
+# run the container, wire up nginx on the host.
+# Usage:  PORT=3100 ./deploy-static.sh
+set -euo pipefail
+cd "$(dirname "$0")"
+
+PORT="\${PORT:-3100}"
+IMAGE_NAME="${slug}"
+CONTAINER_NAME="${slug}"
+REMOTE_HOST="\${REMOTE_HOST:-oracle}"
+REMOTE_DIR="/opt/sites/\${IMAGE_NAME}"
+
+# ── 1. Build the site locally (prerender against the local CMS API) ────────
+echo ">>> Building site locally ..."
+${buildCmd}
+
+# ── 2. Rsync static files to the remote host ───────────────────────────────
+echo ">>> Syncing static files to \${REMOTE_HOST}:\${REMOTE_DIR} ..."
+ssh "\$REMOTE_HOST" mkdir -p "\$REMOTE_DIR"
+rsync -az --delete \\
+  Dockerfile.static nginx-static.conf ${dockerBuildContext} \\
+  "\${REMOTE_HOST}:\${REMOTE_DIR}/"
+
+# ── 3. Build the image natively on the remote ──────────────────────────────
+echo ">>> Building image natively on \${REMOTE_HOST} (\${REMOTE_DIR}) ..."
+ssh "\$REMOTE_HOST" podman build -t "\$IMAGE_NAME" -f Dockerfile.static "\$REMOTE_DIR"
+
+# ── 4. Replace the running container on the remote host ────────────────────
+echo ">>> Starting container \${CONTAINER_NAME} on port \${PORT} ..."
+ssh "\$REMOTE_HOST" podman rm -f "\$CONTAINER_NAME" >/dev/null 2>&1 || true
+ssh "\$REMOTE_HOST" podman run -d --name "\$CONTAINER_NAME" \\
+  --restart unless-stopped -p "\${PORT}:80" "\$IMAGE_NAME"
+
+# ── 5. Install / update the host nginx site config ────────────────────────
+echo ">>> Configuring nginx on \${REMOTE_HOST} ..."
+sed "s/__PORT__/\${PORT}/g" nginx.conf > /tmp/\${IMAGE_NAME}-nginx.conf
+SUDO=""
+if [ "\$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
+  SUDO="sudo"
+fi
+ssh "\$REMOTE_HOST" "cat > /tmp/\${IMAGE_NAME}-nginx.conf" < /tmp/\${IMAGE_NAME}-nginx.conf
+ssh "\$REMOTE_HOST" "\$SUDO cp /tmp/\${IMAGE_NAME}-nginx.conf /etc/nginx/sites-available/\${IMAGE_NAME}"
+ssh "\$REMOTE_HOST" "\$SUDO ln -sf /etc/nginx/sites-available/\${IMAGE_NAME} /etc/nginx/sites-enabled/\${IMAGE_NAME}"
+ssh "\$REMOTE_HOST" "\$SUDO nginx -t && \$SUDO systemctl reload nginx"
+
+rm -f /tmp/\${IMAGE_NAME}-nginx.conf
+
+echo ""
+echo "Done. ${opts.domain || '<domain>'} -> 127.0.0.1:\${PORT} (static)"
 `
 }
 
@@ -757,7 +913,7 @@ import './globals.css'
 
 const apiUrl = process.env.NEXT_PUBLIC_CMS_API_URL || ''
 const assetBaseUrl = process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl
-const api = createWhoobeApi(apiUrl, process.env.NEXT_PUBLIC_GATEWAY_URL)
+const api = createWhoobeApi(apiUrl, process.env.NEXT_PUBLIC_GATEWAY_URL, '/api/whoobe-gateway-submit')
 
 export default function RootLayout({
   children,
@@ -800,6 +956,7 @@ export default async function HomePage() {
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || process.env.CMS_API_URL!) + '/dam-asset',
       gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
       rootPath: process.env.NEXT_PUBLIC_WEBSITE_ROOT_PATH,
+      siteApiKey: process.env.CMS_SITE_API_KEY,
     })
     return <WhoobePage descriptor={descriptor} layout={layout} />
   } catch {
@@ -848,6 +1005,7 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
         assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || process.env.CMS_API_URL!) + '/dam-asset',
         gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
         rootPath: process.env.NEXT_PUBLIC_WEBSITE_ROOT_PATH,
+        siteApiKey: process.env.CMS_SITE_API_KEY,
       })
       return <WhoobePage descriptor={descriptor} layout={layout} />
     } catch {
@@ -895,6 +1053,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl) + '/dam-asset',
       gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
       rootPath: process.env.NEXT_PUBLIC_WEBSITE_ROOT_PATH,
+      siteApiKey: process.env.CMS_SITE_API_KEY,
     })
     return generateMetadataFromPage(page, apiUrl)
   } catch {
@@ -917,6 +1076,7 @@ export default async function CatchAllPage({ params }: { params: Promise<{ local
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl) + '/dam-asset',
       gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
       rootPath: process.env.NEXT_PUBLIC_WEBSITE_ROOT_PATH,
+      siteApiKey: process.env.CMS_SITE_API_KEY,
     })
     return <WhoobePage descriptor={descriptor} layout={layout} />
   } catch {
@@ -958,6 +1118,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl) + '/dam-asset',
       gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
       rootPath: process.env.NEXT_PUBLIC_WEBSITE_ROOT_PATH,
+      siteApiKey: process.env.CMS_SITE_API_KEY,
     })
     return generateMetadataFromPage(page, apiUrl)
   } catch {
@@ -980,6 +1141,7 @@ export default async function CatchAllPage({ params }: { params: Promise<{ slug:
       assetBaseUrl: (process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl) + '/dam-asset',
       gatewayUrl: process.env.NEXT_PUBLIC_GATEWAY_URL,
       rootPath: process.env.NEXT_PUBLIC_WEBSITE_ROOT_PATH,
+      siteApiKey: process.env.CMS_SITE_API_KEY,
     })
     return <WhoobePage descriptor={descriptor} layout={layout} />
   } catch {
@@ -1031,6 +1193,40 @@ export default function robots(): MetadataRoute.Robots {
 `
 }
 
+/** Same-origin proxy the browser calls instead of the Gateway directly for
+ *  form submissions (docs/plans/api-gateway/gateway-auth-authz.md) - the
+ *  only place CMS_SITE_API_KEY (a server-only env var, never NEXT_PUBLIC_*)
+ *  is read. `createWhoobeApi()`'s ApiClient posts here (see scaffoldLayout's
+ *  `'/api/whoobe-gateway-submit'` argument) whenever a visitor submits a
+ *  Form bound to a Gateway endpoint. */
+function scaffoldGatewaySubmitRoute(): string {
+  return `import { NextResponse } from 'next/server'
+
+const GATEWAY_URL = (process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001').replace(/\\/+$/, '')
+const SITE_ID = process.env.CMS_WEBSITE_ID || ''
+const SITE_KEY = process.env.CMS_SITE_API_KEY || ''
+
+export async function POST(request: Request) {
+  const body = await request.text()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (SITE_KEY) {
+    headers['X-Whoobe-Site-Id'] = SITE_ID
+    headers['X-Whoobe-Site-Key'] = SITE_KEY
+  }
+  const upstream = await fetch(\`\${GATEWAY_URL}/api/v1/gateway/submit\`, {
+    method: 'POST',
+    headers,
+    body,
+  })
+  const text = await upstream.text()
+  return new NextResponse(text, {
+    status: upstream.status,
+    headers: { 'Content-Type': upstream.headers.get('content-type') || 'application/json' },
+  })
+}
+`
+}
+
 function scaffoldApi(opts: ScaffoldOptions): string {
   return `import { ApiClient } from '@whoobe-cms/renderer'
 
@@ -1069,6 +1265,7 @@ function scaffoldEnv(opts: ScaffoldOptions): string {
 CMS_API_URL=${opts.apiUrl}
 CMS_WEBSITE_ID=${opts.websiteId}
 CMS_REVALIDATE=${opts.revalidate}
+${opts.siteApiKey ? `CMS_SITE_API_KEY=${opts.siteApiKey}` : '# CMS_SITE_API_KEY= (no Gateway site key configured for this website)'}
 NEXT_PUBLIC_CMS_API_URL=${opts.apiUrl}
 NEXT_PUBLIC_WEBSITE_ID=${opts.websiteId}
 NEXT_PUBLIC_ASSET_BASE_URL=${assetBase}
@@ -1159,6 +1356,7 @@ export async function generateNuxtSite(options: GenerateOptions): Promise<void> 
       domain,
       assetBaseUrl: assetDomain,
       gatewayUrl: options.gatewayUrl,
+      siteApiKey: options.siteApiKey,
       basePath: options.basePath,
       pwaConfig,
       monorepoRoot: options.monorepoRoot,
@@ -1200,7 +1398,7 @@ async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
   // 'components' is unconditional, not gated on pwaConfig - AppShell.vue/
   // BottomNav.vue are always written there now (see the comment above their
   // writeFile calls below).
-  const dirs = ['pages', 'composables', 'assets/css', 'public', 'server/routes', 'components']
+  const dirs = ['pages', 'composables', 'assets/css', 'public', 'server/routes', 'server/api', 'components']
   if (!singleLocale) dirs.push('pages/[locale]')
   for (const d of dirs) {
     await mkdir(join(opts.outDir, d), { recursive: true })
@@ -1220,6 +1418,7 @@ async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
   await writeFile(join(opts.outDir, 'pages/index.vue'), nuxtHomePage(opts))
   await writeFile(join(opts.outDir, 'server/routes/sitemap.xml.ts'), nuxtSitemap(opts))
   await writeFile(join(opts.outDir, 'server/routes/robots.txt.ts'), nuxtRobots(opts))
+  await writeFile(join(opts.outDir, 'server/api/whoobe-gateway-submit.post.ts'), nuxtGatewaySubmitRoute())
 
   if (singleLocale) {
     await writeFile(join(opts.outDir, 'pages/[...slug].vue'), nuxtCatchAllPage(opts))
@@ -1259,6 +1458,10 @@ async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
   await writeFile(join(opts.outDir, 'nginx.conf'), scaffoldNginxConf(opts))
   await writeFile(join(opts.outDir, 'deploy.sh'), scaffoldDeployScript(opts, 'vue'), { mode: 0o755 })
   await writeFile(join(opts.outDir, '.dockerignore'), scaffoldSiteDockerignore())
+  // Static deploy (nginx-only, no Node at runtime) - Nuxt only
+  await writeFile(join(opts.outDir, 'Dockerfile.static'), scaffoldDockerfileStatic('vue'))
+  await writeFile(join(opts.outDir, 'nginx-static.conf'), scaffoldNginxStaticConf('vue'))
+  await writeFile(join(opts.outDir, 'deploy-static.sh'), scaffoldDeployStaticScript(opts, 'vue'), { mode: 0o755 })
 }
 
 function nuxtPackageJson(opts: ScaffoldOptions): string {
@@ -1357,6 +1560,12 @@ export default defineNuxtConfig({
     },
   },
   runtimeConfig: {
+    // Server-only (docs/plans/api-gateway/gateway-auth-authz.md) - unlike
+    // everything under \`public\` below, this is NOT serialized into the
+    // client payload. Read it only via useRuntimeConfig(event) in a Nitro
+    // server route, never through the plain useRuntimeConfig() composable
+    // (that one only ever sees \`public\`).
+    cmsSiteApiKey: '${opts.siteApiKey ?? ''}',
     public: {
       cmsApiUrl: '${opts.apiUrl}',
       cmsWebsiteId: '${opts.websiteId}',
@@ -1421,13 +1630,19 @@ function nuxtAppVue(opts: ScaffoldOptions): string {
 </template>
 
 <script setup lang="ts">
-import Alpine from 'alpinejs'
 import { WhoobeProvider, createWhoobeApi } from '@whoobe-cms/nuxt'
 ${pwaEnabled ? "import InstallPrompt from '~/components/InstallPrompt.vue'" : ''}
 ${pwaEnabled ? "import { useOnlineStatus } from '~/composables/useOfflineQueue'" : ''}
 
-// Start Alpine.js for client-side interactivity (x-data, x-show, etc.)
+// Start Alpine.js for client-side interactivity (x-data, x-show, etc.) - a
+// dynamic, client-only import, never a static top-level one: Alpine's own
+// module touches \`MutationObserver\` (a browser-only global) as soon as it's
+// evaluated, before Alpine.start() is even called, so a plain \`import
+// Alpine from 'alpinejs'\` throws immediately during SSR/prerendering
+// ("MutationObserver is not defined") - found live, breaking every
+// \`nuxi generate\` regardless of this site's content.
 if (import.meta.client) {
+  const { default: Alpine } = await import('alpinejs')
   window.Alpine = Alpine as any
   Alpine.start()
 }
@@ -1435,7 +1650,7 @@ if (import.meta.client) {
 const config = useRuntimeConfig()
 const apiUrl = config.public.cmsApiUrl
 const assetBaseUrl = config.public.cmsAssetBaseUrl || apiUrl
-const api = createWhoobeApi(apiUrl, config.public.gatewayUrl)
+const api = createWhoobeApi(apiUrl, config.public.gatewayUrl, '/api/whoobe-gateway-submit')
 
 ${pwaEnabled ? `const { online } = useOnlineStatus()
 // Replay offline mutation queue when coming back online
@@ -1510,6 +1725,7 @@ const { data } = await useAsyncData('home-page', () =>
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
     gatewayUrl: config.public.gatewayUrl,
     rootPath: config.public.rootPath,
+    siteApiKey: config.cmsSiteApiKey,
     resolveAssetUuid,
   })
 )
@@ -1577,6 +1793,7 @@ const { data } = await useAsyncData(\`locale-\${locale}\`, async () => {
       assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
       gatewayUrl: config.public.gatewayUrl,
       rootPath: config.public.rootPath,
+      siteApiKey: config.cmsSiteApiKey,
       resolveAssetUuid,
     })
     return { kind: 'page' as const, page }
@@ -1630,6 +1847,7 @@ const { data } = await useAsyncData(\`page-\${path}\`, () =>
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
     gatewayUrl: config.public.gatewayUrl,
     rootPath: config.public.rootPath,
+    siteApiKey: config.cmsSiteApiKey,
     resolveAssetUuid,
   })
 )
@@ -1677,6 +1895,7 @@ const { data } = await useAsyncData(\`page-\${locale}-\${path}\`, () =>
     assetBaseUrl: (config.public.cmsAssetBaseUrl || config.public.cmsApiUrl) + '/dam-asset',
     gatewayUrl: config.public.gatewayUrl,
     rootPath: config.public.rootPath,
+    siteApiKey: config.cmsSiteApiKey,
     resolveAssetUuid,
   })
 )
@@ -1742,6 +1961,34 @@ Sitemap: https://${domain}/sitemap.xml
 `
 }
 
+/** Same-origin Nitro route the browser calls instead of the Gateway
+ *  directly for form submissions (docs/plans/api-gateway/gateway-auth-
+ *  authz.md) - the only place the private `cmsSiteApiKey` runtimeConfig key
+ *  is read (via useRuntimeConfig(event), never the plain useRuntimeConfig()
+ *  composable other files use - that one only ever sees `.public`).
+ *  `createWhoobeApi()`'s ApiClient posts here (see nuxtAppVue's
+ *  `'/api/whoobe-gateway-submit'` argument). */
+function nuxtGatewaySubmitRoute(): string {
+  return `export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig(event)
+  const body = await readBody(event)
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (config.cmsSiteApiKey) {
+    headers['X-Whoobe-Site-Id'] = String(config.public.cmsWebsiteId || '')
+    headers['X-Whoobe-Site-Key'] = String(config.cmsSiteApiKey)
+  }
+  const gatewayUrl = String(config.public.gatewayUrl || 'http://localhost:3001').replace(/\\/+$/, '')
+  const upstream = await fetch(\`\${gatewayUrl}/api/v1/gateway/submit\`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  })
+  setResponseStatus(event, upstream.status)
+  return upstream.json()
+})
+`
+}
+
 function nuxtComposable(): string {
   return `import { ApiClient } from '@whoobe-cms/renderer'
 
@@ -1776,6 +2023,7 @@ function nuxtEnv(opts: ScaffoldOptions): string {
   return `# Whoobe CMS — published site configuration (Nuxt)
 # Generated by whoobe-publish on ${new Date().toISOString()}
 
+${opts.siteApiKey ? `NUXT_CMS_SITE_API_KEY=${opts.siteApiKey}` : '# NUXT_CMS_SITE_API_KEY= (no Gateway site key configured for this website)'}
 NUXT_PUBLIC_CMS_API_URL=${opts.apiUrl}
 NUXT_PUBLIC_CMS_WEBSITE_ID=${opts.websiteId}
 NUXT_PUBLIC_CMS_REVALIDATE=${opts.revalidate}

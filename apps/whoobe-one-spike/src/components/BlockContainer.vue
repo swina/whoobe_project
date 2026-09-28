@@ -49,6 +49,11 @@
     >
       &lt;{{ (doc as any).semantic }}&gt;
     </button>
+    <span
+      v-if="hasHiddenClass"
+      class="absolute -top-2.5 left-1/2 -translate-x-1/2 z-50 px-1.5 py-0.5 rounded text-[10px] leading-none font-semibold bg-black text-white font-mono"
+      title="This element is hidden in the published view (has 'hidden' class)"
+    >hidden</span>
     <template v-if="collectionResolved.length">
       <template v-for="(obj, index) in pagedItems" :key="index">
         <template v-for="child in doc.blocks" :key="child.id">
@@ -149,7 +154,7 @@ import type { DataObjectRecord } from '../data-objects-api'
 import BlockElement from './BlockElement.vue'
 import BlockIFrame from './BlockIFrame.vue'
 import BlockSlider from './BlockSlider.vue'
-import { customAttrs } from '../helpers'
+import { customAttrs, stripEditorHidden } from '../helpers'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -305,7 +310,9 @@ const tagBgClass = computed(() => {
 
 const classe = computed(() => {
   const doc = props.doc as any
-  let cls = `${doc.css.css ?? ''} ${doc.css.container ?? ''} relative cursor-pointer p-2`
+  const raw = `${doc.css.css ?? ''} ${doc.css.container ?? ''}`
+  const { cleaned } = stripEditorHidden(raw)
+  let cls = `${cleaned} relative cursor-pointer p-2`
   cls += isSelected.value ? ' border-2 border-red-400' : ' border border-dashed border-transparent hover:border-red-300'
   // An empty container (no children yet, e.g. one just added from the
   // palette) has nothing to give it visible size - without a floor here
@@ -334,6 +341,12 @@ const classe = computed(() => {
     if (!hasBackground) cls += ' editor-canvas-bg-fallback'
   }
   return cls
+})
+
+const hasHiddenClass = computed(() => {
+  const doc = props.doc as any
+  const raw = `${doc.css.css ?? ''} ${doc.css.container ?? ''}`
+  return stripEditorHidden(raw).hasHidden
 })
 
 const stile = computed(() => {

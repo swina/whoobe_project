@@ -7,11 +7,32 @@ import type { PublicLayout } from './compose-layout.js'
 
 /** The minimal API surface the renderer depends on - implemented by
  *  ApiClient and easy to mock in tests/adapters. */
+/** Present only when a caller runs server-side and holds the site's real
+ *  Gateway API key (docs/plans/api-gateway/gateway-auth-authz.md) - e.g.
+ *  Next.js's getPageData() during SSR. Never constructed from a browser-
+ *  visible env var (a NEXT_PUBLIC_ one, or Nuxt's public runtimeConfig), or
+ *  the "secret" is just handed to every visitor. */
+export interface GatewaySiteAuth {
+  siteId: string
+  siteKey: string
+}
+
 export interface RenderApi {
   getObject(id: string): Promise<Record<string, unknown> | null>
   queryObjects(params: QueryObjectsParams): Promise<Record<string, unknown>[]>
   /** Base URL of the API Gateway for gateway binding resolution. */
   gatewayUrl?: string
+  /** Site key sent directly as headers when calling the gateway - only ever
+   *  set server-side (see GatewaySiteAuth). */
+  gatewaySiteAuth?: GatewaySiteAuth
+  /** When set, ApiClient.submitForm() posts to this SAME-ORIGIN relative
+   *  path instead of calling the gateway directly - the published site's own
+   *  server-side proxy route (packages/publish/src/cli.ts's generated
+   *  app/api/whoobe-gateway-submit or server/api/whoobe-gateway-submit.post)
+   *  then attaches the real site key from a server-only env var. This is
+   *  what actually happens in a browser-triggered submit (useForm), where
+   *  gatewaySiteAuth above would otherwise have to be shipped to the client. */
+  gatewaySubmitProxyPath?: string
 }
 
 export interface QueryObjectsParams {
@@ -55,9 +76,16 @@ export interface SearchParams {
   offset?: number
 }
 
+export interface ApiClientOptions {
+  gatewaySiteAuth?: GatewaySiteAuth
+  gatewaySubmitProxyPath?: string
+}
+
 export class ApiClient implements RenderApi {
   private readonly base: string
   gatewayUrl?: string
+  gatewaySiteAuth?: GatewaySiteAuth
+  gatewaySubmitProxyPath?: string
 
   constructor(
     baseUrl: string,
@@ -71,9 +99,12 @@ export class ApiClient implements RenderApi {
     // going through getPageData()'s bare top-level `fetch(...)` call.
     private readonly fetchImpl: typeof fetch = globalThis.fetch?.bind(globalThis),
     gatewayUrl?: string,
+    options?: ApiClientOptions,
   ) {
     this.base = baseUrl.replace(/\/+$/, '')
     this.gatewayUrl = gatewayUrl
+    this.gatewaySiteAuth = options?.gatewaySiteAuth
+    this.gatewaySubmitProxyPath = options?.gatewaySubmitProxyPath
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -136,26 +167,35 @@ export class ApiClient implements RenderApi {
   }
 
   /** POST /public/forms/:classId/submit - submits a form element's values.
-   *  When `formConfig.gatewayEndpointName` is set, `classId` is ignored and
-   *  the values are forwarded to the Gateway's public submit endpoint
-   *  instead (a write to a third-party API/ERP rather than a Data Object) -
-   *  same "gatewayUrl falls back to :3001" convention as walk.ts's
-   *  resolveGatewayBinding() call for the read side. */
+   *  When `formConfig.gatewayBindingId` is set (server-resolved at page-save
+   *  time, core-api's bind-page-content.ts - see docs/plans/api-gateway/
+   *  gateway-auth-authz.md), `classId` is ignored and the values are
+   *  forwarded to the Gateway's public submit endpoint instead (a write to
+   *  a third-party API/ERP rather than a Data Object). Prefers
+   *  `gatewaySubmitProxyPath` (a same-origin route on the published site's
+   *  own server, which holds the real site key) over calling the gateway
+   *  directly - this method runs in the visitor's browser (useForm/
+   *  mountFormSubmit), so it must never itself hold a secret. */
   async submitForm(
     classId: string,
     attributes: Record<string, unknown>,
-    formConfig?: { gatewayEndpointName?: string; gatewayRoutePath?: string } & Record<string, unknown>,
+    formConfig?: { gatewayBindingId?: string } & Record<string, unknown>,
   ): Promise<{ success: boolean }> {
-    if (formConfig?.gatewayEndpointName) {
-      const gatewayBase = (this.gatewayUrl || 'http://localhost:3001').replace(/\/+$/, '')
-      const res = await this.fetchImpl(`${gatewayBase}/api/v1/gateway/submit`, {
+    if (formConfig?.gatewayBindingId) {
+      const bindingId = formConfig.gatewayBindingId
+      const useProxy = !!this.gatewaySubmitProxyPath
+      const url = useProxy
+        ? this.gatewaySubmitProxyPath!
+        : `${(this.gatewayUrl || 'http://localhost:3001').replace(/\/+$/, '')}/api/v1/gateway/submit`
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (!useProxy && this.gatewaySiteAuth) {
+        headers['X-Whoobe-Site-Id'] = this.gatewaySiteAuth.siteId
+        headers['X-Whoobe-Site-Key'] = this.gatewaySiteAuth.siteKey
+      }
+      const res = await this.fetchImpl(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          endpointName: formConfig.gatewayEndpointName,
-          routePath: formConfig.gatewayRoutePath || undefined,
-          attributes,
-        }),
+        headers,
+        body: JSON.stringify({ bindingId, attributes }),
       })
       if (!res.ok) {
         let message = `Gateway submit ${res.status}`

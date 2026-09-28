@@ -59,17 +59,24 @@ export function mountFormSubmit(
     onResult(null)
     const attributes = Object.fromEntries(new FormData(formEl).entries())
     try {
-      // Gateway-targeted Forms (config.gatewayEndpointName set) forward
-      // straight to the Gateway's public submit route instead of core-api's
-      // Data Object one - same fork ApiClient.submitForm() makes for
-      // published sites (packages/sdk/renderer/src/api-client.ts).
-      const res = config.gatewayEndpointName
+      // Gateway-targeted Forms (config.gatewayEndpointName set) forward to
+      // the Gateway's public submit route instead of core-api's Data Object
+      // one - but only by bindingId, resolved server-side at page-save time
+      // (core-api's bind-page-content.ts, docs/plans/api-gateway/gateway-
+      // auth-authz.md), same as ApiClient.submitForm() for published sites.
+      // A Form configured with a gateway target that hasn't been saved yet
+      // has no bindingId - rather than silently posting nothing useful, tell
+      // the editor to save first.
+      if (config.gatewayEndpointName && !config.gatewayBindingId) {
+        onResult({ ok: false, message: 'Save the page to test this form.' })
+        return
+      }
+      const res = config.gatewayBindingId
         ? await fetch(`${gatewayBaseUrl()}/api/v1/gateway/submit`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              endpointName: config.gatewayEndpointName,
-              routePath: config.gatewayRoutePath || undefined,
+              bindingId: config.gatewayBindingId,
               attributes,
             }),
           })

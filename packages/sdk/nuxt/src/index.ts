@@ -5,6 +5,14 @@ export interface WhoobeNuxtOptions extends WhoobeAdapterOptions {
   /** Base URL of the Whoobe public API (e.g. https://cms.example.com). */
   baseUrl: string
   websiteId?: string
+  /** This website's Gateway API key (docs/plans/api-gateway/gateway-auth-
+   *  authz.md), read from Nuxt's PRIVATE runtimeConfig (never `.public`) -
+   *  Nuxt only populates a private runtimeConfig key when this code runs
+   *  server-side, so passing `config.cmsSiteApiKey` straight through here is
+   *  safe even from a page's universal (SSR+client) <script setup>: on a
+   *  client-side navigation re-run, Nuxt gives back undefined for it rather
+   *  than ever shipping the value to the browser. */
+  siteApiKey?: string
 }
 
 export interface PublicPageRecord {
@@ -39,7 +47,11 @@ export async function getPageData(
     cdnMirrors?: Record<string, string>
   }
   const walkOptions = {
-    api: new ApiClient(base, undefined, options.gatewayUrl),
+    api: new ApiClient(base, undefined, options.gatewayUrl, {
+      gatewaySiteAuth: options.siteApiKey && options.websiteId
+        ? { siteId: options.websiteId, siteKey: options.siteApiKey }
+        : undefined,
+    }),
     assetBaseUrl: options.assetBaseUrl,
     keyPrefix: options.keyPrefix,
     resolveTargetPage: options.resolveTargetPage,

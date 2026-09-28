@@ -132,8 +132,13 @@ export const WhoobePage = defineComponent({
   },
 })
 
-/** Convenience: build an ApiClient from a base URL and pass it as `api`. */
-export function createWhoobeApi(baseUrl: string, gatewayUrl?: string): WhoobeApi {
-  const client = new ApiClient(baseUrl, undefined, gatewayUrl)
+/** Convenience: build an ApiClient from a base URL and pass it as `api`.
+ *  `submitProxyPath`, when given, routes ApiClient.submitForm() through a
+ *  same-origin route on this site's own server instead of calling the
+ *  Gateway directly from the browser - see docs/plans/api-gateway/gateway-
+ *  auth-authz.md and packages/publish/src/cli.ts's generated
+ *  server/api/whoobe-gateway-submit.post route. */
+export function createWhoobeApi(baseUrl: string, gatewayUrl?: string, submitProxyPath?: string): WhoobeApi {
+  const client = new ApiClient(baseUrl, undefined, gatewayUrl, { gatewaySubmitProxyPath: submitProxyPath })
   return client as WhoobeApi
 }

@@ -19,8 +19,7 @@
     try {
       await ctx.api.submitForm(fc.targetClassId, attributes, {
         notify: fc.notify,
-        gatewayEndpointName: fc.gatewayEndpointName,
-        gatewayRoutePath: fc.gatewayRoutePath,
+        gatewayBindingId: fc.gatewayBindingId,
       })
       formEl.reset()
       result = { ok: true, message: fc.successMessage || 'Submitted.' }

@@ -327,25 +327,60 @@ function substituteGatewayParams(
   return out
 }
 
+// This resolver runs in two contexts that need different endpoints (docs/
+// plans/api-gateway/gateway-auth-authz.md): the EDITOR canvas (BlockEditor.
+// vue etc.), which has the raw endpointName/routePath in memory (possibly
+// not saved yet) and an admin session; and PublicPage.vue, which only ever
+// has whatever core-api's /public/pages/* returned - endpointName/routePath
+// are stripped there (sanitizePublicGatewayContent), leaving only bindingId.
+// bindingId present -> the real public route (no session, no raw identifiers
+// to leak); otherwise (editor, unsaved) -> the admin-authenticated preview
+// route, same as GatewayBindingPicker.vue's own preview fetch.
 async function resolveGatewayBinding(gb: GatewayBinding, urlParams?: Record<string, string>): Promise<unknown> {
   const baseUrl = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:3001'
-  const url = `${baseUrl.replace(/\/+$/, '')}/api/v1/gateway/resolve`
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      endpointName: gb.endpointName,
-      routePath: gb.routePath,
-      fieldPath: gb.fieldPath || undefined,
-      params: substituteGatewayParams(gb.params, urlParams),
-      filters: gb.filters?.length ? gb.filters : undefined,
-    }),
-    credentials: 'include',
-  })
-  if (!res.ok) {
-    const errBody = await res.json().catch(() => ({}))
-    throw new Error((errBody as any).error || `Gateway resolve failed: ${res.status}`)
+  const base = baseUrl.replace(/\/+$/, '')
+
+  // Editor context (endpointName available) → admin-authenticated preview-
+  // resolve (core-api skips sanitizePublicGatewayContent when ?editor=true).
+  // Published site context (only bindingId) → public resolve (needs site
+  // auth headers set by the server-side code, never from the browser).
+  if (gb.endpointName) {
+    const res = await fetch(`${base}/api/v1/gateway/preview-resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        endpointName: gb.endpointName,
+        routePath: gb.routePath,
+        fieldPath: gb.fieldPath || undefined,
+        params: substituteGatewayParams(gb.params, urlParams),
+        filters: gb.filters?.length ? gb.filters : undefined,
+      }),
+      credentials: 'include',
+    })
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}))
+      throw new Error((errBody as any).error || `Gateway resolve failed: ${res.status}`)
+    }
+    const data = (await res.json()) as { value?: unknown; found?: boolean }
+    return data.value
   }
-  const data = (await res.json()) as { value?: unknown; found?: boolean }
-  return data.value
+
+  if (gb.bindingId) {
+    const res = await fetch(`${base}/api/v1/gateway/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bindingId: gb.bindingId,
+        params: substituteGatewayParams(gb.params, urlParams),
+      }),
+    })
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}))
+      throw new Error((errBody as any).error || `Gateway resolve failed: ${res.status}`)
+    }
+    const data = (await res.json()) as { value?: unknown; found?: boolean }
+    return data.value
+  }
+
+  throw new Error('Gateway binding has neither endpointName nor bindingId')
 }

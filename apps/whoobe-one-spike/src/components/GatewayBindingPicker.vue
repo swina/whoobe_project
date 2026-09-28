@@ -297,7 +297,10 @@ async function fetchPreview() {
   previewValue.value = undefined
   try {
     const baseUrl = gatewayBaseUrl()
-    const url = `${baseUrl.replace(/\/+$/, '')}/api/v1/gateway/resolve`
+    // Admin-authenticated preview path (docs/plans/api-gateway/gateway-auth-
+    // authz.md) - the public /api/v1/gateway/resolve now requires a saved
+    // bindingId, which doesn't exist yet while this binding is being authored.
+    const url = `${baseUrl.replace(/\/+$/, '')}/api/v1/gateway/preview-resolve`
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

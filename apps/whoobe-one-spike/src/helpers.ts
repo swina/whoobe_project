@@ -14,6 +14,28 @@ import { escapeHtml } from './scripts/field-transforms'
 
 type WhoobeElement = InstanceType<typeof Element>
 
+/** CSS classes that hide elements in the published view but should be
+ *  ignored in the editor canvas — the element stays visible and selectable,
+ *  with a visual badge indicating it's hidden. */
+export const EDITOR_HIDDEN_CLASSES = new Set(['hidden', 'invisible', 'sr-only'])
+
+/** Strips editor-hidden classes from a class string and returns whether
+ *  any were found. Used by BlockContainer/BlockElement to keep elements
+ *  visible on the canvas while showing a "hidden" badge. */
+export function stripEditorHidden(cls: string): { cleaned: string; hasHidden: boolean } {
+  const parts = cls.split(/\s+/).filter(Boolean)
+  const filtered: string[] = []
+  let hasHidden = false
+  for (const p of parts) {
+    if (EDITOR_HIDDEN_CLASSES.has(p)) {
+      hasHidden = true
+    } else {
+      filtered.push(p)
+    }
+  }
+  return { cleaned: filtered.join(' '), hasHidden }
+}
+
 /** Dedupes/collapses whitespace in a Tailwind class string (element.css.css/.container). */
 export function clean(str: string = ''): string {
   if (!str) return ''

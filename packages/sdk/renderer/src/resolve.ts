@@ -4,7 +4,7 @@
 // mirrors the editor's escaping rules.
 
 import { applyTransform, escapeHtml, type DataBindingFilter, type ElementDataBinding, type FieldTransform, type TransformResult } from '@whoobe-cms/schema'
-import type { RenderApi } from './api-client.js'
+import type { RenderApi, GatewaySiteAuth } from './api-client.js'
 import type { WalkContext } from './walk.js'
 
 /** Fields that live at the record top level, not in `attributes` (mirrors
@@ -93,11 +93,22 @@ export async function resolveFieldValue(binding: ElementDataBinding, scope: Reso
 }
 
 export interface GatewayBinding {
-  endpointName: string
-  routePath: string
+  /** Stripped from public content (core-api's sanitizePublicGatewayContent)
+   *  once bindingId is resolved - see the doc comment on bindingId below.
+   *  Unused by resolveGatewayBinding() itself (bindingId-only), kept purely
+   *  so this type still matches @whoobe-cms/schema's authoring-time shape. */
+  endpointName?: string
+  routePath?: string
   fieldPath: string
   params?: Record<string, string> | null
   filters?: DataBindingFilter[] | null
+  /** Server-resolved bindingId (core-api's bind-page-content.ts) - see
+   *  resolveGatewayBinding() below. `endpointName`/`routePath`/`filters` are
+   *  stripped from public content (core-api's sanitizePublicGatewayContent)
+   *  and only ever populated here for the editor's own live preview, which
+   *  calls the admin-authenticated /api/v1/gateway/preview-resolve instead
+   *  of this module entirely (see GatewayBindingPicker.vue/data-resolver.ts). */
+  bindingId?: string
 }
 
 /** Substitutes `{name}`-placeholder GatewayBinding.params values from the
@@ -114,22 +125,32 @@ function substituteGatewayParams(
   return out
 }
 
-/** Resolves a gateway binding value by calling the gateway's resolve endpoint. */
+/** Resolves a gateway binding value by calling the Gateway's public resolve
+ *  endpoint - by `bindingId` only (docs/plans/api-gateway/gateway-auth-
+ *  authz.md), never the raw endpointName/routePath (public content never
+ *  carries those - see the GatewayBinding.bindingId doc comment above).
+ *  Returns undefined (no-op) rather than calling anything when no bindingId
+ *  is present, e.g. content that predates this feature or was never
+ *  configured with a valid gateway target. */
 export async function resolveGatewayBinding(
   binding: GatewayBinding,
   gatewayUrl: string,
-  urlParams?: Record<string, string>
+  urlParams?: Record<string, string>,
+  siteAuth?: GatewaySiteAuth,
 ): Promise<unknown> {
+  if (!binding.bindingId) return undefined
   const url = `${gatewayUrl.replace(/\/+$/, '')}/api/v1/gateway/resolve`
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (siteAuth) {
+    headers['X-Whoobe-Site-Id'] = siteAuth.siteId
+    headers['X-Whoobe-Site-Key'] = siteAuth.siteKey
+  }
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
-      endpointName: binding.endpointName,
-      routePath: binding.routePath,
-      fieldPath: binding.fieldPath || undefined,
+      bindingId: binding.bindingId,
       params: substituteGatewayParams(binding.params, urlParams),
-      filters: binding.filters?.length ? binding.filters : undefined,
     }),
   })
   if (!res.ok) {

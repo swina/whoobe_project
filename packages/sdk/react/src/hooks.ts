@@ -123,7 +123,7 @@ export function useQuery(params: QueryParams): AsyncState<Record<string, unknown
 }
 
 /** Form submission helper mirroring DefaultForm's behavior. */
-export function useForm(formConfig: { targetClassId: string; gatewayEndpointName?: string; gatewayRoutePath?: string; successMessage?: string; errorMessage?: string; notify?: unknown }) {
+export function useForm(formConfig: { targetClassId: string; gatewayBindingId?: string; successMessage?: string; errorMessage?: string; notify?: unknown }) {
   const ctx = useWhoobe()
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
@@ -134,8 +134,7 @@ export function useForm(formConfig: { targetClassId: string; gatewayEndpointName
     try {
       await ctx.api.submitForm(formConfig.targetClassId, attributes, {
         notify: formConfig.notify,
-        gatewayEndpointName: formConfig.gatewayEndpointName,
-        gatewayRoutePath: formConfig.gatewayRoutePath,
+        gatewayBindingId: formConfig.gatewayBindingId,
       })
       formEl?.reset()
       setResult({ ok: true, message: formConfig.successMessage || 'Submitted.' })

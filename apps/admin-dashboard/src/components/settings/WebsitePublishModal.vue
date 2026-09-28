@@ -53,6 +53,30 @@
           </div>
         </div>
 
+        <!-- Site API key -->
+        <div class="rounded-xl border border-slate-800 light:border-slate-200 p-4 space-y-3">
+          <label class="flex items-center gap-2 text-sm font-semibold text-slate-200 light:text-slate-800">
+            <KeyRound class="w-3.5 h-3.5 text-indigo-400" />
+            Gateway site key <span class="text-xs font-normal text-slate-500">(optional)</span>
+          </label>
+          <p class="text-xs text-slate-500">
+            Scopes/rate-limits/revokes this site's Gateway traffic independently of every other published site. Not required - the Gateway's mandatory per-form/per-binding checks apply either way (see docs/plans/api-gateway/gateway-auth-authz.md).
+          </p>
+          <div v-if="revealedKey" class="text-xs px-3 py-2 rounded-lg bg-amber-900/30 border border-amber-700/40 text-amber-300 space-y-1">
+            <p class="font-semibold">Shown once - copy it now, it won't be shown again:</p>
+            <code class="block font-mono break-all select-all">{{ revealedKey }}</code>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-slate-500 font-mono">{{ siteKeyPrefix ? `${siteKeyPrefix}…` : 'No key generated yet' }}</span>
+            <button @click="regenerateSiteKey" :disabled="siteKeyLoading" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 disabled:opacity-50">
+              {{ siteKeyPrefix ? 'Rotate' : 'Generate' }}
+            </button>
+            <button v-if="siteKeyPrefix" @click="revokeSiteKey" :disabled="siteKeyLoading" class="text-xs font-semibold text-rose-400 hover:text-rose-300 disabled:opacity-50">
+              Revoke
+            </button>
+          </div>
+        </div>
+
         <!-- CDN Mirroring -->
         <div class="rounded-xl border border-slate-800 light:border-slate-200 p-4 space-y-3">
           <label class="flex items-center gap-2 text-sm font-semibold text-slate-200 light:text-slate-800 cursor-pointer">
@@ -138,9 +162,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Rocket, CloudUpload, Server, Copy } from '@lucide/vue'
+import { Rocket, CloudUpload, Server, Copy, KeyRound } from '@lucide/vue'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
-import { fetchCdnMirrorSettings } from '../../utils/websites-api'
+import { fetchCdnMirrorSettings, regenerateWebsiteGatewayApiKey, clearWebsiteGatewayApiKey } from '../../utils/websites-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
 
 const props = defineProps<{ isOpen: boolean; website: WebsiteRecord | null }>()
@@ -171,6 +195,10 @@ const basePath = ref('/')
 const slug = ref('')
 const revalidate = ref(60)
 
+const siteKeyPrefix = ref('')
+const revealedKey = ref('')
+const siteKeyLoading = ref(false)
+
 const includeCdn = ref(true)
 const cdnSettingsLoading = ref(false)
 const cdnGatewayRouteId = ref('')
@@ -196,6 +224,8 @@ watch(
     assetBaseUrl.value = apiUrl.value
     domain.value = website.domains?.[0] ?? ''
     slug.value = slugify(website.name) || website.id.slice(0, 8)
+    siteKeyPrefix.value = website.gatewayApiKeyPrefix ?? ''
+    revealedKey.value = ''
 
     cdnSettingsLoading.value = true
     try {
@@ -211,6 +241,32 @@ watch(
   },
   { immediate: true },
 )
+
+async function regenerateSiteKey() {
+  if (!props.website) return
+  siteKeyLoading.value = true
+  try {
+    const result = await regenerateWebsiteGatewayApiKey(apiUrl.value, props.website.id)
+    revealedKey.value = result.key
+    siteKeyPrefix.value = result.prefix
+  } catch {
+    // Leave state as-is; the button stays available to retry.
+  } finally {
+    siteKeyLoading.value = false
+  }
+}
+
+async function revokeSiteKey() {
+  if (!props.website) return
+  siteKeyLoading.value = true
+  try {
+    await clearWebsiteGatewayApiKey(apiUrl.value, props.website.id)
+    siteKeyPrefix.value = ''
+    revealedKey.value = ''
+  } finally {
+    siteKeyLoading.value = false
+  }
+}
 
 const script = computed(() => {
   if (!props.website) return ''
@@ -236,6 +292,11 @@ const script = computed(() => {
     step++
   }
 
+  const siteKeyLine = revealedKey.value
+    ? `  --site-api-key "${revealedKey.value}"`
+    : siteKeyPrefix.value
+      ? `  --site-api-key "<regenerate above to reveal the plaintext - ${siteKeyPrefix.value}… is already active>"`
+      : null
   lines.push(
     `# ${step}. Generate the site (${framework.value === 'vue' ? 'Nuxt' : 'Next.js'}).`,
     'pnpm publish:site \\',
@@ -247,7 +308,8 @@ const script = computed(() => {
     `  --asset-base-url "${assetBaseUrl.value}" \\`,
     `  --gateway-url "${gatewayUrl.value}" \\`,
     `  --base-path "${basePath.value}" \\`,
-    `  --revalidate ${revalidate.value}`,
+    `  --revalidate ${revalidate.value}${siteKeyLine ? ' \\' : ''}`,
+    ...(siteKeyLine ? [siteKeyLine] : []),
     '',
   )
   step++

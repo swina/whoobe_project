@@ -5,6 +5,8 @@ import type { GatewayPreset } from './preset-types.js';
 import { logGatewayError } from './log-error.js';
 import { redactSensitiveValues, pickSafeResponseHeaders } from './redact.js';
 import { buildAuthHeaders } from './gateway-auth-headers.js';
+import { resolveFieldPath } from './resolve-field-path.js';
+import { applyResultFilters, type GatewayResultFilter } from './gateway-result-filters.js';
 
 /** Strips `authConfig` (raw API keys / bearer tokens / basic-auth
  *  credentials) before an endpoint record is ever sent to a client - these
@@ -298,6 +300,76 @@ export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPres
     } catch (err) {
       logGatewayError('import openapi spec', err);
       res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to import OpenAPI spec' });
+    }
+  });
+
+  // Free-form, admin-authenticated resolve - used ONLY by the editor's own
+  // live preview (GatewayBindingPicker.vue/GatewayPanel.vue) while a binding
+  // is still being authored and has no gateway_bindings row yet. This is the
+  // pre-existing behavior of what used to be the public /api/v1/gateway/
+  // resolve route before docs/plans/api-gateway/gateway-auth-authz.md moved
+  // published-site traffic onto a bindingId-based route instead - moved here
+  // (already admin-protected by this router's mount) rather than changed.
+  router.post('/preview-resolve', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { getGatewayEndpointByName, listGatewayRoutes } = await import('@whoobe-cms/core/server');
+      const { resolveGatewayUrl } = await import('./resolve-gateway-url.js');
+      const { proxyFetch } = await import('./proxy-engine.js');
+
+      const { endpointName, fieldPath, routePath, params, filters } = req.body as {
+        endpointName?: string; fieldPath?: string; routePath?: string; params?: Record<string, string>; filters?: GatewayResultFilter[];
+      };
+
+      if (!endpointName) {
+        res.status(400).json({ error: 'endpointName is required' });
+        return;
+      }
+
+      const endpoint = await getGatewayEndpointByName(endpointName);
+      if (!endpoint) {
+        res.status(404).json({ error: `Endpoint '${endpointName}' not found` });
+        return;
+      }
+
+      let upstreamUrl: string;
+      let routeMethod: string;
+
+      if (routePath) {
+        upstreamUrl = resolveGatewayUrl(endpoint.baseUrl, routePath, params || undefined);
+        routeMethod = 'GET';
+      } else {
+        const routes = await listGatewayRoutes(endpoint.id);
+        if (routes.length === 0) {
+          res.status(404).json({ error: `No routes configured for endpoint '${endpointName}'` });
+          return;
+        }
+        const route = routes[0];
+        upstreamUrl = resolveGatewayUrl(endpoint.baseUrl, route.path, params || undefined);
+        routeMethod = route.method;
+      }
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      Object.assign(headers, await buildAuthHeaders(endpoint));
+
+      const result = await proxyFetch(upstreamUrl, routeMethod, headers, undefined, 15000);
+
+      let resolvedValue = fieldPath ? resolveFieldPath(result.body, fieldPath) : result.body;
+
+      // Result filters only make sense against an array (the repeater
+      // case) - a scalar/object resolvedValue passes through unfiltered.
+      if (filters?.length && Array.isArray(resolvedValue)) {
+        resolvedValue = applyResultFilters(resolvedValue, filters);
+      }
+
+      res.json({
+        endpointName,
+        fieldPath: fieldPath || '(whole response)',
+        value: resolvedValue,
+        found: resolvedValue !== undefined,
+      });
+    } catch (err) {
+      logGatewayError('preview resolve gateway binding', err);
+      res.status(502).json({ error: 'Resolution failed' });
     }
   });
 

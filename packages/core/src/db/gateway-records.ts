@@ -1,6 +1,7 @@
 import { getDb } from './client.js';
-import { gatewayEndpoints, gatewayRoutes, gatewaySchemas } from './gateway-schema.js';
-import { eq } from 'drizzle-orm';
+import { gatewayEndpoints, gatewayRoutes, gatewaySchemas, gatewayBindings } from './gateway-schema.js';
+import { eq, and } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
 import { encryptGatewayAuthConfig, decryptGatewayAuthConfig, encryptGatewayOAuthToken, decryptGatewayOAuthToken } from './gateway-auth-crypto.js';
 
 // --- Endpoints ---
@@ -164,4 +165,94 @@ export async function upsertGatewaySchema(routeId: string, schema: Record<string
 export async function deleteGatewaySchema(routeId: string): Promise<void> {
   const db = getDb();
   await db.delete(gatewaySchemas).where(eq(gatewaySchemas.routeId, routeId));
+}
+
+// --- Bindings ---
+// A page-save-time-created pin from an authored Form/gatewayBinding to one
+// fixed (endpointId, routeId) - see docs/plans/api-gateway/gateway-auth-
+// authz.md. Published site content only ever carries this row's opaque
+// `id`, never the raw endpointName/routePath.
+
+export type GatewayBindingRecord = typeof gatewayBindings.$inferSelect;
+export type GatewayBindingKind = 'resolve' | 'submit';
+
+export interface GatewayBindingInput {
+  endpointId: string;
+  routeId: string;
+  websiteId: string;
+  kind: GatewayBindingKind;
+  fieldPath?: string | null;
+  paramKeys?: string[];
+  filters?: unknown;
+}
+
+function computeConfigHash(input: GatewayBindingInput): string {
+  const canonical = JSON.stringify({
+    endpointId: input.endpointId,
+    routeId: input.routeId,
+    kind: input.kind,
+    fieldPath: input.fieldPath ?? null,
+    paramKeys: [...(input.paramKeys ?? [])].sort(),
+    filters: input.filters ?? null,
+  });
+  return createHash('sha256').update(canonical).digest('hex');
+}
+
+export async function getGatewayBindingById(id: string): Promise<GatewayBindingRecord | undefined> {
+  const db = getDb();
+  const rows = await db.select().from(gatewayBindings).where(eq(gatewayBindings.id, id)).limit(1);
+  return rows[0];
+}
+
+/** Creates (or reuses, if this exact config was already saved for this
+ *  website) the binding row for one authored Form/gatewayBinding. Throws if
+ *  the referenced route's method doesn't match `kind` (a 'resolve' binding
+ *  must target a GET route; a 'submit' binding must target a non-GET one) -
+ *  this is the enforcement point, never trusted from the caller alone. */
+export async function findOrCreateGatewayBinding(input: GatewayBindingInput): Promise<GatewayBindingRecord> {
+  const db = getDb();
+  const route = await getGatewayRoute(input.routeId);
+  if (!route || route.endpointId !== input.endpointId) {
+    throw new Error(`Gateway route '${input.routeId}' not found on endpoint '${input.endpointId}'`);
+  }
+  const isGet = route.method.toUpperCase() === 'GET';
+  if (input.kind === 'resolve' && !isGet) {
+    throw new Error(`Gateway binding kind 'resolve' requires a GET route (route '${route.path}' is ${route.method})`);
+  }
+  if (input.kind === 'submit' && isGet) {
+    throw new Error(`Gateway binding kind 'submit' requires a non-GET route (route '${route.path}' is GET)`);
+  }
+
+  const configHash = computeConfigHash(input);
+  const existing = await db
+    .select()
+    .from(gatewayBindings)
+    .where(and(eq(gatewayBindings.websiteId, input.websiteId), eq(gatewayBindings.configHash, configHash)))
+    .limit(1);
+  if (existing[0]) return existing[0];
+
+  const rows = await db
+    .insert(gatewayBindings)
+    .values({
+      endpointId: input.endpointId,
+      routeId: input.routeId,
+      websiteId: input.websiteId,
+      kind: input.kind,
+      fieldPath: input.fieldPath ?? null,
+      paramKeys: input.paramKeys ?? [],
+      filters: input.filters ?? null,
+      configHash,
+    })
+    // Two concurrent saves computing the same hash race the unique index -
+    // the loser reuses the winner's row instead of erroring.
+    .onConflictDoNothing({ target: [gatewayBindings.websiteId, gatewayBindings.configHash] })
+    .returning();
+  if (rows[0]) return rows[0];
+
+  const winner = await db
+    .select()
+    .from(gatewayBindings)
+    .where(and(eq(gatewayBindings.websiteId, input.websiteId), eq(gatewayBindings.configHash, configHash)))
+    .limit(1);
+  return winner[0];
 }

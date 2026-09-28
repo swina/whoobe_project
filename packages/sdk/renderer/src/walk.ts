@@ -163,7 +163,7 @@ async function walkChildren(node: WhoobeElementNode, ctx: WalkContext, options: 
   // record to the resolved value for child field bindings.
   if (node.type === 'container' && node.gatewayBinding) {
     const gatewayUrl = options.api.gatewayUrl || 'http://localhost:3001'
-    const resolved = await resolveGatewayBinding(node.gatewayBinding, gatewayUrl, ctx.urlParams)
+    const resolved = await resolveGatewayBinding(node.gatewayBinding, gatewayUrl, ctx.urlParams, options.api.gatewaySiteAuth)
     if (Array.isArray(resolved)) {
       for (const item of resolved) {
         for (const child of node.blocks ?? []) {
@@ -225,7 +225,7 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
     } else {
       try {
         const gatewayUrl = options.api.gatewayUrl || 'http://localhost:3001'
-        const value = await resolveGatewayBinding(node.gatewayBinding, gatewayUrl, ctx.urlParams)
+        const value = await resolveGatewayBinding(node.gatewayBinding, gatewayUrl, ctx.urlParams, options.api.gatewaySiteAuth)
         format(value)
       } catch {
         content = ''

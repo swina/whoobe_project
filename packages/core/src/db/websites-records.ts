@@ -1,6 +1,7 @@
 import { eq, desc } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { websites } from './websites-schema.js';
+import { generateSiteApiKey, hashSiteApiKey, siteApiKeyDisplayPrefix, verifySiteApiKeyHash } from './site-key-crypto.js';
 
 export interface WebsiteRecord {
   id: string;
@@ -13,31 +14,46 @@ export interface WebsiteRecord {
   themeId: string | null;
   pwaEnabled: boolean;
   pwaConfig: Record<string, unknown> | null;
+  /** Display-only prefix of the site's Gateway API key, or null if none has
+   *  been generated - see setWebsiteGatewayApiKey/site-key-crypto.ts. The
+   *  full key hash is never exposed on this type. */
+  gatewayApiKeyPrefix: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
+type WebsiteRow = typeof websites.$inferSelect;
+
+/** Strips gatewayApiKeyHash - the raw hash never leaves this module, same
+ *  principle as gateway-records.ts's toRecord() for authConfigEncrypted. */
+function toRecord(row: WebsiteRow): WebsiteRecord {
+  const { gatewayApiKeyHash: _gatewayApiKeyHash, ...rest } = row;
+  return rest;
+}
+
 export async function listWebsites(): Promise<WebsiteRecord[]> {
   const db = getDb();
-  return db.select().from(websites).orderBy(desc(websites.createdAt));
+  const rows = await db.select().from(websites).orderBy(desc(websites.createdAt));
+  return rows.map(toRecord);
 }
 
 export async function getWebsite(id: string): Promise<WebsiteRecord | null> {
   const db = getDb();
   const [row] = await db.select().from(websites).where(eq(websites.id, id)).limit(1);
-  return row ?? null;
+  return row ? toRecord(row) : null;
 }
 
 export async function getWebsiteByRootPath(rootPath: string): Promise<WebsiteRecord | null> {
   const db = getDb();
   const [row] = await db.select().from(websites).where(eq(websites.rootPath, rootPath)).limit(1);
-  return row ?? null;
+  return row ? toRecord(row) : null;
 }
 
 export async function getWebsiteByDomain(domain: string): Promise<WebsiteRecord | null> {
   const db = getDb();
   const all = await db.select().from(websites);
-  return all.find((w) => w.domains.includes(domain)) ?? null;
+  const row = all.find((w) => w.domains.includes(domain));
+  return row ? toRecord(row) : null;
 }
 
 export async function createWebsite(input: {
@@ -66,7 +82,7 @@ export async function createWebsite(input: {
       pwaConfig: input.pwaConfig ?? {},
     })
     .returning();
-  return row;
+  return toRecord(row);
 }
 
 export async function updateWebsite(
@@ -95,12 +111,56 @@ export async function updateWebsite(
   if (input.pwaEnabled !== undefined) values.pwaEnabled = input.pwaEnabled;
   if (input.pwaConfig !== undefined) values.pwaConfig = input.pwaConfig;
   const [row] = await db.update(websites).set(values).where(eq(websites.id, id)).returning();
-  return row ?? null;
+  return row ? toRecord(row) : null;
 }
 
 export async function deleteWebsite(id: string): Promise<void> {
   const db = getDb();
   await db.delete(websites).where(eq(websites.id, id));
+}
+
+/** Generates a fresh site API key, stores only its hash + display prefix,
+ *  and returns the plaintext - the ONLY time it's ever available. Callers
+ *  (the admin-only regenerate route) must show it to the admin immediately
+ *  and never log or persist it themselves. Overwrites any previous key. */
+export async function setWebsiteGatewayApiKey(id: string): Promise<{ plaintext: string; prefix: string } | null> {
+  const db = getDb();
+  const plaintext = generateSiteApiKey();
+  const prefix = siteApiKeyDisplayPrefix(plaintext);
+  const [row] = await db
+    .update(websites)
+    .set({ gatewayApiKeyHash: hashSiteApiKey(plaintext), gatewayApiKeyPrefix: prefix, updatedAt: new Date() })
+    .where(eq(websites.id, id))
+    .returning();
+  if (!row) return null;
+  return { plaintext, prefix };
+}
+
+/** Revokes a website's key entirely (falls back to binding-only checks). */
+export async function clearWebsiteGatewayApiKey(id: string): Promise<void> {
+  const db = getDb();
+  await db.update(websites).set({ gatewayApiKeyHash: null, gatewayApiKeyPrefix: null, updatedAt: new Date() }).where(eq(websites.id, id));
+}
+
+/** Verifies a plaintext key presented by a published site (X-Whoobe-Site-Key)
+ *  against the given website's stored hash. Returns false both when the key
+ *  doesn't match AND when the website has none configured - callers that
+ *  want to treat "no key configured" as "no key required" must check
+ *  getWebsiteGatewayApiKeyHash(id) === null separately (see apps/gateway/src/
+ *  site-auth.ts), never infer it from this function alone. */
+export async function verifyWebsiteGatewayApiKey(id: string, plaintext: string): Promise<boolean> {
+  const db = getDb();
+  const [row] = await db.select({ gatewayApiKeyHash: websites.gatewayApiKeyHash }).from(websites).where(eq(websites.id, id)).limit(1);
+  if (!row?.gatewayApiKeyHash) return false;
+  return verifySiteApiKeyHash(plaintext, row.gatewayApiKeyHash);
+}
+
+/** Whether this website currently requires a site key at all (site-auth.ts's
+ *  "optional" gate) - null id or no row also reads as "not required". */
+export async function websiteRequiresGatewayApiKey(id: string): Promise<boolean> {
+  const db = getDb();
+  const [row] = await db.select({ gatewayApiKeyHash: websites.gatewayApiKeyHash }).from(websites).where(eq(websites.id, id)).limit(1);
+  return Boolean(row?.gatewayApiKeyHash);
 }
 
 /**

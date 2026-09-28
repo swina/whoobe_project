@@ -105,9 +105,10 @@ export interface PublicPageLookup {
  *  apps/core-api/src/server.ts's `GET /public/pages/:locale/*` route.
  *  `path` must start with '/'. `params` holds any {placeholder} values
  *  extracted from a dynamic-pattern match (empty for a static page). */
-export async function getPublicPage(locale: string, path: string, rootPath?: string): Promise<PublicPageLookup> {
+export async function getPublicPage(locale: string, path: string, rootPath?: string, editor?: boolean): Promise<PublicPageLookup> {
   const query = rootPath ? `?rootPath=${encodeURIComponent(rootPath)}` : ''
-  const res = await fetch(`${getDefaultCoreApiUrl()}/public/pages/${encodeURIComponent(locale)}${path}${query}`, { credentials: 'include' })
+  const suffix = editor ? `${rootPath ? '&' : '?'}editor=true` : ''
+  const res = await fetch(`${getDefaultCoreApiUrl()}/public/pages/${encodeURIComponent(locale)}${path}${query}${suffix}`, { credentials: 'include' })
   return parseJsonOrThrow(res)
 }
 
@@ -115,8 +116,9 @@ export async function getPublicPage(locale: string, path: string, rootPath?: str
  *  /{rootPath}/{slug} (Website > Paths preview links) by detecting rootPath
  *  from the first path segment on the server, which returns the page with
  *  its own locale. Matches apps/core-api/src/server.ts's `GET /public/page/*`. */
-export async function getPublicPageByPath(path: string): Promise<PublicPageLookup> {
-  const res = await fetch(`${getDefaultCoreApiUrl()}/public/page${path}`, { credentials: 'include' })
+export async function getPublicPageByPath(path: string, editor?: boolean): Promise<PublicPageLookup> {
+  const suffix = editor ? (path.includes('?') ? '&' : '?') + 'editor=true' : ''
+  const res = await fetch(`${getDefaultCoreApiUrl()}/public/page${path}${suffix}`, { credentials: 'include' })
   return parseJsonOrThrow(res)
 }
 

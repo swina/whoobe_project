@@ -3,12 +3,11 @@ import { proxyFetch } from './proxy-engine.js';
 import { logGatewayError, logger } from './log-error.js';
 import { buildAuthHeaders } from './gateway-auth-headers.js';
 import { resolveGatewayUrl } from './resolve-gateway-url.js';
+import { checkSiteAuth } from './site-auth.js';
 
-// Fixed-window per-IP limit, same shape/values as core-api's
-// /public/forms/:classId/submit guard (server.ts) - a plain request-volume
-// window, not the sliding per-second checkRateLimit in rate-limiter.ts
-// (that one paces proxied read throughput, a different concern from
-// capping how many times a stranger can hit a public write endpoint).
+// Fixed-window limit, keyed by the calling site (falls back to IP when no
+// site could be identified, e.g. a raw/forged request) so IP rotation alone
+// doesn't bypass it the way a plain per-IP limiter would.
 const FORM_SUBMIT_MAX = 10;
 const FORM_SUBMIT_WINDOW_MS = 15 * 60 * 1000;
 const formSubmitCounts = new Map<string, { count: number; windowStart: number }>();
@@ -61,33 +60,24 @@ function nestBrevoContactAttributes(body: Record<string, unknown>): Record<strin
   return result;
 }
 
-/** Public (unauthenticated) counterpart to resolve-handler.ts: forwards a
- *  page Form's submitted values as a write (POST/PUT/PATCH) to a configured
- *  Gateway endpoint/route, the same way core-api's /public/forms/:classId/
- *  submit forwards them into a Data Object. Mounted at
- *  /api/v1/gateway/submit, outside requirePermission(GATEWAY_MANAGE) -
- *  the endpoint/route are looked up by name/path server-side (never a raw
- *  URL from the client), and buildAuthHeaders() attaches whatever
- *  credentials the endpoint is configured with, so the visitor's browser
- *  never sees the upstream URL or its auth. */
+/** Public (unauthenticated by design - a visitor submitting a real Form has
+ *  no session) counterpart to resolve-handler.ts's public resolve route:
+ *  forwards a page Form's submitted values as a write (POST/PUT/PATCH) to a
+ *  Gateway endpoint/route - but only the ONE endpoint/route pinned to this
+ *  exact Form at page-save time (bindPageGatewayContent, core-api), never
+ *  one the client picks by name. Mounted at /api/v1/gateway/submit. See
+ *  docs/plans/api-gateway/gateway-auth-authz.md. */
 export function createSubmitHandler(): Router {
   const router = Router();
 
   router.post('/', async (req: Request, res: Response): Promise<void> => {
     try {
-      const rateLimitKey = req.ip ?? 'unknown';
-      if (isFormSubmitRateLimited(rateLimitKey)) {
-        res.status(429).json({ error: 'Too many submissions, please try again later' });
-        return;
-      }
-      recordFormSubmit(rateLimitKey);
-
-      const { endpointName, routePath, attributes } = req.body as {
-        endpointName?: string; routePath?: string; attributes?: Record<string, unknown>;
+      const { bindingId, attributes } = req.body as {
+        bindingId?: string; attributes?: Record<string, unknown>;
       };
 
-      if (!endpointName) {
-        res.status(400).json({ error: 'endpointName is required' });
+      if (!bindingId) {
+        res.status(400).json({ error: 'bindingId is required' });
         return;
       }
       if (attributes == null || typeof attributes !== 'object') {
@@ -101,23 +91,33 @@ export function createSubmitHandler(): Router {
         return;
       }
 
-      const { getGatewayEndpointByName, listGatewayRoutes } = await import('@whoobe-cms/core/server');
+      const { getGatewayBindingById, getGatewayEndpoint, getGatewayRoute } = await import('@whoobe-cms/core/server');
 
-      const endpoint = await getGatewayEndpointByName(endpointName);
-      if (!endpoint || !endpoint.isActive) {
-        res.status(404).json({ error: `Endpoint '${endpointName}' not found` });
+      const binding = await getGatewayBindingById(bindingId);
+      if (!binding || binding.kind !== 'submit') {
+        res.status(404).json({ error: 'Unknown submit target' });
         return;
       }
 
-      const routes = await listGatewayRoutes(endpoint.id);
-      // A write route only, never GET - resolve-handler.ts already owns
-      // reads, and forwarding a form's attributes onto a GET would silently
-      // drop them (proxyFetch only sends a body for non-GET methods).
-      const route = routePath
-        ? routes.find(r => r.path === routePath && r.method !== 'GET')
-        : routes.find(r => r.method !== 'GET');
-      if (!route) {
-        res.status(404).json({ error: `No write route configured for endpoint '${endpointName}'` });
+      const auth = await checkSiteAuth(req, binding.websiteId);
+      if (!auth.ok) {
+        res.status(auth.status ?? 403).json({ error: auth.error ?? 'Not authorized' });
+        return;
+      }
+
+      const rateLimitKey = `site:${binding.websiteId}`;
+      if (isFormSubmitRateLimited(rateLimitKey)) {
+        res.status(429).json({ error: 'Too many submissions, please try again later' });
+        return;
+      }
+      recordFormSubmit(rateLimitKey);
+
+      const [endpoint, route] = await Promise.all([
+        getGatewayEndpoint(binding.endpointId),
+        getGatewayRoute(binding.routeId),
+      ]);
+      if (!endpoint || !endpoint.isActive || !route) {
+        res.status(404).json({ error: 'Submit target is no longer available' });
         return;
       }
 
@@ -156,7 +156,7 @@ export function createSubmitHandler(): Router {
         res.status(result.status).json({ success: true, response: result.body });
       } else {
         logger.error(
-          { upstreamStatus: result.status, upstreamBody: result.body, endpointName, routePath: route.path },
+          { upstreamStatus: result.status, upstreamBody: result.body, bindingId, routePath: route.path },
           '[gateway] form submit rejected by upstream'
         );
         res.status(502).json({ success: false, error: 'Upstream rejected the submission' });

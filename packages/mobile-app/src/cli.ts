@@ -12,6 +12,15 @@ export interface GenerateOptions {
   appId?: string
   /** When true, inline all page content + images so the app works fully offline. */
   static?: boolean
+  /** Base URL of the API Gateway — needed for gateway-backed form submissions
+   *  and data binding resolution. Without it, gateway calls fall back to
+   *  http://localhost:3001 (only works from the CMS's own host). */
+  gatewayUrl?: string
+  /** Optional Gateway API key for this website (Settings > Publish > Gateway
+   *  site key). Stored in the generated .env as a VITE_ variable — the mobile
+   *  app sends it as X-Whoobe-Site-Key alongside X-Whoobe-Site-Id when
+   *  calling the Gateway's public resolve/submit endpoints. */
+  siteApiKey?: string
 }
 
 export interface ScaffoldOptions {
@@ -32,6 +41,8 @@ export interface ScaffoldOptions {
   staticMode: boolean
   pagesData: Record<string, { content: unknown; title: string; seo: Record<string, unknown> | null; layout?: Record<string, unknown> | null }>
   imagesMap: Record<string, string>
+  gatewayUrl: string
+  siteApiKey: string
 }
 
 /** A DAM asset UUID stored as an image reference (see resolveDisplayUrl in
@@ -187,20 +198,18 @@ export async function generateMobileApp(options: GenerateOptions): Promise<void>
   const slug = websiteId.slice(0, 8)
   const finalAppId = appId ?? `com.whoobe.mobile.${slug}`
 
-  // Fetch published pages and filter to app-kind only
+  // Fetch all published pages
   console.log('Fetching published pages...')
-  const allPages = await client.listPages(websiteId)
-  const appPages = allPages.filter((p) => (p as any).kind === 'app')
-  if (appPages.length === 0) {
-    console.log('No app pages found for this website.')
-    console.log('Generate some pages with kind "app" in the editor first.')
-    throw new Error('No app pages found')
+  const pages = await client.listPages(websiteId)
+  if (pages.length === 0) {
+    console.log('No published pages found for this website.')
+    throw new Error('No published pages found')
   }
-  console.log(`Found ${appPages.length} app page(s):`)
-  for (const p of appPages) {
+  console.log(`Found ${pages.length} page(s):`)
+  for (const p of pages) {
     console.log(`  ${p.locale} ${p.slug} — ${p.title}`)
   }
-  const appPageSlugs = appPages
+  const appPageSlugs = pages
     .filter((p) => p.locale === defaultLocale)
     .map((p) => p.slug)
 
@@ -208,7 +217,7 @@ export async function generateMobileApp(options: GenerateOptions): Promise<void>
   // lives on the website template's `body` slot (layout.body.alpine), not
   // on the page's own content — read from `layout` at build/runtime instead.
   const pagesData: Record<string, { content: unknown; title: string; seo: Record<string, unknown> | null; layout?: Record<string, unknown> | null }> = {}
-  for (const p of appPages) {
+  for (const p of pages) {
     const key = `${p.locale}:${p.slug}`
     pagesData[key] = { content: p.content, title: p.title, seo: (p as any).seo ?? null }
   }
@@ -222,13 +231,13 @@ export async function generateMobileApp(options: GenerateOptions): Promise<void>
     const imageUrls = new Set<string>()
 
     // Collect images from page content trees
-    for (const p of appPages) {
+    for (const p of pages) {
       collectImagesFromTree(p.content, imageUrls)
     }
 
-    // Fetch full page response (with layout) for each app page to get header/footer module content
+    // Fetch full page response (with layout) for each page to get header/footer module content
     console.log('Fetching website template layout...')
-    for (const p of appPages) {
+    for (const p of pages) {
       try {
         const key = `${p.locale}:${p.slug}`
         const lookup = await client.getPage(p.locale, p.slug, websiteId)
@@ -252,7 +261,7 @@ export async function generateMobileApp(options: GenerateOptions): Promise<void>
     }
 
     // Strip content from containers in page trees
-    for (const p of appPages) {
+    for (const p of pages) {
       stripContentFromContainers(p.content)
     }
 
@@ -299,6 +308,8 @@ export async function generateMobileApp(options: GenerateOptions): Promise<void>
   const fontFamilies = defaultTheme?.fonts ?? []
 
   console.log('Generating mobile app project...')
+  const gatewayUrl = options.gatewayUrl ?? ''
+  const siteApiKey = options.siteApiKey ?? ''
   await scaffoldMobileApp({
     outDir,
     apiUrl,
@@ -317,6 +328,8 @@ export async function generateMobileApp(options: GenerateOptions): Promise<void>
     staticMode,
     pagesData,
     imagesMap,
+    gatewayUrl,
+    siteApiKey,
   })
 
   console.log(`\nDone! Mobile app generated at: ${outDir}`)
@@ -513,7 +526,7 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
+      launchShowDuration: 0,
       backgroundColor: '${bgColor}',
     },
     StatusBar: {
@@ -531,25 +544,30 @@ export default config
 }
 
 function dotEnv(opts: ScaffoldOptions): string {
+  const gatewayBlock = opts.gatewayUrl ? `\nVITE_GATEWAY_URL=${opts.gatewayUrl}` : ''
+  const siteKeyBlock = opts.siteApiKey ? `\nVITE_SITE_API_KEY=${opts.siteApiKey}` : ''
   return `# Whoobe CMS — mobile app configuration
 # Generated by whoobe-mobile on ${new Date().toISOString()}
 
 VITE_CORE_API_URL=${opts.apiUrl}
 VITE_WEBSITE_ID=${opts.websiteId}
-VITE_DEFAULT_LOCALE=${opts.defaultLocale}
+VITE_DEFAULT_LOCALE=${opts.defaultLocale}${gatewayBlock}${siteKeyBlock}
 `
 }
 
 function mainTs(opts: ScaffoldOptions): string {
-  const extra = opts.staticMode
-    ? ''
-    : `import { Capacitor } from '@capacitor/core'
+  // Runs in both static and CMS-backed builds: the native splash screen is a
+  // separate Android/iOS view layered on top of the WebView (invisible to
+  // chrome://inspect, which only ever sees the WebView's own content), so if
+  // this never fires the splash stays on screen forever — the app looks like
+  // a blank/black page on-device even though the page underneath loaded fine.
+  const extra = `import { Capacitor } from '@capacitor/core'
 const isNative = Capacitor.isNativePlatform()
 if (isNative) {
-  import('@capacitor/splash-screen').then(({ SplashScreen }) => SplashScreen.hide())
+  import('@capacitor/splash-screen').then(({ SplashScreen }) => SplashScreen.hide()).catch(() => {})
   import('@capacitor/status-bar').then(({ StatusBar }) => {
     ;(StatusBar as any).setStyle({ style: 'DARK' })
-  })
+  }).catch(() => {})
 }
 `
   return `import { createApp } from 'vue'
@@ -615,18 +633,15 @@ onUnmounted(() => document.removeEventListener('click', onAnchorClick))
 function routerTs(opts: ScaffoldOptions): string {
   const slugs = opts.appPageSlugs
   const homeSlug = slugs.find((s) => s === '/') ?? slugs[0] ?? '/'
-  const routes = slugs
-    .filter((s) => s !== '/')
-    .map((s) => `    { path: '${s}', name: '${s.replace(/[^a-zA-Z0-9]/g, '_')}', component: PublicPage },`)
-    .join('\n')
+  // All routes go through a single catch-all — PublicPage.vue fetches the
+  // right page content from the CMS based on the current path. No redirect
+  // needed (a redirect to '/' loops endlessly when '/' is the home slug).
   return `import { createRouter, createWebHashHistory } from 'vue-router'
 import PublicPage from '../views/PublicPage.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
-    { path: '/', redirect: '${homeSlug}' },
-${routes}
     { path: '/:pathMatch(.*)*', name: 'PublicPage', component: PublicPage },
   ],
 })
@@ -636,6 +651,32 @@ export default router
 }
 
 function useApiTs(opts: ScaffoldOptions): string {
+  const gatewayUrlInline = opts.gatewayUrl || ''
+  const siteApiKeyInline = opts.siteApiKey || ''
+  const siteIdInline = opts.websiteId
+  const gatewayBlock = `\n
+export function getGatewayUrl(): string {
+  let url = (import.meta as any).env?.VITE_GATEWAY_URL as string | undefined
+  if (!url) url = '${gatewayUrlInline}'
+  return url
+}
+
+export function getSiteApiKey(): string {
+  return (import.meta as any).env?.VITE_SITE_API_KEY || '${siteApiKeyInline}'
+}
+
+/** Gateway site-auth headers for public resolve/submit endpoints.
+ *  Returns an empty object when no API key is configured — the Gateway
+ *  falls back to binding-only checks in that case. */
+export function getGatewayAuthHeaders(): Record<string, string> {
+  const siteKey = getSiteApiKey()
+  if (!siteKey) return {}
+  return {
+    'X-Whoobe-Site-Id': '${siteIdInline}',
+    'X-Whoobe-Site-Key': siteKey,
+  }
+}`
+
   if (opts.staticMode) {
     return `export function getApiUrl(): string {
   return '${opts.apiUrl}'
@@ -647,7 +688,7 @@ export function getDefaultLocale(): string {
 
 export function getRootPath(): string {
   return '${opts.rootPath}'
-}
+}${gatewayUrlInline || siteApiKeyInline ? gatewayBlock : ''}
 `
   }
   return `import { Capacitor } from '@capacitor/core'
@@ -657,6 +698,14 @@ export function getApiUrl(): string {
   if (!url) {
     url = '${opts.apiUrl}'
   }
+  // Android emulator maps 10.0.2.2 to the host machine — replace localhost
+  // automatically so the app can reach core-api without manual .env editing.
+  try {
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      const isNative = Capacitor.isNativePlatform()
+      if (isNative) url = url.replace(/localhost|127\.0\.0\.1/g, '10.0.2.2')
+    }
+  } catch { /* fall through */ }
   return url
 }
 
@@ -689,6 +738,28 @@ export function getAssetProcessorUrl(): string {
   }
   return getApiUrl().replace(/\\/+$/, '')
 }
+
+export function getGatewayUrl(): string {
+  let url = (import.meta as any).env?.VITE_GATEWAY_URL as string | undefined
+  if (!url) url = '${gatewayUrlInline}'
+  return url
+}
+
+export function getSiteApiKey(): string {
+  return (import.meta as any).env?.VITE_SITE_API_KEY || '${siteApiKeyInline}'
+}
+
+/** Gateway site-auth headers for public resolve/submit endpoints.
+ *  Returns an empty object when no API key is configured — the Gateway
+ *  falls back to binding-only checks in that case. */
+export function getGatewayAuthHeaders(): Record<string, string> {
+  const siteKey = getSiteApiKey()
+  if (!siteKey) return {}
+  return {
+    'X-Whoobe-Site-Id': '${siteIdInline}',
+    'X-Whoobe-Site-Key': siteKey,
+  }
+}
 `
 }
 
@@ -702,6 +773,11 @@ function mainCss(opts: ScaffoldOptions): string {
   // invalid nested CSS.
   return `/* Tailwind v4 browser runtime is loaded via <script> in index.html */
 /* Theme variables (colors, fonts, custom theme CSS) are inlined via index.html's <style id="theme-styles"> */
+
+html, body, #app {
+  background: #ffffff;
+  min-height: 100vh;
+}
 
 body {
   font-family: ${opts.fontFamilies.map((f) => `"${f}"`).join(', ') || 'sans-serif'};
@@ -1019,12 +1095,6 @@ onMounted(async () => {
     }
 
     const data = await res.json()
-    const kind = data.page?.kind
-    if (kind && kind !== 'app') {
-      error.value = true
-      errorMsg.value = 'This page is not available in the mobile app.'
-      return
-    }
 
     pageContent.value = data.page?.content ?? null
     layout.value = data.layout ?? null
@@ -1037,7 +1107,7 @@ onMounted(async () => {
     error.value = true
     errorMsg.value = 'Cannot reach the CMS.\\n\\n' + (
       isNative()
-        ? \`For Android emulator with WSL2:\\n1. Edit .env, set VITE_CORE_API_URL to your WSL2 IP\\n   (find it via: wsl hostname -I)\\n2. Rebuild: npm run build && npx cap sync\\n3. Ensure core-api is running on port 3003\`
+        ? \`For Android emulator:\\n1. Ensure core-api is running (check http://10.0.2.2:3003/public/websites)\\n2. Rebuild: npm run build && npx cap sync\\n3. If still failing, edit .env and set VITE_CORE_API_URL to your machine's IP\`
         : \`Check that:\\n1. The CMS is running (pnpm run dev)\\n2. The API URL is correct in .env\`
     )
   } finally {
