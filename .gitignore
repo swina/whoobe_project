@@ -15,4 +15,4 @@ AGENTS.md
 # svelte-package staging
 .svelte-kit
 sites   
-.slingshot
+.slingshot/*
