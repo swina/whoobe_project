@@ -83,6 +83,30 @@ export async function updateSnippet(
   return body.snippet
 }
 
+export interface ContentVersionSummary {
+  id: string
+  label: string | null
+  createdAt: string
+}
+
+export interface ContentVersion extends ContentVersionSummary {
+  content: unknown
+}
+
+/** Up to the 10 most recent prior states of this snippet's node - see
+ *  apps/core-api/src/server.ts's `GET /whoobe-one/snippets/:id/versions`. */
+export async function listSnippetVersions(id: string): Promise<ContentVersionSummary[]> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/snippets/${id}/versions`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.versions
+}
+
+export async function getSnippetVersion(id: string, versionId: string): Promise<ContentVersion> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/snippets/${id}/versions/${versionId}`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.version
+}
+
 export async function deleteSnippet(id: string): Promise<void> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/snippets/${id}`, {
     method: 'DELETE',

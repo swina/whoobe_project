@@ -1,6 +1,7 @@
 import { eq, desc } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { whoobeOneSnippets } from './whoobe-one-snippet-schema.js';
+import { snapshotContentVersion } from './content-versions-records.js';
 
 export interface WhoobeOneSnippetRecord {
   id: string;
@@ -54,6 +55,15 @@ export async function updateWhoobeOneSnippet(
   input: { name: string; category: string; icon?: string | null; node: unknown; themeId?: string | null; notes?: string | null }
 ): Promise<WhoobeOneSnippetRecord | null> {
   const db = getDb();
+
+  // Snapshot the PRE-update node as a version before it's overwritten - see
+  // content-versions-schema.ts. Skipped when the node is unchanged, so a
+  // no-op autosave tick doesn't burn through the 10-slot history.
+  const current = await getWhoobeOneSnippet(id);
+  if (current && JSON.stringify(current.node) !== JSON.stringify(input.node)) {
+    await snapshotContentVersion({ resourceType: 'snippet', resourceId: id, content: current.node, label: current.name });
+  }
+
   const values: Record<string, unknown> = { name: input.name, category: input.category, icon: input.icon ?? null, node: input.node, updatedAt: new Date() };
   if (input.themeId !== undefined) values.themeId = input.themeId;
   if (input.notes !== undefined) values.notes = input.notes;

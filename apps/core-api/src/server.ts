@@ -73,6 +73,8 @@ import {
   deleteStagedWhoobePage,
   isDynamicSlug,
   matchPagePath,
+  listContentVersions,
+  getContentVersion,
   listDataClasses,
   getDataClass,
   createDataClass,
@@ -1051,6 +1053,32 @@ app.get('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_READ),
   }
 });
 
+// Instant version history - see the equivalent /whoobe-one/pages/:id/versions
+// routes' comment; same shape, scoped to this snippet's `node` instead.
+app.get('/whoobe-one/snippets/:id/versions', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const versions = await listContentVersions('snippet', req.params.id);
+    res.json({ versions });
+  } catch (error: any) {
+    logger.error({ err: error }, 'List snippet versions error');
+    res.status(500).json({ error: error.message || 'Failed to list snippet versions' });
+  }
+});
+
+app.get('/whoobe-one/snippets/:id/versions/:versionId', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const version = await getContentVersion(req.params.versionId);
+    if (!version || version.resourceType !== 'snippet' || version.resourceId !== req.params.id) {
+      res.status(404).json({ error: 'Version not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Get snippet version error');
+    res.status(500).json({ error: error.message || 'Failed to get snippet version' });
+  }
+});
+
 // Renders a saved snippet's node to standalone email markup, the same way
 // /mail-templates/:id/render does for a mail template - BrevoCampaignModal.vue's
 // second content source (a snippet is a smaller, more likely-to-be-reused
@@ -1393,6 +1421,36 @@ app.get('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_READ), as
   } catch (error: any) {
     logger.error({ err: error }, 'Get whoobe-one page error');
     res.status(500).json({ error: error.message || 'Failed to get page' });
+  }
+});
+
+// Instant version history (content-versions-schema.ts) - up to the 10 most
+// recent prior states of this page's `content`, snapshotted automatically
+// by updateWhoobePage() on every save that actually changed it (manual or
+// autosave). List omits `content` itself (can be a large tree) - the
+// version-history panel fetches a specific version's full content only
+// when the user opens/restores it, via the :versionId route below.
+app.get('/whoobe-one/pages/:id/versions', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const versions = await listContentVersions('page', req.params.id);
+    res.json({ versions });
+  } catch (error: any) {
+    logger.error({ err: error }, 'List page versions error');
+    res.status(500).json({ error: error.message || 'Failed to list page versions' });
+  }
+});
+
+app.get('/whoobe-one/pages/:id/versions/:versionId', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const version = await getContentVersion(req.params.versionId);
+    if (!version || version.resourceType !== 'page' || version.resourceId !== req.params.id) {
+      res.status(404).json({ error: 'Version not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Get page version error');
+    res.status(500).json({ error: error.message || 'Failed to get page version' });
   }
 });
 
