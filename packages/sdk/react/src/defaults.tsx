@@ -376,6 +376,31 @@ export const DefaultSlider: NodeComponent = ({ descriptor }) => {
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [s.autoplay, s.interval, next, total])
 
+  // Deep-link support: a URL like `/features#slide2` (or `#slide-2`/
+  // `#slide_2`, 1-based) jumps this slider straight to that slide on load -
+  // the same `#slideN` convention already documented as an in-page anchor
+  // example (see packages/mobile-app's generated App.vue) extended to
+  // actually switch the active slide, not just scroll to it. Run in an
+  // effect (not a useState initializer) so server-rendered/statically
+  // exported markup always starts at slide 0 and only the client applies
+  // the hash, avoiding a hydration mismatch. Re-applied on `hashchange`
+  // too, so an in-page link to `#slide3` clicked while already on this page
+  // also works. If a page has more than one slider, every one of them
+  // reacts to the same hash - there's no per-slider id in the hash to
+  // disambiguate.
+  useEffect(() => {
+    if (typeof window === 'undefined' || total === 0) return
+    const applyHashSlide = () => {
+      const match = /^#?slide[-_]?(\d+)$/i.exec(window.location.hash)
+      if (!match) return
+      const requested = parseInt(match[1], 10) - 1
+      setCurrent(Math.max(0, Math.min(requested, total - 1)))
+    }
+    applyHashSlide()
+    window.addEventListener('hashchange', applyHashSlide)
+    return () => window.removeEventListener('hashchange', applyHashSlide)
+  }, [total])
+
   if (total === 0) return <div {...baseProps(descriptor)} />
 
   return (

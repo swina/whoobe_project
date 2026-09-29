@@ -563,12 +563,14 @@
     <button title="Delete" class="toolbar-icon text-rose-500" :disabled="isRoot" @click="remove"><Trash2 class="w-4 h-4" /></button>
   </div>
 
-  <!-- Port of BlockEditContent.vue's TipTap dispatch - the source only
-       ever opens BlockTipTap.vue as a dialog for `element === 'p'`, never
-       other text types (Heading/Span/InlineText/Blockquote/Code just get
-       the plain textarea/contenteditable path). Shown as an inline modal
-       owned directly by this component rather than routed through a
-       dialog-bus system that doesn't exist yet (Phase 3). -->
+  <!-- Port of BlockEditContent.vue's TipTap dispatch - the source only ever
+       opened BlockTipTap.vue as a dialog for `element === 'p'`; extended
+       here to also cover `pre` (Code) and `textarea`, so those get the same
+       rich-text/HTML-source editing instead of plain contenteditable.
+       Heading/Span/InlineText/Blockquote still get the plain textarea/
+       contenteditable path. Shown as an inline modal owned directly by this
+       component rather than routed through a dialog-bus system that
+       doesn't exist yet (Phase 3). -->
   <!-- @mousedown.self, not @click.self: a click's target is resolved from
        where the mouse comes UP, not down - selecting text inside
        TipTapPanel by dragging often ends with the pointer having drifted
@@ -1277,7 +1279,7 @@ function onEditContent() {
     if (id !== null) editor.current.content = id.trim()
     return
   }
-  if (editor.current.element === 'p') {
+  if (editor.current.element === 'p' || editor.current.element === 'pre' || editor.current.element === 'textarea') {
     showTipTap.value = true
     return
   }

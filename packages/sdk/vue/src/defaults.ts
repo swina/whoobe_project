@@ -448,8 +448,35 @@ export const DefaultSlider: NodeComponent = defineComponent({
       if (timer !== null) { clearInterval(timer); timer = null }
     }
 
-    onMounted(startAutoplay)
-    onUnmounted(stopAutoplay)
+    // Deep-link support: a URL like `/features#slide2` (or `#slide-2`/
+    // `#slide_2`, 1-based) jumps this slider straight to that slide on
+    // load, without waiting for autoplay/manual navigation - the same
+    // `#slideN` convention already documented as an in-page anchor example
+    // (see packages/mobile-app's generated App.vue) extended to actually
+    // switch the active slide, not just scroll to it. Re-applied on
+    // `hashchange` too, so an in-page link to `#slide3` clicked while
+    // already on this page also works, not just a fresh page load. If a
+    // page has more than one slider, every one of them reacts to the same
+    // hash - there's no per-slider id in the hash to disambiguate.
+    function applyHashSlide() {
+      if (typeof window === 'undefined') return
+      const match = /^#?slide[-_]?(\d+)$/i.exec(window.location.hash)
+      if (!match) return
+      const total = (props.children ?? []).length
+      if (total === 0) return
+      const requested = parseInt(match[1], 10) - 1
+      current.value = Math.max(0, Math.min(requested, total - 1))
+    }
+
+    onMounted(() => {
+      applyHashSlide()
+      startAutoplay()
+      window.addEventListener('hashchange', applyHashSlide)
+    })
+    onUnmounted(() => {
+      stopAutoplay()
+      window.removeEventListener('hashchange', applyHashSlide)
+    })
 
     return () => {
       const d = props.descriptor

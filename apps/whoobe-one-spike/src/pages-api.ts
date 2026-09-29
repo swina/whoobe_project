@@ -207,6 +207,30 @@ export async function translatePage(id: string, locale: string): Promise<WhoobeO
   return body.page
 }
 
+export interface ContentVersionSummary {
+  id: string
+  label: string | null
+  createdAt: string
+}
+
+export interface ContentVersion extends ContentVersionSummary {
+  content: unknown
+}
+
+/** Up to the 10 most recent prior states of this page's content - see
+ *  apps/core-api/src/server.ts's `GET /whoobe-one/pages/:id/versions`. */
+export async function listPageVersions(id: string): Promise<ContentVersionSummary[]> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages/${id}/versions`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.versions
+}
+
+export async function getPageVersion(id: string, versionId: string): Promise<ContentVersion> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages/${id}/versions/${versionId}`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.version
+}
+
 export async function deletePage(id: string): Promise<void> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages/${id}`, {
     method: 'DELETE',

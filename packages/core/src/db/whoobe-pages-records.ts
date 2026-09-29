@@ -2,6 +2,7 @@ import { eq, desc, and, or } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { whoobePages, type PageSeo, type PageSitemapSettings, type PageSearchSettings } from './whoobe-pages-schema.js';
 import { indexPage, deleteIndexedByDocument } from '../search/indexer.js';
+import { snapshotContentVersion } from './content-versions-records.js';
 
 export interface WhoobePageRecord {
   id: string;
@@ -116,6 +117,17 @@ export async function updateWhoobePage(
   }
 ): Promise<WhoobePageRecord | null> {
   const db = getDb();
+
+  // Snapshot the PRE-update content as a version before it's overwritten -
+  // see content-versions-schema.ts. Skipped when the content is unchanged
+  // (a no-op autosave tick shouldn't burn through the 10-slot history) or
+  // when this update doesn't touch content at all.
+  if (input.content !== undefined) {
+    const current = await getWhoobePage(id);
+    if (current && JSON.stringify(current.content) !== JSON.stringify(input.content)) {
+      await snapshotContentVersion({ resourceType: 'page', resourceId: id, content: current.content, label: current.title });
+    }
+  }
 
   const values: Record<string, unknown> = { updatedAt: new Date() };
   if (input.slug !== undefined) values.slug = input.slug;

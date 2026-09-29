@@ -73,6 +73,8 @@ import {
   createSnippet as apiCreateSnippet,
   updateSnippet as apiUpdateSnippet,
 } from '../snippets-api'
+import { getPageVersion as apiGetPageVersion } from '../pages-api'
+import { getSnippetVersion as apiGetSnippetVersion } from '../snippets-api'
 import { getDefaultCoreApiUrl } from '../core-api-url'
 import {
   listKits as apiListKits,
@@ -430,6 +432,38 @@ export async function loadSnippet(editor: EditorStore, id: string): Promise<void
   editor.setDocument(root)
   editor.setCurrent(null)
   editor.setSnippetId(id)
+}
+
+/** Loads one entry from a page/snippet's version history (content-versions-
+ *  schema.ts) into the current editing document - the same "click a version
+ *  to recall it" the feature request asks for. Deliberately non-destructive:
+ *  this only replaces the in-memory `editor.document`, exactly like
+ *  loadPage()/loadSnippet() do on first open - nothing is written back to
+ *  the database until the user hits Save (which itself snapshots whatever
+ *  was live a moment ago, so restoring a version is never a one-way trip).
+ *
+ *  A page's stored version content is already a full document-tagged tree
+ *  (loadPage() sets it verbatim); a snippet's is the bare subtree
+ *  (loadSnippet()'s own comment explains why), so it's re-wrapped in a
+ *  fresh document root the same way loadSnippet() wraps the live node. */
+export async function restoreVersion(
+  editor: EditorStore,
+  resourceType: 'page' | 'snippet',
+  resourceId: string,
+  versionId: string
+): Promise<void> {
+  if (resourceType === 'page') {
+    const version = await apiGetPageVersion(resourceId, versionId)
+    editor.setDocument(version.content as WhoobeElement)
+  } else {
+    const version = await apiGetSnippetVersion(resourceId, versionId)
+    const root = createEmptyDocumentRoot()
+    if (version.content && typeof version.content === 'object') {
+      root.blocks = [version.content as WhoobeElement]
+    }
+    editor.setDocument(root)
+  }
+  editor.setCurrent(null)
 }
 
 /** Unwraps a document root (as produced by createEmptyDocumentRoot()/

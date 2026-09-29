@@ -33,6 +33,12 @@
            app's own Templates gallery would be a redundant second way to
            browse the same content. -->
       <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> {{ editor.mailTemplateId || editor.snippetMode ? 'Save' : 'Save' }}</button>
+      <button
+        v-if="(editor.page?.id && !editor.mailTemplateId) || (editor.snippetMode && editor.snippetId)"
+        :class="topbarBtnClass"
+        title="Version history"
+        @click="showVersionHistory = true"
+      ><History class="w-3.5 h-3.5" /> History</button>
       <button :class="topbarBtnClass" @click="showThemeModal = true"><Palette class="w-3.5 h-3.5" /> Theme</button>
       <button v-if="editor.page?.id && !editor.mailTemplateId && !editor.snippetMode" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
       <button v-if="editor.page?.id && !editor.mailTemplateId && !editor.snippetMode" :class="topbarBtnClass" @click="showTranslatePage = true"><Languages class="w-3.5 h-3.5" /> Translate</button>
@@ -231,6 +237,8 @@
 
     <ThemeModal v-if="showThemeModal" @close="showThemeModal = false" />
 
+    <VersionHistoryPanel v-if="showVersionHistory" @close="showVersionHistory = false" />
+
     <TranslatePageModal
       v-if="showTranslatePage && editor.page?.id"
       :page-id="editor.page.id"
@@ -316,6 +324,7 @@ import {
   FilePlus,
   FolderOpen,
   Cog,
+  History,
   Image,
   Keyboard,
   Languages,
@@ -348,6 +357,7 @@ import SnippetsPanel from './SnippetsPanel.vue'
 import AddToKitModal from './AddToKitModal.vue'
 import TemplateGalleryModal from './TemplateGalleryModal.vue'
 import ThemeModal from './ThemeModal.vue'
+import VersionHistoryPanel from './VersionHistoryPanel.vue'
 import TranslatePageModal from './TranslatePageModal.vue'
 import AiGenerateModal from './AiGenerateModal.vue'
 import AiImageGenerateModal from './AiImageGenerateModal.vue'
@@ -384,6 +394,7 @@ const showAddToKit = ref(false)
 const showTranslatePage = ref(false)
 const showTemplateGallery = ref(false)
 const showThemeModal = ref(false)
+const showVersionHistory = ref(false)
 const showAiGeneratePage = ref(false)
 const showAiGenerateImage = ref(false)
 const showFigmaImport = ref(false)
