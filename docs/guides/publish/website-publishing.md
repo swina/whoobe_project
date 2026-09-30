@@ -104,7 +104,7 @@ Or run `./publish-site.sh` for an interactive prompt (asks for all of the below,
 ### Options
 
 | Flag | Default | Description |
-|---|---|---|---|
+|---|---|---|
 | `--api-url` | (required) | Base URL of the CMS public API |
 | `--website-id` | (required) | UUID of the website to publish |
 | `--out-dir` | (required) | Output directory for the generated project |
