@@ -68,6 +68,10 @@ export default class Element {
                     {
                         name: 'Dropdown Menu',
                         icon: 'arrow_drop_down_circle'
+                    },
+                    {
+                        name: 'Isometric',
+                        icon: 'account_tree'
                     }
                 ],
             } ,
@@ -225,6 +229,7 @@ export default class Element {
             element === 'Code'          ? this.Code() :
             element === 'Image'         ? this.Image() :
             element === 'Slider'        ? this.Slider() :
+            element === 'Isometric'     ? this.Isometric() :
             element === 'Video'         ? this.Video() :
             element === 'Youtube'       ? this.YTVideo() :
             element === 'Vimeo'         ? this.VimeoVideo() :
@@ -466,6 +471,76 @@ export default class Element {
             arrowIcon: 'chevron',
             homeIcon: 'home'
         }
+        return this
+    }
+
+    // Not a port - a new node-based flow canvas, modeled on the visual
+    // language of a MIDI-style patch bay: freely-positioned boxes
+    // (`.blocks`, each a real container built via IsometricBox() below, so
+    // dropping palette elements/snippets into one works for free through
+    // the exact same dragula machinery every other container gets) that can
+    // be wired together via IN/OUT ports. `type: 'container'` + a real
+    // `tag: 'isometric'` (BlockContainer.vue dispatches to BlockIsometric.
+    // vue on that tag, same pattern as `tag: 'slider'` above) - never a
+    // generic container render, since the boxes need absolute positioning
+    // and BlockContainer.vue only ever lays its `.blocks` out in normal
+    // document flow.
+    //
+    // Connections themselves live on the CANVAS root (`isometricEdges`),
+    // not on either endpoint box - keeps "what connects to what" in one
+    // place a renderer can read without walking the whole subtree, and
+    // means removing a box (BlockIsometric.vue's removeBox()) only ever
+    // needs to filter this one array, not hunt through sibling boxes for
+    // dangling references.
+    Isometric(){
+        this.blocks = []
+        this.type = 'container'
+        this.tag = 'isometric'
+        this.element = 'div'
+        this.label = 'Isometric'
+        this.icon = 'account_tree'
+        this.css.css = ''
+        this.css.container = 'relative'
+        this.isometricEdges = []
+        return this
+    }
+
+    // One box on an Isometric canvas - a plain col Flexbox (so its own
+    // content drops/renders exactly like any other container) plus a
+    // canvas-relative `position`, which is all BlockIsometric.vue actually
+    // reads to place it. `tag: 'isometric-box'` is purely an identification/
+    // styling hook (BlockIsometric.vue's own corner badge, CSS) - it still
+    // renders its children through the ordinary BlockContainer.vue.
+    IsometricBox(x=40, y=40){
+        this.Flexbox({ direction: 'col' })
+        this.tag = 'isometric-box'
+        this.label = 'Box'
+        this.icon = 'crop_square'
+        // Structural only (matches Flexbox()'s own 'flex flex-col' baseline -
+        // BlockContainer.vue's own comment: every container already has
+        // *some* css.container from its builder). The actual LOOK
+        // (rounded/border/background/shadow/padding) goes in css.css
+        // instead, not appended here - css.css is the one field the
+        // existing Custom Classes popover (FloatingToolbar.vue's Alt+<)
+        // binds directly and REPLACES wholesale on edit, so it's the single
+        // source of truth a user's restyle actually overwrites. Baking the
+        // look into css.container (tried first, reverted) meant a user's
+        // custom classes only ever got concatenated alongside these
+        // defaults, at the mercy of Tailwind's own same-property cascade
+        // order rather than the user's intent - the exact bug Slider()'s
+        // own comment documents at length.
+        this.css.container = 'flex flex-col gap-1'
+        // w-60 (15rem/240px) is a real, user-restylable width class here,
+        // not a fixed number baked into the canvas wrapper (BlockIsometric.
+        // vue used to do that, keyed off a BOX_W constant - the OUT
+        // connection port then stayed at the box's width AT CREATION TIME
+        // forever, ignoring any later width change, since nothing measured
+        // the box's actual rendered size). BlockIsometric.vue's box wrapper
+        // has no width of its own and shrink-wraps to whatever this class
+        // renders at, live-measured via ResizeObserver - so restyling this
+        // (a wider/narrower w-* class) moves the OUT port with it.
+        this.css.css = 'w-60 rounded-xl border-2 border-indigo-300 bg-white shadow-lg p-3'
+        this.position = { x, y }
         return this
     }
 

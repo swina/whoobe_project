@@ -123,6 +123,7 @@ import { resolveGatewayFieldValue } from '../../scripts/data-resolver'
 import BlockElementPreview from './BlockElementPreview.vue'
 import BlockIFramePreview from './BlockIFramePreview.vue'
 import BlockSliderPreview from './BlockSliderPreview.vue'
+import BlockIsometricPreview from './BlockIsometricPreview.vue'
 // Self-import: <script setup>'s auto-recursion (referencing a component by
 // its own inferred name) only works inside the *template*, not plain
 // script code - childComponent() below needs a real value to return, so
@@ -236,7 +237,7 @@ const singleObjectContext = computed<DataObjectRecord | null>(() => {
 
 function boundChildProps(child: WhoobeElement, obj: DataObjectRecord): Record<string, unknown> {
   const c = child as any
-  if (c.tag === 'slider' || c.type === 'container') return { doc: child, dataContext: obj }
+  if (c.tag === 'isometric' || c.tag === 'slider' || c.type === 'container') return { doc: child, dataContext: obj }
   return { element: child, dataContext: obj }
 }
 
@@ -323,6 +324,7 @@ function childComponent(child: WhoobeElement): Component {
   // ElementsClass.js's Slider() builder comment), but needs its own real
   // one-at-a-time/autoplay/nav rendering instead of the plain "show every
   // child stacked" behavior every other container gets.
+  if (c.tag === 'isometric') return BlockIsometricPreview as unknown as Component
   if (c.tag === 'slider') return BlockSliderPreview as unknown as Component
   if (c.type === 'container') return BlockContainerPreview as unknown as Component
   if (c.tag === 'youtube' || c.tag === 'vimeo') return BlockIFramePreview as unknown as Component
@@ -331,7 +333,7 @@ function childComponent(child: WhoobeElement): Component {
 
 function childProps(child: WhoobeElement): Record<string, unknown> {
   const c = child as any
-  if (c.tag === 'slider' || c.type === 'container') return { doc: child }
+  if (c.tag === 'isometric' || c.tag === 'slider' || c.type === 'container') return { doc: child }
   return { element: child }
 }
 

@@ -270,6 +270,28 @@ export interface ElementSlider {
   homeIcon?: 'home' | 'dot' | 'circle'
 }
 
+// One wire on an Isometric canvas (see Isometric()/IsometricBox() in
+// ElementsClass.js) - `fromId`/`toId` are the ids of two boxes among the
+// canvas node's own `.blocks`, read/written by BlockIsometric.vue.
+//
+// `color`/`width`/`lineStyle` are plain SVG presentation attributes
+// (stroke/stroke-width/stroke-dasharray), not Tailwind classes - unlike
+// every other per-node "look" field in this app (css.css etc.), an SVG
+// <path>'s stroke has no risk of the same-property cascade-order conflict
+// that pattern exists to avoid (see IsometricBox()'s own comment for that
+// bug), so there's no reason to route this through a class string at all;
+// direct attributes are simpler and can't lose to anything. All optional -
+// BlockIsometric.vue/BlockIsometricPreview.vue fall back to a fixed default
+// (indigo, 2px, solid) for any edge saved before this existed.
+export interface IsometricEdge {
+  id: string
+  fromId: string
+  toId: string
+  color?: string
+  width?: number
+  lineStyle?: 'solid' | 'dashed' | 'dotted'
+}
+
 export default class Element {
   id: string
   blocks: Element[]
@@ -326,6 +348,12 @@ export default class Element {
   // template's body className/style, via editor.templateBody) switches to
   // `style`, a raw CSS declarations string local to this document.
   canvasBackground?: { useTemplate: boolean; style?: string }
+  // Only present on the canvas root built via .Isometric() - the full set
+  // of wires between that canvas's boxes. See IsometricEdge above.
+  isometricEdges?: IsometricEdge[]
+  // Only present on a box built via .IsometricBox() - its canvas-relative
+  // position within the parent Isometric canvas, in pixels.
+  position?: { x: number; y: number }
   // Not in the source, and not set by any builder - stamped only by
   // BlockEditor.vue's snippet-drop handler, onto the clone's root node,
   // right after cloneWithFreshIds() (which only rewrites keys literally
@@ -377,6 +405,8 @@ export default class Element {
   Flexbox(options?: { direction?: string | null; colspan?: number | null }): this
   DropdownMenu(): this
   Slider(): this
+  Isometric(): this
+  IsometricBox(x?: number, y?: number): this
   Heading(level?: number): this
   Paragraph(): this
   InlineText(): this
