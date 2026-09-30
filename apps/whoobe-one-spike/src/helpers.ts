@@ -84,6 +84,8 @@ export function friendlyElementName(el: any): string {
       return el.type === 'slider' ? 'Slider' : 'Flexbox'
     case 'slider':
       return 'Slider'
+    case 'table':
+      return 'Table'
     case 'youtube':
       return 'Youtube'
     case 'vimeo':

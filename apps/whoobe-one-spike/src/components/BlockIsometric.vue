@@ -1,14 +1,12 @@
 <template>
-  <component
-    :is="semantic"
-    :id="doc.id"
-    :class="[classe, groupClass]"
-    :style="stile"
-    data-type="container"
-    :data-id="doc.id"
-    v-bind="isometricAttrs"
-    @click.self="onSelect"
-  >
+  <!-- The corner tag button lives in this outer wrapper, as a SIBLING of
+       the actual rendered `<component>` below, not as its child - the same
+       fix BlockContainer.vue's/BlockSlider.vue's own corner tag badges
+       already got: purely editor-only chrome that should never visually
+       bounce/scale/shake along with a "preview this animation" tween run
+       directly on the id'd content node (see BlockContainer.vue's own
+       comment for the full reasoning). -->
+  <div class="relative" :class="groupClass" :data-toolbar-anchor="doc.id">
     <button
       type="button"
       class="absolute -top-2.5 -left-2.5 z-50 px-1.5 py-0.5 rounded text-[10px] leading-none font-semibold text-white transition-opacity"
@@ -17,6 +15,16 @@
     >
       {{ doc.tag || 'container' }}
     </button>
+    <component
+      :is="semantic"
+      :id="doc.id"
+      :class="classe"
+      :style="stile"
+      data-type="container"
+      :data-id="doc.id"
+      v-bind="isometricAttrs"
+      @click.self="onSelect"
+    >
 
     <!-- Toolbar - not draggable/connectable itself, just controls -->
     <div class="relative z-10 flex items-center gap-2 mb-2 bg-slate-100 px-2 py-1.5 rounded" @click.stop>
@@ -204,7 +212,8 @@
         <BlockContainer :doc="box" :level="level + 1" :data-context="dataContext" />
       </div>
     </div>
-  </component>
+    </component>
+  </div>
 </template>
 
 <script setup lang="ts">

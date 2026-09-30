@@ -168,6 +168,7 @@ import BlockElementPreview from './BlockElementPreview.vue'
 import BlockIFramePreview from './BlockIFramePreview.vue'
 import BlockContainerPreview from './BlockContainerPreview.vue'
 import BlockIsometricPreview from './BlockIsometricPreview.vue'
+import BlockTablePreview from './BlockTablePreview.vue'
 import SliderNavIcon from './SliderNavIcon.vue'
 import type { SliderNavIconName } from './SliderNavIcon.vue'
 import SliderTabsNav from './SliderTabsNav.vue'
@@ -234,6 +235,7 @@ function childComponent(child: WhoobeElement): Component {
   const c = child as any
   if (c.tag === 'isometric') return BlockIsometricPreview as unknown as Component
   if (c.tag === 'slider') return BlockSliderPreview as unknown as Component
+  if (c.tag === 'table') return BlockTablePreview as unknown as Component
   if (c.type === 'container') return BlockContainerPreview as unknown as Component
   if (c.tag === 'youtube' || c.tag === 'vimeo') return BlockIFramePreview as unknown as Component
   return BlockElementPreview as unknown as Component
@@ -241,6 +243,7 @@ function childComponent(child: WhoobeElement): Component {
 
 function childProps(child: WhoobeElement): Record<string, unknown> {
   const c = child as any
+  if (c.tag === 'table') return { doc: child }
   if (c.tag === 'isometric' || c.tag === 'slider' || c.type === 'container') return { doc: child }
   return { element: child }
 }

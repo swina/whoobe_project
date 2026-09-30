@@ -48,6 +48,7 @@ import BlockContainerPreview from './BlockContainerPreview.vue'
 // already uses for a slide that's itself another slider.
 import BlockIsometricPreview from './BlockIsometricPreview.vue'
 import BlockSliderPreview from './BlockSliderPreview.vue'
+import BlockTablePreview from './BlockTablePreview.vue'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -137,6 +138,7 @@ function childComponent(child: WhoobeElement): Component {
   const c = child as any
   if (c.tag === 'isometric') return BlockIsometricPreview as unknown as Component
   if (c.tag === 'slider') return BlockSliderPreview as unknown as Component
+  if (c.tag === 'table') return BlockTablePreview as unknown as Component
   if (c.type === 'container') return BlockContainerPreview as unknown as Component
   if (c.tag === 'youtube' || c.tag === 'vimeo') return BlockIFramePreview as unknown as Component
   return BlockElementPreview as unknown as Component
@@ -144,6 +146,7 @@ function childComponent(child: WhoobeElement): Component {
 
 function childProps(child: WhoobeElement): Record<string, unknown> {
   const c = child as any
+  if (c.tag === 'table') return { doc: child }
   if (c.tag === 'isometric' || c.tag === 'slider' || c.type === 'container') return { doc: child }
   return { element: child }
 }

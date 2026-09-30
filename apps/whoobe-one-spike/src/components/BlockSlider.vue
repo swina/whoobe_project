@@ -1,14 +1,17 @@
 <template>
-  <component
-    :is="semantic"
-    :id="doc.id"
-    :class="[classe, 'dragula-container', groupClass]"
-    :style="stile"
-    data-type="container"
-    :data-id="doc.id"
-    v-bind="sliderAttrs"
-    @click.self="onSelect"
-  >
+  <!-- The corner tag button lives in this outer wrapper, as a SIBLING of
+       the actual rendered `<component>` below - not as its child, unlike
+       everything else in this template (the slide strip/active slide/dots
+       genuinely ARE the real, published widget - preview/BlockSliderPreview.
+       vue's own mountAnimation() targets that exact same outer node, so a
+       Slider's GSAP animation legitimately animates the whole widget
+       together in production, nav included - see that file's rootEl). The
+       corner tag is different: purely editor-only chrome that never appears
+       in Preview/publish at all, so it has no business visually bouncing/
+       scaling/shaking along with a "preview this animation" tween the way
+       it did when it was a child of the animated node - see BlockContainer.
+       vue's own version of this same fix for the fuller reasoning. -->
+  <div class="relative" :class="groupClass" :data-toolbar-anchor="doc.id">
     <button
       type="button"
       class="absolute -top-2.5 -left-2.5 z-50 px-1.5 py-0.5 rounded text-[10px] leading-none font-semibold text-white transition-opacity"
@@ -18,6 +21,16 @@
       {{ doc.tag || 'container' }}
       <span v-if="(doc as any).dataBinding" class="text-[9px] opacity-80 ml-1">{{ ((doc as any).dataBinding?.className || '?') }}</span>
     </button>
+    <component
+      :is="semantic"
+      :id="doc.id"
+      :class="[classe, 'dragula-container']"
+      :style="stile"
+      data-type="container"
+      :data-id="doc.id"
+      v-bind="sliderAttrs"
+      @click.self="onSelect"
+    >
 
     <!-- Only the active slide is actually rendered below - not a stacked
          pile of every slide at once, which used to make it easy to forget
@@ -76,6 +89,7 @@
     <template v-if="activeSlide">
       <BlockIsometric v-if="activeSlide.tag === 'isometric'" :doc="activeSlide" :level="level + 1" :data-context="dataContext" />
       <BlockSlider v-else-if="activeSlide.tag === 'slider'" :doc="activeSlide" :level="level + 1" :data-context="dataContext" />
+      <BlockTable v-else-if="activeSlide.tag === 'table'" :doc="activeSlide" :level="level + 1" />
       <BlockContainer v-else-if="(activeSlide as any).type === 'container'" :doc="activeSlide" :level="level + 1" :data-context="dataContext" />
       <BlockIFrame v-else-if="activeSlide.tag === 'youtube' || activeSlide.tag === 'vimeo'" :element="activeSlide" :level="level + 1" />
       <BlockElement v-else :element="activeSlide" :level="level + 1" :data-context="dataContext" />
@@ -101,7 +115,8 @@
         @click="goToSlideNoSelect(index)"
       ></button>
     </div>
-  </component>
+    </component>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -152,6 +167,7 @@ import BlockElement from './BlockElement.vue'
 import BlockIFrame from './BlockIFrame.vue'
 import BlockContainer from './BlockContainer.vue'
 import BlockIsometric from './BlockIsometric.vue'
+import BlockTable from './BlockTable.vue'
 
 type WhoobeElement = InstanceType<typeof Element>
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="relative group">
+  <div class="relative group" :data-toolbar-anchor="element.id">
     <!-- Collapsed via FloatingToolbar.vue's "Hide content" toggle - see
          BlockContainer.vue's own comment on the same mechanism (store/
          editor.ts's collapsedIds), applied here to leaf elements too (an
