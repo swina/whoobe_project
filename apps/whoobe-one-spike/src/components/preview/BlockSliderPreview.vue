@@ -167,6 +167,7 @@ import { mountAnimation } from '../../scripts/gsap-actions'
 import BlockElementPreview from './BlockElementPreview.vue'
 import BlockIFramePreview from './BlockIFramePreview.vue'
 import BlockContainerPreview from './BlockContainerPreview.vue'
+import BlockIsometricPreview from './BlockIsometricPreview.vue'
 import SliderNavIcon from './SliderNavIcon.vue'
 import type { SliderNavIconName } from './SliderNavIcon.vue'
 import SliderTabsNav from './SliderTabsNav.vue'
@@ -231,6 +232,7 @@ watch(
 
 function childComponent(child: WhoobeElement): Component {
   const c = child as any
+  if (c.tag === 'isometric') return BlockIsometricPreview as unknown as Component
   if (c.tag === 'slider') return BlockSliderPreview as unknown as Component
   if (c.type === 'container') return BlockContainerPreview as unknown as Component
   if (c.tag === 'youtube' || c.tag === 'vimeo') return BlockIFramePreview as unknown as Component
@@ -239,7 +241,7 @@ function childComponent(child: WhoobeElement): Component {
 
 function childProps(child: WhoobeElement): Record<string, unknown> {
   const c = child as any
-  if (c.tag === 'slider' || c.type === 'container') return { doc: child }
+  if (c.tag === 'isometric' || c.tag === 'slider' || c.type === 'container') return { doc: child }
   return { element: child }
 }
 
@@ -299,6 +301,32 @@ function onNavClick(action: () => void) {
 onMounted(startAutoplay)
 onUnmounted(stopAutoplay)
 watch(() => [settings.value.autoplay, settings.value.interval], startAutoplay)
+
+// Deep-link support: a URL like `/features#slide2` (or `#slide-2`/`#slide_2`,
+// 1-based) jumps this slider straight to that slide - mirrors
+// packages/sdk/vue's DefaultSlider/packages/sdk/react's DefaultSlider (the
+// renderer real published Nuxt/Next sites use), added here too since this
+// component - not those SDK packages - is what actually renders a slider in
+// this app's own "Preview" button and its internal `/:pathMatch(.*)*`
+// public-page route (PublicPage.vue uses BlockContainerPreview.vue, which
+// dispatches to this file for `tag: 'slider'`, entirely separately from the
+// SDK packages). Re-applied on `hashchange` too, so an in-page link to
+// `#slide3` clicked while already on this page also works, not just a fresh
+// load. If a page has more than one slider, every one of them reacts to the
+// same hash - there's no per-slider id in the hash to disambiguate.
+function applyHashSlide() {
+  const match = /^#?slide[-_]?(\d+)$/i.exec(window.location.hash)
+  if (!match) return
+  const total = props.doc.blocks.length
+  if (total === 0) return
+  const requested = parseInt(match[1], 10) - 1
+  current.value = Math.max(0, Math.min(requested, total - 1))
+}
+onMounted(() => {
+  applyHashSlide()
+  window.addEventListener('hashchange', applyHashSlide)
+})
+onUnmounted(() => window.removeEventListener('hashchange', applyHashSlide))
 
 const semantic = computed(() => (props.doc as any).semantic || 'div')
 

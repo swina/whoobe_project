@@ -57,7 +57,8 @@
     <template v-if="collectionResolved.length">
       <template v-for="(obj, index) in pagedItems" :key="index">
         <template v-for="child in doc.blocks" :key="child.id">
-          <BlockSlider v-if="child.tag === 'slider'" :doc="child" :level="level + 1" :data-context="obj" />
+          <BlockIsometric v-if="child.tag === 'isometric'" :doc="child" :level="level + 1" :data-context="obj" />
+          <BlockSlider v-else-if="child.tag === 'slider'" :doc="child" :level="level + 1" :data-context="obj" />
           <BlockContainer v-else-if="child.type === 'container'" :doc="child" :level="level + 1" :data-context="obj" />
           <BlockIFrame v-else-if="child.tag === 'youtube' || child.tag === 'vimeo'" :element="child" :level="level + 1" />
           <BlockElement v-else :element="child" :level="level + 1" :data-context="obj" />
@@ -85,7 +86,8 @@
     </template>
     <template v-else>
       <template v-for="child in doc.blocks" :key="child.id">
-        <BlockSlider v-if="child.tag === 'slider'" :doc="child" :level="level + 1" :data-context="childContext" />
+        <BlockIsometric v-if="child.tag === 'isometric'" :doc="child" :level="level + 1" :data-context="childContext" />
+        <BlockSlider v-else-if="child.tag === 'slider'" :doc="child" :level="level + 1" :data-context="childContext" />
         <BlockContainer v-else-if="child.type === 'container'" :doc="child" :level="level + 1" :data-context="childContext" />
         <BlockIFrame v-else-if="child.tag === 'youtube' || child.tag === 'vimeo'" :element="child" :level="level + 1" />
         <BlockElement v-else :element="child" :level="level + 1" :data-context="childContext" />
@@ -154,6 +156,7 @@ import type { DataObjectRecord } from '../data-objects-api'
 import BlockElement from './BlockElement.vue'
 import BlockIFrame from './BlockIFrame.vue'
 import BlockSlider from './BlockSlider.vue'
+import BlockIsometric from './BlockIsometric.vue'
 import { customAttrs, stripEditorHidden } from '../helpers'
 
 type WhoobeElement = InstanceType<typeof Element>

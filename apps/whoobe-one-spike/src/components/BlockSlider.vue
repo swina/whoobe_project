@@ -74,7 +74,8 @@
     </div>
 
     <template v-if="activeSlide">
-      <BlockSlider v-if="activeSlide.tag === 'slider'" :doc="activeSlide" :level="level + 1" :data-context="dataContext" />
+      <BlockIsometric v-if="activeSlide.tag === 'isometric'" :doc="activeSlide" :level="level + 1" :data-context="dataContext" />
+      <BlockSlider v-else-if="activeSlide.tag === 'slider'" :doc="activeSlide" :level="level + 1" :data-context="dataContext" />
       <BlockContainer v-else-if="(activeSlide as any).type === 'container'" :doc="activeSlide" :level="level + 1" :data-context="dataContext" />
       <BlockIFrame v-else-if="activeSlide.tag === 'youtube' || activeSlide.tag === 'vimeo'" :element="activeSlide" :level="level + 1" />
       <BlockElement v-else :element="activeSlide" :level="level + 1" :data-context="dataContext" />
@@ -150,6 +151,7 @@ import type { DataObjectRecord } from '../data-objects-api'
 import BlockElement from './BlockElement.vue'
 import BlockIFrame from './BlockIFrame.vue'
 import BlockContainer from './BlockContainer.vue'
+import BlockIsometric from './BlockIsometric.vue'
 
 type WhoobeElement = InstanceType<typeof Element>
 
