@@ -224,7 +224,74 @@
           </div>
           </template>
 
-          
+
+        </div>
+      </template>
+    </div>
+    <div v-if="isTable" class="relative">
+      <button type="button" title="Table classes" class="toolbar-icon" @click="showTableSettings = !showTableSettings">
+        <SlidersHorizontal class="w-4 h-4" />
+      </button>
+      <!-- All customizable per docs/plans (user asked, after the initial
+           Table element landed, for every part of it to be CSS-customizable
+           too) - mirrors the Slider settings popover just above: one field
+           per section (table/header row/header cell/body row/body cell/
+           footer row/footer cell), each a plain Tailwind class string with
+           NO hardcoded default layered on top at render time (BlockTable.
+           vue/BlockTablePreview.vue apply exactly what's here, nothing
+           else) - same reasoning as Slider()'s own class fields (see
+           ElementsClass.js's Slider() comment for the cascade-order bug
+           that pattern avoids). Individual cell-level overrides (on top of
+           these section defaults) are edited per-cell instead, in
+           BlockTable.vue's own cell-selection mini-toolbar - a single
+           table-wide popover has no sensible way to address "just this one
+           cell". -->
+      <template v-if="showTableSettings && editor.current?.table">
+        <div class="fixed inset-0 z-[10000]" @click="showTableSettings = false"></div>
+        <div
+          class="absolute z-[10001] left-0 bg-white border border-gray-200 rounded-md shadow-lg p-2 w-100 space-y-2 text-xs font-bold overflow-y-auto"
+          :class="[toolbarNearBottomEdge ? 'bottom-full mb-1' : 'top-full mt-1', toolbarNearRightEdge ? 'right-0 left-auto' : '']"
+          :style="{ maxHeight: popoverMaxHeight + 'px' }"
+          @click.stop
+        >
+          <label class="block">
+            <span class="block text-xs font-medium text-gray-500 mb-1.5">Caption</span>
+            <input
+              type="text"
+              v-model="editor.current.table.caption"
+              placeholder="Optional table caption"
+              class="w-full px-2.5 py-1.5 text-sm font-normal rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+            />
+          </label>
+          <p class="text-[10px] font-normal text-gray-400">
+            The table's own classes (border, width, ...) are the regular Custom Classes field in the Advanced tab - the fields below are for its header/body/footer sections and cells specifically.
+          </p>
+          <div class="grid grid-cols-2 gap-2 font-normal">
+            <label class="block">
+              <span class="block text-xs font-medium text-gray-500 mb-1.5">Header row classes</span>
+              <ExpandableTextInput v-model="editor.current.table.headerRowClass" popup-label="Header row classes" monospace />
+            </label>
+            <label class="block">
+              <span class="block text-xs font-medium text-gray-500 mb-1.5">Header cell classes</span>
+              <ExpandableTextInput v-model="editor.current.table.headerCellClass" popup-label="Header cell classes" monospace />
+            </label>
+            <label class="block">
+              <span class="block text-xs font-medium text-gray-500 mb-1.5">Body row classes</span>
+              <ExpandableTextInput v-model="editor.current.table.bodyRowClass" popup-label="Body row classes" monospace />
+            </label>
+            <label class="block">
+              <span class="block text-xs font-medium text-gray-500 mb-1.5">Body cell classes</span>
+              <ExpandableTextInput v-model="editor.current.table.bodyCellClass" popup-label="Body cell classes" monospace />
+            </label>
+            <label class="block">
+              <span class="block text-xs font-medium text-gray-500 mb-1.5">Footer row classes</span>
+              <ExpandableTextInput v-model="editor.current.table.footerRowClass" popup-label="Footer row classes" monospace />
+            </label>
+            <label class="block">
+              <span class="block text-xs font-medium text-gray-500 mb-1.5">Footer cell classes</span>
+              <ExpandableTextInput v-model="editor.current.table.footerCellClass" popup-label="Footer cell classes" monospace />
+            </label>
+          </div>
         </div>
       </template>
     </div>
@@ -732,7 +799,7 @@ import type { Component } from 'vue'
 import Element from '../scripts/ElementsClass.js'
 import animations from '../scripts/animations.js'
 import twclasses from '../scripts/tw.classes.js'
-import { previewAnimation } from '../scripts/gsap-actions'
+import { previewAnimation, previewAnimationActive } from '../scripts/gsap-actions'
 import { playYouTubeVideo } from '../scripts/youtube-player'
 import { useEditorStore } from '../store/editor'
 import { editorBus } from '../bus'
@@ -872,6 +939,7 @@ const showImagePicker = ref(false)
 const imageUrlDraft = ref('')
 const imageAltDraft = ref('')
 const showSliderSettings = ref(false)
+const showTableSettings = ref(false)
 const showSemanticPicker = ref(false)
 const showDataPicker = ref(false)
 const showGatewayPicker = ref(false)
@@ -945,6 +1013,7 @@ function toggleCollapsed() {
   if (editor.current) editor.toggleCollapsed(editor.current.id)
 }
 const isSlider = computed(() => editor.current?.tag === 'slider')
+const isTable = computed(() => editor.current?.tag === 'table')
 const isTextEditable = computed(() => !!editor.current?.editable)
 const isVideoEmbed = computed(() => editor.current?.tag === 'youtube' || editor.current?.tag === 'vimeo')
 const isButtonElement = computed(() => editor.current?.tag === 'button' || editor.current?.tag === 'submit' || editor.current?.tag === 'reset')
@@ -977,7 +1046,7 @@ const hasImageRef = computed(() => {
 const bindingTarget = computed(() => {
   const el = editor.current as any
   if (!el) return 'content'
-  if (el.type === 'container' || el.tag === 'slider') return 'custom'
+  if (el.type === 'container' || el.tag === 'slider' || el.tag === 'table') return 'custom'
   if (el.element === 'img') return 'src'
   if (el.tag === 'youtube' || el.tag === 'vimeo') return 'src'
   if (el.tag === 'lucideicon') return 'icon'
@@ -1103,7 +1172,29 @@ const label = computed(() => {
 
 function updatePosition() {
   if (!editor.current) return
-  const el = document.getElementById(editor.current.id)
+  // Prefer `data-toolbar-anchor` (the never-animated wrapper `<div>` every
+  // Block*.vue component wraps its actual content node in, alongside its
+  // own corner tag - see BlockContainer.vue's own comment on that
+  // restructuring) over the content node's own id. A real, reported bug:
+  // this used to always read the CONTENT node's own bounding rect, and a
+  // persistent animation on it - either a one-shot GSAP preview tween
+  // (AnimationControl.vue) or, worse, an indefinitely-looping Tailwind
+  // `animate-bounce`/`animate-spin`/`animate-pulse`/`animate-ping` class
+  // (picked from the "CSS Animation" Options control, scripts/tw.groups.js,
+  // written straight into that node's own css.css - no duration at all to
+  // ever gate on) - moved/scaled that same rect every frame, so this
+  // toolbar visibly chased it right along, every frame, for as long as the
+  // animation kept playing. Tracking the WRAPPER's own untransformed layout
+  // box instead keeps the toolbar still through any transform/opacity-based
+  // animation on its child, since neither property affects a parent's own
+  // layout box - true for every built-in Tailwind `animate-*` utility and
+  // the vast majority of the ~18 registered GSAP effects (animations.js).
+  // Falls back to the content node's own id for the handful of nodes with
+  // no such wrapper (BlockIFrame.vue, the document root, a collapsed-
+  // container placeholder) - none of them carry a corner tag either, so
+  // there's nothing there this fallback could still get wrong.
+  const anchor = document.querySelector(`[data-toolbar-anchor="${CSS.escape(editor.current.id)}"]`)
+  const el = anchor ?? document.getElementById(editor.current.id)
   if (!el) return
   const rect = el.getBoundingClientRect()
   top.value = Math.max(4, rect.top - 36)
@@ -1174,7 +1265,12 @@ const sliderPopoverMaxHeight = popoverMaxHeight
 
 let rafId: number | null = null
 function loop() {
-  if (!isDragging.value && !positionPinned.value) updatePosition()
+  // previewAnimationActive (gsap-actions.ts): frozen for the duration of a
+  // "preview this animation" click (AnimationControl.vue/this file's own
+  // play button below) so this toolbar doesn't visibly chase the selected
+  // element's own bounding rect as it bounces/scales/shakes through the
+  // tween - see that flag's own comment for the full reasoning.
+  if (!isDragging.value && !positionPinned.value && !previewAnimationActive.value) updatePosition()
   rafId = requestAnimationFrame(loop)
 }
 onMounted(() => {

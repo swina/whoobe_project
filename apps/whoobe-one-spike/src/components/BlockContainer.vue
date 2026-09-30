@@ -18,18 +18,25 @@
   >
     &lt;{{ semantic }}&gt;
   </button>
-  <component
-    v-else
-    :is="semantic"
-    :id="doc.id"
-    :class="[classe, 'dragula-container', groupClass]"
-    :style="stile"
-    data-type="container"
-    :data-id="doc.id"
-    v-bind="containerAttrs"
-    @click.self="onSelect"
-    @submit.prevent
-  >
+  <!-- Editor-only chrome (corner tag/semantic badge/hidden badge) lives in
+       this outer wrapper, as SIBLINGS of the actual rendered `<component>`
+       below - never as its children. A real, reported bug: previewing a
+       GSAP animation (AnimationControl.vue's/FloatingToolbar.vue's own
+       "preview" action, scripts/gsap-actions.ts's previewAnimation()) runs
+       a transform-based tween directly on the id'd content node; CSS
+       transforms visually carry every DOM descendant along with them, so
+       with these badges as CHILDREN of that node (the previous structure
+       here) the corner tag physically bounced/scaled/shook right along
+       with the content being previewed - wrong for editor-only UI chrome
+       that isn't part of the page content at all and was never meant to
+       animate. Sibling, not parent/child, matches the structure BlockElement.
+       vue/BlockTable.vue's own badges already use - this file was the one
+       inconsistent with that pattern. `groupClass` (the named-group hover
+       scope the badges' own `group-hover/<id>:opacity-100` needs) moves to
+       this wrapper too: hovering anywhere inside its `<component>` child
+       still triggers `:hover` here (that's how `:hover` always works for
+       an ancestor), so the badges still reveal on hover exactly as before. -->
+  <div v-else class="relative" :class="groupClass" :data-toolbar-anchor="doc.id">
     <button
       type="button"
       class="absolute -top-2.5 -left-2.5 z-50 px-1.5 py-0.5 rounded text-[10px] leading-none font-semibold text-white transition-opacity font-mono"
@@ -54,11 +61,23 @@
       class="absolute -top-2.5 left-1/2 -translate-x-1/2 z-50 px-1.5 py-0.5 rounded text-[10px] leading-none font-semibold bg-black text-white font-mono"
       title="This element is hidden in the published view (has 'hidden' class)"
     >hidden</span>
+    <component
+      :is="semantic"
+      :id="doc.id"
+      :class="[classe, 'dragula-container']"
+      :style="stile"
+      data-type="container"
+      :data-id="doc.id"
+      v-bind="containerAttrs"
+      @click.self="onSelect"
+      @submit.prevent
+    >
     <template v-if="collectionResolved.length">
       <template v-for="(obj, index) in pagedItems" :key="index">
         <template v-for="child in doc.blocks" :key="child.id">
           <BlockIsometric v-if="child.tag === 'isometric'" :doc="child" :level="level + 1" :data-context="obj" />
           <BlockSlider v-else-if="child.tag === 'slider'" :doc="child" :level="level + 1" :data-context="obj" />
+          <BlockTable v-else-if="child.tag === 'table'" :doc="child" :level="level + 1" />
           <BlockContainer v-else-if="child.type === 'container'" :doc="child" :level="level + 1" :data-context="obj" />
           <BlockIFrame v-else-if="child.tag === 'youtube' || child.tag === 'vimeo'" :element="child" :level="level + 1" />
           <BlockElement v-else :element="child" :level="level + 1" :data-context="obj" />
@@ -88,12 +107,14 @@
       <template v-for="child in doc.blocks" :key="child.id">
         <BlockIsometric v-if="child.tag === 'isometric'" :doc="child" :level="level + 1" :data-context="childContext" />
         <BlockSlider v-else-if="child.tag === 'slider'" :doc="child" :level="level + 1" :data-context="childContext" />
+        <BlockTable v-else-if="child.tag === 'table'" :doc="child" :level="level + 1" />
         <BlockContainer v-else-if="child.type === 'container'" :doc="child" :level="level + 1" :data-context="childContext" />
         <BlockIFrame v-else-if="child.tag === 'youtube' || child.tag === 'vimeo'" :element="child" :level="level + 1" />
         <BlockElement v-else :element="child" :level="level + 1" :data-context="childContext" />
       </template>
     </template>
-  </component>
+    </component>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -157,6 +178,7 @@ import BlockElement from './BlockElement.vue'
 import BlockIFrame from './BlockIFrame.vue'
 import BlockSlider from './BlockSlider.vue'
 import BlockIsometric from './BlockIsometric.vue'
+import BlockTable from './BlockTable.vue'
 import { customAttrs, stripEditorHidden } from '../helpers'
 
 type WhoobeElement = InstanceType<typeof Element>

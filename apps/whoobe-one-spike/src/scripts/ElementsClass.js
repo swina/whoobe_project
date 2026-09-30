@@ -75,6 +75,15 @@ export default class Element {
                     }
                 ],
             } ,
+            {
+                label: 'table',
+                elements: [
+                    {
+                        name: 'Table',
+                        icon: 'table_chart'
+                    }
+                ],
+            } ,
             { 
                 label:'text',
                 elements: [ 
@@ -230,6 +239,7 @@ export default class Element {
             element === 'Image'         ? this.Image() :
             element === 'Slider'        ? this.Slider() :
             element === 'Isometric'     ? this.Isometric() :
+            element === 'Table'         ? this.Table() :
             element === 'Video'         ? this.Video() :
             element === 'Youtube'       ? this.YTVideo() :
             element === 'Vimeo'         ? this.VimeoVideo() :
@@ -542,6 +552,73 @@ export default class Element {
         this.css.css = 'w-60 rounded-xl border-2 border-indigo-300 bg-white shadow-lg p-3'
         this.position = { x, y }
         return this
+    }
+
+    // A real <table>, not a generic container - cells hold plain editable
+    // text (like Span/Paragraph), never nested Elements/.blocks, so it's
+    // dispatched by `tag: 'table'` the same way Slider()/Isometric() are
+    // (BlockContainer.vue/BlockSlider.vue/*Preview.vue all gained an
+    // explicit `tag === 'table'` branch routing to BlockTable.vue/
+    // BlockTablePreview.vue), rather than falling through to the generic
+    // `type === 'container'` case, which would try to render `.blocks`
+    // that don't exist here. `type: 'element'` (not 'container') for
+    // exactly that reason.
+    //
+    // Grid model: `header`/`footer` are each a single row of `cols` cells;
+    // `body` is `rows` rows of `cols` cells - every row is ALWAYS exactly
+    // `table.cols` long, even where a merge (colspan/rowspan > 1 on an
+    // earlier cell) covers a later position - that position's cell still
+    // exists in the array (so indexing stays simple) but is flagged
+    // `merged: true` and skipped at render time (see BlockTable.vue's/
+    // BlockTablePreview.vue's own comments for the merge mechanics).
+    // Resizing rows/cols resets all spans/merges back to 1x1 (documented,
+    // deliberate simplification - safely reconciling arbitrary existing
+    // merges against a changed grid shape is real spreadsheet-engine
+    // territory, not warranted here) - merge state is only ever meaningful
+    // right after you've finished shaping the grid.
+    Table(options={rows:3,cols:3}){
+        this.blocks = []
+        this.type = 'element'
+        this.tag = 'table'
+        this.element = 'table'
+        this.label = 'Table'
+        this.icon = 'table_chart'
+        // The <table> tag itself is styled through the ordinary css.css/
+        // css.container fields every element already has (same treatment
+        // as Image()'s own `w-240 h-auto`) - not a separate `table.
+        // tableClass` field, which would just be a second, competing class
+        // source landing on the exact same tag (the identical cascade-
+        // order-conflict bug Slider()'s own comment documents at length).
+        // The fields below cover parts css.css genuinely can't reach: the
+        // header/body/footer sections and their cells.
+        this.css.css = 'w-full border-collapse text-sm'
+        this.css.container = ''
+        const rows = Math.max(1, options.rows || 3)
+        const cols = Math.max(1, options.cols || 3)
+        this.table = {
+            cols,
+            hasHeader: true,
+            hasFooter: false,
+            caption: '',
+            header: this.tableRow(cols, (c) => `Header ${c + 1}`),
+            body: Array.from({ length: rows }, () => this.tableRow(cols, () => '')),
+            footer: this.tableRow(cols, () => ''),
+            headerRowClass: 'bg-gray-100 font-semibold text-left',
+            bodyRowClass: 'even:bg-gray-50',
+            footerRowClass: 'bg-gray-100 font-medium text-left',
+            headerCellClass: 'border-0 border-gray-200 px-3 py-2',
+            bodyCellClass: 'border-0 border-gray-200 px-3 py-2',
+            footerCellClass: 'border-0 border-gray-200 px-3 py-2'
+        }
+        return this
+    }
+
+    tableRow(cols, contentFor){
+        return Array.from({ length: cols }, (_, c) => this.tableCell(contentFor(c)))
+    }
+
+    tableCell(content=''){
+        return { id: this.randomID(), content, colspan: 1, rowspan: 1, merged: false }
     }
 
     Heading(level=1){

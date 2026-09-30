@@ -1,0 +1,4737 @@
+openapi: 3.0.3
+info:
+  title: Whoobe CMS API
+  description: >
+    HTTP APIs exposed by this monorepo's backend services (core-api, gateway,
+    asset-processor). Companion machine-readable spec for
+    docs/guides/api-reference.md - generated from the same route table (see
+    docs/api/gen-api-docs.py), so treat that script, not this file directly,
+    as the source of truth when routes change.
+  version: "1.0"
+servers:
+  - url: http://localhost:3003
+    description: core-api (local dev)
+  - url: http://localhost:3001
+    description: gateway (local dev)
+  - url: http://localhost:3002
+    description: asset-processor (local dev)
+security:
+  - sessionCookie: []
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: wcms_session
+      description: Admin session cookie, set by POST /auth/login.
+    gatewaySiteKey:
+      type: apiKey
+      in: header
+      name: X-Whoobe-Site-Key
+      description: >
+        Optional per-website key (see docs/guides/api-gateway-security.md).
+        A resolved gatewayBindingId is the mandatory server-side check either
+        way; this key adds per-site scoping/rate-limiting/revocation on top.
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+    AuthUser:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        name: { type: string }
+        permissions:
+          type: array
+          items: { type: string }
+    WhoobePage:
+      type: object
+      description: A whoobe_pages row - see packages/core/src/db/whoobe-pages-schema.ts.
+      properties:
+        id: { type: string, format: uuid }
+        translationGroupId: { type: string, format: uuid }
+        locale: { type: string, example: en }
+        slug: { type: string }
+        title: { type: string }
+        category: { type: string }
+        kind: { type: string, enum: [content, module, app] }
+        published: { type: boolean }
+        workflowState: { type: string, nullable: true }
+        content:
+          type: object
+          description: A WhoobeElementNode tree (packages/sdk/schema) - opaque jsonb.
+        websiteId: { type: string, format: uuid, nullable: true }
+        themeId: { type: string, format: uuid, nullable: true }
+        publishedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    WhoobePageInput:
+      type: object
+      required: [slug, title, content]
+      properties:
+        slug: { type: string }
+        title: { type: string }
+        category: { type: string }
+        kind: { type: string, enum: [content, module, app] }
+        content:
+          type: object
+          description: A WhoobeElementNode tree (packages/sdk/schema).
+        locale: { type: string }
+        websiteId: { type: string, format: uuid, nullable: true }
+        themeId: { type: string, format: uuid, nullable: true }
+        published: { type: boolean }
+  responses:
+    Unauthorized:
+      description: Missing/invalid session, or missing permission.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+paths:
+  /auth/login:
+    post:
+      tags: ["core-api: Auth"]
+      summary: "Log in with email/password. Sets the session cookie, or returns `{ mfaRequired: true, mfaToken }` if 2FA is enabled."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        "200":
+          description: Logged in, or a pending 2FA challenge.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      user: { $ref: '#/components/schemas/AuthUser' }
+                  - type: object
+                    properties:
+                      mfaRequired: { type: boolean, enum: [true] }
+                      mfaToken: { type: string }
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/mfa/challenge:
+    post:
+      tags: ["core-api: Auth"]
+      summary: "Step 2 of a 2FA login: verify a TOTP code (or a recovery code) against a pending mfaToken and complete the session."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/mfa/status:
+    get:
+      tags: ["core-api: Auth"]
+      summary: "Whether the current user has 2FA enabled."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/mfa/setup:
+    post:
+      tags: ["core-api: Auth"]
+      summary: "Start 2FA enrollment; returns a TOTP secret + QR code."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/mfa/verify-setup:
+    post:
+      tags: ["core-api: Auth"]
+      summary: "Confirm a TOTP code to finish enrollment; returns one-time recovery codes."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/mfa/disable:
+    post:
+      tags: ["core-api: Auth"]
+      summary: "Disable 2FA (requires re-entering the password)."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/logout:
+    post:
+      tags: ["core-api: Auth"]
+      summary: "Revoke the current session and clear the cookie."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/me:
+    get:
+      tags: ["core-api: Auth"]
+      summary: "Current user's id, email, display name, and effective permissions."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUser'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/forgot-password:
+    post:
+      tags: ["core-api: Auth"]
+      summary: "Request a password-reset email."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/reset-password:
+    post:
+      tags: ["core-api: Auth"]
+      summary: "Complete a password reset with the emailed token."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/users:
+    get:
+      tags: ["core-api: Auth"]
+      summary: "List admin users."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Auth"]
+      summary: "Create an admin user."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/users/{id}:
+    get:
+      tags: ["core-api: Auth"]
+      summary: "Get one admin user."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Auth"]
+      summary: "Update an admin user."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Auth"]
+      summary: "Delete an admin user."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/users/{id}/reset-password:
+    post:
+      tags: ["core-api: Auth"]
+      summary: "Force-reset another user's password (admin action)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/roles:
+    get:
+      tags: ["core-api: Auth"]
+      summary: "List roles."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Auth"]
+      summary: "Create a role (name + permission set)."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/roles/{id}:
+    get:
+      tags: ["core-api: Auth"]
+      summary: "Get one role."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Auth"]
+      summary: "Update a role."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Auth"]
+      summary: "Delete a role."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/permissions:
+    get:
+      tags: ["core-api: Auth"]
+      summary: "List every permission key the system recognizes."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /documents:
+    get:
+      tags: ["core-api: Documents & Snippets (legacy Pimcore-migrated content)"]
+      summary: "List documents migrated from Pimcore."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /documents/{id}:
+    get:
+      tags: ["core-api: Documents & Snippets (legacy Pimcore-migrated content)"]
+      summary: "Get one document."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Documents & Snippets (legacy Pimcore-migrated content)"]
+      summary: "Update a document's content."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /snippets:
+    get:
+      tags: ["core-api: Documents & Snippets (legacy Pimcore-migrated content)"]
+      summary: "List reusable content snippets (Whoobe Studio format - distinct from Whoobe One snippets below)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Documents & Snippets (legacy Pimcore-migrated content)"]
+      summary: "Create a snippet."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /snippets/{id}:
+    delete:
+      tags: ["core-api: Documents & Snippets (legacy Pimcore-migrated content)"]
+      summary: "Delete a snippet."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/snippets:
+    get:
+      tags: ["core-api: Whoobe One: Snippets"]
+      summary: "List reusable block snippets (whoobe-one-spike editor format)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Whoobe One: Snippets"]
+      summary: "Create a snippet."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/snippets/{id}:
+    get:
+      tags: ["core-api: Whoobe One: Snippets"]
+      summary: "Get one snippet."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Whoobe One: Snippets"]
+      summary: "Update a snippet in place. Snapshots the pre-update node into version history if it changed."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Whoobe One: Snippets"]
+      summary: "Delete a snippet."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/snippets/{id}/versions:
+    get:
+      tags: ["core-api: Whoobe One: Snippets"]
+      summary: "List the snippet's instant version history (up to the 10 most recent prior states)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/snippets/{id}/versions/{versionId}:
+    get:
+      tags: ["core-api: Whoobe One: Snippets"]
+      summary: "Get one historical version's full node content."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/snippets/{id}/render:
+    post:
+      tags: ["core-api: Whoobe One: Snippets"]
+      summary: "Render a snippet's node tree to standalone email HTML."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/templates:
+    get:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "List whole-page templates."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "Create a template (unique path)."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/templates/{id}:
+    get:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "Get one template."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "Update a template."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "Delete a template."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/kits:
+    get:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "List named template collections (\"kits\")."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "Create a kit."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/kits/{id}:
+    get:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "Get one kit."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "Delete a kit."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/kits/{id}/templates:
+    post:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "Append a template to an existing kit."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/pages:
+    get:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "List real site pages, optionally filtered by websiteId."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "Create a page. Validates/binds any Gateway content bindings before saving."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WhoobePageInput'
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page: { $ref: '#/components/schemas/WhoobePage' }
+        "409":
+          description: A page with this slug already exists for this locale/website.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /whoobe-one/pages/staged:
+    get:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "List Pimcore-migration staged pages awaiting review/promotion."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/pages/staged/{id}:
+    get:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "Get one staged page."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/pages/staged/promote:
+    post:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "Promote all staged pages into the real pages table."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/pages/staged/{id}/promote:
+    post:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "Promote one staged page."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/pages/{id}:
+    get:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "Get one page."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page: { $ref: '#/components/schemas/WhoobePage' }
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "Update a page. Snapshots the pre-update content into version history if it changed."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WhoobePageInput'
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page: { $ref: '#/components/schemas/WhoobePage' }
+    delete:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "Delete a page."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/pages/{id}/versions:
+    get:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "List the page's instant version history (up to the 10 most recent prior states of its content)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/pages/{id}/versions/{versionId}:
+    get:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "Get one historical version's full content tree."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/pages/{id}/layout:
+    get:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "Resolved website-template body slot (className/style) for this page's editor canvas."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/pages/{id}/render:
+    post:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "Render a page's node tree to standalone email HTML."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/pages/{id}/translations:
+    get:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "All locale variants of the same logical page."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/pages/{id}/translate:
+    post:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "AI-translate a page into a new locale, creating a draft in the same translation group."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites:
+    get:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "List websites (domain + locale config a page tree belongs to)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Create a website."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/{id}/gateway-api-key/regenerate:
+    post:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Generate (or replace) this website's Gateway site API key. Plaintext is returned once, only a salted hash is stored."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/{id}/gateway-api-key:
+    delete:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Clear this website's Gateway site API key."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/settings/default-placeholder-image:
+    get:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Get the org-wide default placeholder image used when an image element has no source."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Set the default placeholder image."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/settings/strip-html-comments:
+    get:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Get whether HTML comments are stripped from rendered output."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Set the strip-HTML-comments setting."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/settings/logging:
+    get:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Get editor logging verbosity settings."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Set editor logging verbosity."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/settings/autosave:
+    get:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Get the org-wide default autosave enabled/interval settings."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Set the org-wide default autosave settings."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/settings/cdn-mirror:
+    get:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Get the default CDN-mirroring settings for DAM assets."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Set the default CDN-mirroring settings."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/{id}:
+    get:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Get one website."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Update a website."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Delete a website."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/{id}/themes:
+    get:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "List themes available to this website (its settings.themes catalog)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Add a theme to this website's catalog."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/{id}/themes/{themeId}:
+    put:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Update one of this website's catalog themes."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: themeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Remove a theme from this website's catalog."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: themeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/themes/all:
+    get:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "List every website's themes in one call, for snippet/global editors with no single website context."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/{id}/theme:
+    get:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Get this website's currently active default theme."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Set this website's active default theme."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/{id}/generate-pwa:
+    post:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Generate/update this website's installable PWA manifest + service worker config."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/themes:
+    get:
+      tags: ["core-api: Themes (global catalog)"]
+      summary: "List all globally-defined themes (name, colors, fonts, custom styles/Tailwind classes)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Themes (global catalog)"]
+      summary: "Create a theme."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/themes/{id}:
+    get:
+      tags: ["core-api: Themes (global catalog)"]
+      summary: "Get one theme."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: Themes (global catalog)"]
+      summary: "Update a theme."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Themes (global catalog)"]
+      summary: "Delete a theme."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/{websiteId}/templates:
+    get:
+      tags: ["core-api: Website Templates (header/aside/main/footer/404 composition)"]
+      summary: "List a website's layout templates."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Website Templates (header/aside/main/footer/404 composition)"]
+      summary: "Create a layout template."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/{websiteId}/templates/{id}:
+    get:
+      tags: ["core-api: Website Templates (header/aside/main/footer/404 composition)"]
+      summary: "Get one layout template."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Website Templates (header/aside/main/footer/404 composition)"]
+      summary: "Update a layout template."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Website Templates (header/aside/main/footer/404 composition)"]
+      summary: "Delete a layout template."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/website-paths:
+    get:
+      tags: ["core-api: Website Paths (menu/navigation tree)"]
+      summary: "List a website's menu/navigation entries."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Website Paths (menu/navigation tree)"]
+      summary: "Create a menu entry."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/website-paths/{id}:
+    get:
+      tags: ["core-api: Website Paths (menu/navigation tree)"]
+      summary: "Get one menu entry."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Website Paths (menu/navigation tree)"]
+      summary: "Update a menu entry."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Website Paths (menu/navigation tree)"]
+      summary: "Delete a menu entry."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /public/pages/{locale}/{splat}:
+    get:
+      tags: ["core-api: Public site endpoints (no auth)"]
+      summary: "Fetch a published page by locale + full path (static slug or dynamic pattern match), for SSR/rendering."
+      parameters:
+        - name: locale
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/page/{splat}:
+    get:
+      tags: ["core-api: Public site endpoints (no auth)"]
+      summary: "SEO-friendly page lookup with no locale in the URL - detects the website's rootPath from the first path segment."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/404/{websiteId}:
+    get:
+      tags: ["core-api: Public site endpoints (no auth)"]
+      summary: "Fetch a website's configured 404 page content."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/sitemap.xml:
+    get:
+      tags: ["core-api: Public site endpoints (no auth)"]
+      summary: "Generated sitemap of all published, sitemap-included pages."
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/robots.txt:
+    get:
+      tags: ["core-api: Public site endpoints (no auth)"]
+      summary: "Generated robots.txt pointing at the sitemap."
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/websites:
+    get:
+      tags: ["core-api: Public site endpoints (no auth)"]
+      summary: "List websites (id + name only)."
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/websites/{id}:
+    get:
+      tags: ["core-api: Public site endpoints (no auth)"]
+      summary: "Get one website's public config (domains, locales, PWA config; secrets redacted)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/pages:
+    get:
+      tags: ["core-api: Public site endpoints (no auth)"]
+      summary: "List a website's published pages (id/slug/title only), for static-export route generation."
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/snippets/{id}:
+    get:
+      tags: ["core-api: Public site endpoints (no auth)"]
+      summary: "Get one Whoobe One snippet's node tree (public, for embedding on a published site)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/assets/{uuid}:
+    get:
+      tags: ["core-api: Public site endpoints (no auth)"]
+      summary: "Resolve a DAM asset's public URL by its stable uuid reference."
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/dam/assets/mirror-status:
+    get:
+      tags: ["core-api: Public site endpoints (no auth)"]
+      summary: "Whether CDN-mirrored copies exist for a batch of asset paths."
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/apps/{websiteId}:
+    get:
+      tags: ["core-api: Public site endpoints (no auth)"]
+      summary: "List a website's `kind: app` pages, for the Capacitor mobile-app generator."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/search:
+    get:
+      tags: ["core-api: Public site endpoints (no auth)"]
+      summary: "Full-text search (tsvector + pg_trgm) across published pages/objects/classes/assets."
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /pwa/subscribe:
+    post:
+      tags: ["core-api: PWA push"]
+      summary: "Register a browser's push subscription for a website."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /pwa/send:
+    post:
+      tags: ["core-api: PWA push"]
+      summary: "Send a push notification to a website's subscribers."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-classes:
+    get:
+      tags: ["core-api: Data Classes (PIM/MDM class definitions)"]
+      summary: "List all classes."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Data Classes (PIM/MDM class definitions)"]
+      summary: "Create a class (name, label, fields, optional view config)."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-classes/{id}:
+    get:
+      tags: ["core-api: Data Classes (PIM/MDM class definitions)"]
+      summary: "Get one class."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Data Classes (PIM/MDM class definitions)"]
+      summary: "Update a class. Renaming/retyping a field is blocked once objects of that class exist."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Data Classes (PIM/MDM class definitions)"]
+      summary: "Delete a class. Blocked while any object of that class still exists."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-classes/{id}/workflow:
+    get:
+      tags: ["core-api: Data Classes (PIM/MDM class definitions)"]
+      summary: "Get the class's publishing workflow definition, if any."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: Data Classes (PIM/MDM class definitions)"]
+      summary: "Create/replace the class's workflow (places + transitions)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Data Classes (PIM/MDM class definitions)"]
+      summary: "Remove the class's workflow."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-components:
+    get:
+      tags: ["core-api: Data Components (reusable field-collection sub-schemas)"]
+      summary: "List all component types."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Data Components (reusable field-collection sub-schemas)"]
+      summary: "Create a component type."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-components/{id}:
+    get:
+      tags: ["core-api: Data Components (reusable field-collection sub-schemas)"]
+      summary: "Get one component type."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Data Components (reusable field-collection sub-schemas)"]
+      summary: "Update a component type. Renaming/retyping a field is blocked while it's in use."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Data Components (reusable field-collection sub-schemas)"]
+      summary: "Delete a component type. Blocked while it's in use."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-components/{id}/usage:
+    get:
+      tags: ["core-api: Data Components (reusable field-collection sub-schemas)"]
+      summary: "Whether any existing object references this component."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /migration-sources:
+    get:
+      tags: ["core-api: Migration Sources & Pimcore import"]
+      summary: "List configured migration sources (passwords never included)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Migration Sources & Pimcore import"]
+      summary: "Save a new source (DB connection + var/classes path)."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /migration-sources/{id}:
+    patch:
+      tags: ["core-api: Migration Sources & Pimcore import"]
+      summary: "Update a source."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Migration Sources & Pimcore import"]
+      summary: "Delete a source."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /migration-sources/{id}/import-classes:
+    post:
+      tags: ["core-api: Migration Sources & Pimcore import"]
+      summary: "Import Pimcore class definitions into data-classes."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /migration-sources/{id}/import-objects:
+    post:
+      tags: ["core-api: Migration Sources & Pimcore import"]
+      summary: "Import one class's real object instances from the source MySQL DB."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-objects:
+    get:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "List objects, optionally filtered by classId."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Create an object."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-objects/{id}:
+    get:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Get one object."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Update an object."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Delete an object."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /public/data-objects:
+    get:
+      tags: ["core-api: Public Data Objects & Forms (no auth, published only)"]
+      summary: "List published objects of a class by name."
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/data-objects/batch:
+    get:
+      tags: ["core-api: Public Data Objects & Forms (no auth, published only)"]
+      summary: "Fetch multiple published objects by id."
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/data-objects/query:
+    post:
+      tags: ["core-api: Public Data Objects & Forms (no auth, published only)"]
+      summary: "Query published objects by class name + filters."
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/data-objects/{id}:
+    get:
+      tags: ["core-api: Public Data Objects & Forms (no auth, published only)"]
+      summary: "Get one published object (404 if it's a draft - never leaks draft existence)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/forms/{classId}/submit:
+    post:
+      tags: ["core-api: Public Data Objects & Forms (no auth, published only)"]
+      summary: "Submit a public form, creating a Data Object of the given class."
+      parameters:
+        - name: classId
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /preview/objects/{token}:
+    get:
+      tags: ["core-api: Public Data Objects & Forms (no auth, published only)"]
+      summary: "Resolve a preview-link token to its (possibly unpublished) object."
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /mail-settings:
+    get:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "Get the SMTP/transactional-mail configuration."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "Update mail settings."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /mail-settings/test:
+    post:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "Send a test email with the current settings."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /mail-log:
+    get:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "List sent-mail log entries."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /mail-log/delete:
+    post:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "Bulk-delete mail log entries."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /mail-log/{id}:
+    get:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "Get one mail log entry (including the rendered body)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /mail-log/{id}/resend:
+    post:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "Re-send a previously logged email."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /mail-templates:
+    get:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "List HTML/text mail templates."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "Create a mail template."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /mail-templates/{id}:
+    get:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "Get one mail template."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "Update a mail template."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "Delete a mail template."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /mail-templates/{id}/render:
+    post:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "Render a mail template to HTML, substituting sample/live data."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /ai/settings:
+    get:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Get the configured AI text-generation provider/model/key."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Update AI text-generation settings."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /ai/generate:
+    post:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Generate text for an editor field (heading, paragraph, etc.) from a prompt."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /ai/generated:
+    get:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "List past AI-generation results."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /ai/generate-website-structure:
+    post:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Generate a full website's page/section structure from a text brief."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/from-ai:
+    post:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Create a real website + pages from a previously generated AI structure."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/{id}/export:
+    get:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Export a website's full content (pages, templates, theme) as a portable JSON bundle."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/import:
+    post:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Import a website from an exported JSON bundle."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /ai/image-settings:
+    get:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Get the configured AI image-generation provider/model/key."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Update AI image-generation settings."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /ai/translate-settings:
+    get:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Get the configured AI translation provider/model/key."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Update AI translation settings."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /ai/generate-image:
+    post:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Generate an image from a text prompt, uploading the result to the DAM."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /figma/settings:
+    get:
+      tags: ["core-api: Figma import"]
+      summary: "Get the configured Figma personal access token (masked)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: Figma import"]
+      summary: "Update the Figma access token."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /figma/import:
+    post:
+      tags: ["core-api: Figma import"]
+      summary: "Import a Figma file/frame, converting it into a page's node tree."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/system/logs:
+    get:
+      tags: ["core-api: System"]
+      summary: "Tail recent application log lines."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/system/logs/download:
+    get:
+      tags: ["core-api: System"]
+      summary: "Download the full current log file."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /health:
+    get:
+      tags: ["asset-processor: Health"]
+      summary: "Liveness/uptime check."
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/v1/gateway/endpoints:
+    get:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "List configured upstream API endpoints (base URL, auth type, rate limits)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "Register a new upstream endpoint."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/gateway/endpoints/{id}:
+    get:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "Get one endpoint (credentials redacted)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "Update an endpoint."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "Delete an endpoint and its routes."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/gateway/endpoints/{id}/routes:
+    get:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "List an endpoint's configured routes."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "Add a route (path + method) to an endpoint."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/gateway/routes/{id}:
+    patch:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "Update a route."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "Delete a route."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/gateway/routes/{id}/test:
+    post:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "Fire a real test request through a route and return the raw upstream response."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/gateway/routes/{id}/execute:
+    post:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "Execute a route's proxied request with real parameters (used by the editor's live preview)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/gateway/routes/{id}/schema:
+    get:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "Get a route's auto-inferred response schema + sample payload."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/gateway/routes/{id}/refresh-schema:
+    post:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "Re-infer a route's response schema from a fresh live call."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/gateway/endpoints/{id}/import-openapi:
+    post:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "Bulk-create routes for an endpoint from an OpenAPI/Swagger spec."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/gateway/preview-resolve:
+    post:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "Admin-authenticated live resolve, for the editor's own binding-picker preview (distinct from the public /resolve below)."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/gateway/plugins:
+    get:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "List loaded custom Gateway plugins."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/gateway/presets:
+    get:
+      tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]
+      summary: "List available connector presets (HubSpot, Brevo, Stripe, etc.)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/gateway/resolve:
+    post:
+      tags: ["gateway: Gateway published-site endpoints (site API key or bound content only - see docs/guides/api-gateway-security.md)"]
+      summary: "Resolve a gateway-bound content field for a published page - the only way a published site reads third-party data. Requires a resolved gatewayBindingId (server-assigned at page-save time), not a free endpoint/route choice."
+      security:
+        - gatewaySiteKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bindingId]
+              properties:
+                bindingId:
+                  type: string
+                  description: Server-resolved at page-save time (never a free endpoint/route choice) - see GatewayBinding in packages/sdk/schema.
+                params:
+                  type: object
+                  description: Dynamic placeholder values for the bound route's path/query, if any.
+      responses:
+        "200":
+          description: The bound field's resolved value (shape depends entirely on the upstream API).
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Missing/invalid site key, or the binding doesn't belong to this site.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/gateway/submit:
+    post:
+      tags: ["gateway: Gateway published-site endpoints (site API key or bound content only - see docs/guides/api-gateway-security.md)"]
+      summary: "Submit a gateway-bound form for a published page. Requires a resolved gatewayBindingId, same as /resolve."
+      security:
+        - gatewaySiteKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bindingId, attributes]
+              properties:
+                bindingId:
+                  type: string
+                  description: Server-resolved at page-save time (never a free endpoint/route choice) - see GatewayBinding in packages/sdk/schema.
+                attributes:
+                  type: object
+                  description: The submitted form's field values.
+      responses:
+        "200":
+          description: Submission accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+        "401":
+          description: Missing/invalid site key, or the binding doesn't belong to this site.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/internal/{splat}:
+    get:
+      tags: ["gateway: Gateway internal proxies (auth: wcms_session, admin-dashboard use only)"]
+      summary: "Authenticated passthrough proxy to core-api, for admin-dashboard requests that need to cross from the Gateway's own origin."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["gateway: Gateway internal proxies (auth: wcms_session, admin-dashboard use only)"]
+      summary: "Authenticated passthrough proxy to core-api, for admin-dashboard requests that need to cross from the Gateway's own origin."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["gateway: Gateway internal proxies (auth: wcms_session, admin-dashboard use only)"]
+      summary: "Authenticated passthrough proxy to core-api, for admin-dashboard requests that need to cross from the Gateway's own origin."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["gateway: Gateway internal proxies (auth: wcms_session, admin-dashboard use only)"]
+      summary: "Authenticated passthrough proxy to core-api, for admin-dashboard requests that need to cross from the Gateway's own origin."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["gateway: Gateway internal proxies (auth: wcms_session, admin-dashboard use only)"]
+      summary: "Authenticated passthrough proxy to core-api, for admin-dashboard requests that need to cross from the Gateway's own origin."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /dam/{splat}:
+    get:
+      tags: ["gateway: Gateway internal proxies (auth: wcms_session, admin-dashboard use only)"]
+      summary: "Authenticated passthrough proxy to asset-processor."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["gateway: Gateway internal proxies (auth: wcms_session, admin-dashboard use only)"]
+      summary: "Authenticated passthrough proxy to asset-processor."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["gateway: Gateway internal proxies (auth: wcms_session, admin-dashboard use only)"]
+      summary: "Authenticated passthrough proxy to asset-processor."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["gateway: Gateway internal proxies (auth: wcms_session, admin-dashboard use only)"]
+      summary: "Authenticated passthrough proxy to asset-processor."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["gateway: Gateway internal proxies (auth: wcms_session, admin-dashboard use only)"]
+      summary: "Authenticated passthrough proxy to asset-processor."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /public/{splat}:
+    get:
+      tags: ["gateway: Gateway public proxy (no auth)"]
+      summary: "Unauthenticated passthrough proxy to core-api's own /public/* routes, for published sites that only have the Gateway's origin configured."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+    post:
+      tags: ["gateway: Gateway public proxy (no auth)"]
+      summary: "Unauthenticated passthrough proxy to core-api's own /public/* routes, for published sites that only have the Gateway's origin configured."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+    put:
+      tags: ["gateway: Gateway public proxy (no auth)"]
+      summary: "Unauthenticated passthrough proxy to core-api's own /public/* routes, for published sites that only have the Gateway's origin configured."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+    patch:
+      tags: ["gateway: Gateway public proxy (no auth)"]
+      summary: "Unauthenticated passthrough proxy to core-api's own /public/* routes, for published sites that only have the Gateway's origin configured."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+    delete:
+      tags: ["gateway: Gateway public proxy (no auth)"]
+      summary: "Unauthenticated passthrough proxy to core-api's own /public/* routes, for published sites that only have the Gateway's origin configured."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/remote/{splat}:
+    get:
+      tags: ["gateway: Gateway plugin routes"]
+      summary: "Dynamically registered by loaded Gateway plugins (see /api/v1/gateway/plugins) - not enumerable statically."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["gateway: Gateway plugin routes"]
+      summary: "Dynamically registered by loaded Gateway plugins (see /api/v1/gateway/plugins) - not enumerable statically."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["gateway: Gateway plugin routes"]
+      summary: "Dynamically registered by loaded Gateway plugins (see /api/v1/gateway/plugins) - not enumerable statically."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["gateway: Gateway plugin routes"]
+      summary: "Dynamically registered by loaded Gateway plugins (see /api/v1/gateway/plugins) - not enumerable statically."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["gateway: Gateway plugin routes"]
+      summary: "Dynamically registered by loaded Gateway plugins (see /api/v1/gateway/plugins) - not enumerable statically."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/process:
+    post:
+      tags: ["asset-processor: Stateless image processing"]
+      summary: "Resize/convert an uploaded (or base64) image; `?mode=variants` returns multiple sizes in one call."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/metadata:
+    post:
+      tags: ["asset-processor: Stateless image processing"]
+      summary: "Extract EXIF/IPTC/GPS/camera metadata from an uploaded file."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/info:
+    get:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Non-secret storage config (bucket, endpoint, public base URL) for the admin UI."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/upload:
+    post:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Upload a file to S3/MinIO and record it (path, visibility, metadata)."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/transform:
+    post:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Re-process an already-uploaded image (resize/format/watermark/etc.) and save it as a new version or _edited copy."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/asset:
+    delete:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Delete an asset (and its thumbnails) from storage and the DB."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/assets/move:
+    post:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Move/rename an asset to a new folder path."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/folders:
+    get:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "List DAM folders."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Create a folder."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Delete a folder and everything under it (descendant folders, asset records, and S3 objects)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/assets:
+    get:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "List assets in a folder, with resolved URLs + thumbnails."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "List assets in a folder (POST variant, avoids URL-length limits for large folder-rule payloads)."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/assets/{id}:
+    get:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Get a single asset by record id, with resolved URLs."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/assets/metadata:
+    patch:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Update an asset's stored metadata."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/assets/{id}/mirror-cdn:
+    post:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Push a copy of this asset to the configured CDN mirror target."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/asset-urls:
+    get:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Resolve an asset's (public or freshly presigned) URL + thumbnail URLs by path."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Resolve URLs for a batch of asset paths in one call."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/exists:
+    get:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Check whether an asset exists at a given path."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Check existence for a batch of paths in one call."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/regenerate-thumbnails:
+    post:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Regenerate thumbnail variants for one or more assets."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/dam/ensure-bucket:
+    post:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Ensure the target bucket exists with the correct public-read policy for current folder rules."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /dam-asset/{splat}:
+    get:
+      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      summary: "Streams a stored object through this server (signed S3 GetObject), so the browser never talks to S3/MinIO directly."
+      parameters:
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object

@@ -292,6 +292,44 @@ export interface IsometricEdge {
   lineStyle?: 'solid' | 'dashed' | 'dotted'
 }
 
+// One cell in a `.Table()` grid (header/footer row, or a body row) - see
+// Table()/tableRow()/tableCell() in ElementsClass.js for how the grid is
+// built and BlockTable.vue/BlockTablePreview.vue for how colspan/rowspan
+// merges are read. `merged` cells still occupy their slot in the row array
+// (every row is always exactly `ElementTable.cols` long) but are skipped at
+// render time - their space is covered by an earlier cell's colspan/rowspan.
+export interface TableCell {
+  id: string
+  content: string
+  colspan: number
+  rowspan: number
+  merged?: boolean
+  // Per-cell Tailwind class override, on top of the cell's own section
+  // default (ElementTable's headerCellClass/bodyCellClass/footerCellClass) -
+  // absent until a user actually sets one via BlockTable.vue's cell-
+  // selection mini-toolbar, same "absent until set" treatment as every
+  // other optional per-node field in this app (tabLabel, linkTarget, ...).
+  cellClass?: string
+}
+
+// Only present on nodes built via .Table() - see that method's own comment
+// in ElementsClass.js for the full grid-model rationale.
+export interface ElementTable {
+  cols: number
+  hasHeader: boolean
+  hasFooter: boolean
+  caption?: string
+  header: TableCell[]
+  body: TableCell[][]
+  footer: TableCell[]
+  headerRowClass?: string
+  bodyRowClass?: string
+  footerRowClass?: string
+  headerCellClass?: string
+  bodyCellClass?: string
+  footerCellClass?: string
+}
+
 export default class Element {
   id: string
   blocks: Element[]
@@ -351,6 +389,8 @@ export default class Element {
   // Only present on the canvas root built via .Isometric() - the full set
   // of wires between that canvas's boxes. See IsometricEdge above.
   isometricEdges?: IsometricEdge[]
+  // Only present on nodes built via .Table() - see ElementTable above.
+  table?: ElementTable
   // Only present on a box built via .IsometricBox() - its canvas-relative
   // position within the parent Isometric canvas, in pixels.
   position?: { x: number; y: number }
@@ -407,6 +447,9 @@ export default class Element {
   Slider(): this
   Isometric(): this
   IsometricBox(x?: number, y?: number): this
+  Table(options?: { rows?: number; cols?: number }): this
+  tableRow(cols: number, contentFor: (c: number) => string): TableCell[]
+  tableCell(content?: string): TableCell
   Heading(level?: number): this
   Paragraph(): this
   InlineText(): this
