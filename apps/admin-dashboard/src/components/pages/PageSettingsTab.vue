@@ -24,7 +24,17 @@
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Slug</label>
-          <input v-model="form.slug" type="text" class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+          <div class="flex gap-2">
+            <input v-model="form.slug" type="text" class="flex-1 px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <button
+              type="button"
+              title="Generate a friendly slug from the title"
+              class="shrink-0 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:hover:bg-slate-200 text-slate-300 light:text-slate-700 flex items-center gap-1.5"
+              @click="generateSlug"
+            >
+              <Wand2 class="w-3.5 h-3.5" /> Generate
+            </button>
+          </div>
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Category</label>
@@ -207,10 +217,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { Wand2 } from '@lucide/vue'
 import { usePagesStore } from '../../stores/pagesStore'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import type { WhoobeOnePage, PageSeo, PageSitemapSettings, PageSearchSettings } from '../../utils/pages-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
+import { slugify } from '../../utils/slugify'
 
 const props = defineProps<{
   pageId: string
@@ -293,6 +305,18 @@ watch(
     }
   }
 )
+
+// "Generate" button next to the Slug field - slugifies the Title (same
+// rule PageCreateForm.vue's own auto-suggest-while-typing uses), falling
+// back to cleaning up whatever's already in Slug when Title is empty.
+// Deliberately title-driven rather than re-slugifying the current slug
+// value outright - a page slug can be multi-segment or carry a dynamic
+// `{placeholder}` (page-path-pattern.ts), neither of which slugify()
+// should ever touch.
+function generateSlug() {
+  const source = form.title.trim() || form.slug.replace(/^\/+/, '')
+  form.slug = '/' + slugify(source)
+}
 
 onMounted(async () => {
   try {

@@ -74,6 +74,7 @@ import { ref } from 'vue'
 import { FileText, Smartphone } from '@lucide/vue'
 import { usePagesStore } from '../../stores/pagesStore'
 import type { WhoobeOnePage } from '../../utils/pages-api'
+import { slugify } from '../../utils/slugify'
 
 const emit = defineEmits<{
   (e: 'created', page: WhoobeOnePage): void
@@ -90,12 +91,8 @@ const error = ref('')
 const creating = ref(false)
 
 function autoSlug() {
-  if (slug.value && slug.value !== suggestSlug(title.value)) return
-  slug.value = suggestSlug(title.value)
-}
-
-function suggestSlug(name: string): string {
-  return '/' + name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  if (slug.value && slug.value !== '/' + slugify(title.value)) return
+  slug.value = '/' + slugify(title.value)
 }
 
 async function create() {

@@ -1,3 +1,11 @@
+## [Add a "Generate slug" button to Data Object `urlSlug` fields and Pages > Slug] — 2026-10-01
+- Branch: `master`.
+- User asked (in Italian) for a button on Data Object fields of type "slug" and on Pages > Slug that generates a friendly URL slug.
+- **Shared utility** (`apps/admin-dashboard/src/utils/slugify.ts`): new `slugify(text)` - lowercase, strips accents (`é` → `e`), replaces any run of non-alphanumeric characters with a single hyphen, trims leading/trailing hyphens. Extracted so Pages and Data Objects follow identical rules instead of each hand-rolling the regex.
+- **Pages**: `PageCreateForm.vue`'s existing type-while-you-go auto-suggest now calls the shared `slugify()` instead of its own local copy (behavior unchanged). `PageSettingsTab.vue` (the Page Settings tab, which previously had a plain Slug `<input>` with no helper at all) gained a "Generate" button next to it - slugifies the page's Title, falling back to cleaning up whatever's already in Slug when Title is empty. Deliberately title-driven rather than re-slugifying the current slug outright, since a page slug can be multi-segment or carry a dynamic `{placeholder}` (`page-path-pattern.ts`) that `slugify()` must never mangle.
+- **Data Objects** (`DataObjectFieldControl.vue`): the `urlSlug` field type (previously grouped with `input`/`country`/`email` as a plain text box) now gets its own row with a trailing "Generate" button. There's no per-class "title source field" concept to pull from (`ClassFieldDefinition` has nothing like `relationDisplayField` for this), so - same fallback Pages' own button uses when Title is empty - it slugifies whatever text is already typed into the field itself.
+- Verified: `vue-tsc --noEmit` and a full production `vite build` clean for `admin-dashboard`; `slugify()`'s accent-stripping/hyphenation verified against a few sample strings via a standalone Node script. No headless browser available in this sandbox, so the two new buttons were not interactively clicked through in a real browser.
+
 ## [Add a "Markdown" Data Object field type, with Markdown→HTML conversion in the page preview] — 2026-10-01
 - Branch: `master`.
 - User asked (in Italian, re: `ClassSettingsCard.vue`'s field-type list) to add a Markdown field type to Data Objects, where the preview converts the stored Markdown source to HTML.
