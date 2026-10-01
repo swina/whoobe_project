@@ -19,6 +19,9 @@ export interface WhoobeOneSnippet {
   // list and, once dropped into a document, in the inserted element's
   // Advanced > Info panel (see AdvancedPanel.vue's InfoControl).
   notes: string | null
+  // Captured preview image (data URL) - set via the editor Preview's
+  // "Capture thumbnail"; shown on the Snippets panel chip instead of the icon.
+  thumbnail?: string | null
 }
 
 import { getDefaultCoreApiUrl } from './core-api-url'
@@ -110,6 +113,18 @@ export async function getSnippetVersion(id: string, versionId: string): Promise<
 export async function deleteSnippet(id: string): Promise<void> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/snippets/${id}`, {
     method: 'DELETE',
+    credentials: 'include',
+  })
+  await parseJsonOrThrow(res)
+}
+
+/** Stores a captured preview image (data URL) as the snippet's grid
+ *  thumbnail; null clears it. */
+export async function setSnippetThumbnail(id: string, thumbnail: string | null): Promise<void> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/snippets/${id}/thumbnail`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ thumbnail }),
     credentials: 'include',
   })
   await parseJsonOrThrow(res)

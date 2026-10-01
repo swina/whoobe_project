@@ -26,6 +26,7 @@ function makePage(overrides: Partial<WhoobePageRecord> & { slug: string }): Whoo
     path: null,
     websiteId: null,
     themeId: null,
+    thumbnail: null,
     publishedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),

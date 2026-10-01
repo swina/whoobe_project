@@ -118,6 +118,7 @@
                 class="w-4 h-4 rounded border-slate-600 light:border-slate-300 bg-slate-800 light:bg-slate-100 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
               />
             </th>
+            <th class="py-3 px-4">Preview</th>
             <th class="py-3 px-4">Name</th>
             <th class="py-3 px-4">Category</th>
             <th class="py-3 px-4">Updated</th>
@@ -138,6 +139,14 @@
                 @change="toggleSelect(snippet.id)"
                 class="w-4 h-4 rounded border-slate-600 light:border-slate-300 bg-slate-800 light:bg-slate-100 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
               />
+            </td>
+            <td class="py-2.5 px-4">
+              <img v-if="snippet.thumbnail" :src="snippet.thumbnail" alt="" title="Click to enlarge"
+                class="w-24 aspect-[16/10] object-cover object-top rounded border border-slate-700 light:border-slate-300 bg-white cursor-zoom-in hover:border-indigo-500 transition"
+                @click.stop="thumbnailModal = { src: snippet.thumbnail, title: snippet.name }" />
+              <div v-else class="w-24 aspect-[16/10] rounded border border-dashed border-slate-700 light:border-slate-300 flex items-center justify-center text-slate-600">
+                <Puzzle class="w-4 h-4" />
+              </div>
             </td>
             <td class="py-2.5 px-4">
               <span class="font-semibold text-slate-100 light:text-slate-900 inline-flex items-center gap-2">
@@ -176,7 +185,10 @@
         @click="openSnippetTab(snippet.id)"
       >
         <div class="relative h-[200px] bg-slate-950/40 light:bg-slate-50">
-          <SnippetPreviewCard :node="snippet.node as Record<string, any>" />
+          <img v-if="snippet.thumbnail" :src="snippet.thumbnail" alt="" title="Click to enlarge"
+            class="absolute inset-0 w-full h-full object-cover object-top bg-white cursor-zoom-in"
+            @click.stop="thumbnailModal = { src: snippet.thumbnail, title: snippet.name }" />
+          <SnippetPreviewCard v-else :node="snippet.node as Record<string, any>" />
           <div class="absolute top-2 left-2 z-10" @click.stop>
             <input
               type="checkbox"
@@ -186,7 +198,7 @@
               :class="selectedIds.has(snippet.id) ? 'opacity-100' : ''"
             />
           </div>
-          <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-400/90 to-transparent p-2 pt-6">
+          <div class="absolute bottom-0 inset-x-0 pt-6">
             <span class="text-xs font-semibold text-slate-100 light:text-slate-900">{{ snippet.name }}</span>
             <span class="text-[10px] text-slate-400 light:text-slate-600 ml-2 capitalize">{{ snippet.category }}</span>
           </div>
@@ -212,6 +224,8 @@
     </div>
   </div>
 </div>
+
+<ThumbnailModal v-if="thumbnailModal" :src="thumbnailModal.src" :title="thumbnailModal.title" @close="thumbnailModal = null" />
 
 <BrevoCampaignModal
   v-if="campaignModalSnippet"
@@ -247,6 +261,7 @@ import { embedNodeImages } from '../utils/snippet-export'
 import { randomUUID } from '../utils/random-id'
 import type { WhoobeSnippet } from '../utils/snippets-api'
 import BrevoCampaignModal from '../components/settings/BrevoCampaignModal.vue'
+import ThumbnailModal from '../components/common/ThumbnailModal.vue'
 import type { WhoobeSnippetInput } from '../utils/snippets-api'
 import SnippetPreviewCard from '../components/snippets/SnippetPreviewCard.vue'
 
@@ -257,6 +272,7 @@ const toastStore = useToastStore()
 const searchQuery = ref('')
 const categoryFilter = ref('')
 const viewMode = ref<'list' | 'grid'>('list')
+const thumbnailModal = ref<{ src: string; title: string } | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const importResult = ref<{ created: number; skipped: number; errors: string[] } | null>(null)
 const selectedIds = ref(new Set<string>())

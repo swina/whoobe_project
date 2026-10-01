@@ -1,3 +1,69 @@
+## [Fix: "Add attribute" threw on elements without a `data` object] — 2026-10-02
+- Branch: `master`.
+- User pasted `Uncaught TypeError: Cannot read properties of undefined (reading 'attributes')` at `AttributesControl.vue:65` (`addAttribute`).
+- **Cause**: `addAttribute()` assumed every element has a `data` object (`const data = current.data; if (!data.attributes) ...`). Elements that didn't come from the builder's own factories (imported, AI/Figma-generated, some saved snippets) can lack `data` entirely.
+- **Fix** (`apps/whoobe-one-spike/src/components/advanced/AttributesControl.vue`): create `current.data` (and `data.attributes`) when missing before writing. The other handlers in the file already guard with optional chaining; `AlpineControl.vue` writes to `alpine`, not `data`, so it was unaffected.
+- Verified: `vue-tsc --noEmit` clean. Not tried in a browser.
+
+## [Full-screen editor for the Snippets tab] — 2026-10-02
+- Branch: `master`.
+- User asked whether the editor can go full screen in snippet mode, as it can for pages.
+- `apps/admin-dashboard/src/components/snippets/MasterSnippetTab.vue`: a Maximize button (plus the snippet title) above the editor; "Close editor" in the overlay's header returns to the tab. Unlike `MasterPageTab.vue`, which mounts a *second* `WhoobeOneEmbed` in the overlay, this toggles classes on the existing wrapper (`fixed inset-0 z-[10000]`), so the one `SnippetEditorEmbed` iframe is never remounted: unsaved edits survive, there's no second editor on the same snippet, and it also works for a not-yet-saved "new" snippet.
+- Verified: `vue-tsc --noEmit` clean. Not tried in a browser (in particular that the iframe really isn't reloaded when toggling).
+
+## [Fix: Pages list lost its website filter after a thumbnail capture] — 2026-10-02
+- Branch: `master`.
+- User reported that after capturing a page thumbnail, the Pages list (filtered by website) came back showing all pages, even though the dropdown still showed the chosen site.
+- **Cause**: the `whoobe-one:thumbnail-saved` handler in `DashboardLayout.vue` (added with the thumbnail feature) called `pagesStore.refreshPages()` with no website, which loads every page. `PagesView.vue`'s own two post-delete/bulk-action refreshes had the same flaw.
+- **Fix**: `pagesStore` now remembers the website the list was last loaded with and exposes `reloadPages()` to refresh with it; those three call sites use it. `refreshPages(websiteId)` is unchanged for every other caller.
+- Verified: `vue-tsc --noEmit` clean. Not tried in a browser.
+
+## [Snippets panel: preview modal and "Insert" button] — 2026-10-02
+- Branch: `master`.
+- User asked for the editor's Snippets panel to open a thumbnail preview modal, and to add an import icon that inserts a snippet into the canvas at the current element.
+- New `apps/whoobe-one-spike/src/components/ThumbnailModal.vue` (editor-side counterpart of admin-dashboard's, since they're separate apps; has an `actions` slot). Clicking a chip's thumbnail opens it, with an "Insert" action in its header.
+- `SnippetsPanel.vue`: each chip gets an "Insert into the current element" button (`Import` icon, shown on hover, `@mousedown.stop` so it never starts a drag).
+- `scripts/editor-actions.ts`: new `insertSnippetNode()` - fresh-id clone (as the drag-drop does) stamped with `sourceSnippetId`, placed by the same rules as paste/AI-generated snippets (into the selected container, else after the selected element, else at the document root, then selected). Extracted the shared placement into `placeNode()`, now also used by `insertGeneratedSnippet()` (behavior unchanged).
+- `BlockEditor.vue`: now listens for `editorMessage` on `editorBus` and shows it in the status strip - it was emitted (e.g. "Block moved") but had no listener, so the new "Added ..." confirmation would have been invisible.
+- Verified: `vue-tsc --noEmit` and `vite build` clean. Not tried in a browser.
+
+## [Snippets panel (editor right sidebar): thumbnails and a 6-snippet scroll cap] — 2026-10-02
+- Branch: `master`.
+- User asked that the editor's Snippets panel show a snippet's thumbnail when it exists (else keep its icon), and that an open category show at most 6 snippets with `overflow-y-auto` for the rest.
+- `apps/whoobe-one-spike/src/components/SnippetsPanel.vue`: a chip renders the thumbnail (`<img>`, `draggable="false"` + `pointer-events-none` so it can't interfere with the dragula drag source) instead of the icon/Package fallback; an open category's grid is capped at `max-h-[134px]` (two rows of three chips, i.e. 6 snippets) with `overflow-y-auto overflow-x-hidden`. `WhoobeOneSnippet` (`snippets-api.ts`) gained the optional `thumbnail` field.
+- Verified: `vue-tsc --noEmit` clean. Not tried in a browser - in particular that dragging a chip out of the now-scrollable grid still drops correctly.
+
+## [Thumbnails: Snippets list column + click-to-enlarge modal] — 2026-10-02
+- Branch: `master`.
+- User confirmed thumbnail capture now works and asked for the thumbnail in the Snippets list too (as in Pages), and for a click on it to open a larger view, in both.
+- New `apps/admin-dashboard/src/components/common/ThumbnailModal.vue`: overlay with the thumbnail enlarged (up to `max-w-3xl`), closes on backdrop click, ✕ or Esc.
+- `SnippetsView.vue`: list view gets a "Preview" column (thumbnail, or a dashed placeholder with the Puzzle icon); list thumbnail and grid thumbnail both open the modal (`@click.stop`, so they no longer open the editor tab).
+- `PagesView.vue`: the Preview column thumbnail opens the same modal (`@click.stop`, row click still opens the page elsewhere).
+- Verified: `vue-tsc --noEmit` and `vite build` clean. Not clicked through in a browser.
+
+## [Capture a page/snippet preview as its list thumbnail (client-side, prototype)] — 2026-10-02
+- Branch: `master`.
+- User asked to try approach A (in-browser capture) for attaching a captured preview image to pages and snippets, shown in their lists/grids.
+- **DB** (`packages/core`): new nullable `thumbnail` text column on `whoobe_pages` and `whoobe_one_snippets` (migration `0049_thumbnails.sql` + journal entry; schemas, record types, and `setWhoobePageThumbnail()` / `setWhoobeOneSnippetThumbnail()`, which touch only that column - no content version snapshot, no reindex, no `updatedAt` bump). Thumbnails are stored inline as a small WebP data URL for this prototype; if it proves out, move them to the DAM.
+- **API** (`apps/core-api`): `PUT /whoobe-one/pages/:id/thumbnail` and `PUT /whoobe-one/snippets/:id/thumbnail` (body `{ thumbnail }`: an image data URL under 400k chars, or `null` to clear). `OBJECTS_WRITE` permission.
+- **Capture** (`apps/whoobe-one-spike`): new `html-to-image` dependency; `scripts/capture-thumbnail.ts` rasterises the element, crops to the top 16:10 region and downsizes to 640px WebP. `DocumentPreview.vue` (the editor's Preview) gets a "Capture thumbnail" button (desktop mode only, needs a saved page/snippet id) that saves to the page or snippet being edited and posts `whoobe-one:thumbnail-saved` to the parent.
+- **Lists** (`apps/admin-dashboard`): Pages table has a new "Preview" column (thumbnail or placeholder icon; not sortable); Snippets grid shows the thumbnail instead of the live `SnippetPreviewCard` when present. `DashboardLayout.vue` refreshes the lists on the new message.
+- Known limits of approach A: cross-origin images without CORS, iframes and some web fonts may not render; the preview's data bindings must be resolved at capture time. Thumbnails add payload to the list endpoints.
+- **Follow-up (snippets reported "Capture failed")**: html-to-image rejects with a DOM Event, not an `Error`, so the UI showed only the generic fallback. `capture-thumbnail.ts` now logs the raw failure to the console, shows a readable message, and is more tolerant: `skipFonts` (a blocked cross-origin font fetch no longer aborts it), a 1x1 `imagePlaceholder` for unfetchable images, and a filter that leaves out iframe/video/audio/canvas/script/object/embed nodes. Root cause not reproduced (no editor login available in the sandbox) - the fix targets the usual causes.
+- **Follow-up 2 ("SVG load failed")**: most likely cause is Alpine directive attributes (`@click`, `:class`, `x-on:...`, bound from the element's `alpine` map in `BlockContainerPreview.vue`) - valid HTML but invalid XML names, so html-to-image's SVG foreignObject fails to load. `captureElementThumbnail()` now captures an offscreen, sanitised clone (invalid-XML-name and `on*` attributes stripped) attached to the document so Tailwind styles still resolve. Not confirmed in a browser.
+- **Follow-up 3 (only snippets fail)**: the existing snippets (e.g. "WhooBe Features", 80 KB) use `slider`/`isometric`/`lucideicon` elements and MinIO-hosted images that simple pages don't. Couldn't reproduce here (the sandbox's Chromium lacks system libraries). `captureElementThumbnail()` now (1) prunes every part of the clone lying entirely below the captured crop, shrinking the SVG to load and dropping whatever sits below the fold, and (2) on failure re-parses the clone's XML and reports the parser's actual message (also logged to the console as `[capture-thumbnail]`).
+- **Follow-up 4 (snippets still "SVG load failed")**: the message meaning the XML re-parse was clean, the failure is a specific element the browser can't rasterise. `captureElementThumbnail()` now returns `{ dataUrl, skipped }`: when the full render fails it renders each subtree alone, descends into the failing ones and removes the failing leaves, then re-renders - one bad element costs a block of the thumbnail, not the capture. The Preview toolbar reports what was left out (also in the console as `[capture-thumbnail] left out:`). Still not reproduced in a real browser.
+- Verified: `vue-tsc --noEmit` and `vite build` clean on both frontends; `@whoobe-cms/core` `tsc` + `vitest run` (60 tests) pass; `core-api` `tsc --noEmit` clean. Migration `0049` applied to `whoobe_db` (columns confirmed present; run with explicit `DB_NAME=whoobe_db`, since `drizzle.config.ts` otherwise defaults to `pimcore_custom`). The capture button was not tried in a real browser by me.
+
+## [Apply page SEO settings in the Websites > Paths > Preview] — 2026-10-02
+- Branch: `master`.
+- User asked (in Italian) that a page's SEO settings be applied in the page preview, so they can be verified before publishing the site.
+- **Root cause**: the Preview tab iframes `whoobe-one-spike`'s `PublicPage.vue`, which rendered the body but never touched `<head>` - `page.seo` was ignored entirely.
+- **Head tags** (`apps/whoobe-one-spike/src/scripts/apply-seo.ts`, called from `PublicPage.vue`): `applyPageSeo()` sets `document.title` (metaTitle → page title), meta description, canonical link, robots (`index/noindex,follow/nofollow`), Open Graph title/description/image (falling back to the meta values), and a JSON-LD `<script>` for structured data. Tags are marked `data-whoobe-seo` so re-applying replaces rather than duplicates.
+- **Preview tab** (`apps/admin-dashboard/src/components/pages/PagePreviewTab.vue`): the head of an iframe isn't visible, so a collapsible "SEO applied to this preview" panel now sits above it, with a Google-style snippet, robots/OG/structured-data values, and warnings (missing title/description/OG image, title >60 or description >160 chars, noindex).
+- Not covered: `{placeholder}` substitution inside SEO fields of dynamic-pattern pages.
+- Verified: `vue-tsc --noEmit` clean on `admin-dashboard` and `whoobe-one-spike`. Not clicked through in a real browser.
+
 ## [Add a "Generate slug" button to Data Object `urlSlug` fields and Pages > Slug] — 2026-10-01
 - Branch: `master`.
 - User asked (in Italian) for a button on Data Object fields of type "slug" and on Pages > Slug that generates a friendly URL slug.

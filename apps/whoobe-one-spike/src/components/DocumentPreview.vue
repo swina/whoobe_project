@@ -74,11 +74,24 @@
       </div>
 
       <div class="flex-1"></div>
+      <span v-if="captureMessage" :title="captureMessage" class="max-w-md truncate" :class="captureFailed ? 'text-red-400' : 'text-green-400'">{{ captureMessage }}</span>
+      <button
+        v-if="deviceMode === 'desktop'"
+        type="button"
+        class="flex items-center gap-1 px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+        :disabled="capturing || !editor.page?.id"
+        :title="editor.page?.id ? 'Capture this preview as the thumbnail shown in the list' : 'Save first to capture a thumbnail'"
+        @click="captureThumbnail"
+      >
+        <Camera class="w-3.5 h-3.5" /> {{ capturing ? 'Capturing…' : 'Capture thumbnail' }}
+      </button>
       <span class="text-gray-400">Esc to close</span>
       <button class="flex items-center gap-1 px-2 py-1 rounded bg-gray-700 hover:bg-gray-600" @click="$emit('close')"><X class="w-3.5 h-3.5" /> Close</button>
     </div>
 
-    <BlockContainerPreview v-if="doc && deviceMode === 'desktop'" :doc="doc" editor-preview />
+    <div v-if="doc && deviceMode === 'desktop'" ref="captureRoot">
+      <BlockContainerPreview :doc="doc" editor-preview />
+    </div>
 
     <!-- Tablet/mobile: a real iframe at 1:1 device dimensions, so
          @tailwindcss/browser inside the iframe correctly resolves responsive
@@ -136,13 +149,16 @@
 // regardless of how it was opened, since there's no persisted preference
 // for which device mode to reopen into.
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { Monitor, RectangleHorizontal, RectangleVertical, Smartphone, Tablet, X } from '@lucide/vue'
+import { Camera, Monitor, RectangleHorizontal, RectangleVertical, Smartphone, Tablet, X } from '@lucide/vue'
 import type Element from '../scripts/ElementsClass.js'
 import { resolveDocumentData } from '../scripts/data-resolver'
 import { isDynamicSlug, matchAgainstPattern } from '../scripts/path-pattern'
 import { useEditorStore } from '../store/editor'
 import BlockContainerPreview from './preview/BlockContainerPreview.vue'
 import { useThemeStyles } from '../composables/useThemeStyles'
+import { captureElementThumbnail, notifyParentThumbnailSaved } from '../scripts/capture-thumbnail'
+import { setPageThumbnail } from '../pages-api'
+import { setSnippetThumbnail } from '../snippets-api'
 
 const props = defineProps<{
   doc: InstanceType<typeof Element> | null
@@ -242,6 +258,39 @@ const frameHeight = computed(() => {
   const [w, h] = DEVICE_SIZES[deviceMode.value]
   return orientation.value === 'portrait' ? h : w
 })
+
+// "Capture thumbnail": rasterises the desktop preview and stores it on the
+// page/snippet being edited (needs a saved id), so it shows up as the card
+// image in the admin-dashboard's Pages/Snippets lists.
+const captureRoot = ref<HTMLElement | null>(null)
+const capturing = ref(false)
+const captureMessage = ref('')
+const captureFailed = ref(false)
+
+async function captureThumbnail() {
+  const id = editor.page?.id ? String(editor.page.id) : null
+  if (!captureRoot.value || !id) return
+  capturing.value = true
+  captureFailed.value = false
+  captureMessage.value = ''
+  try {
+    const { dataUrl, skipped } = await captureElementThumbnail(captureRoot.value)
+    if (editor.snippetMode) {
+      await setSnippetThumbnail(id, dataUrl)
+      notifyParentThumbnailSaved('snippet', id)
+    } else {
+      await setPageThumbnail(id, dataUrl)
+      notifyParentThumbnailSaved('page', id)
+    }
+    captureMessage.value = `Thumbnail saved (${Math.round(dataUrl.length / 1024)} KB)` +
+      (skipped.length ? ` - without ${skipped.length} element(s): ${skipped.slice(0, 3).join(', ')}` : '')
+  } catch (e) {
+    captureFailed.value = true
+    captureMessage.value = e instanceof Error ? e.message : 'Capture failed'
+  } finally {
+    capturing.value = false
+  }
+}
 
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') emit('close')

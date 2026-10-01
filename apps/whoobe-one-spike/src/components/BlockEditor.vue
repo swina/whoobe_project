@@ -817,6 +817,14 @@ onUnmounted(() => editorBus.off('preview', onPreviewEvent))
 onMounted(() => editorBus.on('save', onSave))
 onUnmounted(() => editorBus.off('save', onSave))
 
+// 'editorMessage' is emitted by code outside this component (e.g. SnippetsPanel's
+// Insert button); show it in the same status strip flash() uses.
+function onEditorMessage(text: string) {
+  flash(text)
+}
+onMounted(() => editorBus.on('editorMessage', onEditorMessage))
+onUnmounted(() => editorBus.off('editorMessage', onEditorMessage))
+
 function onShortcutsEvent() {
   showShortcuts.value = true
 }

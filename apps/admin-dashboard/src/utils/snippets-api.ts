@@ -11,6 +11,8 @@ export interface WhoobeSnippet {
   // snippet" modal) - shown here via SnippetsView.vue's info icon (list and
   // grid views).
   notes?: string | null
+  /** Captured preview image (data URL) shown in the grid view. */
+  thumbnail?: string | null
   createdAt: string
   updatedAt: string
 }

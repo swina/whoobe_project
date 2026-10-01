@@ -49,6 +49,7 @@ import {
   listWhoobeOneSnippets,
   createWhoobeOneSnippet,
   updateWhoobeOneSnippet,
+  setWhoobeOneSnippetThumbnail,
   deleteWhoobeOneSnippet,
   listWhoobeOneTemplates,
   getWhoobeOneTemplate,
@@ -65,6 +66,7 @@ import {
   listWhoobePageTranslations,
   createWhoobePage,
   updateWhoobePage,
+  setWhoobePageThumbnail,
   deleteWhoobePage,
   getPublishedWhoobePageBySlug,
   getPublishedWhoobePageBySlugAnyLocale,
@@ -1814,6 +1816,41 @@ app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE),
     }
     logger.error({ err: error }, 'Update whoobe-one page error');
     res.status(500).json({ error: error.message || 'Failed to update page' });
+  }
+});
+
+// Thumbnail capture (editor preview's "Capture thumbnail" button): a small
+// WebP data URL, or null to clear. Dedicated endpoints so a thumbnail-only
+// update never goes through the content-versioning of the main PATCH routes.
+const MAX_THUMBNAIL_CHARS = 400_000;
+function parseThumbnail(body: any): { ok: true; value: string | null } | { ok: false } {
+  const t = body?.thumbnail;
+  if (t === null) return { ok: true, value: null };
+  if (typeof t === 'string' && /^data:image\/(webp|png|jpeg);base64,/.test(t) && t.length <= MAX_THUMBNAIL_CHARS) return { ok: true, value: t };
+  return { ok: false };
+}
+
+app.put('/whoobe-one/snippets/:id/thumbnail', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const parsed = parseThumbnail(req.body);
+    if (!parsed.ok) { res.status(400).json({ error: 'thumbnail must be null or an image data URL under 400k chars' }); return; }
+    if (!(await setWhoobeOneSnippetThumbnail(req.params.id, parsed.value))) { res.status(404).json({ error: 'Snippet not found' }); return; }
+    res.json({ ok: true });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Set snippet thumbnail error');
+    res.status(500).json({ error: error.message || 'Failed to set thumbnail' });
+  }
+});
+
+app.put('/whoobe-one/pages/:id/thumbnail', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const parsed = parseThumbnail(req.body);
+    if (!parsed.ok) { res.status(400).json({ error: 'thumbnail must be null or an image data URL under 400k chars' }); return; }
+    if (!(await setWhoobePageThumbnail(req.params.id, parsed.value))) { res.status(404).json({ error: 'Page not found' }); return; }
+    res.json({ ok: true });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Set page thumbnail error');
+    res.status(500).json({ error: error.message || 'Failed to set thumbnail' });
   }
 });
 

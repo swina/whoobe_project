@@ -25,6 +25,8 @@ export const whoobeOneSnippets = pgTable('whoobe_one_snippets', {
   // Advanced > Info panel (see ElementsClass.d.ts's sourceSnippetId field,
   // stamped onto the clone at drop time in BlockEditor.vue).
   notes: text('notes'),
+  // Captured preview image (small WebP data URL) for the Snippets grid.
+  thumbnail: text('thumbnail'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

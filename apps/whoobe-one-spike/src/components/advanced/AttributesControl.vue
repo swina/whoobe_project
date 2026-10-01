@@ -61,9 +61,13 @@ function addAttribute() {
   if (!editor.current) return
   const name = newName.value.trim()
   if (!name || RESERVED_ATTRS.includes(name)) return
-  const data = (editor.current as any).data
-  if (!data.attributes) data.attributes = {}
-  data.attributes[name] = newValue.value
+  // Elements that didn't come from the builder (imported, AI- or Figma-
+  // generated, some saved snippets) can lack a `data` object entirely -
+  // create it rather than throwing on `undefined.attributes`.
+  const current = editor.current as any
+  if (!current.data) current.data = {}
+  if (!current.data.attributes) current.data.attributes = {}
+  current.data.attributes[name] = newValue.value
   newName.value = ''
   newValue.value = ''
 }
