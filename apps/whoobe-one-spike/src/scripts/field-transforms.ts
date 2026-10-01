@@ -4,6 +4,7 @@
 // computeds render it. Configured per-binding from the "data binding"
 // group in TailwindCustomizer.vue's sidebar (DataBindingTransformControl.vue)
 // - see docs/plans (field transformer plan) for the full design.
+import { marked } from 'marked'
 
 export type TransformType = 'date' | 'url' | 'number' | 'truncate' | 'valueMap'
 
@@ -220,6 +221,23 @@ export function applyTransform(value: unknown, transform: FieldTransform | null 
   } catch (e) {
     console.warn(`[field-transforms] "${transform.type}" failed:`, e)
     return applyTransform(value, { type: 'none' })
+  }
+}
+
+// Converts a `markdown`-type field's raw Markdown source to HTML for
+// display - called from BlockElement.vue/BlockElementPreview.vue's
+// displayContent, the same spot a `wysiwyg` field's value flows through
+// unconverted (it's already real HTML by the time it's stored). Never
+// throws - falls back to the escaped raw source on a parse error, same
+// never-throws convention as applyTransform above.
+export function renderMarkdown(value: unknown): string {
+  if (value == null || value === '') return ''
+  const source = typeof value === 'string' ? value : String(value)
+  try {
+    return marked.parse(source, { async: false }) as string
+  } catch (e) {
+    console.warn('[field-transforms] markdown parse failed:', e)
+    return escapeHtml(source)
   }
 }
 

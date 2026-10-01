@@ -22,7 +22,7 @@ const PLACEHOLDER_IMAGE =
   )
 
 /** Field types that map to text content elements (Paragraph, Heading). */
-const TEXT_FIELDS = ['input', 'textarea', 'wysiwyg', 'urlSlug', 'email', 'country', 'select', 'multiselect']
+const TEXT_FIELDS = ['input', 'textarea', 'wysiwyg', 'markdown', 'urlSlug', 'email', 'country', 'select', 'multiselect']
 
 /** Field types that map to Image elements. */
 const IMAGE_FIELDS = ['image', 'video', 'asset']

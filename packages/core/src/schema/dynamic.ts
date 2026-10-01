@@ -127,6 +127,7 @@ function compileFieldSchema(field: ClassFieldDefinition): ZodSchema {
     case 'input':
     case 'textarea':
     case 'wysiwyg':
+    case 'markdown':
     case 'urlSlug':
     case 'country':
       fieldSchema = z.string();
