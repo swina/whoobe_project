@@ -6,6 +6,10 @@ import { useAuthStore } from './authStore'
 export const usePagesStore = defineStore('pages', () => {
   const pages = ref<WhoobeOnePage[]>([])
   const isLoading = ref(false)
+  // The website filter the list was last loaded with (undefined = all sites),
+  // so reloadPages() can refresh in place without dropping a filter the user
+  // chose in PagesView.
+  const lastWebsiteId = ref<string | undefined>(undefined)
 
   const filteredPages = computed(() => (websiteId?: string) => {
     if (!websiteId) return pages.value
@@ -14,6 +18,7 @@ export const usePagesStore = defineStore('pages', () => {
 
   async function refreshPages(websiteId?: string): Promise<void> {
     const authStore = useAuthStore()
+    lastWebsiteId.value = websiteId
     isLoading.value = true
     try {
       pages.value = await fetchPages(authStore.config.coreApiUrl, websiteId)
@@ -22,6 +27,11 @@ export const usePagesStore = defineStore('pages', () => {
     } finally {
       isLoading.value = false
     }
+  }
+
+  /** Re-fetches with whatever website filter the last refreshPages() used. */
+  function reloadPages(): Promise<void> {
+    return refreshPages(lastWebsiteId.value)
   }
 
   async function getPage(id: string): Promise<WhoobeOnePage> {
@@ -80,6 +90,7 @@ export const usePagesStore = defineStore('pages', () => {
     isLoading,
     filteredPages,
     refreshPages,
+    reloadPages,
     getPage,
     updatePage,
     createPage,

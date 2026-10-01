@@ -86,6 +86,10 @@ export const whoobePages = pgTable(
     // or pages not yet assigned to a specific website.
     websiteId: uuid('website_id'),
     themeId: uuid('theme_id'),
+    // Captured preview image (a small WebP data URL) shown as the card
+    // thumbnail in the Pages list/grid - see the editor preview's "Capture
+    // thumbnail" button. Stored inline for now; null until captured.
+    thumbnail: text('thumbnail'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

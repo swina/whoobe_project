@@ -139,17 +139,39 @@ export function insertGeneratedSnippet(editor: EditorStore, payload: unknown): v
     container: clean(created.css?.container || ''),
   }
   applyImagePlaceholder(created)
+  placeNode(editor, created)
+}
+
+/** Places `node` using the placement rules described above (into the
+ *  selected container, else right after the selected element, else at the
+ *  document root) and selects it. */
+function placeNode(editor: EditorStore, node: WhoobeElement): void {
+  if (!editor.document) return
   const current = editor.current as (WhoobeElement & { type?: string }) | null
   if (current && current.type === 'container') {
-    current.blocks.push(created)
+    current.blocks.push(node)
   } else if (current) {
     const found = findParentAndIndex(editor.document, current.id)
-    if (found) found.parent.blocks.splice(found.index + 1, 0, created)
-    else editor.document.blocks.push(created)
+    if (found) found.parent.blocks.splice(found.index + 1, 0, node)
+    else editor.document.blocks.push(node)
   } else {
-    editor.document.blocks.push(created)
+    editor.document.blocks.push(node)
   }
-  editor.setCurrent(created)
+  editor.setCurrent(node)
+}
+
+/** Inserts a saved snippet's stored node into the document without dragging
+ *  (the Snippets panel's "insert" button) - same placement as
+ *  insertGeneratedSnippet(). Like the dragula drop in BlockEditor.vue, it
+ *  inserts a fresh-id clone (so the same snippet can go in many times) and
+ *  stamps `sourceSnippetId` so the Advanced > Info panel can find the
+ *  snippet's usage notes later. Returns false when there's no open document. */
+export function insertSnippetNode(editor: EditorStore, snippet: { id: string; node: unknown }): boolean {
+  if (!editor.document) return false
+  const created = cloneWithFreshIds(snippet.node) as WhoobeElement
+  ;(created as any).sourceSnippetId = snippet.id
+  placeNode(editor, created)
+  return true
 }
 
 /** Port of $exportBlock - downloads just the selected node as JSON. */

@@ -51,6 +51,8 @@ export interface WhoobeOnePage {
   pimcoreId: string | null
   path: string | null
   websiteId: string | null
+  /** Captured preview image (data URL) - see whoobe-one-spike's "Capture thumbnail". */
+  thumbnail?: string | null
   publishedAt: string | null
   createdAt: string
   updatedAt: string

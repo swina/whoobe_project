@@ -111,7 +111,7 @@
               <input type="checkbox" :checked="allPageSelected()" @change="toggleSelectAll"
                 class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
             </th>
-            <th v-for="col in visibleColumns" :key="col.name" @click="toggleSort(col.name)"
+            <th v-for="col in visibleColumns" :key="col.name" @click="col.name !== 'thumbnail' && toggleSort(col.name)"
               class="py-3 px-4 cursor-pointer hover:text-slate-200 light:hover:text-slate-900 select-none whitespace-nowrap">
               {{ col.title }}
               <span v-if="sortField === col.name" class="ml-1">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
@@ -131,7 +131,15 @@
                 class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
             </td>
             <td v-for="col in visibleColumns" :key="col.name" class="py-2.5 px-4">
-              <template v-if="col.name === 'title'">
+              <template v-if="col.name === 'thumbnail'">
+                <img v-if="page.thumbnail" :src="page.thumbnail" alt="" title="Click to enlarge"
+                  class="w-24 aspect-[16/10] object-cover object-top rounded border border-slate-700 light:border-slate-300 bg-white cursor-zoom-in hover:border-indigo-500 transition"
+                  @click.stop="thumbnailModal = { src: page.thumbnail, title: page.title }" />
+                <div v-else class="w-24 aspect-[16/10] rounded border border-dashed border-slate-700 light:border-slate-300 flex items-center justify-center text-slate-600">
+                  <FileText class="w-4 h-4" />
+                </div>
+              </template>
+              <template v-else-if="col.name === 'title'">
                 <span class="font-semibold text-slate-100 light:text-slate-900 inline-flex items-center gap-2">
                   <FileText class="w-4 h-4 text-indigo-400 inline" /> {{ page.title }}
                   <button
@@ -383,6 +391,8 @@
     :source-label="campaignModalPage.title"
     @close="campaignModalPage = null"
   />
+
+  <ThumbnailModal v-if="thumbnailModal" :src="thumbnailModal.src" :title="thumbnailModal.title" @close="thumbnailModal = null" />
 </template>
 
 <script setup lang="ts">
@@ -396,6 +406,7 @@ import { useAuthStore } from '../stores/authStore'
 import { randomUUID } from '../utils/random-id'
 import { fetchStagedPages, deleteStagedPageById, promoteStagedPages, promoteStagedPageById, type StagedWhoobePage, type WhoobeOnePage } from '../utils/pages-api'
 import BrevoCampaignModal from '../components/settings/BrevoCampaignModal.vue'
+import ThumbnailModal from '../components/common/ThumbnailModal.vue'
 
 const pagesStore = usePagesStore()
 const tabsStore = useTabsStore()
@@ -444,7 +455,7 @@ async function promoteOne(sp: StagedWhoobePage) {
     toastStore.show(`${result.succeeded} page promoted, ${result.failed} failed`)
     selectedStaged.value = null
     await refreshStaged()
-    await pagesStore.refreshPages()
+    await pagesStore.reloadPages()
   } catch (e: any) {
     toastStore.show(e?.message || 'Failed to promote staged page')
   } finally {
@@ -461,7 +472,7 @@ async function handlePromoteAll() {
     toastStore.show(`${result.succeeded} staged page(s) promoted, ${result.failed} failed`)
     selectedStaged.value = null
     await refreshStaged()
-    await pagesStore.refreshPages()
+    await pagesStore.reloadPages()
   } catch (e: any) {
     toastStore.show(e?.message || 'Failed to promote staged pages')
   } finally {
@@ -499,6 +510,7 @@ const queryFilters = ref<{ field: string; operator: string; value: unknown }[]>(
 
 interface ColumnOption { name: string; title: string }
 const SYSTEM_COLUMNS: ColumnOption[] = [
+  { name: 'thumbnail', title: 'Preview' },
   { name: 'title', title: 'Title' },
   { name: 'slug', title: 'Slug' },
   { name: 'websiteId', title: 'Website' },
@@ -640,6 +652,7 @@ const sortedPages = computed(() => {
 // Batch selection
 const selectedPageIds = ref<Set<string>>(new Set())
 const campaignModalPage = ref<WhoobeOnePage | null>(null)
+const thumbnailModal = ref<{ src: string; title: string } | null>(null)
 
 function toggleSelectPage(id: string) {
   const next = new Set(selectedPageIds.value)

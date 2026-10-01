@@ -59,6 +59,7 @@ import { useThemeStyles } from '../composables/useThemeStyles'
 import { useEditorStore } from '../store/editor'
 import { fetchTheme } from '../themes-api'
 import { safeAlpineValue } from '../helpers'
+import { applyPageSeo } from '../scripts/apply-seo'
 
 const route = useRoute()
 const editor = useEditorStore()
@@ -187,6 +188,7 @@ onMounted(async () => {
 
     const locale = page.locale || 'en'
     doc.value = page.content
+    applyPageSeo(page)
     layout.value = pageLayout ?? null
     // Load the page's theme before resolving data, so theme styles are
     // available for the rendered content.

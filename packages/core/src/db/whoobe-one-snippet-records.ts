@@ -11,6 +11,7 @@ export interface WhoobeOneSnippetRecord {
   node: unknown;
   themeId: string | null;
   notes: string | null;
+  thumbnail: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -73,4 +74,12 @@ export async function updateWhoobeOneSnippet(
     .where(eq(whoobeOneSnippets.id, id))
     .returning();
   return row ?? null;
+}
+
+/** Sets (or clears, with null) a snippet's captured preview thumbnail. Does
+ *  not snapshot a content version or bump updatedAt - not a content edit. */
+export async function setWhoobeOneSnippetThumbnail(id: string, thumbnail: string | null): Promise<boolean> {
+  const db = getDb();
+  const rows = await db.update(whoobeOneSnippets).set({ thumbnail }).where(eq(whoobeOneSnippets.id, id)).returning({ id: whoobeOneSnippets.id });
+  return rows.length > 0;
 }

@@ -238,3 +238,15 @@ export async function deletePage(id: string): Promise<void> {
   })
   await parseJsonOrThrow(res)
 }
+
+/** Stores a captured preview image (data URL) as the page's list thumbnail;
+ *  null clears it. See the editor preview's "Capture thumbnail" button. */
+export async function setPageThumbnail(id: string, thumbnail: string | null): Promise<void> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages/${id}/thumbnail`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ thumbnail }),
+    credentials: 'include',
+  })
+  await parseJsonOrThrow(res)
+}

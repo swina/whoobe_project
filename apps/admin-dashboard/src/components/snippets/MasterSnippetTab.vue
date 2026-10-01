@@ -4,8 +4,24 @@
       <h4 class="text-sm font-bold text-slate-100 light:text-slate-900">{{ title }}</h4>
       <span v-if="isNewSnippet" class="px-2 py-0.5 text-[10px] font-bold rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 uppercase">new</span>
     </div>--->
-    <div class="flex-1 min-h-0 px-2 pb-1 pt-2">
-      <div class="h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-2">
+    <div v-if="!fullscreen" class="flex shrink-0 items-center gap-2 px-6 pt-1">
+      <button type="button" title="Open editor full screen" @click="fullscreen = true">
+        <Maximize class="w-6 h-6 text-violet-700" />
+      </button>
+      <span class="text-xs font-semibold text-slate-400 light:text-slate-600 truncate">{{ title }}</span>
+    </div>
+    <!-- The same wrapper (and so the same <iframe>, never remounted) switches
+         between its in-tab layout and a fixed full-screen overlay by class
+         only - unlike the page tab's overlay, which mounts a second editor,
+         this keeps unsaved edits and avoids two editors on one snippet. -->
+    <div :class="fullscreen ? 'fixed inset-0 z-[10000] bg-slate-950 flex flex-col' : 'flex-1 min-h-0 px-2 pb-1 pt-2'">
+      <div v-if="fullscreen" class="shrink-0 flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-800">
+        <span class="text-sm font-semibold text-slate-100 truncate">{{ title }}</span>
+        <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white flex items-center gap-1.5" @click="fullscreen = false">
+          <Minimize class="w-4 h-4" /> Close editor
+        </button>
+      </div>
+      <div :class="fullscreen ? 'flex-1 min-h-0' : 'h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-2'">
         <SnippetEditorEmbed :snippet-id="props.snippetId" :title="title" @created="onSnippetCreated" />
       </div>
     </div>
@@ -13,7 +29,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { Maximize, Minimize } from '@lucide/vue'
 import { useSnippetsStore } from '../../stores/snippetsStore'
 import { useTabsStore, snippetTabId } from '../../stores/tabsStore'
 import SnippetEditorEmbed from './SnippetEditorEmbed.vue'
@@ -22,6 +39,7 @@ const props = defineProps<{ snippetId: string }>()
 
 const snippetsStore = useSnippetsStore()
 const tabsStore = useTabsStore()
+const fullscreen = ref(false)
 const isNewSnippet = computed(() => props.snippetId.startsWith('new:'))
 
 const title = computed(() => {

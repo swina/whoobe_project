@@ -1034,6 +1034,10 @@ function onWindowMessage(event: MessageEvent) {
   if (event.data?.type === 'whoobe-one:snippet-saved') {
     snippetsStore.refresh()
   }
+  if (event.data?.type === 'whoobe-one:thumbnail-saved') {
+    if (event.data.kind === 'snippet') snippetsStore.refresh()
+    else pagesStore.reloadPages()
+  }
 }
 
 onMounted(() => {

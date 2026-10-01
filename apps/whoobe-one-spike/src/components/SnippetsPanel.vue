@@ -13,7 +13,7 @@
         <ChevronDown v-if="openGroup === category" class="w-3.5 h-3.5 text-gray-400" />
         <ChevronRight v-else class="w-3.5 h-3.5 text-gray-400" />
       </button>
-      <div v-if="openGroup === category" class="grid grid-cols-3 gap-1.5 p-2 border-b border-slate-300 bg-gray-50 dragula-source-container">
+      <div v-if="openGroup === category" class="grid grid-cols-3 gap-1.5 p-2 border-b border-slate-300 bg-gray-50 dragula-source-container max-h-[134px] overflow-y-auto overflow-x-hidden">
         <div
           v-for="snippet in snippetsFor(category)"
           :key="snippet.id"
@@ -22,7 +22,16 @@
           :title="snippet.name"
           class="relative group/chip flex flex-col items-center justify-center gap-1 h-14 rounded-md bg-white border border-emerald-200 text-[10px] text-gray-500 text-center px-1 cursor-grab select-none hover:border-emerald-400 hover:text-emerald-700"
         >
-          <span v-if="snippet.icon" class="text-lg leading-none">{{ snippet.icon }}</span>
+          <img
+            v-if="snippet.thumbnail"
+            :src="snippet.thumbnail"
+            alt=""
+            draggable="false"
+            title="Click to preview"
+            class="w-full h-7 object-cover object-top rounded-sm border border-gray-200 cursor-zoom-in"
+            @click.stop="previewSnippet = snippet"
+          />
+          <span v-else-if="snippet.icon" class="text-lg leading-none">{{ snippet.icon }}</span>
           <Package v-else class="w-5 h-5" />
           <span class="truncate w-full">{{ snippet.name }}</span>
           <button
@@ -37,6 +46,15 @@
           </button>
           <button
             type="button"
+            title="Insert into the current element"
+            class="absolute -bottom-1.5 -right-1.5 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center opacity-0 group-hover/chip:opacity-100"
+            @mousedown.stop
+            @click.stop="insertSnippet(snippet)"
+          >
+            <Import class="w-2.5 h-2.5" />
+          </button>
+          <button
+            type="button"
             title="Delete snippet"
             class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center opacity-0 group-hover/chip:opacity-100"
             @mousedown.stop
@@ -47,6 +65,14 @@
         </div>
       </div>
     </template>
+
+    <ThumbnailModal v-if="previewSnippet?.thumbnail" :src="previewSnippet.thumbnail" :title="previewSnippet.name" @close="previewSnippet = null">
+      <template #actions>
+        <button class="flex items-center gap-1 text-emerald-600 hover:text-emerald-800 text-xs font-semibold" @click="insertSnippet(previewSnippet)">
+          <Import class="w-3.5 h-3.5" /> Insert
+        </button>
+      </template>
+    </ThumbnailModal>
 
     <!-- Usage notes overlay - the snippets-list counterpart of
          AdvancedPanel.vue's Info section, for a snippet not yet dropped
@@ -81,12 +107,23 @@
 // dragula instance and drop handler need no changes to pick these up (see
 // that handler's data-snippet-id branch), same delete-in-place button, same
 // one-category-open-at-a-time accordion.
+//
+// A chip shows the snippet's captured thumbnail when it has one, else its
+// icon. An open category's grid is capped at two rows (6 snippets) and
+// scrolls, so a category with many snippets doesn't push the rest of the
+// accordion off screen.
 import { computed, onMounted, ref, watch } from 'vue'
-import { ChevronDown, ChevronRight, Info, Package, X } from '@lucide/vue'
+import { ChevronDown, ChevronRight, Import, Info, Package, X } from '@lucide/vue'
 import { useSnippetsStore } from '../store/snippets'
+import { useEditorStore } from '../store/editor'
+import { insertSnippetNode } from '../scripts/editor-actions'
+import { editorBus } from '../bus'
+import ThumbnailModal from './ThumbnailModal.vue'
 import type { WhoobeOneSnippet } from '../snippets-api'
 
 const snippetsStore = useSnippetsStore()
+const editor = useEditorStore()
+const previewSnippet = ref<WhoobeOneSnippet | null>(null)
 const openGroup = ref<string | null>(null)
 const notesSnippet = ref<WhoobeOneSnippet | null>(null)
 
@@ -108,6 +145,18 @@ watch(
 
 function snippetsFor(category: string) {
   return snippetsStore.items.filter((s) => s.category === category)
+}
+
+// "Insert" button (chip hover / preview modal): same result as dragging the
+// chip onto the canvas, but into the currently selected element (or after
+// it, or at the document root - see insertSnippetNode()).
+function insertSnippet(snippet: WhoobeOneSnippet) {
+  if (insertSnippetNode(editor, snippet)) {
+    editorBus.emit('editorMessage', `Added "${snippet.name}"`)
+    previewSnippet.value = null
+  } else {
+    editorBus.emit('editorMessage', 'Open a page or snippet first')
+  }
 }
 
 async function removeSnippet(id: string) {

@@ -22,6 +22,7 @@ export interface WhoobePageRecord {
   path: string | null;
   websiteId: string | null;
   themeId: string | null;
+  thumbnail: string | null;
   publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -340,4 +341,13 @@ export async function upsertWhoobePageByPimcoreId(input: {
     .returning();
   await indexPage(row);
   return row;
+}
+
+/** Sets (or clears, with null) a page's captured preview thumbnail. Touches
+ *  only that column - no content version snapshot, no reindex, no updatedAt
+ *  bump - since a thumbnail isn't a content edit. */
+export async function setWhoobePageThumbnail(id: string, thumbnail: string | null): Promise<boolean> {
+  const db = getDb();
+  const rows = await db.update(whoobePages).set({ thumbnail }).where(eq(whoobePages.id, id)).returning({ id: whoobePages.id });
+  return rows.length > 0;
 }
