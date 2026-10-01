@@ -43,8 +43,30 @@
       :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
       :style="fieldLayout.style"
     />
+    <!-- urlSlug: a trailing "Generate" button slugifies whatever's already
+         typed here into a friendly URL slug - docs/plans/UI/editing-
+         object-class.md has no concept of a per-class "title source field"
+         to auto-derive from, so (same as Pages > Slug's own Generate
+         button when its Title is empty) this cleans up the field's own
+         current text rather than pulling from a sibling field. -->
+    <div v-else-if="field.fieldType === 'urlSlug'" :class="['flex gap-2', fieldLayout.class]" :style="fieldLayout.style">
+      <input
+        :value="(modelValue as string) ?? ''"
+        @input="emitUpdate(($event.target as HTMLInputElement).value)"
+        type="text"
+        class="flex-1 min-w-0 px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+      />
+      <button
+        type="button"
+        title="Generate a friendly slug from this text"
+        class="shrink-0 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:hover:bg-slate-200 text-slate-300 light:text-slate-700 flex items-center gap-1.5"
+        @click="emitUpdate(slugify((modelValue as string) ?? ''))"
+      >
+        <Wand2 class="w-3.5 h-3.5" /> Generate
+      </button>
+    </div>
     <input
-      v-else-if="['input', 'urlSlug', 'country', 'email'].includes(field.fieldType)"
+      v-else-if="['input', 'country', 'email'].includes(field.fieldType)"
       :value="(modelValue as string) ?? ''"
       @input="emitUpdate(($event.target as HTMLInputElement).value)"
       type="text"
@@ -243,9 +265,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Wand2 } from '@lucide/vue'
 import type { ClassFieldDefinition } from '@whoobe-cms/core'
 import { useRelationOptions } from '../../composables/useRelationOptions'
 import { resolveCustomClasses } from '../../utils/custom-classes'
+import { slugify } from '../../utils/slugify'
 import type { AssetCategoryFilter } from '../../utils/asset-category'
 import DataObjectForm from './DataObjectForm.vue'
 import WysiwygEditor from './WysiwygEditor.vue'
