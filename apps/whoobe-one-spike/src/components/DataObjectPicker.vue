@@ -409,7 +409,7 @@ function fieldCompatibleWithTarget(field: ClassFieldDefinition, target: string):
   // above) - a boolean or a date is just as displayable as text (via
   // DataBindingTransformControl.vue's own transforms) as any of the
   // class-field types already here.
-  const TEXT = ['input', 'textarea', 'wysiwyg', 'numeric', 'urlSlug', 'email', 'country', 'select', 'multiselect', 'checkbox', 'date']
+  const TEXT = ['input', 'textarea', 'wysiwyg', 'markdown', 'numeric', 'urlSlug', 'email', 'country', 'select', 'multiselect', 'checkbox', 'date']
   const IMAGE = ['image', 'asset']
   const VIDEO = ['video']
   const LINK = ['link', 'manyToOneRelation', 'manyToManyRelation']

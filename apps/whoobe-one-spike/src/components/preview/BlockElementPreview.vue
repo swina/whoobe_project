@@ -85,7 +85,7 @@ import { resolveDisplayUrl } from '../../resolve-display-url'
 import { useEditorStore } from '../../store/editor'
 import { resolveFieldValue, resolveFieldFromRecord } from '../../scripts/data-resolver'
 import type { DataObjectRecord } from '../../data-objects-api'
-import { applyTransform, escapeHtml, stripHtmlComments } from '../../scripts/field-transforms'
+import { applyTransform, escapeHtml, renderMarkdown, stripHtmlComments } from '../../scripts/field-transforms'
 import { mountAnimation } from '../../scripts/gsap-actions'
 
 type WhoobeElement = InstanceType<typeof Element>
@@ -219,6 +219,15 @@ const displayContent = computed(() => {
       if (result.kind === 'link') {
         const targetAttr = result.target ? ` target="${result.target}" rel="noopener noreferrer"` : ''
         return `<a href="${escapeHtml(result.href)}"${targetAttr}>${escapeHtml(result.text)}</a>`
+      }
+      // A `markdown`-type field with no explicit transform configured -
+      // convert its raw Markdown source to HTML, the same "already real
+      // markup" treatment a `wysiwyg` field's value gets for free (it's
+      // stored as HTML already). A configured transform (truncate,
+      // valueMap, ...) still wins - it already produced result.text above.
+      const isUntransformed = !el.dataBinding?.transform || el.dataBinding.transform.type === 'none'
+      if (el.dataBinding?.fieldType === 'markdown' && isUntransformed) {
+        return renderMarkdown(resolvedData.value)
       }
       return result.text
     }

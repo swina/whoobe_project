@@ -18,6 +18,17 @@ describe('compileDynamicSchema (docs/plans/datamodel/advanced-data-modeling-plan
     expect(schema.safeParse({ title: 'Hello' }).success).toBe(true); // order/active optional
   });
 
+  it('validates a markdown field as a plain string, same as wysiwyg', () => {
+    const def: ClassDefinition = {
+      id: '1b',
+      name: 'Post',
+      fields: [{ name: 'body', title: 'Body', fieldType: 'markdown', mandatory: true }],
+    };
+    const schema = compileDynamicSchema(def);
+    expect(schema.safeParse({ body: '# Hello\n\n**world**' }).success).toBe(true);
+    expect(schema.safeParse({}).success).toBe(false); // mandatory
+  });
+
   it('treats a select with relationTarget as a relation id object, and a plain select as an enum', () => {
     const def: ClassDefinition = {
       id: '2',

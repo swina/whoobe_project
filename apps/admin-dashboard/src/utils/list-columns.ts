@@ -21,6 +21,7 @@ import {
   Boxes,
   CircleDot,
   Clock,
+  FileCode,
 } from '@lucide/vue'
 
 // Shared list-column vocabulary between ObjectsView.vue (the listing) and
@@ -48,6 +49,7 @@ const FIELD_TYPE_ICONS: Record<string, any> = {
   input: TextCursorInput,
   textarea: AlignJustify,
   wysiwyg: FileText,
+  markdown: FileCode,
   numeric: Hash,
   checkbox: SquareCheck,
   date: Calendar,

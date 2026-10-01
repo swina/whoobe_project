@@ -156,7 +156,7 @@ import { resolveDisplayUrl } from '../resolve-display-url'
 import { resolveFieldValue, resolveFieldFromRecord } from '../scripts/data-resolver'
 import type { DataObjectRecord } from '../data-objects-api'
 import { editorBus } from '../bus'
-import { applyTransform, escapeHtml } from '../scripts/field-transforms'
+import { applyTransform, escapeHtml, renderMarkdown } from '../scripts/field-transforms'
 import { Copy } from '@lucide/vue'
 import { customAttrs, renderSelectOptionsHtml, renderRadioGroupHtml, resolveLucideIcon, stripBlockLevelTags, stripEditorHidden, PHRASING_ONLY_ELEMENTS } from '../helpers'
 
@@ -285,6 +285,14 @@ const displayContent = computed(() => {
     if (result.kind === 'link') {
       const targetAttr = result.target ? ` target="${result.target}" rel="noopener noreferrer"` : ''
       return `<a href="${escapeHtml(result.href)}"${targetAttr}>${escapeHtml(result.text)}</a>`
+    }
+    // See BlockElementPreview.vue's identical branch - a `markdown`-type
+    // field with no explicit transform gets its raw source converted to
+    // HTML so the editing canvas shows the same rendered output the
+    // published page will.
+    const isUntransformed = !db.value?.transform || db.value.transform.type === 'none'
+    if (db.value?.fieldType === 'markdown' && isUntransformed) {
+      return renderMarkdown(resolvedDataValue.value)
     }
     return result.text
   }

@@ -251,6 +251,7 @@ const ALL_FIELD_TYPES = [
   { value: 'input', label: 'Text' },
   { value: 'textarea', label: 'Textarea' },
   { value: 'wysiwyg', label: 'Rich text' },
+  { value: 'markdown', label: 'Markdown' },
   { value: 'numeric', label: 'Number' },
   { value: 'checkbox', label: 'Checkbox' },
   { value: 'date', label: 'Date' },

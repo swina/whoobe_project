@@ -25,6 +25,15 @@
       :style="fieldLayout.style"
       @update:model-value="emitUpdate"
     />
+    <!-- Markdown - raw source stored, converted to HTML only in the
+         editor's own Preview tab (MarkdownEditor.vue), not here. -->
+    <MarkdownEditor
+      v-else-if="field.fieldType === 'markdown'"
+      :model-value="(modelValue as string) ?? ''"
+      :class="fieldLayout.class"
+      :style="fieldLayout.style"
+      @update:model-value="emitUpdate"
+    />
     <!-- Plain text-ish types -->
     <textarea
       v-else-if="field.fieldType === 'textarea'"
@@ -240,6 +249,7 @@ import { resolveCustomClasses } from '../../utils/custom-classes'
 import type { AssetCategoryFilter } from '../../utils/asset-category'
 import DataObjectForm from './DataObjectForm.vue'
 import WysiwygEditor from './WysiwygEditor.vue'
+import MarkdownEditor from './MarkdownEditor.vue'
 import AssetFieldPicker from './AssetFieldPicker.vue'
 
 const props = defineProps<{
