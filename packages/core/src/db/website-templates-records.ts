@@ -1,6 +1,7 @@
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { websiteTemplates, type WebsiteTemplateLayout } from './website-templates-schema.js';
+import { websites } from './websites-schema.js';
 
 export interface WebsiteTemplateRecord {
   id: string;
@@ -168,4 +169,44 @@ export async function updateWebsiteTemplate(
 export async function deleteWebsiteTemplate(id: string): Promise<void> {
   const db = getDb();
   await db.delete(websiteTemplates).where(eq(websiteTemplates.id, id));
+}
+
+export interface SnippetTemplateUsage {
+  templateId: string;
+  templateName: string;
+  websiteId: string;
+  websiteName: string | null;
+  /** Layout slots (header, footer, ...) that list the snippet. */
+  slots: string[];
+}
+
+/** Website templates whose layout slots reference this whoobe_one_snippet
+ *  by id (`TemplateSlot.snippetIds`). Templates only hold the id, not a copy,
+ *  so deleting a snippet that's listed here leaves a dangling reference and
+ *  the slot silently renders without it. Scanned in JS rather than SQL: the
+ *  ids live in nested jsonb under a handful of slot keys, and the number of
+ *  templates is small. */
+export async function findTemplatesUsingSnippet(snippetId: string): Promise<SnippetTemplateUsage[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: websiteTemplates.id,
+      name: websiteTemplates.name,
+      websiteId: websiteTemplates.websiteId,
+      websiteName: websites.name,
+      layout: websiteTemplates.layout,
+    })
+    .from(websiteTemplates)
+    .leftJoin(websites, eq(websites.id, websiteTemplates.websiteId));
+
+  const usage: SnippetTemplateUsage[] = [];
+  for (const row of rows) {
+    const slots = Object.entries(row.layout ?? {})
+      .filter(([, slot]) => Array.isArray((slot as { snippetIds?: unknown } | null)?.snippetIds) && ((slot as { snippetIds: string[] }).snippetIds).includes(snippetId))
+      .map(([key]) => key);
+    if (slots.length) {
+      usage.push({ templateId: row.id, templateName: row.name, websiteId: row.websiteId, websiteName: row.websiteName ?? null, slots });
+    }
+  }
+  return usage;
 }

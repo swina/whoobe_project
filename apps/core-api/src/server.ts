@@ -50,6 +50,7 @@ import {
   createWhoobeOneSnippet,
   updateWhoobeOneSnippet,
   setWhoobeOneSnippetThumbnail,
+  findTemplatesUsingSnippet,
   deleteWhoobeOneSnippet,
   listWhoobeOneTemplates,
   getWhoobeOneTemplate,
@@ -1133,6 +1134,21 @@ app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRIT
 app.delete('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteWhoobeOneSnippet(req.params.id);
+    // A website template's header/footer/aside/404 slots reference snippets
+    // by id (not by copy), so deleting one that's in use would silently break
+    // every page rendered through that template. Refuse, and say where.
+    const usage = await findTemplatesUsingSnippet(req.params.id);
+    if (usage.length > 0) {
+      const where = usage
+        .slice(0, 5)
+        .map((u) => `"${u.websiteName ?? 'unknown site'} / ${u.templateName}" (${u.slots.join(', ')})`)
+        .join('; ');
+      res.status(409).json({
+        error: `This snippet is used by ${usage.length} website template(s): ${where}${usage.length > 5 ? `; and ${usage.length - 5} more` : ''}. Remove it from those templates first.`,
+        usage,
+      });
+      return;
+    }
     res.json({ success: true });
   } catch (error: any) {
     logger.error({ err: error }, 'Delete whoobe-one snippet error');
