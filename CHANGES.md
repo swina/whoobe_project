@@ -1,3 +1,24 @@
+## [Security: F-002 closed] — 2026-10-02
+- Branch: `master`.
+- GitHub token revoked by the owner; `docs/plans/security/findings.md` F-002 marked fixed. Documentation only.
+
+## [Security: F-001 reassessed] — 2026-10-02
+- Branch: `master`.
+- `docs/plans/security/findings.md` F-001 lowered to Medium: secrets in `.env.aura` history are for local services only, repo is private; mitigation = rebuild the Oracle test instance with newly generated secrets (no history rewrite). Documentation only.
+
+## [Security: stop tracking .env files] — 2026-10-02
+- Branch: `master`.
+- `.gitignore`: `.env`, `.env.local`, `.env.*` ignored (any directory) except `.env.example` (removed trailing spaces on the `.env.*` line). `.env.aura` removed from the index (`git rm --cached`; file kept on disk). It remains in git history (commit `94f18fb`), so its secrets still have to be rotated (F-001).
+
+## [Security: git remotes switched to SSH] — 2026-10-02
+- Branch: `master`.
+- `origin` and `project` remotes changed from HTTPS URLs with an embedded token to SSH (`.git/config`, not tracked); SSH auth verified. `docs/plans/security/findings.md` F-002 updated: the token must still be revoked on GitHub.
+
+## [Security testing: Phase 0 static baseline] — 2026-10-02
+- Branch: `master`.
+- Added `scripts/security/static/` (`run-audit.sh`, `run-gitleaks.sh`, `run-semgrep.sh`, `run-shellcheck.sh`, `run-trivy.sh` incl. hadolint, `run-vhtml-inventory.sh`, `lib.sh`); scanners run from docker images, reports go to `scripts/security/reports/<date>/` (added to `.gitignore`).
+- Ran them once; findings in `docs/plans/security/findings.md`: `.env.aura` tracked in git history with secrets, a token embedded in the git remote URL, 11 high dependency advisories (drizzle-orm, exiftool-vendored, xlsx...), Dockerfile running as root. No application code changed; nothing rotated or removed yet.
+
 ## [Security testing plan: periodic runs] — 2026-10-02
 - Branch: `master`.
 - `docs/plans/security/security-testing-plan.md`: new section 7.1 (cadence per check, `run-periodic.sh`, `baseline.json`, exit codes, route drift), Phase 6 renamed/extended, layout updated. Plan only - no code changed.
