@@ -7,6 +7,9 @@ interface ImportMetaEnv {
   // the browser-shipped SPA. See apps/asset-processor/src/server.ts.
   readonly VITE_ASSET_PROCESSOR_URL?: string
   readonly VITE_CORE_API_URL?: string
+  // Full base URL of the whoobe-one editor (no trailing slash); overrides the
+  // hostname-based default in utils/editor-urls.ts.
+  readonly VITE_WHOOBE_ONE_URL?: string
 }
 
 interface ImportMeta {
