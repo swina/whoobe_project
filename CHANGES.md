@@ -9,7 +9,7 @@
 - **Sessions**: `updatePassword()` revokes all sessions of the user (`revokeUserSessions()` in `packages/core/src/auth/session.ts`).
 - **Reset link**: `ADMIN_PUBLIC_URL` (fallback unchanged).
 - Tests: the matching `known(...)` tests became normal tests; added allowed/public/look-alike origin tests, reset single-use and session-after-reset tests, gateway/asset-processor CORS tests. `pnpm security:api`: 901 pass on the rebuilt stack; `core` vitest 94, `tsc` on core/core-api/asset-processor/gateway. Still open: F-016, F-019, F-021, SPA CSP.
-- Not exercised in a browser: login/uploads/editor from the admin with the new CORS rules (curl with `Origin: http://localhost:3100` behaves as intended).
+- Browser check by the owner on the throwaway stack with the new CORS rules: login, asset upload and thumbnail save all work.
 
 ## [Security testing: Phase 2 access control, sessions, public surface, CORS/headers] — 2026-10-02
 - Branch: `master`.
