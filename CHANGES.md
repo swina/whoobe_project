@@ -1,3 +1,11 @@
+## [Single-container/stack friendly editor URL + prefix-stripping nginx] — 2026-10-02
+- Branch: `master`.
+- Problem found while testing a stack on shifted ports: on `localhost` the admin always opened the editor on port 3006 (the dev stack's), and the `whoobe-one-spike` image, built with base `/whoobe-one/`, returned `index.html` for its own `/whoobe-one/assets/*` when served directly (browser: "Expected a JavaScript-or-Wasm module script ... text/html").
+- `nginx/spa-fallback.conf`: new `location /whoobe-one/` that strips the prefix (`rewrite` + `try_files`), so the spike works directly on its published port as well as behind the reverse proxy; the admin image is unaffected.
+- `apps/admin-dashboard/src/utils/editor-urls.ts` + `env.d.ts`: optional build-time `VITE_WHOOBE_ONE_URL` (full base URL, no trailing slash) overrides the hostname-based default. `Dockerfile` (ARG/ENV), `docker-compose.yml` (admin build arg, default empty = unchanged behaviour) and `.env.example` document it; `scripts/security/.env.sectest` sets `http://localhost:3106/whoobe-one`.
+- `scripts/security/stack.sh`: no longer `source`s the env file (a `|` in `VITE_FONT_FAMILIES` broke it).
+- Verified: `vue-tsc --noEmit` (admin), compose config, rebuilt test stack: spike `/whoobe-one/assets/*.js` -> `application/javascript`, `/whoobe-one/editor` -> `index.html`, admin bundle contains the override. Editor not exercised in a browser.
+
 ## [Security: throwaway docker stack for verification] — 2026-10-02
 - Branch: `master`.
 - Added `scripts/security/stack.sh` (`build|up|status|down`, compose project `whoobe-sectest`, host ports = dev +100) and a generated, gitignored `scripts/security/.env.sectest` with random secrets (kept outside the repo root so `create-workspace.sh` does not count it as a workspace). Nothing was started.

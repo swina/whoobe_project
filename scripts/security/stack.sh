@@ -12,7 +12,9 @@ case "${1:-}" in
   up)
     dc up -d --build
     # one-time bucket (idempotent)
-    set -a; . "$ENVF"; set +a
+    # read only what is needed: the file is a compose env file, not valid shell (VITE_FONT_FAMILIES contains '|')
+    getv() { grep -E "^$1=" "$ENVF" | head -n1 | cut -d= -f2-; }
+    S3_ACCESS_KEY_ID=$(getv S3_ACCESS_KEY_ID); S3_SECRET_ACCESS_KEY=$(getv S3_SECRET_ACCESS_KEY); S3_BUCKET=$(getv S3_BUCKET)
     dc exec -T minio sh -c "mc alias set local http://localhost:9000 '$S3_ACCESS_KEY_ID' '$S3_SECRET_ACCESS_KEY' >/dev/null && mc mb --ignore-existing local/$S3_BUCKET" || echo "bucket creation failed - create $S3_BUCKET manually (minio console :9101)"
     dc ps ;;
   status) dc ps ;;

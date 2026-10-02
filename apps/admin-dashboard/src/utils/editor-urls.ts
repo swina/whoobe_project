@@ -9,7 +9,14 @@
 // (e.g. the local dev server on 3006) rather than this workspace's own -
 // deploy/nginx/_locations.conf.template proxies /whoobe-one/ correctly
 // regardless of protocol, so there's no HTTP-only special case anymore.
+//
+// VITE_WHOOBE_ONE_URL (build time) overrides all of the above, e.g. a stack
+// published on non-default ports on localhost, or a single container serving
+// the editor under /whoobe-one: set it to the full base URL (no trailing
+// slash), e.g. http://localhost:3106/whoobe-one.
 export function getWhoobeOneSpikeUrl(): string {
+  const override = import.meta.env.VITE_WHOOBE_ONE_URL
+  if (typeof override === 'string' && override.trim()) return override.trim().replace(/\/+$/, '')
   if (typeof window === 'undefined') return 'http://localhost:3006'
   const hostname = window.location.hostname
   const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
