@@ -1,3 +1,7 @@
+## [Security: public mirror whoobe_project] — 2026-10-02
+- Branch: `master`.
+- `whoobe_project` (public) was a copy of `origin` including the `.env.aura` history; owner decided to delete it. Local remote `project` removed; F-001 note updated. The GitHub deletion itself must be done by the owner (the GitHub connector was not authorised).
+
 ## [Security: F-002 closed] — 2026-10-02
 - Branch: `master`.
 - GitHub token revoked by the owner; `docs/plans/security/findings.md` F-002 marked fixed. Documentation only.
