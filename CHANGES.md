@@ -1,3 +1,11 @@
+## [Security testing plan: periodic runs] — 2026-10-02
+- Branch: `master`.
+- `docs/plans/security/security-testing-plan.md`: new section 7.1 (cadence per check, `run-periodic.sh`, `baseline.json`, exit codes, route drift), Phase 6 renamed/extended, layout updated. Plan only - no code changed.
+
+## [Security testing plan: decisions on open questions] — 2026-10-02
+- Branch: `master`.
+- `docs/plans/security/security-testing-plan.md` section 10 now records the answers: LAN dev plus single-container deployment (two test profiles, stricter severity), existing `docs/api/openapi.yaml` used for ZAP/schemathesis, disposable Docker stack on non-default ports (compose project `whoobe-sec`), publish/provisioning scripts operator-only (lower severity unless a UI/API path reaches them). Scope and tooling lines adjusted accordingly. Plan only - no code changed.
+
 ## [Security testing plan] — 2026-10-02
 - Branch: `master`.
 - User asked for a security-testing plan and the contexts that can be tested with scripts.
