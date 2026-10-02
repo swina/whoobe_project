@@ -1,3 +1,9 @@
+## [Security F-004: unprivileged nginx images and generated-site images] — 2026-10-02
+- Branch: `master`.
+- `Dockerfile`: `admin-dashboard` and `whoobe-one-spike` stages use `nginxinc/nginx-unprivileged:alpine` (uid 101, listens on **8080** instead of 80; `EXPOSE 8080`). `nginx/spa-fallback.conf` listens on 8080. Host-side ports are unchanged; compose container-port mappings changed from `:80` to `:8080` in `docker-compose.yml`, `docker-compose.apps.yml` and the commented blocks of `docker-compose.data.yml`. Anything outside this repo that targets those containers' port 80 directly (not via the published host port) must be updated.
+- `packages/publish/src/cli.ts` (generated sites): the Node `run` stage copies with `--chown=node:node` and runs as `USER 1000:1000`; the static-site image uses `nginx-unprivileged`, `nginx-static.conf` listens on 8080 and the generated `deploy-static.sh` publishes `-p ${PORT}:8080`. Sites already generated keep their old files until regenerated (e.g. `sites/aura-network`, untracked).
+- Verified: `packages/publish` `tsc --noEmit`; test stack rebuilt: both frontends run as uid 101 on 8080, admin 200, editor assets `application/javascript`; `pnpm security:api` 12 tests pass; trivy config on the Dockerfile 0 HIGH/CRITICAL. Not run: building/deploying a generated site end to end.
+
 ## [Startup order + pnpm overrides in both places] — 2026-10-02
 - Branch: `master`.
 - `docker-compose.yml`: `asset-processor` now waits for `core-api` to be healthy (core-api creates/migrates the schema on boot; before, the asset-processor's first poll logged a `42P01` relation-does-not-exist stack trace) and `gateway` waits for `core-api` and `asset-processor` to be healthy instead of just started. Relies on the `HEALTHCHECK` added to the Dockerfile in F-004.
