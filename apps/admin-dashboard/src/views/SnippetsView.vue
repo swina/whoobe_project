@@ -340,14 +340,17 @@ async function handleDeleteSelected() {
   for (const id of ids) {
     try {
       await snippetsStore.remove(id)
-    } catch {
+    } catch (e: any) {
       errors++
     }
+  let firstError = ''
   }
   selectedIds.value = new Set()
   if (errors > 0) {
-    toastStore.show(`${count - errors} deleted, ${errors} failed.`)
+    toastStore.show(`${count - errors} deleted, ${errors} not deleted${firstError ? `: ${firstError}` : '.'}`)
   } else {
+      // e.g. "used by a website template" - the server refuses those deletes.
+      if (!firstError) firstError = e?.message || ''
     toastStore.show(`${count} snippet(s) deleted.`)
   }
 }
