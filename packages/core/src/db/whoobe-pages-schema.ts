@@ -33,6 +33,11 @@ export interface PageSeo {
   ogDescription?: string | null;
   ogImage?: string | null;
   structuredData?: Record<string, unknown> | null; // JSON-LD, verbatim
+  // Dynamic pages: the meta fields above may contain `{field}` tokens filled
+  // from a bound data record (cms/seo-template.ts). This is the element id of
+  // the dataBinding to take that record from; null/absent = the page's first
+  // single-record binding.
+  sourceBindingId?: string | null;
 }
 
 export interface PageSitemapSettings {

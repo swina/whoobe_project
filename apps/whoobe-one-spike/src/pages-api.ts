@@ -19,6 +19,9 @@ export interface PageSeo {
   ogDescription?: string | null
   ogImage?: string | null
   structuredData?: Record<string, unknown> | null
+  /** Dynamic pages: element id of the dataBinding whose record fills the
+   *  `{field}` tokens in the meta fields (absent = first single-record binding). */
+  sourceBindingId?: string | null
 }
 
 export interface PageSitemapSettings {
@@ -87,6 +90,9 @@ export async function getPage(id: string): Promise<WhoobeOnePage> {
 export interface PublicPageLookup {
   page: WhoobeOnePage
   params: Record<string, string>
+  /** In editor mode `page.seo` keeps the `{field}` templates; this is the
+   *  server's resolved copy (published records only, asset tokens included). */
+  seoResolved?: PageSeo | null
   /** Website-template composition (website-templates.md) - the resolved
    *  template's header/aside/main/footer/404 module pages + slot styling. */
   layout?: {

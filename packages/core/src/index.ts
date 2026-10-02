@@ -15,6 +15,7 @@ export * from './dam/cdn-mirror.js';
 export * from './dam/file-type.js';
 export * from './cms/block-schema.js';
 export * from './cms/data-binding.js';
+export * from './cms/seo-template.js';
 // Real functions too, not just types - xstate itself is browser-safe, so
 // admin-dashboard can compute "which transitions are valid right now" the
 // exact same way core-api's own /transition route does, rather than
