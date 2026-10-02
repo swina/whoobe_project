@@ -28,6 +28,17 @@ Reports go to `scripts/security/reports/<date>/` (gitignored).
   `api/route-drift.test.ts` fails when a route is added, removed or changes access without updating it.
   Entries with a `REVIEW` note are unauthenticated routes still to be assessed.
 - `api/harness.test.ts` - the harness itself (target up, roles log in, 401/403/200 as expected).
+- `api/authz-matrix.test.ts` (3.2) - every core-api route x anon/none/read/write/users: 401 / 403 / past-the-guard, from `routes.expected.json`.
+- `api/auth.test.ts` (3.1) - login enumeration, lockout, session lifecycle, cookie flags, forgot/reset password.
+- `api/public-surface.test.ts` (3.4) - drafts not exposed, hostile query input, preview tokens, public forms.
+- `api/cors-csrf-headers.test.ts` (3.5, 3.14) - CORS, CSRF, security headers, error disclosure.
+
+### Known findings
+
+`known('F-0xx', name, fn)` (lib/known.ts) asserts the *secure* behaviour but is expected to fail today
+(`it.fails`): the run stays green while the finding is open, and goes red the day it is fixed, which is the
+cue to turn it into a plain `it`. Open ones: F-011 (CORS), F-012 (cookie Secure), F-013 (reset keeps sessions),
+F-014 (headers), F-016 (lockout DoS), F-018 (DB text in 5xx), F-019 (pwa/subscribe rate limit).
 
 ## Adding a suite
 

@@ -1,6 +1,6 @@
 # Security testing plan
 
-Status: in progress - 2026-10-02. Phase 0 (static baseline) done, see `findings.md`; Phase 1 (harness) done: `scripts/security/` (README there), `pnpm security:api` runs against the throwaway stack from `scripts/security/stack.sh`.
+Status: in progress - 2026-10-02. Phase 0 (static baseline) done, see `findings.md`; Phase 1 (harness) done, Phase 2 (access control) done - results in `findings.md` F-011..F-020: `scripts/security/` (README there), `pnpm security:api` runs against the throwaway stack from `scripts/security/stack.sh`.
 
 ## 1. Goal and scope
 
@@ -62,7 +62,7 @@ Assert the expected status matrix from a checked-in `routes.expected.json` (rout
 Targeted checks: a user cannot grant themselves a role / edit a role they hold (`PATCH /auth/roles/:id`, `/auth/users/:id`); cannot delete the last admin; IDOR on `/whoobe-one/pages/:id`, `/data-objects/:id`, snippets, versions across websites/workspaces; mass-assignment on `POST/PATCH` (send `role`, `permissions`, `isAdmin`, `created_by`, `published`).
 
 ### 3.3 Input validation & injection (core-api + gateway) - Auto + Semi
-- **SQL injection** (Postgres): fuzz every string/array/JSON param, with emphasis on the dynamic parts: `POST /public/data-objects/query` (filters, `orderBy`, `limit/offset`), `/public/search`, `/data-objects` list filters, data-class field names/keys (used as JSON keys / identifiers), page binding filters with `{param}` substitution (`substituteBindingFilters`, SEO resolution reading URL params). Payload corpus + error-signature/timing detection; run `sqlmap` against a handful of high-risk endpoints as the Semi step.
+- **SQL injection** (Postgres). Finding from Phase 2: `POST /public/data-objects/query` filters/`orderBy`/`limit` are applied **in JavaScript over the fetched rows** (`queryDataObjectsInternal`), not in SQL, so the hostile-filter payloads give no injection there (covered by `public-surface.test.ts`; the real risks are unbounded fetch/DoS and prototype keys). Remaining SQL surface = ids and the dynamic parts below. Fuzz every string/array/JSON param, with emphasis on the dynamic parts: `POST /public/data-objects/query` (filters, `orderBy`, `limit/offset`), `/public/search`, `/data-objects` list filters, data-class field names/keys (used as JSON keys / identifiers), page binding filters with `{param}` substitution (`substituteBindingFilters`, SEO resolution reading URL params). Payload corpus + error-signature/timing detection; run `sqlmap` against a handful of high-risk endpoints as the Semi step.
 - **JSON/prototype pollution**: `__proto__`, `constructor.prototype` in attributes, view configs, page JSON, SEO templates.
 - **Type confusion / oversize**: arrays vs strings, deep nesting, 25 MB bodies, huge `limit`, negative offsets, NaN; confirm 400 not 500 and no stack traces (`NODE_ENV=production` error shape).
 - **SEO / `{field}` token resolution** (new feature): tokens that reference other classes/fields must not read unpublished or unauthorised records; `{param}` values from the URL must not escape into the query.
