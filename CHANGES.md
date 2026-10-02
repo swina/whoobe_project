@@ -1,3 +1,6 @@
+## [Security tests: timestamped run report] — 2026-10-03
+- Branch: `master`. `pnpm security:api` now also writes `scripts/security/reports/<date>/api-<date>_<time>.txt` (PASS/FAIL, commit, targets, totals, per-file counts, failures) and `.json` (every test with state and duration) through a custom vitest reporter (`scripts/security/lib/summary-reporter.ts`, registered in `vitest.config.ts`). README updated. The reports directory stays gitignored.
+
 ## [Security: manual test checklist] — 2026-10-03
 - Branch: `master`. Added `docs/plans/security/manual-test-checklist.md`: printable checklist of the browser/terminal checks on the throwaway stack (XSS, files and assets, CORS and cookies, accounts and sessions, gateway/SSRF), each with finding id, steps, expected result and result columns; documentation only.
 

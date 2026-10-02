@@ -11,7 +11,9 @@ pnpm security:static                  # docker-based static scans, no stack need
 scripts/security/stack.sh down        # remove stack and its volumes
 ```
 
-Reports go to `scripts/security/reports/<date>/` (gitignored).
+Reports go to `scripts/security/reports/<date>/` (gitignored). Each `pnpm security:api` run also writes
+`api-<YYYY-MM-DD>_<HH-MM-SS>.txt` (readable summary: result, commit, targets, totals, per-file counts, failures)
+and the same data as `.json` (every test with state and duration) - see `lib/summary-reporter.ts`.
 
 ## How it works
 
