@@ -37,7 +37,10 @@ Reports go to `scripts/security/reports/<date>/` (gitignored).
 
 `known('F-0xx', name, fn)` (lib/known.ts) asserts the *secure* behaviour but is expected to fail today
 (`it.fails`): the run stays green while the finding is open, and goes red the day it is fixed, which is the
-cue to turn it into a plain `it`. Open ones: F-016 (lockout DoS), F-019 (`/pwa/subscribe` rate limit).
+cue to turn it into a plain `it`. None is open at the moment.
+
+The throwaway stack runs with `TRUST_PROXY=1` (`.env.sectest`), so the suites use `X-Forwarded-For` to play
+different client addresses (lockout tests).
 
 ## Adding a suite
 

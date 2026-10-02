@@ -98,3 +98,4 @@ export * from './gateway/bind-page-content.js';
 export * from './gateway/sanitize-public-content.js';
 export * from './env.js';
 export * from './http/security.js';
+export * from './http/rate-limit.js';

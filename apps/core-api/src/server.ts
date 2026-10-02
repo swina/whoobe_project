@@ -228,6 +228,7 @@ import {
   securityHeaders,
   sanitizeServerErrors,
   cookieShouldBeSecure,
+  createFixedWindowLimiter,
 } from '@whoobe-cms/core/server';
 // Root package entry, not '/server' - compileDynamicSchema lives in
 // schema/dynamic.ts, exported from index.ts and kept out of the Node-only
@@ -300,6 +301,12 @@ const app = express();
 const port = process.env.PORT || 3003;
 const isProduction = process.env.NODE_ENV === 'production';
 
+function parseTrustProxy(v: string | undefined): boolean | number | string {
+  if (!v || v === 'false') return false;
+  if (v === 'true') return true;
+  return /^\d+$/.test(v) ? Number(v) : v;
+}
+
 // Same reasoning as apps/gateway's own express.json() limit bump: Express's
 // 100kb default is too small once a request/response body can contain
 // base64 image data (e.g. a snippet/page/mail-template with several
@@ -310,6 +317,10 @@ app.use(cookieParser());
 // CORS_ALLOWED_ORIGINS; localhost too outside production). Public routes answer any
 // origin but never with credentials. See packages/core/src/http/security.ts.
 app.disable('x-powered-by');
+// req.ip drives the login/form/subscribe limiters. Behind a reverse proxy set TRUST_PROXY (hops, e.g. 1,
+// or 'loopback' / a CIDR list) so it is the client's address; leave it unset when the API is reachable
+// directly, otherwise any client could pick its own address through X-Forwarded-For.
+app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
 app.use(securityHeaders());
 app.use(corsPolicy({ publicPathPrefixes: ['/public/', '/preview/', '/health', '/pwa/subscribe'] }));
 app.use(sanitizeServerErrors());
@@ -335,27 +346,53 @@ app.get('/health', (_req: Request, res: Response) => {
 // Single-process, dev/small-deployment scale. A multi-instance deployment
 // would need this backed by something shared (e.g. the sessions table
 // itself, or Redis) instead of process memory.
+// Two counters: (e-mail + client address) locks after 5 failures - so a stranger guessing passwords
+// from his own address locks only himself out of that account, not its owner - and the e-mail alone
+// locks after 25 failures from any addresses (distributed guessing). Both lock for 15 minutes.
 const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_MAX_ATTEMPTS_PER_EMAIL = 25;
 const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
+const LOGIN_MAX_TRACKED = 10_000;
 const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
 
-function isLockedOut(key: string): boolean {
-  const entry = loginAttempts.get(key);
-  return !!entry && entry.lockedUntil > Date.now();
+const pairKey = (email: string, ip: string | undefined) => `${email}|${ip ?? 'unknown'}`;
+
+function lockedUntilOf(key: string): number {
+  return loginAttempts.get(key)?.lockedUntil ?? 0;
 }
 
-function recordFailedAttempt(key: string): void {
+function isLockedOut(email: string, ip?: string): boolean {
+  const now = Date.now();
+  return lockedUntilOf(pairKey(email, ip)) > now || lockedUntilOf(email) > now;
+}
+
+function bump(key: string, max: number): void {
+  const now = Date.now();
+  if (loginAttempts.size >= LOGIN_MAX_TRACKED && !loginAttempts.has(key)) {
+    for (const [k, v] of loginAttempts) if (v.lockedUntil <= now && v.count === 0) loginAttempts.delete(k);
+    while (loginAttempts.size >= LOGIN_MAX_TRACKED) {
+      const oldest = loginAttempts.keys().next().value;
+      if (oldest === undefined) break;
+      loginAttempts.delete(oldest);
+    }
+  }
   const entry = loginAttempts.get(key) ?? { count: 0, lockedUntil: 0 };
   entry.count += 1;
-  if (entry.count >= LOGIN_MAX_ATTEMPTS) {
-    entry.lockedUntil = Date.now() + LOGIN_LOCKOUT_MS;
+  if (entry.count >= max) {
+    entry.lockedUntil = now + LOGIN_LOCKOUT_MS;
     entry.count = 0;
   }
   loginAttempts.set(key, entry);
 }
 
-function clearFailedAttempts(key: string): void {
-  loginAttempts.delete(key);
+function recordFailedAttempt(email: string, ip?: string): void {
+  bump(pairKey(email, ip), LOGIN_MAX_ATTEMPTS);
+  bump(email, LOGIN_MAX_ATTEMPTS_PER_EMAIL);
+}
+
+function clearFailedAttempts(email: string, ip?: string): void {
+  loginAttempts.delete(pairKey(email, ip));
+  loginAttempts.delete(email);
 }
 
 // --- Simple in-memory fixed-window rate limit for /public/forms/*/submit ---
@@ -471,7 +508,7 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
   }
 
   const rateLimitKey = email.toLowerCase();
-  if (isLockedOut(rateLimitKey)) {
+  if (isLockedOut(rateLimitKey, req.ip)) {
     res.status(429).json({ error: 'Too many failed attempts. Try again later.' });
     return;
   }
@@ -481,14 +518,14 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
 
     if (!user) {
       logger.warn('Login failed: unknown user');
-      recordFailedAttempt(rateLimitKey);
+      recordFailedAttempt(rateLimitKey, req.ip);
       res.status(401).json({ error: 'Invalid email or password' });
       return;
     }
 
     if (!user.isActive) {
       logger.warn(`Login failed: user "${user.id}" is inactive`);
-      recordFailedAttempt(rateLimitKey);
+      recordFailedAttempt(rateLimitKey, req.ip);
       res.status(401).json({ error: 'Invalid email or password' });
       return;
     }
@@ -496,12 +533,12 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
     const passwordOk = await verifyPassword(user.passwordHash, password);
     if (!passwordOk) {
       logger.warn(`Login failed: wrong password for user "${user.id}"`);
-      recordFailedAttempt(rateLimitKey);
+      recordFailedAttempt(rateLimitKey, req.ip);
       res.status(401).json({ error: 'Invalid email or password' });
       return;
     }
 
-    clearFailedAttempts(rateLimitKey);
+    clearFailedAttempts(rateLimitKey, req.ip);
 
     if (user.totpEnabledAt) {
       const mfaToken = createMfaChallenge(user.id);
@@ -3307,7 +3344,14 @@ app.get('/public/apps/:websiteId', async (req: Request, res: Response): Promise<
 });
 
 // POST /pwa/subscribe — subscribe a device to push notifications
+// Unauthenticated write: bounded per client address (20 / 10 min) so it cannot be used to fill the table.
+const pwaSubscribeLimiter = createFixedWindowLimiter({ max: 20, windowMs: 10 * 60 * 1000 });
+
 app.post('/pwa/subscribe', async (req: Request, res: Response): Promise<void> => {
+  if (pwaSubscribeLimiter.hit(req.ip ?? 'unknown')) {
+    res.status(429).json({ error: 'Too many requests. Try again later.' });
+    return;
+  }
   try {
     const { websiteId, provider, subscription } = req.body;
     if (!websiteId || !subscription?.endpoint) {

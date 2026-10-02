@@ -3,7 +3,6 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Client, clientFor } from '../lib/client'
 import { ROLE_USER_PASSWORD, TARGET } from '../lib/config'
 import { createTempUser, loginAs, type TempUser } from '../lib/tempuser'
-import { known } from '../lib/known'
 
 let admin: Client
 const created: TempUser[] = []
@@ -36,18 +35,34 @@ describe('login responses', () => {
   })
 })
 
-describe('lockout', () => {
-  it('locks an account after repeated failures, also for case variants and spoofed X-Forwarded-For', async () => {
+describe('lockout (per e-mail + client address, plus a higher per-e-mail ceiling)', () => {
+  // The stack runs with TRUST_PROXY=1, so X-Forwarded-For plays the client address.
+  const from = (ip: string) => ({ 'x-forwarded-for': ip })
+  const fail = (email: string, ip: string, n: number) => Promise.all(Array.from({ length: n }, (_, i) => new Client().post('/auth/login', { email, password: `wrong-${i}-password` }, from(ip))))
+
+  it('locks the guessing address out, also for case variants of the e-mail', async () => {
     const u = await temp()
-    for (let i = 0; i < 5; i++) {
-      const r = await new Client().post('/auth/login', { email: u.email, password: `wrong-${i}-password` }, { 'x-forwarded-for': `10.0.0.${i}` })
-      expect(r.status).toBe(401)
-    }
-    // correct password is now refused too, whatever the case or source address
+    const rs = await fail(u.email, '198.51.100.7', 5)
+    expect(rs.every((r) => r.status === 401)).toBe(true)
     for (const email of [u.email, u.email.toUpperCase()]) {
-      const r = await new Client().post('/auth/login', { email, password: u.password }, { 'x-forwarded-for': '203.0.113.9' })
+      const r = await new Client().post('/auth/login', { email, password: u.password }, from('198.51.100.7'))
       expect(r.status, `lockout bypassed with ${email}`).toBe(429)
     }
+  })
+
+  // F-016 (fixed): a stranger guessing from his own address does not lock the account's owner out.
+  it('does not lock the legitimate user out when someone else guesses from another address', async () => {
+    const u = await temp()
+    await fail(u.email, '198.51.100.8', 6)
+    const legit = await new Client().post('/auth/login', { email: u.email, password: u.password }, from('203.0.113.50'))
+    expect(legit.status).toBe(200)
+  })
+
+  it('still locks the account for everyone after many failures from many addresses', async () => {
+    const u = await temp()
+    for (let i = 0; i < 26; i++) await new Client().post('/auth/login', { email: u.email, password: `wrong-${i}-password` }, from(`192.0.2.${i + 1}`))
+    const r = await new Client().post('/auth/login', { email: u.email, password: u.password }, from('203.0.113.77'))
+    expect(r.status).toBe(429)
   })
 
   it('whitespace/unicode variants do not log in as the user', async () => {
@@ -56,14 +71,6 @@ describe('lockout', () => {
       const r = await new Client().post('/auth/login', { email, password: u.password })
       expect(r.status, email).not.toBe(200)
     }
-  })
-
-  // Anyone can lock a known account (keyed on e-mail only): design trade-off, reported as F-016.
-  known('F-016', 'a third party cannot lock out a known account by guessing its password', async () => {
-    const u = await temp()
-    for (let i = 0; i < 6; i++) await new Client().post('/auth/login', { email: u.email, password: `wrong-${i}-password` })
-    const legit = await new Client().post('/auth/login', { email: u.email, password: u.password })
-    expect(legit.status).toBe(200)
   })
 })
 
