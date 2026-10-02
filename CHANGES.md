@@ -1,3 +1,9 @@
+## [Startup order + pnpm overrides in both places] — 2026-10-02
+- Branch: `master`.
+- `docker-compose.yml`: `asset-processor` now waits for `core-api` to be healthy (core-api creates/migrates the schema on boot; before, the asset-processor's first poll logged a `42P01` relation-does-not-exist stack trace) and `gateway` waits for `core-api` and `asset-processor` to be healthy instead of just started. Relies on the `HEALTHCHECK` added to the Dockerfile in F-004.
+- `pnpm-workspace.yaml`: `overrides:` block added, identical to `package.json` `pnpm.overrides` (pnpm 10/11 only read the workspace file and warned that the package.json field is ignored; the pinned pnpm 9.0.0 used by the Dockerfile reads package.json). Keep both lists in sync.
+- Verified: `pnpm install --frozen-lockfile` up to date (lockfile unchanged); `docker build --target build` (pnpm 9.0.0, frozen lockfile) succeeds; throwaway stack recreated from empty volumes: all services healthy and no `42P01` in asset-processor/gateway logs; `pnpm security:api` 12 tests pass. Note: the test stack's data was reset (`stack.sh down` removes volumes).
+
 ## [Security testing: Phase 1 harness] — 2026-10-02
 - Branch: `master`.
 - New workspace package `scripts/security` (`@whoobe-cms/security`, added to `pnpm-workspace.yaml`; vitest + tsx): `lib/config.ts` (target + safety rules: local hosts only, DB name must contain `_sec_test`), `lib/client.ts` (cookie-jar client per role), `lib/roles.ts`, `setup.ts` (vitest globalSetup: waits for `/health`, seeds users `sec-none/read/write/users` idempotently), `extract-routes.ts` (static route table of `core-api/src/server.ts`: 196 routes = 160 permission, 8 auth, 28 public), `routes.expected.json` (source of truth; REVIEW notes on `GET /whoobe-one/settings/*` and `POST /pwa/subscribe`), tests `api/harness.test.ts` and `api/route-drift.test.ts`, `static/run-all.sh`, `README.md`.
