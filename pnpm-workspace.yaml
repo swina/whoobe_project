@@ -18,3 +18,16 @@ packages:
   # so the override silently never applied, and the whole repo's install
   # failed with ERR_PNPM_FETCH_404 the moment any site existed under
   # sites/ (found live, not hypothetical).
+
+# Dependency overrides (security fixes for transitive deps, see
+# docs/plans/security/findings.md F-003). Kept in BOTH places on purpose:
+# pnpm 9 (the pinned packageManager, used by the Dockerfile) reads
+# package.json "pnpm.overrides"; pnpm 10+/11 only read this file. Keep the
+# two lists identical.
+overrides:
+  postcss: ^8.5.23
+  nanoid: ^3.3.18
+  underscore: ^1.13.8
+  qs: ^6.16.0
+  fast-uri: ^3.1.8
+  markdown-it: ^14.3.1

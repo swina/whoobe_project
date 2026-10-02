@@ -99,6 +99,10 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      # core-api creates/migrates the schema on boot; starting earlier made the
+      # asset-processor's first poll fail with 42P01 (relation does not exist).
+      core-api:
+        condition: service_healthy
     restart: unless-stopped
 
   admin-dashboard:
@@ -144,9 +148,9 @@ services:
       GATEWAY_RATE_LIMIT_BACKEND: memory
     depends_on:
       core-api:
-        condition: service_started
+        condition: service_healthy
       asset-processor:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
