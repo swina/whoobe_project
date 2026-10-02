@@ -2,6 +2,7 @@ packages:
   - 'packages/*'
   - 'packages/sdk/*'
   - 'apps/*'
+  - 'scripts/security'
   # sites/* (whoobe-publish output, gitignored) is deliberately NOT a
   # workspace member: it used to need to be, back when a generated site
   # depended on packages/sdk/* via workspace:*/file: references into this

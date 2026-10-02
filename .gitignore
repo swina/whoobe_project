@@ -17,3 +17,4 @@ AGENTS.md
 sites   
 .slingshot/*
 scripts/security/reports/
+scripts/security/routes.generated.json

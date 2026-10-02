@@ -1,0 +1,16 @@
+{
+  "name": "@whoobe-cms/security",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Security test harness (see docs/plans/security/security-testing-plan.md)",
+  "type": "module",
+  "scripts": {
+    "routes:extract": "tsx extract-routes.ts",
+    "test:api": "vitest run --config vitest.config.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}
