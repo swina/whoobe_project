@@ -8,5 +8,7 @@ export default defineConfig({
     hookTimeout: 120_000,
     // Tests share one stack and one DB, and lockout/rate-limit tests are order-sensitive.
     fileParallelism: false,
+    // console output + a timestamped report in reports/<date>/ (see lib/summary-reporter.ts)
+    reporters: ['default', './lib/summary-reporter.ts'],
   },
 })
