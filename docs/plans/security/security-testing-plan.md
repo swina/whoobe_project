@@ -1,6 +1,6 @@
 # Security testing plan
 
-Status: proposal - 2026-10-02. Nothing in this plan has been executed yet.
+Status: in progress - 2026-10-02. Phase 0 (static baseline) done, see `findings.md`; Phase 1 (harness) done: `scripts/security/` (README there), `pnpm security:api` runs against the throwaway stack from `scripts/security/stack.sh`.
 
 ## 1. Goal and scope
 

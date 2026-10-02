@@ -1,3 +1,9 @@
+## [Security testing: Phase 1 harness] — 2026-10-02
+- Branch: `master`.
+- New workspace package `scripts/security` (`@whoobe-cms/security`, added to `pnpm-workspace.yaml`; vitest + tsx): `lib/config.ts` (target + safety rules: local hosts only, DB name must contain `_sec_test`), `lib/client.ts` (cookie-jar client per role), `lib/roles.ts`, `setup.ts` (vitest globalSetup: waits for `/health`, seeds users `sec-none/read/write/users` idempotently), `extract-routes.ts` (static route table of `core-api/src/server.ts`: 196 routes = 160 permission, 8 auth, 28 public), `routes.expected.json` (source of truth; REVIEW notes on `GET /whoobe-one/settings/*` and `POST /pwa/subscribe`), tests `api/harness.test.ts` and `api/route-drift.test.ts`, `static/run-all.sh`, `README.md`.
+- Root scripts: `security:static`, `security:api`, `security:all`. `.gitignore`: `scripts/security/routes.generated.json`.
+- Verified against the throwaway stack: 12 tests pass; the suite refuses a non-local target and a non-`_sec_test` DB. The 28 public routes are only listed, not yet probed (Phase 2, 3.2/3.4).
+
 ## [Single-container/stack friendly editor URL + prefix-stripping nginx] — 2026-10-02
 - Branch: `master`.
 - Problem found while testing a stack on shifted ports: on `localhost` the admin always opened the editor on port 3006 (the dev stack's), and the `whoobe-one-spike` image, built with base `/whoobe-one/`, returned `index.html` for its own `/whoobe-one/assets/*` when served directly (browser: "Expected a JavaScript-or-Wasm module script ... text/html").
