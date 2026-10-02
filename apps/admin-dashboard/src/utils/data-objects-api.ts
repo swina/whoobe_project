@@ -147,6 +147,12 @@ export async function revokePreviewLink(baseUrl: string, token: string): Promise
   await parseJsonOrThrow(res)
 }
 
+/** Permanently deletes a preview link; the server only allows it once the link is revoked or expired. */
+export async function deletePreviewLink(baseUrl: string, token: string): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects/preview-links/${token}?permanent=true`, { method: 'DELETE', credentials: 'include' })
+  await parseJsonOrThrow(res)
+}
+
 // Workflow transitions - docs/plans/backend/object-publish-workflow-
 // plan.md §2.4/§4/§7 Phase 3-4.
 export async function transitionDataObject(baseUrl: string, id: string, transitionName: string): Promise<DataObject> {

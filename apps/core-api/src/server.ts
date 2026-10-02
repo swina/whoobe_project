@@ -106,6 +106,7 @@ import {
   getPreviewToken,
   listPreviewTokensForObject,
   revokePreviewToken,
+  deletePreviewToken,
   incrementPreviewTokenViewCount,
   isPreviewTokenValid,
   getWorkflowDefinitionByClassId,
@@ -5496,6 +5497,23 @@ app.get('/preview/objects/:token', async (req: Request, res: Response): Promise<
       return;
     }
     const object = await getDataObject(previewToken.objectId);
+      // ?permanent=true removes the row for good - only for a link that is
+      // no longer usable, i.e. already revoked or expired (revoking stays the
+      // default, non-destructive action, and keeps the view count as a record).
+      if (req.query.permanent === 'true') {
+        const existing = await getPreviewToken(req.params.token);
+        if (!existing) {
+          res.status(404).json({ error: 'Preview link not found' });
+          return;
+        }
+        if (isPreviewTokenValid(existing)) {
+          res.status(409).json({ error: 'Revoke the preview link before deleting it' });
+          return;
+        }
+        await deletePreviewToken(req.params.token);
+        res.json({ success: true });
+        return;
+      }
     if (!object) {
       res.status(404).json({ error: 'Object not found' });
       return;

@@ -2,17 +2,27 @@
   <div v-if="dataClass" class="h-full flex flex-col">
     <div class="shrink-0 px-6 pt-6 pb-3 space-y-3">
       <div class="flex items-center gap-2">
-        <h3 class="text-lg font-bold text-slate-100 light:text-slate-900">{{ key || `New ${dataClass.label}` }}</h3>
-        <span class="px-2 py-0.5 text-xs bg-slate-800 light:bg-slate-100 rounded font-mono text-indigo-300">{{ dataClass.label }}</span>
+        <h3 class="min-w-0 truncate text-lg font-bold text-slate-100 light:text-slate-900" :title="displayTitle">{{ displayTitle }}</h3>
+        <span class="shrink-0 px-2 py-0.5 text-xs bg-slate-800 light:bg-slate-100 rounded font-mono text-indigo-300">{{ dataClass.label }}</span>
         <span
           v-if="currentRow"
           :class="[
-            'px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
+            'shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
             currentRow.published ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
           ]"
         >
           {{ currentRow.published ? 'published' : (currentRow.workflowState || 'draft') }}
         </span>
+        <!-- Key: generated automatically (a UUID) for a new object, kept in
+             the header after the status badge; still editable. -->
+        <label class="shrink-0 flex items-center gap-1 text-[10px] font-semibold text-slate-500 uppercase" title="Object key - generated automatically, editable">
+          Key<span class="text-rose-400">*</span>
+          <input
+            v-model="key"
+            type="text"
+            class="w-72 max-w-[40vw] px-2 py-0.5 text-[11px] font-mono normal-case bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+          />
+        </label>
         <div class="flex-1"></div>
         <button
           @click="save(false)"
@@ -27,6 +37,17 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
         >
           {{ isSaving === 'published' ? 'Publishing…' : 'Save and Publish' }}
+        </button>
+      </div>
+
+      <!-- Preview links (object-publish-workflow-plan.md §2.3/§5) - the
+           list lives in a modal; this row, under the title, opens it. -->
+      <div v-if="currentRow" class="flex items-center gap-3">
+        <button type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300" @click="previewLinksOpen = true">
+          Preview Links ({{ activePreviewLinkCount }})
+        </button>
+        <button @click="generateLink" :disabled="isGeneratingLink" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 disabled:opacity-50">
+          {{ isGeneratingLink ? 'Generating…' : '+ Generate Preview Link' }}
         </button>
       </div>
 
@@ -61,16 +82,6 @@
     </div>
 
     <div class="flex-1 min-h-0 overflow-y-auto px-6 pb-6 space-y-4">
-      <div>
-        <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Key<span class="text-rose-400"> *</span></label>
-        <input
-          v-model="key"
-          type="text"
-          placeholder="e.g. san-benedetto"
-          class="w-full max-w-md px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
-        />
-      </div>
-
       <DataObjectForm :fields="dataClass.fields" :view-config="dataClass.viewConfig" v-model="attributes" />
 
       <!-- Workflow (object-publish-workflow-plan.md §2.4/§5) -->
@@ -93,30 +104,21 @@
           </button>
         </div>
       </div>
-
-      <!-- Preview links (object-publish-workflow-plan.md §2.3/§5) -->
-      <div v-if="currentRow" class="pt-2 border-t border-slate-800 light:border-slate-200 space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-semibold text-slate-400 light:text-slate-600">Preview Links</span>
-          <button @click="generateLink" :disabled="isGeneratingLink" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 disabled:opacity-50">
-            {{ isGeneratingLink ? 'Generating…' : '+ Generate Preview Link' }}
-          </button>
-        </div>
-        <div v-if="previewLinks.length === 0" class="text-xs text-slate-600 light:text-slate-400 italic">No preview links yet.</div>
-        <div v-for="link in previewLinks" :key="link.token" class="flex items-center justify-between gap-2 rounded-lg bg-slate-950/40 light:bg-white/40 border border-slate-800 light:border-slate-200 px-3 py-2">
-          <div class="min-w-0">
-            <div class="text-xs font-mono text-slate-300 light:text-slate-700 truncate">{{ previewUrl(link.token) }}</div>
-            <div class="text-[10px] text-slate-500">
-              {{ link.revokedAt ? 'Revoked' : `Expires ${new Date(link.expiresAt).toLocaleString()}` }} · {{ link.viewCount }} view(s)
-            </div>
-          </div>
-          <button v-if="!link.revokedAt" @click="revokeLink(link.token)" class="text-[10px] font-semibold text-rose-400 hover:text-rose-300 shrink-0">Revoke</button>
-        </div>
-      </div>
     </div>
   </div>
 
   <div v-else class="p-6 text-center text-xs text-slate-500">Loading class…</div>
+
+  <PreviewLinksModal
+    v-if="previewLinksOpen && currentRow"
+    :links="previewLinks"
+    :generating="isGeneratingLink"
+    :url-for="previewUrl"
+    @close="previewLinksOpen = false"
+    @generate="generateLink"
+    @revoke="revokeLink"
+    @delete="deleteLink"
+  />
 </template>
 
 <script setup lang="ts">
@@ -143,12 +145,15 @@ import {
   createPreviewLink,
   fetchPreviewLinks,
   revokePreviewLink,
+  deletePreviewLink,
   transitionDataObject,
   type DataObject,
   type PreviewToken,
 } from '../../utils/data-objects-api'
 import { fetchWorkflowDefinition, type WorkflowDefinition } from '../../utils/data-classes-api'
 import DataObjectForm from './DataObjectForm.vue'
+import PreviewLinksModal from './PreviewLinksModal.vue'
+import { randomUUID } from '../../utils/random-id'
 
 const props = defineProps<{
   translationGroupId: string
@@ -206,12 +211,26 @@ const currentRow = computed(() => translations.value.find((t) => t.locale === ac
 
 const key = ref('')
 const attributes = ref<Record<string, unknown>>({})
+
+// Header title: the key is now an auto-generated UUID, so show the object's
+// own title/name when it has one (any such text field, by conventional name),
+// falling back to the key for a saved object and "New <class>" before the
+// first save.
+const displayTitle = computed(() => {
+  for (const name of ['title', 'name', 'label']) {
+    const v = attributes.value[name]
+    if (typeof v === 'string' && v.trim()) return v.trim()
+  }
+  return currentRow.value ? key.value : `New ${dataClass.value?.label ?? ''}`.trim()
+})
 const isSaving = ref<'draft' | 'published' | null>(null)
 
 watch(
   currentRow,
   (row) => {
-    key.value = row?.key ?? translations.value[0]?.key ?? ''
+    // A brand-new object gets a generated key (UUID); a new locale of an
+    // existing object keeps the group's key.
+    key.value = row?.key ?? translations.value[0]?.key ?? randomUUID()
     if (row) {
       attributes.value = { ...row.attributes }
     } else {
@@ -234,9 +253,12 @@ watch(
   { immediate: true }
 )
 
+// The tab shows the object's title (same text as the header), not its UUID
+// key - kept in sync as the title is edited; the tab strip truncates it.
 function refreshTabLabel() {
-  if (key.value) tabsStore.setTabLabel(objectTabId(props.translationGroupId), key.value)
+  if (displayTitle.value) tabsStore.setTabLabel(objectTabId(props.translationGroupId), displayTitle.value)
 }
+watch(displayTitle, refreshTabLabel)
 
 async function save(publish: boolean) {
   if (!dataClass.value) return
@@ -281,6 +303,12 @@ async function save(publish: boolean) {
 // Preview links
 const previewLinks = ref<PreviewToken[]>([])
 const isGeneratingLink = ref(false)
+const previewLinksOpen = ref(false)
+
+// Links that still work (neither revoked nor expired) - the count on the button.
+const activePreviewLinkCount = computed(
+  () => previewLinks.value.filter((l) => !l.revokedAt && new Date(l.expiresAt).getTime() > Date.now()).length
+)
 
 function previewUrl(token: string): string {
   return `${authStore.config.coreApiUrl}/preview/objects/${token}`
@@ -314,6 +342,16 @@ async function revokeLink(token: string) {
     await loadPreviewLinks()
   } catch (e: any) {
     toastStore.show(e?.message || 'Failed to revoke preview link')
+  }
+}
+
+async function deleteLink(token: string) {
+  if (!confirm('Delete this revoked preview link permanently?')) return
+  try {
+    await deletePreviewLink(authStore.config.coreApiUrl, token)
+    await loadPreviewLinks()
+  } catch (e: any) {
+    toastStore.show(e?.message || 'Failed to delete preview link')
   }
 }
 
