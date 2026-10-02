@@ -1,3 +1,11 @@
+## [Security testing: Phase 2 access control, sessions, public surface, CORS/headers] — 2026-10-02
+- Branch: `master`.
+- `scripts/security`: `lib/permissions.ts`, `lib/routes.ts`, `lib/tempuser.ts`, `lib/known.ts` and four suites: `authz-matrix` (every route x 5 identities, ~830 checks), `auth` (3.1), `public-surface` (3.4), `cors-csrf-headers` (3.5/3.14). 895 tests pass on the throwaway stack; open findings are encoded as expected-to-fail tests (`known(...)`), see README.
+- Findings F-011..F-020 added to `docs/plans/security/findings.md`: credentialed CORS reflection, non-`Secure` session cookie, sessions surviving an admin password reset, no security headers, reset token/URL and hash prefix in logs, SQL text in 5xx bodies (30 GET routes + a public one), lockout DoS, hard-coded reset-link host, `/pwa/subscribe` without rate limit. The RBAC matrix itself found no authorization gap.
+- **Fixed (F-020)**: `.dockerignore` now excludes `.env.*`, nested `.env*`, `logs`, `.claude`, `.github`, `.publish-build`, `scripts/security/reports` (images contained `.env.aura`, `.env.test` and the host logs); `Dockerfile` creates `/app/logs` owned by the unprivileged user in the three Node stages (it used to come from the copied host `logs/`). Rebuilt the throwaway stack: services healthy, no `.env*`/logs from the host inside the image.
+- Plan: section 3.3 notes that the public query filters run in JS, not SQL.
+- No application code was changed for F-011..F-019 (tests + register only).
+
 ## [Fix: parentTargetOrigin prefers the editor store's parentOrigin] — 2026-10-02
 - Branch: `master`.
 - Follow-up to the `postMessage` target-origin change: after it, a thumbnail captured from the embedded editor only showed in the admin's Pages list after a manual reload (the `thumbnail-saved` message was not accepted). `parentTargetOrigin()` now first uses `useEditorStore().parentOrigin` (set by `Editor.vue` from `?parentOrigin=` and kept across router navigation) and only then the load-time value (query, referrer, own origin). Retested by the owner on the throwaway stack: the Pages list now refreshes right after capturing a thumbnail.

@@ -19,3 +19,12 @@ deploy.sh
 dev-cms.sh
 ecosystem.config.cjs
 publish-site.sh
+# secrets and local data must never enter the build context (every image layer would carry them)
+.env.*
+**/.env
+**/.env.*
+logs
+.claude
+.github
+.publish-build
+scripts/security/reports

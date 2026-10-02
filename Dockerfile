@@ -29,6 +29,10 @@ RUN pnpm build
 # ─── Core API ───────────────────────────────────────────────────────────────
 FROM base AS core-api
 COPY --from=build --chown=node:node /app /app
+# /app itself stays root-owned (WORKDIR); the logger writes to ./logs, which used to arrive via the
+# build context (host logs!) and must now be created for the unprivileged user.
+# hadolint ignore=DL3059
+RUN mkdir -p /app/logs && chown node:node /app/logs
 ENV NODE_ENV=production
 USER 1000:1000
 EXPOSE 3003
@@ -39,6 +43,10 @@ CMD ["node", "apps/core-api/dist/server.js"]
 # ─── Asset Processor ────────────────────────────────────────────────────────
 FROM base AS asset-processor
 COPY --from=build --chown=node:node /app /app
+# /app itself stays root-owned (WORKDIR); the logger writes to ./logs, which used to arrive via the
+# build context (host logs!) and must now be created for the unprivileged user.
+# hadolint ignore=DL3059
+RUN mkdir -p /app/logs && chown node:node /app/logs
 ENV NODE_ENV=production
 USER 1000:1000
 EXPOSE 3002
@@ -61,6 +69,10 @@ EXPOSE 8080
 # ─── API Gateway ────────────────────────────────────────────────────────────
 FROM base AS gateway
 COPY --from=build --chown=node:node /app /app
+# /app itself stays root-owned (WORKDIR); the logger writes to ./logs, which used to arrive via the
+# build context (host logs!) and must now be created for the unprivileged user.
+# hadolint ignore=DL3059
+RUN mkdir -p /app/logs && chown node:node /app/logs
 ENV NODE_ENV=production
 USER 1000:1000
 EXPOSE 3001
