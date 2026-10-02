@@ -1,3 +1,7 @@
+## [Fix: parentTargetOrigin prefers the editor store's parentOrigin] — 2026-10-02
+- Branch: `master`.
+- Follow-up to the `postMessage` target-origin change: after it, a thumbnail captured from the embedded editor only showed in the admin's Pages list after a manual reload (the `thumbnail-saved` message was not accepted). `parentTargetOrigin()` now first uses `useEditorStore().parentOrigin` (set by `Editor.vue` from `?parentOrigin=` and kept across router navigation) and only then the load-time value (query, referrer, own origin). Not confirmed as the root cause - could not be reproduced without a browser; needs a retest on the throwaway stack.
+
 ## [Security: F-005..F-008, F-010 - shell quoting, postMessage origins, search XSS] — 2026-10-02
 - Branch: `master`.
 - **Shell** (`publish-site.sh`, `publish-mobile.sh`, `deploy.sh`, `dev-cms.sh`): optional CLI flags built as arrays instead of unquoted strings (a domain/app name/API key with spaces or glob characters is no longer split or expanded), `deploy.sh` rsync flags/dry-run as arrays, heredoc SC2087 documented, unused `ROOT_DIR` removed in `dev-cms.sh`. `scripts/security/static/*.sh` cleaned. shellcheck on tracked scripts: 0 findings. `Dockerfile`: `# hadolint ignore=DL3059` (hadolint exits 0).
