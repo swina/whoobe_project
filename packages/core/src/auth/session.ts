@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { getDb } from '../db/client.js';
 import { sessions, users, userRoles, rolePermissions, permissions as permissionsTable } from '../db/auth-schema.js';
 
@@ -88,4 +88,10 @@ export async function validateSessionToken(token: string | undefined | null): Pr
 export async function revokeSession(token: string): Promise<void> {
   const db = getDb();
   await db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, token));
+}
+
+/** Ends every active session of a user (password change/reset, compromise response). */
+export async function revokeUserSessions(userId: string): Promise<void> {
+  const db = getDb();
+  await db.update(sessions).set({ revokedAt: new Date() }).where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
 }

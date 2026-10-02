@@ -37,8 +37,7 @@ Reports go to `scripts/security/reports/<date>/` (gitignored).
 
 `known('F-0xx', name, fn)` (lib/known.ts) asserts the *secure* behaviour but is expected to fail today
 (`it.fails`): the run stays green while the finding is open, and goes red the day it is fixed, which is the
-cue to turn it into a plain `it`. Open ones: F-011 (CORS), F-012 (cookie Secure), F-013 (reset keeps sessions),
-F-014 (headers), F-016 (lockout DoS), F-018 (DB text in 5xx), F-019 (pwa/subscribe rate limit).
+cue to turn it into a plain `it`. Open ones: F-016 (lockout DoS), F-019 (`/pwa/subscribe` rate limit).
 
 ## Adding a suite
 

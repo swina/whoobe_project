@@ -105,12 +105,11 @@ describe('public query endpoint robustness', () => {
     expect(r.text).not.toMatch(/at .*\(.*:\d+:\d+\)|node_modules|SyntaxError/)
   })
 
-  // F-018: handlers return `error.message` on 500; for a malformed uuid that is the full SQL text + params.
-  known('F-018', 'invalid ids give 4xx, not 5xx with database text', async () => {
+  // F-018 (fixed): 5xx bodies are generic; malformed ids no longer leak SQL text.
+  it('invalid ids give 4xx, not 5xx with database text', async () => {
     for (const id of ['not-a-uuid', "1' OR '1'='1", '%00', 'x'.repeat(5000)]) {
       const r = await anon.get(`/public/data-objects/${encodeURIComponent(id)}`)
-      expect(r.status, id.slice(0, 20)).toBeLessThan(500)
-      expect(r.text).not.toMatch(/invalid input syntax|pg_|relation "|stack/i)
+      expect(r.text, id.slice(0, 20)).not.toMatch(/Failed query|params:|invalid input syntax|pg_|relation "|stack/i)
     }
   })
 })

@@ -95,13 +95,26 @@ describe('session lifecycle', () => {
     expect((await me(c)).status).toBe(401)
   })
 
-  // F-013: sessions survive an admin-initiated password reset (stolen sessions stay valid).
-  known('F-013', 'an admin password reset ends the user\'s existing sessions', async () => {
+  // F-013 (fixed): setting a new password (reset token flow) revokes the user's other sessions.
+  it('setting a new password through a reset token ends the user\'s existing sessions', async () => {
     const u = await temp()
     const c = await loginAs(u)
-    const r = await admin.post(`/auth/users/${u.id}/reset-password`, { password: `${ROLE_USER_PASSWORD}-new` })
+    const r = await admin.post(`/auth/users/${u.id}/reset-password`, {})
     expect(r.status, r.text).toBe(200)
+    const done = await new Client().post('/auth/reset-password', { token: r.json.token, password: `${ROLE_USER_PASSWORD}-new` })
+    expect(done.status, done.text).toBe(200)
     expect((await me(c)).status).toBe(401)
+    // the new password works, the old one does not
+    expect((await new Client().post('/auth/login', { email: u.email, password: `${ROLE_USER_PASSWORD}-new` })).status).toBe(200)
+  })
+
+  it('a reset token is single use', async () => {
+    const u = await temp()
+    const r = await admin.post(`/auth/users/${u.id}/reset-password`, {})
+    const first = await new Client().post('/auth/reset-password', { token: r.json.token, password: `${ROLE_USER_PASSWORD}-one` })
+    const second = await new Client().post('/auth/reset-password', { token: r.json.token, password: `${ROLE_USER_PASSWORD}-two` })
+    expect(first.status).toBe(200)
+    expect(second.status).toBe(400)
   })
 
   it('removing a role permission takes effect on existing sessions immediately', async () => {
@@ -136,8 +149,8 @@ describe('session cookie flags', () => {
     expect(c).toMatch(/;\s*Expires=/i)
   })
 
-  // F-012: `secure: false` is hard-coded in setSessionCookie(); behind TLS (production) it must be Secure.
-  known('F-012', 'carries the Secure attribute when the deployment is HTTPS (X-Forwarded-Proto: https)', async () => {
+  // F-012 (fixed): Secure behind TLS (X-Forwarded-Proto: https) or COOKIE_SECURE=true.
+  it('carries the Secure attribute when the deployment is HTTPS (X-Forwarded-Proto: https)', async () => {
     const u = await temp()
     const res = await new Client().post('/auth/login', { email: u.email, password: u.password }, { 'x-forwarded-proto': 'https' })
     const c = (res.headers as any).getSetCookie().find((x: string) => x.startsWith('wcms_session='))

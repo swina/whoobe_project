@@ -1,7 +1,6 @@
 import express, { Request, Response } from 'express';
 import multer from 'multer';
 import cookieParser from 'cookie-parser';
-import cors from 'cors';
 import { Readable } from 'node:stream';
 import { S3Client, GetObjectCommand, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
@@ -32,6 +31,9 @@ import {
   updateAssetCdnMirror,
   loadRootEnv,
   isLoggingEnabled,
+  corsPolicy,
+  securityHeaders,
+  sanitizeServerErrors,
 } from '@whoobe-cms/core/server';
 import { createLogger, attachLoggingToggle } from '@whoobe-cms/logger';
 
@@ -194,12 +196,12 @@ const upload = multer({
 
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
-// origin: true reflects the request's own Origin header - required for
-// credentialed (cookie-carrying) requests, which "*" cannot support once
-// these routes are behind a session (see requireAuth/requirePermission
-// below). Lock this to an explicit allowlist before this is exposed beyond
-// a trusted network.
-app.use(cors({ origin: true, credentials: true, methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'] }));
+// Credentialed CORS only for an allowlist (WHOOBE_HOSTNAME, CORS_ALLOWED_HOSTS, CORS_ALLOWED_ORIGINS;
+// localhost too outside production). Asset delivery routes answer any origin without credentials.
+app.disable('x-powered-by');
+app.use(securityHeaders());
+app.use(corsPolicy({ publicPathPrefixes: ['/dam-asset/', '/health', '/public/'], methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'] }));
+app.use(sanitizeServerErrors());
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {

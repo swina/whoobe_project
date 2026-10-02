@@ -1,3 +1,16 @@
+## [Security fixes: CORS allowlist, Secure cookie, headers, generic 5xx, log hygiene, session revocation] — 2026-10-02
+- Branch: `master`. Findings F-011..F-015, F-017, F-018 (see `docs/plans/security/findings.md`).
+- New `packages/core/src/http/security.ts` (exported from `@whoobe-cms/core/server`, 14 tests): `corsPolicy()`, `securityHeaders()`, `sanitizeServerErrors()`, `cookieShouldBeSecure()`.
+- **CORS** (core-api, asset-processor, gateway): the `cors({ origin: true, credentials: true })` reflection is gone (and the `cors` dependency removed from the three apps). Credentials only for `WHOOBE_HOSTNAME`, `CORS_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS` (+ localhost outside production); public prefixes (`/public/`, `/preview/`, `/health`, `/pwa/subscribe`; gateway site routes; asset delivery) answer any origin without credentials. **Deployment note**: a deployment whose admin/editor/site origins are not on the `WHOOBE_HOSTNAME` host must list them in `CORS_ALLOWED_HOSTS` / `CORS_ALLOWED_ORIGINS`; documented in `.env.example`.
+- **Headers**: nosniff, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: no-referrer`, COOP; `X-Powered-By` removed (all three services).
+- **Session cookie**: `Secure` when TLS, `X-Forwarded-Proto: https` or `COOKIE_SECURE=true`.
+- **Errors**: core-api and asset-processor 5xx bodies are generic in production (DB/stack text hidden everywhere); core-api answers 404 for non-UUID `:id`/`:versionId`/`:websiteId`/`:translationGroupId` before querying (it used to return a 500 with the SQL). The gateway does not sanitise (proxied upstream errors are intentional).
+- **Logs**: password-reset token/URL no longer logged in production (dev console link only), failed-login lines no longer contain e-mail or hash prefix, admin reset no longer logs the URL.
+- **Sessions**: `updatePassword()` revokes all sessions of the user (`revokeUserSessions()` in `packages/core/src/auth/session.ts`).
+- **Reset link**: `ADMIN_PUBLIC_URL` (fallback unchanged).
+- Tests: the matching `known(...)` tests became normal tests; added allowed/public/look-alike origin tests, reset single-use and session-after-reset tests, gateway/asset-processor CORS tests. `pnpm security:api`: 901 pass on the rebuilt stack; `core` vitest 94, `tsc` on core/core-api/asset-processor/gateway. Still open: F-016, F-019, F-021, SPA CSP.
+- Not exercised in a browser: login/uploads/editor from the admin with the new CORS rules (curl with `Origin: http://localhost:3100` behaves as intended).
+
 ## [Security testing: Phase 2 access control, sessions, public surface, CORS/headers] — 2026-10-02
 - Branch: `master`.
 - `scripts/security`: `lib/permissions.ts`, `lib/routes.ts`, `lib/tempuser.ts`, `lib/known.ts` and four suites: `authz-matrix` (every route x 5 identities, ~830 checks), `auth` (3.1), `public-surface` (3.4), `cors-csrf-headers` (3.5/3.14). 895 tests pass on the throwaway stack; open findings are encoded as expected-to-fail tests (`known(...)`), see README.

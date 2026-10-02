@@ -1,6 +1,6 @@
 import express, { type Express } from 'express';
 import cookieParser from 'cookie-parser';
-import cors from 'cors';
+import { corsPolicy, securityHeaders } from '@whoobe-cms/core/server';
 import { createRouter } from './router.js';
 import { GATEWAY_PORT } from './config.js';
 import { logger } from './log-error.js';
@@ -17,7 +17,14 @@ const port = GATEWAY_PORT;
 // while still bounding worst-case memory use per request.
 app.use(express.json({ limit: '25mb' }));
 app.use(cookieParser());
-app.use(cors({ origin: true, credentials: true }));
+// Credentialed CORS only for an allowlist (WHOOBE_HOSTNAME, CORS_ALLOWED_HOSTS, CORS_ALLOWED_ORIGINS;
+// localhost too outside production). The site-facing routes (key-authenticated, no cookie) answer
+// any origin without credentials. 5xx bodies are NOT sanitised here: proxied upstream errors are the point.
+app.disable('x-powered-by');
+app.use(securityHeaders());
+app.use(corsPolicy({
+  publicPathPrefixes: ['/health', '/public/', '/api/remote', '/api/v1/gateway/resolve', '/api/v1/gateway/submit'],
+}));
 
 app.use('/', createRouter());
 
