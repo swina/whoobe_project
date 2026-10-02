@@ -2,7 +2,7 @@
 - Branch: `master`.
 - `packages/core`: `drizzle-orm` ^0.45.2, `nodemailer` ^10.0.6, `sharp` ^0.35.4; `apps/asset-processor`: `exiftool-vendored` ^35.19.0, `sharp` ^0.35.4; root `package.json` `pnpm.overrides` for `postcss`, `nanoid`, `underscore`, `qs`, `fast-uri`, `markdown-it` (patched, same major). Lockfile updated.
 - `pnpm audit --prod`: 11 high + 12 moderate -> 2 high (`xlsx`, export-only use, no npm fix) + 1 moderate (`@tiptap/core`, major upgrade deferred). See findings F-003.
-- Verified: `packages/core` vitest (78), `core`/`core-api`/`asset-processor` `tsc --noEmit`, `pnpm build` (20 tasks). Not verified: runtime behaviour against a database after the drizzle-orm 0.36 -> 0.45 bump, nodemailer 10 sending, exiftool 35 reads - needs a smoke test.
+- Verified: `packages/core` vitest (78), `core`/`core-api`/`asset-processor` `tsc --noEmit`, `pnpm build` (20 tasks). Smoke test (2026-10-02): built `core-api` started on port 13003 against `whoobe_db` - `/health`, `/public/websites`, `/public/data-objects`, `POST /public/data-objects/query`, `/public/search` and the `/auth/me` 401 all behave correctly (drizzle-orm 0.45 reads); `sharp` resize/convert, `exiftool-vendored` 35 read and `nodemailer` 10 (json transport) work in isolation. Not exercised: drizzle writes/migrations, real SMTP, the admin UI.
 
 ## [deploy.sh: exclude .claude from rsync] — 2026-10-02
 - Branch: `master`.
