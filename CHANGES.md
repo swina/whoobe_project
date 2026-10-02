@@ -1,3 +1,8 @@
+## [Security tests: static scans judged against a baseline, timestamped summary] — 2026-10-03
+- Branch: `master`. `pnpm security:static` used to exit 1 forever because of accepted findings (the two `xlsx` advisories, the 9 gitleaks hits - old `.env.aura` secrets in history plus false positives - and triaged semgrep results), so a real new finding could not be told apart.
+- New `scripts/security/static/baseline.json` (accepted findings with reason and review date) and `summarize.py`: reads the raw reports, fails only on findings not in the baseline (new high/critical advisory, new secret, new semgrep ERROR, shellcheck/hadolint warnings, trivy HIGH/CRITICAL on tracked files) or on expired baseline entries, prints a per-scan table and writes `static-<date>_<time>.txt/.json` in `reports/<date>/`. `run-all.sh` now ends with it; trivy skips `node_modules`, `.claude`, `sites`.
+- Verified: current tree PASS (exit 0); with one advisory removed from a copy of the baseline the summary reports it as NEW and exits 1.
+
 ## [Security tests: timestamped run report] — 2026-10-03
 - Branch: `master`. `pnpm security:api` now also writes `scripts/security/reports/<date>/api-<date>_<time>.txt` (PASS/FAIL, commit, targets, totals, per-file counts, failures) and `.json` (every test with state and duration) through a custom vitest reporter (`scripts/security/lib/summary-reporter.ts`, registered in `vitest.config.ts`). README updated. The reports directory stays gitignored.
 
