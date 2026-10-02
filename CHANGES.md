@@ -1,3 +1,8 @@
+## [Security test suite reviewer document (PR #8) - review fixes; security:all exit code] — 2026-10-03
+- Branch: `claude/project-thread-vx4isf` (PR #8, adds `docs/security/security-test-suite.md`; merged `master` into it first).
+- Document corrections after review: reflects F-029 as fixed (field allow-list, legacy-binding caveat and `GATEWAY_REQUIRE_FIELD_ALLOWLIST`, no longer "open"); test count "about 960"; the "every vulnerability is encoded as a test" claim narrowed to API-reachable findings, with a table of the fixed findings verified by other means (F-010, F-015, F-017, F-020, F-021, F-031); `route-drift` needs the stack because of the shared `globalSetup`; trivy invocation lists its `--skip-dirs`.
+- `package.json`: `security:all` now runs the static scans and the API suite and exits non-zero if either failed (it used `;`, so a static failure was hidden). Verified: `pnpm security:all` ran both (static PASS, 960 tests) and exited 0; exit logic checked for the failing combinations.
+
 ## [Security F-029: gateway form submissions forward only the form's own fields] — 2026-10-03
 - Branch: `master`.
 - `packages/core/src/gateway/bind-page-content.ts`: `collectFormFieldNames()` (input-like elements under a Form element, by `data.attributes.name`) and `FORM_FIELDS_SENTINEL`; the submit binding created at page save now stores `paramKeys = ['__fields', ...fieldNames]`. A changed field list yields a new binding (config hash).
