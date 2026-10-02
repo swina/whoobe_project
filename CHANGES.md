@@ -1,3 +1,6 @@
+## [Security: manual test checklist] — 2026-10-03
+- Branch: `master`. Added `docs/plans/security/manual-test-checklist.md`: printable checklist of the browser/terminal checks on the throwaway stack (XSS, files and assets, CORS and cookies, accounts and sessions, gateway/SSRF), each with finding id, steps, expected result and result columns; documentation only.
+
 ## [Security: SSRF guard for outbound requests (safeFetch), OpenAPI import hardening, DAM service-token fix] — 2026-10-03
 - Branch: `master`. Findings F-026, F-027.
 - New `packages/core/src/http/safe-fetch.ts` (exported from `@whoobe-cms/core/server`, 30 tests): `safeFetch()` with policy from env (`OUTBOUND_ALLOW_LOOPBACK`, `OUTBOUND_ALLOW_PRIVATE`, `OUTBOUND_ALLOW_HOSTS`), address pinning (validated IP is the one connected to), manual re-checked redirects, size/time caps; `createSafeFetchAdapter()` for SDKs that take a `fetch`. Documented in `.env.example`.
