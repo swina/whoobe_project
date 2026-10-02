@@ -7,7 +7,7 @@ dist
 logs/
 .env
 .env.local
-.env.*  
+.env.*
 !.env.example
 .claude/settings.local.json
 .claude 
@@ -16,3 +16,4 @@ AGENTS.md
 .svelte-kit
 sites   
 .slingshot/*
+scripts/security/reports/
