@@ -34,7 +34,7 @@ export function createRouter(): Router {
         if (val) headers[h] = Array.isArray(val) ? val[0] : val;
       }
 
-      const result = await proxyFetch(upstreamUrl, req.method, headers, req.body);
+      const result = await proxyFetch(upstreamUrl, req.method, headers, req.body, undefined, { trusted: true });
 
       if (result.headers['set-cookie']) {
         const cookies = result.headers['set-cookie'];
@@ -66,7 +66,7 @@ export function createRouter(): Router {
       }
 
       const isMultipart = req.headers['content-type']?.toString().includes('multipart/form-data');
-      const result = await proxyFetch(upstreamUrl, req.method, headers, isMultipart ? undefined : req.body);
+      const result = await proxyFetch(upstreamUrl, req.method, headers, isMultipart ? undefined : req.body, undefined, { trusted: true });
 
       res.status(result.status).json(result.body);
     } catch (err) {
@@ -88,7 +88,7 @@ export function createRouter(): Router {
         if (val) headers[h] = Array.isArray(val) ? val[0] : val;
       }
 
-      const result = await proxyFetch(upstreamUrl, req.method, headers, req.body);
+      const result = await proxyFetch(upstreamUrl, req.method, headers, req.body, undefined, { trusted: true });
 
       const contentType = (result.headers['content-type'] || 'application/json') as string;
       if (contentType.includes('application/json')) {

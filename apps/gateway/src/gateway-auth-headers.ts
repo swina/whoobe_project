@@ -1,4 +1,5 @@
 import type { GatewayEndpointRecord } from '@whoobe-cms/core/server';
+import { safeFetch } from '@whoobe-cms/core/server';
 
 const OAUTH_CLOCK_SKEW_BUFFER_MS = 60_000;
 const OAUTH_TOKEN_REQUEST_TIMEOUT_MS = 15_000;
@@ -62,7 +63,7 @@ export async function refreshOAuthToken(endpointId: string, config: Record<strin
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), OAUTH_TOKEN_REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(tokenUrl, {
+    const response = await safeFetch(tokenUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
       body: body.toString(),
