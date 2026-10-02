@@ -1,6 +1,6 @@
 # Security testing plan
 
-Status: in progress - 2026-10-02. Phase 0 (static baseline) done, see `findings.md`; Phase 1 (harness) done, Phase 2 (access control) done, Phase 3 started: uploads (3.7), SSRF (3.8) and the gateway (3.9) done - results in `findings.md` F-011..F-031: `scripts/security/` (README there), `pnpm security:api` runs against the throwaway stack from `scripts/security/stack.sh`.
+Status: in progress - 2026-10-02. Phase 0 (static baseline) done, see `findings.md`; Phase 1 (harness) done, Phase 2 (access control) done, Phase 3 started: uploads (3.7), SSRF (3.8), the gateway (3.9), MFA and limits (3.1, 3.15) done - results in `findings.md` F-011..F-038: `scripts/security/` (README there), `pnpm security:api` runs against the throwaway stack from `scripts/security/stack.sh`.
 
 ## 1. Goal and scope
 

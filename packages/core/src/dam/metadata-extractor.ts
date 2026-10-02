@@ -1,3 +1,4 @@
+import { sharpInput } from './sharp-input.js';
 export interface AssetTechnicalMetadata {
   width?: number;
   height?: number;
@@ -123,7 +124,7 @@ export class AssetMetadataExtractor {
     const sharp = await this.getSharp();
     if (sharp && nodeBuffer) {
       try {
-        const image = sharp(nodeBuffer);
+        const image = sharpInput(sharp, nodeBuffer);
         const meta = await image.metadata();
 
         metadata.technical.width = meta.width;

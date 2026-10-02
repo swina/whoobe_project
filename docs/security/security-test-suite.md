@@ -6,7 +6,7 @@ what they assert, how results are judged, and what they do *not* cover.
 
 | Command | What it is | Needs a running stack |
 |---|---|---|
-| `pnpm security:api` | Black-box/grey-box API security test suite (vitest), about 960 test cases (the exact count is in each run's report) against core-api, gateway and asset-processor | Yes - a disposable, isolated stack |
+| `pnpm security:api` | Black-box/grey-box API security test suite (vitest), about 980 test cases (the exact count is in each run's report) against core-api, gateway and asset-processor | Yes - a disposable, isolated stack |
 | `pnpm security:static` | Static analysis: dependency CVEs, secret scanning (tree + full git history), SAST, shell lint, IaC/container config, HTML-sink inventory | No |
 | `pnpm security:all` | Runs both, static first; fails if either fails | Yes (for the API part) |
 
@@ -239,6 +239,25 @@ cannot add path segments, query strings or change host, and rejects `.` / `..` v
 validation accepts ordinary (also non-English) field names and rejects prototype keys, invalid names, 65-character
 names, more than 100 fields and values over 20 000 characters; credential-looking keys (`apiKey`, `password`,
 `Authorization`) are redacted at any depth.
+
+#### 2.5.11 Second factor - `api/mfa.test.ts` (plan 3.1)
+
+Enrolment endpoints need a session; a wrong code enrols nothing. A password login of an MFA user returns only a
+challenge token (no cookie, `/auth/me` is 401). Unknown, malformed or missing challenge tokens are refused. The
+right code opens a session; the **same code cannot be replayed** on a second login; a challenge token is single
+use; guessing is limited **per account across fresh challenges** (15 wrong codes over three challenges lock the
+account, a correct code is then refused with 429); recovery codes work once; a deactivated user cannot finish a
+pending challenge. Disabling MFA needs the password and password guessing is limited (F-032). The suite computes
+TOTP codes itself (RFC 6238, `lib/totp.ts`). OWASP API2; CWE-307, CWE-294, CWE-308.
+
+#### 2.5.12 Publishing rights, draft leaks and throttling - `api/limits-and-publish.test.ts` (plans 3.2, 3.15)
+
+An editor with `objects:write` cannot change `published` on a data object (PATCH or batch) or a page (403), can
+still save content with the flag unchanged, and the admin can publish (F-035). The public search ignores
+`includeUnpublished` while the admin search honours it (F-033). The raw `?editor=true` page view needs a session
+(F-034). Anonymous `/public/search`, `/public/data-objects/query` and the AI generation endpoints are throttled
+per address / per user, and one address being throttled does not affect another (F-036). AI settings never return
+a stored provider key. OWASP API1, API3, API4, API5; CWE-285, CWE-200, CWE-770.
 
 ### 2.6 Known-finding convention
 

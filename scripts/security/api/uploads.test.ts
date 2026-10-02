@@ -22,6 +22,20 @@ function png(w: number, h: number): Uint8Array {
   return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))])
 }
 
+/** 1-bit greyscale PNG: huge dimensions, a few KB on the wire, ~w*h/8 bytes to build. */
+function bigPng(w: number, h: number): Uint8Array {
+  const rowBytes = Math.ceil(w / 8) + 1
+  const raw = Buffer.alloc(rowBytes * h, 0)   // filter 0, all-black pixels
+  const chunk = (type: string, data: Buffer) => {
+    const body = Buffer.concat([Buffer.from(type), data])
+    const len = Buffer.alloc(4); len.writeUInt32BE(data.length)
+    const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(body))
+    return Buffer.concat([len, body, crc])
+  }
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 1; ihdr[9] = 0
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))])
+}
+
 const tag = randomBytes(3).toString('hex')
 const dir = `/sec-${tag}`
 let admin: Client
@@ -68,6 +82,15 @@ describe('stateless image endpoints are not public', () => {
       const r = await adminAsset.upload(`/api/v1/process?${q}`, {}, small())
       expect(r.status, q).toBe(400)
     }
+  })
+})
+
+describe('decompression bombs', () => {
+  // 12 000 x 12 000 = 144 MP: over the 100 MP cap, yet a few tens of KB on the wire (1-bit PNG).
+  it('an image with absurd dimensions is refused (413), not decoded', async () => {
+    const big = bigPng(12_000, 12_000)
+    const r = await adminAsset.upload('/api/v1/process?width=10', {}, { file: { name: 'bomb.png', type: 'image/png', data: big } })
+    expect(r.status, r.text.slice(0, 160)).toBe(413)
   })
 })
 

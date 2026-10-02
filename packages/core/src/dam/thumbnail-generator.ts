@@ -1,3 +1,4 @@
+import { sharpInput } from './sharp-input.js';
 import { ThumbnailPreset } from './storage.js';
 
 export interface ThumbnailDimensions {
@@ -57,7 +58,7 @@ export class ThumbnailGenerator {
       const sharp = sharpModule.default || sharpModule;
       const dims = PRESET_DIMENSIONS[preset] ?? PRESET_DIMENSIONS.thumb;
 
-      return await sharp(buffer)
+      return await sharpInput(sharp, buffer)
         .resize(dims.width, dims.height, {
           fit: dims.fit,
           withoutEnlargement: true,

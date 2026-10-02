@@ -1,3 +1,4 @@
+import { sharpInput } from './sharp-input.js';
 import { ThumbnailPreset } from './storage.js';
 import { ThumbnailDimensions, PRESET_DIMENSIONS } from './thumbnail-generator.js';
 
@@ -81,7 +82,7 @@ export class ImageProcessingPipeline {
       return Buffer.from(inputBuffer);
     }
 
-    let pipeline = sharp(inputBuffer);
+    let pipeline = sharpInput(sharp, inputBuffer);
 
     // Apply rotation
     if (options.rotate) {
@@ -121,9 +122,9 @@ export class ImageProcessingPipeline {
         // base now so its real post-resize dimensions are known, then
         // constrain the overlay to fit inside them.
         const { data: baseData, info: baseInfo } = await pipeline.clone().toBuffer({ resolveWithObject: true });
-        pipeline = sharp(baseData);
+        pipeline = sharpInput(sharp, baseData);
 
-        let wmSharp = sharp(wmInput).resize({
+        let wmSharp = sharpInput(sharp, wmInput).resize({
           width: Math.max(1, baseInfo.width - 4),
           height: Math.max(1, baseInfo.height - 4),
           fit: 'inside',
