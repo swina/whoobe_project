@@ -422,6 +422,9 @@ Further technical notes:
 | F-028 | Gateway public-route DoS | `gateway.test.ts` |
 | F-029 | Submit mass assignment | `gateway.test.ts` (allow-list and shape limits), `unit/gateway-helpers.test.ts`, core unit test `collectFormFieldNames`. Legacy bindings: see section 5. |
 | F-030 | Prototype walk / path climbing in gateway | `unit/gateway-helpers.test.ts`, `gateway.test.ts` |
+| F-032 | MFA guessing, TOTP replay, disable-password oracle | `mfa.test.ts` |
+| F-033, F-034, F-035, F-036 | Draft leak in public search, raw editor view, publish permission, throttling | `limits-and-publish.test.ts` |
+| F-037 | Image decompression bomb | `uploads.test.ts` |
 
 Findings that are fixed but **not** observable through the API suite, and how each is verified instead:
 
@@ -433,5 +436,6 @@ Findings that are fixed but **not** observable through the API suite, and how ea
 | F-020 | Secrets and host logs copied into Docker images | Not automated. `.dockerignore` fixed; verified once by listing the rebuilt image. Images built before the fix must be rebuilt. |
 | F-021 | Reset tokens stored in clear | Unit test of `hashResetToken` (`packages/core`); single use and end of sessions are asserted in `auth.test.ts`. |
 | F-031 | Gateway observations (optional site key, Redis stub, plugin loader) | Informational, no test. |
+| F-038 | TOTP secrets encrypted at rest | Unit tests of `totp-crypto` (`packages/core`); the MFA suite runs on the encrypted path; storage format checked once on the test database (not automated). |
 
 Full descriptions, severities and status: `docs/plans/security/findings.md`.

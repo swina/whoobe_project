@@ -55,4 +55,12 @@ export async function bootstrapDatabase(): Promise<void> {
   await seedDefaults();
   await seedWhoobeOneKits();
   await seedDefaultWebsite();
+  // Encrypt MFA secrets that predate TOTP_ENCRYPTION_KEY (no-op without the key, idempotent).
+  try {
+    const { backfillTotpEncryption } = await import('./scripts/backfill-totp-encryption.js');
+    const r = await backfillTotpEncryption();
+    if (r.encrypted > 0) console.log(`Encrypted ${r.encrypted} MFA secret(s) at rest.`);
+  } catch (err) {
+    console.error('MFA secret encryption backfill failed:', err);
+  }
 }

@@ -1,3 +1,10 @@
+## [Security F-038: MFA (TOTP) secrets encrypted at rest] — 2026-10-03
+- Branch: `master`.
+- `packages/core/src/auth/totp-crypto.ts` (AES-256-GCM, scrypt-derived key from the new `TOTP_ENCRYPTION_KEY`, stored as `enc:v1:` + base64), used transparently by `auth/users.ts` (`findUserById`, `findUserByEmail`, `setPendingTotpSecret`). Legacy plaintext values are still accepted; without the key nothing is encrypted and a warning is logged; an encrypted value without the key fails closed.
+- `packages/core/src/db/scripts/backfill-totp-encryption.ts` (idempotent) runs from `bootstrapDatabase()` and by hand.
+- **Deployment**: add `TOTP_ENCRYPTION_KEY` (`openssl rand -hex 32`) to the environment of core-api and restart: existing secrets are encrypted at startup. Keep the key: if it is lost, users must re-enrol MFA. No key rotation yet. Documented in `.env.example`.
+- Verified on the throwaway stack (key added after an enrolment: stored value went from 16-char clear text to `enc:v1:...`, log "Encrypted 1 MFA secret(s) at rest"); 5 new unit tests (core: 122); `pnpm security:api` 982 pass with the key set.
+
 ## [Security: MFA limits, public search draft leak, editor view, publish permission, throttling, pixel cap] — 2026-10-03
 - Branch: `master`. Findings F-032..F-038 (see `docs/plans/security/findings.md`; F-038 TOTP secrets in clear is open).
 - **MFA** (`apps/core-api`): per-account lock (`createFailureLock`, new in `packages/core/src/http/rate-limit.ts`): 10 failed codes -> 15 min, also across new challenges; used TOTP codes rejected for 2 min (replay); 5 wrong passwords lock `POST /auth/mfa/disable`.
