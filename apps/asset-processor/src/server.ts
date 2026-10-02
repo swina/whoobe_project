@@ -216,6 +216,12 @@ function isSafeAssetPath(p: string): boolean {
   return p.length <= 1024 && !/[\u0000-\u001f]/.test(p) && !p.split(/[\\/]+/).includes('..');
 }
 
+// sharp refuses images over the pixel cap (ASSET_MAX_INPUT_PIXELS, see packages/core/src/dam/sharp-input.ts): that
+// is the caller's problem (413), not a server fault.
+function isPixelLimitError(error: unknown): boolean {
+  return /pixel limit|exceeds .*pixel/i.test(String((error as { message?: string } | null)?.message ?? ''));
+}
+
 // Configure Multer in-memory storage for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -304,6 +310,7 @@ app.post('/api/v1/process', serviceTokenAuth, upload.single('file'), async (req:
     res.type(`image/${format}`).send(processedBuffer);
   } catch (error: any) {
     logger.error({ err: error }, 'Processing error');
+    if (isPixelLimitError(error)) { res.status(413).json({ error: 'Image dimensions exceed the allowed maximum' }); return; }
     res.status(500).json({ error: error.message || 'Image processing failed' });
   }
 });
@@ -328,6 +335,7 @@ app.post('/api/v1/metadata', serviceTokenAuth, upload.single('file'), async (req
     res.json({ success: true, metadata });
   } catch (error: any) {
     logger.error({ err: error }, 'Metadata extraction error');
+    if (isPixelLimitError(error)) { res.status(413).json({ error: 'Image dimensions exceed the allowed maximum' }); return; }
     res.status(500).json({ error: error.message || 'Metadata extraction failed' });
   }
 });
@@ -369,6 +377,7 @@ app.post(
       res.type(`image/${format}`).send(processedBuffer);
     } catch (error: any) {
       logger.error({ err: error }, 'Watermark error');
+      if (isPixelLimitError(error)) { res.status(413).json({ error: 'Image dimensions exceed the allowed maximum' }); return; }
       res.status(500).json({ error: error.message || 'Watermarking failed' });
     }
   }
@@ -455,6 +464,7 @@ app.post('/api/v1/dam/upload', serviceTokenAuth, upload.single('file'), async (r
     res.json(response);
   } catch (error: any) {
     logger.error({ err: error }, 'DAM upload error');
+    if (isPixelLimitError(error)) { res.status(413).json({ error: 'Image dimensions exceed the allowed maximum' }); return; }
     res.status(500).json({ error: error.message || 'Asset upload failed' });
   }
 });
@@ -530,6 +540,7 @@ app.post('/api/v1/dam/transform', requirePermission(PERMISSIONS.ASSETS_UPLOAD), 
     res.json(response);
   } catch (error: any) {
     logger.error({ err: error }, 'DAM transform error');
+    if (isPixelLimitError(error)) { res.status(413).json({ error: 'Image dimensions exceed the allowed maximum' }); return; }
     res.status(500).json({ error: error.message || 'Image transform failed' });
   }
 });

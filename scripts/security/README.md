@@ -42,6 +42,9 @@ a finding add it to `baseline.json` with an honest reason; remove the entry when
 - `api/auth.test.ts` (3.1) - login enumeration, lockout, session lifecycle, cookie flags, forgot/reset password.
 - `api/public-surface.test.ts` (3.4) - drafts not exposed, hostile query input, preview tokens, public forms.
 - `api/cors-csrf-headers.test.ts` (3.5, 3.14) - CORS, CSRF, security headers, error disclosure.
+- `api/uploads.test.ts` (3.7), `api/ssrf.test.ts` (3.8), `api/gateway.test.ts` (3.9) - asset-processor, outbound requests, public gateway routes.
+- `api/mfa.test.ts` (3.1) - second factor: enrolment, replay, per-account guess limit, disable.
+- `api/limits-and-publish.test.ts` (3.15, 3.2) - publish permission, draft leaks, throttling.
 
 ### Known findings
 

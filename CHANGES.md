@@ -1,3 +1,14 @@
+## [Security: MFA limits, public search draft leak, editor view, publish permission, throttling, pixel cap] — 2026-10-03
+- Branch: `master`. Findings F-032..F-038 (see `docs/plans/security/findings.md`; F-038 TOTP secrets in clear is open).
+- **MFA** (`apps/core-api`): per-account lock (`createFailureLock`, new in `packages/core/src/http/rate-limit.ts`): 10 failed codes -> 15 min, also across new challenges; used TOTP codes rejected for 2 min (replay); 5 wrong passwords lock `POST /auth/mfa/disable`.
+- **F-033 (High)**: `/public/search` honoured `includeUnpublished=true` from the query string, leaking unpublished titles/excerpts to anonymous callers; the public handler now forces it off.
+- **F-034**: `?editor=true` on `/public/pages/*` and `/public/page/*` needs a session, otherwise the sanitised copy is returned.
+- **F-035 (behaviour change)**: changing `published` on pages / data objects (PATCH, batch publish) needs `objects:publish`; unchanged values are allowed. `ENFORCE_PUBLISH_PERMISSION=false` restores the old behaviour. Roles that publish with only `objects:write` must be granted `objects:publish`.
+- **F-036**: per-address limits on `/public/*` (3000/min), `/public/search` (120), `/public/data-objects/query` (600) and a per-user limit on `/ai/generate*` (20/min), all env-tunable (`.env.example`).
+- **F-037**: `packages/core/src/dam/sharp-input.ts` (`sharpInput`, default 100 MP, `ASSET_MAX_INPUT_PIXELS`) used in thumbnails/processing/re-encode/metadata; asset-processor answers 413 for oversize images.
+- Harness: `api/mfa.test.ts` (12, `lib/totp.ts`), `api/limits-and-publish.test.ts` (9), a decompression-bomb case in `uploads.test.ts`; `.env.sectest` sets low limits. `pnpm security:api`: 982 pass on the rebuilt stack; `core` vitest 118. `docs/security/security-test-suite.md` and the harness README describe the new suites.
+- Not verified in a browser: that existing roles can still publish where intended (check the roles that publish today).
+
 ## [Security test suite reviewer document (PR #8) - review fixes; security:all exit code] — 2026-10-03
 - Branch: `claude/project-thread-vx4isf` (PR #8, adds `docs/security/security-test-suite.md`; merged `master` into it first).
 - Document corrections after review: reflects F-029 as fixed (field allow-list, legacy-binding caveat and `GATEWAY_REQUIRE_FIELD_ALLOWLIST`, no longer "open"); test count "about 960"; the "every vulnerability is encoded as a test" claim narrowed to API-reachable findings, with a table of the fixed findings verified by other means (F-010, F-015, F-017, F-020, F-021, F-031); `route-drift` needs the stack because of the shared `globalSetup`; trivy invocation lists its `--skip-dirs`.

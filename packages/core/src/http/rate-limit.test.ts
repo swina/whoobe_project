@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createFixedWindowLimiter } from './rate-limit.js';
+import { createFailureLock, createFixedWindowLimiter } from './rate-limit.js';
 
 describe('createFixedWindowLimiter', () => {
   it('allows `max` hits per window, then limits, then resets', () => {
@@ -49,5 +49,36 @@ describe('collectFormFieldNames', () => {
     expect(collectFormFieldNames({ tag: 'form', blocks: [] })).toEqual([]);
     expect(collectFormFieldNames(null)).toEqual([]);
     expect(FORM_FIELDS_SENTINEL).toBe('__fields');
+  });
+});
+
+describe('createFailureLock', () => {
+  it('locks a key after `max` failures for `lockMs`, then releases it', () => {
+    const l = createFailureLock({ max: 3, lockMs: 1000 });
+    l.fail('u', 0); l.fail('u', 1);
+    expect(l.isLocked('u', 2)).toBe(false);
+    l.fail('u', 3);
+    expect(l.isLocked('u', 4)).toBe(true);
+    expect(l.isLocked('other', 4)).toBe(false);
+    expect(l.isLocked('u', 1100)).toBe(false);
+  });
+  it('clear() resets the counter and the table stays bounded', () => {
+    const l = createFailureLock({ max: 2, lockMs: 1000, maxKeys: 20 });
+    l.fail('u', 0); l.clear('u'); l.fail('u', 1);
+    expect(l.isLocked('u', 2)).toBe(false);
+    for (let i = 0; i < 200; i++) l.fail(`k${i}`, i);
+    expect(l.size()).toBeLessThanOrEqual(20);
+  });
+});
+
+import { maxInputPixels } from '../dam/sharp-input.js';
+
+describe('maxInputPixels', () => {
+  it('defaults to 100 MP, honours ASSET_MAX_INPUT_PIXELS, 0 means the library default, junk falls back', () => {
+    expect(maxInputPixels({} as any)).toBe(100_000_000);
+    expect(maxInputPixels({ ASSET_MAX_INPUT_PIXELS: '25000000' } as any)).toBe(25_000_000);
+    expect(maxInputPixels({ ASSET_MAX_INPUT_PIXELS: '0' } as any)).toBe(false);
+    expect(maxInputPixels({ ASSET_MAX_INPUT_PIXELS: 'abc' } as any)).toBe(100_000_000);
+    expect(maxInputPixels({ ASSET_MAX_INPUT_PIXELS: '-5' } as any)).toBe(100_000_000);
   });
 });

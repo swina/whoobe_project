@@ -224,12 +224,14 @@ import {
   type SearchOptions,
   type SearchDocumentType,
   type MenuItem,
+  validateSessionToken,
   parseTrustProxy,
   corsPolicy,
   securityHeaders,
   sanitizeServerErrors,
   cookieShouldBeSecure,
   createFixedWindowLimiter,
+  createFailureLock,
 } from '@whoobe-cms/core/server';
 // Root package entry, not '/server' - compileDynamicSchema lives in
 // schema/dynamic.ts, exported from index.ts and kept out of the Node-only
@@ -319,6 +321,47 @@ app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
 app.use(securityHeaders());
 app.use(corsPolicy({ publicPathPrefixes: ['/public/', '/preview/', '/health', '/pwa/subscribe'] }));
 app.use(sanitizeServerErrors());
+
+// Per-client-address limits on the anonymous API (req.ip: behind a reverse proxy set TRUST_PROXY; a server-side
+// rendering host calls from ONE address, hence the generous defaults). 0 switches a limit off.
+//   PUBLIC_RATE_LIMIT_PER_MINUTE (all /public/*), PUBLIC_SEARCH_RATE_LIMIT_PER_MINUTE (/public/search),
+//   PUBLIC_QUERY_RATE_LIMIT_PER_MINUTE (/public/data-objects/query: unbounded in-memory filtering per call).
+function envLimit(name: string, dflt: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return dflt;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : dflt;
+}
+const PUBLIC_LIMITS = [
+  { match: (p: string) => true, max: envLimit('PUBLIC_RATE_LIMIT_PER_MINUTE', 3000), limiter: null as ReturnType<typeof createFixedWindowLimiter> | null },
+  { match: (p: string) => p === '/public/search', max: envLimit('PUBLIC_SEARCH_RATE_LIMIT_PER_MINUTE', 120), limiter: null as ReturnType<typeof createFixedWindowLimiter> | null },
+  { match: (p: string) => p === '/public/data-objects/query', max: envLimit('PUBLIC_QUERY_RATE_LIMIT_PER_MINUTE', 600), limiter: null as ReturnType<typeof createFixedWindowLimiter> | null },
+].map((l) => ({ ...l, limiter: l.max > 0 ? createFixedWindowLimiter({ max: l.max, windowMs: 60_000 }) : null }));
+
+app.use('/public/', (req: Request, res: Response, next: NextFunction): void => {
+  const ip = req.ip ?? 'unknown';
+  const fullPath = req.baseUrl + req.path; // inside app.use('/public/') req.path is relative to the mount
+  for (const l of PUBLIC_LIMITS) {
+    if (l.limiter && l.match(fullPath) && l.limiter.hit(ip)) {
+      res.setHeader('Retry-After', '60');
+      res.status(429).json({ error: 'Too many requests. Try again later.' });
+      return;
+    }
+  }
+  next();
+});
+
+// AI calls cost money: bound them per user (AI_RATE_LIMIT_PER_MINUTE, default 20; 0 = off).
+const AI_RATE_LIMIT = envLimit('AI_RATE_LIMIT_PER_MINUTE', 20);
+const aiLimiter = AI_RATE_LIMIT > 0 ? createFixedWindowLimiter({ max: AI_RATE_LIMIT, windowMs: 60_000 }) : null;
+function aiRateLimit(req: Request, res: Response, next: NextFunction): void {
+  if (aiLimiter && aiLimiter.hit((req as AuthenticatedRequest).user?.id ?? req.ip ?? 'unknown')) {
+    res.setHeader('Retry-After', '60');
+    res.status(429).json({ error: 'Too many AI requests. Try again in a minute.' });
+    return;
+  }
+  next();
+}
 
 // Every `:id`-style path parameter in this API is a uuid column; a malformed one used to reach
 // Postgres and come back as a 500 carrying the SQL text. Answer 404 before touching the database.
@@ -448,6 +491,24 @@ function setSessionCookie(res: Response, token: string, expiresAt: Date, req: Re
 // anything that trusts SESSION_COOKIE_NAME/validateSessionToken.
 const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const MFA_CHALLENGE_MAX_ATTEMPTS = 5;
+// Guessing a 6-digit code must be limited per ACCOUNT: a stolen password lets an attacker start any number of
+// fresh challenges (5 tries each), so a per-token cap alone is no limit at all.
+const mfaCodeLock = createFailureLock({ max: 10, lockMs: 15 * 60 * 1000 });
+// Re-authentication by password on MFA disable: same reasoning (a stolen session must not become a password oracle).
+const mfaDisableLock = createFailureLock({ max: 5, lockMs: 15 * 60 * 1000 });
+// A TOTP code is valid for ~90 s (+/-1 step); once used it must not work again.
+const usedTotpCodes = new Map<string, number>();
+const USED_TOTP_TTL_MS = 2 * 60 * 1000;
+
+function consumeTotpCode(userId: string, code: string): boolean {
+  const now = Date.now();
+  for (const [k, expires] of usedTotpCodes) if (expires <= now) usedTotpCodes.delete(k);
+  const key = `${userId}:${code}`;
+  if (usedTotpCodes.has(key)) return false;
+  usedTotpCodes.set(key, now + USED_TOTP_TTL_MS);
+  return true;
+}
+
 const pendingMfaChallenges = new Map<string, { userId: string; expiresAt: number; attempts: number }>();
 
 function createMfaChallenge(userId: string): string {
@@ -572,8 +633,14 @@ app.post('/auth/mfa/challenge', async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    if (typeof code === 'string' && user.totpSecret && verifyTotpToken(user.totpSecret, code)) {
+    if (mfaCodeLock.isLocked(user.id)) {
+      res.status(429).json({ error: 'Too many failed attempts. Try again later.' });
+      return;
+    }
+
+    if (typeof code === 'string' && user.totpSecret && verifyTotpToken(user.totpSecret, code) && consumeTotpCode(user.id, code)) {
       resolveMfaChallenge(mfaToken);
+      mfaCodeLock.clear(user.id);
       await completeLogin(res, user.id, req);
       return;
     }
@@ -582,12 +649,14 @@ app.post('/auth/mfa/challenge', async (req: Request, res: Response): Promise<voi
       const updated = await consumeRecoveryCode(user.mfaRecoveryCodes, recoveryCode);
       if (updated) {
         resolveMfaChallenge(mfaToken);
+        mfaCodeLock.clear(user.id);
         await updateMfaRecoveryCodes(user.id, updated);
         await completeLogin(res, user.id, req);
         return;
       }
     }
 
+    mfaCodeLock.fail(user.id);
     recordMfaFailure(mfaToken);
     res.status(401).json({ error: 'Invalid code' });
   } catch (error: any) {
@@ -656,11 +725,17 @@ app.post('/auth/mfa/disable', requireAuth, async (req: AuthenticatedRequest, res
   }
 
   try {
+    if (mfaDisableLock.isLocked(req.user!.id)) {
+      res.status(429).json({ error: 'Too many failed attempts. Try again later.' });
+      return;
+    }
     const user = await findUserById(req.user!.id);
     if (!user || !(await verifyPassword(user.passwordHash, password))) {
+      mfaDisableLock.fail(req.user!.id);
       res.status(401).json({ error: 'Invalid password' });
       return;
     }
+    mfaDisableLock.clear(user.id);
     await disableTotp(user.id);
     res.json({ success: true });
   } catch (error: any) {
@@ -1854,9 +1929,35 @@ app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
   }
 });
 
+// Publishing is a separate permission (objects:publish): holding objects:write must not be enough to put
+// content live. Only a CHANGE of the flag needs it - an editor saving an already-published page keeps working.
+// Escape hatch for installations that relied on the old behaviour: ENFORCE_PUBLISH_PERMISSION=false.
+function mayChangePublished(req: Request, current: boolean | undefined, requested: unknown): boolean {
+  if (typeof requested !== 'boolean' || requested === current) return true;
+  if (process.env.ENFORCE_PUBLISH_PERMISSION === 'false') return true;
+  return !!(req as AuthenticatedRequest).user?.permissions?.includes(PERMISSIONS.OBJECTS_PUBLISH);
+}
+
+// `?editor=true` on the public page routes returns the raw page (gateway endpoint names, routes and filters
+// included, SEO templates unresolved). That is for the editor preview: it needs a valid session.
+async function isEditorRequest(req: Request): Promise<boolean> {
+  if (req.query.editor !== 'true') return false;
+  return !!(await validateSessionToken(req.cookies?.[SESSION_COOKIE_NAME]));
+}
+
+const PUBLISH_DENIED = { error: 'Publishing requires the objects:publish permission' };
+
 app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { slug, title, category, kind, published, workflowState, content, locale, path, websiteId, themeId, seo, sitemap, search } = req.body ?? {};
+
+    if (typeof published === 'boolean') {
+      const existing = await getWhoobePage(req.params.id);
+      if (existing && !mayChangePublished(req, existing.published, published)) {
+        res.status(403).json(PUBLISH_DENIED);
+        return;
+      }
+    }
 
     let bindingWarnings: { nodeId: string; reason: string }[] = [];
     if (content !== undefined) {
@@ -2889,7 +2990,7 @@ const snippetIds = new Set<string>();
     const body: Record<string, unknown> = { page, params };
     if (layout) body.layout = layout;
     if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;
-    const isEditor = req.query.editor === 'true';
+    const isEditor = await isEditorRequest(req);
     // Dynamic-page SEO tokens (see resolvePublicPageSeo). The editor keeps the
     // raw templates in page.seo (it edits them) and gets the resolved copy
     // next to it; every other consumer gets the resolved values in page.seo.
@@ -3064,7 +3165,7 @@ const snippetIds = new Set<string>();
     const body: Record<string, unknown> = { page, params };
     if (layout) body.layout = layout;
     if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;
-    const isEditor = req.query.editor === 'true';
+    const isEditor = await isEditorRequest(req);
     // Dynamic-page SEO tokens (see resolvePublicPageSeo). The editor keeps the
     // raw templates in page.seo (it edits them) and gets the resolved copy
     // next to it; every other consumer gets the resolved values in page.seo.
@@ -3598,6 +3699,8 @@ app.get('/public/search', async (req: Request, res: Response): Promise<void> => 
       res.status(400).json({ error: parsed.error });
       return;
     }
+    // parseSearchQuery is shared with the admin search, which may list drafts on request: never here.
+    parsed.options.includeUnpublished = false;
     const results = await searchContent(parsed.options);
     res.json({ ...results, results: withSearchUrls(results.results, parsed.options.locale ?? 'en') });
   } catch (error: any) {
@@ -4160,6 +4263,11 @@ app.post(
           const errors: { id: string; message: string }[] = [];
           for (const id of ids) {
             try {
+              const existing = await getDataObject(id);
+              if (existing && !mayChangePublished(req, existing.published, published)) {
+                errors.push({ id, message: PUBLISH_DENIED.error });
+                continue;
+              }
               await updateDataObject(id, { published });
               succeeded++;
             } catch (e: any) {
@@ -4319,6 +4427,14 @@ app.post('/data-objects', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
 app.patch('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { key, path, parentId, published, workflowState, attributes } = req.body ?? {};
+
+    if (typeof published === 'boolean') {
+      const existing = await getDataObject(req.params.id);
+      if (existing && !mayChangePublished(req, existing.published, published)) {
+        res.status(403).json(PUBLISH_DENIED);
+        return;
+      }
+    }
 
     const dataObject = await updateDataObject(req.params.id, {
       key: typeof key === 'string' ? key : undefined,
@@ -4920,7 +5036,7 @@ app.put('/ai/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (r
 // settings, calls the configured provider, structurally validates the
 // returned Element tree (snippet/page) or returns the plain text (text),
 // and logs the whole exchange into whoobe_ai_generated.
-app.post('/ai/generate', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+app.post('/ai/generate', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLimit, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const { kind, prompt, context } = req.body ?? {};
   if (kind !== 'snippet' && kind !== 'page' && kind !== 'text') {
     res.status(400).json({ error: 'kind must be "snippet", "page", or "text"' });
@@ -5019,7 +5135,7 @@ app.get('/ai/generated', requirePermission(PERMISSIONS.OBJECTS_READ), async (_re
 
 // AI website structure generation — generates a complete website with pages
 // and snippets from a natural language prompt.
-app.post('/ai/generate-website-structure', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+app.post('/ai/generate-website-structure', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLimit, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const { prompt } = req.body ?? {};
   if (typeof prompt !== 'string' || !prompt.trim()) {
     res.status(400).json({ error: 'prompt is required' });
@@ -5477,7 +5593,7 @@ app.put('/ai/translate-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE)
   }
 });
 
-app.post('/ai/generate-image', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+app.post('/ai/generate-image', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLimit, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { prompt, n, size, quality, style, folderPath } = req.body ?? {};
     if (!prompt) {

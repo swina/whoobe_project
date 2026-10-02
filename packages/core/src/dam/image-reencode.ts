@@ -1,3 +1,4 @@
+import { sharpInput } from './sharp-input.js';
 import { ImageProcessingPipeline } from './processing-pipeline.js';
 
 export interface ReencodeOptions {
@@ -38,7 +39,7 @@ export async function reencodeImage(
   const maxWidth = options.maxWidth ?? DEFAULT_MAX_WIDTH;
   const quality = options.quality ?? DEFAULT_QUALITY;
   try {
-    const resized = await sharp(buffer)
+    const resized = await sharpInput(sharp, buffer)
       .resize({ width: maxWidth, withoutEnlargement: true })
       .flatten({ background: '#ffffff' })
       .jpeg({ quality, progressive: true })
