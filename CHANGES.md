@@ -1,3 +1,10 @@
+## [Security fixes: login lockout per address, /pwa/subscribe limiter, hashed reset tokens] — 2026-10-02
+- Branch: `master`. F-016, F-019, F-021.
+- **Lockout** (`apps/core-api`): counters per (e-mail + `req.ip`) - 5 failures - and per e-mail - 25 failures from any address; 15 min lock; tracking maps bounded (10 000 entries). A stranger no longer locks the account's owner out. New `TRUST_PROXY` env (`app.set('trust proxy', ...)`, default off) so `req.ip` is the client behind a proxy; documented in `.env.example` (never set it when the API is directly reachable: X-Forwarded-For would become spoofable).
+- **`POST /pwa/subscribe`**: 20 requests / 10 min per client address (`createFixedWindowLimiter`, new `packages/core/src/http/rate-limit.ts`, bounded, tested).
+- **Reset tokens**: stored as SHA-256 (`hashResetToken`); lookup hashes the presented token. Tokens issued before this change stop working (1 h lifetime).
+- Tests: lockout suite rewritten for per-address behaviour (plays addresses with `X-Forwarded-For`, `TRUST_PROXY=1` in the throwaway stack), `/pwa/subscribe` limiter, core unit tests (96). `pnpm security:api`: 902 pass; no `known(...)` finding left open.
+
 ## [Security fixes: CORS allowlist, Secure cookie, headers, generic 5xx, log hygiene, session revocation] — 2026-10-02
 - Branch: `master`. Findings F-011..F-015, F-017, F-018 (see `docs/plans/security/findings.md`).
 - New `packages/core/src/http/security.ts` (exported from `@whoobe-cms/core/server`, 14 tests): `corsPolicy()`, `securityHeaders()`, `sanitizeServerErrors()`, `cookieShouldBeSecure()`.

@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { randomBytes } from 'node:crypto'
 import { Client, clientFor } from '../lib/client'
-import { known } from '../lib/known'
 
 let admin: Client
 const anon = new Client()
@@ -183,8 +182,8 @@ describe('public form submission', () => {
 })
 
 describe('unauthenticated writes outside /public', () => {
-  // F-019: POST /pwa/subscribe stores whatever endpoint it is given, with no auth and no rate limit.
-  known('F-019', 'POST /pwa/subscribe is rate limited', async () => {
+  // F-019 (fixed): POST /pwa/subscribe is limited per client address (20 / 10 min).
+  it('POST /pwa/subscribe is rate limited', async () => {
     const statuses: number[] = []
     for (let i = 0; i < 40; i++) {
       const r = await new Client().post('/pwa/subscribe', { websiteId, subscription: { endpoint: `https://push.example/${tag}/${i}`, keys: {} } })
