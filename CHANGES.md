@@ -1,3 +1,7 @@
+## [Security: deploy.sh no longer syncs .env.* files] — 2026-10-02
+- Branch: `master`.
+- `deploy.sh`: rsync excludes now cover `.env` and `.env.*` (keeping `.env.example`); previously `.env.aura`/`.env.test`/`.env.<slug>` were uploaded to the Oracle host. Dry-run checked. Oracle's own `.env` is unchanged and still managed on the host. Findings register: new F-009.
+
 ## [Security: public mirror whoobe_project] — 2026-10-02
 - Branch: `master`.
 - `whoobe_project` (public) was a copy of `origin` including the `.env.aura` history; owner decided to delete it. Local remote `project` removed; F-001 note updated. The GitHub deletion itself must be done by the owner (the GitHub connector was not authorised).
