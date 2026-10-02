@@ -17,7 +17,9 @@ LOCAL_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 RSYNC_FLAGS="-avz --delete"
 EXCLUDES=(
+  --include '.env.example'
   --exclude '.env'
+  --exclude '.env.*'
   --exclude '.git'
   --exclude '.turbo'
   --exclude 'node_modules'

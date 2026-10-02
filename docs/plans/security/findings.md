@@ -12,6 +12,7 @@ Phase 0 (static baseline) - 2026-10-02. Raw reports: `scripts/security/reports/2
 | F-006 | Info | Dockerfile | hadolint DL3059 (consecutive `RUN`). | open |
 | F-007 | Low | admin/spike | 2x `postMessage` with `*` target origin (semgrep). Check the payload carries nothing sensitive (SEO resolved values only?) and pin to `window.location.origin`. | open |
 | F-008 | Info | static | `v-html`/`innerHTML` inventory: 46 sites (`vhtml-inventory.txt`) - each to be checked for sanitisation in Phase 3 (3.6). | open |
+| F-009 | Medium | deploy | `deploy.sh` excluded only the exact name `.env` from rsync, so `.env.aura`, `.env.test` and any `.env.<slug>` were copied to the Oracle host on every deploy (and workspace env files were exposed to `--delete` handling). Fixed 2026-10-02: `--include .env.example --exclude .env --exclude '.env.*'` (dry-run verified: only `.env.example` is synced). Existing copies on Oracle are not removed. Also unexcluded: `.claude/` (worktrees). | fixed (script); Oracle copies pending |
 
 Triaged as false positives (no action): gitleaks hit in `docs/plans/security/security-testing-plan.md` and `packages/core/src/dam/s3-provider.ts:269` (prose/comment); semgrep `tainted-sql-string` at `apps/core-api/src/server.ts:886` and `apps/asset-processor/src/server.ts:594` (no SQL there, parameterised helpers called); semgrep `gcm-no-tag-length` in `gateway-auth-crypto.ts` / `migration-sources-crypto.ts` (auth tag is a fixed-length slice, `setAuthTag` always receives 16 bytes).
 
