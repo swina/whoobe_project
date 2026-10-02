@@ -10,7 +10,7 @@
     "publish:sync-cdn": "pnpm run --filter @whoobe-cms/publish build && node packages/publish/bin/whoobe-sync-cdn.js",
     "security:static": "bash scripts/security/static/run-all.sh",
     "security:api": "pnpm --filter @whoobe-cms/security test:api",
-    "security:all": "pnpm security:static; pnpm security:api"
+    "security:all": "bash -c 'pnpm security:static; s=$?; pnpm security:api; a=$?; [ $s -eq 0 ] && [ $a -eq 0 ]'"
   },
   "workspaces": [
     "packages/*",
