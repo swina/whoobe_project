@@ -16,6 +16,7 @@ let keyA = ''
 let keyB = ''
 let resolveBinding = ''
 let submitBinding = ''
+let narrowBinding = ''   // form with a single input, `locale`
 let endpointId = ''
 const websites: string[] = []
 const pages: string[] = []
@@ -44,7 +45,14 @@ beforeAll(async () => {
   const content = {
     id: 'root', element: 'div', blocks: [
       { id: 'res', element: 'div', gatewayBinding: { endpointName: `sec-gw-${tag}`, routePath: '/health', fieldPath: 'status', params: {} } },
-      { id: 'frm', element: 'form', formConfig: { enabled: true, gatewayEndpointName: `sec-gw-${tag}`, gatewayRoutePath: '/public/data-objects/query' } },
+      { id: 'frm', tag: 'form', element: 'form', formConfig: { enabled: true, gatewayEndpointName: `sec-gw-${tag}`, gatewayRoutePath: '/public/data-objects/query' },
+        blocks: [{ id: 'i1', tag: 'input', data: { attributes: { name: 'class' } }, blocks: [] }, { id: 'i2', tag: 'input', data: { attributes: { name: 'locale' } }, blocks: [] }] },
+    ],
+  }
+  const narrow = {
+    id: 'root2', element: 'div', blocks: [
+      { id: 'frm2', tag: 'form', element: 'form', formConfig: { enabled: true, gatewayEndpointName: `sec-gw-${tag}`, gatewayRoutePath: '/public/data-objects/query' },
+        blocks: [{ id: 'j1', tag: 'input', data: { attributes: { name: 'locale' } }, blocks: [] }] },
     ],
   }
   const p = await admin.post('/whoobe-one/pages', { slug: `gw-${tag}`, title: 'gw', content, websiteId: siteA })
@@ -53,6 +61,11 @@ beforeAll(async () => {
   const blocks = p.json.page.content.blocks
   resolveBinding = blocks[0].gatewayBinding?.bindingId
   submitBinding = blocks[1].formConfig?.gatewayBindingId
+  const p2 = await admin.post('/whoobe-one/pages', { slug: `gw2-${tag}`, title: 'gw2', content: narrow, websiteId: siteA })
+  expect(p2.status, p2.text.slice(0, 200)).toBe(201)
+  pages.push(p2.json.page.id)
+  narrowBinding = p2.json.page.content.blocks[0].formConfig?.gatewayBindingId
+  expect(narrowBinding, 'narrow submit binding').toBeTruthy()
   expect(resolveBinding, 'resolve binding created at page save').toBeTruthy()
   expect(submitBinding, 'submit binding created at page save').toBeTruthy()
 })
@@ -135,6 +148,21 @@ describe('submit route', () => {
       const r = await submit({ ...ip('198.51.100.21'), ...auth() }, attrs)
       expect(r.status).toBe(400)
     }
+  })
+
+  // F-029: only the fields the form actually has go upstream.
+  it('drops fields the form does not have before they reach the upstream API', async () => {
+    // upstream /public/data-objects/query needs `class`. This form has no such input, so even if the visitor
+    // adds one it must be stripped -> upstream rejects (502). The first form does have it -> accepted.
+    const narrow = await submit({ ...ip('198.51.100.24'), ...auth() }, { class: 'no-such-class', locale: 'en' }, narrowBinding)
+    expect(narrow.status, narrow.text.slice(0, 160)).toBe(502)
+    const full = await submit({ ...ip('198.51.100.25'), ...auth() }, { class: 'no-such-class', locale: 'en' })
+    expect(full.status).toBe(200)
+  })
+
+  it('a submission carrying only declared fields is still forwarded (the upstream rejects it for lack of `class`)', async () => {
+    const r = await submit({ ...ip('198.51.100.26'), ...auth() }, { locale: 'en' }, narrowBinding)
+    expect(r.status).toBe(502)   // upstream still lacks `class`: nothing smuggled in, nothing else sent
   })
 
   it('the honeypot answers 204 without touching anything', async () => {
