@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { getDb } from '../db/client.js';
 import { users, type MfaRecoveryCode } from '../db/auth-schema.js';
+import { decryptTotpSecret, encryptTotpSecret } from './totp-crypto.js';
 
 export interface UserRecord {
   id: string;
@@ -15,16 +16,22 @@ export interface UserRecord {
   resetTokenExpiresAt: Date | null;
 }
 
+// The TOTP secret is encrypted at rest (totp-crypto.ts); callers always see it in clear.
+function withDecryptedTotp<T extends { totpSecret: string | null }>(row: T | undefined): T | null {
+  if (!row) return null;
+  return { ...row, totpSecret: decryptTotpSecret(row.totpSecret) };
+}
+
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {
   const db = getDb();
   const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
-  return user ?? null;
+  return withDecryptedTotp(user);
 }
 
 export async function findUserById(id: string): Promise<UserRecord | null> {
   const db = getDb();
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
-  return user ?? null;
+  return withDecryptedTotp(user);
 }
 
 export async function touchLastLogin(userId: string): Promise<void> {
@@ -37,7 +44,7 @@ export async function touchLastLogin(userId: string): Promise<void> {
 // on why an unconfirmed secret sitting here unused is fine.
 export async function setPendingTotpSecret(userId: string, secret: string): Promise<void> {
   const db = getDb();
-  await db.update(users).set({ totpSecret: secret }).where(eq(users.id, userId));
+  await db.update(users).set({ totpSecret: encryptTotpSecret(secret) }).where(eq(users.id, userId));
 }
 
 // Flips MFA on for real (totpEnabledAt is the actual enforcement gate, see
