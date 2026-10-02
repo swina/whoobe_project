@@ -6,9 +6,9 @@ what they assert, how results are judged, and what they do *not* cover.
 
 | Command | What it is | Needs a running stack |
 |---|---|---|
-| `pnpm security:api` | Black-box/grey-box API security test suite (vitest), ~950 test cases against core-api, gateway and asset-processor | Yes - a disposable, isolated stack |
+| `pnpm security:api` | Black-box/grey-box API security test suite (vitest), about 960 test cases (the exact count is in each run's report) against core-api, gateway and asset-processor | Yes - a disposable, isolated stack |
 | `pnpm security:static` | Static analysis: dependency CVEs, secret scanning (tree + full git history), SAST, shell lint, IaC/container config, HTML-sink inventory | No |
-| `pnpm security:all` | Runs both, static first | Yes (for the API part) |
+| `pnpm security:all` | Runs both, static first; fails if either fails | Yes (for the API part) |
 
 Source of truth: `scripts/security/` (harness and suites), `package.json` (entry points),
 `docs/plans/security/security-testing-plan.md` (test plan), `docs/plans/security/findings.md` (findings register,
@@ -21,8 +21,11 @@ reviewer can verify them.
 
 - **Repeatable and deterministic.** Both commands are scripted, need no manual steps during a run, and produce
   timestamped machine-readable (`.json`) and human-readable (`.txt`) reports.
-- **Regression-oriented.** Every vulnerability found during the security review (findings register F-011 ... F-031)
-  is encoded as a test asserting the *secure* behaviour. A fix that regresses turns the run red.
+- **Regression-oriented.** Every vulnerability found during the security review that is reachable through the HTTP
+  APIs (findings register F-010 ... F-031) is encoded as a test asserting the *secure* behaviour, so a fix that
+  regresses turns the run red. Findings that are not observable through the API (log content, container build
+  context, hashing of stored tokens, browser rendering) are verified by other means - a unit test, a static
+  scan or a documented manual check - and §6 states, finding by finding, which one applies.
 - **Access control is checked exhaustively, not by sampling.** Every one of the 196 core-api routes is classified
   (public / authenticated / permission-gated) in a checked-in contract, and each guarded route is called as
   five different identities (837 parametric cases). Adding a route without classifying it fails the run.
@@ -136,7 +139,8 @@ each public route with a justification note).
 | no duplicate registrations | the same method + path is registered twice (shadowing) |
 
 OWASP API5 (Broken Function Level Authorization), API9 (Improper Inventory Management); CWE-862, CWE-285.
-This test needs no running stack.
+The test itself makes no HTTP call, but like every file of the suite it runs behind the shared `globalSetup`
+(`setup.ts`), which waits for the stack's `/health`: the stack must be up.
 
 #### 2.5.3 Authorization matrix - `api/authz-matrix.test.ts` (plan 3.2)
 
@@ -221,7 +225,7 @@ Fixtures: two websites with site keys, a gateway endpoint, and a page whose cont
 | Area | Assertions |
 |---|---|
 | Site authentication | Calls without a site key are rejected (401) once the site has one. The correct id + key works. A wrong key, another site's key, and a key presented for the wrong site id all give 403 with identical bodies. Unknown binding ids give 404; injection-shaped ids never give a 5xx or SQL text. Regenerating a key invalidates the old one immediately. Keys never appear in responses or errors. Malformed bodies are 4xx. |
-| Submit route | A well-formed submission is forwarded to the pinned upstream. Prototype keys, invalid field names, more than 100 fields and oversized values are rejected (400). The honeypot field returns 204 without side effects. A *resolve* binding cannot be used as a *submit* target and vice versa. |
+| Submit route | A well-formed submission is forwarded to the pinned upstream. Prototype keys, invalid field names, more than 100 fields and oversized values are rejected (400). The honeypot field returns 204 without side effects. A *resolve* binding cannot be used as a *submit* target and vice versa. **Field allow-list (F-029):** the submit binding created when a page is saved carries the form's own input names; a field the form does not have is dropped before the upstream call, a declared one is forwarded (verified with a form whose only input is `locale`: a visitor-supplied `class` never reaches the upstream). |
 | Rate limiting | One client address is throttled on submit (429) without blocking other visitors of the same site (F-028). Random binding ids from one address are throttled before costing database lookups. |
 | Headers | `nosniff`, no framework banner. |
 
@@ -281,7 +285,7 @@ Requirements: Docker, Python 3, pnpm, git.
 | **gitleaks** (`zricethezav/gitleaks:latest`) | Hard-coded secrets in the working tree **and the full git history** | `gitleaks detect --source /repo --redact` | `gitleaks.json` (values redacted) | any finding not in the baseline (matched by file, optionally by commit) |
 | **Semgrep** (`semgrep/semgrep`) | SAST with rule packs `p/typescript`, `p/nodejs`, `p/expressjs`, `p/xss`, `p/secrets`; excludes `node_modules`, `.claude`, `dist`, `sites` | `semgrep scan --config ... --json /src` | `semgrep.json` | a new result of severity **ERROR** not in the baseline (new WARNING/INFO results are listed but do not fail) |
 | **ShellCheck** (`koalaman/shellcheck:stable`) | All git-tracked `*.sh` (deployment, provisioning, publishing scripts): quoting, word splitting, command injection patterns | `shellcheck -f json <git ls-files '*.sh'>` | `shellcheck.json` | any finding of level **error or warning** (no baseline) |
-| **Trivy config** (`aquasec/trivy:latest`) | IaC / container misconfiguration: Dockerfiles, docker-compose, Kubernetes-style manifests; skips `node_modules`, `.claude`, `sites` | `trivy config --format json /repo` | `trivy-config.json` | any **HIGH or CRITICAL** misconfiguration outside the skipped targets (no per-finding baseline) |
+| **Trivy config** (`aquasec/trivy:latest`) | IaC / container misconfiguration: Dockerfiles, docker-compose, Kubernetes-style manifests; skips `node_modules`, `.claude`, `sites` | `trivy config --skip-dirs node_modules --skip-dirs .claude --skip-dirs sites --format json /repo` | `trivy-config.json` | any **HIGH or CRITICAL** misconfiguration outside the skipped targets (no per-finding baseline) |
 | **Hadolint** (`hadolint/hadolint`) | Dockerfile best practices for the root `Dockerfile` | `hadolint -f json - < Dockerfile` | `hadolint.json` | any finding of level **error or warning** |
 | **HTML sink inventory** | Every `v-html`, `innerHTML`, `dangerouslySetInnerHTML`, `insertAdjacentHTML`, `document.write` in `apps/` and `packages/` (`.vue`, `.ts`, `.tsx`, `.js`), excluding build output | `grep -rnE ...` | `vhtml-inventory.txt` | never - informational count for manual XSS review (finding F-008) |
 
@@ -336,8 +340,8 @@ To regenerate route-contract candidates after an intentional route change:
 `pnpm --filter @whoobe-cms/security routes:extract` (writes `routes.generated.json` for review; the contract
 file itself is edited by hand after the access decision).
 
-Note: `security:all` is defined as `pnpm security:static; pnpm security:api`, so its exit code is that of the API
-suite. When used as a gate, run the two commands separately and check both exit codes.
+`security:all` runs both commands even if the first fails, and exits non-zero if either of them failed, so it can be
+used as a single gate.
 
 ---
 
@@ -356,7 +360,7 @@ compensating controls or additional testing):
 | MFA (TOTP) flows | Excluded from the authorization sweep; not specifically tested. |
 | Object-level authorization between tenants / owners | The matrix tests the permission guard per route; ownership of individual records is not exercised with multiple owners. |
 | Load / denial of service | Out of scope by design; only bounded rate-limit checks. |
-| Gateway submit field allow-list (F-029, mass assignment to upstream) | Shape limits are tested; the per-form field allow-list is still open. |
+| Gateway submit field allow-list, legacy bindings (F-029) | The allow-list is enforced and tested for bindings created by saving a page. Bindings created by pages saved *before* F-029 carry no allow-list and still forward every field (a warning is logged) until the page is saved again and the site republished; `GATEWAY_REQUIRE_FIELD_ALLOWLIST=true` refuses them (HTTP 409). Not tested end to end through the editor UI. |
 | Continuous integration | No CI workflow runs these commands yet; they are run on demand. Periodic scheduling is planned (plan section 7.1). |
 
 Further technical notes:
@@ -397,7 +401,18 @@ Further technical notes:
 | F-026 | SSRF via gateway upstreams | `ssrf.test.ts` |
 | F-027 | SSRF / file read via OpenAPI `$ref` | `ssrf.test.ts` |
 | F-028 | Gateway public-route DoS | `gateway.test.ts` |
-| F-029 | Submit mass assignment (partly fixed) | `gateway.test.ts`, `unit/gateway-helpers.test.ts` (shape limits only) |
+| F-029 | Submit mass assignment | `gateway.test.ts` (allow-list and shape limits), `unit/gateway-helpers.test.ts`, core unit test `collectFormFieldNames`. Legacy bindings: see section 5. |
 | F-030 | Prototype walk / path climbing in gateway | `unit/gateway-helpers.test.ts`, `gateway.test.ts` |
+
+Findings that are fixed but **not** observable through the API suite, and how each is verified instead:
+
+| Finding | Description (short) | Verification |
+|---|---|---|
+| F-010 | Stored XSS in search result titles (admin, editor, site search) | Unit tests of `highlightSearchSnippet` (`packages/core/src/cms/search-highlight.test.ts`); browser check by the operator (manual checklist 1.1-1.2). Browser automation planned. |
+| F-015 | Reset token/URL, e-mail and hash prefix in logs | Not automated. Code review plus a manual log check after the reset flows (manual checklist 4.5). |
+| F-017 | Reset link built with a fixed `http://host:3000` | Not automated. Configuration (`ADMIN_PUBLIC_URL`); the suite only asserts the link is not taken from request headers (2.5.4). |
+| F-020 | Secrets and host logs copied into Docker images | Not automated. `.dockerignore` fixed; verified once by listing the rebuilt image. Images built before the fix must be rebuilt. |
+| F-021 | Reset tokens stored in clear | Unit test of `hashResetToken` (`packages/core`); single use and end of sessions are asserted in `auth.test.ts`. |
+| F-031 | Gateway observations (optional site key, Redis stub, plugin loader) | Informational, no test. |
 
 Full descriptions, severities and status: `docs/plans/security/findings.md`.
