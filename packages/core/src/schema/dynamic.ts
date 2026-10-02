@@ -104,6 +104,10 @@ export interface ClassViewConfig {
   // overrides the header label. Absent/empty = existing "all columns"
   // behavior. Saved views/presets (user-side, per device) override it.
   listColumns?: { name: string; title?: string }[];
+  // Field names left off the object edit form (DataObjectForm.vue) - the
+  // stored values are untouched, the field just isn't shown. A `mandatory`
+  // field is never hidden (it would make the form impossible to save).
+  hiddenFields?: string[];
 }
 
 const RELATION_ID_SHAPE = z.object({ id: z.string(), classId: z.string().optional() });
@@ -158,7 +162,17 @@ function compileFieldSchema(field: ClassFieldDefinition): ZodSchema {
       }
       break;
     case 'multiselect':
+    case 'array':
+      // `array`: a free-form list of strings, edited as one `;`-separated
+      // text input (DataObjectFieldControl.vue) - unlike `multiselect`, no
+      // fixed option list backs it.
       fieldSchema = z.array(z.string());
+      break;
+    case 'json':
+      // A JSON object (or array) typed into a textarea. Bare scalars are
+      // rejected on purpose - this is the "Object (JSON)" type, not "any
+      // JSON value".
+      fieldSchema = z.union([z.record(z.unknown()), z.array(z.unknown())]);
       break;
     case 'manyToOneRelation':
       // Pimcore's own manyToOneRelation can point at either a Data Object

@@ -74,7 +74,7 @@
       <div v-if="editorTab === 'viewLayout'" class="space-y-3">        <div class="flex items-center justify-between">
           <p class="text-[11px] text-slate-500">
             Group fields into sections - each becomes its own tab on the object edit form. Fields left ungrouped still show, under an
-            "Other fields" tab.
+            "Other fields" tab. Use the eye to hide a field from the form (its stored values are kept; required fields can't be hidden).
           </p>
           <button @click="addSection" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 shrink-0 ml-3">+ Add section</button>
         </div>
@@ -92,7 +92,17 @@
             <div v-if="isExpanded('__ungrouped__')" class="pl-6 pb-2 pr-2 space-y-1 border-t border-slate-800/60 light:border-slate-200/60 pt-1.5">
               <div v-for="field in ungroupedFields" :key="field.name" class="flex flex-col gap-1 text-xs text-slate-400 light:text-slate-600 py-0.5">
                 <div class="flex items-center justify-between gap-2">
-                  <span class="truncate">{{ field.title || field.name }}</span>
+                  <span :class="['truncate', isHidden(field.name) ? 'line-through opacity-60' : '']">{{ field.title || field.name }}</span>
+                  <div class="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    :disabled="field.mandatory"
+                    :title="field.mandatory ? 'Required fields can\'t be hidden' : (isHidden(field.name) ? 'Hidden on the form - click to show' : 'Shown on the form - click to hide')"
+                    :class="['disabled:opacity-30', isHidden(field.name) ? 'text-amber-400' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:hover:text-slate-800']"
+                    @click="toggleHidden(field)"
+                  >
+                    <component :is="isHidden(field.name) ? EyeOff : Eye" class="w-3.5 h-3.5" />
+                  </button>
                   <select
                     :value="''"
                     @change="assignFieldToSection(field.name, ($event.target as HTMLSelectElement).value)"
@@ -101,6 +111,7 @@
                     <option value="">Ungrouped</option>
                     <option v-for="(section, i) in viewConfig.detailSections" :key="i" :value="i">→ {{ section.title || `Section ${i + 1}` }}</option>
                   </select>
+                  </div>
                 </div>
                 <select
                   v-if="relationDisplayOptions(field)"
@@ -154,8 +165,17 @@
                 class="flex flex-col gap-1 text-xs text-slate-400 light:text-slate-600 py-0.5"
               >
                 <div class="flex items-center justify-between gap-2">
-                  <span class="truncate">{{ field.title || field.name }}</span>
+                  <span :class="['truncate', isHidden(field.name) ? 'line-through opacity-60' : '']">{{ field.title || field.name }}</span>
                   <div class="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      :disabled="field.mandatory"
+                      :title="field.mandatory ? 'Required fields can\'t be hidden' : (isHidden(field.name) ? 'Hidden on the form - click to show' : 'Shown on the form - click to hide')"
+                      :class="['disabled:opacity-30', isHidden(field.name) ? 'text-amber-400' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:hover:text-slate-800']"
+                      @click="toggleHidden(field)"
+                    >
+                      <component :is="isHidden(field.name) ? EyeOff : Eye" class="w-3.5 h-3.5" />
+                    </button>
                     <button
                       @click="moveFieldInSection(sectionIndex, field.name, -1)"
                       type="button"
@@ -286,7 +306,7 @@
 // is otherwise a straight lift of ClassSettingsCard.vue's former inline
 // editor - see that file's git history for the pre-tab version.
 import { ref, reactive, computed, watch } from 'vue'
-import { ChevronDown, ChevronRight } from '@lucide/vue'
+import { ChevronDown, ChevronRight, Eye, EyeOff } from '@lucide/vue'
 import type { ClassFieldDefinition, ClassViewConfig } from '@whoobe-cms/core'
 import { useDataClassesStore } from '../../stores/dataClassesStore'
 import { useTabsStore, classTabId } from '../../stores/tabsStore'
@@ -295,6 +315,7 @@ import { useToastStore } from '../../stores/toastStore'
 import { fetchDataObjects } from '../../utils/data-objects-api'
 import { SYSTEM_LIST_COLUMNS, listColumnIcon } from '../../utils/list-columns'
 import FieldListEditor from './FieldListEditor.vue'
+import { FieldTypeChangeError, confirmFieldTypeChange } from '../../utils/field-type-change'
 
 const props = defineProps<{ classId: string }>()
 
@@ -330,6 +351,8 @@ const viewConfig = ref<{ detailSections: { title: string; fields: string[]; cont
   detailSections: [],
 })
 const listColumns = ref<{ name: string; title?: string }[]>([])
+// Fields hidden from the object edit form (viewConfig.hiddenFields).
+const hiddenFields = ref<string[]>([])
 const pendingColumnName = ref('')
 
 // Seeds the editable draft from the loaded class exactly once - further
@@ -346,6 +369,7 @@ watch(
       detailSections: (dataClass.viewConfig?.detailSections ?? []).map((s) => ({ title: s.title, fields: [...s.fields], containerClass: s.containerClass ?? '' })),
     }
     listColumns.value = (dataClass.viewConfig?.listColumns ?? []).map((c) => ({ name: c.name, ...(c.title ? { title: c.title } : {}) }))
+    hiddenFields.value = [...(dataClass.viewConfig?.hiddenFields ?? [])]
     hydrated.value = true
     fetchDataObjects(authStore.config.coreApiUrl, dataClass.id)
       .then((objects) => (objectCount.value = objects.length))
@@ -396,6 +420,17 @@ function moveFieldInSection(sectionIndex: number, fieldName: string, direction: 
   if (index === -1 || target < 0 || target >= arr.length) return
   const [moved] = arr.splice(index, 1)
   arr.splice(target, 0, moved)
+}
+
+function isHidden(fieldName: string): boolean {
+  return hiddenFields.value.includes(fieldName)
+}
+
+// A mandatory field can't be hidden: the object form could then never be
+// filled in correctly, so it could never be saved.
+function toggleHidden(field: ClassFieldDefinition) {
+  if (field.mandatory) return
+  hiddenFields.value = isHidden(field.name) ? hiddenFields.value.filter((n) => n !== field.name) : [...hiddenFields.value, field.name]
 }
 
 function addSection() {
@@ -515,9 +550,11 @@ function buildViewConfigPayload(): ClassViewConfig | null {
   const validListColumns = listColumns.value
     .map((c) => (c.title?.trim() ? { name: c.name, title: c.title.trim() } : { name: c.name }))
     .filter((c) => validNames.has(c.name) || systemColumnTitles.has(c.name))
-  if (detailSections.length === 0 && validListColumns.length === 0) return null
+  const validHidden = hiddenFields.value.filter((n) => namedFields.value.some((f) => f.name === n && !f.mandatory))
+  if (detailSections.length === 0 && validListColumns.length === 0 && validHidden.length === 0) return null
   return {
     ...(detailSections.length > 0 ? { detailSections } : {}),
+    ...(validHidden.length > 0 ? { hiddenFields: validHidden } : {}),
     ...(validListColumns.length > 0 ? { listColumns: validListColumns } : {}),
   }
 }
@@ -539,11 +576,17 @@ async function handleSave() {
       })
       editingId.value = created.id
     } else {
-      const updated = await dataClassesStore.updateDataClass(editingId.value as string, {
-        label: label.value.trim(),
-        fields: fields.value,
-        viewConfig: viewConfigPayload,
-      })
+      const payload = { label: label.value.trim(), fields: fields.value, viewConfig: viewConfigPayload }
+      let updated
+      try {
+        updated = await dataClassesStore.updateDataClass(editingId.value as string, payload)
+      } catch (e) {
+        // A field's type changed while objects exist: warn about the data
+        // loss and, if accepted, save again with the confirmation flag.
+        if (!(e instanceof FieldTypeChangeError)) throw e
+        if (!confirmFieldTypeChange(e)) return
+        updated = await dataClassesStore.updateDataClass(editingId.value as string, { ...payload, confirmTypeChange: true })
+      }
       // Re-hydrate from the server response so the tab reflects exactly what
       // was persisted — accounts for server-side field validation and ensures
       // a page reload doesn't show stale data (the hydrated flag below is
@@ -560,6 +603,7 @@ async function handleSave() {
           detailSections: (updated.viewConfig?.detailSections ?? []).map((s) => ({ title: s.title, fields: [...s.fields], containerClass: s.containerClass ?? '' })),
         }
         listColumns.value = (updated.viewConfig?.listColumns ?? []).map((c) => ({ name: c.name, ...(c.title ? { title: c.title } : {}) }))
+        hiddenFields.value = [...(updated.viewConfig?.hiddenFields ?? [])]
         hydrated.value = true
       }
     }

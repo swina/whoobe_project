@@ -22,6 +22,9 @@ import {
   CircleDot,
   Clock,
   FileCode,
+  Route,
+  List,
+  Braces,
 } from '@lucide/vue'
 
 // Shared list-column vocabulary between ObjectsView.vue (the listing) and
@@ -53,10 +56,13 @@ const FIELD_TYPE_ICONS: Record<string, any> = {
   numeric: Hash,
   checkbox: SquareCheck,
   date: Calendar,
+  urlSlug: Route,
   email: Mail,
   country: Globe,
   select: SquareChevronDown,
   multiselect: ListChecks,
+  array: List,
+  json: Braces,
   manyToOneRelation: Link2,
   manyToManyRelation: Network,
   link: Link2,

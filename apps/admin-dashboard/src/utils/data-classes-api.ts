@@ -4,6 +4,7 @@
 // hardcoded hostname default).
 import type { ClassFieldDefinition, ClassViewConfig, WorkflowPlace, WorkflowTransitionDefinition } from '@whoobe-cms/core'
 import { getDefaultCoreApiUrl } from './auth-api'
+import { fieldTypeChangeErrorFromBody } from './field-type-change'
 
 export interface DataClass {
   id: string
@@ -23,12 +24,16 @@ function normalizeBaseUrl(baseUrl: string): string {
 async function parseJsonOrThrow(res: Response): Promise<any> {
   if (!res.ok) {
     let message = `Request failed with status ${res.status}`
+    let body: any = null
     try {
-      const body = await res.json()
-      if (body?.error) message = body.error
+      body = await res.json()
     } catch {
       // Ignore body parse failures; use the generic message above.
     }
+    // Thrown outside the try so it isn't swallowed by the catch above.
+    const typeChange = fieldTypeChangeErrorFromBody(body)
+    if (typeChange) throw typeChange
+    if (body?.error) message = body.error
     throw new Error(message)
   }
   return res.json()
@@ -66,7 +71,7 @@ export async function createDataClass(
 export async function updateDataClass(
   baseUrl: string,
   id: string,
-  input: { name?: string; label?: string; fields?: ClassFieldDefinition[]; viewConfig?: ClassViewConfig | null }
+  input: { name?: string; label?: string; fields?: ClassFieldDefinition[]; viewConfig?: ClassViewConfig | null; confirmTypeChange?: boolean }
 ): Promise<DataClass> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-classes/${id}`, {
     method: 'PATCH',

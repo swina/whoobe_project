@@ -47,7 +47,7 @@ export const useComponentsStore = defineStore('components', () => {
 
   async function updateComponent(
     id: string,
-    input: { name?: string; label?: string; fields?: ClassFieldDefinition[] }
+    input: { name?: string; label?: string; fields?: ClassFieldDefinition[]; confirmTypeChange?: boolean }
   ): Promise<DataComponent> {
     const authStore = useAuthStore()
     const updated = await apiUpdateDataComponent(authStore.config.coreApiUrl, id, input)

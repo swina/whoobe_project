@@ -56,8 +56,9 @@
 
       <!-- Real in-use check - component-fields-plan.md §2.5/Phase 4. -->
       <p v-if="!isNew && inUse" class="text-xs text-amber-400">
-        This component is referenced by at least one existing object - a field's name or type can't be changed while that's true, and it
-        can't be deleted; adding new fields or editing title/mandatory/localized/options is fine.
+        This component is referenced by at least one existing object - a field can't be renamed or removed, and the component can't be
+        deleted, while that's true. A field's type can be changed (you'll be warned about possible data loss); adding new fields or
+        editing title/mandatory/localized/options is fine.
       </p>
 
       <!-- allow-field-collections=false: nesting a Component inside
@@ -99,6 +100,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { useToastStore } from '../../stores/toastStore'
 import { fetchDataComponentUsage, type DataComponent } from '../../utils/data-components-api'
 import FieldListEditor from './FieldListEditor.vue'
+import { FieldTypeChangeError, confirmFieldTypeChange } from '../../utils/field-type-change'
 
 const componentsStore = useComponentsStore()
 const authStore = useAuthStore()
@@ -139,7 +141,16 @@ async function handleSave() {
     if (isNew.value) {
       await componentsStore.createComponent({ name: name.value.trim(), label: label.value.trim(), fields: fields.value })
     } else {
-      await componentsStore.updateComponent(editingId.value as string, { label: label.value.trim(), fields: fields.value })
+      const payload = { label: label.value.trim(), fields: fields.value }
+      try {
+        await componentsStore.updateComponent(editingId.value as string, payload)
+      } catch (e) {
+        // A field's type changed while objects use this component: warn
+        // about the data loss and, if accepted, save again with the flag.
+        if (!(e instanceof FieldTypeChangeError)) throw e
+        if (!confirmFieldTypeChange(e)) return
+        await componentsStore.updateComponent(editingId.value as string, { ...payload, confirmTypeChange: true })
+      }
     }
     toastStore.show('Component saved')
     editorOpen.value = false

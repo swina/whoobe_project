@@ -1134,7 +1134,6 @@ app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRIT
 
 app.delete('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    await deleteWhoobeOneSnippet(req.params.id);
     // A website template's header/footer/aside/404 slots reference snippets
     // by id (not by copy), so deleting one that's in use would silently break
     // every page rendered through that template. Refuse, and say where.
@@ -1150,6 +1149,7 @@ app.delete('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRI
       });
       return;
     }
+    await deleteWhoobeOneSnippet(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
     logger.error({ err: error }, 'Delete whoobe-one snippet error');
@@ -3525,7 +3525,7 @@ app.post('/data-classes', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
 
 app.patch('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, label, fields, viewConfig } = req.body ?? {};
+    const { name, label, fields, viewConfig, confirmTypeChange } = req.body ?? {};
 
     // Guardrail (docs/plans/datamodel/native-class-authoring-plan.md §3.1):
     // once a class has real objects, a field's `name` disappearing or its
@@ -3533,7 +3533,9 @@ app.patch('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
     // stored in those objects' `attributes` JSONB - blocked outright rather
     // than allowed to break quietly. Adding new fields, or editing
     // title/mandatory/localized/options on a surviving same-name-same-type
-    // field, is unrestricted.
+    // field, is unrestricted. A `fieldType` change is allowed, but only when
+    // the caller sends `confirmTypeChange: true` after being warned (the
+    // stored values aren't touched, so some may no longer fit the new type).
     if (Array.isArray(fields)) {
       const existing = await getDataClass(req.params.id);
       if (!existing) {
@@ -3545,12 +3547,21 @@ app.patch('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
         const oldFieldsByName = new Map(existing.fields.map((f) => [f.name, f]));
         const newFieldsByName = new Map(fields.map((f: { name: string }) => [f.name, f]));
         const removed = [...oldFieldsByName.keys()].filter((name) => !newFieldsByName.has(name));
-        const typeChanged = [...oldFieldsByName.entries()]
+        const typeChanges = [...oldFieldsByName.entries()]
           .filter(([name, old]) => newFieldsByName.has(name) && (newFieldsByName.get(name) as any).fieldType !== old.fieldType)
-          .map(([name]) => name);
-        if (removed.length > 0 || typeChanged.length > 0) {
+          .map(([name, old]) => ({ name, from: old.fieldType, to: (newFieldsByName.get(name) as any).fieldType as string }));
+        if (removed.length > 0) {
           res.status(409).json({
-            error: `Cannot change these fields while ${objects.length} object(s) exist for this class: ${[...removed, ...typeChanged].join(', ')}. Remove the objects first, or leave the field's name/type unchanged.`,
+            error: `Cannot remove or rename these fields while ${objects.length} object(s) exist for this class: ${removed.join(', ')}. Remove the objects first, or keep the field name unchanged.`,
+          });
+          return;
+        }
+        if (typeChanges.length > 0 && confirmTypeChange !== true) {
+          res.status(409).json({
+            code: 'FIELD_TYPE_CHANGE_NEEDS_CONFIRMATION',
+            error: `Changing the type of ${typeChanges.map((c) => c.name).join(', ')} affects ${objects.length} existing object(s).`,
+            typeChanges,
+            objectCount: objects.length,
           });
           return;
         }
@@ -3671,7 +3682,7 @@ app.post('/data-components', requirePermission(PERMISSIONS.OBJECTS_WRITE), async
 
 app.patch('/data-components/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, label, fields } = req.body ?? {};
+    const { name, label, fields, confirmTypeChange } = req.body ?? {};
 
     // Guardrail (component-fields-plan.md §2.5/Phase 4) - mirrors PATCH
     // /data-classes/:id's own field-rename/type-change block, one level
@@ -3689,12 +3700,22 @@ app.patch('/data-components/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), 
         const oldFieldsByName = new Map(existing.fields.map((f) => [f.name, f]));
         const newFieldsByName = new Map(fields.map((f: { name: string }) => [f.name, f]));
         const removed = [...oldFieldsByName.keys()].filter((name) => !newFieldsByName.has(name));
-        const typeChanged = [...oldFieldsByName.entries()]
+        const typeChanges = [...oldFieldsByName.entries()]
           .filter(([name, old]) => newFieldsByName.has(name) && (newFieldsByName.get(name) as any).fieldType !== old.fieldType)
-          .map(([name]) => name);
-        if (removed.length > 0 || typeChanged.length > 0) {
+          .map(([name, old]) => ({ name, from: old.fieldType, to: (newFieldsByName.get(name) as any).fieldType as string }));
+        if (removed.length > 0) {
           res.status(409).json({
-            error: `Cannot change these fields while this component is referenced by an existing object: ${[...removed, ...typeChanged].join(', ')}. Leave the field's name/type unchanged, or remove the references first.`,
+            error: `Cannot remove or rename these fields while this component is referenced by an existing object: ${removed.join(', ')}. Keep the field name unchanged, or remove the references first.`,
+          });
+          return;
+        }
+        // Same as PATCH /data-classes/:id: a type change needs an explicit confirmation.
+        if (typeChanges.length > 0 && confirmTypeChange !== true) {
+          res.status(409).json({
+            code: 'FIELD_TYPE_CHANGE_NEEDS_CONFIRMATION',
+            error: `Changing the type of ${typeChanges.map((c) => c.name).join(', ')} affects objects that use this component.`,
+            typeChanges,
+            objectCount: null,
           });
           return;
         }
@@ -5476,6 +5497,23 @@ app.delete(
   requirePermission(PERMISSIONS.OBJECTS_PUBLISH),
   async (req: Request, res: Response): Promise<void> => {
     try {
+      // ?permanent=true removes the row for good - only for a link that is
+      // no longer usable, i.e. already revoked or expired (revoking stays the
+      // default, non-destructive action, and keeps the view count as a record).
+      if (req.query.permanent === 'true') {
+        const existing = await getPreviewToken(req.params.token);
+        if (!existing) {
+          res.status(404).json({ error: 'Preview link not found' });
+          return;
+        }
+        if (isPreviewTokenValid(existing)) {
+          res.status(409).json({ error: 'Revoke the preview link before deleting it' });
+          return;
+        }
+        await deletePreviewToken(req.params.token);
+        res.json({ success: true });
+        return;
+      }
       await revokePreviewToken(req.params.token);
       res.json({ success: true });
     } catch (error: any) {
@@ -5497,23 +5535,6 @@ app.get('/preview/objects/:token', async (req: Request, res: Response): Promise<
       return;
     }
     const object = await getDataObject(previewToken.objectId);
-      // ?permanent=true removes the row for good - only for a link that is
-      // no longer usable, i.e. already revoked or expired (revoking stays the
-      // default, non-destructive action, and keeps the view count as a record).
-      if (req.query.permanent === 'true') {
-        const existing = await getPreviewToken(req.params.token);
-        if (!existing) {
-          res.status(404).json({ error: 'Preview link not found' });
-          return;
-        }
-        if (isPreviewTokenValid(existing)) {
-          res.status(409).json({ error: 'Revoke the preview link before deleting it' });
-          return;
-        }
-        await deletePreviewToken(req.params.token);
-        res.json({ success: true });
-        return;
-      }
     if (!object) {
       res.status(404).json({ error: 'Object not found' });
       return;
