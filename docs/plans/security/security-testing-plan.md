@@ -6,7 +6,7 @@ Status: proposal - 2026-10-02. Nothing in this plan has been executed yet.
 
 Find and fix vulnerabilities in the WhoobeCMS stack with **repeatable scripts**
 that can run locally and in CI, not one-off manual checks. Testing is done
-against a **local/dev instance with a throwaway database** (never `whoobe_db`
+against a **local/dev instance (LAN profile and single-container profile, see 10) with a throwaway database** (never `whoobe_db`
 production data, never a deployed workspace we do not own).
 
 In scope (apps/packages in this monorepo):
@@ -143,14 +143,14 @@ Targeted checks: a user cannot grant themselves a role / edit a role they hold (
 |---|---|---|
 | API test harness (authz matrix, injection, headers, CORS) | **vitest** + `fetch`/`undici` (matches existing `packages/core` stack); `fast-check` for fuzz/property tests | `scripts/security/api/*.test.ts` |
 | Browser XSS / CSP / token storage checks | **Playwright** (`@playwright/test`) | `scripts/security/browser/*.spec.ts` |
-| DAST baseline | **OWASP ZAP** baseline/API scan (`zap-api-scan.py` with an OpenAPI spec generated from `docs/api` or the route table) | Docker, dev stack |
+| DAST baseline | **OWASP ZAP** baseline/API scan (`zap-api-scan.py` with the existing `docs/api/openapi.yaml`, regenerated via `docs/api/gen-api-docs.py`) | Docker, dev stack |
 | SQLi deep dive | `sqlmap` against 5-10 chosen endpoints (cookie/key supplied) | manual-triggered script |
 | Static analysis | `semgrep` (`p/typescript`, `p/nodejs`, `p/expressjs`, `p/xss`) + `eslint-plugin-security` + `vue/no-v-html` | CI |
 | Secrets | `gitleaks` | pre-commit + CI |
 | Dependencies | `pnpm audit`, `osv-scanner` | CI |
 | IaC / containers | `trivy config`, `trivy image`, `hadolint`, `shellcheck` | CI |
 | TLS / headers | `testssl.sh`, custom header script | against TLS dev host |
-| Fuzzing HTTP | `ffuf` for hidden routes/dotfiles; `schemathesis` if an OpenAPI spec exists | manual |
+| Fuzzing HTTP | `ffuf` for hidden routes/dotfiles; `schemathesis` with `docs/api/openapi.yaml` | manual |
 
 Fixture requirements: a `scripts/security/setup.ts` that creates a **disposable DB** (e.g. `whoobe_sec_test`), seeds users per role (none/read/write/admin/users-manager), two websites/workspaces, published + draft records, public + private assets, a gateway API key and a preview token - so tests are deterministic and never touch real data.
 
@@ -176,6 +176,8 @@ scripts/security/
   browser/
     xss-sinks.spec.ts       3.6
     token-storage.spec.ts   cookies/localStorage secrets in SPA
+  run-periodic.sh           dated report + baseline diff + exit code
+  baseline.json             accepted findings
   static/
     run-semgrep.sh  run-gitleaks.sh  run-audit.sh  run-trivy.sh  run-shellcheck.sh
   payloads/                 xss.txt, sqli.txt, traversal.txt, ssrf-targets.txt, upload fixtures
@@ -200,7 +202,24 @@ Entry points: `pnpm security:static` (no running stack needed), `pnpm security:a
 | 3 - Injection & content (2 d) | 3.3, 3.6, 3.7, 3.14 | medium | No payload executes in any sink; no SQLi signal; uploads safe |
 | 4 - Gateway, SSRF, AI, publish (2 d) | 3.8, 3.9, 3.10, 3.11 | medium | SSRF policy documented and tested; shell scripts quoted |
 | 5 - Infra & DAST (1 d) | 3.12, ZAP baseline + API scan, testssl, rate-limit tests 3.15 | small | ZAP baseline has no High; headers set |
-| 6 - CI & regression (1 d) | GitHub Actions: static on every PR, API/browser suites nightly or on `core-api`/`gateway` changes; fail on High | small | Suite wired, documented in `docs/` |
+| 6 - CI, periodic runs & regression (1 d) | GitHub Actions: static on every PR, API/browser suites on merge to `master` and nightly; scheduled scans (see 7.1); `run-periodic.sh`, baseline diff; fail on new High | small | Suite wired, documented in `docs/`; a scheduled run produces a dated report |
+
+### 7.1 Periodic runs
+
+The suites are repeatable at any time: each run creates a disposable DB and a separate compose project on non-default ports (see 10), then tears them down, so it depends on no earlier state and never touches real data. Entry points are the fixed `pnpm security:*` commands (section 5).
+
+| Check | Cadence | Where |
+|---|---|---|
+| Static (gitleaks, semgrep, shellcheck, hadolint, `v-html` inventory) | every PR | CI |
+| API + browser suites | merge to `master`, plus nightly | CI (starts the compose stack) |
+| Dependency scan (`pnpm audit`, `osv-scanner`) and secret scan of full history | weekly (new CVEs appear without code changes) | CI schedule |
+| ZAP baseline/API scan, `trivy image`, `testssl.sh` | monthly and before each release | CI schedule or manual |
+
+- `scripts/security/run-periodic.sh`: runs `security:all` for a chosen profile (`SECURITY_PROFILE=lan-dev|container`), writes the redacted report to `reports/<YYYY-MM-DD>/`, and can be called from cron or `/schedule` for local runs.
+- **Baseline**: `scripts/security/baseline.json` lists accepted/known findings (ID, reason, review date). A run reports only findings not in the baseline; expired review dates reappear.
+- **Exit code**: non-zero on any new High/Critical (or any Medium once the baseline is clean), so CI fails and a notification can hang off it.
+- **Route drift**: new routes absent from `routes.expected.json` fail the run (3.2), which catches code changes between periodic runs.
+- Trend: each report keeps counts per severity so regressions over time are visible.
 
 ## 8. Prioritised hypotheses to confirm first
 
@@ -220,9 +239,12 @@ Entry points: `pnpm security:static` (no running stack needed), `pnpm security:a
 - Fix tasks per finding; each fix adds the failing test as a regression test.
 - CI workflow running the static and API suites.
 
-## 10. Open questions
+## 10. Decisions (answers to the open questions)
 
-- Which deployment is the real target (single-tenant dev LAN, or multi-tenant workspaces on the public internet)? It changes the severity of CORS/cookie/CSP findings.
-- Is there an OpenAPI spec for core-api (needed for ZAP/schemathesis), or do we generate one from the route table?
-- Is a disposable Postgres (docker) acceptable for the test DB, and can CI start the full stack (`docker-compose*.yml`)?
-- Who may trigger publish/provisioning scripts (only operators, or also UI users)?
+1. **Target deployment**: today a single-tenant dev instance on the **LAN**, but the plan must also cover the **single-container deployment** (everything behind one container/entry point, nginx in front). Consequences:
+   - Every context is tested in two profiles: `lan-dev` (separate processes, ports exposed on the LAN) and `single-container` (one container, one published port, nginx -> core-api/gateway/asset-processor on loopback). The harness takes `SECURITY_PROFILE=lan-dev|container`.
+   - Severity is rated for the stricter profile (container exposed beyond the LAN): credentialed CORS (`origin: true`), `secure: false`, missing headers and `trust proxy` stay High/Medium findings even if harmless on a trusted LAN.
+   - Extra checks for the container profile: internal services (core-api `:3003`, asset-processor, Postgres, Redis) not reachable from outside the container; nginx is the only published port; `req.ip`/`X-Forwarded-For` handled correctly behind the in-container proxy (limiters, lockout); container runs as non-root with a read-only root FS where possible; secrets come from env/secret files, not baked into the image (`trivy image`, `docker history`).
+2. **OpenAPI**: a spec already exists - `docs/api/openapi.yaml`, regenerated by `docs/api/gen-api-docs.py`. No spec needs to be derived from the route table for ZAP/schemathesis. The script regenerates it first, then uses it as the input for ZAP `zap-api-scan.py` and `schemathesis`. The same generated list is also diffed against `routes.expected.json` (3.2): a route present in the spec/code but missing from the expected-permissions file fails the run, which also flags stale spec entries.
+3. **Docker**: the test runner **may start Docker, on different ports** from the dev stack. Disposable Postgres (`whoobe_sec_test`) and the stack under test run in a dedicated compose project (`-p whoobe-sec`) with an override file mapping non-default host ports (e.g. core-api `13003`, Postgres `15432`, gateway/asset-processor offset by +10000), so they never collide with the running dev instance or touch `whoobe_db`. Ports come from env vars (`SEC_CORE_API_PORT`, ...) read by `setup.ts`; `teardown.ts` runs `compose down -v`. CI can start the same stack.
+4. **Publish/provisioning scripts**: triggered by **operators only**, not UI users. Consequence for 3.11: argument-injection findings in `publish-*.sh`, `deploy*.sh`, `scripts/*workspace*.sh` are rated by an operator-controlled threat model (lower severity: hardening, not remote exploitation), *unless* a test finds a path where a UI/API user can reach those scripts or influence their arguments (workspace/site names, hostnames from stored data) - that is then High. Add one test asserting no core-api/gateway route spawns these scripts or `packages/publish` with user-supplied values; keep `shellcheck` + quoting review as hardening.
