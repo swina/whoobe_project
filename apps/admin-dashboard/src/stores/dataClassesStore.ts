@@ -50,7 +50,7 @@ export const useDataClassesStore = defineStore('dataClasses', () => {
 
   async function updateDataClass(
     id: string,
-    input: { name?: string; label?: string; fields?: ClassFieldDefinition[]; viewConfig?: ClassViewConfig | null }
+    input: { name?: string; label?: string; fields?: ClassFieldDefinition[]; viewConfig?: ClassViewConfig | null; confirmTypeChange?: boolean }
   ): Promise<DataClass> {
     const authStore = useAuthStore()
     const updated = await apiUpdateDataClass(authStore.config.coreApiUrl, id, input)

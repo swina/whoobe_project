@@ -29,6 +29,27 @@ describe('compileDynamicSchema (docs/plans/datamodel/advanced-data-modeling-plan
     expect(schema.safeParse({}).success).toBe(false); // mandatory
   });
 
+  it('validates an array field as a list of strings', () => {
+    const def: ClassDefinition = { id: '1c', name: 'Post', fields: [{ name: 'tags', title: 'Tags', fieldType: 'array', mandatory: true }] };
+    const schema = compileDynamicSchema(def);
+    expect(schema.safeParse({ tags: ['a', 'b'] }).success).toBe(true);
+    expect(schema.safeParse({ tags: [] }).success).toBe(true);
+    expect(schema.safeParse({ tags: 'a;b' }).success).toBe(false); // must be the parsed list, not the raw text
+    expect(schema.safeParse({ tags: [1] }).success).toBe(false);
+    expect(schema.safeParse({}).success).toBe(false); // mandatory
+  });
+
+  it('validates a json field as an object or array, not a bare scalar', () => {
+    const def: ClassDefinition = { id: '1d', name: 'Post', fields: [{ name: 'meta', title: 'Meta', fieldType: 'json' }] };
+    const schema = compileDynamicSchema(def);
+    expect(schema.safeParse({ meta: { a: 1, nested: { b: [true] } } }).success).toBe(true);
+    expect(schema.safeParse({ meta: [1, 2] }).success).toBe(true);
+    expect(schema.safeParse({ meta: null }).success).toBe(true); // optional
+    expect(schema.safeParse({}).success).toBe(true);
+    expect(schema.safeParse({ meta: 'text' }).success).toBe(false);
+    expect(schema.safeParse({ meta: 5 }).success).toBe(false);
+  });
+
   it('treats a select with relationTarget as a relation id object, and a plain select as an enum', () => {
     const def: ClassDefinition = {
       id: '2',

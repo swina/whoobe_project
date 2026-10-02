@@ -65,6 +65,33 @@
         <Wand2 class="w-3.5 h-3.5" /> Generate
       </button>
     </div>
+    <!-- array: a list of strings typed as one ";"-separated line. The raw
+         text is kept locally (arrayText) so a trailing ";" or space survives
+         while typing; only the parsed list is emitted. -->
+    <div v-else-if="field.fieldType === 'array'" :class="['space-y-1', fieldLayout.class]" :style="fieldLayout.style">
+      <input
+        :value="arrayText"
+        @input="onArrayInput(($event.target as HTMLInputElement).value)"
+        type="text"
+        placeholder="item 1; item 2; item 3"
+        class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+      />
+      <p class="text-[10px] text-slate-500">Separate items with ";" - {{ arrayCount }} item(s)</p>
+    </div>
+    <!-- json: an object/array as JSON text. Validated as you type; while the
+         text doesn't parse, the last valid value stays what gets saved. -->
+    <div v-else-if="field.fieldType === 'json'" :class="['space-y-1', fieldLayout.class]" :style="fieldLayout.style">
+      <textarea
+        :value="jsonText"
+        @input="onJsonInput(($event.target as HTMLTextAreaElement).value)"
+        rows="8"
+        spellcheck="false"
+        placeholder='{ "key": "value" }'
+        :class="['w-full px-3 py-2 text-xs font-mono bg-slate-950 light:bg-slate-50 border rounded-lg text-slate-200 light:text-slate-800 focus:outline-none', jsonError ? 'border-rose-500 focus:border-rose-500' : 'border-slate-800 light:border-slate-400 focus:border-indigo-500']"
+      />
+      <p v-if="jsonError" class="text-[11px] text-rose-400">{{ jsonError }} - not applied until it parses; the last valid value is kept.</p>
+      <p v-else-if="jsonText.trim()" class="text-[11px] text-emerald-500">Valid JSON</p>
+    </div>
     <input
       v-else-if="['input', 'country', 'email'].includes(field.fieldType)"
       :value="(modelValue as string) ?? ''"
@@ -264,7 +291,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Wand2 } from '@lucide/vue'
 import type { ClassFieldDefinition } from '@whoobe-cms/core'
 import { useRelationOptions } from '../../composables/useRelationOptions'
@@ -324,6 +351,62 @@ function relationOptionLabel(opt: { id: string; key: string; attributes?: Record
 // casts (confirmed: vue-tsc errors on them directly in the template but
 // not on simpler casts like `as string`/`as string[]`), so any object-
 // shaped cast lives here instead.
+// array / json: raw text kept locally while typing, parsed value emitted.
+// `lastEmitted` lets the watcher tell its own echo (the parent passing back
+// what was just emitted) from a genuine outside change (switching locale,
+// reload), which is the only time the text is reset.
+const arrayText = ref(Array.isArray(props.modelValue) ? (props.modelValue as string[]).join('; ') : '')
+const jsonText = ref(props.modelValue == null ? '' : JSON.stringify(props.modelValue, null, 2))
+const jsonError = ref('')
+let lastEmitted = JSON.stringify(props.modelValue ?? null)
+
+const arrayCount = computed(() => parseArrayText(arrayText.value).length)
+
+function parseArrayText(text: string): string[] {
+  return text.split(';').map((s) => s.trim()).filter(Boolean)
+}
+
+function onArrayInput(text: string) {
+  arrayText.value = text
+  const list = parseArrayText(text)
+  lastEmitted = JSON.stringify(list)
+  emitUpdate(list)
+}
+
+function onJsonInput(text: string) {
+  jsonText.value = text
+  if (!text.trim()) {
+    jsonError.value = ''
+    lastEmitted = 'null'
+    emitUpdate(null)
+    return
+  }
+  try {
+    const parsed = JSON.parse(text)
+    if (parsed === null || typeof parsed !== 'object') {
+      jsonError.value = 'Must be a JSON object or array'
+      return
+    }
+    jsonError.value = ''
+    lastEmitted = JSON.stringify(parsed)
+    emitUpdate(parsed)
+  } catch (e) {
+    jsonError.value = e instanceof Error ? e.message : 'Invalid JSON'
+  }
+}
+
+watch(
+  () => props.modelValue,
+  (value) => {
+    const incoming = JSON.stringify(value ?? null)
+    if (incoming === lastEmitted) return
+    lastEmitted = incoming
+    jsonError.value = ''
+    arrayText.value = Array.isArray(value) ? (value as string[]).join('; ') : ''
+    jsonText.value = value == null ? '' : JSON.stringify(value, null, 2)
+  }
+)
+
 const relationSelectedId = computed(() => (props.modelValue as { id: string } | null)?.id ?? '')
 const multiRelationIds = computed(() => ((props.modelValue as { id: string }[]) ?? []).map((r) => r.id))
 const assetRefValue = computed(() => (props.modelValue as { assetId: string } | null) ?? null)

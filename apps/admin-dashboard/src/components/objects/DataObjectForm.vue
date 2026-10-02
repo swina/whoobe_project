@@ -27,7 +27,7 @@
 
   <div v-else class="space-y-4">
     <DataObjectFieldControl
-      v-for="field in resolvedFields"
+      v-for="field in visibleFields"
       :key="field.name"
       :field="field"
       :model-value="modelValue[field.name]"
@@ -94,11 +94,19 @@ const resolvedFields = computed(() =>
   })
 )
 
+// Fields the class's View Layout hides from the form (viewConfig.hiddenFields).
+// Their stored values are untouched - they're just not rendered. A mandatory
+// field is never hidden: the form could then never be saved.
+const visibleFields = computed(() => {
+  const hidden = new Set(props.viewConfig?.hiddenFields ?? [])
+  return hidden.size === 0 ? resolvedFields.value : resolvedFields.value.filter((f) => f.mandatory || !hidden.has(f.name))
+})
+
 const sections = computed(() => {
   const named = props.viewConfig?.detailSections ?? []
   if (named.length === 0) return []
   const assigned = new Set(named.flatMap((s) => s.fields))
-  const byName = new Map(resolvedFields.value.map((f) => [f.name, f]))
+  const byName = new Map(visibleFields.value.map((f) => [f.name, f]))
   // Field order within a section follows `s.fields`' own order (admin-
   // reorderable in ClassSettingsCard.vue), not the class's overall field-
   // definition order - a `.map` over `s.fields`, not a `.filter` over
@@ -111,7 +119,7 @@ const sections = computed(() => {
       containerClass: s.containerClass,
     }))
     .filter((s) => s.fields.length > 0)
-  const other = resolvedFields.value.filter((f) => !assigned.has(f.name))
+  const other = visibleFields.value.filter((f) => !assigned.has(f.name))
   if (other.length > 0) result.push({ title: 'Other fields', fields: other, containerClass: undefined })
   return result
 })

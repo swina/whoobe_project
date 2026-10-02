@@ -1,3 +1,64 @@
+## [New Data Object field types "Array" and "Object (JSON)"; hide fields from the View Layout] — 2026-10-02
+- Branch: `master`.
+- User asked for an Array field type (entered as a `;`-separated list), an Object JSON type (textarea with validation), and the ability to hide some fields from the View Layout.
+- **Schema** (`packages/core/src/schema/dynamic.ts`): `array` validates as `string[]` (same as `multiselect`, but no option list); `json` validates as a JSON object or array (`z.record | z.array`; bare scalars rejected). `ClassViewConfig` gained `hiddenFields?: string[]`. Two new tests in `dynamic.test.ts` (62 pass).
+- **Class Builder**: "Array (list separated by ;)" and "Object (JSON)" added to `FieldListEditor.vue`'s type list, with `List` / `Braces` icons in `list-columns.ts`. The objects listing already formats arrays/objects in cells.
+- **Object form** (`DataObjectFieldControl.vue`): `array` = one text input, items split on `;` (trimmed, empties dropped), with an item counter; the raw text is kept locally so typing a trailing `;`/space isn't eaten. `json` = monospace textarea, parsed as you type: green "Valid JSON" / red error; while the text doesn't parse (or isn't an object/array) the last valid value is what's kept - it is **not** applied, and the message says so (there's no hook to block Save on it). Both resync from the parent only on a genuine outside change (locale switch/reload), not on their own echo.
+- **Hide fields**: `MasterClassTab.vue`'s View Layout rows (Ungrouped and in sections) get an eye toggle (strikethrough + amber when hidden); saved as `viewConfig.hiddenFields` (included in the "something configured" check, filtered to existing, non-mandatory fields). `DataObjectForm.vue` skips them everywhere (tabs, "Other fields", flat form); stored values are untouched. Required (`mandatory`) fields can't be hidden (toggle disabled; the form also ignores a hand-edited one), since the form could then never be saved.
+- Verified: `core` `tsc` + `vitest` (62), `admin-dashboard` `vue-tsc --noEmit` + `vite build` clean. Not tried in a browser. `core-api` needs a restart to pick up the rebuilt `core` validation.
+
+## [Data fix: removed the test `urlSlug` field from the `Blog` class] — 2026-10-02
+- Branch: `master`. No code changed - a one-off edit of `whoobe_db`, at the user's request (a test field, data loss acceptable).
+- `data_classes` row `Blog`: dropped the `urlSlug` field definition and its entry in the "Main" detail section of `viewConfig`; stripped the key from `data_objects.attributes` (0 of the 4 objects had a value for it). Done directly in SQL in one transaction because `PATCH /data-classes/:id` refuses to remove fields while objects exist. The `slug` field (type Text) is untouched.
+
+## [Delete expired preview links too; object tab and header show the (truncated) title] — 2026-10-02
+- Branch: `master`.
+- User asked that expired preview links be deletable as well, and that the object's tab (and the header title) use the title, truncated.
+- **Preview links**: `DELETE /data-objects/preview-links/:token?permanent=true` now accepts any link that is no longer usable (revoked *or* expired, i.e. `!isPreviewTokenValid()`); a still-valid one gets `409` "Revoke the preview link before deleting it". `PreviewLinksModal.vue`: an expired link is shown dimmed with only Delete (no Open/Copy/Revoke, which are pointless once it's dead), same as a revoked one.
+- **Title**: `MasterObjectTab.vue`'s `refreshTabLabel()` now sets the tab label from `displayTitle` (the object's `title`/`name`/`label`, else its key, else "New <class>") instead of the UUID key, and a `watch(displayTitle)` keeps the tab in sync while the title is edited; the tab strip already truncates (`truncate max-w-[160px]`). The header `<h3>` got `min-w-0 truncate` (+ a `title` tooltip with the full text), and the class chip, status badge and Key field `shrink-0` so a long title is what gets squeezed, not them.
+- Verified: `core` `tsc`, `core-api` `tsc --noEmit`, `admin-dashboard` `vue-tsc --noEmit` + `vite build` clean. Not tried in a browser.
+
+## [Data Object preview links in a modal, with delete for revoked links] — 2026-10-02
+- Branch: `master`.
+- User asked for the preview links to open in a modal, and for revoked links to be deletable.
+- **Modal** (`apps/admin-dashboard/src/components/objects/PreviewLinksModal.vue`, new): lists the object's links with status (Expires … / Revoked / Expired) and view count; active links get Open / Copy / Revoke, revoked links stay listed (dimmed) with a Delete action; header has "+ Generate Preview Link"; closes on backdrop, ✕ or Esc. `MasterObjectTab.vue`: under the title row there's now just "Preview Links (N)" (N = links that are neither revoked nor expired) opening the modal, plus a quick "+ Generate Preview Link"; delete asks for confirmation.
+- **Server**: `DELETE /data-objects/preview-links/:token` still revokes (unchanged default); with `?permanent=true` it deletes the row for good, only for an already-revoked link (`409` "Revoke the preview link before deleting it" otherwise, `404` if unknown). New `deletePreviewToken()` in `packages/core` `data-object-preview-tokens-records.ts`; client `deletePreviewLink()` in `data-objects-api.ts`. Same `OBJECTS_PUBLISH` permission as revoking.
+- Verified: `core` `tsc`, `core-api` `tsc --noEmit`, `admin-dashboard` `vue-tsc --noEmit` + `vite build` clean; create → revoke → delete exercised against `whoobe_db` through the records functions (token gone afterwards). The HTTP route and modal were not exercised in a browser. `core-api` picks up the change via `tsx watch`.
+
+## [Data Object tab: auto-generated key in the header, Preview Links under the title] — 2026-10-02
+- Branch: `master`.
+- User asked for the Key field to be generated automatically (e.g. a UUID) and moved to the header after the published/draft status, and for "Generate Preview Link" to move below the title header.
+- `apps/admin-dashboard/src/components/objects/MasterObjectTab.vue`:
+  - **Key**: a new object's key is a generated UUID (`utils/random-id.ts`'s `randomUUID()`, which also works outside secure contexts; a new locale of an existing object still inherits the group's key). The Key input moved out of the body into the header row, after the status badge; still editable.
+  - **Title**: since the key is now a UUID, the `<h3>` shows the object's own `title`/`name`/`label` attribute when it has one, else the key for a saved object and "New <class>" before the first save (tab label unchanged: still the key).
+  - **Preview Links**: the section (label, "+ Generate Preview Link", the link list with Revoke) moved from the bottom of the form to just under the title row, above the locale tabs; the list is capped at `max-h-24` with scroll. Workflow section unchanged at the bottom.
+- Verified: `vue-tsc --noEmit` and `vite build` clean. Not tried in a browser.
+
+## [Allow changing a field's type when records exist (with a data-loss warning)] — 2026-10-02
+- Branch: `master`.
+- User asked to be able to change a field's type even if records of that class exist, warning about the possible data loss.
+- **Server** (`apps/core-api`, `PATCH /data-classes/:id` and `PATCH /data-components/:id`): the 409 guardrail used to block *both* removing/renaming a field and changing its `fieldType`. Removal/rename is still blocked (message now says so); a type change is allowed but only if the body carries `confirmTypeChange: true` - otherwise it answers `409 { code: 'FIELD_TYPE_CHANGE_NEEDS_CONFIRMATION', typeChanges: [{ name, from, to }], objectCount }` (`objectCount` is null for a component, which isn't counted). Stored values are never touched or converted.
+- **Client** (`apps/admin-dashboard`): new `utils/field-type-change.ts` (`FieldTypeChangeError`, `confirmFieldTypeChange()`); `data-classes-api.ts` / `data-components-api.ts` turn that 409 into the typed error (and no longer swallow it in `parseJsonOrThrow`'s try/catch); `MasterClassTab.vue` and `ComponentSettingsCard.vue` catch it, show a `confirm()` listing `field: from → to`, the number of affected objects and the warning, and on OK save again with `confirmTypeChange: true` (on Cancel nothing is saved). `dataClassesStore` / `componentsStore` / the API inputs accept the new flag. `ComponentSettingsCard`'s in-use notice text updated to match.
+- Data-loss wording: values stay as stored, but ones that don't fit the new type may display wrongly or be rejected when the object is next saved (the object PATCH validates against the current schema).
+- Verified: `core-api` `tsc --noEmit` and `admin-dashboard` `vue-tsc --noEmit` clean. The endpoints and the confirm flow were not exercised against a running server/browser. Needs a `core-api` restart.
+
+## [Fix: the "Slug (URL)" field type was missing from the Class Builder] — 2026-10-02
+- Branch: `master`.
+- User reported not seeing the slug field type when defining Data Object fields.
+- **Cause**: `urlSlug` was supported end-to-end (validation in `packages/core/src/schema/dynamic.ts`, the object form's input + "Generate" button, bindings, the Pimcore migration) but was never listed in the Class Builder's `ALL_FIELD_TYPES`, so it could only appear on classes created by migration, never be picked.
+- `FieldListEditor.vue` (used by class and component settings): added `{ value: 'urlSlug', label: 'Slug (URL)' }`, after Country/before Email. `list-columns.ts`: added a `Route` icon for it in `FIELD_TYPE_ICONS` (otherwise it fell back to the generic `File` icon).
+- Verified: `vue-tsc --noEmit` and `vite build` clean. Not tried in a browser.
+
+## [Block deleting a snippet that a website template uses] — 2026-10-02
+- Branch: `master`.
+- User asked that deleting a snippet check whether it's used in a template, since otherwise the site using it ends up broken.
+- **What references a snippet**: website template layout slots (`header`, `appHeader`, `aside`, `footer`, `appFooter`, `notFound404`, ...) hold snippet *ids* (`TemplateSlot.snippetIds`), not copies, so deleting one leaves a dangling id and the slot silently renders without it. Snippets dropped into a page/snippet document are cloned in (only a `sourceSnippetId` marker is kept), so those aren't affected.
+- `packages/core` (`website-templates-records.ts`): new `findTemplatesUsingSnippet(snippetId)` - every template referencing it, with website name, template name and the slot names.
+- `apps/core-api` `DELETE /whoobe-one/snippets/:id`: enforced server-side (covers any client) - responds `409` with `{ error, usage }` instead of deleting when the snippet is in use; `error` is a readable message naming up to 5 `"Website / Template" (slots)`.
+- `apps/admin-dashboard` `SnippetsView.vue`: single delete already `alert()`s the server message; bulk delete's toast now includes the first refusal reason instead of a bare "N failed". The editor's Snippets panel already `alert()`s the message too.
+- Deliberately a hard block, not a force-delete: the user removes the snippet from the template(s) first.
+- Verified: `core` `tsc`, `core-api` `tsc --noEmit`, `admin-dashboard` `vue-tsc --noEmit` clean; `findTemplatesUsingSnippet` run against `whoobe_db` (13 of 63 snippets are in use, including via `appHeader`/`appFooter`/`notFound404`; a random uuid returns none). The DELETE endpoint itself and the UI messages were not exercised in a browser.
+
 ## [Fix: "Add attribute" threw on elements without a `data` object] — 2026-10-02
 - Branch: `master`.
 - User pasted `Uncaught TypeError: Cannot read properties of undefined (reading 'attributes')` at `AttributesControl.vue:65` (`addAttribute`).
