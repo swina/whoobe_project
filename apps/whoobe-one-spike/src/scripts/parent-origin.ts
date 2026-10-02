@@ -1,3 +1,5 @@
+import { useEditorStore } from '../store/editor'
+
 // Origin of the page embedding this app (the admin-dashboard), used as the
 // targetOrigin of every window.parent.postMessage() so editor/preview data is
 // never handed to an arbitrary embedder (a '*' target would deliver it to
@@ -17,8 +19,14 @@ function resolveParentOrigin(): string {
   return window.location.origin
 }
 
-const parentOrigin = resolveParentOrigin()
+const fallbackOrigin = resolveParentOrigin()
 
+/** Embedded editor: the origin the host passed (kept in the editor store, so it survives
+ *  router navigation that drops the query string); otherwise the load-time resolution. */
 export function parentTargetOrigin(): string {
-  return parentOrigin
+  try {
+    const fromStore = useEditorStore().parentOrigin
+    if (fromStore) return new URL(fromStore).origin
+  } catch { /* no active pinia / malformed value -> fallback */ }
+  return fallbackOrigin
 }
