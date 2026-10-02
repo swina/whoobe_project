@@ -45,7 +45,7 @@ services:
         VITE_FONT_FAMILIES: ${VITE_FONT_FAMILIES}
     container_name: whoobe_admin_dashboard
     ports:
-      - "3000:80"
+      - "3000:8080"
     restart: unless-stopped
 
   whoobe-one-spike:
@@ -56,5 +56,5 @@ services:
         VITE_BASE_URL: /whoobe-one/
     container_name: whoobe_one_spike
     ports:
-      - "3006:80"
+      - "3006:8080"
     restart: unless-stopped

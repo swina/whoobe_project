@@ -541,7 +541,8 @@ RUN pnpm build
 
 FROM base AS run
 ENV NODE_ENV=production
-COPY --from=build /app ./
+COPY --from=build --chown=node:node /app ./
+USER 1000:1000
 EXPOSE 3000
 CMD ["pnpm", "start"]
 `
@@ -690,12 +691,12 @@ ${warn}
 # Minimal image for a pre-built static site — expects ${staticDir}/ to
 # already exist locally.  Build locally (pnpm generate for Nuxt), then
 # build this image — no Node.js or CMS API needed at runtime.
-FROM docker.io/library/nginx:alpine
+FROM docker.io/nginxinc/nginx-unprivileged:alpine
 # NOTE: this directory must be named '${staticDir}' in the build context
 # (deploy-static.sh rsyncs ${sourceDir} as '${staticDir}/' onto the remote)
 COPY ${staticDir} /usr/share/nginx/html/static
 COPY nginx-static.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
 `
 }
@@ -708,7 +709,7 @@ function scaffoldNginxStaticConf(framework: 'next' | 'vue'): string {
   return `# Static-file nginx config for the published site container.
 # The host nginx (system service) handles SSL termination — only HTTP inside.
 server {
-    listen 80;
+    listen 8080;
     server_name _;
     root /usr/share/nginx/html/static;
 
@@ -783,7 +784,7 @@ ssh "\$REMOTE_HOST" podman build -t "\$IMAGE_NAME" -f Dockerfile.static "\$REMOT
 echo ">>> Starting container \${CONTAINER_NAME} on port \${PORT} ..."
 ssh "\$REMOTE_HOST" podman rm -f "\$CONTAINER_NAME" >/dev/null 2>&1 || true
 ssh "\$REMOTE_HOST" podman run -d --name "\$CONTAINER_NAME" \\
-  --restart unless-stopped -p "\${PORT}:80" "\$IMAGE_NAME"
+  --restart unless-stopped -p "\${PORT}:8080" "\$IMAGE_NAME"
 
 # ── 5. Install / update the host nginx site config ────────────────────────
 echo ">>> Configuring nginx on \${REMOTE_HOST} ..."

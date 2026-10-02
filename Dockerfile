@@ -44,16 +44,16 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 CMD ["node", "apps/asset-processor/dist/server.js"]
 
 # ─── Admin Dashboard ────────────────────────────────────────────────────────
-FROM nginx:alpine AS admin-dashboard
+FROM nginxinc/nginx-unprivileged:alpine AS admin-dashboard
 COPY --from=build /app/apps/admin-dashboard/dist /usr/share/nginx/html
 COPY nginx/spa-fallback.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+EXPOSE 8080
 
 # ─── Whoobe One Spike ──────────────────────────────────────────────────────
-FROM nginx:alpine AS whoobe-one-spike
+FROM nginxinc/nginx-unprivileged:alpine AS whoobe-one-spike
 COPY --from=build /app/apps/whoobe-one-spike/dist /usr/share/nginx/html
 COPY nginx/spa-fallback.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+EXPOSE 8080
 
 # ─── API Gateway ────────────────────────────────────────────────────────────
 FROM base AS gateway
