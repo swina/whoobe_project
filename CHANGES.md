@@ -1,3 +1,8 @@
+## [Security testing plan] — 2026-10-02
+- Branch: `master`.
+- User asked for a security-testing plan and the contexts that can be tested with scripts.
+- Added `docs/plans/security/security-testing-plan.md`: scope, code-derived risk observations (CORS `origin: true` + cookies, `secure: false`, no helmet/global rate limit, unauthenticated routes, `v-html` sinks, outbound fetches, shell scripts), 15 testable contexts with the script approach for each, tooling, proposed `scripts/security/` layout, safety rules, phases, prioritised hypotheses and open questions. Plan only - no code changed, nothing executed.
+
 ## [Dynamic pages: SEO fields filled from the page's data record (`{field}` tokens)] — 2026-10-02
 - Branch: `master`.
 - User asked that a dynamic page (e.g. a blog article routed by `{slug}`) can map each SEO attribute to a field of its data binding - "a simple `{title}` or `{description}`" - rendered in the preview and in the output.
