@@ -7,13 +7,21 @@ Plan: `docs/plans/security/security-testing-plan.md`; findings: `docs/plans/secu
 ```
 scripts/security/stack.sh up          # throwaway stack (own DB/volumes, ports = dev +100)
 pnpm security:api                     # API suites (vitest) against that stack
-pnpm security:static                  # docker-based static scans, no stack needed
+pnpm security:static                  # docker-based static scans, no stack needed; exit 1 only for NEW findings
 scripts/security/stack.sh down        # remove stack and its volumes
 ```
 
 Reports go to `scripts/security/reports/<date>/` (gitignored). Each `pnpm security:api` run also writes
 `api-<YYYY-MM-DD>_<HH-MM-SS>.txt` (readable summary: result, commit, targets, totals, per-file counts, failures)
 and the same data as `.json` (every test with state and duration) - see `lib/summary-reporter.ts`.
+
+## Static scans and the baseline
+
+`pnpm security:static` runs audit, gitleaks, semgrep, shellcheck, trivy/hadolint and the `v-html` inventory, then
+`static/summarize.py` compares the results with `static/baseline.json` (accepted/triaged findings, each with a
+reason and a review date) and writes `static-<date>_<time>.txt/.json` next to the raw reports. The exit code is
+non-zero only for a finding that is **not** in the baseline, or a baseline entry past its review date. To accept
+a finding add it to `baseline.json` with an honest reason; remove the entry when the cause is fixed.
 
 ## How it works
 
