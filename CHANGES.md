@@ -1,3 +1,8 @@
+## [Security F-004: non-root containers + healthchecks] — 2026-10-02
+- Branch: `master`.
+- `Dockerfile`: stages `core-api`, `asset-processor`, `gateway` copy `/app` with `--chown=node:node`, run as `USER 1000:1000` and define a `HEALTHCHECK` (node `fetch` on `/health`, ports 3003/3002/3001). The nginx stages are unchanged.
+- Verified: all three targets build; `core-api` container started with host networking on port 13003 against `whoobe_db` ran as uid 1000, `/health` and `/public/data-objects` answered 200, Docker reported `healthy`, `/app` is writable (site generation writes under it); trivy config on the Dockerfile: 0 HIGH/CRITICAL; hadolint: only DL3059 (info). Not run: asset-processor and gateway with a full environment, full compose stack. Not touched: nginx stages, `sites/*` and `packages/publish` generated Dockerfiles (see F-004).
+
 ## [Security F-003: dependency upgrades] — 2026-10-02
 - Branch: `master`.
 - `packages/core`: `drizzle-orm` ^0.45.2, `nodemailer` ^10.0.6, `sharp` ^0.35.4; `apps/asset-processor`: `exiftool-vendored` ^35.19.0, `sharp` ^0.35.4; root `package.json` `pnpm.overrides` for `postcss`, `nanoid`, `underscore`, `qs`, `fast-uri`, `markdown-it` (patched, same major). Lockfile updated.
