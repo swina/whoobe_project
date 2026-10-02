@@ -1,3 +1,7 @@
+## [deploy.sh: exclude .claude from rsync] — 2026-10-02
+- Branch: `master`.
+- `deploy.sh`: added `--exclude '.claude'` (local agent worktrees/config are not needed on the host).
+
 ## [Security: deploy.sh no longer syncs .env.* files] — 2026-10-02
 - Branch: `master`.
 - `deploy.sh`: rsync excludes now cover `.env` and `.env.*` (keeping `.env.example`); previously `.env.aura`/`.env.test`/`.env.<slug>` were uploaded to the Oracle host. Dry-run checked. Oracle's own `.env` is unchanged and still managed on the host. Findings register: new F-009.
