@@ -1,6 +1,6 @@
 ## [Fix: parentTargetOrigin prefers the editor store's parentOrigin] — 2026-10-02
 - Branch: `master`.
-- Follow-up to the `postMessage` target-origin change: after it, a thumbnail captured from the embedded editor only showed in the admin's Pages list after a manual reload (the `thumbnail-saved` message was not accepted). `parentTargetOrigin()` now first uses `useEditorStore().parentOrigin` (set by `Editor.vue` from `?parentOrigin=` and kept across router navigation) and only then the load-time value (query, referrer, own origin). Not confirmed as the root cause - could not be reproduced without a browser; needs a retest on the throwaway stack.
+- Follow-up to the `postMessage` target-origin change: after it, a thumbnail captured from the embedded editor only showed in the admin's Pages list after a manual reload (the `thumbnail-saved` message was not accepted). `parentTargetOrigin()` now first uses `useEditorStore().parentOrigin` (set by `Editor.vue` from `?parentOrigin=` and kept across router navigation) and only then the load-time value (query, referrer, own origin). Retested by the owner on the throwaway stack: the Pages list now refreshes right after capturing a thumbnail.
 
 ## [Security: F-005..F-008, F-010 - shell quoting, postMessage origins, search XSS] — 2026-10-02
 - Branch: `master`.
