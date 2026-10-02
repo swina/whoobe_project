@@ -4,6 +4,7 @@
 // fidelity is "good, not pixel-perfect": cross-origin images without CORS
 // headers, iframes and some web fonts may not render.
 import { toCanvas } from 'html-to-image'
+import { parentTargetOrigin } from './parent-origin'
 
 const OUTPUT_WIDTH = 640
 const ASPECT = 10 / 16 // above-the-fold crop, 16:10
@@ -167,7 +168,7 @@ export async function captureElementThumbnail(el: HTMLElement): Promise<Thumbnai
 export function notifyParentThumbnailSaved(kind: 'page' | 'snippet', id: string) {
   if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
     try {
-      window.parent.postMessage({ type: 'whoobe-one:thumbnail-saved', kind, id }, '*')
+      window.parent.postMessage({ type: 'whoobe-one:thumbnail-saved', kind, id }, parentTargetOrigin())
     } catch {
       // Ignore cross-origin posting errors.
     }

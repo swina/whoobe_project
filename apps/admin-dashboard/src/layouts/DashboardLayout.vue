@@ -450,6 +450,7 @@
 </template>
 
 <script setup lang="ts">
+import { highlightSearchSnippet } from '@whoobe-cms/core'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   Layers,
@@ -630,7 +631,7 @@ function searchTypeBadge(type: string): string {
 }
 
 function searchHighlight(text: string): string {
-  return (text || '').replace(/<\/?em>/g, (m) => (m === '<em>' ? '<mark class="bg-amber-200/40 text-slate-200 light:text-slate-700">' : '</mark>'))
+  return highlightSearchSnippet(text, '<mark class="bg-amber-200/40 text-slate-200 light:text-slate-700">')
 }
 
 function openSearchResult(result: SearchResult) {

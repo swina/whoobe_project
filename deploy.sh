@@ -15,7 +15,7 @@ REMOTE_HOST="${DEPLOY_HOST:-ubuntu@whoobecms.devophub.space}"
 REMOTE_PATH="${DEPLOY_PATH:-/opt/whoobe/whoobe_cms}"
 LOCAL_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-RSYNC_FLAGS="-avz --delete"
+RSYNC_FLAGS=(-avz --delete)
 EXCLUDES=(
   --include '.env.example'
   --exclude '.env'
@@ -29,17 +29,17 @@ EXCLUDES=(
   --exclude 'sites'
 )
 
-DRY_RUN=""
+DRY_RUN=()
 if [ "${1:-}" = "--dry-run" ]; then
-  DRY_RUN="--dry-run"
+  DRY_RUN=(--dry-run)
   echo ">>> DRY RUN - no files will be transferred"
 fi
 
 # ── Sync files ──────────────────────────────────────────────────────────────
 echo ">>> Syncing $LOCAL_ROOT → $REMOTE_HOST:$REMOTE_PATH ..."
-rsync $RSYNC_FLAGS "${EXCLUDES[@]}" $DRY_RUN "$LOCAL_ROOT/" "$REMOTE_HOST:$REMOTE_PATH/"
+rsync "${RSYNC_FLAGS[@]}" "${EXCLUDES[@]}" "${DRY_RUN[@]}" "$LOCAL_ROOT/" "$REMOTE_HOST:$REMOTE_PATH/"
 
-if [ -n "$DRY_RUN" ]; then
+if [ "${#DRY_RUN[@]}" -gt 0 ]; then
   echo ">>> Dry run complete. Remove --dry-run to deploy."
   exit 0
 fi
@@ -47,6 +47,8 @@ fi
 # ── Remote build & restart ───────────────────────────────────────────────────
 echo ""
 echo ">>> Installing dependencies & building on remote..."
+# The heredoc is intentionally unquoted: $REMOTE_PATH expands here, \$-escaped vars on the host.
+# shellcheck disable=SC2087
 ssh "$REMOTE_HOST" <<-SSH_EOF
   set -e
   export NVM_DIR="\$HOME/.nvm"

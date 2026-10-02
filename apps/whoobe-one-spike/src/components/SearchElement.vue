@@ -78,6 +78,7 @@
 </template>
 
 <script setup lang="ts">
+import { highlightSearchSnippet } from '@whoobe-cms/core'
 // Live website search box for the spike editor (docs/plans/search-engine/
 // search-element-plan.md) - the render target for the palette's "Search"
 // element (tag === 'search'). Two behaviours, both scoped by `searchConfig`
@@ -223,7 +224,7 @@ function onSubmit() {
 // The server renders highlight markup (<em>) via ts_headline; strip any
 // stray markup and convert to <mark> (same as SearchResultsView.vue).
 function highlight(text: string): string {
-  return (text || '').replace(/<\/?em>/g, (m) => (m === '<em>' ? '<mark class="bg-amber-100 text-inherit">' : '</mark>'))
+  return highlightSearchSnippet(text, '<mark class="bg-amber-100 text-inherit">')
 }
 
 function typeBadgeClass(type: string): string {
