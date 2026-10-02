@@ -1,3 +1,11 @@
+## [Security: asset-processor - authenticated image endpoints, hardened /dam-asset, upload validation] — 2026-10-02
+- Branch: `master`. Findings F-022..F-025 (details in `docs/plans/security/findings.md`).
+- `POST /api/v1/process|metadata|watermark` now go through `serviceTokenAuth` (session with `assets:upload` or `DAM_SERVICE_TOKEN`, compared with `timingSafeEqual`); parameters bounded (`width`/`height` <= 8192, `quality` 1-100, `format` whitelist, `opacity` 0-1; the old `?? 80` default for `quality` also no longer swallows invalid values).
+- `GET /dam-asset/*`: `Content-Security-Policy` with `sandbox` on every response, HTML/XML/JS content types downloaded as `application/octet-stream` + `attachment`; `private/` keys require a session (`Cache-Control: private, no-store`); optional `DAM_ENFORCE_ASSET_VISIBILITY=true` extends that to every asset whose DB record is not public (new `getAssetVisibilityByKey` in `packages/core/src/db/asset-records.ts`). **Default off - decision needed before enabling in production** (published sites load images through this route; assets are private by default).
+- Upload: `isSafeAssetPath` (no `..`, control chars, > 1024 chars) on every `*path*` field and on `pimcorePath`/file name of uploads, empty files rejected, multer/JSON errors answered 400/413 by a new error handler.
+- Harness: `scripts/security/api/uploads.test.ts` (16 tests), `Client.forBase()` / `Client.upload()`; `.env.sectest` enables `DAM_ENFORCE_ASSET_VISIBILITY`. `pnpm security:api`: 918 pass on the rebuilt stack.
+- Not verified: published sites against `DAM_ENFORCE_ASSET_VISIBILITY=true`; browser rendering of sandboxed SVG/HTML downloads.
+
 ## [Security fixes: login lockout per address, /pwa/subscribe limiter, hashed reset tokens] — 2026-10-02
 - Branch: `master`. F-016, F-019, F-021.
 - **Lockout** (`apps/core-api`): counters per (e-mail + `req.ip`) - 5 failures - and per e-mail - 25 failures from any address; 15 min lock; tracking maps bounded (10 000 entries). A stranger no longer locks the account's owner out. New `TRUST_PROXY` env (`app.set('trust proxy', ...)`, default off) so `req.ip` is the client behind a proxy; documented in `.env.example` (never set it when the API is directly reachable: X-Forwarded-For would become spoofable).

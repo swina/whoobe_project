@@ -1,4 +1,4 @@
-import { eq, or, like } from 'drizzle-orm';
+import { eq, or, like, sql } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { folders, assets } from './dam-schema.js';
 import type { ExtractedAssetMetadata } from '../dam/metadata-extractor.js';
@@ -216,4 +216,18 @@ export async function updateAssetMetadata(
     .returning();
   if (row) await indexAsset(row);
   return row ?? null;
+}
+
+/** Visibility recorded for the asset behind an S3 key (the original, or one of its `.thumbnails/..._<preset>.webp`
+ *  variants). `null` when no asset record matches (e.g. system files such as logs). */
+export async function getAssetVisibilityByKey(s3Key: string): Promise<boolean | null> {
+  const db = getDb();
+  const thumb = /^\.thumbnails\/(.+)_(?:thumb|medium|large)\.webp$/.exec(s3Key);
+  if (thumb) {
+    const likeBase = thumb[1].replace(/[\\%_]/g, (c) => `\\${c}`);
+    const [row] = await db.select({ isPublic: assets.isPublic }).from(assets).where(sql`${assets.pimcorePath} LIKE ${'/' + likeBase + '.%'}`).limit(1);
+    return row ? row.isPublic : null;
+  }
+  const [row] = await db.select({ isPublic: assets.isPublic }).from(assets).where(eq(assets.pimcorePath, '/' + s3Key)).limit(1);
+  return row ? row.isPublic : null;
 }
