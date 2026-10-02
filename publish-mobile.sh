@@ -197,27 +197,18 @@ echo ""
 echo -e "${GREEN}Generating mobile app project...${NC}"
 echo ""
 
-APP_NAME_ARG=""
-if [ -n "$APP_NAME" ]; then
-  APP_NAME_ARG="--app-name $APP_NAME"
-fi
+# Optional flags as an array: values keep their spaces/globs literal (no word splitting).
+EXTRA_ARGS=()
+[ -n "$APP_NAME" ] && EXTRA_ARGS+=(--app-name "$APP_NAME")
 
-STATIC_FLAG=""
 echo ""
 read -r -p "Generate fully static app (no CMS runtime needed)? [y/N]: " STATIC_ANSWER
 case "$STATIC_ANSWER" in
-  y|Y|yes|Yes) STATIC_FLAG="--static" ;;
+  y|Y|yes|Yes) EXTRA_ARGS+=(--static) ;;
 esac
 
-GATEWAY_URL_ARG=""
-if [ -n "$GATEWAY_URL" ]; then
-  GATEWAY_URL_ARG="--gateway-url $GATEWAY_URL"
-fi
-
-SITE_API_KEY_ARG=""
-if [ -n "$SITE_API_KEY" ]; then
-  SITE_API_KEY_ARG="--site-api-key $SITE_API_KEY"
-fi
+[ -n "$GATEWAY_URL" ] && EXTRA_ARGS+=(--gateway-url "$GATEWAY_URL")
+[ -n "$SITE_API_KEY" ] && EXTRA_ARGS+=(--site-api-key "$SITE_API_KEY")
 
 # Build the mobile-app package first
 pnpm run --filter @whoobe-cms/mobile-app build
@@ -227,10 +218,7 @@ node packages/mobile-app/bin/whoobe-mobile.js \
   --website-id "$WEBSITE_ID" \
   --out-dir "$CHOOSEN_OUT_DIR" \
   --app-id "$APP_ID" \
-  $APP_NAME_ARG \
-  $STATIC_FLAG \
-  $GATEWAY_URL_ARG \
-  $SITE_API_KEY_ARG
+  "${EXTRA_ARGS[@]}"
 
 # ── Done ────────────────────────────────────────────────────────────────────
 echo ""

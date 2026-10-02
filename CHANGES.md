@@ -1,3 +1,10 @@
+## [Security: F-005..F-008, F-010 - shell quoting, postMessage origins, search XSS] — 2026-10-02
+- Branch: `master`.
+- **Shell** (`publish-site.sh`, `publish-mobile.sh`, `deploy.sh`, `dev-cms.sh`): optional CLI flags built as arrays instead of unquoted strings (a domain/app name/API key with spaces or glob characters is no longer split or expanded), `deploy.sh` rsync flags/dry-run as arrays, heredoc SC2087 documented, unused `ROOT_DIR` removed in `dev-cms.sh`. `scripts/security/static/*.sh` cleaned. shellcheck on tracked scripts: 0 findings. `Dockerfile`: `# hadolint ignore=DL3059` (hadolint exits 0).
+- **postMessage** (`apps/whoobe-one-spike`): new `src/scripts/parent-origin.ts` (`parentTargetOrigin()`); `PublicPage.vue` (seo-resolved), `capture-thumbnail.ts` (thumbnail-saved), `database-actions.ts` (snippet-saved) and `BlockContainerPreview.vue` (fallback) no longer post to `'*'`.
+- **Search XSS** (F-010): `packages/core/src/cms/search-highlight.ts` (`escapeHtml`, `highlightSearchSnippet`, exported from the barrel, 4 tests) used by `DashboardLayout.vue`, `SearchResultsView.vue` and `SearchElement.vue` instead of mapping only `<em>` before `v-html`. Found by probing the throwaway stack: a data class label `<img src=x onerror=...>` came back raw in `/whoobe-one/search`.
+- Verified: `core` vitest 82, `tsc` core, `vue-tsc` admin + spike, `vite build` spike, `pnpm build`; the search fix and the new postMessage origins were not exercised in a browser.
+
 ## [Security F-004: unprivileged nginx images and generated-site images] — 2026-10-02
 - Branch: `master`.
 - `Dockerfile`: `admin-dashboard` and `whoobe-one-spike` stages use `nginxinc/nginx-unprivileged:alpine` (uid 101, listens on **8080** instead of 80; `EXPOSE 8080`). `nginx/spa-fallback.conf` listens on 8080. Host-side ports are unchanged; compose container-port mappings changed from `:80` to `:8080` in `docker-compose.yml`, `docker-compose.apps.yml` and the commented blocks of `docker-compose.data.yml`. Anything outside this repo that targets those containers' port 80 directly (not via the published host port) must be updated.

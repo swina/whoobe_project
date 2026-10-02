@@ -63,6 +63,7 @@
 </template>
 
 <script setup lang="ts">
+import { highlightSearchSnippet } from '@whoobe-cms/core'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SearchBox from '../components/SearchBox.vue'
@@ -92,10 +93,9 @@ const loading = ref(false)
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
 function highlight(text: string): string {
-  // The server renders highlight markup (<em>) via ts_headline; this view
-  // escapes everything else through the template where possible, and strips
-  // any stray markup here defensively (spike-grade).
-  return (text || '').replace(/<\/?em>/g, (m) => (m === '<em>' ? '<mark class="bg-amber-100 text-inherit">' : '</mark>'))
+  // The server marks matches with <em> (ts_headline); everything else is escaped
+  // so a title like `<img onerror=…>` renders as text (see core search-highlight).
+  return highlightSearchSnippet(text, '<mark class="bg-amber-100 text-inherit">')
 }
 
 function typeBadgeClass(type: string): string {

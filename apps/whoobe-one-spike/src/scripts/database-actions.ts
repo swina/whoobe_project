@@ -76,6 +76,7 @@ import {
 import { getPageVersion as apiGetPageVersion } from '../pages-api'
 import { getSnippetVersion as apiGetSnippetVersion } from '../snippets-api'
 import { getDefaultCoreApiUrl } from '../core-api-url'
+import { parentTargetOrigin } from './parent-origin'
 import {
   listKits as apiListKits,
   getKit as apiGetKit,
@@ -548,7 +549,7 @@ export async function saveSnippet(editor: EditorStore): Promise<void> {
 export function notifyParentSnippetSaved(snippet: { id: string; name: string; category: string; created: boolean; ownDocument: boolean }) {
   if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
     try {
-      window.parent.postMessage({ type: 'whoobe-one:snippet-saved', ...snippet }, '*')
+      window.parent.postMessage({ type: 'whoobe-one:snippet-saved', ...snippet }, parentTargetOrigin())
     } catch {
       // Silently ignore cross-origin posting errors.
     }

@@ -158,25 +158,12 @@ echo ""
 echo -e "${GREEN}Generating published site...${NC}"
 echo ""
 
-DOMAIN_ARG=""
-if [ -n "$DOMAIN" ]; then
-  DOMAIN_ARG="--domain $DOMAIN"
-fi
-
-ASSET_ARG=""
-if [ -n "$ASSET_URL" ]; then
-  ASSET_ARG="--asset-base-url $ASSET_URL"
-fi
-
-GATEWAY_ARG=""
-if [ -n "$GATEWAY_URL" ]; then
-  GATEWAY_ARG="--gateway-url $GATEWAY_URL"
-fi
-
-BASE_PATH_ARG=""
-if [ -n "$BASE_PATH" ]; then
-  BASE_PATH_ARG="--base-path $BASE_PATH"
-fi
+# Optional flags as an array: values keep their spaces/globs literal (no word splitting).
+EXTRA_ARGS=()
+[ -n "$DOMAIN" ] && EXTRA_ARGS+=(--domain "$DOMAIN")
+[ -n "$ASSET_URL" ] && EXTRA_ARGS+=(--asset-base-url "$ASSET_URL")
+[ -n "$GATEWAY_URL" ] && EXTRA_ARGS+=(--gateway-url "$GATEWAY_URL")
+[ -n "$BASE_PATH" ] && EXTRA_ARGS+=(--base-path "$BASE_PATH")
 
 # Build the publish package and SDK first, then run
 pnpm run --filter @whoobe-cms/publish build
@@ -189,10 +176,7 @@ node packages/publish/bin/whoobe-publish.js \
   --out-dir "$CHOOSEN_OUT_DIR" \
   --framework "$FRAMEWORK" \
   --revalidate "$REVALIDATE" \
-  $DOMAIN_ARG \
-  $ASSET_ARG \
-  $GATEWAY_ARG \
-  $BASE_PATH_ARG
+  "${EXTRA_ARGS[@]}"
 
 # ── Done ────────────────────────────────────────────────────────────────────
 echo ""

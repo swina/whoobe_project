@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 source "$(dirname "$0")/lib.sh"
 cd "$ROOT" && pnpm audit --prod --json > "$REPORTS/pnpm-audit.json"
 pnpm audit --prod --audit-level high >/dev/null 2>&1; rc=$?

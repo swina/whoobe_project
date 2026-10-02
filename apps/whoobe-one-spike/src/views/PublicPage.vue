@@ -61,6 +61,7 @@ import { fetchTheme } from '../themes-api'
 import { safeAlpineValue } from '../helpers'
 import { applyPageSeo } from '../scripts/apply-seo'
 import { pickSeoBinding, resolveSeoTemplates } from '@whoobe-cms/core'
+import { parentTargetOrigin } from '../scripts/parent-origin'
 
 const route = useRoute()
 const editor = useEditorStore()
@@ -177,7 +178,7 @@ function applyDynamicSeo(page: WhoobeOnePage, params: Record<string, string>, se
   applyPageSeo({ title: page.title, seo })
   if (window.parent !== window) {
     try {
-      window.parent.postMessage({ type: 'whoobe-one:seo-resolved', pageId: page.id, seo, title: page.title }, '*')
+      window.parent.postMessage({ type: 'whoobe-one:seo-resolved', pageId: page.id, seo, title: page.title }, parentTargetOrigin())
     } catch {
       // Cross-origin posting is best-effort.
     }

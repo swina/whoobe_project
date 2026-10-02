@@ -132,6 +132,7 @@ import BlockTablePreview from './BlockTablePreview.vue'
 // for SFCs (the recursive reference is only ever needed at render time,
 // well after this module has finished evaluating).
 import BlockContainerPreview from './BlockContainerPreview.vue'
+import { parentTargetOrigin } from '../../scripts/parent-origin'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -315,7 +316,7 @@ function onDynamicLinkClick(e: MouseEvent, child: WhoobeElement, obj: DataObject
   e.preventDefault()
   window.parent.postMessage(
     { type: 'whoobe-one:open-page-preview', pageId: c.dynamicLink.targetPageId, path: resolved.path, locale: resolved.locale },
-    editor.parentOrigin || '*'
+    editor.parentOrigin || parentTargetOrigin()
   )
 }
 
