@@ -185,9 +185,15 @@
         @click="openSnippetTab(snippet.id)"
       >
         <div class="relative h-[200px] bg-slate-950/40 light:bg-slate-50">
-          <img v-if="snippet.thumbnail" :src="snippet.thumbnail" alt="" title="Click to enlarge"
+          <div v-if="snippet.thumbnail" 
+            title="Click to enlarge"
+            @click.stop="thumbnailModal = { src: snippet.thumbnail, title: snippet.name }"
+            class="absolute inset-0 flex items-center bg-cover bg-top justify-center text-slate-400 light:text-slate-600" :style="'background-image:url(' + snippet.thumbnail + ')'">
+            
+          </div>
+          <!--<img v-if="snippet.thumbnail" :src="snippet.thumbnail" alt="" title="Click to enlarge"
             class="absolute inset-0 w-full h-full object-cover object-top bg-white cursor-zoom-in"
-            @click.stop="thumbnailModal = { src: snippet.thumbnail, title: snippet.name }" />
+            @click.stop="thumbnailModal = { src: snippet.thumbnail, title: snippet.name }" />-->
           <SnippetPreviewCard v-else :node="snippet.node as Record<string, any>" />
           <div class="absolute top-2 left-2 z-10" @click.stop>
             <input
@@ -337,20 +343,20 @@ async function handleDeleteSelected() {
   if (!confirm(`Delete ${count} selected snippet(s)? This cannot be undone.`)) return
   const ids = [...selectedIds.value]
   let errors = 0
+  let firstError = ''
   for (const id of ids) {
     try {
       await snippetsStore.remove(id)
     } catch (e: any) {
       errors++
+      // e.g. "used by a website template" - the server refuses those deletes.
+      if (!firstError) firstError = e?.message || ''
     }
-  let firstError = ''
   }
   selectedIds.value = new Set()
   if (errors > 0) {
     toastStore.show(`${count - errors} deleted, ${errors} not deleted${firstError ? `: ${firstError}` : '.'}`)
   } else {
-      // e.g. "used by a website template" - the server refuses those deletes.
-      if (!firstError) firstError = e?.message || ''
     toastStore.show(`${count} snippet(s) deleted.`)
   }
 }
