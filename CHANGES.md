@@ -1,3 +1,7 @@
+## [Security: throwaway docker stack for verification] — 2026-10-02
+- Branch: `master`.
+- Added `scripts/security/stack.sh` (`build|up|status|down`, compose project `whoobe-sectest`, host ports = dev +100) and a generated, gitignored `scripts/security/.env.sectest` with random secrets (kept outside the repo root so `create-workspace.sh` does not count it as a workspace). Nothing was started.
+
 ## [Security F-004: non-root containers + healthchecks] — 2026-10-02
 - Branch: `master`.
 - `Dockerfile`: stages `core-api`, `asset-processor`, `gateway` copy `/app` with `--chown=node:node`, run as `USER 1000:1000` and define a `HEALTHCHECK` (node `fetch` on `/health`, ports 3003/3002/3001). The nginx stages are unchanged.
