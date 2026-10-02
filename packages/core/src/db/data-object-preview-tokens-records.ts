@@ -60,3 +60,11 @@ export async function incrementPreviewTokenViewCount(token: string): Promise<voi
     .set({ viewCount: sql`${dataObjectPreviewTokens.viewCount} + 1` })
     .where(eq(dataObjectPreviewTokens.token, token));
 }
+
+/** Permanently removes a token row. Callers should only do this for a token
+ *  that is no longer usable (revoked or expired): revoking keeps the row (and
+ *  its view count) as a record, deleting is the explicit "clean it up" step. */
+export async function deletePreviewToken(token: string): Promise<void> {
+  const db = getDb();
+  await db.delete(dataObjectPreviewTokens).where(eq(dataObjectPreviewTokens.token, token));
+}
