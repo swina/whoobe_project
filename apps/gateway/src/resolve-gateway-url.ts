@@ -3,6 +3,9 @@ export function resolveGatewayUrl(baseUrl: string, routePath: string, params?: R
   const base = baseUrl.replace(/\/+$/, '');
   if (params) {
     for (const [key, value] of Object.entries(params)) {
+      // `.` / `..` survive encodeURIComponent and are collapsed by URL parsing, which would let a caller
+      // climb out of the route's path on the upstream host.
+      if (value === '.' || value === '..') throw new Error('Invalid path parameter value');
       resolved = resolved.replace(`{${key}}`, encodeURIComponent(value || ''));
     }
   }

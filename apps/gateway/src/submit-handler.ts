@@ -4,32 +4,7 @@ import { logGatewayError, logger } from './log-error.js';
 import { buildAuthHeaders } from './gateway-auth-headers.js';
 import { resolveGatewayUrl } from './resolve-gateway-url.js';
 import { checkSiteAuth } from './site-auth.js';
-
-// Fixed-window limit, keyed by the calling site (falls back to IP when no
-// site could be identified, e.g. a raw/forged request) so IP rotation alone
-// doesn't bypass it the way a plain per-IP limiter would.
-const FORM_SUBMIT_MAX = 10;
-const FORM_SUBMIT_WINDOW_MS = 15 * 60 * 1000;
-const formSubmitCounts = new Map<string, { count: number; windowStart: number }>();
-
-function isFormSubmitRateLimited(key: string): boolean {
-  const entry = formSubmitCounts.get(key);
-  if (!entry) return false;
-  if (Date.now() - entry.windowStart > FORM_SUBMIT_WINDOW_MS) {
-    formSubmitCounts.delete(key);
-    return false;
-  }
-  return entry.count >= FORM_SUBMIT_MAX;
-}
-
-function recordFormSubmit(key: string): void {
-  const entry = formSubmitCounts.get(key);
-  if (!entry || Date.now() - entry.windowStart > FORM_SUBMIT_WINDOW_MS) {
-    formSubmitCounts.set(key, { count: 1, windowStart: Date.now() });
-    return;
-  }
-  entry.count += 1;
-}
+import { submitIpLimiter, submitSiteLimiter, validateSubmittedAttributes, isUuid } from './public-limits.js';
 
 // Brevo's POST /contacts only recognizes these keys at the top level of the
 // request body (https://developers.brevo.com/reference/createcontact); any
@@ -72,12 +47,22 @@ export function createSubmitHandler(): Router {
 
   router.post('/', async (req: Request, res: Response): Promise<void> => {
     try {
+      // before any database work (see public-limits.ts)
+      if (submitIpLimiter.hit(req.ip ?? 'unknown')) {
+        res.status(429).json({ error: 'Too many submissions, please try again later' });
+        return;
+      }
       const { bindingId, attributes } = req.body as {
         bindingId?: string; attributes?: Record<string, unknown>;
       };
 
       if (!bindingId) {
         res.status(400).json({ error: 'bindingId is required' });
+        return;
+      }
+      if (!isUuid(bindingId)) {
+        // a malformed id can match nothing: answer like an unknown one, without a database round trip
+        res.status(404).json({ error: 'Unknown submit target' });
         return;
       }
       if (attributes == null || typeof attributes !== 'object') {
@@ -105,12 +90,15 @@ export function createSubmitHandler(): Router {
         return;
       }
 
-      const rateLimitKey = `site:${binding.websiteId}`;
-      if (isFormSubmitRateLimited(rateLimitKey)) {
+      if (submitSiteLimiter.hit(`site:${binding.websiteId}`)) {
         res.status(429).json({ error: 'Too many submissions, please try again later' });
         return;
       }
-      recordFormSubmit(rateLimitKey);
+      const shapeError = validateSubmittedAttributes(attributes as Record<string, unknown>);
+      if (shapeError) {
+        res.status(400).json({ error: shapeError });
+        return;
+      }
 
       const [endpoint, route] = await Promise.all([
         getGatewayEndpoint(binding.endpointId),

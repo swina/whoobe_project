@@ -224,6 +224,7 @@ import {
   type SearchOptions,
   type SearchDocumentType,
   type MenuItem,
+  parseTrustProxy,
   corsPolicy,
   securityHeaders,
   sanitizeServerErrors,
@@ -300,12 +301,6 @@ logger.info({ host: cfg.host, port: cfg.port, db: cfg.database, user: cfg.user }
 const app = express();
 const port = process.env.PORT || 3003;
 const isProduction = process.env.NODE_ENV === 'production';
-
-function parseTrustProxy(v: string | undefined): boolean | number | string {
-  if (!v || v === 'false') return false;
-  if (v === 'true') return true;
-  return /^\d+$/.test(v) ? Number(v) : v;
-}
 
 // Same reasoning as apps/gateway's own express.json() limit bump: Express's
 // 100kb default is too small once a request/response body can contain

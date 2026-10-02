@@ -1,6 +1,6 @@
 import express, { type Express } from 'express';
 import cookieParser from 'cookie-parser';
-import { corsPolicy, securityHeaders } from '@whoobe-cms/core/server';
+import { corsPolicy, securityHeaders, parseTrustProxy } from '@whoobe-cms/core/server';
 import { createRouter } from './router.js';
 import { GATEWAY_PORT } from './config.js';
 import { logger } from './log-error.js';
@@ -21,6 +21,9 @@ app.use(cookieParser());
 // localhost too outside production). The site-facing routes (key-authenticated, no cookie) answer
 // any origin without credentials. 5xx bodies are NOT sanitised here: proxied upstream errors are the point.
 app.disable('x-powered-by');
+// req.ip feeds the public-route limiters: behind a reverse proxy set TRUST_PROXY (hops / loopback / CIDRs),
+// never when the gateway is directly reachable (X-Forwarded-For would become spoofable).
+app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
 app.use(securityHeaders());
 app.use(corsPolicy({
   publicPathPrefixes: ['/health', '/public/', '/api/remote', '/api/v1/gateway/resolve', '/api/v1/gateway/submit'],

@@ -5,34 +5,7 @@ import { buildAuthHeaders } from './gateway-auth-headers.js';
 import { resolveFieldPath } from './resolve-field-path.js';
 import { applyResultFilters, type GatewayResultFilter } from './gateway-result-filters.js';
 import { checkSiteAuth } from './site-auth.js';
-
-// Same shape as submit-handler.ts's limiter - fixed-window, keyed by the
-// calling site. resolve previously had NO rate limit at all (it relied
-// entirely on requiring an admin session, which is what made it unusable
-// for real published sites - see docs/plans/api-gateway/gateway-auth-
-// authz.md); now that it's public, it needs one just as much as submit does.
-const RESOLVE_MAX = 60;
-const RESOLVE_WINDOW_MS = 60 * 1000;
-const resolveCounts = new Map<string, { count: number; windowStart: number }>();
-
-function isResolveRateLimited(key: string): boolean {
-  const entry = resolveCounts.get(key);
-  if (!entry) return false;
-  if (Date.now() - entry.windowStart > RESOLVE_WINDOW_MS) {
-    resolveCounts.delete(key);
-    return false;
-  }
-  return entry.count >= RESOLVE_MAX;
-}
-
-function recordResolve(key: string): void {
-  const entry = resolveCounts.get(key);
-  if (!entry || Date.now() - entry.windowStart > RESOLVE_WINDOW_MS) {
-    resolveCounts.set(key, { count: 1, windowStart: Date.now() });
-    return;
-  }
-  entry.count += 1;
-}
+import { resolveIpLimiter, resolveSiteLimiter, isUuid } from './public-limits.js';
 
 /** Public read counterpart to submit-handler.ts - resolves a container's/
  *  field's gatewayBinding by its opaque bindingId (pinned to one fixed
@@ -47,12 +20,22 @@ export function createResolveHandler(): Router {
 
   router.post('/', async (req: Request, res: Response): Promise<void> => {
     try {
+      // before any database work: one client cannot flood the lookup with random binding ids
+      if (resolveIpLimiter.hit(req.ip ?? 'unknown')) {
+        res.status(429).json({ error: 'Too many requests, please try again later' });
+        return;
+      }
       const { bindingId, params } = req.body as {
         bindingId?: string; params?: Record<string, string>;
       };
 
       if (!bindingId) {
         res.status(400).json({ error: 'bindingId is required' });
+        return;
+      }
+      if (!isUuid(bindingId)) {
+        // a malformed id can match nothing: answer like an unknown one, without a database round trip
+        res.status(404).json({ error: 'Unknown resolve target' });
         return;
       }
 
@@ -70,12 +53,10 @@ export function createResolveHandler(): Router {
         return;
       }
 
-      const rateLimitKey = `site:${binding.websiteId}`;
-      if (isResolveRateLimited(rateLimitKey)) {
+      if (resolveSiteLimiter.hit(`site:${binding.websiteId}`)) {
         res.status(429).json({ error: 'Too many requests, please try again later' });
         return;
       }
-      recordResolve(rateLimitKey);
 
       const [endpoint, route] = await Promise.all([
         getGatewayEndpoint(binding.endpointId),
