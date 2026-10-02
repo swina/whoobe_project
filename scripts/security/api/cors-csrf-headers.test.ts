@@ -1,8 +1,8 @@
 // Plan 3.5: CORS, CSRF and security headers of core-api (also 3.14 error disclosure sweep).
 import { describe, it, expect, beforeAll } from 'vitest'
 import { Client, clientFor } from '../lib/client'
-import { known } from '../lib/known'
 import { loadExpectedRoutes, concretePath } from '../lib/routes'
+import { GATEWAY_TARGET, ASSET_TARGET } from '../lib/config'
 
 const EVIL = 'https://evil.example'
 let admin: Client
@@ -10,15 +10,15 @@ let admin: Client
 beforeAll(async () => { admin = await clientFor('admin') })
 
 describe('CORS', () => {
-  // F-011: `cors({ origin: true, credentials: true })` reflects any Origin with credentials allowed.
-  known('F-011', 'an unknown origin does not get credentialed access (authenticated route)', async () => {
+  // F-011 (fixed): credentialed CORS only for an allowlist, see packages/core/src/http/security.ts.
+  it('an unknown origin does not get credentialed access (authenticated route)', async () => {
     const r = await admin.get('/auth/me', { origin: EVIL })
     const acao = r.headers.get('access-control-allow-origin')
     const cred = r.headers.get('access-control-allow-credentials')
     expect(acao === EVIL && cred === 'true', `ACAO=${acao} ACAC=${cred}`).toBe(false)
   })
 
-  known('F-011', 'an unknown origin does not get credentialed access (preflight)', async () => {
+  it('an unknown origin does not get credentialed access (preflight)', async () => {
     const r = await new Client().request('OPTIONS', '/whoobe-one/websites', {
       headers: { origin: EVIL, 'access-control-request-method': 'POST', 'access-control-request-headers': 'content-type' },
     })
@@ -32,9 +32,30 @@ describe('CORS', () => {
     expect(!(r.headers.get('access-control-allow-origin') === '*' && r.headers.get('access-control-allow-credentials') === 'true')).toBe(true)
   })
 
-  known('F-011', 'the null origin is not trusted with credentials', async () => {
+  it('the null origin is not trusted with credentials', async () => {
     const r = await admin.get('/auth/me', { origin: 'null' })
     expect(r.headers.get('access-control-allow-origin') === 'null' && r.headers.get('access-control-allow-credentials') === 'true').toBe(false)
+  })
+})
+
+describe('CORS: allowed and public origins', () => {
+  it('the admin origin (same host, other port) keeps credentialed access', async () => {
+    const r = await admin.get('/auth/me', { origin: 'http://localhost:3100' })
+    expect(r.headers.get('access-control-allow-origin')).toBe('http://localhost:3100')
+    expect(r.headers.get('access-control-allow-credentials')).toBe('true')
+  })
+
+  it('public routes can be read cross-origin, but never with credentials', async () => {
+    const r = await new Client().get('/public/websites', { origin: EVIL })
+    expect(r.headers.get('access-control-allow-origin')).toBe(EVIL)
+    expect(r.headers.get('access-control-allow-credentials')).toBeNull()
+  })
+
+  it('a look-alike origin is not allowed', async () => {
+    for (const origin of ['http://localhost.evil.example', 'http://evil.example/localhost', 'http://localhost@evil.example']) {
+      const r = await admin.get('/auth/me', { origin })
+      expect(r.headers.get('access-control-allow-credentials'), origin).toBeNull()
+    }
   })
 })
 
@@ -60,13 +81,13 @@ describe('security headers', () => {
     ['referrer-policy', /.+/],
   ]
 
-  known('F-014', 'does not advertise the framework (X-Powered-By)', async () => {
+  it('does not advertise the framework (X-Powered-By)', async () => {
     const r = await new Client().get('/health')
     expect(r.headers.get('x-powered-by')).toBeNull()
   })
 
-  // F-014: no helmet-style headers on core-api responses.
-  known('F-014', 'API responses carry baseline security headers (nosniff, frame protection, referrer policy)', async () => {
+  // F-014 (fixed): baseline security headers, no X-Powered-By.
+  it('API responses carry baseline security headers (nosniff, frame protection, referrer policy)', async () => {
     const r = await new Client().get('/health')
     const missing = needed.filter(([h, re]) => !re.test(r.headers.get(h) ?? '')).map(([h]) => h)
     expect(missing).toEqual([])
@@ -83,7 +104,7 @@ describe('security headers', () => {
 describe('error disclosure (GET routes with a malformed id, plan 3.14)', () => {
   const DB_TEXT = /Failed query|invalid input syntax|select ".*" from|params:|pg_|relation ".*" does not exist|at .*\(.*:\d+:\d+\)|node_modules/i
 
-  known('F-018', 'no GET route answers 5xx / database text for a malformed id (admin session)', async () => {
+  it('no GET route answers 5xx / database text for a malformed id (admin session)', async () => {
     const leaks: string[] = []
     for (const r of loadExpectedRoutes().filter((x) => x.method === 'GET' && x.access !== 'public' && /:/.test(x.path))) {
       const res = await admin.get(concretePath(r.path).replace(/00000000-0000-4000-8000-000000000000/g, 'not-a-uuid'))
@@ -98,5 +119,18 @@ describe('error disclosure (GET routes with a malformed id, plan 3.14)', () => {
       expect([400, 401, 404, 405], `${m} ${p}`).toContain(r.status)
       expect(r.text).not.toMatch(DB_TEXT)
     }
+  })
+})
+
+describe('CORS on the other services', () => {
+  const services: [string, string][] = [['gateway', GATEWAY_TARGET], ['asset-processor', ASSET_TARGET]]
+  it.each(services)('%s: unknown origin gets no credentialed access, admin origin does', async (_n, base) => {
+    const evil = await new Client(base).get('/health', { origin: EVIL })
+    expect(evil.headers.get('access-control-allow-credentials')).toBeNull()
+    const ok = await new Client(base).get('/health', { origin: 'http://localhost:3100' })
+    expect(ok.headers.get('access-control-allow-origin')).toBe('http://localhost:3100')
+    expect(ok.headers.get('access-control-allow-credentials')).toBe('true')
+    expect(ok.headers.get('x-powered-by')).toBeNull()
+    expect(ok.headers.get('x-content-type-options')).toBe('nosniff')
   })
 })

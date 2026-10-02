@@ -3,9 +3,8 @@ import {
 } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
-import cors from 'cors';
 import {
   findUserByEmail,
   findUserById,
@@ -225,6 +224,10 @@ import {
   type SearchOptions,
   type SearchDocumentType,
   type MenuItem,
+  corsPolicy,
+  securityHeaders,
+  sanitizeServerErrors,
+  cookieShouldBeSecure,
 } from '@whoobe-cms/core/server';
 // Root package entry, not '/server' - compileDynamicSchema lives in
 // schema/dynamic.ts, exported from index.ts and kept out of the Node-only
@@ -303,12 +306,26 @@ const isProduction = process.env.NODE_ENV === 'production';
 // embedded images, or its own base64-image render option).
 app.use(express.json({ limit: '25mb' }));
 app.use(cookieParser());
-// origin: true reflects the request's own Origin header, which is required
-// for credentialed (cookie-carrying) CORS requests - "*" is rejected by
-// browsers whenever credentials are involved. Fine across the dev LAN
-// hostnames this project uses (develop.local, localhost); lock this to an
-// explicit allowlist before this is ever exposed beyond a trusted network.
-app.use(cors({ origin: true, credentials: true }));
+// Credentialed CORS only for an allowlist (WHOOBE_HOSTNAME, CORS_ALLOWED_HOSTS,
+// CORS_ALLOWED_ORIGINS; localhost too outside production). Public routes answer any
+// origin but never with credentials. See packages/core/src/http/security.ts.
+app.disable('x-powered-by');
+app.use(securityHeaders());
+app.use(corsPolicy({ publicPathPrefixes: ['/public/', '/preview/', '/health', '/pwa/subscribe'] }));
+app.use(sanitizeServerErrors());
+
+// Every `:id`-style path parameter in this API is a uuid column; a malformed one used to reach
+// Postgres and come back as a 500 carrying the SQL text. Answer 404 before touching the database.
+const UUID_PARAM_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+for (const name of ['id', 'versionId', 'websiteId', 'translationGroupId']) {
+  app.param(name, (_req: Request, res: Response, next: NextFunction, value: string) => {
+    if (!UUID_PARAM_RE.test(value)) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    next();
+  });
+}
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', service: 'core-api', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString() });
@@ -372,10 +389,18 @@ function recordFormSubmit(key: string): void {
   entry.count += 1;
 }
 
-function setSessionCookie(res: Response, token: string, expiresAt: Date, _req: Request): void {
+// Where the admin dashboard lives, for links in e-mails. ADMIN_PUBLIC_URL wins (https/proxy/other
+// ports); otherwise the historical http://<WHOOBE_HOSTNAME>:3000.
+function buildResetUrl(token: string): string {
+  const base = (process.env.ADMIN_PUBLIC_URL || `http://${process.env.WHOOBE_HOSTNAME || 'localhost'}:3000`).replace(/\/+$/, '');
+  return `${base}/reset-password?token=${token}`;
+}
+
+function setSessionCookie(res: Response, token: string, expiresAt: Date, req: Request): void {
   res.cookie(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: false,
+    // Secure behind TLS (direct, X-Forwarded-Proto: https, or COOKIE_SECURE=true).
+    secure: cookieShouldBeSecure(req),
     sameSite: 'lax',
     expires: expiresAt,
     path: '/',
@@ -455,7 +480,7 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
     const user = await findUserByEmail(email);
 
     if (!user) {
-      logger.warn(`Login failed: user not found for email "${email.toLowerCase()}"`);
+      logger.warn('Login failed: unknown user');
       recordFailedAttempt(rateLimitKey);
       res.status(401).json({ error: 'Invalid email or password' });
       return;
@@ -470,10 +495,7 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
 
     const passwordOk = await verifyPassword(user.passwordHash, password);
     if (!passwordOk) {
-      logger.warn(
-        `Login failed: wrong password for user "${user.id}" ` +
-        `(hash prefix: ${user.passwordHash.slice(0, 16)}..., email: "${user.email}")`
-      );
+      logger.warn(`Login failed: wrong password for user "${user.id}"`);
       recordFailedAttempt(rateLimitKey);
       res.status(401).json({ error: 'Invalid email or password' });
       return;
@@ -676,19 +698,23 @@ app.post('/auth/forgot-password', async (req: Request, res: Response): Promise<v
     const user = await findUserByEmail(normalizedEmail);
     if (user && user.isActive) {
       const token = await generateResetToken(user.id);
-      console.log(`Password reset token generated for user "${user.id}": ${token.slice(0, 8)}...`);
-      const hostname = process.env.WHOOBE_HOSTNAME || 'localhost';
-      const resetUrl = `http://${hostname}:3000/reset-password?token=${token}`;
+      logger.info(`Password reset requested for user "${user.id}"`);
+      const resetUrl = buildResetUrl(token);
 
       const settings = await getMailSettings();
       if (!settings) {
         // Dev fallback: no SMTP configured, log the URL so testing can
         // still proceed without mail infrastructure.
-        console.log('');
-        console.log('=== Password reset link (no mail settings configured) ===');
-        console.log(`  ${resetUrl}`);
-        console.log('========================================================');
-        console.log('');
+        // Dev convenience only: the link IS the credential, so it must never reach production logs.
+        if (!isProduction) {
+          console.log('');
+          console.log('=== Password reset link (no mail settings configured) ===');
+          console.log(`  ${resetUrl}`);
+          console.log('========================================================');
+          console.log('');
+        } else {
+          logger.warn('Password reset requested but no mail settings are configured: no e-mail was sent');
+        }
       } else {
         await sendMail({
           to: user.email,
@@ -813,9 +839,8 @@ app.delete('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async
 app.post('/auth/users/:id/reset-password', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
   try {
     const token = await adminResetPassword(req.params.id);
-    const hostname = process.env.WHOOBE_HOSTNAME || 'localhost';
-    const resetUrl = `http://${hostname}:3000/reset-password?token=${token}`;
-    console.log(`Admin-triggered password reset for user ${req.params.id}: ${resetUrl}`);
+    const resetUrl = buildResetUrl(token);
+    logger.info(`Admin-triggered password reset for user ${req.params.id}`);
     res.json({ resetUrl, token });
   } catch (error: any) {
     logger.error({ err: error }, 'Admin reset password error');

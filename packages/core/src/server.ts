@@ -97,3 +97,4 @@ export * from './cms/gateway-binding.js';
 export * from './gateway/bind-page-content.js';
 export * from './gateway/sanitize-public-content.js';
 export * from './env.js';
+export * from './http/security.js';

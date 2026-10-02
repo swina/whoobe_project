@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { getDb } from '../db/client.js';
 import { users } from '../db/auth-schema.js';
 import { hashPassword } from './password.js';
+import { revokeUserSessions } from './session.js';
 
 export const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 const RESET_TOKEN_BYTES = 32;
@@ -44,4 +45,6 @@ export async function updatePassword(userId: string, newPassword: string): Promi
   const db = getDb();
   const passwordHash = await hashPassword(newPassword);
   await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+  // A new password must end sessions opened with the old one (stolen cookie, shared machine).
+  await revokeUserSessions(userId);
 }
