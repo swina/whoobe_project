@@ -101,3 +101,10 @@ export function cookieShouldBeSecure(req: Request, env: NodeJS.ProcessEnv = proc
   const forwarded = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0].trim().toLowerCase();
   return req.secure || forwarded === 'https';
 }
+
+/** TRUST_PROXY env -> Express `trust proxy` setting: unset/false = off, true, a hop count, or a subnet list. */
+export function parseTrustProxy(v: string | undefined): boolean | number | string {
+  if (!v || v === 'false') return false;
+  if (v === 'true') return true;
+  return /^\d+$/.test(v) ? Number(v) : v;
+}
