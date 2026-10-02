@@ -21,6 +21,7 @@ EXCLUDES=(
   --exclude '.env'
   --exclude '.env.*'
   --exclude '.git'
+  --exclude '.claude'
   --exclude '.turbo'
   --exclude 'node_modules'
   --exclude 'deploy.sh'
