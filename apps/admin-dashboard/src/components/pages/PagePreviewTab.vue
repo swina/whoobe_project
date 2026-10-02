@@ -3,6 +3,7 @@
     <details v-if="page" class="shrink-0 rounded-xl border border-slate-800 light:border-slate-200 px-3 py-2 text-xs">
       <summary class="cursor-pointer font-semibold text-slate-400">
         SEO applied to this preview
+        <span v-if="seoIsDynamic" class="ml-2 font-normal text-indigo-400">dynamic - values filled from the data record</span>
         <span v-if="seoWarnings.length" class="ml-2 text-amber-400">{{ seoWarnings.length }} warning(s)</span>
       </summary>
       <div class="mt-2 space-y-2">
@@ -15,11 +16,11 @@
           <dt>Robots</dt>
           <dd class="font-mono">{{ seoRobots }}</dd>
           <dt>OG title</dt>
-          <dd class="truncate">{{ page.seo?.ogTitle || seoTitle }}</dd>
+          <dd class="truncate">{{ effectiveSeo?.ogTitle || seoTitle }}</dd>
           <dt>OG image</dt>
-          <dd class="truncate font-mono">{{ page.seo?.ogImage || '—' }}</dd>
+          <dd class="truncate font-mono">{{ effectiveSeo?.ogImage || '—' }}</dd>
           <dt>Structured data</dt>
-          <dd>{{ page.seo?.structuredData && Object.keys(page.seo.structuredData).length ? 'JSON-LD present' : '—' }}</dd>
+          <dd>{{ effectiveSeo?.structuredData && Object.keys(effectiveSeo.structuredData).length ? 'JSON-LD present' : '—' }}</dd>
         </dl>
         <ul v-if="seoWarnings.length" class="list-disc pl-4 text-amber-400">
           <li v-for="w in seoWarnings" :key="w">{{ w }}</li>
@@ -27,7 +28,7 @@
       </div>
     </details>
     <div class="flex-1 min-h-0 rounded-xl overflow-hidden border border-slate-800 light:border-slate-200 bg-white">
-      <iframe :src="iframeSrc" class="w-full h-full border-0"></iframe>
+      <iframe ref="iframeEl" :src="iframeSrc" class="w-full h-full border-0"></iframe>
     </div>
   </div>
   <div v-else-if="!page?.published" class="flex flex-col items-center justify-center h-full space-y-3 text-center">
@@ -62,12 +63,13 @@
 // falls back to the page's own static slug (works the same way for any
 // non-dynamic page). A dynamic page with no override shows a notice
 // instead of guessing - see docs/plans/website/website-paths.md.
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Eye } from '@lucide/vue'
 import { usePagesStore } from '../../stores/pagesStore'
 import { useTabsStore } from '../../stores/tabsStore'
 import { useWebsitesStore } from '../../stores/websitesStore'
-import type { WhoobeOnePage } from '../../utils/pages-api'
+import type { WhoobeOnePage, PageSeo } from '../../utils/pages-api'
+import { seoHasTokens, hasSeoTokens } from '@whoobe-cms/core'
 import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
 
 const props = defineProps<{
@@ -104,24 +106,49 @@ const iframeSrc = computed(() => {
   return null
 })
 
-const seoTitle = computed(() => page.value?.seo?.metaTitle || page.value?.title || '')
-const seoDescription = computed(() => page.value?.seo?.metaDescription || '')
-const seoCanonical = computed(() => page.value?.seo?.canonicalUrl || iframeSrc.value?.split('?')[0] || '')
+// SEO as the preview actually renders it. A dynamic page's meta fields can
+// hold `{field}` tokens; the embedded whoobe-one-spike page resolves them from
+// the bound record and posts the result up (PublicPage.vue's applyDynamicSeo) -
+// this panel can't read the iframe's <head> itself. Until that message
+// arrives it shows the stored values.
+const iframeEl = ref<HTMLIFrameElement | null>(null)
+const resolvedSeo = ref<PageSeo | null>(null)
+const effectiveSeo = computed<PageSeo | null>(() => resolvedSeo.value ?? page.value?.seo ?? null)
+const seoIsDynamic = computed(() => seoHasTokens(page.value?.seo))
+
+function onSeoMessage(event: MessageEvent) {
+  if (event.data?.type !== 'whoobe-one:seo-resolved') return
+  if (event.source !== iframeEl.value?.contentWindow) return
+  resolvedSeo.value = (event.data.seo as PageSeo | null) ?? null
+}
+
+// A different preview target (another record) is a different page render.
+watch(iframeSrc, () => (resolvedSeo.value = null))
+
+const seoTitle = computed(() => effectiveSeo.value?.metaTitle || page.value?.title || '')
+const seoDescription = computed(() => effectiveSeo.value?.metaDescription || '')
+const seoCanonical = computed(() => effectiveSeo.value?.canonicalUrl || iframeSrc.value?.split('?')[0] || '')
 const seoRobots = computed(() => {
-  const r = page.value?.seo?.robots
+  const r = effectiveSeo.value?.robots
   return r ? `${r.index ? 'index' : 'noindex'},${r.follow ? 'follow' : 'nofollow'}` : 'index,follow (default)'
 })
 // Heuristic length limits search engines typically truncate at.
 const seoWarnings = computed(() => {
   const out: string[] = []
-  if (!page.value?.seo?.metaTitle) out.push('No meta title: falling back to the page title.')
-  else if (seoTitle.value.length > 60) out.push(`Meta title is ${seoTitle.value.length} chars (~60 max).`)
-  if (!seoDescription.value) out.push('No meta description.')
-  else if (seoDescription.value.length > 160) out.push(`Meta description is ${seoDescription.value.length} chars (~160 max).`)
-  if (page.value?.seo?.robots && !page.value.seo.robots.index) out.push('Page is set to noindex.')
-  if (!page.value?.seo?.ogImage) out.push('No Open Graph image.')
+  const stored = page.value?.seo
+  if (!effectiveSeo.value?.metaTitle) {
+    out.push(hasSeoTokens(stored?.metaTitle) ? 'Meta title uses a {field} that resolved empty (no record found, or the field is empty): falling back to the page title.' : 'No meta title: falling back to the page title.')
+  } else if (seoTitle.value.length > 60) out.push(`Meta title is ${seoTitle.value.length} chars (~60 max).`)
+  if (!seoDescription.value) {
+    out.push(hasSeoTokens(stored?.metaDescription) ? 'Meta description uses a {field} that resolved empty (no record found, or the field is empty).' : 'No meta description.')
+  } else if (seoDescription.value.length > 160) out.push(`Meta description is ${seoDescription.value.length} chars (~160 max).`)
+  if (effectiveSeo.value?.robots && !effectiveSeo.value.robots.index) out.push('Page is set to noindex.')
+  if (!effectiveSeo.value?.ogImage) out.push(hasSeoTokens(stored?.ogImage) ? 'Open Graph image uses a {field} that resolved empty.' : 'No Open Graph image.')
   return out
 })
+
+onMounted(() => window.addEventListener('message', onSeoMessage))
+onUnmounted(() => window.removeEventListener('message', onSeoMessage))
 
 onMounted(async () => {
   try {

@@ -96,20 +96,57 @@
       </template>
 
       <template v-if="activeTab === 'seo'">
+        <!-- Dynamic SEO: tokens in the meta fields are filled from the data
+             record the page is bound to (core cms/seo-template.ts). Shown for a
+             dynamic-path page or any page with a single-record data binding. -->
+        <div v-if="seoBindings.length || isDynamicPage" class="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-2 text-xs">
+          <span class="font-semibold text-indigo-300">Dynamic SEO</span>
+          <p class="text-slate-400 light:text-slate-600">
+            Put a field in curly braces in any field below to take its value from this page's data record - e.g.
+            <code class="font-mono text-indigo-300">{{ '{title}' }}</code> as the Meta Title,
+            <code class="font-mono text-indigo-300">{{ '{abstract}' }}</code> as the Meta Description. URL parameters
+            such as <code class="font-mono text-indigo-300">{{ '{slug}' }}</code> work too. Rendered in the preview and in the published output.
+          </p>
+          <div v-if="seoBindings.length" class="flex items-center gap-2">
+            <label class="shrink-0 font-semibold text-slate-400 light:text-slate-600">Data source</label>
+            <select v-model="form.seo.sourceBindingId" class="flex-1 min-w-0 px-2 py-1 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500">
+              <option :value="null">{{ autoSeoBinding ? `Automatic - ${bindingLabel(autoSeoBinding)}` : 'Automatic - none (pick one below)' }}</option>
+              <option v-for="b in seoBindings" :key="b.nodeId" :value="b.nodeId">{{ bindingLabel(b) }}</option>
+            </select>
+          </div>
+          <p v-if="seoBindings.length && !autoSeoBinding && !form.seo.sourceBindingId" class="text-amber-400">
+            This page only has list bindings. Pick the one to take the record from above, otherwise only URL parameters resolve.
+          </p>
+          <p v-else-if="!seoBindings.length" class="text-amber-400">
+            This page has no data binding (single record or dynamic query), so only URL parameters such as the slug's can be used
+            as tokens.
+          </p>
+          <div class="flex flex-wrap items-center gap-1">
+            <span class="text-slate-500">Insert into <span class="font-mono">{{ lastSeoField }}</span>:</span>
+            <button
+              v-for="t in tokenChoices"
+              :key="t.name"
+              type="button"
+              :title="t.title"
+              class="px-1.5 py-0.5 rounded bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:hover:bg-slate-200 text-slate-300 light:text-slate-700 font-mono"
+              @click="insertToken(t.name)"
+            >{{ '{' + t.name + '}' }}</button>
+          </div>
+        </div>
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Meta Title</label>
-          <input v-model="form.seo.metaTitle" type="text" :placeholder="`Uses page title: ${form.title}`" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+          <input v-model="form.seo.metaTitle" :ref="(el) => setSeoRef('metaTitle', el)" @focus="lastSeoField = 'metaTitle'" type="text" :placeholder="`Uses page title: ${form.title}`" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
           <p v-if="!form.seo.metaTitle?.trim()" class="text-[10px] text-slate-500 mt-0.5">
             Empty - will use the page title: <span class="text-indigo-400">{{ form.title }}</span>
           </p>
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Meta Description</label>
-          <textarea v-model="form.seo.metaDescription" rows="3" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+          <textarea v-model="form.seo.metaDescription" :ref="(el) => setSeoRef('metaDescription', el)" @focus="lastSeoField = 'metaDescription'" rows="3" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Canonical URL</label>
-          <input v-model="form.seo.canonicalUrl" type="text" class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+          <input v-model="form.seo.canonicalUrl" :ref="(el) => setSeoRef('canonicalUrl', el)" @focus="lastSeoField = 'canonicalUrl'" type="text" class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
         </div>
         <div class="flex items-center gap-4">
           <label class="flex items-center gap-2 cursor-pointer">
@@ -125,15 +162,15 @@
           <span class="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Open Graph</span>
           <div>
             <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">OG Title</label>
-            <input v-model="form.seo.ogTitle" type="text" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="form.seo.ogTitle" :ref="(el) => setSeoRef('ogTitle', el)" @focus="lastSeoField = 'ogTitle'" type="text" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">OG Description</label>
-            <textarea v-model="form.seo.ogDescription" rows="2" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+            <textarea v-model="form.seo.ogDescription" :ref="(el) => setSeoRef('ogDescription', el)" @focus="lastSeoField = 'ogDescription'" rows="2" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">OG Image URL</label>
-            <input v-model="form.seo.ogImage" type="text" class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">OG Image URL <span class="font-normal text-slate-500">(or a {{ '{field}' }} holding an image)</span></label>
+            <input v-model="form.seo.ogImage" :ref="(el) => setSeoRef('ogImage', el)" @focus="lastSeoField = 'ogImage'" type="text" class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
           </div>
         </div>
         <div>
@@ -216,13 +253,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { Wand2 } from '@lucide/vue'
 import { usePagesStore } from '../../stores/pagesStore'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import type { WhoobeOnePage, PageSeo, PageSitemapSettings, PageSearchSettings } from '../../utils/pages-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
 import { slugify } from '../../utils/slugify'
+import { findSeoBindings, pickSeoBinding, type SeoBindingRef } from '@whoobe-cms/core'
+import { useDataClassesStore } from '../../stores/dataClassesStore'
 
 const props = defineProps<{
   pageId: string
@@ -233,6 +272,7 @@ const emit = defineEmits<{
 }>()
 
 const pagesStore = usePagesStore()
+const dataClassesStore = useDataClassesStore()
 const websitesStore = useWebsitesStore()
 
 const settingsTabs = [
@@ -251,7 +291,7 @@ const page = ref<WhoobeOnePage | null>(null)
 const websites = ref<WebsiteRecord[]>([])
 
 function emptySeo(): PageSeo {
-  return { metaTitle: null, metaDescription: null, canonicalUrl: null, robots: { index: true, follow: true }, ogTitle: null, ogDescription: null, ogImage: null, structuredData: null }
+  return { metaTitle: null, metaDescription: null, canonicalUrl: null, robots: { index: true, follow: true }, ogTitle: null, ogDescription: null, ogImage: null, structuredData: null, sourceBindingId: null }
 }
 
 function emptySitemap(): PageSitemapSettings {
@@ -277,6 +317,62 @@ const form = reactive({
 })
 
 const structuredDataText = ref('')
+
+// --- Dynamic SEO (see the "Dynamic SEO" panel in the SEO tab) -------------
+type SeoTextField = 'metaTitle' | 'metaDescription' | 'canonicalUrl' | 'ogTitle' | 'ogDescription' | 'ogImage'
+const lastSeoField = ref<SeoTextField>('metaTitle')
+const seoInputs: Partial<Record<SeoTextField, HTMLInputElement | HTMLTextAreaElement>> = {}
+
+function setSeoRef(field: SeoTextField, el: unknown) {
+  if (el) seoInputs[field] = el as HTMLInputElement | HTMLTextAreaElement
+}
+
+const isDynamicPage = computed(() => form.slug.includes('{'))
+// Candidate SEO data sources: single-record bindings, dynamic queries (a
+// filter such as slug = {slug}) and - pickable by hand only - plain lists
+// (their first record is used). "Automatic" is the first of the first two.
+const seoBindings = computed<SeoBindingRef[]>(() => findSeoBindings(page.value?.content))
+const autoSeoBinding = computed(() => pickSeoBinding(page.value?.content, null))
+const activeSeoBinding = computed(() => pickSeoBinding(page.value?.content, form.seo.sourceBindingId))
+
+const KIND_LABEL: Record<SeoBindingRef['kind'], string> = { record: 'single record', dynamic: 'dynamic query', list: 'list - uses its first record' }
+
+function bindingLabel(b: SeoBindingRef): string {
+  const filters = (b.binding.filters ?? []).map((f) => `${f.field} ${f.operator === 'eq' ? '=' : f.operator} ${String(f.value)}`).join(', ')
+  return `${b.binding.className} · ${KIND_LABEL[b.kind]}${filters ? ` · ${filters}` : ''}`
+}
+
+// Fields offered as tokens: the source class's text-like fields, the record
+// key, and the page's own URL parameters ({slug} in /blog/{slug}).
+const NON_TEXT_FIELD_TYPES = new Set(['block', 'fieldcollections', 'manyToOneRelation', 'manyToManyRelation', 'manyToManyObjectRelation', 'advancedManyToManyRelation', 'json'])
+const tokenChoices = computed<{ name: string; title: string }[]>(() => {
+  const out: { name: string; title: string }[] = []
+  const cls = dataClassesStore.classes.find((c) => c.name === activeSeoBinding.value?.binding.className)
+  for (const f of cls?.fields ?? []) {
+    if (f.name && !NON_TEXT_FIELD_TYPES.has(f.fieldType)) out.push({ name: f.name, title: `${f.title || f.name} (${f.fieldType})` })
+  }
+  if (cls) out.push({ name: 'key', title: 'Record key' })
+  for (const m of form.slug.matchAll(/\{(\w+)\}/g)) {
+    if (!out.some((t) => t.name === m[1])) out.push({ name: m[1], title: 'URL parameter' })
+  }
+  return out
+})
+
+// Inserts {name} at the caret of the SEO field last focused (appends when it
+// was never focused / has no caret yet).
+function insertToken(name: string) {
+  const field = lastSeoField.value
+  const el = seoInputs[field]
+  const current = String(form.seo[field] ?? '')
+  const start = el?.selectionStart ?? current.length
+  const end = el?.selectionEnd ?? start
+  const token = `{${name}}`
+  form.seo[field] = current.slice(0, start) + token + current.slice(end)
+  nextTick(() => {
+    el?.focus()
+    el?.setSelectionRange(start + token.length, start + token.length)
+  })
+}
 
 // Locale is a selection of the selected website's supported languages
 // (falling back to a free-text input when the page has no website, i.e.
@@ -401,6 +497,7 @@ async function save() {
         ogDescription: form.seo.ogDescription || null,
         ogImage: form.seo.ogImage || null,
         structuredData: structuredData,
+        sourceBindingId: form.seo.sourceBindingId || null,
       },
       sitemap: form.sitemap,
       search: { ...form.search, keywords: form.search.keywords ?? [] },

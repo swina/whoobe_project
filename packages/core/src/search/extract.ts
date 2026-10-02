@@ -9,6 +9,7 @@ import type { WhoobePageRecord } from '../db/whoobe-pages-records.js';
 import type { DataObjectRecord } from '../db/data-objects-records.js';
 import type { DataClassRecord } from '../db/data-classes-records.js';
 import type { AssetRecord } from '../db/asset-records.js';
+import { hasSeoTokens } from '../cms/seo-template.js';
 
 export interface ExtractedSearchDoc {
   title: string;
@@ -87,17 +88,22 @@ export function extractPageText(page: WhoobePageRecord): ExtractedSearchDoc {
 
   const seo = page.seo ?? null;
   const search = page.search ?? null;
-  const title = seo?.metaTitle || page.title || '';
+  // A dynamic page's meta fields can be `{field}` templates (cms/seo-template.ts);
+  // the real value depends on the record visited, so a template is not indexed
+  // as if it were text - the page title / body stand in for it.
+  const metaTitle = hasSeoTokens(seo?.metaTitle) ? null : seo?.metaTitle;
+  const metaDescription = hasSeoTokens(seo?.metaDescription) ? null : seo?.metaDescription;
+  const title = metaTitle || page.title || '';
   const body = truncateText(text.join(' '), MAX_BODY_CHARS);
   const excerpt =
-    truncateText(seo?.metaDescription || body, 300) ||
+    truncateText(metaDescription || body, 300) ||
     truncateText(`Page: ${title}`, 300);
 
   return {
     title,
     path: page.path || page.slug || '/',
     category: page.category || '',
-    keywords: [...(search?.keywords ?? []), ...(seo?.metaTitle ? [seo.metaTitle] : [])].slice(0, 20),
+    keywords: [...(search?.keywords ?? []), ...(metaTitle ? [metaTitle] : [])].slice(0, 20),
     body,
     excerpt,
   };

@@ -231,7 +231,14 @@ import {
 // './server' barrel on purpose (no DB/crypto dependency, so it's also
 // reachable from browser bundles - admin-dashboard already imports other
 // root-package exports like ClassFieldDefinition the same way).
-import { compileDynamicSchema } from '@whoobe-cms/core';
+import {
+  compileDynamicSchema,
+  seoHasTokens,
+  pickSeoBinding,
+  substituteBindingFilters,
+  seoAssetIds,
+  resolveSeoTemplates,
+} from '@whoobe-cms/core';
 import { runClassMigration, runObjectMigration, runDocumentMigration, runPromoteDocuments, runPromoteDocument, runExtractCollectionTypes } from '@whoobe-cms/migration-tool';
 import { fetchAndConvert } from '@whoobe-cms/figma-converter';
 
@@ -2594,6 +2601,59 @@ app.delete('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECT
 // can never match (it stops at the first '/'). Static pages resolve
 // exactly as before - the literal-match branch below reconstructs the
 // same slug string the old single-segment route would have received.
+// Dynamic-page SEO (core cms/seo-template.ts): a page's meta fields may hold
+// `{field}` tokens ("{title}") filled from the data record the page is bound
+// to. Resolved here, on the public page lookup, so every consumer of the
+// published output (generated Next/Nuxt sites, the headless SDK) gets plain
+// values in `page.seo` with no change of their own. Only PUBLISHED records
+// are used (a draft must never leak through a public route); the editor's
+// preview resolves from its own, draft-aware data instead. A page whose SEO
+// has no tokens costs nothing extra.
+async function resolvePublicPageSeo(
+  page: { seo: any; content: unknown; locale: string },
+  params: Record<string, string>,
+  publicBaseUrl: string,
+): Promise<any> {
+  const seo = page.seo;
+  if (!seoHasTokens(seo)) return seo;
+  try {
+    let record: any = null;
+    const picked = pickSeoBinding(page.content, seo.sourceBindingId);
+    if (picked) {
+      const { binding } = picked;
+      if (binding.resolveMode === 'explicit' && binding.objectId) {
+        record = await getPublishedDataObject(binding.objectId);
+      } else {
+        const dataClass = await getDataClassByName(binding.className);
+        if (dataClass) {
+          // A `query` binding keeps its own ordering (matters when the page
+          // picked a list as its source); the first row is the record.
+          const ob = (binding as any).orderBy;
+          const orderBy = ob && typeof ob.field === 'string' && (ob.direction === 'asc' || ob.direction === 'desc') ? { field: ob.field, direction: ob.direction } : undefined;
+          const rows = await queryPublishedDataObjects(dataClass.id, {
+            filters: substituteBindingFilters(binding, params) as any,
+            orderBy,
+            limit: 1,
+            locale: binding.locale ?? page.locale,
+          });
+          record = rows[0] ?? null;
+        }
+      }
+    }
+    const assetUrls: Record<string, string> = {};
+    for (const id of seoAssetIds(seo, record)) {
+      const asset = await getAssetById(id);
+      if (asset?.isPublic) assetUrls[id] = `${publicBaseUrl}/dam-asset/${asset.s3Key}`;
+    }
+    return resolveSeoTemplates(seo, { record, urlParams: params, assetUrls });
+  } catch (error) {
+    // A broken data source must never turn a valid page into a 500; the
+    // consumer falls back to the page title.
+    logger.warn({ err: error }, 'Dynamic page SEO resolution failed');
+    return resolveSeoTemplates(seo, { record: null, urlParams: params });
+  }
+}
+
 app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<void> => {
   try {
     let websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
@@ -2773,6 +2833,14 @@ const snippetIds = new Set<string>();
     if (layout) body.layout = layout;
     if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;
     const isEditor = req.query.editor === 'true';
+    // Dynamic-page SEO tokens (see resolvePublicPageSeo). The editor keeps the
+    // raw templates in page.seo (it edits them) and gets the resolved copy
+    // next to it; every other consumer gets the resolved values in page.seo.
+    const resolvedSeo = await resolvePublicPageSeo(page, params, `${req.protocol}://${req.get('host')}`);
+    if (resolvedSeo !== page.seo) {
+      body.seoResolved = resolvedSeo;
+      if (!isEditor) body.page = { ...page, seo: resolvedSeo };
+    }
     res.json(isEditor ? body : sanitizePublicGatewayContent(body));
   } catch (error: any) {
     logger.error({ err: error }, 'Public page lookup error');
@@ -2940,6 +3008,14 @@ const snippetIds = new Set<string>();
     if (layout) body.layout = layout;
     if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;
     const isEditor = req.query.editor === 'true';
+    // Dynamic-page SEO tokens (see resolvePublicPageSeo). The editor keeps the
+    // raw templates in page.seo (it edits them) and gets the resolved copy
+    // next to it; every other consumer gets the resolved values in page.seo.
+    const resolvedSeo = await resolvePublicPageSeo(page, params, `${req.protocol}://${req.get('host')}`);
+    if (resolvedSeo !== page.seo) {
+      body.seoResolved = resolvedSeo;
+      if (!isEditor) body.page = { ...page, seo: resolvedSeo };
+    }
     res.json(isEditor ? body : sanitizePublicGatewayContent(body));
   } catch (error: any) {
     logger.error({ err: error }, 'Public page lookup error (no-locale)');

@@ -60,6 +60,7 @@ import { useEditorStore } from '../store/editor'
 import { fetchTheme } from '../themes-api'
 import { safeAlpineValue } from '../helpers'
 import { applyPageSeo } from '../scripts/apply-seo'
+import { pickSeoBinding, resolveSeoTemplates } from '@whoobe-cms/core'
 
 const route = useRoute()
 const editor = useEditorStore()
@@ -159,6 +160,30 @@ async function fetchStripHtmlComments() {
   }
 }
 
+// Applies the page's SEO to <head>. A dynamic page's meta fields may contain
+// `{field}` tokens; they're filled from the page's SEO data source - the
+// binding it picked, else its first single-record binding - using the record
+// the preview already resolved (so drafts show too, unlike the public API).
+// An image/asset token (e.g. an OG image) can only be turned into a URL
+// server-side, so that one field falls back to the server's resolved copy.
+// The result is also posted to the embedding admin-dashboard (Page > Preview's
+// SEO panel), which can't read this iframe's <head>.
+function applyDynamicSeo(page: WhoobeOnePage, params: Record<string, string>, serverSeo: PublicPageLookup['seoResolved']) {
+  const picked = pickSeoBinding(page.content, page.seo?.sourceBindingId)
+  const resolved = picked ? editor.resolvedData[picked.nodeId] : null
+  const record = Array.isArray(resolved) ? resolved[0] : resolved
+  const seo = resolveSeoTemplates(page.seo, { record: record as any, urlParams: params })
+  if (seo && serverSeo?.ogImage && !seo.ogImage) seo.ogImage = serverSeo.ogImage
+  applyPageSeo({ title: page.title, seo })
+  if (window.parent !== window) {
+    try {
+      window.parent.postMessage({ type: 'whoobe-one:seo-resolved', pageId: page.id, seo, title: page.title }, '*')
+    } catch {
+      // Cross-origin posting is best-effort.
+    }
+  }
+}
+
 onMounted(async () => {
   fetchStripHtmlComments()
   try {
@@ -167,6 +192,7 @@ onMounted(async () => {
     let page: WhoobeOnePage
     let params: Record<string, string>
     let pageLayout: PublicPageLookup['layout']
+    let serverSeo: PublicPageLookup['seoResolved'] = null
 
     if (queryLocale) {
       // Legacy: locale as ?locale= query param (childHref, FloatingToolbar,
@@ -177,6 +203,7 @@ onMounted(async () => {
       page = result.page
       params = result.params
       pageLayout = result.layout ?? null
+      serverSeo = result.seoResolved ?? null
     } else {
       // Clean SEO-friendly URL: /{rootPath}/{slug} with no query params.
       // Server auto-detects rootPath from the first path segment.
@@ -184,16 +211,17 @@ onMounted(async () => {
       page = result.page
       params = result.params
       pageLayout = result.layout ?? null
+      serverSeo = result.seoResolved ?? null
     }
 
     const locale = page.locale || 'en'
     doc.value = page.content
-    applyPageSeo(page)
     layout.value = pageLayout ?? null
     // Load the page's theme before resolving data, so theme styles are
     // available for the rendered content.
     await loadPageTheme(page)
     await resolveDocumentData(doc.value, locale, params)
+    applyDynamicSeo(page, params, serverSeo)
     for (const slot of [pageLayout?.header, pageLayout?.aside, pageLayout?.main, pageLayout?.footer, pageLayout?.notFound404]) {
       for (const m of slot?.pages ?? []) {
         try {

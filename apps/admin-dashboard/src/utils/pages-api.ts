@@ -19,6 +19,9 @@ export interface PageSeo {
   ogDescription?: string | null
   ogImage?: string | null
   structuredData?: Record<string, unknown> | null
+  /** Dynamic pages: element id of the dataBinding whose record fills the
+   *  `{field}` tokens in the meta fields (null/absent = first single-record binding). */
+  sourceBindingId?: string | null
 }
 
 export interface PageSitemapSettings {
