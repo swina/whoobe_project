@@ -1,5 +1,6 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+import { timingSafeEqual } from 'node:crypto';
 import cookieParser from 'cookie-parser';
 import { Readable } from 'node:stream';
 import { S3Client, GetObjectCommand, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
@@ -34,6 +35,9 @@ import {
   corsPolicy,
   securityHeaders,
   sanitizeServerErrors,
+  validateSessionToken,
+  SESSION_COOKIE_NAME,
+  getAssetVisibilityByKey,
 } from '@whoobe-cms/core/server';
 import { createLogger, attachLoggingToggle } from '@whoobe-cms/logger';
 
@@ -188,6 +192,30 @@ async function finalizeAssetUpload(
   };
 }
 
+// Query-parameter bounds for the stateless image endpoints (a request must not be able to ask for a
+// multi-gigapixel output).
+const MAX_OUTPUT_DIMENSION = 8192;
+const IMAGE_FORMATS: SupportedImageFormat[] = ['webp', 'avif', 'png', 'jpeg', 'jpg', 'gif'];
+
+function parseImageFormat(v: unknown): SupportedImageFormat | null {
+  if (v === undefined || v === '') return 'webp';
+  return typeof v === 'string' && (IMAGE_FORMATS as string[]).includes(v) ? (v as SupportedImageFormat) : null;
+}
+
+/** undefined when absent, the integer when within [min, max], null when present but invalid. */
+function boundedInt(v: unknown, min: number, max: number): number | undefined | null {
+  if (v === undefined || v === '') return undefined;
+  if (typeof v !== 'string' || !/^\d{1,6}$/.test(v)) return null;
+  const n = Number(v);
+  return n >= min && n <= max ? n : null;
+}
+
+// Asset paths become S3 object keys: no `..` segments, no control characters, no NUL.
+function isSafeAssetPath(p: string): boolean {
+  // eslint-disable-next-line no-control-regex
+  return p.length <= 1024 && !/[\u0000-\u001f]/.test(p) && !p.split(/[\\/]+/).includes('..');
+}
+
 // Configure Multer in-memory storage for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -202,6 +230,17 @@ app.disable('x-powered-by');
 app.use(securityHeaders());
 app.use(corsPolicy({ publicPathPrefixes: ['/dam-asset/', '/health', '/public/'], methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'] }));
 app.use(sanitizeServerErrors());
+app.use('/api/v1/dam', (req: Request, res: Response, next: NextFunction): void => {
+  for (const source of [req.query, req.body]) {
+    for (const [k, v] of Object.entries((source ?? {}) as Record<string, unknown>)) {
+      if (/path/i.test(k) && typeof v === 'string' && !isSafeAssetPath(v)) {
+        res.status(400).json({ error: `Invalid ${k}` });
+        return;
+      }
+    }
+  }
+  next();
+});
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
@@ -214,7 +253,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // Process Image Endpoint (resize, convert format, generate WebP/AVIF variants)
-app.post('/api/v1/process', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+app.post('/api/v1/process', serviceTokenAuth, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
   try {
     let inputBuffer: Buffer;
 
@@ -228,9 +267,13 @@ app.post('/api/v1/process', upload.single('file'), async (req: Request, res: Res
     }
 
     const mode = req.query.mode || 'transform';
+    const format = parseImageFormat(req.query.format);
+    if (!format) {
+      res.status(400).json({ error: `format must be one of ${IMAGE_FORMATS.join(', ')}` });
+      return;
+    }
 
     if (mode === 'variants') {
-      const format = (req.query.format as SupportedImageFormat) || 'webp';
       const variants = await ImageProcessingPipeline.generateVariants(inputBuffer, format);
 
       const responseVariants: Record<string, string> = {};
@@ -243,10 +286,14 @@ app.post('/api/v1/process', upload.single('file'), async (req: Request, res: Res
     }
 
     // Default transform
-    const width = req.query.width ? parseInt(req.query.width as string, 10) : undefined;
-    const height = req.query.height ? parseInt(req.query.height as string, 10) : undefined;
-    const format = (req.query.format as SupportedImageFormat) || 'webp';
-    const quality = req.query.quality ? parseInt(req.query.quality as string, 10) : 80;
+    const width = boundedInt(req.query.width, 1, MAX_OUTPUT_DIMENSION);
+    const height = boundedInt(req.query.height, 1, MAX_OUTPUT_DIMENSION);
+    const qualityParam = boundedInt(req.query.quality, 1, 100);
+    const quality = qualityParam === undefined ? 80 : qualityParam;
+    if (width === null || height === null || quality === null) {
+      res.status(400).json({ error: `width/height must be 1-${MAX_OUTPUT_DIMENSION}, quality 1-100` });
+      return;
+    }
 
     const processedBuffer = await ImageProcessingPipeline.transform(inputBuffer, {
       resize: width || height ? { width, height, fit: 'inside' } : undefined,
@@ -262,7 +309,7 @@ app.post('/api/v1/process', upload.single('file'), async (req: Request, res: Res
 });
 
 // Metadata Extraction Endpoint (EXIF, IPTC, GPS, Camera info)
-app.post('/api/v1/metadata', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+app.post('/api/v1/metadata', serviceTokenAuth, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
   try {
     let inputBuffer: Buffer;
     let mimeType = 'application/octet-stream';
@@ -288,6 +335,7 @@ app.post('/api/v1/metadata', upload.single('file'), async (req: Request, res: Re
 // Watermark Endpoint
 app.post(
   '/api/v1/watermark',
+  serviceTokenAuth,
   upload.fields([
     { name: 'file', maxCount: 1 },
     { name: 'watermark', maxCount: 1 },
@@ -302,8 +350,13 @@ app.post(
 
       const inputBuffer = files.file[0].buffer;
       const watermarkBuffer = files.watermark[0].buffer;
-      const opacity = req.query.opacity ? parseFloat(req.query.opacity as string) : 0.8;
-      const format = (req.query.format as SupportedImageFormat) || 'webp';
+      const opacityRaw = req.query.opacity ? parseFloat(req.query.opacity as string) : 0.8;
+      const format = parseImageFormat(req.query.format);
+      if (!format || !Number.isFinite(opacityRaw) || opacityRaw < 0 || opacityRaw > 1) {
+        res.status(400).json({ error: `format must be one of ${IMAGE_FORMATS.join(', ')}; opacity 0-1` });
+        return;
+      }
+      const opacity = opacityRaw;
 
       const processedBuffer = await ImageProcessingPipeline.transform(inputBuffer, {
         format,
@@ -335,11 +388,17 @@ app.get('/api/v1/dam/info', requireAuth, (_req: Request, res: Response) => {
 // is set and the request carries a matching Bearer token, skip session auth
 // (server-to-server, no browser session). If the token is absent or wrong,
 // fall through to requirePermission (backward-compatible with browser users).
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
+}
+
 function serviceTokenAuth(req: Request, res: Response, next: any): void {
   const token = process.env.DAM_SERVICE_TOKEN;
   if (token) {
     const authHeader = req.headers.authorization;
-    if (authHeader === `Bearer ${token}`) {
+    if (typeof authHeader === 'string' && safeEqual(authHeader, `Bearer ${token}`)) {
       next();
       return;
     }
@@ -357,6 +416,15 @@ app.post('/api/v1/dam/upload', serviceTokenAuth, upload.single('file'), async (r
     }
     if (!pimcorePath) {
       res.status(400).json({ error: 'Missing pimcorePath' });
+      return;
+    }
+    // multipart fields are only parsed after the generic /api/v1/dam guard, so check here too
+    if (typeof pimcorePath !== 'string' || !isSafeAssetPath(pimcorePath) || !isSafeAssetPath(req.file.originalname)) {
+      res.status(400).json({ error: 'Invalid pimcorePath or file name' });
+      return;
+    }
+    if (req.file.size === 0) {
+      res.status(400).json({ error: 'Empty file' });
       return;
     }
 
@@ -1033,16 +1101,46 @@ async function findOriginalS3Key(basePath: string): Promise<string | null> {
 // response, which browsers generally don't tolerate well for media and
 // frequently react to by aborting and retrying, which multiplies how many
 // connections to MinIO a single video load can open.
+// Keys that must never be served anonymously: the system `private/` area (e.g. private/logs/...) and,
+// when DAM_ENFORCE_ASSET_VISIBILITY=true, every asset whose record is not public. Private assets then
+// need a valid session (the admin's <img>/<video> requests carry the cookie).
+const ENFORCE_ASSET_VISIBILITY = process.env.DAM_ENFORCE_ASSET_VISIBILITY === 'true';
+
+async function mayServeDamKey(req: Request, res: Response, s3Key: string): Promise<boolean> {
+  const logical = s3Key.replace(/^\.thumbnails\//, '');
+  let needsSession = /^private(\/|$)/.test(logical);
+  if (!needsSession && ENFORCE_ASSET_VISIBILITY) needsSession = (await getAssetVisibilityByKey(s3Key)) !== true;
+  if (!needsSession) return true;
+  res.locals.damPrivate = true; // never let a shared cache keep it
+  return !!(await validateSessionToken(req.cookies?.[SESSION_COOKIE_NAME]));
+}
+
+// Stored content types that a browser would execute if opened from our origin.
+const ACTIVE_CONTENT_TYPE = /^(text\/(html|xml|javascript)|application\/(xhtml\+xml|xml|(x-)?javascript|ecmascript|x-shockwave-flash|x-httpd[\w-]*)|[^;]*html)/i;
+
+function hardenAssetResponse(res: Response, storedType: string | undefined): string {
+  // Whatever was uploaded must never run script with this origin's privileges: sandbox without
+  // allow-scripts neutralises SVG/HTML opened directly (images in <img> are unaffected).
+  res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox");
+  const type = storedType || 'application/octet-stream';
+  if (ACTIVE_CONTENT_TYPE.test(type)) {
+    res.setHeader('Content-Disposition', 'attachment');
+    return 'application/octet-stream';
+  }
+  return type;
+}
+
 app.get('/dam-asset/*', async (req: Request, res: Response): Promise<void> => {
   const s3Key = req.params[0];
   if (!s3Key) { res.status(400).end(); return; }
   try {
+    if (!(await mayServeDamKey(req, res, s3Key))) { res.status(404).end(); return; }
     const range = req.headers.range;
     const command = new GetObjectCommand({ Bucket: damBaseConfig.bucket, Key: s3Key, Range: range });
     const response = await s3ClientForProxy.send(command);
     if (response.Body) {
-      res.setHeader('Content-Type', response.ContentType || 'application/octet-stream');
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.setHeader('Content-Type', hardenAssetResponse(res, response.ContentType));
+      res.setHeader('Cache-Control', res.locals.damPrivate ? 'private, no-store' : 'public, max-age=31536000, immutable');
       res.setHeader('Accept-Ranges', 'bytes');
       if (response.ContentLength != null) res.setHeader('Content-Length', String(response.ContentLength));
       if (range && response.ContentRange) {
@@ -1110,6 +1208,22 @@ app.get('/dam-asset/*', async (req: Request, res: Response): Promise<void> => {
     logger.error({ err: error }, 'DAM proxy error');
     res.status(500).json({ error: error.message || 'Failed to serve asset' });
   }
+});
+
+// Malformed multipart bodies, oversize files and bad JSON are client errors, not 500s.
+app.use((err: any, _req: Request, res: Response, next: NextFunction): void => {
+  if (res.headersSent) { next(err); return; }
+  if (err instanceof multer.MulterError) {
+    res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: `Invalid upload (${err.code})` });
+    return;
+  }
+  if (err?.type === 'entity.too.large') { res.status(413).json({ error: 'Payload too large' }); return; }
+  if (err?.type === 'entity.parse.failed' || /Malformed part header|Unexpected end of form|Boundary not found|Unexpected end of multipart/i.test(String(err?.message))) {
+    res.status(400).json({ error: 'Malformed request body' });
+    return;
+  }
+  logger.error({ err }, 'Unhandled error');
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 app.listen(port, () => {

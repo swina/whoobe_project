@@ -27,6 +27,13 @@ export class Client {
     }
   }
 
+  /** Same session (cookies), another service base URL - e.g. the asset-processor validates core-api's cookie. */
+  forBase(base: string, label = this.label): Client {
+    const c = new Client(base, label)
+    for (const [k, v] of this.cookies) c.cookies.set(k, v)
+    return c
+  }
+
   get cookieHeader(): string {
     return [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; ')
   }
@@ -41,6 +48,20 @@ export class Client {
     }
     const res = await fetch(this.base + path, { method, headers, body, redirect: 'manual' })
     this.storeCookies(res)
+    const text = await res.text()
+    let json: any = null
+    try { json = JSON.parse(text) } catch { /* not JSON */ }
+    return { status: res.status, headers: res.headers, text, json }
+  }
+
+  /** multipart/form-data POST (uploads). */
+  async upload(path: string, fields: Record<string, string>, files: Record<string, { name: string; type: string; data: Uint8Array | string }>): Promise<RawResponse> {
+    const form = new FormData()
+    for (const [k, v] of Object.entries(fields)) form.append(k, v)
+    for (const [k, f] of Object.entries(files)) form.append(k, new Blob([f.data as any], { type: f.type }), f.name)
+    const headers: Record<string, string> = {}
+    if (this.cookies.size) headers.cookie = this.cookieHeader
+    const res = await fetch(this.base + path, { method: 'POST', headers, body: form, redirect: 'manual' })
     const text = await res.text()
     let json: any = null
     try { json = JSON.parse(text) } catch { /* not JSON */ }
