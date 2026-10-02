@@ -49,6 +49,27 @@ interface NodeLike {
   [key: string]: unknown;
 }
 
+/** Marks a submit binding whose `paramKeys` is the form's own field-name allowlist (bindings created before
+ *  the allowlist existed have no marker and keep the old forward-everything behaviour). */
+export const FORM_FIELDS_SENTINEL = '__fields';
+
+const FORM_FIELD_TAGS = new Set(['input', 'textarea', 'select', 'radiogroup', 'checkbox', 'radio', 'range', 'file']);
+
+/** Names of the inputs inside a Form element's subtree (`data.attributes.name` of input-like elements):
+ *  exactly what the browser's FormData will contain, and so the only fields a submission may carry. */
+export function collectFormFieldNames(form: unknown): string[] {
+  const names = new Set<string>();
+  const walkNode = (n: any): void => {
+    if (!n || typeof n !== 'object') return;
+    const name = n?.data?.attributes?.name;
+    if (FORM_FIELD_TAGS.has(String(n.tag ?? '').toLowerCase()) && typeof name === 'string' && name.trim()) names.add(name.trim());
+    if (Array.isArray(n.blocks)) n.blocks.forEach(walkNode);
+  };
+  const root = form as any;
+  if (Array.isArray(root?.blocks)) root.blocks.forEach(walkNode);
+  return [...names];
+}
+
 async function resolveSubmitBinding(
   node: NodeLike,
   websiteId: string,
@@ -79,6 +100,8 @@ async function resolveSubmitBinding(
       routeId: route.id,
       websiteId,
       kind: 'submit',
+      // the form's own input names: the submit route forwards nothing else upstream
+      paramKeys: [FORM_FIELDS_SENTINEL, ...collectFormFieldNames(node)],
     });
     formConfig.gatewayBindingId = binding.id;
   } catch (err) {

@@ -1,3 +1,11 @@
+## [Security F-029: gateway form submissions forward only the form's own fields] — 2026-10-03
+- Branch: `master`.
+- `packages/core/src/gateway/bind-page-content.ts`: `collectFormFieldNames()` (input-like elements under a Form element, by `data.attributes.name`) and `FORM_FIELDS_SENTINEL`; the submit binding created at page save now stores `paramKeys = ['__fields', ...fieldNames]`. A changed field list yields a new binding (config hash).
+- `apps/gateway/src/submit-handler.ts`: when the binding carries the marker, every field outside the allowlist is dropped before the upstream call; legacy bindings (no marker) keep forwarding everything with a logged warning, unless `GATEWAY_REQUIRE_FIELD_ALLOWLIST=true` (409 "must be saved again"). Documented in `.env.example`.
+- **Action needed on existing sites**: re-save each page that has a gateway-targeted form and republish/regenerate the site so it uses the new binding id.
+- Tests: core unit tests for `collectFormFieldNames` (114 pass), `gateway.test.ts` (a field the form lacks is stripped before it reaches the upstream, one the form has is forwarded). `pnpm security:api`: 960 pass.
+- Not verified: end-to-end through the editor UI (a form built in the editor, saved, submitted from a published site); the input-name detection is based on the element shape seen in stored pages.
+
 ## [Security: gateway public routes - limits, shape checks, helper hardening] — 2026-10-03
 - Branch: `master`. Findings F-028..F-031 (see `docs/plans/security/findings.md`).
 - `apps/gateway`: new `public-limits.ts` - per-client-address limiters checked BEFORE any lookup (submit 10 / 15 min, resolve 120 / min) and per-site ceilings (300 / 15 min, 1200 / min) replacing the old site-only buckets (a stranger could exhaust a site's 10-per-15-min form quota); `validateSubmittedAttributes` (max 100 fields, 64-char plain names, no prototype keys, 20 000 chars per value); `isUuid` guard on `bindingId` (404 instead of a database error / 502). `server.ts`: `app.set('trust proxy', parseTrustProxy(TRUST_PROXY))`. `resolve-field-path.ts`: own properties only. `resolve-gateway-url.ts`: `.`/`..` parameter values rejected.

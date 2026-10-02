@@ -28,3 +28,26 @@ describe('hashResetToken', () => {
     expect(hashResetToken(t)).not.toBe(hashResetToken('b'.repeat(64)));
   });
 });
+
+import { FORM_FIELDS_SENTINEL, collectFormFieldNames } from '../gateway/bind-page-content.js';
+
+describe('collectFormFieldNames', () => {
+  const input = (name: string, tag = 'input') => ({ id: name, tag, data: { attributes: { name } }, blocks: [] });
+  it('collects the names of input-like descendants, at any depth, once', () => {
+    const form = {
+      tag: 'form', data: { attributes: { name: 'form' } },
+      blocks: [
+        { tag: 'flex', blocks: [input('email'), { tag: 'flex', blocks: [input('message', 'textarea'), input('email')] }] },
+        input('plan', 'select'), input('terms', 'checkbox'), input('kind', 'radiogroup'),
+        { tag: 'span', data: { attributes: { name: 'not-a-field' } }, blocks: [] },
+        { tag: 'input', data: { attributes: {} }, blocks: [] },
+      ],
+    };
+    expect(collectFormFieldNames(form).sort()).toEqual(['email', 'kind', 'message', 'plan', 'terms']);
+  });
+  it('is empty for a form without inputs or a malformed node, and the sentinel cannot collide with a field', () => {
+    expect(collectFormFieldNames({ tag: 'form', blocks: [] })).toEqual([]);
+    expect(collectFormFieldNames(null)).toEqual([]);
+    expect(FORM_FIELDS_SENTINEL).toBe('__fields');
+  });
+});

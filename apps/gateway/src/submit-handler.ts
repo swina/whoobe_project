@@ -76,7 +76,7 @@ export function createSubmitHandler(): Router {
         return;
       }
 
-      const { getGatewayBindingById, getGatewayEndpoint, getGatewayRoute } = await import('@whoobe-cms/core/server');
+      const { getGatewayBindingById, getGatewayEndpoint, getGatewayRoute, FORM_FIELDS_SENTINEL } = await import('@whoobe-cms/core/server');
 
       const binding = await getGatewayBindingById(bindingId);
       if (!binding || binding.kind !== 'submit') {
@@ -115,6 +115,23 @@ export function createSubmitHandler(): Router {
 
       const submitted = { ...(attributes as Record<string, unknown>) };
       delete submitted._hp;
+
+      // Only the fields the form actually has (recorded in the binding when the page was saved) go
+      // upstream - a visitor must not be able to add fields such as Brevo's listIds / updateEnabled.
+      const fieldAllowlist = binding.paramKeys.includes(FORM_FIELDS_SENTINEL)
+        ? new Set(binding.paramKeys.filter((k: string) => k !== FORM_FIELDS_SENTINEL))
+        : null;
+      if (fieldAllowlist) {
+        for (const key of Object.keys(submitted)) {
+          if (!fieldAllowlist.has(key)) delete submitted[key];
+        }
+      } else if (process.env.GATEWAY_REQUIRE_FIELD_ALLOWLIST === 'true') {
+        // legacy binding (saved before the allowlist existed): refuse until the page is saved again
+        res.status(409).json({ error: 'This form must be saved again before it can be used' });
+        return;
+      } else {
+        logger.warn({ bindingId }, '[gateway] submit binding has no field allowlist (page saved before F-029); forwarding every field');
+      }
 
       // Form fields only ever produce strings (browser FormData has no
       // concept of arrays/objects), but upstream JSON APIs like Brevo's
