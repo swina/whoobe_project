@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { createSafeFetchAdapter, safeFetch } from '../http/safe-fetch.js';
 import { OPENROUTER_DEFAULT_ENDPOINT } from './providers.js';
 
 export type ImageAiProvider = 'openai' | 'openrouter' | 'google' | 'custom';
@@ -43,7 +44,9 @@ function buildOpenAiClient(settings: AiImageSettings): OpenAI {
     ? OPENROUTER_DEFAULT_ENDPOINT
     : 'https://api.openai.com/v1';
   const baseURL = settings.endpoint?.trim() || defaultEndpoint;
-  return new OpenAI({ apiKey: settings.apiKey ?? undefined, baseURL });
+  // A custom endpoint is operator-supplied: send it through the outbound (SSRF) policy.
+  const custom = !!settings.endpoint?.trim();
+  return new OpenAI({ apiKey: settings.apiKey ?? undefined, baseURL, ...(custom ? { fetch: createSafeFetchAdapter() as any } : {}) });
 }
 
 /** Gemini's native image-generation models (e.g. gemini-2.5-flash-image)
@@ -63,7 +66,7 @@ async function generateGoogleImage(input: AiImageGenerateInput): Promise<AiImage
   for (let attempt = 1; attempt <= 3; attempt++) {
     let response: Response;
     try {
-      response = await fetch(url, {
+      response = await safeFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

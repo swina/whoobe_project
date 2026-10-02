@@ -5,6 +5,7 @@
 // (server-side only - the key is never sent to any client).
 
 import OpenAI from 'openai';
+import { createSafeFetchAdapter } from '../http/safe-fetch.js';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -163,6 +164,8 @@ async function generateOpenAi(input: AiGenerateInput, baseUrl?: string, provider
   const client = new OpenAI({
     apiKey: requireApiKey(input.settings, providerLabel),
     baseURL: baseUrl ?? undefined,
+    // a custom base URL is operator-supplied: send it through the outbound (SSRF) policy
+    ...(baseUrl ? { fetch: createSafeFetchAdapter({ timeoutMs: 120_000 }) as any } : {}),
     timeout: 120_000,
     // Retries are handled by generateAiJson's own 429 loop - the SDK's
     // internal retries would otherwise multiply with ours (3x3 attempts).

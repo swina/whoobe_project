@@ -1,4 +1,5 @@
 import { createS3ProviderFromEnv } from '../dam/s3-provider.js';
+import { safeFetch } from '../http/safe-fetch.js';
 import { upsertAssetRecord } from '../db/asset-records.js';
 import { randomBytes } from 'node:crypto';
 
@@ -28,7 +29,8 @@ export async function saveAiImageToDam(input: AiImageDamInput): Promise<AiImageD
     const base64 = url.slice(comma + 1);
     buffer = Buffer.from(base64, 'base64');
   } else {
-    const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+    // The URL comes back from an AI provider: it must be a public address, never loopback/private/metadata.
+    const response = await safeFetch(url, {}, { allowLoopback: false, allowPrivate: false, timeoutMs: 30_000 });
     if (!response.ok) {
       throw new Error(`Failed to download generated image: HTTP ${response.status}`);
     }

@@ -1,3 +1,12 @@
+## [Security: SSRF guard for outbound requests (safeFetch), OpenAPI import hardening, DAM service-token fix] — 2026-10-03
+- Branch: `master`. Findings F-026, F-027.
+- New `packages/core/src/http/safe-fetch.ts` (exported from `@whoobe-cms/core/server`, 30 tests): `safeFetch()` with policy from env (`OUTBOUND_ALLOW_LOOPBACK`, `OUTBOUND_ALLOW_PRIVATE`, `OUTBOUND_ALLOW_HOSTS`), address pinning (validated IP is the one connected to), manual re-checked redirects, size/time caps; `createSafeFetchAdapter()` for SDKs that take a `fetch`. Documented in `.env.example`.
+- Applied to: gateway `proxyFetch` (every operator-defined upstream; the three internal proxy routes in `router.ts` pass `{ trusted: true }` and keep plain fetch), OAuth2 token request, OpenAPI import, AI image download (`image-dam.ts`, public addresses only), custom AI endpoints (OpenAI-compatible clients and the Google image endpoint).
+- OpenAPI import: the spec is downloaded with `safeFetch` and parsed from text; `dereference(..., { resolve: { external: false } })` so `$ref: http(s)://` / `file://` are no longer resolved (specs split over several files must be bundled before import).
+- **Regression fix** from the `/dam-asset` hardening: `mayServeDamKey()` now also accepts `Authorization: Bearer <DAM_SERVICE_TOKEN>` for `private/` keys (core-api's system-log download uses it); constant-time compare; test added.
+- Harness: `scripts/security/api/ssrf.test.ts` (gateway admin API closed to anonymous/under-privileged callers, loopback/metadata/literal-encoding upstreams refused, positive control on the compose network, OpenAPI `specUrl`/`$ref` cases). `pnpm security:api`: 936 pass on the rebuilt stack; `core` vitest 112.
+- Not covered: CDN-mirror provider calls, push providers (fixed hosts), the gateway's multipart `dam` proxy, AI SDK multipart bodies.
+
 ## [Security: asset-processor - authenticated image endpoints, hardened /dam-asset, upload validation] — 2026-10-02
 - Branch: `master`. Findings F-022..F-025 (details in `docs/plans/security/findings.md`).
 - `POST /api/v1/process|metadata|watermark` now go through `serviceTokenAuth` (session with `assets:upload` or `DAM_SERVICE_TOKEN`, compared with `timingSafeEqual`); parameters bounded (`width`/`height` <= 8192, `quality` 1-100, `format` whitelist, `opacity` 0-1; the old `?? 80` default for `quality` also no longer swallows invalid values).

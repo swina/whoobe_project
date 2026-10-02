@@ -3,7 +3,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { deflateSync } from 'node:zlib'
 import { randomBytes } from 'node:crypto'
 import { Client, clientFor } from '../lib/client'
-import { ASSET_TARGET } from '../lib/config'
+import { ASSET_TARGET, readEnvFile } from '../lib/config'
 
 function crc32(buf: Uint8Array): number {
   let c, crc = ~0
@@ -115,6 +115,15 @@ describe('what an uploaded file can do once served from /dam-asset', () => {
     const mine = await adminAsset.get(`/dam-asset/${up.json.s3Key}`)
     expect(mine.status).toBe(200)
     expect(mine.headers.get('cache-control')).toMatch(/private|no-store/)
+  })
+
+  it('the DAM service token (used by core-api for system logs) can read private keys', async () => {
+    const token = readEnvFile().DAM_SERVICE_TOKEN
+    const up = await put('svc.txt', 'text/plain', 'for the service', `/private/sec-${tag}/svc.txt`)
+    const ok = await new Client(ASSET_TARGET).get(`/dam-asset/${up.json.s3Key}`, { authorization: `Bearer ${token}` })
+    expect(ok.status).toBe(200)
+    const bad = await new Client(ASSET_TARGET).get(`/dam-asset/${up.json.s3Key}`, { authorization: 'Bearer nope' })
+    expect(bad.status).toBe(404)
   })
 
   it('a content type claimed by the uploader cannot make an image upload active content', async () => {

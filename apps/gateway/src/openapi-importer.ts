@@ -1,4 +1,5 @@
 import { dereference } from '@readme/openapi-parser';
+import { safeFetch } from '@whoobe-cms/core/server';
 import { load as loadYaml } from 'js-yaml';
 import type { SchemaField, InferredSchema } from './schema-inferrer.js';
 
@@ -14,21 +15,27 @@ export interface ParsedOpenApiDoc {
 }
 
 export async function parseOpenApiSpec(input: { url?: string; raw?: string }): Promise<ParsedOpenApiDoc> {
+  // The spec is fetched by us (safeFetch: SSRF policy, size/time caps) and parsed from text; the parser
+  // is told NOT to resolve external $refs (it would otherwise fetch http(s):// URLs or read file://
+  // paths named inside a spec, which is an SSRF / local file read primitive).
+  const noExternalRefs = { resolve: { external: false } } as any;
+  let text = input.raw;
   if (input.url) {
-    const document = await dereference(input.url);
-    return { document: document as unknown as Record<string, any> };
+    const res = await safeFetch(input.url, { headers: { accept: 'application/json, application/yaml, text/yaml, */*' } }, { maxBytes: 10 * 1024 * 1024, timeoutMs: 20_000 });
+    if (!res.ok) throw new Error(`Could not download the spec: HTTP ${res.status}`);
+    text = await res.text();
   }
-  if (input.raw) {
+  if (text) {
     let parsed: unknown;
     try {
-      parsed = JSON.parse(input.raw);
+      parsed = JSON.parse(text);
     } catch {
-      parsed = loadYaml(input.raw);
+      parsed = loadYaml(text);
     }
     if (!parsed || typeof parsed !== 'object') {
-      throw new Error('Pasted spec is not valid JSON or YAML');
+      throw new Error(input.url ? 'The downloaded spec is not valid JSON or YAML' : 'Pasted spec is not valid JSON or YAML');
     }
-    const document = await dereference(parsed as any);
+    const document = await dereference(parsed as any, noExternalRefs);
     return { document: document as unknown as Record<string, any> };
   }
   throw new Error('Either a spec URL or raw spec text is required');

@@ -1112,6 +1112,10 @@ async function mayServeDamKey(req: Request, res: Response, s3Key: string): Promi
   if (!needsSession && ENFORCE_ASSET_VISIBILITY) needsSession = (await getAssetVisibilityByKey(s3Key)) !== true;
   if (!needsSession) return true;
   res.locals.damPrivate = true; // never let a shared cache keep it
+  // Server-to-server readers (core-api's system-log download) present the DAM service token.
+  const serviceToken = process.env.DAM_SERVICE_TOKEN;
+  const auth = req.headers.authorization;
+  if (serviceToken && typeof auth === 'string' && safeEqual(auth, `Bearer ${serviceToken}`)) return true;
   return !!(await validateSessionToken(req.cookies?.[SESSION_COOKIE_NAME]));
 }
 
