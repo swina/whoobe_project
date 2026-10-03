@@ -9,6 +9,9 @@
 # brought up more than once under different -p project names without
 # colliding on container names, one running stack per workspace.
 #
+# WS_APP_BIND_ADDRESS (default 0.0.0.0: reachable from the LAN, as in development) is set to 127.0.0.1 for every
+# workspace behind a reverse proxy (provision-workspace.sh does it): only nginx should reach those ports.
+#
 # Host-side ports are all overridable (WS_*_PORT, default = today's fixed
 # dev ports) for the same reason - only the host side needs to be unique
 # per workspace; every service inside one workspace's project talks to the
@@ -26,7 +29,7 @@
 # One-time MinIO bucket setup (run once after first `up -d`, substituting
 # the project's own S3_BUCKET/credentials for a workspace):
 #   docker compose exec minio sh -c "\
-#     mc alias set whoobe http://localhost:9000 minioadmin minioadminpassword && \
+#     mc alias set whoobe http://localhost:9000 <S3_ACCESS_KEY_ID> <S3_SECRET_ACCESS_KEY> && \
 #     mc mb whoobe/whoobe-cms"
 
 services:
@@ -34,10 +37,13 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+      # no default: a database must never come up with a password everybody knows (see .env.example)
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the env file}
       POSTGRES_DB: ${POSTGRES_DB:-whoobe_db}
     ports:
-      - "${WS_POSTGRES_PORT:-5432}:5432"
+      # data services are for the other containers (private network) and the host's own tools: loopback only.
+      # WS_DATA_BIND_ADDRESS=0.0.0.0 only if you really need them from another machine, and then with strong secrets.
+      - "${WS_DATA_BIND_ADDRESS:-127.0.0.1}:${WS_POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -50,12 +56,13 @@ services:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minioadminpassword}
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in the env file}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in the env file}
       MINIO_API_CORS_ALLOW_ORIGIN: "*"
     ports:
-      - "${WS_MINIO_API_PORT:-9000}:9000"
-      - "${WS_MINIO_CONSOLE_PORT:-9001}:9001"
+      # loopback only (see postgres above): browsers get assets through the asset-processor, not from MinIO
+      - "${WS_DATA_BIND_ADDRESS:-127.0.0.1}:${WS_MINIO_API_PORT:-9000}:9000"
+      - "${WS_DATA_BIND_ADDRESS:-127.0.0.1}:${WS_MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - miniodata:/data
     healthcheck:
@@ -69,7 +76,7 @@ services:
       context: .
       target: core-api
     ports:
-      - "${WS_CORE_API_PORT:-3003}:3003"
+      - "${WS_APP_BIND_ADDRESS:-0.0.0.0}:${WS_CORE_API_PORT:-3003}:3003"
     env_file: ${ENV_FILE:-.env}
     environment:
       NODE_ENV: production
@@ -88,7 +95,7 @@ services:
       context: .
       target: asset-processor
     ports:
-      - "${WS_ASSET_PROCESSOR_PORT:-3002}:3002"
+      - "${WS_APP_BIND_ADDRESS:-0.0.0.0}:${WS_ASSET_PROCESSOR_PORT:-3002}:3002"
     env_file: ${ENV_FILE:-.env}
     environment:
       NODE_ENV: production
@@ -117,7 +124,7 @@ services:
         VITE_FONT_FAMILIES: ${VITE_FONT_FAMILIES}
         VITE_WHOOBE_ONE_URL: ${VITE_WHOOBE_ONE_URL:-}
     ports:
-      - "${WS_ADMIN_DASHBOARD_PORT:-3000}:8080"
+      - "${WS_APP_BIND_ADDRESS:-0.0.0.0}:${WS_ADMIN_DASHBOARD_PORT:-3000}:8080"
     restart: unless-stopped
 
   whoobe-one-spike:
@@ -130,7 +137,7 @@ services:
         VITE_CORE_API_URL: ${VITE_CORE_API_URL}
         VITE_GATEWAY_URL: ${VITE_GATEWAY_URL}
     ports:
-      - "${WS_WHOOBE_ONE_SPIKE_PORT:-3006}:8080"
+      - "${WS_APP_BIND_ADDRESS:-0.0.0.0}:${WS_WHOOBE_ONE_SPIKE_PORT:-3006}:8080"
     restart: unless-stopped
 
   gateway:
@@ -138,7 +145,7 @@ services:
       context: .
       target: gateway
     ports:
-      - "${WS_GATEWAY_PORT:-3001}:3001"
+      - "${WS_APP_BIND_ADDRESS:-0.0.0.0}:${WS_GATEWAY_PORT:-3001}:3001"
     env_file: ${ENV_FILE:-.env}
     environment:
       NODE_ENV: production

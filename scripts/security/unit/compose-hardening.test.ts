@@ -1,0 +1,83 @@
+// Plan 3.12: what docker-compose.yml publishes and which credentials it insists on, checked by rendering it
+// (`docker compose config`) with different env files. Needs Docker, like the rest of the suite.
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { ROOT_DIR } from '../lib/config'
+
+let dir = ''
+beforeAll(() => { dir = mkdtempSync(join(tmpdir(), 'whoobe-compose-')) })
+afterAll(() => rmSync(dir, { recursive: true, force: true }))
+
+function render(env: Record<string, string>, file = 'docker-compose.yml') {
+  const envFile = join(dir, `env-${Math.random().toString(36).slice(2)}`)
+  writeFileSync(envFile, Object.entries(env).map(([k, v]) => `${k}=${v}`).join('\n') + '\n')
+  const r = spawnSync('docker', ['compose', '--env-file', envFile, '-f', join(ROOT_DIR, file), 'config', '--format', 'json'], { encoding: 'utf8', env: { ...process.env, ENV_FILE: envFile } })
+  return { status: r.status, stderr: r.stderr, json: r.status === 0 ? JSON.parse(r.stdout) : null }
+}
+
+const required = { POSTGRES_PASSWORD: 'pg-secret-x', S3_ACCESS_KEY_ID: 'ak-x', S3_SECRET_ACCESS_KEY: 'sk-secret-x' }
+const hostIps = (svc: any) => (svc.ports ?? []).map((p: any) => p.host_ip)
+
+describe('docker-compose.yml', () => {
+  it('publishes Postgres and MinIO on loopback only by default', () => {
+    const { json } = render(required)
+    expect(hostIps(json.services.postgres)).toEqual(['127.0.0.1'])
+    expect(hostIps(json.services.minio)).toEqual(['127.0.0.1', '127.0.0.1'])
+  })
+
+  it('can be opened up explicitly, and the application ports follow their own switch', () => {
+    const open = render({ ...required, WS_DATA_BIND_ADDRESS: '0.0.0.0' }).json
+    expect(hostIps(open.services.postgres)).toEqual(['0.0.0.0'])
+    const locked = render({ ...required, WS_APP_BIND_ADDRESS: '127.0.0.1' }).json
+    for (const s of ['core-api', 'asset-processor', 'gateway', 'admin-dashboard', 'whoobe-one-spike']) expect(hostIps(locked.services[s]), s).toEqual(['127.0.0.1'])
+    // default keeps LAN development working
+    const dflt = render(required).json
+    for (const s of ['core-api', 'gateway']) expect(hostIps(dflt.services[s]), s).toEqual(['0.0.0.0'])
+  })
+
+  it('refuses to render without database or object-store credentials (no well-known defaults)', () => {
+    for (const missing of Object.keys(required)) {
+      const env: Record<string, string> = { ...required }
+      delete env[missing]
+      const r = render(env)
+      expect(r.status, missing).not.toBe(0)
+      expect(r.stderr, missing).toContain(missing)
+    }
+  })
+
+  it('never falls back to the old well-known values', () => {
+    const text = readFileSync(join(ROOT_DIR, 'docker-compose.yml'), 'utf8')
+    for (const known of ['postgrespassword', 'minioadminpassword', ':-minioadmin', 'admin123']) expect(text, known).not.toContain(known)
+    const ex = readFileSync(join(ROOT_DIR, '.env.example'), 'utf8')
+    for (const known of ['postgrespassword', 'minioadmin', 'admin123']) expect(ex, known).not.toContain(known)
+  })
+
+  it('docker-compose.data.yml (the development infrastructure) follows the same rules', () => {
+    const ok = render(required, 'docker-compose.data.yml')
+    expect(ok.status, ok.stderr).toBe(0)
+    expect(hostIps(ok.json.services.postgres)).toEqual(['127.0.0.1'])
+    expect(hostIps(ok.json.services.minio)).toEqual(['127.0.0.1', '127.0.0.1'])
+    for (const missing of Object.keys(required)) {
+      const env: Record<string, string> = { ...required }
+      delete env[missing]
+      expect(render(env, 'docker-compose.data.yml').status, missing).not.toBe(0)
+    }
+    const text = readFileSync(join(ROOT_DIR, 'docker-compose.data.yml'), 'utf8')
+    for (const known of ['postgrespassword', 'minioadminpassword', 'MINIO_ROOT_USER: minioadmin']) expect(text, known).not.toContain(known)
+  })
+
+  it('docker-compose.apps.yml binds the application ports through the same switch', () => {
+    const r = render({ ...required, WS_APP_BIND_ADDRESS: '127.0.0.1' }, 'docker-compose.apps.yml')
+    expect(r.status, r.stderr).toBe(0)
+    for (const [name, svc] of Object.entries<any>(r.json.services).filter(([, s]: any) => s.ports?.length)) expect(hostIps(svc), name).toEqual(['127.0.0.1'])
+  })
+
+  it('provisioned workspaces are pinned to loopback', () => {
+    const src = readFileSync(join(ROOT_DIR, 'scripts/provision-workspace.sh'), 'utf8')
+    expect(src).toMatch(/set_env "WS_APP_BIND_ADDRESS" "127\.0\.0\.1"/)
+    expect(src).toMatch(/set_env "WS_DATA_BIND_ADDRESS" "127\.0\.0\.1"/)
+  })
+})
