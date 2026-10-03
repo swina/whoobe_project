@@ -68,11 +68,14 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+[[ "$SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "Errore: slug non valido (solo minuscole, cifre e trattini): $SLUG" >&2; exit 1; }
+[ -z "$EMAIL" ] || [[ "$EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || { echo "Errore: e-mail non valida: $EMAIL" >&2; exit 1; }
 ENV_FILE=".env.${SLUG}"
 [ -f "$ENV_FILE" ] || { echo "Errore: $ENV_FILE non trovato - provisiona prima il workspace con provision-workspace.sh / create-workspace.sh." >&2; exit 1; }
 
 HOSTNAME_VAL="$(grep -oP '^WHOOBE_HOSTNAME=\K.*' "$ENV_FILE" 2>/dev/null || true)"
 [ -n "$HOSTNAME_VAL" ] || { echo "Errore: WHOOBE_HOSTNAME non trovato in $ENV_FILE." >&2; exit 1; }
+[[ "$HOSTNAME_VAL" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] || { echo "Errore: WHOOBE_HOSTNAME in $ENV_FILE non e' un nome host valido: $HOSTNAME_VAL" >&2; exit 1; }
 
 if [ -z "$EMAIL" ]; then
   read -rp "Email per l'account Let's Encrypt (avvisi di scadenza/problemi): " EMAIL

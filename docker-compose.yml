@@ -76,7 +76,8 @@ services:
       DB_HOST: postgres
       S3_ENDPOINT: http://minio:9000
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@example.com}
-      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin123}
+      # empty = the seed generates a random password and prints it once in the core-api log (never a default one)
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
     depends_on:
       postgres:
         condition: service_healthy

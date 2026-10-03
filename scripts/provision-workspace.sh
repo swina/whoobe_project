@@ -72,6 +72,12 @@ done
 [[ "$SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "Error: slug must be lowercase letters/digits/hyphens only (got: $SLUG)" >&2; exit 1; }
 [[ "$INDEX" =~ ^[0-9]+$ ]] || { echo "Error: index must be a positive integer (got: $INDEX)" >&2; exit 1; }
 
+# Every value below ends up in sed expressions, an env file and nginx configuration: refuse anything that could
+# add a line, a directive or a shell/sed metacharacter instead of trying to escape it.
+[[ "$HOSTNAME_ARG" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]{1,5})?$ ]] || { echo "Error: hostname must be a plain host name, optionally with a port (got: $HOSTNAME_ARG)" >&2; exit 1; }
+[[ "$SEED_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || { echo "Error: invalid seed e-mail (got: $SEED_EMAIL)" >&2; exit 1; }
+[[ "$SEED_PASSWORD" =~ ^[A-Za-z0-9._@+=:,%-]{8,128}$ ]] || { echo "Error: seed password must be 8-128 characters from A-Z a-z 0-9 . _ @ + = : , % - (no spaces, quotes, | & \\ \$ or #)" >&2; exit 1; }
+
 DB_SAFE_SLUG="${SLUG//-/_}"
 ENV_FILE=".env.${SLUG}"
 PORT_OFFSET=$((INDEX * 10))
@@ -92,7 +98,9 @@ if [ -f "$ENV_FILE" ]; then
 fi
 
 echo ">>> Generating $ENV_FILE ..."
-cp .env.example "$ENV_FILE"
+# the file holds every credential of the workspace: readable by its owner only, from the first byte
+( umask 077; cp .env.example "$ENV_FILE" )
+chmod 600 "$ENV_FILE"
 
 set_env() {
   local key="$1" value="$2"
@@ -121,6 +129,9 @@ set_env "DB_NAME" "whoobe_${DB_SAFE_SLUG}"
 set_env "MIGRATION_SOURCE_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
 set_env "GATEWAY_AUTH_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
 set_env "DAM_SERVICE_TOKEN" "$(openssl rand -hex 24)"
+# the example file carries placeholders for these: never ship a workspace with the shared defaults
+set_env "SITE_API_KEY_PEPPER" "$(openssl rand -hex 32)"
+set_env "TOTP_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
 set_env "S3_ACCESS_KEY_ID" "whoobe_${DB_SAFE_SLUG}"
 set_env "S3_SECRET_ACCESS_KEY" "${S3_SECRET}"
 set_env "S3_BUCKET" "whoobe-cms-${SLUG}"

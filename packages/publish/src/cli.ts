@@ -3,6 +3,57 @@ import { join, relative, resolve } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { ApiClient } from '@whoobe-cms/renderer'
 
+// --- Input hygiene -----------------------------------------------------------------------------------------
+// Everything below ends up inside generated source files (TS, JS, CSS, HTML, shell, nginx) that are then BUILT
+// and RUN on the operator's host or CI, and served to visitors. Two kinds of input reach them:
+//  - options (CLI flags, or - for the admin's "generate PWA" route - request-derived values): validated, not escaped;
+//  - CMS content (class names, theme fonts/colors, slugs, locales): written by editors, so never trusted and
+//    always escaped or whitelisted at the point of use.
+
+const HOSTNAME_RE = /^(?=.{1,253}(?::\d{1,5})?$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*(?::\d{1,5})?$/
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const LOCALE_RE = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}$/
+const SITE_KEY_RE = /^[A-Za-z0-9_-]{8,128}$/
+const BASE_PATH_RE = /^\/[A-Za-z0-9._~\-/]*$/
+
+function assertSafeUrl(name: string, v: string): void {
+  let ok = false
+  try {
+    const u = new URL(v)
+    ok = (u.protocol === 'http:' || u.protocol === 'https:') && !/['"`\\<>\s]/.test(v)
+  } catch { /* not a URL */ }
+  if (!ok) throw new Error(`Invalid ${name}: must be an http(s) URL without quotes, backslashes, angle brackets or whitespace`)
+}
+
+/** Throws on any option that could break out of the generated files; returns the options unchanged otherwise. */
+export function validateGenerateOptions<T extends GenerateOptions>(o: T): T {
+  assertSafeUrl('apiUrl', o.apiUrl)
+  if (o.gatewayUrl) assertSafeUrl('gatewayUrl', o.gatewayUrl)
+  if (o.assetBaseUrl) assertSafeUrl('assetBaseUrl', o.assetBaseUrl)
+  if (!UUID_RE.test(o.websiteId)) throw new Error('Invalid websiteId: expected a UUID')
+  if (o.domain && !HOSTNAME_RE.test(o.domain)) throw new Error(`Invalid domain "${o.domain}": expected a host name (optionally with a port)`)
+  if (o.basePath && !BASE_PATH_RE.test(o.basePath)) throw new Error('Invalid basePath: expected a path such as /blog (letters, digits, . _ ~ - /)')
+  if (o.siteApiKey && !SITE_KEY_RE.test(o.siteApiKey)) throw new Error('Invalid siteApiKey: unexpected characters')
+  if (!Number.isInteger(o.revalidate) || o.revalidate < 0) throw new Error('Invalid revalidate: expected a non-negative integer')
+  return o
+}
+
+/** A locale from CMS data, or the fallback when it is not a plain BCP 47-style tag. */
+export function safeLocale(v: unknown, fallback = 'en'): string {
+  return typeof v === 'string' && LOCALE_RE.test(v) ? v : fallback
+}
+
+const FONT_NAME_RE = /^[\p{L}\p{N} _+.-]{1,64}$/u
+const CSS_COLOR_RE = /^(?:#[0-9a-fA-F]{3,8}|(?:rgb|hsl|hwb|lab|lch|oklab|oklch)a?\([0-9a-zA-Z.,%\s/+-]{1,80}\)|[a-zA-Z]{3,24})$/
+
+export const isSafeFontName = (f: unknown): f is string => typeof f === 'string' && FONT_NAME_RE.test(f)
+export const isSafeCssColor = (c: unknown): c is string => typeof c === 'string' && CSS_COLOR_RE.test(c.trim())
+
+/** Escapes a value for a double-quoted HTML attribute. */
+export function escapeHtmlAttr(v: string): string {
+  return v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 export interface VendoredSdkPackage {
   /** e.g. '@whoobe-cms/renderer'. */
   name: string
@@ -134,7 +185,8 @@ export interface GenerateOptions {
   appOnly?: boolean
 }
 
-export async function generateNextSite(options: GenerateOptions): Promise<void> {
+export async function generateNextSite(rawOptions: GenerateOptions): Promise<void> {
+  const options = validateGenerateOptions(rawOptions)
   const { apiUrl, websiteId, outDir, framework, revalidate, domain, assetBaseUrl } = options
   const client = new ApiClient(apiUrl)
 
@@ -175,8 +227,11 @@ export async function generateNextSite(options: GenerateOptions): Promise<void> 
     const themeRawStyles = themes.map((t) => stripThemeBlock(t.styles ?? '')).filter(Boolean).join('\n')
     const fontFamilies = collectFonts(themes, defaultThemeId)
     const homePaths = computeHomePaths(pages)
-    const supportedLocales = (website.supportedLocales as string[]) ?? [website.defaultLocale ?? 'en']
-    const defaultLocale = (website.defaultLocale as string) ?? 'en'
+    // locales are CMS data: keep plain tags only, everything downstream (code, redirects, <html lang>) relies on it
+    website.defaultLocale = safeLocale(website.defaultLocale)
+    website.supportedLocales = ((website.supportedLocales as string[] | undefined) ?? [website.defaultLocale as string]).filter((l) => LOCALE_RE.test(l))
+    const supportedLocales = website.supportedLocales as string[]
+    const defaultLocale = website.defaultLocale as string
     const singleLocale = supportedLocales.length <= 1
 
     console.log('Packing SDK dependencies (makes the site installable anywhere, no monorepo needed)...')
@@ -281,8 +336,10 @@ function generateThemeCss(theme: { name: string; colors: { name: string; hex: st
   const apiColorNames = new Set<string>()
   if (theme.colors.length > 0) {
     for (const c of theme.colors) {
-      const safeName = c.name.replace(/[^a-zA-Z0-9_-]/g, '')
-      lines.push(`  --color-${safeName}: ${c.hex};`)
+      const safeName = String(c.name).replace(/[^a-zA-Z0-9_-]/g, '')
+      // the value is written inside the @theme { } block: anything that is not a plain colour could close it
+      if (!safeName || !isSafeCssColor(c.hex)) continue
+      lines.push(`  --color-${safeName}: ${String(c.hex).trim()};`)
       apiColorNames.add(safeName)
     }
   }
@@ -345,11 +402,13 @@ function stripThemeBlock(styles: string): string {
 function collectFonts(themes: Array<{ id?: string; name: string; fonts: string[] }>, defaultThemeId: string | null): string[] {
   const fonts = new Set<string>()
   const defaultTheme = themes.find((t) => t.name === defaultThemeId || t.id === defaultThemeId)
+  // font names come from theme data and are written into CSS, HTML and URLs: plain names only
+  const add = (f: unknown) => { if (isSafeFontName(f)) fonts.add(f) }
   if (defaultTheme) {
-    for (const f of defaultTheme.fonts) fonts.add(f)
+    for (const f of defaultTheme.fonts ?? []) add(f)
   }
   for (const theme of themes) {
-    for (const f of theme.fonts) fonts.add(f)
+    for (const f of theme.fonts ?? []) add(f)
   }
   return [...fonts]
 }
@@ -453,7 +512,7 @@ async function scaffoldNextSite(opts: ScaffoldOptions): Promise<void> {
   await writeFile(join(opts.outDir, 'app/api/whoobe-gateway-submit/route.ts'), scaffoldGatewaySubmitRoute())
   await writeFile(join(opts.outDir, 'src/lib/api.ts'), scaffoldApi(opts))
   await writeFile(join(opts.outDir, 'src/lib/registry.ts'), scaffoldRegistry())
-  await writeFile(join(opts.outDir, '.env.local'), scaffoldEnv(opts))
+  await writeFile(join(opts.outDir, '.env.local'), scaffoldEnv(opts), { mode: 0o600 })
 
   // Self-contained deploy (Docker + nginx) - see each function's own comment.
   await writeFile(join(opts.outDir, 'Dockerfile'), scaffoldDockerfile('next'))
@@ -875,7 +934,7 @@ module.exports = {
     './src/**/*.{ts,tsx}',
   ],
   safelist: [
-${opts.safelist.map((c) => `    '${c}',`).join('\n')}
+${opts.safelist.map((c) => `    ${JSON.stringify(c)},`).join('\n')}
   ],
 }
 `
@@ -924,7 +983,7 @@ export default function RootLayout({
   return (
     <html lang="${defaultLocale}">
       <head>
-        <!-- Whoobe CMS custom styles are in globals.css (@theme block + raw) -->
+        {/* Whoobe CMS custom styles are in globals.css (@theme block + raw) */}
         ${fontLinks}
       </head>
       <body>
@@ -973,7 +1032,7 @@ export default async function HomePage() {
   return `import { redirect } from 'next/navigation'
 
 export default function HomePage() {
-  redirect('${actualHomePath}')
+  redirect(${JSON.stringify(actualHomePath)})
 }
 `
 }
@@ -1278,7 +1337,8 @@ ${opts.domain ? `NEXT_PUBLIC_SITE_URL=https://${opts.domain}` : ''}
 
 // --- Nuxt scaffolding ---
 
-export async function generateNuxtSite(options: GenerateOptions): Promise<void> {
+export async function generateNuxtSite(rawOptions: GenerateOptions): Promise<void> {
+  const options = validateGenerateOptions(rawOptions)
   const { apiUrl, websiteId, outDir, revalidate, domain, assetBaseUrl } = options
   const client = new ApiClient(apiUrl)
 
@@ -1329,8 +1389,10 @@ export async function generateNuxtSite(options: GenerateOptions): Promise<void> 
     const themeRawStyles = themes.map((t) => stripThemeBlock(t.styles ?? '')).filter(Boolean).join('\n')
     const fontFamilies = collectFonts(themes, defaultThemeId)
     const homePaths = computeHomePaths(pages)
-    const supportedLocales = (website.supportedLocales as string[]) ?? [website.defaultLocale ?? 'en']
-    const defaultLocale = (website.defaultLocale as string) ?? 'en'
+    website.defaultLocale = safeLocale(website.defaultLocale)
+    website.supportedLocales = ((website.supportedLocales as string[] | undefined) ?? [website.defaultLocale as string]).filter((l) => LOCALE_RE.test(l))
+    const supportedLocales = website.supportedLocales as string[]
+    const defaultLocale = website.defaultLocale as string
     const singleLocale = supportedLocales.length <= 1
     const pwaEnabled = appOnly || ((website.pwaEnabled as boolean) ?? false)
     const pwaConfig = pwaEnabled ? (website.pwaConfig as Record<string, unknown> ?? {}) : undefined
@@ -1428,7 +1490,7 @@ async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
     await writeFile(join(opts.outDir, 'pages/[locale]/[...slug].vue'), nuxtCatchAllPageMulti(opts))
   }
 
-  await writeFile(join(opts.outDir, '.env'), nuxtEnv(opts))
+  await writeFile(join(opts.outDir, '.env'), nuxtEnv(opts), { mode: 0o600 })
 
   // AppShell.vue (+ its own BottomNav.vue dependency) is written
   // unconditionally, regardless of pwaConfig: nuxtCatchAllPageMulti()
@@ -1696,7 +1758,7 @@ function nuxtSafelistHtml(opts: ScaffoldOptions): string {
   // Group into blocks of ~20 to keep lines readable
   for (let i = 0; i < opts.safelist.length; i += 20) {
     const chunk = opts.safelist.slice(i, i + 20)
-    lines.push(`  <div class="${chunk.join(' ')}"></div>`)
+    lines.push(`  <div class="${escapeHtmlAttr(chunk.join(' '))}"></div>`)
   }
   return `<html>\n<body>\n${lines.join('\n')}\n</body>\n</html>\n`
 }
