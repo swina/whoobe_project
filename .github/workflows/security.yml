@@ -1,0 +1,121 @@
+# Security checks (plan docs/plans/security/security-testing-plan.md, section 7.1).
+#   static       every pull request, every push to master, nightly   (no stack; ~5 min)
+#   stack-tests  push to master (relevant paths), nightly, manual   (disposable stack + API + browser suites)
+#   dast         monthly, manual                                    (OWASP ZAP against the disposable stack)
+# Nothing here needs secrets: the stack is generated with random credentials on the runner (scripts/security/gen-env.sh).
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  schedule:
+    - cron: '17 3 * * *'      # nightly: static scan and stack suites
+    - cron: '41 4 1 * *'      # monthly: DAST
+  workflow_dispatch:
+    inputs:
+      dast:
+        description: 'Also run the ZAP DAST scan'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: static scans
+    if: github.event_name != 'schedule' || github.event.schedule == '17 3 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # gitleaks scans the whole history
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Static security scan (audit, gitleaks, semgrep, shellcheck, trivy, hadolint)
+        run: pnpm security:static
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: static-reports
+          path: scripts/security/reports/
+          retention-days: 30
+
+  stack-tests:
+    name: API + browser suites on a disposable stack
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.event.schedule == '17 3 * * *') ||
+      github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the workspace packages (some suites import the SDK/publisher packages from source)
+        run: pnpm build
+      - name: Start the disposable stack (own DB and volumes, ports +100)
+        run: scripts/security/stack.sh up
+      - name: API suites
+        run: pnpm security:api
+      - name: Chromium for the browser suite
+        run: pnpm --filter @whoobe-cms/security exec playwright install --with-deps chromium
+      - name: Browser suite
+        run: pnpm security:browser
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose -p whoobe-sectest logs --tail 200 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stack-test-reports
+          path: |
+            scripts/security/reports/
+            scripts/security/test-results/
+          retention-days: 30
+      - name: Remove the stack and its volumes
+        if: always()
+        run: scripts/security/stack.sh down || true
+
+  dast:
+    name: DAST (OWASP ZAP)
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.dast) ||
+      (github.event_name == 'schedule' && github.event.schedule == '41 4 1 * *')
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: scripts/security/stack.sh up
+      - name: ZAP API scans (active) and SPA baselines
+        run: scripts/security/dast/run-zap.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-reports
+          path: scripts/security/reports/
+          retention-days: 90
+      - name: Remove the stack and its volumes
+        if: always()
+        run: scripts/security/stack.sh down || true

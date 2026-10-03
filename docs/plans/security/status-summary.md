@@ -9,8 +9,8 @@ for reviewers), `scripts/security/README.md` (how to run).
 
 | | |
 |---|---|
-| Findings recorded | **47** (F-001 ... F-047) |
-| By current severity | **9 High**, 23 Medium, 12 Low, 3 Info |
+| Findings recorded | **48** (F-001 ... F-048) |
+| By current severity | **9 High**, 24 Medium, 12 Low, 3 Info |
 | Fixed in code | all 9 High; all but a few Medium (see section 3) |
 | Automated checks | `pnpm security:api` **1034 tests / 18 files** and `pnpm security:browser` **8 Playwright tests** (Chromium) green on a disposable stack, plus **DAST with OWASP ZAP** (`scripts/security/dast/run-zap.sh`: active API scan of 154 routes of core-api, gateway and asset-processor with an admin session: 0 findings above Info; passive baseline of the admin and editor SPAs); `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 122 |
 | Runs leave evidence | `scripts/security/reports/<date>/api-*.txt/.json`, `static-*.txt/.json` (git-ignored) |
@@ -39,7 +39,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | 3.13 | Dependencies | `pnpm audit` in the static scan, two accepted advisories (`xlsx`, `braces`) with review dates |
 | 3.14 | Errors / logging | done (generic 5xx, SQL text hidden, log hygiene reviewed by hand) |
 | 3.15 | Rate limits | login, MFA, forgot-password, forms, public search/query, AI, pwa subscribe done; **no load testing by design** |
-| 7.1 | Periodic runs / CI | scripts, baseline and timestamped reports exist; **no CI workflow wired yet** |
+| 7.1 | Periodic runs / CI | `.github/workflows/security.yml` (static on every PR/push/nightly; stack + API + browser suites on push to master/nightly/manual; ZAP monthly/manual) and `.github/dependabot.yml`; written and linted (`actionlint`) but **not yet run on GitHub** - the first run may need small fixes |
 
 ## 3. Open items
 
@@ -52,7 +52,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | **F-014** full CSP for the admin/editor SPAs (nginx) | postponed on purpose (clickjacking and baseline headers are done, F-047): becomes essential in SaaS mode; a too strict policy breaks the editor | design with a report-only phase when SaaS mode starts |
 | **F-024** `DAM_ENFORCE_ASSET_VISIBILITY` is off by default | published sites load images through `/dam-asset`; most uploads are private by default | mark site assets/folders public, then switch it on (or decide the proxy is public by design) |
 | **F-044** deleting a website can answer 500 | functional, not a security issue | fix when convenient |
-| CI wiring, `trivy image`, `testssl`, multi-tenant isolation tests | not part of the commands yet | plan 7.1 and phases 5-6 |
+| First GitHub Actions run, `trivy image`, `testssl`, multi-tenant isolation tests | CI is written but untested on GitHub; the others are not part of the commands yet | push, watch the `security` workflow, fix what only CI shows |
 
 ## 4. Actions that are yours (cannot be done from here)
 
@@ -74,6 +74,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
    `WS_DATA_BIND_ADDRESS=0.0.0.0` to `.env` if a client on another machine needs them (F-043).
 6. **Run the manual checklist** (`manual-test-checklist.md`) on the throwaway stack once, and report any KO.
 7. Decide: F-024 flag, the `xlsx` replacement, and when to start the CSP work.
+8. **MinIO**: its official images are gone from Docker Hub/Quay (F-048); the stack now builds it from source. Decide whether to keep that or move to another S3-compatible store, and re-pull/rebuild on the Oracle host (`docker compose build minio`) before the next deploy there.
 
 ## 5. Behaviour changes introduced by the fixes (check these when something "stops working")
 

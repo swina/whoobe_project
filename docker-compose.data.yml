@@ -13,7 +13,7 @@
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
     container_name: whoobe_postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -31,7 +31,10 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
+    # built from source (docker/minio/Dockerfile): MinIO's own images are no longer published on Docker Hub / Quay
+    build:
+      context: ./docker/minio
+    image: whoobe-minio:RELEASE.2025-09-07T16-13-09Z
     container_name: whoobe_minio
     command: server /data --console-address ":9001"
     environment:

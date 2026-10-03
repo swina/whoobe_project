@@ -1,0 +1,19 @@
+# Dependency and base-image updates as pull requests (plan 3.13). The static security scan runs on each of them.
+version: 2
+updates:
+  - package-ecosystem: npm            # pnpm workspaces are handled by this ecosystem
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: docker
+    directories: ['/', '/docker/minio']
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
