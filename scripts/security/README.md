@@ -30,8 +30,9 @@ a finding add it to `baseline.json` with an honest reason; remove the entry when
 `.github/workflows/security.yml`: `static` (every PR, push to master, nightly), `stack-tests` (push to master,
 nightly, manual: disposable stack + API + browser suites), `dast` (monthly or manual with the `dast` input). The
 stack's `.env.sectest` is generated on the runner by `gen-env.sh` (random secrets, nothing stored); `stack.sh up`
-calls it when the file is missing. Reports are uploaded as artifacts. `.github/dependabot.yml` opens weekly pull
-requests for npm, Docker base images and GitHub Actions; the static scan runs on each of them.
+calls it when the file is missing. Reports are uploaded as artifacts. `.github/dependabot.yml` opens grouped pull
+requests (one per ecosystem: minor/patch npm updates, Docker images, GitHub Actions); major upgrades are never proposed
+automatically (plan them by hand), `node` stays on 22 LTS and `golang` on the MinIO build line. The static scan runs on each.
 
 ## How it works
 

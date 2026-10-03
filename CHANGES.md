@@ -1,3 +1,8 @@
+## [CI: Node 24 actions; quieter Dependabot] — 2026-10-03
+- Branch: `master`. The first Dependabot run opened 16 pull requests (4 GitHub Actions bumps, node 26 / golang 1.27 base images, npm majors such as vite 8, vitest 5, typescript 7, pinia 4, pino-roll 4, plus grouped minor/patch) and the workflow showed "Node.js 20 is deprecated" annotations.
+- `.github/workflows/security.yml`: `actions/checkout@v7`, `actions/setup-node@v7`, `actions/upload-artifact@v7`, `pnpm/action-setup@v6` (the versions Dependabot proposed; they run on Node 24). Linted with `actionlint`.
+- `.github/dependabot.yml`: npm major upgrades ignored (minor/patch grouped in one PR, limit 5), Docker: `node` stays on 22 LTS, `golang` on the MinIO build line, one grouped PR; GitHub Actions: one grouped PR per month. README CI section updated. Existing Dependabot PRs for majors and base images should be closed (they are superseded by this configuration).
+
 ## [MinIO image runs unprivileged; static scan back to PASS] — 2026-10-03
 - Branch: `master`. The static scan failed on `docker/minio/Dockerfile` (trivy DS-0002 root user HIGH, DS-0026 no HEALTHCHECK).
 - `docker/minio/Dockerfile`: `USER 10001:10001`, `/data` owned by it, `HEALTHCHECK`. `docker-compose.yml` and `docker-compose.data.yml`: new one-shot service `minio-perms` (same image, root, `chown -R 10001:10001 /data`) that `minio` waits for (`service_completed_successfully`), so existing data volumes written by root keep working. Verified on the test stack's existing volume: MinIO runs as uid 10001, healthy, bucket creation and all suites pass (API 1034).
