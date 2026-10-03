@@ -10,7 +10,7 @@
 # these releases; the volume is not touched. Alternative worth evaluating later: another S3-compatible store
 # (the services only use the S3 API, path-style).
 FROM golang:1.25-bookworm@sha256:3b4a11519ad929d1e1d261a12cff056f0c85b735253d7d861346b9c6f8b36437 AS build
-ARG MINIO_VERSION=RELEASE.2025-09-07T16-13-09Z
+ARG MINIO_VERSION=RELEASE.2025-10-15T17-29-55Z
 ARG MC_VERSION=RELEASE.2025-08-13T08-35-41Z
 RUN CGO_ENABLED=0 go install -ldflags "-s -w" github.com/minio/minio@${MINIO_VERSION} \
  && CGO_ENABLED=0 go install -ldflags "-s -w" github.com/minio/mc@${MC_VERSION}
