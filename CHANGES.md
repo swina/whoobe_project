@@ -1,3 +1,6 @@
+## [Security: single status summary] — 2026-10-03
+- Branch: `master`. Added `docs/plans/security/status-summary.md`: one-page state of the security work (44 findings by severity, what the suites cover per plan section, open items, the owner's actions, behaviour changes introduced by the fixes, how to re-run everything). Updated two status cells in `findings.md` (F-010 verified in the browser by the owner, F-025 closed by F-037). Documentation only.
+
 ## [Security F-043: data services private by default, no default credentials in compose] — 2026-10-03
 - Branch: `master`.
 - `docker-compose.yml`, `docker-compose.data.yml`: Postgres (5432) and MinIO (9000/9001) are published on `127.0.0.1` by default (`WS_DATA_BIND_ADDRESS` to change); `POSTGRES_PASSWORD`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` are required (no `postgrespassword` / `minioadmin` fallbacks, the data file no longer hard-codes MinIO's root user/password). `docker-compose.yml` and `docker-compose.apps.yml`: application ports go through `WS_APP_BIND_ADDRESS` (default `0.0.0.0`, unchanged behaviour). `provision-workspace.sh` writes `WS_APP_BIND_ADDRESS=127.0.0.1` and `WS_DATA_BIND_ADDRESS=127.0.0.1` into every workspace env file. `.env.example` and `README.md`: placeholders instead of the old default passwords; the bind variables are documented.
