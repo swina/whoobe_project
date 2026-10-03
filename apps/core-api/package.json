@@ -17,6 +17,7 @@
     "@whoobe-cms/migration-tool": "workspace:*",
     "@whoobe-cms/publish": "workspace:*",
     "@whoobe-cms/renderer": "workspace:*",
+    "@whoobe-cms/schema": "workspace:*",
     "cookie-parser": "^1.4.7",
     "express": "^4.21.2"
   },

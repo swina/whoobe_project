@@ -6,9 +6,11 @@
   "type": "module",
   "scripts": {
     "routes:extract": "tsx extract-routes.ts",
-    "test:api": "vitest run --config vitest.config.ts"
+    "test:api": "vitest run --config vitest.config.ts",
+    "test:browser": "playwright test --config playwright.config.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "tsx": "^4.19.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"

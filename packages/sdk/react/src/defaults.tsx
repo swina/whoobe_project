@@ -4,6 +4,7 @@
 // registry to map it to their own design-system component.
 
 import { useState, useEffect, useRef, useCallback, createElement, type FormEvent, type ReactNode } from 'react'
+import { sanitizeRichText } from '@whoobe-cms/schema'
 import * as LucideIcons from 'lucide-react'
 import type { RenderDescriptor } from '@whoobe-cms/renderer'
 import { useWhoobe } from './context.js'
@@ -148,7 +149,7 @@ export function makeTextComponent(name: string): NodeComponent {
       <Tag
         ref={rootRef}
         {...baseProps(descriptor)}
-        dangerouslySetInnerHTML={descriptor.content ? { __html: descriptor.content } : undefined}
+        dangerouslySetInnerHTML={descriptor.content ? { __html: sanitizeRichText(descriptor.content) } : undefined}
       />
     )
   }
@@ -292,7 +293,7 @@ export const DefaultForm: NodeComponent = ({ descriptor, children }) => {
         <div style={{ position: 'fixed', inset: 0, zIndex: 100000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, cursor: 'pointer' }}
           onClick={() => setResult(null)}>
           <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 40px rgba(0,0,0,.2)', maxWidth: 448, width: '100%', padding: 24, fontSize: 14, color: result.ok ? '#047857' : '#be123c' }}
-            dangerouslySetInnerHTML={{ __html: result.message }} />
+            dangerouslySetInnerHTML={{ __html: sanitizeRichText(result.message) }} />
         </div>
       )}
     </form>

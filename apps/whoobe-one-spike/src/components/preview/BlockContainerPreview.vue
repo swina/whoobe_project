@@ -75,7 +75,7 @@
             <X class="w-4 h-4" />
           </button>
           <div
-            v-html="submitResult.message"
+            v-html="safeHtml(submitResult.message)"
             :class="submitResult.ok ? 'text-emerald-700' : 'text-rose-700'"
           ></div>
         </div>
@@ -85,6 +85,7 @@
 </template>
 
 <script setup lang="ts">
+import { sanitizeRichText as safeHtml } from '@whoobe-cms/schema'
 // Read-only counterpart of ../BlockContainer.vue, for DocumentPreview.vue -
 // port of whoobe-one-studio's src/components/blocks/preview/BlockContainer.
 // vue. No dragula-container class, no click-to-select, no corner tag

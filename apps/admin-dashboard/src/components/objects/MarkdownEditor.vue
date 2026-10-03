@@ -39,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import { sanitizeRichText as safeHtml } from '@whoobe-cms/schema'
 // Markdown editing for `markdown`-type Data Object fields - a plain-text
 // source editor (unlike `wysiwyg`'s WysiwygEditor.vue, which stores real
 // HTML) with a Write/Preview toggle; Preview converts the stored Markdown
@@ -53,7 +54,8 @@ defineEmits<{ (e: 'update:modelValue', value: string): void }>()
 
 const showPreview = ref(false)
 
-const previewHtml = computed(() => marked.parse(props.modelValue ?? '', { async: false }) as string)
+// marked passes raw HTML through: the preview must be sanitised like any other rich text
+const previewHtml = computed(() => safeHtml(marked.parse(props.modelValue ?? '', { async: false }) as string))
 </script>
 
 <style scoped>

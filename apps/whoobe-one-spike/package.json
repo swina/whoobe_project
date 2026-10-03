@@ -19,6 +19,7 @@
     "@whoobe-cms/core": "workspace:*",
     "@whoobe-cms/figma-converter": "workspace:*",
     "@whoobe-cms/logger": "workspace:^",
+    "@whoobe-cms/schema": "workspace:*",
     "alpinejs": "^3.16.1",
     "dexie": "^3.2.7",
     "dragula": "^3.7.3",

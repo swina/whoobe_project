@@ -18,3 +18,5 @@ sites
 .slingshot/*
 scripts/security/reports/
 scripts/security/routes.generated.json
+scripts/security/test-results/
+scripts/security/playwright-report/

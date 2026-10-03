@@ -45,7 +45,7 @@
     :class="node.props?.cssClass"
     :href="node.tag === 'a' ? node.props?.href : undefined"
   >
-    <span v-if="node.type === 'typography'" v-html="node.content" />
+    <span v-if="node.type === 'typography'" v-html="safeHtml(node.content)" />
 
     <span v-else-if="node.type === 'widget'" class="text-xs text-slate-400 light:text-slate-600 font-mono">
       Relation → {{ node.dataBinding?.objectId || node.props?.relationIds?.join(', ') || 'unknown' }}
@@ -58,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+import { sanitizeRichText as safeHtml } from '@whoobe-cms/schema'
 import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import type { WhoobeBlockNode } from '@whoobe-cms/core'
