@@ -59,7 +59,7 @@ export function decryptTotpSecret(stored: string | null | undefined, env: NodeJS
   const iv = raw.subarray(0, IV_LENGTH);
   const authTag = raw.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
   const ciphertext = raw.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
-  const decipher = createDecipheriv('aes-256-gcm', key, iv);
+  const decipher = createDecipheriv('aes-256-gcm', key, iv, { authTagLength: AUTH_TAG_LENGTH });
   decipher.setAuthTag(authTag);
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
 }
