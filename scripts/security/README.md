@@ -25,6 +25,14 @@ reason and a review date) and writes `static-<date>_<time>.txt/.json` next to th
 non-zero only for a finding that is **not** in the baseline, or a baseline entry past its review date. To accept
 a finding add it to `baseline.json` with an honest reason; remove the entry when the cause is fixed.
 
+## CI
+
+`.github/workflows/security.yml`: `static` (every PR, push to master, nightly), `stack-tests` (push to master,
+nightly, manual: disposable stack + API + browser suites), `dast` (monthly or manual with the `dast` input). The
+stack's `.env.sectest` is generated on the runner by `gen-env.sh` (random secrets, nothing stored); `stack.sh up`
+calls it when the file is missing. Reports are uploaded as artifacts. `.github/dependabot.yml` opens weekly pull
+requests for npm, Docker base images and GitHub Actions; the static scan runs on each of them.
+
 ## How it works
 
 - `lib/config.ts` - target and **safety rules**: refuses to run unless the core-api, gateway and

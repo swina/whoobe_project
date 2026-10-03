@@ -1,3 +1,10 @@
+## [CI workflow, Dependabot, pinned base images, MinIO built from source] — 2026-10-03
+- Branch: `master`. Finding F-048 (MinIO images are no longer published).
+- **CI**: `.github/workflows/security.yml` (jobs `static`, `stack-tests`, `dast`; triggers and cadence in the file header) and `.github/dependabot.yml` (npm, Docker, GitHub Actions, weekly). `scripts/security/gen-env.sh` generates the stack's `.env.sectest` with random secrets (no secrets stored); `stack.sh up` calls it when the file is missing and accepts `SEC_ENV_FILE`. Workflow linted with `actionlint`; **not run on GitHub yet**. Actions are referenced by version tag (Dependabot updates them).
+- **Pinned base images**: `Dockerfile` (node, nginx-unprivileged) and the compose files (postgres) are pinned by digest.
+- **MinIO (F-048)**: `docker/minio/Dockerfile` builds MinIO and `mc` from source at pinned releases; `docker-compose.yml` and `docker-compose.data.yml` build it (`whoobe-minio:RELEASE.2025-09-07T16-13-09Z`) instead of pulling `minio/minio:latest`, which can no longer be pulled. Verified on the test stack: healthy, `mc` bucket creation works, `pnpm security:api` 1034 and `pnpm security:browser` 8 pass. **Action on servers**: `docker compose build minio` (first build ~3 minutes) before the next deploy; running containers are unaffected until recreated.
+- Docs: `scripts/security/README.md` (CI section), `status-summary.md`, `findings.md`.
+
 ## [Security: DAST with OWASP ZAP, nginx SPA headers, more browser tests] — 2026-10-03
 - Branch: `master`. Finding F-047; F-014 updated.
 - **DAST**: `scripts/security/dast/` (`run-zap.sh`, `prepare.ts`, `summarize.py`, `baseline.json`): per-service OpenAPI specs from `docs/api/openapi.yaml` (118 + 18 + 18 paths), admin session injected, ZAP active API scan of core-api, gateway and asset-processor and passive baseline of the admin/editor SPAs; summary with baseline and review dates, exit 1 on a new High. First full run: no alert above Info on the APIs (118 passive/active rules passed per service); the SPAs lacked anti-clickjacking and baseline headers.

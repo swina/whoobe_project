@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
-FROM node:22-bookworm-slim AS base
+# Base images are pinned by digest (reproducible builds, no silent upstream change); Dependabot proposes updates.
+FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS base
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 
@@ -55,13 +56,13 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 CMD ["node", "apps/asset-processor/dist/server.js"]
 
 # ─── Admin Dashboard ────────────────────────────────────────────────────────
-FROM nginxinc/nginx-unprivileged:alpine AS admin-dashboard
+FROM nginxinc/nginx-unprivileged:alpine@sha256:26b0bf6fbf07297983cb341998d79c831508787de26627dd2a112321b9c3a4af AS admin-dashboard
 COPY --from=build /app/apps/admin-dashboard/dist /usr/share/nginx/html
 COPY nginx/admin-spa.conf /etc/nginx/conf.d/default.conf
 EXPOSE 8080
 
 # ─── Whoobe One Spike ──────────────────────────────────────────────────────
-FROM nginxinc/nginx-unprivileged:alpine AS whoobe-one-spike
+FROM nginxinc/nginx-unprivileged:alpine@sha256:26b0bf6fbf07297983cb341998d79c831508787de26627dd2a112321b9c3a4af AS whoobe-one-spike
 COPY --from=build /app/apps/whoobe-one-spike/dist /usr/share/nginx/html
 # rendered at start (envsubst): who may embed the editor in a frame - see nginx/editor-spa.conf.template
 ENV EDITOR_FRAME_ANCESTORS="'self' http://localhost:* http://127.0.0.1:*"

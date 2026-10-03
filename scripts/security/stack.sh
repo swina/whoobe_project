@@ -4,7 +4,8 @@
 # Usage: scripts/security/stack.sh build | up | status | down
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-ENVF="$ROOT/scripts/security/.env.sectest"
+ENVF="${SEC_ENV_FILE:-$ROOT/scripts/security/.env.sectest}"
+[ -f "$ENVF" ] || "$ROOT/scripts/security/gen-env.sh" "$ENVF"   # first use (also in CI): generate it
 export ENV_FILE="$ENVF"   # service env_file (compose resolves it relative to the compose file)
 dc() { docker compose -p whoobe-sectest --env-file "$ENVF" -f "$ROOT/docker-compose.yml" "$@"; }
 case "${1:-}" in
