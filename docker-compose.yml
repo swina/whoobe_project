@@ -26,11 +26,11 @@
 # URLs) vs. docs/deployment.md's production convention (bare hostname,
 # nginx path-routes to the right upstream).
 #
-# One-time MinIO bucket setup (run once after first `up -d`, substituting
-# the project's own S3_BUCKET/credentials for a workspace):
-#   docker compose exec minio sh -c "\
-#     mc alias set whoobe http://localhost:9000 <S3_ACCESS_KEY_ID> <S3_SECRET_ACCESS_KEY> && \
-#     mc mb whoobe/whoobe-cms"
+# Object storage: Garage (S3-compatible, docker/garage) runs here by default (profile `local-s3`, enabled through
+# COMPOSE_PROFILES=local-s3 in the env file); it creates its own bucket and key on first start. To use AWS S3, another
+# cloud or an existing enterprise store instead: drop `local-s3` from COMPOSE_PROFILES and set S3_CONTAINER_ENDPOINT
+# (+ S3_REGION/S3_BUCKET/credentials, S3_FORCE_PATH_STYLE). MinIO: docker-compose.minio.yml overlay. See
+# docs/storage-backends.md.
 
 services:
   postgres:
@@ -52,42 +52,38 @@ services:
       timeout: 5s
       retries: 10
 
-  # One-shot: MinIO now runs as uid 10001; a data volume written by an older (root) container is handed over here.
-  # Idempotent and fast; the minio service waits for it.
-  minio-perms:
+  # One-shot: hands a fresh (root-owned) data volume to the unprivileged garage user. Idempotent and fast.
+  garage-perms:
     build:
-      context: ./docker/minio
-    image: whoobe-minio:RELEASE.2025-10-15T17-29-55Z
+      context: ./docker/garage
+    image: whoobe-garage:v2.4.1
+    profiles: ["local-s3"]
     user: "0:0"
-    entrypoint: ["sh", "-c", "chown -R 10001:10001 /data"]
+    entrypoint: ["sh", "-c", "chown -R 10001:10001 /var/lib/garage"]
     volumes:
-      - miniodata:/data
+      - garagedata:/var/lib/garage
     restart: "no"
 
-  minio:
-    # built from source (docker/minio/Dockerfile): MinIO's own images are no longer published on Docker Hub / Quay
+  garage:
+    # Local / LAN S3 store (docker/garage: official binary + automatic first-run setup)
     build:
-      context: ./docker/minio
-    image: whoobe-minio:RELEASE.2025-10-15T17-29-55Z
+      context: ./docker/garage
+    image: whoobe-garage:v2.4.1
+    profiles: ["local-s3"]
     depends_on:
-      minio-perms:
+      garage-perms:
         condition: service_completed_successfully
-    command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in the env file}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in the env file}
-      MINIO_API_CORS_ALLOW_ORIGIN: "*"
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in the env file (GK + 24 hex)}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in the env file (64 hex)}
+      S3_BUCKET: ${S3_BUCKET:-whoobe-cms}
+      S3_REGION: ${S3_REGION:-us-east-1}
     ports:
-      # loopback only (see postgres above): browsers get assets through the asset-processor, not from MinIO
-      - "${WS_DATA_BIND_ADDRESS:-127.0.0.1}:${WS_MINIO_API_PORT:-9000}:9000"
-      - "${WS_DATA_BIND_ADDRESS:-127.0.0.1}:${WS_MINIO_CONSOLE_PORT:-9001}:9001"
+      # loopback only: browsers get assets through the asset-processor, not from the store
+      - "${WS_DATA_BIND_ADDRESS:-127.0.0.1}:${WS_S3_API_PORT:-9000}:3900"
     volumes:
-      - miniodata:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      - garagedata:/var/lib/garage
+    restart: unless-stopped
 
   core-api:
     build:
@@ -99,7 +95,7 @@ services:
     environment:
       NODE_ENV: production
       DB_HOST: postgres
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: ${S3_CONTAINER_ENDPOINT:-http://garage:3900}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@example.com}
       # empty = the seed generates a random password and prints it once in the core-api log (never a default one)
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
@@ -118,11 +114,12 @@ services:
     environment:
       NODE_ENV: production
       DB_HOST: postgres
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: ${S3_CONTAINER_ENDPOINT:-http://garage:3900}
       S3_FORCE_PATH_STYLE: "true"
     depends_on:
-      minio:
+      garage:
         condition: service_healthy
+        required: false   # not started when an external S3 is used (no `local-s3` profile)
       postgres:
         condition: service_healthy
       # core-api creates/migrates the schema on boot; starting earlier made the
@@ -184,4 +181,4 @@ services:
 
 volumes:
   pgdata:
-  miniodata:
+  garagedata:

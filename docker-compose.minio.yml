@@ -1,0 +1,59 @@
+# MinIO instead of Garage as the S3 store (overlay). Garage is the default; use this only if you already run MinIO
+# and accept its security situation (docs/storage-backends.md, F-050: upstream is source-only and its dependencies
+# carry known CVEs; for production prefer a cloud S3 / a managed store).
+#   docker compose -f docker-compose.yml -f docker-compose.minio.yml up -d --build
+# The bucket is not created automatically:
+#   docker compose exec minio sh -c "mc alias set local http://localhost:9000 $S3_ACCESS_KEY_ID $S3_SECRET_ACCESS_KEY && mc mb --ignore-existing local/$S3_BUCKET"
+services:
+  garage:
+    profiles: !override ["disabled"]
+  garage-perms:
+    profiles: !override ["disabled"]
+
+  # One-shot: MinIO runs as uid 10001; a data volume written by an older (root) container is handed over here.
+  minio-perms:
+    build:
+      context: ./docker/minio
+    image: whoobe-minio:RELEASE.2025-10-15T17-29-55Z
+    user: "0:0"
+    entrypoint: ["sh", "-c", "chown -R 10001:10001 /data"]
+    volumes:
+      - miniodata:/data
+    restart: "no"
+
+  minio:
+    # built from source (docker/minio/Dockerfile): MinIO's own images are no longer published on Docker Hub / Quay
+    build:
+      context: ./docker/minio
+    image: whoobe-minio:RELEASE.2025-10-15T17-29-55Z
+    depends_on:
+      minio-perms:
+        condition: service_completed_successfully
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in the env file}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in the env file}
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
+    ports:
+      - "${WS_DATA_BIND_ADDRESS:-127.0.0.1}:${WS_S3_API_PORT:-9000}:9000"
+      - "${WS_DATA_BIND_ADDRESS:-127.0.0.1}:${WS_MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  core-api:
+    environment:
+      S3_ENDPOINT: http://minio:9000
+  asset-processor:
+    environment:
+      S3_ENDPOINT: http://minio:9000
+    depends_on:
+      minio:
+        condition: service_healthy
+
+volumes:
+  miniodata:

@@ -1,6 +1,6 @@
 # Creating a Workspace
 
-A **workspace** is a fully independent Whoobe CMS install for one client: its own Postgres database, its own MinIO bucket, its own core-api/asset-processor/gateway/admin-dashboard/whoobe-one-spike containers, its own users/roles/logins, and its own hostname. Nothing is shared between workspaces — see `docs/plans/system/workspaces-plan.md` for why this isolation model was chosen over a shared-database, `workspaceId`-scoped alternative.
+A **workspace** is a fully independent Whoobe CMS install for one client: its own Postgres database, its own S3 bucket (Garage), its own core-api/asset-processor/gateway/admin-dashboard/whoobe-one-spike containers, its own users/roles/logins, and its own hostname. Nothing is shared between workspaces — see `docs/plans/system/workspaces-plan.md` for why this isolation model was chosen over a shared-database, `workspaceId`-scoped alternative.
 
 This guide covers the day-to-day operation: provisioning a new workspace, verifying it, and managing/removing one later. It assumes a host with Docker, Docker Compose, and (for production) nginx already installed — see `docs/deployment.md` for base host setup.
 
@@ -35,8 +35,8 @@ Example:
 This single command:
 
 1. Generates `.env.client-a` from `.env.example`, with a unique DB name/credentials, S3 bucket/credentials, port block, and freshly generated `MIGRATION_SOURCE_ENCRYPTION_KEY` / `GATEWAY_AUTH_ENCRYPTION_KEY` / `DAM_SERVICE_TOKEN` — none of it shared with any other workspace or with dev's own `.env`.
-2. Builds and starts a dedicated Compose project, `ws-client-a`, from the repo's own `docker-compose.yml` — Postgres, MinIO, core-api, asset-processor, gateway, admin-dashboard, whoobe-one-spike, all isolated in their own network and volumes.
-3. Waits for MinIO to come up and creates the workspace's bucket.
+2. Builds and starts a dedicated Compose project, `ws-client-a`, from the repo's own `docker-compose.yml` — Postgres, Garage (S3), core-api, asset-processor, gateway, admin-dashboard, whoobe-one-spike, all isolated in their own network and volumes.
+3. Waits for the S3 store (Garage creates the workspace's bucket and key by itself on first start).
 4. Renders `deploy/nginx/client-a.conf` from `deploy/nginx/workspace.conf.template`.
 
 It prints a summary at the end — **save it**, especially the seed admin login and the note about backing up `.env.client-a` (it's the only copy of that workspace's credentials; losing it means losing access to its database and asset bucket, not just its admin login).
@@ -85,7 +85,7 @@ docker compose -p ws-client-a --env-file .env.client-a up -d --build
 This is destructive — it deletes the workspace's database and asset storage. Confirm you actually want this (and have a backup, see below) before running it.
 
 ```bash
-docker compose -p ws-client-a --env-file .env.client-a down -v   # -v also drops pgdata/miniodata volumes
+docker compose -p ws-client-a --env-file .env.client-a down -v   # -v also drops pgdata/garagedata volumes
 sudo rm /etc/nginx/sites-enabled/client-a
 sudo systemctl reload nginx
 rm .env.client-a deploy/nginx/client-a.conf
@@ -93,7 +93,7 @@ rm .env.client-a deploy/nginx/client-a.conf
 
 ## Backups
 
-Each workspace's Postgres and MinIO are containers local to that workspace's Compose project — back them up the same way as the single-tenant guide (`docs/deployment.md` §14), just scoped to that project:
+Each workspace's Postgres and Garage are containers local to that workspace's Compose project — back them up the same way as the single-tenant guide (`docs/deployment.md` §14), just scoped to that project:
 
 ```bash
 docker compose -p ws-client-a --env-file .env.client-a exec -T postgres \

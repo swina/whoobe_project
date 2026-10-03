@@ -24,7 +24,7 @@
 #      asset-processor, gateway, admin-dashboard, whoobe-one-spike.
 #      core-api creates/migrates its own database schema on first boot,
 #      so there is no separate migration step (see docs/deployment.md).
-#   3. Creates the workspace's MinIO bucket.
+#   3. (Garage creates the workspace's S3 bucket and key by itself on first start.)
 #   4. Renders deploy/nginx/_locations-<slug>.inc (the actual proxy_pass
 #      routing, shared by the HTTP and future HTTPS vhosts) and
 #      deploy/nginx/<slug>.conf (HTTP-only bootstrap, from
@@ -83,8 +83,7 @@ ENV_FILE=".env.${SLUG}"
 PORT_OFFSET=$((INDEX * 10))
 
 P_POSTGRES=$((5432 + PORT_OFFSET))
-P_MINIO_API=$((9000 + PORT_OFFSET))
-P_MINIO_CONSOLE=$((9001 + PORT_OFFSET))
+P_S3_API=$((9000 + PORT_OFFSET))
 P_ADMIN=$((3000 + PORT_OFFSET))
 P_GATEWAY=$((3001 + PORT_OFFSET))
 P_ASSET=$((3002 + PORT_OFFSET))
@@ -116,7 +115,8 @@ set_env() {
 }
 
 DB_PASSWORD="$(openssl rand -hex 16)"
-S3_SECRET="$(openssl rand -hex 16)"
+S3_KEY_ID="GK$(openssl rand -hex 12)"   # Garage key format (GK + 24 hex / 64 hex)
+S3_SECRET="$(openssl rand -hex 32)"
 
 set_env "ENV_FILE" "${ENV_FILE}"
 set_env "WHOOBE_HOSTNAME" "${HOSTNAME_ARG}"
@@ -132,7 +132,8 @@ set_env "DAM_SERVICE_TOKEN" "$(openssl rand -hex 24)"
 # the example file carries placeholders for these: never ship a workspace with the shared defaults
 set_env "SITE_API_KEY_PEPPER" "$(openssl rand -hex 32)"
 set_env "TOTP_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
-set_env "S3_ACCESS_KEY_ID" "whoobe_${DB_SAFE_SLUG}"
+set_env "S3_ACCESS_KEY_ID" "${S3_KEY_ID}"
+set_env "COMPOSE_PROFILES" "local-s3"
 set_env "S3_SECRET_ACCESS_KEY" "${S3_SECRET}"
 set_env "S3_BUCKET" "whoobe-cms-${SLUG}"
 # Production convention (docs/deployment.md): bare hostname, nginx
@@ -149,8 +150,7 @@ set_env "SEED_ADMIN_PASSWORD" "${SEED_PASSWORD}"
 set_env "WS_APP_BIND_ADDRESS" "127.0.0.1"
 set_env "WS_DATA_BIND_ADDRESS" "127.0.0.1"
 set_env "WS_POSTGRES_PORT" "${P_POSTGRES}"
-set_env "WS_MINIO_API_PORT" "${P_MINIO_API}"
-set_env "WS_MINIO_CONSOLE_PORT" "${P_MINIO_CONSOLE}"
+set_env "WS_S3_API_PORT" "${P_S3_API}"
 set_env "WS_ADMIN_DASHBOARD_PORT" "${P_ADMIN}"
 set_env "WS_GATEWAY_PORT" "${P_GATEWAY}"
 set_env "WS_ASSET_PROCESSOR_PORT" "${P_ASSET}"
@@ -160,14 +160,12 @@ set_env "WS_WHOOBE_ONE_SPIKE_PORT" "${P_WHOOBE_ONE}"
 echo ">>> Bringing up ws-${SLUG} ..."
 docker compose -p "ws-${SLUG}" --env-file "$ENV_FILE" up -d --build
 
-echo ">>> Waiting for MinIO to be healthy ..."
-until docker compose -p "ws-${SLUG}" --env-file "$ENV_FILE" exec -T minio curl -sf http://localhost:9000/minio/health/live >/dev/null 2>&1; do
+# Garage (the S3 store of the stack) creates its own key and bucket on first start; wait until it reports healthy.
+echo ">>> Waiting for the S3 store (bucket whoobe-cms-${SLUG}) ..."
+for _ in $(seq 1 90); do
+  [ "$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose -p "ws-${SLUG}" --env-file "$ENV_FILE" ps -q garage)" 2>/dev/null)" = healthy ] && break
   sleep 2
 done
-
-echo ">>> Creating MinIO bucket whoobe-cms-${SLUG} ..."
-docker compose -p "ws-${SLUG}" --env-file "$ENV_FILE" exec -T minio sh -c \
-  "mc alias set whoobe http://localhost:9000 'whoobe_${DB_SAFE_SLUG}' '${S3_SECRET}' && mc mb whoobe/whoobe-cms-${SLUG} --ignore-existing"
 
 # Detected once, up front, since it decides which literal filesystem
 # paths get baked into the rendered vhost (host-nginx reads deploy/nginx
@@ -224,7 +222,7 @@ cat <<SUMMARY
 >>> Workspace '${SLUG}' provisioned.
 
   Hostname:          ${HOSTNAME_ARG}
-  Ports (host):      admin ${P_ADMIN}  core-api ${P_CORE}  asset-processor ${P_ASSET}  gateway ${P_GATEWAY}  whoobe-one ${P_WHOOBE_ONE}  postgres ${P_POSTGRES}  minio ${P_MINIO_API}/${P_MINIO_CONSOLE}
+  Ports (host):      admin ${P_ADMIN}  core-api ${P_CORE}  asset-processor ${P_ASSET}  gateway ${P_GATEWAY}  whoobe-one ${P_WHOOBE_ONE}  postgres ${P_POSTGRES}  s3 ${P_S3_API}
   Seed admin login:  ${SEED_EMAIL} / ${SEED_PASSWORD}
   Env file:          ${ENV_FILE}  (back this up - it holds this workspace's only credentials)
   Nginx config:      deploy/nginx/${SLUG}.conf

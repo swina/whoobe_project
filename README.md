@@ -17,7 +17,7 @@ The product itself is branded **Whoobe** (npm scope `@whoobe-cms/*`).
   Dynamic Injection into the Editor: Data Objects exposes visual keys in the visual builder (whoobe-one-spike). The designer drags and drops a graphical element and connects it in real time to live data from the Data Object classes.
 
 - **Digital Asset Management (DAM)** 
-  S3/MinIO-backed asset storage with Sharp-powered image processing (configurable thumb/medium/large presets) and EXIF/IPTC metadata extraction; public/private folder visibility rules, folder management, versioning, and presigned URLs for private assets. 
+  S3-backed asset storage (Garage locally; any S3-compatible store in production) with Sharp-powered image processing (configurable thumb/medium/large presets) and EXIF/IPTC metadata extraction; public/private folder visibility rules, folder management, versioning, and presigned URLs for private assets. 
   Includes asynchronous integration via API Gateway with Cloudinary; selected assets can be pushed to the public cloud, storing the CDN URL in the metadata. At publish time, the user chooses the media source (Local S3 vs. Cloudinary CDN), enabling offline/local preview architectures connected to public front-end distribution channels
 
 - **Headless CMS & visual page builder** 
@@ -100,7 +100,7 @@ Managed with **pnpm workspaces** + **Turborepo**.
 
 - Node.js 18+
 - [pnpm](https://pnpm.io/) 9.x (`corepack enable` or `npm i -g pnpm`)
-- Docker (for local Postgres + MinIO) , or your own Postgres 16 and S3-compatible storage
+- Docker (for local Postgres + Garage S3) , or your own Postgres 16 and S3-compatible storage
 - Docker (for the complete stack), suggested for demo or testing.
 
 ## Install (for local development)
@@ -120,7 +120,7 @@ You can run Whoobe in different modes:
 - **Production**: read the dedicated section
 
 
-Start local infrastructure (Postgres + MinIO):
+Start local infrastructure (Postgres + Garage S3; for production, object storage is a configuration choice: [docs/storage-backends.md](docs/storage-backends.md)):
 
 ```bash
 docker compose -f docker-compose.data.yml up -d --build
@@ -152,7 +152,7 @@ DB_NAME=whoobe_db
 # Encryption key for stored Pimcore migration sources (aes-256, 32 bytes).
 MIGRATION_SOURCE_ENCRYPTION_KEY=<openssl rand -hex 32>
 
-# --- asset-processor only: S3/MinIO connection ---
+# --- Object storage (S3 API) ---
 # Owned exclusively by the backend - never shipped to the browser.
 S3_ENDPOINT=http://${S3_ENDPOINT_HOSTNAME}:9000
 S3_BUCKET=whoobe-cms
@@ -197,9 +197,9 @@ Initial user is `admin@example.com`, password `admin123`
 ### Development
 
 In a development environment in order to use HMR feature you have to run the app using 
-the development script to run the app. Before to launch the script you need to start the Database and the S3/Minio Storage Engine as docker services.
+the development script to run the app. Before to launch the script you need to start the Database and the S3 storage (Garage) as docker services.
 
-#### DB and S3/Minio Storage docker
+#### DB and S3 (Garage) storage docker
 
 ```
 $ docker compose -f docker-compose.data.yml up -d`

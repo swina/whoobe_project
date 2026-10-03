@@ -13,8 +13,10 @@ hex() { openssl rand -hex "$1"; }
 # Host ports are the dev ports +100, so it can run next to the dev stack.
 WHOOBE_HOSTNAME=localhost
 WS_POSTGRES_PORT=5532
-WS_MINIO_API_PORT=9100
+WS_S3_API_PORT=9100
+# only with S3_BACKEND=minio:
 WS_MINIO_CONSOLE_PORT=9101
+COMPOSE_PROFILES=local-s3
 WS_CORE_API_PORT=3103
 WS_ASSET_PROCESSOR_PORT=3102
 WS_ADMIN_DASHBOARD_PORT=3100
@@ -35,14 +37,12 @@ GATEWAY_AUTH_ENCRYPTION_KEY=$(hex 32)
 SITE_API_KEY_PEPPER=$(hex 32)
 DAM_SERVICE_TOKEN=$(hex 24)
 
-S3_ENDPOINT=http://minio:9000
+S3_ENDPOINT=http://garage:3900
 S3_BUCKET=whoobe-cms-sectest
 S3_REGION=us-east-1
 # Garage's key format (GK + 24 hex / 64 hex); MinIO accepts it as well
 S3_ACCESS_KEY_ID=GK$(hex 12)
 S3_SECRET_ACCESS_KEY=$(hex 32)
-GARAGE_RPC_SECRET=$(hex 32)
-GARAGE_ADMIN_TOKEN=$(hex 24)
 S3_FORCE_PATH_STYLE=true
 S3_PUBLIC_BASE_URL=http://localhost:3102/dam-asset
 

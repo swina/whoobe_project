@@ -70,11 +70,11 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
    `GATEWAY_REQUIRE_FIELD_ALLOWLIST=true` (F-029).
 4. **Roles that publish**: grant `objects:publish` where it is intended; the permission is now enforced (F-035,
    `ENFORCE_PUBLISH_PERMISSION=false` restores the old behaviour).
-5. **Development setup**: recreating `whoobe_postgres` / `whoobe_minio` publishes them on loopback only; add
+5. **Development setup**: recreating `whoobe_postgres` / the S3 store publishes them on loopback only; add
    `WS_DATA_BIND_ADDRESS=0.0.0.0` to `.env` if a client on another machine needs them (F-043).
 6. **Run the manual checklist** (`manual-test-checklist.md`) on the throwaway stack once, and report any KO.
 7. Decide: F-024 flag, the `xlsx` replacement, and when to start the CSP work.
-8. **MinIO**: its official images are gone from Docker Hub/Quay (F-048); the stack now builds it from source. Decide whether to keep that or move to another S3-compatible store, and re-pull/rebuild on the Oracle host (`docker compose build minio`) before the next deploy there.
+8. **Object storage**: decided - Garage is the default for local/LAN (automatic bucket and key), production uses a cloud or enterprise S3 through configuration, self-hosted MinIO is documented as discouraged (F-048/F-050, `docs/storage-backends.md`). Remaining for you: copy existing MinIO data to the new store when switching a server (see the doc) and rebuild with `docker compose up -d --build`.
 
 ## 5. Behaviour changes introduced by the fixes (check these when something "stops working")
 
