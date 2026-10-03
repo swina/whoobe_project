@@ -1,3 +1,6 @@
+## [Security: status summary updated for the browser suite] — 2026-10-03
+- Branch: `master`. `docs/plans/security/status-summary.md`: 46 findings (9 High), browser suite, F-045/F-008, the rich-text behaviour change. Documentation only.
+
 ## [Security 3.6: browser XSS suite (Playwright) and rich-text sanitising] — 2026-10-03
 - Branch: `master`. Findings F-045 (High), F-046; F-008 re-rated and mostly fixed (see `docs/plans/security/findings.md`).
 - **Found with Chromium**: stored rich text executed script in the editor (trusted origin, admin session) and on published pages (`<img onerror>`, `<svg onload>`, `srcdoc` frames, `javascript:` links, mXSS).
