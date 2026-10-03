@@ -285,6 +285,20 @@ hostile text is on screen as text, ordinary formatting and links survive) so tha
 Also asserts the public API output is sanitised. Reports: `scripts/security/reports/<date>/browser-*.json`.
 Needs Chromium (`pnpm exec playwright install chromium` and the system libraries). OWASP A03; CWE-79.
 
+#### 2.5.15 DAST with OWASP ZAP - `scripts/security/dast/run-zap.sh` (plan phase 5)
+
+ZAP (docker, `ghcr.io/zaproxy/zaproxy:stable`) against the disposable stack only (`prepare.ts` applies the same
+safety rules as the other suites). `docs/api/openapi.yaml` is split by service tag (118 core-api, 18 gateway, 18
+asset-processor paths) and each part is scanned with `zap-api-scan.py` (spider from the specification plus the full
+active rule set: SQL injection, XSS, command and template injection, path traversal, XXE, SSRF, padding oracle ...)
+with an admin session cookie injected into every request; the admin and editor SPAs get `zap-baseline.py` (spider +
+passive rules). `summarize.py` compares the alerts with `dast/baseline.json` (accepted alerts with a reason and a
+review date) and fails on a High alert that is not listed; Medium and lower are reported. First full run: the three
+API scans passed all 118 active rules with nothing above Info; the SPA scans found the missing anti-clickjacking
+header and baseline headers (fixed, F-047) and the missing CSP (F-014, accepted until the SaaS mode). Reports:
+`reports/<date>/zap-*.html|json` and `zap-summary-<time>.txt`. `--quick` runs passive rules only (about 2 minutes).
+OWASP A01-A10 coverage by ZAP rules; it complements, and does not replace, the authorisation and logic tests above.
+
 ### 2.6 Known-finding convention
 
 `lib/known.ts` provides `known('F-0xx', name, fn)`: a test that asserts the secure behaviour but is *expected* to
@@ -399,7 +413,7 @@ compensating controls or additional testing):
 |---|---|
 | Browser-side XSS (plan 3.6) | Automated for the editor, a published page, the admin lists/previews and data object fields (`security:browser`). Not browser-tested: editor tables and form-result messages, the Studio app, generated Next/Nuxt sites and the mobile/PWA templates. |
 | Content-Security-Policy for the admin and editor SPAs (served by nginx) | Not tested (finding F-014, open part). |
-| DAST (OWASP ZAP baseline / API scan), TLS configuration (`testssl.sh`) | Planned, not part of these commands. |
+| DAST (OWASP ZAP) | Done by `scripts/security/dast/run-zap.sh` (section 2.5.15), separate from the two commands. TLS configuration (`testssl.sh`) is still not covered. |
 | Container image scanning (`trivy image`) | Not run; only configuration scanning (`trivy config`). |
 | AI features (plan 3.10), publish / provisioning scripts at runtime (3.11) | Not covered by the API suite; shell scripts are covered statically by ShellCheck. |
 | MFA (TOTP) flows | Excluded from the authorization sweep; not specifically tested. |
@@ -463,6 +477,7 @@ Findings that are fixed but **not** observable through the API suite, and how ea
 | F-021 | Reset tokens stored in clear | Unit test of `hashResetToken` (`packages/core`); single use and end of sessions are asserted in `auth.test.ts`. |
 | F-031 | Gateway observations (optional site key, Redis stub, plugin loader) | Informational, no test. |
 | F-008, F-045 | Stored XSS through rich text (editor, public pages, previews) | `browser/xss-sinks.spec.ts`, `sanitize.test.ts` (schema), `sanitize-public-content.test.ts` (core) |
+| F-047 | SPA clickjacking / baseline headers | `api/spa-headers.test.ts`, browser embedding test, ZAP baseline |
 | F-039, F-040 | Content/option injection into generated sites | `publish.test.ts`, `unit/publish-hygiene.test.ts` |
 | F-041, F-042 | Workspace provisioning, default credentials | `unit/workspace-scripts.test.ts`, `unit/compose-hardening.test.ts` |
 | F-043 | Postgres/MinIO exposure, default credentials | `unit/compose-hardening.test.ts` |

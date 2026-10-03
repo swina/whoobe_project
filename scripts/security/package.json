@@ -11,8 +11,14 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
+    "@types/react": "^18",
+    "@vue/server-renderer": "^3",
+    "js-yaml": "^4",
+    "react": "^18",
+    "react-dom": "^18",
     "tsx": "^4.19.0",
     "typescript": "^5.4.0",
-    "vitest": "^1.6.0"
+    "vitest": "^1.6.0",
+    "vue": "^3"
   }
 }

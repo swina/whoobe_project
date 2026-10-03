@@ -39,7 +39,7 @@ location ~ ^/whoobe-one/(websites|themes|pages|snippets|templates|kits|website-p
 # config, which fronts `vite preview` (base-aware, expects the full
 # /whoobe-one/... path). This workspace's whoobe-one-spike instead runs
 # as a Docker image (Dockerfile's `whoobe-one-spike` target: a generic
-# nginx:alpine serving the static dist/ via nginx/spa-fallback.conf,
+# nginx:alpine serving the static dist/ via nginx/admin-spa.conf / nginx/editor-spa.conf.template,
 # which has no idea what prefix it's reverse-proxied under) - its actual
 # files live at the container's own root (/assets/*.js, /editor, ...),
 # so the prefix must come off before forwarding or every asset request

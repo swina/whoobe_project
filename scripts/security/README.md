@@ -9,6 +9,7 @@ scripts/security/stack.sh up          # throwaway stack (own DB/volumes, ports =
 pnpm security:api                     # API suites (vitest) against that stack
 pnpm security:static                  # docker-based static scans, no stack needed; exit 1 only for NEW findings
 pnpm security:browser                 # Playwright (Chromium) XSS sink tests against the same stack
+scripts/security/dast/run-zap.sh      # OWASP ZAP (docker): API active scan + SPA baseline; --quick = passive only
 scripts/security/stack.sh down        # remove stack and its volumes
 ```
 
@@ -45,6 +46,7 @@ a finding add it to `baseline.json` with an honest reason; remove the entry when
 - `api/cors-csrf-headers.test.ts` (3.5, 3.14) - CORS, CSRF, security headers, error disclosure.
 - `api/uploads.test.ts` (3.7), `api/ssrf.test.ts` (3.8), `api/gateway.test.ts` (3.9) - asset-processor, outbound requests, public gateway routes.
 - `browser/xss-sinks.spec.ts` (3.6, `pnpm security:browser`) - hostile rich text in the editor, public page, admin lists/previews, Markdown preview. One-time: `pnpm exec playwright install chromium` and the system libraries (`sudo ... playwright install-deps chromium`).
+- `dast/run-zap.sh` (docker) - OWASP ZAP against the stack: per-service OpenAPI specs from `docs/api/openapi.yaml`, an admin session injected, `dast/baseline.json` for accepted alerts. `api/spa-headers.test.ts` checks the nginx SPA headers.
 - `api/mfa.test.ts` (3.1) - second factor: enrolment, replay, per-account guess limit, disable.
 - `api/limits-and-publish.test.ts` (3.15, 3.2) - publish permission, draft leaks, throttling.
 - `api/publish.test.ts`, `unit/publish-hygiene.test.ts`, `unit/workspace-scripts.test.ts` (3.11) - hostile content in generated sites, option validation, operator scripts, compose hardening (`unit/compose-hardening.test.ts`, plan 3.12).

@@ -1,0 +1,35 @@
+{
+  "_comment": "Accepted ZAP alerts: match by alert name (substring, case-insensitive) and optionally by service (core-api, gateway, asset-processor, admin, editor). Each entry needs a reason and a review date; expired entries fail the run. The run fails on a High alert (risk 3) that is not listed here; Medium and lower are reported.",
+  "accepted": [
+    {
+      "alert": "Content Security Policy (CSP) Header Not Set",
+      "service": "admin",
+      "reason": "F-014: full CSP postponed to the SaaS mode (needs a report-only phase)",
+      "review": "2027-01-31"
+    },
+    {
+      "alert": "Content Security Policy (CSP) Header Not Set",
+      "service": "editor",
+      "reason": "F-014: full CSP postponed to the SaaS mode (needs a report-only phase)",
+      "review": "2027-01-31"
+    },
+    {
+      "alert": "Sub Resource Integrity Attribute Missing",
+      "service": "admin",
+      "reason": "Google Fonts stylesheet is loaded from fonts.googleapis.com (its content varies per browser, SRI cannot be pinned)",
+      "review": "2027-01-31"
+    },
+    {
+      "alert": "CSP:",
+      "service": "admin",
+      "reason": "F-014: only frame-ancestors is defined for now (clickjacking); these alerts describe the missing full policy, planned for the SaaS mode",
+      "review": "2027-01-31"
+    },
+    {
+      "alert": "CSP:",
+      "service": "editor",
+      "reason": "F-014: only frame-ancestors is defined for now (clickjacking); these alerts describe the missing full policy, planned for the SaaS mode",
+      "review": "2027-01-31"
+    }
+  ]
+}

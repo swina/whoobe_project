@@ -80,3 +80,27 @@ export function container(id: string, blocks: unknown[], tag = 'flex') {
 export function pageContent(blocks: unknown[]) {
   return container('doc-root', blocks, 'document')
 }
+
+export function tableNode(id: string, cellHtml: string[], ctl = '<b class="ctl">cell-ctl</b>') {
+  const cell = (n: number, content: string) => ({ id: `${id}-c${n}`, content, colspan: 1, rowspan: 1, merged: false, cellClass: '' })
+  return {
+    ...nodeBase(), id, tag: 'table', type: 'element', element: 'table', editable: false, content: null, blocks: [],
+    table: {
+      hasHeader: true, hasFooter: true, caption: '',
+      headerRowClass: '', headerCellClass: '', bodyRowClass: '', bodyCellClass: '', footerRowClass: '', footerCellClass: '',
+      header: [cell(0, ctl), cell(1, cellHtml[0] ?? '')],
+      body: cellHtml.map((h, i) => [cell(10 + i, h), cell(20 + i, h)]),
+      footer: [cell(90, cellHtml[1] ?? ''), cell(91, cellHtml[2] ?? '')],
+    },
+  }
+}
+
+export function formNode(id: string, classId: string, successMessage: string, errorMessage: string) {
+  const input = (name: string, n: number) => ({ ...nodeBase(), id: `${id}-in${n}`, tag: 'input', type: 'element', element: 'input', editable: false, content: null, blocks: [], data: { attributes: { name, type: 'text' } } })
+  return {
+    ...nodeBase(), id, tag: 'form', type: 'container', element: 'form', semantic: 'form', editable: false, content: null,
+    data: { attributes: { name: 'form', action: '', method: 'post' } },
+    formConfig: { enabled: true, targetClassId: classId, successMessage, errorMessage, notify: { enabled: false } },
+    blocks: [input('title', 1), { ...nodeBase(), id: `${id}-btn`, tag: 'element', type: 'element', element: 'button', label: 'Button', editable: false, content: 'Send', data: { attributes: { type: 'submit' } }, blocks: [] }],
+  }
+}
