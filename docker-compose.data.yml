@@ -8,7 +8,7 @@
 #
 # One-time MinIO bucket setup (run once after first `up -d`):
 #   docker compose exec minio sh -c "\
-#     mc alias set whoobe http://localhost:9000 minioadmin minioadminpassword && \
+#     mc alias set whoobe http://localhost:9000 <S3_ACCESS_KEY_ID> <S3_SECRET_ACCESS_KEY> && \
 #     mc mb whoobe/whoobe-cms"
 
 services:
@@ -17,10 +17,11 @@ services:
     container_name: whoobe_postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-whoobe_db}
     ports:
-      - "5432:5432"
+      # loopback only; WS_DATA_BIND_ADDRESS=0.0.0.0 to reach it from another machine (then use strong secrets)
+      - "${WS_DATA_BIND_ADDRESS:-127.0.0.1}:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -34,12 +35,12 @@ services:
     container_name: whoobe_minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadminpassword
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
       MINIO_API_CORS_ALLOW_ORIGIN: "*"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${WS_DATA_BIND_ADDRESS:-127.0.0.1}:9000:9000"
+      - "${WS_DATA_BIND_ADDRESS:-127.0.0.1}:9001:9001"
     volumes:
       - miniodata:/data
     healthcheck:

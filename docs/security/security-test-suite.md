@@ -269,7 +269,7 @@ colours, no payload in shell/nginx/Docker files, the env file with the site key 
 Unit tests cover the option validators (22 hostile values refused), locale/font/colour whitelists and attribute
 escaping. The workspace scripts refuse hostile hostnames, slugs, e-mails and passwords before touching docker or
 nginx, create the env file private, and generate every secret the example file only has a placeholder for
-(F-041, F-042). Static assertions: no service imports `child_process`; the publisher runs exactly one program
+(F-041, F-042). Compose hardening (plan 3.12, F-043): the three compose files are rendered with `docker compose config` under different env files - data services bind to loopback by default and can be opened explicitly, application ports follow their own switch, startup is refused without database/object-store credentials, and no well-known default password remains in the files or in `.env.example` (`unit/compose-hardening.test.ts`). Static assertions: no service imports `child_process`; the publisher runs exactly one program
 (`pnpm pack`) with an argument array and no shell. Threat model for the scripts: operators only. OWASP A03
 (Injection); CWE-94, CWE-79, CWE-78, CWE-732.
 
@@ -451,7 +451,8 @@ Findings that are fixed but **not** observable through the API suite, and how ea
 | F-021 | Reset tokens stored in clear | Unit test of `hashResetToken` (`packages/core`); single use and end of sessions are asserted in `auth.test.ts`. |
 | F-031 | Gateway observations (optional site key, Redis stub, plugin loader) | Informational, no test. |
 | F-039, F-040 | Content/option injection into generated sites | `publish.test.ts`, `unit/publish-hygiene.test.ts` |
-| F-041, F-042 | Workspace provisioning, default credentials | `unit/workspace-scripts.test.ts` (compose default checked by review) |
+| F-041, F-042 | Workspace provisioning, default credentials | `unit/workspace-scripts.test.ts`, `unit/compose-hardening.test.ts` |
+| F-043 | Postgres/MinIO exposure, default credentials | `unit/compose-hardening.test.ts` |
 | F-038 | TOTP secrets encrypted at rest | Unit tests of `totp-crypto` (`packages/core`); the MFA suite runs on the encrypted path; storage format checked once on the test database (not automated). |
 
 Full descriptions, severities and status: `docs/plans/security/findings.md`.

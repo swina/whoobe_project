@@ -138,27 +138,27 @@ S3_ENDPOINT_HOSTNAME=<S3_endpoint_hostname>
 
 # --- Postgres container (docker-compose.yml) ---
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgrespassword
+POSTGRES_PASSWORD=<choose-a-strong-password>
 POSTGRES_DB=whoobe_db
 
 # --- Shared Postgres connection (core-api, asset-processor, migration-tool) ---
 DB_HOST=${DB_HOSTNAME}
 DB_PORT=5432
 DB_USER=postgres
-DB_PASSWORD=postgrespassword
+DB_PASSWORD=<same-password>
 DB_NAME=whoobe_db
 
 # --- core-api only ---
 # Encryption key for stored Pimcore migration sources (aes-256, 32 bytes).
-MIGRATION_SOURCE_ENCRYPTION_KEY=my_secret_key_change_me
+MIGRATION_SOURCE_ENCRYPTION_KEY=<openssl rand -hex 32>
 
 # --- asset-processor only: S3/MinIO connection ---
 # Owned exclusively by the backend - never shipped to the browser.
 S3_ENDPOINT=http://${S3_ENDPOINT_HOSTNAME}:9000
 S3_BUCKET=whoobe-cms
 S3_REGION=us-east-1
-S3_ACCESS_KEY_ID=minioadmin
-S3_SECRET_ACCESS_KEY=minioadminpassword
+S3_ACCESS_KEY_ID=<choose-an-access-key>
+S3_SECRET_ACCESS_KEY=<choose-a-strong-secret>
 S3_FORCE_PATH_STYLE=true
 S3_PUBLIC_BASE_URL=http://${WHOOBE_HOSTNAME}:3002/dam-asset
 
