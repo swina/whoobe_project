@@ -43,7 +43,7 @@ docker compose exec minio sh -c "\
 **What happens internally:**
 1. `Dockerfile` multi-stage build: installs all deps, compiles TypeScript, builds Vite SPAs
 2. `postgres:16-alpine` starts, healthcheck waits for `pg_isready`
-3. `minio/minio:latest` starts, healthcheck waits for `/minio/health/live`
+3. the `whoobe-minio` image (built from source, `docker/minio/Dockerfile`) starts, healthcheck waits for `/minio/health/live`
 4. `core-api` starts, creates DB + applies all Drizzle migrations + seeds admin user + default data
 5. `asset-processor` starts, connects to Postgres + MinIO
 6. `admin-dashboard` starts nginx serving the pre-built SPA on port `3000`

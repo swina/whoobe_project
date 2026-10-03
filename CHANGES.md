@@ -1,3 +1,6 @@
+## [docs: minio reference in the deployment mini-guide] — 2026-10-03
+- Branch: `master`. `docs/miniguide-deployment.md` step 3 now names the source-built `whoobe-minio` image (F-048). Documentation only.
+
 ## [CI workflow, Dependabot, pinned base images, MinIO built from source] — 2026-10-03
 - Branch: `master`. Finding F-048 (MinIO images are no longer published).
 - **CI**: `.github/workflows/security.yml` (jobs `static`, `stack-tests`, `dast`; triggers and cadence in the file header) and `.github/dependabot.yml` (npm, Docker, GitHub Actions, weekly). `scripts/security/gen-env.sh` generates the stack's `.env.sectest` with random secrets (no secrets stored); `stack.sh up` calls it when the file is missing and accepts `SEC_ENV_FILE`. Workflow linted with `actionlint`; **not run on GitHub yet**. Actions are referenced by version tag (Dependabot updates them).
