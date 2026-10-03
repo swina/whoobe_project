@@ -78,7 +78,7 @@
       <span v-if="buttonIconComponent && buttonIconPosition !== 'after'" class="inline-flex items-center mr-1.5" contenteditable="false"><component :is="buttonIconComponent" :style="buttonIconStyle" /></span>
       <span
         :contenteditable="!resolvedDataValue && element.editable"
-        v-html="displayContent"
+        v-html="safeDisplayContent"
         @blur="onBlur"
       ></span>
       <span v-if="buttonIconComponent && buttonIconPosition === 'after'" class="inline-flex items-center ml-1.5" contenteditable="false"><component :is="buttonIconComponent" :style="buttonIconStyle" /></span>
@@ -111,7 +111,7 @@
       :data-id="element.id"
       data-type="element"
       v-bind="elementAttrs"
-      v-html="displayContent"
+      v-html="safeDisplayContent"
       @click="onClick"
       @blur="onBlur"
     ></component>
@@ -134,6 +134,7 @@
 </template>
 
 <script setup lang="ts">
+import { sanitizeRichText as safeHtml } from '@whoobe-cms/schema'
 // Port of whoobe-one-studio's src/components/blocks/BlockElement.vue - the
 // actual inline-WYSIWYG mechanism (see port plan §1.2): contenteditable is
 // set directly on the rendered tag when the node is selected and editable,
@@ -279,6 +280,7 @@ const bindingPlaceholder = computed(() => {
 // rather than calling applyTransform twice per render.
 const transformResult = computed(() => (hasResolvedData.value ? applyTransform(resolvedDataValue.value, db.value?.transform ?? gb.value?.transform, editor.page?.locale) : null))
 
+const safeDisplayContent = computed(() => safeHtml(displayContent.value))
 const displayContent = computed(() => {
   const result = transformResult.value
   if (result) {

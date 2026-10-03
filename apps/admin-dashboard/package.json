@@ -17,6 +17,7 @@
     "@tiptap/vue-3": "^2.11.5",
     "@whoobe-cms/core": "workspace:*",
     "@whoobe-cms/logger": "workspace:^",
+    "@whoobe-cms/schema": "workspace:*",
     "bootstrap-icons": "^1.11.3",
     "jszip": "^3.10.1",
     "marked": "^14.1.4",

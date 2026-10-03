@@ -5,12 +5,13 @@
     </template>
     <template v-else>
       <img v-if="showImage" :src="node.image?.url" :alt="node.image?.alt || ''" style="max-width:100%;height:auto;display:block" />
-      <span v-if="node.content" v-html="node.content"></span>
+      <span v-if="node.content" v-html="safeHtml(node.content)"></span>
     </template>
   </component>
 </template>
 
 <script setup lang="ts">
+import { sanitizeRichText as safeHtml } from '@whoobe-cms/schema'
 import { computed } from 'vue'
 
 const props = defineProps<{ node: Record<string, any> }>()

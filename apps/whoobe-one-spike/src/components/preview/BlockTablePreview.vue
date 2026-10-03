@@ -8,7 +8,7 @@
             v-if="!cell.merged"
             :colspan="cell.colspan > 1 ? cell.colspan : undefined"
             :class="[table.headerCellClass, cell.cellClass]"
-            v-html="cell.content"
+            v-html="safeHtml(cell.content)"
           ></th>
         </template>
       </tr>
@@ -21,7 +21,7 @@
             :colspan="cell.colspan > 1 ? cell.colspan : undefined"
             :rowspan="cell.rowspan > 1 ? cell.rowspan : undefined"
             :class="[table.bodyCellClass, cell.cellClass]"
-            v-html="cell.content"
+            v-html="safeHtml(cell.content)"
           ></td>
         </template>
       </tr>
@@ -33,7 +33,7 @@
             v-if="!cell.merged"
             :colspan="cell.colspan > 1 ? cell.colspan : undefined"
             :class="[table.footerCellClass, cell.cellClass]"
-            v-html="cell.content"
+            v-html="safeHtml(cell.content)"
           ></td>
         </template>
       </tr>
@@ -42,6 +42,7 @@
 </template>
 
 <script setup lang="ts">
+import { sanitizeRichText as safeHtml } from '@whoobe-cms/schema'
 // Read-only preview/publish-time counterpart to ../BlockTable.vue - see
 // that file's/ElementsClass.js's Table() header comment for the full
 // grid-model rationale. No structure/cell toolbars, no contenteditable,

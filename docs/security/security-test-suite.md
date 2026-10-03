@@ -273,6 +273,18 @@ nginx, create the env file private, and generate every secret the example file o
 (`pnpm pack`) with an argument array and no shell. Threat model for the scripts: operators only. OWASP A03
 (Injection); CWE-94, CWE-79, CWE-78, CWE-732.
 
+#### 2.5.14 Browser suite - `browser/xss-sinks.spec.ts` (plan 3.6, `pnpm security:browser`)
+
+Playwright (Chromium, headless) against the disposable stack with an authenticated admin session. Hostile markup
+(image/SVG/`details` handlers, `srcdoc` frames, `javascript:` links, mXSS and attribute break-out payloads) is stored
+through the API, as an editor could, and then rendered by the real applications: the editor canvas, a published
+page served by the public route, the admin lists and detail panes (pages, snippets, websites, data classes and
+objects, assets, themes, components, users), and a Markdown / WYSIWYG / textarea data object (including the
+Markdown preview). A console canary and dialog capture detect any execution; every test has a positive control (the
+hostile text is on screen as text, ordinary formatting and links survive) so that "nothing fired" is meaningful.
+Also asserts the public API output is sanitised. Reports: `scripts/security/reports/<date>/browser-*.json`.
+Needs Chromium (`pnpm exec playwright install chromium` and the system libraries). OWASP A03; CWE-79.
+
 ### 2.6 Known-finding convention
 
 `lib/known.ts` provides `known('F-0xx', name, fn)`: a test that asserts the secure behaviour but is *expected* to
@@ -385,7 +397,7 @@ compensating controls or additional testing):
 
 | Area | Status |
 |---|---|
-| Browser-side XSS (rendering of user-authored HTML in admin and published sites, plan 3.6) | Not automated. The static inventory lists the sinks; the browser test suite (`security:browser`, Playwright) is planned. |
+| Browser-side XSS (plan 3.6) | Automated for the editor, a published page, the admin lists/previews and data object fields (`security:browser`). Not browser-tested: editor tables and form-result messages, the Studio app, generated Next/Nuxt sites and the mobile/PWA templates. |
 | Content-Security-Policy for the admin and editor SPAs (served by nginx) | Not tested (finding F-014, open part). |
 | DAST (OWASP ZAP baseline / API scan), TLS configuration (`testssl.sh`) | Planned, not part of these commands. |
 | Container image scanning (`trivy image`) | Not run; only configuration scanning (`trivy config`). |
@@ -450,6 +462,7 @@ Findings that are fixed but **not** observable through the API suite, and how ea
 | F-020 | Secrets and host logs copied into Docker images | Not automated. `.dockerignore` fixed; verified once by listing the rebuilt image. Images built before the fix must be rebuilt. |
 | F-021 | Reset tokens stored in clear | Unit test of `hashResetToken` (`packages/core`); single use and end of sessions are asserted in `auth.test.ts`. |
 | F-031 | Gateway observations (optional site key, Redis stub, plugin loader) | Informational, no test. |
+| F-008, F-045 | Stored XSS through rich text (editor, public pages, previews) | `browser/xss-sinks.spec.ts`, `sanitize.test.ts` (schema), `sanitize-public-content.test.ts` (core) |
 | F-039, F-040 | Content/option injection into generated sites | `publish.test.ts`, `unit/publish-hygiene.test.ts` |
 | F-041, F-042 | Workspace provisioning, default credentials | `unit/workspace-scripts.test.ts`, `unit/compose-hardening.test.ts` |
 | F-043 | Postgres/MinIO exposure, default credentials | `unit/compose-hardening.test.ts` |

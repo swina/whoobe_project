@@ -84,7 +84,7 @@
               :colspan="cell.colspan > 1 ? cell.colspan : undefined"
               :class="[table.headerCellClass, cell.cellClass, isCellSelected('header', 0, c) ? 'ring-2 ring-inset ring-indigo-400' : '']"
               contenteditable="true"
-              v-html="cell.content"
+              v-html="safeHtml(cell.content)"
               @click.stop="selectCell('header', 0, c)"
               @blur="onCellBlur(cell, $event)"
             ></th>
@@ -100,7 +100,7 @@
               :rowspan="cell.rowspan > 1 ? cell.rowspan : undefined"
               :class="[table.bodyCellClass, cell.cellClass, isCellSelected('body', r, c) ? 'ring-2 ring-inset ring-indigo-400' : '']"
               contenteditable="true"
-              v-html="cell.content"
+              v-html="safeHtml(cell.content)"
               @click.stop="selectCell('body', r, c)"
               @blur="onCellBlur(cell, $event)"
             ></td>
@@ -115,7 +115,7 @@
               :colspan="cell.colspan > 1 ? cell.colspan : undefined"
               :class="[table.footerCellClass, cell.cellClass, isCellSelected('footer', 0, c) ? 'ring-2 ring-inset ring-indigo-400' : '']"
               contenteditable="true"
-              v-html="cell.content"
+              v-html="safeHtml(cell.content)"
               @click.stop="selectCell('footer', 0, c)"
               @blur="onCellBlur(cell, $event)"
             ></td>
@@ -127,6 +127,7 @@
 </template>
 
 <script setup lang="ts">
+import { sanitizeRichText as safeHtml } from '@whoobe-cms/schema'
 // Editing-time renderer for a `tag === 'table'` element (see ElementsClass.
 // js's Table() builder comment for the full grid-model rationale). Not a
 // container - `doc.table` is a fixed header/body/footer grid of plain

@@ -3,6 +3,7 @@
 // registry to map it to their own design-system component.
 
 import { defineComponent, h, inject, ref, computed, onMounted, onUnmounted, type PropType, type VNode } from 'vue'
+import { sanitizeRichText } from '@whoobe-cms/schema'
 import { icons as lucideIcons } from '@lucide/vue'
 import type { RenderDescriptor } from '@whoobe-cms/renderer'
 import { WHOOBE_KEY, type NodeComponent, type WhoobeApi } from './types.js'
@@ -72,7 +73,7 @@ export const DefaultContainer: NodeComponent = defineComponent({
       const attrs = elementProps(d)
       const children = props.children?.length ? props.children : undefined
       if (!children && d.content) {
-        attrs.innerHTML = d.content
+        attrs.innerHTML = sanitizeRichText(d.content)
       }
       return h(d.tag, attrs, withLink(d, children))
     }
@@ -88,7 +89,7 @@ export function makeTextComponent(name: string): NodeComponent {
       return () => {
         const d = props.descriptor
         const p = elementProps(d)
-        if (d.content) p.innerHTML = d.content
+        if (d.content) p.innerHTML = sanitizeRichText(d.content)
         return h(d.tag, p)
       }
     },

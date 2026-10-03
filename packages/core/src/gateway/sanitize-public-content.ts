@@ -1,3 +1,5 @@
+import { sanitizeRichText, sanitizeSvg } from '@whoobe-cms/schema';
+
 // Strips the raw gateway identifiers bind-page-content.ts resolved at
 // save time from a page's content before it's ever sent to /public/pages/*
 // or /public/page/* (apps/core-api/src/server.ts) - a published site only
@@ -18,6 +20,14 @@
  *  `pages[].content`, a directly-authored slot's custom node, the synthetic
  *  404 page's `content`), so this walks every object/array it finds rather
  *  than assuming one fixed shape. */
+/** Rich text of an element node (`content`, rendered as HTML by every public consumer): a published page must never
+ *  carry script, whatever an author - or a visitor through a public form - managed to store. */
+function sanitizeNodeContent(obj: Record<string, unknown>): void {
+  if (typeof obj.content !== 'string') return;
+  if (!('element' in obj) && obj.type !== 'element') return;
+  obj.content = obj.element === 'svg' || obj.content.trimStart().startsWith('<svg') ? sanitizeSvg(obj.content) : sanitizeRichText(obj.content);
+}
+
 function walkAndStrip(value: unknown): void {
   if (Array.isArray(value)) {
     for (const item of value) walkAndStrip(item);
@@ -25,6 +35,8 @@ function walkAndStrip(value: unknown): void {
   }
   if (!value || typeof value !== 'object') return;
   const obj = value as Record<string, unknown>;
+
+  sanitizeNodeContent(obj);
 
   const formConfig = obj.formConfig;
   if (formConfig && typeof formConfig === 'object') {

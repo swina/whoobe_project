@@ -7,3 +7,4 @@
 export * from './node.js'
 export * from './transform.js'
 export * from './validators.js'
+export * from './sanitize.js'

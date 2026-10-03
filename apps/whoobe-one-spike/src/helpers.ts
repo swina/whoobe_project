@@ -311,8 +311,9 @@ const BLOCK_LEVEL_TAGS = new Set([
  * published site was missing its text because of exactly this. Call only
  * for a node whose own `element` is in PHRASING_ONLY_ELEMENTS. */
 export function stripBlockLevelTags(html: string): string {
-  const container = document.createElement('div')
-  container.innerHTML = html
+  // Parsed in an inert document (DOMParser): assigning innerHTML to a detached <div> of the live document still
+  // starts loading <img src=x onerror=...> and runs the handler. The result is sanitised when it is rendered.
+  const container = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html').body
   // globalThis.Element, not this file's own `Element` (ElementsClass.js's
   // block-model type, imported above) - a plain DOM node here.
   const unwrap = (node: globalThis.Element) => {

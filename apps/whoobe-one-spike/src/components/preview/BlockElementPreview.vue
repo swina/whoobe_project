@@ -29,7 +29,7 @@
   v-bind="extraAttrs"
 >
   <span v-if="buttonIconComponent && buttonIconPosition !== 'after'" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" :style="getButtonIconStyle()" /></span>
-  <span v-html="renderedContent"></span>
+  <span v-html="safeHtml(renderedContent)"></span>
   <span v-if="buttonIconComponent && buttonIconPosition === 'after'" class="inline-flex items-center ml-1.5"><component :is="buttonIconComponent" :style="getButtonIconStyle()" /></span>
 </component>
 <video
@@ -54,11 +54,12 @@
   :alt="displayAlt"
   :placeholder="element.placeholder"
   v-bind="extraAttrs"
-  v-html="renderedContent"
+  v-html="safeHtml(renderedContent)"
 ></component>
 </template>
 
 <script setup lang="ts">
+import { sanitizeRichText as safeHtml } from '@whoobe-cms/schema'
 // Read-only counterpart of ../BlockElement.vue, for DocumentPreview.vue -
 // port of whoobe-one-studio's src/components/blocks/preview/BlockElement.
 // vue. Same rendering computeds as the editing version, minus everything
