@@ -30,12 +30,27 @@ services:
       timeout: 5s
       retries: 10
 
+  # One-shot: MinIO now runs as uid 10001; a data volume written by an older (root) container is handed over here.
+  # Idempotent and fast; the minio service waits for it.
+  minio-perms:
+    build:
+      context: ./docker/minio
+    image: whoobe-minio:RELEASE.2025-09-07T16-13-09Z
+    user: "0:0"
+    entrypoint: ["sh", "-c", "chown -R 10001:10001 /data"]
+    volumes:
+      - miniodata:/data
+    restart: "no"
+
   minio:
     # built from source (docker/minio/Dockerfile): MinIO's own images are no longer published on Docker Hub / Quay
     build:
       context: ./docker/minio
     image: whoobe-minio:RELEASE.2025-09-07T16-13-09Z
     container_name: whoobe_minio
+    depends_on:
+      minio-perms:
+        condition: service_completed_successfully
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
