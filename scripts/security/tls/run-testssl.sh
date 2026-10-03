@@ -25,7 +25,7 @@ sed -e "s/__HOSTNAME__/localhost/g" -e "s|__CERT_DIR__|/etc/letsencrypt|g" -e "s
     -e "s/listen 443 ssl/listen ${PORT} ssl/" "$ROOT/deploy/nginx/workspace-ssl.conf.template" > "$WORK/conf/ssl.conf"
 
 docker run -d --rm --name "$NAME" --network host -v "$WORK/conf:/etc/nginx/conf.d:ro" -v "$WORK/certs:/etc/letsencrypt:ro" "$IMG" >/dev/null || exit 2
-for i in $(seq 1 20); do (echo > /dev/tcp/127.0.0.1/$PORT) 2>/dev/null && break; sleep 0.5; done
+for _ in $(seq 1 20); do (echo > "/dev/tcp/127.0.0.1/$PORT") 2>/dev/null && break; sleep 0.5; done
 docker exec "$NAME" nginx -v 2>&1 | head -1
 SAFE="$(echo "$IMG" | tr '/:@' '___' | cut -c1-40)"
 docker run --rm --network host -v "$WORK:/data" drwetter/testssl.sh:latest --quiet --warnings off --jsonfile "/data/testssl.json" "localhost:$PORT" >"$WORK/testssl.log" 2>&1

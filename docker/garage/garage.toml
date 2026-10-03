@@ -1,0 +1,16 @@
+# Garage (https://garagehq.deuxfleurs.fr) as the S3 store: single node, no replication.
+# Secrets are NOT in this file: GARAGE_RPC_SECRET and GARAGE_ADMIN_TOKEN come from the environment.
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "lmdb"
+replication_factor = 1
+
+rpc_bind_addr = "127.0.0.1:3901"
+rpc_public_addr = "127.0.0.1:3901"
+
+[s3_api]
+s3_region = "us-east-1"        # what the SDK uses by default (S3_REGION)
+api_bind_addr = "0.0.0.0:3900"
+
+[admin]
+api_bind_addr = "127.0.0.1:3903"

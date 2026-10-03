@@ -42,6 +42,9 @@ export class S3AssetStorageProvider implements AssetStorageProvider {
   private publicBaseUrl?: string;
   private keyPrefix: string;
   public visibilityManager: FolderVisibilityManager;
+  // Garage (and some other S3 stores) have no bucket policies: asset delivery goes through the asset-processor
+  // proxy anyway, so a store that answers NotImplemented is simply not asked again.
+  private bucketPoliciesSupported = true;
 
   constructor(config: S3StorageConfig) {
     this.bucket = config.bucket;
@@ -117,6 +120,7 @@ export class S3AssetStorageProvider implements AssetStorageProvider {
   }
 
   public async updateBucketPolicy(): Promise<void> {
+    if (!this.bucketPoliciesSupported) return;
     const rules = this.visibilityManager.getRules();
     const publicRules = rules.filter((r) => r.isPublic);
 
@@ -157,6 +161,11 @@ export class S3AssetStorageProvider implements AssetStorageProvider {
         })
       );
     } catch (e) {
+      if ((e as { name?: string; Code?: string })?.name === 'NotImplemented' || (e as { Code?: string })?.Code === 'NotImplemented') {
+        this.bucketPoliciesSupported = false;
+        console.warn(`S3 store has no bucket policies (NotImplemented); public-read policy skipped for ${this.bucket}`);
+        return;
+      }
       console.warn(`Could not set selective public bucket policy on ${this.bucket}:`, e);
     }
   }

@@ -38,8 +38,11 @@ DAM_SERVICE_TOKEN=$(hex 24)
 S3_ENDPOINT=http://minio:9000
 S3_BUCKET=whoobe-cms-sectest
 S3_REGION=us-east-1
-S3_ACCESS_KEY_ID=sectest$(hex 4)
-S3_SECRET_ACCESS_KEY=$(hex 16)
+# Garage's key format (GK + 24 hex / 64 hex); MinIO accepts it as well
+S3_ACCESS_KEY_ID=GK$(hex 12)
+S3_SECRET_ACCESS_KEY=$(hex 32)
+GARAGE_RPC_SECRET=$(hex 32)
+GARAGE_ADMIN_TOKEN=$(hex 24)
 S3_FORCE_PATH_STYLE=true
 S3_PUBLIC_BASE_URL=http://localhost:3102/dam-asset
 
