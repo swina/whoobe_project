@@ -1,3 +1,9 @@
+## [MinIO image runs unprivileged; static scan back to PASS] — 2026-10-03
+- Branch: `master`. The static scan failed on `docker/minio/Dockerfile` (trivy DS-0002 root user HIGH, DS-0026 no HEALTHCHECK).
+- `docker/minio/Dockerfile`: `USER 10001:10001`, `/data` owned by it, `HEALTHCHECK`. `docker-compose.yml` and `docker-compose.data.yml`: new one-shot service `minio-perms` (same image, root, `chown -R 10001:10001 /data`) that `minio` waits for (`service_completed_successfully`), so existing data volumes written by root keep working. Verified on the test stack's existing volume: MinIO runs as uid 10001, healthy, bucket creation and all suites pass (API 1034).
+- `scripts/security/dast/run-zap.sh`: `&&`/`||` chain replaced by `if` (shellcheck SC2015 info).
+- **On servers**: `docker compose build minio && docker compose up -d` (the `minio-perms` step runs once, automatically). `pnpm security:static`: PASS.
+
 ## [docs: minio reference in the deployment mini-guide] — 2026-10-03
 - Branch: `master`. `docs/miniguide-deployment.md` step 3 now names the source-built `whoobe-minio` image (F-048). Documentation only.
 

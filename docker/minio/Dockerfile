@@ -22,5 +22,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
 COPY --from=build /go/bin/minio /usr/bin/minio
 COPY --from=build /go/bin/mc /usr/bin/mc
 ENV MC_CONFIG_DIR=/tmp/.mc
+# Unprivileged. A data volume created by an older (root) container is handed over by the compose `minio-perms`
+# one-shot service (chown), so existing installations keep their data.
+RUN mkdir -p /data && chown 10001:10001 /data
+USER 10001:10001
 EXPOSE 9000 9001
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \
+  CMD curl -fs http://localhost:9000/minio/health/live || exit 1
 ENTRYPOINT ["/usr/bin/minio"]

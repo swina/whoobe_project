@@ -34,7 +34,8 @@ ZAP_OPTS="-configfile /zap/wrk/zap-auth.conf"
 
 for svc in core-api gateway asset-processor; do
   echo "== ZAP API scan: $svc"
-  extra=(); $QUICK && extra+=(-S) || extra+=(-T 12)
+  extra=(-T 12)
+  if $QUICK; then extra=(-S); fi
   run zap-api-scan.py -t "/zap/wrk/$svc.yaml" -f openapi -r "zap-$svc-$TIME.html" -J "zap-$svc-$TIME.json" -I -z "$ZAP_OPTS" "${extra[@]}" >"$WORK/zap-$svc.log" 2>&1
   echo "   exit=$? (alerts are judged by summarize.py)"
 done
