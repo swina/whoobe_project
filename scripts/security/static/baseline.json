@@ -1,22 +1,73 @@
 {
   "_comment": "Accepted/triaged static findings. A run fails only on findings NOT listed here, or on entries whose `review` date has passed. Keep reasons honest; remove an entry when the cause is fixed.",
   "audit": [
-    { "id": "GHSA-4r6h-8v6p-xvw6", "module": "xlsx", "reason": "F-003: only used to WRITE an export in the admin; no fix published on npm", "review": "2027-01-31" },
-    { "id": "GHSA-5pgg-2g8v-p4x9", "module": "xlsx", "reason": "F-003: only used to WRITE an export in the admin; no fix published on npm", "review": "2027-01-31" }
+    {
+      "id": "GHSA-4r6h-8v6p-xvw6",
+      "module": "xlsx",
+      "reason": "F-003: only used to WRITE an export in the admin; no fix published on npm",
+      "review": "2027-01-31"
+    },
+    {
+      "id": "GHSA-5pgg-2g8v-p4x9",
+      "module": "xlsx",
+      "reason": "F-003: only used to WRITE an export in the admin; no fix published on npm",
+      "review": "2027-01-31"
+    },
+    {
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "module": "braces",
+      "reason": "no patched version published; reached only through tw-to-css > tailwindcss 3.3.2 (build-time glob handling, patterns come from our own config, never from user input)",
+      "review": "2027-01-31"
+    }
   ],
   "gitleaks": [
-    { "file": "docs/plans/security/security-testing-plan.md", "reason": "false positive: prose in the plan", "review": "2027-01-31" },
-    { "file": "packages/core/src/dam/s3-provider.ts", "reason": "false positive: a code comment", "review": "2027-01-31" },
-    { "file": ".env.aura", "commit": "94f18fb", "reason": "F-001: old local-service secrets in history; to be rotated (Oracle rebuild), history is not rewritten", "review": "2026-12-31" }
+    {
+      "file": "docs/plans/security/security-testing-plan.md",
+      "reason": "false positive: prose in the plan",
+      "review": "2027-01-31"
+    },
+    {
+      "file": "packages/core/src/dam/s3-provider.ts",
+      "reason": "false positive: a code comment",
+      "review": "2027-01-31"
+    },
+    {
+      "file": ".env.aura",
+      "commit": "94f18fb",
+      "reason": "F-001: old local-service secrets in history; to be rotated (Oracle rebuild), history is not rewritten",
+      "review": "2026-12-31"
+    }
   ],
   "semgrep": [
-    { "check": "tainted-sql-string", "path": "apps/asset-processor/src/server.ts", "reason": "false positive: no SQL there", "review": "2027-01-31" },
-    { "check": "tainted-sql-string", "path": "apps/core-api/src/server.ts", "reason": "false positive: parameterised helpers", "review": "2027-01-31" },
-    { "check": "gcm-no-tag-length", "path": "packages/core/src/db/gateway-auth-crypto.ts", "reason": "auth tag is a fixed 16-byte slice", "review": "2027-01-31" },
-    { "check": "gcm-no-tag-length", "path": "packages/core/src/db/migration-sources-crypto.ts", "reason": "auth tag is a fixed 16-byte slice", "review": "2027-01-31" },
-    { "check": "raw-html-format", "path": "apps/core-api/src/server.ts", "reason": "reset e-mail: href holds ADMIN_PUBLIC_URL + a hex token, no user text", "review": "2027-01-31" },
-    { "check": "cors-misconfiguration", "path": "packages/core/src/http/security.ts", "reason": "origin is reflected only after the allowlist check (corsPolicy)", "review": "2027-01-31" }
+    {
+      "check": "tainted-sql-string",
+      "path": "apps/asset-processor/src/server.ts",
+      "reason": "false positive: no SQL there",
+      "review": "2027-01-31"
+    },
+    {
+      "check": "tainted-sql-string",
+      "path": "apps/core-api/src/server.ts",
+      "reason": "false positive: parameterised helpers",
+      "review": "2027-01-31"
+    },
+    {
+      "check": "raw-html-format",
+      "path": "apps/core-api/src/server.ts",
+      "reason": "reset e-mail: href holds ADMIN_PUBLIC_URL + a hex token, no user text",
+      "review": "2027-01-31"
+    },
+    {
+      "check": "cors-misconfiguration",
+      "path": "packages/core/src/http/security.ts",
+      "reason": "origin is reflected only after the allowlist check (corsPolicy)",
+      "review": "2027-01-31"
+    }
   ],
-  "trivy_skip_targets": ["node_modules/", ".claude/", "sites/"],
+  "trivy_skip_targets": [
+    "node_modules/",
+    ".claude/",
+    "sites/"
+  ],
   "_note_trivy": "sites/ holds generated, untracked output: rebuild/regenerate them with the current publisher instead of baselining"
 }

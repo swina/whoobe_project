@@ -1,3 +1,9 @@
+## [Static scan back to PASS: authTagLength on AES-GCM decrypts, braces advisory baselined] — 2026-10-03
+- Branch: `master`. The static scan failed after the previous commit for two new reasons.
+- Semgrep `gcm-no-tag-length` (also on the new `totp-crypto.ts`): the three AES-GCM decrypt calls (`gateway-auth-crypto.ts` x2, `migration-sources-crypto.ts`, `totp-crypto.ts`) now pass `{ authTagLength: 16 }` explicitly (the stored tags were always 16 bytes; round trips re-verified: core unit tests 122, gateway and migration-source ciphers). The two old baseline entries for that rule were removed.
+- `pnpm audit`: new advisory GHSA-vfj7-8cjw-p6xm (`braces`, no patched version, reached through `tw-to-css > tailwindcss 3.3.2`, build-time glob handling with our own patterns) added to `scripts/security/static/baseline.json` with reason and review date 2027-01-31.
+- `pnpm security:static`: PASS.
+
 ## [Security 3.11: site generator injection, option validation, workspace scripts, default credentials] — 2026-10-03
 - Branch: `master`. Findings F-039..F-044 (F-043 compose ports and F-044 are open).
 - **`packages/publish/src/cli.ts` (F-039/F-040)**: CMS content no longer reaches generated files unescaped. `tailwind.config.ts` safelist via `JSON.stringify`; `public/safelist.html` attribute-escaped; theme fonts (`isSafeFontName`) and colours (`isSafeCssColor`) whitelisted; locales through `safeLocale`; `redirect(...)` via `JSON.stringify`. New `validateGenerateOptions()` at the start of `generateNextSite`/`generateNuxtSite` rejects options that could break out of a file (domain, apiUrl/gatewayUrl/assetBaseUrl, websiteId, basePath, siteApiKey, revalidate). Generated `.env`/`.env.local` are 0600. Also fixed: the generated Next `layout.tsx` had an HTML comment inside JSX (invalid, did not parse); now a JSX comment.
