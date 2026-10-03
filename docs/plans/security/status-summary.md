@@ -1,6 +1,6 @@
 # Security status - single summary
 
-State at **2026-10-03**, commit `e760ea6` and later documentation commits. Source of detail:
+State at **2026-10-03**, commit `c807ab5` and later documentation commits. Source of detail:
 `findings.md` (register F-001 ... F-044), `security-testing-plan.md` (plan), `manual-test-checklist.md`
 (browser/terminal checks), `../../security/security-test-suite.md` (description of the automated suites, written
 for reviewers), `scripts/security/README.md` (how to run).
@@ -9,16 +9,16 @@ for reviewers), `scripts/security/README.md` (how to run).
 
 | | |
 |---|---|
-| Findings recorded | **44** (F-001 ... F-044) |
-| By current severity | **8 High**, 21 Medium, 11 Low, 4 Info |
-| Fixed in code | all 8 High; 19 of 21 Medium fully (the others: see section 3) |
-| Automated checks | `pnpm security:api` **1027 tests / 16 files** green on a disposable stack; `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 122 |
+| Findings recorded | **46** (F-001 ... F-046) |
+| By current severity | **9 High**, 22 Medium, 12 Low, 3 Info |
+| Fixed in code | all 9 High; all but a few Medium (see section 3) |
+| Automated checks | `pnpm security:api` **1027 tests / 16 files** and `pnpm security:browser` **5 Playwright tests** (Chromium) green on a disposable stack; `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 122 |
 | Runs leave evidence | `scripts/security/reports/<date>/api-*.txt/.json`, `static-*.txt/.json` (git-ignored) |
 
-The High findings (all fixed): F-002 token embedded in git remotes, F-011 credentialed CORS reflection, F-020
+The High findings (all fixed; nine): F-002 token embedded in git remotes, F-011 credentialed CORS reflection, F-020
 images carrying `.env.*` and host logs, F-022 stored XSS through uploaded HTML/SVG, F-023 unauthenticated image
 endpoints, F-024 private assets readable anonymously, F-033 unpublished content leaking through the public search,
-F-039 code injection into generated sites.
+F-039 code injection into generated sites, F-045 stored XSS through rich text (found with the browser suite).
 
 ## 2. What the tests cover (plan sections)
 
@@ -29,7 +29,7 @@ F-039 code injection into generated sites.
 | 3.3 | Input validation / injection | public query, malformed ids/JSON, prototype keys covered; public filters run in JS, not SQL; **no SQL fuzzing of the remaining endpoints** |
 | 3.4 | Public surface, drafts, preview tokens, forms | done (`public-surface`) |
 | 3.5 | CORS, CSRF, security headers | done for the three services; **no CSP on the SPAs** |
-| 3.6 | Stored/reflected XSS in browser sinks | **not automated** (needs Chromium); search XSS fixed and checked by hand; 46 `v-html` sites inventoried |
+| 3.6 | Stored/reflected XSS in browser sinks | done for the editor, published pages, admin lists/previews and data object fields (`browser/xss-sinks.spec.ts`); **not browser-tested**: editor tables and form-result messages, Studio, generated Next/Nuxt sites, mobile/PWA templates |
 | 3.7 | Uploads, DAM, asset-processor | done (`uploads`) |
 | 3.8 | SSRF / outbound requests | done (`ssrf`, `safeFetch` guard) |
 | 3.9 | Gateway (site keys, limits, submit, helpers) | done (`gateway`, unit) |
@@ -48,7 +48,7 @@ F-039 code injection into generated sites.
 | **F-001** secrets of the old `.env.aura` in git history (private repo; the public mirror was deleted) | rotation depends on rebuilding the Oracle test instance | owner: rebuild Oracle with newly generated secrets (section 4) |
 | **F-009** old env files already copied to Oracle by earlier deploys | `deploy.sh` is fixed, existing copies remain on the host | owner: remove `.env.*` copies on the host (done by the rebuild) |
 | **F-003** `xlsx` (2 high advisories, write-only use, no npm fix) and `@tiptap/core` (major upgrade) | accepted / deferred, baselined until 2027-01-31 | decision: move to the SheetJS tarball or replace; plan the tiptap 3 upgrade |
-| **F-008** remaining `v-html` sinks (rich text rendered as HTML by design) | needs browser automation | `npx playwright install chromium`, then the XSS sink suite (plan 3.6) |
+| **F-008** residual `v-html` sinks (editor tables, form-result messages, Studio, generated sites) | sanitised in code but not covered by a browser test | extend `browser/xss-sinks.spec.ts`; run the generated sites through a build and the same payloads |
 | **F-014** CSP for the admin/editor SPAs (nginx) | postponed on purpose: becomes essential in SaaS mode; a too strict policy breaks the editor | design with a report-only phase when SaaS mode starts |
 | **F-024** `DAM_ENFORCE_ASSET_VISIBILITY` is off by default | published sites load images through `/dam-asset`; most uploads are private by default | mark site assets/folders public, then switch it on (or decide the proxy is public by design) |
 | **F-044** deleting a website can answer 500 | functional, not a security issue | fix when convenient |
@@ -84,6 +84,7 @@ F-039 code injection into generated sites.
 | Image endpoints need a session or the service token | 401 from scripts that called `/api/v1/process` anonymously | `DAM_SERVICE_TOKEN` |
 | Images over 100 MP refused | 413 on huge uploads | `ASSET_MAX_INPUT_PIXELS` |
 | Reset password revokes sessions; reset tokens stored hashed | tokens issued before the upgrade stop working (1 h lifetime) | - |
+| Rich text is filtered when rendered (no iframes/embeds, `<style>`, inline `style`, `id`, `data-*`) | embedded HTML disappears from pages | extend the allow-list in `packages/sdk/schema/src/sanitize.ts` |
 | Generator refuses unsafe options, locales and fonts | error or silent fallback (`en`) instead of broken output | fix the data |
 | Compose refuses to start without credentials; data ports on loopback | `docker compose` error naming the variable | set the three variables |
 | 5xx bodies are generic in production | no SQL/stack text in error toasts | logs keep the detail |
@@ -95,6 +96,7 @@ F-039 code injection into generated sites.
 ```
 scripts/security/stack.sh up        # disposable stack (ports +100, own DB and volumes)
 pnpm security:all                   # static scans, then the API suites; non-zero if either fails
+pnpm security:browser               # Playwright XSS suite (needs Chromium: see scripts/security/README.md)
 scripts/security/stack.sh down      # remove the stack and its volumes
 ```
 
