@@ -70,6 +70,7 @@ if [ -z "$SLUG" ]; then
   [ -n "$SLUG" ] || { echo "Errore: slug vuoto" >&2; exit 1; }
 fi
 
+[[ "$SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "Errore: slug non valido (solo minuscole, cifre e trattini): $SLUG" >&2; exit 1; }
 ENV_FILE=".env.${SLUG}"
 [ -f "$ENV_FILE" ] || { echo "Errore: $ENV_FILE non trovato - nessun workspace '${SLUG}' da rimuovere." >&2; exit 1; }
 

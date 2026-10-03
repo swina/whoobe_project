@@ -32,7 +32,7 @@ read -rp "Slug workspace (minuscolo, lettere/cifre/trattini, es. client-a): " SL
 read -rp "Hostname pubblico (es. client-a.example.com): " HOSTNAME_ARG
 
 [[ "$SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "Errore: lo slug deve contenere solo lettere minuscole, cifre e trattini (ricevuto: $SLUG)" >&2; exit 1; }
-[ -n "$HOSTNAME_ARG" ] || { echo "Errore: l'hostname non puo' essere vuoto" >&2; exit 1; }
+[[ "$HOSTNAME_ARG" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]{1,5})?$ ]] || { echo "Errore: hostname non valido (nome host semplice, eventualmente con porta): $HOSTNAME_ARG" >&2; exit 1; }
 [ -f ".env.${SLUG}" ] && { echo "Errore: .env.${SLUG} esiste gia' - workspace '${SLUG}' gia' provisionato." >&2; exit 1; }
 
 INDEX="$(next_free_index)"

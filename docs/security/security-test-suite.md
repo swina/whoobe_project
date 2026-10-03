@@ -6,7 +6,7 @@ what they assert, how results are judged, and what they do *not* cover.
 
 | Command | What it is | Needs a running stack |
 |---|---|---|
-| `pnpm security:api` | Black-box/grey-box API security test suite (vitest), about 980 test cases (the exact count is in each run's report) against core-api, gateway and asset-processor | Yes - a disposable, isolated stack |
+| `pnpm security:api` | Black-box/grey-box API security test suite (vitest), about 1000 test cases (the exact count is in each run's report) against core-api, gateway and asset-processor | Yes - a disposable, isolated stack |
 | `pnpm security:static` | Static analysis: dependency CVEs, secret scanning (tree + full git history), SAST, shell lint, IaC/container config, HTML-sink inventory | No |
 | `pnpm security:all` | Runs both, static first; fails if either fails | Yes (for the API part) |
 
@@ -259,6 +259,20 @@ still save content with the flag unchanged, and the admin can publish (F-035). T
 per address / per user, and one address being throttled does not affect another (F-036). AI settings never return
 a stored provider key. OWASP API1, API3, API4, API5; CWE-285, CWE-200, CWE-770.
 
+#### 2.5.13 Site generator and operator scripts - `api/publish.test.ts`, `unit/publish-hygiene.test.ts`, `unit/workspace-scripts.test.ts` (plan 3.11)
+
+A website whose name, default locale, theme (name, fonts, colours, Tailwind classes), page classes, slug and locale
+are code-injection payloads is generated for Next and for Nuxt (real run of the generator against the stack); the
+output is then checked: no payload identifier in the TypeScript/JavaScript AST of any generated file, every
+`.ts`/`.tsx` still parses, hostile class names stay inside their HTML attribute, CSS colour values are plain
+colours, no payload in shell/nginx/Docker files, the env file with the site key is mode 0600 (F-039, F-040).
+Unit tests cover the option validators (22 hostile values refused), locale/font/colour whitelists and attribute
+escaping. The workspace scripts refuse hostile hostnames, slugs, e-mails and passwords before touching docker or
+nginx, create the env file private, and generate every secret the example file only has a placeholder for
+(F-041, F-042). Static assertions: no service imports `child_process`; the publisher runs exactly one program
+(`pnpm pack`) with an argument array and no shell. Threat model for the scripts: operators only. OWASP A03
+(Injection); CWE-94, CWE-79, CWE-78, CWE-732.
+
 ### 2.6 Known-finding convention
 
 `lib/known.ts` provides `known('F-0xx', name, fn)`: a test that asserts the secure behaviour but is *expected* to
@@ -436,6 +450,8 @@ Findings that are fixed but **not** observable through the API suite, and how ea
 | F-020 | Secrets and host logs copied into Docker images | Not automated. `.dockerignore` fixed; verified once by listing the rebuilt image. Images built before the fix must be rebuilt. |
 | F-021 | Reset tokens stored in clear | Unit test of `hashResetToken` (`packages/core`); single use and end of sessions are asserted in `auth.test.ts`. |
 | F-031 | Gateway observations (optional site key, Redis stub, plugin loader) | Informational, no test. |
+| F-039, F-040 | Content/option injection into generated sites | `publish.test.ts`, `unit/publish-hygiene.test.ts` |
+| F-041, F-042 | Workspace provisioning, default credentials | `unit/workspace-scripts.test.ts` (compose default checked by review) |
 | F-038 | TOTP secrets encrypted at rest | Unit tests of `totp-crypto` (`packages/core`); the MFA suite runs on the encrypted path; storage format checked once on the test database (not automated). |
 
 Full descriptions, severities and status: `docs/plans/security/findings.md`.
