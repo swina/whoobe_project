@@ -18,14 +18,14 @@ function render(env: Record<string, string>, file = 'docker-compose.yml') {
   return { status: r.status, stderr: r.stderr, json: r.status === 0 ? JSON.parse(r.stdout) : null }
 }
 
-const required = { POSTGRES_PASSWORD: 'pg-secret-x', S3_ACCESS_KEY_ID: 'ak-x', S3_SECRET_ACCESS_KEY: 'sk-secret-x' }
+const required = { POSTGRES_PASSWORD: 'pg-secret-x', S3_ACCESS_KEY_ID: 'GKaaaaaaaaaaaaaaaaaaaaaaaa', S3_SECRET_ACCESS_KEY: 'sk-secret-x', COMPOSE_PROFILES: 'local-s3' }
 const hostIps = (svc: any) => (svc.ports ?? []).map((p: any) => p.host_ip)
 
 describe('docker-compose.yml', () => {
-  it('publishes Postgres and MinIO on loopback only by default', () => {
+  it('publishes Postgres and the S3 store (Garage) on loopback only by default', () => {
     const { json } = render(required)
     expect(hostIps(json.services.postgres)).toEqual(['127.0.0.1'])
-    expect(hostIps(json.services.minio)).toEqual(['127.0.0.1', '127.0.0.1'])
+    expect(hostIps(json.services.garage)).toEqual(['127.0.0.1'])
   })
 
   it('can be opened up explicitly, and the application ports follow their own switch', () => {
@@ -39,7 +39,7 @@ describe('docker-compose.yml', () => {
   })
 
   it('refuses to render without database or object-store credentials (no well-known defaults)', () => {
-    for (const missing of Object.keys(required)) {
+    for (const missing of Object.keys(required).filter((k) => k !== 'COMPOSE_PROFILES')) {
       const env: Record<string, string> = { ...required }
       delete env[missing]
       const r = render(env)
@@ -59,8 +59,8 @@ describe('docker-compose.yml', () => {
     const ok = render(required, 'docker-compose.data.yml')
     expect(ok.status, ok.stderr).toBe(0)
     expect(hostIps(ok.json.services.postgres)).toEqual(['127.0.0.1'])
-    expect(hostIps(ok.json.services.minio)).toEqual(['127.0.0.1', '127.0.0.1'])
-    for (const missing of Object.keys(required)) {
+    expect(hostIps(ok.json.services.garage)).toEqual(['127.0.0.1'])
+    for (const missing of Object.keys(required).filter((k) => k !== 'COMPOSE_PROFILES')) {
       const env: Record<string, string> = { ...required }
       delete env[missing]
       expect(render(env, 'docker-compose.data.yml').status, missing).not.toBe(0)
@@ -79,5 +79,39 @@ describe('docker-compose.yml', () => {
     const src = readFileSync(join(ROOT_DIR, 'scripts/provision-workspace.sh'), 'utf8')
     expect(src).toMatch(/set_env "WS_APP_BIND_ADDRESS" "127\.0\.0\.1"/)
     expect(src).toMatch(/set_env "WS_DATA_BIND_ADDRESS" "127\.0\.0\.1"/)
+  })
+})
+
+describe('object storage selection (docs/storage-backends.md)', () => {
+  it('runs Garage by default and wires the apps to it', () => {
+    const { json } = render(required)
+    expect(Object.keys(json.services)).toContain('garage')
+    expect(json.services['asset-processor'].environment.S3_ENDPOINT).toBe('http://garage:3900')
+    expect(json.services['core-api'].environment.S3_ENDPOINT).toBe('http://garage:3900')
+  })
+
+  it('starts no local store for an external S3 and takes its endpoint from the env file', () => {
+    const { json, status, stderr } = render({ ...required, COMPOSE_PROFILES: '', S3_CONTAINER_ENDPOINT: 'https://s3.example.com' })
+    expect(status, stderr).toBe(0)
+    expect(Object.keys(json.services)).not.toContain('garage')
+    expect(Object.keys(json.services)).not.toContain('minio')
+    expect(json.services['asset-processor'].environment.S3_ENDPOINT).toBe('https://s3.example.com')
+    expect(json.services['asset-processor'].depends_on?.garage?.required).toBe(false)
+  })
+
+  it('MinIO is opt-in through its own overlay and replaces Garage', () => {
+    const envFile = join(dir, 'env-minio'); writeFileSync(envFile, Object.entries(required).map(([k, v]) => `${k}=${v}`).join('\n') + '\n')
+    const r = spawnSync('docker', ['compose', '--env-file', envFile, '-f', join(ROOT_DIR, 'docker-compose.yml'), '-f', join(ROOT_DIR, 'docker-compose.minio.yml'), 'config', '--format', 'json'], { encoding: 'utf8', env: { ...process.env, ENV_FILE: envFile } })
+    expect(r.status, r.stderr).toBe(0)
+    const json = JSON.parse(r.stdout)
+    expect(Object.keys(json.services)).toContain('minio')
+    expect(Object.keys(json.services)).not.toContain('garage')
+    expect(hostIps(json.services.minio)).toEqual(['127.0.0.1', '127.0.0.1'])
+    expect(json.services['asset-processor'].environment.S3_ENDPOINT).toBe('http://minio:9000')
+  })
+
+  it('the data stack is only Postgres and Garage', () => {
+    const { json } = render(required, 'docker-compose.data.yml')
+    expect(Object.keys(json.services).sort()).toEqual(['garage', 'garage-perms', 'postgres'])
   })
 })

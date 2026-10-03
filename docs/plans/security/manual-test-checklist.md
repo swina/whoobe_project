@@ -14,7 +14,7 @@ most of this at API level; these are the checks that need a browser or a human e
 | [ ] | `pnpm security:api` is green (936+ tests) before you start |
 | [ ] | Browser: **private/incognito window**, nothing else open on `localhost` (the session cookie is shared with the dev stack: same host, any port) |
 | [ ] | Admin: `http://localhost:3100` - login `admin@sectest.local`, password = `SEED_ADMIN_PASSWORD` in `scripts/security/.env.sectest` |
-| [ ] | Other ports: core-api `3103`, asset-processor `3102`, gateway `3101`, editor `3106` (`/whoobe-one/`), MinIO console `9101` |
+| [ ] | Other ports: core-api `3103`, asset-processor `3102`, gateway `3101`, editor `3106` (`/whoobe-one/`), S3 API `9100` (loopback) |
 
 Menu names below are indicative; use the nearest equivalent if the label differs.
 
@@ -87,7 +87,7 @@ Menu names below are indicative; use the nearest equivalent if the label differs
 
 ## 8. Clean up
 
-`scripts/security/stack.sh down` (also deletes the test database and MinIO volume).
+`scripts/security/stack.sh down` (also deletes the test database and object-store volume).
 
 ## Sign-off
 

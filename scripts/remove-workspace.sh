@@ -2,7 +2,7 @@
 # Tear down a workspace stack previously created by
 # scripts/provision-workspace.sh / scripts/create-workspace.sh: stops and
 # removes its docker compose project (containers + network, and by
-# default its Postgres/MinIO data volumes too), removes its rendered
+# default its Postgres/S3 data volumes too), removes its rendered
 # nginx vhost (deploy/nginx/<slug>.conf) and env file (.env.<slug>), and
 # either reminds you to unlink it from a host nginx or reloads the shared
 # containerized proxy (docker-compose.proxy.yml) so it stops routing to
@@ -14,7 +14,7 @@
 #                     the repo root) and asks which one to remove.
 #   --yes            Skip the "type the slug to confirm" prompt.
 #   --keep-volumes   Stop and remove the containers but keep the
-#                     Postgres/MinIO data volumes instead of deleting
+#                     Postgres/S3 data volumes instead of deleting
 #                     them (useful if you just want to pause a workspace
 #                     rather than destroy its data).
 #
@@ -80,9 +80,9 @@ echo
 echo ">>> Stai per rimuovere il workspace '${SLUG}' (host: ${HOSTNAME_VAL})"
 echo "    - progetto docker compose: ws-${SLUG} (container + rete)"
 if $KEEP_VOLUMES; then
-  echo "    - volumi dati (Postgres/MinIO): CONSERVATI (--keep-volumes)"
+  echo "    - volumi dati (Postgres/S3): CONSERVATI (--keep-volumes)"
 else
-  echo "    - volumi dati (Postgres/MinIO): ELIMINATI DEFINITIVAMENTE"
+  echo "    - volumi dati (Postgres/S3): ELIMINATI DEFINITIVAMENTE"
 fi
 echo "    - deploy/nginx/${SLUG}.conf"
 echo "    - ${ENV_FILE}"

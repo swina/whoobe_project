@@ -24,7 +24,7 @@ Three distinct deployment scenarios, each with different trade-offs:
 
 Good for: **demo, QA, CI, or anyone who wants to try the CMS without installing Node.js locally.**
 
-Single command gets you a running stack with Postgres, MinIO, all app servers, and SPAs served via nginx.
+Single command gets you a running stack with Postgres, Garage (S3), all app servers, and SPAs served via nginx.
 
 ```bash
 git clone https://github.com/swina/whoobe_cms
@@ -32,27 +32,21 @@ cd whoobe_cms
 docker compose up -d --build
 ```
 
-One-time MinIO bucket setup (run once after first `up -d`):
-
-```bash
-docker compose exec minio sh -c "\
-  mc alias set whoobe http://localhost:9000 minioadmin minioadminpassword && \
-  mc mb whoobe/whoobe-cms"
-```
+Set the credentials in `.env` first (copy `.env.example`; `S3_ACCESS_KEY_ID=GK$(openssl rand -hex 12)`, `S3_SECRET_ACCESS_KEY=$(openssl rand -hex 32)`). The S3 store (Garage) creates its own key and bucket on first start: no manual bucket setup. Object storage options (MinIO, AWS S3, enterprise S3): `docs/storage-backends.md`.
 
 **What happens internally:**
 1. `Dockerfile` multi-stage build: installs all deps, compiles TypeScript, builds Vite SPAs
 2. `postgres:16-alpine` starts, healthcheck waits for `pg_isready`
-3. the `whoobe-minio` image (built from source, `docker/minio/Dockerfile`) starts, healthcheck waits for `/minio/health/live`
+3. the `whoobe-garage` image (`docker/garage`) starts, creates its single-node layout, access key and bucket, and reports healthy
 4. `core-api` starts, creates DB + applies all Drizzle migrations + seeds admin user + default data
-5. `asset-processor` starts, connects to Postgres + MinIO
+5. `asset-processor` starts, connects to Postgres + Garage
 6. `admin-dashboard` starts nginx serving the pre-built SPA on port `3000`
 7. `whoobe-one-spike` starts nginx serving the pre-built SPA on port `3006`
 
 | Service | URL | Credentials |
 |---|---|---|
 | Admin dashboard | http://localhost:3000 | admin@example.com / admin123 |
-| MinIO Console | http://localhost:9001 | minioadmin / minioadminpassword |
+| S3 API (loopback only) | http://127.0.0.1:9000 | the `S3_*` values of `.env` |
 | core-api | http://localhost:3003 | — |
 | asset-processor | http://localhost:3002 | — |
 | whoobe-one-spike | http://localhost:3006 | — |
@@ -60,8 +54,8 @@ docker compose exec minio sh -c "\
 **Key characteristics:**
 - Vite frontends are **pre-built** at image build time. `VITE_CORE_API_URL` and `VITE_ASSET_PROCESSOR_URL` are baked in via `--build-arg`. To change them, rebuild the images.
 - No HMR: edit code → rebuild image → restart container.
-- DB_HOST and S3_ENDPOINT are overridden to Docker service names (`postgres`, `minio`) via compose env.
-- Postgres data persists in named volume `pgdata`, MinIO data in `miniodata`.
+- DB_HOST and S3_ENDPOINT are overridden to Docker service names (`postgres`, `garage`; `S3_CONTAINER_ENDPOINT` for an external S3) via compose env.
+- Postgres data persists in named volume `pgdata`, object data in `garagedata`.
 
 ---
 
@@ -69,7 +63,7 @@ docker compose exec minio sh -c "\
 
 Good for: **writing code, hot-reload, debugging.**
 
-Postgres and MinIO run in Docker. App servers run directly on your host with Vite dev servers (HMR) and `tsx` watch mode.
+Postgres and Garage (S3) run in Docker. App servers run directly on your host with Vite dev servers (HMR) and `tsx` watch mode.
 
 ```bash
 # 1. Clone and install
@@ -80,10 +74,7 @@ pnpm install
 # 2. Start infrastructure only
 docker compose -f docker-compose.data.yml up -d
 
-# 3. One-time MinIO bucket setup
-docker compose exec minio sh -c "\
-  mc alias set whoobe http://localhost:9000 minioadmin minioadminpassword && \
-  mc mb whoobe/whoobe-cms"
+# 3. (nothing to do: Garage creates its key and bucket on first start)
 
 # 4. Start all dev servers
 ./dev-cms.sh --build
@@ -97,7 +88,7 @@ docker compose exec minio sh -c "\
 | whoobe-one-spike | http://localhost:3006 | Vite dev server + HMR |
 
 **Key differences from full Docker:**
-- **Infra only**: `docker-compose.data.yml` has Postgres + MinIO; all app services are commented out.
+- **Infra only**: `docker-compose.data.yml` has Postgres + Garage (it can run on its own, e.g. on another machine of the LAN; no SPA, no apps); all app services are commented out.
 - **Local Node processes**: Apps run directly on host. HMR works for Vue frontends; `tsx` auto-restarts for Express backends.
 - **`.env` is read from repo root** — `DB_HOST=localhost`, `S3_ENDPOINT=http://localhost:9000` (same host, not Docker service names).
 - **No nginx**: Each app binds directly to its port. No reverse proxy needed.

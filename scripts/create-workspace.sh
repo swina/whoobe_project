@@ -3,7 +3,7 @@
 # workspace's slug, hostname and seed admin credentials, works out the
 # next free port-offset index on its own (scans .env.* for WS_POSTGRES_PORT
 # so nobody has to keep a manual list of indices), then delegates the
-# actual provisioning - env file, docker compose stack, MinIO bucket,
+# actual provisioning - env file, docker compose stack, S3 bucket,
 # nginx vhost / containerized reverse-proxy - to provision-workspace.sh.
 # Once that succeeds, optionally offers to enable HTTPS for the workspace
 # (scripts/enable-tls.sh) - only worth answering yes if the hostname you

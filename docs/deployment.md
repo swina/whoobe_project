@@ -8,7 +8,7 @@ Deploy Whoobe CMS on an **Oracle Cloud Infrastructure (OCI) Always Free Tier** V
 |---|---|
 | **Ampere A1 ARM** | Up to 4 OCPUs / 24 GB memory (across up to 4 instances) |
 | **Block volume** | 200 GB total (boot + attached) |
-| **Object storage** | 10 GB (optionally replace MinIO) |
+| **Object storage** | 10 GB (use it instead of self-hosting MinIO) |
 | **Bandwidth** | 10 TB/month outbound |
 | **Load balancer** | 1 instance (10 Mbps) |
 
@@ -86,7 +86,13 @@ sudo systemctl restart postgresql
 sudo systemctl enable postgresql
 ```
 
-## 4. Configure MinIO
+## 4. Object storage (OCI Object Storage recommended; MinIO only as a fallback)
+
+> **Security note.** Self-hosting MinIO in production is discouraged: upstream no longer publishes container images, it is
+> maintained as source only, and its pinned dependencies carry known vulnerabilities (F-050). For this VM prefer **OCI
+> Object Storage** (S3-compatible, see the alternative below) or another cloud S3. The Docker-based stack uses Garage for
+> local/LAN and takes any S3 endpoint for production by configuration only: [storage-backends.md](storage-backends.md).
+> If you do run MinIO, replace the example credentials below with generated ones (`openssl rand -hex 16`), never keep `minioadmin`.
 
 Create a systemd service `/etc/systemd/system/minio.service`:
 
@@ -99,8 +105,8 @@ After=network.target
 User=minio
 Group=minio
 ExecStart=/usr/local/bin/minio server /data --console-address ":9001"
-Environment="MINIO_ROOT_USER=minioadmin"
-Environment="MINIO_ROOT_PASSWORD=minioadminpassword"
+Environment="MINIO_ROOT_USER=<generated-access-key>"
+Environment="MINIO_ROOT_PASSWORD=<generated-secret>"
 Environment="MINIO_API_CORS_ALLOW_ORIGIN=https://your-domain.com"
 
 [Install]
@@ -119,7 +125,7 @@ Create the bucket:
 # Install mc client
 wget https://dl.min.io/client/mc/release/linux-arm64/mc
 chmod +x mc && sudo mv mc /usr/local/bin/
-mc alias set local http://127.0.0.1:9000 minioadmin minioadminpassword
+mc alias set local http://127.0.0.1:9000 <generated-access-key> <generated-secret>
 mc mb local/whoobe-cms
 mc anonymous set public local/whoobe-cms
 ```
@@ -165,8 +171,8 @@ MIGRATION_SOURCE_ENCRYPTION_KEY=$(openssl rand -hex 32)
 S3_ENDPOINT=http://${S3_ENDPOINT_HOSTNAME}:9000
 S3_BUCKET=whoobe-cms
 S3_REGION=us-east-1
-S3_ACCESS_KEY_ID=minioadmin
-S3_SECRET_ACCESS_KEY=minioadminpassword
+S3_ACCESS_KEY_ID=<generated-access-key>
+S3_SECRET_ACCESS_KEY=<generated-secret>
 S3_FORCE_PATH_STYLE=true
 S3_PUBLIC_BASE_URL=https://${WHOOBE_HOSTNAME}/dam-asset
 

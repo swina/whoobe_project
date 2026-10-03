@@ -9,9 +9,10 @@ IMAGES=("$@")
 if [ ${#IMAGES[@]} -eq 0 ]; then
   IMAGES=(whoobe-sectest-core-api:latest whoobe-sectest-gateway:latest whoobe-sectest-asset-processor:latest
           whoobe-sectest-admin-dashboard:latest whoobe-sectest-whoobe-one-spike:latest
-          whoobe-minio:RELEASE.2025-10-15T17-29-55Z postgres:16-alpine)
+          whoobe-garage:v2.4.1 postgres:16-alpine)
 fi
-# Third-party images whose findings sit in the vendor's own pinned dependencies (postgres' gosu, MinIO's go.mod):
+# Third-party images whose findings sit in the vendor's own pinned dependencies (postgres' gosu, MinIO's go.mod; MinIO is
+# only built with the docker-compose.minio.yml overlay):
 # reported, not gating. We cannot patch them without forking; F-050 tracks the decision (replace MinIO / wait for tags).
 ADVISORY='^(whoobe-minio:|postgres:)'
 rc=0
