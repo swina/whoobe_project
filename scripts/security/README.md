@@ -73,3 +73,8 @@ different client addresses (lockout tests).
 
 Put `api/<topic>.test.ts` next to the others; use `clientFor(role)`. Tests share one stack and run
 serially (`fileParallelism: false`) because lockout/rate-limit checks are order-sensitive.
+
+## TLS and container images
+
+- `pnpm security:tls [nginx-image]` - testssl.sh against the production nginx TLS template (needs docker; throwaway container on port 8443).
+- `pnpm security:images [image...]` - `trivy image` on the built stack images (run `stack.sh up` first). Own images gate; MinIO/postgres are advisory (F-050). Accepted CVEs: `images/.trivyignore`.

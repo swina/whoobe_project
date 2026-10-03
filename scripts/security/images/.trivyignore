@@ -1,0 +1,5 @@
+# Accepted image CVEs, one per line: ID exp:YYYY-MM-DD   # reason. The exp date forces a re-review.
+# F-003: xlsx (SheetJS) 0.18.5 has no fixed release on npm; used only for operator-initiated import/export of
+# spreadsheets, not exposed to anonymous input. Replace the library when a maintained fork is chosen.
+CVE-2023-30533 exp:2027-01-31
+CVE-2024-22363 exp:2027-01-31

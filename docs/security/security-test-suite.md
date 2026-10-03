@@ -299,6 +299,12 @@ header and baseline headers (fixed, F-047) and the missing CSP (F-014, accepted 
 `reports/<date>/zap-*.html|json` and `zap-summary-<time>.txt`. `--quick` runs passive rules only (about 2 minutes).
 OWASP A01-A10 coverage by ZAP rules; it complements, and does not replace, the authorisation and logic tests above.
 
+#### 2.5.16 TLS - `scripts/security/tls/run-testssl.sh [nginx image]` (`pnpm security:tls`)
+Generates a self-signed certificate for `localhost`, renders the production edge templates (`deploy/nginx/workspace-ssl.conf.template` + locations) into a throwaway nginx container (host network, port 8443) and runs `drwetter/testssl.sh` against it. Pass an older image (`nginx:1.18-alpine`) to see what a host with an old distro nginx would do. `summarize.py` ignores certificate-trust findings (self-signed), fails on HIGH/CRITICAL not in `tls/baseline.json`, and **fails if HSTS is missing**; it prints protocols and any MEDIUM/LOW/WARN. Reports: `scripts/security/reports/<date>/testssl-*.json/.txt`. Covers the template only, not a live certificate (run testssl against the public hostname for that).
+
+#### 2.5.17 Container images - `scripts/security/images/run-trivy-image.sh [image...]` (`pnpm security:images`)
+`trivy image` (vulnerabilities, HIGH/CRITICAL, `--ignore-unfixed`) on the throwaway-stack images (build them first with `stack.sh up`), MinIO and postgres. Gating: the five own images; MinIO and postgres are advisory (vendor dependencies, F-050). Accepted CVEs go in `scripts/security/images/.trivyignore` with a reason and an `exp:` date. Reports: `scripts/security/reports/<date>/trivy-image-*.json`.
+
 ### 2.6 Known-finding convention
 
 `lib/known.ts` provides `known('F-0xx', name, fn)`: a test that asserts the secure behaviour but is *expected* to
@@ -413,7 +419,7 @@ compensating controls or additional testing):
 |---|---|
 | Browser-side XSS (plan 3.6) | Automated for the editor, a published page, the admin lists/previews and data object fields (`security:browser`). Not browser-tested: editor tables and form-result messages, the Studio app, generated Next/Nuxt sites and the mobile/PWA templates. |
 | Content-Security-Policy for the admin and editor SPAs (served by nginx) | Not tested (finding F-014, open part). |
-| DAST (OWASP ZAP) | Done by `scripts/security/dast/run-zap.sh` (section 2.5.15), separate from the two commands. TLS configuration (`testssl.sh`) is still not covered. |
+| DAST (OWASP ZAP) | Done by `scripts/security/dast/run-zap.sh` (section 2.5.15), separate from the two commands. TLS configuration: `pnpm security:tls` (`testssl.sh`, section 2.5.16). Container images: `pnpm security:images` (`trivy image`, section 2.5.17). |
 | Container image scanning (`trivy image`) | Not run; only configuration scanning (`trivy config`). |
 | AI features (plan 3.10), publish / provisioning scripts at runtime (3.11) | Not covered by the API suite; shell scripts are covered statically by ShellCheck. |
 | MFA (TOTP) flows | Excluded from the authorization sweep; not specifically tested. |

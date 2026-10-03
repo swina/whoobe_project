@@ -11,5 +11,19 @@ server {
     ssl_certificate     __CERT_DIR__/live/__HOSTNAME__/fullchain.pem;
     ssl_certificate_key __CERT_DIR__/live/__HOSTNAME__/privkey.pem;
 
+    # TLS policy stated explicitly so it does not depend on the nginx version
+    # (nginx <= 1.18 still offers TLS 1.0/1.1 and lacks TLS 1.3 by default). F-049.
+    ssl_protocols             TLSv1.2 TLSv1.3;
+    # AEAD + forward secrecy only (no CBC, no static-RSA key exchange)
+    ssl_ciphers               ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
+    ssl_session_timeout       1d;
+    ssl_session_cache         shared:SSL:10m;
+    ssl_session_tickets       off;
+
+    server_tokens off;
+    # No includeSubDomains/preload on purpose: opt in once every subdomain is known to serve HTTPS.
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
     include __LOCATIONS_INCLUDE__;
 }

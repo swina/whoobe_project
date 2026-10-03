@@ -11,6 +11,8 @@
     "security:static": "bash scripts/security/static/run-all.sh",
     "security:api": "pnpm --filter @whoobe-cms/security test:api",
     "security:all": "bash -c 'pnpm security:static; s=$?; pnpm security:api; a=$?; [ $s -eq 0 ] && [ $a -eq 0 ]'",
+    "security:tls": "bash scripts/security/tls/run-testssl.sh",
+    "security:images": "bash scripts/security/images/run-trivy-image.sh",
     "security:browser": "pnpm --filter @whoobe-cms/security test:browser"
   },
   "workspaces": [
