@@ -1,3 +1,11 @@
+## [Garage as an alternative S3 store; storage backends doc] — 2026-10-03
+- Branch: `master`. Follow-up to F-050 (MinIO's own dependencies carry CVEs).
+- `docker-compose.garage.yml` (overlay: Garage `dxflrs/garage:v2.4.1` pinned by digest, unprivileged via a `garage-perms` one-shot, loopback port, healthcheck; MinIO not started), `docker/garage/garage.toml` (single node, secrets from env), `scripts/garage-init.sh` (idempotent layout, key import, bucket, grants). `scripts/security/stack.sh`: `S3_BACKEND=garage` selects it; `down` now removes both variants and orphans (a plain `down` after a Garage run used to leave Garage running). `scripts/security/gen-env.sh`: S3 credentials in Garage's format (valid for MinIO too) and `GARAGE_*` secrets.
+- `packages/core/src/dam/s3-provider.ts`: a store answering `NotImplemented` to `PutBucketPolicy` (Garage) is detected once and not asked again (it used to log a stack trace on every upload). No change for MinIO/AWS.
+- Docs: `docs/storage-backends.md` (MinIO / Garage / AWS S3 or enterprise S3 via env only), `.env.example`. `run-testssl.sh` shellcheck fix.
+- Verified on both backends: `pnpm security:api` 1034 and `pnpm security:browser` 8 pass; `trivy image dxflrs/garage:v2.4.1`: 0 fixable HIGH/CRITICAL; `pnpm security:static` PASS.
+- **Not changed**: MinIO stays the default. Existing installs need nothing; to switch, copy the bucket first (see the doc).
+
 ## [Security: testssl (TLS edge) and trivy image; image hardening] — 2026-10-03
 - Branch: `master`. Findings F-049 (TLS) and F-050 (images); F-048 bumped.
 - **TLS** (`scripts/security/tls/`: `run-testssl.sh`, `summarize.py`, `baseline.json`, `pnpm security:tls`): `deploy/nginx/workspace-ssl.conf.template` now sets `ssl_protocols TLSv1.2 TLSv1.3`, an AEAD+ECDHE cipher list, session cache (tickets off), `server_tokens off` and HSTS (1 year, no includeSubDomains/preload). Before: nginx 1.18 offered TLS 1.0/1.1 and no TLS 1.3, all versions offered CBC/no-PFS ciphers and no HSTS. **Behaviour change**: TLS 1.0/1.1-only or CBC-only clients are refused; browsers pin HTTPS for the host for a year. Applies to existing workspaces when their `-ssl.conf` is re-rendered (`scripts/enable-tls.sh`) and nginx reloaded.
