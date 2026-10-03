@@ -136,6 +136,9 @@ services:
         VITE_ASSET_PROCESSOR_URL: ${VITE_ASSET_PROCESSOR_URL}
         VITE_CORE_API_URL: ${VITE_CORE_API_URL}
         VITE_GATEWAY_URL: ${VITE_GATEWAY_URL}
+    environment:
+      # who may frame the editor (the admin embeds it): this host on any port, plus same-origin when proxied
+      EDITOR_FRAME_ANCESTORS: "'self' http://${WHOOBE_HOSTNAME:-localhost}:* https://${WHOOBE_HOSTNAME:-localhost}"
     ports:
       - "${WS_APP_BIND_ADDRESS:-0.0.0.0}:${WS_WHOOBE_ONE_SPIKE_PORT:-3006}:8080"
     restart: unless-stopped

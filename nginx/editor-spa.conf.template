@@ -1,0 +1,28 @@
+# whoobe-one-spike (the editor and the public page renderer). nginxinc/nginx-unprivileged runs envsubst on
+# /etc/nginx/templates/*.template at start: ${EDITOR_FRAME_ANCESTORS} comes from the container's environment.
+server {
+    listen 8080;
+    root /usr/share/nginx/html;
+    index index.html;
+    server_tokens off;
+    absolute_redirect off;
+
+    # The editor is embedded by the admin dashboard (an iframe, possibly on another port of the same host), so it
+    # cannot use X-Frame-Options: frame-ancestors lists exactly who may embed it ('self' + the admin's host).
+    add_header Content-Security-Policy "frame-ancestors ${EDITOR_FRAME_ANCESTORS}" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), payment=(), usb=()" always;
+
+    # whoobe-one-spike is built with base /whoobe-one/ (VITE_BASE_URL) so it can sit behind a reverse proxy on a
+    # sub-path. Served directly (single container / published port), strip that prefix so its assets and
+    # history-mode routes still resolve.
+    location /whoobe-one/ {
+        rewrite ^/whoobe-one/(.*)$ /$1 break;
+        try_files $uri /index.html;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

@@ -57,13 +57,15 @@ CMD ["node", "apps/asset-processor/dist/server.js"]
 # ─── Admin Dashboard ────────────────────────────────────────────────────────
 FROM nginxinc/nginx-unprivileged:alpine AS admin-dashboard
 COPY --from=build /app/apps/admin-dashboard/dist /usr/share/nginx/html
-COPY nginx/spa-fallback.conf /etc/nginx/conf.d/default.conf
+COPY nginx/admin-spa.conf /etc/nginx/conf.d/default.conf
 EXPOSE 8080
 
 # ─── Whoobe One Spike ──────────────────────────────────────────────────────
 FROM nginxinc/nginx-unprivileged:alpine AS whoobe-one-spike
 COPY --from=build /app/apps/whoobe-one-spike/dist /usr/share/nginx/html
-COPY nginx/spa-fallback.conf /etc/nginx/conf.d/default.conf
+# rendered at start (envsubst): who may embed the editor in a frame - see nginx/editor-spa.conf.template
+ENV EDITOR_FRAME_ANCESTORS="'self' http://localhost:* http://127.0.0.1:*"
+COPY nginx/editor-spa.conf.template /etc/nginx/templates/default.conf.template
 EXPOSE 8080
 
 # ─── API Gateway ────────────────────────────────────────────────────────────

@@ -9,10 +9,10 @@ for reviewers), `scripts/security/README.md` (how to run).
 
 | | |
 |---|---|
-| Findings recorded | **46** (F-001 ... F-046) |
-| By current severity | **9 High**, 22 Medium, 12 Low, 3 Info |
+| Findings recorded | **47** (F-001 ... F-047) |
+| By current severity | **9 High**, 23 Medium, 12 Low, 3 Info |
 | Fixed in code | all 9 High; all but a few Medium (see section 3) |
-| Automated checks | `pnpm security:api` **1027 tests / 16 files** and `pnpm security:browser` **5 Playwright tests** (Chromium) green on a disposable stack; `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 122 |
+| Automated checks | `pnpm security:api` **1034 tests / 18 files** and `pnpm security:browser` **8 Playwright tests** (Chromium) green on a disposable stack, plus **DAST with OWASP ZAP** (`scripts/security/dast/run-zap.sh`: active API scan of 154 routes of core-api, gateway and asset-processor with an admin session: 0 findings above Info; passive baseline of the admin and editor SPAs); `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 122 |
 | Runs leave evidence | `scripts/security/reports/<date>/api-*.txt/.json`, `static-*.txt/.json` (git-ignored) |
 
 The High findings (all fixed; nine): F-002 token embedded in git remotes, F-011 credentialed CORS reflection, F-020
@@ -28,14 +28,14 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | 3.2 | Authorization: 196 routes x 5 identities, route contract/drift, publish permission | done (`authz-matrix`, `route-drift`, `limits-and-publish`) |
 | 3.3 | Input validation / injection | public query, malformed ids/JSON, prototype keys covered; public filters run in JS, not SQL; **no SQL fuzzing of the remaining endpoints** |
 | 3.4 | Public surface, drafts, preview tokens, forms | done (`public-surface`) |
-| 3.5 | CORS, CSRF, security headers | done for the three services; **no CSP on the SPAs** |
-| 3.6 | Stored/reflected XSS in browser sinks | done for the editor, published pages, admin lists/previews and data object fields (`browser/xss-sinks.spec.ts`); **not browser-tested**: editor tables and form-result messages, Studio, generated Next/Nuxt sites, mobile/PWA templates |
+| 3.5 | CORS, CSRF, security headers | done for the three services and the two nginx SPAs (clickjacking, baseline headers; ZAP baseline); **no full CSP on the SPAs** (postponed to the SaaS mode) |
+| 3.6 | Stored/reflected XSS in browser sinks | done for the editor, published pages, admin lists/previews, data object fields, editor tables and form-result messages (`browser/xss-sinks.spec.ts`, 8 tests) and the SDK React/Vue adapters (SSR unit tests); **not browser-tested**: Studio, generated Next/Nuxt sites, mobile/PWA templates |
 | 3.7 | Uploads, DAM, asset-processor | done (`uploads`) |
 | 3.8 | SSRF / outbound requests | done (`ssrf`, `safeFetch` guard) |
 | 3.9 | Gateway (site keys, limits, submit, helpers) | done (`gateway`, unit) |
 | 3.10 | AI | provider keys never returned, per-user throttling; **prompt-injection impact not tested** |
 | 3.11 | Publishing, generator, operator scripts | done (`publish`, unit) - generation and parsing only, **no `next build`/`nuxt build` of the output** |
-| 3.12 | Secrets, config, infrastructure | secrets (gitleaks), Docker, compose exposure done; **nginx/TLS (`testssl`) and `trivy image` not run** |
+| 3.12 | Secrets, config, infrastructure | secrets (gitleaks), Docker, compose exposure, SPA nginx headers done; **TLS (`testssl`) and `trivy image` not run** |
 | 3.13 | Dependencies | `pnpm audit` in the static scan, two accepted advisories (`xlsx`, `braces`) with review dates |
 | 3.14 | Errors / logging | done (generic 5xx, SQL text hidden, log hygiene reviewed by hand) |
 | 3.15 | Rate limits | login, MFA, forgot-password, forms, public search/query, AI, pwa subscribe done; **no load testing by design** |
@@ -49,10 +49,10 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | **F-009** old env files already copied to Oracle by earlier deploys | `deploy.sh` is fixed, existing copies remain on the host | owner: remove `.env.*` copies on the host (done by the rebuild) |
 | **F-003** `xlsx` (2 high advisories, write-only use, no npm fix) and `@tiptap/core` (major upgrade) | accepted / deferred, baselined until 2027-01-31 | decision: move to the SheetJS tarball or replace; plan the tiptap 3 upgrade |
 | **F-008** residual `v-html` sinks (editor tables, form-result messages, Studio, generated sites) | sanitised in code but not covered by a browser test | extend `browser/xss-sinks.spec.ts`; run the generated sites through a build and the same payloads |
-| **F-014** CSP for the admin/editor SPAs (nginx) | postponed on purpose: becomes essential in SaaS mode; a too strict policy breaks the editor | design with a report-only phase when SaaS mode starts |
+| **F-014** full CSP for the admin/editor SPAs (nginx) | postponed on purpose (clickjacking and baseline headers are done, F-047): becomes essential in SaaS mode; a too strict policy breaks the editor | design with a report-only phase when SaaS mode starts |
 | **F-024** `DAM_ENFORCE_ASSET_VISIBILITY` is off by default | published sites load images through `/dam-asset`; most uploads are private by default | mark site assets/folders public, then switch it on (or decide the proxy is public by design) |
 | **F-044** deleting a website can answer 500 | functional, not a security issue | fix when convenient |
-| CI wiring, `trivy image`, DAST (ZAP baseline/API scan with `docs/api/openapi.yaml`), `testssl`, multi-tenant isolation tests | not part of the commands yet | plan 7.1 and phases 5-6 |
+| CI wiring, `trivy image`, `testssl`, multi-tenant isolation tests | not part of the commands yet | plan 7.1 and phases 5-6 |
 
 ## 4. Actions that are yours (cannot be done from here)
 
@@ -97,6 +97,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 scripts/security/stack.sh up        # disposable stack (ports +100, own DB and volumes)
 pnpm security:all                   # static scans, then the API suites; non-zero if either fails
 pnpm security:browser               # Playwright XSS suite (needs Chromium: see scripts/security/README.md)
+scripts/security/dast/run-zap.sh    # OWASP ZAP against the same stack (docker; --quick = passive only)
 scripts/security/stack.sh down      # remove the stack and its volumes
 ```
 

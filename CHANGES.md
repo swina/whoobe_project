@@ -1,3 +1,10 @@
+## [Security: DAST with OWASP ZAP, nginx SPA headers, more browser tests] — 2026-10-03
+- Branch: `master`. Finding F-047; F-014 updated.
+- **DAST**: `scripts/security/dast/` (`run-zap.sh`, `prepare.ts`, `summarize.py`, `baseline.json`): per-service OpenAPI specs from `docs/api/openapi.yaml` (118 + 18 + 18 paths), admin session injected, ZAP active API scan of core-api, gateway and asset-processor and passive baseline of the admin/editor SPAs; summary with baseline and review dates, exit 1 on a new High. First full run: no alert above Info on the APIs (118 passive/active rules passed per service); the SPAs lacked anti-clickjacking and baseline headers.
+- **nginx** (F-047): `nginx/spa-fallback.conf` split into `nginx/admin-spa.conf` (`X-Frame-Options: DENY`, `frame-ancestors 'none'`) and `nginx/editor-spa.conf.template` (`frame-ancestors` from `EDITOR_FRAME_ANCESTORS`, rendered by the image's envsubst; the admin embeds the editor), both with `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `server_tokens off`. `Dockerfile` copies the two files (the editor image gets a default `EDITOR_FRAME_ANCESTORS`), `docker-compose.yml` passes it from `WHOOBE_HOSTNAME`. **Behaviour change**: the admin can no longer be framed; the editor can be framed only by this host (and itself): a deployment that embeds the editor from another host must set `EDITOR_FRAME_ANCESTORS`.
+- **Tests**: `api/spa-headers.test.ts` (5), `unit/sdk-adapters.test.ts` (React/Vue SSR, 2), browser tests for editor table cells, form-result messages and embedding (`browser/xss-sinks.spec.ts`, now 8). `pnpm security:api` 1034 pass, `pnpm security:browser` 8 pass.
+- ZAP's remaining SPA alerts (missing full CSP, SRI for Google Fonts) are baselined with a review date; a CSP stays postponed to the SaaS mode.
+
 ## [Security: status summary updated for the browser suite] — 2026-10-03
 - Branch: `master`. `docs/plans/security/status-summary.md`: 46 findings (9 High), browser suite, F-045/F-008, the rich-text behaviour change. Documentation only.
 

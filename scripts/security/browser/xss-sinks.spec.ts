@@ -1,7 +1,7 @@
 // Plan 3.6: stored/reflected XSS in the browser sinks. Hostile markup is stored through the API (as an editor
 // could) and then rendered by the real admin, editor and public page; nothing may execute (console canary and
 // dialogs), while ordinary formatting must survive (positive control).
-import { test, expect, EDITOR_URL, ADMIN_URL, payloads, clickJavascriptLinks, richText, pageContent } from './fixtures'
+import { test, expect, EDITOR_URL, ADMIN_URL, payloads, clickJavascriptLinks, richText, pageContent, tableNode, formNode } from './fixtures'
 
 const richBlocks = (id: string) => [richText('ctl', '<b class="ctl">bold-ctl</b> <a href="https://example.com" class="ctl-a">ok</a>'), ...payloads(id).map((p, i) => richText(`t${i}`, p.html))]
 const domControls = (p: import('@playwright/test').Page) => p.evaluate(() => ({
@@ -113,7 +113,7 @@ test.describe('admin lists and previews render hostile names as text', () => {
       expect(await open('Pages'), 'page title').toContain('page <img src=x')
       expect(await open('Snippets'), 'snippet name').toContain('snippet <img src=x')
       expect(await open('Websites'), 'website name').toContain('site <img src=x')
-      expect(await open(/^class <img src=x/), 'class entry (sidebar) and its objects table').toContain('value <img src=x')
+      expect(await open(new RegExp(`^class <img src=x onerror="console\\.log\\('__XSS__:${id}-class'\\)`)), 'class entry (sidebar) and its objects table').toContain('value <img src=x')
       for (const other of ['Themes', 'Components', 'Assets', 'Documents', 'Outgoing Mail', 'Roles/Users/Workspaces']) await open(other)
       await p.waitForTimeout(1000)
 
@@ -146,5 +146,86 @@ test.describe('data object fields', () => {
       await api.delete(`/data-objects/${obj.json.object.id}`)
       await api.delete(`/data-classes/${cls.json.class.id}`)
     }
+  })
+})
+
+test.describe('tables and form messages', () => {
+  const cells = (id: string) => payloads(id).map((p) => p.html)
+
+  test('table cells in the editor and on a published page do not execute stored markup', async ({ api, authed, canary, tag }) => {
+    const id = `table-${tag}`
+    const w = await api.post('/whoobe-one/websites', { name: `Tbl ${tag}`, rootPath: `/tb${tag}` })
+    const websiteId = w.json.website.id
+    const content = pageContent([richText('keep', '<b class="ctl">rt-ctl</b>'), tableNode('tbl', cells(id))])
+    const page = await api.post('/whoobe-one/pages', { slug: `/tb-${tag}`, title: 'tbl', content, websiteId })
+    expect(page.status, page.text.slice(0, 150)).toBe(201)
+    await api.patch(`/whoobe-one/pages/${page.json.page.id}`, { published: true })
+    try {
+      for (const url of [`${EDITOR_URL}/whoobe-one/editor?pageId=${page.json.page.id}&parentOrigin=${encodeURIComponent(ADMIN_URL)}`, `${EDITOR_URL}/whoobe-one/tb${tag}/tb-${tag}`]) {
+        const p = await authed.newPage(); canary.attach(p)
+        await p.goto(url)
+        await p.waitForSelector('table', { timeout: 15_000 })                 // the table rendered
+        expect(await p.locator('table').innerText(), url).toContain('cell-ctl')
+        await clickJavascriptLinks(p)
+        await p.waitForTimeout(800)
+        const dom = await domControls(p)
+        expect(dom.handlers + dom.jsLinks + dom.frames + dom.scripts, url).toBe(0)
+        await p.close()
+      }
+      expect(canary.fired).toEqual([])
+    } finally {
+      await api.delete(`/whoobe-one/pages/${page.json.page.id}`)
+      await api.delete(`/whoobe-one/websites/${websiteId}`)
+    }
+  })
+
+  test('form success and error messages are shown as sanitised text on a published page', async ({ api, authed, canary, tag }) => {
+    const id = `form-${tag}`
+    const msg = payloads(id).map((p) => p.html).join(' ') + ' <b class="ctl">msg-ctl</b>'
+    const cls = await api.post('/data-classes', { name: `FormCls${tag}`, label: `FormCls${tag}`, fields: [{ name: 'title', title: 'Title', fieldType: 'text' }] })
+    const w = await api.post('/whoobe-one/websites', { name: `Frm ${tag}`, rootPath: `/fm${tag}` })
+    const websiteId = w.json.website.id
+    const page = await api.post('/whoobe-one/pages', { slug: `/fm-${tag}`, title: 'frm', content: pageContent([formNode('frm', cls.json.class.id, msg, msg)]), websiteId })
+    expect(page.status, page.text.slice(0, 150)).toBe(201)
+    await api.patch(`/whoobe-one/pages/${page.json.page.id}`, { published: true })
+    try {
+      const p = await authed.newPage(); canary.attach(p)
+      await p.goto(`${EDITOR_URL}/whoobe-one/fm${tag}/fm-${tag}`)
+      await p.waitForSelector('form input[name="title"]', { timeout: 15_000 })
+      await p.locator('form input[name="title"]').fill('hello')
+      await p.locator('form button').first().click()
+      await p.waitForSelector('.ctl', { timeout: 10_000 })                    // the message appeared
+      await clickJavascriptLinks(p)
+      await p.waitForTimeout(800)
+      const dom = await domControls(p)
+      expect(dom.handlers + dom.jsLinks + dom.frames + dom.scripts).toBe(0)
+      expect(canary.fired).toEqual([])
+    } finally {
+      await api.delete(`/whoobe-one/pages/${page.json.page.id}`)
+      await api.delete(`/whoobe-one/websites/${websiteId}`)
+      await api.delete(`/data-classes/${cls.json.class.id}`)
+    }
+  })
+})
+
+test.describe('embedding', () => {
+  test('the editor still loads inside the admin dashboard (frame-ancestors) and the admin cannot be framed', async ({ api, authed, canary, tag }) => {
+    const page = await api.post('/whoobe-one/pages', { slug: `embed-${tag}`, title: `Embed ${tag}`, content: pageContent([richText('x', '<b class="ctl">embedded-ctl</b>')]) })
+    try {
+      const p = await authed.newPage(); canary.attach(p)
+      await p.goto(`${ADMIN_URL}/`); await p.waitForTimeout(2000)
+      await p.locator('aside').getByText('Pages', { exact: true }).first().click(); await p.waitForTimeout(2000)
+      await p.getByText(`Embed ${tag}`).first().click()
+      const frame = await p.waitForEvent('framenavigated', { predicate: (f) => f.url().includes('/whoobe-one/editor'), timeout: 20_000 })
+      await frame.waitForSelector('.ctl', { timeout: 20_000 })                // the editor rendered inside the iframe
+      expect(await frame.locator('.ctl').first().innerText()).toBe('embedded-ctl')
+
+      // the other direction: a hostile page must not be able to frame the admin
+      const evil = await authed.newPage()
+      await evil.setContent(`<iframe id="f" src="${ADMIN_URL}/" width="800" height="600"></iframe>`)
+      await evil.waitForTimeout(3000)
+      const framed = evil.frames().find((f) => f.url().startsWith(ADMIN_URL))
+      expect(framed ? await framed.locator('#app').count() : 0, 'the admin must not render inside a foreign frame').toBe(0)
+    } finally { await api.delete(`/whoobe-one/pages/${page.json.page.id}`) }
   })
 })
