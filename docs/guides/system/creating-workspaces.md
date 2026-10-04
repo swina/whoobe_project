@@ -7,7 +7,7 @@ This guide covers the day-to-day operation: provisioning a new workspace, verify
 ## What a workspace gets (current deploy settings)
 
 - **Object storage: Garage** (S3-compatible, `docker/garage`) inside the workspace's own Compose project. It creates its own access key and bucket on first start; nothing to set up by hand. Production-grade alternatives (AWS S3, OCI, an enterprise S3) are a configuration change: see [Using an external S3](#using-an-external-s3-instead-of-garage) and `docs/storage-backends.md`. Self-hosting MinIO is discouraged.
-- **Reverse-proxy awareness**: the provisioning sets `TRUST_PROXY=1` (login lockout and rate limits see the real client address instead of `127.0.0.1`) and `ADMIN_PUBLIC_URL=https://<hostname>` (links in password-reset e-mails).
+- **Reverse-proxy awareness**: the provisioning sets `TRUST_PROXY=1` (login lockout and rate limits see the real client address instead of `127.0.0.1`) and `ADMIN_PUBLIC_URL=<scheme>://<hostname>` (links in password-reset e-mails).
 - **Loopback-only data and app ports**: Postgres and the S3 port are published on `127.0.0.1`, and so are the application ports (`WS_APP_BIND_ADDRESS=127.0.0.1`): only the reverse proxy reaches them.
 - **Fresh secrets per workspace**: DB and S3 credentials, `MIGRATION_SOURCE_ENCRYPTION_KEY`, `GATEWAY_AUTH_ENCRYPTION_KEY`, `DAM_SERVICE_TOKEN`, `SITE_API_KEY_PEPPER`, `TOTP_ENCRYPTION_KEY` — none shared with another workspace or with dev's `.env`.
 - **TLS policy** (when you enable HTTPS): TLS 1.2/1.3 only, forward-secret AEAD ciphers, HSTS for one year (F-049).
@@ -41,8 +41,10 @@ The `index` avoids port collisions: host ports are the usual dev ports plus `ind
 ### Provisioning by hand
 
 ```bash
-./scripts/provision-workspace.sh <slug> <hostname> <index> [--seed-email you@example.com] [--seed-password ...]
+./scripts/provision-workspace.sh <slug> <hostname> <index> [--seed-email you@example.com] [--seed-password ...] [--scheme http|https]
 ```
+
+`--scheme` sets the URL scheme baked into the browser-facing URLs (the SPAs are built with them). Default: `https` for a public-looking domain (HTTPS is expected to follow, step 3), `http` for local/LAN names (`localhost`, `*.local`, `*.lan`, single-label names, IP addresses, `host:port`), where no Let's Encrypt certificate can exist.
 
 Example:
 
@@ -52,7 +54,7 @@ Example:
 
 The seed password must be 8–128 characters from `A-Z a-z 0-9 . _ @ + = : , % -`; if omitted a random one is generated. The command:
 
-1. Generates `.env.client-a` (mode 600) from `.env.example`: DB name/credentials, **S3 credentials in Garage's format** (`GK` + 24 hex, 64 hex secret), bucket `whoobe-cms-client-a`, `COMPOSE_PROFILES=local-s3`, `TRUST_PROXY`, `ADMIN_PUBLIC_URL`, the port block, the browser-facing URLs (`https://<hostname>`, path-routed by nginx) and the secrets listed above.
+1. Generates `.env.client-a` (mode 600) from `.env.example`: DB name/credentials, **S3 credentials in Garage's format** (`GK` + 24 hex, 64 hex secret), bucket `whoobe-cms-client-a`, `COMPOSE_PROFILES=local-s3`, `TRUST_PROXY`, `ADMIN_PUBLIC_URL`, the port block, the browser-facing URLs (`<scheme>://<hostname>`, path-routed by nginx) and the secrets listed above.
 2. Builds and starts the Compose project `ws-client-a` from the repo's `docker-compose.yml`: Postgres, Garage, core-api, asset-processor, gateway, admin-dashboard, whoobe-one-spike, each isolated in its own network and volumes. core-api creates and migrates the schema on first boot.
 3. Waits until Garage is healthy (it has created the key and the bucket by then).
 4. Renders `deploy/nginx/_locations-client-a.inc` (the routing) and `deploy/nginx/client-a.conf` (HTTP vhost, with the ACME challenge path).
@@ -168,6 +170,7 @@ Also back up `.env.client-a` itself — it is not derivable from anything else a
 - **`garage` exits with "S3_ACCESS_KEY_ID must be 'GK' followed by 24 hex characters"**: the env file has credentials in another format (typically a workspace from before the Garage default, or a hand-edited one). See [Workspaces created before the Garage default](#workspaces-created-before-the-garage-default).
 - **Admin dashboard loads but Gateway/DAM calls fail**: check that `deploy/nginx/<slug>.conf` was reloaded (`nginx -t` first) and that its ports match the ones in `.env.<slug>` — a stale config left over from a re-provision is the usual cause.
 - **Everybody is locked out of login after a few failures / one user's mistakes block others**: the API sees all clients as the proxy's address; check `TRUST_PROXY=1` in `.env.<slug>` and that the vhost passes `X-Forwarded-For` (the shipped templates do).
+- **Login page: "Could not reach core-api to check session: TypeError: Failed to fetch"**: the SPAs were built with URLs that do not match how you reach the workspace — typically `https://` baked in for a host that only answers on HTTP (fixed in the script: local names now get `http`). Check `VITE_CORE_API_URL` & co in `.env.<slug>`, correct the scheme and rebuild (the URLs are compiled into the SPAs): `docker compose -p ws-<slug> --env-file .env.<slug> up -d --build`. Also make sure the hostname resolves to this host (`/etc/hosts` for `.local` names).
 - **Password-reset e-mails link to the wrong address**: set `ADMIN_PUBLIC_URL` in `.env.<slug>` and restart core-api.
 - **Browser insists on HTTPS after a trial run**: HSTS was served for the host; clear it in the browser (`chrome://net-internals/#hsts`) or use another hostname for trials, and use `--staging` for certificate experiments.
 - **`.env.<slug>` looks like a key got merged onto the previous line**: a bug of early versions (see `CHANGES.md`, 2026-09-22) caused by `.env.example` missing a trailing newline — make sure the script is newer than that fix.

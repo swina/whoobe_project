@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Provision a new, fully isolated Whoobe CMS workspace stack.
 #
-# Usage: ./scripts/provision-workspace.sh <slug> <hostname> <index> [--seed-email EMAIL] [--seed-password PASS]
+# Usage: ./scripts/provision-workspace.sh <slug> <hostname> <index> [--seed-email EMAIL] [--seed-password PASS] [--scheme http|https]
 #   <slug>      Short identifier, lowercase letters/digits/hyphens only
 #               (e.g. "client-a"). Used for the compose project name,
 #               the .env.<slug> filename, the DB name, and the S3 bucket
@@ -35,6 +35,10 @@
 #      project "whoobe-proxy") that serves every workspace's vhost with
 #      no host nginx install required.
 #
+# URL scheme baked into the browser-facing URLs (the SPAs are built with them): `https` for a public host name
+# (enable-tls.sh is expected to follow), `http` for local/LAN names (localhost, *.local, *.lan, single-label names,
+# IP addresses, host:port) where no Let's Encrypt certificate can exist. Override with --scheme.
+#
 # HTTPS is a separate opt-in step (not part of provisioning, since it
 # needs a real public hostname reachable on port 80) - run
 # ./scripts/enable-tls.sh <slug> --email <email> once DNS points at this
@@ -49,7 +53,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
 usage() {
-  echo "Usage: $0 <slug> <hostname> <index> [--seed-email EMAIL] [--seed-password PASS]" >&2
+  echo "Usage: $0 <slug> <hostname> <index> [--seed-email EMAIL] [--seed-password PASS] [--scheme http|https]" >&2
   exit 1
 }
 
@@ -60,21 +64,31 @@ INDEX="$3"
 shift 3
 
 SEED_EMAIL="admin@example.com"
+SCHEME=""
 SEED_PASSWORD="$(openssl rand -hex 12)"
 while [ $# -gt 0 ]; do
   case "$1" in
     --seed-email) SEED_EMAIL="$2"; shift 2 ;;
     --seed-password) SEED_PASSWORD="$2"; shift 2 ;;
+    --scheme) SCHEME="$2"; shift 2 ;;
     *) echo "Unknown argument: $1" >&2; usage ;;
   esac
 done
 
 [[ "$SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "Error: slug must be lowercase letters/digits/hyphens only (got: $SLUG)" >&2; exit 1; }
+[[ -z "$SCHEME" || "$SCHEME" =~ ^https?$ ]] || { echo "Error: --scheme must be http or https (got: $SCHEME)" >&2; exit 1; }
 [[ "$INDEX" =~ ^[0-9]+$ ]] || { echo "Error: index must be a positive integer (got: $INDEX)" >&2; exit 1; }
 
 # Every value below ends up in sed expressions, an env file and nginx configuration: refuse anything that could
 # add a line, a directive or a shell/sed metacharacter instead of trying to escape it.
 [[ "$HOSTNAME_ARG" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]{1,5})?$ ]] || { echo "Error: hostname must be a plain host name, optionally with a port (got: $HOSTNAME_ARG)" >&2; exit 1; }
+if [ -z "$SCHEME" ]; then
+  case "$HOSTNAME_ARG" in
+    *:*|localhost|*.localhost|*.local|*.lan|*.internal|*.intranet|*.home.arpa|*.test|*.invalid|*.example) SCHEME=http ;;
+    *[!0-9.]*) case "$HOSTNAME_ARG" in *.*) SCHEME=https ;; *) SCHEME=http ;; esac ;;   # dotted name: public; single label: local
+    *) SCHEME=http ;;                                                                    # bare IP address
+  esac
+fi
 [[ "$SEED_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || { echo "Error: invalid seed e-mail (got: $SEED_EMAIL)" >&2; exit 1; }
 [[ "$SEED_PASSWORD" =~ ^[A-Za-z0-9._@+=:,%-]{8,128}$ ]] || { echo "Error: seed password must be 8-128 characters from A-Z a-z 0-9 . _ @ + = : , % - (no spaces, quotes, | & \\ \$ or #)" >&2; exit 1; }
 
@@ -138,11 +152,11 @@ set_env "S3_SECRET_ACCESS_KEY" "${S3_SECRET}"
 set_env "S3_BUCKET" "whoobe-cms-${SLUG}"
 # Production convention (docs/deployment.md): bare hostname, nginx
 # path-routes to the right upstream - not the dev per-port form.
-set_env "S3_PUBLIC_BASE_URL" "https://${HOSTNAME_ARG}/dam-asset"
-set_env "VITE_ASSET_PROCESSOR_URL" "https://${HOSTNAME_ARG}"
-set_env "VITE_CORE_API_URL" "https://${HOSTNAME_ARG}"
-set_env "VITE_GATEWAY_URL" "https://${HOSTNAME_ARG}"
-set_env "ASSET_PROCESSOR_URL" "https://${HOSTNAME_ARG}"
+set_env "S3_PUBLIC_BASE_URL" "${SCHEME}://${HOSTNAME_ARG}/dam-asset"
+set_env "VITE_ASSET_PROCESSOR_URL" "${SCHEME}://${HOSTNAME_ARG}"
+set_env "VITE_CORE_API_URL" "${SCHEME}://${HOSTNAME_ARG}"
+set_env "VITE_GATEWAY_URL" "${SCHEME}://${HOSTNAME_ARG}"
+set_env "ASSET_PROCESSOR_URL" "${SCHEME}://${HOSTNAME_ARG}"
 set_env "VITE_BASE_URL" "/whoobe-one/"
 set_env "SEED_ADMIN_EMAIL" "${SEED_EMAIL}"
 set_env "SEED_ADMIN_PASSWORD" "${SEED_PASSWORD}"
@@ -151,7 +165,7 @@ set_env "SEED_ADMIN_PASSWORD" "${SEED_PASSWORD}"
 # 127.0.0.1 to the login lockout and the rate limiters
 set_env "TRUST_PROXY" "1"
 # link in password-reset e-mails (the admin is reached on the bare hostname, not on its per-port address)
-set_env "ADMIN_PUBLIC_URL" "https://${HOSTNAME_ARG}"
+set_env "ADMIN_PUBLIC_URL" "${SCHEME}://${HOSTNAME_ARG}"
 set_env "WS_APP_BIND_ADDRESS" "127.0.0.1"
 set_env "WS_DATA_BIND_ADDRESS" "127.0.0.1"
 set_env "WS_POSTGRES_PORT" "${P_POSTGRES}"
@@ -226,7 +240,7 @@ cat <<SUMMARY
 
 >>> Workspace '${SLUG}' provisioned.
 
-  Hostname:          ${HOSTNAME_ARG}
+  Hostname:          ${HOSTNAME_ARG}  (${SCHEME})
   Ports (host):      admin ${P_ADMIN}  core-api ${P_CORE}  asset-processor ${P_ASSET}  gateway ${P_GATEWAY}  whoobe-one ${P_WHOOBE_ONE}  postgres ${P_POSTGRES}  s3 ${P_S3_API}
   Seed admin login:  ${SEED_EMAIL} / ${SEED_PASSWORD}
   Env file:          ${ENV_FILE}  (back this up - it holds this workspace's only credentials)
