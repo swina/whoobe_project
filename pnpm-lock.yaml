@@ -748,6 +748,9 @@ importers:
 
   scripts/security:
     devDependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.700.0
+        version: 3.1101.0
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.63.0

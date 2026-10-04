@@ -78,3 +78,7 @@ serially (`fileParallelism: false`) because lockout/rate-limit checks are order-
 
 - `pnpm security:tls [nginx-image]` - testssl.sh against the production nginx TLS template (needs docker; throwaway container on port 8443).
 - `pnpm security:images [image...]` - `trivy image` on the built stack images (run `stack.sh up` first). Own images and Garage gate; postgres (and MinIO, overlay only) are advisory (F-050). Accepted CVEs: `images/.trivyignore`.
+- `pnpm security:isolation` - two stacks standing for two workspaces (A and `SEC_STACK=b`): no shared session, account, object, secret, network path or database. Starts and removes stack B itself (`--keep` leaves it up).
+
+## In CI (`.github/workflows/security.yml`)
+`static` (PRs, push, nightly), `stack-tests` (API + browser + `security:images`), `tls` (testssl on `nginx:alpine` and `nginx:1.18-alpine`, PRs/push/nightly), `isolation` (push/nightly/manual), `dast` (monthly/manual).
