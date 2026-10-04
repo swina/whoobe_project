@@ -1,3 +1,6 @@
+## [Security status summary refreshed] — 2026-10-04
+- Branch: `master`. `docs/plans/security/status-summary.md`: date, counts (50 findings, 1039 API tests), TLS/images now covered, F-024 decided (removed from the open items), new open items (F-050 residual, first CI run, workspace isolation tests, live-host TLS, not-covered list). Documentation only.
+
 ## [Asset visibility enforced by default; /public/** built in] — 2026-10-04
 - Branch: `master`. Decision: private assets must be private everywhere, and the simple model is "public = in a public folder": creating `/public` (sub-folders included) makes every child public.
 - `apps/asset-processor/src/server.ts`: `DAM_ENFORCE_ASSET_VISIBILITY` now defaults to **on** (`=false` switches it off); `/public/**` is a built-in public rule (lowest priority: a rule sent by the client for the same or a more specific path wins) used by uploads, moves and copies; an upload with no `isPublic` field is decided by the rules (an explicit `true`/`false` from the client still wins, which the admin always sends from the same rules). `scripts/provision-workspace.sh` no longer needs to set the flag; `scripts/security/gen-env.sh` no longer sets it, so the suites now run on the default.

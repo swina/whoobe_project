@@ -1,7 +1,7 @@
 # Security status - single summary
 
-State at **2026-10-03**, commit `c807ab5` and later documentation commits. Source of detail:
-`findings.md` (register F-001 ... F-044), `security-testing-plan.md` (plan), `manual-test-checklist.md`
+State at **2026-10-04** (see `git log` for the exact commit). Source of detail:
+`findings.md` (register F-001 ... F-050), `security-testing-plan.md` (plan), `manual-test-checklist.md`
 (browser/terminal checks), `../../security/security-test-suite.md` (description of the automated suites, written
 for reviewers), `scripts/security/README.md` (how to run).
 
@@ -9,10 +9,10 @@ for reviewers), `scripts/security/README.md` (how to run).
 
 | | |
 |---|---|
-| Findings recorded | **48** (F-001 ... F-048) |
-| By current severity | **9 High**, 24 Medium, 12 Low, 3 Info |
+| Findings recorded | **50** (F-001 ... F-050) |
+| By current severity | 25 Medium, 12 Low, 10 High, 3 Info (F-049 TLS and F-050 images added 2026-10-03/04) |
 | Fixed in code | all 9 High; all but a few Medium (see section 3) |
-| Automated checks | `pnpm security:api` **1034 tests / 18 files** and `pnpm security:browser` **8 Playwright tests** (Chromium) green on a disposable stack, plus **DAST with OWASP ZAP** (`scripts/security/dast/run-zap.sh`: active API scan of 154 routes of core-api, gateway and asset-processor with an admin session: 0 findings above Info; passive baseline of the admin and editor SPAs); `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 122 |
+| Automated checks | `pnpm security:api` **1039 tests / 18 files** and `pnpm security:browser` **8 Playwright tests** (Chromium) green on a disposable stack, plus **DAST with OWASP ZAP** (`scripts/security/dast/run-zap.sh`: active API scan of 154 routes of core-api, gateway and asset-processor with an admin session: 0 findings above Info; passive baseline of the admin and editor SPAs); `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 122 |
 | Runs leave evidence | `scripts/security/reports/<date>/api-*.txt/.json`, `static-*.txt/.json` (git-ignored) |
 
 The High findings (all fixed; nine): F-002 token embedded in git remotes, F-011 credentialed CORS reflection, F-020
@@ -35,7 +35,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | 3.9 | Gateway (site keys, limits, submit, helpers) | done (`gateway`, unit) |
 | 3.10 | AI | provider keys never returned, per-user throttling; **prompt-injection impact not tested** |
 | 3.11 | Publishing, generator, operator scripts | done (`publish`, unit) - generation and parsing only, **no `next build`/`nuxt build` of the output** |
-| 3.12 | Secrets, config, infrastructure | secrets (gitleaks), Docker, compose exposure, SPA nginx headers done; **TLS (`testssl`) and `trivy image` not run** |
+| 3.12 | Secrets, config, infrastructure | secrets (gitleaks), Docker, compose exposure, SPA nginx headers done; TLS template (`pnpm security:tls`, F-049) and container images (`pnpm security:images`, F-050) scanned; **a live certificate/hostname has not been tested** |
 | 3.13 | Dependencies | `pnpm audit` in the static scan, two accepted advisories (`xlsx`, `braces`) with review dates |
 | 3.14 | Errors / logging | done (generic 5xx, SQL text hidden, log hygiene reviewed by hand) |
 | 3.15 | Rate limits | login, MFA, forgot-password, forms, public search/query, AI, pwa subscribe done; **no load testing by design** |
@@ -50,9 +50,12 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | **F-003** `xlsx` (2 high advisories, write-only use, no npm fix) and `@tiptap/core` (major upgrade) | accepted / deferred, baselined until 2027-01-31 | decision: move to the SheetJS tarball or replace; plan the tiptap 3 upgrade |
 | **F-008** residual `v-html` sinks (editor tables, form-result messages, Studio, generated sites) | sanitised in code but not covered by a browser test | extend `browser/xss-sinks.spec.ts`; run the generated sites through a build and the same payloads |
 | **F-014** full CSP for the admin/editor SPAs (nginx) | postponed on purpose (clickjacking and baseline headers are done, F-047): becomes essential in SaaS mode; a too strict policy breaks the editor | design with a report-only phase when SaaS mode starts |
-| **F-024** `DAM_ENFORCE_ASSET_VISIBILITY` is **on by default** (since 2026-10-04) | published sites load images through `/dam-asset`; assets outside `/public/**` now answer 404 without a session | put everything public sites use under `/public` (sub-folders included), or add a public rule in the DAM settings; `DAM_ENFORCE_ASSET_VISIBILITY=false` restores the old behaviour |
 | **F-044** deleting a website can answer 500 | functional, not a security issue | fix when convenient |
-| First GitHub Actions run, `trivy image`, `testssl`, multi-tenant isolation tests | CI is written but untested on GitHub; the others are not part of the commands yet | push, watch the `security` workflow, fix what only CI shows |
+| **F-050** residual: MinIO's own dependencies (62 fixable HIGH/CRITICAL on its last release) and postgres' `gosu` (22) | upstream; not patchable without forking. MinIO is now opt-in (overlay), Garage is the default | keep MinIO off public networks or move to Garage / a cloud S3 |
+| First GitHub Actions run | CI is written and linted but its results have not been reported back; `pnpm security:images` / `security:tls` are not in the workflow yet | watch the `security` workflow, fix what only CI shows; decide whether to add images/TLS to it |
+| Multi-tenant (workspace) isolation tests | not written: two workspaces on one host share the reverse proxy and the host, each has its own DB/S3/secrets | a short suite against two `ws-*` stacks (cross-login, cross-asset) |
+| TLS on a real hostname | testssl ran on the rendered template, not on a public host with a Let's Encrypt certificate | run `testssl.sh` against the production hostname once HTTPS is enabled |
+| Not covered by design or yet | SQL fuzzing of the remaining endpoints (3.3), AI prompt-injection impact (3.10), `next build`/`nuxt build` of generated sites (3.11), no load testing (3.15) | decide if/when |
 
 ## 4. Actions that are yours (cannot be done from here)
 
@@ -73,7 +76,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 5. **Development setup**: recreating `whoobe_postgres` / the S3 store publishes them on loopback only; add
    `WS_DATA_BIND_ADDRESS=0.0.0.0` to `.env` if a client on another machine needs them (F-043).
 6. **Run the manual checklist** (`manual-test-checklist.md`) on the throwaway stack once, and report any KO.
-7. Decide: F-024 flag, the `xlsx` replacement, and when to start the CSP work.
+7. Decide: the `xlsx` replacement and when to start the CSP work (the F-024 flag is decided: on by default).
 8. **Object storage**: decided - Garage is the default for local/LAN (automatic bucket and key), production uses a cloud or enterprise S3 through configuration, self-hosted MinIO is documented as discouraged (F-048/F-050, `docs/storage-backends.md`). Remaining for you: copy existing MinIO data to the new store when switching a server (see the doc) and rebuild with `docker compose up -d --build`.
 
 ## 5. Behaviour changes introduced by the fixes (check these when something "stops working")
