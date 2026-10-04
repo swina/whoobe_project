@@ -68,7 +68,6 @@ LOG_DIR=./logs
 TRUST_PROXY=1
 
 # recommended in production: private assets (is_public=false) need a session on /dam-asset
-DAM_ENFORCE_ASSET_VISIBILITY=true
 
 # test-stack limits kept low so the suites can reach them quickly
 PUBLIC_SEARCH_RATE_LIMIT_PER_MINUTE=30

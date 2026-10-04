@@ -89,10 +89,14 @@ function parseFolderRules(raw: unknown): FolderVisibilityRule[] {
 
 // A fresh provider per request avoids sharing mutable visibilityManager
 // state across concurrent requests carrying different folderRules.
+// Built-in rule: everything under /public (sub-folders included) is public. It has the lowest priority, so a
+// rule sent by the client for the same or a more specific path wins.
+const DEFAULT_FOLDER_RULES: FolderVisibilityRule[] = [{ pathPrefix: '/public/**', isPublic: true }];
+
 function createDamProvider(folderRules: FolderVisibilityRule[]): S3AssetStorageProvider {
   return new S3AssetStorageProvider({
     ...damBaseConfig,
-    visibilityManager: new FolderVisibilityManager(folderRules),
+    visibilityManager: new FolderVisibilityManager([...DEFAULT_FOLDER_RULES, ...folderRules]),
   });
 }
 
@@ -437,8 +441,10 @@ app.post('/api/v1/dam/upload', serviceTokenAuth, upload.single('file'), async (r
       return;
     }
 
-    const isPublic = req.body?.isPublic === 'true';
     const provider = createDamProvider(parseFolderRules(req.body?.folderRules));
+    // an explicit flag from the client wins; without one the folder rules decide (/public/** is built in)
+    const flag = req.body?.isPublic;
+    const isPublic = flag === 'true' ? true : flag === 'false' ? false : provider.visibilityManager.isPathPublic(pimcorePath);
 
     let metadata: any = undefined;
     if (req.body?.metadata) {
@@ -1113,9 +1119,10 @@ async function findOriginalS3Key(basePath: string): Promise<string | null> {
 // frequently react to by aborting and retrying, which multiplies how many
 // connections to MinIO a single video load can open.
 // Keys that must never be served anonymously: the system `private/` area (e.g. private/logs/...) and,
-// when DAM_ENFORCE_ASSET_VISIBILITY=true, every asset whose record is not public. Private assets then
-// need a valid session (the admin's <img>/<video> requests carry the cookie).
-const ENFORCE_ASSET_VISIBILITY = process.env.DAM_ENFORCE_ASSET_VISIBILITY === 'true';
+// unless DAM_ENFORCE_ASSET_VISIBILITY=false, every asset whose record is not public. Private assets then
+// need a valid session (the admin's <img>/<video> requests carry the cookie). Public = the asset's folder matches
+// a public rule (built in: /public/**, sub-folders included).
+const ENFORCE_ASSET_VISIBILITY = process.env.DAM_ENFORCE_ASSET_VISIBILITY !== 'false';
 
 async function mayServeDamKey(req: Request, res: Response, s3Key: string): Promise<boolean> {
   const logical = s3Key.replace(/^\.thumbnails\//, '');

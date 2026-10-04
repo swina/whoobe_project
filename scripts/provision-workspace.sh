@@ -164,9 +164,7 @@ set_env "SEED_ADMIN_PASSWORD" "${SEED_PASSWORD}"
 # one reverse-proxy hop (nginx on this host) in front of the API and the gateway: without it every client looks like
 # 127.0.0.1 to the login lockout and the rate limiters
 set_env "TRUST_PROXY" "1"
-# assets uploaded as private must not be readable without a session (F-024). A new workspace has no published sites
-# yet; mark the assets/folders that public pages use as public (a folder rule such as /public/** or per asset).
-set_env "DAM_ENFORCE_ASSET_VISIBILITY" "true"
+# (DAM_ENFORCE_ASSET_VISIBILITY is on by default: private assets need a session, /public/** is public - F-024)
 # link in password-reset e-mails (the admin is reached on the bare hostname, not on its per-port address)
 set_env "ADMIN_PUBLIC_URL" "${SCHEME}://${HOSTNAME_ARG}"
 set_env "WS_APP_BIND_ADDRESS" "127.0.0.1"
