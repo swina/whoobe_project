@@ -1,6 +1,8 @@
 # Security checks (plan docs/plans/security/security-testing-plan.md, section 7.1).
 #   static       every pull request, every push to master, nightly   (no stack; ~5 min)
-#   stack-tests  push to master (relevant paths), nightly, manual   (disposable stack + API + browser suites)
+#   stack-tests  push to master (relevant paths), nightly, manual   (disposable stack + API + browser suites + trivy image)
+#   tls          every pull request, push to master, nightly         (testssl.sh against the production nginx TLS template)
+#   isolation    push to master, nightly, manual                    (two stacks standing for two workspaces share nothing)
 #   dast         monthly, manual                                    (OWASP ZAP against the disposable stack)
 # Nothing here needs secrets: the stack is generated with random credentials on the runner (scripts/security/gen-env.sh).
 name: security
@@ -77,6 +79,8 @@ jobs:
         run: pnpm --filter @whoobe-cms/security exec playwright install --with-deps chromium
       - name: Browser suite
         run: pnpm security:browser
+      - name: Container images (trivy image; the stack's own images gate, postgres is advisory)
+        run: pnpm security:images
       - name: Stack logs on failure
         if: failure()
         run: docker compose -p whoobe-sectest logs --tail 200 || true
@@ -91,6 +95,61 @@ jobs:
       - name: Remove the stack and its volumes
         if: always()
         run: scripts/security/stack.sh down || true
+
+  tls:
+    name: TLS template (testssl.sh, nginx ${{ matrix.image }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # the image of docker-compose.proxy.yml and the nginx an older host distribution still ships
+        image: ['nginx:alpine', 'nginx:1.18-alpine']
+    steps:
+      - uses: actions/checkout@v7
+      - name: testssl.sh on deploy/nginx/workspace-ssl.conf.template (TLS 1.2/1.3 only, no CBC/non-PFS, HSTS)
+        run: scripts/security/tls/run-testssl.sh '${{ matrix.image }}'
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: testssl-${{ strategy.job-index }}
+          path: scripts/security/reports/
+          retention-days: 30
+
+  isolation:
+    name: workspace isolation (two stacks)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.event.schedule == '17 3 * * *') ||
+      github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Stack A and stack B (own databases, buckets, ports and secrets), then the isolation suite
+        run: pnpm security:isolation
+      - name: Stack logs on failure
+        if: failure()
+        run: |
+          docker compose -p whoobe-sectest logs --tail 100 || true
+          docker compose -p whoobe-sectest-b logs --tail 100 || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: isolation-reports
+          path: scripts/security/reports/
+          retention-days: 30
+      - name: Remove both stacks and their volumes
+        if: always()
+        run: |
+          scripts/security/stack.sh down || true
+          SEC_STACK=b scripts/security/stack.sh down || true
 
   dast:
     name: DAST (OWASP ZAP)

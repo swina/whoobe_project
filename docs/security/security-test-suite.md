@@ -305,6 +305,15 @@ Generates a self-signed certificate for `localhost`, renders the production edge
 #### 2.5.17 Container images - `scripts/security/images/run-trivy-image.sh [image...]` (`pnpm security:images`)
 `trivy image` (vulnerabilities, HIGH/CRITICAL, `--ignore-unfixed`) on the throwaway-stack images (build them first with `stack.sh up`), the Garage image and postgres. Gating: the five own images and Garage; postgres and MinIO (overlay only) are advisory (vendor dependencies, F-050). Accepted CVEs go in `scripts/security/images/.trivyignore` with a reason and an `exp:` date. Reports: `scripts/security/reports/<date>/trivy-image-*.json`.
 
+#### 2.5.18 Workspace isolation - `scripts/security/isolation/` (`pnpm security:isolation`)
+Two throwaway stacks stand for two workspaces of one host: A (`.env.sectest`) and B (`SEC_STACK=b`, `.env.sectest-b`, ports +200, own project, database `whoobe_sec_test_b`, bucket and secrets; `gen-env.sh --offset 200 --name b`). `isolation/run.sh` starts both with only the services the tests need (postgres, garage, core-api, asset-processor, gateway) and removes B afterwards. `isolation/isolation.test.ts` (14 tests) checks that they share nothing:
+- **by construction**: different projects, ports, databases, buckets and containers; every secret and credential differs (compared without printing values); separate Docker networks, a service name resolves to its own workspace only and the other workspace's containers do not resolve at all;
+- **sessions and accounts**: A's session cookie replayed on B's core-api and asset-processor is 401 (same host: the browser sends the cookie to both); each administrator's credentials only work at home; the same e-mail in both workspaces has independent passwords and deleting one account leaves the other; roles do not leak;
+- **objects**: an asset uploaded to A (public and private) is 404 on B with and without B's session; B's asset list does not contain it; the DAM service token of one workspace reads nothing in the other even for an object that exists in both; one workspace's S3 key is refused by the other's store (direct S3, both directions, both bucket names);
+- **databases**: one workspace's database password is refused by the other's PostgreSQL (`password authentication failed`) and each database holds only its own users;
+- **gateway**: both answer from their own state, different peppers, a foreign site key is refused.
+It deliberately does **not** cover the shared pieces of a real host (the reverse proxy and the host itself) nor a compromised container.
+
 ### 2.6 Known-finding convention
 
 `lib/known.ts` provides `known('F-0xx', name, fn)`: a test that asserts the secure behaviour but is *expected* to

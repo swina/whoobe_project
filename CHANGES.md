@@ -1,3 +1,9 @@
+## [Workspace isolation tests; images, TLS and isolation in CI] — 2026-10-04
+- Branch: `master`. Closes two open items of the security status summary.
+- **Isolation suite** (`scripts/security/isolation/`, `pnpm security:isolation`, 14 tests): stack A + a second disposable stack B (`SEC_STACK=b`: project `whoobe-sectest-b`, `.env.sectest-b`, ports +200, own DB/bucket/secrets; `gen-env.sh --offset N --name SUFFIX`; `stack.sh` `SEC_STACK` and `SEC_SERVICES`). Checks sessions, credentials, accounts, roles, assets, service token, direct S3 keys (via `@aws-sdk/client-s3`, new dev dependency of the security package), PostgreSQL passwords, Docker networks/name resolution, secrets and the gateway: nothing crosses between the two. First run found no isolation defect. Sanity check by mutation: giving B the same `DAM_SERVICE_TOKEN` as A makes two tests fail (secrets-differ and service-token), restoring it makes all pass. `lib/png.ts` is a shared tiny-PNG helper.
+- **CI** (`.github/workflows/security.yml`, actionlint clean): `stack-tests` now also runs `pnpm security:images`; new job `tls` (testssl on `nginx:alpine` and `nginx:1.18-alpine`; PRs, push, nightly) and job `isolation` (push, nightly, manual). Still **not run on GitHub**.
+- Docs: `docs/security/security-test-suite.md` (2.5.18), `scripts/security/README.md`, status summary. Note: the suite does not cover the parts a real host shares between workspaces (reverse proxy, the machine itself).
+
 ## [Security status summary refreshed] — 2026-10-04
 - Branch: `master`. `docs/plans/security/status-summary.md`: date, counts (50 findings, 1039 API tests), TLS/images now covered, F-024 decided (removed from the open items), new open items (F-050 residual, first CI run, workspace isolation tests, live-host TLS, not-covered list). Documentation only.
 

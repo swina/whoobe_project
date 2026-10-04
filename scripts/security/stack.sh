@@ -2,20 +2,25 @@
 # Throwaway Whoobe stack for security / Docker checks: separate compose project,
 # own volumes, host ports = dev ports + 100 (see .env.sectest).
 # Usage: scripts/security/stack.sh build | up | status | down
+# SEC_STACK=b   a second, fully separate stack (project whoobe-sectest-b, .env.sectest-b, ports +200) for the
+#               workspace-isolation tests; SEC_SERVICES="postgres garage core-api ..." starts only those (default: all).
 # S3 store: Garage by default (creates its own bucket/key); S3_BACKEND=minio uses docker-compose.minio.yml instead.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-ENVF="${SEC_ENV_FILE:-$ROOT/scripts/security/.env.sectest}"
-[ -f "$ENVF" ] || "$ROOT/scripts/security/gen-env.sh" "$ENVF"   # first use (also in CI): generate it
+SUFFIX=""; PROJECT=whoobe-sectest; GEN=()
+if [ "${SEC_STACK:-}" = b ]; then SUFFIX=-b; PROJECT=whoobe-sectest-b; GEN=(--offset 200 --name b); fi
+ENVF="${SEC_ENV_FILE:-$ROOT/scripts/security/.env.sectest$SUFFIX}"
+[ -f "$ENVF" ] || "$ROOT/scripts/security/gen-env.sh" "${GEN[@]}" "$ENVF"   # first use (also in CI): generate it
 export ENV_FILE="$ENVF"   # service env_file (compose resolves it relative to the compose file)
 FILES=(-f "$ROOT/docker-compose.yml")
 export COMPOSE_PROFILES=local-s3
 [ "${S3_BACKEND:-garage}" = minio ] && FILES+=(-f "$ROOT/docker-compose.minio.yml")
-dc() { docker compose -p whoobe-sectest --env-file "$ENVF" "${FILES[@]}" "$@"; }
+dc() { docker compose -p "$PROJECT" --env-file "$ENVF" "${FILES[@]}" "$@"; }
 case "${1:-}" in
   build)  dc build ;;
   up)
-    dc up -d --build
+    # shellcheck disable=SC2086  # SEC_SERVICES is a word list on purpose
+    dc up -d --build ${SEC_SERVICES:-}
     # one-time bucket (idempotent)
     # read only what is needed: the file is a compose env file, not valid shell (VITE_FONT_FAMILIES contains '|')
     getv() { grep -E "^$1=" "$ENVF" | head -n1 | cut -d= -f2-; }
