@@ -12,7 +12,7 @@
 #   <index>     Small positive integer (1, 2, 3, ...), unique per
 #               workspace on this host. Ports are derived from it (index
 #               * 10 added to each service's usual dev port: 3000s/5432/
-#               9000s), so two workspaces never collide - keep a note of
+#               9000), so two workspaces never collide - keep a note of
 #               which index belongs to which workspace.
 #
 # What it does:
@@ -20,7 +20,7 @@
 #      DB name, S3 bucket, ports, hostname, and freshly generated
 #      secrets/credentials (nothing shared with any other workspace).
 #   2. Brings up a dedicated Compose project (`ws-<slug>`) from the
-#      shared docker-compose.yml - its own Postgres, MinIO, core-api,
+#      shared docker-compose.yml - its own Postgres, Garage (S3), core-api,
 #      asset-processor, gateway, admin-dashboard, whoobe-one-spike.
 #      core-api creates/migrates its own database schema on first boot,
 #      so there is no separate migration step (see docs/deployment.md).
@@ -147,6 +147,11 @@ set_env "VITE_BASE_URL" "/whoobe-one/"
 set_env "SEED_ADMIN_EMAIL" "${SEED_EMAIL}"
 set_env "SEED_ADMIN_PASSWORD" "${SEED_PASSWORD}"
 # the reverse proxy runs on this host (network_mode: host): the application ports need not be reachable from outside
+# one reverse-proxy hop (nginx on this host) in front of the API and the gateway: without it every client looks like
+# 127.0.0.1 to the login lockout and the rate limiters
+set_env "TRUST_PROXY" "1"
+# link in password-reset e-mails (the admin is reached on the bare hostname, not on its per-port address)
+set_env "ADMIN_PUBLIC_URL" "https://${HOSTNAME_ARG}"
 set_env "WS_APP_BIND_ADDRESS" "127.0.0.1"
 set_env "WS_DATA_BIND_ADDRESS" "127.0.0.1"
 set_env "WS_POSTGRES_PORT" "${P_POSTGRES}"

@@ -84,8 +84,8 @@ if $KEEP_VOLUMES; then
 else
   echo "    - volumi dati (Postgres/S3): ELIMINATI DEFINITIVAMENTE"
 fi
-echo "    - deploy/nginx/${SLUG}.conf"
-echo "    - ${ENV_FILE}"
+echo "    - deploy/nginx/${SLUG}.conf, ${SLUG}-ssl.conf, _locations-${SLUG}.inc"
+if $KEEP_VOLUMES; then echo "    - ${ENV_FILE}: CONSERVATO"; else echo "    - ${ENV_FILE}"; fi
 echo
 
 if ! $AUTO_YES; then
@@ -100,8 +100,8 @@ else
   docker compose -p "ws-${SLUG}" --env-file "$ENV_FILE" down -v
 fi
 
-echo ">>> Rimuovo deploy/nginx/${SLUG}.conf ..."
-rm -f "deploy/nginx/${SLUG}.conf"
+echo ">>> Rimuovo i vhost deploy/nginx/${SLUG}*.conf e _locations-${SLUG}.inc (HTTP, HTTPS e routing) ..."
+rm -f "deploy/nginx/${SLUG}.conf" "deploy/nginx/${SLUG}-ssl.conf" "deploy/nginx/_locations-${SLUG}.inc"
 
 echo ">>> Aggiorno il reverse proxy ..."
 if command -v nginx >/dev/null 2>&1; then
@@ -122,8 +122,13 @@ else
   fi
 fi
 
-echo ">>> Rimuovo ${ENV_FILE} ..."
-rm -f "$ENV_FILE"
+if $KEEP_VOLUMES; then
+  # the env file is the only copy of the credentials that open the kept volumes: never delete it in that case
+  echo ">>> ${ENV_FILE} CONSERVATO (--keep-volumes): contiene le credenziali dei volumi dati conservati - custodiscilo (mode 600)."
+else
+  echo ">>> Rimuovo ${ENV_FILE} ..."
+  rm -f "$ENV_FILE"
+fi
 
 echo
 echo ">>> Workspace '${SLUG}' rimosso."
