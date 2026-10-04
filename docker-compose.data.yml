@@ -32,6 +32,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    # comes back by itself after a reboot / daemon restart (the dependent services already do)
+    restart: unless-stopped
 
   # One-shot: hands a fresh (root-owned) data volume to the unprivileged garage user. Idempotent and fast.
   garage-perms:
