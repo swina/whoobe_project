@@ -8,6 +8,7 @@ This guide covers the day-to-day operation: provisioning a new workspace, verify
 
 - **Object storage: Garage** (S3-compatible, `docker/garage`) inside the workspace's own Compose project. It creates its own access key and bucket on first start; nothing to set up by hand. Production-grade alternatives (AWS S3, OCI, an enterprise S3) are a configuration change: see [Using an external S3](#using-an-external-s3-instead-of-garage) and `docs/storage-backends.md`. Self-hosting MinIO is discouraged.
 - **Reverse-proxy awareness**: the provisioning sets `TRUST_PROXY=1` (login lockout and rate limits see the real client address instead of `127.0.0.1`) and `ADMIN_PUBLIC_URL=<scheme>://<hostname>` (links in password-reset e-mails).
+- **Private assets are private**: `DAM_ENFORCE_ASSET_VISIBILITY=true` — an asset whose record is not public answers 404 to anonymous requests (a logged-in user sees it). Assets used by public pages and published sites must be marked public (the `/public/**` folder rule, or per asset), otherwise visitors get 404.
 - **Loopback-only data and app ports**: Postgres and the S3 port are published on `127.0.0.1`, and so are the application ports (`WS_APP_BIND_ADDRESS=127.0.0.1`): only the reverse proxy reaches them.
 - **Fresh secrets per workspace**: DB and S3 credentials, `MIGRATION_SOURCE_ENCRYPTION_KEY`, `GATEWAY_AUTH_ENCRYPTION_KEY`, `DAM_SERVICE_TOKEN`, `SITE_API_KEY_PEPPER`, `TOTP_ENCRYPTION_KEY` — none shared with another workspace or with dev's `.env`.
 - **TLS policy** (when you enable HTTPS): TLS 1.2/1.3 only, forward-secret AEAD ciphers, HSTS for one year (F-049).
@@ -89,6 +90,7 @@ It issues the certificate, switches the HTTP vhost to a redirect (except the cha
 - Log in with the seed admin credentials from the summary and **change the password immediately**.
 - Upload an asset in the admin and open it: it is served by the asset-processor at `/dam-asset/...` (the browser never talks to the S3 store).
 - Isolation: create a page/asset in this workspace and check it does **not** appear in any other workspace or in the dev stack.
+- Visibility: upload one asset as private and one under `/public/`, then open both URLs in a private window: the private one must answer 404, the public one the image.
 - Optional: from this repo, `pnpm security:tls` checks the TLS template and `pnpm security:images` scans the built images (they use the throwaway test stack, not your workspace).
 
 ## Managing an existing workspace
@@ -170,6 +172,7 @@ Also back up `.env.client-a` itself — it is not derivable from anything else a
 - **`garage` exits with "S3_ACCESS_KEY_ID must be 'GK' followed by 24 hex characters"**: the env file has credentials in another format (typically a workspace from before the Garage default, or a hand-edited one). See [Workspaces created before the Garage default](#workspaces-created-before-the-garage-default).
 - **Admin dashboard loads but Gateway/DAM calls fail**: check that `deploy/nginx/<slug>.conf` was reloaded (`nginx -t` first) and that its ports match the ones in `.env.<slug>` — a stale config left over from a re-provision is the usual cause.
 - **Everybody is locked out of login after a few failures / one user's mistakes block others**: the API sees all clients as the proxy's address; check `TRUST_PROXY=1` in `.env.<slug>` and that the vhost passes `X-Forwarded-For` (the shipped templates do).
+- **A private asset is reachable without login**: `DAM_ENFORCE_ASSET_VISIBILITY` is missing or `false` in `.env.<slug>` (workspaces provisioned before 2026-10-04). Add `DAM_ENFORCE_ASSET_VISIBILITY=true` and recreate the asset-processor: `docker compose -p ws-<slug> --env-file .env.<slug> up -d asset-processor`.
 - **Login page: "Could not reach core-api to check session: TypeError: Failed to fetch"**: the SPAs were built with URLs that do not match how you reach the workspace — typically `https://` baked in for a host that only answers on HTTP (fixed in the script: local names now get `http`). Check `VITE_CORE_API_URL` & co in `.env.<slug>`, correct the scheme and rebuild (the URLs are compiled into the SPAs): `docker compose -p ws-<slug> --env-file .env.<slug> up -d --build`. Also make sure the hostname resolves to this host (`/etc/hosts` for `.local` names).
 - **Password-reset e-mails link to the wrong address**: set `ADMIN_PUBLIC_URL` in `.env.<slug>` and restart core-api.
 - **Browser insists on HTTPS after a trial run**: HSTS was served for the host; clear it in the browser (`chrome://net-internals/#hsts`) or use another hostname for trials, and use `--staging` for certificate experiments.
