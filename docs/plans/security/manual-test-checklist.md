@@ -82,7 +82,7 @@ Menu names below are indicative; use the nearest equivalent if the label differs
 ## 7. Not testable here (open items)
 
 - F-001 rebuild Oracle with fresh secrets; also rebuild images built before F-020 (they contain `.env.*` and host logs).
-- F-024 is enforced here because `DAM_ENFORCE_ASSET_VISIBILITY=true`; decide before enabling it in production.
+- F-024: visibility is enforced by default (`DAM_ENFORCE_ASSET_VISIBILITY` on; `/public/**` is public, everything else needs a session).
 - SPA Content-Security-Policy, sharp pixel limit, MFA brute-force limits, public search/AI rate limits (plan 3.15), gateway site-auth (3.9).
 
 ## 8. Clean up

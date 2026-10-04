@@ -72,7 +72,7 @@ Services run with `NODE_ENV=production`, so production code paths (error sanitis
 cookie handling) are what is tested. `stack.sh down` deletes the stack **and its volumes**.
 
 The test stack is configured with `TRUST_PROXY=1` so tests can simulate distinct client addresses through
-`X-Forwarded-For` (lockout and rate-limit tests), and with `DAM_ENFORCE_ASSET_VISIBILITY=true` so private-asset
+`X-Forwarded-For` (lockout and rate-limit tests), and with the default `DAM_ENFORCE_ASSET_VISIBILITY` (on) so private-asset
 enforcement is exercised.
 
 ### 2.3 Safety controls (enforced in code)

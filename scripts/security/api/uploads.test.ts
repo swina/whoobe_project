@@ -43,8 +43,10 @@ let adminAsset: Client
 let anon: Client
 const uploaded: string[] = []
 
-async function put(name: string, type: string, data: Uint8Array | string, pimcorePath = `${dir}/${name}`, isPublic = 'true') {
-  const r = await adminAsset.upload('/api/v1/dam/upload', { pimcorePath, isPublic }, { file: { name, type, data } })
+async function put(name: string, type: string, data: Uint8Array | string, pimcorePath = `${dir}/${name}`, isPublic: string | null = 'true') {
+  // null = send no isPublic field at all (the folder rules decide)
+  const fields: Record<string, string> = isPublic === null ? { pimcorePath } : { pimcorePath, isPublic }
+  const r = await adminAsset.upload('/api/v1/dam/upload', fields, { file: { name, type, data } })
   if (r.status === 200) uploaded.push(pimcorePath)
   return r
 }
@@ -129,6 +131,16 @@ describe('what an uploaded file can do once served from /dam-asset', () => {
     expect((await adminAsset.get(`/dam-asset/${up.json.s3Key}`)).status).toBe(200)
     const pub = await put('pub.png', 'image/png', png(8, 8), `${dir}/pub.png`, 'true')
     expect((await anon.get(`/dam-asset/${pub.json.s3Key}`)).status).toBe(200)
+  })
+
+  it('everything under /public (sub-folders included) is public without any client rule; elsewhere it is private', async () => {
+    const deep = await put('deep.png', 'image/png', png(8, 8), `/public/sec-${tag}/a/b/c/deep.png`, null)
+    expect(deep.status, deep.text.slice(0, 120)).toBe(200)
+    expect((await anon.get(`/dam-asset/${deep.json.s3Key}`)).status).toBe(200)
+    expect((await anon.get(`/dam-asset/${deep.json.thumbnails?.thumb?.split('/dam-asset/')[1]}`)).status).toBe(200)
+    const elsewhere = await put('else.png', 'image/png', png(8, 8), `${dir}/else.png`, null)
+    expect((await anon.get(`/dam-asset/${elsewhere.json.s3Key}`)).status).toBe(404)
+    expect((await adminAsset.get(`/dam-asset/${elsewhere.json.s3Key}`)).status).toBe(200)
   })
 
   it('the system private/ area is not served anonymously, but is to a logged-in user', async () => {
