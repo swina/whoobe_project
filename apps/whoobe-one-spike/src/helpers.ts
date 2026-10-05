@@ -291,7 +291,7 @@ export const PHRASING_ONLY_ELEMENTS = new Set(['p', 'h', 'span', 'pre'])
 
 const BLOCK_LEVEL_TAGS = new Set([
   'DIV', 'P', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'MAIN', 'NAV', 'ASIDE',
-  'UL', 'OL', 'LI', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH',
+  'TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH',
   'FORM', 'FIELDSET', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'PRE', 'HR', 'FIGURE', 'FIGCAPTION',
 ])
 
@@ -319,7 +319,8 @@ export function stripBlockLevelTags(html: string): string {
   const unwrap = (node: globalThis.Element) => {
     for (const child of Array.from(node.children)) {
       unwrap(child)
-      if (BLOCK_LEVEL_TAGS.has(child.tagName)) {
+      // TipTap wraps every list item's text in a <p>; unwrapping it would add a stray <br> per item.
+      if (BLOCK_LEVEL_TAGS.has(child.tagName) && !(child.tagName === 'P' && node.tagName === 'LI')) {
         const frag = document.createDocumentFragment()
         while (child.firstChild) frag.appendChild(child.firstChild)
         frag.appendChild(document.createElement('br'))

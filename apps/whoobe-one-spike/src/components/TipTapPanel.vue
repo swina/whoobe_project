@@ -1,10 +1,24 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div class="flex flex-col flex-1 min-h-0">
     <div v-if="editor" class="flex items-center gap-1 p-1.5 border-b flex-wrap shrink-0">
       <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('bold') }" title="Bold" @click="editor.chain().focus().toggleBold().run()"><Bold class="w-3.5 h-3.5" /></button>
       <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('italic') }" title="Italic" @click="editor.chain().focus().toggleItalic().run()"><Italic class="w-3.5 h-3.5" /></button>
       <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('strike') }" title="Strikethrough" @click="editor.chain().focus().toggleStrike().run()"><Strikethrough class="w-3.5 h-3.5" /></button>
       <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('code') }" title="Code" @click="editor.chain().focus().toggleCode().run()"><Code class="w-3.5 h-3.5" /></button>
+      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('underline') }" title="Underline" @click="editor.chain().focus().toggleUnderline().run()"><UnderlineIcon class="w-3.5 h-3.5" /></button>
+      <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('link') }" title="Link" @click="setLink"><LinkIcon class="w-3.5 h-3.5" /></button>
+      <label class="tt-btn cursor-pointer relative" title="Text colour">
+        <Palette class="w-3.5 h-3.5" :style="{ color: editor.getAttributes('textStyle').color || undefined }" />
+        <input type="color" class="absolute inset-0 opacity-0 cursor-pointer" :value="editor.getAttributes('textStyle').color || '#000000'" @input="editor.chain().focus().setColor(($event.target as HTMLInputElement).value).run()" />
+      </label>
+      <button type="button" class="tt-btn" title="Remove text colour" @click="editor.chain().focus().unsetColor().run()"><PaintBucket class="w-3.5 h-3.5" /></button>
+      <label class="tt-btn cursor-pointer relative" :class="{ 'tt-active': editor.isActive('highlight') }" title="Highlight">
+        <Highlighter class="w-3.5 h-3.5" />
+        <input type="color" class="absolute inset-0 opacity-0 cursor-pointer" value="#fef08a" @input="editor.chain().focus().setHighlight({ color: ($event.target as HTMLInputElement).value }).run()" />
+      </label>
+      <button type="button" class="tt-btn" title="Remove highlight" @click="editor.chain().focus().unsetHighlight().run()"><Eraser class="w-3.5 h-3.5" /></button>
+      <span class="w-px h-4 bg-gray-200 mx-0.5"></span>
+      <button v-for="a in ALIGNS" :key="a.value" type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive({ textAlign: a.value }) }" :title="`Align ${a.value}`" @click="editor.chain().focus().setTextAlign(a.value).run()"><component :is="a.icon" class="w-3.5 h-3.5" /></button>
       <span class="w-px h-4 bg-gray-200 mx-0.5"></span>
       <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('paragraph') }" title="Paragraph" @click="editor.chain().focus().setParagraph().run()"><Pilcrow class="w-3.5 h-3.5" /></button>
       <button
@@ -60,7 +74,13 @@ import type { Component } from 'vue'
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import TipTapImage from '@tiptap/extension-image'
-import { Bold, Braces, Code, Heading1, Heading2, Heading3, Heading4, Image, Italic, List, ListOrdered, Pilcrow, Quote, SeparatorHorizontal, Strikethrough } from '@lucide/vue'
+import Underline from '@tiptap/extension-underline'
+import Link from '@tiptap/extension-link'
+import TextStyle from '@tiptap/extension-text-style'
+import Color from '@tiptap/extension-color'
+import Highlight from '@tiptap/extension-highlight'
+import TextAlign from '@tiptap/extension-text-align'
+import { AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, Braces, Code, Eraser, Heading1, Heading2, Heading3, Heading4, Highlighter, Image, Italic, Link as LinkIcon, List, ListOrdered, PaintBucket, Palette, Pilcrow, Quote, SeparatorHorizontal, Strikethrough, Underline as UnderlineIcon } from '@lucide/vue'
 
 const HEADING_ICONS: Record<1 | 2 | 3 | 4, Component> = {
   1: Heading1,
@@ -68,6 +88,12 @@ const HEADING_ICONS: Record<1 | 2 | 3 | 4, Component> = {
   3: Heading3,
   4: Heading4,
 }
+const ALIGNS: { value: 'left' | 'center' | 'right' | 'justify'; icon: Component }[] = [
+  { value: 'left', icon: AlignLeft },
+  { value: 'center', icon: AlignCenter },
+  { value: 'right', icon: AlignRight },
+  { value: 'justify', icon: AlignJustify },
+]
 function headingIcon(level: 1 | 2 | 3 | 4): Component {
   return HEADING_ICONS[level]
 }
@@ -86,7 +112,17 @@ const editor = shallowRef<InstanceType<typeof Editor> | undefined>(undefined)
 onMounted(() => {
   editor.value = new Editor({
     content: props.modelValue,
-    extensions: [StarterKit, TipTapImage],
+    extensions: [
+      StarterKit,
+      TipTapImage,
+      Underline,
+      // openOnClick off: a click inside the editor must edit, not navigate.
+      Link.configure({ openOnClick: false }),
+      TextStyle,
+      Color,
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+    ],
     onUpdate: () => {
       emit('update:modelValue', editor.value!.getHTML())
     },
@@ -127,6 +163,14 @@ function toggleHtmlSource() {
     htmlSource.value = editor.value.getHTML()
   }
   showHtmlSource.value = !showHtmlSource.value
+}
+
+function setLink() {
+  if (!editor.value) return
+  const url = window.prompt('Link URL (empty to remove)', editor.value.getAttributes('link').href || 'https://')
+  if (url === null) return
+  if (url === '') editor.value.chain().focus().extendMarkRange('link').unsetLink().run()
+  else editor.value.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
 }
 
 function setImage() {
@@ -175,6 +219,8 @@ function setImage() {
 :deep(.ProseMirror ul) { list-style: disc; padding-left: 1.25em; }
 :deep(.ProseMirror ol) { list-style: decimal; padding-left: 1.25em; }
 :deep(.ProseMirror blockquote) { border-left: 2px solid #94a3b8; padding-left: 0.75em; opacity: 0.85; }
+:deep(.ProseMirror a) { color: #4f46e5; text-decoration: underline; }
+:deep(.ProseMirror mark) { border-radius: 0.15em; padding: 0 0.1em; }
 :deep(.ProseMirror code) { background: #f1f5f9; padding: 0.1em 0.35em; border-radius: 0.25em; font-size: 0.9em; }
 :deep(.ProseMirror img) { max-width: 100%; border-radius: 0.375em; }
 </style>

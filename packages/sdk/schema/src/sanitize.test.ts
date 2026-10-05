@@ -37,6 +37,17 @@ describe('sanitizeRichText', () => {
     expect(out).toContain('<li>a</li>')
   })
 
+  it('keeps editor colours and alignment, drops every other style', () => {
+    const out = sanitizeRichText('<p style="color: #ff0000; text-align: center">a</p><span style="background-color: rgb(1, 2, 3)">b</span><span style="color: hsl(10, 50%, 50%)">c</span>')
+    expect(out).toContain('color:#ff0000')
+    expect(out).toContain('text-align:center')
+    expect(out).toContain('background-color:rgb(1, 2, 3)')
+    expect(out).toContain('hsl(10, 50%, 50%)')
+    for (const bad of ['color: url(javascript:alert(1))', 'color: expression(alert(1))', 'background-color: var(--x)', 'position: fixed; top: 0', 'background: url(x)', 'text-align: foo']) {
+      expect(sanitizeRichText(`<p style="${bad}">x</p>`), bad).not.toMatch(/url\(|expression|var\(|position|fixed|foo/i)
+    }
+  })
+
   it('allows mailto/tel links and raster data images, refuses SVG data images and protocol-relative URLs', () => {
     expect(sanitizeRichText('<a href="mailto:a@b.c">m</a><a href="tel:+39123">t</a>')).toContain('href="mailto:a@b.c"')
     expect(sanitizeRichText('<img src="data:image/png;base64,iVBORw0KGgo=">')).toContain('data:image/png')

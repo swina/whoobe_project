@@ -646,7 +646,7 @@
        target where the gesture started, which is only ever the backdrop
        itself for a genuine outside click. -->
   <div v-if="showTipTap && editor.current" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @mousedown.self="showTipTap = false">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl h-96 flex flex-col overflow-hidden">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl h-[70vh] max-h-[40rem] flex flex-col overflow-hidden">
       <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
         <span class="text-xs font-semibold text-gray-600">Rich text editor</span>
         <button class="flex items-center gap-1 text-gray-400 hover:text-gray-700 text-xs" @click="showTipTap = false"><X class="w-3.5 h-3.5" /> Close</button>

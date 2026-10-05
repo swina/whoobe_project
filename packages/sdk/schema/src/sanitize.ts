@@ -2,7 +2,7 @@
 // Every renderer (the editor, the admin previews, the public API output, the SDK adapters) feeds such strings to
 // innerHTML / v-html, so anything an author - or an anonymous visitor through a public form - can put in a field
 // would otherwise run as script in the viewer's session. This keeps formatting, links and images, and removes
-// scripts, event handlers, javascript: URLs, frames, forms, styles and anything not listed.
+// scripts, event handlers, javascript: URLs, frames, forms, all styles but colour/background-colour/text-align, and anything not listed.
 import sanitizeHtml from 'sanitize-html'
 
 const ALLOWED_TAGS = [
@@ -13,15 +13,22 @@ const ALLOWED_TAGS = [
 
 const SAFE_DATA_IMAGE = /^data:image\/(?:png|jpe?g|gif|webp|avif);base64,[A-Za-z0-9+/=]+$/i
 
+// Inline styles the rich text editor produces (text colour, highlight, alignment). Only these three properties,
+// only plain colour/keyword values: no url(), expression(), var() or anything else that could load or run something.
+const COLOR_VALUE = [/^#[0-9a-f]{3,8}$/i, /^rgba?\(\s*[\d.]+%?\s*(?:,\s*|\s+)[\d.]+%?\s*(?:,\s*|\s+)[\d.]+%?\s*(?:[,/]\s*[\d.]+%?\s*)?\)$/i, /^hsla?\(\s*[\d.]+(?:deg)?\s*(?:,\s*|\s+)[\d.]+%\s*(?:,\s*|\s+)[\d.]+%\s*(?:[,/]\s*[\d.]+%?\s*)?\)$/i, /^[a-z]{3,20}$/i]
+
 const RICH_TEXT: sanitizeHtml.IOptions = {
   allowedTags: ALLOWED_TAGS,
   allowedAttributes: {
-    '*': ['class', 'title', 'lang', 'dir'],   // no id/name (DOM clobbering), no style, no on*
+    '*': ['class', 'title', 'lang', 'dir', 'style'],   // no id/name (DOM clobbering), no on*; style is cut down by allowedStyles
     a: ['href', 'target', 'rel', 'title'],
     img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
     td: ['colspan', 'rowspan'],
     th: ['colspan', 'rowspan'],
     ol: ['start'],
+  },
+  allowedStyles: {
+    '*': { color: COLOR_VALUE, 'background-color': COLOR_VALUE, 'text-align': [/^(?:left|right|center|justify)$/] },
   },
   allowedSchemes: ['http', 'https', 'mailto', 'tel'],
   allowedSchemesByTag: { img: ['http', 'https', 'data'] },
