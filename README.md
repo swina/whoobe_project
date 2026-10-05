@@ -106,8 +106,8 @@ Managed with **pnpm workspaces** + **Turborepo**.
 ## Install (for local development)
 
 ```bash
-git clone https://github.com/swina/whoobe_cms
-cd whoobe_cms
+git clone https://github.com/swina/whoobe_project
+cd whoobe_project
 pnpm install
 ```
 
@@ -186,7 +186,7 @@ VITE_FONT_FAMILIES=Alfa+Slab+One|Asap+Condensed|Abel|Alice|Alegreya|Amethysta|Ar
 The quickest way to test Whoobe CMS is to run the `docker-compose.yml`
 
 ```
-$ git clone https://github.com/swina/whoobe_cms
+$ git clone https://github.com/swina/whoobe_project
 $ cd whoobe_cms
 $ docker compose up -d --build
 ```
