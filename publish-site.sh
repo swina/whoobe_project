@@ -30,7 +30,7 @@ echo -e "${BOLD}${CYAN}╚══════════════════
 echo ""
 
 # ── 1. CMS API URL ─────────────────────────────────────────────────────────
-DEFAULT_API_URL="${PUBLISH_API_URL:-https://whoobecms.devophub.space}"
+DEFAULT_API_URL="${PUBLISH_API_URL:-http://localhost:3003}"
 echo -e "${YELLOW}Tip:${NC} This must be the core-api URL, not the admin dashboard."
 echo -e "     Production: ${CYAN}https://cms.example.com${NC}  (no port)"
 echo -e "     Local dev:  ${CYAN}http://whoobecms.local:3003${NC}  (port 3003)"

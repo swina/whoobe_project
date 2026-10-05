@@ -3,16 +3,21 @@
 # Usage: ./deploy.sh [--dry-run]
 #   --dry-run  Show what would be synced without transferring anything.
 #
+# This is the single-host PM2 path (docs/release/operations/deployment.md, section 7): it copies the repository to the
+# host, installs, builds every app and (re)starts the processes from ecosystem.config.cjs. The Docker Compose path
+# for one workspace per customer is scripts/create-workspace.sh (docs/release/operations/creating-workspaces.md).
+#
 # Prerequisites:
-#   1. Set DEPLOY_HOST and DEPLOY_PATH below (or export them as env vars).
+#   1. Export DEPLOY_HOST (user@host) and DEPLOY_PATH (absolute directory on the host). There are no defaults:
+#      the script never guesses a server.
 #   2. SSH key authentication set up for the remote host.
 #   3. The remote .env is maintained separately (never overwritten by rsync).
 
 set -euo pipefail
 
 # ── Config ──────────────────────────────────────────────────────────────────
-REMOTE_HOST="${DEPLOY_HOST:-ubuntu@whoobecms.devophub.space}"
-REMOTE_PATH="${DEPLOY_PATH:-/opt/whoobe/whoobe_cms}"
+REMOTE_HOST="${DEPLOY_HOST:?Set DEPLOY_HOST to user@host (there is no default)}"
+REMOTE_PATH="${DEPLOY_PATH:?Set DEPLOY_PATH to the directory on the host (there is no default)}"
 LOCAL_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 RSYNC_FLAGS=(-avz --delete)
@@ -27,6 +32,15 @@ EXCLUDES=(
   --exclude 'deploy.sh'
   --exclude '*.log'
   --exclude 'sites'
+  --exclude '.release'
+  --exclude '.opencode'
+  --exclude 'scripts/security/reports'
+  --exclude 'scripts/security/test-results'
+  # --delete would remove, on the host, whatever exists only there. Protect what the host creates and the repository
+  # does not contain: Let's Encrypt state (certificates AND private keys) and the nginx files generated per workspace.
+  --filter 'P /deploy/certbot/***'
+  --filter 'P /deploy/nginx/*.conf'
+  --filter 'P /deploy/nginx/_locations-*.inc'
 )
 
 DRY_RUN=()
@@ -56,7 +70,7 @@ ssh "$REMOTE_HOST" <<-SSH_EOF
   cd "$REMOTE_PATH"
 
   echo "--- pnpm install ---"
-  pnpm install
+  pnpm install --frozen-lockfile
 
   echo "--- pnpm build ---"
   pnpm build
@@ -70,4 +84,4 @@ ssh "$REMOTE_HOST" <<-SSH_EOF
 SSH_EOF
 
 echo ""
-echo ">>> Deploy complete. Verify at https://whoobecms.devophub.space"
+echo ">>> Deploy complete on $REMOTE_HOST. Check the services: ssh $REMOTE_HOST pm2 list"
