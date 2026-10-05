@@ -35,12 +35,6 @@
       "file": "packages/core/src/dam/s3-provider.ts",
       "reason": "false positive: a code comment",
       "review": "2027-01-31"
-    },
-    {
-      "file": ".env.aura",
-      "commit": "94f18fb",
-      "reason": "F-001: old local-service secrets in history; to be rotated (Oracle rebuild), history is not rewritten",
-      "review": "2026-12-31"
     }
   ],
   "semgrep": [
