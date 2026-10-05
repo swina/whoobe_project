@@ -21,3 +21,6 @@ scripts/security/routes.generated.json
 scripts/security/test-results/
 scripts/security/playwright-report/
 scripts/security/reports/zap-work/
+
+# release helper output (scripts/release.sh): drafts of the release notes
+.release/

@@ -4,6 +4,8 @@ The documentation in this folder describes the product **as it is delivered and 
 checked against the code at the time of the last reorganisation (see [Status](#status)); the design history of the
 project stays in [`../plans`](../plans) and is deliberately not part of a release.
 
+**Aligned to release:** not released yet (set by `scripts/release.sh prepare`, see [`release-process.md`](release-process.md))
+
 ## Contents
 
 | Folder | Audience | What is in it |
@@ -13,6 +15,7 @@ project stays in [`../plans`](../plans) and is deliberately not part of a releas
 | [`operations/`](operations) | Operators | [Deployment](operations/deployment.md), [deployment mini-guide](operations/miniguide-deployment.md), [creating and managing workspaces](operations/creating-workspaces.md), [storage backends](operations/storage-backends.md) |
 | [`security/`](security) | Security and compliance reviewers, fork maintainers | [Security CI for forks](security/security-ci-for-forks.md), [automated test suite](security/security-test-suite.md), [status summary](security/status-summary.md), [findings register](security/findings.md), [test plan](security/security-testing-plan.md), [manual checklist](security/manual-test-checklist.md) |
 | [`api/`](api) | Integrators | [API reference](api/api-reference.md) and [`openapi.yaml`](api/openapi.yaml), both generated from one route table by [`gen-api-docs.py`](api/gen-api-docs.py) |
+| [`release-process.md`](release-process.md) | Maintainers | How a release is made: versions, support policy, release gates, procedure |
 
 ## What is not here
 

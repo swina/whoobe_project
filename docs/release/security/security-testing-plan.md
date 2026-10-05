@@ -176,8 +176,7 @@ scripts/security/
   browser/
     xss-sinks.spec.ts       3.6
     token-storage.spec.ts   cookies/localStorage secrets in SPA
-  run-periodic.sh           dated report + baseline diff + exit code
-  baseline.json             accepted findings
+  (the periodic run is the GitHub Actions workflow .github/workflows/security.yml; locally `pnpm security:all`)
   static/
     run-semgrep.sh  run-gitleaks.sh  run-audit.sh  run-trivy.sh  run-shellcheck.sh
   payloads/                 xss.txt, sqli.txt, traversal.txt, ssrf-targets.txt, upload fixtures
@@ -202,7 +201,7 @@ Entry points: `pnpm security:static` (no running stack needed), `pnpm security:a
 | 3 - Injection & content (2 d) | 3.3, 3.6, 3.7, 3.14 | medium | No payload executes in any sink; no SQLi signal; uploads safe |
 | 4 - Gateway, SSRF, AI, publish (2 d) | 3.8, 3.9, 3.10, 3.11 | medium | SSRF policy documented and tested; shell scripts quoted |
 | 5 - Infra & DAST (1 d) | 3.12, ZAP baseline + API scan, testssl, rate-limit tests 3.15 | small | ZAP baseline has no High; headers set |
-| 6 - CI, periodic runs & regression (1 d) | GitHub Actions: static on every PR, API/browser suites on merge to `master` and nightly; scheduled scans (see 7.1); `run-periodic.sh`, baseline diff; fail on new High | small | Suite wired, documented in `docs/`; a scheduled run produces a dated report |
+| 6 - CI, periodic runs & regression (1 d) | GitHub Actions: static on every PR, API/browser suites on merge to `master` and nightly; scheduled scans (see 7.1); baseline diff; fail on new High | small | Suite wired, documented in `docs/`; a scheduled run produces a dated report |
 
 ### 7.1 Periodic runs
 
@@ -215,8 +214,8 @@ The suites are repeatable at any time: each run creates a disposable DB and a se
 | Dependency scan (`pnpm audit`, `osv-scanner`) and secret scan of full history | weekly (new CVEs appear without code changes) | CI schedule |
 | ZAP baseline/API scan, `trivy image`, `testssl.sh` | monthly and before each release | CI schedule or manual |
 
-- `scripts/security/run-periodic.sh`: runs `security:all` for a chosen profile (`SECURITY_PROFILE=lan-dev|container`), writes the redacted report to `reports/<YYYY-MM-DD>/`, and can be called from cron or `/schedule` for local runs.
-- **Baseline**: `scripts/security/baseline.json` lists accepted/known findings (ID, reason, review date). A run reports only findings not in the baseline; expired review dates reappear.
+- Periodic runs: `.github/workflows/security.yml` (nightly, monthly DAST) in CI, and `pnpm security:all` locally; both write the dated report to `scripts/security/reports/<YYYY-MM-DD>/`. (A `run-periodic.sh` wrapper with profiles was planned and replaced by the workflow.)
+- **Baseline**: `scripts/security/static/baseline.json` lists accepted/known findings (ID, reason, review date). A run reports only findings not in the baseline; expired review dates reappear.
 - **Exit code**: non-zero on any new High/Critical (or any Medium once the baseline is clean), so CI fails and a notification can hang off it.
 - **Route drift**: new routes absent from `routes.expected.json` fail the run (3.2), which catches code changes between periodic runs.
 - Trend: each report keeps counts per severity so regressions over time are visible.
