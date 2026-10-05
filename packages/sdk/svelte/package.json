@@ -1,6 +1,7 @@
 {
   "name": "@whoobe-cms/svelte",
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "svelte": "./dist/index.js",
   "main": "./dist/index.js",

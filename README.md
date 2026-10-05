@@ -301,3 +301,9 @@ node packages/publish/bin/whoobe-publish.js \
 ```
 
 See `docs/release/guides/publish/website-publishing.md` for the full guide.
+
+## License
+
+Whoobe CMS is released under the [MIT License](LICENSE.md). Copyright (c) 2026 Antonio Nardone.
+
+The license covers this repository's own code and documentation; the third-party packages it depends on keep their own licenses.

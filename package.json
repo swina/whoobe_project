@@ -1,5 +1,6 @@
 {
   "name": "pimcore-to-custom",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "build": "turbo run build",
