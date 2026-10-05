@@ -20,6 +20,13 @@ const editor = useEditorStore()
 
 onMounted(async () => {
   try {
+    // Theme and template body of the page being previewed (see DocumentPreview.vue's storeDocForPreview).
+    const ctxRaw = sessionStorage.getItem('whoobe-preview-ctx')
+    if (ctxRaw) {
+      const ctx = JSON.parse(ctxRaw)
+      if (ctx.websiteTheme) editor.setWebsiteTheme(ctx.websiteTheme)
+      editor.setTemplateBody(ctx.templateBody ?? null)
+    }
     const raw = sessionStorage.getItem('whoobe-preview-doc')
     if (raw) {
       const parsed = JSON.parse(raw)
