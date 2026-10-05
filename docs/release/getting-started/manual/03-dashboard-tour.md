@@ -26,7 +26,7 @@ Once signed in, the dashboard has four regions that stay on screen no matter wha
 
 ### The sidebar
 
-The left-hand sidebar is the main navigation. Each entry corresponds to one content type or admin area: Websites, Pages, Snippets, Components, Assets, Data Objects, Documents, Outgoing Mail, Themes, Integrations, System Logs, and Settings. Clicking one opens (or switches to) its tab. See the terminology table in the manual's introduction (`docs/manual/README.md`) if any of these names aren't self-explanatory yet — a few of them mean something more specific in Whoobe than the label alone suggests.
+The left-hand sidebar is the main navigation. Each entry corresponds to one content type or admin area: Websites, Pages, Snippets, Components, Assets, Data Objects, Documents, Outgoing Mail, Themes, Integrations, System Logs, and Settings. Clicking one opens (or switches to) its tab. See the terminology table in the manual's introduction (`docs/release/getting-started/manual/README.md`) if any of these names aren't self-explanatory yet — a few of them mean something more specific in Whoobe than the label alone suggests.
 
 Three of these entries expand into a tree when you click the small chevron next to their icon, rather than only opening a flat list:
 

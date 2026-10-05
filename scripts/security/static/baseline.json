@@ -22,7 +22,7 @@
   ],
   "gitleaks": [
     {
-      "file": "docs/plans/security/security-testing-plan.md",
+      "file": "docs/release/security/security-testing-plan.md",
       "reason": "false positive: prose in the plan",
       "review": "2027-01-31"
     },

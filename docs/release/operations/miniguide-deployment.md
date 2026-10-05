@@ -32,7 +32,7 @@ cd whoobe_cms
 docker compose up -d --build
 ```
 
-Set the credentials in `.env` first (copy `.env.example`; `S3_ACCESS_KEY_ID=GK$(openssl rand -hex 12)`, `S3_SECRET_ACCESS_KEY=$(openssl rand -hex 32)`). The S3 store (Garage) creates its own key and bucket on first start: no manual bucket setup. Object storage options (MinIO, AWS S3, enterprise S3): `docs/storage-backends.md`.
+Set the credentials in `.env` first (copy `.env.example`; `S3_ACCESS_KEY_ID=GK$(openssl rand -hex 12)`, `S3_SECRET_ACCESS_KEY=$(openssl rand -hex 32)`). The S3 store (Garage) creates its own key and bucket on first start: no manual bucket setup. Object storage options (MinIO, AWS S3, enterprise S3): `docs/release/operations/storage-backends.md`.
 
 **What happens internally:**
 1. `Dockerfile` multi-stage build: installs all deps, compiles TypeScript, builds Vite SPAs
@@ -117,7 +117,7 @@ Good for: **real users, public internet, custom domain.**
 
 All services run natively on a single VM (or separate VMs). Postgres and MinIO are installed as system services. App servers run under PM2. nginx terminates SSL and reverse-proxies to the apps.
 
-Full production guide: [`docs/deployment.md`](deployment.md) (Oracle Free Tier, 469 lines).
+Full production guide: [`docs/release/operations/deployment.md`](deployment.md) (Oracle Free Tier, 469 lines).
 
 ### Architecture
 
@@ -160,7 +160,7 @@ sudo npm install -g pnpm@9 pm2
 # 3. Install MinIO (or use OCI Object Storage)
 wget https://dl.min.io/server/minio/release/linux-arm64/minio
 sudo mv minio /usr/local/bin/
-# Create systemd service (see docs/deployment.md)
+# Create systemd service (see docs/release/operations/deployment.md)
 
 # 4. Configure PostgreSQL
 sudo -u postgres psql -c "CREATE USER whoobe WITH PASSWORD 'strong_password';"
@@ -172,7 +172,7 @@ cd /opt/whoobe/cms
 pnpm install
 pnpm build
 
-# 6. Create .env (see docs/deployment.md for full template)
+# 6. Create .env (see docs/release/operations/deployment.md for full template)
 #    Key changes from dev .env:
 #    - DB_HOST=127.0.0.1
 #    - S3_ENDPOINT_HOSTNAME=127.0.0.1
@@ -187,7 +187,7 @@ pm2 start ecosystem.config.cjs
 pm2 save
 pm2 startup
 
-# 8. Configure nginx (see docs/deployment.md for full config)
+# 8. Configure nginx (see docs/release/operations/deployment.md for full config)
 #    - Proxy / → admin-dashboard:3000
 #    - Proxy /whoobe-one/* → whoobe-one-spike:3006
 #    - Proxy /auth|/pages|... → core-api:3003

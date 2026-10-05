@@ -492,6 +492,6 @@ Deploy to S3 / Cloudflare Pages / Netlify.
    └── Verify pages, SEO metadata, images, forms, search
 
 5. Document the procedure
-   ├── docs/deployment.md — add "Publishing a website" section
+   ├── docs/release/operations/deployment.md — add "Publishing a website" section
    └── Include: prerequisites, CLI usage, Vercel setup, custom domain
 ```

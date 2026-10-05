@@ -11,7 +11,7 @@ what they assert, how results are judged, and what they do *not* cover.
 | `pnpm security:all` | Runs both, static first; fails if either fails | Yes (for the API part) |
 
 Source of truth: `scripts/security/` (harness and suites), `package.json` (entry points),
-`docs/plans/security/security-testing-plan.md` (test plan), `docs/plans/security/findings.md` (findings register,
+`docs/release/security/security-testing-plan.md` (test plan), `docs/release/security/findings.md` (findings register,
 IDs `F-0xx`). Every statement below is traceable to those files; file references are given throughout so a
 reviewer can verify them.
 
@@ -288,7 +288,7 @@ Needs Chromium (`pnpm exec playwright install chromium` and the system libraries
 #### 2.5.15 DAST with OWASP ZAP - `scripts/security/dast/run-zap.sh` (plan phase 5)
 
 ZAP (docker, `ghcr.io/zaproxy/zaproxy:stable`) against the disposable stack only (`prepare.ts` applies the same
-safety rules as the other suites). `docs/api/openapi.yaml` is split by service tag (118 core-api, 18 gateway, 18
+safety rules as the other suites). `docs/release/api/openapi.yaml` is split by service tag (118 core-api, 18 gateway, 18
 asset-processor paths) and each part is scanned with `zap-api-scan.py` (spider from the specification plus the full
 active rule set: SQL injection, XSS, command and template injection, path traversal, XXE, SSRF, padding oracle ...)
 with an admin session cookie injected into every request; the admin and editor SPAs get `zap-baseline.py` (spider +
@@ -498,4 +498,4 @@ Findings that are fixed but **not** observable through the API suite, and how ea
 | F-043 | Postgres/S3 store exposure, default credentials, storage selection (Garage default, external S3, MinIO overlay, data stack) | `unit/compose-hardening.test.ts` |
 | F-038 | TOTP secrets encrypted at rest | Unit tests of `totp-crypto` (`packages/core`); the MFA suite runs on the encrypted path; storage format checked once on the test database (not automated). |
 
-Full descriptions, severities and status: `docs/plans/security/findings.md`.
+Full descriptions, severities and status: `docs/release/security/findings.md`.

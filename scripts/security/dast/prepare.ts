@@ -1,4 +1,4 @@
-// Prepares the ZAP run: one OpenAPI document per service (docs/api/openapi.yaml mixes core-api, gateway and
+// Prepares the ZAP run: one OpenAPI document per service (docs/release/api/openapi.yaml mixes core-api, gateway and
 // asset-processor, tagged "<service>: ...") pointing at the throwaway stack, and an admin session cookie.
 // Safety: refuses to run unless the targets are local and the DB name contains _sec_test (lib/config.ts).
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -11,7 +11,7 @@ const out = process.argv[2]
 if (!out) throw new Error('usage: prepare.ts <output dir>')
 mkdirSync(out, { recursive: true })
 
-const spec: any = yaml.load(readFileSync(resolve(ROOT_DIR, 'docs/api/openapi.yaml'), 'utf8'))
+const spec: any = yaml.load(readFileSync(resolve(ROOT_DIR, 'docs/release/api/openapi.yaml'), 'utf8'))
 const services: Record<string, string> = { 'core-api': TARGET, gateway: GATEWAY_TARGET, 'asset-processor': ASSET_TARGET }
 const counts: Record<string, number> = {}
 

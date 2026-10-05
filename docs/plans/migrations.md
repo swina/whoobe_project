@@ -191,4 +191,4 @@ Scope: extend `migration_sources` (per §7) to cover the new source types alongs
 - `docs/plans/datamodel/native-class-authoring-plan.md` (§3.4) — the `migration_sources` admin-triggered import UI this plan's Phase 7 builds on.
 - `docs/plans/datamodel/component-fields-plan.md` — the `data_components`/`fieldcollections` target shape that WordPress ACF repeaters and flexible-content fields map onto in §3.1/§4.
 - `docs/Initial-Plan.md` (§4, "Enterprise Migration Pipeline (ETL)") — the project's original migration-engine vision, which this plan operationalizes for two new source platforms.
-- `docs/guides/publish/website-publishing.md` — the publishing pipeline (whoobe-publish → generated Next.js/Nuxt app → Vercel/Docker/static) any migrated or assembled website flows through afterward, unchanged by anything in this plan.
+- `docs/release/guides/publish/website-publishing.md` — the publishing pipeline (whoobe-publish → generated Next.js/Nuxt app → Vercel/Docker/static) any migrated or assembled website flows through afterward, unchanged by anything in this plan.

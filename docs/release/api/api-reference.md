@@ -1,8 +1,8 @@
 # API Reference
 
-Overview of the HTTP APIs exposed by this monorepo's backend services, grouped by service and resource. Every endpoint returns/accepts JSON unless noted otherwise. Endpoints under `/public/*` and `/preview/*` (and `/health`, `/dam-asset/*`) require no authentication; everything else requires a valid `wcms_session` cookie (see [Auth](#auth)) and, in most cases, a specific permission. `gateway`'s own `/api/v1/gateway/resolve`/`/submit` are a third case: a published site (not an admin session) authenticates with a resolved `gatewayBindingId` and, optionally, a per-site API key — see [`docs/guides/api-gateway-security.md`](./api-gateway-security.md).
+Overview of the HTTP APIs exposed by this monorepo's backend services, grouped by service and resource. Every endpoint returns/accepts JSON unless noted otherwise. Endpoints under `/public/*` and `/preview/*` (and `/health`, `/dam-asset/*`) require no authentication; everything else requires a valid `wcms_session` cookie (see [Auth](#auth)) and, in most cases, a specific permission. `gateway`'s own `/api/v1/gateway/resolve`/`/submit` are a third case: a published site (not an admin session) authenticates with a resolved `gatewayBindingId` and, optionally, a per-site API key — see [`docs/release/guides/api-gateway-security.md`](../guides/api-gateway-security.md).
 
-For exact request/response shapes, see the route handlers in each service's `src/server.ts` (or, for `gateway`, `src/router.ts` + `src/admin-routes.ts`/`src/resolve-handler.ts`/`src/submit-handler.ts`). A machine-readable companion spec covering every route on this page lives at [`docs/api/openapi.yaml`](../api/openapi.yaml) — see its own section below for what it does and doesn't model.
+For exact request/response shapes, see the route handlers in each service's `src/server.ts` (or, for `gateway`, `src/router.ts` + `src/admin-routes.ts`/`src/resolve-handler.ts`/`src/submit-handler.ts`). A machine-readable companion spec covering every route on this page lives at [`docs/release/api/openapi.yaml`](../api/openapi.yaml) — see its own section below for what it does and doesn't model.
 
 ## Services
 
@@ -18,7 +18,7 @@ For exact request/response shapes, see the route handlers in each service's `src
 
 The main backend API: authentication, the PIM/MDM data model (Classes, Components, Data Objects), the CMS (Documents, Snippets, Whoobe One pages/templates/kits/websites/themes), mail, AI generation, Figma import, and Pimcore migration orchestration.
 
-<!-- GENERATED:CORE_API:START - do not hand-edit below; run `python3 docs/api/gen-api-docs.py` after editing that script's route table instead. -->
+<!-- GENERATED:CORE_API:START - do not hand-edit below; run `python3 docs/release/api/gen-api-docs.py` after editing that script's route table instead. -->
 ### Auth
 
 | Method & path | Description |
@@ -69,6 +69,7 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `POST /whoobe-one/snippets/:id/render` | Render a snippet's node tree to standalone email HTML. |
 | `PATCH /whoobe-one/snippets/:id` | Update a snippet in place. Snapshots the pre-update node into version history if it changed. |
 | `DELETE /whoobe-one/snippets/:id` | Delete a snippet. |
+| `PUT /whoobe-one/snippets/:id/thumbnail` | Set (or clear with `null`) the snippet thumbnail: an image data URL under 400k characters. |
 
 ### Whoobe One: Templates & Kits
 
@@ -94,6 +95,8 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `GET /whoobe-one/pages/staged/:id` | Get one staged page. |
 | `POST /whoobe-one/pages/staged/promote` | Promote all staged pages into the real pages table. |
 | `POST /whoobe-one/pages/staged/:id/promote` | Promote one staged page. |
+| `DELETE /whoobe-one/pages/staged/:id` | Discard one staged page without promoting it. |
+| `PUT /whoobe-one/pages/:id/thumbnail` | Set (or clear with `null`) the page thumbnail: an image data URL (webp/png/jpeg) under 400k characters. Used by the editor preview's "Capture thumbnail" (desktop crop, or the Mobile/Tablet device screen). |
 | `GET /whoobe-one/pages/:id` | Get one page. |
 | `GET /whoobe-one/pages/:id/versions` | List the page's instant version history (up to the 10 most recent prior states of its content). |
 | `GET /whoobe-one/pages/:id/versions/:versionId` | Get one historical version's full content tree. |
@@ -224,6 +227,9 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `DELETE /migration-sources/:id` | Delete a source. |
 | `POST /migration-sources/:id/import-classes` | Import Pimcore class definitions into data-classes. |
 | `POST /migration-sources/:id/import-objects` | Import one class's real object instances from the source MySQL DB. |
+| `POST /migration-sources/:id/extract-components` | Extract embedded collection types of the imported classes into standalone data components (no access to the Pimcore DB needed). |
+| `POST /migration-sources/:id/import-documents` | Convert the source's Pimcore documents into pages. With `staging: true` they land in the staging table for review instead of the live pages. |
+| `POST /migration-sources/:id/promote-documents` | Copy the staged documents of this source into the live pages table. |
 
 ### Data Objects (PIM/MDM instances)
 
@@ -234,6 +240,16 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `POST /data-objects` | Create an object. |
 | `PATCH /data-objects/:id` | Update an object. |
 | `DELETE /data-objects/:id` | Delete an object. |
+| `GET /data-objects/batch` | Fetch several objects by id (admin: drafts included). |
+| `POST /data-objects/batch` | Batch action on `ids[]`: `publish`, `unpublish`, `delete` or `resolve-assets`. |
+| `POST /data-objects/query` | Query objects by class name + filters (admin: no published filter). |
+| `GET /data-objects/:id/translations` | Every locale variant of the same logical object. |
+| `GET /data-objects/translations/:translationGroupId` | Locale variants by translation group id. |
+| `POST /data-objects/:id/preview-link` | Create a shareable preview link for an object (may be a draft); body `{ expiresInDays? }`. Requires `objects:publish`. |
+| `GET /data-objects/:id/preview-links` | List the object's preview links (with view counts). |
+| `DELETE /data-objects/preview-links/:token` | Revoke a preview link; `?permanent=true` removes a revoked or expired one for good. Requires `objects:publish`. |
+| `GET /data-objects/:id/transitions` | Workflow transitions available for the object in its class's workflow. |
+| `POST /data-objects/:id/transition` | Run a workflow transition; each transition declares the permissions it needs. |
 
 ### Public Data Objects & Forms (no auth, published only)
 
@@ -290,6 +306,13 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `PUT /figma/settings` | Update the Figma access token. |
 | `POST /figma/import` | Import a Figma file/frame, converting it into a page's node tree. |
 
+### Search (admin)
+
+| Method & path | Description |
+| --- | --- |
+| `GET /whoobe-one/search` | Admin search over the same index as `/public/search`, but session-gated and including drafts and non-indexable pages. |
+| `POST /whoobe-one/search/reindex` | Rebuild the whole search index from the source tables (heals drift; indexing hooks are best-effort). |
+
 ### System
 
 | Method & path | Description |
@@ -303,9 +326,9 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 
 ## `gateway` (port 3001)
 
-Federated API Gateway: lets a published site or the admin editor reach third-party REST APIs (HubSpot, Brevo, Stripe, or any custom endpoint) through server-side-only credentials, plus a couple of authenticated/public proxy passthroughs to `core-api`/`asset-processor` for callers that only have the Gateway's own origin configured. See [`docs/guides/api-gateway-security.md`](./api-gateway-security.md) for the authorization model behind `/resolve`/`/submit` (a mandatory server-resolved `gatewayBindingId`, plus an optional per-site API key) — a published site never gets to pick an arbitrary endpoint/route itself.
+Federated API Gateway: lets a published site or the admin editor reach third-party REST APIs (HubSpot, Brevo, Stripe, or any custom endpoint) through server-side-only credentials, plus a couple of authenticated/public proxy passthroughs to `core-api`/`asset-processor` for callers that only have the Gateway's own origin configured. See [`docs/release/guides/api-gateway-security.md`](../guides/api-gateway-security.md) for the authorization model behind `/resolve`/`/submit` (a mandatory server-resolved `gatewayBindingId`, plus an optional per-site API key) — a published site never gets to pick an arbitrary endpoint/route itself.
 
-<!-- GENERATED:GATEWAY:START - do not hand-edit below; run `python3 docs/api/gen-api-docs.py` after editing that script's route table instead. -->
+<!-- GENERATED:GATEWAY:START - do not hand-edit below; run `python3 docs/release/api/gen-api-docs.py` after editing that script's route table instead. -->
 ### Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)
 
 | Method & path | Description |
@@ -328,7 +351,7 @@ Federated API Gateway: lets a published site or the admin editor reach third-par
 | `GET /api/v1/gateway/plugins` | List loaded custom Gateway plugins. |
 | `GET /api/v1/gateway/presets` | List available connector presets (HubSpot, Brevo, Stripe, etc.). |
 
-### Gateway published-site endpoints (site API key or bound content only - see docs/guides/api-gateway-security.md)
+### Gateway published-site endpoints (site API key or bound content only - see docs/release/guides/api-gateway-security.md)
 
 | Method & path | Description |
 | --- | --- |
@@ -367,7 +390,7 @@ Federated API Gateway: lets a published site or the admin editor reach third-par
 
 DAM (Digital Asset Management) microservice: image processing/transform, metadata extraction, and S3/MinIO-backed asset & folder storage, plus optional CDN mirroring. Isolated from `core-api` so heavy image work never blocks the main API.
 
-<!-- GENERATED:ASSET_PROCESSOR:START - do not hand-edit below; run `python3 docs/api/gen-api-docs.py` after editing that script's route table instead. -->
+<!-- GENERATED:ASSET_PROCESSOR:START - do not hand-edit below; run `python3 docs/release/api/gen-api-docs.py` after editing that script's route table instead. -->
 ### Stateless image processing
 
 | Method & path | Description |
@@ -429,6 +452,6 @@ pnpm --filter @whoobe-cms/migration-tool cli -- help
 
 ## OpenAPI spec
 
-[`docs/api/openapi.yaml`](../api/openapi.yaml) is a generated, machine-readable OpenAPI 3.0 companion to this page — importable into Swagger UI, Postman, Insomnia, or any OpenAPI-driven client generator. It's generated from the exact same route table as this page (see [`docs/api/gen-api-docs.py`](../api/gen-api-docs.py)), so the two can't silently drift apart — **when a route changes, edit that script's table and re-run it (`python3 docs/api/gen-api-docs.py` from `docs/api/`), not the YAML or this page's tables directly.**
+[`docs/release/api/openapi.yaml`](../api/openapi.yaml) is a generated, machine-readable OpenAPI 3.0 companion to this page — importable into Swagger UI, Postman, Insomnia, or any OpenAPI-driven client generator. It's generated from the exact same route table as this page (see [`docs/release/api/gen-api-docs.py`](../api/gen-api-docs.py)), so the two can't silently drift apart — **when a route changes, edit that script's table and re-run it (`python3 docs/release/api/gen-api-docs.py` from `docs/api/`), not the YAML or this page's tables directly.**
 
 Scope, by design: every one of the ~226 routes documented above gets a real path, method, tag, auth requirement, and path parameters — that part is exhaustive. Request/response **bodies** are intentionally generic (`type: object`, no field-by-field modeling) for most routes, since hand-modeling every payload shape across three services would be a much larger, separate effort and would need to be re-verified against the handlers constantly to stay honest. A handful of flagship endpoints (`POST /auth/login`, `GET /auth/me`, `POST /api/v1/gateway/resolve`, `POST /api/v1/gateway/submit`, and the Whoobe One Pages CRUD) get real, hand-written schemas instead, as a quality anchor and a template for extending the rest incrementally.

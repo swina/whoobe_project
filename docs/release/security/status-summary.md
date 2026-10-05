@@ -75,7 +75,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
    `WS_DATA_BIND_ADDRESS=0.0.0.0` to `.env` if a client on another machine needs them (F-043).
 6. **Run the manual checklist** (`manual-test-checklist.md`) on the throwaway stack once, and report any KO.
 7. Decide: the `xlsx` replacement and when to start the CSP work (the F-024 flag is decided: on by default).
-8. **Object storage**: decided - Garage is the default for local/LAN (automatic bucket and key), production uses a cloud or enterprise S3 through configuration, self-hosted MinIO is documented as discouraged (F-048/F-050, `docs/storage-backends.md`). Remaining for you: copy existing MinIO data to the new store when switching a server (see the doc) and rebuild with `docker compose up -d --build`.
+8. **Object storage**: decided - Garage is the default for local/LAN (automatic bucket and key), production uses a cloud or enterprise S3 through configuration, self-hosted MinIO is documented as discouraged (F-048/F-050, `docs/release/operations/storage-backends.md`). Remaining for you: copy existing MinIO data to the new store when switching a server (see the doc) and rebuild with `docker compose up -d --build`.
 
 ## 5. Behaviour changes introduced by the fixes (check these when something "stops working")
 

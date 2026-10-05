@@ -4,8 +4,8 @@ info:
   description: >
     HTTP APIs exposed by this monorepo's backend services (core-api, gateway,
     asset-processor). Companion machine-readable spec for
-    docs/guides/api-reference.md - generated from the same route table (see
-    docs/api/gen-api-docs.py), so treat that script, not this file directly,
+    docs/release/api/api-reference.md - generated from the same route table (see
+    docs/release/api/gen-api-docs.py), so treat that script, not this file directly,
     as the source of truth when routes change.
   version: "1.0"
 servers:
@@ -29,7 +29,7 @@ components:
       in: header
       name: X-Whoobe-Site-Key
       description: >
-        Optional per-website key (see docs/guides/api-gateway-security.md).
+        Optional per-website key (see docs/release/guides/api-gateway-security.md).
         A resolved gatewayBindingId is the mandatory server-side check either
         way; this key adds per-site scoping/rate-limiting/revocation on top.
   schemas:
@@ -131,7 +131,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -164,7 +164,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -184,7 +184,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -204,7 +204,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -224,7 +224,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -257,7 +257,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -277,7 +277,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -309,7 +309,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -353,7 +353,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -397,7 +397,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -429,7 +429,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -473,7 +473,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -561,7 +561,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -593,7 +593,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -644,7 +644,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -688,7 +688,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -775,7 +775,33 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/snippets/{id}/thumbnail:
+    put:
+      tags: ["core-api: Whoobe One: Snippets"]
+      summary: "Set (or clear with `null`) the snippet thumbnail: an image data URL under 400k characters."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -807,7 +833,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -851,7 +877,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -901,7 +927,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -964,7 +990,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1043,6 +1069,24 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "Discard one staged page without promoting it."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /whoobe-one/pages/staged/promote:
     post:
       tags: ["core-api: Whoobe One: Pages"]
@@ -1053,7 +1097,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1079,7 +1123,33 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/pages/{id}/thumbnail:
+    put:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "Set (or clear with `null`) the page thumbnail: an image data URL (webp/png/jpeg) under 400k characters. Used by the editor preview's \"Capture thumbnail\" (desktop crop, or the Mobile/Tablet device screen)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1234,7 +1304,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1279,7 +1349,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1311,7 +1381,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1337,7 +1407,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1388,7 +1458,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1420,7 +1490,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1452,7 +1522,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1484,7 +1554,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1516,7 +1586,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1560,7 +1630,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1622,7 +1692,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1653,7 +1723,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1733,7 +1803,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1759,7 +1829,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1791,7 +1861,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1835,7 +1905,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1897,7 +1967,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -1951,7 +2021,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2006,7 +2076,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2050,7 +2120,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2291,7 +2361,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2311,7 +2381,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2343,7 +2413,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2387,7 +2457,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2449,7 +2519,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2499,7 +2569,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2543,7 +2613,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2612,7 +2682,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2638,7 +2708,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2682,7 +2752,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2708,7 +2778,85 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /migration-sources/{id}/extract-components:
+    post:
+      tags: ["core-api: Migration Sources & Pimcore import"]
+      summary: "Extract embedded collection types of the imported classes into standalone data components (no access to the Pimcore DB needed)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /migration-sources/{id}/import-documents:
+    post:
+      tags: ["core-api: Migration Sources & Pimcore import"]
+      summary: "Convert the source's Pimcore documents into pages. With `staging: true` they land in the staging table for review instead of the live pages."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /migration-sources/{id}/promote-documents:
+    post:
+      tags: ["core-api: Migration Sources & Pimcore import"]
+      summary: "Copy the staged documents of this source into the live pages table."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2740,7 +2888,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2784,7 +2932,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2803,6 +2951,205 @@ paths:
           required: true
           schema:
             type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-objects/batch:
+    get:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Fetch several objects by id (admin: drafts included)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Batch action on `ids[]`: `publish`, `unpublish`, `delete` or `resolve-assets`."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-objects/query:
+    post:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Query objects by class name + filters (admin: no published filter)."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-objects/{id}/translations:
+    get:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Every locale variant of the same logical object."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-objects/translations/{translationGroupId}:
+    get:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Locale variants by translation group id."
+      parameters:
+        - name: translationGroupId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-objects/{id}/preview-link:
+    post:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Create a shareable preview link for an object (may be a draft); body `{ expiresInDays? }`. Requires `objects:publish`."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-objects/{id}/preview-links:
+    get:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "List the object's preview links (with view counts)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-objects/preview-links/{token}:
+    delete:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Revoke a preview link; `?permanent=true` removes a revoked or expired one for good. Requires `objects:publish`."
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-objects/{id}/transitions:
+    get:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Workflow transitions available for the object in its class's workflow."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-objects/{id}/transition:
+    post:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Run a workflow transition; each transition declares the permissions it needs."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2847,7 +3194,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2890,7 +3237,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2938,7 +3285,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2958,7 +3305,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -2991,7 +3338,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3036,7 +3383,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3068,7 +3415,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3112,7 +3459,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3156,7 +3503,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3188,7 +3535,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3208,7 +3555,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3241,7 +3588,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3261,7 +3608,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3300,7 +3647,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3332,7 +3679,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3364,7 +3711,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3384,7 +3731,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3416,7 +3763,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3436,7 +3783,40 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/search:
+    get:
+      tags: ["core-api: Search (admin)"]
+      summary: "Admin search over the same index as `/public/search`, but session-gated and including drafts and non-indexable pages."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/search/reindex:
+    post:
+      tags: ["core-api: Search (admin)"]
+      summary: "Rebuild the whole search index from the source tables (heals drift; indexing hooks are best-effort)."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3506,7 +3886,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3550,7 +3930,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3612,7 +3992,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3638,7 +4018,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3682,7 +4062,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3708,7 +4088,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3753,7 +4133,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3779,7 +4159,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3799,7 +4179,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3837,7 +4217,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/gateway/resolve:
     post:
-      tags: ["gateway: Gateway published-site endpoints (site API key or bound content only - see docs/guides/api-gateway-security.md)"]
+      tags: ["gateway: Gateway published-site endpoints (site API key or bound content only - see docs/release/guides/api-gateway-security.md)"]
       summary: "Resolve a gateway-bound content field for a published page - the only way a published site reads third-party data. Requires a resolved gatewayBindingId (server-assigned at page-save time), not a free endpoint/route choice."
       security:
         - gatewaySiteKey: []
@@ -3870,7 +4250,7 @@ paths:
                 $ref: '#/components/schemas/Error'
   /api/v1/gateway/submit:
     post:
-      tags: ["gateway: Gateway published-site endpoints (site API key or bound content only - see docs/guides/api-gateway-security.md)"]
+      tags: ["gateway: Gateway published-site endpoints (site API key or bound content only - see docs/release/guides/api-gateway-security.md)"]
       summary: "Submit a gateway-bound form for a published page. Requires a resolved gatewayBindingId, same as /resolve."
       security:
         - gatewaySiteKey: []
@@ -3937,7 +4317,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3962,7 +4342,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -3987,7 +4367,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4049,7 +4429,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4074,7 +4454,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4099,7 +4479,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4161,7 +4541,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4185,7 +4565,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4209,7 +4589,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4268,7 +4648,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4293,7 +4673,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4318,7 +4698,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4356,7 +4736,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4376,7 +4756,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4409,7 +4789,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4429,7 +4809,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4462,7 +4842,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4494,7 +4874,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4538,7 +4918,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4577,7 +4957,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4603,7 +4983,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4635,7 +5015,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4667,7 +5047,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4687,7 +5067,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
@@ -4707,7 +5087,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: See docs/guides/api-reference.md and the route handler for the exact shape.
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK

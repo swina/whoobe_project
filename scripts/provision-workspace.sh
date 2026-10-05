@@ -23,7 +23,7 @@
 #      shared docker-compose.yml - its own Postgres, Garage (S3), core-api,
 #      asset-processor, gateway, admin-dashboard, whoobe-one-spike.
 #      core-api creates/migrates its own database schema on first boot,
-#      so there is no separate migration step (see docs/deployment.md).
+#      so there is no separate migration step (see docs/release/operations/deployment.md).
 #   3. (Garage creates the workspace's S3 bucket and key by itself on first start.)
 #   4. Renders deploy/nginx/_locations-<slug>.inc (the actual proxy_pass
 #      routing, shared by the HTTP and future HTTPS vhosts) and
@@ -150,7 +150,7 @@ set_env "S3_ACCESS_KEY_ID" "${S3_KEY_ID}"
 set_env "COMPOSE_PROFILES" "local-s3"
 set_env "S3_SECRET_ACCESS_KEY" "${S3_SECRET}"
 set_env "S3_BUCKET" "whoobe-cms-${SLUG}"
-# Production convention (docs/deployment.md): bare hostname, nginx
+# Production convention (docs/release/operations/deployment.md): bare hostname, nginx
 # path-routes to the right upstream - not the dev per-port form.
 set_env "S3_PUBLIC_BASE_URL" "${SCHEME}://${HOSTNAME_ARG}/dam-asset"
 set_env "VITE_ASSET_PROCESSOR_URL" "${SCHEME}://${HOSTNAME_ARG}"

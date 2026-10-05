@@ -35,7 +35,7 @@ location ~ ^/whoobe-one/(websites|themes|pages|snippets|templates|kits|website-p
 
 # Whoobe One editor (embedded in admin dashboard, direct access)
 # Trailing slash on proxy_pass DOES strip the /whoobe-one/ prefix here -
-# deliberately the opposite of docs/deployment.md's reference nginx
+# deliberately the opposite of docs/release/operations/deployment.md's reference nginx
 # config, which fronts `vite preview` (base-aware, expects the full
 # /whoobe-one/... path). This workspace's whoobe-one-spike instead runs
 # as a Docker image (Dockerfile's `whoobe-one-spike` target: a generic

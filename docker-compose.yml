@@ -23,14 +23,14 @@
 # --build-arg, sourced from VITE_ASSET_PROCESSOR_URL / VITE_CORE_API_URL /
 # VITE_GATEWAY_URL in the env file in use (.env for dev, .env.<slug> for a
 # workspace) - see .env.example for the dev default (per-port localhost
-# URLs) vs. docs/deployment.md's production convention (bare hostname,
+# URLs) vs. docs/release/operations/deployment.md's production convention (bare hostname,
 # nginx path-routes to the right upstream).
 #
 # Object storage: Garage (S3-compatible, docker/garage) runs here by default (profile `local-s3`, enabled through
 # COMPOSE_PROFILES=local-s3 in the env file); it creates its own bucket and key on first start. To use AWS S3, another
 # cloud or an existing enterprise store instead: drop `local-s3` from COMPOSE_PROFILES and set S3_CONTAINER_ENDPOINT
 # (+ S3_REGION/S3_BUCKET/credentials, S3_FORCE_PATH_STYLE). MinIO: docker-compose.minio.yml overlay. See
-# docs/storage-backends.md.
+# docs/release/operations/storage-backends.md.
 
 services:
   postgres:

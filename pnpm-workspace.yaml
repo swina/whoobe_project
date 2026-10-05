@@ -20,7 +20,7 @@ packages:
   # sites/ (found live, not hypothetical).
 
 # Dependency overrides (security fixes for transitive deps, see
-# docs/plans/security/findings.md F-003). Kept in BOTH places on purpose:
+# docs/release/security/findings.md F-003). Kept in BOTH places on purpose:
 # pnpm 9 (the pinned packageManager, used by the Dockerfile) reads
 # package.json "pnpm.overrides"; pnpm 10+/11 only read this file. Keep the
 # two lists identical.
