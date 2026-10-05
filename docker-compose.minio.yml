@@ -1,5 +1,5 @@
 # MinIO instead of Garage as the S3 store (overlay). Garage is the default; use this only if you already run MinIO
-# and accept its security situation (docs/storage-backends.md, F-050: upstream is source-only and its dependencies
+# and accept its security situation (docs/release/operations/storage-backends.md, F-050: upstream is source-only and its dependencies
 # carry known CVEs; for production prefer a cloud S3 / a managed store).
 #   docker compose -f docker-compose.yml -f docker-compose.minio.yml up -d --build
 # The bucket is not created automatically:

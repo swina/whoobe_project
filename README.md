@@ -120,7 +120,7 @@ You can run Whoobe in different modes:
 - **Production**: read the dedicated section
 
 
-Start local infrastructure (Postgres + Garage S3; for production, object storage is a configuration choice: [docs/storage-backends.md](docs/storage-backends.md)):
+Start local infrastructure (Postgres + Garage S3; for production, object storage is a configuration choice: [docs/release/operations/storage-backends.md](docs/release/operations/storage-backends.md)):
 
 ```bash
 docker compose -f docker-compose.data.yml up -d --build
@@ -281,7 +281,7 @@ npx cap sync
 npx cap open android # or: npx cap open ios
 ```
 
-The generated app is a minimal Vite + Vue 3 SPA with hash routing, Alpine.js, Tailwind (browser runtime), and Capacitor v7. It fetches pages live from the CMS public API — same renderer that powers the browser preview. See `docs/guides/publish/capacitor-mobile-app.md` for the full guide.
+The generated app is a minimal Vite + Vue 3 SPA with hash routing, Alpine.js, Tailwind (browser runtime), and Capacitor v7. It fetches pages live from the CMS public API — same renderer that powers the browser preview. See `docs/release/guides/publish/capacitor-mobile-app.md` for the full guide.
 
 ## Publish a Website (SSR)
 
@@ -300,4 +300,4 @@ node packages/publish/bin/whoobe-publish.js \
   --framework vue
 ```
 
-See `docs/guides/publish/website-publishing.md` for the full guide.
+See `docs/release/guides/publish/website-publishing.md` for the full guide.

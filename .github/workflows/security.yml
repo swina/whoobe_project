@@ -1,4 +1,4 @@
-# Security checks (plan docs/plans/security/security-testing-plan.md, section 7.1).
+# Security checks (plan docs/release/security/security-testing-plan.md, section 7.1).
 #   static       every pull request, every push to master, nightly   (no stack; ~5 min)
 #   stack-tests  push to master (relevant paths), nightly, manual   (disposable stack + API + browser suites + trivy image)
 #   tls          every pull request, push to master, nightly         (testssl.sh against the production nginx TLS template)

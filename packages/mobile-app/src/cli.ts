@@ -56,7 +56,7 @@ function looksLikeAssetId(value: string): boolean {
 /** Best-effort guess at the asset-processor's base URL from just the CMS API
  *  URL: local dev runs it on a separate port (3002) alongside core-api
  *  (3003, see docker-compose.yml); production reverse-proxies both services
- *  behind the same public hostname (docs/deployment.md), so the API URL
+ *  behind the same public hostname (docs/release/operations/deployment.md), so the API URL
  *  itself is already correct there. */
 function getAssetProcessorUrl(apiUrl: string): string {
   const u = new URL(apiUrl)

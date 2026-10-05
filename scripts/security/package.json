@@ -2,7 +2,7 @@
   "name": "@whoobe-cms/security",
   "version": "0.0.0",
   "private": true,
-  "description": "Security test harness (see docs/plans/security/security-testing-plan.md)",
+  "description": "Security test harness (see docs/release/security/security-testing-plan.md)",
   "type": "module",
   "scripts": {
     "routes:extract": "tsx extract-routes.ts",

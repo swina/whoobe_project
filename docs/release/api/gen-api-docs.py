@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates docs/guides/api-reference.md's route tables AND docs/api/openapi.yaml
+"""Generates docs/release/api/api-reference.md's route tables AND docs/release/api/openapi.yaml
 from one shared route table, so the two can't drift apart from each other.
 Run: python3 gen-api-docs.py
 """
@@ -49,6 +49,7 @@ CORE_API_SECTIONS = [
   ("POST", "/whoobe-one/snippets/:id/render", "Render a snippet's node tree to standalone email HTML."),
   ("PATCH", "/whoobe-one/snippets/:id", "Update a snippet in place. Snapshots the pre-update node into version history if it changed."),
   ("DELETE", "/whoobe-one/snippets/:id", "Delete a snippet."),
+  ("PUT", "/whoobe-one/snippets/:id/thumbnail", "Set (or clear with `null`) the snippet thumbnail: an image data URL under 400k characters."),
 ]),
 ("Whoobe One: Templates & Kits", [
   ("GET", "/whoobe-one/templates", "List whole-page templates."),
@@ -68,6 +69,8 @@ CORE_API_SECTIONS = [
   ("GET", "/whoobe-one/pages/staged/:id", "Get one staged page."),
   ("POST", "/whoobe-one/pages/staged/promote", "Promote all staged pages into the real pages table."),
   ("POST", "/whoobe-one/pages/staged/:id/promote", "Promote one staged page."),
+  ("DELETE", "/whoobe-one/pages/staged/:id", "Discard one staged page without promoting it."),
+  ("PUT", "/whoobe-one/pages/:id/thumbnail", "Set (or clear with `null`) the page thumbnail: an image data URL (webp/png/jpeg) under 400k characters. Used by the editor preview's \"Capture thumbnail\" (desktop crop, or the Mobile/Tablet device screen)."),
   ("GET", "/whoobe-one/pages/:id", "Get one page."),
   ("GET", "/whoobe-one/pages/:id/versions", "List the page's instant version history (up to the 10 most recent prior states of its content)."),
   ("GET", "/whoobe-one/pages/:id/versions/:versionId", "Get one historical version's full content tree."),
@@ -171,6 +174,9 @@ CORE_API_SECTIONS = [
   ("DELETE", "/migration-sources/:id", "Delete a source."),
   ("POST", "/migration-sources/:id/import-classes", "Import Pimcore class definitions into data-classes."),
   ("POST", "/migration-sources/:id/import-objects", "Import one class's real object instances from the source MySQL DB."),
+  ("POST", "/migration-sources/:id/extract-components", "Extract embedded collection types of the imported classes into standalone data components (no access to the Pimcore DB needed)."),
+  ("POST", "/migration-sources/:id/import-documents", "Convert the source's Pimcore documents into pages. With `staging: true` they land in the staging table for review instead of the live pages."),
+  ("POST", "/migration-sources/:id/promote-documents", "Copy the staged documents of this source into the live pages table."),
 ]),
 ("Data Objects (PIM/MDM instances)", [
   ("GET", "/data-objects", "List objects, optionally filtered by classId."),
@@ -178,6 +184,16 @@ CORE_API_SECTIONS = [
   ("POST", "/data-objects", "Create an object."),
   ("PATCH", "/data-objects/:id", "Update an object."),
   ("DELETE", "/data-objects/:id", "Delete an object."),
+  ("GET", "/data-objects/batch", "Fetch several objects by id (admin: drafts included)."),
+  ("POST", "/data-objects/batch", "Batch action on `ids[]`: `publish`, `unpublish`, `delete` or `resolve-assets`."),
+  ("POST", "/data-objects/query", "Query objects by class name + filters (admin: no published filter)."),
+  ("GET", "/data-objects/:id/translations", "Every locale variant of the same logical object."),
+  ("GET", "/data-objects/translations/:translationGroupId", "Locale variants by translation group id."),
+  ("POST", "/data-objects/:id/preview-link", "Create a shareable preview link for an object (may be a draft); body `{ expiresInDays? }`. Requires `objects:publish`."),
+  ("GET", "/data-objects/:id/preview-links", "List the object's preview links (with view counts)."),
+  ("DELETE", "/data-objects/preview-links/:token", "Revoke a preview link; `?permanent=true` removes a revoked or expired one for good. Requires `objects:publish`."),
+  ("GET", "/data-objects/:id/transitions", "Workflow transitions available for the object in its class's workflow."),
+  ("POST", "/data-objects/:id/transition", "Run a workflow transition; each transition declares the permissions it needs."),
 ]),
 ("Public Data Objects & Forms (no auth, published only)", [
   ("GET", "/public/data-objects", "List published objects of a class by name."),
@@ -221,6 +237,10 @@ CORE_API_SECTIONS = [
   ("GET", "/figma/settings", "Get the configured Figma personal access token (masked)."),
   ("PUT", "/figma/settings", "Update the Figma access token."),
   ("POST", "/figma/import", "Import a Figma file/frame, converting it into a page's node tree."),
+]),
+("Search (admin)", [
+  ("GET", "/whoobe-one/search", "Admin search over the same index as `/public/search`, but session-gated and including drafts and non-indexable pages."),
+  ("POST", "/whoobe-one/search/reindex", "Rebuild the whole search index from the source tables (heals drift; indexing hooks are best-effort)."),
 ]),
 ("System", [
   ("GET", "/api/v1/system/logs", "Tail recent application log lines."),
@@ -281,7 +301,7 @@ GATEWAY_SECTIONS = [
   ("GET", "/api/v1/gateway/plugins", "List loaded custom Gateway plugins."),
   ("GET", "/api/v1/gateway/presets", "List available connector presets (HubSpot, Brevo, Stripe, etc.)."),
 ]),
-("Gateway published-site endpoints (site API key or bound content only - see docs/guides/api-gateway-security.md)", [
+("Gateway published-site endpoints (site API key or bound content only - see docs/release/guides/api-gateway-security.md)", [
   ("POST", "/api/v1/gateway/resolve", "Resolve a gateway-bound content field for a published page - the only way a published site reads third-party data. Requires a resolved gatewayBindingId (server-assigned at page-save time), not a free endpoint/route choice."),
   ("POST", "/api/v1/gateway/submit", "Submit a gateway-bound form for a published page. Requires a resolved gatewayBindingId, same as /resolve."),
 ]),
@@ -303,7 +323,7 @@ GATEWAY_SECTIONS = [
 # A handful of flagship endpoints get a real request/response schema instead
 # of the generic `type: object` every other route falls back to - enough to
 # anchor the spec's quality without hand-modeling all 226 routes (see this
-# file's own module docstring / docs/guides/api-reference.md's own note on
+# file's own module docstring / docs/release/api/api-reference.md's own note on
 # this scope decision).
 SCHEMA_OVERRIDES = {
   ("post", "/auth/login"): {
@@ -490,8 +510,8 @@ def openapi_for(all_services):
     lines.append('  description: >')
     lines.append("    HTTP APIs exposed by this monorepo's backend services (core-api, gateway,")
     lines.append("    asset-processor). Companion machine-readable spec for")
-    lines.append("    docs/guides/api-reference.md - generated from the same route table (see")
-    lines.append("    docs/api/gen-api-docs.py), so treat that script, not this file directly,")
+    lines.append("    docs/release/api/api-reference.md - generated from the same route table (see")
+    lines.append("    docs/release/api/gen-api-docs.py), so treat that script, not this file directly,")
     lines.append("    as the source of truth when routes change.")
     lines.append("  version: \"1.0\"")
     lines.append("servers:")
@@ -515,7 +535,7 @@ def openapi_for(all_services):
     lines.append("      in: header")
     lines.append("      name: X-Whoobe-Site-Key")
     lines.append("      description: >")
-    lines.append("        Optional per-website key (see docs/guides/api-gateway-security.md).")
+    lines.append("        Optional per-website key (see docs/release/guides/api-gateway-security.md).")
     lines.append("        A resolved gatewayBindingId is the mandatory server-side check either")
     lines.append("        way; this key adds per-site scoping/rate-limiting/revocation on top.")
     lines.append("  schemas:")
@@ -627,7 +647,7 @@ def openapi_for(all_services):
                 lines.append("          application/json:")
                 lines.append("            schema:")
                 lines.append("              type: object")
-                lines.append("              description: See docs/guides/api-reference.md and the route handler for the exact shape.")
+                lines.append("              description: See docs/release/api/api-reference.md and the route handler for the exact shape.")
             lines.append("      responses:")
             if "responses" in override:
                 lines.append(override["responses"])
@@ -647,7 +667,7 @@ import os
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Splices generated tables into docs/guides/api-reference.md between paired
+# Splices generated tables into docs/release/api/api-reference.md between paired
 # `<!-- GENERATED:<NAME>:START -->`/`:END` HTML-comment markers already
 # present in that file - the surrounding prose (headers, the OpenAPI-scope
 # note, etc.) is real, hand-maintained content this script never touches,
@@ -661,7 +681,7 @@ def splice_markers(doc_text: str, name: str, replacement_md: str) -> str:
     return doc_text[:start_line_end] + replacement_md + "\n" + doc_text[end_idx:]
 
 if __name__ == "__main__":
-    md_path = os.path.join(SCRIPT_DIR, "..", "guides", "api-reference.md")
+    md_path = os.path.join(SCRIPT_DIR, "api-reference.md")
     with open(md_path) as f:
         doc = f.read()
     doc = splice_markers(doc, "CORE_API", md_for("core-api", CORE_API_SECTIONS).rstrip("\n"))

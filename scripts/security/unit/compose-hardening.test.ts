@@ -88,7 +88,7 @@ describe('docker-compose.yml', () => {
   })
 })
 
-describe('object storage selection (docs/storage-backends.md)', () => {
+describe('object storage selection (docs/release/operations/storage-backends.md)', () => {
   it('runs Garage by default and wires the apps to it', () => {
     const { json } = render(required)
     expect(Object.keys(json.services)).toContain('garage')

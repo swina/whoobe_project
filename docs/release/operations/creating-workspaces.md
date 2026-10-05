@@ -2,11 +2,11 @@
 
 A **workspace** is a fully independent Whoobe CMS install for one client: its own Postgres database, its own S3 store and bucket, its own core-api/asset-processor/gateway/admin-dashboard/whoobe-one-spike containers, its own users/roles/logins, and its own hostname. Nothing is shared between workspaces — see `docs/plans/system/workspaces-plan.md` for why this isolation model was chosen over a shared-database, `workspaceId`-scoped alternative.
 
-This guide covers the day-to-day operation: provisioning a new workspace, verifying it, enabling HTTPS, and managing/removing one later. It assumes a host with Docker and Docker Compose. **nginx on the host is optional**: without it the scripts run one shared containerized reverse proxy (`whoobe-proxy`) for every workspace. Base host setup: `docs/deployment.md`.
+This guide covers the day-to-day operation: provisioning a new workspace, verifying it, enabling HTTPS, and managing/removing one later. It assumes a host with Docker and Docker Compose. **nginx on the host is optional**: without it the scripts run one shared containerized reverse proxy (`whoobe-proxy`) for every workspace. Base host setup: `docs/release/operations/deployment.md`.
 
 ## What a workspace gets (current deploy settings)
 
-- **Object storage: Garage** (S3-compatible, `docker/garage`) inside the workspace's own Compose project. It creates its own access key and bucket on first start; nothing to set up by hand. Production-grade alternatives (AWS S3, OCI, an enterprise S3) are a configuration change: see [Using an external S3](#using-an-external-s3-instead-of-garage) and `docs/storage-backends.md`. Self-hosting MinIO is discouraged.
+- **Object storage: Garage** (S3-compatible, `docker/garage`) inside the workspace's own Compose project. It creates its own access key and bucket on first start; nothing to set up by hand. Production-grade alternatives (AWS S3, OCI, an enterprise S3) are a configuration change: see [Using an external S3](#using-an-external-s3-instead-of-garage) and `docs/release/operations/storage-backends.md`. Self-hosting MinIO is discouraged.
 - **Reverse-proxy awareness**: the provisioning sets `TRUST_PROXY=1` (login lockout and rate limits see the real client address instead of `127.0.0.1`) and `ADMIN_PUBLIC_URL=<scheme>://<hostname>` (links in password-reset e-mails).
 - **Private assets are private** (on by default, `DAM_ENFORCE_ASSET_VISIBILITY`): an asset that is not public answers 404 to anonymous requests (a logged-in user sees it). **Public = in the `/public` folder or any of its sub-folders** (built-in rule `/public/**`; more rules can be added in the DAM settings). Put everything that public pages and published sites use under `/public`, otherwise visitors get 404.
 - **Loopback-only data and app ports**: Postgres and the S3 port are published on `127.0.0.1`, and so are the application ports (`WS_APP_BIND_ADDRESS=127.0.0.1`): only the reverse proxy reaches them.
@@ -133,13 +133,13 @@ docker compose -p ws-client-a --env-file .env.client-a --profile local-s3 rm -sf
 docker compose -p ws-client-a --env-file .env.client-a up -d
 ```
 
-The `garagedata` volume stays until `down -v`; copy any existing assets to the new bucket first (`rclone sync` / `aws s3 sync` between the two endpoints — keys, not endpoints, are stored in the database). Details and the MinIO overlay: `docs/storage-backends.md`.
+The `garagedata` volume stays until `down -v`; copy any existing assets to the new bucket first (`rclone sync` / `aws s3 sync` between the two endpoints — keys, not endpoints, are stored in the database). Details and the MinIO overlay: `docs/release/operations/storage-backends.md`.
 
 ## Workspaces created before the Garage default
 
 Workspaces provisioned earlier (MinIO) keep working only if you tell Compose so: their `.env.<slug>` has old-format S3 credentials and `WS_MINIO_API_PORT`, and the current `docker-compose.yml` would start Garage, which refuses credentials that are not in its key format.
 
-- **Stay on MinIO** (it is discouraged for production, see `docs/storage-backends.md`): rename `WS_MINIO_API_PORT` to `WS_S3_API_PORT`, add `COMPOSE_PROFILES=local-s3`, `TRUST_PROXY=1` and `ADMIN_PUBLIC_URL=https://<hostname>`, and use the overlay in every command: `docker compose -p ws-<slug> --env-file .env.<slug> -f docker-compose.yml -f docker-compose.minio.yml up -d --build`. The `miniodata` volume is reused.
+- **Stay on MinIO** (it is discouraged for production, see `docs/release/operations/storage-backends.md`): rename `WS_MINIO_API_PORT` to `WS_S3_API_PORT`, add `COMPOSE_PROFILES=local-s3`, `TRUST_PROXY=1` and `ADMIN_PUBLIC_URL=https://<hostname>`, and use the overlay in every command: `docker compose -p ws-<slug> --env-file .env.<slug> -f docker-compose.yml -f docker-compose.minio.yml up -d --build`. The `miniodata` volume is reused.
 - **Move to Garage**: copy the bucket out of MinIO first (`mc mirror` / `rclone sync`), generate Garage-format credentials (`GK$(openssl rand -hex 12)`, `$(openssl rand -hex 32)`), put them and the variables above in the env file, `up -d --build` without the overlay, then copy the data into the new bucket (the endpoint of the new store is `http://127.0.0.1:<WS_S3_API_PORT>`), and only then remove the old `miniodata` volume.
 - A workspace that must be recreated from scratch (for example because secrets are rotated) is simplest: remove it (below) and run `create-workspace.sh` again.
 
