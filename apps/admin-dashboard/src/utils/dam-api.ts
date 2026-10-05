@@ -104,7 +104,7 @@ export interface DamUploadResult {
 }
 
 // Respect the build-time env var first (set in .env for production, e.g.
-// VITE_ASSET_PROCESSOR_URL=https://whoobecms.example.com). For localhost
+// VITE_ASSET_PROCESSOR_URL=https://cms.example.com). For localhost
 // dev, use the Vite dev server's own hostname:port (the vite.config.ts proxy
 // forwards /api/v1/dam to the asset-processor on port 3002). For remote
 // hostnames (production behind nginx), omit the port — nginx serves
