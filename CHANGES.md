@@ -1,3 +1,6 @@
+## [Repository name: whoobe_project] — 2026-10-06
+- Branch: `master`. The new repository is `swina/whoobe_project` (private, empty when checked; its default branch is `main` while this repository uses `master`, which the CI workflow, `scripts/release.sh` and the release procedure refer to). Clone commands in `README.md` and `docs/release/operations/miniguide-deployment.md` now use that URL and directory. The product is still called whoobe_cms in the design documents and comments; only the clone commands changed.
+
 ## [Example host in two comments] — 2026-10-06
 - Branch: `master`. Two code comments (`apps/admin-dashboard/src/utils/dam-api.ts`, `apps/whoobe-one-spike/src/dam-api.ts`) used the maintainer's test server as an example URL; they now say `https://cms.example.com`. Comment-only change; with this, the test host appears nowhere in the tree except in the history of this log.
 

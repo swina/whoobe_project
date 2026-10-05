@@ -27,8 +27,8 @@ Good for: **demo, QA, CI, or anyone who wants to try the CMS without installing 
 Single command gets you a running stack with Postgres, Garage (S3), all app servers, and SPAs served via nginx.
 
 ```bash
-git clone https://github.com/swina/whoobe_cms
-cd whoobe_cms
+git clone https://github.com/swina/whoobe_project
+cd whoobe_project
 docker compose up -d --build
 ```
 
@@ -67,8 +67,8 @@ Postgres and Garage (S3) run in Docker. App servers run directly on your host wi
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/swina/whoobe_cms
-cd whoobe_cms
+git clone https://github.com/swina/whoobe_project
+cd whoobe_project
 pnpm install
 
 # 2. Start infrastructure only
