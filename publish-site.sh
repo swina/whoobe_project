@@ -166,9 +166,9 @@ EXTRA_ARGS=()
 [ -n "$BASE_PATH" ] && EXTRA_ARGS+=(--base-path "$BASE_PATH")
 
 # Build the publish package and SDK first, then run
-pnpm run --filter @whoobe-cms/publish build
+pnpm run --filter @whoobe-cms/publish... build
 if [ "$FRAMEWORK" = "vue" ]; then
-  pnpm run --filter @whoobe-cms/nuxt build
+  pnpm run --filter @whoobe-cms/nuxt... build
 fi
 node packages/publish/bin/whoobe-publish.js \
   --api-url "$API_URL" \
