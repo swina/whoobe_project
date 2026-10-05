@@ -39,7 +39,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | 3.13 | Dependencies | `pnpm audit` in the static scan, two accepted advisories (`xlsx`, `braces`) with review dates |
 | 3.14 | Errors / logging | done (generic 5xx, SQL text hidden, log hygiene reviewed by hand) |
 | 3.15 | Rate limits | login, MFA, forgot-password, forms, public search/query, AI, pwa subscribe done; **no load testing by design** |
-| 7.1 | Periodic runs / CI | `.github/workflows/security.yml` (static on every PR/push/nightly; stack + API + browser suites on push to master/nightly/manual; ZAP monthly/manual) and `.github/dependabot.yml`; written and linted (`actionlint`) but **not yet run on GitHub** - the first run may need small fixes |
+| 7.1 | Periodic runs / CI | `.github/workflows/security.yml` (static on every PR/push/nightly; stack + API + browser suites on push to master/nightly/manual; ZAP monthly/manual) and `.github/dependabot.yml`; written and linted (`actionlint`) first GitHub run 2026-10-05 needed four small fixes (Dockerfile build order, testssl work dir, compose test `.env`, libpcre2 CVE) and is **green** (run 37286029925, DAST skipped by design) |
 
 ## 3. Open items
 
@@ -52,7 +52,6 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | **F-014** full CSP for the admin/editor SPAs (nginx) | postponed on purpose (clickjacking and baseline headers are done, F-047): becomes essential in SaaS mode; a too strict policy breaks the editor | design with a report-only phase when SaaS mode starts |
 | **F-044** deleting a website can answer 500 | functional, not a security issue | fix when convenient |
 | **F-050** residual: MinIO's own dependencies (62 fixable HIGH/CRITICAL on its last release) and postgres' `gosu` (22) | upstream; not patchable without forking. MinIO is now opt-in (overlay), Garage is the default | keep MinIO off public networks or move to Garage / a cloud S3 |
-| First GitHub Actions run | CI is written and linted (jobs: static, stack-tests incl. `security:images`, tls, isolation, dast) but its results have not been reported back | watch the `security` workflow, fix what only CI shows |
 | TLS on a real hostname | testssl ran on the rendered template, not on a public host with a Let's Encrypt certificate | run `testssl.sh` against the production hostname once HTTPS is enabled |
 | Not covered by design or yet | SQL fuzzing of the remaining endpoints (3.3), AI prompt-injection impact (3.10), `next build`/`nuxt build` of generated sites (3.11), no load testing (3.15) | decide if/when |
 
