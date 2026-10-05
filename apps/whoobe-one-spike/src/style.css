@@ -177,3 +177,9 @@ body {
 .tlira::before {
   content: "₺ ";
 }
+/* Rich text (TipTap) content inside canvas elements. Tailwind's runtime
+   preflight resets list-style/padding on <ul>/<ol>, so lists created in the
+   TipTap panel were stored correctly but rendered like plain paragraphs. */
+[data-type="element"] ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
+[data-type="element"] ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
+[data-type="element"] li > p { margin: 0; }

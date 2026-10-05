@@ -20,21 +20,15 @@
 - `scripts/security/tls/run-testssl.sh`: `chmod 777` on the temp work dir; the testssl container runs under another uid and could not write `testssl.json` on the runner (`mktemp -d` is 0700), so `summarize.py` found no report. Fixes both TLS jobs; local run on `nginx:alpine` PASS.
 - `scripts/security/unit/compose-hardening.test.ts`: creates an empty root `.env` for the test if missing (`docker-compose.apps.yml` has `env_file: .env`, absent in CI) and removes it afterwards. Not re-run locally (needs the stack); logic only.
 
-## [Workspace guide: missing options and isolation suite] — 2026-10-05
-- Branch: `master`. `docs/guides/system/creating-workspaces.md` checked against `scripts/*.sh`, `docker-compose.yml`, `.env.example` and the TLS template (consistent). Added: `enable-tls.sh --yes/--force`, `remove-workspace.sh` with no slug (list) and `--yes`, and `pnpm security:isolation` in the Verify section.
+## [Rich text: colour, highlight, alignment, links; lists survive] — 2026-10-04
+- Branch: `master`. TipTap was not the limit, its configuration was: `TipTapPanel.vue` only had StarterKit + images.
+- `apps/whoobe-one-spike/src/components/TipTapPanel.vue`: new extensions (text colour, highlight, underline, link, text alignment) with toolbar buttons; new dependencies `@tiptap/extension-{text-style,color,highlight,text-align,underline,link}` (2.27, same line as the rest).
+- `packages/sdk/schema/src/sanitize.ts` (+ tests): `style` is now allowed on rich text but cut down to `color`, `background-color` and `text-align` with plain colour/keyword values (no `url()`, `var()`, `expression()`). Everything else in `style` is still removed. Applies to editor, previews, gateway output and SDKs; `dist` rebuilt.
+- `apps/whoobe-one-spike/src/helpers.ts`: `stripBlockLevelTags` (run on blur of a canvas `p`) no longer unwraps `ul`/`ol`/`li` (and the `<p>` TipTap puts in each `li`), a suspected cause of lists vanishing from the canvas. **Not confirmed in the browser**.
+- Rich text modal: header and Close button went off-screen with long text. `TipTapPanel.vue` root was `h-full` inside a flex column that already holds the header, so it overflowed the modal and the browser scrolled the `overflow-hidden` box to follow the caret. Now `flex-1 min-h-0`; `FloatingToolbar.vue` modal is `h-[70vh] max-h-[40rem]` (was `h-96`), the text area scrolls inside it.
 
-## [Security summary: CI is green] — 2026-10-05
-- Branch: `master`. `docs/plans/security/status-summary.md`: the CI row now records the first successful run (37286029925: static, API + browser, isolation, both TLS jobs; DAST skipped by design); the "First GitHub Actions run" open item is removed.
-
-## [CI second run: libpcre2 in the Debian runtime] — 2026-10-05
-- Branch: `master`. Run 37284288245 (commit 04a96cb): static, isolation and both TLS jobs green, API suites green (1039/1039); only `security:images` failed: `libpcre2-8-0 10.42-1+deb12u1` (CVE-2026-103111, HIGH, fixable in deb12u2) in core-api, gateway and asset-processor.
-- `Dockerfile`, `runtime` stage: `apt-get install --only-upgrade libpcre2-8-0` (same temporary patch as `apk upgrade pcre2` on the nginx images; drop when the pinned base catches up). Upgrade checked on the pinned base image; image scan to be confirmed by the next CI run.
-
-## [First CI run: three fixes] — 2026-10-05
-- Branch: `master`. The first `security` workflow run (run 35, commit 0279abc) failed in 4 jobs for 3 causes, all only visible on a fresh checkout. Static scans passed.
-- `Dockerfile`: `pnpm --filter @whoobe-cms/core build` -> `'@whoobe-cms/core...'` so `@whoobe-cms/schema` is built first (core imports it; on a clean tree `tsc` failed with TS2307). Fixes the isolation job; reproduced and verified on a clean worktree.
-- `scripts/security/tls/run-testssl.sh`: `chmod 777` on the temp work dir; the testssl container runs under another uid and could not write `testssl.json` on the runner (`mktemp -d` is 0700), so `summarize.py` found no report. Fixes both TLS jobs; local run on `nginx:alpine` PASS.
-- `scripts/security/unit/compose-hardening.test.ts`: creates an empty root `.env` for the test if missing (`docker-compose.apps.yml` has `env_file: .env`, absent in CI) and removes it afterwards. Not re-run locally (needs the stack); logic only.
+## [Canvas shows TipTap lists] — 2026-10-04
+- Branch: `master`. Bullet/numbered lists made in the TipTap panel were saved as `<ul><li>` but looked like plain paragraphs in the canvas: Tailwind's runtime preflight resets `list-style`/padding on `<ul>`/`<ol>`. `apps/whoobe-one-spike/src/style.css`: list-style, padding and margin rules for `ul`/`ol` inside `[data-type="element"]`. Not checked in the browser yet.
 
 ## [Postgres restarts by itself after a reboot] — 2026-10-04
 - Branch: `master`. Found while preparing a WSL shutdown: every service of `docker-compose.yml` had `restart: unless-stopped` except `postgres`, so after a host/daemon restart the apps came back and the database did not. `postgres` now has `restart: unless-stopped` in `docker-compose.yml` and `docker-compose.data.yml`. **Existing containers keep their old policy until recreated** (`docker compose -p <project> --env-file <env> up -d`; the data volume is kept).
