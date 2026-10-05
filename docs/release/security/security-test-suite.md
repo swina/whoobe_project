@@ -371,7 +371,7 @@ finding identity, a **written reason** and a **review date**:
 | Section | Matching key | Current entries (summary) |
 |---|---|---|
 | `audit` | GitHub advisory id | 2 - `xlsx` advisories (F-003): the library is used only to *write* exports in the admin UI, never to parse untrusted files; no fixed version is published on npm. Review 2027-01-31. |
-| `gitleaks` | file (+ commit prefix) | 3 - two false positives (prose in the plan, a code comment) and one historical local-service env file in commit `94f18fb` (F-001: values to be rotated; history deliberately not rewritten). Review 2026-12-31 / 2027-01-31. |
+| `gitleaks` | file (+ optional commit prefix) | 3 entries, false positives only: prose in the test plan (listed under its old and its new path, because the history scan reports the path a file had when it was committed) and a code comment. Review 2027-01-31. |
 | `semgrep` | rule id + file | 6 - triaged false positives (no SQL / parameterised helpers, fixed-length GCM tag, allow-listed CORS origin reflection, server-built reset link). Review 2027-01-31. |
 | `trivy_skip_targets` | path substring | `node_modules/`, `.claude/`, `sites/` (generated, untracked output to be regenerated, not baselined) |
 

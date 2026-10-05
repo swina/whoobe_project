@@ -45,7 +45,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 
 | Item | Why it is open | Needs |
 |---|---|---|
-| **F-001** secrets of the old `.env.aura` in git history (private repo; the public mirror was deleted) | rotation depends on rebuilding the Oracle test instance | owner: rebuild Oracle with newly generated secrets (section 4) |
+| **F-001** secrets of the old `.env.aura`: purged from the new repository's history (2026-10-06); they still exist in the old repository, its backups and any copy of the public mirror that was deleted on 2026-10-02, so they must be rotated | rotation depends on rebuilding the Oracle test instance | owner: rebuild Oracle with newly generated secrets (section 4) |
 | **F-009** old env files already copied to Oracle by earlier deploys | `deploy.sh` is fixed, existing copies remain on the host | owner: remove `.env.*` copies on the host (done by the rebuild) |
 | **F-003** `xlsx` (2 high advisories, write-only use, no npm fix) and `@tiptap/core` (major upgrade) | accepted / deferred, baselined until 2027-01-31 | decision: move to the SheetJS tarball or replace; plan the tiptap 3 upgrade |
 | **F-008** residual `v-html` sinks (editor tables, form-result messages, Studio, generated sites) | sanitised in code but not covered by a browser test | extend `browser/xss-sinks.spec.ts`; run the generated sites through a build and the same payloads |
