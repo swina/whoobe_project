@@ -85,7 +85,7 @@
         @drop="onGatewayFieldDrop"
       >
         <div v-if="editor.appMode" class="relative bg-white shadow-xl rounded-[32px] overflow-hidden mx-auto my-4"
-          style="width: 390px; height: 844px;">
+          style="width: 390px; height: 844px; container: app / inline-size;">
           <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[30px] bg-black rounded-b-2xl z-10"></div>
           <div class="h-full overflow-y-auto">
             <BlockContainer v-if="editor.document" :doc="editor.document" :level="0" />
@@ -375,6 +375,7 @@ import { GATEWAY_FIELD_DRAG_MIME_TYPE, type GatewayFieldDragPayload } from '../u
 import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
 import { useThemeStyles } from '../composables/useThemeStyles'
+import { useAppModeBreakpoints } from '../composables/useAppModeBreakpoints'
 import { clean, findNodeById, removeNodeById, findParentAndIndex, applyImagePlaceholder, normalizeGeneratedTree } from '../helpers'
 import { editorBus, dialogBus } from '../bus'
 import { exportDocument, importDocument, cloneWithFreshIds, insertGeneratedSnippet } from '../scripts/editor-actions'
@@ -422,6 +423,9 @@ watch(
 // recognizes named classes like `bg-light-grey`. Watches editor.document
 // reactively and updates a shared <style id="whoobe-theme-styles">.
 useThemeStyles(() => editor.document)
+
+// App Mode: `sm:`/`md:`/`max-md:`... follow the width of the phone frame, not the window (see the composable).
+useAppModeBreakpoints()
 
 // A real, reported bug fixed here: `flash()` used to render every message
 // - including genuine failures ("Failed to save", "A path is required...")

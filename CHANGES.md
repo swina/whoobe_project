@@ -1,3 +1,25 @@
+## [App Mode: responsive classes follow the phone frame] — 2026-10-05
+- Branch: `master`. In App Mode the canvas was narrowed to 390px but Tailwind's `sm:`/`md:`/`lg:` are media queries on the *window*, so a desktop window kept applying the desktop classes while editing. An iframe would fix it but breaks the single shared dragula instance (palette/tree -> canvas), the floating toolbar and the theme styles, so the variants are redefined instead.
+- New `composables/useAppModeBreakpoints.ts`: while `appMode` is on (and the preview overlay is closed) a `<style type="text/tailwindcss" id="whoobe-appmode-breakpoints">` holds `@custom-variant sm|md|lg|xl|2xl` and `max-*` as `@container app (width >= / < Nrem)`. Off = empty text (Tailwind's own media queries). The element is kept and its text toggled: removing it does not make the runtime rebuild.
+- `BlockEditor.vue`: the phone frame declares `container: app / inline-size`; the composable is wired next to `useThemeStyles`.
+- Checked in the real editor (Vite against ws-demo, Chromium): `bg-red-500 md:bg-green-500 lg:bg-blue-500` is blue with App Mode off in a 1500px window, red inside the 390px frame, green with the frame at 800px, and back to blue on leaving App Mode; `vue-tsc` clean. Limits: `vh`/`h-screen` still use the window height; `min-[...]`/`max-[...]` arbitrary variants and custom theme breakpoints are not redirected; fixed-position elements are now positioned inside the frame (as on a phone).
+
+## [Workspace guide: missing options and isolation suite] — 2026-10-05
+- Branch: `master`. `docs/guides/system/creating-workspaces.md` checked against `scripts/*.sh`, `docker-compose.yml`, `.env.example` and the TLS template (consistent). Added: `enable-tls.sh --yes/--force`, `remove-workspace.sh` with no slug (list) and `--yes`, and `pnpm security:isolation` in the Verify section.
+
+## [Security summary: CI is green] — 2026-10-05
+- Branch: `master`. `docs/plans/security/status-summary.md`: the CI row now records the first successful run (37286029925: static, API + browser, isolation, both TLS jobs; DAST skipped by design); the "First GitHub Actions run" open item is removed.
+
+## [CI second run: libpcre2 in the Debian runtime] — 2026-10-05
+- Branch: `master`. Run 37284288245 (commit 04a96cb): static, isolation and both TLS jobs green, API suites green (1039/1039); only `security:images` failed: `libpcre2-8-0 10.42-1+deb12u1` (CVE-2026-103111, HIGH, fixable in deb12u2) in core-api, gateway and asset-processor.
+- `Dockerfile`, `runtime` stage: `apt-get install --only-upgrade libpcre2-8-0` (same temporary patch as `apk upgrade pcre2` on the nginx images; drop when the pinned base catches up). Upgrade checked on the pinned base image; image scan to be confirmed by the next CI run.
+
+## [First CI run: three fixes] — 2026-10-05
+- Branch: `master`. The first `security` workflow run (run 35, commit 0279abc) failed in 4 jobs for 3 causes, all only visible on a fresh checkout. Static scans passed.
+- `Dockerfile`: `pnpm --filter @whoobe-cms/core build` -> `'@whoobe-cms/core...'` so `@whoobe-cms/schema` is built first (core imports it; on a clean tree `tsc` failed with TS2307). Fixes the isolation job; reproduced and verified on a clean worktree.
+- `scripts/security/tls/run-testssl.sh`: `chmod 777` on the temp work dir; the testssl container runs under another uid and could not write `testssl.json` on the runner (`mktemp -d` is 0700), so `summarize.py` found no report. Fixes both TLS jobs; local run on `nginx:alpine` PASS.
+- `scripts/security/unit/compose-hardening.test.ts`: creates an empty root `.env` for the test if missing (`docker-compose.apps.yml` has `env_file: .env`, absent in CI) and removes it afterwards. Not re-run locally (needs the stack); logic only.
+
 ## [Workspace guide: missing options and isolation suite] — 2026-10-05
 - Branch: `master`. `docs/guides/system/creating-workspaces.md` checked against `scripts/*.sh`, `docker-compose.yml`, `.env.example` and the TLS template (consistent). Added: `enable-tls.sh --yes/--force`, `remove-workspace.sh` with no slug (list) and `--yes`, and `pnpm security:isolation` in the Verify section.
 
