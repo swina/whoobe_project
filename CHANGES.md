@@ -1,3 +1,6 @@
+## [Example host in two comments] — 2026-10-06
+- Branch: `master`. Two code comments (`apps/admin-dashboard/src/utils/dam-api.ts`, `apps/whoobe-one-spike/src/dam-api.ts`) used the maintainer's test server as an example URL; they now say `https://cms.example.com`. Comment-only change; with this, the test host appears nowhere in the tree except in the history of this log.
+
 ## [check-docs ignores git-ignored paths; deploy/certbot/ is git-ignored] — 2026-10-06
 - Branch: `master`. `scripts/release/check-docs.py` flagged paths such as `scripts/security/reports/<date>/` and `scripts/security/.env.sectest` as missing in a fresh checkout: they are generated or local files, ignored by git, that exist only where the suites have run, so the gate passed on the author's disk and would have failed on a clean clone and in CI. Paths matched by `git check-ignore` are now skipped (a directory pattern is tried with and without the trailing slash).
 - `deploy/certbot/` (webroot and `conf/`, where `enable-tls.sh` keeps certificates and **private keys**) is created by the scripts on the host but was not git-ignored; it showed as clean only while empty, and a `git add -A` on a host with HTTPS enabled would have staged the keys. Now ignored.

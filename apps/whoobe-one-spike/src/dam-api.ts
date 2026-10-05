@@ -1,6 +1,6 @@
 // Minimal client for this monorepo's real backend asset library
 // (apps/asset-processor). Defaults to the VITE_ASSET_PROCESSOR_URL env var
-// (set by .env for production, e.g. https://whoobecms.devophub.space), or
+// (set by .env for production, e.g. https://cms.example.com), or
 // on localhost to port 3002 directly (the asset-processor dev server), or
 // on a remote host to the page's own origin (nginx proxies /api/v1/* to
 // the asset-processor on port 3002). Always sends credentials: 'include'.
