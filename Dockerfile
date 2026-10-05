@@ -33,9 +33,11 @@ RUN pnpm build
 FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS runtime
 # hadolint ignore=DL3059
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /root/.cache
-# the pinned bookworm ships libpcre2 10.42-1+deb12u1 (CVE-2026-103111, fixed in deb12u2); drop once the upstream tag catches up
+# the pinned bookworm digest lags behind Debian's security updates: libpcre2 10.42-1+deb12u1 (CVE-2026-103111, fixed in
+# deb12u2) and perl-base 5.36.0-7+deb12u3 (3 CRITICAL + 4 HIGH, fixed in deb12u4; perl-base is an essential package).
+# Upgrade just those; drop each once the pinned digest (Dependabot) catches up.
 # hadolint ignore=DL3059,DL3008
-RUN apt-get update && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 \
+RUN apt-get update && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 perl-base \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
