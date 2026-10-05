@@ -34,34 +34,14 @@
         <span>updated: {{ new Date(document.updatedAt).toLocaleString() }}</span>
       </div>
 
-      <!-- Sub-tab nav: Editor is the default landing view (matches asset
-           tabs opening straight into content, not behind an extra click) -
-           Preview is the read-only rendered-HTML view, a sibling sub-tab. -->
-      <div class="flex items-center gap-2 text-xs font-semibold pt-1">
-        <button
-          @click="setSubTab('editor')"
-          :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'editor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200']"
-        >
-          <span>🎨</span>
-          <span>Editor</span>
-        </button>
-        <button
-          @click="setSubTab('preview')"
-          :class="['px-3 py-1.5 rounded-lg transition flex items-center gap-1.5', activeSubTab === 'preview' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200']"
-        >
-          <Eye class="w-3.5 h-3.5" />
-          <span>Preview</span>
-        </button>
-      </div>
+      <p class="text-xs text-slate-500">
+        Read-only view. The document editor (Whoobe Studio) has been removed: to edit this content, migrate the
+        document to a page and edit it in the page builder.
+      </p>
     </div>
 
-    <!-- Sub-tab content: both mounted (v-show) so the live editor iframe/
-         bridge connection survives switching to Preview and back. -->
     <div class="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
-      <div v-show="activeSubTab === 'editor'" class="h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6">
-        <WhoobeStudioEmbed :document-id="props.documentId" @saved="onSaved" />
-      </div>
-      <div v-show="activeSubTab === 'preview'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6">
+      <div class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6">
         <BlockNodePreview :node="document.rootBlock" />
       </div>
     </div>
@@ -77,32 +57,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { Eye } from '@lucide/vue'
+import { ref, onMounted, watch } from 'vue'
 import { useDocumentsStore } from '../../stores/documentsStore'
-import { useTabsStore, DocumentSubTab } from '../../stores/tabsStore'
 import { useToastStore } from '../../stores/toastStore'
 import type { CmsDocumentRecord } from '../../utils/documents-api'
 import BlockNodePreview from './BlockNodePreview.vue'
-import WhoobeStudioEmbed from './WhoobeStudioEmbed.vue'
 
 const props = defineProps<{
   documentId: string
 }>()
 
 const documentsStore = useDocumentsStore()
-const tabsStore = useTabsStore()
 const toastStore = useToastStore()
 const document = ref<CmsDocumentRecord | null>(null)
 const isLoading = ref(true)
 const isSavingStatus = ref<'draft' | 'published' | null>(null)
-
-const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'document' && t.itemId === props.documentId))
-const activeSubTab = computed<DocumentSubTab>(() => currentTab.value?.documentSubTab ?? 'editor')
-
-function setSubTab(tab: DocumentSubTab) {
-  tabsStore.setDocumentSubTab(props.documentId, tab)
-}
 
 async function load() {
   isLoading.value = true
@@ -116,17 +85,8 @@ async function load() {
   }
 }
 
-// The editor autosaves on every edit (see WhoobeStudioEmbed.vue) - keep
-// this tab's own copy in sync so switching to Preview shows the latest
-// content without needing a re-fetch.
-function onSaved(updated: CmsDocumentRecord) {
-  document.value = updated
-}
-
-// Explicit status transition, distinct from the editor's continuous
-// autosave - resends the current title/rootBlock (kept live-accurate by
-// onSaved above) alongside the new status, since the PATCH route requires
-// both on every call.
+// Explicit status transition: resends the document's current title/rootBlock alongside the new status, since the
+// PATCH route requires both on every call.
 async function saveStatus(status: 'draft' | 'published') {
   if (!document.value) return
   isSavingStatus.value = status

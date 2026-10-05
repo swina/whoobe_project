@@ -229,7 +229,6 @@ To run an individual app/package instead:
 ```bash
 pnpm --filter @whoobe-cms/core-api dev
 pnpm --filter @whoobe-cms/admin-dashboard dev
-pnpm --filter @whoobe-cms/whoobe-studio dev   # http://localhost:3004
 ```
 
 ### Migrating from Pimcore

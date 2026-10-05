@@ -1,8 +1,8 @@
 # Whoobe CMS — full local-development stack.
 #   docker compose up -d --build
 #
-# The Vite frontends (admin-dashboard port 3000, whoobe-one-spike port 3006,
-# whoobe-studio port 3004) are served by nginx. Browser-facing API URLs are
+# The Vite frontends (admin-dashboard port 3000, whoobe-one-spike port 3006)
+# are served by nginx. Browser-facing API URLs are
 # baked at build time via --build-arg; they default to localhost so the
 # browser on the host can reach the published ports.
 #
