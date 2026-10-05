@@ -81,6 +81,8 @@ Needs a real public hostname resolving to this host with port 80 reachable (Let'
 ./scripts/enable-tls.sh client-a --email you@example.com             # the real certificate
 ```
 
+Options: `--yes` skips the confirmation prompt; `--force` skips the check that the hostname is public and resolves to this host (only for a host you know is reachable from the internet in a way the check cannot see).
+
 It issues the certificate, switches the HTTP vhost to a redirect (except the challenge path), renders `deploy/nginx/client-a-ssl.conf` from the hardened `workspace-ssl.conf.template` (TLS 1.2/1.3, AEAD ciphers, HSTS `max-age=31536000`) and reloads the proxy. **HSTS is a commitment**: browsers refuse plain HTTP for the host for a year after the first HTTPS visit, so try `--staging` first and make sure the hostname is final. Certificates last 90 days: run `./scripts/renew-certs.sh` periodically (cron).
 
 ## 4. Verify
@@ -91,7 +93,7 @@ It issues the certificate, switches the HTTP vhost to a redirect (except the cha
 - Upload an asset in the admin and open it: it is served by the asset-processor at `/dam-asset/...` (the browser never talks to the S3 store).
 - Isolation: create a page/asset in this workspace and check it does **not** appear in any other workspace or in the dev stack.
 - Visibility: upload one asset as private and one under `/public/`, then open both URLs in a private window: the private one must answer 404, the public one the image.
-- Optional: from this repo, `pnpm security:tls` checks the TLS template and `pnpm security:images` scans the built images (they use the throwaway test stack, not your workspace).
+- Optional: from this repo, `pnpm security:isolation` runs the cross-workspace isolation suite (two throwaway stacks: sessions, accounts, roles, assets, the DAM token, S3 and database credentials of one must not open anything in the other), `pnpm security:tls` checks the TLS template and `pnpm security:images` scans the built images (they use the throwaway test stack, not your workspace).
 
 ## Managing an existing workspace
 
@@ -147,6 +149,8 @@ Destructive: it deletes the workspace's database and object storage. Have a back
 
 ```bash
 ./scripts/remove-workspace.sh client-a                 # asks you to type the slug; drops containers, volumes, vhosts (HTTP and HTTPS) and the env file
+./scripts/remove-workspace.sh                          # no slug: lists the workspaces found (one .env.<slug> each) and their running containers
+./scripts/remove-workspace.sh client-a --yes           # skips the "type the slug" prompt (scripts, CI)
 ./scripts/remove-workspace.sh client-a --keep-volumes  # keeps the data volumes AND .env.client-a (their only credentials)
 ```
 
