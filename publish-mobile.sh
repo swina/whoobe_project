@@ -211,7 +211,7 @@ esac
 [ -n "$SITE_API_KEY" ] && EXTRA_ARGS+=(--site-api-key "$SITE_API_KEY")
 
 # Build the mobile-app package first
-pnpm run --filter @whoobe-cms/mobile-app build
+pnpm run --filter @whoobe-cms/mobile-app... build
 
 node packages/mobile-app/bin/whoobe-mobile.js \
   --api-url "$API_URL" \

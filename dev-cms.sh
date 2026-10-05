@@ -62,9 +62,9 @@ fi
 
 if [ "$BUILD" = "1" ]; then
   echo "Building @whoobe-cms/core..."
-  pnpm --filter @whoobe-cms/core build
+  pnpm --filter @whoobe-cms/core... build
   echo "Building @whoobe-cms/migration-tool..."
-  pnpm --filter @whoobe-cms/migration-tool build
+  pnpm --filter @whoobe-cms/migration-tool... build
 fi
 
 if [ -n "$HOSTNAME" ]; then

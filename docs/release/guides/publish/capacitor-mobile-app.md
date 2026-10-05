@@ -29,7 +29,7 @@ Equivalently, to script it non-interactively:
 
 ```bash
 # 1. Build the generator once (publish-mobile.sh does this for you automatically)
-pnpm run --filter @whoobe-cms/mobile-app build
+pnpm run --filter @whoobe-cms/mobile-app... build
 
 # 2. Generate the mobile app project
 node packages/mobile-app/bin/whoobe-mobile.js \
@@ -87,7 +87,7 @@ under `public/images/`).
 ## CLI Reference
 
 There is no subcommand — `whoobe-mobile` (or `node packages/mobile-app/bin/whoobe-mobile.js`
-inside the monorepo, after running `pnpm run --filter @whoobe-cms/mobile-app build` once) takes
+inside the monorepo, after running `pnpm run --filter @whoobe-cms/mobile-app... build` once) takes
 flags directly:
 
 ```bash

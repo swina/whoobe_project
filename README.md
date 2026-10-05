@@ -210,7 +210,8 @@ $ docker compose -f docker-compose.data.yml up -d`
 
 ```bash
 ./dev-cms.sh                       # start all
-./dev-cms.sh --build               # rebuild the workspace packages first, then start all
+./dev-cms.sh --build               # build the workspace packages first (and what they depend on), then start all.
+                                   # Required once after a fresh clone: the packages ship no build output.
 ./dev-cms.sh --hostname develop.local   # override ONLY the browser-facing app endpoints (VITE_* URLs)
 ./dev-cms.sh --stop                # stop all
 ```
@@ -265,7 +266,7 @@ Generate a native mobile app from your CMS website's app pages using Capacitor:
 ./publish-mobile.sh
 
 # Or directly via CLI
-pnpm run --filter @whoobe-cms/mobile-app build
+pnpm run --filter @whoobe-cms/mobile-app... build
 node packages/mobile-app/bin/whoobe-mobile.js \
   --api-url https://cms.example.com \
   --website-id <uuid> \
@@ -291,7 +292,7 @@ Generate a standalone Nuxt 3 or Next.js site for production deployment:
 ./publish-site.sh
 
 # Or directly via CLI
-pnpm run --filter @whoobe-cms/publish build
+pnpm run --filter @whoobe-cms/publish... build
 node packages/publish/bin/whoobe-publish.js \
   --api-url https://cms.example.com \
   --website-id <uuid> \

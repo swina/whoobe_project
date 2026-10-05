@@ -236,7 +236,7 @@
             </div>
             <p class="text-[11px] text-slate-200 mt-1 bg-slate-800/50 rounded-lg p-2">
               Add <code class="text-slate-300">--static</code> for a fully offline build.<br>
-              Run <code class="text-slate-300">pnpm run --filter @whoobe-cms/mobile-app build</code> once first if
+              Run <code class="text-slate-300">pnpm run --filter @whoobe-cms/mobile-app... build</code> once first if
               you haven't (publish-mobile.sh does this for you automatically).
             </p>
             <p class="text-[11px] text-slate-200 mt-1 bg-slate-800/50 rounded-lg p-2">
