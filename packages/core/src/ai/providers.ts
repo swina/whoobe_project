@@ -43,7 +43,9 @@ export interface AiGenerateInput {
 export class AiGenerationError extends Error {
   constructor(
     message: string,
-    readonly status?: number
+    readonly status?: number,
+    /** The model's full reply when it could not be parsed, so the caller can keep it for diagnosis. */
+    readonly rawText?: string
   ) {
     super(message);
     this.name = 'AiGenerationError';
@@ -62,7 +64,7 @@ function requireApiKey(settings: AiProviderSettings, provider: string): string {
  *  JSON value from a model reply. Providers are instructed to output bare
  *  JSON, but most wrap it in ```json fences, and some inject invisible
  *  control characters that break JSON.parse. */
-export function parseJsonText(text: string): unknown {
+export function parseJsonText(text: string, truncated = false): unknown {
   let cleaned = text.trim();
   const fence = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fence) cleaned = fence[1].trim();
@@ -77,10 +79,13 @@ export function parseJsonText(text: string): unknown {
   try {
     return JSON.parse(cleaned);
   } catch {
-    // Log the first 3000 chars for debugging, then truncate to avoid
-    // shipping megabytes of garbage in an error message.
-    const preview = cleaned.length > 3000 ? cleaned.substring(0, 3000) + '\n... [truncated]' : cleaned;
-    throw new AiGenerationError(`The AI provider did not return valid JSON. Raw output:\n${preview}`);
+    // Keep the head and the tail of the reply in the message (a bounded size): where a reply ends is what tells a
+    // cut-off answer from malformed JSON. The full text travels in `rawText` for the audit log.
+    const preview = cleaned.length > 3000 ? `${cleaned.substring(0, 2000)}\n... [${cleaned.length - 2800} characters omitted]\n${cleaned.slice(-800)}` : cleaned;
+    const reason = truncated
+      ? `The AI model stopped at its output limit before finishing the JSON (${cleaned.length} characters received). Ask for a shorter or simpler page, or choose a model with a larger output limit.`
+      : 'The AI provider did not return valid JSON.';
+    throw new AiGenerationError(`${reason} Raw output:\n${preview}`, undefined, text);
   }
 }
 
@@ -181,7 +186,8 @@ async function generateOpenAi(input: AiGenerateInput, baseUrl?: string, provider
     ],
   });
   const rawText = completion.choices[0]?.message?.content ?? '';
-  return { json: input.raw ? extractPlainText(rawText) : parseJsonText(rawText), rawText };
+  const truncated = completion.choices[0]?.finish_reason === 'length';
+  return { json: input.raw ? extractPlainText(rawText) : parseJsonText(rawText, truncated), rawText };
 }
 
 async function generateAnthropic(input: AiGenerateInput): Promise<AiGenerateResult> {
@@ -200,7 +206,7 @@ async function generateAnthropic(input: AiGenerateInput): Promise<AiGenerateResu
     .filter((block) => block.type === 'text')
     .map((block) => (block.type === 'text' ? block.text : ''))
     .join('\n');
-  return { json: input.raw ? extractPlainText(rawText) : parseJsonText(rawText), rawText };
+  return { json: input.raw ? extractPlainText(rawText) : parseJsonText(rawText, message.stop_reason === 'max_tokens'), rawText };
 }
 
 async function generateGoogle(input: AiGenerateInput): Promise<AiGenerateResult> {
@@ -212,7 +218,8 @@ async function generateGoogle(input: AiGenerateInput): Promise<AiGenerateResult>
   });
   const result = await model.generateContent(input.userPrompt);
   const rawText = result.response.text();
-  return { json: input.raw ? extractPlainText(rawText) : parseJsonText(rawText), rawText };
+  const truncated = result.response.candidates?.[0]?.finishReason === 'MAX_TOKENS';
+  return { json: input.raw ? extractPlainText(rawText) : parseJsonText(rawText, truncated), rawText };
 }
 
 /** Dispatches to the configured provider. `custom` reuses the OpenAI SDK

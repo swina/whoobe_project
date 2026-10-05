@@ -5086,7 +5086,8 @@ app.post('/ai/generate', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLim
       settings: { provider: settings.provider, model: settings.model, endpoint: settings.endpoint, apiKey: settings.apiKey },
       systemPrompt: buildSystemPrompt(),
       userPrompt: buildUserPrompt(ctx),
-      maxTokens: 8192,
+      // A whole page is a verbose JSON tree (every node carries css/blocks/editable...): 8192 tokens cut it off mid-way
+      maxTokens: kind === 'page' ? 16384 : 8192,
     });
     const validationError = validateElementTree(result.json);
     if (validationError) {
@@ -5112,6 +5113,7 @@ app.post('/ai/generate', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLim
     try {
       await createAiGenerated({
         kind, prompt: ctx.prompt, provider: settings.provider, model: settings.model,
+        rawResponse: error instanceof AiGenerationError ? error.rawText : undefined,
         status: 'error', error: message, createdBy: req.user?.id ?? null,
       });
     } catch (logError) {
