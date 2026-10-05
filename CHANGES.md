@@ -1,3 +1,6 @@
+## [Security summary: CI is green] — 2026-10-05
+- Branch: `master`. `docs/plans/security/status-summary.md`: the CI row now records the first successful run (37286029925: static, API + browser, isolation, both TLS jobs; DAST skipped by design); the "First GitHub Actions run" open item is removed.
+
 ## [CI second run: libpcre2 in the Debian runtime] — 2026-10-05
 - Branch: `master`. Run 37284288245 (commit 04a96cb): static, isolation and both TLS jobs green, API suites green (1039/1039); only `security:images` failed: `libpcre2-8-0 10.42-1+deb12u1` (CVE-2026-103111, HIGH, fixable in deb12u2) in core-api, gateway and asset-processor.
 - `Dockerfile`, `runtime` stage: `apt-get install --only-upgrade libpcre2-8-0` (same temporary patch as `apk upgrade pcre2` on the nginx images; drop when the pinned base catches up). Upgrade checked on the pinned base image; image scan to be confirmed by the next CI run.
