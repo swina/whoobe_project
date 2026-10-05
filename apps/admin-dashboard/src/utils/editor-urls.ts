@@ -26,18 +26,3 @@ export function getWhoobeOneSpikeUrl(): string {
   const port = window.location.port
   return `${window.location.protocol}//${hostname}${port ? `:${port}` : ''}/whoobe-one`
 }
-
-// Same for whoobe-studio (port 3004).
-export function getWhoobeStudioUrl(): string {
-  if (typeof window === 'undefined') return 'http://localhost:3004'
-  const hostname = window.location.hostname
-  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
-  if (isLocalhost) {
-    return `${window.location.protocol}//${hostname}:3004`
-  }
-  if (window.location.protocol === 'https:') {
-    const port = window.location.port
-    return `${window.location.protocol}//${hostname}${port ? `:${port}` : ''}/whoobe-studio`
-  }
-  return `${window.location.protocol}//${hostname}:3004`
-}

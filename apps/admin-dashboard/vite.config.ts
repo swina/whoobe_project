@@ -42,12 +42,6 @@ export default defineConfig({
       '/ai': { target: 'http://localhost:3003', changeOrigin: true },
       '/figma': { target: 'http://localhost:3003', changeOrigin: true },
       '/api/v1/dam': { target: 'http://localhost:3002', changeOrigin: true },
-      // whoobe-studio (port 3004) — same proxying approach.
-      '/whoobe-studio': {
-        target: 'http://localhost:3004',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/whoobe-studio/, ''),
-      },
     },
   },
   optimizeDeps: {

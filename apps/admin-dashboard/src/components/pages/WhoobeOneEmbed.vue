@@ -18,7 +18,7 @@
 // Embeds apps/whoobe-one-spike's real editor for one specific page - see
 // docs/plans/cms/whoobe-one-editor-integration-plan.md §6 (Phase 3) for
 // the full reasoning this follows. Deliberately much lighter than this
-// same directory's sibling, WhoobeStudioEmbed.vue (documents/):
+// the former whoobe-studio embed (WhoobeStudioEmbed.vue, since removed):
 //
 // - No WhoobeHostBridge/postMessage document-sync bridge - that mechanism
 //   exists specifically because whoobe-studio has no way to load or save
@@ -31,8 +31,8 @@
 //   callbacks either, for the same reason - there's nothing for this
 //   component to do on the editor's behalf.
 // - Still a real <iframe>, and still passes `parentOrigin` in the query
-//   string (reusing the exact same convention WhoobeStudioEmbed.vue
-//   already established, rather than inventing a second one) - not to
+//   string (reusing the exact same convention the removed WhoobeStudioEmbed.vue
+//   had established, rather than inventing a second one) - not to
 //   secure any postMessage traffic (there isn't any here), but because
 //   whoobe-one-spike runs Tailwind entirely at runtime in the browser
 //   (@tailwindcss/browser, scanning whatever DOM it's loaded into) -
