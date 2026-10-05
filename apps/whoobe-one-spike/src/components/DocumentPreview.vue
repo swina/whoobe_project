@@ -76,11 +76,10 @@
       <div class="flex-1"></div>
       <span v-if="captureMessage" :title="captureMessage" class="max-w-md truncate" :class="captureFailed ? 'text-red-400' : 'text-green-400'">{{ captureMessage }}</span>
       <button
-        v-if="deviceMode === 'desktop'"
         type="button"
         class="flex items-center gap-1 px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
         :disabled="capturing || !editor.page?.id"
-        :title="editor.page?.id ? 'Capture this preview as the thumbnail shown in the list' : 'Save first to capture a thumbnail'"
+        :title="!editor.page?.id ? 'Save first to capture a thumbnail' : deviceMode === 'desktop' ? 'Capture this preview as the thumbnail shown in the list' : `Capture the ${frameWidth}×${frameHeight} device screen as the thumbnail`"
         @click="captureThumbnail"
       >
         <Camera class="w-3.5 h-3.5" /> {{ capturing ? 'Capturing…' : 'Capture thumbnail' }}
@@ -100,6 +99,7 @@
          and read by PreviewView.vue on mount. -->
     <div v-else-if="doc" class="flex justify-center py-8 px-4">
       <iframe
+        ref="deviceFrame"
         :src="previewUrl"
         class="bg-white shadow-2xl border-0"
         :style="{ width: frameWidth + 'px', height: frameHeight + 'px' }"
@@ -156,7 +156,7 @@ import { isDynamicSlug, matchAgainstPattern } from '../scripts/path-pattern'
 import { useEditorStore } from '../store/editor'
 import BlockContainerPreview from './preview/BlockContainerPreview.vue'
 import { useThemeStyles } from '../composables/useThemeStyles'
-import { captureElementThumbnail, notifyParentThumbnailSaved } from '../scripts/capture-thumbnail'
+import { captureElementThumbnail, notifyParentThumbnailSaved, pageBackgroundColor, type CaptureOptions } from '../scripts/capture-thumbnail'
 import { setPageThumbnail } from '../pages-api'
 import { setSnippetThumbnail } from '../snippets-api'
 
@@ -270,18 +270,37 @@ const frameHeight = computed(() => {
 // page/snippet being edited (needs a saved id), so it shows up as the card
 // image in the admin-dashboard's Pages/Snippets lists.
 const captureRoot = ref<HTMLElement | null>(null)
+const deviceFrame = ref<HTMLIFrameElement | null>(null)
 const capturing = ref(false)
 const captureMessage = ref('')
 const captureFailed = ref(false)
 
 async function captureThumbnail() {
   const id = editor.page?.id ? String(editor.page.id) : null
-  if (!captureRoot.value || !id) return
+  if (!id) return
   capturing.value = true
   captureFailed.value = false
   captureMessage.value = ''
   try {
-    const { dataUrl, skipped } = await captureElementThumbnail(captureRoot.value)
+    let target: HTMLElement | null = captureRoot.value
+    let options: CaptureOptions = {}
+    if (deviceMode.value !== 'desktop') {
+      // Tablet/Mobile: the page lives in the preview iframe (same origin), rendered at the device's own viewport
+      // width, so its responsive classes resolve as on the device. Capture exactly the visible device screen
+      // (width x height of the frame, e.g. 375x667) at 2x, the portrait/landscape shape chosen in the toolbar.
+      const idoc = deviceFrame.value?.contentDocument
+      target = idoc?.getElementById('app') ?? null
+      if (!idoc || !target?.firstElementChild) throw new Error('The device preview is not loaded yet')
+      options = {
+        width: frameWidth.value,
+        aspect: frameHeight.value / frameWidth.value,
+        fill: true,
+        outputWidth: Math.min(frameWidth.value * 2, 800),
+        backgroundColor: pageBackgroundColor(idoc),
+      }
+    }
+    if (!target) return
+    const { dataUrl, skipped } = await captureElementThumbnail(target, options)
     if (editor.snippetMode) {
       await setSnippetThumbnail(id, dataUrl)
       notifyParentThumbnailSaved('snippet', id)

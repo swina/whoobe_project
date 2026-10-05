@@ -6,7 +6,8 @@
         <button class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:hover:text-slate-800 transition text-sm" title="Close (Esc)" @click="$emit('close')">✕</button>
       </div>
       <div class="p-4 bg-slate-950/40 light:bg-slate-50">
-        <img :src="src" :alt="title" class="w-full rounded-lg border border-slate-800 light:border-slate-200 bg-white" />
+        <!-- w-auto + max-h: a portrait (mobile) thumbnail must fit the screen instead of running off the bottom -->
+        <img :src="src" :alt="title" class="mx-auto block w-auto max-w-full max-h-[75vh] rounded-lg border border-slate-800 light:border-slate-200 bg-white" />
       </div>
     </div>
   </div>
@@ -14,7 +15,7 @@
 
 <script setup lang="ts">
 // Enlarged view of a page/snippet's captured thumbnail (Pages list column and
-// Snippets list/grid) - the stored image is 640px wide, shown up to max-w-3xl.
+// Snippets list/grid) - the stored image is 640px wide (desktop) or a 2x device screen (Tablet/Mobile capture), fitted to the screen.
 import { onMounted, onUnmounted } from 'vue'
 
 defineProps<{ src: string; title: string }>()

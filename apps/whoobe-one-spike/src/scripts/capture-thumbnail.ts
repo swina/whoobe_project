@@ -1,5 +1,6 @@
-// Captures a DOM element (the editor's desktop preview) as a small WebP data
-// URL, to store as a page/snippet thumbnail. Pure client-side (html-to-image
+// Captures a DOM element (the editor's desktop preview, or the page inside the
+// Tablet/Mobile preview iframe) as a WebP data URL, to store as a page/snippet
+// thumbnail. Pure client-side (html-to-image
 // serialises the live DOM into an SVG foreignObject and rasterises it), so
 // fidelity is "good, not pixel-perfect": cross-origin images without CORS
 // headers, iframes and some web fonts may not render.
@@ -8,6 +9,10 @@ import { parentTargetOrigin } from './parent-origin'
 
 const OUTPUT_WIDTH = 640
 const ASPECT = 10 / 16 // above-the-fold crop, 16:10
+// The server refuses thumbnails over 400k characters (apps/core-api MAX_THUMBNAIL_CHARS): a photographic page at
+// device resolution can exceed that at the first quality, so step down until it fits.
+const MAX_DATA_URL_CHARS = 380_000
+const QUALITIES = [0.8, 0.65, 0.5, 0.35]
 
 // Nodes html-to-image can't clone into its SVG foreignObject (a nested
 // browsing context or a live media element makes the whole raster fail to
@@ -70,13 +75,13 @@ function xmlProblem(node: HTMLElement): string | null {
 
 const PLACEHOLDER = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
 
-function render(node: HTMLElement, width: number, height: number): Promise<HTMLCanvasElement> {
+function render(node: HTMLElement, width: number, height: number, pixelRatio = 1, backgroundColor = '#ffffff'): Promise<HTMLCanvasElement> {
   return toCanvas(node, {
     width,
     height,
-    pixelRatio: 1,
+    pixelRatio,
     cacheBust: true,
-    backgroundColor: '#ffffff',
+    backgroundColor,
     // Embedding web fonts means fetching every cross-origin stylesheet;
     // one blocked fetch used to fail the whole capture. System fallback
     // fonts in the thumbnail are an acceptable trade.
@@ -98,14 +103,14 @@ function describeNode(node: Element): string {
  *  remove the leaves that still fail. Returns a description of what was cut,
  *  so a single bad element costs one block of the thumbnail rather than the
  *  whole capture. */
-async function removeUnrenderable(parent: HTMLElement, removed: string[]): Promise<void> {
+async function removeUnrenderable(parent: HTMLElement, removed: string[], pixelRatio: number, backgroundColor: string): Promise<void> {
   for (const child of Array.from(parent.children) as HTMLElement[]) {
     const w = Math.max(1, Math.round(child.getBoundingClientRect().width))
     const h = Math.max(1, Math.min(2000, Math.round(child.getBoundingClientRect().height)))
     try {
-      await render(child, w, h)
+      await render(child, w, h, pixelRatio, backgroundColor)
     } catch {
-      if (child.children.length) await removeUnrenderable(child, removed)
+      if (child.children.length) await removeUnrenderable(child, removed, pixelRatio, backgroundColor)
       else {
         removed.push(describeNode(child))
         child.remove()
@@ -120,31 +125,60 @@ export interface ThumbnailCapture {
   skipped: string[]
 }
 
-export async function captureElementThumbnail(el: HTMLElement): Promise<ThumbnailCapture> {
-  const width = Math.max(1, el.clientWidth)
-  const height = Math.max(1, Math.min(el.scrollHeight, Math.round(width * ASPECT)))
+export interface CaptureOptions {
+  /** Capture width in CSS px. Default: the element's client width. */
+  width?: number
+  /** height / width of the crop. Default 10/16 (landscape above-the-fold). */
+  aspect?: number
+  /** Always crop to exactly `aspect`, even when the content is shorter (the rest is the background colour). */
+  fill?: boolean
+  /** Width of the stored image. Default 640. */
+  outputWidth?: number
+  /** Colour behind transparent areas. Default white. */
+  backgroundColor?: string
+}
 
-  // Attached to the document (offscreen) so Tailwind's classes still resolve
-  // to computed styles, which html-to-image inlines into each node.
+/** The colour a page really shows behind its content: the first non-transparent background of body, then html. */
+export function pageBackgroundColor(doc: Document): string {
+  const view = doc.defaultView
+  for (const el of [doc.body, doc.documentElement]) {
+    const c = view?.getComputedStyle(el).backgroundColor
+    if (c && c !== 'transparent' && c !== 'rgba(0, 0, 0, 0)') return c
+  }
+  return '#ffffff'
+}
+
+export async function captureElementThumbnail(el: HTMLElement, opts: CaptureOptions = {}): Promise<ThumbnailCapture> {
+  const width = Math.max(1, Math.round(opts.width ?? el.clientWidth))
+  const cropHeight = Math.round(width * (opts.aspect ?? ASPECT))
+  const height = Math.max(1, opts.fill ? cropHeight : Math.min(el.scrollHeight, cropHeight))
+  const outputWidth = opts.outputWidth ?? OUTPUT_WIDTH
+  const pixelRatio = Math.max(1, outputWidth / width) // sharp on a phone-sized capture, not upscaled from 1x
+  const backgroundColor = opts.backgroundColor ?? '#ffffff'
+
+  // Attached to the element's own document (offscreen) so Tailwind's classes still resolve to computed styles,
+  // which html-to-image inlines into each node. For the Tablet/Mobile preview that document is the iframe's, whose
+  // viewport width is the device width, so responsive classes resolve as on the device.
+  const doc = el.ownerDocument
   const clone = el.cloneNode(true) as HTMLElement
   pruneBelowFold(el, clone, el.getBoundingClientRect().top, height)
   sanitizeForXml(clone)
-  const holder = document.createElement('div')
+  const holder = doc.createElement('div')
   holder.style.cssText = `position:fixed;left:-100000px;top:0;width:${width}px;pointer-events:none;`
   holder.appendChild(clone)
-  document.body.appendChild(holder)
+  doc.body.appendChild(holder)
 
   const skipped: string[] = []
   let source: HTMLCanvasElement
   try {
     try {
-      source = await render(clone, width, height)
+      source = await render(clone, width, height, pixelRatio, backgroundColor)
     } catch (first) {
       console.warn('[capture-thumbnail] full render failed, locating the culprit:', first, xmlProblem(clone) ?? '(XML re-parse is clean)')
-      await removeUnrenderable(clone, skipped)
+      await removeUnrenderable(clone, skipped, pixelRatio, backgroundColor)
       if (!skipped.length) throw first
       console.warn('[capture-thumbnail] left out:', skipped)
-      source = await render(clone, width, height)
+      source = await render(clone, width, height, pixelRatio, backgroundColor)
     }
   } catch (e) {
     const problem = xmlProblem(clone)
@@ -155,13 +189,19 @@ export async function captureElementThumbnail(el: HTMLElement): Promise<Thumbnai
   }
 
   const out = document.createElement('canvas')
-  out.width = OUTPUT_WIDTH
-  out.height = Math.round((OUTPUT_WIDTH * source.height) / source.width)
+  out.width = outputWidth
+  out.height = Math.round((outputWidth * source.height) / source.width)
   const ctx = out.getContext('2d')
   if (!ctx) throw new Error('Canvas 2D context unavailable')
   ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(source, 0, 0, out.width, out.height)
-  return { dataUrl: out.toDataURL('image/webp', 0.8), skipped }
+  let dataUrl = ''
+  for (const q of QUALITIES) {
+    dataUrl = out.toDataURL('image/webp', q)
+    if (dataUrl.length <= MAX_DATA_URL_CHARS) break
+  }
+  if (dataUrl.length > MAX_DATA_URL_CHARS) throw new Error('The captured image is too large to store even at low quality')
+  return { dataUrl, skipped }
 }
 
 /** Tells the embedding admin-dashboard (if any) to refresh its lists. */
