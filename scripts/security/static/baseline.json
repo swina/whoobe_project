@@ -27,6 +27,11 @@
       "review": "2027-01-31"
     },
     {
+      "file": "docs/plans/security/security-testing-plan.md",
+      "reason": "false positive: prose in the plan (the file's path before it moved to docs/release/security; the history scan still reports it there)",
+      "review": "2027-01-31"
+    },
+    {
       "file": "packages/core/src/dam/s3-provider.ts",
       "reason": "false positive: a code comment",
       "review": "2027-01-31"
