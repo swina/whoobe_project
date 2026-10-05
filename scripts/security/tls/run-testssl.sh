@@ -28,6 +28,7 @@ docker run -d --rm --name "$NAME" --network host -v "$WORK/conf:/etc/nginx/conf.
 for _ in $(seq 1 20); do (echo > "/dev/tcp/127.0.0.1/$PORT") 2>/dev/null && break; sleep 0.5; done
 docker exec "$NAME" nginx -v 2>&1 | head -1
 SAFE="$(echo "$IMG" | tr '/:@' '___' | cut -c1-40)"
+chmod 777 "$WORK"   # testssl.sh runs as its own uid in the container; mktemp -d is 0700 (fails on CI runners)
 docker run --rm --network host -v "$WORK:/data" drwetter/testssl.sh:latest --quiet --warnings off --jsonfile "/data/testssl.json" "localhost:$PORT" >"$WORK/testssl.log" 2>&1
 cp "$WORK/testssl.json" "$REPORTS/testssl-$SAFE-$TIME.json" 2>/dev/null
 cp "$WORK/testssl.log" "$REPORTS/testssl-$SAFE-$TIME.txt" 2>/dev/null

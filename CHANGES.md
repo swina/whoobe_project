@@ -1,3 +1,9 @@
+## [First CI run: three fixes] — 2026-10-05
+- Branch: `master`. The first `security` workflow run (run 35, commit 0279abc) failed in 4 jobs for 3 causes, all only visible on a fresh checkout. Static scans passed.
+- `Dockerfile`: `pnpm --filter @whoobe-cms/core build` -> `'@whoobe-cms/core...'` so `@whoobe-cms/schema` is built first (core imports it; on a clean tree `tsc` failed with TS2307). Fixes the isolation job; reproduced and verified on a clean worktree.
+- `scripts/security/tls/run-testssl.sh`: `chmod 777` on the temp work dir; the testssl container runs under another uid and could not write `testssl.json` on the runner (`mktemp -d` is 0700), so `summarize.py` found no report. Fixes both TLS jobs; local run on `nginx:alpine` PASS.
+- `scripts/security/unit/compose-hardening.test.ts`: creates an empty root `.env` for the test if missing (`docker-compose.apps.yml` has `env_file: .env`, absent in CI) and removes it afterwards. Not re-run locally (needs the stack); logic only.
+
 ## [Postgres restarts by itself after a reboot] — 2026-10-04
 - Branch: `master`. Found while preparing a WSL shutdown: every service of `docker-compose.yml` had `restart: unless-stopped` except `postgres`, so after a host/daemon restart the apps came back and the database did not. `postgres` now has `restart: unless-stopped` in `docker-compose.yml` and `docker-compose.data.yml`. **Existing containers keep their old policy until recreated** (`docker compose -p <project> --env-file <env> up -d`; the data volume is kept).
 
