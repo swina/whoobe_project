@@ -1,3 +1,7 @@
+## [CI second run: libpcre2 in the Debian runtime] — 2026-10-05
+- Branch: `master`. Run 37284288245 (commit 04a96cb): static, isolation and both TLS jobs green, API suites green (1039/1039); only `security:images` failed: `libpcre2-8-0 10.42-1+deb12u1` (CVE-2026-103111, HIGH, fixable in deb12u2) in core-api, gateway and asset-processor.
+- `Dockerfile`, `runtime` stage: `apt-get install --only-upgrade libpcre2-8-0` (same temporary patch as `apk upgrade pcre2` on the nginx images; drop when the pinned base catches up). Upgrade checked on the pinned base image; image scan to be confirmed by the next CI run.
+
 ## [First CI run: three fixes] — 2026-10-05
 - Branch: `master`. The first `security` workflow run (run 35, commit 0279abc) failed in 4 jobs for 3 causes, all only visible on a fresh checkout. Static scans passed.
 - `Dockerfile`: `pnpm --filter @whoobe-cms/core build` -> `'@whoobe-cms/core...'` so `@whoobe-cms/schema` is built first (core imports it; on a clean tree `tsc` failed with TS2307). Fixes the isolation job; reproduced and verified on a clean worktree.
