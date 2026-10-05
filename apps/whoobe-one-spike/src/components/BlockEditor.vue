@@ -84,8 +84,9 @@
         @dragover="onGatewayFieldDragOver"
         @drop="onGatewayFieldDrop"
       >
-        <div v-if="editor.appMode" class="relative bg-white shadow-xl rounded-[32px] overflow-hidden mx-auto my-4"
-          style="width: 390px; height: 844px; container: app / inline-size;">
+        <div v-if="editor.appMode" class="relative shadow-xl rounded-[32px] overflow-hidden mx-auto my-4"
+          :class="appFrameBackground.className"
+          :style="'width: 390px; height: 844px; container: app / inline-size;' + appFrameBackground.style">
           <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[30px] bg-black rounded-b-2xl z-10"></div>
           <div class="h-full overflow-y-auto">
             <BlockContainer v-if="editor.document" :doc="editor.document" :level="0" />
@@ -426,6 +427,18 @@ useThemeStyles(() => editor.document)
 
 // App Mode: `sm:`/`md:`/`max-md:`... follow the width of the phone frame, not the window (see the composable).
 useAppModeBreakpoints()
+
+// The phone frame is the page's "body": it takes the same background as the document root (the website template's
+// body slot, or the document's own canvasBackground), so the area below/around a short page is not a white floor.
+// Same rule as BlockContainer.vue's root; white only when nothing configures a background.
+const appFrameBackground = computed(() => {
+  const cb = (editor.document as any)?.canvasBackground
+  const useTemplate = !(cb && cb.useTemplate === false)
+  const className = useTemplate ? (editor.templateBody?.className ?? '') : ''
+  const style = useTemplate ? (editor.templateBody?.style ?? '') : (cb?.style ?? '')
+  const hasBackground = useTemplate ? !!(className || style) : !!String(cb?.style ?? '').trim()
+  return { className: hasBackground ? className : 'bg-white', style: hasBackground ? style : '' }
+})
 
 // A real, reported bug fixed here: `flash()` used to render every message
 // - including genuine failures ("Failed to save", "A path is required...")

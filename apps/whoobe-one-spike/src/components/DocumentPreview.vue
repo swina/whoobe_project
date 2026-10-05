@@ -174,6 +174,8 @@ const previewUrl = computed(() => {
   return `${window.location.origin}${import.meta.env.BASE_URL}preview`
 })
 
+const editor = useEditorStore()
+
 // Serialize the document and store it in sessionStorage so PreviewView.vue
 // inside the iframe can read it. Uses JSON round-trip, same pattern as
 // database-actions.ts's savePage().
@@ -181,6 +183,12 @@ function storeDocForPreview() {
   if (!props.doc) return
   try {
     sessionStorage.setItem('whoobe-preview-doc', JSON.stringify(props.doc))
+    // The iframe is a second app instance with an empty editor store: without these two the page shows
+    // neither the theme (colours, fonts, custom CSS) nor the website template's body background.
+    sessionStorage.setItem('whoobe-preview-ctx', JSON.stringify({
+      websiteTheme: editor.websiteTheme ?? null,
+      templateBody: editor.templateBody ?? null,
+    }))
   } catch {
     // sessionStorage full/unavailable — iframe preview falls back to blank.
   }
@@ -191,7 +199,6 @@ function storeDocForPreview() {
 // heading content, etc.) because only the reference itself is tracked.
 watch(() => props.doc, () => storeDocForPreview(), { immediate: true })
 
-const editor = useEditorStore()
 
 // Wrap the doc prop into a ref the composable can watch, so theme styles
 // update when the previewed document changes (e.g. KitsPanel swapping in a
