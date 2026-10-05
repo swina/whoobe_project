@@ -1,3 +1,6 @@
+## [Workspace guide: missing options and isolation suite] — 2026-10-05
+- Branch: `master`. `docs/guides/system/creating-workspaces.md` checked against `scripts/*.sh`, `docker-compose.yml`, `.env.example` and the TLS template (consistent). Added: `enable-tls.sh --yes/--force`, `remove-workspace.sh` with no slug (list) and `--yes`, and `pnpm security:isolation` in the Verify section.
+
 ## [Security summary: CI is green] — 2026-10-05
 - Branch: `master`. `docs/plans/security/status-summary.md`: the CI row now records the first successful run (37286029925: static, API + browser, isolation, both TLS jobs; DAST skipped by design); the "First GitHub Actions run" open item is removed.
 
