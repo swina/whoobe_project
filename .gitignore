@@ -24,3 +24,6 @@ scripts/security/reports/zap-work/
 
 # release helper output (scripts/release.sh): drafts of the release notes
 .release/
+
+# Let's Encrypt state created by scripts/enable-tls.sh and provision-workspace.sh on the host: account keys and private keys, never commit
+deploy/certbot/

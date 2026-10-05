@@ -48,8 +48,13 @@ for f in sorted(md):
         if not os.path.exists(m):
             problems.append(f'{f}: missing file {m}')
     for m in set(re.findall(r'`((?:apps|packages|scripts|deploy|docker)/[A-Za-z0-9_./\-]+)`', t_nocode)):
-        if not IGNORE_PATH.search(m) and not os.path.exists(m.rstrip('/')):
-            problems.append(f'{f}: quoted path does not exist: {m}')
+        if IGNORE_PATH.search(m) or os.path.exists(m.rstrip('/')):
+            continue
+        # generated or local-only files (reports, env files) are git-ignored and absent from a fresh checkout
+        if any(subprocess.run(['git', 'check-ignore', '-q', cand], capture_output=True).returncode == 0
+               for cand in (m.rstrip('/'), m.rstrip('/') + '/')):
+            continue
+        problems.append(f'{f}: quoted path does not exist: {m}')
 print(f'  documents checked: {len(md)}')
 
 # --- 4. alignment line
