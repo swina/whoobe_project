@@ -23,7 +23,7 @@ ENV VITE_WHOOBE_ONE_URL=$VITE_WHOOBE_ONE_URL
 # hadolint ignore=DL3059  (separate layers on purpose: dependency install is cached independently)
 RUN pnpm install --frozen-lockfile
 # hadolint ignore=DL3059
-RUN pnpm --filter @whoobe-cms/core build
+RUN pnpm --filter '@whoobe-cms/core...' build
 # hadolint ignore=DL3059
 RUN pnpm build
 

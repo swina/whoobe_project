@@ -2,14 +2,20 @@
 // (`docker compose config`) with different env files. Needs Docker, like the rest of the suite.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ROOT_DIR } from '../lib/config'
 
 let dir = ''
-beforeAll(() => { dir = mkdtempSync(join(tmpdir(), 'whoobe-compose-')) })
-afterAll(() => rmSync(dir, { recursive: true, force: true }))
+// docker-compose.apps.yml has `env_file: .env`: on a fresh checkout (CI) the file does not exist and `config` fails.
+const rootEnv = join(ROOT_DIR, '.env')
+let createdRootEnv = false
+beforeAll(() => {
+  dir = mkdtempSync(join(tmpdir(), 'whoobe-compose-'))
+  if (!existsSync(rootEnv)) { writeFileSync(rootEnv, ''); createdRootEnv = true }
+})
+afterAll(() => { rmSync(dir, { recursive: true, force: true }); if (createdRootEnv) rmSync(rootEnv, { force: true }) })
 
 function render(env: Record<string, string>, file = 'docker-compose.yml') {
   const envFile = join(dir, `env-${Math.random().toString(36).slice(2)}`)
