@@ -42,6 +42,7 @@ the other supported line and released as a patch of both.
 |---|---|---|
 | Git | yes | clean working tree; on `master` or `release/*`; HEAD is pushed, so the CI result belongs to it |
 | CI | yes | the `security` workflow succeeded on exactly this commit, **and** its DAST job (OWASP ZAP) succeeded on it. DAST does not run on push: start the workflow by hand with *Also run the ZAP DAST scan* ticked, on the release commit |
+| License | yes | `LICENSE.md` (MIT) exists and every product `package.json` declares `"license": "MIT"` |
 | Documentation | yes | every core-api route is in the API route table; `api-reference.md` and `openapi.yaml` equal what the generator produces; no broken link, no `docs/...` path or quoted repository path that does not exist; the alignment line is present |
 | Upgrade test | **no** | install the previous release, load data, upgrade to this commit, check the migrations and a login. Not automated yet - the most valuable test still missing |
 | Fresh install | **no** | follow `docs/release/operations/creating-workspaces.md` on an empty host |

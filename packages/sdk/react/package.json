@@ -1,6 +1,7 @@
 {
   "name": "@whoobe-cms/react",
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",

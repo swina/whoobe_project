@@ -63,6 +63,14 @@ gate_ci() {
   esac
 }
 
+gate_license() {
+  echo "License"
+  if [ -f LICENSE.md ] && grep -q "^MIT License" LICENSE.md; then ok "LICENSE.md (MIT) present"; else bad "LICENSE.md missing or not the MIT text"; fi
+  local f missing=""
+  while read -r f; do grep -q '"license": "MIT"' "$f" || missing="$missing $f"; done <<< "$(version_files)"
+  if [ -z "$missing" ]; then ok "every product package.json declares \"license\": \"MIT\""; else bad "no MIT license field in:$missing"; fi
+}
+
 gate_docs() {
   echo "Documentation (docs/release)"
   if python3 scripts/release/check-docs.py; then ok "API docs complete and current, no broken links or paths"; else bad "documentation checks failed"; fi
@@ -77,7 +85,7 @@ manual_items() {
 }
 
 cmd_check() {
-  gate_git; gate_ci; gate_docs; manual_items
+  gate_git; gate_ci; gate_license; gate_docs; manual_items
   echo
   if [ "$fail" = 0 ]; then echo "Gates passed (manual items above are yours)."; else echo "Gates NOT passed."; return 1; fi
 }
