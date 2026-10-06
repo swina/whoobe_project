@@ -39,6 +39,7 @@ import { useEditorStore } from '../store/editor'
 import { loadPage, loadMailTemplate, loadSnippet, loadWebsiteTheme, loadAllThemes, createEmptyMailTemplateRoot, createEmptyDocumentRoot } from '../scripts/database-actions'
 import { clean } from '../helpers'
 import { getDefaultCoreApiUrl } from '../core-api-url'
+import { fetchAlpinePresets } from '../alpine-presets-api'
 import { resolveDocumentData } from '../scripts/data-resolver'
 
 const editor = useEditorStore()
@@ -92,8 +93,17 @@ async function fetchStripHtmlComments() {
   }
 }
 
+async function loadAlpinePresets() {
+  try {
+    editor.setAlpinePresets(await fetchAlpinePresets())
+  } catch {
+    // Non-critical: the presets panel simply starts empty.
+  }
+}
+
 onMounted(async () => {
   await fetchDefaultPlaceholder()
+  await loadAlpinePresets()
   await fetchAutosaveDefault()
   await fetchStripHtmlComments()
   const parentOrigin = typeof route.query.parentOrigin === 'string' ? route.query.parentOrigin : null

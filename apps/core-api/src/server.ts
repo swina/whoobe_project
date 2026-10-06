@@ -23,6 +23,8 @@ import {
   listSnippets,
   createSnippet,
   deleteSnippet,
+  normalizeAlpinePresets,
+  readAlpinePresets,
   listWebsites,
   getWebsite,
   getWebsiteByDomain,
@@ -2239,6 +2241,37 @@ app.put('/whoobe-one/settings/autosave', requirePermission(PERMISSIONS.OBJECTS_W
   }
 });
 
+// Alpine presets (docs/release/guides/alpine-presets.md): named sets of Alpine directives that an administrator defines
+// once and applies to any element from the editor's Advanced > AlpineJS panel. Installation-wide, stored in the first
+// website's settings like the other values here. Applying a preset copies its directives into the element, so pages
+// never depend on this catalog at render time. Reading needs `objects:read`, writing `objects:write` (an editor can
+// already put any directive on any element, so this adds no power); the catalog is validated for shape and size.
+app.get('/whoobe-one/settings/alpine-presets', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const first = (await listWebsites())[0];
+    const settings = first?.settings && typeof first.settings === 'object' && !Array.isArray(first.settings) ? first.settings as Record<string, unknown> : {};
+    res.json({ presets: readAlpinePresets(settings.alpinePresets) });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Read Alpine presets error');
+    res.status(500).json({ error: 'Failed to read Alpine presets' });
+  }
+});
+
+app.put('/whoobe-one/settings/alpine-presets', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const parsed = normalizeAlpinePresets(req.body?.presets);
+    if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
+    const first = (await listWebsites())[0];
+    if (!first) { res.status(404).json({ error: 'No website found' }); return; }
+    const settings = { ...(first.settings as Record<string, unknown> ?? {}), alpinePresets: parsed.presets };
+    await updateWebsite(first.id, { settings });
+    res.json({ presets: parsed.presets });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Save Alpine presets error');
+    res.status(500).json({ error: 'Failed to save Alpine presets' });
+  }
+});
+
 // CDN mirror endpoint/route to use for "Publish to CDN" (docs/plans/assets/
 // assets-cdn.md) - configured once (Settings > DAM), same "configure once,
 // reuse everywhere" pattern as the mail settings and the toggles above,
@@ -3324,7 +3357,10 @@ app.get('/public/websites/:id', async (req: Request, res: Response): Promise<voi
       collect(path.items);
       return { ...path, pageIds: [...ids] };
     });
-    res.json(sanitizePublicGatewayContent({ website, themes: [...themes, ...(globalTheme ? [globalTheme] : [])], defaultThemeId, paths: resolvedPaths, templates }));
+    // `settings` is an administration blob; the editor-only catalog of Alpine presets is not for visitors (pages carry
+    // copies of the directives they use, nothing reads the catalog on the public side).
+    const { alpinePresets: _alpinePresets, ...publicSettings } = (website.settings ?? {}) as Record<string, unknown>;
+    res.json(sanitizePublicGatewayContent({ website: { ...website, settings: publicSettings }, themes: [...themes, ...(globalTheme ? [globalTheme] : [])], defaultThemeId, paths: resolvedPaths, templates }));
   } catch (error: any) {
     logger.error({ err: error }, 'Public website info error');
     res.status(500).json({ error: error.message || 'Failed to get website info' });

@@ -20,6 +20,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type Element from '../scripts/ElementsClass.js'
 import type { ElementGroup } from '../scripts/ElementsClass.js'
+import type { AlpinePreset } from '../alpine-presets-api'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -67,6 +68,9 @@ export const useEditorStore = defineStore('editor', () => {
   // per-browser override (unlike autosave). Defaults off so existing
   // previews render unchanged until an admin opts in.
   const stripHtmlComments = ref<boolean>(false)
+
+  // Catalog of named Alpine directive sets (Advanced > AlpineJS > Presets), loaded from core-api when the editor opens.
+  const alpinePresets = ref<AlpinePreset[]>([])
   const exportMode = ref<string>('single')
   const preview = ref<boolean | string>(false)
   const fonts = ref<string[]>((import.meta.env.VITE_FONT_FAMILIES ?? '').split('|'))
@@ -188,6 +192,7 @@ const locale = ref<string>('en')
   function setStripHtmlComments(v: boolean) {
     stripHtmlComments.value = v
   }
+  function setAlpinePresets(v: AlpinePreset[]) { alpinePresets.value = v }
   function setExportMode(v: string) { exportMode.value = v }
   function setPreview(v: boolean | string) { preview.value = v }
   function setSave(v: boolean) { save.value = v }
@@ -232,14 +237,14 @@ const locale = ref<string>('en')
 
   return {
     mode, settings, elements, document, project, selected, page, current,
-    component, action, subaction, level, parent, startTime, autosave, stripHtmlComments,
+    component, action, subaction, level, parent, startTime, autosave, stripHtmlComments, alpinePresets,
     exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
     mailTemplateId, snippetId, snippetMode, pageThemeId, websiteId, locale, websiteTheme, websiteThemes, templateBody,
     defaultPlaceholderUrl,
     appMode, pwaConfig,
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
-    setParent, setStartTime, setAutosave, setAutosaveDefault, setStripHtmlComments, setExportMode, setPreview, setSave,
+    setParent, setStartTime, setAutosave, setAutosaveDefault, setStripHtmlComments, setAlpinePresets, setExportMode, setPreview, setSave,
     setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, setPageThemeId, setSnippetId, setSnippetMode, resolvedData,
     collapsedIds, toggleCollapsed, isCollapsed, setWebsiteTheme, setWebsiteThemes, setTemplateBody, setWebsiteId, setLocale,
     setDefaultPlaceholderUrl,

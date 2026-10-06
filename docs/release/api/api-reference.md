@@ -124,6 +124,8 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `PUT /whoobe-one/settings/logging` | Set editor logging verbosity. |
 | `GET /whoobe-one/settings/autosave` | Get the org-wide default autosave enabled/interval settings. |
 | `PUT /whoobe-one/settings/autosave` | Set the org-wide default autosave settings. |
+| `GET /whoobe-one/settings/alpine-presets` | Get the catalog of Alpine presets: named sets of Alpine.js directives applied from the editor's Advanced > AlpineJS panel (`{ presets: [{ name, description, directives }] }`). |
+| `PUT /whoobe-one/settings/alpine-presets` | Replace the whole Alpine presets catalog (`{ presets }`); 400 with the reason when a name, a directive (`x-...`, `@event`, `:attr`) or a size limit is invalid, nothing is stored then. |
 | `GET /whoobe-one/settings/cdn-mirror` | Get the default CDN-mirroring settings for DAM assets. |
 | `PUT /whoobe-one/settings/cdn-mirror` | Set the default CDN-mirroring settings. |
 | `GET /whoobe-one/websites/:id` | Get one website. |
