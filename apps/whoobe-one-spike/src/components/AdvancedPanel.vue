@@ -18,7 +18,6 @@
       </template>
       <FormConfigControl v-if="(editor.current as any)?.tag === 'form'" />
       <SearchConfigControl v-if="(editor.current as any)?.tag === 'search'" />
-      <AudioControl v-if="(editor.current as any)?.element === 'audio'" />
     </template>
   </div>
 </template>
@@ -31,7 +30,7 @@
 // never carried over. One accordion section per feature, same interaction
 // pattern as TailwindCustomizer.vue's group accordion, operating on the
 // same `editor.current` every other sidebar/toolbar control already reads.
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ChevronDown, ChevronRight } from '@lucide/vue'
 import { useEditorStore } from '../store/editor'
 import StyleControl from './advanced/StyleControl.vue'
@@ -67,6 +66,17 @@ const openSection = ref<string | null>('customClasses')
 // target bindings specifically on an <img> element) - extended to gateway
 // bindings too (any gatewayBinding bound to a specific response field, not
 // a "Whole response" binding, since there's no single value to format).
+// Selecting an Audio element opens its section; leaving it for another element must not leave a section that no longer
+// exists "open" (nothing would show), so fall back to Custom Classes.
+watch(
+  () => (editor.current as any)?.id,
+  () => {
+    if ((editor.current as any)?.element === 'audio') openSection.value = 'audio'
+    else if (openSection.value === 'audio') openSection.value = 'customClasses'
+  },
+  { immediate: true },
+)
+
 const sections = computed(() => {
   const current = editor.current as any
   const isCheckbox = current?.tag === 'input' && current?.type === 'checkbox'
@@ -79,6 +89,8 @@ const sections = computed(() => {
   const showDataBinding = showDataObjectBinding || showGatewayBinding
   return [
     ...(current?.sourceSnippetId ? [{ key: 'info', label: 'Info', component: InfoControl }] : []),
+    // The Audio element's own settings (source, look, title): first, since for that element they are what matters
+    ...(current?.element === 'audio' ? [{ key: 'audio', label: 'Audio', component: AudioControl }] : []),
     { key: 'customClasses', label: 'Custom Classes', component: CustomClassesControl },
     { key: 'style', label: 'Style', component: StyleControl },
     ...(showDataBinding ? [{ key: 'dataBinding', label: 'Data Binding', component: DataBindingTransformControl }] : []),

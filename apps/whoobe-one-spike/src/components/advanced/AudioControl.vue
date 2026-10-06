@@ -1,9 +1,6 @@
 <template>
-  <div v-if="el" class="p-2 border-b bg-white flex flex-col gap-2 text-xs">
-    <div class="flex items-center gap-1.5 font-semibold text-gray-600">
-      <AudioLines class="w-3.5 h-3.5 text-indigo-500" /> Audio
-    </div>
-
+  <!-- shown as the "Audio" accordion section of Advanced (AdvancedPanel.vue): the header and the folding come from there -->
+  <div v-if="el" class="flex flex-col gap-2 text-xs">
     <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
       Source: an asset of the library or any URL
       <div class="flex gap-1">
@@ -88,7 +85,7 @@
 // Settings of the Audio element (ElementsClass.js Audio(); rendered by AudioPlayer.vue). Written into the element's
 // own `options`, the source into `image.url` like Video and Image (a DAM asset path or any URL).
 import { computed, ref } from 'vue'
-import { AudioLines, FolderOpen } from '@lucide/vue'
+import { FolderOpen } from '@lucide/vue'
 import { useEditorStore } from '../../store/editor'
 import { normalizeAudioOptions, type AudioOptions } from '../../scripts/audio-waveform'
 import MediaPickerModal from '../MediaPickerModal.vue'
