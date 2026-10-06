@@ -39,6 +39,25 @@ describe('WhoobeNode (SSR)', () => {
     expect(html).toContain('src="http://dam:3002/dam-asset/uploads/hero.jpg"')
   })
 
+  it('renders an Audio element as a plain player with the source resolved like an image', async () => {
+    const tree = {
+      id: 'root', type: 'container', tag: 'document', element: 'div', css: { css: '', container: '' },
+      blocks: [
+        { id: 'a1', type: 'element', tag: 'element', element: 'audio', image: { url: '/audio/song.mp3' }, css: { css: 'w-full', container: '' }, options: { mode: 'waveform', loop: true, preload: 'auto' } },
+        { id: 'a2', type: 'element', tag: 'element', element: 'audio', image: { url: 'https://cdn.example.com/x.mp3' }, css: { css: '', container: '' }, options: { controls: false } },
+      ],
+    }
+    const html = await renderTree(tree)
+    expect(html).toContain('src="http://dam:3002/dam-asset/audio/song.mp3"')
+    expect(html).toContain('src="https://cdn.example.com/x.mp3"')
+    expect(html).toMatch(/<audio[^>]*class="w-full"[^>]*controls=""/)
+    expect(html).toContain('loop=""')
+    expect(html).toContain('preload="auto"')
+    expect(html).toContain('data-whoobe-audio="waveform"')
+    // controls: false really removes the controls of the second one
+    expect(html.match(/<audio[^>]*>/g)?.[1]).not.toContain('controls')
+  })
+
   it('uses a registry override for a node kind', async () => {
     const tree = {
       id: 'root', type: 'container', tag: 'document', element: 'div', css: { css: '', container: '' },

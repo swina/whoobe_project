@@ -40,6 +40,8 @@ export function normalizeKind(node: WhoobeElementNode): string {
       return 'image'
     case 'video':
       return 'video'
+    case 'audio':
+      return 'audio'
     case 'input':
       return 'input'
     case 'textarea':

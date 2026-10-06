@@ -32,6 +32,18 @@
   <span v-html="safeHtml(renderedContent)"></span>
   <span v-if="buttonIconComponent && buttonIconPosition === 'after'" class="inline-flex items-center ml-1.5"><component :is="buttonIconComponent" :style="getButtonIconStyle()" /></span>
 </component>
+<!-- Audio: AudioPlayer.vue renders either the plain browser player or the waveform player. Its root is a plain <div>,
+     so the Alpine/custom attributes in extraAttrs, the GSAP animation and Alpine.initTree() work on it as on any element. -->
+<AudioPlayer
+  v-else-if="element.element === 'audio'"
+  :id="element.id"
+  :ref="setAudioRoot"
+  :class="classe"
+  :style="stile"
+  v-bind="extraAttrs"
+  :src="displaySrc"
+  :options="(element as any).options"
+/>
 <video
   v-else-if="element.element === 'video'"
   :id="element.id"
@@ -83,6 +95,7 @@ import type { Component } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
 import { customAttrs, imageURL, resolveLucideIcon, renderSelectOptionsHtml, renderRadioGroupHtml, safeAlpineValue } from '../../helpers'
 import { resolveDisplayUrl } from '../../resolve-display-url'
+import AudioPlayer from '../AudioPlayer.vue'
 import { useEditorStore } from '../../store/editor'
 import { resolveFieldValue, resolveFieldFromRecord } from '../../scripts/data-resolver'
 import type { DataObjectRecord } from '../../data-objects-api'
@@ -130,6 +143,8 @@ const extraAttrs = computed(() => ({
 // A template ref is scoped to this exact component instance and has
 // neither problem.
 const rootEl = ref<HTMLElement | null>(null)
+// A component ref is the component instance; the audio element needs its real root <div> (animation, Alpine.initTree).
+function setAudioRoot(instance: any) { rootEl.value = instance ? (instance.$el ?? instance) : null }
 
 let stopAnimation: (() => void) | null = null
 
@@ -345,7 +360,7 @@ const displaySrc = computed(() => {
     }
     return undefined
   }
-  if (el.element === 'img' || el.element === 'video') return resolveDisplayUrl(imageURL(el.image))
+  if (el.element === 'img' || el.element === 'video' || el.element === 'audio') return resolveDisplayUrl(imageURL(el.image))
   return undefined
 })
 
