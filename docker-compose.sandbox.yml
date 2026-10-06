@@ -1,6 +1,8 @@
 # Public sandbox overlay (docs/release/operations/sandbox.md). Used together with docker-compose.yml:
 #   COMPOSE_FILE=docker-compose.yml:docker-compose.sandbox.yml   (scripts/sandbox/reset.sh sets it)
 # Switches the product into sandbox mode (limits, disabled outbound features) and hardens the containers.
+# SANDBOX_NO_NEW_PRIVILEGES=false only for hosts where the flag breaks image entrypoints (snap-installed Docker with
+# AppArmor: "exec docker-entrypoint.sh: operation not permitted"); keep the default on a public host.
 # Host ports stay (the shared nginx proxy reaches the services on 127.0.0.1): the provisioning script binds every
 # port to loopback (WS_APP_BIND_ADDRESS / WS_DATA_BIND_ADDRESS = 127.0.0.1), so only the proxy is public.
 x-sandbox-env: &sandbox-env
@@ -20,17 +22,17 @@ x-node-hardening: &node-hardening
     - /app/logs:size=64m,uid=1000,gid=1000
   cap_drop: [ALL]
   security_opt:
-    - no-new-privileges:true
+    - no-new-privileges:${SANDBOX_NO_NEW_PRIVILEGES:-true}
   pids_limit: 256
 
 services:
   postgres:
-    security_opt: ["no-new-privileges:true"]
+    security_opt: ["no-new-privileges:${SANDBOX_NO_NEW_PRIVILEGES:-true}"]
     mem_limit: 512m
     cpus: 1.0
     pids_limit: 200
   garage:
-    security_opt: ["no-new-privileges:true"]
+    security_opt: ["no-new-privileges:${SANDBOX_NO_NEW_PRIVILEGES:-true}"]
     mem_limit: 512m
     cpus: 1.0
     pids_limit: 200
@@ -50,10 +52,10 @@ services:
     mem_limit: 384m
     cpus: 0.5
   admin-dashboard:
-    security_opt: ["no-new-privileges:true"]
+    security_opt: ["no-new-privileges:${SANDBOX_NO_NEW_PRIVILEGES:-true}"]
     mem_limit: 256m
     cpus: 0.5
   whoobe-one-spike:
-    security_opt: ["no-new-privileges:true"]
+    security_opt: ["no-new-privileges:${SANDBOX_NO_NEW_PRIVILEGES:-true}"]
     mem_limit: 256m
     cpus: 0.5
