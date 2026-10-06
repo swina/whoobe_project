@@ -1,0 +1,11 @@
+# Drop-in for whoobe-sandbox-reset.service: what differs between hosts.
+# Install: sudo mkdir -p /etc/systemd/system/whoobe-sandbox-reset.service.d
+#          sudo cp override.conf.example /etc/systemd/system/whoobe-sandbox-reset.service.d/override.conf
+#          (edit the user and the path), then: sudo systemctl daemon-reload
+[Service]
+# the user that owns the repository and may run docker: otherwise the files the reset generates belong to root
+User=antonio
+# the clone; the unit defaults to /opt/whoobe_project
+WorkingDirectory=/opt/whoobe_project
+ExecStart=
+ExecStart=/opt/whoobe_project/scripts/sandbox/reset.sh
