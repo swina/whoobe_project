@@ -16,6 +16,7 @@ import http from 'node:http';
 import https from 'node:https';
 import net from 'node:net';
 import zlib from 'node:zlib';
+import { isSandbox, SandboxDisabledError } from '../sandbox.js';
 
 export class OutboundBlockedError extends Error {
   constructor(message: string) {
@@ -129,6 +130,7 @@ function toBuffer(b: SafeFetchInit['body']): Buffer | undefined {
 const NO_BODY_STATUS = new Set([101, 204, 205, 304]);
 
 export async function safeFetch(input: string | URL, init: SafeFetchInit = {}, policyOverrides: Partial<OutboundPolicy> = {}): Promise<Response> {
+  if (isSandbox()) throw new SandboxDisabledError();
   const policy = resolveOutboundPolicy(process.env, policyOverrides);
   let url = new URL(String(input));
   let method = (init.method ?? 'GET').toUpperCase();

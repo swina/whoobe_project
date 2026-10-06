@@ -1,0 +1,11 @@
+[Unit]
+Description=Rebuild the Whoobe public sandbox (all volumes are deleted)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/whoobe_project
+EnvironmentFile=/etc/whoobe-sandbox.env
+ExecStart=/opt/whoobe_project/scripts/sandbox/reset.sh
+TimeoutStartSec=30min

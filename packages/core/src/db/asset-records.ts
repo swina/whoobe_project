@@ -83,6 +83,11 @@ export async function deleteFolderRecord(path: string): Promise<{ deletedAssetPa
   return { deletedAssetPaths };
 }
 
+export async function countAssets(): Promise<number> {
+  const [row] = await getDb().select({ n: sql<number>`count(*)::int` }).from(assets);
+  return row?.n ?? 0;
+}
+
 export async function listAssets(folderPath?: string): Promise<AssetRecord[]> {
   const db = getDb();
   if (folderPath) {

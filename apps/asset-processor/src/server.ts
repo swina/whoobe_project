@@ -15,6 +15,9 @@ import {
   ThumbnailGenerator,
   ThumbnailPreset,
   getFileTypeFromFilename,
+  isSandbox,
+  assetMaxFileBytes,
+  assetMaxCount,
 } from '@whoobe-cms/core';
 import {
   requireAuth,
@@ -24,6 +27,7 @@ import {
   createFolderRecord,
   deleteFolderRecord,
   listAssets,
+  countAssets,
   getAssetByPath,
   getAssetById,
   upsertAssetRecord,
@@ -229,10 +233,18 @@ function isPixelLimitError(error: unknown): boolean {
 // Configure Multer in-memory storage for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max file size
+  limits: { fileSize: assetMaxFileBytes() }, // ASSET_MAX_FILE_BYTES, 50MB by default
 });
 
-app.use(express.json({ limit: '50mb' }));
+// ASSET_MAX_COUNT: a new asset (not an overwrite of an existing path) is refused once the limit is reached.
+async function assetQuotaExceeded(pimcorePath: string): Promise<boolean> {
+  const max = assetMaxCount();
+  if (max === null) return false;
+  if (await getAssetByPath(pimcorePath)) return false;
+  return (await countAssets()) >= max;
+}
+
+app.use(express.json({ limit: isSandbox() ? '1mb' : '50mb' }));
 app.use(cookieParser());
 // Credentialed CORS only for an allowlist (WHOOBE_HOSTNAME, CORS_ALLOWED_HOSTS, CORS_ALLOWED_ORIGINS;
 // localhost too outside production). Asset delivery routes answer any origin without credentials.
@@ -441,6 +453,11 @@ app.post('/api/v1/dam/upload', serviceTokenAuth, upload.single('file'), async (r
       return;
     }
 
+    if (await assetQuotaExceeded(pimcorePath)) {
+      res.status(409).json({ error: `Asset limit reached (${assetMaxCount()})` });
+      return;
+    }
+
     const provider = createDamProvider(parseFolderRules(req.body?.folderRules));
     // an explicit flag from the client wins; without one the folder rules decide (/public/** is built in)
     const flag = req.body?.isPublic;
@@ -525,6 +542,11 @@ app.post('/api/v1/dam/transform', requirePermission(PERMISSIONS.ASSETS_UPLOAD), 
       const baseName = sourceRecord.filename.replace(/\.[^/.]+$/, '');
       filename = `${baseName}_edited.${options.format}`;
       targetPath = sourceRecord.folderPath === '/' ? `/${filename}` : `${sourceRecord.folderPath}/${filename}`;
+    }
+
+    if (await assetQuotaExceeded(targetPath)) {
+      res.status(409).json({ error: `Asset limit reached (${assetMaxCount()})` });
+      return;
     }
 
     const { fileType } = getFileTypeFromFilename(filename);

@@ -1,0 +1,10 @@
+[Unit]
+Description=Reset the Whoobe public sandbox every 3 hours
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=3h
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
