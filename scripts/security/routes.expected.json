@@ -439,6 +439,18 @@
         "OBJECTS_WRITE"
       ]
     },
+    "GET /whoobe-one/settings/alpine-presets": {
+      "access": "permission",
+      "permissions": [
+        "OBJECTS_READ"
+      ]
+    },
+    "PUT /whoobe-one/settings/alpine-presets": {
+      "access": "permission",
+      "permissions": [
+        "OBJECTS_WRITE"
+      ]
+    },
     "GET /whoobe-one/settings/cdn-mirror": {
       "access": "permission",
       "permissions": [

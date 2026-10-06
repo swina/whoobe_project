@@ -9,8 +9,8 @@ for reviewers), `scripts/security/README.md` (how to run).
 
 | | |
 |---|---|
-| Findings recorded | **50** (F-001 ... F-050) |
-| By current severity | 25 Medium, 12 Low, 10 High, 3 Info (F-049 TLS and F-050 images added 2026-10-03/04) |
+| Findings recorded | **51** (F-001 ... F-051) |
+| By current severity | 25 Medium, 13 Low, 10 High, 3 Info (F-049 TLS and F-050 images added 2026-10-03/04, F-051 public settings 2026-10-06) |
 | Fixed in code | all 9 High; all but a few Medium (see section 3) |
 | Automated checks | `pnpm security:api` **1039 tests / 18 files**, `pnpm security:isolation` **14 tests** (two stacks) and `pnpm security:browser` **8 Playwright tests** (Chromium) green on a disposable stack, plus **DAST with OWASP ZAP** (`scripts/security/dast/run-zap.sh`: active API scan of 154 routes of core-api, gateway and asset-processor with an admin session: 0 findings above Info; passive baseline of the admin and editor SPAs); `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 122 |
 | Runs leave evidence | `scripts/security/reports/<date>/api-*.txt/.json`, `static-*.txt/.json` (git-ignored) |
@@ -51,6 +51,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | **F-008** residual `v-html` sinks (editor tables, form-result messages, Studio, generated sites) | sanitised in code but not covered by a browser test | extend `browser/xss-sinks.spec.ts`; run the generated sites through a build and the same payloads |
 | **F-014** full CSP for the admin/editor SPAs (nginx) | postponed on purpose (clickjacking and baseline headers are done, F-047): becomes essential in SaaS mode; a too strict policy breaks the editor | design with a report-only phase when SaaS mode starts |
 | **F-044** deleting a website can answer 500 | functional, not a security issue | fix when convenient |
+| **F-051** `GET /public/websites/:id` returns the whole `settings` blob | the Alpine presets catalog is already excluded; other editor-only settings (`logging`, `autosave`, `cdnMirror`...) are still returned, none is a secret | return an allow-list of `settings` instead of the whole blob (check the publish CLI and the mobile-app generator first) |
 | **F-050** residual: MinIO's own dependencies (62 fixable HIGH/CRITICAL on its last release) and postgres' `gosu` (22) | upstream; not patchable without forking. MinIO is now opt-in (overlay), Garage is the default | keep MinIO off public networks or move to Garage / a cloud S3 |
 | TLS on a real hostname | testssl ran on the rendered template, not on a public host with a Let's Encrypt certificate | run `testssl.sh` against the production hostname once HTTPS is enabled |
 | Not covered by design or yet | SQL fuzzing of the remaining endpoints (3.3), AI prompt-injection impact (3.10), `next build`/`nuxt build` of generated sites (3.11), no load testing (3.15) | decide if/when |

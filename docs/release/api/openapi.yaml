@@ -1564,6 +1564,38 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/settings/alpine-presets:
+    get:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Get the catalog of Alpine presets: named sets of Alpine.js directives applied from the editor's Advanced > AlpineJS panel (`{ presets: [{ name, description, directives }] }`)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Replace the whole Alpine presets catalog (`{ presets }`); 400 with the reason when a name, a directive (`x-...`, `@event`, `:attr`) or a size limit is invalid, nothing is stored then."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /whoobe-one/settings/cdn-mirror:
     get:
       tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
