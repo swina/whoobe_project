@@ -70,8 +70,11 @@ Needs a host with Docker Compose 2.24 or newer, a DNS name pointing to it, and n
    keeps the generated files from belonging to root, and that user must be in the `docker` group). Then
    `systemctl daemon-reload`, `systemctl start whoobe-sandbox-reset.service` (a first reset, which deletes the sandbox's data)
    and `systemctl enable --now whoobe-sandbox-reset.timer`. Check with `systemctl list-timers 'whoobe*'` and
-   `journalctl -u whoobe-sandbox-reset -n 40`. The service is killed after 15 minutes and tried again after one: a
-   dependency download that stalls does not leave the sandbox off until the next cycle.
+   `journalctl -u whoobe-sandbox-reset -n 40`. The service is stopped after 15 minutes and tried again after one: a
+   dependency download that stalls does not leave the sandbox off until the next cycle. `reset.sh` takes a lock (a second
+   reset exits at once), stops the `docker compose ... up` of a killed earlier reset, and on a stop signal terminates
+   everything it started: a snap-installed Docker client is not stopped with its systemd service and would otherwise stay
+   behind waiting, blocking the next attempt.
 6. **Host firewall**: in, only 80 and 443. Out, keep 443 and DNS open: the allowed API (`dummyjson.com`) is behind a CDN whose
    addresses change, so the application list (`SANDBOX_ALLOW_HOSTS`) is the control, not an address filter. Not exercised yet
    on a public host.
