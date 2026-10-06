@@ -2,9 +2,17 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
+import { fileURLToPath } from 'node:url'
+
+// Dev server only: silence the "externalized for browser compatibility" warnings caused by postcss (pulled in by
+// sanitize-html, see src/node-builtin-stub.ts). Production builds are untouched.
+const devOnlyNodeStubs = (command: string) =>
+  command === 'serve'
+    ? [{ find: /^(fs|path|url|source-map-js)$/, replacement: fileURLToPath(new URL('./src/node-builtin-stub.ts', import.meta.url)) }]
+    : []
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   // Single source of truth for env vars: the repo-root .env (see
   // docs/plans/environment/env-optimization.md). Vite natively expands
   // ${VAR} references (dotenv-expand) and shell-exported vars win, which
@@ -15,9 +23,10 @@ export default defineConfig({
     tailwindcss()
   ],
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src')
-    }
+    alias: [
+      { find: '@', replacement: path.resolve(__dirname, './src') },
+      ...devOnlyNodeStubs(command)
+    ]
   },
   server: {
     host: '0.0.0.0',
@@ -52,4 +61,4 @@ export default defineConfig({
       external: ['sharp']
     }
   }
-})
+}))

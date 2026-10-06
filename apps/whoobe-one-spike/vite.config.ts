@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { loadRootEnv } from '@whoobe-cms/core/server'
@@ -22,7 +23,15 @@ loadRootEnv()
 // finite list to pre-declare for "any value a user might ever type". The
 // runtime engine watches the live DOM directly and generates real CSS for
 // whatever classes actually appear, immediately, with no such limitation.
-export default defineConfig({
+// Dev server only: silence the "externalized for browser compatibility" warnings caused by postcss (pulled in by
+// sanitize-html, see src/node-builtin-stub.ts). Production builds are untouched.
+const devOnlyNodeStubs = (command: string) =>
+  command === 'serve'
+    ? [{ find: /^(fs|path|url|source-map-js)$/, replacement: fileURLToPath(new URL('./src/node-builtin-stub.ts', import.meta.url)) }]
+    : []
+
+export default defineConfig(({ command }) => ({
+  resolve: { alias: devOnlyNodeStubs(command) },
   base: process.env.VITE_BASE_URL || '/',
   // Single source of truth for env vars: the repo-root .env (see
   // docs/plans/environment/env-optimization.md). Vite natively expands
@@ -49,4 +58,4 @@ export default defineConfig({
     port: 3006,
     allowedHosts: true
   }
-})
+}))
