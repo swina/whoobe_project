@@ -36,6 +36,28 @@
       <label class="flex items-center gap-1.5"><input type="checkbox" :checked="o.controls" @change="set('controls', ($event.target as HTMLInputElement).checked)" /> {{ o.mode === 'waveform' ? 'Show the time' : 'Show the controls' }}</label>
       <label class="flex items-center gap-1.5"><input type="checkbox" :checked="o.showTitle" @change="set('showTitle', ($event.target as HTMLInputElement).checked)" /> Show the file name as title</label>
       <label v-if="o.showTitle" class="flex items-center gap-1.5 ml-5"><input type="checkbox" :checked="o.truncateTitle" @change="set('truncateTitle', ($event.target as HTMLInputElement).checked)" /> Cut a long name to one line (...)</label>
+      <div v-if="o.showTitle" class="flex flex-col gap-1 ml-5">
+        <label class="flex items-center gap-1.5">
+          Title style
+          <select :value="o.titleStyle" class="border rounded px-1 py-0.5 text-xs" @change="set('titleStyle', ($event.target as HTMLSelectElement).value as AudioOptions['titleStyle'])">
+            <option value="default">default (small, faded)</option>
+            <option value="inherit">same as this element</option>
+            <option value="custom">my own classes</option>
+          </select>
+        </label>
+        <p v-if="o.titleStyle === 'inherit'" class="text-[10px] text-gray-400">Takes the font, size and colour set on this element in Custom Classes (for example <code>text-lg font-bold text-white</code>).</p>
+        <template v-if="o.titleStyle === 'custom'">
+          <input
+            :value="o.titleClass"
+            type="text"
+            maxlength="300"
+            placeholder="text-lg font-bold text-white mb-2"
+            class="w-full text-xs border rounded px-1.5 py-1 font-mono"
+            @change="set('titleClass', ($event.target as HTMLInputElement).value)"
+          />
+          <p class="text-[10px] text-gray-400">Space-separated Tailwind utility classes for the title, applied as they are. Add a bottom margin (<code>mb-2</code>) for the space above the player.</p>
+        </template>
+      </div>
       <label class="flex items-center gap-1.5"><input type="checkbox" :checked="o.loop" @change="set('loop', ($event.target as HTMLInputElement).checked)" /> Loop</label>
       <label class="flex items-center gap-1.5"><input type="checkbox" :checked="o.autoplay" @change="set('autoplay', ($event.target as HTMLInputElement).checked)" /> Start automatically</label>
       <p v-if="o.autoplay" class="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-1">Browsers do not start audio with sound until the visitor has interacted with the page, so this often has no effect.</p>
@@ -88,7 +110,8 @@ function set<K extends keyof AudioOptions>(key: K, value: AudioOptions[K]) {
   const c = el.value
   if (!c) return
   // store the complete, normalized set so a document never depends on defaults that may change later
-  c.options = { ...normalizeAudioOptions(c.options), [key]: value }
+  // normalize the result too, so what is stored is already clean (classes, colours, height)
+  c.options = normalizeAudioOptions({ ...normalizeAudioOptions(c.options), [key]: value })
 }
 
 function setSource(value: string) {

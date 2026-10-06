@@ -19,6 +19,13 @@ track.
    name without its extension and with spaces restored (`/audio/My%20Song.mp3` shows `My Song`). It is off by default.
    *Cut a long name to one line* (on by default) keeps it on a single line with an ellipsis, the full name being the
    tooltip; switch it off to let a long name wrap. The title also becomes the accessible name of the player.
+   *Title style* chooses how the title looks:
+   - **default**: a small, medium-weight, slightly faded line; it still takes the **colour** of the element;
+   - **same as this element**: no style of its own, so the title takes the font, size, weight, colour and line height
+     you give the Audio element in **Advanced > Custom Classes** (for example `text-lg font-bold text-white`);
+   - **my own classes**: Tailwind utility classes for the title alone (`text-2xl italic text-emerald-600 mb-3`), applied
+     as they are, any class works including arbitrary values. Add a bottom margin (`mb-2`) for the space above the
+     player. Markup characters, backslashes and quotes are removed and the list is limited to 300 characters.
 6. Options: show the controls (in the waveform look: the time), loop, start automatically, and how much to load
    (nothing until played / the duration only / the whole file). In the waveform look you also choose the two
    colours and the height (16 to 240 px). The element's usual style classes (width, margins, shadows) apply to the
@@ -55,4 +62,4 @@ often does nothing on the first load.
 
 The element is `element: "audio"`, with the source in `image.url` (a library path or a URL, like an image) and the
 settings in `options` (`mode`: `player` or `waveform`, `controls`, `loop`, `autoplay`, `preload`, `waveColor`,
-`progressColor`, `height`, `showTitle`, `truncateTitle`). Colours accept only plain CSS colour syntax; anything else falls back to the default.
+`progressColor`, `height`, `showTitle`, `truncateTitle`, `titleStyle`: `default`, `inherit` or `custom`, `titleClass`). Colours accept only plain CSS colour syntax; anything else falls back to the default.
