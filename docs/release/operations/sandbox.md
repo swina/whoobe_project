@@ -1,65 +1,89 @@
 # Public sandbox
 
-A demo instance anyone can try, with limits, that is deleted and rebuilt from nothing every 3 hours. It is the normal
-product in **sandbox mode** (`SANDBOX_MODE=1`), run as one workspace named `sandbox` with the overlay
-`docker-compose.sandbox.yml`.
+A demo instance anyone can try, with limits, that is deleted and rebuilt from nothing every 3 hours. It is **an ordinary
+workspace** (see [creating-workspaces.md](creating-workspaces.md)) created with the profile `sandbox`: the profile
+(`deploy/profiles/sandbox.env`) is a block of variables appended to the workspace's `.env.<slug>`. Nothing else
+distinguishes it: the product reads the variables, the hardening overlay `docker-compose.sandbox.yml` is activated by
+`COMPOSE_FILE` in that same file, so every command on the workspace (up, down, `remove-workspace.sh`) uses it.
+
+This is an internal tool, not a supported feature for third parties: whoever wants one follows the procedure below.
 
 ## What visitors get
 
 - One shared demo account (e-mail and password are public: put them on the page that links to the sandbox).
-- The editor, the DAM, websites, pages, snippets, themes - everything that works inside the stack.
+- The editor, the DAM, websites, pages, snippets, themes, the API Gateway towards the allowed hosts.
 - A banner on every screen with the time of the next reset.
 
-## Limits
+## The profile: every limit is a variable
 
-| Limit | Value | Where |
+| Variable (in `.env.<slug>`) | Default of the profile | Effect |
 |---|---|---|
-| File size | 5 MB (`ASSET_MAX_FILE_BYTES`, answers 413) | asset-processor; nginx accepts 6 MB bodies |
-| Number of assets | 50 (`ASSET_MAX_COUNT`, answers 409; overwriting an existing path is allowed) | asset-processor, uploads and `_edited` copies |
-| Image dimensions | 16 megapixels (`ASSET_MAX_INPUT_PIXELS`) | sharp |
-| JSON body | 1 MB (50 MB outside the sandbox) | asset-processor |
-| Public API rate | 60/30/30 per minute (`PUBLIC_*_RATE_LIMIT_PER_MINUTE`) | core-api |
-| Per address | 10 requests/s with a burst of 40, 20 connections, 60 s timeouts | nginx |
-| Outbound HTTP | only `SANDBOX_ALLOW_HOSTS` (default `dummyjson.com`) | `safeFetch` |
-| Containers | memory, CPU and process limits, no capabilities, read-only root file system for the Node services | `docker-compose.sandbox.yml` |
+| `SANDBOX_MODE` | `1` | Switches the restrictions on; without it the same stack is a normal workspace |
+| `ASSET_MAX_FILE_BYTES` | `5242880` (5 MB) | Per-file upload cap, answers 413 (usable outside the sandbox too; default there 50 MB) |
+| `ASSET_MAX_COUNT` | `50` | Maximum number of assets; a new asset or `_edited` copy over it answers 409, overwriting a path is allowed |
+| `ASSET_MAX_INPUT_PIXELS` | `16000000` | Image dimensions |
+| `SANDBOX_ALLOW_HOSTS` | `dummyjson.com` | The only host names outbound HTTP may reach (exact match, comma-separated); empty = none |
+| `PUBLIC_RATE_LIMIT_PER_MINUTE`, `PUBLIC_SEARCH_...`, `PUBLIC_QUERY_...` | 60 / 30 / 30 | Public API rate limits |
+| `WS_MAX_BODY` | `6M` | nginx request body cap (a 5 MB file plus multipart overhead) |
+| `WS_EDGE_LIMITS` | 10 requests/s per address with a burst of 40, 20 connections, 60 s timeouts | nginx directives rendered into the workspace's locations include |
+| `SANDBOX_NO_NEW_PRIVILEGES` | `true` | Container flag; see "snap Docker" below |
+| `COMPOSE_FILE` | `docker-compose.yml:docker-compose.sandbox.yml` | Activates the hardening overlay |
+| `SANDBOX_RESET_AT` | set by `reset.sh` | Time shown in the banner |
 
-## Features that are off (answer 403 "disabled in the public sandbox")
+Change a value at creation with `--set KEY=VALUE` (repeatable), or edit `.env.<slug>` and recreate the containers
+(`docker compose -p ws-sandbox --env-file .env.sandbox up -d`). The hardening itself (read-only root file system for the Node
+services, no capabilities, memory/CPU/process limits) is in `docker-compose.sandbox.yml` and is not a variable.
+
+### Features that are off (answer 403 "disabled in the public sandbox")
 
 AI (`/ai/*`), mail (`/mail-*`, and sending itself), the Figma import, the migration sources, the CDN mirror settings,
-PWA generation, regenerating a website's gateway key. Outbound HTTP through `safeFetch` is refused for every host except
-the ones listed in `SANDBOX_ALLOW_HOSTS` (exact host names, default `dummyjson.com`, a public dummy-data API so the API
-Gateway can be demonstrated). The list is checked on every redirect hop and before any DNS lookup; a listed host still goes
-through the normal SSRF checks (no private or loopback addresses). So a visitor can create gateway endpoints and routes,
-but only towards the allowed hosts: Cloudinary, Brevo and CDN mirroring stay off. Set `SANDBOX_ALLOW_HOSTS=` (empty) to
-turn all outbound HTTP off. The path list lives in `packages/core/src/sandbox.ts`.
+PWA generation, regenerating a website's gateway key. Outbound HTTP through `safeFetch` is refused for every host that is not
+in `SANDBOX_ALLOW_HOSTS`, checked before any DNS lookup and on every redirect hop; a listed host still goes through the
+normal SSRF checks (no private or loopback addresses). So a visitor can create gateway endpoints and routes, but only towards
+the allowed hosts: Cloudinary, Brevo and CDN mirroring stay off. The path list lives in `packages/core/src/sandbox.ts`.
+Users and roles are read-only for the demo account (it can list them, not create, change or delete them, reset passwords or
+change its own MFA), so visitors cannot lock each other out.
 
-## Run it
+## Procedure
 
-On a dedicated host with Docker Compose 2.24 or newer, a DNS name pointing to it and nothing else of value on it:
+Needs a host with Docker Compose 2.24 or newer, a DNS name pointing to it, and nothing else of value on it.
 
-1. Clone the repository to `/opt/whoobe_project`, then create `/etc/whoobe-sandbox.env` with `SANDBOX_HOST=<host name>`
-   (and optionally `SANDBOX_DEMO_EMAIL`, `SANDBOX_DEMO_PASSWORD`, `SANDBOX_INTERVAL_HOURS`, `SANDBOX_INDEX`).
-2. `scripts/sandbox/reset.sh` once by hand; then turn on TLS with `scripts/enable-tls.sh`.
-3. Install the timer: copy `scripts/sandbox/systemd/whoobe-sandbox-reset.service` and `.timer` to `/etc/systemd/system/`,
-   `systemctl enable --now whoobe-sandbox-reset.timer`.
-4. Firewall: allow only 80 and 443 in; allow out only DNS and what ACME needs. The stack never needs the internet.
-5. Check it from outside: `scripts/sandbox/verify.sh https://<host> <demo e-mail> <demo password>`.
+1. **Clone** the repository and enter it. The reset timer expects `/opt/whoobe_project`; anywhere else, edit
+   `WorkingDirectory` and `ExecStart` in the service file.
+2. **First start**, by hand:
+   `SANDBOX_HOST=sandbox.example.com ./scripts/sandbox/reset.sh` (`--scheme http` on a LAN without TLS).
+   It removes a previous sandbox with its volumes, provisions the workspace `sandbox` with
+   `--profile sandbox`, waits for `/health` to report the sandbox block, and prints `sandbox is up`.
+   Options, all environment variables: `SANDBOX_INDEX` (ports are derived from it: check they are free with `ss -ltn`),
+   `SANDBOX_DEMO_EMAIL`, `SANDBOX_DEMO_PASSWORD`, `SANDBOX_INTERVAL_HOURS`, and the overrides `SANDBOX_NO_NEW_PRIVILEGES`,
+   `SANDBOX_ALLOW_HOSTS`, `ASSET_MAX_FILE_BYTES`, `ASSET_MAX_COUNT`, `ASSET_MAX_INPUT_PIXELS`.
+3. **TLS** on a public host: `scripts/enable-tls.sh` as for any workspace. The proxy then also serves port 443: if another
+   service owns it on that host, use a dedicated host for the sandbox.
+4. **Check it from outside**: `scripts/sandbox/verify.sh https://<host> <demo e-mail> <demo password>` (limits, disabled
+   features, read-only users, public settings; it deletes the test assets it uploads).
+5. **Reset every 3 hours**: put the variables of step 2 in `/etc/whoobe-sandbox.env`, copy
+   `scripts/sandbox/systemd/whoobe-sandbox-reset.service` and `.timer` to `/etc/systemd/system/`, add a drop-in
+   (`systemctl edit whoobe-sandbox-reset.service`) with `[Service]` and `User=<the user that owns the repository and uses
+   docker>` (otherwise the files it generates belong to root), then `systemctl enable --now whoobe-sandbox-reset.timer`.
+6. **Host firewall**: in, only 80 and 443. Out, keep 443 and DNS open: the allowed API (`dummyjson.com`) is behind a CDN whose
+   addresses change, so the application list (`SANDBOX_ALLOW_HOSTS`) is the control, not an address filter. Not exercised yet
+   on a public host.
+
+To stop it: `./scripts/remove-workspace.sh sandbox --yes` (deletes the data, as every reset does).
 
 ## How the reset works
 
-`scripts/sandbox/reset.sh` removes the workspace with all its volumes (database and object store), provisions it again
-with new random secrets and the demo account, and waits until `/health` reports the sandbox block. If anything fails the
-stack is removed and the script exits non-zero: the sandbox stays off, it never keeps serving the previous cycle. Expect
-about a minute of downtime; the banner shows the next reset time (`SANDBOX_RESET_AT`).
+`scripts/sandbox/reset.sh` removes the workspace with all its volumes (database and object store), provisions it again with new
+random secrets and the demo account, and waits until `/health` reports the sandbox block. If anything fails the stack is
+removed and the script exits non-zero: the sandbox stays off, it never keeps serving the previous cycle. Expect about a minute
+of downtime (longer when the images must be rebuilt); the banner shows the next reset time.
 
 ## Known limits of this design
 
-- The demo account is the workspace administrator but, in the sandbox, users and roles are read-only for it (listing
-  works; creating, changing, deleting, resetting a password and changing its own MFA answer 403), so visitors cannot lock
-  each other out.
 - `no-new-privileges` is on by default. With a snap-installed Docker (AppArmor) it makes images such as Postgres fail with
-  `exec ... docker-entrypoint.sh: operation not permitted`; on such a host set `SANDBOX_NO_NEW_PRIVILEGES=false`
-  (in `/etc/whoobe-sandbox.env`), and prefer the Docker Engine packages for a public host.
-- All visitors share one workspace: they see each other's content. Content is public for up to 3 hours, so moderate the
-  page that advertises the sandbox accordingly and watch the host's bandwidth.
+  `exec ... docker-entrypoint.sh: operation not permitted`; on such a host pass `SANDBOX_NO_NEW_PRIVILEGES=false` (in
+  `/etc/whoobe-sandbox.env`), and prefer the Docker Engine packages for a public host.
+- All visitors share one workspace: they see each other's content. Content is public for up to 3 hours, so moderate the page
+  that advertises the sandbox accordingly and watch the host's bandwidth.
+- Visitors can make the server call the allowed API from its address; the rate limits bound it, they do not remove it.
 - The egress firewall and TLS have not been exercised yet; do it when the sandbox goes on a public host.

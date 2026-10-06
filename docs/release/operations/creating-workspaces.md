@@ -4,6 +4,11 @@ A **workspace** is a fully independent Whoobe CMS install for one client: its ow
 
 This guide covers the day-to-day operation: provisioning a new workspace, verifying it, enabling HTTPS, and managing/removing one later. It assumes a host with Docker and Docker Compose. **nginx on the host is optional**: without it the scripts run one shared containerized reverse proxy (`whoobe-proxy`) for every workspace. Base host setup: `docs/release/operations/deployment.md`.
 
+
+> **Profiles.** `provision-workspace.sh` accepts `--profile NAME` (appends the profile file in `deploy/profiles/` to the workspace's env
+> file) and `--set KEY=VALUE` (repeatable, applied last). The only profile today is `sandbox`, which turns the workspace into
+> the public demo with limits: see [sandbox.md](sandbox.md).
+
 ## What a workspace gets (current deploy settings)
 
 - **Object storage: Garage** (S3-compatible, `docker/garage`) inside the workspace's own Compose project. It creates its own access key and bucket on first start; nothing to set up by hand. Production-grade alternatives (AWS S3, OCI, an enterprise S3) are a configuration change: see [Using an external S3](#using-an-external-s3-instead-of-garage) and `docs/release/operations/storage-backends.md`. Self-hosting MinIO is discouraged.

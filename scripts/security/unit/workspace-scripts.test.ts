@@ -22,6 +22,13 @@ describe('provision-workspace.sh refuses hostile arguments before doing anything
     ['seed e-mail with a pipe', [slug, 'a.com', '1', '--seed-email', 'a|b@x.com']],
     ['seed password with sed/env metacharacters', [slug, 'a.com', '1', '--seed-password', 'abc|def&ghi$jkl']],
     ['seed password that is too short', [slug, 'a.com', '1', '--seed-password', 'short']],
+    ['a profile that does not exist', [slug, 'a.com', '1', '--profile', 'nope']],
+    ['a profile name that is a path', [slug, 'a.com', '1', '--profile', '../../etc/passwd']],
+    ['--set with a lower-case key', [slug, 'a.com', '1', '--set', 'compose_file=x']],
+    ['--set with a sed delimiter', [slug, 'a.com', '1', '--set', 'KEY=a|b']],
+    ['--set with the sed match character', [slug, 'a.com', '1', '--set', 'KEY=a&b']],
+    ['--set with a command substitution', [slug, 'a.com', '1', '--set', 'KEY=$(id)']],
+    ['--set with a newline', [slug, 'a.com', '1', '--set', 'KEY=a\nB=c']],
   ]
   it.each(cases)('%s', (_name, args) => {
     const r = run('provision-workspace.sh', args)
