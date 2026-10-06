@@ -42,6 +42,7 @@ import {
   validateSessionToken,
   SESSION_COOKIE_NAME,
   getAssetVisibilityByKey,
+  createSelfHealingClient,
 } from '@whoobe-cms/core/server';
 import { createLogger, attachLoggingToggle } from '@whoobe-cms/logger';
 
@@ -1083,7 +1084,9 @@ app.post('/api/v1/dam/ensure-bucket', requireAuth, async (req: Request, res: Res
 // fresh TCP connection per request instead of reusing pooled ones - there's
 // no pool left to go stale. MinIO is local (sub-millisecond connect), so
 // the per-request handshake cost is negligible.
-const s3ClientForProxy = new S3Client({
+// createSelfHealingClient: after a connection timeout the client is rebuilt and the call repeated once (the process used to
+// stay broken until restarted; see packages/core/src/dam/self-healing-client.ts).
+const s3ClientForProxy = createSelfHealingClient(() => new S3Client({
   region: damBaseConfig.region,
   endpoint: damBaseConfig.endpoint,
   credentials: { accessKeyId: damBaseConfig.accessKeyId, secretAccessKey: damBaseConfig.secretAccessKey },
@@ -1094,7 +1097,7 @@ const s3ClientForProxy = new S3Client({
     httpAgent: { keepAlive: false },
     httpsAgent: { keepAlive: false },
   }),
-});
+}), (err) => logger.warn({ err }, 'DAM asset proxy: S3 connection timed out, client rebuilt and the call repeated'));
 
 const THUMB_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'tiff', 'svg'];
 
