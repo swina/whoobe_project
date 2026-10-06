@@ -64,6 +64,8 @@ describe('who may read and write the catalog', () => {
     expect(res.status).toBe(200)
     expect(res.text).not.toContain('alpinePresets')
     expect(res.text).not.toContain('fade-scale')
+    // F-051: the settings blob is an allow-list, not the whole administration object
+    expect(Object.keys(res.json.website.settings ?? {}).filter((k) => !['themes', 'defaultThemeId'].includes(k))).toEqual([])
   })
 })
 
