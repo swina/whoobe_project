@@ -51,20 +51,27 @@ Needs a host with Docker Compose 2.24 or newer, a DNS name pointing to it, and n
 1. **Clone** the repository and enter it. The reset timer expects `/opt/whoobe_project`; anywhere else, edit
    `WorkingDirectory` and `ExecStart` in the service file.
 2. **First start**, by hand:
-   `SANDBOX_HOST=sandbox.example.com ./scripts/sandbox/reset.sh` (`--scheme http` on a LAN without TLS).
+   `SANDBOX_HOST=sandbox.example.com ./scripts/sandbox/reset.sh` (`SANDBOX_SCHEME=http` or `--scheme http` on a LAN without TLS).
    It removes a previous sandbox with its volumes, provisions the workspace `sandbox` with
    `--profile sandbox`, waits for `/health` to report the sandbox block, and prints `sandbox is up`.
-   Options, all environment variables: `SANDBOX_INDEX` (ports are derived from it: check they are free with `ss -ltn`),
+   Options, all environment variables: `SANDBOX_SCHEME` (`http` on a LAN, default `https`), `SANDBOX_INDEX` (ports are derived from it: check they are free with `ss -ltn`),
    `SANDBOX_DEMO_EMAIL`, `SANDBOX_DEMO_PASSWORD`, `SANDBOX_INTERVAL_HOURS`, and the overrides `SANDBOX_NO_NEW_PRIVILEGES`,
    `SANDBOX_ALLOW_HOSTS`, `ASSET_MAX_FILE_BYTES`, `ASSET_MAX_COUNT`, `ASSET_MAX_INPUT_PIXELS`.
 3. **TLS** on a public host: `scripts/enable-tls.sh` as for any workspace. The proxy then also serves port 443: if another
    service owns it on that host, use a dedicated host for the sandbox.
 4. **Check it from outside**: `scripts/sandbox/verify.sh https://<host> <demo e-mail> <demo password>` (limits, disabled
    features, read-only users, public settings; it deletes the test assets it uploads).
-5. **Reset every 3 hours**: put the variables of step 2 in `/etc/whoobe-sandbox.env`, copy
-   `scripts/sandbox/systemd/whoobe-sandbox-reset.service` and `.timer` to `/etc/systemd/system/`, add a drop-in
-   (`systemctl edit whoobe-sandbox-reset.service`) with `[Service]` and `User=<the user that owns the repository and uses
-   docker>` (otherwise the files it generates belong to root), then `systemctl enable --now whoobe-sandbox-reset.timer`.
+5. **Reset every 3 hours**: copy `scripts/sandbox/whoobe-sandbox.env.example` to `/etc/whoobe-sandbox.env` (mode 600) and
+   fill in the variables of step 2 (a misspelled name is silently ignored); copy
+   `scripts/sandbox/systemd/whoobe-sandbox-reset.service` and `.timer` to `/etc/systemd/system/`. If the clone is not in
+   `/opt/whoobe_project`, or the user that owns it is not root, install the drop-in
+   `scripts/sandbox/systemd/override.conf.example` as
+   `/etc/systemd/system/whoobe-sandbox-reset.service.d/override.conf` (user and paths; running as the repository's owner
+   keeps the generated files from belonging to root, and that user must be in the `docker` group). Then
+   `systemctl daemon-reload`, `systemctl start whoobe-sandbox-reset.service` (a first reset, which deletes the sandbox's data)
+   and `systemctl enable --now whoobe-sandbox-reset.timer`. Check with `systemctl list-timers 'whoobe*'` and
+   `journalctl -u whoobe-sandbox-reset -n 40`. The service is killed after 15 minutes and tried again after one: a
+   dependency download that stalls does not leave the sandbox off until the next cycle.
 6. **Host firewall**: in, only 80 and 443. Out, keep 443 and DNS open: the allowed API (`dummyjson.com`) is behind a CDN whose
    addresses change, so the application list (`SANDBOX_ALLOW_HOSTS`) is the control, not an address filter. Not exercised yet
    on a public host.

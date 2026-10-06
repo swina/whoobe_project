@@ -10,6 +10,7 @@
 #   SANDBOX_DEMO_EMAIL      demo account (default demo@whoobe.example) - it is PUBLIC, put it on the page that links here
 #   SANDBOX_DEMO_PASSWORD   its password (default: whoobe-sandbox-demo)
 #   SANDBOX_INTERVAL_HOURS  hours until the next reset, shown in the UI banner (default 3)
+#   SANDBOX_SCHEME          http or https (default https); the --scheme argument wins
 # Any of these, when set, overrides the value of the profile (they are passed as --set):
 #   SANDBOX_NO_NEW_PRIVILEGES  SANDBOX_ALLOW_HOSTS  ASSET_MAX_FILE_BYTES  ASSET_MAX_COUNT  ASSET_MAX_INPUT_PIXELS
 # For anything else: provision-workspace.sh --set KEY=VALUE, or edit deploy/profiles/sandbox.env.
@@ -25,7 +26,8 @@ INDEX="${SANDBOX_INDEX:-1}"
 DEMO_EMAIL="${SANDBOX_DEMO_EMAIL:-demo@whoobe.example}"
 DEMO_PASSWORD="${SANDBOX_DEMO_PASSWORD:-whoobe-sandbox-demo}"
 HOURS="${SANDBOX_INTERVAL_HOURS:-3}"
-SCHEME=https
+SCHEME="${SANDBOX_SCHEME:-https}"
+[[ "$SCHEME" =~ ^https?$ ]] || { echo "SANDBOX_SCHEME must be http or https" >&2; exit 1; }
 [ "${1:-}" = "--scheme" ] && SCHEME="${2:?--scheme needs http or https}"
 [[ "$HOURS" =~ ^[0-9]+$ ]] || { echo "SANDBOX_INTERVAL_HOURS must be a number" >&2; exit 1; }
 
