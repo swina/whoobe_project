@@ -52,6 +52,9 @@ about a minute of downtime; the banner shows the next reset time (`SANDBOX_RESET
 - The demo account is the workspace administrator but, in the sandbox, users and roles are read-only for it (listing
   works; creating, changing, deleting, resetting a password and changing its own MFA answer 403), so visitors cannot lock
   each other out.
+- `no-new-privileges` is on by default. With a snap-installed Docker (AppArmor) it makes images such as Postgres fail with
+  `exec ... docker-entrypoint.sh: operation not permitted`; on such a host set `SANDBOX_NO_NEW_PRIVILEGES=false`
+  (in `/etc/whoobe-sandbox.env`), and prefer the Docker Engine packages for a public host.
 - All visitors share one workspace: they see each other's content. Content is public for up to 3 hours, so moderate the
   page that advertises the sandbox accordingly and watch the host's bandwidth.
 - The egress firewall and TLS have not been exercised yet; do it when the sandbox goes on a public host.
