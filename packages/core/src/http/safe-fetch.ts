@@ -16,7 +16,7 @@ import http from 'node:http';
 import https from 'node:https';
 import net from 'node:net';
 import zlib from 'node:zlib';
-import { isSandbox, SandboxDisabledError } from '../sandbox.js';
+import { isSandbox, isSandboxHostAllowed } from '../sandbox.js';
 
 export class OutboundBlockedError extends Error {
   constructor(message: string) {
@@ -130,7 +130,6 @@ function toBuffer(b: SafeFetchInit['body']): Buffer | undefined {
 const NO_BODY_STATUS = new Set([101, 204, 205, 304]);
 
 export async function safeFetch(input: string | URL, init: SafeFetchInit = {}, policyOverrides: Partial<OutboundPolicy> = {}): Promise<Response> {
-  if (isSandbox()) throw new SandboxDisabledError();
   const policy = resolveOutboundPolicy(process.env, policyOverrides);
   let url = new URL(String(input));
   let method = (init.method ?? 'GET').toUpperCase();
@@ -141,6 +140,8 @@ export async function safeFetch(input: string | URL, init: SafeFetchInit = {}, p
   for (let hop = 0; ; hop++) {
     if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new OutboundBlockedError(`Unsupported protocol ${url.protocol}`);
     if (url.username || url.password) throw new OutboundBlockedError('Credentials in the URL are not allowed');
+    // public sandbox: only the hosts of SANDBOX_ALLOW_HOSTS, checked on every hop (a redirect cannot leave the list)
+    if (isSandbox() && !isSandboxHostAllowed(url.hostname)) throw new OutboundBlockedError(`Host ${url.hostname} is not allowed in the public sandbox`);
     const target = await resolveAndCheck(url.hostname, policy);
 
     const res = await requestOnce(url, target, method, headers, body, init.signal ?? null, Math.max(1, deadline - Date.now()), policy.maxBytes);

@@ -3,6 +3,8 @@
 //   SANDBOX_RESET_AT          ISO time of the next scheduled reset (written by scripts/sandbox/reset.sh; shown in the UI)
 //   ASSET_MAX_FILE_BYTES      per-file upload cap (also usable outside the sandbox; default 50 MB)
 //   ASSET_MAX_COUNT           maximum number of assets (unset = unlimited)
+//   SANDBOX_ALLOW_HOSTS       comma-separated host names safeFetch may still call in the sandbox (exact match, e.g.
+//                             dummyjson.com for the API Gateway demo); unset = no outbound HTTP at all
 const DEFAULT_MAX_FILE_BYTES = 50 * 1024 * 1024;
 
 export function isSandbox(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -60,4 +62,13 @@ export function isSandboxReadOnlyPath(method: string, path: string): boolean {
   const m = method.toUpperCase();
   if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return false;
   return READ_ONLY_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
+}
+
+export function sandboxAllowedHosts(env: NodeJS.ProcessEnv = process.env): string[] {
+  return (env.SANDBOX_ALLOW_HOSTS ?? '').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
+}
+
+/** Exact host-name match (no wildcards, no sub-domains, never an IP address unless it is listed verbatim). */
+export function isSandboxHostAllowed(hostname: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  return sandboxAllowedHosts(env).includes(hostname.replace(/^\[|\]$/g, '').toLowerCase());
 }
