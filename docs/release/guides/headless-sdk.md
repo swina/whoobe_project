@@ -113,7 +113,7 @@ Because it's a plain object graph, it can cross an SSR boundary: walk once serve
 | `link` | `element: 'a'` or a node with `link`/`dynamicLink` |
 | `form`, `input`, `textarea`, `select`, `radiogroup`, `submit`, `reset`, `button` | form family |
 | `search` | `tag: 'search'` |
-| `slider`, `youtube`, `vimeo`, `video` | media |
+| `slider`, `youtube`, `vimeo`, `video`, `audio` | media (`audio` renders the plain browser player; the waveform look is editor/public-page only, see the [Audio element guide](audio-element.md)) |
 | `icon` | `tag: 'lucideicon'` |
 
 ### The registry contract

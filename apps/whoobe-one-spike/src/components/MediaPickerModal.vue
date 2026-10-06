@@ -140,6 +140,11 @@ import { computed, ref, watch } from 'vue'
 import { Folder, Image as ImageIcon, Grid, List, X, ChevronDown, ChevronRight, FileText, Cloud } from '@lucide/vue'
 import { listDamAssets, listDamFolders, type DamAssetRecord, type DamFolderRecord } from '../dam-api'
 
+const props = defineProps<{
+  /** Only list assets of this kind (by MIME type): the Audio element asks for 'audio'. Default: everything. */
+  accept?: 'audio' | 'image' | 'video'
+}>()
+
 defineEmits<{
   (e: 'select', pimcorePath: string): void
   (e: 'close'): void
@@ -161,8 +166,10 @@ const pageSubfolders = computed(() => allFolders.value.filter((f) => f.parentPat
 
 const filteredAssets = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return pageAssets.value
-  return pageAssets.value.filter((a) => a.filename.toLowerCase().includes(q))
+  const kind = props.accept
+  return pageAssets.value.filter(
+    (a) => (!kind || (a.mimeType ?? '').startsWith(kind + '/')) && (!q || a.filename.toLowerCase().includes(q)),
+  )
 })
 
 interface FolderTreeNode {

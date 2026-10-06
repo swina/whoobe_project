@@ -24,6 +24,10 @@ describe('normalizeKind', () => {
     expect(normalizeKind(node({ element: 'div', tag: 'radiogroup' }))).toBe('radiogroup')
     expect(normalizeKind(node({ element: 'form', tag: 'form' }))).toBe('form')
   })
+  it('audio from element audio', () => {
+    expect(normalizeKind(node({ element: 'audio' }))).toBe('audio')
+    expect(normalizeKind(node({ element: 'video' }))).toBe('video')
+  })
   it('specials via tag', () => {
     expect(normalizeKind(node({ element: 'div', tag: 'slider' }))).toBe('slider')
     expect(normalizeKind(node({ element: 'iframe', tag: 'youtube' }))).toBe('youtube')

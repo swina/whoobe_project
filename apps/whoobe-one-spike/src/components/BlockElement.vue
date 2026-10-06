@@ -83,6 +83,20 @@
       ></span>
       <span v-if="buttonIconComponent && buttonIconPosition === 'after'" class="inline-flex items-center ml-1.5" contenteditable="false"><component :is="buttonIconComponent" :style="buttonIconStyle" /></span>
     </component>
+    <!-- Audio: the browser's player, or the waveform player (components/AudioPlayer.vue). The same component renders
+         the preview and the public page, so what is configured here is what visitors get. -->
+    <AudioPlayer
+      v-else-if="element.element === 'audio'"
+      :id="element.id"
+      :class="classe"
+      :style="stile"
+      :data-id="element.id"
+      data-type="element"
+      v-bind="elementAttrs"
+      :src="displaySrc"
+      :options="(element as any).options"
+      @click="onAudioClick"
+    />
     <video
       v-else-if="element.element === 'video'"
       :id="element.id"
@@ -159,6 +173,7 @@ import type { DataObjectRecord } from '../data-objects-api'
 import { editorBus } from '../bus'
 import { applyTransform, escapeHtml, renderMarkdown } from '../scripts/field-transforms'
 import { Copy } from '@lucide/vue'
+import AudioPlayer from './AudioPlayer.vue'
 import { customAttrs, renderSelectOptionsHtml, renderRadioGroupHtml, resolveLucideIcon, stripBlockLevelTags, stripEditorHidden, PHRASING_ONLY_ELEMENTS } from '../helpers'
 
 type WhoobeElement = InstanceType<typeof Element>
@@ -415,6 +430,16 @@ function onClick(e: MouseEvent) {
   e.stopPropagation()
   editor.setCurrent(isSelected.value ? null : props.element)
   if (!isSelected.value) editorBus.emit('floatingElement', props.element.id)
+}
+
+// The Audio element is meant to be played and scrubbed while editing, so a click on it selects it and never toggles the
+// selection off (onClick above does, and preventDefault there would also fight the player's own controls).
+function onAudioClick(e: MouseEvent) {
+  e.stopPropagation()
+  if (!isSelected.value) {
+    editor.setCurrent(props.element)
+    editorBus.emit('floatingElement', props.element.id)
+  }
 }
 
 function copyCode(e: MouseEvent) {

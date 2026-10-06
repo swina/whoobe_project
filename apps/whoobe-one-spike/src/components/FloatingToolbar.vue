@@ -683,7 +683,7 @@
     </div>
   </div>
 
-  <MediaPickerModal v-if="showMediaPicker" @select="onMediaPicked" @close="showMediaPicker = false" />
+  <MediaPickerModal v-if="showMediaPicker" :accept="editor.current?.element === 'audio' ? 'audio' : undefined" @select="onMediaPicked" @close="showMediaPicker = false" />
 
   <SaveSnippetModal v-if="showSaveSnippet && editor.current" :element="editor.current" @close="showSaveSnippet = false" />
 

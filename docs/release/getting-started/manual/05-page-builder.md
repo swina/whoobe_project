@@ -18,7 +18,7 @@ Open the **Elements** tab in the sidebar. Blocks are grouped into four categorie
 
 - **Containers** — Grid, Flexbox, Dropdown Menu. These hold other blocks and control how their children are arranged.
 - **Text** — Heading, Paragraph, Inline Text, Span, Blockquote, Code.
-- **Media** — Image, Slider, Video, YouTube, Vimeo, Icon, Download link.
+- **Media** — Image, Slider, Video, Audio, YouTube, Vimeo, Icon, Download link. (Audio plays a library asset or any URL, as the browser's player or with a waveform: see the [Audio element guide](../../guides/audio-element.md).)
 - **Form** — Form, Input, Email, Number, Checkbox, Radio Group, Textarea, Select, Submit, Reset, Button.
 
 **Drag** a block from the palette onto the canvas and drop it where you want it — there's no click-to-insert; the palette is drag-only. Dropping onto an existing container nests the new block inside it, which is how you build layout: drag a Flexbox onto the page, then drag other blocks inside that Flexbox to lay them out side by side or stacked.

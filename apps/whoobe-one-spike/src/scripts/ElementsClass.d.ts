@@ -421,6 +421,8 @@ export default class Element {
   // builders - not part of the base shape, hence optional here.
   level?: number
   src?: string
+  // Audio()/Video() settings (mode, controls, autoplay, loop, preload, waveColor, progressColor, height).
+  options?: Record<string, any>
   placeholder?: string
   value?: string
   label?: string
@@ -458,6 +460,7 @@ export default class Element {
   Code(): this
   Image(): this
   Video(): this
+  Audio(): this
   YTVideo(): this
   VimeoVideo(): this
   LucideIcon(): this

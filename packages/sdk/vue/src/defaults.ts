@@ -369,6 +369,27 @@ export const DefaultVideo: NodeComponent = defineComponent({
   },
 })
 
+// Audio: the plain browser player (see react/src/defaults.tsx DefaultAudio for the waveform note).
+export const DefaultAudio: NodeComponent = defineComponent({
+  name: 'WhoobeAudio',
+  props: { ...descriptorProp },
+  setup(props) {
+    return () => {
+      const d = props.descriptor
+      const o = ((d.node as { options?: Record<string, unknown> }).options ?? {}) as Record<string, unknown>
+      return h('audio', {
+        ...elementProps(d),
+        src: d.image?.url ?? d.node.src ?? undefined,
+        controls: o.controls !== false,
+        loop: o.loop === true,
+        autoplay: o.autoplay === true,
+        preload: o.preload === 'none' || o.preload === 'auto' ? o.preload : 'metadata',
+        'data-whoobe-audio': o.mode === 'waveform' ? 'waveform' : undefined,
+      })
+    }
+  },
+})
+
 export const DefaultYoutube: NodeComponent = defineComponent({
   name: 'WhoobeYoutube',
   props: { ...descriptorProp },
@@ -566,6 +587,7 @@ export const defaults: Record<string, NodeComponent> = {
   form: DefaultForm,
   search: DefaultSearch,
   video: DefaultVideo,
+  audio: DefaultAudio,
   youtube: DefaultYoutube,
   vimeo: DefaultVimeo,
   slider: DefaultSlider,

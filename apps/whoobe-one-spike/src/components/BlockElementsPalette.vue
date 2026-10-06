@@ -66,6 +66,7 @@ import type { Component } from 'vue'
 import {
   ChevronDown,
   ChevronRight,
+  AudioLines,
   ChevronsUpDown,
   CircleDot,
   ClipboardList,
@@ -120,6 +121,7 @@ const ELEMENT_ICONS: Record<string, Component> = {
   Image: Image,
   Slider: GalleryHorizontal,
   Video: Video,
+  Audio: AudioLines,
   Youtube: Video,
   Vimeo: Video,
   LucideIcon: Shapes,

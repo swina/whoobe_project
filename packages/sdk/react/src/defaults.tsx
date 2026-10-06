@@ -331,6 +331,24 @@ export const DefaultVideo: NodeComponent = ({ descriptor }) => (
   <video {...fieldProps(descriptor)} src={descriptor.node.src ?? undefined} controls />
 )
 
+// Audio: the plain browser player, from the element's `options` (controls, loop, autoplay, preload). The 'waveform'
+// look of the editor needs browser code the SDK does not ship: the node is marked data-whoobe-audio="waveform" so a
+// consumer's own component (registry `audio`) can draw one; otherwise visitors get the plain player.
+export const DefaultAudio: NodeComponent = ({ descriptor }) => {
+  const o = ((descriptor.node as { options?: Record<string, unknown> }).options ?? {}) as Record<string, unknown>
+  return (
+    <audio
+      {...baseProps(descriptor)}
+      src={descriptor.image?.url ?? descriptor.node.src ?? undefined}
+      controls={o.controls !== false}
+      loop={o.loop === true}
+      autoPlay={o.autoplay === true}
+      preload={o.preload === 'none' || o.preload === 'auto' ? (o.preload as string) : 'metadata'}
+      data-whoobe-audio={o.mode === 'waveform' ? 'waveform' : undefined}
+    />
+  )
+}
+
 export const DefaultYoutube: NodeComponent = ({ descriptor }) => (
   <div {...baseProps(descriptor)} data-embed="youtube">{descriptor.content || 'YouTube'}</div>
 )
@@ -481,6 +499,7 @@ export const defaults: Record<string, NodeComponent> = {
   form: DefaultForm,
   search: DefaultSearch,
   video: DefaultVideo,
+  audio: DefaultAudio,
   youtube: DefaultYoutube,
   vimeo: DefaultVimeo,
   slider: DefaultSlider,

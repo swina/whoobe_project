@@ -812,6 +812,7 @@ function pageRendererVue(): string {
   </a>
   <component v-else-if="isLucideIcon && iconComponent" :id="node.anchor || node.id" :is="iconComponent" :class="classList" :style="styleList" v-bind="attrs" />
   <span v-else-if="isLucideIcon" :id="node.anchor || node.id" :class="classList" :style="styleList"></span>
+  <audio v-else-if="isAudio" :id="node.anchor || node.id" :src="imgSrc" :class="classList" :style="styleList" v-bind="attrs" :controls="node.options?.controls !== false" :loop="node.options?.loop === true" :autoplay="node.options?.autoplay === true" :preload="node.options?.preload || 'metadata'"></audio>
   <img v-else-if="isImg" :id="node.anchor || node.id" :src="imgSrc" :alt="imgAlt" :class="classList" :style="styleList" v-bind="attrs" />
   <component v-else :id="node.anchor || node.id" :is="component" :class="classList" :style="styleList" v-bind="attrs">
     <template v-if="hasBlocks">
@@ -828,6 +829,8 @@ import { getApiUrl, getAssetProcessorUrl, getRootPath } from '../composables/use
 const props = defineProps<{ node: any }>()
 
 const isImg = computed(() => props.node?.element === 'img' || props.node?.tag === 'img')
+// Audio element: its source lives in image.url like an image's, but it renders an <audio>, never a background
+const isAudio = computed(() => props.node?.element === 'audio')
 const isLucideIcon = computed(() => props.node?.tag === 'lucideicon')
 
 // Internal links authored in the editor are stored as \`\${website.rootPath}\${page.slug}\`
@@ -940,7 +943,7 @@ async function resolveImageRef(ref: string): Promise<string> {
 
 const resolvedBackgroundUrl = ref('')
 watch(
-  () => (!isImg.value && !isLucideIcon.value ? props.node?.image?.url : null),
+  () => (!isImg.value && !isAudio.value && !isLucideIcon.value ? props.node?.image?.url : null),
   (url) => {
     resolvedBackgroundUrl.value = ''
     if (!url) return
@@ -952,7 +955,7 @@ watch(
 const styleList = computed(() => {
   const el = props.node
   let st = ''
-  if (!isImg.value && !isLucideIcon.value && el.image?.url && resolvedBackgroundUrl.value) {
+  if (!isImg.value && !isAudio.value && !isLucideIcon.value && el.image?.url && resolvedBackgroundUrl.value) {
     st += 'background-image:url(' + resolvedBackgroundUrl.value + ');'
   }
   if (el.font) {
@@ -963,7 +966,7 @@ const styleList = computed(() => {
 
 const resolvedImgSrc = ref('')
 watch(
-  () => (isImg.value ? (props.node?.image?.url || props.node?.src || '') : null),
+  () => (isImg.value || isAudio.value ? (props.node?.image?.url || props.node?.src || '') : null),
   (url) => {
     resolvedImgSrc.value = ''
     if (!url) return
@@ -1188,6 +1191,7 @@ function pageRendererVueStatic(opts: ScaffoldOptions): string {
   </a>
   <component v-else-if="isLucideIcon && iconComponent" :id="node.anchor || node.id" :is="iconComponent" :class="classList" :style="styleList" v-bind="attrs" />
   <span v-else-if="isLucideIcon" :id="node.anchor || node.id" :class="classList" :style="styleList"></span>
+  <audio v-else-if="isAudio" :id="node.anchor || node.id" :src="imgSrc" :class="classList" :style="styleList" v-bind="attrs" :controls="node.options?.controls !== false" :loop="node.options?.loop === true" :autoplay="node.options?.autoplay === true" :preload="node.options?.preload || 'metadata'"></audio>
   <img v-else-if="isImg" :id="node.anchor || node.id" :src="imgSrc" :alt="imgAlt" :class="classList" :style="styleList" v-bind="attrs" />
   <component v-else :id="node.anchor || node.id" :is="component" :class="classList" :style="styleList" v-bind="attrs">
     <template v-if="hasBlocks">
@@ -1205,6 +1209,8 @@ import { getRootPath } from '../composables/useApi'
 const props = defineProps<{ node: any }>()
 
 const isImg = computed(() => props.node?.element === 'img' || props.node?.tag === 'img')
+// Audio element: its source lives in image.url like an image's, but it renders an <audio>, never a background
+const isAudio = computed(() => props.node?.element === 'audio')
 const isLucideIcon = computed(() => props.node?.tag === 'lucideicon')
 
 // Internal links authored in the editor are stored as \`\${website.rootPath}\${page.slug}\`
@@ -1278,7 +1284,7 @@ const classList = computed(() => {
 const styleList = computed(() => {
   const el = props.node
   let st = ''
-  if (!isImg.value && !isLucideIcon.value && el.image?.url && images[el.image.url]) {
+  if (!isImg.value && !isAudio.value && !isLucideIcon.value && el.image?.url && images[el.image.url]) {
     st += 'background-image:url(' + images[el.image.url] + ');'
   }
   if (el.font) {

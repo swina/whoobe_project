@@ -129,6 +129,10 @@ export default class Element {
                         name: 'Video',
                         icon: 'movie'
                     },
+                    {
+                        name: 'Audio',
+                        icon: 'audiotrack'
+                    },
                     { 
                         name: 'Youtube',
                         icon: 'movie' 
@@ -241,6 +245,7 @@ export default class Element {
             element === 'Isometric'     ? this.Isometric() :
             element === 'Table'         ? this.Table() :
             element === 'Video'         ? this.Video() :
+            element === 'Audio'         ? this.Audio() :
             element === 'Youtube'       ? this.YTVideo() :
             element === 'Vimeo'         ? this.VimeoVideo() :
             element === 'LucideIcon'    ? this.LucideIcon() :
@@ -695,6 +700,35 @@ export default class Element {
             controls: true,
             autoplay: true,
             loop: true
+        }
+        return this
+    }
+
+    // Audio: the source is `image.url` (a DAM asset path or any URL, resolved by resolveDisplayUrl() exactly like
+    // Video and Image), the look and behaviour are in `options`:
+    //   mode          'player'   = the browser's own <audio controls>
+    //                 'waveform' = a custom player with the waveform drawn from the decoded audio (falls back to
+    //                              the plain player when the file cannot be decoded, e.g. a cross-origin URL
+    //                              without CORS headers)
+    //   controls/autoplay/loop/preload  the matching <audio> attributes (autoplay is muted by browsers until the
+    //                 visitor interacts with the page)
+    //   waveColor / progressColor / height   waveform mode only (CSS colours, height in px)
+    Audio(){
+        this.element = 'audio'
+        this.label = 'Audio'
+        this.icon = 'audiotrack'
+        this.content = ''
+        this.type = 'audio'
+        this.css.css = 'w-full'
+        this.options = {
+            mode: 'player',
+            controls: true,
+            autoplay: false,
+            loop: false,
+            preload: 'metadata',
+            waveColor: '#cbd5e1',
+            progressColor: '#6366f1',
+            height: 64
         }
         return this
     }

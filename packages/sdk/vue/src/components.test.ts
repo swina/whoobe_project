@@ -24,6 +24,23 @@ async function render(descriptor: Awaited<ReturnType<typeof walkTree>>, registry
 }
 
 describe('WhoobeNode (SSR)', () => {
+  it('renders an Audio element as a plain player with the source resolved like an image', async () => {
+    const tree = {
+      id: 'root', type: 'container', tag: 'document', element: 'div', css: { css: '', container: '' },
+      blocks: [
+        { id: 'a1', type: 'element', tag: 'element', element: 'audio', image: { url: '/audio/song.mp3' }, css: { css: 'w-full', container: '' }, options: { mode: 'waveform', loop: true, preload: 'auto' } },
+        { id: 'a2', type: 'element', tag: 'element', element: 'audio', image: { url: 'https://cdn.example.com/x.mp3' }, css: { css: '', container: '' }, options: { controls: false } },
+      ],
+    }
+    const html = await render(await walkTree(tree, {}, { api, assetBaseUrl: 'http://dam:3002/dam-asset' }))
+    expect(html).toContain('src="http://dam:3002/dam-asset/audio/song.mp3"')
+    expect(html).toContain('src="https://cdn.example.com/x.mp3"')
+    expect(html).toContain('loop')
+    expect(html).toContain('preload="auto"')
+    expect(html).toContain('data-whoobe-audio="waveform"')
+    expect(html.match(/<audio[^>]*>/g)?.[1]).not.toContain('controls')
+  })
+
   it('renders a container with heading + paragraph + image defaults', async () => {
     const tree = {
       id: 'root', type: 'container', tag: 'document', element: 'div', css: { css: 'p-8', container: 'flex flex-col' },

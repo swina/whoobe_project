@@ -18,6 +18,7 @@
       </template>
       <FormConfigControl v-if="(editor.current as any)?.tag === 'form'" />
       <SearchConfigControl v-if="(editor.current as any)?.tag === 'search'" />
+      <AudioControl v-if="(editor.current as any)?.element === 'audio'" />
     </template>
   </div>
 </template>
@@ -41,6 +42,7 @@ import AlpineControl from './advanced/AlpineControl.vue'
 import FormFieldControl from './advanced/FormFieldControl.vue'
 import FormConfigControl from './advanced/FormConfigControl.vue'
 import SearchConfigControl from './advanced/SearchConfigControl.vue'
+import AudioControl from './advanced/AudioControl.vue'
 import CustomClassesControl from './tailwind-controls/CustomClassesControl.vue'
 import DataBindingTransformControl from './tailwind-controls/DataBindingTransformControl.vue'
 

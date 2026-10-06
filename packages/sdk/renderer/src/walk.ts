@@ -111,7 +111,8 @@ async function resolveNodeImage(
   scope: { ctx: WalkContext; api: RenderApi },
   options: RenderOptions,
 ): Promise<{ url: string; alt?: string | null } | null> {
-  if (node.element !== 'img') return null
+  // img, and audio: an Audio element keeps its source (a DAM asset or a URL) in `image.url` too
+  if (node.element !== 'img' && node.element !== 'audio') return null
   let url: string | null = null
   let alt: string | undefined
   if (node.dataBinding?.field) {

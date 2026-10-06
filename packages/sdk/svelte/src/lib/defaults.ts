@@ -35,6 +35,7 @@ export const defaults = {
   reset: WhoobeButton,
   search: WhoobeSearch,
   video: WhoobeMedia,
+  audio: WhoobeMedia,
   youtube: WhoobeMedia,
   vimeo: WhoobeMedia,
   slider: WhoobeMedia,
