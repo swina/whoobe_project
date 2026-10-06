@@ -12,6 +12,13 @@ export interface AudioOptions {
   showTitle: boolean
   /** One line with an ellipsis (the full name is the tooltip) instead of wrapping onto several lines. */
   truncateTitle: boolean
+  /**
+   * How the title is styled: 'default' = a small, medium-weight, slightly faded line; 'inherit' = no styling of its own,
+   * so it takes the font, size, colour and line height of the Audio element (set in Advanced > Custom Classes);
+   * 'custom' = the Tailwind classes in `titleClass`.
+   */
+  titleStyle: 'default' | 'inherit' | 'custom'
+  titleClass: string
   preload: 'none' | 'metadata' | 'auto'
   waveColor: string
   progressColor: string
@@ -26,6 +33,8 @@ export const AUDIO_DEFAULTS: AudioOptions = {
   loop: false,
   showTitle: false,
   truncateTitle: true,
+  titleStyle: 'default',
+  titleClass: '',
   preload: 'metadata',
   waveColor: '#cbd5e1',
   progressColor: '#6366f1',
@@ -35,6 +44,22 @@ export const AUDIO_DEFAULTS: AudioOptions = {
 // A colour typed by an administrator ends up in canvas.fillStyle, which ignores what it cannot parse; keep only
 // plain colour syntax anyway so a value never carries anything else.
 const COLOR = /^(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([\d\s.,%/deg-]+\)|[a-z]{3,20})$/i
+
+// Tailwind utility classes typed by an administrator. The string ends up in a class attribute through a framework binding,
+// which cannot break out of the attribute; this still drops markup characters, control characters and backslashes,
+// collapses the spaces, removes duplicates and caps the length, so a stored value is always a plain class list.
+function cleanClasses(v: unknown): string {
+  if (typeof v !== 'string') return ''
+  const tokens = v.replace(/[<>"`\\\u0000-\u001f\u007f]/g, ' ').split(/\s+/).filter(Boolean)
+  return Array.from(new Set(tokens)).join(' ').slice(0, 300).trim()
+}
+
+/** The classes of the title element that depend on its style (the truncation classes are added separately). */
+export function audioTitleClasses(o: Pick<AudioOptions, 'titleStyle' | 'titleClass'>): string {
+  if (o.titleStyle === 'custom') return o.titleClass
+  if (o.titleStyle === 'inherit') return 'mb-1'
+  return 'text-sm font-medium opacity-80 mb-1'
+}
 
 /** Merges what is stored on the element with the defaults, tolerating any shape (old or hand-edited documents). */
 export function normalizeAudioOptions(raw: unknown): AudioOptions {
@@ -49,6 +74,8 @@ export function normalizeAudioOptions(raw: unknown): AudioOptions {
     loop: bool(o.loop, AUDIO_DEFAULTS.loop),
     showTitle: bool(o.showTitle, AUDIO_DEFAULTS.showTitle),
     truncateTitle: bool(o.truncateTitle, AUDIO_DEFAULTS.truncateTitle),
+    titleStyle: o.titleStyle === 'inherit' || o.titleStyle === 'custom' ? o.titleStyle : 'default',
+    titleClass: cleanClasses(o.titleClass),
     preload: o.preload === 'none' || o.preload === 'auto' ? o.preload : 'metadata',
     waveColor: color(o.waveColor, AUDIO_DEFAULTS.waveColor),
     progressColor: color(o.progressColor, AUDIO_DEFAULTS.progressColor),
