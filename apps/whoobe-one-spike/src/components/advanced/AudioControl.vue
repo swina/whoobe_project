@@ -34,6 +34,8 @@
 
     <div class="flex flex-col gap-1 text-xs text-gray-700">
       <label class="flex items-center gap-1.5"><input type="checkbox" :checked="o.controls" @change="set('controls', ($event.target as HTMLInputElement).checked)" /> {{ o.mode === 'waveform' ? 'Show the time' : 'Show the controls' }}</label>
+      <label class="flex items-center gap-1.5"><input type="checkbox" :checked="o.showTitle" @change="set('showTitle', ($event.target as HTMLInputElement).checked)" /> Show the file name as title</label>
+      <label v-if="o.showTitle" class="flex items-center gap-1.5 ml-5"><input type="checkbox" :checked="o.truncateTitle" @change="set('truncateTitle', ($event.target as HTMLInputElement).checked)" /> Cut a long name to one line (...)</label>
       <label class="flex items-center gap-1.5"><input type="checkbox" :checked="o.loop" @change="set('loop', ($event.target as HTMLInputElement).checked)" /> Loop</label>
       <label class="flex items-center gap-1.5"><input type="checkbox" :checked="o.autoplay" @change="set('autoplay', ($event.target as HTMLInputElement).checked)" /> Start automatically</label>
       <p v-if="o.autoplay" class="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-1">Browsers do not start audio with sound until the visitor has interacted with the page, so this often has no effect.</p>

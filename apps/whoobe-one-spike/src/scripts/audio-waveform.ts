@@ -8,6 +8,10 @@ export interface AudioOptions {
   controls: boolean
   autoplay: boolean
   loop: boolean
+  /** Show the file name (without its extension) above the player. */
+  showTitle: boolean
+  /** One line with an ellipsis (the full name is the tooltip) instead of wrapping onto several lines. */
+  truncateTitle: boolean
   preload: 'none' | 'metadata' | 'auto'
   waveColor: string
   progressColor: string
@@ -20,6 +24,8 @@ export const AUDIO_DEFAULTS: AudioOptions = {
   controls: true,
   autoplay: false,
   loop: false,
+  showTitle: false,
+  truncateTitle: true,
   preload: 'metadata',
   waveColor: '#cbd5e1',
   progressColor: '#6366f1',
@@ -41,11 +47,27 @@ export function normalizeAudioOptions(raw: unknown): AudioOptions {
     controls: bool(o.controls, AUDIO_DEFAULTS.controls),
     autoplay: bool(o.autoplay, AUDIO_DEFAULTS.autoplay),
     loop: bool(o.loop, AUDIO_DEFAULTS.loop),
+    showTitle: bool(o.showTitle, AUDIO_DEFAULTS.showTitle),
+    truncateTitle: bool(o.truncateTitle, AUDIO_DEFAULTS.truncateTitle),
     preload: o.preload === 'none' || o.preload === 'auto' ? o.preload : 'metadata',
     waveColor: color(o.waveColor, AUDIO_DEFAULTS.waveColor),
     progressColor: color(o.progressColor, AUDIO_DEFAULTS.progressColor),
     height: Number.isFinite(height) ? Math.min(240, Math.max(16, Math.round(height))) : AUDIO_DEFAULTS.height,
   }
+}
+
+/**
+ * The display name of a track from its source (a library path such as `/audio/My%20Song.mp3`, or a URL): the last
+ * segment without the query, the hash and the file extension, percent-decoded. Empty when there is nothing to show.
+ */
+export function audioTitleFromSource(source: string | null | undefined): string {
+  if (!source) return ''
+  const noQuery = source.split('#')[0].split('?')[0]
+  const last = noQuery.split('/').filter(Boolean).pop() ?? ''
+  let name = last
+  try { name = decodeURIComponent(last) } catch { /* a stray % in the name: keep it as it is */ }
+  // an extension is a final dot followed by 1-5 letters or digits (so "v1.2 final" keeps its dot)
+  return name.replace(/\.[A-Za-z0-9]{1,5}$/, '').trim()
 }
 
 /**
