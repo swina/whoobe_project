@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # Checks a running sandbox from the outside (docs/release/operations/sandbox.md).
 # Usage: scripts/sandbox/verify.sh <base-url> <demo-email> <demo-password>     e.g. http://sandbox.localhost demo@whoobe.example ...
-# Exits 1 on the first failed check. Leaves a few small test assets behind: it is meant for a sandbox that is reset anyway.
+# Exits 1 if a check fails. It uploads up to 51 small test files into /sandbox-verify to reach the asset limit and deletes
+# that folder at the end: without it the sandbox would stay at its asset limit until the next reset.
 set -uo pipefail
 BASE="${1:?base url}"; EMAIL="${2:?demo email}"; PASS="${3:?demo password}"
-JAR="$(mktemp)"; TMP="$(mktemp -d)"; trap 'rm -rf "$JAR" "$TMP"' EXIT
+JAR="$(mktemp)"; TMP="$(mktemp -d)"
+cleanup() { curl -s -o /dev/null -b "$JAR" -X DELETE "$BASE/api/v1/dam/folders" -H 'content-type: application/json' -d '{"path":"/sandbox-verify"}'; rm -rf "$JAR" "$TMP"; }
+trap cleanup EXIT
 fail=0
 check() { # name expected actual
   if [ "$2" = "$3" ]; then echo "  ok    $1 ($3)"; else echo "  FAIL  $1: expected $2, got $3"; fail=1; fi
