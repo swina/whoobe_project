@@ -38,13 +38,18 @@ or moving through the track does not deselect the element.
 ## The waveform, and when it falls back
 
 The waveform is drawn from the audio file itself, which the page therefore has to download and decode once (a file
-of a few MB is read in a moment; files over **40 MB** are not drawn). When it cannot be done, the visitor gets the
+of a few MB is read in a moment; a 17 MB track of about 18 minutes was drawn in under 3 seconds; files over **40 MB** are
+not drawn). When it cannot be done, the visitor gets the
 **plain player** instead, so the sound is never lost. That happens when:
 
 - the source is a URL of **another site that does not allow other sites to read the file** (a CORS restriction of
   that site; the browser can *play* such a file but not *read* it to draw it). Files from the asset library, from a
   CDN set up for it, or from your own domain work;
 - the browser cannot decode the format.
+- the file is **private** and the page is open without a session (a private asset answers only to a logged-in user, with the
+  session cookie, and only from an allowed origin).
+
+The reason is written in the browser console (`[AudioPlayer] waveform unavailable, showing the plain player: ...`).
 
 While the waveform is being computed a dimmed placeholder is shown.
 

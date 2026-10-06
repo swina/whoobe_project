@@ -159,8 +159,9 @@ async function loadWave() {
   try {
     const p = await loadPeaks(url)
     if (url === props.src) peaks.value = p
-  } catch {
-    // CORS, an undecodable format or a very large file: show the plain player
+  } catch (e) {
+    // CORS, an undecodable format or a very large file: show the plain player, and say why in the console
+    console.warn('[AudioPlayer] waveform unavailable, showing the plain player:', (e as Error)?.message || e, url)
     if (url === props.src) failed.value = true
   }
   await nextTick()
