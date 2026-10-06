@@ -150,17 +150,31 @@ export function loadPeaks(url: string): Promise<number[]> {
   let p = cache.get(url)
   if (!p) {
     p = (async () => {
-      // public assets and third-party URLs answer without credentials; a private asset needs the session cookie
-      let res: Response
-      try { res = await fetch(url, { credentials: 'omit' }) } catch { res = await fetch(url, { credentials: 'include' }) }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      // Which credentials the server wants depends on the file: a private asset of the library answers only with the
+      // session cookie (and only an allowed origin may send it); a third-party URL usually answers with
+      // "Access-Control-Allow-Origin: *", which the browser refuses together with credentials. So try with the
+      // credentials first and without them next, and keep the reason of the last failure for the console.
+      let res: Response | null = null
+      let reason = 'no answer'
+      for (const credentials of ['include', 'omit'] as const) {
+        try {
+          const r = await fetch(url, { credentials })
+          if (r.ok) { res = r; break }
+          reason = `HTTP ${r.status}`
+        } catch {
+          reason = 'blocked by the browser (CORS) or no connection'
+        }
+      }
+      if (!res) throw new Error(reason)
       const declared = Number(res.headers.get('content-length') || 0)
       if (declared > MAX_BYTES) throw new Error('audio file too large to draw')
       const bytes = await res.arrayBuffer()
       if (bytes.byteLength > MAX_BYTES) throw new Error('audio file too large to draw')
       const Ctx = (window as any).OfflineAudioContext || (window as any).webkitOfflineAudioContext
-      // decoding does not need a running AudioContext (and an offline one never trips the autoplay policy)
-      const decoded: AudioBuffer = await new Ctx(1, 1, 44100).decodeAudioData(bytes)
+      // decoding does not need a running AudioContext (and an offline one never trips the autoplay policy). The context
+      // rate is also the rate the track is decoded at: 8 kHz is plenty for 800 peaks and takes about a fifth of the memory
+      // of 44.1 kHz, which is what lets a long track (a podcast, a DJ set) be drawn at all.
+      const decoded: AudioBuffer = await new Ctx(1, 1, 8000).decodeAudioData(bytes)
       return computePeaks(decoded.getChannelData(0), RESOLUTION)
     })()
     cache.set(url, p)
