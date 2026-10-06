@@ -1,21 +1,11 @@
-# Public sandbox overlay (docs/release/operations/sandbox.md). Used together with docker-compose.yml:
-#   COMPOSE_FILE=docker-compose.yml:docker-compose.sandbox.yml   (scripts/sandbox/reset.sh sets it)
-# Switches the product into sandbox mode (limits, disabled outbound features) and hardens the containers.
+# Public sandbox overlay (docs/release/operations/sandbox.md): container hardening only. Used together with
+# docker-compose.yml through COMPOSE_FILE, which the workspace profile `sandbox` (deploy/profiles/sandbox.env) writes into
+# the workspace's env file. The product limits (SANDBOX_MODE, ASSET_MAX_*, ...) are in that same file and reach the
+# services through their env_file, so they are not repeated here.
 # SANDBOX_NO_NEW_PRIVILEGES=false only for hosts where the flag breaks image entrypoints (snap-installed Docker with
 # AppArmor: "exec docker-entrypoint.sh: operation not permitted"); keep the default on a public host.
 # Host ports stay (the shared nginx proxy reaches the services on 127.0.0.1): the provisioning script binds every
 # port to loopback (WS_APP_BIND_ADDRESS / WS_DATA_BIND_ADDRESS = 127.0.0.1), so only the proxy is public.
-x-sandbox-env: &sandbox-env
-  SANDBOX_MODE: "1"
-  SANDBOX_RESET_AT: ${SANDBOX_RESET_AT:-}
-  SANDBOX_ALLOW_HOSTS: ${SANDBOX_ALLOW_HOSTS:-dummyjson.com}   # the only host outbound HTTP may reach (API Gateway demo)
-  ASSET_MAX_FILE_BYTES: ${ASSET_MAX_FILE_BYTES:-5242880}   # 5 MB per file
-  ASSET_MAX_COUNT: ${ASSET_MAX_COUNT:-50}                  # at most 50 assets
-  ASSET_MAX_INPUT_PIXELS: ${ASSET_MAX_INPUT_PIXELS:-16000000}
-  PUBLIC_RATE_LIMIT_PER_MINUTE: ${PUBLIC_RATE_LIMIT_PER_MINUTE:-60}
-  PUBLIC_SEARCH_RATE_LIMIT_PER_MINUTE: ${PUBLIC_SEARCH_RATE_LIMIT_PER_MINUTE:-30}
-  PUBLIC_QUERY_RATE_LIMIT_PER_MINUTE: ${PUBLIC_QUERY_RATE_LIMIT_PER_MINUTE:-30}
-
 x-node-hardening: &node-hardening
   read_only: true
   tmpfs:
@@ -39,17 +29,14 @@ services:
     pids_limit: 200
   core-api:
     <<: *node-hardening
-    environment: *sandbox-env
     mem_limit: 768m
     cpus: 1.0
   asset-processor:
     <<: *node-hardening
-    environment: *sandbox-env
     mem_limit: 1g                # sharp
     cpus: 1.0
   gateway:
     <<: *node-hardening
-    environment: *sandbox-env
     mem_limit: 384m
     cpus: 0.5
   admin-dashboard:
