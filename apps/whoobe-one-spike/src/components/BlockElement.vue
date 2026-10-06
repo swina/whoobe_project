@@ -94,6 +94,7 @@
       data-type="element"
       v-bind="elementAttrs"
       :src="displaySrc"
+      :source="(element as any).image?.url"
       :options="(element as any).options"
       @click="onAudioClick"
     />

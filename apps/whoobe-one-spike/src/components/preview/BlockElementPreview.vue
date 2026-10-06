@@ -42,6 +42,7 @@
   :style="stile"
   v-bind="extraAttrs"
   :src="displaySrc"
+  :source="(element as any).image?.url"
   :options="(element as any).options"
 />
 <video

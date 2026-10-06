@@ -1,5 +1,11 @@
 <template>
   <div ref="root">
+    <div
+      v-if="title"
+      class="text-sm font-medium opacity-80 mb-1"
+      :class="opts.truncateTitle ? 'truncate' : 'break-words'"
+      :title="title"
+    >{{ title }}</div>
     <div v-if="showWaveform" class="flex items-center gap-3 w-full">
       <button
         type="button"
@@ -32,6 +38,7 @@
     <audio
       ref="audioEl"
       :src="src || undefined"
+      :aria-label="title || undefined"
       :class="showWaveform ? 'hidden' : 'block w-full'"
       :controls="!showWaveform && opts.controls"
       :autoplay="opts.autoplay"
@@ -56,9 +63,9 @@
 // host (resolveDisplayUrl(imageURL(element.image)): a DAM asset or any URL), `options` is the element's own settings.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Pause, Play } from '@lucide/vue'
-import { loadPeaks, normalizeAudioOptions, placeholderPeaks } from '../scripts/audio-waveform'
+import { audioTitleFromSource, loadPeaks, normalizeAudioOptions, placeholderPeaks } from '../scripts/audio-waveform'
 
-const props = defineProps<{ src?: string; options?: unknown }>()
+const props = defineProps<{ src?: string; options?: unknown; source?: string | null }>()
 
 const opts = computed(() => normalizeAudioOptions(props.options))
 const audioEl = ref<HTMLAudioElement | null>(null)
@@ -72,6 +79,8 @@ const dragging = ref(false)
 const peaks = ref<number[] | null>(null)
 const failed = ref(false)
 
+// `source` is what the element stores (a library path or a URL): its file name is a stable title, unlike the resolved `src`
+const title = computed(() => (opts.value.showTitle ? audioTitleFromSource(props.source || props.src) : ''))
 const wantsWaveform = computed(() => opts.value.mode === 'waveform' && !!props.src)
 const showWaveform = computed(() => wantsWaveform.value && !failed.value)
 

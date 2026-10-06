@@ -15,7 +15,11 @@ track.
    - **Player with waveform**: a round play button, the waveform of the track (the part already played in a second
      colour), and the elapsed / total time. Click or drag on the waveform to move through the track; with the
      keyboard, the arrow keys move by 5 seconds and Space or Enter plays and pauses.
-5. Options: show the controls (in the waveform look: the time), loop, start automatically, and how much to load
+5. **Title**: *Show the file name as title* puts the name of the track above the player, taken from the source: the file
+   name without its extension and with spaces restored (`/audio/My%20Song.mp3` shows `My Song`). It is off by default.
+   *Cut a long name to one line* (on by default) keeps it on a single line with an ellipsis, the full name being the
+   tooltip; switch it off to let a long name wrap. The title also becomes the accessible name of the player.
+6. Options: show the controls (in the waveform look: the time), loop, start automatically, and how much to load
    (nothing until played / the duration only / the whole file). In the waveform look you also choose the two
    colours and the height (16 to 240 px). The element's usual style classes (width, margins, shadows) apply to the
    whole player; the default is full width.
@@ -40,9 +44,9 @@ While the waveform is being computed a dimmed placeholder is shown.
 
 | Place | Result |
 |---|---|
-| Editing canvas, preview, public pages served by the editor application | player or waveform, as configured |
-| Mobile-app shell | the plain player (controls, loop, autoplay, preload); no waveform |
-| Headless SDK (`@whoobe-cms/react`, `vue`, `svelte`) and the generated Next.js / Nuxt sites | the plain player; the node carries `data-whoobe-audio="waveform"` so a project can draw its own waveform |
+| Editing canvas, preview, public pages served by the editor application | player or waveform and the title, as configured |
+| Mobile-app shell | the plain player (controls, loop, autoplay, preload); no waveform, no title |
+| Headless SDK (`@whoobe-cms/react`, `vue`, `svelte`) and the generated Next.js / Nuxt sites | the plain player, no title; the node carries `data-whoobe-audio="waveform"` so a project can draw its own waveform |
 
 Autoplay with sound is blocked by browsers until the visitor has interacted with the page: **Start automatically**
 often does nothing on the first load.
@@ -51,4 +55,4 @@ often does nothing on the first load.
 
 The element is `element: "audio"`, with the source in `image.url` (a library path or a URL, like an image) and the
 settings in `options` (`mode`: `player` or `waveform`, `controls`, `loop`, `autoplay`, `preload`, `waveColor`,
-`progressColor`, `height`). Colours accept only plain CSS colour syntax; anything else falls back to the default.
+`progressColor`, `height`, `showTitle`, `truncateTitle`). Colours accept only plain CSS colour syntax; anything else falls back to the default.
