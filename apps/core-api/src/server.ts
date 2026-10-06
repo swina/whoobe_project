@@ -3317,6 +3317,8 @@ app.get('/public/websites', async (_req: Request, res: Response): Promise<void> 
   }
 });
 
+const PUBLIC_WEBSITE_SETTINGS = ['themes', 'defaultThemeId'] as const;
+
 // Public website info endpoint — no auth, returns website config + themes.
 // Used by the publish CLI to fetch website metadata at build time.
 app.get('/public/websites/:id', async (req: Request, res: Response): Promise<void> => {
@@ -3357,9 +3359,11 @@ app.get('/public/websites/:id', async (req: Request, res: Response): Promise<voi
       collect(path.items);
       return { ...path, pageIds: [...ids] };
     });
-    // `settings` is an administration blob; the editor-only catalog of Alpine presets is not for visitors (pages carry
-    // copies of the directives they use, nothing reads the catalog on the public side).
-    const { alpinePresets: _alpinePresets, ...publicSettings } = (website.settings ?? {}) as Record<string, unknown>;
+    // `settings` is an administration blob (logging, autosave, CDN mirror, Alpine presets catalog, ...): only an allow-list
+    // goes out, so a setting added later is private by default (F-051). The publish CLI and the mobile-app generator read
+    // the themes from the separate top-level fields; the website columns (name, rootPath, locales, pwaConfig) are not in it.
+    const allSettings = (website.settings ?? {}) as Record<string, unknown>;
+    const publicSettings = Object.fromEntries(PUBLIC_WEBSITE_SETTINGS.filter((k) => k in allSettings).map((k) => [k, allSettings[k]]));
     res.json(sanitizePublicGatewayContent({ website: { ...website, settings: publicSettings }, themes: [...themes, ...(globalTheme ? [globalTheme] : [])], defaultThemeId, paths: resolvedPaths, templates }));
   } catch (error: any) {
     logger.error({ err: error }, 'Public website info error');

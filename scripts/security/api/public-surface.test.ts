@@ -118,6 +118,8 @@ describe('public website info', () => {
     const r = await anon.get(`/public/websites/${websiteId}`)
     expect(r.status).toBe(200)
     expect(r.text).not.toMatch(/"[A-Za-z]*(password|secret|hash|apiKey(?!Prefix))[A-Za-z]*"\s*:/i)
+    // F-051: only an allow-list of the administration `settings` blob is public
+    expect(Object.keys(r.json.website.settings ?? {}).filter((k) => !['themes', 'defaultThemeId'].includes(k))).toEqual([])
     const list = await anon.get('/public/websites')
     expect(Object.keys(list.json.websites[0]).sort()).toEqual(['id', 'name'])
   })
