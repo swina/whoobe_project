@@ -1,3 +1,6 @@
+## [Sandbox verify.sh deletes its test assets] — 2026-10-06
+- Branch: `master`. Reported on the `develop` sandbox: a normal upload under 5 MB answered "Asset limit reached" with no visible assets. Cause: `scripts/sandbox/verify.sh` uploads 50 files into `/sandbox-verify` to reach the limit and left them there (the DAM shows the root folder), so the sandbox was at its 50-asset limit until the next reset. The script now deletes `/sandbox-verify` on exit (`DELETE /api/v1/dam/folders`). The 50 files on `develop` were removed by the same call; a second run leaves 0 assets.
+
 ## [Sandbox verify.sh: pace the uploads under the nginx rate limit] — 2026-10-06
 - Branch: `master`. On the `develop` server the 60 back-to-back uploads of `scripts/sandbox/verify.sh` hit the nginx limit (10 requests/s, burst 40) at upload 41 and got 429 before the asset limit (409) could be tested. The loop now waits 0.2 s per upload. Sandbox run on `develop` (host `sandbox.whoobe.local`, index 7, `SANDBOX_NO_NEW_PRIVILEGES=false`): all checks pass.
 - Found while running it there: index 9 collided with another service on port 9090 (Garage's S3 port), and `docker compose build` stalled once on an npm download (ECONNRESET); both are environment issues, nothing in the code.
