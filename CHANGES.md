@@ -1,3 +1,7 @@
+## [Sandbox verify.sh: pace the uploads under the nginx rate limit] — 2026-10-06
+- Branch: `master`. On the `develop` server the 60 back-to-back uploads of `scripts/sandbox/verify.sh` hit the nginx limit (10 requests/s, burst 40) at upload 41 and got 429 before the asset limit (409) could be tested. The loop now waits 0.2 s per upload. Sandbox run on `develop` (host `sandbox.whoobe.local`, index 7, `SANDBOX_NO_NEW_PRIVILEGES=false`): all checks pass.
+- Found while running it there: index 9 collided with another service on port 9090 (Garage's S3 port), and `docker compose build` stalled once on an npm download (ECONNRESET); both are environment issues, nothing in the code.
+
 ## [Sandbox: `no-new-privileges` made configurable (snap Docker)] — 2026-10-06
 - Branch: `master`. First run on the `develop` server failed: Postgres restarted with `exec /usr/local/bin/docker-entrypoint.sh: operation not permitted`. Reproduced with a bare `docker run --security-opt no-new-privileges:true` (fails) and without the option (works): the snap-installed Docker (AppArmor) refuses the exec. `reset.sh` failed closed as designed (stack removed).
 - `docker-compose.sandbox.yml`: `no-new-privileges:${SANDBOX_NO_NEW_PRIVILEGES:-true}` on every service; default unchanged. Documented in `docs/release/operations/sandbox.md`.

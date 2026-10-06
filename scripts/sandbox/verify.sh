@@ -35,6 +35,7 @@ head -c $((5 * 1024 * 1024 + 1)) /dev/zero > "$TMP/big.bin"
 check "file of 5 MB + 1 byte" 413 "$(code -X POST "$BASE/api/v1/dam/upload" -F "file=@$TMP/big.bin;filename=big.bin" -F pimcorePath=/sandbox-verify/big.bin)"
 printf 'x' > "$TMP/small.txt"
 for i in $(seq 1 60); do
+  sleep 0.2   # stay under the nginx limit (10 requests/s per address), or the 429 comes before the asset limit
   c="$(code -X POST "$BASE/api/v1/dam/upload" -F "file=@$TMP/small.txt;filename=f$i.txt;type=text/plain" -F "pimcorePath=/sandbox-verify/f$i.txt")"
   [ "$c" = 200 ] || { echo "  upload stopped at #$i with HTTP $c"; check "asset count limit reached with 409" 409 "$c"; break; }
 done
