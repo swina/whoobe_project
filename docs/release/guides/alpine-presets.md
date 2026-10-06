@@ -17,6 +17,11 @@ across a site.
 
 Directives run on the **preview and on the published page**, not in the editing canvas.
 
+> **A transition belongs to the element that has `x-show`.** Alpine animates an element when *its own* `x-show`
+> changes; `x-transition:*` on a container does nothing for a child that has the `x-show`, and the other way round.
+> If a menu panel is shown with `x-show="menu"`, apply the transition preset to **that panel**, not to the element
+> that holds the toggle. The panel warns you when an element has `x-transition` directives but no `x-show`.
+
 ## Creating a preset
 
 1. Give an element the directives you want (type them in the same panel).

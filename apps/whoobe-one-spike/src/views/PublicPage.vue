@@ -80,7 +80,7 @@ function slotAlpine(slot: { alpine?: Record<string, string> } | null | undefined
   if (!src) return {}
   const out: Record<string, string> = {}
   for (const [k, v] of Object.entries(src)) {
-    out[k] = typeof v === 'string' ? safeAlpineValue(v) : ''
+    out[k] = typeof v === 'string' ? safeAlpineValue(v, k) : ''
   }
   return out
 }

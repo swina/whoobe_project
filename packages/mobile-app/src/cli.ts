@@ -987,7 +987,9 @@ const linkTarget = computed(() => {
 // render time; wrap anything that doesn't parse as JS in quotes so it's
 // treated as a plain string instead (mirrors safeAlpineValue in
 // apps/whoobe-one-spike/src/helpers.ts).
-function safeAlpineValue(value: string): string {
+function safeAlpineValue(value: string, name = ''): string {
+  // x-transition:*, x-teleport and x-ref hold class lists, a selector and a name, not JavaScript: leave them as typed
+  if (name.startsWith('x-transition:') || name === 'x-ref' || name === 'x-teleport' || name.startsWith('x-teleport.')) return value
   try {
     new Function('return ' + value)
     return value
@@ -1001,7 +1003,7 @@ const attrs = computed(() => {
   const result: Record<string, any> = {}
   if (el.alpine) {
     for (const key of Object.keys(el.alpine)) {
-      result[key] = safeAlpineValue(el.alpine[key] || '')
+      result[key] = safeAlpineValue(el.alpine[key] || '', key)
     }
   }
   if (el.data?.attributes) {
@@ -1061,7 +1063,9 @@ const layout = ref<any>(null)
 // Alpine evaluates directive values as JS expressions; wrap anything that
 // doesn't parse as JS in quotes so it's treated as a plain string instead
 // (mirrors safeAlpineValue in apps/whoobe-one-spike/src/helpers.ts).
-function safeAlpineValue(value: string): string {
+function safeAlpineValue(value: string, name = ''): string {
+  // x-transition:*, x-teleport and x-ref hold class lists, a selector and a name, not JavaScript: leave them as typed
+  if (name.startsWith('x-transition:') || name === 'x-ref' || name === 'x-teleport' || name.startsWith('x-teleport.')) return value
   try {
     new Function('return ' + value)
     return value
@@ -1074,7 +1078,7 @@ function slotAlpine(alpine: Record<string, string> | null | undefined): Record<s
   if (!alpine) return {}
   const result: Record<string, string> = {}
   for (const key of Object.keys(alpine)) {
-    result[key] = safeAlpineValue(alpine[key] || '')
+    result[key] = safeAlpineValue(alpine[key] || '', key)
   }
   return result
 }
@@ -1302,7 +1306,9 @@ const linkTarget = computed(() => {
 // render time; wrap anything that doesn't parse as JS in quotes so it's
 // treated as a plain string instead (mirrors safeAlpineValue in
 // apps/whoobe-one-spike/src/helpers.ts).
-function safeAlpineValue(value: string): string {
+function safeAlpineValue(value: string, name = ''): string {
+  // x-transition:*, x-teleport and x-ref hold class lists, a selector and a name, not JavaScript: leave them as typed
+  if (name.startsWith('x-transition:') || name === 'x-ref' || name === 'x-teleport' || name.startsWith('x-teleport.')) return value
   try {
     new Function('return ' + value)
     return value
@@ -1316,7 +1322,7 @@ const attrs = computed(() => {
   const result: Record<string, any> = {}
   if (el.alpine) {
     for (const key of Object.keys(el.alpine)) {
-      result[key] = safeAlpineValue(el.alpine[key] || '')
+      result[key] = safeAlpineValue(el.alpine[key] || '', key)
     }
   }
   if (el.data?.attributes) {
@@ -1387,7 +1393,9 @@ const layout = computed(() => (entry.value?.layout ?? null) as any)
 // Alpine evaluates directive values as JS expressions; wrap anything that
 // doesn't parse as JS in quotes so it's treated as a plain string instead
 // (mirrors safeAlpineValue in apps/whoobe-one-spike/src/helpers.ts).
-function safeAlpineValue(value: string): string {
+function safeAlpineValue(value: string, name = ''): string {
+  // x-transition:*, x-teleport and x-ref hold class lists, a selector and a name, not JavaScript: leave them as typed
+  if (name.startsWith('x-transition:') || name === 'x-ref' || name === 'x-teleport' || name.startsWith('x-teleport.')) return value
   try {
     new Function('return ' + value)
     return value
@@ -1400,7 +1408,7 @@ function slotAlpine(alpine: Record<string, string> | null | undefined): Record<s
   if (!alpine) return {}
   const result: Record<string, string> = {}
   for (const key of Object.keys(alpine)) {
-    result[key] = safeAlpineValue(alpine[key] || '')
+    result[key] = safeAlpineValue(alpine[key] || '', key)
   }
   return result
 }

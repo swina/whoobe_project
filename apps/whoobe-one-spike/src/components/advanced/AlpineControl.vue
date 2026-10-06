@@ -47,6 +47,12 @@
       </p>
     </div>
 
+    <!-- Alpine runs a transition only on the element that carries x-show; a parent or a child does not count. -->
+    <p v-if="transitionWithoutShow" class="text-[10px] text-amber-800 bg-amber-50 border border-amber-300 rounded p-1.5">
+      This element has <code>x-transition</code> directives but no <code>x-show</code>, so nothing will animate. A
+      transition runs only on the element that has <code>x-show</code> itself (not on its parent or its children): add
+      <code>x-show</code> here, or apply these directives to the element that has it.
+    </p>
     <div v-if="rows.length" class="flex flex-col gap-1">
       <div v-for="row in rows" :key="row.name" class="flex flex-col gap-0.5 border rounded bg-white p-1.5">
         <div class="flex items-center gap-1">
@@ -120,6 +126,11 @@ const selected = computed(() => presets.value.find((p) => p.name === selectedPre
 const currentDirectives = computed<Record<string, string>>(() => ({ ...((editor.current as any)?.alpine ?? {}) }))
 const hasCurrentDirectives = computed(() => Object.keys(currentDirectives.value).length > 0)
 const canSave = computed(() => !!editor.current && hasCurrentDirectives.value && newPresetName.value.trim().length > 0)
+
+const transitionWithoutShow = computed(() => {
+  const names = Object.keys(currentDirectives.value)
+  return names.some((n) => n === 'x-transition' || n.startsWith('x-transition:') || n.startsWith('x-transition.')) && !names.includes('x-show')
+})
 
 function say(text: string, isError = false) { message.value = text; messageIsError.value = isError }
 
