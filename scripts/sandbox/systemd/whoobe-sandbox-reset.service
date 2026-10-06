@@ -1,7 +1,9 @@
 [Unit]
 Description=Rebuild the Whoobe public sandbox (all volumes are deleted)
-After=docker.service
-Requires=docker.service
+# Docker is docker.service (Engine packages) or snap.docker.dockerd.service (snap): order after whichever exists. No Requires=:
+# a unit that does not exist on this host would make the start fail ("Unit docker.service not found").
+Wants=network-online.target
+After=network-online.target docker.service snap.docker.dockerd.service
 
 [Service]
 Type=oneshot
