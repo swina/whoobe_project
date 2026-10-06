@@ -348,15 +348,28 @@ export function customAttrs(attributes: Record<string, unknown> | null | undefin
 }
 
 /**
+ * Alpine directives whose value is NOT a JavaScript expression: `x-transition:enter|enter-start|enter-end|leave|...`
+ * take a list of CSS classes, `x-teleport` a CSS selector and `x-ref` a name. Alpine reads these verbatim, so wrapping
+ * them in quotes (what safeAlpineValue() does to anything that does not parse as JS) makes Alpine see classes such as
+ * `'transition` and `duration-300'` and apply none of them: the transition silently does nothing.
+ */
+export function isLiteralAlpineDirective(name: string): boolean {
+  return name.startsWith('x-transition:') || name === 'x-ref' || name === 'x-teleport' || name.startsWith('x-teleport.')
+}
+
+/**
  * Safeguards an AlpineJS directive value against common user mistakes. Alpine
  * evaluates directive values as JavaScript expressions, so a bare Tailwind
  * class like `h-[600px]` typed into the x-bind:class value field would throw
  * a SyntaxError at render time. When the value fails to parse as JS it's
  * silently wrapped in single quotes so it becomes a string literal - a
  * no-op fix that makes `x-bind:class="h-[600px]"` behave the way a non-
- * technical user expects it to (same as `class="h-[600px]"`).
+ * technical user expects it to (same as `class="h-[600px]"`). Pass the
+ * directive's `name` so that the ones whose value is not an expression
+ * (isLiteralAlpineDirective) are returned untouched.
  */
-export function safeAlpineValue(value: string): string {
+export function safeAlpineValue(value: string, name = ''): string {
+  if (isLiteralAlpineDirective(name)) return value
   try {
     new Function(`return ${value}`)
     return value
