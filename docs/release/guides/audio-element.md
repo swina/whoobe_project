@@ -7,7 +7,8 @@ track.
 ## Adding and configuring it
 
 1. Drag **Audio** from the **Media** group of the palette onto the page, and select it.
-2. Open **Advanced**: the **Audio** panel is at the bottom.
+2. Open **Advanced**: **Audio** is the first section of the list. It opens by itself when you select an Audio element
+   and, like the other sections, folds and unfolds from its header (opening another section folds it).
 3. **Source**: type a library path (`/audio/song.mp3`) or a URL (`https://...`), or press the folder button to browse
    the library; the browser only lists audio assets. The toolbar's "Browse assets" button does the same.
 4. **Look**:
