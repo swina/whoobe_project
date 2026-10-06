@@ -20,13 +20,18 @@ product in **sandbox mode** (`SANDBOX_MODE=1`), run as one workspace named `sand
 | JSON body | 1 MB (50 MB outside the sandbox) | asset-processor |
 | Public API rate | 60/30/30 per minute (`PUBLIC_*_RATE_LIMIT_PER_MINUTE`) | core-api |
 | Per address | 10 requests/s with a burst of 40, 20 connections, 60 s timeouts | nginx |
+| Outbound HTTP | only `SANDBOX_ALLOW_HOSTS` (default `dummyjson.com`) | `safeFetch` |
 | Containers | memory, CPU and process limits, no capabilities, read-only root file system for the Node services | `docker-compose.sandbox.yml` |
 
 ## Features that are off (answer 403 "disabled in the public sandbox")
 
 AI (`/ai/*`), mail (`/mail-*`, and sending itself), the Figma import, the migration sources, the CDN mirror settings,
-PWA generation, regenerating a website's gateway key. Outbound HTTP through `safeFetch` is refused as a whole, so no URL
-a visitor types can make the server call out. The list lives in `packages/core/src/sandbox.ts`.
+PWA generation, regenerating a website's gateway key. Outbound HTTP through `safeFetch` is refused for every host except
+the ones listed in `SANDBOX_ALLOW_HOSTS` (exact host names, default `dummyjson.com`, a public dummy-data API so the API
+Gateway can be demonstrated). The list is checked on every redirect hop and before any DNS lookup; a listed host still goes
+through the normal SSRF checks (no private or loopback addresses). So a visitor can create gateway endpoints and routes,
+but only towards the allowed hosts: Cloudinary, Brevo and CDN mirroring stay off. Set `SANDBOX_ALLOW_HOSTS=` (empty) to
+turn all outbound HTTP off. The path list lives in `packages/core/src/sandbox.ts`.
 
 ## Run it
 

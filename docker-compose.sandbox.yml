@@ -8,6 +8,7 @@
 x-sandbox-env: &sandbox-env
   SANDBOX_MODE: "1"
   SANDBOX_RESET_AT: ${SANDBOX_RESET_AT:-}
+  SANDBOX_ALLOW_HOSTS: ${SANDBOX_ALLOW_HOSTS:-dummyjson.com}   # the only host outbound HTTP may reach (API Gateway demo)
   ASSET_MAX_FILE_BYTES: ${ASSET_MAX_FILE_BYTES:-5242880}   # 5 MB per file
   ASSET_MAX_COUNT: ${ASSET_MAX_COUNT:-50}                  # at most 50 assets
   ASSET_MAX_INPUT_PIXELS: ${ASSET_MAX_INPUT_PIXELS:-16000000}

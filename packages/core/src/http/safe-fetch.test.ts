@@ -125,3 +125,22 @@ describe('safeFetch', () => {
     await new Promise<void>((r) => slow.close(() => r()));
   });
 });
+
+describe('safeFetch in the public sandbox', () => {
+  const saved = { mode: process.env.SANDBOX_MODE, hosts: process.env.SANDBOX_ALLOW_HOSTS };
+  afterAll(() => {
+    for (const [k, v] of [['SANDBOX_MODE', saved.mode], ['SANDBOX_ALLOW_HOSTS', saved.hosts]] as const) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  });
+  it('refuses a host that is not on the list, before any DNS lookup, and a listed host still goes through the normal checks', async () => {
+    process.env.SANDBOX_MODE = '1';
+    process.env.SANDBOX_ALLOW_HOSTS = 'dummyjson.com';
+    let lookups = 0;
+    const lookup = async () => { lookups++; return [{ address: '10.0.0.5', family: 4 }]; };
+    await expect(safeFetch('https://example.org/', {}, { lookup })).rejects.toThrow(/not allowed in the public sandbox/);
+    await expect(safeFetch('http://127.0.0.1:1/', {}, { lookup })).rejects.toThrow(/not allowed in the public sandbox/);
+    expect(lookups).toBe(0);
+    // listed, but it resolves to a private address: the ordinary SSRF policy still refuses it
+    await expect(safeFetch('https://dummyjson.com/products', {}, { lookup, allowPrivate: false })).rejects.toThrow(/private/);
+    expect(lookups).toBe(1);
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assetMaxCount, assetMaxFileBytes, isSandbox, isSandboxBlockedPath, isSandboxReadOnlyPath, sandboxStatus } from './sandbox.js';
+import { assetMaxCount, assetMaxFileBytes, isSandbox, isSandboxBlockedPath, isSandboxHostAllowed, sandboxAllowedHosts, isSandboxReadOnlyPath, sandboxStatus } from './sandbox.js';
 
 describe('sandbox mode', () => {
   it('is off unless SANDBOX_MODE is 1/true', () => {
@@ -31,5 +31,14 @@ describe('sandbox mode', () => {
     }
     expect(isSandboxReadOnlyPath('POST', '/auth/login')).toBe(false);
     expect(isSandboxReadOnlyPath('POST', '/auth/logout')).toBe(false);
+  });
+  it('allows outbound calls only to the listed hosts, by exact name', () => {
+    expect(sandboxAllowedHosts({})).toEqual([]);
+    const env = { SANDBOX_ALLOW_HOSTS: ' DummyJSON.com , api.example.org ' };
+    expect(sandboxAllowedHosts(env)).toEqual(['dummyjson.com', 'api.example.org']);
+    expect(isSandboxHostAllowed('dummyjson.com', env)).toBe(true);
+    expect(isSandboxHostAllowed('DUMMYJSON.COM', env)).toBe(true);
+    for (const h of ['evil.dummyjson.com', 'dummyjson.com.evil.io', 'localhost', '127.0.0.1', '169.254.169.254', '']) expect(isSandboxHostAllowed(h, env), h).toBe(false);
+    expect(isSandboxHostAllowed('dummyjson.com', {})).toBe(false);
   });
 });
