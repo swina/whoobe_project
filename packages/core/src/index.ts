@@ -23,3 +23,4 @@ export * from './cms/search-highlight.js';
 // duplicating this logic in the UI layer.
 export * from './workflow/workflow-engine.js';
 export * from './cms/gateway-binding.js';
+export * from './sandbox.js';

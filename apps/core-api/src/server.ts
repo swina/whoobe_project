@@ -247,6 +247,12 @@ import {
   substituteBindingFilters,
   seoAssetIds,
   resolveSeoTemplates,
+  isSandbox,
+  isSandboxBlockedPath,
+  isSandboxReadOnlyPath,
+  SANDBOX_READ_ONLY_MESSAGE,
+  sandboxStatus,
+  SANDBOX_DISABLED_MESSAGE,
 } from '@whoobe-cms/core';
 import { runClassMigration, runObjectMigration, runDocumentMigration, runPromoteDocuments, runPromoteDocument, runExtractCollectionTypes } from '@whoobe-cms/migration-tool';
 import { fetchAndConvert } from '@whoobe-cms/figma-converter';
@@ -312,6 +318,12 @@ const isProduction = process.env.NODE_ENV === 'production';
 // embedded images, or its own base64-image render option).
 app.use(express.json({ limit: '25mb' }));
 app.use(cookieParser());
+// Public sandbox: features that reach outside the stack or run builds answer 403 (packages/core/src/sandbox.ts).
+app.use((req: Request, res: Response, next: NextFunction): void => {
+  if (isSandbox() && isSandboxBlockedPath(req.path)) { res.status(403).json({ error: SANDBOX_DISABLED_MESSAGE }); return; }
+  if (isSandbox() && isSandboxReadOnlyPath(req.method, req.path)) { res.status(403).json({ error: SANDBOX_READ_ONLY_MESSAGE }); return; }
+  next();
+});
 // Credentialed CORS only for an allowlist (WHOOBE_HOSTNAME, CORS_ALLOWED_HOSTS,
 // CORS_ALLOWED_ORIGINS; localhost too outside production). Public routes answer any
 // origin but never with credentials. See packages/core/src/http/security.ts.
@@ -379,7 +391,7 @@ for (const name of ['id', 'versionId', 'websiteId', 'translationGroupId']) {
 }
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'core-api', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'core-api', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString(), ...(isSandbox() ? { sandbox: sandboxStatus() } : {}) });
 });
 
 // --- Simple in-memory brute-force guard for /auth/login ---

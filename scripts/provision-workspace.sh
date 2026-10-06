@@ -211,6 +211,8 @@ sed \
   -e "s/__ASSET_PROCESSOR_PORT__/${P_ASSET}/g" \
   -e "s/__GATEWAY_PORT__/${P_GATEWAY}/g" \
   -e "s/__WHOOBE_ONE_PORT__/${P_WHOOBE_ONE}/g" \
+  -e "s/__MAX_BODY__/${WS_MAX_BODY:-100M}/g" \
+  -e "s|__EDGE_LIMITS__|${WS_EDGE_LIMITS:-}|g" \
   deploy/nginx/_locations.conf.template > "deploy/nginx/_locations-${SLUG}.inc"
 
 echo ">>> Rendering deploy/nginx/${SLUG}.conf ..."

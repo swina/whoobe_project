@@ -1,3 +1,4 @@
+import { isSandbox, SandboxDisabledError } from '../sandbox.js';
 import nodemailer from 'nodemailer';
 import { getMailSettings } from '../db/mail-settings-records.js';
 import { logMailDelivery } from '../db/mail-log-records.js';
@@ -27,6 +28,7 @@ export interface SendMailInput {
  *  Throws if no settings have been configured yet; callers (the form-submit
  *  route) catch this and log a warning instead of failing the submission. */
 export async function sendMail({ to, subject, html, from, cc, bcc, text }: SendMailInput): Promise<void> {
+  if (isSandbox()) throw new SandboxDisabledError();
   const settings = await getMailSettings();
   if (!settings) {
     throw new Error('Mail settings are not configured');
