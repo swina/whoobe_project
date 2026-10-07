@@ -1,0 +1,11 @@
+{
+  "id": "mailchimp",
+  "label": "Mailchimp",
+  "description": "Marketing API using a private app access token.",
+  "baseUrl": "https://api.mailchimp.com/3.0",
+  "authType": "bearer",
+  "authConfigFields": ["token"],
+  "starterRoutes": [
+    { "method": "GET", "path": "audiences/<audience_id>/contacts", "description": "Get a list of omni-channel contacts for a given audience" }
+  ]
+}
