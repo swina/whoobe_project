@@ -3,13 +3,21 @@
 Each `.json` file here is a starter template for the "Add Endpoint" form in
 admin-dashboard's Integrations view (`GatewayEndpointsView.vue`) — pre-fills
 `baseUrl`/`authType`/`authConfigFields`/`starterRoutes` for a known vendor so
-setting one up doesn't mean hand-typing its API shape from scratch. Loaded at
-gateway startup by `../src/preset-loader.ts` and served via
-`GET /api/v1/gateway/presets`; the frontend fetches them rather than hardcoding
+setting one up doesn't mean hand-typing its API shape from scratch. Read by
+`../src/preset-loader.ts` and served via `GET /api/v1/gateway/presets`; the frontend fetches them rather than hardcoding
 this data in its own bundle (previously a static array in admin-dashboard's
 own `utils/gateway-presets.ts`, moved here so the gateway - not one specific
 frontend - is the source of truth, and so adding a vendor is a data change,
 not a code change).
+
+## Adding or changing a preset on a running gateway
+
+The folders are looked at on every request to that endpoint (one `stat` per file; a file is read again only when it
+was added, removed or changed), so **no restart is needed**: drop the `.json` in, reload the Integrations page.
+Besides this folder, `GATEWAY_PRESETS_PATH` names a second one - in production a mounted volume, so an installation
+adds its own vendors or adapts a built-in one (same `id` = the second folder wins) without touching the image. The
+admin page asks for the list when it opens, so an open page needs a reload. A malformed file is skipped and the
+others stay. Plugins (code) are different: they are loaded at startup and need a restart.
 
 This is data only — no code runs from these files. A vendor that also needs
 custom request/response logic (not just a template) is a job for a real
