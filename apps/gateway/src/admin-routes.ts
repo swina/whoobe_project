@@ -20,7 +20,7 @@ function redactEndpoint<T extends { authConfig?: unknown }>(endpoint: T): Omit<T
   return safe;
 }
 
-export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPreset[] = []): Router {
+export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPreset[] | (() => GatewayPreset[]) = []): Router {
   const router = Router();
 
   router.get('/endpoints', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (_req: Request, res: Response): Promise<void> => {
@@ -384,13 +384,13 @@ export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPres
   });
 
   // Vendor endpoint presets (apps/gateway/presets/*.json, README.md there)
-  // - data only, loaded once at startup by preset-loader.ts. Moved here
+  // - data only, read by preset-loader.ts on every request (re-read when a file changes). Moved here
   // from a hardcoded array in admin-dashboard's own bundle so adding a
   // vendor is a data change (a new JSON file) rather than a frontend code
   // change, and the gateway - not one specific frontend - is the source
   // of truth for what it can talk to out of the box.
   router.get('/presets', requirePermission(PERMISSIONS.GATEWAY_MANAGE), (_req: Request, res: Response): void => {
-    res.json(presets);
+    res.json(typeof presets === 'function' ? presets() : presets);
   });
 
   return router;
