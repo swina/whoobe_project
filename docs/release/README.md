@@ -16,6 +16,7 @@ project stays in [`../plans`](../plans) and is deliberately not part of a releas
 | [`security/`](security) | Security and compliance reviewers, fork maintainers | [Security CI for forks](security/security-ci-for-forks.md), [automated test suite](security/security-test-suite.md), [status summary](security/status-summary.md), [findings register](security/findings.md), [test plan](security/security-testing-plan.md), [manual checklist](security/manual-test-checklist.md) |
 | [`api/`](api) | Integrators | [API reference](api/api-reference.md) and [`openapi.yaml`](api/openapi.yaml), both generated from one route table by [`gen-api-docs.py`](api/gen-api-docs.py) |
 | [`release-process.md`](release-process.md) | Maintainers | How a release is made: versions, support policy, release gates, procedure |
+| [`release-notes-0.1.0.md`](release-notes-0.1.0.md) | Operators | What 0.1.0 contains, the behaviour changes to check before installing over a development setup, known limits |
 
 ## What is not here
 
