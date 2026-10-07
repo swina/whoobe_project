@@ -64,6 +64,7 @@ New or changed variables are documented in `.env.example`; the full list of what
 
 ## Known limits
 
+- Fresh install: done on an arm64 host (Ubuntu 22.04, nginx on the host, Let's Encrypt) following `operations/creating-workspaces.md`; it found and fixed three defects in the TLS scripts. A workspace answers on **one** host name (no `www` alias or redirect).
 - **Not tested: upgrading** from an earlier installation (there is no earlier release). The first upgrade test belongs to
   0.2.0.
 - Images are built and published by hand (`ghcr.io`); the automation of the release workflow is not done yet.

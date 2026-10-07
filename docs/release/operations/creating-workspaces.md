@@ -88,7 +88,7 @@ Needs a real public hostname resolving to this host with port 80 reachable (Let'
 
 Options: `--yes` skips the confirmation prompt; `--force` skips the check that the hostname is public and resolves to this host (only for a host you know is reachable from the internet in a way the check cannot see).
 
-It issues the certificate, switches the HTTP vhost to a redirect (except the challenge path), renders `deploy/nginx/client-a-ssl.conf` from the hardened `workspace-ssl.conf.template` (TLS 1.2/1.3, AEAD ciphers, HSTS `max-age=31536000`) and reloads the proxy. **HSTS is a commitment**: browsers refuse plain HTTP for the host for a year after the first HTTPS visit, so try `--staging` first and make sure the hostname is final. Certificates last 90 days: run `./scripts/renew-certs.sh` periodically (cron).
+It issues the certificate, switches the HTTP vhost to a redirect (except the challenge path), renders `deploy/nginx/client-a-ssl.conf` from the hardened `workspace-ssl.conf.template` (TLS 1.2/1.3, AEAD ciphers, HSTS `max-age=31536000`) and reloads the proxy. **With nginx on the host the script cannot reload or link anything itself**: it prints one more command, to link the HTTPS vhost once (`sudo ln -sf "$(pwd)/deploy/nginx/client-a-ssl.conf" /etc/nginx/sites-enabled/client-a-ssl`, then `sudo nginx -t && sudo systemctl reload nginx`); without it the HTTP vhost redirects to a port nobody serves. **HSTS is a commitment**: browsers refuse plain HTTP for the host for a year after the first HTTPS visit, so try `--staging` first and make sure the hostname is final. Certificates last 90 days: run `./scripts/renew-certs.sh` periodically (cron).
 
 ## 4. Verify
 
