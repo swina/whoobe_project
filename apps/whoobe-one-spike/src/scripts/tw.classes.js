@@ -442,31 +442,39 @@ var classes = {
         'justify-self-stretch',
     ],
     bordercolor: setColors('border'),
+    // First step of each border slider is ' ' = "no class" (the same neutral step margin uses): the leftmost position
+    // used to be 'border' itself, i.e. the same position as "no class", so the slider never fired for it and 1px could
+    // not be picked. It must not be border-0 / border-t-0: next to a `border` those would zero that side only.
     border: [
+        ' ',
         'border',
         'border-2',
         'border-4',
         'border-8'
     ],
     borderTop: [
+        ' ',
         'border-t',
         'border-t-2',
         'border-t-4',
         'border-t-8'
     ],
     borderLeft: [
+        ' ',
         'border-l',
         'border-l-2',
         'border-l-4',
         'border-l-8'
     ],
     borderRight: [
+        ' ',
         'border-r',
         'border-r-2',
         'border-r-4',
         'border-r-8'
     ],
     borderBottom: [
+        ' ',
         'border-b',
         'border-b-2',
         'border-b-4',
