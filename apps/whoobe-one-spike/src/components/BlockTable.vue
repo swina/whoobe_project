@@ -86,6 +86,7 @@
               contenteditable="true"
               v-html="safeHtml(cell.content)"
               @click.stop="selectCell('header', 0, c)"
+              @input="editedCells.add(cell)"
               @blur="onCellBlur(cell, $event)"
             ></th>
           </template>
@@ -102,6 +103,7 @@
               contenteditable="true"
               v-html="safeHtml(cell.content)"
               @click.stop="selectCell('body', r, c)"
+              @input="editedCells.add(cell)"
               @blur="onCellBlur(cell, $event)"
             ></td>
           </template>
@@ -117,6 +119,7 @@
               contenteditable="true"
               v-html="safeHtml(cell.content)"
               @click.stop="selectCell('footer', 0, c)"
+              @input="editedCells.add(cell)"
               @blur="onCellBlur(cell, $event)"
             ></td>
           </template>
@@ -127,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { sanitizeRichText as safeHtml } from '@whoobe-cms/schema'
+import { sanitizeRichText as safeHtml, dropForeignInlineStyles } from '@whoobe-cms/schema'
 // Editing-time renderer for a `tag === 'table'` element (see ElementsClass.
 // js's Table() builder comment for the full grid-model rationale). Not a
 // container - `doc.table` is a fixed header/body/footer grid of plain
@@ -216,9 +219,15 @@ function selectCell(section: Section, row: number, col: number) {
   selectedCell.value = { section, row, col }
 }
 
+// Same rule as BlockElement.vue's onBlur: a blur alone must not rewrite the content with the sanitized DOM, and an
+// edit keeps the inline styles the cell already had (colours) while dropping the ones the browser added.
+const editedCells = new WeakSet<TableCell>()
+
 function onCellBlur(cell: TableCell, e: FocusEvent) {
+  if (!editedCells.has(cell)) return
+  editedCells.delete(cell)
   const target = e.target as HTMLElement
-  cell.content = target.innerHTML.replace(/style="[^"]*"/gm, '')
+  cell.content = dropForeignInlineStyles(target.innerHTML, cell.content)
 }
 
 // Clears the `merged` flag (back to a normal, empty-of-obligation cell) on
