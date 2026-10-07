@@ -18,6 +18,7 @@ let websiteId = ''
 let pageId = ''
 const dirs: string[] = []
 const out: Record<'next' | 'vue', string> = { next: '', vue: '' }
+let outNoKey = ''
 let admin: Awaited<ReturnType<typeof clientFor>>
 
 function walk(dir: string, acc: string[] = []): string[] {
@@ -54,6 +55,10 @@ beforeAll(async () => {
     const opts: GenerateOptions = { apiUrl: TARGET, websiteId, outDir: out[fw], framework: fw, revalidate: 60, domain: 'example.com', siteApiKey: 'whb_site_testkey123', monorepoRoot: ROOT_DIR }
     await (fw === 'next' ? generateNextSite(opts) : generateNuxtSite(opts))
   }
+  // the same Nuxt site without a site key: what a static export is meant to be generated with
+  outNoKey = mkdtempSync(join(tmpdir(), 'whoobe-gen-vue-nokey-'))
+  dirs.push(outNoKey)
+  await generateNuxtSite({ apiUrl: TARGET, websiteId, outDir: outNoKey, framework: 'vue', revalidate: 60, domain: 'example.com', monorepoRoot: ROOT_DIR } as GenerateOptions)
 }, 300_000)
 
 afterAll(async () => {
@@ -122,5 +127,29 @@ describe('generator refuses hostile options', () => {
     const base: GenerateOptions = { apiUrl: TARGET, websiteId: '2f146f7f-a44a-483f-b4c2-5dd18e40082f', outDir: join(tmpdir(), 'whoobe-never'), framework: 'next', revalidate: 60, monorepoRoot: ROOT_DIR }
     await expect(generateNextSite({ ...base, domain: "x'];globalThis.p();//" })).rejects.toThrow(/Invalid domain/)
     await expect(generateNuxtSite({ ...base, apiUrl: "https://a.com/'+x+'" })).rejects.toThrow(/Invalid apiUrl/)
+  })
+})
+
+describe('gateway forms in a Nuxt site: the proxy only exists for a site that has a key', () => {
+  const apiCall = (dir: string) => {
+    const file = walk(dir).find((f) => f.endsWith('.vue') && readFileSync(f, 'utf8').includes('createWhoobeApi('))
+    expect(file, 'the page template that builds the API client').toBeTruthy()
+    return readFileSync(file!, 'utf8').split('\n').find((l) => l.includes('createWhoobeApi('))!
+  }
+
+  it('without a key the form posts straight to the gateway (a static export has no server route to call)', () => {
+    expect(apiCall(outNoKey)).toMatch(/createWhoobeApi\(apiUrl, config\.public\.gatewayUrl, undefined\)/)
+    expect(apiCall(outNoKey)).not.toContain('whoobe-gateway-submit')
+  })
+
+  it('with a key it keeps going through the site\'s own server route, which holds the key', () => {
+    expect(apiCall(out.vue)).toContain("'/api/whoobe-gateway-submit'")
+    expect(walk(out.vue).some((f) => f.endsWith('whoobe-gateway-submit.post.ts'))).toBe(true)
+  })
+
+  it('the static deploy script warns when the site has a key, and only then', () => {
+    const script = (dir: string) => readFileSync(join(dir, 'deploy-static.sh'), 'utf8')
+    expect(script(out.vue)).toContain('WARNING: this site has a site key')
+    expect(script(outNoKey)).not.toContain('WARNING: this site has a site key')
   })
 })
