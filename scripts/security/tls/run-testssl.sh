@@ -20,7 +20,8 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj "/CN=localhost" -addext 
 chmod 644 "$WORK"/certs/live/localhost/*.pem
 
 sed -e "s/__ADMIN_PORT__/3100/g" -e "s/__CORE_API_PORT__/3103/g" -e "s/__ASSET_PROCESSOR_PORT__/3102/g" \
-    -e "s/__GATEWAY_PORT__/3101/g" -e "s/__WHOOBE_ONE_PORT__/3106/g" "$ROOT/deploy/nginx/_locations.conf.template" > "$WORK/conf/_locations.inc"
+    -e "s/__GATEWAY_PORT__/3101/g" -e "s/__WHOOBE_ONE_PORT__/3106/g" \
+    -e "s/__MAX_BODY__/100M/g" -e "s|__EDGE_LIMITS__||g" "$ROOT/deploy/nginx/_locations.conf.template" > "$WORK/conf/_locations.inc"
 sed -e "s/__HOSTNAME__/localhost/g" -e "s|__CERT_DIR__|/etc/letsencrypt|g" -e "s|__LOCATIONS_INCLUDE__|/etc/nginx/conf.d/_locations.inc|g" \
     -e "s/listen 443 ssl/listen ${PORT} ssl/" "$ROOT/deploy/nginx/workspace-ssl.conf.template" > "$WORK/conf/ssl.conf"
 
