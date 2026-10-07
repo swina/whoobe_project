@@ -77,8 +77,10 @@ describe('second-factor challenge', () => {
   // F-032 (fixed): a TOTP code that was already used must not log in a second time within its window.
   it('a code cannot be replayed on a second login', async () => {
     const { u, secret } = await mfaUser()
-    const code = totp(secret)
     const a = await firstFactor(u)
+    // computed after the first factor, right before use: logging in takes seconds on a slow runner, and a 30 s window
+    // that ends in between made the first challenge answer 401 (a flake of the test, seen once in CI)
+    const code = totp(secret)
     expect((await a.client.post('/auth/mfa/challenge', { mfaToken: a.mfaToken, code })).status).toBe(200)
     const b = await firstFactor(u)
     const replay = await b.client.post('/auth/mfa/challenge', { mfaToken: b.mfaToken, code })
