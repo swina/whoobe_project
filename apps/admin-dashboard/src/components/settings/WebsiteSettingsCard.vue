@@ -11,10 +11,12 @@
           AI Website Wizard
         </button>--->
         <button @click="createNewWebsite" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">+ New Website</button>
-        <button @click="triggerImport" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200">Import</button>
-        <input ref="importFileInput" type="file" accept=".json" class="hidden" @change="handleImportFile" />
+        <button @click="triggerImport" :disabled="!!busy" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 disabled:opacity-50">Import</button>
+        <input ref="importFileInput" type="file" accept=".zip,.json" class="hidden" @change="handleImportFile" />
       </div>
     </div>
+
+    <div v-if="busy" class="text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 rounded-lg px-3 py-2 mb-3 truncate">{{ busy }}</div>
 
     <div v-if="websitesStore.isLoading && websitesStore.websites.length === 0" class="text-xs text-slate-500 text-center py-4">Loading websites…</div>
 
@@ -35,7 +37,7 @@
         </div>
         <div class="flex items-center gap-2 shrink-0 ml-3">
           <button @click="openPublish(website)" class="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1"><Rocket class="w-3 h-3" />Publish</button>
-          <button @click="exportWebsiteAction(website)" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">Export</button>
+          <button @click="exportWebsiteAction(website)" :disabled="!!busy" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 disabled:opacity-50">Export</button>
           <button @click="openPaths(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Paths</button>
           <button @click="openTemplates(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Templates</button>
           <button @click="openWebsiteTab(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Edit</button>
@@ -54,7 +56,8 @@ import { ref, onMounted } from 'vue'
 import { Sparkles, Rocket } from '@lucide/vue'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import { useTabsStore } from '../../stores/tabsStore'
-import { exportWebsite, importWebsite } from '../../utils/websites-api'
+import { buildWebsiteZip, openBundleFile, previewBundleImport, importOpenedBundle } from '../../utils/website-bundle'
+import { useDamStore } from '../../stores/damStore'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
 import AiWebsiteWizardModal from './AiWebsiteWizardModal.vue'
@@ -96,19 +99,31 @@ async function createNewWebsite() {
   }
 }
 
+const damStore = useDamStore()
+const busy = ref('')
+
+function damEndpoint() {
+  return { assetProcessorUrl: damStore.config.assetProcessorUrl, folderRules: damStore.config.folderRules }
+}
+
+// The export is a .zip: bundle.json (website, pages, templates, menus, themes, snippets, data classes and objects,
+// asset records) plus the asset files. Without the files the assets are only listed.
 async function exportWebsiteAction(website: WebsiteRecord) {
+  const withAssets = confirm('Include the asset files in the export?\n\nOK: a complete twin (files travel in the .zip).\nCancel: assets are only listed; the other installation must already have them at the same paths.')
   try {
     const baseUrl = getDefaultCoreApiUrl()
-    const payload = await exportWebsite(baseUrl, website.id)
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const { blob, assets, missing } = await buildWebsiteZip(baseUrl, damEndpoint(), website.id, { withAssets, dataObjects: 'all' }, (m) => { busy.value = m })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${website.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-export.json`
+    a.download = `${website.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-export.zip`
     a.click()
     URL.revokeObjectURL(url)
+    if (withAssets && missing.length) alert(`Exported with ${assets} asset file(s). ${missing.length} could not be read and are listed only:\n${missing.slice(0, 10).join('\n')}`)
   } catch (e: any) {
     alert(e?.message || 'Failed to export website')
+  } finally {
+    busy.value = ''
   }
 }
 
@@ -139,16 +154,31 @@ async function handleImportFile(event: Event) {
   const file = input.files?.[0]
   if (!file) return
   try {
-    const text = await file.text()
-    const payload = JSON.parse(text)
     const baseUrl = getDefaultCoreApiUrl()
-    const result = await importWebsite(baseUrl, payload)
+    const opened = await openBundleFile(file)
+    const plan = await previewBundleImport(baseUrl, opened)
+    const c = plan.counts
+    const toStore = plan.assets.filter((a) => a.action !== 'reuse').length
+    const lines = [
+      `Import "${opened.bundle.website.name}" as a new website?`,
+      '',
+      `Pages: ${c.pages}${c.externalPages ? ` (+${c.externalPages} module pages used by its layouts)` : ''}, templates: ${c.templates}, menus: ${c.menus}, snippets: ${c.snippets}, themes: ${c.themes}`,
+      `Data classes: ${c.classesCreated} new, ${c.classesReused} already here. Data objects: ${c.objectsCreated} new, ${c.objectsReused} already here`,
+      `Assets: ${toStore} to store, ${plan.assets.length - toStore} already here${opened.zip ? '' : ' (no files in this export)'}`,
+      ...plan.warnings.map((w) => `! ${w}`),
+    ]
+    if (!confirm(lines.join('\n'))) { input.value = ''; return }
+    const { report, uploaded, failed } = await importOpenedBundle(baseUrl, damEndpoint(), opened, (m) => { busy.value = m })
     await websitesStore.refreshWebsites()
-    alert(`Website imported successfully as "${result.website.name}".`)
+    const done = [`Website imported as "${report.website.name}". Assets stored: ${uploaded}.`, ...report.warnings.map((w) => `! ${w}`)]
+    if (failed.length) done.push(`${failed.length} asset(s) not stored:`, ...failed.slice(0, 10).map((f) => `  ${f.path}: ${f.error}`))
+    alert(done.join('\n'))
   } catch (e: any) {
     alert(e?.message || 'Failed to import website')
+  } finally {
+    busy.value = ''
+    input.value = ''
   }
-  input.value = ''
 }
 
 async function handleDelete(website: WebsiteRecord) {

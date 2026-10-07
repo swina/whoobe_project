@@ -331,6 +331,7 @@ async function syncNonLocalizedAttributes(row: DataObjectRecord): Promise<void> 
 }
 
 export async function createDataObject(input: {
+  id?: string;
   classId: string;
   key: string;
   path?: string;
@@ -344,6 +345,7 @@ export async function createDataObject(input: {
   const [row] = await db
     .insert(dataObjects)
     .values({
+      ...(input.id ? { id: input.id } : {}),
       classId: input.classId,
       key: input.key,
       path: input.path ?? '/',

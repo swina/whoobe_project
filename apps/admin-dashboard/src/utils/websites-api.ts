@@ -134,68 +134,65 @@ export async function createWebsiteFromAi(
 }
 
 // --- Website Export / Import ---
+// The bundle is version 2 (see packages/core/src/portability/bundle.ts): the JSON is the manifest, the files of the
+// assets travel next to it in a .zip (utils/website-bundle.ts). The shape is kept loose here on purpose: the client
+// only adds `assets[].file` and sends the rest back.
 
-export interface WebsiteExportPayload {
-  version: number
-  website: {
-    name: string
-    rootPath: string
-    domains: string[]
-    defaultLocale: string
-    supportedLocales: string[]
-    settings: Record<string, unknown> | null
-    themeId: string | null
-  }
-  pages: {
-    translationGroupId: string
-    locale: string
-    slug: string
-    title: string
-    category: string
-    kind: string
-    published: boolean
-    workflowState: string | null
-    content: unknown
-    seo: unknown
-    sitemap: unknown
-    search: unknown
-    pimcoreId: string | null
-    path: string | null
-    themeId: string | null
-  }[]
-  websiteTemplates: {
-    name: string
-    description: string | null
-    layout: Record<string, unknown>
-    pathPatterns: string[]
-    isDefault: boolean
-  }[]
-  websitePaths: {
-    name: string
-    items: Record<string, unknown>[]
-  }[]
-  themes: {
-    name: string
-    colors: { name: string; hex: string }[]
-    fonts: string[]
-    styles: string
-    tailwindClasses: string
-  }[]
+export interface BundleAssetEntry {
+  id: string
+  pimcorePath: string
+  filename: string
+  mimeType: string
+  sizeBytes: number
+  isPublic: boolean
+  metadata: unknown
+  /** path of the file inside the .zip; absent = references only */
+  file?: string
 }
 
-export async function exportWebsite(baseUrl: string, id: string): Promise<WebsiteExportPayload> {
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${id}/export`, { credentials: 'include' })
+export interface WebsiteBundlePayload {
+  version: 1 | 2
+  website: { name: string; [key: string]: unknown }
+  assets?: BundleAssetEntry[]
+  [key: string]: unknown
+}
+
+export interface AssetPlanEntry {
+  id: string
+  pimcorePath: string
+  action: 'upload' | 'reuse' | 'conflict'
+  existingId?: string
+  targetPath: string
+}
+
+export interface WebsiteImportReport {
+  dryRun: boolean
+  website: { id: string | null; name: string; rootPath: string }
+  counts: Record<string, number>
+  classes: { name: string; action: 'create' | 'reuse'; differences: string[] }[]
+  assets: AssetPlanEntry[]
+  warnings: string[]
+}
+
+export async function exportWebsite(
+  baseUrl: string,
+  id: string,
+  options: { dataObjects?: 'all' | 'referenced' } = {}
+): Promise<WebsiteBundlePayload> {
+  const query = options.dataObjects === 'referenced' ? '?dataObjects=referenced' : ''
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/${id}/export${query}`, { credentials: 'include' })
   return parseJsonOrThrow(res)
 }
 
 export async function importWebsite(
   baseUrl: string,
-  payload: WebsiteExportPayload
-): Promise<{ website: WebsiteRecord; pages: any[]; websiteTemplates: any[]; websitePaths: any[]; themes: any[] }> {
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/import`, {
+  payload: WebsiteBundlePayload,
+  options: { dryRun?: boolean; assetMap?: Record<string, { id: string; pimcorePath: string }> } = {}
+): Promise<WebsiteImportReport> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/import${options.dryRun ? '?dryRun=1' : ''}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(options.assetMap ? { ...payload, assetMap: options.assetMap } : payload),
     credentials: 'include',
   })
   return parseJsonOrThrow(res)

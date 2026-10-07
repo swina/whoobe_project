@@ -3653,7 +3653,7 @@ paths:
   /whoobe-one/websites/{id}/export:
     get:
       tags: ["core-api: AI: text, images, translation, whole-website generation"]
-      summary: "Export a website's full content (pages, templates, theme) as a portable JSON bundle."
+      summary: "Export a website as a version 2 bundle (JSON manifest): pages, templates, menus, themes and everything they refer to - snippets, module pages, data classes/components/objects, asset records. `?dataObjects=referenced` leaves out the objects a data binding would list. The asset files are fetched by the client (admin dashboard zips them)."
       parameters:
         - name: id
           in: path
@@ -3672,7 +3672,7 @@ paths:
   /whoobe-one/websites/import:
     post:
       tags: ["core-api: AI: text, images, translation, whole-website generation"]
-      summary: "Import a website from an exported JSON bundle."
+      summary: "Import a version 1 or 2 bundle as a new website. `?dryRun=1` writes nothing and returns the report with the asset plan; `assetMap` in the body maps old asset ids to the records the client stored. Classes and objects that exist are reused, ids are rewritten, a failure removes what was created."
       requestBody:
         required: false
         content:
