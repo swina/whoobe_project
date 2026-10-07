@@ -57,6 +57,7 @@ OWASP ZAP and image/TLS scans run in CI on every release commit.
 | Password reset revokes sessions; reset tokens are stored hashed; MFA secrets are encrypted at rest | tokens issued earlier stop working | set `TOTP_ENCRYPTION_KEY` and keep it (losing it forces MFA re-enrolment) |
 | 5xx answers are generic in production | no SQL or stack text in the UI | the logs keep the detail |
 | A gateway preset in `GATEWAY_PRESETS_PATH` replaces a built-in one with the same `id` | a custom file overrides a vendor preset | change its `id` to keep both |
+| nginx caps request bodies for the **whole** workspace server (`WS_MAX_BODY`, default 100 MB), not only for uploads | a large JSON (website import, AI page, kit) no longer answers 413 at 1 MB | workspaces provisioned before 0.1.0 need the `client_max_body_size` line at the top of their `deploy/nginx/_locations-<slug>.inc` (or re-provisioning), then an nginx reload |
 | Website export is a `.zip` | the file has another extension and carries the asset files | the old `.json` is still accepted on import |
 
 New or changed variables are documented in `.env.example`; the full list of what each fix changed is in

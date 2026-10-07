@@ -15,6 +15,9 @@
 # which fails immediately (bare `location {}` blocks outside a `server{}`
 # context are a syntax error at that scope).
 
+# Request body cap for the whole server (nginx's default of 1 MB answered 413 to any larger JSON body sent to core-api)
+client_max_body_size 100M;
+
 # Admin dashboard (Vue SPA)
 location / {
     proxy_pass http://127.0.0.1:3010;
@@ -86,8 +89,6 @@ location /api/v1/ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
-
-    client_max_body_size 100M;
 }
 
 # DAM public asset proxy
