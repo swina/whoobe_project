@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-0.5">
     <span class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold capitalize">
-      {{ title }} <span class="text-gray-500 normal-case lowercase">{{ options[index] }}</span>
+      {{ title }} <span class="text-gray-500 normal-case lowercase">{{ options[index].trim() || 'none' }}</span>
     </span>
     <input type="range" min="0" :max="options.length - 1" :value="index" @input="onInput" />
   </div>
