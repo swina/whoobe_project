@@ -17,7 +17,7 @@ When a block is selected, a **floating toolbar** also appears attached to it, wi
 Open the **Elements** tab in the sidebar. Blocks are grouped into four categories:
 
 - **Containers** — Grid, Flexbox, Dropdown Menu. These hold other blocks and control how their children are arranged.
-- **Text** — Heading, Paragraph, Inline Text, Span, Blockquote, Code.
+- **Text** — Heading, Paragraph, Markdown, Inline Text, Span, Blockquote, Code. (Markdown keeps Markdown text and shows it as formatted HTML: paste the text in *Edit content*, see the [Markdown element guide](../../guides/markdown-element.md).)
 - **Media** — Image, Slider, Video, Audio, YouTube, Vimeo, Icon, Download link. (Audio plays a library asset or any URL, as the browser's player or with a waveform: see the [Audio element guide](../../guides/audio-element.md).)
 - **Form** — Form, Input, Email, Number, Checkbox, Radio Group, Textarea, Select, Submit, Reset, Button.
 

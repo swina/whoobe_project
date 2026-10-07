@@ -95,6 +95,10 @@ export default class Element {
                         name: 'Paragraph',
                         icon: 'subject' 
                     },
+                    {
+                        name: 'Markdown',
+                        icon: 'article'
+                    },
                     { 
                         name: 'Inline Text',
                         icon: 'text_format'
@@ -236,6 +240,7 @@ export default class Element {
             element === 'Dropdown Menu' ? this.DropdownMenu() :
             element === 'Heading'       ? this.Heading(options) : 
             element === 'Paragraph'     ? this.Paragraph() :
+            element === 'Markdown'      ? this.Markdown() :
             element === 'Inline Text'   ? this.InlineText() :
             element === 'Span'          ? this.Span() :
             element === 'Blockquote'    ? this.Blockquote() :
@@ -643,6 +648,29 @@ export default class Element {
         this.icon = 'subject'
         this.content = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ac tortor dignissim convallis aenean. Imperdiet massa tincidunt nunc pulvinar.'
         this.editable = true
+        return this
+    }
+
+    // Markdown: `content` holds the Markdown SOURCE (paste it in "Edit content"); the canvas, the preview and the published
+    // page show it as HTML (the public API converts it, see packages/core/src/gateway/sanitize-public-content.ts).
+    // The look comes from plain Tailwind classes on the element, so it can be changed like any other.
+    Markdown(){
+        this.element = 'div'
+        this.tag = 'markdown'
+        this.label = 'Markdown'
+        this.icon = 'article'
+        this.content = '# A title\n\nWrite **Markdown** here, or paste it with *Edit content*:\n\n- a list\n- with [a link](https://example.com)\n\n> and a quote'
+        this.editable = true
+        this.css.css = [
+            'space-y-3',
+            '[&_h1]:text-3xl [&_h1]:font-bold', '[&_h2]:text-2xl [&_h2]:font-bold', '[&_h3]:text-xl [&_h3]:font-semibold', '[&_h4]:font-semibold',
+            '[&_ul]:list-disc [&_ul]:pl-6', '[&_ol]:list-decimal [&_ol]:pl-6',
+            '[&_a]:underline', '[&_blockquote]:border-l-4 [&_blockquote]:pl-4 [&_blockquote]:italic',
+            '[&_code]:rounded [&_code]:bg-gray-100 [&_code]:px-1',
+            '[&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-gray-900 [&_pre]:p-3 [&_pre]:text-gray-100 [&_pre_code]:bg-transparent [&_pre_code]:p-0',
+            '[&_table]:w-full [&_th]:border [&_th]:p-2 [&_td]:border [&_td]:p-2',
+            '[&_img]:max-w-full', '[&_hr]:my-4',
+        ].join(' ')
         return this
     }
 

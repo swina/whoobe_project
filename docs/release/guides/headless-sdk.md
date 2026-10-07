@@ -114,6 +114,7 @@ Because it's a plain object graph, it can cross an SSR boundary: walk once serve
 | `form`, `input`, `textarea`, `select`, `radiogroup`, `submit`, `reset`, `button` | form family |
 | `search` | `tag: 'search'` |
 | `slider`, `youtube`, `vimeo`, `video`, `audio` | media (`audio` renders the plain browser player; the waveform look is editor/public-page only, see the [Audio element guide](audio-element.md)) |
+| (Markdown element) | has no kind of its own: the public API converts its Markdown to HTML and sends an ordinary element, see the [Markdown element guide](markdown-element.md) |
 | `icon` | `tag: 'lucideicon'` |
 
 ### The registry contract

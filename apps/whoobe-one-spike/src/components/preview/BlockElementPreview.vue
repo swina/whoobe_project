@@ -259,6 +259,9 @@ const displayContent = computed(() => {
   // the always-empty static `content` field.
   if (el.tag === 'select') return renderSelectOptionsHtml(el.data?.options)
   if (el.tag === 'radiogroup') return renderRadioGroupHtml(el.data?.options, el.data?.attributes?.name)
+  // Markdown element: the content is the Markdown source (the public API sends it already converted, as a plain
+  // element, so this branch only meets the raw source of the editor's own preview).
+  if (el.tag === 'markdown') return renderMarkdown(el.content)
   return el.content
 })
 

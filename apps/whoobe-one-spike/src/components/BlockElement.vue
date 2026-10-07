@@ -123,7 +123,7 @@
       :ref="element.id"
       :class="classe"
       :style="stile"
-      :contenteditable="!resolvedDataValue && element.editable"
+      :contenteditable="!resolvedDataValue && element.editable && element.tag !== 'markdown'"
       :src="displaySrc"
       :alt="displayAlt"
       :placeholder="element.placeholder"
@@ -326,6 +326,9 @@ const displayContent = computed(() => {
   // (always empty) static `content` field.
   if (el.tag === 'select') return renderSelectOptionsHtml(el.data?.options)
   if (el.tag === 'radiogroup') return renderRadioGroupHtml(el.data?.options, el.data?.attributes?.name)
+  // The Markdown element stores the source and shows it as HTML (never contenteditable: the source is edited in
+  // the toolbar's "Edit content", a blur would otherwise write the rendered HTML over it).
+  if (el.tag === 'markdown') return renderMarkdown(el.content)
   return el.content
 })
 

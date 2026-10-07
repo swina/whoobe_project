@@ -67,6 +67,8 @@ export function friendlyElementName(el: any): string {
       return 'Slider'
     case 'table':
       return 'Table'
+    case 'markdown':
+      return 'Markdown'
     case 'youtube':
       return 'Youtube'
     case 'vimeo':

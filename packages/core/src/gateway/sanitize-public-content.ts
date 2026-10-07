@@ -1,3 +1,4 @@
+import { marked } from 'marked';
 import { sanitizeRichText, sanitizeSvg } from '@whoobe-cms/schema';
 
 // Strips the raw gateway identifiers bind-page-content.ts resolved at
@@ -22,10 +23,27 @@ import { sanitizeRichText, sanitizeSvg } from '@whoobe-cms/schema';
  *  than assuming one fixed shape. */
 /** Rich text of an element node (`content`, rendered as HTML by every public consumer): a published page must never
  *  carry script, whatever an author - or a visitor through a public form - managed to store. */
+/** The Markdown element stores its source; every public consumer (React/Vue/Svelte adapters, Next/Nuxt projects, the
+ *  mobile app) renders `content` as HTML, so the conversion is done here, once, for all of them. */
+function markdownToHtml(source: string): string {
+  try {
+    return marked.parse(source, { async: false }) as string;
+  } catch {
+    return source.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+}
+
 function sanitizeNodeContent(obj: Record<string, unknown>): void {
   if (typeof obj.content !== 'string') return;
   if (!('element' in obj) && obj.type !== 'element') return;
-  obj.content = obj.element === 'svg' || obj.content.trimStart().startsWith('<svg') ? sanitizeSvg(obj.content) : sanitizeRichText(obj.content);
+  let content: string = obj.content;
+  if (obj.tag === 'markdown') {
+    // from here on it is an ordinary element with HTML content (so the editor's own public route, which renders what
+    // this returns, does not convert it a second time); the sanitizer below runs on the converted HTML
+    content = markdownToHtml(content);
+    obj.tag = 'element';
+  }
+  obj.content = obj.element === 'svg' || content.trimStart().startsWith('<svg') ? sanitizeSvg(content) : sanitizeRichText(content);
 }
 
 function walkAndStrip(value: unknown): void {

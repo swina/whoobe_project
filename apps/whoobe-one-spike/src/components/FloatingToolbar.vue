@@ -655,6 +655,17 @@
     </div>
   </div>
 
+  <!-- Markdown element: the source in a textarea (paste here) with a live preview in the element's own classes. -->
+  <div v-if="showMarkdown && editor.current" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @mousedown.self="showMarkdown = false">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl h-[75vh] max-h-[44rem] flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
+        <span class="text-xs font-semibold text-gray-600">Markdown</span>
+        <button class="flex items-center gap-1 text-gray-400 hover:text-gray-700 text-xs" @click="showMarkdown = false"><X class="w-3.5 h-3.5" /> Close</button>
+      </div>
+      <MarkdownPanel v-model="editor.current.content" :preview-class="editor.current.css.css" />
+    </div>
+  </div>
+
   <!-- Alt+< - Custom Classes + Style, the same two fields AdvancedPanel's
        CustomClassesControl.vue/StyleControl.vue edit, as a quick-access
        modal. Style's textarea is deliberately shorter than Custom
@@ -805,6 +816,7 @@ import { useEditorStore } from '../store/editor'
 import { editorBus } from '../bus'
 import { clean, findParentAndIndex, findAncestorChain, removeNodeById, friendlyElementName, resolveLucideIcon } from '../helpers'
 import TipTapPanel from './TipTapPanel.vue'
+import MarkdownPanel from './MarkdownPanel.vue'
 import MediaPickerModal from './MediaPickerModal.vue'
 import SaveSnippetModal from './SaveSnippetModal.vue'
 import AiGenerateModal from './AiGenerateModal.vue'
@@ -856,6 +868,7 @@ const editor = useEditorStore()
 const top = ref(0)
 const left = ref(0)
 const showTipTap = ref(false)
+const showMarkdown = ref(false)
 const showCssStyle = ref(false)
 const showMediaPicker = ref(false)
 const showTextPicker = ref(false)
@@ -1373,6 +1386,10 @@ function onEditContent() {
     // TipTap paths every other editable type gets).
     const id = window.prompt(`${editor.current.tag === 'youtube' ? 'YouTube' : 'Vimeo'} video ID`, editor.current.content || '')
     if (id !== null) editor.current.content = id.trim()
+    return
+  }
+  if (editor.current.tag === 'markdown') {
+    showMarkdown.value = true
     return
   }
   if (editor.current.element === 'p' || editor.current.element === 'pre' || editor.current.element === 'textarea') {
