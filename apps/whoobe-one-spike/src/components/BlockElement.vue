@@ -1,5 +1,13 @@
 <template>
   <div class="relative group" :data-toolbar-anchor="element.id">
+    <!-- Not part of the v-if chain below: the badge sits next to the element, it must not replace it (as a chain
+         branch it did - a leaf element with `hidden`, `lg:hidden` ... rendered only this badge and could not be
+         selected or edited; BlockContainer.vue always had it as a separate element). -->
+    <span
+      v-if="hasHiddenClass && !isCollapsedNode"
+      class="absolute -top-2.5 left-1/2 -translate-x-1/2 z-50 px-1.5 py-0.5 rounded text-[10px] leading-none font-semibold bg-black text-white font-mono"
+      :title="`Hidden in the published view by: ${hiddenBy}. It stays visible here so it can be edited.`"
+    >{{ hiddenBy }}</span>
     <!-- Collapsed via FloatingToolbar.vue's "Hide content" toggle - see
          BlockContainer.vue's own comment on the same mechanism (store/
          editor.ts's collapsedIds), applied here to leaf elements too (an
@@ -17,11 +25,6 @@
     >
       &lt;{{ component }}&gt;
     </button>
-    <span
-      v-else-if="hasHiddenClass"
-      class="absolute -top-2.5 left-1/2 -translate-x-1/2 z-50 px-1.5 py-0.5 rounded text-[10px] leading-none font-semibold bg-black text-white font-mono"
-      title="This element is hidden in the published view (has 'hidden' class)"
-    >hidden</span>
     <!-- The "Search" element is a live component, not a native tag - a
          dedicated branch (like lucideicon) so the generic <component>
          branch's v-html/contenteditable never touch its interactive
@@ -397,6 +400,14 @@ const hasHiddenClass = computed(() => {
   const css = el.css || { css: '', container: '' }
   const raw = `${css.css} ${css.container}`
   return stripEditorHidden(raw).hasHidden
+})
+
+// What hides it (`hidden`, `lg:hidden` ...), for the badge: a variant is hidden only from some width on, which is the
+// thing to know about an element that stays visible here.
+const hiddenBy = computed(() => {
+  const el = props.element as any
+  const css = el.css || { css: '', container: '' }
+  return stripEditorHidden(`${css.css} ${css.container}`).hidden.join(' ')
 })
 
 const stile = computed(() => {

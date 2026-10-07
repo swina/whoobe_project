@@ -59,8 +59,8 @@
     <span
       v-if="hasHiddenClass"
       class="absolute -top-2.5 left-1/2 -translate-x-1/2 z-50 px-1.5 py-0.5 rounded text-[10px] leading-none font-semibold bg-black text-white font-mono"
-      title="This element is hidden in the published view (has 'hidden' class)"
-    >hidden</span>
+      :title="`Hidden in the published view by: ${hiddenBy}. It stays visible here so it can be edited.`"
+    >{{ hiddenBy }}</span>
     <component
       :is="semantic"
       :id="doc.id"
@@ -372,6 +372,13 @@ const hasHiddenClass = computed(() => {
   const doc = props.doc as any
   const raw = `${doc.css.css ?? ''} ${doc.css.container ?? ''}`
   return stripEditorHidden(raw).hasHidden
+})
+
+// What hides it (`hidden`, `lg:hidden` ...), for the badge: a variant is hidden only from some width on, which is the
+// thing to know about an element that stays visible here.
+const hiddenBy = computed(() => {
+  const css = (props.doc as any).css || { css: '', container: '' }
+  return stripEditorHidden(`${css.css} ${css.container}`).hidden.join(' ')
 })
 
 const stile = computed(() => {
