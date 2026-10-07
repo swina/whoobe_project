@@ -381,6 +381,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.3(@types/pg@8.20.3)(mysql2@3.23.2(@types/node@20.19.43))(pg@8.22.0)
+      marked:
+        specifier: ^14.1.4
+        version: 14.1.4
       nodemailer:
         specifier: ^10.0.6
         version: 10.0.13
