@@ -1,7 +1,7 @@
 # Security status - single summary
 
 State at **2026-10-07** (see `git log` for the exact commit). Source of detail:
-`findings.md` (register F-001 ... F-052), `security-testing-plan.md` (plan), `manual-test-checklist.md`
+`findings.md` (register F-001 ... F-053), `security-testing-plan.md` (plan), `manual-test-checklist.md`
 (browser/terminal checks), `../../security/security-test-suite.md` (description of the automated suites, written
 for reviewers), `scripts/security/README.md` (how to run).
 
@@ -9,10 +9,10 @@ for reviewers), `scripts/security/README.md` (how to run).
 
 | | |
 |---|---|
-| Findings recorded | **52** (F-001 ... F-052) |
-| By current severity | 26 Medium, 13 Low, 10 High, 3 Info (F-049 TLS and F-050 images added 2026-10-03/04, F-051 public settings 2026-10-06 and F-052 website import vs. `objects:publish` 2026-10-07, both fixed the day they were found) |
+| Findings recorded | **53** (F-001 ... F-053) |
+| By current severity | 27 Medium, 13 Low, 10 High, 3 Info (F-049 TLS and F-050 images added 2026-10-03/04, F-051 public settings 2026-10-06 and F-052 website import vs. `objects:publish` and F-053 public form notification as a mail relay, both 2026-10-07, fixed the day they were found) |
 | Fixed in code | all 9 High; all but a few Medium (see section 3) |
-| Automated checks | `pnpm security:api` **1086 tests / 21 files**, `pnpm security:isolation` **14 tests** (two stacks) and `pnpm security:browser` **12 Playwright tests** (Chromium) green on a disposable stack, plus **DAST with OWASP ZAP** (`scripts/security/dast/run-zap.sh`: active API scan of 154 routes of core-api, gateway and asset-processor with an admin session: 0 findings above Info; passive baseline of the admin and editor SPAs); `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 179 (+4 database round-trip tests of the website bundle, run against a disposable database) |
+| Automated checks | `pnpm security:api` **1127 tests / 25 files**, `pnpm security:isolation` **14 tests** (two stacks) and `pnpm security:browser` **16 Playwright tests** (Chromium) green on a disposable stack, plus **DAST with OWASP ZAP** (`scripts/security/dast/run-zap.sh`: active API scan of 154 routes of core-api, gateway and asset-processor with an admin session: 0 findings above Info; passive baseline of the admin and editor SPAs); `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 179 (+4 database round-trip tests of the website bundle, run against a disposable database) |
 | Runs leave evidence | `scripts/security/reports/<date>/api-*.txt/.json`, `static-*.txt/.json` (git-ignored) |
 
 The High findings (all fixed; nine): F-002 token embedded in git remotes, F-011 credentialed CORS reflection, F-020
@@ -97,6 +97,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | Website export is a `.zip` (bundle version 2); import also accepts the old `.json` | the downloaded file has another extension and holds the asset files | - |
 | Importing a website restores `published` only with `objects:publish` | pages and objects arrive as drafts (the report says how many were live) | grant the permission (F-052) |
 | A gateway preset in `GATEWAY_PRESETS_PATH` replaces a built-in one with the same id; presets are read per request | a custom folder now overrides a vendor preset instead of listing it twice | rename the file's `id` to keep both |
+| A public form's notification mail is sent only for the notify block an author saved in a form of a page | an e-mail that depended on a recipient or subject typed in the browser request no longer goes out; a confirmation to the visitor is limited to one plain address and 3 mails an hour per address | save the page (the block is read from the pages); see F-053 |
 | The public sandbox (`SANDBOX_MODE`, `deploy/profiles/sandbox.env`) turns AI, mail, CDN mirror, imports and outbound HTTP off | 403 "disabled in the public sandbox" | only in a sandbox workspace; `SANDBOX_ALLOW_HOSTS` allows named hosts |
 
 ## 6. How to re-run everything

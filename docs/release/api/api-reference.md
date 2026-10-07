@@ -261,7 +261,7 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `GET /public/data-objects/batch` | Fetch multiple published objects by id. |
 | `POST /public/data-objects/query` | Query published objects by class name + filters. |
 | `GET /public/data-objects/:id` | Get one published object (404 if it's a draft - never leaks draft existence). |
-| `POST /public/forms/:classId/submit` | Submit a public form, creating a Data Object of the given class. |
+| `POST /public/forms/:classId/submit` | Submit a public form, creating an unpublished Data Object of the given class. A `notify` block in the body only sends mail if it is the one an author saved in a form of a page for that class (F-053); recipients must be one plain address, 3 mails an hour per address. |
 | `GET /preview/objects/:token` | Resolve a preview-link token to its (possibly unpublished) object. |
 
 ### Mail: settings, log, templates

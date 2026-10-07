@@ -5,6 +5,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
+import { createAuthoredNotifyCache, createRecipientThrottle, isSingleEmail, notifyKey } from './form-notify.js';
 import {
   findUserByEmail,
   findUserById,
@@ -235,6 +236,7 @@ import {
   createFixedWindowLimiter,
   createFailureLock,
   buildWebsiteBundle,
+  substituteTokensPlain,
   importWebsiteBundle,
   parseWebsiteBundle,
   ImportError,
@@ -462,6 +464,11 @@ function clearFailedAttempts(email: string, ip?: string): void {
 const FORM_SUBMIT_MAX = 10;
 const FORM_SUBMIT_WINDOW_MS = 15 * 60 * 1000;
 const formSubmitCounts = new Map<string, { count: number; windowStart: number }>();
+
+// Notification mail of a public form: only a notify block an author put in a form of a page is honoured (see
+// form-notify.ts, finding F-053), and a recipient is a single plain address that gets at most 3 mails an hour.
+const authoredFormNotify = createAuthoredNotifyCache(async () => (await listWhoobePages()).map((p) => p.content));
+const formNotifyRecipients = createRecipientThrottle(3, 60 * 60 * 1000);
 
 function isFormSubmitRateLimited(key: string): boolean {
   const entry = formSubmitCounts.get(key);
@@ -4716,6 +4723,12 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
     const notify = formConfig?.notify;
     if (notify?.enabled) {
       try {
+        // The block comes from the visitor's request: it counts only if it is the one an author configured.
+        if (!(await authoredFormNotify.has(notifyKey(dataClass.id, notify)))) {
+          logger.warn({ classId: dataClass.id }, 'Form notify ignored: not the notify block of any form');
+          res.status(201).json({ success: true });
+          return;
+        }
         // A mail template id is the primary reference (docs/plans/forms/
         // mail-templates.md); the legacy templatePageId (a whoobe_pages
         // row) stays supported so already-saved Forms keep working. The
@@ -4723,7 +4736,11 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
         // from the template's own (possibly dynamic) `to` field.
         if (notify.mailTemplateId) {
           const template = await getMailTemplate(notify.mailTemplateId);
-          if (template) {
+          // same context sendMailFromTemplate renders with: the submitted fields live under `form`
+          const recipient = substituteTokensPlain(String(notify.recipientEmail || template?.to || ''), { form: submitted }).trim();
+          if (template && (!isSingleEmail(recipient) || !formNotifyRecipients.take(recipient))) {
+            logger.warn({ classId: dataClass.id }, 'Form notify skipped: recipient is not a single address, or over the hourly limit');
+          } else if (template) {
             await sendMailFromTemplate({
               template,
               context: { form: submitted },
@@ -4735,7 +4752,9 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
           }
         } else if (notify.templatePageId && notify.recipientEmail) {
           const page = await getWhoobePage(notify.templatePageId);
-          if (page) {
+          if (page && (!isSingleEmail(String(notify.recipientEmail).trim()) || !formNotifyRecipients.take(String(notify.recipientEmail)))) {
+            logger.warn({ classId: dataClass.id }, 'Form notify skipped: recipient is not a single address, or over the hourly limit');
+          } else if (page) {
             const imageUrls = await resolveMailImageUrls(page.content);
             const html = buildMailDocument({
               bodyHtml: renderMailTemplate(page.content, submitted, imageUrls),
