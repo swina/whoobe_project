@@ -3255,7 +3255,7 @@ paths:
   /public/forms/{classId}/submit:
     post:
       tags: ["core-api: Public Data Objects & Forms (no auth, published only)"]
-      summary: "Submit a public form, creating a Data Object of the given class."
+      summary: "Submit a public form, creating an unpublished Data Object of the given class. A `notify` block in the body only sends mail if it is the one an author saved in a form of a page for that class (F-053); recipients must be one plain address, 3 mails an hour per address."
       parameters:
         - name: classId
           in: path
