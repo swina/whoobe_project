@@ -41,6 +41,24 @@ export function rewriteIds<T>(value: T, idMap: ReadonlyMap<string, string>): T {
   return mapStrings(value, (s) => s.replace(UUID_G, (m) => idMap.get(m.toLowerCase()) ?? m));
 }
 
+/** Names of the gateway endpoints a content tree refers to: a form's `formConfig.gatewayEndpointName` and a
+ *  `gatewayBinding.endpointName`. The endpoints themselves are not part of a bundle. */
+export function collectGatewayEndpointNames(value: unknown): Set<string> {
+  const names = new Set<string>();
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) { v.forEach(walk); return; }
+    if (!v || typeof v !== 'object') return;
+    const rec = v as Record<string, unknown>;
+    const form = rec.formConfig as { gatewayEndpointName?: unknown } | null | undefined;
+    if (form && typeof form.gatewayEndpointName === 'string' && form.gatewayEndpointName) names.add(form.gatewayEndpointName);
+    const binding = rec.gatewayBinding as { endpointName?: unknown } | null | undefined;
+    if (binding && typeof binding.endpointName === 'string' && binding.endpointName) names.add(binding.endpointName);
+    Object.values(rec).forEach(walk);
+  };
+  walk(value);
+  return names;
+}
+
 /** `className` of every `dataBinding` in the value (an element tree, a snippet node, a layout). */
 export function collectDataBindingClassNames(value: unknown): Set<string> {
   const names = new Set<string>();

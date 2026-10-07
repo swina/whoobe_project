@@ -824,7 +824,11 @@ CONTAINER_NAME="${slug}"
 REMOTE_HOST="\${REMOTE_HOST:-oracle}"
 REMOTE_DIR="/opt/sites/\${IMAGE_NAME}"
 
-# ── 1. Build the site locally (prerender against the local CMS API) ────────
+${opts.siteApiKey ? `# This site was generated WITH a site key (--site-api-key). The key is only used by the site's own server route, which a
+# static export does not have: gateway forms will not submit. Regenerate without --site-api-key (the form then posts
+# straight to the gateway, protected by its binding and limits) or deploy a server build instead.
+echo "WARNING: this site has a site key and a static export has no server to hold it: gateway forms will fail." >&2
+` : ''}# ── 1. Build the site locally (prerender against the local CMS API) ────────
 echo ">>> Building site locally ..."
 ${buildCmd}
 
@@ -1713,7 +1717,9 @@ if (import.meta.client) {
 const config = useRuntimeConfig()
 const apiUrl = config.public.cmsApiUrl
 const assetBaseUrl = config.public.cmsAssetBaseUrl || apiUrl
-const api = createWhoobeApi(apiUrl, config.public.gatewayUrl, '/api/whoobe-gateway-submit')
+// A gateway form posts to the site's own server route (which holds the site key) only when the site HAS a key; without
+// one the route would add nothing, and a static export has no server to answer it: the form posts to the gateway.
+const api = createWhoobeApi(apiUrl, config.public.gatewayUrl, ${opts.siteApiKey ? "'/api/whoobe-gateway-submit'" : 'undefined'})
 
 ${pwaEnabled ? `const { online } = useOnlineStatus()
 // Replay offline mutation queue when coming back online

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  collectAssetPathRefs, collectDataBindingClassNames, collectDependencies, collectUuids, diffClassFields, parseWebsiteBundle,
+  collectGatewayEndpointNames, collectAssetPathRefs, collectDataBindingClassNames, collectDependencies, collectUuids, diffClassFields, parseWebsiteBundle,
   planAssets, rewriteAssetPaths, rewriteIds, uniqueAssetPath, type DependencyResolvers,
 } from './index.js';
 
@@ -150,5 +150,13 @@ describe('collectDependencies', () => {
     const dep = await collectDependencies([{ a: id(11), b: id(21) }], new Set([id(11)]), new Set(), resolvers);
     expect(dep.externalPages).toEqual([]);
     expect(dep.snippets.map((s) => s.id)).toEqual([id(21)]);
+  });
+});
+
+describe('gateway endpoint names', () => {
+  it('finds the endpoint of a form and of a binding, at any depth', () => {
+    const tree = { blocks: [{ formConfig: { gatewayEndpointName: 'Brevo', gatewayRoutePath: 'contacts' }, blocks: [{ gatewayBinding: { endpointName: 'Products', fieldPath: 'x' } }] }, { formConfig: {}, gatewayBinding: null }] };
+    expect([...collectGatewayEndpointNames(tree)].sort()).toEqual(['Brevo', 'Products']);
+    expect(collectGatewayEndpointNames({ a: 1 }).size).toBe(0);
   });
 });

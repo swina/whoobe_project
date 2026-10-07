@@ -11,7 +11,9 @@ import { createWhoobePage, deleteWhoobePage, updateWhoobePage } from '../db/whoo
 import { createWhoobeOneSnippet, deleteWhoobeOneSnippet } from '../db/whoobe-one-snippet-records.js';
 import type { WebsiteBundle } from './bundle.js';
 import { diffClassFields, planAssets, type AssetPlanItem } from './plan.js';
-import { rewriteAssetPaths, rewriteIds } from './refs.js';
+import { bindPageGatewayContent } from '../gateway/bind-page-content.js';
+import { getGatewayEndpointByName } from '../db/gateway-records.js';
+import { collectGatewayEndpointNames, rewriteAssetPaths, rewriteIds } from './refs.js';
 
 export interface ImportOptions {
   /** Report what would happen; write nothing. */
@@ -115,6 +117,14 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
 
   const wasLive = bundle.pages.filter((p) => p.published).length + bundle.dataObjects.filter((o) => o.published && !objectHere.has(o.id)).length;
   if (!restorePublication && wasLive) warnings.push(`${wasLive} page(s) and object(s) were published in the bundle and are imported as drafts: publishing needs the objects:publish permission`);
+
+  // Gateway forms and bindings: the endpoints are not in the bundle, and a binding row exists only for the website it was
+  // saved for. The endpoints are looked up by name here; the bindings are made again for the new website below.
+  const endpointNames = new Set<string>();
+  for (const p of bundle.pages) for (const n of collectGatewayEndpointNames(p.content)) endpointNames.add(n);
+  for (const n of endpointNames) {
+    if (!(await getGatewayEndpointByName(n))) warnings.push(`Gateway endpoint "${n}" (used by forms or bindings of the pages) does not exist here: create it with the same name and route, then save the pages again`);
+  }
 
   const counts: ImportReport['counts'] = {
     pages: bundle.pages.filter((p) => !p.external).length,
@@ -232,6 +242,10 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
     }
 
     for (const p of bundle.pages) {
+      const content = fix(p.content);
+      // new binding rows for the new website (bindings belong to one website); an endpoint that is missing here only
+      // costs a warning above, the form then stays unbound until the endpoint exists and the page is saved
+      try { await bindPageGatewayContent(content, website.id); } catch { /* the page is still imported */ }
       const created = await createWhoobePage({
         id: pageIds.get(p)!,
         translationGroupId: group(p.translationGroupId),
@@ -240,7 +254,7 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
         title: p.title,
         category: p.category,
         kind: p.kind as 'content' | 'module' | 'app',
-        content: fix(p.content),
+        content,
         seo: fix(p.seo) as any,
         sitemap: fix(p.sitemap) as any,
         search: fix(p.search) as any,

@@ -19,14 +19,14 @@ describe.skipIf(!url)('website bundle: export, import on an empty installation, 
       ...(await import('../db/asset-records.js')), ...(await import('../db/data-classes-records.js')), ...(await import('../db/data-components-records.js')),
       ...(await import('../db/data-objects-records.js')), ...(await import('../db/themes-records.js')), ...(await import('../db/websites-records.js')),
       ...(await import('../db/website-paths-records.js')), ...(await import('../db/website-templates-records.js')), ...(await import('../db/whoobe-pages-records.js')),
-      ...(await import('../db/whoobe-one-snippet-records.js')), ...(await import('./index.js')),
+      ...(await import('../db/whoobe-one-snippet-records.js')), ...(await import('../db/gateway-records.js')), ...(await import('../gateway/bind-page-content.js')), ...(await import('./index.js')),
     };
     sql = (await import('drizzle-orm')).sql;
   });
   afterAll(async () => { await db?.closeDb(); });
 
   const wipe = async () => {
-    for (const t of ['whoobe_pages', 'website_templates', 'website_paths', 'websites', 'whoobe_one_snippets', 'data_objects', 'data_classes', 'data_components', 'themes', 'assets', 'folders', 'search_documents', 'content_versions']) {
+    for (const t of ['whoobe_pages', 'website_templates', 'website_paths', 'websites', 'whoobe_one_snippets', 'data_objects', 'data_classes', 'data_components', 'themes', 'assets', 'folders', 'search_documents', 'content_versions', 'gateway_bindings', 'gateway_routes', 'gateway_endpoints']) {
       await db.getDb().execute(sql.raw(`TRUNCATE TABLE "${t}" CASCADE`));
     }
   };
@@ -152,3 +152,56 @@ describe.skipIf(!url)('website bundle: export, import on an empty installation, 
     expect((await core.listWhoobeOneSnippets()).length).toBe(snippetsBefore);
   });
 });
+
+describe.skipIf(!url)('website bundle: gateway forms', () => {
+  let core: any;
+  let db: typeof import('../db/client.js');
+  let sql: any;
+  beforeAll(async () => {
+    process.env.DATABASE_URL = url;
+    db = await import('../db/client.js');
+    core = {
+      ...(await import('../db/websites-records.js')), ...(await import('../db/whoobe-pages-records.js')), ...(await import('../db/gateway-records.js')),
+      ...(await import('../gateway/bind-page-content.js')), ...(await import('./index.js')),
+    };
+    sql = (await import('drizzle-orm')).sql;
+  });
+
+  const form = () => ({
+    id: 'root', element: 'div', type: 'container', tag: 'document', css: { css: '', container: '' },
+    blocks: [{ id: 'f1', element: 'form', type: 'container', tag: 'form', css: { css: '', container: '' }, formConfig: { gatewayEndpointName: 'Contact hook', gatewayRoutePath: 'contact' },
+      blocks: [{ id: 'i1', element: 'input', type: 'element', tag: 'input', css: { css: '', container: '' }, data: { attributes: { name: 'email' } }, blocks: [] }] }],
+  });
+
+  it('a form comes with a binding of its own for the new website; a missing endpoint is reported', async () => {
+    for (const t of ['whoobe_pages', 'websites', 'gateway_bindings', 'gateway_routes', 'gateway_endpoints']) await db.getDb().execute(sql.raw(`TRUNCATE TABLE "${t}" CASCADE`));
+    const endpoint = await core.createGatewayEndpoint({ name: 'Contact hook', baseUrl: 'https://hooks.example.com', authType: 'none' });
+    await core.createGatewayRoute({ endpointId: endpoint.id, method: 'POST', path: 'contact' });
+    const site = await core.createWebsite({ name: 'Forms', rootPath: '/forms' });
+    const content = form();
+    await core.bindPageGatewayContent(content, site.id);
+    const originalBinding = (content.blocks[0] as any).formConfig.gatewayBindingId;
+    expect(originalBinding).toBeTruthy();
+    await core.createWhoobePage({ slug: 'contact', title: 'Contact', websiteId: site.id, content });
+
+    const wire = JSON.parse(JSON.stringify(await core.buildWebsiteBundle(site.id)));
+    const done = await core.importWebsiteBundle(core.parseWebsiteBundle(wire).bundle, {});
+    expect(done.warnings.filter((w: string) => /Gateway endpoint/.test(w))).toEqual([]);
+    const page = (await core.listWhoobePages(done.website.id))[0];
+    const newBinding = (page.content as any).blocks[0].formConfig.gatewayBindingId;
+    expect(newBinding).toBeTruthy();
+    expect(newBinding).not.toBe(originalBinding);
+    const row = await core.getGatewayBindingById(newBinding);
+    expect(row).toMatchObject({ websiteId: done.website.id, kind: 'submit', endpointId: endpoint.id });
+    expect(row.paramKeys).toContain('email');
+
+    // another installation: the endpoint is not there
+    await core.deleteGatewayEndpoint(endpoint.id);
+    const dry = await core.importWebsiteBundle(core.parseWebsiteBundle(wire).bundle, { dryRun: true });
+    expect(dry.warnings.join(' ')).toMatch(/Gateway endpoint "Contact hook".*does not exist here/);
+    const second = await core.importWebsiteBundle(core.parseWebsiteBundle(wire).bundle, {});
+    const imported = (await core.listWhoobePages(second.website.id))[0];
+    expect((imported.content as any).blocks[0].formConfig.gatewayBindingId, 'a stale binding id is dropped, not kept').toBeUndefined();
+  });
+});
+

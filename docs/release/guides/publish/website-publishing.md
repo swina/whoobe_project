@@ -291,6 +291,12 @@ The result: a static site served by nginx, with **zero CMS API or Node.js depend
 | `nginx-static.conf` | Static file config with Nuxt SPA fallback and aggressive caching for `/_nuxt/` and `/_payload.json` |
 | `deploy-static.sh` | End-to-end deploy script (local build → rsync → remote build → run → host nginx config) |
 
+**Forms in a static site** (Gateway-backed forms, for example one that stores a message or adds a contact):
+
+- A static export has **no server**, so the site's own submit route (`/api/whoobe-gateway-submit`, the only place a *site key* can be kept secret) does not exist. Generate the site **without `--site-api-key`**: the form then posts straight from the visitor's browser to the Gateway (`--gateway-url`, for example `https://dashboard.example.com`), which accepts it from any origin (no CORS setting is needed for `/api/v1/gateway/submit`). If a static site is generated *with* a key, `deploy-static.sh` warns that forms will fail.
+- Without a key the protection is the one the Gateway always applies: the form carries an opaque **binding id** that points to one fixed endpoint and route, only the form's own fields are forwarded, and requests are limited per address. The binding id is in the page, so it is **public**: let the route do one harmless thing (store a message), not something that sends unlimited e-mail or edits a mailing list.
+- **A binding belongs to the Gateway whose database created it** (it is made when the page is saved). The Gateway named in `--gateway-url` must therefore be the one the pages were saved against: generate the site from the CMS that runs that Gateway (`--api-url` of the same installation), or - if the content was authored elsewhere - import it there first (website bundle, see [website-bundle.md](../website-bundle.md); create the endpoint with the same name first, the import then makes the bindings) and generate from that installation.
+
 **Redeploying after content changes**:
 
 ```bash

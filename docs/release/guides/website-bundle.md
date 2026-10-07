@@ -59,6 +59,7 @@ If a step fails, what the import created is removed again. Assets that were stor
 - **Publishing needs `objects:publish`.** Without it, everything comes in as a draft and the report says how many
   pages and objects were published in the bundle. With it, the publication state and workflow state are restored.
 - A module page that belonged to no website (or to another one) becomes a page of the imported website.
+- **Gateway forms**: the endpoints are not in the bundle (they hold credentials), but the pages keep the endpoint **name** and route of each form. On import the form's binding is made again for the new website, if an endpoint with that name and route exists on this installation; if not, the report says which endpoint is missing and the form stays unbound until it is created and the page is saved again (a binding id from another installation is never kept). The dry run lists the missing endpoints too.
 - Not copied: users and roles, gateway endpoints and keys, mail and AI settings, the website's domains, Pimcore ids,
   search indexes (they are rebuilt when the pages are saved), the version history of pages.
 - In the public sandbox the asset limits (file size, count) apply to what an import stores.
