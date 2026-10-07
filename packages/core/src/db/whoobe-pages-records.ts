@@ -55,6 +55,8 @@ export async function listWhoobePageTranslations(translationGroupId: string): Pr
 }
 
 export async function createWhoobePage(input: {
+  /** Pre-assigned id (website import: references are rewritten before the rows exist). */
+  id?: string;
   translationGroupId?: string;
   locale?: string;
   slug: string;
@@ -74,6 +76,7 @@ export async function createWhoobePage(input: {
   const [row] = await db
     .insert(whoobePages)
     .values({
+      ...(input.id ? { id: input.id } : {}),
       // Omitted entirely (not passed as undefined) when the caller has no
       // existing group to join - lets the column's own defaultRandom()
       // generate a fresh id, rather than this function reimplementing

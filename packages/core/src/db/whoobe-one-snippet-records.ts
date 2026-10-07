@@ -28,17 +28,19 @@ export async function getWhoobeOneSnippet(id: string): Promise<WhoobeOneSnippetR
 }
 
 export async function createWhoobeOneSnippet(input: {
+  id?: string;
   name: string;
   category: string;
   icon?: string | null;
   node: unknown;
   themeId?: string | null;
   notes?: string | null;
+  thumbnail?: string | null;
 }): Promise<WhoobeOneSnippetRecord> {
   const db = getDb();
   const [row] = await db
     .insert(whoobeOneSnippets)
-    .values({ name: input.name, category: input.category, icon: input.icon ?? null, node: input.node, themeId: input.themeId ?? null, notes: input.notes ?? null })
+    .values({ ...(input.id ? { id: input.id } : {}), thumbnail: input.thumbnail ?? null, name: input.name, category: input.category, icon: input.icon ?? null, node: input.node, themeId: input.themeId ?? null, notes: input.notes ?? null })
     .returning();
   return row;
 }

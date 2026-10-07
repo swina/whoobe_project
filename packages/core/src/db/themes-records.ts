@@ -25,6 +25,7 @@ export async function getTheme(id: string): Promise<ThemeRecord | null> {
 }
 
 export async function createTheme(input: {
+  id?: string;
   name: string;
   colors?: { name: string; hex: string }[];
   fonts?: string[];
@@ -35,6 +36,7 @@ export async function createTheme(input: {
   const [row] = await db
     .insert(themes)
     .values({
+      ...(input.id ? { id: input.id } : {}),
       name: input.name,
       colors: input.colors ?? [],
       fonts: input.fonts ?? [],

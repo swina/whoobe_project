@@ -88,6 +88,7 @@ export async function getWebsiteTemplateForPath(
 }
 
 export async function createWebsiteTemplate(input: {
+  id?: string;
   websiteId: string;
   name: string;
   description?: string | null;
@@ -111,6 +112,7 @@ export async function createWebsiteTemplate(input: {
   const [row] = await db
     .insert(websiteTemplates)
     .values({
+      ...(input.id ? { id: input.id } : {}),
       websiteId: input.websiteId,
       name: input.name,
       description: input.description ?? null,

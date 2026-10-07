@@ -1,0 +1,273 @@
+import { randomBytes, randomUUID } from 'node:crypto';
+import { getAssetById, listAssets } from '../db/asset-records.js';
+import { createDataClass, deleteDataClass, getDataClassByName } from '../db/data-classes-records.js';
+import { createDataComponent, deleteDataComponent, getDataComponentByName } from '../db/data-components-records.js';
+import { createDataObject, deleteDataObject, listDataObjects, updateDataObject } from '../db/data-objects-records.js';
+import { createTheme, deleteTheme } from '../db/themes-records.js';
+import { createWebsite, deleteWebsite, getWebsiteByRootPath } from '../db/websites-records.js';
+import { createWebsitePath, deleteWebsitePath } from '../db/website-paths-records.js';
+import { createWebsiteTemplate, deleteWebsiteTemplate } from '../db/website-templates-records.js';
+import { createWhoobePage, deleteWhoobePage, updateWhoobePage } from '../db/whoobe-pages-records.js';
+import { createWhoobeOneSnippet, deleteWhoobeOneSnippet } from '../db/whoobe-one-snippet-records.js';
+import type { WebsiteBundle } from './bundle.js';
+import { diffClassFields, planAssets, type AssetPlanItem } from './plan.js';
+import { rewriteAssetPaths, rewriteIds } from './refs.js';
+
+export interface ImportOptions {
+  /** Report what would happen; write nothing. */
+  dryRun?: boolean;
+  /** Assets the caller has stored already (the files travel next to the bundle, the caller uploads them):
+   *  old asset id -> the record it became here. */
+  assetMap?: Record<string, { id: string; pimcorePath: string }>;
+  /** Restore `published` and the workflow state of pages and objects. Off by default: putting content live is a
+   *  separate permission (objects:publish), so the caller turns this on only for someone who holds it. */
+  restorePublication?: boolean;
+}
+
+export interface ImportReport {
+  dryRun: boolean;
+  website: { id: string | null; name: string; rootPath: string };
+  counts: {
+    pages: number;
+    externalPages: number;
+    templates: number;
+    menus: number;
+    snippets: number;
+    themes: number;
+    classesCreated: number;
+    classesReused: number;
+    componentsCreated: number;
+    componentsReused: number;
+    objectsCreated: number;
+    objectsReused: number;
+  };
+  classes: { name: string; action: 'create' | 'reuse'; differences: string[] }[];
+  assets: AssetPlanItem[];
+  warnings: string[];
+}
+
+export class ImportError extends Error {
+  constructor(message: string, readonly status = 400) { super(message); }
+}
+
+const MAX_ENTITIES = 50_000;
+
+/**
+ * Imports a version 2 bundle as a new website (its name and root path get a suffix, like every earlier import), plus
+ * what it needs: snippets, module pages, themes, data classes and components (reused when the name exists), data
+ * objects (reused when the class has one with the same locale and key) and the assets the caller has stored.
+ * Anything created is removed again if a step fails.
+ */
+export async function importWebsiteBundle(bundle: WebsiteBundle, options: ImportOptions = {}): Promise<ImportReport> {
+  const dryRun = options.dryRun === true;
+  const restorePublication = options.restorePublication === true;
+  const warnings: string[] = [];
+  const total = bundle.pages.length + bundle.dataObjects.length + bundle.snippets.length + bundle.assets.length;
+  if (total > MAX_ENTITIES) throw new ImportError(`The bundle has ${total} entries; the limit is ${MAX_ENTITIES}`, 413);
+
+  // --- assets: what is already here, what must be uploaded, what collides --------------------------------------
+  const existingAssets = new Map((await listAssets()).map((a) => [a.pimcorePath, { id: a.id, sizeBytes: a.sizeBytes }]));
+  const assetPlan = planAssets(bundle.assets, existingAssets);
+
+  const idMap = new Map<string, string>();
+  const pathMap = new Map<string, string>();
+  const stored = options.assetMap ?? {};
+  let notStored = 0;
+  for (const item of assetPlan) {
+    if (item.action === 'reuse' && item.existingId) { idMap.set(item.id, item.existingId); continue; }
+    const got = stored[item.id];
+    const record = got ? await getAssetById(got.id) : null;
+    if (record) {
+      idMap.set(item.id, record.id);
+      if (record.pimcorePath !== item.pimcorePath) pathMap.set(item.pimcorePath, record.pimcorePath);
+    } else if (!dryRun) notStored++;
+  }
+  if (notStored) warnings.push(`${notStored} asset(s) were not stored here: their references keep the old path or id and show nothing until the files are uploaded`);
+
+  // --- classes and components: reuse by name -------------------------------------------------------------------
+  const classReport: ImportReport['classes'] = [];
+  const classPlan = new Map<string, { id: string | null }>();
+  for (const c of bundle.dataClasses) {
+    const here = await getDataClassByName(c.name);
+    if (here) {
+      const differences = diffClassFields(here.fields, c.fields);
+      classReport.push({ name: c.name, action: 'reuse', differences });
+      if (differences.length) warnings.push(`Class "${c.name}" exists here and differs: ${differences.join('; ')}`);
+      classPlan.set(c.id, { id: here.id });
+    } else {
+      classReport.push({ name: c.name, action: 'create', differences: [] });
+      classPlan.set(c.id, { id: null });
+    }
+  }
+  const componentsToCreate: typeof bundle.dataComponents = [];
+  for (const comp of bundle.dataComponents) if (!(await getDataComponentByName(comp.name))) componentsToCreate.push(comp);
+
+  // --- data objects already here (same class, locale and key) --------------------------------------------------
+  const objectHere = new Map<string, string>(); // bundle object id -> id of the object that exists here
+  for (const o of bundle.dataObjects) {
+    const target = classPlan.get(o.classId)?.id;
+    if (!target) continue;
+    // one listing per class is enough, but classes are few and this keeps the loop plain
+    const rows = await listDataObjects(target);
+    const same = rows.find((r) => r.locale === o.locale && r.key === o.key);
+    if (same) objectHere.set(o.id, same.id);
+  }
+
+  const wasLive = bundle.pages.filter((p) => p.published).length + bundle.dataObjects.filter((o) => o.published && !objectHere.has(o.id)).length;
+  if (!restorePublication && wasLive) warnings.push(`${wasLive} page(s) and object(s) were published in the bundle and are imported as drafts: publishing needs the objects:publish permission`);
+
+  const counts: ImportReport['counts'] = {
+    pages: bundle.pages.filter((p) => !p.external).length,
+    externalPages: bundle.pages.filter((p) => p.external).length,
+    templates: bundle.websiteTemplates.length,
+    menus: bundle.websitePaths.length,
+    snippets: bundle.snippets.length,
+    themes: bundle.themes.length,
+    classesCreated: classReport.filter((c) => c.action === 'create').length,
+    classesReused: classReport.filter((c) => c.action === 'reuse').length,
+    componentsCreated: componentsToCreate.length,
+    componentsReused: bundle.dataComponents.length - componentsToCreate.length,
+    objectsCreated: bundle.dataObjects.length - objectHere.size,
+    objectsReused: objectHere.size,
+  };
+
+  // --- name and root path of the new website ----------------------------------------------------------------
+  const suffix = randomBytes(4).toString('hex');
+  const basePath = bundle.website.rootPath || `/${bundle.website.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  let rootPath = `${basePath}-${suffix}`;
+  for (let n = 0; await getWebsiteByRootPath(rootPath); ) rootPath = `${basePath}-${suffix}-${++n}`;
+  const name = `${bundle.website.name} (import ${suffix})`;
+
+  const report: ImportReport = { dryRun, website: { id: null, name, rootPath }, counts, classes: classReport, assets: assetPlan, warnings };
+  if (dryRun) return report;
+
+  // --- from here on, writes; `undo` removes what was created if a step fails ---------------------------------------
+  const undo: (() => Promise<unknown>)[] = [];
+  try {
+    for (const comp of componentsToCreate) {
+      const created = await createDataComponent({ name: comp.name, label: comp.label, fields: comp.fields as any });
+      undo.push(() => deleteDataComponent(created.id));
+    }
+    for (const c of bundle.dataClasses) {
+      const plan = classPlan.get(c.id)!;
+      if (plan.id) { idMap.set(c.id, plan.id); continue; }
+      const created = await createDataClass({ name: c.name, label: c.label, fields: c.fields as any, viewConfig: c.viewConfig as any });
+      plan.id = created.id;
+      idMap.set(c.id, created.id);
+      undo.push(() => deleteDataClass(created.id));
+    }
+
+    // new ids first, so that every reference can be rewritten before any row is written
+    const themeNewId = new Map<(typeof bundle.themes)[number], string>();
+    bundle.themes.forEach((t, i) => {
+      const fresh = randomUUID();
+      themeNewId.set(t, fresh);
+      if (t.id) idMap.set(t.id, fresh);
+      else if (i === 0 && bundle.website.themeId) idMap.set(bundle.website.themeId, fresh); // version 1: the site's theme comes first
+    });
+    const newId = <T extends { id: string | null }>(items: T[]): Map<T, string> => {
+      const m = new Map<T, string>();
+      for (const it of items) { const fresh = randomUUID(); m.set(it, fresh); if (it.id) idMap.set(it.id, fresh); }
+      return m;
+    };
+    const pageIds = newId(bundle.pages);
+    const snippetIds = newId(bundle.snippets);
+    const templateIds = newId(bundle.websiteTemplates);
+    const objectIds = new Map<(typeof bundle.dataObjects)[number], string>();
+    for (const o of bundle.dataObjects) {
+      const fresh = objectHere.get(o.id) ?? randomUUID();
+      objectIds.set(o, fresh);
+      idMap.set(o.id, fresh);
+    }
+    const groups = new Map<string, string>();
+    const group = (old: string): string => { let g = groups.get(old); if (!g) groups.set(old, (g = randomUUID())); return g; };
+    const fix = <T>(v: T): T => rewriteAssetPaths(rewriteIds(v, idMap), pathMap);
+
+    for (const t of bundle.themes) {
+      const created = await createTheme({ id: themeNewId.get(t)!, name: t.name, colors: t.colors, fonts: t.fonts, styles: t.styles, tailwindClasses: t.tailwindClasses });
+      undo.push(() => deleteTheme(created.id));
+    }
+
+    const website = await createWebsite({
+      name,
+      rootPath,
+      domains: [],
+      defaultLocale: bundle.website.defaultLocale,
+      supportedLocales: bundle.website.supportedLocales,
+      settings: fix(bundle.website.settings ?? {}),
+      themeId: bundle.website.themeId ? idMap.get(bundle.website.themeId) ?? null : null,
+    });
+    undo.push(() => deleteWebsite(website.id));
+    report.website.id = website.id;
+
+    for (const o of bundle.dataObjects) {
+      if (objectHere.has(o.id)) continue;
+      const created = await createDataObject({
+        id: objectIds.get(o)!,
+        classId: classPlan.get(o.classId)!.id!,
+        key: o.key,
+        path: o.path,
+        translationGroupId: group(o.translationGroupId),
+        locale: o.locale,
+        attributes: fix(o.attributes),
+      });
+      undo.push(() => deleteDataObject(created.id));
+    }
+    // parents and publication state once every object exists
+    for (const o of bundle.dataObjects) {
+      if (objectHere.has(o.id)) continue;
+      const patch: Parameters<typeof updateDataObject>[1] = {};
+      if (o.parentId && idMap.has(o.parentId)) patch.parentId = idMap.get(o.parentId)!;
+      if (restorePublication && o.published) patch.published = true;
+      if (restorePublication && o.workflowState) patch.workflowState = o.workflowState;
+      if (Object.keys(patch).length) await updateDataObject(objectIds.get(o)!, patch);
+    }
+
+    for (const s of bundle.snippets) {
+      const created = await createWhoobeOneSnippet({
+        id: snippetIds.get(s)!, name: s.name, category: s.category, icon: s.icon, node: fix(s.node),
+        themeId: s.themeId ? idMap.get(s.themeId) ?? null : null, notes: s.notes, thumbnail: s.thumbnail,
+      });
+      undo.push(() => deleteWhoobeOneSnippet(created.id));
+    }
+
+    for (const p of bundle.pages) {
+      const created = await createWhoobePage({
+        id: pageIds.get(p)!,
+        translationGroupId: group(p.translationGroupId),
+        locale: p.locale,
+        slug: p.slug,
+        title: p.title,
+        category: p.category,
+        kind: p.kind as 'content' | 'module' | 'app',
+        content: fix(p.content),
+        seo: fix(p.seo) as any,
+        sitemap: fix(p.sitemap) as any,
+        search: fix(p.search) as any,
+        pimcoreId: null,
+        path: p.path,
+        websiteId: website.id,
+        themeId: p.themeId ? idMap.get(p.themeId) ?? null : null,
+      });
+      undo.push(() => deleteWhoobePage(created.id));
+      if (restorePublication && (p.published || p.workflowState)) await updateWhoobePage(created.id, { published: p.published, workflowState: p.workflowState });
+    }
+
+    for (const t of bundle.websiteTemplates) {
+      const created = await createWebsiteTemplate({
+        id: templateIds.get(t)!, websiteId: website.id, name: t.name, description: t.description, layout: fix(t.layout) as any,
+        pathPatterns: t.pathPatterns, locale: t.locale, isDefault: t.isDefault,
+      });
+      undo.push(() => deleteWebsiteTemplate(created.id));
+    }
+    for (const m of bundle.websitePaths) {
+      const created = await createWebsitePath({ websiteId: website.id, name: m.name, items: fix(m.items) as any });
+      undo.push(() => deleteWebsitePath(created.id));
+    }
+
+    return report;
+  } catch (error) {
+    for (const step of undo.reverse()) { try { await step(); } catch { /* best effort */ } }
+    throw error;
+  }
+}
