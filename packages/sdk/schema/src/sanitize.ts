@@ -54,6 +54,18 @@ export function sanitizeRichText(html: unknown): string {
   return sanitizeHtml(String(html), RICH_TEXT)
 }
 
+// A contenteditable adds inline styles of its own while it is edited (a pasted fragment, two lines merged: font-size,
+// font-family, a colour and a white background copied from wherever the text came from). The inline styles the
+// author gave on purpose are the ones the content already had - the colours of the rich text editor (TipTap) -
+// so after an edit only those are kept. Styles are compared by their declarations, not their spelling.
+const normalizeStyle = (v: string): string => v.replace(/&quot;/g, '"').toLowerCase().replace(/\s+/g, '').replace(/;+$/, '')
+
+export function dropForeignInlineStyles(edited: string, original: unknown): string {
+  const known = new Set<string>()
+  for (const m of String(original ?? '').matchAll(/\sstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) known.add(normalizeStyle(m[1] ?? m[2] ?? ''))
+  return edited.replace(/\sstyle\s*=\s*"([^"]*)"/gi, (whole, value: string) => (known.has(normalizeStyle(value)) ? whole : ''))
+}
+
 const SVG_TAGS = [
   'svg', 'g', 'defs', 'path', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'rect', 'text', 'tspan', 'title', 'desc',
   'lineargradient', 'radialgradient', 'stop', 'clippath', 'mask', 'symbol', 'use',

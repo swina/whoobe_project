@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sanitizeRichText, sanitizeSvg } from './sanitize.js'
+import { dropForeignInlineStyles, sanitizeRichText, sanitizeSvg } from './sanitize.js'
 
 const XSS = [
   '<img src=x onerror=alert(1)>', '<svg onload=alert(1)></svg>', '<script>alert(1)</script>', '<iframe srcdoc="<script>alert(1)</script>"></iframe>',
@@ -76,5 +76,26 @@ describe('sanitizeSvg', () => {
     expect(out).toContain('<path d="M0 0L10 10" stroke="currentColor"')
     expect(out).toContain('viewBox="0 0 24 24"')
     expect(out).not.toMatch(/script|onload|foreignObject|iframe|evil\.example|javascript:/i)
+  })
+})
+
+describe('dropForeignInlineStyles', () => {
+  const original = '<p>a <span style="color: #ff0000">red</span> and <mark style="background-color: #fef08a; color: #111">hl</mark></p>'
+
+  it('keeps the styles the content already had, however they are spelled now', () => {
+    const rendered = sanitizeRichText(original)   // what the canvas shows and a blur reads back
+    expect(rendered).toContain('style="color:#ff0000"')
+    expect(dropForeignInlineStyles(rendered, original)).toBe(rendered)
+  })
+
+  it('drops the styles the browser added while editing', () => {
+    const edited = '<p>a <span style="color:#ff0000">red</span> x <span style="font-size: 16px; color: rgb(0, 0, 0); background-color: rgb(255, 255, 255);">pasted</span></p>'
+    expect(dropForeignInlineStyles(edited, original)).toBe('<p>a <span style="color:#ff0000">red</span> x <span>pasted</span></p>')
+  })
+
+  it('removes every style when there was none, and copes with empty input', () => {
+    expect(dropForeignInlineStyles('<b style="color: red">x</b>', '<b>x</b>')).toBe('<b>x</b>')
+    expect(dropForeignInlineStyles('<b style="color: red">x</b>', null)).toBe('<b>x</b>')
+    expect(dropForeignInlineStyles('', original)).toBe('')
   })
 })

@@ -79,6 +79,7 @@
       <span
         :contenteditable="!resolvedDataValue && element.editable"
         v-html="safeDisplayContent"
+        @input="edited = true"
         @blur="onBlur"
       ></span>
       <span v-if="buttonIconComponent && buttonIconPosition === 'after'" class="inline-flex items-center ml-1.5" contenteditable="false"><component :is="buttonIconComponent" :style="buttonIconStyle" /></span>
@@ -128,6 +129,7 @@
       v-bind="elementAttrs"
       v-html="safeDisplayContent"
       @click="onClick"
+      @input="edited = true"
       @blur="onBlur"
     ></component>
     <!--<button
@@ -149,7 +151,7 @@
 </template>
 
 <script setup lang="ts">
-import { sanitizeRichText as safeHtml } from '@whoobe-cms/schema'
+import { sanitizeRichText as safeHtml, dropForeignInlineStyles } from '@whoobe-cms/schema'
 // Port of whoobe-one-studio's src/components/blocks/BlockElement.vue - the
 // actual inline-WYSIWYG mechanism (see port plan §1.2): contenteditable is
 // set directly on the rendered tag when the node is selected and editable,
@@ -457,22 +459,25 @@ function copyCode(e: MouseEvent) {
   document.body.removeChild(textarea)
 }
 
-// Always commits on blur - `contenteditable` (template, above) is gated on
-// `element.editable`, not on `isSelected`, so this can genuinely lose focus
-// while still holding an in-progress edit the user never got to save: click
-// once inside an already-selected text element to reposition the cursor
-// mid-edit (completely normal while typing/correcting a typo) and onClick's
-// own toggle logic (`editor.setCurrent(isSelected.value ? null : ...)`,
-// above) deselects it, without blurring the DOM node or discarding
-// whatever's already been typed into it. A later `isSelected.value` guard
-// here then silently threw that edit away the next time blur actually
-// fired - reproducibly losing content that never even made it into
-// `editor.document`, so Save persisted the stale value too (not a preview-
-// only bug). Selection state has no bearing on whether a real edit
-// happened in this DOM node; only `blur` itself does.
+// Commits on blur, whether or not the element is still selected - `contenteditable` (template, above) is gated on
+// `element.editable`, not on `isSelected`, so this can genuinely lose focus while still holding an in-progress edit:
+// click once inside an already-selected text element to reposition the cursor mid-edit and onClick's own toggle
+// logic (`editor.setCurrent(isSelected.value ? null : ...)`) deselects it without blurring the DOM node. A
+// `isSelected.value` guard here once threw that edit away the next time blur fired - Save then persisted the stale
+// value too. Selection state has no bearing on whether a real edit happened; only an `input` event does.
+// A blur only commits when something was typed, pasted or cut (`input`): the DOM shown is the sanitized rendering of
+// `element.content`, not the content itself, so writing it back after a mere focus/blur (select the paragraph on
+// the canvas, then use any other control) replaced the content with a copy of what the sanitizer lets through.
+// With the old "strip every style" that also threw away the colours made in TipTap.
+let edited = false
+
 function onBlur(e: FocusEvent) {
+  if (!edited) return
+  edited = false
   const target = e.target as HTMLElement
-  let text = target.innerHTML.replace(/style="[^"]*"/gm, '')
+  // What an edit adds on its own (font-size, a pasted white background ...) is dropped; the inline styles the
+  // content already had - the TipTap colours - are kept.
+  let text = dropForeignInlineStyles(target.innerHTML, props.element.content)
   // A native paste into contenteditable doesn't enforce the real HTML
   // content model - a pasted <div> lands fine in a <p>/<h1>/<span> here,
   // then silently breaks once actually parsed (published site SSR/static
