@@ -53,6 +53,12 @@ many assets will be stored, and the warnings. The import then
 
 If a step fails, what the import created is removed again. Assets that were stored stay (they are ordinary DAM files).
 
+### Size limits
+
+- The **manifest** (`bundle.json`: pages, snippets with their thumbnails, data objects, asset records) is sent as one JSON request: core-api accepts up to **25 MB** of JSON. If an import answers 413 with a large site, check it with `unzip -p site-export.zip bundle.json | wc -c`.
+- Each **asset file** is uploaded on its own, like any DAM upload: up to `ASSET_MAX_FILE_BYTES` (50 MB by default) and `ASSET_MAX_INPUT_PIXELS` for images; a file over the limit is reported as not stored and the rest of the import goes on.
+- In front of both sits the nginx cap of the workspace (`WS_MAX_BODY`, 100 MB by default). Before 2026-10-07 it was set only for uploads, and nginx's own default of 1 MB answered 413 to the manifest of any site of some size: workspaces provisioned earlier need the line described in `CHANGES.md` (2026-10-07, "nginx: one body cap for the whole server").
+
 ### Permissions and what is not copied
 
 - Importing needs `objects:write`; storing files needs `assets:upload`, as an upload does.

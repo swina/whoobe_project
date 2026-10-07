@@ -14,6 +14,13 @@ for (const file of ['deploy/nginx/_locations.conf.template', 'deploy/nginx/_loca
     const text = readFileSync(join(ROOT_DIR, file), 'utf8')
     const routed = new Set((/location ~ \^\/whoobe-one\/\(([^)]*)\)/.exec(text)?.[1] ?? '').split('|'))
 
+    it('caps the request body for the whole server, not only for one location (the 1 MB default answers 413 to a website import)', () => {
+      const beforeFirstLocation = text.slice(0, text.search(/^location\b/m))
+      expect(beforeFirstLocation).toMatch(/^client_max_body_size\s+(\S+);/m)
+      // no location may lower it silently: a limit inside a location is a deliberate override, not the only one
+      expect(text.match(/client_max_body_size/g)?.length).toBe(1)
+    })
+
     it('routes every /whoobe-one/<prefix> of core-api to core-api', () => {
       expect(corePrefixes.length).toBeGreaterThan(5)
       expect(corePrefixes.filter((p) => !routed.has(p))).toEqual([])
