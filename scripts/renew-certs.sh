@@ -15,7 +15,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
-if [ ! -d deploy/certbot/conf/live ] || [ -z "$(ls -A deploy/certbot/conf/live 2>/dev/null)" ]; then
+# certbot runs as root in its container, so deploy/certbot/conf/live belongs to root and is mode 700: an operator who
+# is only in the docker group cannot even list it. Ask the container, not the file system of the caller.
+if [ ! -d deploy/certbot/conf ] || [ -z "$(docker run --rm -v "$ROOT_DIR/deploy/certbot/conf:/etc/letsencrypt" --entrypoint sh certbot/certbot -c 'ls -A /etc/letsencrypt/live 2>/dev/null')" ]; then
   echo "Nessun certificato da rinnovare (deploy/certbot/conf/live e' vuoto o assente)."
   exit 0
 fi

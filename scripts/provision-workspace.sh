@@ -222,6 +222,9 @@ HOST_NGINX=false
 command -v nginx >/dev/null 2>&1 && HOST_NGINX=true
 
 mkdir -p deploy/nginx deploy/certbot/webroot deploy/certbot/conf
+# the host's nginx (www-data) serves the ACME challenge from the webroot: explicit modes, whatever the umask
+chmod 755 deploy/certbot deploy/certbot/webroot
+chmod 700 deploy/certbot/conf
 
 if $HOST_NGINX; then
   CERTBOT_WEBROOT="$ROOT_DIR/deploy/certbot/webroot"

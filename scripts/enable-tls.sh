@@ -119,6 +119,10 @@ if ! $AUTO_YES; then
 fi
 
 mkdir -p deploy/certbot/webroot deploy/certbot/conf
+# nginx on the host runs as www-data and serves the challenge from the webroot: it must be able to walk down to it,
+# whatever umask the operator has (a 077 umask made Let's Encrypt get a 403). conf holds the keys: stays private.
+chmod 755 deploy/certbot deploy/certbot/webroot
+chmod 700 deploy/certbot/conf
 
 CERTBOT_ARGS=(certonly --webroot -w /var/www/certbot -d "$HOSTNAME_VAL" --email "$EMAIL" --agree-tos --non-interactive)
 $STAGING && CERTBOT_ARGS+=(--staging)
@@ -129,7 +133,8 @@ docker run --rm \
   -v "$ROOT_DIR/deploy/certbot/webroot:/var/www/certbot" \
   certbot/certbot "${CERTBOT_ARGS[@]}"
 
-[ -f "deploy/certbot/conf/live/${HOSTNAME_VAL}/fullchain.pem" ] || {
+# certbot (root, in its container) wrote live/ as root, mode 700: the check has to be made from inside the container
+docker run --rm -v "$ROOT_DIR/deploy/certbot/conf:/etc/letsencrypt" --entrypoint test certbot/certbot -f "/etc/letsencrypt/live/${HOSTNAME_VAL}/fullchain.pem" || {
   echo "Errore: certbot non ha prodotto un certificato in deploy/certbot/conf/live/${HOSTNAME_VAL}/ - controlla l'output sopra (DNS? porta 80 raggiungibile?)." >&2
   exit 1
 }
@@ -163,7 +168,8 @@ sed \
 echo ">>> Ricarico il reverse proxy ..."
 if $HOST_NGINX; then
   cat <<EOF
-    nginx sull'host: ricarica per attivare il certificato:
+    nginx sull'host: il vhost HTTP ora fa solo il redirect, il vhost HTTPS va collegato (una volta) e nginx ricaricato:
+      sudo ln -sf "$ROOT_DIR/deploy/nginx/${SLUG}-ssl.conf" /etc/nginx/sites-enabled/${SLUG}-ssl
       sudo nginx -t && sudo systemctl reload nginx
 EOF
 else
