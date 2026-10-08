@@ -55,7 +55,6 @@
 
     <AiWebsiteWizardModal :is-open="showAiModal" @close="showAiModal = false" />
     <WebsitePublishModal :is-open="showPublishModal" :website="publishTarget" @close="showPublishModal = false" />
-    <DocsSiteManager :is-open="showDocs" :website="docsTarget" @close="showDocs = false" />
   </div>
 </template>
 
@@ -76,7 +75,6 @@ import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
 import AiWebsiteWizardModal from './AiWebsiteWizardModal.vue'
 import WebsitePublishModal from './WebsitePublishModal.vue'
-import DocsSiteManager from '../websites/DocsSiteManager.vue'
 
 const websitesStore = useWebsitesStore()
 const tabsStore = useTabsStore()
@@ -85,13 +83,10 @@ const showPublishModal = ref(false)
 const publishTarget = ref<WebsiteRecord | null>(null)
 const importFileInput = ref<HTMLInputElement | null>(null)
 
-const showDocs = ref(false)
-const docsTarget = ref<WebsiteRecord | null>(null)
 const isDocsSite = (w: WebsiteRecord) => (w.settings as Record<string, unknown> | null)?.kind === 'docs'
 
 function openDocs(website: WebsiteRecord) {
-  docsTarget.value = website
-  showDocs.value = true
+  tabsStore.openDocsSite(website.id)
 }
 
 // A documentation site is a website whose pages are the Markdown files of a folder of the asset library.

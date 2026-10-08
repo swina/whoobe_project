@@ -8,7 +8,7 @@ page ("On this page"), breadcrumbs, previous/next links and **search**. It can b
 
 1. **Settings > Websites > + New Documentation.** Give it a name and the **folder of the asset library** that holds the files
    (for example `/docs/product`). Nothing is created in the folder; it is filled in the next step.
-2. The **Documents** window opens. Create documents (**+ New document**: a path such as `guide/install.md`) or **upload**
+2. The documentation site opens in a **tab** of the dashboard (with the tabs *Documents*, *Index*, *Publish*, *Settings*). Create documents (**+ New document**: a path such as `guide/install.md`) or **upload**
    files or a whole folder (`.md`, and the images and PDFs they use; the editor's **Insert image** button also uploads). Keep the structure you want: **folders are sections**.
 3. Open the site at its **root path** (the *Preview site* link): `https://your-host/<root-path>/`.
 
@@ -48,7 +48,7 @@ Plain Markdown (GitHub flavour: tables, task lists, fenced code with a language)
 - **Raw HTML**: a block of HTML is allowed and cleaned (scripts, event handlers and `javascript:` addresses are removed);
   a tag in the middle of a line is shown as text.
 
-The editor window shows the source on the left and the page on the right, as the visitors will see it. **Save** makes a new
+Each document opens in a **tab of its own** (several can be open at once, next to the list): the source on the left and the page on the right, as the visitors will see it. A tab with unsaved changes shows a dot and asks before it is closed. In the list, the box at the top finds a document by **title or path** and, from two letters, **in the text** of all the documents (typos tolerated). **Save** makes a new
 version of the file (asset versions); **Public** decides whether the file is shown to visitors.
 
 ## The index
