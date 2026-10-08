@@ -64,6 +64,10 @@ export interface LoadedDocsSite {
   docs: LoadedDoc[];
   nav: NavNode[];
   navSource: 'auto' | 'manual';
+  /** The index rebuilt from the tree of files, whichever one is in use (the editor offers it as a starting point). */
+  autoNav: NavNode[];
+  /** Text of the index file when there is one (the editor shows it). */
+  navText: string | null;
   warnings: string[];
   /** Every other file of the folder (images, pdf ...) by path relative to the source folder. */
   files: Map<string, AssetRecord>;
@@ -80,10 +84,12 @@ export async function loadDocsSite(config: DocsConfig, read: ContentReader, opts
   const files = new Map<string, AssetRecord>();
   const mdAssets: AssetRecord[] = [];
   let navAsset: AssetRecord | undefined;
+  // the index file only names documents that are present (the public view lists the public ones), so it is read whatever its own visibility
+  navAsset = all.find((a) => rel(a) === config.navFile);
   for (const a of visible) {
     const r = rel(a);
-    if (r === config.navFile) navAsset = a;
-    else if (MD.test(r)) mdAssets.push(a);
+    if (r === config.navFile) continue;
+    if (MD.test(r)) mdAssets.push(a);
     else files.set(r, a);
   }
 
@@ -100,9 +106,11 @@ export async function loadDocsSite(config: DocsConfig, read: ContentReader, opts
 
   const entries = docs.map((d) => d.entry);
   let navSource: 'auto' | 'manual' = 'auto';
+  let navText: string | null = null;
   let nav: NavNode[];
   if (navAsset) {
     const text = await read(navAsset);
+    navText = text;
     const parsed = text === null ? { entries: [], errors: [`${config.navFile} could not be read`] } : parseNavYaml(text);
     if (parsed.errors.length) {
       warnings.push(...parsed.errors.map((e) => `${config.navFile}: ${e}`), 'the automatic index is used until the index file is fixed');
@@ -116,7 +124,7 @@ export async function loadDocsSite(config: DocsConfig, read: ContentReader, opts
     const auto = buildAutoNav(entries);
     nav = auto.items; warnings.push(...auto.warnings);
   }
-  return { config, docs, nav, navSource, warnings, files };
+  return { config, docs, nav, navSource, autoNav: buildAutoNav(entries).items, navText, warnings, files };
 }
 
 /** Which document an address stands for ("" or "/" = the home page). */
@@ -175,8 +183,36 @@ export function describeDocsSite(site: LoadedDocsSite) {
     config: site.config,
     navSource: site.navSource,
     nav: site.nav,
-    documents: site.docs.map((d) => ({ path: d.path, title: docTitle(d.entry), route: d.route, hidden: !!d.entry.frontMatter.hidden, isPublic: d.asset.isPublic, version: d.asset.version, sizeBytes: d.asset.sizeBytes })),
+    autoNav: site.autoNav,
+    navFile: site.config.navFile,
+    navText: site.navText,
+    documents: site.docs.map((d) => ({ path: d.path, title: docTitle(d.entry), route: d.route, hidden: !!d.entry.frontMatter.hidden, isPublic: d.asset.isPublic, version: d.asset.version, sizeBytes: d.asset.sizeBytes, s3Key: d.asset.s3Key })),
     files: [...site.files.keys()].sort(),
     warnings: site.warnings,
   };
+}
+
+/** Renders text that is not saved yet (the editor's live preview) as it would be at `path`, with the folder's real links and files. */
+export function renderDraft(site: LoadedDocsSite, path: string, markdown: string) {
+  const parsed = parseDocument(markdown);
+  const byPath = new Map(site.docs.map((d) => [d.path, d]));
+  const rendered = renderMarkdown(parsed.body, {
+    currentPath: path,
+    docRoute: (p) => byPath.get(p)?.route ?? (p === path ? docRouteOf({ path, frontMatter: parsed.frontMatter }) : null),
+    assetUrl: (p) => { const a = site.files.get(p); return a ? `/dam-asset/${a.s3Key.split('/').map(encodeURIComponent).join('/')}` : null; },
+  });
+  return {
+    title: parsed.frontMatter.title || firstH1(parsed.body) || path.split('/').pop() || path,
+    html: rendered.html,
+    headings: rendered.headings.filter((h) => h.depth >= 2 && h.depth <= 3),
+    warnings: [...parsed.warnings, ...rendered.warnings],
+  };
+}
+
+/** Checks the text of an index file without saving it: the problems, the resulting index and what it leaves out. */
+export function checkNavText(site: LoadedDocsSite, text: string) {
+  const parsed = parseNavYaml(text);
+  if (parsed.errors.length) return { ok: false as const, errors: parsed.errors, warnings: [] as string[], nav: [] as NavNode[] };
+  const built = buildManualNav(parsed.entries, site.docs.map((d) => d.entry));
+  return { ok: true as const, errors: [] as string[], warnings: built.warnings, nav: built.items };
 }

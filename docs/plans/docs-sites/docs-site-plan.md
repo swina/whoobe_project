@@ -1,6 +1,6 @@
 # Documentation sites from Markdown - Plan
 
-**Status:** Decisions taken 2026-10-08 (section 13); phase 1: pipeline and read API done, dashboard and editor view to do · **Branch:** `feat/docs-sites`
+**Status:** Decisions taken 2026-10-08 (section 13); phase 1 done (pipeline, read API, dashboard manager, docs layout in the editor application); phase 2 (search, static generator, `_nav.yml` tree editor) next · **Branch:** `feat/docs-sites`
 
 ## 1. Goal
 

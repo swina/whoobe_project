@@ -138,6 +138,16 @@ describe('the public site', () => {
   })
 })
 
+describe('which site answers at a root path', () => {
+  it('answers for a documentation website only, and refuses odd segments', async () => {
+    const r = await anon.get(`/public/docs-site/docs-${tag}`)
+    expect(r.status, r.text.slice(0, 100)).toBe(200)
+    expect(r.json).toMatchObject({ websiteId: siteId, rootPath: `/docs-${tag}`, title: 'Sec docs' })
+    expect((await anon.get(`/public/docs-site/plain-${tag}`)).status).toBe(404)
+    for (const bad of ['..', '%2e%2e', 'a%2fb', 'UPPER', '', 'x'.repeat(80)]) expect([400, 404], bad).toContain((await anon.get(`/public/docs-site/${bad}`)).status)
+  })
+})
+
 describe('a manual index (_nav.yml)', () => {
   it('replaces the automatic one, and a broken file falls back to it with a warning', async () => {
     await put('_nav.yml', 'application/yaml', '- title: Start here\n  items:\n    - doc: guide/01-install.md\n      title: First step\n- link: https://example.org/changelog\n  title: Changelog\n')
