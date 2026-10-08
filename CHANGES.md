@@ -1,3 +1,6 @@
+## [Publishing guides: a section on styles and themes] — 2026-10-08
+- Branch: `master`. `docs/release/guides/publish/website-publishing.md` and `capacitor-mobile-app.md`: new "Styles and themes" section (what a theme gives the generated project, body rules inside `@layer base`, how layers/utilities/plain classes interact, `@import` handling, regenerate after a theme change; for the mobile project where the theme and the defaults live).
+
 ## [Generated projects: default body styles go in a layer below the theme's (the :where() fix was not enough)] — 2026-10-08
 - Branch: `master`. Report with the real `<head>` of a generated mobile project: the theme wrote `body { background-color; color; font-family }` inside `@layer base`, the page stayed white.
 - Cause: any **unlayered** rule beats every **layered** one whatever its specificity or position, so the project's `main.css` (`html, body, #app { background: #fff }`) won over the theme's `@layer base` body rule; `:where()` (previous entry) only lowers specificity and changed nothing here.

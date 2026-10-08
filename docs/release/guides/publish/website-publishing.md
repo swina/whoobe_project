@@ -310,6 +310,22 @@ Verify before shutting down the local instance: open a generated HTML file (or a
 
 ---
 
+## Styles and themes
+
+A website's theme (Settings > Themes) has two parts, and both end up in the generated project:
+
+- **Colours** (and any `@theme { --color-* }` you write in the custom CSS) become Tailwind colour utilities: a colour named `accent-violet` gives `bg-accent-violet`, `text-accent-violet`, `border-accent-violet` ...
+- **Custom CSS** (the theme's *styles*) is added as it is: fonts (`@import`), rules for `body`, classes such as `.glass-panel`.
+
+Rules worth knowing when you write that CSS:
+
+- **Write the rules for `body` (background, text colour, font) inside `@layer base { ... }`.** The generated projects keep their own defaults (white page, default font) in a layer *below* `base`, so your rule always wins. A rule outside any layer also wins, but then it beats Tailwind's utility classes too (`bg-black` on the body would stop working).
+- **Tailwind's classes (`utilities` layer) win over `base` and over the defaults.** To restyle one element, give it a class; to set the page, use `body` in `@layer base`.
+- **Plain rules (`.glass-panel { ... }`) are outside any layer**, so they beat Tailwind utilities with the same property. If a utility class must override one of your classes, put your class inside `@layer components { ... }`.
+- **Order inside the same layer decides**: the last rule wins. Layers decide before specificity and before position: an unlayered rule beats every layered one whatever its order in the file.
+- **`@import` lines (Google Fonts) are kept apart and loaded first**; nothing else needs to be moved.
+- Colours changed in the theme need the project to be generated again (see "Theme, Gateway URL, base path changes").
+
 ## Updating the published site
 
 ### Content changes (pages, data objects)
