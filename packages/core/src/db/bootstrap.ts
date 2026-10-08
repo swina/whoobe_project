@@ -63,4 +63,12 @@ export async function bootstrapDatabase(): Promise<void> {
   } catch (err) {
     console.error('MFA secret encryption backfill failed:', err);
   }
+  // Same for the SMTP password in mail_settings (no-op without MAIL_SETTINGS_ENCRYPTION_KEY, idempotent).
+  try {
+    const { backfillMailSettingsEncryption } = await import('./scripts/backfill-mail-settings-encryption.js');
+    const r = await backfillMailSettingsEncryption();
+    if (r.encrypted > 0) console.log(`Encrypted ${r.encrypted} outgoing-mail password(s) at rest.`);
+  } catch (err) {
+    console.error('Outgoing-mail password encryption backfill failed:', err);
+  }
 }

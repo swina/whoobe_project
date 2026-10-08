@@ -15,7 +15,7 @@ This guide covers the day-to-day operation: provisioning a new workspace, verify
 - **Reverse-proxy awareness**: the provisioning sets `TRUST_PROXY=1` (login lockout and rate limits see the real client address instead of `127.0.0.1`) and `ADMIN_PUBLIC_URL=<scheme>://<hostname>` (links in password-reset e-mails).
 - **Private assets are private** (on by default, `DAM_ENFORCE_ASSET_VISIBILITY`): an asset that is not public answers 404 to anonymous requests (a logged-in user sees it). **Public = in the `/public` folder or any of its sub-folders** (built-in rule `/public/**`; more rules can be added in the DAM settings). Put everything that public pages and published sites use under `/public`, otherwise visitors get 404.
 - **Loopback-only data and app ports**: Postgres and the S3 port are published on `127.0.0.1`, and so are the application ports (`WS_APP_BIND_ADDRESS=127.0.0.1`): only the reverse proxy reaches them.
-- **Fresh secrets per workspace**: DB and S3 credentials, `MIGRATION_SOURCE_ENCRYPTION_KEY`, `GATEWAY_AUTH_ENCRYPTION_KEY`, `DAM_SERVICE_TOKEN`, `SITE_API_KEY_PEPPER`, `TOTP_ENCRYPTION_KEY` — none shared with another workspace or with dev's `.env`.
+- **Fresh secrets per workspace**: DB and S3 credentials, `MIGRATION_SOURCE_ENCRYPTION_KEY`, `GATEWAY_AUTH_ENCRYPTION_KEY`, `DAM_SERVICE_TOKEN`, `SITE_API_KEY_PEPPER`, `TOTP_ENCRYPTION_KEY`, `MAIL_SETTINGS_ENCRYPTION_KEY` — none shared with another workspace or with dev's `.env`.
 - **TLS policy** (when you enable HTTPS): TLS 1.2/1.3 only, forward-secret AEAD ciphers, HSTS for one year (F-049).
 
 ## Prerequisites

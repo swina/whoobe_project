@@ -1,4 +1,6 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+vi.setConfig({ testTimeout: 30_000 });   // a cold disposable database is slow on the first test
 
 // Needs a DISPOSABLE database: it migrates it and empties tables. Never point it at real data. Run with e.g.
 //   docker run -d --rm --name pt -e POSTGRES_PASSWORD=pt -p 55432:5432 postgres:16-alpine

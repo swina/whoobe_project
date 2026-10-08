@@ -15,6 +15,9 @@ export interface MailLogRecord {
   text: string | null;
   status: string;
   error: string | null;
+  provider: string | null;
+  reference: string | null;
+  websiteId: string | null;
   sentAt: Date;
 }
 
@@ -30,6 +33,9 @@ export async function logMailDelivery(input: {
   text?: string | null;
   status: MailLogStatus;
   error?: string | null;
+  provider?: string | null;
+  reference?: string | null;
+  websiteId?: string | null;
 }): Promise<MailLogRecord> {
   const db = getDb();
   const [row] = await db
@@ -43,6 +49,9 @@ export async function logMailDelivery(input: {
       text: input.text ?? null,
       status: input.status,
       error: input.error ?? null,
+      provider: input.provider ?? null,
+      reference: input.reference ?? null,
+      websiteId: input.websiteId ?? null,
     })
     .returning();
   return row;

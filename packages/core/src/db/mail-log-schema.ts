@@ -16,5 +16,10 @@ export const mailLog = pgTable('mail_log', {
   text: text('text'),
   status: text('status').notNull(),
   error: text('error'),
+  // how it was sent: `smtp` or a mail provider id; the id the provider gave back for the message (OneSignal's notification
+  // id ...); the website whose settings were used (null = the default). Null on rows from before providers existed.
+  provider: text('provider'),
+  reference: text('reference'),
+  websiteId: uuid('website_id'),
   sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
 });

@@ -3298,7 +3298,7 @@ paths:
   /mail-settings:
     get:
       tags: ["core-api: Mail: settings, log, templates"]
-      summary: "Get the SMTP/transactional-mail configuration."
+      summary: "Get a mail configuration: the default, or with `?websiteId=` that website's own, plus what a message of that scope is sent with. Passwords and API keys are never returned (only whether they are set)."
       responses:
         "200":
           description: OK
@@ -3310,7 +3310,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
     put:
       tags: ["core-api: Mail: settings, log, templates"]
-      summary: "Update mail settings."
+      summary: "Save a mail configuration for the default (no `websiteId`) or for one website: `provider` is `smtp` (with `smtp: {host, port, secure, user, password}`) or a provider id (with `providerConfig`). Secrets are encrypted at rest; a blank secret keeps the stored one. Needs `MAIL_SETTINGS_ENCRYPTION_KEY` on the server."
       requestBody:
         required: false
         content:
@@ -3327,10 +3327,35 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "Remove a website's own mail configuration (`?websiteId=`), so its mail goes out with the default again. The default cannot be removed."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /mail-providers:
+    get:
+      tags: ["core-api: Mail: settings, log, templates"]
+      summary: "List the installed HTTP mail providers (OneSignal ...): their id, label and config fields. Providers are JSON files (`packages/core/mail-providers`, `MAIL_PROVIDERS_PATH`), read again when one changes."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /mail-settings/test:
     post:
       tags: ["core-api: Mail: settings, log, templates"]
-      summary: "Send a test email with the current settings."
+      summary: "Send a test email with the configuration of the default or, with `websiteId`, of that website."
       requestBody:
         required: false
         content:

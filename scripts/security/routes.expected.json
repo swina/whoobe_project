@@ -889,11 +889,25 @@
         "SETTINGS_MANAGE"
       ]
     },
+    "GET /mail-providers": {
+      "access": "permission",
+      "permissions": [
+        "SETTINGS_MANAGE"
+      ],
+      "note": "installed HTTP mail providers (no secrets)"
+    },
     "PUT /mail-settings": {
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
       ]
+    },
+    "DELETE /mail-settings": {
+      "access": "permission",
+      "permissions": [
+        "SETTINGS_MANAGE"
+      ],
+      "note": "removes a website's own mail configuration (it falls back to the default)"
     },
     "POST /mail-settings/test": {
       "access": "permission",
