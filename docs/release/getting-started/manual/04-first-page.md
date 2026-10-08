@@ -63,7 +63,9 @@ Two ways to look at the result:
 - The **Preview** sub-tab renders the page inside the dashboard itself.
 - The **external-link icon** next to the sub-tab buttons opens the page in a new browser tab, at its real preview URL: your website's root preview path plus the page's slug (e.g. `/default/about-us`).
 
-This preview URL lives on Whoobe's own editor origin, tied to the website's root preview path — it's not yet your real public domain. Getting an actual domain serving these pages to the public is a separate, later step covered in Chapter 16, "Publishing a Website."
+This preview URL lives on Whoobe's own editor origin, tied to the website's root preview path — it's not yet your real public domain.
+
+**Where the preview is, exactly.** The preview is served by the editor application, which is mounted at a base path that depends on how Whoobe is installed: on a local development setup it is the editor's own address (`http://localhost:3006/default/about-us`); on a workspace (Docker, behind nginx) it sits under `/whoobe-one/` of the dashboard's host name (`https://dashboard.example.com/whoobe-one/default/about-us`). So the root preview path is the part *after* `/whoobe-one/`, and typing `https://dashboard.example.com/default/about-us` into the browser opens nothing useful (the dashboard has no such page and shows an empty one). The links you put in your pages are the site's own paths, root path included (`/default/blog`); in the preview they are followed inside the editor, whatever the base path is. Getting an actual domain serving these pages to the public is a separate, later step covered in Chapter 16, "Publishing a Website."
 
 ## What you just did, in one sentence
 
