@@ -490,6 +490,19 @@ declare module '@alpinejs/collapse' {
 `
 }
 
+/** The theme as the generated app's <head> needs it. The Tailwind browser runtime compiles only <style type="text/tailwindcss">:
+ *  the @theme { --color-* } block in a plain <style> is invalid CSS and was ignored, so theme colours never became
+ *  utilities (text-brand, bg-brand ...). @import lines (Google Fonts) stay in a plain <style>, where the browser loads them. */
+function themeStyleTags(themeCss: string): string {
+  const lines = themeCss.split('\n')
+  const imports = lines.filter((l) => /^\s*@import\b/.test(l)).join('\n')
+  const rest = lines.filter((l) => !/^\s*@import\b/.test(l)).join('\n')
+  return [
+    imports ? `<style id="theme-imports">${imports}</style>` : '',
+    `<style type="text/tailwindcss" id="theme-styles">${rest}</style>`,
+  ].filter(Boolean).join('\n    ')
+}
+
 function indexHtml(opts: ScaffoldOptions): string {
   const fontLinks = opts.fontFamilies
     .map((f) => `<link href="https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@300;400;500;600;700&display=swap" rel="stylesheet">`)
@@ -502,7 +515,7 @@ function indexHtml(opts: ScaffoldOptions): string {
     <meta name="theme-color" content="${(opts.pwaConfig?.themeColor as string) ?? '#6366f1'}" />
     <title>${opts.appName}</title>
     ${fontLinks}
-    <style id="theme-styles">${opts.themeCss}</style>
+    ${themeStyleTags(opts.themeCss)}
   </head>
   <body>
     <div id="app"></div>
