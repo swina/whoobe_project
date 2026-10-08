@@ -58,6 +58,9 @@ test('export zips the asset file, import stores it again and rewrites the links'
     const back = (await assets.get('/api/v1/dam/assets')).json.assets.find((a: any) => a.pimcorePath === path)
     expect(back, 'the asset is back').toBeTruthy()
     expect(back.id, 'with a new id').not.toBe(oldAssetId)
+    // the DAM tree is built from folder records: the folder of an imported file has to exist, or the file is invisible
+    const folders = (await assets.get('/api/v1/dam/folders')).json.folders.map((f: any) => f.path)
+    expect(folders, 'the imported file\'s folder is in the DAM tree').toContain(`/bundle-${tag}`)
     const sites = (await api.get('/whoobe-one/websites')).json.websites.filter((w: any) => w.name.startsWith(`Zip ${tag} (import`))
     expect(sites).toHaveLength(1)
     created.push(sites[0].id)

@@ -25,6 +25,7 @@ import {
   PERMISSIONS,
   listFolders,
   createFolderRecord,
+  repairMissingFolders,
   deleteFolderRecord,
   listAssets,
   countAssets,
@@ -662,6 +663,8 @@ app.post('/api/v1/dam/assets/move', requirePermission(PERMISSIONS.ASSETS_UPLOAD)
 
 app.get('/api/v1/dam/folders', requireAuth, async (_req: Request, res: Response): Promise<void> => {
   try {
+    // folders of assets that were stored without one (older uploads, imports) are created now, so the tree shows them
+    await repairMissingFolders().catch((err) => logger.warn({ err }, 'DAM folder repair failed'));
     const folders = await listFolders();
     res.json({ folders });
   } catch (error: any) {
