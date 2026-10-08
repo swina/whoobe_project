@@ -4,6 +4,9 @@ import { test, expect, ADMIN_URL } from './fixtures'
 
 test('a website gets its own OneSignal configuration from the dashboard, and the key is not shown again', async ({ api, authed, tag }) => {
   const KEY = `os_ui_secret_${tag}_do_not_show`
+  // the message below needs a default to send with; do not depend on another suite having saved one
+  const dflt = await api.put('/mail-settings', { provider: 'smtp', smtp: { host: 'smtp.sectest.local', port: 2525, secure: false, user: '' }, fromAddress: 'noreply@sectest.local' })
+  expect(dflt.status, dflt.text.slice(0, 120)).toBe(200)
   const site = await api.post('/whoobe-one/websites', { name: `UI Mail ${tag}`, rootPath: `/uimail-${tag}` })
   expect(site.status, site.text.slice(0, 100)).toBe(201)
   const siteId = site.json.website.id

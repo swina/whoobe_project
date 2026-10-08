@@ -5,6 +5,7 @@
 - **Finding documents** (Documents tab): a box filters the list by title or path, and from two letters also searches **in the text** of every document with the site's own index of words (the editors' one, private documents included; typos tolerated), listing matches as "page › section" with an excerpt; a click opens the document in its tab. The list is indented by folder.
 - State shared between the tabs in `stores/docsSitesStore.ts` (one tree per website): a save in a document tab refreshes the list, the index and the image lists everywhere.
 - Tests: the browser spec `docs-site.spec.ts` now drives the tabs (edit in a tab, return to the site tab, new document, filter by title, find by text with a typo and open the match, unsaved-changes confirmation dismissed then accepted, index, publish, the docs layout, search, anonymous visit); the whole browser suite on the throwaway stack passes (21 specs).
+- Test hygiene: `browser/mail-settings.spec.ts` assumed another suite had saved a default mail configuration (it failed on a fresh stack); it now saves one itself.
 - Docs: `guides/documentation-sites.md`.
 
 ## [Documentation sites: inserting images with width and alignment] — 2026-10-08
