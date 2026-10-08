@@ -1,3 +1,8 @@
+## [Mobile/PWA project: the theme is compiled by Tailwind (colours were ignored)] — 2026-10-08
+- Branch: `master`. Follow-up of the previous entry: the theme of a generated mobile project still did not behave.
+- Cause (reproduced in Chromium with the project's own order: theme `<style>` in the head, Tailwind browser runtime added by script afterwards): `<style id="theme-styles">` was a plain style, which the runtime never compiles, so its `@theme { --color-* }` block was invalid CSS and ignored: theme colours never became utilities (`text-brand` stayed the default colour) while plain rules like `body { ... }` applied.
+- `packages/mobile-app/src/cli.ts`: the theme goes in `<style type="text/tailwindcss" id="theme-styles">` (compiled; `@theme` and the custom rules work), the `@import` lines (Google Fonts) in a separate plain `<style id="theme-imports">` because Tailwind's compiler drops the output when it has to resolve a remote import. Checked in the browser with and without an import. Together with the `:where()` defaults of the previous entry.
+
 ## [Theme CSS no longer overridden by the generated stylesheets' body defaults] — 2026-10-08
 - Branch: `master`. Report: a theme with `body { background-color: black; }` had no effect because a generated stylesheet that comes after it declares the body again.
 - `packages/mobile-app/src/cli.ts` (`mainCss`): the white `html, body, #app` background and the `body` font-family came after `<style id="theme-styles">` with the same specificity and won; they are now `:where(...)` defaults (specificity 0), so what the theme says wins.
