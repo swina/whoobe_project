@@ -70,7 +70,7 @@ import { useTabsStore } from '../../stores/tabsStore'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import type { WhoobeOnePage, PageSeo } from '../../utils/pages-api'
 import { seoHasTokens, hasSeoTokens } from '@whoobe-cms/core'
-import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
+import { getSitePreviewBaseUrl } from '../../utils/editor-urls'
 
 const props = defineProps<{
   pageId: string
@@ -84,7 +84,7 @@ const page = ref<WhoobeOnePage | null>(null)
 const currentTab = computed(() => tabsStore.tabs.find((t) => t.itemKind === 'page' && t.itemId === props.pageId))
 
 const iframeSrc = computed(() => {
-  const base = getWhoobeOneSpikeUrl()
+  const base = getSitePreviewBaseUrl()
   const tab = currentTab.value
   if (tab?.pagePreviewPath) {
     return `${base}${tab.pagePreviewPath}`

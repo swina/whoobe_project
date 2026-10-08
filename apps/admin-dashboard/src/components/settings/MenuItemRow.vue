@@ -102,7 +102,7 @@ import { ref, computed, watch } from 'vue'
 import { usePagesStore } from '../../stores/pagesStore'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import type { MenuItem } from '../../utils/menus-api'
-import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
+import { getSitePreviewBaseUrl } from '../../utils/editor-urls'
 
 const props = withDefaults(defineProps<{
   item: MenuItem
@@ -209,8 +209,8 @@ const previewUrl = computed(() => {
   const rootPath = website?.rootPath || ''
   // Root page (slug '/') maps to just /{rootPath}
   const url = target === '/'
-    ? `${getWhoobeOneSpikeUrl()}${rootPath || '/'}`
-    : `${getWhoobeOneSpikeUrl()}${rootPath}${target}`
+    ? `${getSitePreviewBaseUrl()}${rootPath || '/'}`
+    : `${getSitePreviewBaseUrl()}${rootPath}${target}`
   return url
 })
 

@@ -24,8 +24,49 @@ __EDGE_LIMITS__
 # their own limits behind this (core-api and gateway 25 MB of JSON, the asset-processor's per-file cap).
 client_max_body_size __MAX_BODY__;
 
-# Admin dashboard (Vue SPA)
+# Dashboard or website preview? The dashboard (Vue SPA) and the previews of the websites share this location: a path
+# is a website's when its first segment is the root (preview) path of one - /whoobe-website/blog, set in Websites -,
+# anything else is the dashboard. core-api decides (GET /site-root, 204 or 403, from a 5 s cache): this is how a
+# website is previewed at its own root path instead of under /whoobe-one/, the way it is on a local installation.
+# The names the proxy routes itself (below), /assets/ and the usual files are never offered as roots (core-api refuses
+# them as root paths). If core-api cannot be asked, the request goes to the dashboard, as it always did.
+location = /_whoobe_site_root {
+    internal;
+    proxy_pass http://127.0.0.1:__CORE_API_PORT__/site-root;
+    proxy_pass_request_body off;
+    proxy_set_header Content-Length "";
+    proxy_set_header Host $host;
+    proxy_set_header X-Original-URI $request_uri;
+    proxy_intercept_errors on;
+    error_page 500 502 503 504 = @whoobe_not_a_site;
+}
+
+location @whoobe_not_a_site {
+    return 403;
+}
+
+# Built files of the dashboard: no need to ask who owns the path
+location /assets/ {
+    proxy_pass http://127.0.0.1:__ADMIN_PORT__;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
 location / {
+    auth_request /_whoobe_site_root;
+    error_page 403 = @whoobe_dashboard;
+    # the editor container answers index.html for any path; the app renders the page of the website from the URL
+    proxy_pass http://127.0.0.1:__WHOOBE_ONE_PORT__;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+# Admin dashboard (Vue SPA)
+location @whoobe_dashboard {
     proxy_pass http://127.0.0.1:__ADMIN_PORT__;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;

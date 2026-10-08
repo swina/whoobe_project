@@ -98,7 +98,7 @@ import PageSettingsTab from './PageSettingsTab.vue'
 import PagePreviewTab from './PagePreviewTab.vue'
 import PageCreateForm from './PageCreateForm.vue'
 import { Eye, ExternalLink, LayoutDashboard, Settings, Maximize, Minimize } from '@lucide/vue'
-import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
+import { getSitePreviewBaseUrl } from '../../utils/editor-urls'
 
 const props = defineProps<{
   pageId: string
@@ -147,7 +147,7 @@ const openPreviewUrl = computed(() => {
   const rootPath = website?.rootPath || ''
   const locale = currentTab.value?.pagePreviewLocale || p.locale || 'en'
   const query = `?locale=${encodeURIComponent(locale)}${rootPath ? `&rootPath=${encodeURIComponent(rootPath)}` : ''}`
-  return `${getWhoobeOneSpikeUrl()}${rootPath}${slug}${query}`
+  return `${getSitePreviewBaseUrl()}${rootPath}${slug}${query}`
 })
 
 async function load() {

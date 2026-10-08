@@ -104,3 +104,4 @@ export * from './http/rate-limit.js';
 export * from './http/safe-fetch.js';
 export * from './dam/self-healing-client.js';
 export * from './portability/index.js';
+export * from './routing/site-roots.js';
