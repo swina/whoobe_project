@@ -1,6 +1,6 @@
 # Documentation sites from Markdown - Plan
 
-**Status:** Decisions taken 2026-10-08 (section 13), phase 1 in progress · **Branch:** `feat/docs-sites`
+**Status:** Decisions taken 2026-10-08 (section 13); phase 1: pipeline and read API done, dashboard and editor view to do · **Branch:** `feat/docs-sites`
 
 ## 1. Goal
 
@@ -112,16 +112,15 @@ Consumers: the **API** (live and preview), the **search indexer** (on save) and 
 
 ## 5. API
 
-Authenticated (dashboard), permission-gated like the other settings/asset routes (route contract + docs updated):
+Authenticated (dashboard), permission-gated like the other asset routes (route contract + docs updated). **Documents are
+written with the ordinary DAM upload** (`POST /api/v1/dam/upload`, same path = a new version), so there is no second write path to secure;
+the routes below only read:
 
 | Route | Purpose | Permission |
 |---|---|---|
-| `GET /docs-sites/:websiteId/tree` | source tree, parsed front matter, the index (manual or automatic), warnings | `assets:list` |
-| `PUT /docs-sites/:websiteId/nav` | write `_nav.yml` (validated against the tree) | `assets:edit` |
-| `POST /docs-sites/:websiteId/documents` | create a document (path, content) | `assets:upload` |
-| `PUT /docs-sites/:websiteId/documents/*` | save a document (new version of the asset) | `assets:edit` |
-| `POST /docs-sites/:websiteId/reindex` | rebuild the site's search documents | `settings:manage` |
-| `GET /docs-sites/:websiteId/preview/*` | the rendered page including drafts (private folders readable by the user) | `assets:view` |
+| `GET /docs-sites/:websiteId/tree` | documents (title, address, public/private), the index (automatic or `_nav.yml`), the other files, warnings | `assets:list` |
+| `GET /docs-sites/:websiteId/preview/*` | a rendered page including private documents | `assets:view` |
+| `POST /docs-sites/:websiteId/reindex` | rebuild the site's search documents (phase 2) | `settings:manage` |
 
 Public (no login; only for documents whose DAM folder is public; rate limited like `/public/search`):
 

@@ -3295,6 +3295,90 @@ paths:
             application/json:
               schema:
                 type: object
+  /docs-sites/{websiteId}/tree:
+    get:
+      tags: ["core-api: Documentation sites (Markdown)"]
+      summary: "A documentation website (settings `kind: docs`, source DAM folder): its documents with titles, addresses and visibility, the index (automatic from the tree of files, or `_nav.yml`), the other files and the warnings (broken links, entries pointing nowhere)."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /docs-sites/{websiteId}/preview/{splat}:
+    get:
+      tags: ["core-api: Documentation sites (Markdown)"]
+      summary: "A rendered page of a documentation website by its address (empty = home), private documents included: `{ site, nav, page }` with the HTML, the headings, breadcrumbs, previous/next and the warnings."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /public/docs/{websiteId}/nav:
+    get:
+      tags: ["core-api: Documentation sites (Markdown)"]
+      summary: "Index of the PUBLIC documents of a documentation website."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /public/docs/{websiteId}/page/{splat}:
+    get:
+      tags: ["core-api: Documentation sites (Markdown)"]
+      summary: "A rendered public document by its address (empty = home): `{ site, page }`. A document that is private in the DAM answers 404."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
   /mail-settings:
     get:
       tags: ["core-api: Mail: settings, log, templates"]

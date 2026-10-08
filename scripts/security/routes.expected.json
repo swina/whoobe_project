@@ -1145,6 +1145,30 @@
     "GET /api/v1/system/logs/download": {
       "access": "auth",
       "permissions": []
+    },
+    "GET /docs-sites/:websiteId/tree": {
+      "access": "permission",
+      "permissions": [
+        "ASSETS_LIST"
+      ],
+      "note": "documentation site: documents, index and warnings of the source folder"
+    },
+    "GET /docs-sites/:websiteId/preview/*": {
+      "access": "permission",
+      "permissions": [
+        "ASSETS_VIEW"
+      ],
+      "note": "documentation site: a rendered page, private documents included"
+    },
+    "GET /public/docs/:websiteId/nav": {
+      "access": "public",
+      "permissions": [],
+      "note": "documentation site: index of the public documents"
+    },
+    "GET /public/docs/:websiteId/page/*": {
+      "access": "public",
+      "permissions": [],
+      "note": "documentation site: a rendered public document"
     }
   }
 }
