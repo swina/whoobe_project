@@ -5490,6 +5490,7 @@ app.post('/whoobe-one/websites/import', requirePermission(PERMISSIONS.OBJECTS_WR
       // objects:publish is needed to bring published content in as published; without it everything lands as a draft
       restorePublication: mayChangePublished(req, false, true),
       assetMap: req.body?.assetMap && typeof req.body.assetMap === 'object' ? req.body.assetMap : undefined,
+      docsFolder: typeof req.body?.docsFolder === 'string' && req.body.docsFolder.trim() ? req.body.docsFolder : undefined,
     });
     res.status(report.dryRun ? 200 : 201).json(report);
   } catch (error: any) {

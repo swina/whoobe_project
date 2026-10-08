@@ -1,5 +1,5 @@
 import { findBundleEntitiesByIds } from '../db/bundle-records.js';
-import { listAssets } from '../db/asset-records.js';
+import { listAssets, listAssetsUnderFolder } from '../db/asset-records.js';
 import { getDataClass, getDataClassByName } from '../db/data-classes-records.js';
 import { getDataComponentByName } from '../db/data-components-records.js';
 import { listDataObjects } from '../db/data-objects-records.js';
@@ -8,7 +8,7 @@ import { getWebsite } from '../db/websites-records.js';
 import { listWebsitePaths } from '../db/website-paths-records.js';
 import { listWebsiteTemplates } from '../db/website-templates-records.js';
 import { listWhoobePages } from '../db/whoobe-pages-records.js';
-import type { BundleObject, BundlePage, BundleTheme, WebsiteBundle } from './bundle.js';
+import type { BundleAsset, BundleObject, BundlePage, BundleTheme, WebsiteBundle } from './bundle.js';
 import { collectDependencies, type DependencyOptions, type DependencyResolvers } from './dependencies.js';
 
 const toTheme = (t: { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles: string; tailwindClasses: string }): BundleTheme =>
@@ -24,6 +24,16 @@ const toPage = (p: any): BundlePage => ({
   kind: p.kind, published: p.published, workflowState: p.workflowState, content: p.content, seo: p.seo, sitemap: p.sitemap,
   search: p.search, pimcoreId: p.pimcoreId, path: p.path, themeId: p.themeId,
 });
+
+/** The source folder of a documentation website (`settings.kind = "docs"`), normalised ("/docs/product"), or null. */
+export function documentationFolderOf(settings: Record<string, unknown> | null | undefined): string | null {
+  const s = (settings ?? {}) as Record<string, any>;
+  if (s.kind !== 'docs') return null;
+  const raw = typeof s.docs?.sourceFolder === 'string' ? s.docs.sourceFolder : '';
+  const parts = raw.split('/').filter(Boolean);
+  if (parts.length === 0 || parts.some((p: string) => p === '..' || p === '.') || /[\u0000-\u001f\\]/.test(raw)) return null;
+  return '/' + parts.join('/');
+}
 
 /** The database side of the dependency walk. */
 export const dbDependencyResolvers: DependencyResolvers = {
@@ -78,6 +88,13 @@ export async function buildWebsiteBundle(websiteId: string, options?: Dependency
     ...templates.map((t) => t.layout),
     ...menus.map((m) => m.items),
   ];
+  // A documentation website has no pages: its content is the Markdown files, the images and the index in a folder of the asset library.
+  // They travel as ordinary assets of the bundle (paths, visibility, files), so the dashboard zips them with everything else.
+  const docsFolder = documentationFolderOf(website.settings as Record<string, unknown> | null);
+  const docsAssets: BundleAsset[] = docsFolder
+    ? (await listAssetsUnderFolder(docsFolder)).filter((a) => a.pimcorePath.startsWith(`${docsFolder}/`))
+        .map((a) => ({ id: a.id, pimcorePath: a.pimcorePath, filename: a.filename, mimeType: a.mimeType, sizeBytes: a.sizeBytes, isPublic: a.isPublic, metadata: a.metadata }))
+    : [];
   const dep = await collectDependencies(documents, new Set(pages.map((p) => p.id!)), new Set(themes.keys()), dbDependencyResolvers, options);
   for (const t of dep.themes) if (t.id && !themes.has(t.id)) themes.set(t.id, t);
 
@@ -102,6 +119,6 @@ export async function buildWebsiteBundle(websiteId: string, options?: Dependency
     dataComponents: dep.dataComponents,
     dataClasses: dep.dataClasses,
     dataObjects: dep.dataObjects,
-    assets: dep.assets,
+    assets: [...dep.assets, ...docsAssets.filter((d) => !dep.assets.some((a) => a.id === d.id))],
   };
 }

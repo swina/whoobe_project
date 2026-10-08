@@ -41,6 +41,7 @@
           <template v-if="isDocsSite(website)">
             <a :href="docsPreviewUrl(website.rootPath)" target="_blank" rel="noopener" :data-testid="`docs-preview-${website.id}`" class="text-xs font-semibold text-sky-400 hover:text-sky-300" title="Open the documentation site">Preview</a>
             <button :data-testid="`docs-open-${website.id}`" @click="openDocs(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Documents</button>
+            <button :data-testid="`docs-export-${website.id}`" @click="exportWebsiteAction(website)" :disabled="!!busy" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 disabled:opacity-50" title="Export the documentation (files, images, index) as a .zip">Export</button>
           </template>
           <template v-else>
             <button @click="openPublish(website)" class="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1"><Rocket class="w-3 h-3" />Publish</button>
@@ -64,7 +65,7 @@ import { ref, onMounted } from 'vue'
 import { Sparkles, Rocket } from '@lucide/vue'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import { useTabsStore } from '../../stores/tabsStore'
-import { buildWebsiteZip, openBundleFile, previewBundleImport, importOpenedBundle } from '../../utils/website-bundle'
+import { downloadWebsiteZip, openBundleFile, previewBundleImport, importOpenedBundle } from '../../utils/website-bundle'
 import { useDamStore } from '../../stores/damStore'
 import { useDataClassesStore } from '../../stores/dataClassesStore'
 import { useDataObjectsStore } from '../../stores/dataObjectsStore'
@@ -169,16 +170,10 @@ function damEndpoint() {
 // The export is a .zip: bundle.json (website, pages, templates, menus, themes, snippets, data classes and objects,
 // asset records) plus the asset files. Without the files the assets are only listed.
 async function exportWebsiteAction(website: WebsiteRecord) {
-  const withAssets = confirm('Include the asset files in the export?\n\nOK: a complete twin (files travel in the .zip).\nCancel: assets are only listed; the other installation must already have them at the same paths.')
+  // A documentation website IS its files (documents, images, index): there is nothing to leave out, so nobody is asked.
+  const withAssets = isDocsSite(website) ? true : confirm('Include the asset files in the export?\n\nOK: a complete twin (files travel in the .zip).\nCancel: assets are only listed; the other installation must already have them at the same paths.')
   try {
-    const baseUrl = getDefaultCoreApiUrl()
-    const { blob, assets, missing } = await buildWebsiteZip(baseUrl, damEndpoint(), website.id, { withAssets, dataObjects: 'all' }, (m) => { busy.value = m })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${website.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-export.zip`
-    a.click()
-    URL.revokeObjectURL(url)
+    const { assets, missing } = await downloadWebsiteZip(getDefaultCoreApiUrl(), damEndpoint(), website, { withAssets, dataObjects: 'all' }, (m) => { busy.value = m })
     if (withAssets && missing.length) alert(`Exported with ${assets} asset file(s). ${missing.length} could not be read and are listed only:\n${missing.slice(0, 10).join('\n')}`)
   } catch (e: any) {
     alert(e?.message || 'Failed to export website')
@@ -225,6 +220,7 @@ async function handleImportFile(event: Event) {
       `Pages: ${c.pages}${c.externalPages ? ` (+${c.externalPages} module pages used by its layouts)` : ''}, templates: ${c.templates}, menus: ${c.menus}, snippets: ${c.snippets}, themes: ${c.themes}`,
       `Data classes: ${c.classesCreated} new, ${c.classesReused} already here. Data objects: ${c.objectsCreated} new, ${c.objectsReused} already here`,
       `Assets: ${toStore} to store, ${plan.assets.length - toStore} already here${opened.zip ? '' : ' (no files in this export)'}`,
+      ...(plan.docs ? [`Documentation: ${toStore} file(s) go to ${plan.docs.targetFolder}`] : []),
       ...plan.warnings.map((w) => `! ${w}`),
     ]
     if (!confirm(lines.join('\n'))) { input.value = ''; return }

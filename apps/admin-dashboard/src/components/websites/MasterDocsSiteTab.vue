@@ -5,7 +5,8 @@
         <h4 class="text-lg font-bold text-slate-100 light:text-slate-900 truncate">{{ website.name }}</h4>
         <div class="text-xs text-slate-500 font-mono truncate">source folder {{ tree?.config.sourceFolder }}</div>
       </div>
-      <a v-if="previewUrl" data-testid="docs-preview-site" :href="previewUrl" target="_blank" rel="noopener" class="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/40 flex items-center gap-1.5 shrink-0"><ExternalLink class="w-3.5 h-3.5" />Preview site</a>
+      <button class="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-200 border border-emerald-500/40 shrink-0 disabled:opacity-50" data-testid="docs-export" :disabled="!!busy" title="Export the documentation (documents, images, index) as a .zip" @click="exportSite">Export</button>
+      <a v-if="previewUrl" data-testid="docs-preview-site" :href="previewUrl" target="_blank" rel="noopener" class="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/80 hover:bg-indigo-800 text-indigo-200 border border-indigo-500/40 flex items-center gap-1.5 shrink-0"><ExternalLink class="w-3.5 h-3.5" />Preview site</a>
     </div>
 
     <div class="flex shrink-0 items-center gap-2 px-6 text-xs font-semibold">
@@ -150,6 +151,7 @@ import { useWebsitesStore } from '../../stores/websitesStore'
 import { useTabsStore, docsSiteTabId, type DocsSiteSubTab } from '../../stores/tabsStore'
 import { useDocsSitesStore } from '../../stores/docsSitesStore'
 import { uploadAssetToDam, deleteAssetFromDam } from '../../utils/dam-api'
+import { downloadWebsiteZip } from '../../utils/website-bundle'
 import { docsPreviewUrl, checkDocsNav, cleanRelativePath, type NavNode } from '../../utils/docs-sites-api'
 import { editToYaml, navToEdit, type EditNode } from '../../utils/docs-nav-edit'
 import DocsNavEditor from './DocsNavEditor.vue'
@@ -191,6 +193,21 @@ async function load() {
 }
 // the tree is also reloaded by the tabs of the documents; here only the text fields follow the first load
 watch(() => props.websiteId, () => { void load() }, { immediate: true })
+
+/** The zip of the documentation: every file of the folder (documents, images, index) and the settings. */
+async function exportSite() {
+  const w = website.value
+  if (!w) return
+  localError.value = ''
+  try {
+    const { assets, missing } = await downloadWebsiteZip(coreApi(), { assetProcessorUrl: dam().assetProcessorUrl, folderRules: dam().folderRules }, w, { withAssets: true, dataObjects: 'all' }, (m) => { busy.value = m })
+    if (missing.length) localError.value = `Exported ${assets} file(s). ${missing.length} could not be read and are listed only:\n${missing.slice(0, 10).join('\n')}`
+  } catch (e: any) {
+    localError.value = e?.message || 'Could not export the documentation'
+  } finally {
+    busy.value = ''
+  }
+}
 
 // ---- documents --------------------------------------------------------------------------------------------
 
