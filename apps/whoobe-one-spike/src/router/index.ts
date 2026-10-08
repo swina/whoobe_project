@@ -35,6 +35,7 @@ const router = createRouter({
     // headless /public/search endpoint, no catch-all interplay - registered
     // before it so "search" is never treated as a page slug.
     { path: '/search', name: 'Search', component: () => import('../views/SearchResultsView.vue') },
+    // (SiteEntry shows the documentation layout for the root path of a documentation website, PublicPage for everything else.)
     // Catch-all, always last - an exact match above always wins regardless
     // of array position, so this only ever matches something neither of
     // those two are. Renders a real page by its stored slug/dynamic-
@@ -42,7 +43,7 @@ const router = createRouter({
     // and PublicPage.vue's own header comment. This is what a list-to-
     // detail link (BlockContainerPreview.vue's childHref()) opens in a new
     // tab to.
-    { path: '/:pathMatch(.*)*', name: 'PublicPage', component: () => import('../views/PublicPage.vue') },
+    { path: '/:pathMatch(.*)*', name: 'PublicPage', component: () => import('../views/SiteEntry.vue') },
   ],
 })
 

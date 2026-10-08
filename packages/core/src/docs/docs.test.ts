@@ -58,7 +58,8 @@ describe('renderMarkdown', () => {
   });
   it('rewrites links to documents and assets, keeps external ones, flags the broken ones', () => {
     const r = renderMarkdown('[u](usage.md#top) [root](../index.md) [api](../api/index.md) [pdf](../files/x.pdf) [ext](https://example.org/a) [mail](mailto:a@b.co) [gone](nope.md) ![i](../img/a%20b.png) ![gone](none.png)', ctx());
-    expect(r.html).toContain('href="/guide/usage#top"');
+    expect(r.html).toContain('href="/guide/usage#top" data-doc="1"');
+    expect(r.html).not.toMatch(/href="https:[^>]*data-doc/);   // only the addresses inside the site are marked
     expect(r.html).toContain('href="/"');
     expect(r.html).toContain('href="/api/"');
     expect(r.html).toContain('href="/dam-asset/docs/files/x.pdf"');

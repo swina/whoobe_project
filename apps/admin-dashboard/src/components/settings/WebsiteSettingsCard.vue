@@ -11,6 +11,7 @@
           AI Website Wizard
         </button>--->
         <button @click="createNewWebsite" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">+ New Website</button>
+        <button data-testid="new-docs-site" @click="createNewDocsSite" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40">+ New Documentation</button>
         <button @click="triggerImport" :disabled="!!busy" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 disabled:opacity-50">Import</button>
         <input ref="importFileInput" type="file" accept=".zip,.json" class="hidden" @change="handleImportFile" />
       </div>
@@ -27,6 +28,7 @@
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
             <span class="text-sm font-semibold text-slate-200 light:text-slate-800">{{ website.name }}</span>
+            <span v-if="isDocsSite(website)" class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300">documentation</span>
           </div>
           <div class="text-xs text-slate-500 font-mono mt-0.5 space-x-3">
             <span>id: <button @click="copyId(website.id)" class="text-indigo-400 hover:text-indigo-300 cursor-pointer" :title="'Click to copy'">{{ website.id.slice(0, 8) }}…</button></span>
@@ -36,11 +38,16 @@
           </div>
         </div>
         <div class="flex items-center gap-2 shrink-0 ml-3">
-          <button @click="openPublish(website)" class="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1"><Rocket class="w-3 h-3" />Publish</button>
-          <button @click="exportWebsiteAction(website)" :disabled="!!busy" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 disabled:opacity-50">Export</button>
-          <button @click="openPaths(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Paths</button>
-          <button @click="openTemplates(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Templates</button>
-          <button @click="openWebsiteTab(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Edit</button>
+          <template v-if="isDocsSite(website)">
+            <button :data-testid="`docs-open-${website.id}`" @click="openDocs(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Documents</button>
+          </template>
+          <template v-else>
+            <button @click="openPublish(website)" class="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1"><Rocket class="w-3 h-3" />Publish</button>
+            <button @click="exportWebsiteAction(website)" :disabled="!!busy" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 disabled:opacity-50">Export</button>
+            <button @click="openPaths(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Paths</button>
+            <button @click="openTemplates(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Templates</button>
+            <button @click="openWebsiteTab(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Edit</button>
+          </template>
           <button @click="handleDelete(website)" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Delete</button>
         </div>
       </div>
@@ -48,6 +55,7 @@
 
     <AiWebsiteWizardModal :is-open="showAiModal" @close="showAiModal = false" />
     <WebsitePublishModal :is-open="showPublishModal" :website="publishTarget" @close="showPublishModal = false" />
+    <DocsSiteManager :is-open="showDocs" :website="docsTarget" @close="showDocs = false" />
   </div>
 </template>
 
@@ -68,6 +76,7 @@ import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
 import AiWebsiteWizardModal from './AiWebsiteWizardModal.vue'
 import WebsitePublishModal from './WebsitePublishModal.vue'
+import DocsSiteManager from '../websites/DocsSiteManager.vue'
 
 const websitesStore = useWebsitesStore()
 const tabsStore = useTabsStore()
@@ -75,6 +84,32 @@ const showAiModal = ref(false)
 const showPublishModal = ref(false)
 const publishTarget = ref<WebsiteRecord | null>(null)
 const importFileInput = ref<HTMLInputElement | null>(null)
+
+const showDocs = ref(false)
+const docsTarget = ref<WebsiteRecord | null>(null)
+const isDocsSite = (w: WebsiteRecord) => (w.settings as Record<string, unknown> | null)?.kind === 'docs'
+
+function openDocs(website: WebsiteRecord) {
+  docsTarget.value = website
+  showDocs.value = true
+}
+
+// A documentation site is a website whose pages are the Markdown files of a folder of the asset library.
+async function createNewDocsSite() {
+  const name = prompt('Name of the documentation site:', '')
+  if (!name?.trim()) return
+  const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'docs'
+  const typed = prompt('Folder of the asset library that holds the Markdown files:', `/docs/${slug}`)
+  if (!typed?.trim()) return
+  const sourceFolder = '/' + typed.split('/').map((p) => p.trim()).filter(Boolean).join('/')
+  if (sourceFolder === '/' || sourceFolder.split('/').some((p) => p === '..' || p === '.')) { alert('That is not a valid folder.'); return }
+  try {
+    const created = await websitesStore.create({ name: name.trim(), settings: { kind: 'docs', docs: { sourceFolder } } })
+    openDocs(created)
+  } catch (e: any) {
+    alert(e?.message || 'Failed to create the documentation site')
+  }
+}
 
 function openPublish(website: WebsiteRecord) {
   publishTarget.value = website

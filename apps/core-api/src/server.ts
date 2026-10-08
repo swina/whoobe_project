@@ -5,7 +5,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
-import { DocsConfigError, createContentReader, describeDocsSite, docsConfigOf, findDocByRoute, loadDocsSite, renderDocPage } from './docs-site.js';
+import { DocsConfigError, checkNavText, createContentReader, renderDraft, describeDocsSite, docsConfigOf, findDocByRoute, loadDocsSite, renderDocPage } from './docs-site.js';
 import { createAuthoredNotifyCache, createRecipientThrottle, isSingleEmail, notifyKey } from './form-notify.js';
 import {
   findUserByEmail,
@@ -6173,6 +6173,50 @@ app.get('/docs-sites/:websiteId/preview/*', requirePermission(PERMISSIONS.ASSETS
   } catch (error: any) {
     logger.error({ err: error, module: 'docs-sites' }, 'Failed to render the document');
     res.status(500).json({ error: 'Failed to render the document' });
+  }
+});
+
+// The editor's live preview: renders text that is not saved yet, with the folder's real links and files.
+app.post('/docs-sites/:websiteId/render', requirePermission(PERMISSIONS.ASSETS_VIEW), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { path, markdown } = req.body ?? {};
+    if (typeof markdown !== 'string' || typeof path !== 'string' || !path || path.split('/').some((p) => p === '..' || p === '.') || !/\.(md|markdown)$/i.test(path)) {
+      res.status(400).json({ error: 'path (a .md file inside the folder) and markdown are required' });
+      return;
+    }
+    const site = await docsSiteFor(req.params.websiteId, res, false);
+    if (site) res.json(renderDraft(site, path.replace(/^\/+/, ''), markdown));
+  } catch (error: any) {
+    logger.error({ err: error, module: 'docs-sites' }, 'Failed to render the draft');
+    res.status(500).json({ error: 'Failed to render the draft' });
+  }
+});
+
+// Checks the text of the index file without saving it.
+app.post('/docs-sites/:websiteId/nav/check', requirePermission(PERMISSIONS.ASSETS_VIEW), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const text = req.body?.text;
+    if (typeof text !== 'string') { res.status(400).json({ error: 'text is required' }); return; }
+    const site = await docsSiteFor(req.params.websiteId, res, false);
+    if (site) res.json(checkNavText(site, text));
+  } catch (error: any) {
+    logger.error({ err: error, module: 'docs-sites' }, 'Failed to check the index');
+    res.status(500).json({ error: 'Failed to check the index' });
+  }
+});
+
+// Which documentation site answers at a root path (the editor application asks, to show the docs layout instead of a page).
+app.get('/public/docs-site/:segment', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const segment = req.params.segment;
+    if (!/^[a-z0-9_-]{1,64}$/.test(segment)) { res.status(404).json({ error: 'Not a documentation site' }); return; }
+    const website = await getWebsiteByRootPath('/' + segment);
+    if (!website || ((website.settings ?? {}) as Record<string, unknown>).kind !== 'docs') { res.status(404).json({ error: 'Not a documentation site' }); return; }
+    res.json({ websiteId: website.id, rootPath: website.rootPath, title: docsConfigOf(website)?.title ?? website.name });
+  } catch (error: any) {
+    if (error instanceof DocsConfigError) { res.status(404).json({ error: 'Not a documentation site' }); return; }
+    logger.error({ err: error, module: 'docs-sites' }, 'Failed to look up the documentation site');
+    res.status(500).json({ error: 'Failed to look up the documentation site' });
   }
 });
 

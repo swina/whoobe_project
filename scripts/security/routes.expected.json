@@ -1169,6 +1169,25 @@
       "access": "public",
       "permissions": [],
       "note": "documentation site: a rendered public document"
+    },
+    "POST /docs-sites/:websiteId/render": {
+      "access": "permission",
+      "permissions": [
+        "ASSETS_VIEW"
+      ],
+      "note": "documentation site: live preview of unsaved Markdown"
+    },
+    "POST /docs-sites/:websiteId/nav/check": {
+      "access": "permission",
+      "permissions": [
+        "ASSETS_VIEW"
+      ],
+      "note": "documentation site: checks the text of the index file without saving it"
+    },
+    "GET /public/docs-site/:segment": {
+      "access": "public",
+      "permissions": [],
+      "note": "documentation site: which website answers at a root path (id, title)"
     }
   }
 }

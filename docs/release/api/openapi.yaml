@@ -3338,6 +3338,76 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /docs-sites/{websiteId}/render:
+    post:
+      tags: ["core-api: Documentation sites (Markdown)"]
+      summary: "Live preview: renders Markdown that is not saved yet (`{ path, markdown }`) as it would be at that path, with the folder's real links and files; returns `{ title, html, headings, warnings }`."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /docs-sites/{websiteId}/nav/check:
+    post:
+      tags: ["core-api: Documentation sites (Markdown)"]
+      summary: "Checks the text of the index file (`{ text }`) without saving it: `{ ok, errors, warnings, nav }`."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /public/docs-site/{segment}:
+    get:
+      tags: ["core-api: Documentation sites (Markdown)"]
+      summary: "Which documentation website answers at a root path segment (`{ websiteId, rootPath, title }`, 404 if none)."
+      parameters:
+        - name: segment
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
   /public/docs/{websiteId}/nav:
     get:
       tags: ["core-api: Documentation sites (Markdown)"]

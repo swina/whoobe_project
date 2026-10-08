@@ -143,7 +143,10 @@ export function renderMarkdown(markdown: string, ctx: RenderContext): RenderResu
         const inner = this.parser.parseInline(tokens);
         const t = title ? ` title="${escapeHtml(title)}"` : '';
         const rel = target.kind === 'external' && /^https?:/i.test(target.href) ? ' rel="noopener noreferrer"' : '';
-        return `<a href="${escapeHtml(target.href)}"${t}${rel}>${inner}</a>`;
+        // data-doc marks an address INSIDE the documentation site (relative to its root), so a viewer can prefix the site's own
+        // path without touching an absolute address the author wrote for the host ("/dam-asset/...", "/pricing")
+        const doc = target.kind === 'doc' ? ' data-doc="1"' : '';
+        return `<a href="${escapeHtml(target.href)}"${t}${rel}${doc}>${inner}</a>`;
       },
       image({ href, title, text }: Tokens.Image) {
         const target = classify(href, ctx, warnings, 'image');
