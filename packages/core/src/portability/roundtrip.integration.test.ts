@@ -205,3 +205,40 @@ describe.skipIf(!url)('website bundle: gateway forms', () => {
   });
 });
 
+describe.skipIf(!url)('DAM folders follow the assets', () => {
+  let core: any;
+  let db: typeof import('../db/client.js');
+  let sql: any;
+  beforeAll(async () => {
+    process.env.DATABASE_URL = url;
+    db = await import('../db/client.js');
+    core = await import('../db/asset-records.js');
+    sql = (await import('drizzle-orm')).sql;
+  });
+  const asset = (path: string) => ({ pimcorePath: path, filename: path.split('/').pop()!, folderPath: path.slice(0, path.lastIndexOf('/')) || '/', sizeBytes: 1, mimeType: 'image/png', fileType: 'image', s3Key: path.replace(/^\//, ''), isPublic: false, metadata: null });
+  const paths = async () => (await core.listFolders()).map((f: any) => `${f.parentPath}>${f.path}`).sort();
+
+  it('storing an asset creates the folder and every ancestor, once, and leaves the root alone', async () => {
+    for (const t of ['assets', 'folders']) await db.getDb().execute(sql.raw(`TRUNCATE TABLE "${t}" CASCADE`));
+    await core.upsertAssetRecord(asset('/images/blog/cover.png'));
+    await core.upsertAssetRecord(asset('/images/blog/second.png'));
+    await core.upsertAssetRecord(asset('/top.png'));
+    expect(await paths()).toEqual(['/>/images', '/images>/images/blog']);
+    expect((await core.listFolders()).find((f: any) => f.path === '/images/blog').name).toBe('blog');
+  });
+
+  it('a folder that was customised is not touched', async () => {
+    await db.getDb().execute(sql.raw(`UPDATE folders SET is_public = true WHERE path = '/images'`));
+    await core.upsertAssetRecord(asset('/images/blog/third.png'));
+    expect((await core.listFolders()).find((f: any) => f.path === '/images').isPublic).toBe(true);
+  });
+
+  it('repairMissingFolders gives folders to assets that were stored without any', async () => {
+    await db.getDb().execute(sql.raw(`TRUNCATE TABLE "folders" CASCADE`));
+    expect(await core.listFolders()).toEqual([]);
+    expect(await core.repairMissingFolders()).toBe(2);
+    expect(await paths()).toEqual(['/>/images', '/images>/images/blog']);
+    expect(await core.repairMissingFolders()).toBe(0);
+  });
+});
+

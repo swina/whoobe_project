@@ -40,6 +40,39 @@ export async function listFolders(): Promise<FolderRecord[]> {
   return db.select().from(folders);
 }
 
+/**
+ * "mkdir -p": makes sure a folder record exists for `folderPath` and every ancestor ("/a/b/c" -> "/a", "/a/b",
+ * "/a/b/c"); the root is never a record. The DAM tree is built from these records, so an asset whose folder has none is
+ * in the database and in the store but invisible in the dashboard (it happened to every file of a website import,
+ * which uploads straight to the paths of the original installation). Returns how many records it created.
+ */
+export async function ensureFolderChain(folderPath: string): Promise<number> {
+  const parts = folderPath.split('/').filter(Boolean);
+  const db = getDb();
+  let parent = '/';
+  let created = 0;
+  for (let i = 0; i < parts.length; i++) {
+    const path = '/' + parts.slice(0, i + 1).join('/');
+    const rows = await db
+      .insert(folders)
+      .values({ path, name: parts[i], parentPath: parent, isPublic: null })
+      .onConflictDoNothing({ target: folders.path })
+      .returning({ id: folders.id });
+    created += rows.length;
+    parent = path;
+  }
+  return created;
+}
+
+/** Creates the folder records that assets already in the database lack (see ensureFolderChain). */
+export async function repairMissingFolders(): Promise<number> {
+  const db = getDb();
+  const rows = await db.selectDistinct({ folderPath: assets.folderPath }).from(assets);
+  let created = 0;
+  for (const { folderPath } of rows) created += await ensureFolderChain(folderPath);
+  return created;
+}
+
 export async function createFolderRecord(input: {
   path: string;
   name: string;
@@ -198,6 +231,7 @@ export async function upsertAssetRecord(input: {
       },
     })
     .returning();
+  await ensureFolderChain(input.folderPath);
   await indexAsset(row);
   return row;
 }

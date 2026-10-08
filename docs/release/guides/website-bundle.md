@@ -42,7 +42,7 @@ other installation must already have them at the same paths.
 dialog shows what will happen: pages, templates, snippets, how many classes and objects are new or already there, how
 many assets will be stored, and the warnings. The import then
 
-1. **stores the asset files** that are missing, at the same path (same path and same size = the same file, reused;
+1. **stores the asset files** that are missing, at the same path (the DAM folders they sit in are created with them, the whole chain), (same path and same size = the same file, reused;
    same path and another size = a different file: the new one is stored as `name-imported.ext` and the references
    to it are rewritten);
 2. creates the **data classes and components** that do not exist (a class with the same name is reused; if its fields

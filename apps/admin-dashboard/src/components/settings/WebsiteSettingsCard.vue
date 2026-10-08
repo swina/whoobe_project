@@ -58,6 +58,12 @@ import { useWebsitesStore } from '../../stores/websitesStore'
 import { useTabsStore } from '../../stores/tabsStore'
 import { buildWebsiteZip, openBundleFile, previewBundleImport, importOpenedBundle } from '../../utils/website-bundle'
 import { useDamStore } from '../../stores/damStore'
+import { useDataClassesStore } from '../../stores/dataClassesStore'
+import { useDataObjectsStore } from '../../stores/dataObjectsStore'
+import { useSnippetsStore } from '../../stores/snippetsStore'
+import { useComponentsStore } from '../../stores/componentsStore'
+import { usePagesStore } from '../../stores/pagesStore'
+import { usePathStore } from '../../stores/menusStore'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
 import AiWebsiteWizardModal from './AiWebsiteWizardModal.vue'
@@ -100,6 +106,28 @@ async function createNewWebsite() {
 }
 
 const damStore = useDamStore()
+const dataClassesStore = useDataClassesStore()
+const dataObjectsStore = useDataObjectsStore()
+const snippetsStore = useSnippetsStore()
+const componentsStore = useComponentsStore()
+const pagesStore = usePagesStore()
+const pathStore = usePathStore()
+
+// An import adds a website, pages, snippets, data classes and objects, components and DAM files: every list of the
+// dashboard that was loaded before it is stale (the Objects view showed no Blog class until the page was reloaded).
+async function refreshAfterImport() {
+  await Promise.allSettled([
+    websitesStore.refreshWebsites(),
+    pagesStore.refreshPages(),
+    pathStore.refreshPaths(),
+    snippetsStore.refresh(),
+    dataClassesStore.refreshDataClasses(),
+    dataObjectsStore.refreshDataObjects(),
+    componentsStore.refreshComponents(),
+    damStore.refreshFolders(),
+    damStore.refreshAssets(),
+  ])
+}
 const busy = ref('')
 
 function damEndpoint() {
@@ -169,7 +197,7 @@ async function handleImportFile(event: Event) {
     ]
     if (!confirm(lines.join('\n'))) { input.value = ''; return }
     const { report, uploaded, failed } = await importOpenedBundle(baseUrl, damEndpoint(), opened, (m) => { busy.value = m })
-    await websitesStore.refreshWebsites()
+    await refreshAfterImport()
     const done = [`Website imported as "${report.website.name}". Assets stored: ${uploaded}.`, ...report.warnings.map((w) => `! ${w}`)]
     if (failed.length) done.push(`${failed.length} asset(s) not stored:`, ...failed.slice(0, 10).map((f) => `  ${f.path}: ${f.error}`))
     alert(done.join('\n'))

@@ -189,3 +189,19 @@ describe('upload input handling', () => {
     }
   })
 })
+
+describe('the DAM tree follows the uploads', () => {
+  // The dashboard builds its folder tree from folder records, not from the assets: a file stored in a folder that
+  // has no record is there, and invisible. It happened to every file of a website import (uploads straight to the
+  // paths of the original installation).
+  afterAll(async () => { await adminAsset.request('DELETE', '/api/v1/dam/folders', { body: { path: `${dir}/deep` } }) })
+
+  it('uploading to a path makes the folder and its ancestors appear in the tree', async () => {
+    const r = await put('n.png', 'image/png', png(8, 8), `${dir}/deep/er/n.png`)
+    expect(r.status, r.text.slice(0, 120)).toBe(200)
+    const folders = (await adminAsset.get('/api/v1/dam/folders')).json.folders as { path: string; parentPath: string; name: string }[]
+    const paths = folders.map((f) => f.path)
+    expect(paths).toEqual(expect.arrayContaining([dir, `${dir}/deep`, `${dir}/deep/er`]))
+    expect(folders.find((f) => f.path === `${dir}/deep/er`)).toMatchObject({ parentPath: `${dir}/deep`, name: 'er' })
+  })
+})
