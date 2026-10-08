@@ -6,6 +6,22 @@ const CUSTOM_STYLE_ID = 'whoobe-custom-styles'
 const TAILWIND_CLASSES_ID = 'whoobe-tailwind-classes'
 
 /**
+ * Keeps the theme's custom CSS the LAST stylesheet of the head. Rules of equal specificity (`body { background: black }`
+ * in the theme against what the page or @tailwindcss/browser writes) are decided by order, and the Tailwind runtime adds its
+ * own <style> when its script has loaded - after the theme was injected - so the theme would end up before it.
+ * One observer on the head, shared by every composable instance; it moves the element only when something was added after it.
+ */
+let keepLastObserver: MutationObserver | null = null
+function keepCustomStylesLast() {
+  if (keepLastObserver || typeof MutationObserver === 'undefined') return
+  keepLastObserver = new MutationObserver(() => {
+    const el = document.getElementById(CUSTOM_STYLE_ID)
+    if (el && el.parentNode === document.head && document.head.lastElementChild !== el) document.head.appendChild(el)
+  })
+  keepLastObserver.observe(document.head, { childList: true })
+}
+
+/**
  * Injects theme styles into the page head so @tailwindcss/browser and the
  * browser's font system recognize what the Theme modal configured.
  *
@@ -86,6 +102,7 @@ export function useThemeStyles(getDoc: () => any) {
         style = document.createElement('style')
         style.id = CUSTOM_STYLE_ID
         document.head.appendChild(style)
+        keepCustomStylesLast()
       }
       style.textContent = styles
     } else {
