@@ -1,22 +1,22 @@
 <template>
-  <div class="grid md:grid-cols-[minmax(0,1fr)_16rem] gap-4" data-testid="docs-nav-editor">
-    <div class="space-y-2 min-w-0">
-      <div class="flex items-center gap-2 flex-wrap">
+  <div class="h-full min-h-0 grid md:grid-cols-[minmax(0,1fr)_16rem] gap-4" data-testid="docs-nav-editor">
+    <div class="min-w-0 min-h-0 flex flex-col gap-2">
+      <div class="shrink-0 flex items-center gap-2 flex-wrap">
         <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" data-testid="nav-add-section" @click="addSection">+ Section</button>
         <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" data-testid="nav-add-link" @click="addLink">+ Link</button>
         <span class="text-[11px] text-slate-500">Drag rows to reorder or to move them into a section. Keyboard: Alt+arrows move, F2 renames, Delete takes out.</span>
       </div>
-      <div class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-slate-50 p-1.5 min-h-[14rem] max-h-[62vh] overflow-y-auto" role="tree" data-testid="nav-tree"
+      <div class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-slate-50 p-1.5 flex-1 min-h-[8rem] overflow-y-auto" role="tree" data-testid="nav-tree"
         @dragover="onRootOver" @drop="onRootDrop">
         <DocsNavNode :node="root" :depth="-1" />
       </div>
-      <p v-if="message" class="text-xs text-amber-300">{{ message }}</p>
+      <p v-if="message" class="shrink-0 text-xs text-amber-300">{{ message }}</p>
     </div>
 
-    <div class="space-y-2">
-      <div class="text-xs font-semibold text-slate-300">Not in the index <span class="text-slate-500 font-normal">({{ unlisted.length }})</span></div>
-      <p class="text-[11px] text-slate-500">Drag a document into the tree. Documents missing from the index are listed at the end, under “Other”, when the site is read.</p>
-      <div class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-slate-50 p-1.5 max-h-[55vh] overflow-y-auto space-y-0.5" data-testid="nav-unlisted">
+    <div class="min-h-0 flex flex-col gap-2">
+      <div class="shrink-0 text-xs font-semibold text-slate-300">Not in the index <span class="text-slate-500 font-normal">({{ unlisted.length }})</span></div>
+      <p class="shrink-0 text-[11px] text-slate-500">Drag a document into the tree. Documents missing from the index are listed at the end, under “Other”, when the site is read.</p>
+      <div class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-slate-50 p-1.5 flex-1 min-h-[8rem] overflow-y-auto space-y-0.5" data-testid="nav-unlisted">
         <div v-if="unlisted.length === 0" class="text-[11px] italic text-slate-600 p-2">Every document is in the index.</div>
         <div v-for="d in unlisted" :key="d.path" draggable="true" :data-testid="`nav-unlisted-${d.path}`"
           class="flex items-center gap-1.5 px-2 py-1 rounded cursor-grab active:cursor-grabbing select-none hover:bg-slate-800/60 light:hover:bg-slate-100"

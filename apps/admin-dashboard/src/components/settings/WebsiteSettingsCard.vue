@@ -39,6 +39,7 @@
         </div>
         <div class="flex items-center gap-2 shrink-0 ml-3">
           <template v-if="isDocsSite(website)">
+            <a :href="docsPreviewUrl(website.rootPath)" target="_blank" rel="noopener" :data-testid="`docs-preview-${website.id}`" class="text-xs font-semibold text-sky-400 hover:text-sky-300" title="Open the documentation site">Preview</a>
             <button :data-testid="`docs-open-${website.id}`" @click="openDocs(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Documents</button>
           </template>
           <template v-else>
@@ -73,6 +74,7 @@ import { usePagesStore } from '../../stores/pagesStore'
 import { usePathStore } from '../../stores/menusStore'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
+import { docsPreviewUrl } from '../../utils/docs-sites-api'
 import AiWebsiteWizardModal from './AiWebsiteWizardModal.vue'
 import WebsitePublishModal from './WebsitePublishModal.vue'
 
