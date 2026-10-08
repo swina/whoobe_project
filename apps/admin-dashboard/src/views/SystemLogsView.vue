@@ -89,7 +89,7 @@
           >
             <div class="flex items-center gap-3">
               <span :class="['w-12 shrink-0 text-xs font-bold uppercase', levelTextColor(entry.level)]">{{ entry.level }}</span>
-              <span class="text-slate-500 light:text-slate-500 w-20 shrink-0">{{ formatTime(entry.time) }}</span>
+              <span class="text-slate-500 light:text-slate-500 w-36 shrink-0 tabular-nums" :title="String(entry.time)">{{ formatTime(entry.time) }}</span>
               <span v-if="entry.module" class="w-16 shrink-0 text-indigo-400 light:text-indigo-600 font-semibold">{{ entry.module }}</span>
               <span class="text-slate-200 light:text-slate-800 truncate flex-1">{{ entry.msg }}</span>
               <span v-if="entry.err?.message" class="text-red-400 light:text-red-600 truncate max-w-[200px]">{{ entry.err.message }}</span>
@@ -146,14 +146,14 @@ function levelTextColor(level: string): string {
   return 'text-slate-400 light:text-slate-600'
 }
 
-function formatTime(time: string): string {
-  if (!time) return ''
-  try {
-    const d = new Date(time)
-    return d.toLocaleTimeString()
-  } catch {
-    return time.slice(11, 19)
-  }
+// "2026-10-08 16:27:11" in the viewer's time zone: the date is on every line because a log file may be read days
+// later and a line seen alone (or copied) must say when it happened. Sortable as text; the full value is the tooltip.
+function formatTime(time: string | number): string {
+  if (time === undefined || time === null || time === '') return ''
+  const d = new Date(time)
+  if (Number.isNaN(d.getTime())) return String(time).slice(0, 19).replace('T', ' ')
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
 
 function toggleExpand(i: number) {

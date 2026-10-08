@@ -18,13 +18,13 @@ const VALID_IDENTIFIER = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
  * we're trying to create, so it can't be used for this check.
  */
 export async function ensureDatabaseExists(): Promise<void> {
-  const { host, port, user, password, database } = getConnectionConfig();
+  const { host, port, user, password, database, ssl } = getConnectionConfig();
 
   if (!VALID_IDENTIFIER.test(database)) {
     throw new Error(`Invalid database name: "${database}" (expected a plain identifier, e.g. "pimcore_custom")`);
   }
 
-  const adminClient = new Client({ host, port, user, password, database: 'postgres' });
+  const adminClient = new Client({ host, port, user, password, database: 'postgres', ssl });
   await adminClient.connect();
   try {
     const { rows } = await adminClient.query('SELECT 1 FROM pg_database WHERE datname = $1', [database]);

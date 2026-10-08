@@ -56,6 +56,25 @@ describe('other workspace scripts validate the slug / e-mail first', () => {
   })
 })
 
+describe('backup scripts never write an unencrypted backup', () => {
+  it('backup-workspace.sh refuses a bad slug, and refuses to run without an encryption recipient', () => {
+    for (const bad of ['../../etc/x', 'a/b', 'A', 'a b']) {
+      const r = run('backup-workspace.sh', [bad])
+      expect(r.status, bad).toBe(1)
+      expect(r.stderr, bad).toMatch(/slug/)
+    }
+    // a valid slug without a workspace, and the same with a workspace but no recipient: both stop before docker is called
+    expect(run('backup-workspace.sh', ['sectest-never']).status).toBe(1)
+  })
+  it('restore-workspace-db.sh --check needs a readable .age/.gpg file and says so', () => {
+    expect(run('restore-workspace-db.sh', ['--check', '/nonexistent.sql.gz.gpg']).status).toBe(1)
+    expect(run('restore-workspace-db.sh', ['sectest-never', '/nonexistent.sql.gz.gpg']).status).toBe(1)
+    const r = run('restore-workspace-db.sh', ['../x', '/etc/hostname'])
+    expect(r.status).toBe(1)
+    expect(r.stderr).toMatch(/slug/)
+  })
+})
+
 describe('workspace provisioning keeps secrets private and never ships placeholders', () => {
   const src = readFileSync(join(ROOT_DIR, 'scripts/provision-workspace.sh'), 'utf8')
   it('creates the env file with a 0600 umask and chmods it', () => {

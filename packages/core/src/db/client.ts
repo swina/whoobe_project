@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { Pool } from 'pg';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as authSchema from './auth-schema.js';
@@ -13,6 +14,28 @@ export interface ConnectionConfig {
   user: string;
   password: string;
   database: string;
+  /** TLS to the database; absent = plain connection (the default inside a workspace's private Docker network). */
+  ssl?: { rejectUnauthorized: boolean; ca?: string };
+}
+
+/**
+ * TLS settings for the database connection, from DB_SSL (or `sslmode` in DATABASE_URL):
+ *   disable (default) | require | verify-full
+ * `require` encrypts and does not check the server's certificate (what libpq's `require` does); `verify-full` also checks the
+ * certificate chain and the host name - use it with a managed Postgres and its CA in DB_SSL_CA (a file path or the PEM text).
+ * `verify-ca` is treated as `verify-full`: node-postgres checks the host name as well, which is stricter, never weaker.
+ */
+export function resolveSslConfig(env: NodeJS.ProcessEnv = process.env, urlSslMode?: string | null): ConnectionConfig['ssl'] {
+  const raw = (env.DB_SSL ?? urlSslMode ?? 'disable').trim().toLowerCase();
+  if (['', 'disable', 'false', '0', 'off', 'allow', 'prefer'].includes(raw)) return undefined;
+  if (!['require', 'verify-ca', 'verify-full', 'true', '1', 'on'].includes(raw)) {
+    throw new Error(`DB_SSL "${raw}" is not valid: use disable, require or verify-full`);
+  }
+  const verify = raw === 'verify-ca' || raw === 'verify-full';
+  const caRaw = env.DB_SSL_CA?.trim();
+  let ca: string | undefined;
+  if (caRaw) ca = caRaw.includes('BEGIN CERTIFICATE') ? caRaw : readFileSync(caRaw, 'utf8');
+  return { rejectUnauthorized: verify, ...(ca ? { ca } : {}) };
 }
 
 /**
@@ -30,6 +53,7 @@ export function getConnectionConfig(): ConnectionConfig {
       user: decodeURIComponent(url.username),
       password: decodeURIComponent(url.password),
       database: url.pathname.replace(/^\//, ''),
+      ssl: resolveSslConfig(process.env, url.searchParams.get('sslmode')),
     };
   }
 
@@ -39,6 +63,7 @@ export function getConnectionConfig(): ConnectionConfig {
     user: process.env.DB_USER ?? 'postgres',
     password: process.env.DB_PASSWORD ?? 'postgrespassword',
     database: process.env.DB_NAME ?? process.env.POSTGRES_DB ?? 'whoobe_db',
+    ssl: resolveSslConfig(),
   };
 }
 
