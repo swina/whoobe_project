@@ -6,7 +6,7 @@
         <div class="text-xs text-slate-500 truncate">{{ siteName }} · {{ status }}</div>
       </div>
       <div class="flex items-center gap-3 shrink-0">
-        <a v-if="siteUrl" :href="siteUrl" target="_blank" rel="noopener" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"><ExternalLink class="w-3 h-3" />View in the site</a>
+        <a v-if="siteUrl" data-testid="docs-doc-preview" :href="siteUrl" target="_blank" rel="noopener" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/40 flex items-center gap-1.5" title="Open this page in the site (saved version)"><ExternalLink class="w-3.5 h-3.5" />Preview</a>
         <button data-testid="docs-insert-image" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 disabled:opacity-50" :disabled="!loaded" @click="imageDialog = true">Insert image</button>
         <label class="text-xs text-slate-400 flex items-center gap-1.5"><input v-model="isPublic" data-testid="docs-edit-public" type="checkbox" @change="markDirty" />Public</label>
         <button data-testid="docs-edit-save" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="!!busy || !dirty" @click="save">Save</button>

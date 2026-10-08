@@ -5,7 +5,7 @@
         <h4 class="text-lg font-bold text-slate-100 light:text-slate-900 truncate">{{ website.name }}</h4>
         <div class="text-xs text-slate-500 font-mono truncate">source folder {{ tree?.config.sourceFolder }}</div>
       </div>
-      <a v-if="previewUrl" :href="previewUrl" target="_blank" rel="noopener" class="ml-auto text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 shrink-0"><ExternalLink class="w-3 h-3" />Preview site</a>
+      <a v-if="previewUrl" data-testid="docs-preview-site" :href="previewUrl" target="_blank" rel="noopener" class="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/40 flex items-center gap-1.5 shrink-0"><ExternalLink class="w-3.5 h-3.5" />Preview site</a>
     </div>
 
     <div class="flex shrink-0 items-center gap-2 px-6 text-xs font-semibold">
@@ -15,9 +15,9 @@
     </div>
 
     <div class="flex-1 min-h-0 px-2 pb-2 pt-2">
-      <div class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-5 space-y-3">
-        <div v-if="error" class="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2 whitespace-pre-line">{{ error }}</div>
-        <div v-if="busy" class="text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 rounded-lg px-3 py-2 truncate">{{ busy }}</div>
+      <div :class="['h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-5', tab === 'index' ? 'flex flex-col gap-3 overflow-hidden' : 'overflow-y-auto space-y-3']">
+        <div v-if="error" class="shrink-0 text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2 whitespace-pre-line">{{ error }}</div>
+        <div v-if="busy" class="shrink-0 text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 rounded-lg px-3 py-2 truncate">{{ busy }}</div>
         <div v-if="loading && !tree" class="text-xs text-slate-500 py-6 text-center">Loading…</div>
 
         <template v-else-if="tree">
@@ -55,6 +55,7 @@
                 </div>
                 <span v-if="d.hidden" class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">hidden</span>
                 <span :class="['text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded', d.isPublic ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300']">{{ d.isPublic ? 'public' : 'private' }}</span>
+                <a :href="docUrl(d.route)" target="_blank" rel="noopener" class="text-xs font-semibold text-sky-400 hover:text-sky-300" :data-testid="`docs-preview-${d.path}`" title="Open this page in the site" @click.stop>Preview</a>
                 <button class="text-xs font-semibold text-indigo-400 hover:text-indigo-300" @click="openDoc(d.path)">Edit</button>
                 <button class="text-xs font-semibold text-rose-400 hover:text-rose-300" @click="removePath(d.path)">Delete</button>
               </div>
@@ -70,7 +71,7 @@
 
           <!-- Index -->
           <template v-else-if="tab === 'index'">
-            <div class="flex items-center gap-2 flex-wrap">
+            <div class="flex items-center gap-2 flex-wrap shrink-0">
               <div class="flex rounded-lg overflow-hidden border border-slate-700 light:border-slate-300 text-xs font-semibold">
                 <button data-testid="docs-nav-mode-visual" :class="['px-3 py-1.5', navMode === 'visual' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200']" @click="switchMode('visual')">Visual</button>
                 <button data-testid="docs-nav-mode-text" :class="['px-3 py-1.5', navMode === 'text' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200']" @click="switchMode('text')">Text ({{ tree.navFile }})</button>
@@ -82,19 +83,22 @@
               </div>
             </div>
 
-            <DocsNavEditor v-if="navMode === 'visual'" :root="navRoot" :documents="tree.documents" @change="onTreeChange" />
-            <template v-else>
-              <textarea v-model="navText" data-testid="docs-nav-text" spellcheck="false" rows="18" placeholder="Leave empty to follow the folders. Example:&#10;- title: Getting started&#10;  items:&#10;    - doc: install.md&#10;    - doc: first-site.md&#10;      title: Your first site&#10;- link: https://example.org&#10;  title: Changelog"
-                class="w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-xs font-mono text-slate-200 light:text-slate-800 p-2 outline-none focus:border-indigo-500"></textarea>
-            </template>
+            <div class="flex-1 min-h-0">
+              <DocsNavEditor v-if="navMode === 'visual'" :root="navRoot" :documents="tree.documents" @change="onTreeChange" />
+              <textarea v-else v-model="navText" data-testid="docs-nav-text" spellcheck="false" placeholder="Leave empty to follow the folders. Example:&#10;- title: Getting started&#10;  items:&#10;    - doc: install.md&#10;    - doc: first-site.md&#10;      title: Your first site&#10;- link: https://example.org&#10;  title: Changelog"
+                class="w-full h-full resize-none rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-xs font-mono text-slate-200 light:text-slate-800 p-2 outline-none focus:border-indigo-500"></textarea>
+            </div>
 
+            <!-- always in view: the actions and what they found stay below the editor, which scrolls inside -->
+            <div class="shrink-0 space-y-1.5 pt-1 border-t border-slate-800 light:border-slate-200">
             <div class="flex items-center gap-2">
               <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" @click="checkNav">Check</button>
               <button data-testid="docs-nav-save" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="!!busy || (navMode === 'text' && !navText.trim())" @click="saveNav">Save index</button>
             </div>
-            <ul v-if="navErrors.length" class="text-xs text-rose-300 space-y-0.5 list-disc pl-5"><li v-for="e in navErrors" :key="e">{{ e }}</li></ul>
-            <ul v-if="navWarnings.length" class="text-xs text-amber-300 space-y-0.5 list-disc pl-5"><li v-for="w in navWarnings" :key="w">{{ w }}</li></ul>
+            <ul v-if="navErrors.length" class="text-xs text-rose-300 space-y-0.5 list-disc pl-5 max-h-24 overflow-y-auto"><li v-for="e in navErrors" :key="e">{{ e }}</li></ul>
+            <ul v-if="navWarnings.length" class="text-xs text-amber-300 space-y-0.5 list-disc pl-5 max-h-24 overflow-y-auto"><li v-for="w in navWarnings" :key="w">{{ w }}</li></ul>
             <p v-if="checked && !navErrors.length" class="text-xs text-emerald-400">The index is valid.</p>
+            </div>
           </template>
 
           <!-- Publish -->
@@ -173,6 +177,8 @@ const tabs = [{ key: 'documents', name: 'Documents' }, { key: 'index', name: 'In
 const tab = computed<DocsSiteSubTab>(() => tabsStore.tabs.find((t) => t.id === docsSiteTabId(props.websiteId))?.docsSubTab ?? 'documents')
 const setTab = (k: DocsSiteSubTab) => tabsStore.setDocsSubTab(props.websiteId, k)
 const previewUrl = computed(() => (website.value ? docsPreviewUrl(website.value.rootPath) : ''))
+/** The address of a page of the site (the editors see private documents there too). */
+const docUrl = (route: string) => previewUrl.value.replace(/\/$/, '') + (route === '/' || route === '' ? '/' : route)
 
 async function load() {
   await docsStore.load(props.websiteId)

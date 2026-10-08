@@ -36,8 +36,13 @@ test('write a documentation site in the dashboard and read it in the docs layout
     })
     await p.goto(`${ADMIN_URL}/`)
     await p.getByText('Websites', { exact: true }).first().click()
+    await expect(p.getByTestId(`docs-preview-${siteId}`)).toBeVisible()          // the list of websites links to the site too
     await p.getByTestId(`docs-open-${siteId}`).click()
     await expect(siteTab.getByTestId('docs-row-guide/01-install.md')).toBeVisible({ timeout: 15_000 })
+    // previews: the site (header), a page (each row) and, in the list of websites, the site again
+    await expect(siteTab.getByTestId('docs-preview-site')).toBeVisible()
+    expect(await siteTab.getByTestId('docs-preview-site').getAttribute('href')).toContain(root)
+    expect(await siteTab.getByTestId('docs-preview-guide/01-install.md').getAttribute('href')).toMatch(new RegExp(`${root}/guide/install$`))
     await expect(siteTab.getByTestId('docs-row-secret.md')).toContainText('private')
     await expect(siteTab.getByTestId('docs-row-index.md')).toContainText('public')
 
@@ -122,7 +127,13 @@ test('write a documentation site in the dashboard and read it in the docs layout
     // the index, edited as a tree: start from the folders, add a section, rename an entry, drag entries into the section, reorder with
     // the keyboard, take one out and drag it back from the list of what is not in the index, save
     await siteTab.getByTestId('docs-tab-index').click()
+    await expect(siteTab.getByTestId('docs-nav-save')).toBeInViewport()               // the actions are never pushed off the screen
     await p.getByRole('button', { name: 'Start from the folders' }).click()
+    await expect(siteTab.getByTestId('docs-nav-save')).toBeInViewport()
+    await p.setViewportSize({ width: 1280, height: 600 })                                // a small screen: the editor shrinks and scrolls inside
+    await expect(siteTab.getByTestId('docs-nav-save')).toBeInViewport()
+    await expect(siteTab.getByTestId('nav-tree')).toBeVisible()
+    await p.setViewportSize({ width: 1400, height: 900 })
     const navRows = () => siteTab.locator('[data-testid="nav-tree"] [data-nav-id]').evaluateAll((els) => els.map((e) => `${Math.round((parseFloat((e as HTMLElement).style.paddingLeft) - 0.4))}${(e.querySelector('span.truncate') as HTMLElement | null)?.textContent?.trim()}`))
     await expect(siteTab.getByTestId('nav-row-Install')).toBeVisible()
     promptAnswer = 'Start here'
