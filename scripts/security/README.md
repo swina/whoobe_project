@@ -27,8 +27,8 @@ a finding add it to `baseline.json` with an honest reason; remove the entry when
 
 ## CI
 
-`.github/workflows/security.yml`: `static` (every PR, push to master, nightly), `stack-tests` (push to master,
-nightly, manual: disposable stack + API + browser suites), `dast` (monthly or manual with the `dast` input). The
+`.github/workflows/security.yml`: `static` (every PR, push to master that is not documents only, nightly), `stack-tests` (nightly if code changed in the
+last day, manual: disposable stack + API + browser suites), `dast` (monthly or manual with the `dast` input). The
 stack's `.env.sectest` is generated on the runner by `gen-env.sh` (random secrets, nothing stored); `stack.sh up`
 calls it when the file is missing. Reports are uploaded as artifacts. `.github/dependabot.yml` opens grouped pull
 requests (one per ecosystem: minor/patch npm updates, Docker images, GitHub Actions); major upgrades are never proposed
@@ -81,4 +81,21 @@ serially (`fileParallelism: false`) because lockout/rate-limit checks are order-
 - `pnpm security:isolation` - two stacks standing for two workspaces (A and `SEC_STACK=b`): no shared session, account, object, secret, network path or database. Starts and removes stack B itself (`--keep` leaves it up).
 
 ## In CI (`.github/workflows/security.yml`)
-`static` (PRs, push, nightly), `stack-tests` (API + browser + `security:images`), `tls` (testssl on `nginx:alpine` and `nginx:1.18-alpine`, PRs/push/nightly), `isolation` (push/nightly/manual), `dast` (monthly/manual).
+`static` (PRs, push, nightly), `stack-tests` (API + browser + `security:images`), `tls` (testssl on `nginx:alpine` and `nginx:1.18-alpine`, when the TLS template or the workflow changed), `isolation` (nightly if code changed/manual), `dast` (monthly/manual).
+
+### Actions minutes (private repositories)
+
+A private repository has a monthly quota of Actions minutes. Before 2026-10-08 every push to `master` ran four jobs (two of
+them building the whole stack): ~30 billed minutes a push, plus the nightly run and Dependabot. Now:
+
+- a push that changes only documents (`docs/`, `*.md`, `CHANGES.md`) starts nothing; `[skip ci]` in a commit message skips a run;
+- `static` runs on every other push and pull request (~4 min); `tls` only when `deploy/nginx/`, `scripts/security/tls/` or the
+  workflow changed;
+- `stack-tests` and `isolation` (~20 min together) run **nightly, and only if code changed in the previous 26 hours**, and by hand
+  (Actions > security > Run workflow) - do that on the release commit, with `dast` ticked;
+- run the same suites locally before pushing (`scripts/security/stack.sh up`, `pnpm security:api`, `pnpm security:browser`,
+  `scripts/security/stack.sh down`);
+- do not start a manual run for a commit that has already had its push run; pushing a branch other than `master` costs nothing
+  (only a pull request starts `static`);
+- Dependabot runs on a runner too (~25 min per run, again whenever a manifest changes): monthly.
+

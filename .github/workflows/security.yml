@@ -1,9 +1,14 @@
 # Security checks (plan docs/release/security/security-testing-plan.md, section 7.1).
-#   static       every pull request, every push to master, nightly   (no stack; ~5 min)
-#   stack-tests  push to master (relevant paths), nightly, manual   (disposable stack + API + browser suites + trivy image)
-#   tls          every pull request, push to master, nightly         (testssl.sh against the production nginx TLS template)
-#   isolation    push to master, nightly, manual                    (two stacks standing for two workspaces share nothing)
-#   dast         monthly, manual                                    (OWASP ZAP against the disposable stack)
+#   static       every pull request, every push to master with more than documents in it, nightly   (no stack; ~4 min)
+#   tls          when the TLS template or this workflow changed (pull request / push), manual                (~2 min)
+#   stack-tests  nightly IF code changed in the last day, manual                  (disposable stack + API + browser suites + trivy image; ~15 min)
+#   isolation    nightly IF code changed in the last day, manual                  (two stacks standing for two workspaces share nothing; ~6 min)
+#   dast         monthly, manual                                                  (OWASP ZAP against the disposable stack)
+# Why the heavy jobs are not run on every push: a private repository has a monthly quota of Actions minutes, and every push to
+# master used to cost ~30 billed minutes (four jobs, two of them building the whole stack). The same suites are run on a throwaway
+# stack before pushing (scripts/security/stack.sh up; pnpm security:api; pnpm security:browser), so CI repeats them once a day, and
+# on demand before a release (Actions > security > Run workflow; tick "dast" for the release commit). Documents-only pushes
+# (docs/, *.md, CHANGES.md) start nothing; "[skip ci]" in a commit message skips the rest.
 # Nothing here needs secrets: the stack is generated with random credentials on the runner (scripts/security/gen-env.sh).
 name: security
 
@@ -11,6 +16,11 @@ on:
   pull_request:
   push:
     branches: [master]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'CHANGES.md'
+      - '.github/FUNDING.yml'
   schedule:
     - cron: '17 3 * * *'      # nightly: static scan and stack suites
     - cron: '41 4 1 * *'      # monthly: DAST
@@ -29,6 +39,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Cheap (seconds): decides which of the expensive jobs have anything to check.
+  changes:
+    name: what changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+      tls: ${{ steps.diff.outputs.tls }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: diff
+        run: |
+          set -euo pipefail
+          case "${{ github.event_name }}" in
+            workflow_dispatch) code=true; tls=true ;;
+            schedule)          files="$(git log --since='26 hours ago' --name-only --pretty=format: origin/${{ github.event.repository.default_branch }} | sort -u)" ;;
+            pull_request)      files="$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")" ;;
+            *)                 files="$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" 2>/dev/null || git ls-files)" ;;
+          esac
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            code=false; tls=false
+            # anything that is not only documents: code, the stack, the lockfile, this workflow
+            if echo "$files" | grep -Eq '^(apps/|packages/|scripts/|docker|deploy/|\.github/|package\.json|pnpm-|\.dockerignore|\.env\.example)'; then code=true; fi
+            if echo "$files" | grep -Eq '^(deploy/nginx/|scripts/security/tls/|\.github/workflows/)'; then tls=true; fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "tls=$tls" >> "$GITHUB_OUTPUT"
+          echo "code=$code tls=$tls"
+
   static:
     name: static scans
     if: github.event_name != 'schedule' || github.event.schedule == '17 3 * * *'
@@ -55,10 +96,10 @@ jobs:
 
   stack-tests:
     name: API + browser suites on a disposable stack
+    needs: changes
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'schedule' && github.event.schedule == '17 3 * * *') ||
-      github.event_name == 'push'
+      (github.event_name == 'schedule' && github.event.schedule == '17 3 * * *' && needs.changes.outputs.code == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -98,6 +139,8 @@ jobs:
 
   tls:
     name: TLS template (testssl.sh, nginx ${{ matrix.image }})
+    needs: changes
+    if: needs.changes.outputs.tls == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -118,10 +161,10 @@ jobs:
 
   isolation:
     name: workspace isolation (two stacks)
+    needs: changes
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'schedule' && github.event.schedule == '17 3 * * *') ||
-      github.event_name == 'push'
+      (github.event_name == 'schedule' && github.event.schedule == '17 3 * * *' && needs.changes.outputs.code == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:

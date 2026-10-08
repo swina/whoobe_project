@@ -17,7 +17,7 @@ technical terms, and where its limits are.
 
 ## 1. In one paragraph
 
-Every pull request, every push to `master` and every night, a fresh, disposable copy of the whole system is built on
+Every pull request, every push to `master` that changes more than documents, and every night when code changed, a fresh, disposable copy of the whole system is built on
 a CI runner with random credentials and attacked by about a thousand automated tests, a browser-based XSS suite, a
 cross-workspace isolation suite, container and dependency scanners and a TLS check. A change that weakens
 authentication, permissions, tenant isolation, upload handling or the container images turns the pipeline red
@@ -32,12 +32,12 @@ with random credentials (`scripts/security/gen-env.sh`) and removed afterwards, 
 
 | Job | Runs on | What it does |
 |---|---|---|
-| **static scans** | every pull request, every push to `master`, nightly | Dependency advisories (`pnpm audit`), secret scanning over the whole git history (gitleaks), SAST (semgrep), shell lint (shellcheck), Docker and Compose configuration (trivy config, hadolint). Judged against a baseline of accepted findings, each with a reason and a review date |
-| **API + browser suites** | push to `master` (relevant paths), nightly, manual | Builds and starts the system on a disposable stack, then runs the API security suites, the Chromium XSS suite and the container image scan (trivy image) |
-| **workspace isolation** | push to `master`, nightly, manual | Starts two complete stacks standing for two customers and checks that nothing of one opens anything in the other |
-| **TLS** | every pull request, push to `master`, nightly | `testssl.sh` against the production nginx TLS template, for two nginx versions |
+| **static scans** | every pull request, every push to `master` that is not documents only, nightly | Dependency advisories (`pnpm audit`), secret scanning over the whole git history (gitleaks), SAST (semgrep), shell lint (shellcheck), Docker and Compose configuration (trivy config, hadolint). Judged against a baseline of accepted findings, each with a reason and a review date |
+| **API + browser suites** | nightly **if code changed in the last day**, manual (before a release) | Builds and starts the system on a disposable stack, then runs the API security suites, the Chromium XSS suite and the container image scan (trivy image) |
+| **workspace isolation** | nightly **if code changed in the last day**, manual | Starts two complete stacks standing for two customers and checks that nothing of one opens anything in the other |
+| **TLS** | when the TLS template or the workflow changed (pull request, push), manual | `testssl.sh` against the production nginx TLS template, for two nginx versions |
 | **DAST** | monthly, manual | OWASP ZAP active scan of the API routes of the three services, plus a passive baseline of the admin and editor web apps |
-| **Dependabot** (`.github/dependabot.yml`) | weekly (npm, Docker), monthly (GitHub Actions) | Opens update pull requests, which the pipeline then verifies |
+| **Dependabot** (`.github/dependabot.yml`) | monthly | Opens update pull requests, which the pipeline then verifies |
 
 The same checks run locally, without GitHub, on any machine with Docker:
 
