@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import { ApiClient } from '@whoobe-cms/renderer'
@@ -347,8 +347,20 @@ export async function generateMobileApp(options: GenerateOptions): Promise<void>
   console.log('  npx cap open ios')
 }
 
+/** The Audio element (player or waveform, title) is the editor's own component: copied as it is, so what is configured in
+ *  the editor is what the app shows and the two cannot drift apart. It needs @lucide/vue (already a dependency). */
+async function copyAudioPlayer(outDir: string): Promise<void> {
+  const src = (rel: string) => new URL(`../../../apps/whoobe-one-spike/src/${rel}`, import.meta.url)
+  try {
+    await writeFile(join(outDir, 'src/components/AudioPlayer.vue'), await readFile(src('components/AudioPlayer.vue'), 'utf8'))
+    await writeFile(join(outDir, 'src/scripts/audio-waveform.ts'), await readFile(src('scripts/audio-waveform.ts'), 'utf8'))
+  } catch (e) {
+    throw new Error(`Cannot copy the Audio player from apps/whoobe-one-spike (run the generator from the Whoobe monorepo): ${(e as Error).message}`)
+  }
+}
+
 async function scaffoldMobileApp(opts: ScaffoldOptions): Promise<void> {
-  const dirs = ['src/views', 'src/router', 'src/composables', 'src/assets', 'src/components', 'public']
+  const dirs = ['src/views', 'src/router', 'src/composables', 'src/assets', 'src/components', 'src/scripts', 'public']
   for (const d of dirs) {
     await mkdir(join(opts.outDir, d), { recursive: true })
   }
@@ -366,6 +378,7 @@ async function scaffoldMobileApp(opts: ScaffoldOptions): Promise<void> {
   await writeFile(join(opts.outDir, 'src/router/index.ts'), routerTs(opts))
   await writeFile(join(opts.outDir, 'src/composables/useApi.ts'), useApiTs(opts))
   await writeFile(join(opts.outDir, 'src/assets/main.css'), mainCss(opts))
+  await copyAudioPlayer(opts.outDir)
   await writeFile(join(opts.outDir, 'public/favicon.ico'), '')
 
   if (opts.staticMode) {
@@ -832,7 +845,7 @@ function pageRendererVue(): string {
   </a>
   <component v-else-if="isLucideIcon && iconComponent" :id="node.anchor || node.id" :is="iconComponent" :class="classList" :style="styleList" v-bind="attrs" />
   <span v-else-if="isLucideIcon" :id="node.anchor || node.id" :class="classList" :style="styleList"></span>
-  <audio v-else-if="isAudio" :id="node.anchor || node.id" :src="imgSrc" :class="classList" :style="styleList" v-bind="attrs" :controls="node.options?.controls !== false" :loop="node.options?.loop === true" :autoplay="node.options?.autoplay === true" :preload="node.options?.preload || 'metadata'"></audio>
+  <AudioPlayer v-else-if="isAudio" :id="node.anchor || node.id" :src="imgSrc" :source="node.image?.url || node.src" :options="node.options" :class="classList" :style="styleList" v-bind="attrs" />
   <img v-else-if="isImg" :id="node.anchor || node.id" :src="imgSrc" :alt="imgAlt" :class="classList" :style="styleList" v-bind="attrs" />
   <component v-else :id="node.anchor || node.id" :is="component" :class="classList" :style="styleList" v-bind="attrs">
     <template v-if="hasBlocks">
@@ -845,11 +858,12 @@ function pageRendererVue(): string {
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { getApiUrl, getAssetProcessorUrl, getRootPath } from '../composables/useApi'
+import AudioPlayer from './AudioPlayer.vue'
 
 const props = defineProps<{ node: any }>()
 
 const isImg = computed(() => props.node?.element === 'img' || props.node?.tag === 'img')
-// Audio element: its source lives in image.url like an image's, but it renders an <audio>, never a background
+// Audio element: its source lives in image.url like an image's, but it renders the AudioPlayer (player or waveform, title), never a background
 const isAudio = computed(() => props.node?.element === 'audio')
 const isLucideIcon = computed(() => props.node?.tag === 'lucideicon')
 
@@ -1211,7 +1225,7 @@ function pageRendererVueStatic(opts: ScaffoldOptions): string {
   </a>
   <component v-else-if="isLucideIcon && iconComponent" :id="node.anchor || node.id" :is="iconComponent" :class="classList" :style="styleList" v-bind="attrs" />
   <span v-else-if="isLucideIcon" :id="node.anchor || node.id" :class="classList" :style="styleList"></span>
-  <audio v-else-if="isAudio" :id="node.anchor || node.id" :src="imgSrc" :class="classList" :style="styleList" v-bind="attrs" :controls="node.options?.controls !== false" :loop="node.options?.loop === true" :autoplay="node.options?.autoplay === true" :preload="node.options?.preload || 'metadata'"></audio>
+  <AudioPlayer v-else-if="isAudio" :id="node.anchor || node.id" :src="imgSrc" :source="node.image?.url || node.src" :options="node.options" :class="classList" :style="styleList" v-bind="attrs" />
   <img v-else-if="isImg" :id="node.anchor || node.id" :src="imgSrc" :alt="imgAlt" :class="classList" :style="styleList" v-bind="attrs" />
   <component v-else :id="node.anchor || node.id" :is="component" :class="classList" :style="styleList" v-bind="attrs">
     <template v-if="hasBlocks">
@@ -1225,11 +1239,12 @@ function pageRendererVueStatic(opts: ScaffoldOptions): string {
 import { computed, ref, watch } from 'vue'
 import { images } from '../assets/images'
 import { getRootPath } from '../composables/useApi'
+import AudioPlayer from './AudioPlayer.vue'
 
 const props = defineProps<{ node: any }>()
 
 const isImg = computed(() => props.node?.element === 'img' || props.node?.tag === 'img')
-// Audio element: its source lives in image.url like an image's, but it renders an <audio>, never a background
+// Audio element: its source lives in image.url like an image's, but it renders the AudioPlayer (player or waveform, title), never a background
 const isAudio = computed(() => props.node?.element === 'audio')
 const isLucideIcon = computed(() => props.node?.tag === 'lucideicon')
 
