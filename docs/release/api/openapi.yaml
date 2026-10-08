@@ -3390,6 +3390,43 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /docs-sites/{websiteId}/search-index:
+    get:
+      tags: ["core-api: Documentation sites (Markdown)"]
+      summary: "The search index of a documentation website (a serialised MiniSearch, searched in the browser), private documents included. ETag-cached."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /public/docs/{websiteId}/search-index:
+    get:
+      tags: ["core-api: Documentation sites (Markdown)"]
+      summary: "The search index of the PUBLIC documents of a documentation website. ETag-cached; the same file the static site ships."
+      parameters:
+        - name: websiteId
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
   /public/docs-site/{segment}:
     get:
       tags: ["core-api: Documentation sites (Markdown)"]

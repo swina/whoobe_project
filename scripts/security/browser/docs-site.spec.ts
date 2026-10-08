@@ -65,6 +65,11 @@ test('write a documentation site in the dashboard and read it in the docs layout
     await p.getByRole('button', { name: 'Check' }).click()
     await expect(p.getByText(/not valid YAML/)).toBeVisible()          // a broken index is never saved
 
+    // publishing: the command for the static generator, with the site's id
+    await p.getByTestId('docs-tab-publish').click()
+    await expect(p.getByTestId('docs-publish-command')).toContainText('--kind docs')
+    await expect(p.getByTestId('docs-publish-command')).toContainText(`--website-id ${siteId}`)
+
     // ---- the docs layout (signed in: private documents included) --------------------------------------------
     const v = await authed.newPage()
     await v.goto(`${EDITOR_URL}/whoobe-one${root}/guide/install`)
@@ -80,6 +85,20 @@ test('write a documentation site in the dashboard and read it in the docs layout
     expect(new URL(v.url()).pathname).toBe(`/whoobe-one${root}/guide/usage`)
     await content.getByRole('link', { name: 'install', exact: true }).first().click()
     await expect(content.locator('h1')).toHaveText(/Install/, { timeout: 15_000 })
+    // search: as you type, in the browser; a section result opens the page at that heading
+    await v.goto(`${EDITOR_URL}/whoobe-one${root}/`)
+    const box = v.getByTestId('docs-search')
+    await box.click()
+    await box.fill('troubleshoting')                                    // a typo is tolerated
+    await expect(v.getByTestId('docs-result').first()).toContainText('Troubleshooting', { timeout: 15_000 })
+    await expect(v.getByTestId('docs-result').first()).toContainText('Install')       // "page › section"
+    await box.press('Enter')
+    await expect(v.getByTestId('docs-content').locator('h1')).toHaveText(/Install/, { timeout: 15_000 })
+    expect(new URL(v.url()).hash).toBe('#troubleshooting')
+    await box.fill('only for editors')                                  // the private page is searchable when signed in
+    await expect(v.getByTestId('docs-result').first()).toContainText('Secret', { timeout: 10_000 })
+    await box.fill('zzzzqqq')
+    await expect(v.getByText('No results for')).toBeVisible()
     // an editor sees the private document
     await v.goto(`${EDITOR_URL}/whoobe-one${root}/secret`)
     await expect(content).toContainText(`only for editors ${tag}`, { timeout: 15_000 })
@@ -92,6 +111,8 @@ test('write a documentation site in the dashboard and read it in the docs layout
     expect(await a.content()).not.toContain(`only for editors ${tag}`)
     await a.goto(`${EDITOR_URL}/whoobe-one${root}/guide/install`)
     await expect(a.getByTestId('docs-content').locator('h1')).toHaveText(/Install/, { timeout: 20_000 })
+    await a.getByTestId('docs-search').fill('only for editors')                     // not signed in: the public index has no such page
+    await expect(a.getByText('No results for')).toBeVisible({ timeout: 10_000 })
     await anon.close()
   } finally {
     for (const rel of uploaded) await assets.request('DELETE', '/api/v1/dam/asset', { body: { pimcorePath: `${folder}/${rel}` } })

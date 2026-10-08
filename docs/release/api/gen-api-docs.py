@@ -210,6 +210,8 @@ CORE_API_SECTIONS = [
   ("GET", "/docs-sites/:websiteId/preview/*", "A rendered page of a documentation website by its address (empty = home), private documents included: `{ site, nav, page }` with the HTML, the headings, breadcrumbs, previous/next and the warnings."),
   ("POST", "/docs-sites/:websiteId/render", "Live preview: renders Markdown that is not saved yet (`{ path, markdown }`) as it would be at that path, with the folder's real links and files; returns `{ title, html, headings, warnings }`."),
   ("POST", "/docs-sites/:websiteId/nav/check", "Checks the text of the index file (`{ text }`) without saving it: `{ ok, errors, warnings, nav }`."),
+  ("GET", "/docs-sites/:websiteId/search-index", "The search index of a documentation website (a serialised MiniSearch, searched in the browser), private documents included. ETag-cached."),
+  ("GET", "/public/docs/:websiteId/search-index", "The search index of the PUBLIC documents of a documentation website. ETag-cached; the same file the static site ships."),
   ("GET", "/public/docs-site/:segment", "Which documentation website answers at a root path segment (`{ websiteId, rootPath, title }`, 404 if none)."),
   ("GET", "/public/docs/:websiteId/nav", "Index of the PUBLIC documents of a documentation website."),
   ("GET", "/public/docs/:websiteId/page/*", "A rendered public document by its address (empty = home): `{ site, page }`. A document that is private in the DAM answers 404."),

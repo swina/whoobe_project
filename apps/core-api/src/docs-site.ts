@@ -2,9 +2,10 @@
 // the Markdown assets of a DAM folder. This module loads that folder, builds the index and renders one page. The Markdown
 // work itself (parsing, rendering, index) is the pure code in @whoobe-cms/core/docs; this file only adds the reading of
 // the assets (through asset-processor, like the system log viewer) and the choice of which documents may be shown.
+import { createHash } from 'node:crypto';
 import { listAssetsUnderFolder, type AssetRecord, type WebsiteRecord } from '@whoobe-cms/core/server';
 import {
-  parseDocument, renderMarkdown, buildAutoNav, buildManualNav, parseNavYaml, docRouteOf, docTitle, prevNext, breadcrumbs,
+  buildSearchIndex, parseDocument, renderMarkdown, buildAutoNav, buildManualNav, parseNavYaml, docRouteOf, docTitle, prevNext, breadcrumbs,
   type DocEntry, type NavNode, type FrontMatter,
 } from '@whoobe-cms/core/docs';
 
@@ -215,4 +216,31 @@ export function checkNavText(site: LoadedDocsSite, text: string) {
   if (parsed.errors.length) return { ok: false as const, errors: parsed.errors, warnings: [] as string[], nav: [] as NavNode[] };
   const built = buildManualNav(parsed.entries, site.docs.map((d) => d.entry));
   return { ok: true as const, errors: [] as string[], warnings: built.warnings, nav: built.items };
+}
+
+const searchCache = new Map<string, { sig: string; json: string; count: number; etag: string }>();
+
+/** The search index of a site (serialised MiniSearch), rebuilt only when a document, its version or the index changed. */
+export function docsSearchIndex(websiteId: string, site: LoadedDocsSite, publicOnly: boolean): { json: string; count: number; etag: string } {
+  const sig = createHash('sha1')
+    .update(JSON.stringify([site.docs.map((d) => [d.asset.id, d.asset.version, new Date(d.asset.updatedAt as any).getTime()]), site.nav, site.config.title]))
+    .digest('hex');
+  const key = `${websiteId}:${publicOnly ? 'public' : 'all'}`;
+  const hit = searchCache.get(key);
+  if (hit && hit.sig === sig) return hit;
+  const byPath = new Map(site.docs.map((d) => [d.path, d]));
+  const pages = site.docs.filter((d) => !d.entry.frontMatter.hidden).map((d) => {
+    const rendered = renderMarkdown(d.body, {
+      currentPath: d.path,
+      docRoute: (p) => byPath.get(p)?.route ?? null,
+      assetUrl: () => null,
+    });
+    const trail = breadcrumbs(site.nav, d.path).slice(0, -1).map((b) => b.title).join(' › ');
+    return { route: d.route, title: docTitle(d.entry), description: d.entry.frontMatter.description ?? null, breadcrumb: trail, headings: rendered.headings, text: rendered.text };
+  });
+  const built = buildSearchIndex(pages);
+  const entry = { sig, json: built.json, count: built.count, etag: `"${sig}"` };
+  searchCache.set(key, entry);
+  if (searchCache.size > 200) searchCache.delete(searchCache.keys().next().value as string);
+  return entry;
 }

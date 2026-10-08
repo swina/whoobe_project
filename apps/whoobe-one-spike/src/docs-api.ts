@@ -1,6 +1,9 @@
 // Documentation sites (docs/plans/docs-sites/docs-site-plan.md), as the editor application shows them at a website's root path.
 // Editors (a session with the asset permissions) get the preview endpoints, private documents included; anybody else the public ones.
 import { getDefaultCoreApiUrl } from './core-api-url'
+import { loadSearchIndex, searchDocs, type SearchHit } from '@whoobe-cms/core/docs-search'
+
+export type { SearchHit }
 
 export type NavNode =
   | { type: 'doc'; title: string; path: string; route: string }
@@ -66,4 +69,14 @@ export async function loadDocsView(site: DocsSiteRef, route: string): Promise<Do
   const page = await pageRes.json()
   const nav = await navRes.json()
   return { siteTitle: page.site.title, nav: nav.nav, page: page.page, draft: false }
+}
+
+/** The search of a site: the index is downloaded once (the editors' one, with the private documents, when the session may see them) and searched locally. */
+export async function loadDocsSearch(site: DocsSiteRef, draft: boolean): Promise<(query: string) => SearchHit[]> {
+  const id = encodeURIComponent(site.websiteId)
+  let res = draft ? await fetch(`${base()}/docs-sites/${id}/search-index`, { credentials: 'include' }) : null
+  if (!res || !res.ok) res = await fetch(`${base()}/public/docs/${id}/search-index`)
+  if (!res.ok) throw new Error('The search index could not be loaded')
+  const index = loadSearchIndex(await res.text())
+  return (query: string) => searchDocs(index, query)
 }

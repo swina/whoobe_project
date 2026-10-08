@@ -1,6 +1,6 @@
 # Documentation sites from Markdown - Plan
 
-**Status:** Decisions taken 2026-10-08 (section 13); phase 1 done (pipeline, read API, dashboard manager, docs layout in the editor application); phase 2 (search, static generator, `_nav.yml` tree editor) next · **Branch:** `feat/docs-sites`
+**Status:** Decisions taken 2026-10-08 (section 13); phase 1 done (pipeline, read API, dashboard manager, docs layout in the editor application); phase 2: search (MiniSearch, served as a file) and the static generator done; the `_nav.yml` tree editor, languages/versions and the page-template layout remain · **Branch:** `feat/docs-sites`
 
 ## 1. Goal
 
@@ -134,6 +134,13 @@ Document visibility follows the DAM (`folders.is_public` / `assets.is_public`): 
 served, indexed as published, nor included in a published site. The docs site editor shows which documents are private.
 
 ## 6. Search
+
+**As built (phase 2):** the index is not in `search_documents`. It is built on the server from the rendered documents of the site
+(`packages/core/src/docs/search.ts`: one entry per page and one per h2/h3 section, accents folded, typos tolerated), serialised as a
+MiniSearch JSON, cached by a signature of the assets and the index, and served as a file (`GET /public/docs/:id/search-index`, ETag;
+`/docs-sites/:id/search-index` for editors, private documents included). The live site and the published static site search it in the
+browser with the same options (a test keeps the generated script and the server in step). No hooks on upload, no table to drift. What
+follows is the original design, kept for the record.
 
 - **Index**: `search_documents` gets documents of type `doc` (`SEARCH_DOCUMENT_TYPES` extended; `document_id` = asset id,
   `locale`, `website_id` = the docs website, `path` = the document's route, `payload` = section/breadcrumb). The records

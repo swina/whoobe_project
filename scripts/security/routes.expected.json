@@ -1188,6 +1188,18 @@
       "access": "public",
       "permissions": [],
       "note": "documentation site: which website answers at a root path (id, title)"
+    },
+    "GET /docs-sites/:websiteId/search-index": {
+      "access": "permission",
+      "permissions": [
+        "ASSETS_VIEW"
+      ],
+      "note": "documentation site: serialised search index including private documents"
+    },
+    "GET /public/docs/:websiteId/search-index": {
+      "access": "public",
+      "permissions": [],
+      "note": "documentation site: serialised search index of the public documents"
     }
   }
 }

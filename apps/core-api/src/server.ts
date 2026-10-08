@@ -5,7 +5,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
-import { DocsConfigError, checkNavText, createContentReader, renderDraft, describeDocsSite, docsConfigOf, findDocByRoute, loadDocsSite, renderDocPage } from './docs-site.js';
+import { DocsConfigError, checkNavText, createContentReader, docsSearchIndex, renderDraft, describeDocsSite, docsConfigOf, findDocByRoute, loadDocsSite, renderDocPage } from './docs-site.js';
 import { createAuthoredNotifyCache, createRecipientThrottle, isSingleEmail, notifyKey } from './form-notify.js';
 import {
   findUserByEmail,
@@ -6219,6 +6219,25 @@ app.get('/public/docs-site/:segment', async (req: Request, res: Response): Promi
     res.status(500).json({ error: 'Failed to look up the documentation site' });
   }
 });
+
+// The search index of a documentation site (MiniSearch, serialised): the browser downloads it once and searches locally. The
+// public one holds only public documents; the editors' one also the private ones.
+async function sendDocsSearchIndex(req: Request, res: Response, publicOnly: boolean): Promise<void> {
+  try {
+    const site = await docsSiteFor(req.params.websiteId, res, publicOnly);
+    if (!site) return;
+    const idx = docsSearchIndex(req.params.websiteId, site, publicOnly);
+    res.setHeader('ETag', idx.etag);
+    res.setHeader('Cache-Control', publicOnly ? 'public, max-age=0, must-revalidate' : 'private, no-cache');
+    if (req.headers['if-none-match'] === idx.etag) { res.status(304).end(); return; }
+    res.type('application/json').send(idx.json);
+  } catch (error: any) {
+    logger.error({ err: error, module: 'docs-sites' }, 'Failed to build the search index');
+    res.status(500).json({ error: 'Failed to build the search index' });
+  }
+}
+app.get('/docs-sites/:websiteId/search-index', requirePermission(PERMISSIONS.ASSETS_VIEW), (req: Request, res: Response) => sendDocsSearchIndex(req, res, false));
+app.get('/public/docs/:websiteId/search-index', (req: Request, res: Response) => sendDocsSearchIndex(req, res, true));
 
 // Public: only documents that are public in the DAM exist here; a private one is neither listed, linked nor served.
 app.get('/public/docs/:websiteId/nav', async (req: Request, res: Response): Promise<void> => {
