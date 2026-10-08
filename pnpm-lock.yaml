@@ -381,6 +381,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.3(@types/pg@8.20.3)(mysql2@3.23.2(@types/node@20.19.43))(pg@8.22.0)
+      js-yaml:
+        specifier: ^5.4.2
+        version: 5.4.2
       marked:
         specifier: ^14.1.4
         version: 14.1.4
@@ -415,6 +418,9 @@ importers:
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.25
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
       '@types/node':
         specifier: ^20.11.0
         version: 20.19.43
