@@ -268,9 +268,11 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 
 | Method & path | Description |
 | --- | --- |
-| `GET /mail-settings` | Get the SMTP/transactional-mail configuration. |
-| `PUT /mail-settings` | Update mail settings. |
-| `POST /mail-settings/test` | Send a test email with the current settings. |
+| `GET /mail-settings` | Get a mail configuration: the default, or with `?websiteId=` that website's own, plus what a message of that scope is sent with. Passwords and API keys are never returned (only whether they are set). |
+| `GET /mail-providers` | List the installed HTTP mail providers (OneSignal ...): their id, label and config fields. Providers are JSON files (`packages/core/mail-providers`, `MAIL_PROVIDERS_PATH`), read again when one changes. |
+| `PUT /mail-settings` | Save a mail configuration for the default (no `websiteId`) or for one website: `provider` is `smtp` (with `smtp: {host, port, secure, user, password}`) or a provider id (with `providerConfig`). Secrets are encrypted at rest; a blank secret keeps the stored one. Needs `MAIL_SETTINGS_ENCRYPTION_KEY` on the server. |
+| `DELETE /mail-settings` | Remove a website's own mail configuration (`?websiteId=`), so its mail goes out with the default again. The default cannot be removed. |
+| `POST /mail-settings/test` | Send a test email with the configuration of the default or, with `websiteId`, of that website. |
 | `GET /mail-log` | List sent-mail log entries. |
 | `POST /mail-log/delete` | Bulk-delete mail log entries. |
 | `GET /mail-log/:id` | Get one mail log entry (including the rendered body). |

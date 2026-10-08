@@ -160,6 +160,7 @@ set_env "DAM_SERVICE_TOKEN" "$(openssl rand -hex 24)"
 # the example file carries placeholders for these: never ship a workspace with the shared defaults
 set_env "SITE_API_KEY_PEPPER" "$(openssl rand -hex 32)"
 set_env "TOTP_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
+set_env "MAIL_SETTINGS_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
 set_env "S3_ACCESS_KEY_ID" "${S3_KEY_ID}"
 set_env "COMPOSE_PROFILES" "local-s3"
 set_env "S3_SECRET_ACCESS_KEY" "${S3_SECRET}"

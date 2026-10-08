@@ -19,19 +19,30 @@ export function notifyKey(targetClassId: unknown, n: NotifyConfig | null | undef
   return JSON.stringify([s(targetClassId), s(n?.mailTemplateId), s(n?.templatePageId), s(n?.recipientEmail), s(n?.subject)]);
 }
 
+/** Every enabled notify block of every form in the given pages, as keys, each with the website of the page it was
+ *  authored in: the mail goes out with that website's mail configuration. */
+export function collectAuthoredNotify(pages: Iterable<{ content: unknown; websiteId: string | null }>): Map<string, { websiteId: string | null }> {
+  const found = new Map<string, { websiteId: string | null }>();
+  for (const page of pages) {
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) { node.forEach(walk); return; }
+      if (!node || typeof node !== 'object') return;
+      const rec = node as Record<string, unknown>;
+      const form = rec.formConfig as { targetClassId?: unknown; notify?: NotifyConfig } | null | undefined;
+      if (form?.notify?.enabled) {
+        const key = notifyKey(form.targetClassId, form.notify);
+        if (!found.has(key)) found.set(key, { websiteId: page.websiteId });
+      }
+      Object.values(rec).forEach(walk);
+    };
+    walk(page.content);
+  }
+  return found;
+}
+
 /** Every enabled notify block of every form in the given content trees, as keys. */
 export function collectAuthoredNotifyKeys(contents: Iterable<unknown>): Set<string> {
-  const keys = new Set<string>();
-  const walk = (node: unknown): void => {
-    if (Array.isArray(node)) { node.forEach(walk); return; }
-    if (!node || typeof node !== 'object') return;
-    const rec = node as Record<string, unknown>;
-    const form = rec.formConfig as { targetClassId?: unknown; notify?: NotifyConfig } | null | undefined;
-    if (form?.notify?.enabled) keys.add(notifyKey(form.targetClassId, form.notify));
-    Object.values(rec).forEach(walk);
-  };
-  for (const c of contents) walk(c);
-  return keys;
+  return new Set(collectAuthoredNotify([...contents].map((content) => ({ content, websiteId: null }))).keys());
 }
 
 /** A single plain address: no list, no header injection, no display name. */
@@ -58,18 +69,21 @@ export function createRecipientThrottle(max = 3, windowMs = 60 * 60 * 1000, now:
   };
 }
 
-/** Authored keys, read from the pages at most every `ttlMs` (a submit must not scan every page). */
-export function createAuthoredNotifyCache(load: () => Promise<Iterable<unknown>>, ttlMs = 30_000, now: () => number = Date.now) {
-  let keys: Set<string> | null = null;
+/** Authored blocks, read from the pages at most every `ttlMs` (a submit must not scan every page). */
+export function createAuthoredNotifyCache(load: () => Promise<Iterable<{ content: unknown; websiteId: string | null }>>, ttlMs = 30_000, now: () => number = Date.now) {
+  let found: Map<string, { websiteId: string | null }> | null = null;
   let loadedAt = 0;
+  const fresh = async () => {
+    if (!found || now() - loadedAt > ttlMs) {
+      found = collectAuthoredNotify(await load());
+      loadedAt = now();
+    }
+    return found;
+  };
   return {
-    async has(key: string): Promise<boolean> {
-      if (!keys || now() - loadedAt > ttlMs) {
-        keys = collectAuthoredNotifyKeys(await load());
-        loadedAt = now();
-      }
-      return keys.has(key);
-    },
-    clear(): void { keys = null; },
+    /** The block's website, or null when no form has this block. */
+    async lookup(key: string): Promise<{ websiteId: string | null } | null> { return (await fresh()).get(key) ?? null; },
+    async has(key: string): Promise<boolean> { return (await fresh()).has(key); },
+    clear(): void { found = null; },
   };
 }

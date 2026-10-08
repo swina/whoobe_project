@@ -7,6 +7,20 @@
       </p>
     </div> -->
 
+    <!-- Whose mail: the default for every website, or one website's own configuration -->
+    <div class="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+      <label for="mail-scope" class="font-semibold">Settings for</label>
+      <select id="mail-scope" v-model="scopeId" :class="inputCls" class="max-w-xs">
+        <option value="">Default (every website without its own)</option>
+        <option v-for="w in websitesStore.websites" :key="w.id" :value="w.id">{{ w.name }}</option>
+      </select>
+      <span v-if="view?.effective" class="text-slate-500">
+        {{ scopeId ? (view.settings ? 'This website sends with its own configuration' : 'This website has no configuration of its own: it sends with the default') : 'Used by the websites that have no configuration of their own, and for password-reset mail' }}
+        ({{ providerLabel(view.effective.provider) }}).
+      </span>
+      <span v-else-if="view" class="text-amber-400">Nothing is configured to send with yet.</span>
+    </div>
+
     <div class="flex gap-1 border-b border-slate-800 light:border-slate-200">
       <button
         v-for="tab in tabs" :key="tab.key"
@@ -24,49 +38,85 @@
     <template v-else>
       <!-- Settings -->
       <form v-show="activeTab === 'settings'" @submit.prevent="save" class="grid grid-cols-2 gap-4">
+        <p v-if="view && !view.encryptionConfigured" class="col-span-2 text-xs text-amber-400 border border-amber-500/40 rounded-lg px-3 py-2">
+          This server has no <code>MAIL_SETTINGS_ENCRYPTION_KEY</code>, so a password or an API key cannot be saved (they are stored encrypted).
+          Set it in the server's environment and restart; settings that need no secret still save.
+        </p>
+
         <label class="col-span-2 flex flex-col gap-1 text-xs text-slate-400">
-          Host
-          <input v-model="form.host" type="text" required placeholder="smtp.example.com" class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+          Send with
+          <select v-model="form.provider" :class="inputCls">
+            <option value="smtp">SMTP server</option>
+            <option v-for="p in providers" :key="p.id" :value="p.id">{{ p.label }}</option>
+          </select>
+          <span v-if="currentProvider?.description" class="text-slate-500">{{ currentProvider.description }}
+            <a v-if="currentProvider.docsUrl" :href="currentProvider.docsUrl" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline">Documentation</a>
+          </span>
         </label>
+
+        <template v-if="form.provider === 'smtp'">
+          <label class="col-span-2 flex flex-col gap-1 text-xs text-slate-400">
+            Host
+            <input v-model="form.host" type="text" required placeholder="smtp.example.com" :class="inputCls" />
+          </label>
+
+          <label class="flex flex-col gap-1 text-xs text-slate-400">
+            Port
+            <input v-model.number="form.port" type="number" required placeholder="587" :class="inputCls" />
+          </label>
+
+          <label class="flex items-center gap-2 text-xs text-slate-400 self-end pb-2">
+            <input v-model="form.secure" type="checkbox" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-slate-800 light:border-slate-300" />
+            Use TLS (secure)
+          </label>
+
+          <label class="flex flex-col gap-1 text-xs text-slate-400">
+            User (optional)
+            <input v-model="form.user" type="text" placeholder="smtp username" :class="inputCls" />
+          </label>
+
+          <label class="flex flex-col gap-1 text-xs text-slate-400">
+            Password {{ view?.settings?.smtp.hasPassword ? '(leave blank to keep current)' : '(optional)' }}
+            <input v-model="form.password" type="password" placeholder="••••••••" autocomplete="new-password" :class="inputCls" />
+          </label>
+        </template>
+
+        <template v-else-if="currentProvider">
+          <label v-for="f in currentProvider.configFields" :key="f.name" class="col-span-2 flex flex-col gap-1 text-xs text-slate-400">
+            {{ f.label }}{{ f.required ? '' : ' (optional)' }}{{ f.secret && view?.settings?.secretsSet?.[f.name] && form.provider === view?.settings?.provider ? ' - leave blank to keep the current one' : '' }}
+            <input
+              v-model="form.providerConfig[f.name]"
+              :type="f.secret ? 'password' : 'text'"
+              :autocomplete="f.secret ? 'new-password' : 'off'"
+              :placeholder="f.secret ? '••••••••' : ''"
+              :class="inputCls"
+            />
+            <span v-if="f.help" class="text-slate-500">{{ f.help }}</span>
+          </label>
+        </template>
 
         <label class="flex flex-col gap-1 text-xs text-slate-400">
-          Port
-          <input v-model.number="form.port" type="number" required placeholder="587" class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
-        </label>
-
-        <label class="flex items-center gap-2 text-xs text-slate-400 self-end pb-2">
-          <input v-model="form.secure" type="checkbox" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-slate-800 light:border-slate-200" />
-          Use TLS (secure)
-        </label>
-
-        <label class="flex flex-col gap-1 text-xs text-slate-400">
-          User (optional)
-          <input v-model="form.user" type="text" placeholder="smtp username" class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
-        </label>
-
-        <label class="flex flex-col gap-1 text-xs text-slate-400">
-          Password {{ existing?.hasPassword ? '(leave blank to keep current)' : '(optional)' }}
-          <input v-model="form.password" type="password" placeholder="••••••••" class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
-        </label>
-
-        <label class="flex flex-col gap-1 text-xs text-slate-400">
-          From address
-          <input v-model="form.fromAddress" type="email" required placeholder="no-reply@example.com" class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+          From address{{ form.provider === 'smtp' ? '' : ' (optional)' }}
+          <input v-model="form.fromAddress" type="email" :required="form.provider === 'smtp'" placeholder="no-reply@example.com" :class="inputCls" />
+          <span v-if="form.provider !== 'smtp'" class="text-slate-500">Empty = the sender set in the provider's own dashboard. Its domain must be verified there.</span>
         </label>
 
         <label class="flex flex-col gap-1 text-xs text-slate-400">
           From name (optional)
-          <input v-model="form.fromName" type="text" placeholder="Whoobe CMS" class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+          <input v-model="form.fromName" type="text" placeholder="Whoobe CMS" :class="inputCls" />
         </label>
 
         <label class="col-span-2 flex items-center gap-2 text-xs text-slate-400">
-          <input v-model="form.bccFromAddress" type="checkbox" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-slate-800 light:border-slate-200" />
+          <input v-model="form.bccFromAddress" type="checkbox" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-slate-800 light:border-slate-300" />
           BCC the from address on every outgoing email (keep a copy of all mail sent)
         </label>
 
-        <div class="col-span-2 flex items-center gap-3 pt-2">
+        <div class="col-span-2 flex flex-wrap items-center gap-3 pt-2">
           <button type="submit" :disabled="saving" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white">
-            {{ saving ? 'Saving…' : 'Save' }}
+            {{ saving ? 'Saving…' : scopeId && !view?.settings ? 'Give this website its own configuration' : 'Save' }}
+          </button>
+          <button v-if="scopeId && view?.settings" type="button" :disabled="saving" @click="useDefault" class="px-4 py-1.5 rounded-lg text-xs font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 light:text-slate-700 light:hover:bg-slate-100">
+            Use the default again
           </button>
           <span v-if="savedAt" class="text-xs text-emerald-400">Saved.</span>
           <span v-if="error" class="text-xs text-rose-400">{{ error }}</span>
@@ -75,6 +125,9 @@
 
       <!-- Email Test -->
       <form v-show="activeTab === 'test'" @submit.prevent="sendTest" class="space-y-4">
+        <p v-if="view?.effective" class="text-xs text-slate-500">
+          Sent with {{ scopeId ? (view.effective.scope === 'website' ? 'this website\'s own configuration' : 'the default configuration (this website has none of its own)') : 'the default configuration' }}: {{ providerLabel(view.effective.provider) }}.
+        </p>
         <div class="grid grid-cols-2 gap-4">
           <label class="flex flex-col gap-1 text-xs text-slate-400">
             From
@@ -187,7 +240,7 @@
                     class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-slate-800 light:border-slate-200"
                   />
                 </td>
-                <td class="py-2 pr-3 text-slate-400 whitespace-nowrap">{{ formatLogTime(entry.sentAt) }}</td>
+                <td class="py-2 pr-3 text-slate-400 whitespace-nowrap">{{ formatLogTime(entry.sentAt) }}<div v-if="entry.provider" class="text-[10px] text-slate-600" :title="entry.reference ? 'Provider message id: ' + entry.reference : ''">{{ providerLabel(entry.provider) }}</div></td>
                 <td class="py-2 pr-3 text-slate-300 light:text-slate-700">{{ entry.to }}</td>
                 <td class="py-2 pr-3 text-slate-200 light:text-slate-800">{{ entry.subject }}</td>
                 <td class="py-2 pr-3">
@@ -399,7 +452,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
-import { fetchMailSettings, saveMailSettings, sendTestMail, fetchMailLog, fetchMailLogEntry, resendMail, deleteMailLogEntries, type MailSettingsRecord, type MailLogEntry } from '../../utils/mail-settings-api'
+import { useWebsitesStore } from '../../stores/websitesStore'
+import { fetchMailSettings, fetchMailProviders, saveMailSettings, removeWebsiteMailSettings, sendTestMail, fetchMailLog, fetchMailLogEntry, resendMail, deleteMailLogEntries, type MailSettingsResponse, type MailProviderInfo, type MailLogEntry } from '../../utils/mail-settings-api'
 import { fetchMailTemplates, fetchMailTemplate, createMailTemplate, updateMailTemplate, deleteMailTemplate, type MailTemplateSummary } from '../../utils/mail-templates-api'
 import MailTemplateEditorEmbed from './MailTemplateEditorEmbed.vue'
 import BrevoCampaignModal from './BrevoCampaignModal.vue'
@@ -408,7 +462,13 @@ const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
 const savedAt = ref(false)
-const existing = ref<MailSettingsRecord | null>(null)
+const view = ref<MailSettingsResponse | null>(null)
+const providers = ref<MailProviderInfo[]>([])
+const websitesStore = useWebsitesStore()
+// '' = the default configuration; otherwise the id of the website whose own configuration is shown
+const scopeId = ref('')
+const inputCls = 'px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800'
+const providerLabel = (id: string) => (id === 'smtp' ? 'SMTP' : providers.value.find((p) => p.id === id)?.label ?? id)
 
 const tabs: { key: 'settings' | 'test' | 'log' | 'templates'; label: string }[] = [
   { key: 'settings', label: 'Settings' },
@@ -713,62 +773,94 @@ async function removeTemplate(t: MailTemplateSummary) {
 }
 
 const form = reactive({
+  provider: 'smtp',
   host: '',
   port: 587,
   secure: false,
   user: '',
   password: '',
+  providerConfig: {} as Record<string, string>,
   fromAddress: '',
   fromName: '',
   bccFromAddress: false,
 })
+const currentProvider = computed(() => providers.value.find((p) => p.id === form.provider) ?? null)
 
-onMounted(async () => {
+function fillForm() {
+  const s = view.value?.settings
+  form.provider = s?.provider ?? 'smtp'
+  form.host = s?.smtp.host ?? ''
+  form.port = s?.smtp.port ?? 587
+  form.secure = s?.smtp.secure ?? false
+  form.user = s?.smtp.user ?? ''
+  form.password = ''
+  // non-secret values come back; secrets stay blank ("leave blank to keep")
+  form.providerConfig = { ...(s?.providerConfig ?? {}) }
+  form.fromAddress = s?.fromAddress ?? ''
+  form.fromName = s?.fromName ?? ''
+  form.bccFromAddress = s?.bccFromAddress ?? false
+  // Default the test sender to the configured from address.
+  testForm.from = view.value?.effective?.fromAddress ?? s?.fromAddress ?? ''
+}
+
+async function loadSettings() {
+  loading.value = true
+  error.value = ''
+  savedAt.value = false
   try {
-    const settings = await fetchMailSettings(getDefaultCoreApiUrl())
-    existing.value = settings
-    if (settings) {
-      form.host = settings.host
-      form.port = settings.port
-      form.secure = settings.secure
-      form.user = settings.user ?? ''
-      form.fromAddress = settings.fromAddress
-      form.fromName = settings.fromName ?? ''
-      form.bccFromAddress = settings.bccFromAddress
-      // Default the test sender to the configured from address.
-      testForm.from = settings.fromAddress
-    }
+    view.value = await fetchMailSettings(getDefaultCoreApiUrl(), scopeId.value || null)
+    fillForm()
   } catch (e: any) {
     error.value = e?.message || 'Failed to load mail settings'
   } finally {
     loading.value = false
   }
+}
+
+onMounted(async () => {
+  try { providers.value = await fetchMailProviders(getDefaultCoreApiUrl()) } catch { /* SMTP still works */ }
+  if (websitesStore.websites.length === 0) websitesStore.refreshWebsites().catch(() => {})
+  await loadSettings()
   loadTemplates()
 })
+watch(scopeId, loadSettings)
 
 async function save() {
   saving.value = true
   error.value = ''
   savedAt.value = false
   try {
-    const updated = await saveMailSettings(getDefaultCoreApiUrl(), {
-      host: form.host,
-      port: form.port,
-      secure: form.secure,
-      user: form.user || null,
-      // Blank means "leave as-is" - the server never received the real
-      // password back to resubmit, so an empty field must not be sent as
-      // an intent to clear it.
-      password: form.password || undefined,
-      fromAddress: form.fromAddress,
+    const smtp = form.provider === 'smtp'
+    await saveMailSettings(getDefaultCoreApiUrl(), {
+      websiteId: scopeId.value || null,
+      provider: form.provider,
+      // Blank means "leave as-is" - the server never sends a secret back to resubmit, so an empty field must not be
+      // read as an intent to clear it.
+      smtp: smtp ? { host: form.host, port: form.port, secure: form.secure, user: form.user || null, password: form.password || undefined } : undefined,
+      providerConfig: smtp ? undefined : { ...form.providerConfig },
+      fromAddress: form.fromAddress || null,
       fromName: form.fromName || null,
       bccFromAddress: form.bccFromAddress,
     })
-    existing.value = updated
-    form.password = ''
+    await loadSettings()
     savedAt.value = true
   } catch (e: any) {
     error.value = e?.message || 'Failed to save mail settings'
+  } finally {
+    saving.value = false
+  }
+}
+
+async function useDefault() {
+  if (!scopeId.value) return
+  if (!window.confirm('Remove this website\'s own mail configuration? Its mail will go out with the default one.')) return
+  saving.value = true
+  error.value = ''
+  try {
+    await removeWebsiteMailSettings(getDefaultCoreApiUrl(), scopeId.value)
+    await loadSettings()
+  } catch (e: any) {
+    error.value = e?.message || 'Failed to remove the configuration'
   } finally {
     saving.value = false
   }
@@ -787,6 +879,7 @@ async function sendTest() {
     // HTML-looking content goes as html, otherwise as plain text.
     const looksLikeHtml = /<[a-z/][^>]*>/i.test(body)
     await sendTestMail(getDefaultCoreApiUrl(), {
+      websiteId: scopeId.value || null,
       from: testForm.from.trim() || undefined,
       to: testForm.to.trim(),
       cc: testForm.cc.trim() || undefined,

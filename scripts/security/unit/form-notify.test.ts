@@ -1,7 +1,7 @@
 // The pieces behind F-053 (apps/core-api/src/form-notify.ts): which notify blocks count, which recipients are
 // acceptable, and the hourly limit per address. Pure functions, no stack needed.
 import { describe, it, expect } from 'vitest'
-import { collectAuthoredNotifyKeys, createAuthoredNotifyCache, createRecipientThrottle, isSingleEmail, notifyKey } from '../../../apps/core-api/src/form-notify'
+import { collectAuthoredNotify, collectAuthoredNotifyKeys, createAuthoredNotifyCache, createRecipientThrottle, isSingleEmail, notifyKey } from '../../../apps/core-api/src/form-notify'
 
 describe('notifyKey / collectAuthoredNotifyKeys', () => {
   const form = (target: string, notify: object) => ({ blocks: [{ formConfig: { targetClassId: target, notify } }] })
@@ -46,14 +46,28 @@ describe('createRecipientThrottle', () => {
   })
 })
 
+describe('the website of an authored block', () => {
+  const page = (websiteId: string | null, notify: object) => ({ websiteId, content: { blocks: [{ formConfig: { targetClassId: 'c', notify } }] } })
+  it('is the website of the page the form is in: its mail goes out with that website\'s configuration', () => {
+    const found = collectAuthoredNotify([page('site-a', { enabled: true, mailTemplateId: 't1' }), page(null, { enabled: true, mailTemplateId: 't2' })])
+    expect(found.get(notifyKey('c', { mailTemplateId: 't1' }))).toEqual({ websiteId: 'site-a' })
+    expect(found.get(notifyKey('c', { mailTemplateId: 't2' }))).toEqual({ websiteId: null })
+  })
+  it('the first page wins when two forms share a block', () => {
+    const found = collectAuthoredNotify([page('site-a', { enabled: true, mailTemplateId: 't1' }), page('site-b', { enabled: true, mailTemplateId: 't1' })])
+    expect(found.get(notifyKey('c', { mailTemplateId: 't1' }))).toEqual({ websiteId: 'site-a' })
+  })
+})
+
 describe('createAuthoredNotifyCache', () => {
-  it('reads the pages once per ttl', async () => {
+  it('reads the pages once per ttl, and says which website a block belongs to', async () => {
     let t = 0
     let loads = 0
-    const cache = createAuthoredNotifyCache(async () => { loads++; return [{ formConfig: { targetClassId: 'c', notify: { enabled: true, mailTemplateId: 't' } } }] }, 100, () => t)
+    const cache = createAuthoredNotifyCache(async () => { loads++; return [{ websiteId: 'w1', content: { formConfig: { targetClassId: 'c', notify: { enabled: true, mailTemplateId: 't' } } } }] }, 100, () => t)
     const key = notifyKey('c', { mailTemplateId: 't' })
     expect(await cache.has(key)).toBe(true)
-    expect(await cache.has('nope')).toBe(false)
+    expect(await cache.lookup(key)).toEqual({ websiteId: 'w1' })
+    expect(await cache.lookup('nope')).toBeNull()
     expect(loads).toBe(1)
     t = 200
     await cache.has(key)

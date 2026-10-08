@@ -1,0 +1,43 @@
+{
+  "id": "onesignal",
+  "label": "OneSignal",
+  "description": "Sends through OneSignal's email API (HTML only, no attachments). The sender domain must be verified in the OneSignal dashboard.",
+  "docsUrl": "https://documentation.onesignal.com/reference/email",
+  "configFields": [
+    { "name": "appId", "label": "App ID", "required": true, "help": "OneSignal dashboard > Settings > Keys & IDs" },
+    { "name": "apiKey", "label": "App API key", "required": true, "secret": true, "help": "The App API key of that app; it is stored encrypted and never shown again" },
+    { "name": "senderDomain", "label": "Sender domain", "required": false, "help": "A domain verified in OneSignal (for example mail.example.com); empty = the default of the OneSignal email settings" }
+  ],
+  "request": {
+    "method": "POST",
+    "url": "https://api.onesignal.com/notifications?c=email",
+    "headers": {
+      "Authorization": "Key {{config.apiKey}}",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "app_id": "{{config.appId}}",
+      "email_subject": "{{subject}}",
+      "email_body": "{{html}}",
+      "email_to": ["{{to}}"],
+      "email_from_name": "{{fromName}}",
+      "email_from_address": "{{from}}",
+      "email_sender_domain": "{{config.senderDomain}}",
+      "email_reply_to_address": "{{replyTo}}",
+      "email_bcc": "{{bcc}}",
+      "include_unsubscribed": true,
+      "idempotency_key": "{{messageId}}"
+    }
+  },
+  "success": {
+    "status": [200],
+    "failWhen": [
+      { "path": "id", "equals": "" },
+      { "path": "errors", "nonEmpty": true }
+    ],
+    "reference": "id",
+    "errorFrom": ["errors"]
+  },
+  "retry": { "on": [429, 503], "max": 2, "maxWaitSeconds": 10 },
+  "capabilities": { "html": true, "text": false, "attachments": false, "cc": false, "bccMax": 5 }
+}

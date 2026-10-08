@@ -86,6 +86,9 @@ AI_RATE_LIMIT_PER_MINUTE=5
 
 # MFA secrets encrypted at rest (test value)
 TOTP_ENCRYPTION_KEY=sectest-$(hex 16)
+
+# outgoing-mail credentials encrypted at rest (test value)
+MAIL_SETTINGS_ENCRYPTION_KEY=sectest-$(hex 16)
 ENV
 )
 # DB_PASSWORD must equal POSTGRES_PASSWORD

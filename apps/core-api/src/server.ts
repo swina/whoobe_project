@@ -137,8 +137,14 @@ import {
   enableTotp,
   disableTotp,
   updateMfaRecoveryCodes,
-  getMailSettings,
+  getMailSettingsFor,
+  resolveMailSettings,
   upsertMailSettings,
+  deleteMailSettings,
+  publicMailSettings,
+  mailProviders,
+  mailEncryptionConfigured,
+  MailEncryptionKeyMissingError,
   sendMail,
   sendMailFromTemplate,
   renderMailTemplate,
@@ -484,7 +490,7 @@ const formSubmitCounts = new Map<string, { count: number; windowStart: number }>
 
 // Notification mail of a public form: only a notify block an author put in a form of a page is honoured (see
 // form-notify.ts, finding F-053), and a recipient is a single plain address that gets at most 3 mails an hour.
-const authoredFormNotify = createAuthoredNotifyCache(async () => (await listWhoobePages()).map((p) => p.content));
+const authoredFormNotify = createAuthoredNotifyCache(async () => (await listWhoobePages()).map((p) => ({ content: p.content, websiteId: p.websiteId })));
 const formNotifyRecipients = createRecipientThrottle(3, 60 * 60 * 1000);
 
 function isFormSubmitRateLimited(key: string): boolean {
@@ -850,7 +856,7 @@ app.post('/auth/forgot-password', async (req: Request, res: Response): Promise<v
       logger.info(`Password reset requested for user "${user.id}"`);
       const resetUrl = buildResetUrl(token);
 
-      const settings = await getMailSettings();
+      const settings = await resolveMailSettings(null);
       if (!settings) {
         // Dev fallback: no SMTP configured, log the URL so testing can
         // still proceed without mail infrastructure.
@@ -4752,7 +4758,8 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
     if (notify?.enabled) {
       try {
         // The block comes from the visitor's request: it counts only if it is the one an author configured.
-        if (!(await authoredFormNotify.has(notifyKey(dataClass.id, notify)))) {
+        const authored = await authoredFormNotify.lookup(notifyKey(dataClass.id, notify));
+        if (!authored) {
           logger.warn({ classId: dataClass.id }, 'Form notify ignored: not the notify block of any form');
           res.status(201).json({ success: true });
           return;
@@ -4774,6 +4781,7 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
               context: { form: submitted },
               to: notify.recipientEmail || undefined,
               subject: notify.subject || undefined,
+              websiteId: authored.websiteId,
             });
           } else {
             logger.warn(`Form notify: mail template ${notify.mailTemplateId} not found`);
@@ -4792,6 +4800,7 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
               to: notify.recipientEmail,
               subject: notify.subject || 'New form submission',
               html,
+              websiteId: authored.websiteId,
             });
           } else {
             logger.warn(`Form notify: template page ${notify.templatePageId} not found`);
@@ -4812,15 +4821,38 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
 // Global outgoing-mail config (docs/plans/forms/cms-forms.md's Phase 2) -
 // GET never returns the stored password, only whether one is set, so the
 // admin-dashboard settings form can't leak it back out over the wire.
-app.get('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
+// Outgoing-mail configuration. The installation has one DEFAULT configuration; a website may have one of its own
+// (`websiteId`), and then its mail goes out with that instead. Each is SMTP or an HTTP mail provider (core's
+// mail-providers/*.json: OneSignal ...). Secrets (SMTP password, provider API keys) are write-only: they are encrypted
+// at rest and never returned, a blank one on save means "keep the stored value".
+async function mailScope(req: Request, res: Response, source: 'query' | 'body'): Promise<{ websiteId: string | null } | null> {
+  const raw = source === 'query' ? req.query.websiteId : req.body?.websiteId;
+  if (raw === undefined || raw === null || raw === '') return { websiteId: null };
+  if (typeof raw !== 'string' || !/^[0-9a-f-]{36}$/i.test(raw) || !(await getWebsite(raw))) {
+    res.status(404).json({ error: 'Website not found' });
+    return null;
+  }
+  return { websiteId: raw };
+}
+
+app.get('/mail-providers', requirePermission(PERMISSIONS.SETTINGS_MANAGE), (_req: Request, res: Response): void => {
+  res.json(mailProviders.all().map((p) => ({ id: p.id, label: p.label, description: p.description ?? null, docsUrl: p.docsUrl ?? null, configFields: p.configFields, capabilities: p.capabilities ?? {} })));
+});
+
+app.get('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const settings = await getMailSettings();
-    if (!settings) {
-      res.json(null);
-      return;
-    }
-    const { password, ...rest } = settings;
-    res.json({ ...rest, hasPassword: !!password });
+    const sc = await mailScope(req, res, 'query');
+    if (!sc) return;
+    const own = await getMailSettingsFor(sc.websiteId);
+    const effective = await resolveMailSettings(sc.websiteId);
+    res.json({
+      websiteId: sc.websiteId,
+      // this scope's own configuration (null = none yet; for a website: it uses the default)
+      settings: own ? publicMailSettings(own, sc.websiteId ? 'website' : 'default', mailProviders.get(own.provider)) : null,
+      // what a message of this scope is sent with
+      effective: effective ? { scope: effective.scope, provider: effective.settings.provider, fromAddress: effective.settings.fromAddress } : null,
+      encryptionConfigured: mailEncryptionConfigured(),
+    });
   } catch (error) {
     logger.error({ err: error }, 'Mail settings fetch error');
     res.status(500).json({ error: 'Failed to fetch mail settings' });
@@ -4829,39 +4861,87 @@ app.get('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async 
 
 app.put('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { host, port, secure, user, password, fromAddress, fromName, bccFromAddress } = req.body ?? {};
-    if (!host || !port || !fromAddress) {
-      res.status(400).json({ error: 'host, port, and fromAddress are required' });
+    const sc = await mailScope(req, res, 'body');
+    if (!sc) return;
+    const { provider, smtp, providerConfig, fromAddress, fromName, bccFromAddress } = req.body ?? {};
+    // the old flat shape (host, port ... at the top level) still means SMTP
+    const legacy = req.body?.host !== undefined ? { host: req.body.host, port: req.body.port, secure: req.body.secure, user: req.body.user, password: req.body.password } : undefined;
+    const kind = typeof provider === 'string' && provider ? provider : 'smtp';
+    const from = typeof fromAddress === 'string' && fromAddress.trim() ? fromAddress.trim() : null;
+
+    if (kind === 'smtp') {
+      const c = smtp ?? legacy ?? {};
+      if (!c.host || !c.port || !from) {
+        res.status(400).json({ error: 'host, port, and fromAddress are required' });
+        return;
+      }
+      const updated = await upsertMailSettings(sc.websiteId, {
+        provider: 'smtp',
+        smtp: { host: String(c.host), port: Number(c.port), secure: !!c.secure, user: c.user ? String(c.user) : null, password: typeof c.password === 'string' ? c.password : null, clearPassword: c.clearPassword === true },
+        fromAddress: from,
+        fromName: fromName || null,
+        bccFromAddress: !!bccFromAddress,
+      });
+      res.json({ settings: publicMailSettings(updated, sc.websiteId ? 'website' : 'default') });
       return;
     }
-    // An empty/omitted password in the request means "leave it as-is" (the
-    // GET response never sends the real one back for the form to resubmit)
-    // rather than clearing a previously configured one.
-    const existing = await getMailSettings();
-    const updated = await upsertMailSettings({
-      host,
-      port: Number(port),
-      secure: !!secure,
-      user: user || null,
-      password: password ? password : existing?.password ?? null,
-      fromAddress,
+
+    const def = mailProviders.get(kind);
+    if (!def) {
+      res.status(400).json({ error: `Unknown mail provider "${kind}"` });
+      return;
+    }
+    const given = providerConfig && typeof providerConfig === 'object' ? (providerConfig as Record<string, unknown>) : {};
+    const stored = (await getMailSettingsFor(sc.websiteId)) ?? undefined;
+    const storedConfig = stored?.provider === kind ? stored.providerConfig : {};
+    const missing = def.configFields.filter((f) => f.required && !String(given[f.name] ?? '').trim() && !(f.secret && storedConfig[f.name]));
+    if (missing.length) {
+      res.status(400).json({ error: `${missing.map((f) => f.label).join(', ')} ${missing.length > 1 ? 'are' : 'is'} required` });
+      return;
+    }
+    const updated = await upsertMailSettings(sc.websiteId, {
+      provider: kind,
+      providerDefinition: def,
+      providerConfig: given,
+      fromAddress: from,
       fromName: fromName || null,
       bccFromAddress: !!bccFromAddress,
     });
-    const { password: _pw, ...rest } = updated;
-    res.json({ ...rest, hasPassword: !!updated.password });
-  } catch (error) {
+    res.json({ settings: publicMailSettings(updated, sc.websiteId ? 'website' : 'default', def) });
+  } catch (error: any) {
+    if (error instanceof MailEncryptionKeyMissingError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
     logger.error({ err: error }, 'Mail settings update error');
     res.status(500).json({ error: 'Failed to update mail settings' });
   }
 });
 
-// Sends a test email through the configured SMTP - the "Email Test" card
-// in the mail settings UI. Unlike the form-notification path it lets the
-// admin override the from address and pass a cc, so delivery can be
-// verified end to end.
+// A website stops having its own configuration and sends with the default again. The default itself cannot be removed.
+app.delete('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const sc = await mailScope(req, res, 'query');
+    if (!sc) return;
+    if (!sc.websiteId) {
+      res.status(400).json({ error: 'The default configuration cannot be removed; give websiteId to remove a website\'s own' });
+      return;
+    }
+    res.json({ removed: await deleteMailSettings(sc.websiteId) });
+  } catch (error) {
+    logger.error({ err: error }, 'Mail settings delete error');
+    res.status(500).json({ error: 'Failed to remove mail settings' });
+  }
+});
+
+// Sends a test email with the configuration of the given scope (the default, or a website's own - or, for a website
+// without one, the default it falls back to) - the "Email Test" card in the mail settings UI. Unlike the
+// form-notification path it lets the admin override the from address and pass a cc, so delivery can be verified end to
+// end.
 app.post('/mail-settings/test', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
   try {
+    const sc = await mailScope(req, res, 'body');
+    if (!sc) return;
     const { from, to, cc, subject, html, text } = req.body ?? {};
     if (!to || !subject) {
       res.status(400).json({ error: 'to and subject are required' });
@@ -4874,6 +4954,7 @@ app.post('/mail-settings/test', requirePermission(PERMISSIONS.SETTINGS_MANAGE), 
       cc: typeof cc === 'string' && cc.trim() ? cc.trim() : undefined,
       html: typeof html === 'string' ? html : '',
       text: typeof text === 'string' && text.trim() ? text : undefined,
+      websiteId: sc.websiteId,
     });
     res.json({ ok: true });
   } catch (error: any) {
@@ -5085,6 +5166,8 @@ app.post('/mail-log/:id/resend', requirePermission(PERMISSIONS.SETTINGS_MANAGE),
       subject: entry.subject,
       html: entry.html ?? '',
       text: entry.text ?? undefined,
+      // sent again with the configuration of the website it was sent for
+      websiteId: entry.websiteId,
     });
     res.json({ ok: true });
   } catch (error: any) {

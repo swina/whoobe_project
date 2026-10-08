@@ -1,5 +1,6 @@
 import { eq, desc } from 'drizzle-orm';
 import { getDb } from './client.js';
+import { deleteMailSettings } from './mail-settings-records.js';
 import { websites } from './websites-schema.js';
 import { generateSiteApiKey, hashSiteApiKey, siteApiKeyDisplayPrefix, verifySiteApiKeyHash } from './site-key-crypto.js';
 
@@ -117,6 +118,8 @@ export async function updateWebsite(
 export async function deleteWebsite(id: string): Promise<void> {
   const db = getDb();
   await db.delete(websites).where(eq(websites.id, id));
+  // its own outgoing-mail configuration (and the secrets in it) goes with it
+  await deleteMailSettings(id);
 }
 
 /** Generates a fresh site API key, stores only its hash + display prefix,
