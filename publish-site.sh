@@ -100,10 +100,16 @@ echo "Select target framework:"
 echo "  1) Nuxt 3   (Vue 3 — SSR/SSG, Nitro)  [default]"
 echo "  2) Next.js  (React — SSR/ISR, Vercel)"
 echo "  3) Svelte   (SvelteKit SSR — coming soon)"
+echo "  4) Documentation (static HTML, for a documentation website: index, search, no framework)"
 echo ""
 read -r -p "Framework [1]: " FRAMEWORK_CHOICE
 
+KIND=site
 case "${FRAMEWORK_CHOICE:-1}" in
+  4|docs|Docs|DOCS)
+    KIND=docs
+    FRAMEWORK="docs"
+    ;;
   1|vue|Vue|VUE|nuxt|Nuxt|NUXT)
     FRAMEWORK="vue"
     ;;
@@ -125,9 +131,15 @@ DEFAULT_OUT_DIR="${OUT_DIR}/$(echo "${WEBSITE_ID}" | tr '[:upper:]' '[:lower:]' 
 read -r -p "Output directory [$DEFAULT_OUT_DIR]: " CHOOSEN_OUT_DIR
 CHOOSEN_OUT_DIR="${CHOOSEN_OUT_DIR:-$DEFAULT_OUT_DIR}"
 
-# ── 6. ISR revalidate ──────────────────────────────────────────────────────
-read -r -p "Revalidate (seconds) [60]: " REVALIDATE
-REVALIDATE="${REVALIDATE:-60}"
+# ── 6. ISR revalidate (sites) / public address (documentation) ──────────────
+SITE_URL=""
+if [ "$KIND" = "docs" ]; then
+  read -r -p "Public address of the documentation (for the sitemap, e.g. https://docs.example.com) [none]: " SITE_URL
+  REVALIDATE=60
+else
+  read -r -p "Revalidate (seconds) [60]: " REVALIDATE
+  REVALIDATE="${REVALIDATE:-60}"
+fi
 
 # ── Summary ─────────────────────────────────────────────────────────────────
 echo ""
@@ -164,6 +176,24 @@ EXTRA_ARGS=()
 [ -n "$ASSET_URL" ] && EXTRA_ARGS+=(--asset-base-url "$ASSET_URL")
 [ -n "$GATEWAY_URL" ] && EXTRA_ARGS+=(--gateway-url "$GATEWAY_URL")
 [ -n "$BASE_PATH" ] && EXTRA_ARGS+=(--base-path "$BASE_PATH")
+
+# A documentation website: static HTML, nothing to install or build afterwards
+if [ "$KIND" = "docs" ]; then
+  pnpm run --filter @whoobe-cms/publish... build
+  DOCS_ARGS=()
+  [ -n "$SITE_URL" ] && DOCS_ARGS+=(--site-url "$SITE_URL")
+  node packages/publish/bin/whoobe-publish.js --kind docs \
+    --api-url "$API_URL" \
+    --website-id "$WEBSITE_ID" \
+    --out-dir "$CHOOSEN_OUT_DIR" \
+    "${EXTRA_ARGS[@]}" "${DOCS_ARGS[@]}"
+  echo ""
+  echo -e "${BOLD}${GREEN}✔ Documentation generated${NC}  ${CYAN}${CHOOSEN_OUT_DIR}${NC}"
+  echo -e "Plain HTML: copy the folder to any web server (the base path above is already in the links), e.g."
+  echo -e "  ${CYAN}rsync -a --delete ${CHOOSEN_OUT_DIR}/ user@host:/var/www/docs/${NC}"
+  echo -e "Preview it here:  ${CYAN}npx serve ${CHOOSEN_OUT_DIR}${NC}"
+  exit 0
+fi
 
 # Build the publish package and SDK first, then run
 pnpm run --filter @whoobe-cms/publish... build

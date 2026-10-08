@@ -138,6 +138,27 @@ describe('the public site', () => {
   })
 })
 
+describe('search index', () => {
+  it('the public index holds the public documents only, and is cached by ETag', async () => {
+    const r = await anon.get(`/public/docs/${siteId}/search-index`)
+    expect(r.status, r.text.slice(0, 120)).toBe(200)
+    expect(r.headers.get('content-type')).toMatch(/json/)
+    expect(r.text).toContain('Install')
+    expect(r.text).not.toContain('sectest-private-marker')
+    expect(r.text).not.toMatch(/\/secret/)
+    const etag = r.headers.get('etag') as string
+    expect(etag).toBeTruthy()
+    expect((await anon.get(`/public/docs/${siteId}/search-index`, { 'if-none-match': etag })).status).toBe(304)
+    expect((await anon.get(`/public/docs/${plainSiteId}/search-index`)).status).toBe(404)
+  })
+  it('the editors\' index also holds the private ones, and needs a login', async () => {
+    expect((await anon.get(`/docs-sites/${siteId}/search-index`)).status).toBe(401)
+    const r = await admin.get(`/docs-sites/${siteId}/search-index`)
+    expect(r.status).toBe(200)
+    expect(r.text).toContain('/secret')
+  })
+})
+
 describe('which site answers at a root path', () => {
   it('answers for a documentation website only, and refuses odd segments', async () => {
     const r = await anon.get(`/public/docs-site/docs-${tag}`)

@@ -188,3 +188,39 @@ describe('manual index (_nav.yml)', () => {
     expect(nav.warnings.some((w) => w.includes('not in the index'))).toBe(true);
   });
 });
+
+import { buildSearchIndex, loadSearchIndex, searchDocs, entriesForPage, normalizeTerm } from './search.js';
+
+describe('search index', () => {
+  const pages = [
+    { route: '/guide/install', title: 'Install', description: 'How to install Whoobe', breadcrumb: 'Guides', headings: [{ depth: 2, text: 'Requirements', id: 'requirements' }, { depth: 3, text: 'Città e porte', id: 'citta-e-porte' }], text: 'Run the installer on a Linux server with Docker.' },
+    { route: '/guide/usage', title: 'Using Whoobe', breadcrumb: 'Guides', headings: [{ depth: 2, text: 'Troubleshooting', id: 'troubleshooting' }], text: 'If the container does not start, read the logs.' },
+    { route: '/', title: 'Welcome', breadcrumb: '', headings: [], text: 'Documentation home.' },
+  ];
+  const index = loadSearchIndex(buildSearchIndex(pages).json);
+  it('a page gives one entry for itself and one per section; the home page is "/"', () => {
+    expect(entriesForPage(pages[0]).map((e) => e.id)).toEqual(['/guide/install', '/guide/install#requirements', '/guide/install#citta-e-porte']);
+    expect(entriesForPage({ ...pages[2], route: '' })[0].id).toBe('/');
+  });
+  it('survives the JSON round trip and finds by title, text and heading, best first', () => {
+    expect(searchDocs(index, 'install')[0].route).toBe('/guide/install');
+    expect(searchDocs(index, 'docker')[0].route).toBe('/guide/install');
+    const t = searchDocs(index, 'troubleshooting')[0];
+    expect(t).toMatchObject({ route: '/guide/usage', hash: 'troubleshooting', page: 'Using Whoobe', breadcrumb: 'Guides' });
+  });
+  it('prefix, accents, small typos and several words (all must match)', () => {
+    expect(searchDocs(index, 'instal')[0].route).toBe('/guide/install');
+    expect(searchDocs(index, 'citta')[0].hash).toBe('citta-e-porte');
+    expect(searchDocs(index, 'Città')[0].hash).toBe('citta-e-porte');
+    expect(searchDocs(index, 'troubleshoting')[0].hash).toBe('troubleshooting');   // one letter missing
+    expect(searchDocs(index, 'container logs')[0].route).toBe('/guide/usage');
+    expect(searchDocs(index, 'container docker')).toEqual([]);
+    expect(searchDocs(index, '   ')).toEqual([]);
+    expect(searchDocs(index, 'zzzzzz')).toEqual([]);
+  });
+  it('shows an excerpt: the description when there is one, else the start of the text', () => {
+    expect(searchDocs(index, 'install')[0].excerpt).toBe('How to install Whoobe');
+    expect(searchDocs(index, 'container')[0].excerpt).toMatch(/^If the container/);
+    expect(normalizeTerm('ÀÈÌ')).toBe('aei');
+  });
+});

@@ -22,11 +22,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@highlightjs/cdn-assets": "^11.12.0",
     "@whoobe-cms/renderer": "workspace:*",
-    "commander": "^12.0.0"
+    "commander": "^12.0.0",
+    "minisearch": "^7.2.0"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
   }
 }

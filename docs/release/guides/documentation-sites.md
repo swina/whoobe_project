@@ -2,7 +2,7 @@
 
 A **documentation site** is a website whose pages are not built in the editor but written as **Markdown files** kept in a
 folder of the asset library. Whoobe turns the folder into a site with an index (sidebar), a table of contents for each
-page ("On this page"), breadcrumbs, previous/next links and, in the next phase, search.
+page ("On this page"), breadcrumbs, previous/next links and **search**. It can be published as plain static HTML.
 
 ## Create one
 
@@ -69,6 +69,36 @@ mistake. **Use the folders again** deletes `_nav.yml`.
   a dead link). People signed in to the dashboard who can see assets see the private ones too, marked *preview* in the header.
 - Visibility is the asset's: set it when uploading (*Uploaded files are public*) or with the **Public** box in the editor.
 
+## Search
+
+The box in the header (and **Ctrl/Cmd K**) searches titles, section headings, descriptions and the text of every page, as you
+type. It tolerates small typos, ignores accents and capital letters, finds the start of a word, and when you write several
+words all of them must be in the page. A result can be a page or one of its sections (a section opens the page at that
+heading). The index of words is a file the browser downloads once; the search itself runs in the browser. Not signed in, it
+contains public documents only; signed in, the private ones too.
+
+## Publish as a static site
+
+The **Publish** tab shows the command; or run `./publish-site.sh` and choose **4) Documentation**:
+
+```bash
+node packages/publish/bin/whoobe-publish.js --kind docs \
+  --api-url https://cms.example.com --website-id <id> --out-dir ./sites/docs \
+  --base-path /docs --site-url https://example.com --asset-base-url https://cms.example.com
+```
+
+The output folder is plain HTML you copy to any web server (`rsync -a --delete ./sites/docs/ user@host:/var/www/docs/`):
+
+- one `index.html` per page (`guide/install/index.html`), `404.html`, `sitemap.xml` (with `--site-url`), `robots.txt`;
+- `assets/`: the styles, one small script (menu, "on this page", copy buttons, search), MiniSearch, the search index
+  (`search-index.json`) and the images and files the documents use (copied; `--no-copy-assets` links to the CMS instead);
+- code is highlighted in the browser with a library that is loaded only on pages that have code;
+- it follows the visitor's light/dark preference and prints cleanly.
+
+Only **public** documents are published, read from the public API, so a private file cannot end in the output. Broken links
+are listed; `--strict` makes them an error (useful in a CI job). Running it again replaces the pages and removes the ones that
+no longer exist. `--base-path` is the path the site is served under (`/` for a domain of its own); the links already contain it.
+
 ## What is where
 
 | | |
@@ -79,4 +109,4 @@ mistake. **Use the folders again** deletes `_nav.yml`.
 | API | [`/docs-sites/...` and `/public/docs/...`](../api/api-reference.md) |
 | Plan and phases | [`docs/plans/docs-sites/docs-site-plan.md`](../../plans/docs-sites/docs-site-plan.md) |
 
-Not yet (planned): search, publishing as a static site, several languages and versions, the layout as a template of an ordinary website.
+Not yet (planned): a drag-and-drop editor for the index (it is a YAML text with a check), several languages and versions, the layout as a template of an ordinary website, search results with the matching words highlighted.

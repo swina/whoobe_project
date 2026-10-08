@@ -96,6 +96,23 @@
             </div>
           </template>
 
+          <!-- Publish -->
+          <template v-else-if="tab === 'publish'">
+            <div class="space-y-3 max-w-3xl">
+              <p class="text-xs text-slate-400">Publishing makes <strong>static HTML</strong>: one page per document, the index, search (the index of the words is a file the browser downloads) and the images the documents use. The folder can be put on any web server, with no connection to this CMS. Only <strong>public</strong> files are published ({{ publicCount }} of {{ tree?.documents.length }} documents are public).</p>
+              <label class="block text-xs text-slate-400">Path the site is served under (<span class="font-mono">/</span> for a domain of its own)
+                <input v-model="publishBase" class="mt-1 w-48 rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm font-mono text-slate-200 light:text-slate-800 px-3 py-1.5 outline-none focus:border-indigo-500" />
+              </label>
+              <label class="block text-xs text-slate-400">Public address (optional, for the sitemap)
+                <input v-model="publishSiteUrl" placeholder="https://docs.example.com" class="mt-1 w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm font-mono text-slate-200 light:text-slate-800 px-3 py-1.5 outline-none focus:border-indigo-500" />
+              </label>
+              <div class="text-xs text-slate-400">Run this in the Whoobe repository (or choose <em>Documentation</em> in <span class="font-mono">./publish-site.sh</span>):</div>
+              <pre data-testid="docs-publish-command" class="rounded-lg bg-slate-950 border border-slate-800 p-3 text-xs font-mono text-slate-200 whitespace-pre-wrap break-all">{{ publishCommand }}</pre>
+              <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" @click="copyPublishCommand">{{ copied ? 'Copied' : 'Copy command' }}</button>
+              <p class="text-xs text-slate-500">Then copy the output folder to the server (<span class="font-mono">rsync -a --delete ./sites/{{ website?.rootPath.replace('/', '') }}/ user@host:/var/www/docs/</span>). A page links to files with an address inside the folder; broken links are listed when it is generated (add <span class="font-mono">--strict</span> to make them an error).</p>
+            </div>
+          </template>
+
           <!-- Settings -->
           <template v-else>
             <div class="space-y-3 max-w-xl">
@@ -162,8 +179,8 @@ defineEmits<{ close: [] }>()
 const damStore = useDamStore()
 const websitesStore = useWebsitesStore()
 const coreApi = () => getDefaultCoreApiUrl()
-const tabs = [{ key: 'documents', name: 'Documents' }, { key: 'index', name: 'Index' }, { key: 'settings', name: 'Settings' }] as const
-const tab = ref<'documents' | 'index' | 'settings'>('documents')
+const tabs = [{ key: 'documents', name: 'Documents' }, { key: 'index', name: 'Index' }, { key: 'publish', name: 'Publish' }, { key: 'settings', name: 'Settings' }] as const
+const tab = ref<'documents' | 'index' | 'publish' | 'settings'>('documents')
 const tree = ref<DocsSiteTree | null>(null)
 const loading = ref(false)
 const busy = ref('')
@@ -358,6 +375,27 @@ async function removeNavFile() {
   } catch (e: any) {
     error.value = e?.message || 'Could not delete the index file'
   }
+}
+
+// ---- publish ----------------------------------------------------------------------------------------------
+
+const publishBase = ref('/')
+const publishSiteUrl = ref('')
+const copied = ref(false)
+const publicCount = computed(() => tree.value?.documents.filter((d) => d.isPublic).length ?? 0)
+const shellQuote = (v: string) => (/^[A-Za-z0-9_@%+=:,./-]+$/.test(v) ? v : `'${v.replace(/'/g, `'\\''`)}'`)
+const publishCommand = computed(() => {
+  const w = props.website
+  if (!w) return ''
+  const parts = ['node packages/publish/bin/whoobe-publish.js --kind docs', `--api-url ${shellQuote(coreApi())}`, `--website-id ${w.id}`, `--out-dir ./sites/${w.rootPath.replace(/^\//, '') || 'docs'}`]
+  const asset = dam().assetProcessorUrl.replace(/\/+$/, '')
+  if (asset && asset !== coreApi().replace(/\/+$/, '')) parts.push(`--asset-base-url ${shellQuote(asset)}`)
+  if (publishBase.value.trim() && publishBase.value.trim() !== '/') parts.push(`--base-path ${shellQuote(publishBase.value.trim())}`)
+  if (publishSiteUrl.value.trim()) parts.push(`--site-url ${shellQuote(publishSiteUrl.value.trim())}`)
+  return parts.join(' \\\n  ')
+})
+async function copyPublishCommand() {
+  try { await navigator.clipboard.writeText(publishCommand.value.replace(/ \\\n  /g, ' ')); copied.value = true; setTimeout(() => { copied.value = false }, 1500) } catch { /* the text is selectable */ }
 }
 
 // ---- settings ---------------------------------------------------------------------------------------------

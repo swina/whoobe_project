@@ -1,19 +1,31 @@
 <template>
   <div class="min-h-screen bg-white text-gray-800">
     <header class="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 h-14 flex items-center gap-4">
+      <div class="max-w-[100rem] mx-auto px-4 h-14 flex items-center gap-4">
         <button class="md:hidden p-1 -ml-1 text-gray-600" aria-label="Menu" @click="menuOpen = !menuOpen">☰</button>
         <a :href="hrefOf('')" class="font-bold text-gray-900 truncate" @click.prevent="go('')">{{ view?.siteTitle || site.title }}</a>
         <span v-if="view?.draft" class="hidden sm:inline text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-700" title="You are signed in: private documents are shown">preview</span>
-        <div class="ml-auto relative w-full max-w-xs">
-          <input v-model="query" type="search" placeholder="Search the documentation…" aria-label="Search the documentation" data-testid="docs-search"
-            class="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-1.5 text-sm outline-none focus:border-indigo-500 focus:bg-white" @keydown.enter="goSearch" />
+        <div class="ml-auto relative w-full max-w-sm">
+          <input ref="searchBox" v-model="query" type="search" placeholder="Search the documentation…  (Ctrl K)" aria-label="Search the documentation" data-testid="docs-search"
+            autocomplete="off" class="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-1.5 text-sm outline-none focus:border-indigo-500 focus:bg-white"
+            @focus="openSearch" @input="searchOpen = true" @keydown.down.prevent="moveActive(1)" @keydown.up.prevent="moveActive(-1)" @keydown.enter.prevent="chooseActive" @keydown.esc="closeSearch" @blur="closeSoon" />
+          <div v-if="searchOpen && query.trim()" class="absolute right-0 left-0 mt-1 max-h-[70vh] overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl z-30" data-testid="docs-results" role="listbox">
+            <div v-if="searchError" class="px-3 py-2 text-xs text-rose-600">{{ searchError }}</div>
+            <div v-else-if="!results.length" class="px-3 py-3 text-sm text-gray-500">No results for “{{ query.trim() }}”.</div>
+            <a v-for="(r, i) in results" :key="r.id" :href="hrefOf(r.route)" role="option" :aria-selected="i === active" data-testid="docs-result"
+              :class="['block px-3 py-2 border-b border-gray-100 last:border-0', i === active ? 'bg-indigo-50' : 'hover:bg-gray-50']"
+              @mousedown.prevent="choose(r)" @mouseenter="active = i">
+              <div class="text-sm font-medium text-gray-900 truncate"><span v-if="r.page" class="text-gray-400 font-normal">{{ r.page }} › </span>{{ r.title }}</div>
+              <div v-if="r.breadcrumb" class="text-[11px] text-gray-400 truncate">{{ r.breadcrumb }}</div>
+              <div v-if="r.excerpt && !r.page" class="text-xs text-gray-500 line-clamp-2">{{ r.excerpt }}</div>
+            </a>
+          </div>
         </div>
       </div>
     </header>
 
-    <div class="max-w-7xl mx-auto px-4 flex gap-8">
-      <aside :class="['md:block w-64 shrink-0 py-6 md:sticky md:top-14 md:self-start md:max-h-[calc(100vh-3.5rem)] overflow-y-auto', menuOpen ? 'block fixed inset-x-0 top-14 bottom-0 z-10 bg-white px-4' : 'hidden']" data-testid="docs-nav">
+    <div class="max-w-[100rem] mx-auto px-4 flex gap-6 lg:gap-10">
+      <aside :class="['md:block w-56 shrink-0 py-6 md:sticky md:top-14 md:self-start md:max-h-[calc(100vh-3.5rem)] overflow-y-auto', menuOpen ? 'block fixed inset-x-0 top-14 bottom-0 z-10 bg-white px-4' : 'hidden']" data-testid="docs-nav">
         <DocsNavTree v-if="view" :items="view.nav" :current="view.page.route" :href-of="hrefOf" @go="go" />
       </aside>
 
@@ -24,7 +36,7 @@
           <p class="text-gray-500 text-sm"><a :href="hrefOf('')" class="text-indigo-600 underline" @click.prevent="go('')">Go to the start page</a></p>
         </div>
         <div v-else-if="errorMessage" class="text-sm text-rose-600">{{ errorMessage }}</div>
-        <article v-else-if="view" class="max-w-3xl">
+        <article v-else-if="view" class="max-w-[62rem]">
           <nav v-if="view.page.breadcrumbs.length > 1" class="text-xs text-gray-500 mb-4 flex flex-wrap gap-1" aria-label="Breadcrumb">
             <template v-for="(b, i) in view.page.breadcrumbs" :key="i">
               <span v-if="i > 0" aria-hidden="true">/</span>
@@ -47,9 +59,9 @@
         </article>
       </main>
 
-      <aside v-if="view && view.page.headings.length" class="hidden lg:block w-56 shrink-0 py-8 sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto" data-testid="docs-toc">
-        <div class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">On this page</div>
-        <ul class="space-y-1 text-sm">
+      <aside v-if="view && view.page.headings.length" class="hidden lg:block w-48 shrink-0 py-8 sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto" data-testid="docs-toc">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2">On this page</div>
+        <ul class="space-y-0.5 text-[13px] leading-snug">
           <li v-for="h in view.page.headings" :key="h.id" :class="h.depth === 3 ? 'ml-3' : ''">
             <a :href="'#' + h.id" :class="['block truncate', activeHeading === h.id ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-gray-800']" @click.prevent="scrollTo(h.id)">{{ h.text }}</a>
           </li>
@@ -64,7 +76,7 @@
 // the page, "on this page" on the right, previous/next. Rendered by the editor application at the website's root path.
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { loadDocsView, type DocsSiteRef, type DocsView } from '../docs-api'
+import { loadDocsSearch, loadDocsView, type DocsSiteRef, type DocsView, type SearchHit } from '../docs-api'
 import DocsNavTree from '../components/DocsNavTree.vue'
 
 const props = defineProps<{ site: DocsSiteRef; route: string }>()
@@ -150,25 +162,41 @@ function watchHeadings() {
   ids.forEach((id) => { const el = document.getElementById(id); if (el) observer!.observe(el) })
 }
 
-// Search: the headless endpoint over the whole index is wired in phase 2; until then the box looks the title up in the index.
-function goSearch() {
-  const q = query.value.trim().toLowerCase()
-  if (!q || !view.value) return
-  const hit = flatten(view.value.nav).find((n) => n.title.toLowerCase().includes(q))
-  if (hit) { query.value = ''; go(hit.route) }
+// Search: the index of the site is downloaded once (on the first focus) and searched in the browser, so results appear as you type.
+const searchBox = ref<HTMLInputElement | null>(null)
+const searchOpen = ref(false)
+const searchError = ref('')
+const results = ref<SearchHit[]>([])
+const active = ref(0)
+let searcher: ((q: string) => SearchHit[]) | null = null
+let searcherLoading: Promise<void> | null = null
+
+async function openSearch() {
+  searchOpen.value = true
+  if (searcher || searcherLoading) return
+  searcherLoading = loadDocsSearch(props.site, !!view.value?.draft).then((fn) => { searcher = fn; runSearch() }).catch((e) => { searchError.value = e?.message || 'Search is not available' }).finally(() => { searcherLoading = null })
 }
-function flatten(items: DocsView['nav']): { title: string; route: string }[] {
-  const out: { title: string; route: string }[] = []
-  for (const n of items) {
-    if (n.type === 'doc') out.push({ title: n.title, route: n.route })
-    else if (n.type === 'section') { if (n.route) out.push({ title: n.title, route: n.route }); out.push(...flatten(n.items)) }
-  }
-  return out
+function runSearch() {
+  results.value = searcher && query.value.trim() ? searcher(query.value) : []
+  active.value = 0
+}
+watch(query, runSearch)
+function moveActive(d: number) { if (results.value.length) active.value = (active.value + d + results.value.length) % results.value.length }
+function chooseActive() { const r = results.value[active.value]; if (r) choose(r) }
+function choose(r: SearchHit) {
+  closeSearch()
+  query.value = ''
+  void router.push(`${props.site.rootPath}${r.route === '/' ? '' : r.route}${r.hash ? '#' + r.hash : ''}`)
+}
+function closeSearch() { searchOpen.value = false; searchBox.value?.blur() }
+function closeSoon() { setTimeout(() => { searchOpen.value = false }, 150) }
+function onKey(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); searchBox.value?.focus() }
 }
 
 watch(() => props.route, load)
-onMounted(load)
-onBeforeUnmount(() => observer?.disconnect())
+onMounted(() => { void load(); window.addEventListener('keydown', onKey) })
+onBeforeUnmount(() => { observer?.disconnect(); window.removeEventListener('keydown', onKey) })
 </script>
 
 <style scoped>
