@@ -6,6 +6,11 @@
       "permissions": [],
       "note": "liveness probe"
     },
+    "GET /site-root": {
+      "access": "public",
+      "permissions": [],
+      "note": "called by the reverse proxy (nginx auth_request): is the first path segment a website's root path? 204 yes, 403 no"
+    },
     "POST /auth/login": {
       "access": "public",
       "permissions": [],

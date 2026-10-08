@@ -236,6 +236,8 @@ import {
   createFixedWindowLimiter,
   createFailureLock,
   buildWebsiteBundle,
+  createSiteRootCache,
+  isReservedRootPath,
   substituteTokensPlain,
   importWebsiteBundle,
   parseWebsiteBundle,
@@ -395,6 +397,21 @@ for (const name of ['id', 'versionId', 'websiteId', 'translationGroupId']) {
     next();
   });
 }
+
+// Asked by the reverse proxy (nginx auth_request, deploy/nginx/_locations.conf.template) for every request that no
+// location claims by name: is the first segment of the URI the root path of a website? 204 = yes (the proxy sends it
+// to the editor, which renders the page), 403 = no (it goes to the dashboard). Answers from a 5 s cache of the roots.
+const siteRootCache = createSiteRootCache(async () => (await listWebsites()).map((w) => w.rootPath).filter((r): r is string => !!r));
+app.get('/site-root', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const header = req.headers['x-original-uri'];
+    const uri = typeof header === 'string' ? header : typeof req.query.uri === 'string' ? req.query.uri : '';
+    res.status((await siteRootCache.matches(uri)) ? 204 : 403).end();
+  } catch (error) {
+    logger.error({ err: error }, 'Site root check error');
+    res.status(403).end();   // when in doubt the request goes to the dashboard, as it always did
+  }
+});
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', service: 'core-api', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString(), ...(isSandbox() ? { sandbox: sandboxStatus() } : {}) });
@@ -2094,6 +2111,10 @@ app.post('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_WRITE), a
       res.status(400).json({ error: 'rootPath must start with / and contain only lowercase letters, digits, hyphens, or underscores' });
       return;
     }
+    if (isReservedRootPath(rp)) {
+      res.status(400).json({ error: `rootPath "${rp}" is a name the host answers to itself (dashboard, editor or API); choose another` });
+      return;
+    }
     const existingByPath = await getWebsiteByRootPath(rp);
     if (existingByPath) {
       res.status(409).json({ error: `rootPath "${rp}" is already taken` });
@@ -2108,6 +2129,7 @@ app.post('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_WRITE), a
       settings: settings !== undefined ? settings : undefined,
       themeId: typeof themeId === 'string' ? themeId : null,
     });
+    siteRootCache.clear();
     res.status(201).json({ website });
   } catch (error: any) {
     logger.error({ err: error }, 'Create website error');
@@ -2358,6 +2380,10 @@ app.patch('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRIT
         res.status(400).json({ error: 'rootPath must start with / and contain only lowercase letters, digits, hyphens, or underscores' });
         return;
       }
+      if (isReservedRootPath(rootPath)) {
+        res.status(400).json({ error: `rootPath "${rootPath}" is a name the host answers to itself (dashboard, editor or API); choose another` });
+        return;
+      }
       const existingByPath = await getWebsiteByRootPath(rootPath);
       if (existingByPath && existingByPath.id !== req.params.id) {
         res.status(409).json({ error: `rootPath "${rootPath}" is already taken` });
@@ -2379,6 +2405,7 @@ app.patch('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRIT
       res.status(404).json({ error: 'Website not found' });
       return;
     }
+    siteRootCache.clear();
     res.json({ website });
   } catch (error: any) {
     logger.error({ err: error }, 'Update website error');
@@ -2389,6 +2416,7 @@ app.patch('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRIT
 app.delete('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteWebsite(req.params.id);
+    siteRootCache.clear();
     res.json({ success: true });
   } catch (error: any) {
     logger.error({ err: error }, 'Delete website error');

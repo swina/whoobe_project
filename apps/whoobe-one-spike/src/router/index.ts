@@ -20,9 +20,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Main from '../views/Main.vue'
 import Editor from '../views/Editor.vue'
+import { chooseHistoryBase } from './history-base'
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(chooseHistoryBase(window.location.pathname, import.meta.env.BASE_URL)),
   routes: [
     { path: '/', name: 'Main', component: Main },
     { path: '/editor', name: 'Editor', component: Editor },

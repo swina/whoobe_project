@@ -3896,6 +3896,19 @@ paths:
             application/json:
               schema:
                 type: object
+  /site-root:
+    get:
+      tags: ["core-api: System"]
+      summary: "Asked by the reverse proxy for requests it cannot route by name: 204 if the first path segment is a website's root path (the proxy then sends the request to the editor, which renders the page), 403 otherwise (dashboard). Answers from a 5 s cache; reads the URI from `X-Original-URI`."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/gateway/endpoints:
     get:
       tags: ["gateway: Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)"]

@@ -1,7 +1,8 @@
 // Which links the editor's page preview rewrites when the editor is mounted under a base path (/whoobe-one/ in the
 // Docker stacks) and which it leaves alone.
 import { describe, it, expect } from 'vitest'
-import { prefixInternalHref } from '../../../apps/whoobe-one-spike/src/preview-links'
+import { isUnderBase, prefixInternalHref } from '../../../apps/whoobe-one-spike/src/preview-links'
+import { chooseHistoryBase } from '../../../apps/whoobe-one-spike/src/router/history-base'
 
 describe('prefixInternalHref', () => {
   const base = '/whoobe-one/'
@@ -36,5 +37,31 @@ describe('prefixInternalHref', () => {
   it('accepts the base with or without its slashes', () => {
     expect(prefixInternalHref('/x', '/whoobe-one')).toBe('/whoobe-one/x')
     expect(prefixInternalHref('/x', '/whoobe-one/')).toBe('/whoobe-one/x')
+  })
+})
+
+describe('isUnderBase', () => {
+  it('is true inside the mount point and false at a website\'s own address', () => {
+    expect(isUnderBase('/whoobe-one/whoobe-website/blog', '/whoobe-one/')).toBe(true)
+    expect(isUnderBase('/whoobe-one', '/whoobe-one/')).toBe(true)
+    expect(isUnderBase('/whoobe-website/blog', '/whoobe-one/')).toBe(false)
+    expect(isUnderBase('/whoobe-onetime/x', '/whoobe-one/')).toBe(false)
+  })
+  it('is false when there is no mount point (local development)', () => {
+    expect(isUnderBase('/whoobe-website/blog', '/')).toBe(false)
+    expect(isUnderBase('/anything', '')).toBe(false)
+  })
+})
+
+describe('chooseHistoryBase', () => {
+  it('keeps the mount point for the editor\'s own screens and routes from the root for a website\'s address', () => {
+    expect(chooseHistoryBase('/whoobe-one/editor', '/whoobe-one/')).toBe('/whoobe-one/')
+    expect(chooseHistoryBase('/whoobe-one/whoobe-website/blog', '/whoobe-one/')).toBe('/whoobe-one/')
+    expect(chooseHistoryBase('/whoobe-website/blog', '/whoobe-one/')).toBe('/')
+    expect(chooseHistoryBase('/', '/whoobe-one/')).toBe('/')
+  })
+  it('is the root when the app is served from the root (local development)', () => {
+    expect(chooseHistoryBase('/whoobe-website/blog', '/')).toBe('/')
+    expect(chooseHistoryBase('/editor', '/')).toBe('/')
   })
 })

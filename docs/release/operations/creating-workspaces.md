@@ -100,6 +100,21 @@ It issues the certificate, switches the HTTP vhost to a redirect (except the cha
 - Visibility: upload one asset as private and one under `/public/`, then open both URLs in a private window: the private one must answer 404, the public one the image.
 - Optional: from this repo, `pnpm security:isolation` runs the cross-workspace isolation suite (two throwaway stacks: sessions, accounts, roles, assets, the DAM token, S3 and database credentials of one must not open anything in the other), `pnpm security:tls` checks the TLS template and `pnpm security:images` scans the built images (they use the throwaway test stack, not your workspace).
 
+## Website previews and root paths
+
+The dashboard, the editor and the APIs share one host name, so the routing include (`deploy/nginx/_locations-<slug>.inc`) has to tell a website's preview from a dashboard page for every path no location claims by name. A website is previewed at **its root preview path** (`https://host/whoobe-website/blog`), the way it is on a local installation: `location /` asks core-api (`GET /site-root`, answered from a 5 s cache) whether the first segment is the root path of a website; if so the request goes to the editor (which renders the page from the URL), otherwise to the dashboard. If core-api cannot be asked the request goes to the dashboard. The editor's own screens stay under `/whoobe-one/`.
+
+Consequences: a **root preview path cannot be a name the host uses** - the website form refuses `/api`, `/auth`, `/assets`, `/login`, `/settings`, `/whoobe-one`, `/editor` and the other top-level names of the APIs (list: `packages/core/src/routing/site-roots.ts`); and the proxy needs the `auth_request` module (nginx packages and the official images have it).
+
+**Workspaces provisioned before this routing existed** keep their old include. Render it again from the current template and the workspace's own settings (ports, `WS_MAX_BODY`, `WS_EDGE_LIMITS` in `.env.<slug>`), which also shows what changed and reloads the proxy:
+
+```bash
+./scripts/render-workspace-nginx.sh client-a            # writes deploy/nginx/_locations-client-a.inc (old one kept as .bak), reloads
+./scripts/render-workspace-nginx.sh client-a --no-reload   # only writes it and shows the diff
+```
+
+Run it again after any update of the repository that touches `deploy/nginx/_locations.conf.template`. The vhost files and the certificates are not touched.
+
 ## Managing an existing workspace
 
 All commands target the workspace's own Compose project and env file:

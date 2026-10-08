@@ -1,3 +1,5 @@
+import { computeSitePreviewBase } from './site-preview-url'
+
 // Returns the URL for whoobe-one-spike. Uses direct port 3006 on localhost
 // only - that's the native single-instance dev setup (Vite dev server
 // needs its own origin for HMR/asset paths, and its port is fixed/known).
@@ -25,4 +27,17 @@ export function getWhoobeOneSpikeUrl(): string {
   }
   const port = window.location.port
   return `${window.location.protocol}//${hostname}${port ? `:${port}` : ''}/whoobe-one`
+}
+
+/** Origin (and path) the pages of a website are previewed under: root path and slug follow it, without
+ *  `/whoobe-one/` - see site-preview-url.ts. */
+export function getSitePreviewBaseUrl(): string {
+  const w = typeof window === 'undefined' ? null : window.location
+  if (!w) return 'http://localhost:3006'
+  return computeSitePreviewBase({
+    override: import.meta.env.VITE_WHOOBE_ONE_URL,
+    protocol: w.protocol,
+    hostname: w.hostname,
+    port: w.port,
+  })
 }
