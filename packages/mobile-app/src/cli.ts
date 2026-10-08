@@ -793,11 +793,12 @@ function mainCss(opts: ScaffoldOptions): string {
    a theme's dark body white. */
 @layer defaults {
   html, body, #app {
-    background: #ffffff;
     min-height: 100vh;
   }
 
+  /* the background only on body: a default on html or #app would paint over what the theme gives the body */
   body {
+    background: #ffffff;
     font-family: ${opts.fontFamilies.map((f) => `"${f}"`).join(', ') || 'sans-serif'};
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
