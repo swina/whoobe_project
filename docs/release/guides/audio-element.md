@@ -58,7 +58,7 @@ While the waveform is being computed a dimmed placeholder is shown.
 | Place | Result |
 |---|---|
 | Editing canvas, preview, public pages served by the editor application | player or waveform and the title, as configured |
-| Mobile-app shell | the plain player (controls, loop, autoplay, preload); no waveform, no title |
+| Mobile-app shell (`publish-mobile.sh`, from 2026-10-08) | the editor's own player, copied into the project: player or waveform and the title, as configured. Projects generated earlier show the plain player: generate them again. The waveform needs the audio file to be readable by the app (same rules as above: CORS, private files) |
 | Headless SDK (`@whoobe-cms/react`, `vue`, `svelte`) and the generated Next.js / Nuxt sites | the plain player, no title; the node carries `data-whoobe-audio="waveform"` so a project can draw its own waveform |
 
 Autoplay with sound is blocked by browsers until the visitor has interacted with the page: **Start automatically**
