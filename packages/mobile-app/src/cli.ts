@@ -515,6 +515,7 @@ function indexHtml(opts: ScaffoldOptions): string {
     <meta name="theme-color" content="${(opts.pwaConfig?.themeColor as string) ?? '#6366f1'}" />
     <title>${opts.appName}</title>
     ${fontLinks}
+    <style>@layer defaults;</style>
     ${themeStyleTags(opts.themeCss)}
   </head>
   <body>
@@ -787,17 +788,20 @@ function mainCss(opts: ScaffoldOptions): string {
   return `/* Tailwind v4 browser runtime is loaded via <script> in index.html */
 /* Theme variables (colors, fonts, custom theme CSS) are inlined via index.html's <style id="theme-styles"> */
 
-/* Defaults only: :where() has no specificity, so what the theme says about html/body/#app (its own background, font)
-   wins even though this stylesheet comes after <style id="theme-styles"> */
-:where(html, body, #app) {
-  background: #ffffff;
-  min-height: 100vh;
-}
+/* Defaults only. They sit in the lowest layer ("defaults", declared first in index.html): a theme's body rule is usually
+   written inside @layer base, and any UNLAYERED rule - even a :where() one - beats every layered one, which is what turned
+   a theme's dark body white. */
+@layer defaults {
+  html, body, #app {
+    background: #ffffff;
+    min-height: 100vh;
+  }
 
-:where(body) {
-  font-family: ${opts.fontFamilies.map((f) => `"${f}"`).join(', ') || 'sans-serif'};
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  body {
+    font-family: ${opts.fontFamilies.map((f) => `"${f}"`).join(', ') || 'sans-serif'};
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
 /* Safe area insets for mobile devices */

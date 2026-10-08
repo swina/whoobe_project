@@ -955,11 +955,15 @@ function scaffoldGlobalsCss(opts: ScaffoldOptions): string {
     '',
     themeBlock,
     '',
-    rawStyles,
-    '',
-    ':where(body) {',
-    `  font-family: ${fontCss};`,
+    // the default font goes in layer base BEFORE the theme's raw styles: a later rule of the same layer wins, and an
+    // unlayered rule (what this used to be) beats everything the theme writes inside @layer base
+    '@layer base {',
+    '  body {',
+    `    font-family: ${fontCss};`,
+    '  }',
     '}',
+    '',
+    rawStyles,
     '',
   ].filter(Boolean).join('\n')
 }
@@ -1748,11 +1752,15 @@ function nuxtGlobalsCss(opts: ScaffoldOptions): string {
     '',
     themeBlock,
     '',
-    rawStyles,
-    '',
-    ':where(body) {',
-    `  font-family: ${fontCss};`,
+    // the default font goes in layer base BEFORE the theme's raw styles: a later rule of the same layer wins, and an
+    // unlayered rule (what this used to be) beats everything the theme writes inside @layer base
+    '@layer base {',
+    '  body {',
+    `    font-family: ${fontCss};`,
+    '  }',
     '}',
+    '',
+    rawStyles,
     '',
   ].filter(Boolean).join('\n')
 }
