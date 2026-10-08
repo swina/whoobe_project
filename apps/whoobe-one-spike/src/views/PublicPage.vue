@@ -50,13 +50,14 @@
 // is meant to look like the actual page, not a preview-within-the-editor.
 // When the page's website has a template, `layout` (returned by the public
 // API) renders the header/aside/main/footer shell around the body.
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { getPublicPage, getPublicPageByPath, type PublicPageLookup, type WhoobeOnePage } from '../pages-api'
 import { resolveDocumentData } from '../scripts/data-resolver'
 import BlockContainerPreview from '../components/preview/BlockContainerPreview.vue'
 import { useThemeStyles } from '../composables/useThemeStyles'
 import { useEditorStore } from '../store/editor'
+import { installPreviewLinkPrefix } from '../preview-links'
 import { fetchTheme } from '../themes-api'
 import { safeAlpineValue } from '../helpers'
 import { applyPageSeo } from '../scripts/apply-seo'
@@ -185,7 +186,13 @@ function applyDynamicSeo(page: WhoobeOnePage, params: Record<string, string>, se
   }
 }
 
+// The links of the page are the site's own absolute paths: keep them inside the editor where it is mounted under a
+// base path (see preview-links.ts).
+let removeLinkPrefix = () => {}
+onBeforeUnmount(() => removeLinkPrefix())
+
 onMounted(async () => {
+  removeLinkPrefix = installPreviewLinkPrefix(import.meta.env.BASE_URL)
   fetchStripHtmlComments()
   try {
     const queryLocale = typeof route.query.locale === 'string' && route.query.locale ? route.query.locale : ''
