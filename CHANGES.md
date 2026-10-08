@@ -1,3 +1,6 @@
+## [Plan: documentation sites from Markdown assets] — 2026-10-08
+- Branch: `master`. New `docs/plans/docs-sites/docs-site-plan.md`: Markdown documents kept as assets in a DAM folder become a documentation website (index, navigation, per-page table of contents, search) - a website of kind `docs`, one rendering pipeline shared by the API, the search indexer and a static generator, `_nav.json` index, `doc` documents in `search_documents`, phases 1-3, security and tests, open decisions. No code yet.
+
 ## [Mobile app: the Audio element renders with its waveform and title] — 2026-10-08
 - Branch: `master`. Report: the audio element (waveform, title) was not rendered by `publish-mobile.sh`; the app showed the browser's default player.
 - Cause: the mobile renderer (both the dynamic and the static `PageRenderer.vue`) emitted a plain `<audio>`; the waveform player and the title exist only in the editor (`components/AudioPlayer.vue`), and the guide listed this as a limitation.
