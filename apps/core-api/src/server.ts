@@ -5,6 +5,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
+import { DocsConfigError, createContentReader, describeDocsSite, docsConfigOf, findDocByRoute, loadDocsSite, renderDocPage } from './docs-site.js';
 import { createAuthoredNotifyCache, createRecipientThrottle, isSingleEmail, notifyKey } from './form-notify.js';
 import {
   findUserByEmail,
@@ -6134,6 +6135,71 @@ app.get('/api/v1/system/logs/download', requireAuth, async (req: Request, res: R
     res.status(500).json({ error: 'Failed to download log file' })
   }
 })
+
+// Documentation sites (docs/plans/docs-sites/docs-site-plan.md): a website of kind "docs" is built from the Markdown assets of a
+// DAM folder. The routes below only read; documents are written with the ordinary DAM upload.
+const docsContentReader = createContentReader(ASSET_PROCESSOR_URL, DAM_SERVICE_TOKEN);
+
+async function docsSiteFor(websiteId: string, res: Response, publicOnly: boolean) {
+  const website = await getWebsite(websiteId);
+  if (!website) { res.status(404).json({ error: 'Website not found' }); return null; }
+  let config;
+  try { config = docsConfigOf(website); } catch (e) {
+    if (e instanceof DocsConfigError) { res.status(400).json({ error: e.message }); return null; }
+    throw e;
+  }
+  if (!config) { res.status(404).json({ error: 'This website is not a documentation site' }); return null; }
+  return loadDocsSite(config, docsContentReader, { publicOnly });
+}
+
+app.get('/docs-sites/:websiteId/tree', requirePermission(PERMISSIONS.ASSETS_LIST), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const site = await docsSiteFor(req.params.websiteId, res, false);
+    if (site) res.json(describeDocsSite(site));
+  } catch (error: any) {
+    logger.error({ err: error, module: 'docs-sites' }, 'Failed to load the documentation site');
+    res.status(500).json({ error: 'Failed to load the documentation site' });
+  }
+});
+
+// The rendered page, drafts and private documents included (for the people who can see the assets).
+app.get('/docs-sites/:websiteId/preview/*', requirePermission(PERMISSIONS.ASSETS_VIEW), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const site = await docsSiteFor(req.params.websiteId, res, false);
+    if (!site) return;
+    const doc = findDocByRoute(site, String((req.params as any)[0] ?? ''));
+    if (!doc) { res.status(404).json({ error: 'Document not found' }); return; }
+    res.json({ site: { title: site.config.title }, nav: site.nav, page: renderDocPage(site, doc) });
+  } catch (error: any) {
+    logger.error({ err: error, module: 'docs-sites' }, 'Failed to render the document');
+    res.status(500).json({ error: 'Failed to render the document' });
+  }
+});
+
+// Public: only documents that are public in the DAM exist here; a private one is neither listed, linked nor served.
+app.get('/public/docs/:websiteId/nav', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const site = await docsSiteFor(req.params.websiteId, res, true);
+    if (site) res.json({ title: site.config.title, nav: site.nav });
+  } catch (error: any) {
+    logger.error({ err: error, module: 'docs-sites' }, 'Failed to load the documentation index');
+    res.status(500).json({ error: 'Failed to load the documentation index' });
+  }
+});
+
+app.get('/public/docs/:websiteId/page/*', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const site = await docsSiteFor(req.params.websiteId, res, true);
+    if (!site) return;
+    const doc = findDocByRoute(site, String((req.params as any)[0] ?? ''));
+    if (!doc) { res.status(404).json({ error: 'Document not found' }); return; }
+    const { warnings: _warnings, ...page } = renderDocPage(site, doc);
+    res.json({ site: { title: site.config.title }, page });
+  } catch (error: any) {
+    logger.error({ err: error, module: 'docs-sites' }, 'Failed to render the document');
+    res.status(500).json({ error: 'Failed to render the document' });
+  }
+});
 
 // On-the-fly bootstrap: create the database if it doesn't exist, apply any
 // pending migrations, and seed default roles/permissions/admin user. Runs

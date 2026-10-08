@@ -264,6 +264,15 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `POST /public/forms/:classId/submit` | Submit a public form, creating an unpublished Data Object of the given class. A `notify` block in the body only sends mail if it is the one an author saved in a form of a page for that class (F-053); recipients must be one plain address, 3 mails an hour per address. |
 | `GET /preview/objects/:token` | Resolve a preview-link token to its (possibly unpublished) object. |
 
+### Documentation sites (Markdown)
+
+| Method & path | Description |
+| --- | --- |
+| `GET /docs-sites/:websiteId/tree` | A documentation website (settings `kind: docs`, source DAM folder): its documents with titles, addresses and visibility, the index (automatic from the tree of files, or `_nav.yml`), the other files and the warnings (broken links, entries pointing nowhere). |
+| `GET /docs-sites/:websiteId/preview/*` | A rendered page of a documentation website by its address (empty = home), private documents included: `{ site, nav, page }` with the HTML, the headings, breadcrumbs, previous/next and the warnings. |
+| `GET /public/docs/:websiteId/nav` | Index of the PUBLIC documents of a documentation website. |
+| `GET /public/docs/:websiteId/page/*` | A rendered public document by its address (empty = home): `{ site, page }`. A document that is private in the DAM answers 404. |
+
 ### Mail: settings, log, templates
 
 | Method & path | Description |
