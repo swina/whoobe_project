@@ -13,7 +13,8 @@ import { ref } from 'vue'
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
 export type SectionKind = 'overview' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'components' | 'mail' | 'themes' | 'settings' | 'gateway' | 'gateway-plugins' | 'system-logs'
-export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'classList' | 'website'
+export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'classList' | 'website' | 'docsSite' | 'docsDoc'
+export type DocsSiteSubTab = 'documents' | 'index' | 'publish' | 'settings'
 export type AssetSubTab = 'preview' | 'editor' | 'metadata' | 'thumbnails'
 export type DocumentSubTab = 'editor' | 'preview'
 export type PageSubTab = 'editor' | 'settings' | 'preview'
@@ -63,6 +64,14 @@ export interface MainTab {
   // than the page's own static slug (PagePreviewTab.vue's default).
   pagePreviewPath?: string
   pagePreviewLocale?: string
+  // Documentation sites (docs/plans/docs-sites/docs-site-plan.md): `docsSite` is a site's manager (its documents, index, publishing,
+  // settings), `docsDoc` one document's editor - both keyed by the website; a document by its path in the source folder too.
+  docsSubTab?: DocsSiteSubTab
+  docsPath?: string
+  /** A document that does not exist yet: the text to start from. */
+  docsInitialText?: string
+  /** Unsaved changes: closing the tab asks first. Set by the tab's own component. */
+  dirty?: boolean
 }
 
 export function sectionTabId(section: SectionKind): string {
@@ -95,6 +104,14 @@ export function classTabId(classId: string): string {
 
 export function websiteTabId(websiteId: string): string {
   return `item:website:${websiteId}`
+}
+
+export function docsSiteTabId(websiteId: string): string {
+  return `item:docsSite:${websiteId}`
+}
+
+export function docsDocTabId(websiteId: string, path: string): string {
+  return `item:docsDoc:${websiteId}:${path}`
 }
 
 export function classListTabId(classId: string): string {
@@ -273,6 +290,41 @@ export const useTabsStore = defineStore('tabs', () => {
     closeTab(websiteTabId(websiteId))
   }
 
+  function openDocsSite(websiteId: string, subTab: DocsSiteSubTab = 'documents') {
+    const id = docsSiteTabId(websiteId)
+    const existing = tabs.value.find((t) => t.id === id)
+    if (existing) existing.docsSubTab = subTab
+    else tabs.value.push({ id, type: 'item', itemKind: 'docsSite', itemId: websiteId, docsSubTab: subTab })
+    activeTabId.value = id
+  }
+
+  function setDocsSubTab(websiteId: string, subTab: DocsSiteSubTab) {
+    const tab = tabs.value.find((t) => t.id === docsSiteTabId(websiteId))
+    if (tab) tab.docsSubTab = subTab
+  }
+
+  /** A document of a documentation site opens in a tab of its own (one per document); `initialText` is for a document not saved yet. */
+  function openDocsDocument(websiteId: string, path: string, initialText?: string) {
+    const id = docsDocTabId(websiteId, path)
+    if (findIndex(id) === -1) {
+      tabs.value.push({ id, type: 'item', itemKind: 'docsDoc', itemId: websiteId, docsPath: path, docsInitialText: initialText })
+    }
+    activeTabId.value = id
+  }
+
+  /** Closes without asking (the document was deleted, or saved elsewhere). */
+  function forceCloseDocsDocument(websiteId: string, path: string) {
+    const id = docsDocTabId(websiteId, path)
+    const tab = tabs.value.find((t) => t.id === id)
+    if (tab) tab.dirty = false
+    closeTab(id)
+  }
+
+  function setDirty(id: string, dirty: boolean) {
+    const tab = tabs.value.find((t) => t.id === id)
+    if (tab) tab.dirty = dirty
+  }
+
   function setTabLabel(id: string, label: string) {
     const tab = tabs.value.find((t) => t.id === id)
     if (tab) tab.label = label
@@ -281,6 +333,7 @@ export const useTabsStore = defineStore('tabs', () => {
   function closeTab(id: string) {
     const idx = findIndex(id)
     if (idx === -1) return
+    if (tabs.value[idx].dirty && !confirm('This tab has unsaved changes. Close it and lose them?')) return
     tabs.value.splice(idx, 1)
 
     if (activeTabId.value !== id) return
@@ -292,11 +345,13 @@ export const useTabsStore = defineStore('tabs', () => {
   }
 
   function closeAllTabs() {
+    if (tabs.value.some((t) => t.dirty) && !confirm('Some tabs have unsaved changes. Close them all and lose the changes?')) return
     tabs.value.splice(0, tabs.value.length)
     activeTabId.value = null
   }
 
   function closeOtherTabs(id: string) {
+    if (tabs.value.some((t) => t.id !== id && t.dirty) && !confirm('Some tabs have unsaved changes. Close them and lose the changes?')) return
     const keep = tabs.value.filter((t) => t.id === id)
     tabs.value.splice(0, tabs.value.length, ...keep)
     activeTabId.value = id
@@ -332,6 +387,11 @@ export const useTabsStore = defineStore('tabs', () => {
     openClass,
     setTabLabel,
     closeTab,
+    openDocsSite,
+    setDocsSubTab,
+    openDocsDocument,
+    forceCloseDocsDocument,
+    setDirty,
     closeAllTabs,
     closeOtherTabs,
     closeAssetTab,

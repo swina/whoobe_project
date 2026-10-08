@@ -365,6 +365,7 @@
         <div
           v-for="tab in tabsStore.tabs"
           :key="tab.id"
+          :data-tab-id="tab.id"
           @click="tabsStore.activeTabId = tab.id"
           @contextmenu.prevent="openContextMenu($event, tab)"
           :class="[
@@ -442,6 +443,8 @@
               :class-id="tab.classListClassId"
             />
             <MasterWebsiteTab v-else-if="tab.type === 'item' && tab.itemKind === 'website' && tab.itemId" :website-id="tab.itemId" />
+            <MasterDocsSiteTab v-else-if="tab.type === 'item' && tab.itemKind === 'docsSite' && tab.itemId" :website-id="tab.itemId" />
+            <MasterDocsDocTab v-else-if="tab.type === 'item' && tab.itemKind === 'docsDoc' && tab.itemId && tab.docsPath" :website-id="tab.itemId" :path="tab.docsPath" />
           </div>
         </template>
       </main>
@@ -488,6 +491,7 @@ import {
   X,
   Network,
   ScrollText,
+  BookOpen,
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
@@ -505,6 +509,8 @@ import MasterSnippetTab from '../components/snippets/MasterSnippetTab.vue'
 import MasterObjectTab from '../components/objects/MasterObjectTab.vue'
 import MasterClassTab from '../components/objects/MasterClassTab.vue'
 import MasterWebsiteTab from '../components/websites/MasterWebsiteTab.vue'
+import MasterDocsSiteTab from '../components/websites/MasterDocsSiteTab.vue'
+import MasterDocsDocTab from '../components/websites/MasterDocsDocTab.vue'
 import OverviewView from '../views/OverviewView.vue'
 import WebsitesView from '../views/WebsitesView.vue'
 import ObjectsView from '../views/ObjectsView.vue'
@@ -963,6 +969,13 @@ function tabLabel(tab: MainTab): string {
     const website = websitesStore.websites.find((w) => w.id === tab.itemId)
     return website?.name || 'Website'
   }
+  if (tab.type === 'item' && tab.itemKind === 'docsSite' && tab.itemId) {
+    const website = websitesStore.websites.find((w) => w.id === tab.itemId)
+    return `${website?.name || 'Docs'} ‣ docs`
+  }
+  if (tab.type === 'item' && tab.itemKind === 'docsDoc' && tab.docsPath) {
+    return `${tab.dirty ? '● ' : ''}${tab.docsPath.split('/').pop()}`
+  }
   return 'Untitled'
 }
 
@@ -991,6 +1004,9 @@ function tabIcon(tab: MainTab) {
   }
   if (tab.type === 'item' && tab.itemKind === 'website') {
     return Globe
+  }
+  if (tab.type === 'item' && tab.itemKind === 'docsSite') {
+    return BookOpen
   }
   return FileText
 }
