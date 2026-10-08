@@ -57,8 +57,21 @@ By default the index is **rebuilt from the tree of files**: folders are sections
 page of its section, documents are ordered by `order` and then by file name (numeric prefixes like `01-` sort first and are not
 shown in titles or addresses).
 
-To take control, open the **Index** tab: **Start from the folders** fills a text with the current structure in YAML; edit it and
-**Save index** (stored as `_nav.yml` in the folder; **Check** validates it first, a broken text is never saved):
+To take control, open the **Index** tab. It is a **tree you edit by dragging**:
+
+- **Drag a row** onto another: the upper quarter of a row puts it *before*, the lower quarter *after*, the middle of a **section** puts
+  it *inside* (a line or a highlight shows where it will land). A section can be dropped anywhere except into itself.
+- **Keyboard**: select a row and press **Alt+↑ / ↓** to move it one step, **Alt+→** to put it into the section above, **Alt+←** to
+  take it out of its section; **F2** (or a double click) renames, **Delete** takes it out of the index. The same moves are buttons on
+  the row.
+- **+ Section** and **+ Link** add entries (inside the selected section, or at the end). A document can get a different title *in the
+  index only* (rename it: it shows *custom*).
+- On the right, **Not in the index** lists the documents the tree leaves out: drag one into the tree (or double click it to add it
+  at the end). Taking an entry out of the index puts its document back in that list.
+- **Start from the folders** fills the tree with the structure of the folders to rearrange; **Save index** checks it and writes
+  `_nav.yml` in the folder; **Use the folders again** deletes it.
+- **Text** shows the same index as the YAML file, to edit by hand (**Check** validates it first, a broken text is never saved; going
+  back to the tree is possible only when the text is valid):
 
 ```yaml
 - title: Getting started
@@ -123,4 +136,4 @@ no longer exist. `--base-path` is the path the site is served under (`/` for a d
 | API | [`/docs-sites/...` and `/public/docs/...`](../api/api-reference.md) |
 | Plan and phases | [`docs/plans/docs-sites/docs-site-plan.md`](../../plans/docs-sites/docs-site-plan.md) |
 
-Not yet (planned): a drag-and-drop editor for the index (it is a YAML text with a check), several languages and versions, the layout as a template of an ordinary website, search results with the matching words highlighted.
+Not yet (planned): several languages and versions, the layout as a template of an ordinary website, search results with the matching words highlighted.
