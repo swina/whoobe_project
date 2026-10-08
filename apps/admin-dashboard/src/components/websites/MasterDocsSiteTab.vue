@@ -70,39 +70,31 @@
 
           <!-- Index -->
           <template v-else-if="tab === 'index'">
-            <div class="grid md:grid-cols-2 gap-4">
-              <div class="space-y-2">
-                <div class="text-xs text-slate-400">
-                  <span class="font-semibold text-slate-300">Current index</span>
-                  <span class="ml-2 px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] uppercase">{{ (checked ? 'preview of your text' : tree.navSource === 'manual' ? 'written by hand' : 'from the folders') }}</span>
-                </div>
-                <div class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-slate-50 p-2 text-sm max-h-[60vh] overflow-y-auto">
-                  <div v-if="displayedNav.length === 0" class="text-xs text-slate-500 italic p-2">Nothing to list yet.</div>
-                  <div v-for="(n, i) in displayedNav" :key="i" :style="{ paddingLeft: n.depth * 16 + 'px' }" class="py-0.5 flex items-center gap-1.5">
-                    <span :class="n.kind === 'section' ? 'font-semibold text-slate-200 light:text-slate-800' : n.kind === 'link' ? 'text-sky-400' : 'text-slate-300 light:text-slate-700'" class="truncate">{{ n.title }}</span>
-                    <span v-if="n.target" class="text-[10px] font-mono text-slate-600 truncate">{{ n.target }}</span>
-                  </div>
-                </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <div class="flex rounded-lg overflow-hidden border border-slate-700 light:border-slate-300 text-xs font-semibold">
+                <button data-testid="docs-nav-mode-visual" :class="['px-3 py-1.5', navMode === 'visual' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200']" @click="switchMode('visual')">Visual</button>
+                <button data-testid="docs-nav-mode-text" :class="['px-3 py-1.5', navMode === 'text' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200']" @click="switchMode('text')">Text ({{ tree.navFile }})</button>
               </div>
-              <div class="space-y-2">
-                <div class="flex items-center justify-between gap-2">
-                  <span class="text-xs font-semibold text-slate-300">{{ tree.navFile }}</span>
-                  <div class="flex items-center gap-2">
-                    <button class="text-xs font-semibold text-indigo-400 hover:text-indigo-300" @click="fillFromFolders">Start from the folders</button>
-                    <button v-if="tree.navSource === 'manual' || tree.navText !== null" class="text-xs font-semibold text-rose-400 hover:text-rose-300" @click="removeNavFile">Use the folders again</button>
-                  </div>
-                </div>
-                <textarea v-model="navText" data-testid="docs-nav-text" spellcheck="false" rows="16" placeholder="Leave empty to follow the folders. Example:&#10;- title: Getting started&#10;  items:&#10;    - doc: install.md&#10;    - doc: first-site.md&#10;      title: Your first site&#10;- link: https://example.org&#10;  title: Changelog"
-                  class="w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-xs font-mono text-slate-200 light:text-slate-800 p-2 outline-none focus:border-indigo-500"></textarea>
-                <div class="flex items-center gap-2">
-                  <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" @click="checkNav">Check</button>
-                  <button data-testid="docs-nav-save" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="!!busy || !navText.trim()" @click="saveNav">Save index</button>
-                </div>
-                <ul v-if="navErrors.length" class="text-xs text-rose-300 space-y-0.5 list-disc pl-5"><li v-for="e in navErrors" :key="e">{{ e }}</li></ul>
-                <ul v-if="navWarnings.length" class="text-xs text-amber-300 space-y-0.5 list-disc pl-5"><li v-for="w in navWarnings" :key="w">{{ w }}</li></ul>
-                <p v-if="checked && !navErrors.length" class="text-xs text-emerald-400">The text is valid.</p>
+              <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] uppercase">{{ navStatus }}</span>
+              <div class="ml-auto flex items-center gap-2">
+                <button class="text-xs font-semibold text-indigo-400 hover:text-indigo-300" @click="fillFromFolders">Start from the folders</button>
+                <button v-if="tree.navSource === 'manual' || tree.navText !== null" class="text-xs font-semibold text-rose-400 hover:text-rose-300" @click="removeNavFile">Use the folders again</button>
               </div>
             </div>
+
+            <DocsNavEditor v-if="navMode === 'visual'" :root="navRoot" :documents="tree.documents" @change="onTreeChange" />
+            <template v-else>
+              <textarea v-model="navText" data-testid="docs-nav-text" spellcheck="false" rows="18" placeholder="Leave empty to follow the folders. Example:&#10;- title: Getting started&#10;  items:&#10;    - doc: install.md&#10;    - doc: first-site.md&#10;      title: Your first site&#10;- link: https://example.org&#10;  title: Changelog"
+                class="w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-xs font-mono text-slate-200 light:text-slate-800 p-2 outline-none focus:border-indigo-500"></textarea>
+            </template>
+
+            <div class="flex items-center gap-2">
+              <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" @click="checkNav">Check</button>
+              <button data-testid="docs-nav-save" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="!!busy || (navMode === 'text' && !navText.trim())" @click="saveNav">Save index</button>
+            </div>
+            <ul v-if="navErrors.length" class="text-xs text-rose-300 space-y-0.5 list-disc pl-5"><li v-for="e in navErrors" :key="e">{{ e }}</li></ul>
+            <ul v-if="navWarnings.length" class="text-xs text-amber-300 space-y-0.5 list-disc pl-5"><li v-for="w in navWarnings" :key="w">{{ w }}</li></ul>
+            <p v-if="checked && !navErrors.length" class="text-xs text-emerald-400">The index is valid.</p>
           </template>
 
           <!-- Publish -->
@@ -154,7 +146,9 @@ import { useWebsitesStore } from '../../stores/websitesStore'
 import { useTabsStore, docsSiteTabId, type DocsSiteSubTab } from '../../stores/tabsStore'
 import { useDocsSitesStore } from '../../stores/docsSitesStore'
 import { uploadAssetToDam, deleteAssetFromDam } from '../../utils/dam-api'
-import { docsPreviewUrl, checkDocsNav, cleanRelativePath, navToYaml, flattenNavForDisplay, type NavNode } from '../../utils/docs-sites-api'
+import { docsPreviewUrl, checkDocsNav, cleanRelativePath, type NavNode } from '../../utils/docs-sites-api'
+import { editToYaml, navToEdit, type EditNode } from '../../utils/docs-nav-edit'
+import DocsNavEditor from './DocsNavEditor.vue'
 
 const props = defineProps<{ websiteId: string }>()
 
@@ -184,14 +178,13 @@ async function load() {
   await docsStore.load(props.websiteId)
   const t = tree.value
   if (t) {
-    navText.value = t.navText ?? ''
+    if (!navDirty.value) navText.value = t.navText ?? ''
     const d = ((website.value?.settings ?? {}) as any).docs ?? {}
     settingsForm.value = { title: t.config.title, sourceFolder: t.config.sourceFolder, homeDoc: d.homeDoc ?? '' }
   }
 }
 // the tree is also reloaded by the tabs of the documents; here only the text fields follow the first load
 watch(() => props.websiteId, () => { void load() }, { immediate: true })
-watch(() => tree.value?.navText, (v) => { if (!navDirty.value) navText.value = v ?? '' })
 
 // ---- documents --------------------------------------------------------------------------------------------
 
@@ -295,24 +288,55 @@ async function removePath(path: string) {
 
 const navText = ref('')
 const navDirty = ref(false)
-watch(navText, (v) => { navDirty.value = v !== (tree.value?.navText ?? '') })
+const navMode = ref<'visual' | 'text'>('visual')
+const navRoot = ref<EditNode>({ id: 'root', kind: 'root', items: [] })
+const treeDirty = ref(false)
 const navErrors = ref<string[]>([])
 const navWarnings = ref<string[]>([])
-const checkedNav = ref<NavNode[] | null>(null)
 const checked = ref(false)
-const displayedNav = computed(() => flattenNavForDisplay(checked.value && checkedNav.value ? checkedNav.value : tree.value?.nav ?? []))
+const navStatus = computed(() => (navDirty.value || treeDirty.value ? 'unsaved changes' : tree.value?.navSource === 'manual' ? 'written by hand' : 'from the folders'))
+
+/** The tree being edited starts from the index in use (the written one, or the one rebuilt from the folders). */
+function resetTree(nav: NavNode[] | undefined = tree.value?.nav) {
+  navRoot.value = navToEdit(nav ?? [], tree.value?.documents ?? [])
+  treeDirty.value = false
+}
+watch(() => tree.value, (t, old) => { if (t && (!old || (!treeDirty.value && !navDirty.value))) resetTree(t.nav) }, { immediate: true })
+watch(navText, (v) => { navDirty.value = v !== (tree.value?.navText ?? '') })
+function onTreeChange() { treeDirty.value = true; checked.value = false }
+
+/** The text the file would contain now. */
+const currentText = () => (navMode.value === 'visual' ? editToYaml(navRoot.value) : navText.value)
+
+async function switchMode(mode: 'visual' | 'text') {
+  if (mode === navMode.value) return
+  navErrors.value = []; navWarnings.value = []
+  if (mode === 'text') {
+    if (treeDirty.value || !navText.value.trim()) navText.value = editToYaml(navRoot.value)
+    navMode.value = 'text'
+    return
+  }
+  // text -> visual: the server reads the text (the same reading that serves the site) and the tree follows
+  if (!navText.value.trim()) { resetTree(tree.value?.autoNav); navMode.value = 'visual'; return }
+  const r = await checkDocsNav(coreApi(), props.websiteId, navText.value).catch((e) => ({ ok: false, errors: [e?.message || 'Check failed'], warnings: [] as string[], nav: [] as NavNode[] }))
+  if (!r.ok) { navErrors.value = r.errors; return }          // stays in the text until it is valid
+  navRoot.value = navToEdit(r.nav, tree.value?.documents ?? [])
+  treeDirty.value = navDirty.value
+  navMode.value = 'visual'
+}
 
 function fillFromFolders() {
-  navText.value = navToYaml(tree.value?.autoNav ?? [])
+  resetTree(tree.value?.autoNav)
+  navText.value = editToYaml(navRoot.value)
+  treeDirty.value = true
   checked.value = false
   navErrors.value = []; navWarnings.value = []
 }
 async function checkNav(): Promise<boolean> {
   navErrors.value = []; navWarnings.value = []
   try {
-    const r = await checkDocsNav(coreApi(), props.websiteId, navText.value)
+    const r = await checkDocsNav(coreApi(), props.websiteId, currentText())
     navErrors.value = r.errors; navWarnings.value = r.warnings
-    checkedNav.value = r.ok ? r.nav : null
     checked.value = r.ok
     return r.ok
   } catch (e: any) {
@@ -321,13 +345,19 @@ async function checkNav(): Promise<boolean> {
   }
 }
 async function saveNav() {
-  if (!tree.value || !(await checkNav())) return
+  if (!tree.value) return
+  const text = currentText()
+  if (!text.trim()) { navErrors.value = ['The index is empty: use “Use the folders again” to follow the folders.']; return }
+  navText.value = text
+  if (!(await checkNav())) return
   busy.value = 'Saving the index…'
   try {
-    await putFile(tree.value.navFile, new Blob([navText.value]), true)
+    await putFile(tree.value.navFile, new Blob([text]), true)
     checked.value = false
+    treeDirty.value = false
     await load()
     navDirty.value = false
+    resetTree(tree.value?.nav)
   } catch (e: any) {
     localError.value = e?.message || 'Could not save the index'
   } finally {
@@ -339,7 +369,9 @@ async function removeNavFile() {
   try {
     await deleteAssetFromDam(dam().assetProcessorUrl, `${folder()}/${tree.value.navFile}`, dam().folderRules)
     checked.value = false; navErrors.value = []; navWarnings.value = []
+    treeDirty.value = false; navDirty.value = false
     await load()
+    resetTree(tree.value?.nav)
   } catch (e: any) {
     localError.value = e?.message || 'Could not delete the index file'
   }

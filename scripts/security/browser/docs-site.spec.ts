@@ -27,11 +27,12 @@ test('write a documentation site in the dashboard and read it in the docs layout
     const docTab = p.locator('[data-testid="docs-doc-tab"]:visible')
     const siteTab = p.locator('[data-testid="docs-site-tab"]:visible')
     const goSite = () => p.locator(`[data-tab-id="item:docsSite:${siteId}"]`).click()
+    let promptAnswer = `extra/${tag}.md`
     let dismissNext = false
     let asked = ''
     p.on('dialog', (d) => {
       if (dismissNext) { dismissNext = false; asked = d.message(); void d.dismiss(); return }
-      void d.accept(d.type() === 'prompt' ? `extra/${tag}.md` : undefined)
+      void d.accept(d.type() === 'prompt' ? promptAnswer : undefined)
     })
     await p.goto(`${ADMIN_URL}/`)
     await p.getByText('Websites', { exact: true }).first().click()
@@ -118,19 +119,61 @@ test('write a documentation site in the dashboard and read it in the docs layout
     await goSite()
     await siteTab.getByTestId('docs-filter').fill('')
 
-    // the index: start from the folders, check it, save it as a hand-written index
+    // the index, edited as a tree: start from the folders, add a section, rename an entry, drag entries into the section, reorder with
+    // the keyboard, take one out and drag it back from the list of what is not in the index, save
     await siteTab.getByTestId('docs-tab-index').click()
     await p.getByRole('button', { name: 'Start from the folders' }).click()
-    await expect(siteTab.getByTestId('docs-nav-text')).toHaveValue(/doc: guide\/01-install\.md/)
+    const navRows = () => siteTab.locator('[data-testid="nav-tree"] [data-nav-id]').evaluateAll((els) => els.map((e) => `${Math.round((parseFloat((e as HTMLElement).style.paddingLeft) - 0.4))}${(e.querySelector('span.truncate') as HTMLElement | null)?.textContent?.trim()}`))
+    await expect(siteTab.getByTestId('nav-row-Install')).toBeVisible()
+    promptAnswer = 'Start here'
+    await siteTab.getByTestId('nav-add-section').click()
+    const section = siteTab.getByTestId('nav-row-Start here')
+    await expect(section).toBeVisible()
+    await siteTab.getByTestId('nav-row-Install').dblclick()                        // rename: the title is changed in the index only
+    await siteTab.locator('[data-testid="nav-tree"] input').fill('First step')
+    await siteTab.locator('[data-testid="nav-tree"] input').press('Enter')
+    await expect(siteTab.getByTestId('nav-row-First step')).toContainText('custom')
+    await siteTab.getByTestId('nav-row-First step').dragTo(section)                // dropped on the middle of a section: inside it
+    await siteTab.getByTestId('nav-row-Usage').dragTo(section)
+    const inside = await navRows()
+    expect(inside.slice(inside.indexOf('0Start here'), inside.indexOf('0Start here') + 3)).toEqual(['0Start here', '1First step', '1Usage'])
+    await siteTab.getByTestId('nav-row-Usage').click()
+    await p.keyboard.press('Alt+ArrowUp')                                           // one step up inside the section
+    let order = await navRows()
+    expect(order.slice(order.indexOf('0Start here'), order.indexOf('0Start here') + 3)).toEqual(['0Start here', '1Usage', '1First step'])
+    await p.keyboard.press('Alt+ArrowDown')
+    order = await navRows()
+    expect(order.slice(order.indexOf('0Start here'), order.indexOf('0Start here') + 3)).toEqual(['0Start here', '1First step', '1Usage'])
+    // a section cannot be dropped into itself
+    const before = await navRows()
+    await section.dragTo(siteTab.getByTestId('nav-row-First step'))
+    expect(await navRows()).toEqual(before)
+    // take a document out of the index: it is listed on the right; drag it back above the section (upper edge = before)
+    await siteTab.getByTestId(`nav-row-Welcome ${tag}`).getByRole('button', { name: 'Remove' }).click()
+    await expect(siteTab.getByTestId('nav-unlisted-index.md')).toBeVisible()
+    await siteTab.getByTestId('nav-unlisted-index.md').dragTo(section, { targetPosition: { x: 40, y: 2 } })
+    await expect(siteTab.getByTestId('nav-unlisted-index.md')).toHaveCount(0)
+    order = await navRows()
+    expect(order.indexOf(`0Welcome ${tag}`)).toBe(order.indexOf('0Start here') - 1)
     await p.getByRole('button', { name: 'Check' }).click()
-    await expect(p.getByText('The text is valid.')).toBeVisible()
-    await siteTab.getByTestId('docs-nav-text').fill('- title: Start here\n  items:\n    - doc: guide/01-install.md\n      title: First step\n    - doc: guide/02-usage.md\n')
+    await expect(p.getByText('The index is valid.')).toBeVisible()
     await siteTab.getByTestId('docs-nav-save').click()
     await expect(p.getByText('written by hand')).toBeVisible({ timeout: 10_000 })
     uploaded.push('_nav.yml')
+    const saved = await api.get(`/docs-sites/${siteId}/tree`)
+    const startHere = saved.json.nav.find((n: any) => n.title === 'Start here')
+    expect(startHere.items.map((n: any) => n.title)).toEqual(['First step', 'Usage'])
+    expect(saved.json.nav.findIndex((n: any) => n.path === 'index.md')).toBe(saved.json.nav.indexOf(startHere) - 1)
+
+    // the same index as text; a broken text is refused and the editor stays in the text
+    await siteTab.getByTestId('docs-nav-mode-text').click()
+    await expect(siteTab.getByTestId('docs-nav-text')).toHaveValue(/- title: Start here[\s\S]*title: First step/)
     await siteTab.getByTestId('docs-nav-text').fill('- title: [broken')
     await p.getByRole('button', { name: 'Check' }).click()
     await expect(p.getByText(/not valid YAML/)).toBeVisible()          // a broken index is never saved
+    await siteTab.getByTestId('docs-nav-mode-visual').click()
+    await expect(siteTab.getByTestId('docs-nav-text')).toBeVisible()   // still in the text until it is valid
+    await siteTab.getByTestId('docs-nav-text').fill('')
 
     // publishing: the command for the static generator, with the site's id
     await siteTab.getByTestId('docs-tab-publish').click()
