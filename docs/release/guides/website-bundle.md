@@ -36,6 +36,12 @@ refers to a snippet or an asset needs no change to the export.
 Choosing **Cancel** at the "Include the asset files?" question exports the asset records without the files: the
 other installation must already have them at the same paths.
 
+### Documentation websites
+
+A website of kind *documentation* (see [documentation sites](documentation-sites.md)) has no pages: its content is the **folder of the
+asset library** it is built from. The export adds every file of that folder to the bundle's assets (with the path, visibility and
+the file in the zip), and the website's settings carry the folder. The dashboard never asks whether to include the files for these.
+
 ## Importing
 
 **Import** accepts the `.zip` (or a plain `.json`, the old version 1 export included). Before anything is written the
@@ -58,6 +64,11 @@ If a step fails, what the import created is removed again. Assets that were stor
 - The **manifest** (`bundle.json`: pages, snippets with their thumbnails, data objects, asset records) is sent as one JSON request: core-api accepts up to **25 MB** of JSON. If an import answers 413 with a large site, check it with `unzip -p site-export.zip bundle.json | wc -c`.
 - Each **asset file** is uploaded on its own, like any DAM upload: up to `ASSET_MAX_FILE_BYTES` (50 MB by default) and `ASSET_MAX_INPUT_PIXELS` for images; a file over the limit is reported as not stored and the rest of the import goes on.
 - In front of both sits the nginx cap of the workspace (`WS_MAX_BODY`, 100 MB by default). Before 2026-10-07 it was set only for uploads, and nginx's own default of 1 MB answered 413 to the manifest of any site of some size: workspaces provisioned earlier need the line described in `CHANGES.md` (2026-10-07, "nginx: one body cap for the whole server").
+
+**Documentation websites.** The files are stored in the folder they came from when it is free here; when it is taken, in
+`<folder>-import` (then `-import-2` ...), so a copy never shares files with the original. The dry run reports it (`docs: { sourceFolder,
+targetFolder }`, plus a warning) and the final call must give the same folder (`docsFolder`) after the files were stored there; the
+dashboard does both. The documents refer to each other with relative paths, which stay valid because the folder moves as a whole.
 
 ### Permissions and what is not copied
 

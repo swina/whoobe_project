@@ -126,6 +126,27 @@ Only **public** documents are published, read from the public API, so a private 
 are listed; `--strict` makes them an error (useful in a CI job). Running it again replaces the pages and removes the ones that
 no longer exist. `--base-path` is the path the site is served under (`/` for a domain of its own); the links already contain it.
 
+## Export and import (backup, move, copy)
+
+Part of the work on a documentation site happens in the dashboard (index, texts, images), so it has an **Export** like any website:
+the button on its row in **Settings > Websites**, or in the header of its tab. The `.zip` holds **every file of the source folder**
+- the documents, the images and other files, the index (`_nav.yml`) - with their visibility (public/private) and the site's
+settings (title, folder, home document). Nobody is asked whether to include the files: they are the content.
+
+**Import** (the same button as for websites) creates a new documentation website and stores the files:
+
+- On an installation where the folder is free (a backup restored, the site moved) the files go **back to the same folder**.
+- Where the folder is taken (the site is copied on the installation it came from) the copy gets a **folder of its own**
+  (`<folder>-import`, then `-import-2` ...), and the dialog says so. Editing the copy never touches the original; the relative
+  paths between documents and images are still right, because the folder moves as a whole.
+- The website gets a new name (`... (import xxxx)`) and root path, like every import; domains are not imported.
+- Links written as `/dam-asset/<key>` (absolute addresses of a file) are not rewritten: use relative paths in the documents, as the
+  *Insert image* button does.
+
+A bundle can also be made and imported with the API (`GET /whoobe-one/websites/:id/export`, `POST /whoobe-one/websites/import`, see
+[website export and import](website-bundle.md)): for a documentation site the dry run returns `docs: { sourceFolder, targetFolder }`
+and the final call takes the same folder as `docsFolder`, after the files have been stored there.
+
 ## What is where
 
 | | |

@@ -171,6 +171,8 @@ export interface WebsiteImportReport {
   counts: Record<string, number>
   classes: { name: string; action: 'create' | 'reuse'; differences: string[] }[]
   assets: AssetPlanEntry[]
+  /** Documentation websites: the folder of the files in the bundle, and the one they go to here. */
+  docs?: { sourceFolder: string; targetFolder: string }
   warnings: string[]
 }
 
@@ -187,12 +189,12 @@ export async function exportWebsite(
 export async function importWebsite(
   baseUrl: string,
   payload: WebsiteBundlePayload,
-  options: { dryRun?: boolean; assetMap?: Record<string, { id: string; pimcorePath: string }> } = {}
+  options: { dryRun?: boolean; assetMap?: Record<string, { id: string; pimcorePath: string }>; docsFolder?: string } = {}
 ): Promise<WebsiteImportReport> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/websites/import${options.dryRun ? '?dryRun=1' : ''}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(options.assetMap ? { ...payload, assetMap: options.assetMap } : payload),
+    body: JSON.stringify({ ...payload, ...(options.assetMap ? { assetMap: options.assetMap } : {}), ...(options.docsFolder ? { docsFolder: options.docsFolder } : {}) }),
     credentials: 'include',
   })
   return parseJsonOrThrow(res)

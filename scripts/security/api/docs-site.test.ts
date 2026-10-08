@@ -25,6 +25,13 @@ async function put(rel: string, type: string, data: Uint8Array | string, isPubli
   uploaded.push(pimcorePath)
 }
 const md = (rel: string, text: string, isPublic = true) => put(rel, 'text/markdown', text, isPublic)
+async function readAssetText(pimcorePath: string): Promise<string | null> {
+  const list = (await adminAsset.get('/api/v1/dam/assets')).json.assets as { pimcorePath: string; s3Key: string }[]
+  const a = list.find((x) => x.pimcorePath === pimcorePath)
+  if (!a) return null
+  const res = await adminAsset.get(`/dam-asset/${a.s3Key.split('/').map(encodeURIComponent).join('/')}`)
+  return res.status === 200 ? res.text : null
+}
 
 beforeAll(async () => {
   admin = await clientFor('admin')
@@ -156,6 +163,52 @@ describe('search index', () => {
     const r = await admin.get(`/docs-sites/${siteId}/search-index`)
     expect(r.status).toBe(200)
     expect(r.text).toContain('/secret')
+  })
+})
+
+describe('export and import of a documentation website', () => {
+  it('the bundle carries every file of the folder, with its visibility, and no pages', async () => {
+    const b = (await admin.get(`/whoobe-one/websites/${siteId}/export`)).json
+    expect(b.website.settings).toMatchObject({ kind: 'docs', docs: { sourceFolder: folder } })
+    expect(b.pages).toEqual([])
+    const rel = b.assets.map((a: any) => [a.pimcorePath.slice(folder.length + 1), a.isPublic]).sort()
+    expect(rel).toEqual(expect.arrayContaining([['guide/01-install.md', true], ['index.md', true], ['secret.md', false], ['xss.md', true]]))
+    expect(b.assets.every((a: any) => a.pimcorePath.startsWith(`${folder}/`))).toBe(true)
+  })
+  it('a dry run says where the files would go: a folder of their own while the original is taken; a bad folder is refused', async () => {
+    const b = (await admin.get(`/whoobe-one/websites/${siteId}/export`)).json
+    const r = await admin.post('/whoobe-one/websites/import?dryRun=1', b)
+    expect(r.status, r.text.slice(0, 160)).toBe(200)
+    expect(r.json.docs).toEqual({ sourceFolder: folder, targetFolder: `${folder}-import` })
+    expect(r.json.assets.every((a: any) => a.pimcorePath.startsWith(`${folder}-import/`) && a.action === 'upload')).toBe(true)
+    expect(r.json.warnings.join('\n')).toContain(`already used here: the files are stored in ${folder}-import`)
+    const chosen = await admin.post('/whoobe-one/websites/import?dryRun=1', { ...b, docsFolder: `${folder}-mine` })
+    expect(chosen.json.docs.targetFolder).toBe(`${folder}-mine`)
+    for (const bad of ['/', '', '/a/../b', '/a\\b']) {
+      const x = await admin.post('/whoobe-one/websites/import?dryRun=1', { ...b, docsFolder: bad })
+      if (bad === '') expect(x.json.docs.targetFolder).toBe(`${folder}-import`)      // empty = not given
+      else expect(x.status, bad).toBe(400)
+    }
+  })
+  it('importing with the files stored first makes a working website in the new folder, independent of the original', async () => {
+    const b = (await admin.get(`/whoobe-one/websites/${siteId}/export`)).json
+    const plan = (await admin.post('/whoobe-one/websites/import?dryRun=1', b)).json
+    const assetMap: Record<string, { id: string; pimcorePath: string }> = {}
+    for (const item of plan.assets) {
+      const a = b.assets.find((x: any) => x.id === item.id)
+      const data: Uint8Array | string = a.mimeType.startsWith('image/') ? png(8, 8) : ((await readAssetText(a.pimcorePath)) ?? '')
+      const up = await adminAsset.upload('/api/v1/dam/upload', { pimcorePath: item.targetPath, isPublic: String(a.isPublic) }, { file: { name: a.filename, type: a.mimeType, data } })
+      expect(up.status, item.targetPath).toBe(200)
+      uploaded.push(item.targetPath)
+      assetMap[item.id] = { id: up.json.asset.id, pimcorePath: up.json.asset.pimcorePath }
+    }
+    const done = await admin.post('/whoobe-one/websites/import', { ...b, assetMap, docsFolder: plan.docs.targetFolder })
+    expect(done.status, done.text.slice(0, 200)).toBe(201)
+    cleanup.push(() => admin.delete(`/whoobe-one/websites/${done.json.website.id}`))
+    const copy = (await admin.get(`/whoobe-one/websites/${done.json.website.id}`)).json.website
+    expect(copy.settings.docs.sourceFolder).toBe(`${folder}-import`)
+    const tree = (await admin.get(`/docs-sites/${done.json.website.id}/tree`)).json
+    expect(tree.documents.map((d: any) => d.path).sort()).toEqual((await admin.get(`/docs-sites/${siteId}/tree`)).json.documents.map((d: any) => d.path).sort())
   })
 })
 

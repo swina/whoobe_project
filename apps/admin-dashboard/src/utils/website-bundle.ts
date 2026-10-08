@@ -141,6 +141,25 @@ export async function importOpenedBundle(
   }
 
   progress('Importing the website…')
-  const report = await importWebsite(coreApiUrl, opened.bundle, { assetMap })
+  // a documentation website: the same folder the files were stored in
+  const report = await importWebsite(coreApiUrl, opened.bundle, { assetMap, docsFolder: preview.docs?.targetFolder })
   return { report, uploaded, failed }
+}
+
+/** Builds the zip of a website and offers it as a download. A documentation website is its files, so they are always included. */
+export async function downloadWebsiteZip(
+  coreApiUrl: string,
+  dam: DamEndpoint,
+  website: { id: string; name: string },
+  options: { withAssets: boolean; dataObjects: 'all' | 'referenced' },
+  progress: Progress = () => {}
+): Promise<{ assets: number; missing: string[] }> {
+  const { blob, assets, missing } = await buildWebsiteZip(coreApiUrl, dam, website.id, options, progress)
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${website.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-export.zip`
+  a.click()
+  URL.revokeObjectURL(url)
+  return { assets, missing }
 }

@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { getAssetById, listAssets } from '../db/asset-records.js';
+import { documentationFolderOf } from './export.js';
 import { createDataClass, deleteDataClass, getDataClassByName } from '../db/data-classes-records.js';
 import { createDataComponent, deleteDataComponent, getDataComponentByName } from '../db/data-components-records.js';
 import { createDataObject, deleteDataObject, listDataObjects, updateDataObject } from '../db/data-objects-records.js';
@@ -24,6 +25,9 @@ export interface ImportOptions {
   /** Restore `published` and the workflow state of pages and objects. Off by default: putting content live is a
    *  separate permission (objects:publish), so the caller turns this on only for someone who holds it. */
   restorePublication?: boolean;
+  /** A documentation website: the folder its files are stored in here. The caller that stores the files first (the dashboard) asks
+   *  for it in a dry run and gives the same answer in the final call. Absent: the folder of the bundle if it is free here, else a free one. */
+  docsFolder?: string;
 }
 
 export interface ImportReport {
@@ -45,6 +49,8 @@ export interface ImportReport {
   };
   classes: { name: string; action: 'create' | 'reuse'; differences: string[] }[];
   assets: AssetPlanItem[];
+  /** Documentation websites: where the folder of the Markdown files was in the bundle, and where it goes here. */
+  docs?: { sourceFolder: string; targetFolder: string };
   warnings: string[];
 }
 
@@ -53,6 +59,11 @@ export class ImportError extends Error {
 }
 
 const MAX_ENTITIES = 50_000;
+
+function withDocsFolder(settings: Record<string, unknown>, folder: string): Record<string, unknown> {
+  const d = (settings.docs ?? {}) as Record<string, unknown>;
+  return { ...settings, docs: { ...d, sourceFolder: folder } };
+}
 
 /**
  * Imports a version 2 bundle as a new website (its name and root path get a suffix, like every earlier import), plus
@@ -69,7 +80,31 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
 
   // --- assets: what is already here, what must be uploaded, what collides --------------------------------------
   const existingAssets = new Map((await listAssets()).map((a) => [a.pimcorePath, { id: a.id, sizeBytes: a.sizeBytes }]));
-  const assetPlan = planAssets(bundle.assets, existingAssets);
+
+  // A documentation website is its folder: the files go to a folder of their own here. If the folder of the bundle is taken (the
+  // same site is being copied on the same installation) the copy gets a free one, so editing it never touches the original;
+  // the documents refer to each other and to their images with relative paths, so moving the folder as a whole keeps them valid.
+  let docs: ImportReport['docs'];
+  let planned = bundle.assets;
+  const sourceFolder = documentationFolderOf(bundle.website.settings);
+  if (sourceFolder) {
+    let targetFolder: string;
+    if (options.docsFolder !== undefined) {
+      const wanted = documentationFolderOf({ kind: 'docs', docs: { sourceFolder: options.docsFolder } });
+      if (!wanted) throw new ImportError('docsFolder is not a valid folder of the asset library');
+      targetFolder = wanted;
+    } else {
+      const taken = (f: string) => [...existingAssets.keys()].some((p) => p.startsWith(`${f}/`));
+      targetFolder = sourceFolder;
+      for (let n = 1; taken(targetFolder); n++) targetFolder = n === 1 ? `${sourceFolder}-import` : `${sourceFolder}-import-${n}`;
+    }
+    if (targetFolder !== sourceFolder) {
+      planned = bundle.assets.map((a) => (a.pimcorePath.startsWith(`${sourceFolder}/`) ? { ...a, pimcorePath: targetFolder + a.pimcorePath.slice(sourceFolder.length) } : a));
+      warnings.push(`The documentation folder ${sourceFolder} is already used here: the files are stored in ${targetFolder}`);
+    }
+    docs = { sourceFolder, targetFolder };
+  }
+  const assetPlan = planAssets(planned, existingAssets);
 
   const idMap = new Map<string, string>();
   const pathMap = new Map<string, string>();
@@ -148,7 +183,7 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
   for (let n = 0; await getWebsiteByRootPath(rootPath); ) rootPath = `${basePath}-${suffix}-${++n}`;
   const name = `${bundle.website.name} (import ${suffix})`;
 
-  const report: ImportReport = { dryRun, website: { id: null, name, rootPath }, counts, classes: classReport, assets: assetPlan, warnings };
+  const report: ImportReport = { dryRun, website: { id: null, name, rootPath }, counts, classes: classReport, assets: assetPlan, ...(docs ? { docs } : {}), warnings };
   if (dryRun) return report;
 
   // --- from here on, writes; `undo` removes what was created if a step fails ---------------------------------------
@@ -204,7 +239,7 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
       domains: [],
       defaultLocale: bundle.website.defaultLocale,
       supportedLocales: bundle.website.supportedLocales,
-      settings: fix(bundle.website.settings ?? {}),
+      settings: docs ? withDocsFolder(fix(bundle.website.settings ?? {}), docs.targetFolder) : fix(bundle.website.settings ?? {}),
       themeId: bundle.website.themeId ? idMap.get(bundle.website.themeId) ?? null : null,
     });
     undo.push(() => deleteWebsite(website.id));
