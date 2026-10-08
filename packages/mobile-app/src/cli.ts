@@ -774,12 +774,14 @@ function mainCss(opts: ScaffoldOptions): string {
   return `/* Tailwind v4 browser runtime is loaded via <script> in index.html */
 /* Theme variables (colors, fonts, custom theme CSS) are inlined via index.html's <style id="theme-styles"> */
 
-html, body, #app {
+/* Defaults only: :where() has no specificity, so what the theme says about html/body/#app (its own background, font)
+   wins even though this stylesheet comes after <style id="theme-styles"> */
+:where(html, body, #app) {
   background: #ffffff;
   min-height: 100vh;
 }
 
-body {
+:where(body) {
   font-family: ${opts.fontFamilies.map((f) => `"${f}"`).join(', ') || 'sans-serif'};
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
