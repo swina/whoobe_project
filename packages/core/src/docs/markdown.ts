@@ -102,6 +102,43 @@ function plain(tokens: readonly unknown[] | undefined, sep: string): string {
   return parts.join('').replace(/[ \t]+/g, ' ').replace(/ ?\n ?/g, '\n').trim();
 }
 
+export interface ImageAttrs { width?: string; align?: 'left' | 'center' | 'right'; float?: 'left' | 'right' }
+
+/** `width=50% align=center` -> validated attributes. Only digits with a unit and three keywords get through: the values are
+ *  written into a style attribute and a class, so nothing else may. Problems are returned, the image is still shown. */
+export function parseImageAttrs(raw: string): { attrs: ImageAttrs; problems: string[] } {
+  const attrs: ImageAttrs = {};
+  const problems: string[] = [];
+  for (const part of raw.trim().split(/\s+/).filter(Boolean)) {
+    const eq = part.indexOf('=');
+    const key = (eq < 0 ? part : part.slice(0, eq)).toLowerCase();
+    const value = eq < 0 ? '' : part.slice(eq + 1).toLowerCase();
+    if (key === 'width') {
+      const m = /^(\d{1,4}(?:\.\d{1,2})?)(px|%|rem|em|vw)?$/.exec(value);
+      const n = m ? parseFloat(m[1]) : NaN;
+      const unit = m?.[2] ?? 'px';
+      if (!m || !(n > 0) || ((unit === '%' || unit === 'vw') && n > 100)) problems.push(`image width "${value}" ignored (use 50%, 300px ...)`);
+      else attrs.width = `${m[1]}${unit}`;
+    } else if (key === 'align') {
+      if (value === 'left' || value === 'center' || value === 'right') attrs.align = value; else problems.push(`image align "${value}" ignored (left, center or right)`);
+    } else if (key === 'float') {
+      if (value === 'left' || value === 'right') attrs.float = value; else problems.push(`image float "${value}" ignored (left or right)`);
+    } else {
+      problems.push(`image attribute "${part.slice(0, 20)}" ignored`);
+    }
+  }
+  return { attrs, problems };
+}
+
+function imageTag(src: string, alt: string, title: string | null | undefined, attrs: ImageAttrs): string {
+  const classes = ['doc-img'];
+  if (attrs.float) classes.push(`doc-img-float-${attrs.float}`);
+  else if (attrs.align) classes.push(`doc-img-${attrs.align}`);
+  const style = attrs.width ? ` style="width:${attrs.width}"` : '';
+  const t = title ? ` title="${escapeHtml(title)}"` : '';
+  return `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}"${t} loading="lazy" class="${classes.join(' ')}"${style} />`;
+}
+
 export function renderMarkdown(markdown: string, ctx: RenderContext): RenderResult {
   const warnings: string[] = [];
   const headings: Heading[] = [];
@@ -128,6 +165,25 @@ export function renderMarkdown(markdown: string, ctx: RenderContext): RenderResu
     },
   };
 
+  // ![alt](path "title"){width=50% align=center}
+  const imageAttrsExt: TokenizerAndRendererExtension = {
+    name: 'imageAttrs',
+    level: 'inline',
+    start: (src: string) => { const i = src.indexOf('!['); return i < 0 ? undefined : i; },
+    tokenizer(src: string) {
+      const m = /^!\[((?:[^\[\]\\]|\\.)*)\]\(\s*(<[^>\n]*>|[^\s)]+)(?:\s+"((?:[^"\\]|\\.)*)")?\s*\)\{([^{}\n]*)\}/.exec(src);
+      if (!m) return undefined;
+      return { type: 'imageAttrs', raw: m[0], text: m[1], href: m[2].replace(/^<|>$/g, ''), title: m[3] ?? null, attrs: m[4] } as any;
+    },
+    renderer(token: any) {
+      const { attrs, problems } = parseImageAttrs(token.attrs);
+      warnings.push(...problems);
+      const target = classify(token.href, ctx, warnings, 'image');
+      if (target.href === '' || target.kind === 'blocked') return escapeHtml(token.text);
+      return imageTag(target.href, token.text, token.title, attrs);
+    },
+  };
+
   const marked = new Marked({
     gfm: true,
     renderer: {
@@ -151,8 +207,7 @@ export function renderMarkdown(markdown: string, ctx: RenderContext): RenderResu
       image({ href, title, text }: Tokens.Image) {
         const target = classify(href, ctx, warnings, 'image');
         if (target.href === '' || target.kind === 'blocked') return escapeHtml(text);
-        const t = title ? ` title="${escapeHtml(title)}"` : '';
-        return `<img src="${escapeHtml(target.href)}" alt="${escapeHtml(text)}"${t} loading="lazy" />`;
+        return imageTag(target.href, text, title, {});
       },
       code({ text, lang }: Tokens.Code) {
         const l = (lang ?? '').trim().split(/\s+/)[0] ?? '';
@@ -164,7 +219,7 @@ export function renderMarkdown(markdown: string, ctx: RenderContext): RenderResu
         return block ? sanitizeRichText(text) : escapeHtml(text);
       },
     },
-    extensions: [admonition],
+    extensions: [admonition, imageAttrsExt],
   });
 
   const tokens = marked.lexer(markdown);

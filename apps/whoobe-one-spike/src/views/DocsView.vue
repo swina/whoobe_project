@@ -78,6 +78,7 @@ import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { loadDocsSearch, loadDocsView, type DocsSiteRef, type DocsView, type SearchHit } from '../docs-api'
 import DocsNavTree from '../components/DocsNavTree.vue'
+import { getDefaultAssetProcessorUrl } from '../dam-api'
 
 const props = defineProps<{ site: DocsSiteRef; route: string }>()
 const router = useRouter()
@@ -140,8 +141,14 @@ function onContentClick(e: MouseEvent) {
     void router.push(`${props.site.rootPath}${path === '/' ? '' : path}${hash ? '#' + hash : ''}`)
   }
 }
-// Make the marked addresses real hrefs (hover, middle click) with the site's root path.
+// Make the marked addresses real hrefs (hover, middle click) with the site's root path; the files of the documents ("/dam-asset/...")
+// are served by the asset processor, which is not always on this origin (local development, a separate host).
 function rewriteContentLinks() {
+  const assets = getDefaultAssetProcessorUrl().replace(/\/+$/, '')
+  content.value?.querySelectorAll<HTMLElement>('img[src^="/dam-asset/"], a[href^="/dam-asset/"]').forEach((el) => {
+    const attr = el.tagName === 'IMG' ? 'src' : 'href'
+    el.setAttribute(attr, assets + (el.getAttribute(attr) ?? ''))
+  })
   content.value?.querySelectorAll<HTMLAnchorElement>('a[data-doc]').forEach((a) => {
     const href = a.dataset.docRoute ?? a.getAttribute('href') ?? ''
     a.dataset.docRoute = href
@@ -219,6 +226,13 @@ onBeforeUnmount(() => { observer?.disconnect(); window.removeEventListener('keyd
 .doc-content :deep(th) { background: #f9fafb; font-weight: 600; }
 .doc-content :deep(blockquote) { border-left: 4px solid #c7d2fe; padding-left: 1rem; color: #4b5563; }
 .doc-content :deep(img) { max-width: 100%; height: auto; border-radius: .4rem; }
+.doc-content :deep(img.doc-img-left), .doc-content :deep(img.doc-img-center), .doc-content :deep(img.doc-img-right) { display: block; }
+.doc-content :deep(img.doc-img-center) { margin: 1rem auto; }
+.doc-content :deep(img.doc-img-right) { margin: 1rem 0 1rem auto; }
+.doc-content :deep(img.doc-img-left) { margin: 1rem auto 1rem 0; }
+.doc-content :deep(img.doc-img-float-left) { float: left; margin: .25rem 1.25rem 1rem 0; }
+.doc-content :deep(img.doc-img-float-right) { float: right; margin: .25rem 0 1rem 1.25rem; }
+.doc-content :deep(h1), .doc-content :deep(h2), .doc-content :deep(h3), .doc-content :deep(pre), .doc-content :deep(table) { clear: both; }
 .doc-content :deep(hr) { border: 0; border-top: 1px solid #e5e7eb; margin: 2rem 0; }
 .doc-content :deep(.doc-admonition) { border-left: 4px solid #6366f1; background: #eef2ff; padding: .75rem 1rem; border-radius: .5rem; }
 .doc-content :deep(.doc-admonition-tip) { border-color: #10b981; background: #ecfdf5; }

@@ -142,6 +142,7 @@
             <div class="text-xs text-slate-500 truncate">{{ dirty ? 'Unsaved changes' : 'Saved' }}</div>
           </div>
           <div class="flex items-center gap-3 shrink-0">
+            <button data-testid="docs-insert-image" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" @click="imageDialog = true">Insert image</button>
             <label class="text-xs text-slate-400 flex items-center gap-1.5"><input v-model="editing.isPublic" data-testid="docs-edit-public" type="checkbox" @change="dirty = true" />Public</label>
             <button data-testid="docs-edit-save" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="!!busy || !dirty" @click="saveEditing">Save</button>
             <button class="text-slate-400 hover:text-slate-200" aria-label="Close editor" @click="closeEditor"><X class="w-4 h-4" /></button>
@@ -157,6 +158,7 @@
         </div>
       </div>
     </div>
+    <DocsImageDialog v-if="imageDialog && editing && tree" :tree="tree" :doc-path="editing.path" @close="imageDialog = false" @insert="insertImage" />
   </div>
 </template>
 
@@ -167,6 +169,7 @@ import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import { useDamStore } from '../../stores/damStore'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import { uploadAssetToDam, deleteAssetFromDam } from '../../utils/dam-api'
+import DocsImageDialog from './DocsImageDialog.vue'
 import type { WebsiteRecord } from '../../utils/websites-api'
 import {
   docsPreviewUrl, fetchDocsSiteTree, renderDocsDraft, checkDocsNav, readDocsFile, cleanRelativePath, navToYaml, flattenNavForDisplay,
@@ -292,7 +295,9 @@ async function refreshPreview() {
   const mine = ++seq
   try {
     const r = await renderDocsDraft(coreApi(), props.website.id, editing.value.path, editing.value.text)
-    if (mine === seq) preview.value = { title: r.title, html: r.html, warnings: r.warnings }
+    // the files of the documents are served by the asset processor, which may not be on this origin (local development)
+    const assets = dam().assetProcessorUrl.replace(/\/+$/, '')
+    if (mine === seq) preview.value = { title: r.title, html: r.html.replace(/(src|href)="\/dam-asset\//g, `$1="${assets}/dam-asset/`), warnings: r.warnings }
   } catch (e: any) {
     if (mine === seq) preview.value = { title: '', html: '', warnings: [e?.message || 'Preview failed'] }
   }
@@ -318,6 +323,24 @@ async function saveEditing() {
   } finally {
     busy.value = ''
   }
+}
+const imageDialog = ref(false)
+/** Puts the Markdown of the chosen image at the cursor of the editor (on its own line when the cursor is mid-line). */
+async function insertImage(md: string) {
+  imageDialog.value = false
+  const e = editing.value
+  if (!e) return
+  const ta = document.querySelector<HTMLTextAreaElement>('[data-testid="docs-edit-text"]')
+  const at = ta ? ta.selectionStart : e.text.length
+  const end = ta ? ta.selectionEnd : at
+  const before = e.text.slice(0, at)
+  const after = e.text.slice(end)
+  const lead = before === '' || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n'
+  const trail = after.startsWith('\n') ? '' : '\n\n'
+  e.text = before + lead + md + trail + after
+  dirty.value = true
+  await load()          // the image may be new: the folder's file list (and the preview's links) follow
+  await refreshPreview()
 }
 function closeEditor() {
   if (dirty.value && !confirm('Discard the unsaved changes?')) return
@@ -435,6 +458,13 @@ async function saveSettings() {
 .docs-preview :deep(th), .docs-preview :deep(td) { border: 1px solid rgba(148,163,184,.35); padding: .25rem .6rem; }
 .docs-preview :deep(blockquote) { border-left: 3px solid #6366f1; padding-left: .8rem; color: #94a3b8; }
 .docs-preview :deep(img) { max-width: 100%; height: auto; }
+.docs-preview :deep(img.doc-img-left), .docs-preview :deep(img.doc-img-center), .docs-preview :deep(img.doc-img-right) { display: block; }
+.docs-preview :deep(img.doc-img-center) { margin: .8rem auto; }
+.docs-preview :deep(img.doc-img-right) { margin: .8rem 0 .8rem auto; }
+.docs-preview :deep(img.doc-img-left) { margin: .8rem auto .8rem 0; }
+.docs-preview :deep(img.doc-img-float-left) { float: left; margin: .2rem 1rem .8rem 0; }
+.docs-preview :deep(img.doc-img-float-right) { float: right; margin: .2rem 0 .8rem 1rem; }
+.docs-preview :deep(h1), .docs-preview :deep(h2), .docs-preview :deep(h3), .docs-preview :deep(pre) { clear: both; }
 .docs-preview :deep(.doc-anchor) { margin-left: .4rem; opacity: 0; text-decoration: none; }
 .docs-preview :deep(h1:hover .doc-anchor), .docs-preview :deep(h2:hover .doc-anchor), .docs-preview :deep(h3:hover .doc-anchor) { opacity: .6; }
 .docs-preview :deep(.doc-admonition) { border-left: 4px solid #6366f1; background: rgba(99,102,241,.1); padding: .6rem .8rem; border-radius: .4rem; margin: 0 0 .8rem; }

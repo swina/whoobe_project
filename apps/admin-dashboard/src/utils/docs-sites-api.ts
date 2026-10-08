@@ -29,6 +29,7 @@ export interface DocsSiteTree {
   navText: string | null
   documents: DocsDocument[]
   files: string[]
+  fileAssets: { path: string; s3Key: string; isPublic: boolean; mimeType: string }[]
   warnings: string[]
 }
 
@@ -116,4 +117,33 @@ export function docsPreviewUrl(rootPath: string): string {
   if (typeof window === 'undefined') return ''
   const base = computeSitePreviewBase({ override: import.meta.env.VITE_WHOOBE_ONE_URL, protocol: window.location.protocol, hostname: window.location.hostname, port: window.location.port })
   return `${base}${rootPath}/`
+}
+
+// ---- images in a document -------------------------------------------------------------------------------------
+
+export const IMAGE_EXT = /\.(png|jpe?g|gif|webp|avif|svg)$/i
+export const isImagePath = (p: string): boolean => IMAGE_EXT.test(p)
+
+/** The path of `filePath` as written in the document at `docPath` (both relative to the source folder): "../images/a b.png" -> "../images/a%20b.png". */
+export function relativeDocPath(docPath: string, filePath: string): string {
+  const from = docPath.split('/').slice(0, -1)
+  const to = filePath.split('/')
+  let i = 0
+  while (i < from.length && i < to.length - 1 && from[i] === to[i]) i++
+  const parts = [...Array(from.length - i).fill('..'), ...to.slice(i)]
+  return parts.map((p) => (p === '..' ? p : encodeURIComponent(p))).join('/')
+}
+
+export interface ImageOptions { alt: string; target: string; width?: string; align?: 'left' | 'center' | 'right' | ''; float?: 'left' | 'right' | '' }
+
+/** `![alt](target){width=50% align=center}` - the attributes only when something was chosen. */
+export function imageMarkdown(o: ImageOptions): string {
+  const alt = o.alt.replace(/[\[\]\n\\]/g, ' ').replace(/\s+/g, ' ').trim()
+  const target = /\s|[()<>]/.test(o.target) ? `<${o.target.replace(/>/g, '%3E')}>` : o.target
+  const attrs: string[] = []
+  const w = (o.width ?? '').trim()
+  if (w) attrs.push(`width=${/^\d+(\.\d+)?$/.test(w) ? w + 'px' : w}`)
+  if (o.float) attrs.push(`float=${o.float}`)
+  else if (o.align) attrs.push(`align=${o.align}`)
+  return `![${alt}](${target})${attrs.length ? `{${attrs.join(' ')}}` : ''}`
 }

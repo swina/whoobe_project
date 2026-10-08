@@ -9,7 +9,7 @@ page ("On this page"), breadcrumbs, previous/next links and **search**. It can b
 1. **Settings > Websites > + New Documentation.** Give it a name and the **folder of the asset library** that holds the files
    (for example `/docs/product`). Nothing is created in the folder; it is filled in the next step.
 2. The **Documents** window opens. Create documents (**+ New document**: a path such as `guide/install.md`) or **upload**
-   files or a whole folder (`.md`, and the images and PDFs they use). Keep the structure you want: **folders are sections**.
+   files or a whole folder (`.md`, and the images and PDFs they use; the editor's **Insert image** button also uploads). Keep the structure you want: **folders are sections**.
 3. Open the site at its **root path** (the *Preview site* link): `https://your-host/<root-path>/`.
 
 ## Writing
@@ -31,6 +31,20 @@ Plain Markdown (GitHub flavour: tables, task lists, fenced code with a language)
 - **Links between documents** are written as files: `[install](01-install.md#steps)`, `[usage](../guide/usage.md)`. They become
   the site's addresses. Images and files the same way: `![diagram](../images/flow.png)`. A link to a file that does not exist is
   reported in the editor while you write (and in the Documents tab), and shown as a dead link.
+- **Images**: `![description](../images/schema.png)` - a path **relative to the document**, to an image in the documentation
+  folder (or an `https://` address). With a width and a position:
+
+  ```markdown
+  ![Architecture](../images/architecture.png){width=60% align=center}
+  ![Screenshot](shot.png){width=320px float=right}
+  ```
+
+  `width` is a number with `px`, `%`, `rem`, `em` or `vw` (a bare number is pixels; at most 100% for `%`/`vw`);
+  `align` is `left`, `center` or `right` (the image on its own line); `float` is `left` or `right` (the text wraps around it).
+  Anything else in the braces is ignored and reported. **Insert image** in the editor writes all of this for you: choose an image
+  of the folder, of the **asset library** (one outside the folder is *copied* into `images/` so the path stays relative and the
+  published site is self-contained), **upload** a new one, or give an **address**; then pick the width and the position.
+  An image must be public to appear on the public site.
 - **Raw HTML**: a block of HTML is allowed and cleaned (scripts, event handlers and `javascript:` addresses are removed);
   a tag in the middle of a line is shown as text.
 
