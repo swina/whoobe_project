@@ -1,3 +1,7 @@
+## [Editor: the theme's custom CSS stays the last stylesheet of the head] — 2026-10-08
+- Branch: `master`. Report: with equal specificity the last `<style>` of the head wins, and the theme's rules (`body { background-color: black }`) were being placed before the ones Tailwind's runtime writes, so they lost.
+- `apps/whoobe-one-spike/src/composables/useThemeStyles.ts`: `<style id="whoobe-custom-styles">` is injected at once, while `@tailwindcss/browser` adds its own style when its script has loaded, so the theme ended up earlier. One `MutationObserver` on the head (shared) moves the theme's custom style back to the end whenever something is appended after it (a Tailwind style, a font link). Not reproduced with a real theme from here: only the order logic was checked.
+
 ## [Mobile/PWA project: the theme is compiled by Tailwind (colours were ignored)] — 2026-10-08
 - Branch: `master`. Follow-up of the previous entry: the theme of a generated mobile project still did not behave.
 - Cause (reproduced in Chromium with the project's own order: theme `<style>` in the head, Tailwind browser runtime added by script afterwards): `<style id="theme-styles">` was a plain style, which the runtime never compiles, so its `@theme { --color-* }` block was invalid CSS and ignored: theme colours never became utilities (`text-brand` stayed the default colour) while plain rules like `body { ... }` applied.
