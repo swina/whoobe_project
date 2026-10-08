@@ -320,7 +320,7 @@ loadRootEnv();
 attachLoggingToggle(logger, isLoggingEnabled);
 
 const cfg = getConnectionConfig();
-logger.info({ host: cfg.host, port: cfg.port, db: cfg.database, user: cfg.user }, 'Database connection configured');
+logger.info({ host: cfg.host, port: cfg.port, db: cfg.database, user: cfg.user, tls: cfg.ssl ? (cfg.ssl.rejectUnauthorized ? 'verified' : 'encrypted, certificate not checked') : 'off' }, 'Database connection configured');
 
 const app = express();
 const port = process.env.PORT || 3003;

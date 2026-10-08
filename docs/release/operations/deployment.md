@@ -469,6 +469,8 @@ pm2 restart ecosystem.config.cjs
 
 ## 14. Backup
 
+For encrypted backups (and disk/volume encryption, TLS to Postgres, keys) see [encryption.md](encryption.md); `scripts/backup-workspace.sh` covers workspaces. The plain commands below leave the dump in clear text.
+
 ```bash
 # Database
 pg_dump -U whoobe whoobe_db | gzip > /backup/whoobe_db-$(date +%Y%m%d).sql.gz

@@ -178,6 +178,8 @@ It also updates the reverse proxy: with the containerized proxy it reloads it; w
 
 ## Backups
 
+**Encrypted, scripted (recommended):** `./scripts/backup-workspace.sh <slug>` and `./scripts/restore-workspace-db.sh` - see [encryption and backups](encryption.md#encrypted-backups). The manual commands below write the dump in clear text: use them only to a location that is itself encrypted.
+
 Per workspace, scoped to its Compose project. **Postgres**:
 
 ```bash
