@@ -189,6 +189,7 @@ export function describeDocsSite(site: LoadedDocsSite) {
     navText: site.navText,
     documents: site.docs.map((d) => ({ path: d.path, title: docTitle(d.entry), route: d.route, hidden: !!d.entry.frontMatter.hidden, isPublic: d.asset.isPublic, version: d.asset.version, sizeBytes: d.asset.sizeBytes, s3Key: d.asset.s3Key })),
     files: [...site.files.keys()].sort(),
+    fileAssets: [...site.files.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([path, a]) => ({ path, s3Key: a.s3Key, isPublic: a.isPublic, mimeType: a.mimeType })),
     warnings: site.warnings,
   };
 }

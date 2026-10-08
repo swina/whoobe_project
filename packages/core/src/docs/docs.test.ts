@@ -224,3 +224,38 @@ describe('search index', () => {
     expect(normalizeTerm('ÀÈÌ')).toBe('aei');
   });
 });
+
+describe('images with width and alignment', () => {
+  const r = (md: string) => renderMarkdown(md, ctx());
+  it('![alt](path){width=50% align=center} gives a sized, aligned image from the folder', () => {
+    const out = r('![Logo](../img/a%20b.png){width=50% align=center}');
+    expect(out.html).toContain('<img src="/dam-asset/docs/img/a%20b.png" alt="Logo" loading="lazy" class="doc-img doc-img-center" style="width:50%" />');
+    expect(out.warnings).toEqual([]);
+  });
+  it('width in pixels (the default unit), float and a title', () => {
+    expect(r('![x](https://example.org/a.png "T"){width=300}').html).toContain('title="T" loading="lazy" class="doc-img" style="width:300px"');
+    expect(r('![x](https://example.org/a.png){float=right width=40%}').html).toContain('class="doc-img doc-img-float-right" style="width:40%"');
+    expect(r('![x](<https://example.org/a b.png>){align=right}').html).toContain('class="doc-img doc-img-right"');
+  });
+  it('a plain image keeps working, and so does one inside a link', () => {
+    expect(r('![x](https://example.org/a.png)').html).toContain('<img src="https://example.org/a.png" alt="x" loading="lazy" class="doc-img" />');
+    const linked = r('[![x](https://example.org/a.png){width=20%}](usage.md)').html;
+    expect(linked).toMatch(/<a href="\/guide\/usage"[^>]*><img [^>]*style="width:20%"/);
+  });
+  it('anything but digits with a unit and three keywords is dropped, with a warning, and the image still shows', () => {
+    const out = r('![x](https://example.org/a.png){width=50%;background:url(javascript:alert(1)) align=center" onerror="alert(1) float=up color=red width=150% }');
+    expect(out.html).toContain('<img src="https://example.org/a.png"');
+    expect(out.html).not.toMatch(/background|onerror|javascript|color|style="/i);
+    expect(out.warnings.length).toBeGreaterThanOrEqual(3);
+  });
+  it('a missing file and a dangerous address behave as for any image', () => {
+    const missing = r('![x](none.png){width=50%}');
+    expect(missing.warnings.some((w) => w.includes('none.png'))).toBe(true);
+    const bad = r('![x](javascript:alert(1)){width=50%}');
+    expect(bad.html).not.toContain('<img');
+    expect(bad.html).not.toMatch(/javascript:/i);
+  });
+  it('braces after something that is not an image stay text', () => {
+    expect(r('a {width=50%} b').html).toContain('a {width=50%} b');
+  });
+});

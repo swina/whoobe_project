@@ -1,6 +1,7 @@
 // Documentation sites through the real UI: the dashboard's manager (documents, editor with live preview, index) and the
 // docs layout the editor application shows at the website's root path - signed in (private documents too) and not.
 import { test, expect, ADMIN_URL, EDITOR_URL, ASSET_TARGET } from './fixtures'
+import { png } from '../lib/png'
 
 test('write a documentation site in the dashboard and read it in the docs layout', async ({ api, authed, browser, tag }) => {
   const assets = api.forBase(ASSET_TARGET)
@@ -13,6 +14,7 @@ test('write a documentation site in the dashboard and read it in the docs layout
   const site = await api.post('/whoobe-one/websites', { name: `Docs UI ${tag}`, rootPath: root, settings: { kind: 'docs', docs: { sourceFolder: folder, title: `Docs ${tag}` } } })
   expect(site.status, site.text.slice(0, 120)).toBe(201)
   const siteId = site.json.website.id
+  let libraryAsset = ''
   const uploaded = ['index.md', 'guide/01-install.md', 'guide/02-usage.md', 'secret.md']
   await up('index.md', `---\ntitle: Welcome ${tag}\n---\n# Welcome ${tag}\n\nGo to [install](guide/01-install.md).\n`)
   await up('guide/01-install.md', `# Install\n\n## Steps\n\nRun it.\n\n## Troubleshooting\n\nWait.\n`)
@@ -37,9 +39,45 @@ test('write a documentation site in the dashboard and read it in the docs layout
     await expect(p.getByTestId('docs-edit-preview')).toContainText(`Edited ${tag}`, { timeout: 10_000 })
     await expect(p.getByTestId('docs-edit-preview').locator('h2#tips')).toBeVisible()
     await expect(p.getByText(/link to "nope\.md": no such document/)).toBeVisible()      // a broken link is reported while writing
+
+    // an image: uploaded from the dialog into the folder, with a width and a position; the path is relative to this document
+    await p.getByTestId('docs-insert-image').click()
+    await p.getByTestId('docs-image-src-upload').click()
+    await p.getByTestId('docs-image-file').setInputFiles({ name: `shot-${tag}.png`, mimeType: 'image/png', buffer: Buffer.from(png(24, 24, 0x55)) })
+    await expect(p.getByTestId('docs-image-alt')).toHaveValue(/shot/)
+    await p.getByTestId('docs-image-width').selectOption('50%')
+    await p.getByTestId('docs-image-position').selectOption('align:center')
+    await expect(p.getByTestId('docs-image-markdown')).toContainText(`](../images/shot-${tag}.png){width=50% align=center}`)
+    await p.getByTestId('docs-image-insert').click()
+    await expect(text).toHaveValue(new RegExp(`!\\[shot[^\\]]*\\]\\(\\.\\./images/shot-${tag}\\.png\\)\\{width=50% align=center\\}`), { timeout: 15_000 })
+    uploaded.push(`images/shot-${tag}.png`)
+    const shown = p.getByTestId('docs-edit-preview').locator('img.doc-img-center')
+    await expect(shown).toBeVisible({ timeout: 10_000 })
+    expect(await shown.evaluate((i: HTMLImageElement) => i.getAttribute('style'))).toBe('width:50%')
+    expect(await shown.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0), 'the uploaded image loads').toBe(true)
+    // a library image elsewhere is copied into the folder; a float with a custom width; an address stays an address
+    await assets.upload('/api/v1/dam/upload', { pimcorePath: `/lib-${tag}/lib-${tag}.png`, isPublic: 'true' }, { file: { name: `lib-${tag}.png`, type: 'image/png', data: png(16, 16, 0x99) } })
+    libraryAsset = `/lib-${tag}/lib-${tag}.png`
+    await p.getByTestId('docs-insert-image').click()
+    await p.getByTestId('docs-image-src-library').click()
+    await p.getByTestId(`docs-image-lib-lib-${tag}.png`).click()
+    await p.getByTestId('docs-image-width').selectOption('custom')
+    await p.getByTestId('docs-image-custom-width').fill('120')
+    await p.getByTestId('docs-image-position').selectOption('float:right')
+    await expect(p.getByTestId('docs-image-markdown')).toContainText(`](../images/lib-${tag}.png){width=120px float=right}`)
+    await p.getByTestId('docs-image-insert').click()
+    await expect(text).toHaveValue(new RegExp(`lib-${tag}\\.png\\)\\{width=120px float=right\\}`), { timeout: 15_000 })
+    uploaded.push(`images/lib-${tag}.png`)
+    await p.getByTestId('docs-insert-image').click()
+    await p.getByTestId('docs-image-src-url').click()
+    await p.getByTestId('docs-image-url').fill('https://example.org/remote.png')
+    await expect(p.getByTestId('docs-image-markdown')).toContainText('](https://example.org/remote.png)')
+    await p.getByRole('button', { name: 'Cancel' }).click()
     await p.getByTestId('docs-edit-save').click()
     await expect(p.getByText('Saved')).toBeVisible({ timeout: 10_000 })
     await p.getByRole('button', { name: 'Close editor' }).click()
+    const tree = await api.get(`/docs-sites/${siteId}/tree`)
+    expect(tree.json.files).toEqual(expect.arrayContaining([`images/shot-${tag}.png`, `images/lib-${tag}.png`]))
 
     // a new document (the prompt is answered with extra/<tag>.md)
     await p.getByTestId('docs-new').click()
@@ -83,6 +121,11 @@ test('write a documentation site in the dashboard and read it in the docs layout
     await v.getByRole('link', { name: /Usage →|→/ }).first().click()
     await expect(content).toContainText(`Edited ${tag}`, { timeout: 15_000 })
     expect(new URL(v.url()).pathname).toBe(`/whoobe-one${root}/guide/usage`)
+    const img = content.locator(`img.doc-img-center`)
+    await expect(img).toBeVisible()
+    expect(await img.evaluate((i: HTMLImageElement) => i.getAttribute('style'))).toBe('width:50%')
+    expect(await img.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0), 'the image loads in the docs layout').toBe(true)
+    await expect(content.locator('img.doc-img-float-right')).toBeVisible()
     await content.getByRole('link', { name: 'install', exact: true }).first().click()
     await expect(content.locator('h1')).toHaveText(/Install/, { timeout: 15_000 })
     // search: as you type, in the browser; a section result opens the page at that heading
@@ -116,6 +159,7 @@ test('write a documentation site in the dashboard and read it in the docs layout
     await anon.close()
   } finally {
     for (const rel of uploaded) await assets.request('DELETE', '/api/v1/dam/asset', { body: { pimcorePath: `${folder}/${rel}` } })
+    if (libraryAsset) await assets.request('DELETE', '/api/v1/dam/asset', { body: { pimcorePath: libraryAsset } })
     await api.delete(`/whoobe-one/websites/${siteId}`)
   }
 })
