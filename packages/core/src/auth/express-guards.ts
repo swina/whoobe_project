@@ -56,3 +56,35 @@ export function requirePermission(permissionKey: string) {
     }
   };
 }
+
+
+/**
+ * requireAuth() plus ONE OF several permission keys: the granular key of a function (`pages:edit`) or the broad key that has always
+ * covered it (`objects:write`). A role with the granular key alone can do that one function and nothing else; a role with the broad
+ * key keeps doing everything it did. The first key is the granular one and names the permission in the error message.
+ */
+export function requireAnyPermission(...permissionKeys: string[]) {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const token = req.cookies?.[SESSION_COOKIE_NAME];
+      if (!token) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+      }
+      const user = await validateSessionToken(token);
+      if (!user) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+      }
+      if (!permissionKeys.some((k) => user.permissions.includes(k))) {
+        res.status(403).json({ error: `Missing permission: ${permissionKeys[0]}` });
+        return;
+      }
+      req.user = user;
+      next();
+    } catch (error) {
+      console.error('requireAnyPermission error:', error);
+      res.status(500).json({ error: 'Authentication check failed' });
+    }
+  };
+}

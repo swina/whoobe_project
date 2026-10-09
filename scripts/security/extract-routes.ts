@@ -13,6 +13,8 @@ export interface RouteInfo {
   path: string
   access: Access
   permissions: string[]
+  /** `any`: one of the listed keys is enough (a granular key or the broad key that always covered it); default: all */
+  mode: 'all' | 'any'
   line: number
 }
 
@@ -27,10 +29,14 @@ export function extractRoutes(file = resolve(ROOT_DIR, 'apps/core-api/src/server
     // middleware list = text up to the handler (first `=>`)
     const arrow = rest.indexOf('=>')
     const mw = arrow >= 0 ? rest.slice(0, arrow) : rest
-    const permissions = [...mw.matchAll(/requirePermission\(\s*PERMISSIONS\.(\w+)\s*\)/g)].map((x) => x[1])
+    const single = [...mw.matchAll(/requirePermission\(\s*PERMISSIONS\.(\w+)\s*\)/g)].map((x) => x[1])
+    const anyOf = mw.match(/requireAnyPermission\(([^)]*)\)/)
+    const anyKeys = anyOf ? [...anyOf[1].matchAll(/PERMISSIONS\.(\w+)/g)].map((x) => x[1]) : []
+    const permissions = anyKeys.length ? anyKeys : single
+    const mode: 'all' | 'any' = anyKeys.length ? 'any' : 'all'
     const access: Access = permissions.length ? 'permission' : /\brequireAuth\b/.test(mw) ? 'auth' : 'public'
     const method = m[1].toUpperCase()
-    routes.push({ key: `${method} ${m[3]}`, method, path: m[3], access, permissions, line: src.slice(0, m.index).split('\n').length })
+    routes.push({ key: `${method} ${m[3]}`, method, path: m[3], access, permissions, mode, line: src.slice(0, m.index).split('\n').length })
   }
   return routes
 }

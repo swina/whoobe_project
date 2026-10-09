@@ -39,7 +39,7 @@ describe.each(['none', 'read', 'write', 'users'] as const)('role %s', (role) => 
   const have = permsOf(role)
   it.each(sweep.filter((r) => r.access !== 'public').map((r) => [r.key, r] as const))('%s', async (_k, r) => {
     const res = await call(clients.get(role)!, r)
-    const allowed = r.access === 'auth' || r.permissions.every((p) => have.includes(p))
+    const allowed = r.access === 'auth' || (r.mode === 'any' ? r.permissions.some((p) => have.includes(p)) : r.permissions.every((p) => have.includes(p)))
     if (allowed) expect([401, 403], `${role} should pass the guard: ${res.text.slice(0, 120)}`).not.toContain(res.status)
     else expect(res.status, `${role} lacks ${r.permissions}: ${res.text.slice(0, 120)}`).toBe(403)
   })
