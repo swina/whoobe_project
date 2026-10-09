@@ -1,3 +1,8 @@
+## [Editor: readable text in the expandable text fields (Slider tab button classes)] — 2026-10-09
+- Branch: `fix/slider-class-textarea-contrast`. Report: in the Slider settings, the textarea of the *Tab button classes* window showed light grey text on white.
+- `ExpandableTextInput.vue`: the inline input and the popup's textarea set `bg-white text-gray-900` (and a grey placeholder), and the popup panel sets `text-gray-900`: the popup is teleported to `<body>` and used to inherit the page's light text colour. The same component is used by the other Slider class fields and by `BlockTable.vue`, which get the fix too. `FloatingToolbar.vue`: the label of *Tab button classes* had a typo (`text-gray-00`, not a class), now `text-gray-900` like its neighbours.
+- Test: `unit/expandable-text-input.test.ts` (the input, the textarea and the panel set explicit dark-on-white colours). Not looked at in a browser.
+
 ## [Function-level permissions enforced on the content routes (F-058)] — 2026-10-09
 - Branch: `feat/granular-permissions`. Decision: the model is about **functions**, not divisions or sites (one workspace per organisation; a division that must not see a site gets another instance and uses export/import).
 - `packages/core/src/auth/express-guards.ts`: `requireAnyPermission(<function key>, <broad key>)` - the route passes with the function key (`pages:edit`) **or** the broad key that always covered it (`objects:write`), so no existing role loses access and a role built from function keys is limited to those functions.
