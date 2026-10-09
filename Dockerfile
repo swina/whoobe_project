@@ -79,7 +79,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 CMD ["node", "apps/asset-processor/dist/server.js"]
 
 # ─── Admin Dashboard ────────────────────────────────────────────────────────
-FROM nginxinc/nginx-unprivileged:alpine@sha256:26b0bf6fbf07297983cb341998d79c831508787de26627dd2a112321b9c3a4af AS admin-dashboard
+FROM nginxinc/nginx-unprivileged:alpine@sha256:b9241c6e7b8e9a862f129d8d4199ab64b10390949a78bdd5603379b32c844083 AS admin-dashboard
 # the pinned alpine ships pcre2 10.48 (CVE-2026-103111) and tiff 4.7.1 (CVE-2026-4775); drop once the upstream tag catches up
 USER 0
 RUN apk upgrade --no-cache pcre2 tiff
@@ -89,7 +89,7 @@ COPY nginx/admin-spa.conf /etc/nginx/conf.d/default.conf
 EXPOSE 8080
 
 # ─── Whoobe One Spike ──────────────────────────────────────────────────────
-FROM nginxinc/nginx-unprivileged:alpine@sha256:26b0bf6fbf07297983cb341998d79c831508787de26627dd2a112321b9c3a4af AS whoobe-one-spike
+FROM nginxinc/nginx-unprivileged:alpine@sha256:b9241c6e7b8e9a862f129d8d4199ab64b10390949a78bdd5603379b32c844083 AS whoobe-one-spike
 # same as the dashboard's image above
 USER 0
 RUN apk upgrade --no-cache pcre2 tiff
