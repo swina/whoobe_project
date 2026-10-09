@@ -86,7 +86,7 @@ provided: audit log of administrative actions, SSO, DLP, malware scanning of upl
 The product does not detect or notify breaches. The operator should: preserve the logs, revoke sessions and rotate secrets
 ([secrets and keys](../operations/secrets-and-keys.md) section 6), identify affected tables from the list in section 2, and
 use the 72-hour notification process of their organisation. Data exposed by a database or backup leak includes
-**clear-text AI/Figma/push credentials (F-055) and unhashed session ids (F-056)** in addition to the personal data above.
+**unhashed session ids (F-056)** and, on installations without `INTEGRATION_SECRETS_ENCRYPTION_KEY`, **clear-text AI/Figma/push credentials (F-055)** in addition to the personal data above.
 
 ## 8. Checklist for a DPIA / record of processing
 
@@ -96,4 +96,4 @@ use the 72-hour notification process of their organisation. Data exposed by a da
 4. Configure disk or database encryption and the encrypted backup with offsite copy.
 5. Define the retention job (sessions, mail log, submissions, uploads, logs) and the erase procedure.
 6. Decide whether MFA is required for staff (it cannot be enforced by the product; do it by policy).
-7. Keep this document and [`findings.md`](findings.md) with the DPIA: open items F-055, F-056, F-058 are relevant.
+7. Keep this document and [`findings.md`](findings.md) with the DPIA: open items F-056 and F-058 are relevant.

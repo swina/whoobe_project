@@ -44,7 +44,7 @@ Per-website settings (themes catalog, upload limits `settings.uploads`, document
 | Gateway upstream credentials, migration source credentials | AES-256-GCM (`GATEWAY_AUTH_ENCRYPTION_KEY`, `MIGRATION_SOURCE_ENCRYPTION_KEY`) |
 | SMTP password, mail-provider API keys | AES-256-GCM (`MAIL_SETTINGS_ENCRYPTION_KEY`) |
 | Per-website gateway API keys | hashed with a pepper (`SITE_API_KEY_PEPPER`) |
-| **AI provider API keys** (`ai_settings`, `ai_image_settings`, `ai_translate_settings`, one row per user), **Figma access token** (`figma_settings`), **push-notification provider API key** (OneSignal, inside the website's `pwa` configuration) | **clear text in the database** (finding F-055, open). The API never returns them (write-only), so the exposure is a database read or a backup |
+| AI provider API keys (`ai_settings`, `ai_image_settings`, `ai_translate_settings`, one row per user), Figma access token (`figma_settings`), push-notification provider API key (OneSignal, inside the website's `pwa` configuration) | AES-256-GCM, `enc:v1:` (`INTEGRATION_SECRETS_ENCRYPTION_KEY`, F-055); **clear text on an installation that has not set the key**. The API never returns them (the push key used to be returned, F-059: records now carry only `onesignalApiKeySet`) |
 | Everything else (content, e-mail addresses of users and of form submitters, IP and user agent of sessions, mail log bodies) | clear text in the database |
 
 ## 3. Object storage layout

@@ -32,6 +32,7 @@ versioning or automated rotation: everything below is a manual procedure.
 | `MAIL_SETTINGS_ENCRYPTION_KEY` | SMTP password, mail-provider API keys | re-enter them in Settings > Mail | with a database copy, the mail credentials (sending as your domain) | change the key, re-enter the secrets |
 | `TOTP_ENCRYPTION_KEY` | users' TOTP secrets | **every user with MFA must enrol again** (an admin can clear MFA with the reset script) | with a database copy, the ability to generate valid codes for every user | change the key, users re-enrol |
 | `SITE_API_KEY_PEPPER` | hashes of per-website site keys | all site keys stop working | with a database copy, offline guessing of site keys | change the value, regenerate the key of each website (dashboard) and redeploy the sites that use it |
+| `INTEGRATION_SECRETS_ENCRYPTION_KEY` | AI provider keys (text, image, translation), the Figma token, the push provider (OneSignal) key | the credentials are unreadable: enter them again (AI keys per user, Figma, push per website) | with a database copy, those third-party credentials | change the key, enter the credentials again; **until the key is set they are stored in clear text** |
 | `UPLOAD_TOKEN_SECRET` | the one-file upload tickets | none: set a new one | forging upload tickets within the website's own limits | change at any time; tickets in flight (10 minutes) fail; no stored data depends on it |
 | `SEED_ADMIN_PASSWORD` | the first administrator | reset with the reset script | until changed | change it at first login; the variable is only read when no user exists |
 
@@ -46,7 +47,7 @@ to start when the database and S3 credentials are unset, but does not recognise 
 |---|---|---|
 | Gateway upstream credentials | encrypted (`GATEWAY_AUTH_ENCRYPTION_KEY`) | never returned by the API |
 | SMTP password, mail-provider keys | encrypted (`MAIL_SETTINGS_ENCRYPTION_KEY`) | write-only |
-| **AI provider keys, Figma token, push-provider key** | **clear text** in the database (F-055) | write-only in the API; protect database access and backups until fixed |
+| AI provider keys, Figma token, push-provider key | encrypted (`INTEGRATION_SECRETS_ENCRYPTION_KEY`, F-055); in clear text on an installation that has not set the key | never returned by the API (the push key used to be, F-059) |
 | Per-website site keys | hash with pepper; the clear key is shown once at creation | |
 | User passwords | argon2id hash | |
 | Preview-link tokens | stored as issued in `data_object_preview_tokens`, with an expiry | |
@@ -72,8 +73,8 @@ there is one; keep the **old** env file until the data step is done and verified
 2. Revoke all sessions: `UPDATE sessions SET revoked_at = now() WHERE revoked_at IS NULL;` (or change the password of
    the affected users, which revokes theirs).
 3. Re-enter gateway, mail and migration credentials; ask users to re-enrol MFA; regenerate site keys.
-4. Rotate the **upstream** credentials themselves (AI, Figma, push, SMTP, ERP/CRM keys): the leak includes what was
-   stored in clear text (F-055).
+4. Rotate the **upstream** credentials themselves (AI, Figma, push, SMTP, ERP/CRM keys): an installation without
+   `INTEGRATION_SECRETS_ENCRYPTION_KEY` stored the AI, Figma and push keys in clear text.
 5. Rotate the S3 key and the database password; check the S3 and database access logs of the provider for the period.
 6. Re-encrypt backups made with a leaked backup key (generate a new recipient) and destroy the old ones.
 
@@ -89,4 +90,4 @@ committed or left on a host.
 ## 7. Gaps (for the security office)
 
 No automated rotation, no key versioning (`enc:v1:` values carry a format version but one key), no KMS/Vault integration,
-no secret scanning of the database content, AI/Figma/push keys unencrypted (F-055), sessions unhashed (F-056).
+no secret scanning of the database content, AI/Figma/push keys unencrypted on installations without `INTEGRATION_SECRETS_ENCRYPTION_KEY`, sessions unhashed (F-056).

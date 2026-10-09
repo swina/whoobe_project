@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { getDb } from './client.js';
+import { encryptIntegrationSecret, decryptIntegrationSecret } from './integration-secrets-crypto.js';
 import { aiSettings } from './ai-settings-schema.js';
 
 export interface AiSettingsRecord {
@@ -16,7 +17,7 @@ export interface AiSettingsRecord {
 export async function getAiSettings(userId: string): Promise<AiSettingsRecord | null> {
   const db = getDb();
   const [row] = await db.select().from(aiSettings).where(eq(aiSettings.userId, userId)).limit(1);
-  return row ?? null;
+  return row ? { ...row, apiKey: decryptIntegrationSecret(row.apiKey) } : null;
 }
 
 /** Upserts AI settings for the given user. If a row already exists for that
@@ -31,12 +32,13 @@ export async function upsertAiSettings(
   }
 ): Promise<AiSettingsRecord> {
   const db = getDb();
+  const storedKey = encryptIntegrationSecret(input.apiKey);
   const values = {
     userId,
     provider: input.provider,
     model: input.model,
     endpoint: input.endpoint ?? null,
-    apiKey: input.apiKey ?? null,
+    apiKey: storedKey,
     updatedAt: new Date(),
   };
   const [row] = await db.insert(aiSettings).values(values).onConflictDoUpdate({
@@ -45,9 +47,9 @@ export async function upsertAiSettings(
       provider: input.provider,
       model: input.model,
       endpoint: input.endpoint ?? null,
-      apiKey: input.apiKey ?? null,
+      apiKey: storedKey,
       updatedAt: new Date(),
     },
   }).returning();
-  return row;
+  return { ...row, apiKey: decryptIntegrationSecret(row.apiKey) };
 }

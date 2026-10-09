@@ -1,7 +1,7 @@
 # Security status - single summary
 
 State at **2026-10-09** (see `git log` for the exact commit). Source of detail:
-`findings.md` (register F-001 ... F-058), `security-testing-plan.md` (plan), `manual-test-checklist.md`
+`findings.md` (register F-001 ... F-059), `security-testing-plan.md` (plan), `manual-test-checklist.md`
 (browser/terminal checks), `../../security/security-test-suite.md` (description of the automated suites, written
 for reviewers), `scripts/security/README.md` (how to run).
 
@@ -9,8 +9,8 @@ for reviewers), `scripts/security/README.md` (how to run).
 
 | | |
 |---|---|
-| Findings recorded | **58** (F-001 ... F-058) |
-| By current severity | 30 Medium, 15 Low, 10 High, 3 Info (F-055 to F-058 were found on 2026-10-09 by the documentation review and are **open**: clear-text third-party credentials, sessions never purged / stored unhashed, a default DB password in code, granular permissions not enforced and seeded roles without `objects:*`; F-049 TLS and F-050 images added 2026-10-03/04, F-051 public settings 2026-10-06 and F-052 website import vs. `objects:publish` and F-053 public form notification as a mail relay, both 2026-10-07, and F-054 SMTP password in clear text, 2026-10-08, all fixed the day they were found) |
+| Findings recorded | **59** (F-001 ... F-059) |
+| By current severity | 30 Medium, 15 Low, 11 High, 3 Info (F-055 to F-059 were found on 2026-10-09 by the documentation review: clear-text third-party credentials (fixed), the push key served by a public route (High, fixed), sessions never purged / stored unhashed (open), a default DB password in code (open), granular permissions not enforced (open; the seeded roles fixed); F-049 TLS and F-050 images added 2026-10-03/04, F-051 public settings 2026-10-06 and F-052 website import vs. `objects:publish` and F-053 public form notification as a mail relay, both 2026-10-07, and F-054 SMTP password in clear text, 2026-10-08, all fixed the day they were found) |
 | Fixed in code | all 9 High; all but a few Medium (see section 3) |
 | Automated checks | `pnpm security:api` **1171 tests / 22 files** (counted 2026-10-09 with `vitest run api`), `unit` **269 tests / 21 files**, `pnpm security:isolation` **14 tests** (two stacks) and `pnpm security:browser` **30 Playwright tests** (Chromium) green on a disposable stack, plus **DAST with OWASP ZAP** (last run before the 2026-10-08/09 features; the release gate requires a new run on the release commit) (`scripts/security/dast/run-zap.sh`: active API scan of 154 routes of core-api, gateway and asset-processor with an admin session: 0 findings above Info; passive baseline of the admin and editor SPAs); `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 179 (+4 database round-trip tests of the website bundle, run against a disposable database) |
 | Runs leave evidence | `scripts/security/reports/<date>/api-*.txt/.json`, `static-*.txt/.json` (git-ignored) |
@@ -50,10 +50,11 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | **F-003** `xlsx` (2 high advisories, write-only use, no npm fix) and `@tiptap/core` (major upgrade) | accepted / deferred, baselined until 2027-01-31 | decision: move to the SheetJS tarball or replace; plan the tiptap 3 upgrade |
 | **F-008** residual `v-html` sinks (editor tables, form-result messages, Studio, generated sites) | sanitised in code but not covered by a browser test | extend `browser/xss-sinks.spec.ts`; run the generated sites through a build and the same payloads |
 | **F-014** full CSP for the admin/editor SPAs (nginx) | postponed on purpose (clickjacking and baseline headers are done, F-047): becomes essential in SaaS mode; a too strict policy breaks the editor | design with a report-only phase when SaaS mode starts |
-| **F-055** clear-text AI provider keys, Figma token and push-provider key in the database | found 2026-10-09; same class as F-054 | apply the F-054 pattern (key per area, `enc:v1:`, startup backfill) |
+| **F-055** AI provider keys, Figma token and push-provider key were clear text | **fixed 2026-10-09**: `INTEGRATION_SECRETS_ENCRYPTION_KEY`, startup backfill; operators of existing installations must set the key | set the key and restart |
+| **F-059 (High)** the OneSignal REST API key was served by the public `GET /public/apps/:id` and to every reader | **fixed 2026-10-09** (records never carry it; encrypted; blank keeps it) | rotate any push key that was saved on an internet-reachable installation |
 | **F-056** sessions never purged, session ids stored unhashed | found 2026-10-09 | purge job; store `sha256(token)` |
 | **F-057** default database password in code when `DB_PASSWORD` is unset | found 2026-10-09 | no default outside development |
-| **F-058** granular permissions never enforced; seeded `editor`/`viewer` roles have no `objects:*` | found 2026-10-09 | seed the two keys; then enforce or remove the 34 granular keys |
+| **F-058** granular permissions never enforced | seeded `editor`/`viewer` roles fixed 2026-10-09 (they lacked `objects:*`); the 34 granular keys remain decorative | enforce them per route or remove them from the roles screen |
 | **F-044** deleting a website can answer 500 | functional, not a security issue | fix when convenient |
 | **F-050** residual: MinIO's own dependencies (62 fixable HIGH/CRITICAL on its last release) and postgres' `gosu` (22) | upstream; not patchable without forking. MinIO is now opt-in (overlay), Garage is the default | keep MinIO off public networks or move to Garage / a cloud S3 |
 | TLS on a real hostname | testssl ran on the rendered template, not on a public host with a Let's Encrypt certificate | run `testssl.sh` against the production hostname once HTTPS is enabled |

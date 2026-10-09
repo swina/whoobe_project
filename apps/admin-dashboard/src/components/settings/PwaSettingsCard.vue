@@ -94,7 +94,7 @@
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-xs text-slate-400">REST API Key</span>
-              <input v-model="onesignalApiKey" type="password" class="field font-mono" placeholder="..." />
+              <input v-model="onesignalApiKey" type="password" class="field font-mono" autocomplete="new-password" :placeholder="onesignalApiKeySet ? 'saved - leave blank to keep it' : '...'" data-testid="pwa-onesignal-key" />
             </label>
           </template>
 
@@ -297,6 +297,8 @@ const onesignalAppId = computed({
   get: () => (config.value.push as Record<string, any>)?.onesignalAppId ?? '',
   set: (v) => { config.value.push = { ...(config.value.push ?? {}), onesignalAppId: v } },
 })
+// the server never sends the key back, only whether one is saved (F-059); a blank field keeps the saved key
+const onesignalApiKeySet = computed(() => (config.value.push as Record<string, any>)?.onesignalApiKeySet === true)
 const onesignalApiKey = computed({
   get: () => (config.value.push as Record<string, any>)?.onesignalApiKey ?? '',
   set: (v) => { config.value.push = { ...(config.value.push ?? {}), onesignalApiKey: v } },

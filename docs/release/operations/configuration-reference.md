@@ -67,6 +67,7 @@ cannot be lost** - see [secrets and keys](secrets-and-keys.md).
 | `SITE_API_KEY_PEPPER` | core-api **and** gateway (same value) | **yes** | hashing of per-website site keys; changing it invalidates every site key |
 | `TOTP_ENCRYPTION_KEY` | core-api | **yes** | users' TOTP secrets; unset = clear text with a warning; lost = everyone re-enrols |
 | `MAIL_SETTINGS_ENCRYPTION_KEY` | core-api | **yes** | SMTP password and mail-provider API keys; unset = they cannot be saved |
+| `INTEGRATION_SECRETS_ENCRYPTION_KEY` | core-api (and the tools that read the settings) | **yes** | AI provider keys (text, image, translation), the Figma token and the push provider (OneSignal) key saved in the dashboard (F-055); unset = they stay in clear text with a warning; lost = enter them again |
 | `UPLOAD_TOKEN_SECRET` | core-api, asset-processor | **yes** | signs the one-file upload tickets (32+ characters; placeholder or short = uploads answer 503) |
 | `SEED_ADMIN_EMAIL` | core-api | | first administrator, created once |
 | `SEED_ADMIN_PASSWORD` | core-api | **yes** | unset/empty = a random password is generated and printed once in the log |
@@ -111,7 +112,7 @@ cannot be lost** - see [secrets and keys](secrets-and-keys.md).
 | Variable | Default | Meaning |
 |---|---|---|
 | `MAIL_PROVIDERS_PATH` | unset | extra mail-provider definitions (`*.json`), read again when a file changes |
-| AI provider keys, Figma token, SMTP settings | | not environment variables: entered in the dashboard and stored in the database (AI and Figma in clear text, F-055; SMTP encrypted) |
+| AI provider keys, Figma token, SMTP settings, push provider key | | not environment variables: entered in the dashboard and stored encrypted in the database (`INTEGRATION_SECRETS_ENCRYPTION_KEY` for AI, Figma and push; `MAIL_SETTINGS_ENCRYPTION_KEY` for SMTP and mail providers) |
 
 ## 8. Logging
 

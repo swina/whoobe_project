@@ -71,4 +71,12 @@ export async function bootstrapDatabase(): Promise<void> {
   } catch (err) {
     console.error('Outgoing-mail password encryption backfill failed:', err);
   }
+  // And the credentials of third-party services saved in the dashboard (AI keys, Figma token, push provider key; F-055).
+  try {
+    const { backfillIntegrationSecretsEncryption } = await import('./scripts/backfill-integration-secrets-encryption.js');
+    const r = await backfillIntegrationSecretsEncryption();
+    if (r.encrypted > 0) console.log(`Encrypted ${r.encrypted} integration credential(s) at rest.`);
+  } catch (err) {
+    console.error('Integration credentials encryption backfill failed:', err);
+  }
 }
