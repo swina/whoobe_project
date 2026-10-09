@@ -91,8 +91,9 @@ without it, so a regression cannot return unnoticed.
   automatically, so they can be merged with confidence rather than postponed.
 - **Safer customisation.** The usual fork changes - a new endpoint, role or field - are exactly what the route
   contract and the isolation suite check.
-- **Multi-customer offerings.** If you host Whoobe for several customers, tenant isolation is the property you most
-  need to be able to demonstrate, and it is tested continuously rather than reviewed once.
+- **Multi-customer offerings.** If you host Whoobe for several customers, give each its own workspace: the isolation
+  between workspaces is the property you most need to be able to demonstrate, and it is tested continuously rather than
+  reviewed once. A single workspace shared by unrelated customers is not a supported model.
 - **Less friction in audits.** The pipeline does not certify anything, but it gives an auditor or an external
   penetration tester a baseline to start from and a record of how issues were found and closed.
 

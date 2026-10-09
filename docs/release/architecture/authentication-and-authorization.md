@@ -62,7 +62,7 @@ account (and therefore a session) or, for content delivery, a site key.
 
 ### Model
 
-Role-based and **global to the workspace**: `user_roles(user, role)` → `role_permissions(role, permission)`. A user's
+Role-based and **global to the workspace** (one workspace = one organisation; roles are for the functions and divisions of that organisation): `user_roles(user, role)` → `role_permissions(role, permission)`. A user's
 effective permissions are the union over their roles, read from the database on every request (a change applies at
 the next request, no re-login). There are no per-website, per-folder or per-object scopes, no deny rules and no
 attribute-based rules. Three roles are seeded (`admin`, `editor`, `viewer`); more can be created in the dashboard.

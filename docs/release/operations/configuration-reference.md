@@ -87,7 +87,7 @@ cannot be lost** - see [secrets and keys](secrets-and-keys.md).
 | `ENFORCE_PUBLISH_PERMISSION` | core-api | `true` | `false`: `objects:write` is enough to publish |
 | `GATEWAY_REQUIRE_FIELD_ALLOWLIST` | gateway | `false` | `true` refuses old submit bindings that forward every field |
 | `OUTBOUND_ALLOW_LOOPBACK` | `safeFetch` | `false` in production | |
-| `OUTBOUND_ALLOW_PRIVATE` | `safeFetch` | `true` | RFC1918/ULA/CGNAT targets; **set `false` on internet-facing or multi-tenant installs** |
+| `OUTBOUND_ALLOW_PRIVATE` | `safeFetch` | `true` | RFC1918/ULA/CGNAT targets; **set `false` on internet-facing installs or where authors are not fully trusted** |
 | `OUTBOUND_ALLOW_HOSTS` | `safeFetch` | unset | host names exempt from every outbound check |
 | `WS_APP_BIND_ADDRESS` | Compose | `0.0.0.0` (the workspace scripts set `127.0.0.1`) | interface of the application ports |
 | `WS_ADMIN_DASHBOARD_PORT`, `WS_GATEWAY_PORT`, `WS_ASSET_PROCESSOR_PORT`, `WS_CORE_API_PORT`, `WS_WHOOBE_ONE_SPIKE_PORT` | Compose, nginx rendering | 3000, 3001, 3002, 3003, 3006 | host side of each port |

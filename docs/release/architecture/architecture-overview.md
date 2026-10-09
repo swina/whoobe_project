@@ -133,7 +133,20 @@ inside the services (for example the clean-up of unused form uploads in asset-pr
 Not provided: Kubernetes manifests or a Helm chart, a managed-database variant of the compose file (use `DB_HOST` and
 `DB_SSL` to point at one), an HA reference architecture. See [capacity and scaling](../operations/capacity-and-scaling.md).
 
-## 7. Tenancy model
+## 7. Deployment model: one organisation per instance
+
+**Whoobe is not a shared multi-tenant platform, by design.** The rule for deployment is:
+
+| Situation | How to deploy |
+|---|---|
+| One organisation, one or several websites, several teams or **divisions of the same entity** | **one workspace**; the divisions are told apart with roles and permissions |
+| Different companies, customers or legal entities | **one workspace each** (own database, bucket, secrets, containers, host name) - never the same instance |
+
+A host may run many workspaces (`provision-workspace.sh`), which is how an agency or a hosting provider serves several clients,
+but each workspace is an independent installation. Offering one instance to unrelated entities is not a supported model: the
+isolation between them would rest on application roles only, and the product has no per-tenant scoping of data, no per-tenant
+quotas and no per-tenant keys. If that is ever wanted, a different architecture is needed (row-level tenancy, tenant-scoped keys,
+CSP and rate limits per tenant), not a configuration.
 
 - **A workspace is the tenant and the security boundary.** Separate database, separate bucket or Garage volume,
   separate secrets, separate containers and ports; two workspaces share nothing but the host. The isolation test suite
@@ -141,7 +154,8 @@ Not provided: Kubernetes manifests or a Helm chart, a managed-database variant o
   in the other.
 - **A website inside a workspace is not a security boundary.** Roles and permissions are workspace-wide
   (`user_roles` has a user and a role, nothing else). Anyone who may edit pages may edit the pages of every website of
-  that workspace. Separate customers belong in separate workspaces.
+  that workspace. Roles describe **function** (editor, publisher, administrator), not **division**: if a division must not touch
+  another division's websites, that fence does not exist inside a workspace (per-website permissions are not implemented).
 - Per-website configuration (themes, templates, mail provider, upload limits, API keys of the gateway, domains) is data
   inside one workspace.
 

@@ -6,6 +6,10 @@ project stays in [`../plans`](../plans) and is deliberately not part of a releas
 
 **Aligned to release:** not released yet (set by `scripts/release.sh prepare`, see [`release-process.md`](release-process.md))
 
+**Deployment model.** One workspace per organisation. Divisions of the same entity share a workspace and are told apart with
+roles; different companies or legal entities get separate workspaces. Whoobe is not a shared multi-tenant platform
+([architecture overview](architecture/architecture-overview.md), section 7).
+
 ## Contents
 
 | Folder | Audience | What is in it |

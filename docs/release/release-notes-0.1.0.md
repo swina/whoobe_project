@@ -85,6 +85,8 @@ New or changed variables are documented in `.env.example`; the full list of what
 
 ## Known limits
 
+- **Deployment model:** one workspace per organisation. Different companies or legal entities need different workspaces; roles are for the functions and divisions of one organisation, and permissions apply to the whole workspace (there is no per-website permission).
+
 - **Open security finding (from the review):** the 34 granular permission keys are not enforced (F-058, see `architecture/authentication-and-authorization.md`). Fixed in this release: session ids stored as hashes and old sessions purged (F-056), no default database password outside development/test (F-057), AI/Figma/push credentials in clear text (F-055, needs `INTEGRATION_SECRETS_ENCRYPTION_KEY`), the OneSignal REST API key served by a public route (F-059), the seeded editor/viewer roles without `objects:*` (F-058, part).
 - Form uploads: no malware scan; forms that send to a gateway endpoint do not take files.
 - The DAST scan and the manual security checklist were not repeated for the features added on 2026-10-08/09 (run the DAST on the release commit, as the release gate requires).
@@ -95,7 +97,7 @@ New or changed variables are documented in `.env.example`; the full list of what
   0.2.0.
 - Images are built and published by hand (`ghcr.io`); the automation of the release workflow is not done yet.
 - No full Content-Security-Policy on the admin and editor SPAs (baseline headers and clickjacking protection are in);
-  postponed on purpose until the SaaS mode.
+  postponed on purpose (Whoobe is deployed one organisation per instance; see `architecture/architecture-overview.md` section 7).
 - MinIO (opt-in) and the Postgres image carry upstream advisories that cannot be patched here: keep MinIO off public
   networks. `xlsx` has two accepted advisories (write-only use), reviewed until 2027-01-31.
 - A website import does not copy users and roles, gateway endpoints and keys, mail and AI settings, domains or the
