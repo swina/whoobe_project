@@ -39,7 +39,7 @@ export interface RenderDescriptor {
   /** Resolved <img> src/alt, or null when nothing resolved. */
   image: { url: string; alt?: string | null } | null
   /** Resolved link wrapper (static `link` or per-record dynamicLink). */
-  link: { href: string; target?: string; dynamic?: DynamicLinkBinding | null } | null
+  link: { href: string; target?: string; dynamic?: DynamicLinkBinding | null; /** a Download element: the browser saves the file instead of opening it */ download?: boolean } | null
   /** 1-6 for heading kinds. */
   headingLevel?: number
   children: RenderDescriptor[]

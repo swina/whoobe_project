@@ -226,7 +226,7 @@ function buttonOrLink(d: RenderDescriptor, type: 'button' | 'submit' | 'reset', 
   const attrs = fieldAttrs(d)
   const children = buttonChildren(d)
   const content = children.length ? children : [defaultLabel]
-  if (d.link) return h('a', { href: d.link.href, target: d.link.target, ...attrs }, content)
+  if (d.link) return h('a', { href: d.link.href, target: d.link.target, download: d.link.download ? '' : undefined, ...attrs }, content)
   return h('button', { ...attrs, type }, content)
 }
 
