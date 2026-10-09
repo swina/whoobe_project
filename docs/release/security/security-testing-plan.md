@@ -210,7 +210,7 @@ The suites are repeatable at any time: each run creates a disposable DB and a se
 | Check | Cadence | Where |
 |---|---|---|
 | Static (gitleaks, semgrep, shellcheck, hadolint, `v-html` inventory) | every PR | CI |
-| API + browser suites | merge to `master`, plus nightly | CI (starts the compose stack) |
+| API + browser suites | nightly when code changed (run locally on a throwaway stack before pushing); manual before a release | CI (starts the compose stack) |
 | Dependency scan (`pnpm audit`, `osv-scanner`) and secret scan of full history | weekly (new CVEs appear without code changes) | CI schedule |
 | ZAP baseline/API scan, `trivy image`, `testssl.sh` | monthly and before each release | CI schedule or manual |
 

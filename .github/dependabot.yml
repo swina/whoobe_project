@@ -1,4 +1,6 @@
 # Dependency and base-image updates as pull requests (plan 3.13). The static security scan runs on each of them.
+# Each Dependabot run is a job on a GitHub-hosted runner (~25 min for this workspace) and counts against the Actions minutes of a
+# private repository, and it runs again whenever a manifest or the lockfile changes: hence monthly, not weekly.
 # Tuned to keep the noise down: minor/patch updates arrive as one grouped PR per ecosystem, MAJOR upgrades are not
 # proposed automatically (they are planned by hand: vite, vitest, typescript, tiptap ... each needs its own work),
 # and the base images stay on the lines the project is built and tested on.
@@ -7,8 +9,8 @@ updates:
   - package-ecosystem: npm            # pnpm workspaces are handled by this ecosystem
     directory: /
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
@@ -19,8 +21,8 @@ updates:
   - package-ecosystem: docker
     directories: ['/', '/docker/minio']
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 3
+      interval: monthly
+    open-pull-requests-limit: 2
     ignore:
       - dependency-name: node         # stay on the 22 LTS line
         update-types: ['version-update:semver-major']
