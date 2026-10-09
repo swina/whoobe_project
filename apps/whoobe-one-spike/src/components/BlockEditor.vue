@@ -39,11 +39,12 @@
         title="Version history"
         @click="showVersionHistory = true"
       ><History class="w-3.5 h-3.5" /> History</button>
-      <!-- A locked snippet is not saved automatically (manual Save still works). Only a saved snippet can be locked. -->
+      <!-- A locked snippet is not saved automatically (manual Save still works). A new snippet can be locked once it has been saved (the button is disabled until then). -->
       <button
-        v-if="editor.snippetMode && editor.snippetId"
-        :class="[topbarBtnClass, editor.snippetLocked ? 'ring-2 ring-amber-400' : '']"
-        :title="editor.snippetLocked ? 'Locked: this snippet is not saved automatically. Click to unlock.' : 'Unlocked: autosave applies. Click to lock (no automatic saves).'"
+        v-if="editor.snippetMode"
+        :class="[topbarBtnClass, editor.snippetLocked ? 'ring-2 ring-amber-400' : '', !editor.snippetId ? 'opacity-50 cursor-not-allowed' : '']"
+        :disabled="!editor.snippetId"
+        :title="!editor.snippetId ? 'Save the snippet first, then it can be locked.' : editor.snippetLocked ? 'Locked: this snippet is not saved automatically. Click to unlock.' : 'Unlocked: autosave applies. Click to lock (no automatic saves).'"
         :aria-pressed="editor.snippetLocked"
         data-testid="snippet-lock"
         @click="onToggleSnippetLock"
