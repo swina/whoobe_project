@@ -4,7 +4,7 @@
       type="text"
       :value="modelValue"
       :placeholder="placeholder"
-      class="flex-1 min-w-0 px-2.5 py-1.5 text-sm rounded border border-gray-300 focus:outline-none focus:border-indigo-500"
+      class="flex-1 min-w-0 px-2.5 py-1.5 text-sm rounded border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-indigo-500"
       :class="monospace ? 'font-mono' : ''"
       @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     />
@@ -24,7 +24,7 @@
       class="fixed inset-0 z-[20000] bg-black/40 flex items-center justify-center p-6"
       @click.self="cancel"
     >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg flex flex-col" @keydown.stop>
+      <div class="bg-white text-gray-900 rounded-lg shadow-xl w-full max-w-lg flex flex-col" @keydown.stop>
         <div class="flex items-center justify-between px-4 py-2 border-b">
           <span class="text-sm font-semibold text-gray-700">{{ popupLabel || 'Edit text' }}</span>
           <span class="text-xs text-gray-400">Esc to cancel</span>
@@ -35,7 +35,7 @@
             v-model="draft"
             :rows="rows"
             :placeholder="placeholder"
-            class="w-full px-3 py-2 text-sm rounded border border-gray-300 focus:outline-none focus:border-indigo-500 resize-y"
+            class="w-full px-3 py-2 text-sm rounded border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-indigo-500 resize-y"
             :class="monospace ? 'font-mono' : ''"
           />
         </div>
@@ -70,6 +70,9 @@
 // app in this monorepo) can swap a bare `<input>` for this component with
 // no other changes, and gets an "expand to a bigger box" escape hatch for
 // free.
+//
+// The input and the popup's textarea set their own text and background colours (`text-gray-900` on `bg-white`): the popup is
+// teleported to <body>, where the page's light text colour is inherited, and a light grey on white was unreadable.
 //
 // Deliberately NOT wired directly to `modelValue` while the popup is open -
 // `draft` is a local copy, only ever written back via `apply()` (or

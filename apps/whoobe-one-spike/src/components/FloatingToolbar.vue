@@ -106,7 +106,7 @@
                 <option value="triangle">Triangle ◀ ▶</option>
               </select>
               <label class="block">
-                <span class="block text-xs font-medium text-gray-500 mb-1.5">Nav wrapper classes</span>
+                <span class="block text-xs font-medium text-gray-900 mb-1.5">Nav wrapper classes</span>
                 <ExpandableTextInput
                   v-model="editor.current.slider.navClass"
                   popup-label="Nav wrapper classes"
@@ -114,7 +114,7 @@
                 />
               </label>
               <label class="block">
-                <span class="block text-xs font-medium text-gray-500 mb-1.5">Arrow button classes</span>
+                <span class="block text-xs font-medium text-gray-900 mb-1.5">Arrow button classes</span>
                 <ExpandableTextInput
                   v-model="editor.current.slider.arrowClass"
                   popup-label="Arrow button classes"
@@ -137,7 +137,7 @@
                 <option value="circle">Circle</option>
               </select>
               <label class="block">
-                <span class="block text-xs font-medium text-gray-500 mb-1.5">Home button classes</span>
+                <span class="block text-xs font-medium text-gray-900 mb-1.5">Home button classes</span>
                 <ExpandableTextInput
                   v-model="editor.current.slider.homeClass"
                   popup-label="Home button classes"
@@ -154,7 +154,7 @@
             
             <div class="flex flex-col gap-2 bg-slate-200 rounded-lg p-1 font-normal" v-if="editor.current.slider.showDots">
               <label class="block">
-                <span class="block text-xs font-medium text-gray-500 mb-1.5">Dot classes</span>
+                <span class="block text-xs font-medium text-gray-900 mb-1.5">Dot classes</span>
                 <ExpandableTextInput
                   v-model="editor.current.slider.dotClass"
                   popup-label="Dot classes"
@@ -162,7 +162,7 @@
                 />
               </label>
               <label class="block">
-                <span class="block text-xs font-medium text-gray-500 mb-1.5">Active dot classes</span>
+                <span class="block text-xs font-medium text-gray-900 mb-1.5">Active dot classes</span>
                 <ExpandableTextInput
                   v-model="editor.current.slider.activeDotClass"
                   popup-label="Active dot classes"
@@ -170,7 +170,7 @@
                 />
               </label>
               <label class="block">
-                <span class="block text-xs font-medium text-gray-500 mb-1.5">Dot container classes</span>
+                <span class="block text-xs font-medium text-gray-900 mb-1.5">Dot container classes</span>
                 <ExpandableTextInput
                   v-model="editor.current.slider.dotContainerClass"
                   popup-label="Dot container classes"
@@ -197,7 +197,7 @@
             
               <!---<template v-if="editor.current.slider.mode != 'standard'">--->
               <label class="block pt-2">
-                <span class="block text-xs font-medium text-gray-500 mb-1.5">Tab button classes</span>
+                <span class="block text-xs font-medium text-gray-900 mb-1.5">Tab button classes</span>
                 <ExpandableTextInput
                   v-model="editor.current.slider.tabClass"
                   popup-label="Tab button classes"
@@ -205,7 +205,7 @@
                 />
               </label>
               <label class="block">
-                <span class="block text-xs font-medium text-gray-500 mb-1.5">Active tab classes</span>
+                <span class="block text-xs font-medium text-gray-900 mb-1.5">Active tab classes</span>
                 <ExpandableTextInput
                   v-model="editor.current.slider.activeTabClass"
                   popup-label="Active tab classes"
@@ -213,7 +213,7 @@
                 />
               </label>
               <label class="block">
-                <span class="block text-xs font-medium text-gray-500 mb-1.5">Tabs container class</span>
+                <span class="block text-xs font-medium text-gray-900 mb-1.5">Tabs container class</span>
                 <ExpandableTextInput
                   v-model="editor.current.slider.tabContainerClass"
                   popup-label="Tabs container class"
