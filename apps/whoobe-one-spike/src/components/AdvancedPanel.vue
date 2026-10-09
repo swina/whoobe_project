@@ -42,6 +42,7 @@ import FormFieldControl from './advanced/FormFieldControl.vue'
 import FormConfigControl from './advanced/FormConfigControl.vue'
 import SearchConfigControl from './advanced/SearchConfigControl.vue'
 import AudioControl from './advanced/AudioControl.vue'
+import DownloadControl from './advanced/DownloadControl.vue'
 import CustomClassesControl from './tailwind-controls/CustomClassesControl.vue'
 import DataBindingTransformControl from './tailwind-controls/DataBindingTransformControl.vue'
 
@@ -71,8 +72,10 @@ const openSection = ref<string | null>('customClasses')
 watch(
   () => (editor.current as any)?.id,
   () => {
-    if ((editor.current as any)?.element === 'audio') openSection.value = 'audio'
-    else if (openSection.value === 'audio') openSection.value = 'customClasses'
+    const cur = editor.current as any
+    if (cur?.element === 'audio') openSection.value = 'audio'
+    else if (cur?.tag === 'file') openSection.value = 'download'
+    else if (openSection.value === 'audio' || openSection.value === 'download') openSection.value = 'customClasses'
   },
   { immediate: true },
 )
@@ -91,6 +94,7 @@ const sections = computed(() => {
     ...(current?.sourceSnippetId ? [{ key: 'info', label: 'Info', component: InfoControl }] : []),
     // The Audio element's own settings (source, look, title): first, since for that element they are what matters
     ...(current?.element === 'audio' ? [{ key: 'audio', label: 'Audio', component: AudioControl }] : []),
+    ...(current?.tag === 'file' ? [{ key: 'download', label: 'Download', component: DownloadControl }] : []),
     { key: 'customClasses', label: 'Custom Classes', component: CustomClassesControl },
     { key: 'style', label: 'Style', component: StyleControl },
     ...(showDataBinding ? [{ key: 'dataBinding', label: 'Data Binding', component: DataBindingTransformControl }] : []),

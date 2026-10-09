@@ -20,13 +20,13 @@
     :style="stile"
   />
 <component
-  v-else-if="element.tag === 'button' || element.tag === 'submit' || element.tag === 'reset'"
-  :is="component"
+  v-else-if="element.tag === 'button' || element.tag === 'submit' || element.tag === 'reset' || element.tag === 'file'"
+  :is="element.tag === 'file' && displaySrc ? 'a' : component"
   :id="element.id"
   ref="rootEl"
   :class="classe"
   :style="stile"
-  v-bind="extraAttrs"
+  v-bind="{ ...extraAttrs, ...(element.tag === 'file' && displaySrc ? { href: displaySrc, download: '' } : {}) }"
 >
   <span v-if="buttonIconComponent && buttonIconPosition !== 'after'" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" :style="getButtonIconStyle()" /></span>
   <span v-html="safeHtml(renderedContent)"></span>
@@ -364,7 +364,7 @@ const displaySrc = computed(() => {
     }
     return undefined
   }
-  if (el.element === 'img' || el.element === 'video' || el.element === 'audio') return resolveDisplayUrl(imageURL(el.image))
+  if (el.element === 'img' || el.element === 'video' || el.element === 'audio' || el.tag === 'file') return resolveDisplayUrl(imageURL(el.image))
   return undefined
 })
 

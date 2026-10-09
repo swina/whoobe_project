@@ -56,7 +56,8 @@
         </label>
       </div>
 
-      <div v-for="slotKey in (['header', 'appHeader', 'aside', 'footer', 'appFooter', 'main', 'body', 'notFound404'] as const)" :key="slotKey" class="border border-slate-800 light:border-slate-200 rounded-lg p-2 space-y-2">
+      
+        <div v-for="slotKey in (['header', 'appHeader', 'aside', 'footer', 'appFooter', 'main', 'body', 'notFound404'] as const)" :key="slotKey" class="border border-slate-800 light:border-slate-200 rounded-lg p-2 space-y-2">
         <div class="flex items-center justify-between">
           <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 cursor-pointer select-none flex items-center gap-1.5" @click="toggleSlotCollapsed(slotKey)">
             <span class="text-slate-500 transition-transform" :class="slotCollapsed[slotKey] ? '' : 'rotate-90'">▸</span>
@@ -128,7 +129,7 @@
           ></textarea>
         </label>
         </template>
-      </div>
+        </div>
 
       <div class="flex items-center gap-3 pt-1">
         <button type="button" :disabled="saving" class="btn btn-primary" @click="save">

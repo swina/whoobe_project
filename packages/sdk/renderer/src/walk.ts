@@ -111,8 +111,8 @@ async function resolveNodeImage(
   scope: { ctx: WalkContext; api: RenderApi },
   options: RenderOptions,
 ): Promise<{ url: string; alt?: string | null } | null> {
-  // img, and audio: an Audio element keeps its source (a DAM asset or a URL) in `image.url` too
-  if (node.element !== 'img' && node.element !== 'audio') return null
+  // img, audio and the Download element (tag 'file'): each keeps its source (a DAM asset or a URL) in `image.url`
+  if (node.element !== 'img' && node.element !== 'audio' && node.tag !== 'file') return null
   let url: string | null = null
   let alt: string | undefined
   if (node.dataBinding?.field) {
@@ -238,10 +238,17 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
     contentIsHtml = true // static content is authored HTML
   }
 
-  const [image, link] = await Promise.all([
+  const [resolvedImage, resolvedLink] = await Promise.all([
     resolveNodeImage(node, scope, options),
     resolveNodeLink(node, scope, options),
   ])
+  // A Download element is a link to its file (an asset of the library or a URL), saved rather than opened. Without a
+  // source it stays an inert button: nothing to download, nothing to link to.
+  const isDownload = node.tag === 'file'
+  const image = isDownload ? null : resolvedImage
+  const link = isDownload
+    ? (resolvedImage ? { href: resolvedImage.url, target: node.linkTarget ?? undefined, download: true } : null)
+    : resolvedLink
 
   const className = [node.css?.css ?? '', node.css?.container ?? '', transformClassName ?? ''].filter(Boolean).join(' ')
 

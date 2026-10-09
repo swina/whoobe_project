@@ -41,6 +41,28 @@ describe('WhoobeNode (SSR)', () => {
     expect(html.match(/<audio[^>]*>/g)?.[1]).not.toContain('controls')
   })
 
+  it('renders a Download element as a link to its asset or URL, with the download attribute', async () => {
+    const mk = (id: string, image: any, extra: any = {}) => ({ id, type: 'file', tag: 'file', element: 'button', content: 'Get the PDF', image, css: { css: 'btn px-4', container: '' }, ...extra })
+    const tree = {
+      id: 'root', type: 'container', tag: 'document', element: 'div', css: { css: '', container: '' },
+      blocks: [
+        mk('d1', { url: '/files/brochure.pdf' }, { linkTarget: '_blank' }),
+        mk('d2', { url: 'https://cdn.example.com/x.zip' }),
+        mk('d3', { url: null }),
+      ],
+    }
+    const html = await render(await walkTree(tree, {}, { api, assetBaseUrl: 'http://dam:3002/dam-asset' }))
+    const anchors = html.match(/<a [^>]*>/g) ?? []
+    expect(anchors).toHaveLength(2)
+    expect(anchors[0]).toContain('href="http://dam:3002/dam-asset/files/brochure.pdf"')
+    expect(anchors[0]).toContain('download')
+    expect(anchors[0]).toContain('target="_blank"')
+    expect(anchors[1]).toContain('href="https://cdn.example.com/x.zip"')
+    // no file chosen: an inert button, the label kept
+    expect(html).toMatch(/<button[^>]*>Get the PDF<\/button>/)
+    expect(html).not.toContain('<img')
+  })
+
   it('renders a container with heading + paragraph + image defaults', async () => {
     const tree = {
       id: 'root', type: 'container', tag: 'document', element: 'div', css: { css: 'p-8', container: 'flex flex-col' },

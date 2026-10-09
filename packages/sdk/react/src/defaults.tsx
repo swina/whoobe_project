@@ -243,7 +243,7 @@ function buttonWithIcon(descriptor: RenderDescriptor, type: 'button' | 'submit' 
   )
 
   if (descriptor.link) {
-    return <a href={descriptor.link.href} target={descriptor.link.target} {...bp} className={(bp.className as string) + ' inline-flex items-center'}>{inner}</a>
+    return <a href={descriptor.link.href} target={descriptor.link.target} download={descriptor.link.download ? '' : undefined} {...bp} className={(bp.className as string) + ' inline-flex items-center'}>{inner}</a>
   }
   return <button {...bp} type={type}>{inner}</button>
 }

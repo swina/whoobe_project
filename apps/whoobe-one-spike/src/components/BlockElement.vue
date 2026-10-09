@@ -67,7 +67,7 @@
          onBlur still commits exactly `element.content` (plain text/HTML),
          untouched by the icon markup around it. -->
     <component
-      v-else-if="element.tag === 'button' || element.tag === 'submit' || element.tag === 'reset'"
+      v-else-if="element.tag === 'button' || element.tag === 'submit' || element.tag === 'reset' || element.tag === 'file'"
       :is="component"
       :id="element.id"
       :ref="element.id"
