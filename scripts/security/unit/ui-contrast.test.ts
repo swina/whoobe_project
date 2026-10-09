@@ -68,6 +68,13 @@ describe.each(['dark', 'light'] as const)('fields and text, %s theme', (theme) =
       for (const k of ['--ui-text', '--ui-heading', '--ui-label', '--ui-muted']) expect(ratio(root[k], surface), `${k} on ${surface}`).toBeGreaterThanOrEqual(4.5)
     }
   })
+  it('the popover menu: items, titles and the active item are readable', () => {
+    const surface = root['--ui-surface']
+    expect(ratio(root['--ui-text'], surface)).toBeGreaterThanOrEqual(4.5)
+    expect(ratio(root['--ui-muted'], surface)).toBeGreaterThanOrEqual(4.5)
+    expect(ratio(root['--ui-active-fg'], root['--ui-active-bg'])).toBeGreaterThanOrEqual(4.5)
+    expect(ratio(root['--ui-text'], root['--ui-surface-2']), 'an item under the pointer').toBeGreaterThanOrEqual(4.5)
+  })
   it('the field border is visible on the card (light: 3:1, the usual minimum for the edge of a control)', () => {
     const min = theme === 'light' ? 3 : 1.4
     expect(ratio(root['--field-border'], root['--ui-surface'])).toBeGreaterThanOrEqual(min)

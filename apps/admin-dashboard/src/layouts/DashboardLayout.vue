@@ -70,9 +70,18 @@
             <ChevronRight v-else class="w-3 h-3" />
           </button>
 
-          <div v-else class="space-y-1">
+          <div
+            v-else
+            class="space-y-1"
+            @mouseenter="onNavItemEnter(row.item.section, $event)"
+            @mouseleave="scheduleCloseNavPopover"
+          >
             <button
               @click="tabsStore.openSection(row.item.section)"
+              @focus="onNavItemEnter(row.item.section, $event)"
+              @keydown.esc="closeNavPopover"
+              :aria-haspopup="isSidebarCollapsed && hasNavChildren(row.item.section) ? 'menu' : undefined"
+              :data-testid="`nav-item-${row.item.section}`"
               :title="row.item.name"
               :class="[
                 'w-full text-[10px] flex items-center px-3 py-2 rounded-xl font-medium transition-all group relative text-left',
@@ -130,7 +139,7 @@
 
               <!-- Tooltip on collapsed state -->
               <div
-                v-if="isSidebarCollapsed"
+                v-if="isSidebarCollapsed && !hasNavChildren(row.item.section)"
                 class="absolute left-full ml-2 px-2.5 py-1 bg-slate-800 light:bg-slate-100 text-slate-200 light:text-slate-800 text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50 border border-slate-700 light:border-slate-300 shadow-xl"
               >
                 {{ row.item.name }}
@@ -481,12 +490,45 @@
         </template>
       </main>
     </div>
+
+    <!-- The sidebar is collapsed to icons: the children of an item (the folders of Assets, the classes of Data Objects, the submenus of
+         AI and Settings) open as a menu to the right of the icon, while the pointer is on the icon or on the menu (or the icon has the focus). -->
+    <Teleport to="body">
+      <div
+        v-if="navPopover && isSidebarCollapsed"
+        ref="navPopoverEl"
+        class="ui-popover"
+        role="menu"
+        :style="{ top: navPopover.top + 'px', left: navPopover.left + 'px' }"
+        data-testid="nav-popover"
+        @mouseenter="cancelCloseNavPopover"
+        @mouseleave="scheduleCloseNavPopover"
+        @keydown.esc="closeNavPopover"
+      >
+        <div class="ui-popover-title">{{ navPopover.title }}</div>
+        <button
+          v-for="entry in navPopover.entries"
+          :key="entry.key"
+          type="button"
+          role="menuitem"
+          class="ui-popover-item"
+          :class="{ 'is-active': entry.active }"
+          :style="{ paddingLeft: `${0.5 + entry.depth * 0.75}rem` }"
+          :data-testid="`nav-popover-item-${entry.key}`"
+          @click="chooseNavEntry(entry)"
+        >
+          <component :is="entry.icon" class="w-3.5 h-3.5 shrink-0" />
+          <span class="truncate">{{ entry.label }}</span>
+        </button>
+        <div v-if="navPopover.entries.length === 0" class="ui-popover-empty">Nothing here yet</div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { highlightSearchSnippet } from '@whoobe-cms/core'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import {
   Layers,
   LayoutDashboard,
@@ -1071,6 +1113,74 @@ function handleSelectSidebarFolder(path: string) {
   damStore.currentFolderPath = path
   tabsStore.openSection('assets')
 }
+
+
+// ---- collapsed sidebar: the children of an item as a menu to its right --------------------------------------------------------
+
+interface NavChild { key: string; label: string; icon: any; depth: number; active: boolean; run: () => void }
+
+/** The entries an item would show under it when the sidebar is open, flattened (null: the item has no children). */
+function navChildren(section: SectionKind): NavChild[] | null {
+  if (section === 'assets') {
+    const rootFirst = [...damStore.folders].sort((a, b) => a.path.localeCompare(b.path, 'en', { numeric: true }))
+    return [
+      { key: 'asset-folder-/', label: '/ (Root)', icon: Folder, depth: 0, active: damStore.currentFolderPath === '/', run: () => handleSelectSidebarFolder('/') },
+      ...rootFirst.map((f) => ({ key: `asset-folder-${f.path}`, label: f.name, icon: Folder, depth: f.path.split('/').filter(Boolean).length, active: damStore.currentFolderPath === f.path, run: () => handleSelectSidebarFolder(f.path) })),
+    ]
+  }
+  if (section === 'objects') {
+    return dataClassesStore.classes.map((c) => ({ key: `class-${c.id}`, label: c.label, icon: Table2, depth: 0, active: dataClassesStore.selectedClassId === c.id, run: () => handleSelectSidebarClass(c.id) }))
+  }
+  if (section === 'settings') {
+    return settingsSubItems.map((i) => ({ key: `settings-${i.key}`, label: i.name, icon: i.icon, depth: 0, active: isSettingsSubSectionActive(i.key), run: () => tabsStore.openSettingsSubSection(i.key) }))
+  }
+  if (section === 'ai') {
+    return aiSubItems.map((i) => ({ key: `ai-${i.key}`, label: i.name, icon: i.icon, depth: 0, active: isAiSubSectionActive(i.key), run: () => tabsStore.openAiSubSection(i.key) }))
+  }
+  return null
+}
+const hasNavChildren = (section: SectionKind): boolean => navChildren(section) !== null
+
+const navPopover = ref<{ section: SectionKind; title: string; top: number; left: number; entries: NavChild[] } | null>(null)
+const navPopoverEl = ref<HTMLElement | null>(null)
+let navPopoverTimer: ReturnType<typeof setTimeout> | null = null
+
+function cancelCloseNavPopover() { if (navPopoverTimer) { clearTimeout(navPopoverTimer); navPopoverTimer = null } }
+function scheduleCloseNavPopover() { cancelCloseNavPopover(); navPopoverTimer = setTimeout(closeNavPopover, 220) }
+function closeNavPopover() { cancelCloseNavPopover(); navPopover.value = null }
+
+function onNavItemEnter(section: SectionKind, event: Event) {
+  if (!isSidebarCollapsed.value) return
+  cancelCloseNavPopover()
+  const entries = navChildren(section)
+  if (!entries) { navPopover.value = null; return }
+  const row = event.currentTarget as HTMLElement
+  const rect = (row.querySelector('button') ?? row).getBoundingClientRect()
+  navPopover.value = { section, title: sectionLabels[section], top: rect.top, left: rect.right + 6, entries }
+  // keep it on the screen: nudge it up when it would run off the bottom
+  void nextTick(() => {
+    const el = navPopoverEl.value
+    if (!el || !navPopover.value) return
+    const overflow = rect.top + el.offsetHeight + 8 - window.innerHeight
+    if (overflow > 0) navPopover.value = { ...navPopover.value, top: Math.max(8, rect.top - overflow) }
+  })
+}
+
+function chooseNavEntry(entry: NavChild) {
+  entry.run()
+  closeNavPopover()
+}
+
+// Esc closes the menu wherever the focus is (the pointer may be on the icon without the icon having the focus)
+function onNavPopoverKey(e: KeyboardEvent) { if (e.key === 'Escape') closeNavPopover() }
+watch(navPopover, (now, was) => {
+  if (now && !was) window.addEventListener('keydown', onNavPopoverKey)
+  else if (!now && was) window.removeEventListener('keydown', onNavPopoverKey)
+})
+onUnmounted(() => window.removeEventListener('keydown', onNavPopoverKey))
+
+// leaving the collapsed state (or the page) must not leave a menu behind
+watch(isSidebarCollapsed, (v) => { if (!v) closeNavPopover() })
 
 function handleSelectSidebarClass(classId: string) {
   const dataClass = dataClassesStore.classes.find((c) => c.id === classId)
