@@ -1,0 +1,116 @@
+/*
+ * The dashboard's shared look: one font, one set of buttons, form fields and modal windows, each with its dark (default) and its
+ * `.light` colours. Colours are written as plain hex pairs on purpose - scripts/security/unit/ui-contrast.test.ts reads this file
+ * and fails when a text/background pair drops below WCAG AA (4.5:1, 3:1 for borders), in either theme and in the hover state.
+ * Use the classes instead of repeating `bg-indigo-600 hover:bg-indigo-500 text-white ...` strings, and add a variant here (with a
+ * light block) rather than inventing colours in a template. Layout utilities (ml-auto, w-full, shrink-0 ...) still go on the element.
+ *
+ * Surfaces the controls sit on: dark #020617 (page) / #0f172a (cards, modals); light #f8fafc (page) / #ffffff (cards, modals).
+ */
+
+:root {
+  --ui-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --ui-font-code: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --ui-z-modal: 10050;
+}
+
+/* ---- buttons ---------------------------------------------------------------------------------------------------------- */
+
+@layer components {
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .375rem;
+    padding: .375rem .75rem; border-radius: .5rem; border: 1px solid var(--btn-border, transparent);
+    font-size: .75rem; line-height: 1rem; font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none;
+    background: var(--btn-bg); color: var(--btn-fg);
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover:not(:disabled):not([aria-disabled='true']) { background: var(--btn-bg-hover); color: var(--btn-fg-hover, var(--btn-fg)); border-color: var(--btn-border-hover, var(--btn-border, transparent)); }
+  .btn:focus-visible { outline: 2px solid var(--btn-ring, #818cf8); outline-offset: 2px; }
+  .btn:disabled, .btn[aria-disabled='true'] { opacity: .5; cursor: not-allowed; }
+  .btn-sm { padding: .25rem .5rem; font-size: .6875rem; border-radius: .375rem; }
+  .btn-lg { padding: .5rem 1rem; font-size: .875rem; line-height: 1.25rem; }
+  .btn-icon { padding: .375rem; }
+
+  .btn-primary   { --btn-bg: #4f46e5; --btn-fg: #ffffff; --btn-bg-hover: #4338ca; }
+  .btn-danger    { --btn-bg: #be123c; --btn-fg: #ffffff; --btn-bg-hover: #9f1239; }
+  .btn-success   { --btn-bg: #047857; --btn-fg: #ffffff; --btn-bg-hover: #065f46; }
+  .btn-warning   { --btn-bg: #f59e0b; --btn-fg: #0f172a; --btn-bg-hover: #d97706; --btn-fg-hover: #0f172a; --btn-ring: #b45309; }
+  .btn-secondary { --btn-bg: #334155; --btn-fg: #f1f5f9; --btn-bg-hover: #475569; }
+  .btn-ghost     { --btn-bg: transparent; --btn-fg: #cbd5e1; --btn-bg-hover: #1e293b; --btn-fg-hover: #f1f5f9; --btn-border: #475569; }
+  .btn-link      { --btn-bg: transparent; --btn-fg: #a5b4fc; --btn-bg-hover: transparent; --btn-fg-hover: #e0e7ff; padding-left: .25rem; padding-right: .25rem; }
+  .btn-link:hover:not(:disabled) { text-decoration: underline; }
+  /* tinted: the quiet action next to a primary one */
+  .btn-soft-primary { --btn-bg: #202752; --btn-fg: #c7d2fe; --btn-bg-hover: #2c3370; --btn-border: #3b4590; }
+  .btn-soft-success { --btn-bg: #0f373b; --btn-fg: #a7f3d0; --btn-bg-hover: #0f5048; --btn-border: #11695a; }
+  .btn-soft-danger  { --btn-bg: #3d1f34; --btn-fg: #fecdd3; --btn-bg-hover: #5f253c; --btn-border: #7f2d49; }
+  .btn-soft-warning { --btn-bg: #3d3224; --btn-fg: #fde68a; --btn-bg-hover: #60461f; --btn-border: #7c5a1f; }
+
+  .light .btn-secondary { --btn-bg: #e2e8f0; --btn-fg: #0f172a; --btn-bg-hover: #cbd5e1; }
+  .light .btn-ghost     { --btn-bg: transparent; --btn-fg: #334155; --btn-bg-hover: #f1f5f9; --btn-fg-hover: #0f172a; --btn-border: #94a3b8; }
+  .light .btn-link      { --btn-fg: #4338ca; --btn-fg-hover: #312e81; }
+  .light .btn-soft-primary { --btn-bg: #e0e7ff; --btn-fg: #3730a3; --btn-bg-hover: #c7d2fe; --btn-border: #a5b4fc; }
+  .light .btn-soft-success { --btn-bg: #d1fae5; --btn-fg: #065f46; --btn-bg-hover: #a7f3d0; --btn-border: #6ee7b7; }
+  .light .btn-soft-danger  { --btn-bg: #ffe4e6; --btn-fg: #9f1239; --btn-bg-hover: #fecdd3; --btn-border: #fda4af; }
+  .light .btn-soft-warning { --btn-bg: #fef3c7; --btn-fg: #92400e; --btn-bg-hover: #fde68a; --btn-border: #fcd34d; }
+}
+
+/* ---- form fields ------------------------------------------------------------------------------------------------------ */
+
+@layer components {
+  .field {
+    display: block; width: 100%; padding: .375rem .625rem; border-radius: .5rem;
+    border: 1px solid var(--field-border); background: var(--field-bg); color: var(--field-fg);
+    font-size: .8125rem; line-height: 1.25rem; outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .field::placeholder { color: var(--field-placeholder); opacity: 1; }
+  .field:hover:not(:disabled) { border-color: var(--field-border-hover); }
+  .field:focus { border-color: var(--field-focus); box-shadow: 0 0 0 3px var(--field-ring); }
+  .field:disabled { opacity: .55; cursor: not-allowed; }
+  .field-error { --field-border: #e11d48; --field-focus: #e11d48; }
+  .field-label { display: block; margin-bottom: .25rem; font-size: .75rem; font-weight: 600; color: var(--ui-label); }
+  .field-hint { margin-top: .25rem; font-size: .6875rem; color: var(--ui-muted); }
+}
+:root {
+  --field-bg: #020617; --field-fg: #e2e8f0; --field-border: #334155; --field-border-hover: #475569; --field-placeholder: #7b8aa0;
+  --field-focus: #818cf8; --field-ring: rgba(129, 140, 248, .28);
+  --ui-label: #cbd5e1; --ui-muted: #94a3b8; --ui-text: #e2e8f0; --ui-heading: #f8fafc;
+  --ui-surface: #0f172a; --ui-surface-2: #1e293b; --ui-border: #334155; --ui-page: #020617;
+}
+.light {
+  --field-bg: #ffffff; --field-fg: #0f172a; --field-border: #7a889d; --field-border-hover: #556275; --field-placeholder: #64748b;
+  --field-focus: #4f46e5; --field-ring: rgba(79, 70, 229, .22);
+  --ui-label: #334155; --ui-muted: #475569; --ui-text: #1e293b; --ui-heading: #0f172a;
+  --ui-surface: #ffffff; --ui-surface-2: #f1f5f9; --ui-border: #cbd5e1; --ui-page: #f8fafc;
+}
+
+/* ---- modal windows ---------------------------------------------------------------------------------------------------- */
+
+.ui-modal-overlay {
+  position: fixed; inset: 0; z-index: var(--ui-z-modal); display: flex; align-items: center; justify-content: center; padding: 1rem;
+  background: rgba(2, 6, 23, .72); backdrop-filter: blur(3px);
+}
+.light .ui-modal-overlay { background: rgba(15, 23, 42, .45); }
+.ui-modal-overlay.is-top { align-items: flex-start; padding-top: 4rem; }
+.ui-modal {
+  display: flex; flex-direction: column; width: 100%; max-height: min(92vh, 56rem); overflow: hidden; border-radius: 1rem;
+  background: var(--ui-surface); color: var(--ui-text); border: 1px solid var(--ui-border);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .5); font-family: var(--ui-font);
+}
+.ui-modal:focus { outline: none; }
+.ui-modal-sm { max-width: 24rem; } .ui-modal-md { max-width: 32rem; } .ui-modal-lg { max-width: 44rem; }
+.ui-modal-xl { max-width: 60rem; } .ui-modal-2xl { max-width: 76rem; } .ui-modal-full { max-width: 96vw; height: 92vh; max-height: 92vh; }
+.ui-modal-header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem 1.25rem; border-bottom: 1px solid var(--ui-border); flex: none; }
+.ui-modal-title { margin: 0; font-size: .875rem; line-height: 1.25rem; font-weight: 600; color: var(--ui-heading); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-modal-subtitle { margin: 0; font-size: .75rem; color: var(--ui-muted); }
+.ui-modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 1rem 1.25rem; }
+.ui-modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; padding: .75rem 1.25rem; border-top: 1px solid var(--ui-border); flex: none; }
+
+/* ---- the same font everywhere ------------------------------------------------------------------------------------------ */
+
+/* in the base layer, so that a utility on an element (`font-mono` on an input that holds a path) still wins */
+@layer base {
+  html, body { font-family: var(--ui-font); }
+  button, input, select, textarea, optgroup { font-family: inherit; }
+  pre, code, kbd, samp { font-family: var(--ui-font-code); }
+}
