@@ -80,9 +80,9 @@ CMD ["node", "apps/asset-processor/dist/server.js"]
 
 # ─── Admin Dashboard ────────────────────────────────────────────────────────
 FROM nginxinc/nginx-unprivileged:alpine@sha256:26b0bf6fbf07297983cb341998d79c831508787de26627dd2a112321b9c3a4af AS admin-dashboard
-# the pinned alpine ships pcre2 10.48 (CVE-2026-103111); drop once the upstream tag catches up
+# the pinned alpine ships pcre2 10.48 (CVE-2026-103111) and tiff 4.7.1 (CVE-2026-4775); drop once the upstream tag catches up
 USER 0
-RUN apk upgrade --no-cache pcre2
+RUN apk upgrade --no-cache pcre2 tiff
 USER 101
 COPY --from=build /app/apps/admin-dashboard/dist /usr/share/nginx/html
 COPY nginx/admin-spa.conf /etc/nginx/conf.d/default.conf
@@ -90,8 +90,9 @@ EXPOSE 8080
 
 # ─── Whoobe One Spike ──────────────────────────────────────────────────────
 FROM nginxinc/nginx-unprivileged:alpine@sha256:26b0bf6fbf07297983cb341998d79c831508787de26627dd2a112321b9c3a4af AS whoobe-one-spike
+# same as the dashboard's image above
 USER 0
-RUN apk upgrade --no-cache pcre2
+RUN apk upgrade --no-cache pcre2 tiff
 USER 101
 COPY --from=build /app/apps/whoobe-one-spike/dist /usr/share/nginx/html
 # rendered at start (envsubst): who may embed the editor in a frame - see nginx/editor-spa.conf.template
