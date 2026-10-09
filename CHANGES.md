@@ -1,3 +1,10 @@
+## [Security fixes: F-056 sessions, F-057 database password] — 2026-10-09
+- Branch: `fix/sessions-and-db-password`.
+- **F-056**: `sessions.id` now stores `sha256(cookie value)` (`hashSessionToken` in `auth/session.ts`); the token is never written to the database, and the stored hash cannot be replayed as a cookie. Expired or revoked sessions older than a week are deleted at core-api start and every six hours (`purgeStaleSessions`). Migration `0053_sessions_hashed` deletes the old rows (data change only, no schema change). **Behaviour change: everyone logs in once more after the upgrade.**
+- **F-057**: `resolveDbPassword` - the `postgrespassword` default exists only when `NODE_ENV` is `development` or `test`; anywhere else a missing `DB_PASSWORD` stops the service at start with a clear message. Compose workspaces already set it.
+- Tests: `auth/session.integration.test.ts` (5, on a disposable database: only the hash is stored, the token validates and the hash does not, logout and revoke-all, a pre-change raw id no longer validates, purge keeps recent rows), `db/client.test.ts` (+3), and the existing `auth`/`mfa` API suites.
+- Docs: findings F-056/F-057 fixed, status summary, release notes (behaviour changes), threat model, authentication, data and storage, encryption, data protection, observability, configuration reference, deployment note.
+
 ## [Security test suite summary (one page, for the release documentation)] — 2026-10-09
 - Branch: `fix/credentials-and-roles`. New `docs/release/security/test-suite-summary.md`: six boxes (API and authorization, browser and content, static analysis, logic and unit, workspace isolation, DAST) with the counts taken on 2026-10-09, how each number was obtained, and what the claims do and do not mean (the route-contract tests use a text scan, not an AST). Linked from `docs/release/README.md`.
 

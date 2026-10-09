@@ -31,7 +31,7 @@ when a variable read by the services or listed in `.env.example` is missing from
 | `POSTGRES_USER`, `POSTGRES_DB` | the postgres container, Compose | `postgres`, `whoobe_db` | | database server bootstrap |
 | `POSTGRES_PASSWORD` | the postgres container | none (Compose refuses to start) | **yes** | |
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_NAME` | core-api, asset-processor, gateway, migration-tool | `localhost`, 5432, `postgres`, `whoobe_db` | | connection |
-| `DB_PASSWORD` | same | **falls back to `postgrespassword` when unset** (F-057); Compose requires it | **yes** | |
+| `DB_PASSWORD` | same | none: the service stops at start if it is unset, unless `NODE_ENV` is `development` or `test` (F-057); Compose requires it | **yes** | |
 | `DB_SSL`, `DB_SSL_CA` | same | `disable` | | TLS to PostgreSQL: `disable` \| `require` \| `verify-full`; CA as path or PEM ([encryption](encryption.md)) |
 | `WS_POSTGRES_PORT`, `WS_DATA_BIND_ADDRESS` | Compose | 5432, `127.0.0.1` | | host side of the database port; set `0.0.0.0` only with a firewall |
 

@@ -73,9 +73,9 @@ export const userRoles = pgTable(
   (table) => [primaryKey({ columns: [table.userId, table.roleId] })]
 );
 
-// Session id IS the opaque token: a long random string, generated with
-// crypto.randomBytes, unguessable, used directly as the cookie value.
-// Revocation/expiry is a plain row check, not JWT-denylist bookkeeping.
+// `id` is the SHA-256 of the session token (auth/session.ts hashSessionToken): the token itself is a long random string from
+// crypto.randomBytes, used as the cookie value, and is never stored. Revocation/expiry is a plain row check, not JWT-denylist
+// bookkeeping.
 export const sessions = pgTable('sessions', {
   id: text('id').primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),

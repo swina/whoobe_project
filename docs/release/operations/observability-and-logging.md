@@ -32,7 +32,7 @@ set a size limit on the driver, and mount `LOG_DIR` if you rely on the local fil
 | Workflow transitions of data objects | table `workflow_transition_log` | - |
 | Page and snippet changes | table `content_versions` (who saved when) | - |
 | Every outgoing mail | table `mail_log` | - |
-| Sessions: created, last seen, IP, user agent | table `sessions` (never purged, F-056) | - |
+| Sessions: created, last seen, IP, user agent | table `sessions` (id stored as a hash; rows deleted a week after expiry or revocation) | - |
 
 **There is no audit log of administrative actions**: creating or deleting users, changing roles or permissions,
 changing settings, deleting content, exporting or importing a website, regenerating a site key, enabling uploads. Whoever
