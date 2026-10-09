@@ -1,3 +1,6 @@
+## [UI: small CSS adjustments] — 2026-10-09
+- Branch: `feat/snippet-lock`. `ThemesView.vue`: the view padding is `p-2` (was `p-6`); `SystemLogsView.vue`: the info log rows use the dark `bg-slate-800/40` background again.
+
 ## [Snippets: lock (no autosave); search inputs no longer collapse] — 2026-10-09
 - Branch: `feat/snippet-lock`. Request: a lock option on snippets - when locked, autosave is off.
 - Database: migration `0051_snippet_lock` (`whoobe_one_snippets.locked boolean NOT NULL DEFAULT false`), schema and records (`setWhoobeOneSnippetLocked`).

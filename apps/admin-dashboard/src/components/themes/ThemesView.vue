@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col p-6">
+  <div class="h-full flex flex-col p-2">
     <!-- List view -->
     <template v-if="!editing">
       <div class="flex items-center justify-between mb-4 shrink-0">
