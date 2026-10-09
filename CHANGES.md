@@ -5,6 +5,7 @@
 - Editor: `advanced/DownloadControl.vue` (the **Download** section of Advanced: file path/URL with the asset picker, open in a new tab, a warning when no file is chosen or the asset is private); the canvas and the Preview render the button with its icon, the Preview as a link that saves the file.
 - Tests: renderer-based tests in the Vue and React suites (asset and URL links, `download`, `target`, class kept, empty source = button, no image); `browser/download-element.spec.ts` (source set in Advanced, warnings, preview link). Unit 208, browser suite 27 pass.
 - Docs: guide `download-element.md`; the page-builder manual links to it.
+- Fix (reported): "Open in a new tab" did nothing in Preview for images and media (the preview never set `target`, and `download` makes the browser save a file or ignore it cross-origin). Now "open in a new tab" means open it: `target="_blank" rel="noopener noreferrer"` and no `download` attribute, in the Preview and in the SDK renderer (`link.download` is false then); the option's label says so. Tests updated (Vue, React, browser spec).
 - Decided for the next step (form upload field): file goes through a two-step upload with a pre-signed URL (option B), limits set per website, private target folder by default, content checks.
 
 ## [UI: small CSS adjustments] — 2026-10-09

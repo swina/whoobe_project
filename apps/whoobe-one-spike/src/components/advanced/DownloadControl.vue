@@ -27,9 +27,9 @@
 
     <label class="flex items-center gap-1.5 text-xs text-gray-700">
       <input type="checkbox" :checked="el.linkTarget === '_blank'" @change="setNewTab(($event.target as HTMLInputElement).checked)" />
-      Open in a new tab (when the browser shows the file instead of saving it)
+      Open in a new tab instead of saving (for images, PDFs, audio and video)
     </label>
-    <p class="text-[10px] text-gray-400">The label, icon, colours, size and animation are set as for any button (Custom Classes, Style, the button icon in the toolbar).</p>
+    <p class="text-[10px] text-gray-400">If you want the file shown rather than saved, tick Open in a new tab. The label, icon, colours, size and animation are set as for any button (Custom Classes, Style, the button icon in the toolbar).</p>
 
     <MediaPickerModal v-if="showPicker" @select="onPicked" @close="showPicker = false" />
   </div>

@@ -26,7 +26,7 @@
   ref="rootEl"
   :class="classe"
   :style="stile"
-  v-bind="{ ...extraAttrs, ...(element.tag === 'file' && displaySrc ? { href: displaySrc, download: '' } : {}) }"
+  v-bind="{ ...extraAttrs, ...(element.tag === 'file' && displaySrc ? (element as any).linkTarget === '_blank' ? { href: displaySrc, target: '_blank', rel: 'noopener noreferrer' } : { href: displaySrc, download: '' } : {}) }"
 >
   <span v-if="buttonIconComponent && buttonIconPosition !== 'after'" class="inline-flex items-center mr-1.5"><component :is="buttonIconComponent" :style="getButtonIconStyle()" /></span>
   <span v-html="safeHtml(renderedContent)"></span>

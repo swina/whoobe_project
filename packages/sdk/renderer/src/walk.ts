@@ -243,11 +243,12 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
     resolveNodeLink(node, scope, options),
   ])
   // A Download element is a link to its file (an asset of the library or a URL), saved rather than opened. Without a
-  // source it stays an inert button: nothing to download, nothing to link to.
+  // source it stays an inert button. "Open in a new tab" (linkTarget _blank) means open it, so no `download` then.
+  // Without a file chosen it stays an inert button: nothing to download, nothing to link to.
   const isDownload = node.tag === 'file'
   const image = isDownload ? null : resolvedImage
   const link = isDownload
-    ? (resolvedImage ? { href: resolvedImage.url, target: node.linkTarget ?? undefined, download: true } : null)
+    ? (resolvedImage ? { href: resolvedImage.url, target: node.linkTarget ?? undefined, download: node.linkTarget !== '_blank' } : null)
     : resolvedLink
 
   const className = [node.css?.css ?? '', node.css?.container ?? '', transformClassName ?? ''].filter(Boolean).join(' ')
