@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { getConnectionConfig, resolveSslConfig } from './client.js';
+import { getConnectionConfig, resolveDbPassword, resolveSslConfig } from './client.js';
 
 describe('resolveSslConfig', () => {
   it('is off by default and for the "no TLS" spellings', () => {
@@ -45,5 +45,21 @@ describe('getConnectionConfig', () => {
   it('has no ssl without any setting', () => {
     delete process.env.DATABASE_URL; delete process.env.DB_SSL;
     expect(getConnectionConfig().ssl).toBeUndefined();
+  });
+});
+
+describe('resolveDbPassword (F-057)', () => {
+  it('uses DB_PASSWORD when it is set, whatever the environment', () => {
+    for (const NODE_ENV of ['production', 'development', 'test', undefined]) expect(resolveDbPassword({ DB_PASSWORD: 's3cret', NODE_ENV } as any)).toBe('s3cret');
+  });
+  it('has a default only for development and tests', () => {
+    expect(resolveDbPassword({ NODE_ENV: 'development' } as any)).toBe('postgrespassword');
+    expect(resolveDbPassword({ NODE_ENV: 'test' } as any)).toBe('postgrespassword');
+  });
+  it('refuses to start anywhere else without a password, naming the variable', () => {
+    for (const NODE_ENV of ['production', 'staging', undefined, '']) {
+      expect(() => resolveDbPassword({ NODE_ENV } as any), String(NODE_ENV)).toThrow(/DB_PASSWORD is not set/);
+    }
+    expect(() => resolveDbPassword({ NODE_ENV: 'production', DB_PASSWORD: '' } as any)).toThrow(/DB_PASSWORD/);
   });
 });

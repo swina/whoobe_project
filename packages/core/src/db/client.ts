@@ -44,6 +44,15 @@ export function resolveSslConfig(env: NodeJS.ProcessEnv = process.env, urlSslMod
  * rather than buried inside a single connection-string value. DATABASE_URL
  * is still honored as a full override for deployments that need one.
  */
+/** The database password: DB_PASSWORD. A built-in default exists only for development and tests (NODE_ENV=development|test);
+ *  anywhere else a missing password stops the service with a clear message instead of trying a well-known one (finding F-057:
+ *  a service started outside Compose with an incomplete env file used to connect with `postgrespassword`). */
+export function resolveDbPassword(env: NodeJS.ProcessEnv = process.env): string {
+  if (env.DB_PASSWORD) return env.DB_PASSWORD;
+  if (env.NODE_ENV === 'development' || env.NODE_ENV === 'test') return 'postgrespassword';
+  throw new Error('DB_PASSWORD is not set. Set it in the environment (the env file of the workspace); a default password is used only when NODE_ENV is development or test.');
+}
+
 export function getConnectionConfig(): ConnectionConfig {
   if (process.env.DATABASE_URL) {
     const url = new URL(process.env.DATABASE_URL);
@@ -61,7 +70,7 @@ export function getConnectionConfig(): ConnectionConfig {
     host: process.env.DB_HOST ?? 'localhost',
     port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432,
     user: process.env.DB_USER ?? 'postgres',
-    password: process.env.DB_PASSWORD ?? 'postgrespassword',
+    password: resolveDbPassword(),
     database: process.env.DB_NAME ?? process.env.POSTGRES_DB ?? 'whoobe_db',
     ssl: resolveSslConfig(),
   };

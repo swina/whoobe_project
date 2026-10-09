@@ -37,13 +37,13 @@ account (and therefore a session) or, for content delivery, a site key.
 | Property | Value |
 |---|---|
 | Token | 32 random bytes (hex), opaque, no JWT |
-| Storage | `sessions` row whose primary key **is** the token (not hashed - finding F-056), with user, expiry, last seen, client IP and user agent |
+| Storage | `sessions` row whose primary key is the SHA-256 of the token (the token itself is never stored, F-056), with user, expiry, last seen, client IP and user agent |
 | Cookie | `wcms_session`, `HttpOnly`, `SameSite=Lax`, `Secure` when the request is HTTPS or `X-Forwarded-Proto: https` (override `COOKIE_SECURE`) |
 | Lifetime | 7 days from login; **not** extended by activity (`last_seen_at` is only recorded) |
 | Revocation | logout; password change or reset (all sessions of the user); deactivation |
 | Validation cost | each authenticated request does three queries (session + user, `last_seen` update, effective permissions); core-api and asset-processor both validate against the same table |
 | Concurrency | no limit on parallel sessions, no "log out everywhere" button other than a password change |
-| Cleanup | none: expired rows stay (F-056) |
+| Cleanup | rows expired or revoked more than a week ago are deleted at core-api start and every six hours |
 
 ## 4. Second factor (TOTP)
 
@@ -147,6 +147,6 @@ See [API Gateway security](../guides/api-gateway-security.md).
 ## 9. Known gaps (for a risk assessment)
 
 No SSO/OIDC; no mandatory MFA; no per-website roles; the 34 granular permissions are not enforced (F-058); no password policy beyond length; no session list or remote
-sign-out for the user; sessions stored unhashed and never purged (F-056); no CSRF token; no full CSP on the SPAs (F-014);
+sign-out for the user; no CSRF token; no full CSP on the SPAs (F-014);
 third-party credentials are in clear text on installations without `INTEGRATION_SECRETS_ENCRYPTION_KEY` (F-055); login and MFA throttling is in process memory
 (per replica, lost at restart).

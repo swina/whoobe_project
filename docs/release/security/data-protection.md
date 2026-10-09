@@ -20,7 +20,7 @@ product has no telemetry and sends nothing to the project's authors.
 | Category | Data subjects | Fields | Where | Purpose |
 |---|---|---|---|---|
 | Staff accounts | administrators, editors, viewers | name, e-mail, password hash (argon2id), role, active flag, MFA secret (encrypted) and hashed recovery codes | `users`, `user_roles` | access to the CMS |
-| Sessions | staff | session id, IP address, user agent, created/last seen/expiry | `sessions` | authentication; **kept after expiry, never purged** (F-056) |
+| Sessions | staff | session id, IP address, user agent, created/last seen/expiry | `sessions` | authentication; deleted a week after they expire or are revoked (every six hours); the id is stored as a hash |
 | Staff activity | staff | which user saved which page version, workflow transitions with the acting user | `content_versions`, `workflow_transition_log` | editing history, review workflow |
 | **Form submissions** | visitors | whatever the author puts in the form: typically name, e-mail, phone, message, any other field; uploaded files | `data_objects` (draft rows of the target class), asset store | collecting enquiries, registrations |
 | **Uploaded files** | visitors | the file, the original file name (as a note), size, type | asset store `private/…`, `form_uploads` | attachments to a submission |
@@ -86,7 +86,7 @@ provided: audit log of administrative actions, SSO, DLP, malware scanning of upl
 The product does not detect or notify breaches. The operator should: preserve the logs, revoke sessions and rotate secrets
 ([secrets and keys](../operations/secrets-and-keys.md) section 6), identify affected tables from the list in section 2, and
 use the 72-hour notification process of their organisation. Data exposed by a database or backup leak includes
-**unhashed session ids (F-056)** and, on installations without `INTEGRATION_SECRETS_ENCRYPTION_KEY`, **clear-text AI/Figma/push credentials (F-055)** in addition to the personal data above.
+on installations without `INTEGRATION_SECRETS_ENCRYPTION_KEY`, **clear-text AI/Figma/push credentials (F-055)** in addition to the personal data above.
 
 ## 8. Checklist for a DPIA / record of processing
 
@@ -96,4 +96,4 @@ use the 72-hour notification process of their organisation. Data exposed by a da
 4. Configure disk or database encryption and the encrypted backup with offsite copy.
 5. Define the retention job (sessions, mail log, submissions, uploads, logs) and the erase procedure.
 6. Decide whether MFA is required for staff (it cannot be enforced by the product; do it by policy).
-7. Keep this document and [`findings.md`](findings.md) with the DPIA: open items F-056 and F-058 are relevant.
+7. Keep this document and [`findings.md`](findings.md) with the DPIA: open item F-058 is relevant.

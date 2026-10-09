@@ -33,7 +33,7 @@ screens never show a secret again after it is saved.
 An installation that has **not set `INTEGRATION_SECRETS_ENCRYPTION_KEY`** keeps those credentials in clear text (finding F-055): set it
 (`provision-workspace.sh` does for new workspaces) and restart; existing values are encrypted at the start.
 
-User passwords are not encrypted but hashed with argon2id (one-way); password-reset tokens are stored as SHA-256 hashes. Session ids are long random opaque values stored as they are (the id is the token): a leaked copy of the database or of a backup would allow session hijacking until they expire, which is one more reason to encrypt backups and the volume.
+User passwords are not encrypted but hashed with argon2id (one-way); password-reset tokens are stored as SHA-256 hashes. Session ids are stored as SHA-256 hashes of the cookie value (F-056), so a leaked copy of the database or of a backup does not allow session hijacking.
 
 `provision-workspace.sh` generates all these keys per workspace into `.env.<slug>` (mode 600).
 

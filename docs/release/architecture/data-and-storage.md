@@ -38,7 +38,7 @@ Per-website settings (themes catalog, upload limits `settings.uploads`, document
 | Data | Form |
 |---|---|
 | Passwords | argon2id hash (`argon2`, library defaults) |
-| Session identifier | random 32 bytes as hex, stored **as is** in `sessions.id` and used as the cookie value; a database read exposes live sessions (see [auth](authentication-and-authorization.md) section 3) |
+| Session identifier | random 32 bytes as hex in the cookie; `sessions.id` holds its SHA-256, so a database read or backup does not yield usable cookies (F-056) |
 | Password-reset tokens | hashed |
 | TOTP secrets | AES-256-GCM (`TOTP_ENCRYPTION_KEY`) |
 | Gateway upstream credentials, migration source credentials | AES-256-GCM (`GATEWAY_AUTH_ENCRYPTION_KEY`, `MIGRATION_SOURCE_ENCRYPTION_KEY`) |
@@ -83,7 +83,7 @@ enforces the visibility rules. With an external S3, check that the bucket itself
 
 | Data | Kept | Removed by |
 |---|---|---|
-| Sessions | 7 days from login (fixed, not extended by activity); revoked on logout and on password change or reset | **expired and revoked rows are never deleted** (no purge job exists); the table grows with logins |
+| Sessions | 7 days from login (fixed, not extended by activity); revoked on logout and on password change or reset | expired and revoked rows are deleted a week later (core-api, at start and every six hours) |
 | `mail_log` | forever | an administrator, from Settings > Mail > Log (by filter) |
 | `workflow_transition_log`, `content_versions` | forever | with the object or page |
 | Form submissions | as data objects (unpublished drafts) until an editor deletes them | an editor |
@@ -99,4 +99,4 @@ Retention is the operator's decision today; see [data protection](../security/da
 
 Assets dominate (up to `ASSET_MAX_FILE_BYTES`, default 50 MB per file; `ASSET_MAX_COUNT` optional); the database stays
 small by comparison (JSON page trees, a few kilobytes to a few hundred kilobytes per page). Rows that grow without bound
-unless someone trims them: `sessions`, `mail_log`, `form_uploads`, `content_versions`.
+unless someone trims them: `mail_log`, `form_uploads`, `content_versions` (`sessions` is purged automatically).

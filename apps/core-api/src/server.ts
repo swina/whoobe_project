@@ -253,6 +253,7 @@ import {
   signUploadTicket,
   uploadTokenSecret,
   getWebsitePushApiKey,
+  purgeStaleSessions,
   createFormUpload,
   getFormUpload,
   websiteUploadBytesToday,
@@ -6458,6 +6459,17 @@ app.get('/public/docs/:websiteId/page/*', async (req: Request, res: Response): P
   }
 });
 
+// Sessions that expired or were revoked more than a week ago are deleted (finding F-056: the table used to grow with every login):
+// once the database is ready, then every six hours.
+async function purgeSessions(): Promise<void> {
+  try {
+    const n = await purgeStaleSessions();
+    if (n > 0) logger.info({ purged: n }, 'Purged stale sessions');
+  } catch (err) {
+    logger.warn({ err }, 'Session purge failed');
+  }
+}
+
 // On-the-fly bootstrap: create the database if it doesn't exist, apply any
 // pending migrations, and seed default roles/permissions/admin user. Runs
 // on every boot; all steps are idempotent, so this is a no-op once already
@@ -6466,6 +6478,8 @@ app.get('/public/docs/:websiteId/page/*', async (req: Request, res: Response): P
 // `db:migrate` / `db:seed` step required.
 bootstrapDatabase()
   .then(() => {
+    void purgeSessions();
+    setInterval(purgeSessions, 6 * 60 * 60 * 1000).unref();
     app.listen(port, () => {
       logger.info({ port }, 'Core API started');
     });

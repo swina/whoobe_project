@@ -65,9 +65,9 @@ Severity is the residual risk after the controls, for a correctly installed work
 |---|---|---|---|
 | Password guessing, credential stuffing | argon2id; 5 failures per address+e-mail and 25 per e-mail lock for 15 minutes; generic error text | `auth` suite | in-memory lockout is per replica and reset by restart; password policy is length 8 only - **Medium** for internet-facing admin; mitigate with MFA and proxy/IP rules |
 | Stolen password | optional TOTP; code replay blocked; recovery codes hashed; password reset revokes sessions | `mfa` suite | MFA is optional and cannot be enforced - **Medium** |
-| Session theft (XSS, network, database read) | `HttpOnly`, `SameSite=Lax`, `Secure` over HTTPS; HSTS; 7-day fixed lifetime | `auth`, TLS scan | session ids stored unhashed and never purged (F-056) - **Low** |
+| Session theft (XSS, network, database read) | `HttpOnly`, `SameSite=Lax`, `Secure` over HTTPS; HSTS; 7-day fixed lifetime | `auth`, TLS scan | session ids are stored as hashes and expired sessions are purged (F-056) - **Low** |
 | Account recovery abuse | reset token hashed, one hour, single use, rate limited | `auth` | depends on the security of the mailbox |
-| Default credentials | no default password: a random one is generated and logged once; compose refuses to start without database and S3 secrets | `unit/compose-hardening`, F-043 | the code falls back to a default DB password when started outside Compose (F-057) - **Low** |
+| Default credentials | no default password: a random one is generated and logged once; compose refuses to start without database and S3 secrets | `unit/compose-hardening`, F-043 | outside Compose the service refuses to start without `DB_PASSWORD` (F-057) - **Low** |
 
 ### 5.2 Authorization
 

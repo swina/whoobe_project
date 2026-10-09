@@ -6,8 +6,7 @@
 > defaults, generated secrets, encrypted backups). This page has **not been re-verified for 0.1.0**: in particular it
 > installs Node 20 and MinIO (the images use Node 22 and Garage, and MinIO is discouraged, F-050), does not set the new
 > secrets (`MAIL_SETTINGS_ENCRYPTION_KEY`, `TOTP_ENCRYPTION_KEY`, `UPLOAD_TOKEN_SECRET`; see the
-> [configuration reference](configuration-reference.md)) and starts services outside Compose, where the code falls back to a
-> default database password when `DB_PASSWORD` is missing (F-057). Use it only if Docker is not an option, and set every
+> [configuration reference](configuration-reference.md)) and starts services outside Compose, where a missing `DB_PASSWORD` now stops the service at start (F-057). Use it only if Docker is not an option, and set every
 > variable of the configuration reference explicitly.
 
 Deploy Whoobe CMS on an **Oracle Cloud Infrastructure (OCI) Always Free Tier** VM. This guide covers a single-VM deployment running all services behind nginx with Let's Encrypt SSL.
