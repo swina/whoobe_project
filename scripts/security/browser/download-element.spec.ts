@@ -8,7 +8,7 @@ const node = (id: string, image?: unknown) => ({
 })
 
 test('a Download element has a file source in Advanced; the preview links to it', async ({ api, authed, tag }) => {
-  const page = await api.post('/whoobe-one/pages', { slug: `dl-${tag}`, title: `dl ${tag}`, content: pageContent([node('dl1')]) })
+  const page = await api.post('/whoobe-one/pages', { slug: `dl-${tag}`, title: `dl ${tag}`, content: pageContent([node('dl1'), { ...node('dl2', { url: 'https://example.com/pic.png' }), content: 'Open the picture', linkTarget: '_blank' }]) })
   expect(page.status, page.text.slice(0, 150)).toBe(201)
   const id = page.json.page.id
   try {
@@ -39,6 +39,13 @@ test('a Download element has a file source in Advanced; the preview links to it'
     await expect(link).toBeVisible({ timeout: 10_000 })
     await expect(link).toHaveAttribute('href', 'https://example.com/files/brochure.pdf')
     expect(await link.getAttribute('class')).toContain('bg-indigo-600')
+    await expect(link).not.toHaveAttribute('target', '_blank')
+
+    // the second element is set to open in a new tab: target _blank and no download attribute (the file is shown, not saved)
+    const shown = p.locator('a', { hasText: 'Open the picture' })
+    await expect(shown).toHaveAttribute('href', 'https://example.com/pic.png')
+    await expect(shown).toHaveAttribute('target', '_blank')
+    await expect(shown).not.toHaveAttribute('download', /.*/)
   } finally {
     await api.delete(`/whoobe-one/pages/${id}`)
   }

@@ -55,8 +55,10 @@ describe('WhoobeNode (SSR)', () => {
     const anchors = html.match(/<a [^>]*>/g) ?? []
     expect(anchors).toHaveLength(2)
     expect(anchors[0]).toContain('href="http://dam:3002/dam-asset/files/brochure.pdf"')
-    expect(anchors[0]).toContain('download')
+    // "open in a new tab" opens the file (target) instead of saving it (no download attribute)
     expect(anchors[0]).toContain('target="_blank"')
+    expect(anchors[0]).not.toContain('download')
+    expect(anchors[1]).toContain('download')
     expect(anchors[1]).toContain('href="https://cdn.example.com/x.zip"')
     // no file chosen: an inert button, the label kept
     expect(html).toMatch(/<button[^>]*>Get the PDF<\/button>/)
