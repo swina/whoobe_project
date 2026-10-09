@@ -1,5 +1,15 @@
 # Oracle Free Tier Deployment Guide
 
+> **Status of this guide (2026-10-09).** It describes a **bare-metal installation** (PostgreSQL, the object store and the Node
+> services installed on the VM, run by PM2). The path that is tested and used for releases is the **container
+> workspace** in [`creating-workspaces.md`](creating-workspaces.md) (Docker Compose, Node 22 images, Garage, hardened
+> defaults, generated secrets, encrypted backups). This page has **not been re-verified for 0.1.0**: in particular it
+> installs Node 20 and MinIO (the images use Node 22 and Garage, and MinIO is discouraged, F-050), does not set the new
+> secrets (`MAIL_SETTINGS_ENCRYPTION_KEY`, `TOTP_ENCRYPTION_KEY`, `UPLOAD_TOKEN_SECRET`; see the
+> [configuration reference](configuration-reference.md)) and starts services outside Compose, where the code falls back to a
+> default database password when `DB_PASSWORD` is missing (F-057). Use it only if Docker is not an option, and set every
+> variable of the configuration reference explicitly.
+
 Deploy Whoobe CMS on an **Oracle Cloud Infrastructure (OCI) Always Free Tier** VM. This guide covers a single-VM deployment running all services behind nginx with Let's Encrypt SSL.
 
 ## Oracle Free Tier Resources

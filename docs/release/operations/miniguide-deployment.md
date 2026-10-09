@@ -1,5 +1,10 @@
 # Whoobe CMS — Deployment Miniguide
 
+> **Status of this page (2026-10-09).** The "Production" column describes native services under PM2; for a production
+> installation use the container workspaces of [`creating-workspaces.md`](creating-workspaces.md). The evaluation and local
+> development columns are still accurate. Not re-verified for 0.1.0 (see the status note in
+> [`deployment.md`](deployment.md)).
+
 Three distinct deployment scenarios, each with different trade-offs:
 
 | Concern | Evaluation / Demo | Local Development | Production |
