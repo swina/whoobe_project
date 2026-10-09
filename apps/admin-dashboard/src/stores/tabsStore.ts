@@ -12,8 +12,10 @@ import { ref } from 'vue'
 // with Preview (the read-only rendered HTML) as a second sub-tab, mirroring
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
-export type SectionKind = 'overview' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'components' | 'mail' | 'themes' | 'settings' | 'gateway' | 'gateway-plugins' | 'system-logs'
+export type SectionKind = 'overview' | 'ai' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'components' | 'mail' | 'themes' | 'settings' | 'gateway' | 'gateway-plugins' | 'system-logs'
 export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'classList' | 'website' | 'docsSite' | 'docsDoc'
+// The AI section of the navigation (its own sidebar entry, no longer part of Settings): one card per kind of AI provider.
+export type AiSubSection = 'text' | 'image' | 'translate'
 export type DocsSiteSubTab = 'documents' | 'index' | 'publish' | 'settings'
 export type AssetSubTab = 'preview' | 'editor' | 'metadata' | 'thumbnails'
 export type DocumentSubTab = 'editor' | 'preview'
@@ -22,7 +24,7 @@ export type WebsiteSubTab = 'settings' | 'paths' | 'templates'
 // A fixed, known-upfront set (docs/plans/UI/settings-ui-plan.md) - unlike
 // objectSubTab's free-form string (which varies per class's locales),
 // this is a real enum, matching AssetSubTab/DocumentSubTab's own pattern.
-export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'roles' | 'security' | 'workflows' | 'ai' | 'ai-image' | 'ai-translate' | 'figma' | 'pwa'
+export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'roles' | 'security' | 'workflows' | 'figma' | 'pwa'
 
 export interface MainTab {
   id: string
@@ -43,6 +45,8 @@ export interface MainTab {
   // `section === 'settings'`. Defaults to 'general' the first time the
   // Settings tab is opened (openSection('settings') below).
   settingsSubSection?: SettingsSubSection
+  // Which card the AI section shows (sidebar submenu), only meaningful when `section === 'ai'`.
+  aiSubSection?: AiSubSection
   // The owning data class, captured at open time - MasterObjectTab.vue
   // needs it as a prop and can't reliably derive it from a shared list
   // store (same reasoning as `label` below: the record may be brand new,
@@ -134,7 +138,7 @@ export const useTabsStore = defineStore('tabs', () => {
   function openSection(section: SectionKind) {
     const id = sectionTabId(section)
     if (findIndex(id) === -1) {
-      tabs.value.push({ id, type: 'section', section, settingsSubSection: section === 'settings' ? 'general' : undefined })
+      tabs.value.push({ id, type: 'section', section, settingsSubSection: section === 'settings' ? 'general' : undefined, aiSubSection: section === 'ai' ? 'text' : undefined })
     }
     activeTabId.value = id
   }
@@ -146,6 +150,13 @@ export const useTabsStore = defineStore('tabs', () => {
     openSection('settings')
     const tab = tabs.value.find((t) => t.id === sectionTabId('settings'))
     if (tab) tab.settingsSubSection = subSection
+  }
+
+  // Opens (or focuses) the AI tab and selects one of its cards - the sidebar's AI submenu.
+  function openAiSubSection(subSection: AiSubSection) {
+    openSection('ai')
+    const tab = tabs.value.find((t) => t.id === sectionTabId('ai'))
+    if (tab) tab.aiSubSection = subSection
   }
 
   function openAsset(assetId: string) {
@@ -374,6 +385,7 @@ export const useTabsStore = defineStore('tabs', () => {
     activeTabId,
     openSection,
     openSettingsSubSection,
+    openAiSubSection,
     openAsset,
     setAssetSubTab,
     openDocument,

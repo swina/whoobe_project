@@ -106,6 +106,17 @@
                 <ChevronRight v-else class="w-4 h-4 text-slate-500" />
               </button>
 
+              <!-- Expand/Collapse AI Submenu Toggle -->
+              <button
+                v-if="row.item.section === 'ai' && !isSidebarCollapsed"
+                @click.stop="isAiMenuExpanded = !isAiMenuExpanded"
+                class="p-1 rounded text-slate-400 light:text-slate-600 hover:text-white hover:bg-slate-700/60 light:bg-slate-200/60 transition ml-1 shrink-0"
+                title="Toggle AI Menu"
+              >
+                <ChevronDown v-if="isAiMenuExpanded" class="w-4 h-4 text-indigo-400" />
+                <ChevronRight v-else class="w-4 h-4 text-slate-500" />
+              </button>
+
               <!-- Expand/Collapse Settings Submenu Toggle -->
               <button
                 v-if="row.item.section === 'settings' && !isSidebarCollapsed"
@@ -154,6 +165,27 @@
                 :current-path="damStore.currentFolderPath"
                 @select="handleSelectSidebarFolder"
               />
+            </div>
+
+            <!-- AI Submenu: the providers used for generating text, images and translations -->
+            <div
+              v-if="row.item.section === 'ai' && isAiMenuExpanded && !isSidebarCollapsed"
+              class="ml-3 pl-2.5 border-l border-slate-800/80 light:border-slate-200/80 space-y-1 py-1"
+            >
+              <button
+                v-for="sub in aiSubItems" :key="sub.key"
+                @click="tabsStore.openAiSubSection(sub.key)"
+                :data-testid="`nav-ai-${sub.key}`"
+                :class="[
+                  'w-full flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none text-left',
+                  isAiSubSectionActive(sub.key)
+                    ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
+                    : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
+                ]"
+              >
+                <component :is="sub.icon" class="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                <span class="truncate flex-1">{{ sub.name }}</span>
+              </button>
             </div>
 
             <!-- Settings Submenu - docs/plans/UI/settings-ui-plan.md -->
@@ -497,7 +529,7 @@ import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
 import { useDataClassesStore } from '../stores/dataClassesStore'
 import { useThemeStore } from '../stores/themeStore'
-import { useTabsStore, sectionTabId, SectionKind, MainTab, SettingsSubSection } from '../stores/tabsStore'
+import { useTabsStore, sectionTabId, SectionKind, MainTab, SettingsSubSection, AiSubSection } from '../stores/tabsStore'
 import { useToastStore } from '../stores/toastStore'
 import { useAuthStore } from '../stores/authStore'
 import { getIconForFileType } from '../utils/asset-file-icons'
@@ -521,6 +553,7 @@ import SnippetsView from '../views/SnippetsView.vue'
 import ComponentsView from '../views/ComponentsView.vue'
 import MailSettingsView from '../views/MailSettingsView.vue'
 import SettingsView from '../views/SettingsView.vue'
+import AiView from '../views/AiView.vue'
 import SystemLogsView from '../views/SystemLogsView.vue'
 import ThemesView from '../components/themes/ThemesView.vue'
 import GatewayEndpointsView from '../views/GatewayEndpointsView.vue'
@@ -717,6 +750,7 @@ const isSidebarCollapsed = ref(false)
 const isObjectsTreeExpanded = ref(true)
 const isAssetsTreeExpanded = ref(true)
 const isSettingsMenuExpanded = ref(true)
+const isAiMenuExpanded = ref(true)
 
 // Flat vs grouped-by-category sidebar layout. Per-browser preference, not a
 // server setting - defaults to grouped (the requested improvement) but
@@ -761,9 +795,6 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'roles', name: 'Roles/Users/Workspaces', icon: Users },
   { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
-  { key: 'ai', name: 'AI agent', icon: Sparkles },
-  { key: 'ai-image', name: 'AI image gen', icon: Image },
-  { key: 'ai-translate', name: 'AI translation', icon: Languages },
   { key: 'figma', name: 'Figma', icon: Palette },
   { key: 'pwa', name: 'Mobile App', icon: Smartphone },
 ]
@@ -775,11 +806,19 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   roles: 'Roles/Users/Workspaces',
   security: 'Security',
   workflows: 'Workflows',
-  ai: 'AI agent',
-  'ai-image': 'AI image gen',
-  'ai-translate': 'AI translation',
   figma: 'Figma',
   pwa: 'Mobile App',
+}
+
+const aiSubItems: { key: AiSubSection; name: string; icon: any }[] = [
+  { key: 'text', name: 'AI agent', icon: Sparkles },
+  { key: 'image', name: 'Image generation', icon: Image },
+  { key: 'translate', name: 'Translation', icon: Languages },
+]
+
+function isAiSubSectionActive(key: AiSubSection): boolean {
+  const tab = tabsStore.tabs.find((t) => t.id === sectionTabId('ai'))
+  return isSectionActive('ai') && (tab?.aiSubSection ?? 'text') === key
 }
 
 function isSettingsSubSectionActive(key: SettingsSubSection): boolean {
@@ -805,6 +844,7 @@ const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Themes', section: 'themes', icon: Palette },
   { name: 'Integrations', section: 'gateway', icon: Network },
   { name: 'System Logs', section: 'system-logs', icon: ScrollText },
+  { name: 'AI', section: 'ai', icon: Sparkles },
   { name: 'Settings', section: 'settings', icon: Settings }
 ]
 
@@ -832,6 +872,7 @@ const sectionGroup: Partial<Record<SectionKind, NavGroupId>> = {
   mail: 'data',
   gateway: 'data',
   'system-logs': 'system',
+  ai: 'system',
   settings: 'system'
 }
 
@@ -871,6 +912,7 @@ const sectionComponents: Record<SectionKind, any> = {
   themes: ThemesView,
   mail: MailSettingsView,
   settings: SettingsView,
+  ai: AiView,
   gateway: GatewayEndpointsView,
   'gateway-plugins': GatewayPluginsView,
   'system-logs': SystemLogsView,
@@ -890,6 +932,7 @@ const sectionLabels: Record<SectionKind, string> = {
   gateway: 'Integrations',
   'gateway-plugins': 'Integration Plugins',
   'system-logs': 'System Logs',
+  ai: 'AI',
   settings: 'Settings'
 }
 
@@ -907,6 +950,7 @@ const sectionIcons: Record<SectionKind, any> = {
   gateway: Network,
   'gateway-plugins': Network,
   'system-logs': ScrollText,
+  ai: Sparkles,
   settings: Settings
 }
 
@@ -924,6 +968,9 @@ function tabLabel(tab: MainTab): string {
       const path = damStore.currentFolderPath
       if (path === '/') return 'Assets'
       return path.split('/').filter(Boolean).pop() || 'Assets'
+    }
+    if (tab.section === 'ai' && tab.aiSubSection) {
+      return `AI ‣ ${aiSubItems.find((i) => i.key === tab.aiSubSection)?.name ?? ''}`
     }
     if (tab.section === 'settings' && tab.settingsSubSection) {
       return `Settings ‣ ${settingsSubLabels[tab.settingsSubSection]}`
