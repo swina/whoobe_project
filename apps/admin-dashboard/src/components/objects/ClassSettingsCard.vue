@@ -23,12 +23,12 @@
           <div class="text-xs text-slate-500">{{ dataClass.name }} · {{ dataClass.fields.length }} field(s)</div>
         </div>
         <div class="flex items-center gap-3">
-          <button @click="tabsStore.openClass(dataClass.id)" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Edit</button>
-          <button @click="handleDelete(dataClass)" type="button" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Delete</button>
+          <button @click="tabsStore.openClass(dataClass.id)" type="button" class="btn btn-link">Edit</button>
+          <button @click="handleDelete(dataClass)" type="button" class="btn btn-link-danger">Delete</button>
         </div>
       </div>
 
-      <button @click="handleCreate" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 pt-1">+ New class</button>
+      <button @click="handleCreate" type="button" class="btn btn-link">+ New class</button>
     </div>
   </div>
 </template>

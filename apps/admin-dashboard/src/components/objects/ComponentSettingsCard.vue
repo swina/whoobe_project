@@ -22,12 +22,12 @@
           <div class="text-xs text-slate-500">{{ component.name }} · {{ component.fields.length }} field(s)</div>
         </div>
         <div class="flex items-center gap-3">
-          <button @click="openEditor(component)" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Edit</button>
-          <button @click="handleDelete(component)" type="button" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Delete</button>
+          <button @click="openEditor(component)" type="button" class="btn btn-link">Edit</button>
+          <button @click="handleDelete(component)" type="button" class="btn btn-link-danger">Delete</button>
         </div>
       </div>
 
-      <button @click="openEditor(null)" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 pt-1">+ New component</button>
+      <button @click="openEditor(null)" type="button" class="btn btn-link">+ New component</button>
     </div>
 
     <!-- Component editor -->
@@ -40,7 +40,7 @@
             :disabled="!isNew"
             type="text"
             placeholder="e.g. Banner"
-            class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+            class="field w-full"
           />
         </div>
         <div>
@@ -49,7 +49,7 @@
             v-model="label"
             type="text"
             placeholder="e.g. Banner"
-            class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+            class="field w-full"
           />
         </div>
       </div>
@@ -67,11 +67,11 @@
       <FieldListEditor v-model="fields" :allow-field-collections="false" />
 
       <div class="flex items-center justify-between pt-2">
-        <button @click="closeEditor" type="button" class="text-xs font-semibold text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800">Cancel</button>
+        <button @click="closeEditor" type="button" class="btn btn-link-muted">Cancel</button>
         <button
           @click="handleSave"
           :disabled="isSaving || !name.trim() || !label.trim()"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
+          class="btn btn-primary"
         >
           {{ isSaving ? 'Saving…' : 'Save Component' }}
         </button>

@@ -1,15 +1,11 @@
 <template>
-  <div v-if="isOpen && asset" class="fixed inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between">
-        <h3 class="text-base font-bold text-slate-100 light:text-slate-900 flex items-center gap-2">
-          <RefreshCw class="w-4 h-4 text-indigo-400" />
-          Upload New Version (v{{ asset.version + 1 }})
-        </h3>
-        <button @click="emit('close')" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition text-sm">✕</button>
-      </div>
-
-      <div class="p-3 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 space-y-1.5 text-xs">
+  <BaseModal v-if="isOpen && asset" :open="true" size="md" persistent @close="emit('close')">
+    <template #header>
+      <h2 class="ui-modal-title flex items-center gap-2"><RefreshCw class="w-4 h-4 text-indigo-400" />
+    Upload New Version (v{{ asset.version + 1 }})</h2>
+    </template>
+    <div class="space-y-4">
+        <div class="p-3 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 space-y-1.5 text-xs">
         <div class="text-slate-400 light:text-slate-600">Target Asset: <strong class="text-slate-200 light:text-slate-800 font-mono">{{ asset.filename }}</strong></div>
         <div class="flex items-center justify-between text-[11px] text-slate-500">
           <span>Current Version: v{{ asset.version }}</span>
@@ -26,26 +22,29 @@
         />
       </div>
 
-      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800 light:border-slate-200">
-        <button
-          @click="emit('close')"
-          class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
-        >
-          Cancel
-        </button>
-        <button
-          @click="submitUploadNewVersion"
-          :disabled="!versionFile || isUploading"
-          class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition disabled:opacity-50"
-        >
-          Upload Version v{{ asset.version + 1 }}
-        </button>
-      </div>
+
     </div>
-  </div>
+    <template #footer>
+        <button
+        @click="emit('close')"
+        class="btn btn-link-muted"
+      >
+        Cancel
+      </button>
+      <button
+        @click="submitUploadNewVersion"
+        :disabled="!versionFile || isUploading"
+        class="btn btn-primary"
+      >
+        Upload Version v{{ asset.version + 1 }}
+      </button>
+
+    </template>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../ui/BaseModal.vue'
 import { ref, watch } from 'vue'
 import { RefreshCw } from '@lucide/vue'
 import { AssetItem, useDamStore } from '../../stores/damStore'

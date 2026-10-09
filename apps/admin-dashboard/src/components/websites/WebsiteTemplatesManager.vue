@@ -4,7 +4,7 @@
       <p class="text-xs text-slate-500 bg-sky-950 light:bg-slate-300 border border-slate-800 light:border-slate-200 p-2 rounded-lg">
         Reusable page compositions for this website. Each slot is filled with <b>snippets</b>; the routed page is always the body.
       </p>
-      <button type="button" @click="startNew" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shrink-0">+ New template</button>
+      <button type="button" @click="startNew" class="btn btn-primary shrink-0">+ New template</button>
     </div>
 
     <div v-if="loading" class="text-xs text-slate-500 text-center py-4">Loading…</div>
@@ -27,7 +27,7 @@
           <span v-if="saveOk" class="text-xs text-emerald-400">Saved.</span>
           <span v-if="saveError" class="text-xs text-rose-400">{{ saveError }}</span>
           <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 border border-slate-700 hover:border-slate-500" @click="closeEditor">← Back to list</button>
-          <button type="button" :disabled="saving" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white" @click="save">
+          <button type="button" :disabled="saving" class="btn btn-primary" @click="save">
             {{ saving ? 'Saving…' : 'Save' }}
           </button>
         </div>
@@ -36,19 +36,19 @@
       <div class="grid grid-cols-2 gap-3">
         <label class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
           Name
-          <input v-model="form.name" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+          <input v-model="form.name" type="text" class="field" />
         </label>
         <label class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
           Description
-          <input v-model="form.description" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+          <input v-model="form.description" type="text" class="field" />
         </label>
         <label class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
           Locale (e.g. "it") - when set, this template applies to EVERY page of that locale, unconditionally. Bypasses path patterns entirely - leave blank to use path patterns / default instead.
-          <input v-model="form.locale" type="text" placeholder="it" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800 font-mono" />
+          <input v-model="form.locale" type="text" placeholder="it" class="field font-mono" />
         </label>
         <label class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
           Path patterns (one per line, glob: /it/news/*) - routes this template applies to, overriding the default (ignored for pages matched by Locale above)
-          <textarea v-model="form.pathPatternsText" rows="3" class="w-full px-3 py-2 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800 resize-none font-mono" placeholder="/it/news/*"></textarea>
+          <textarea v-model="form.pathPatternsText" rows="3" class="field w-full resize-none font-mono" placeholder="/it/news/*"></textarea>
         </label>
         <label class="flex items-center gap-2 text-xs text-slate-400 col-span-2">
           <input v-model="form.isDefault" type="checkbox" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-slate-800 light:border-slate-200" />
@@ -92,7 +92,7 @@
             :value="slotClassName(slotKey)"
             @input="slotClassNameSet(slotKey, ($event.target as HTMLInputElement).value)"
             type="text"
-            class="px-2 py-1 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800 font-mono"
+            class="field font-mono"
             placeholder="sticky top-0 z-40"
           />
         </label>
@@ -102,7 +102,7 @@
             :value="slotStyle(slotKey)"
             @input="slotStyleSet(slotKey, ($event.target as HTMLInputElement).value)"
             type="text"
-            class="px-2 py-1 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800 font-mono"
+            class="field font-mono"
             placeholder="background: #fff"
           />
         </label>
@@ -113,7 +113,7 @@
             :value="slotContentText[slotKey]"
             @input="slotContentText[slotKey] = ($event.target as HTMLTextAreaElement).value"
             rows="3"
-            class="w-full px-2 py-1 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800 font-mono resize-none"
+            class="field w-full font-mono resize-none"
             placeholder='{ "id": "logo", "type": "element", "element": "img", "image": { "url": "/logo.png" } }'
           ></textarea>
         </label>
@@ -123,7 +123,7 @@
             :value="slotAlpineText[slotKey]"
             @input="slotAlpineText[slotKey] = ($event.target as HTMLTextAreaElement).value"
             rows="2"
-            class="w-full px-2 py-1 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800 font-mono resize-none"
+            class="field w-full font-mono resize-none"
             placeholder='{ "x-data": "{ appMenu: false, appPage: true }", "x-show": "open" }'
           ></textarea>
         </label>
@@ -131,7 +131,7 @@
       </div>
 
       <div class="flex items-center gap-3 pt-1">
-        <button type="button" :disabled="saving" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white" @click="save">
+        <button type="button" :disabled="saving" class="btn btn-primary" @click="save">
           {{ saving ? 'Saving…' : 'Save' }}
         </button>
         <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 border border-slate-700 hover:border-slate-500" @click="closeEditor">← Back to list</button>
@@ -162,20 +162,19 @@
           </div>
         </div>
         <div class="flex items-center gap-2 shrink-0 ml-3">
-          <button @click="editTemplate(t)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Edit</button>
-          <button @click="remove(t)" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Delete</button>
+          <button @click="editTemplate(t)" class="btn btn-link">Edit</button>
+          <button @click="remove(t)" class="btn btn-link-danger">Delete</button>
         </div>
       </div>
     </div>
 
     <!-- Module picker: click a module to add (or remove) it from the slot -->
-    <div v-if="slotPicker" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="slotPicker = null">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[70vh] flex flex-col overflow-hidden">
-        <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
-          <span class="text-xs font-semibold text-gray-600">Add module to {{ slotPicker }}</span>
-          <button type="button" class="text-gray-400 hover:text-gray-700" @click="slotPicker = null"><X class="w-4 h-4" /></button>
-        </div>
-        <div class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
+    <BaseModal v-if="slotPicker" :open="true" size="md" @close="slotPicker = null">
+      <template #header>
+        <h2 class="ui-modal-title flex items-center gap-2">Add module to {{ slotPicker }}</h2>
+      </template>
+      <div class="space-y-4">
+            <div class="min-h-0 p-2 space-y-1">
           <div v-if="modulePages.length === 0" class="text-xs text-gray-400 text-center py-6">
             No module pages yet - mark a page as <b>Module</b> in its Settings to make it available here.
           </div>
@@ -190,20 +189,21 @@
             <Check v-if="slotPageIds(slotPicker).includes(p.id)" class="w-4 h-4 text-indigo-600" />
           </button>
         </div>
-        <div class="flex justify-end px-3 py-2 border-t shrink-0">
-          <button type="button" class="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-500" @click="slotPicker = null">Done</button>
-        </div>
+
       </div>
-    </div>
+      <template #footer>
+            <button type="button" class="btn btn-primary" @click="slotPicker = null">Done</button>
+
+      </template>
+    </BaseModal>
 
     <!-- Snippet picker: click a snippet to add (or remove) it from the slot -->
-    <div v-if="snippetPicker && snippetPicker !== 'main'" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="snippetPicker = null">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[70vh] flex flex-col overflow-hidden">
-        <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
-          <span class="text-xs font-semibold text-gray-600">Add snippet to {{ snippetPicker }}</span>
-          <button type="button" class="text-gray-400 hover:text-gray-700" @click="snippetPicker = null"><X class="w-4 h-4" /></button>
-        </div>
-        <div class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
+    <BaseModal v-if="snippetPicker && snippetPicker !== 'main'" :open="true" size="md" @close="snippetPicker = null">
+      <template #header>
+        <h2 class="ui-modal-title flex items-center gap-2">Add snippet to {{ snippetPicker }}</h2>
+      </template>
+      <div class="space-y-4">
+            <div class="min-h-0 p-2 space-y-1">
           <div v-if="snippets.length === 0" class="text-xs text-gray-400 text-center py-6">
             No snippets yet - save a reusable element from the Whoobe One editor to use it here.
           </div>
@@ -236,15 +236,18 @@
             </button>
           </template>
         </div>
-        <div class="flex justify-end px-3 py-2 border-t shrink-0">
-          <button type="button" class="text-xs px-3 py-1.5 rounded bg-teal-600 text-white hover:bg-teal-500" @click="snippetPicker = null">Done</button>
-        </div>
+
       </div>
-    </div>
+      <template #footer>
+            <button type="button" class="text-xs px-3 py-1.5 rounded bg-teal-600 text-white hover:bg-teal-500" @click="snippetPicker = null">Done</button>
+
+      </template>
+    </BaseModal>
   </div>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../ui/BaseModal.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { X, Check } from '@lucide/vue'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'

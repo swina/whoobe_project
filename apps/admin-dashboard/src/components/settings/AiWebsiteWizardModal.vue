@@ -1,22 +1,18 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 z-50" @click.self="emit('close')">
-    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800 light:border-slate-200 shrink-0">
-        <h3 class="text-base font-bold text-slate-100 light:text-slate-900 flex items-center gap-2">
-          <Sparkles class="w-4 h-4 text-indigo-400" />
-          AI Website Wizard
-        </h3>
-        <button @click="emit('close')" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition text-sm">✕</button>
-      </div>
-
-      <div class="flex-1 overflow-y-auto p-5 space-y-4">
+  <BaseModal v-if="isOpen" :open="true" size="lg" @close="emit('close')">
+    <template #header>
+      <h2 class="ui-modal-title flex items-center gap-2"><Sparkles class="w-4 h-4 text-indigo-400" />
+    AI Website Wizard</h2>
+    </template>
+    <div class="space-y-4">
+        <div class="space-y-4">
         <div v-if="step === 'prompt'">
           <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-2">Describe the website you want to create</label>
           <textarea
             v-model="prompt"
             rows="5"
             placeholder="e.g. A corporate website for a tech company with homepage, about, services, blog, and contact pages. Include a hero banner, feature grid, and testimonial carousel snippets."
-            class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 placeholder-slate-500"
+            class="field w-full"
           ></textarea>
           <p class="text-xs text-slate-500 mt-1">Be as specific as possible about the pages, sections, and style you want.</p>
         </div>
@@ -33,7 +29,7 @@
           </div>
           <p class="text-sm text-rose-300">Generation failed</p>
           <p class="text-xs text-slate-400">{{ errorMessage }}</p>
-          <button @click="step = 'prompt'" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:hover:bg-slate-200 text-slate-200 light:text-slate-800 border border-slate-700 light:border-slate-300 transition">Try again</button>
+          <button @click="step = 'prompt'" class="btn btn-secondary light:hover:bg-slate-200">Try again</button>
         </div>
 
         <div v-if="step === 'preview'" class="space-y-4">
@@ -75,17 +71,20 @@
         </div>
       </div>
 
-      <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-800 light:border-slate-200 shrink-0">
-        <button v-if="step === 'prompt'" @click="emit('close')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:hover:bg-slate-200 text-slate-300 light:text-slate-700 border border-slate-700 light:border-slate-300 transition">Cancel</button>
-        <button v-if="step === 'prompt'" @click="handleGenerate" :disabled="!prompt.trim()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition">Generate</button>
-        <button v-if="step === 'preview'" @click="step = 'prompt'" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:hover:bg-slate-200 text-slate-300 light:text-slate-700 border border-slate-700 light:border-slate-300 transition">Back</button>
-        <button v-if="step === 'preview'" @click="handleCreate" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition">Create Website</button>
-      </div>
+
     </div>
-  </div>
+    <template #footer>
+        <button v-if="step === 'prompt'" @click="emit('close')" class="btn btn-secondary light:hover:bg-slate-200">Cancel</button>
+      <button v-if="step === 'prompt'" @click="handleGenerate" :disabled="!prompt.trim()" class="btn btn-primary">Generate</button>
+      <button v-if="step === 'preview'" @click="step = 'prompt'" class="btn btn-secondary light:hover:bg-slate-200">Back</button>
+      <button v-if="step === 'preview'" @click="handleCreate" class="btn btn-success">Create Website</button>
+
+    </template>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../ui/BaseModal.vue'
 import { ref } from 'vue'
 import { Sparkles, AlertCircle, FileText } from '@lucide/vue'
 import { useWebsitesStore } from '../../stores/websitesStore'

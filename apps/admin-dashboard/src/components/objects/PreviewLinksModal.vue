@@ -1,22 +1,10 @@
 <template>
-  <div class="fixed inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 z-50" @click.self="$emit('close')">
-    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
-      <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 light:border-slate-200">
-        <span class="text-sm font-semibold text-slate-100 light:text-slate-900">Preview Links</span>
-        <div class="flex items-center gap-3">
-          <button
-            type="button"
-            :disabled="generating"
-            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
-            @click="$emit('generate')"
-          >
-            {{ generating ? 'Generating…' : '+ Generate Preview Link' }}
-          </button>
-          <button type="button" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:hover:text-slate-800 transition text-sm" title="Close (Esc)" @click="$emit('close')">✕</button>
-        </div>
-      </div>
-
-      <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
+  <BaseModal :open="true" size="lg" @close="$emit('close')">
+    <template #header>
+      <h2 class="ui-modal-title flex items-center gap-2">Preview Links</h2>
+    </template>
+    <div class="space-y-4">
+        <div class="min-h-0 space-y-2">
         <p v-if="links.length === 0" class="text-xs text-slate-500 italic text-center py-6">No preview links yet.</p>
         <div
           v-for="link in links"
@@ -35,18 +23,20 @@
           <div class="shrink-0 flex items-center gap-3 text-[11px] font-semibold">
             <template v-if="!isInactive(link)">
               <a :href="urlFor(link.token)" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300">Open</a>
-              <button type="button" class="text-indigo-400 hover:text-indigo-300" @click="copy(link.token)">Copy</button>
-              <button type="button" class="text-rose-400 hover:text-rose-300" @click="$emit('revoke', link.token)">Revoke</button>
+              <button type="button" class="btn btn-link" @click="copy(link.token)">Copy</button>
+              <button type="button" class="btn btn-link-danger" @click="$emit('revoke', link.token)">Revoke</button>
             </template>
-            <button v-else type="button" class="text-rose-400 hover:text-rose-300" title="Delete this revoked or expired link permanently" @click="$emit('delete', link.token)">Delete</button>
+            <button v-else type="button" class="btn btn-link-danger" title="Delete this revoked or expired link permanently" @click="$emit('delete', link.token)">Delete</button>
           </div>
         </div>
       </div>
+
     </div>
-  </div>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../ui/BaseModal.vue'
 // The preview links of one Data Object (object-publish-workflow-plan.md
 // §2.3/§5), shown in a modal opened from MasterObjectTab's header. A revoked
 // link or an expired one stays listed (with its view count) and gets a Delete

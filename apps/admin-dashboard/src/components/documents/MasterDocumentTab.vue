@@ -15,14 +15,14 @@
         <button
           @click="saveStatus('draft')"
           :disabled="isSavingStatus !== null"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 disabled:opacity-50"
+          class="btn btn-secondary"
         >
           {{ isSavingStatus === 'draft' ? 'Saving…' : 'Save as Draft' }}
         </button>
         <button
           @click="saveStatus('published')"
           :disabled="isSavingStatus !== null"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
+          class="btn btn-primary"
         >
           {{ isSavingStatus === 'published' ? 'Publishing…' : 'Save and Publish' }}
         </button>

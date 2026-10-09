@@ -112,7 +112,7 @@
         </label>
 
         <div class="col-span-2 flex flex-wrap items-center gap-3 pt-2">
-          <button type="submit" :disabled="saving" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white">
+          <button type="submit" :disabled="saving" class="btn btn-primary">
             {{ saving ? 'Saving…' : scopeId && !view?.settings ? 'Give this website its own configuration' : 'Save' }}
           </button>
           <button v-if="scopeId && view?.settings" type="button" :disabled="saving" @click="useDefault" class="px-4 py-1.5 rounded-lg text-xs font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 light:text-slate-700 light:hover:bg-slate-100">
@@ -131,22 +131,22 @@
         <div class="grid grid-cols-2 gap-4">
           <label class="flex flex-col gap-1 text-xs text-slate-400">
             From
-            <input v-model="testForm.from" type="text" placeholder="no-reply@example.com" class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+            <input v-model="testForm.from" type="text" placeholder="no-reply@example.com" class="field" />
           </label>
 
           <label class="flex flex-col gap-1 text-xs text-slate-400">
             To
-            <input v-model="testForm.to" type="text" required placeholder="recipient@example.com" class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+            <input v-model="testForm.to" type="text" required placeholder="recipient@example.com" class="field" />
           </label>
 
           <label class="flex flex-col gap-1 text-xs text-slate-400">
             CC
-            <input v-model="testForm.cc" type="text" placeholder="cc@example.com" class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+            <input v-model="testForm.cc" type="text" placeholder="cc@example.com" class="field" />
           </label>
 
           <label class="flex flex-col gap-1 text-xs text-slate-400">
             Subject
-            <input v-model="testForm.subject" type="text" required placeholder="Test email" class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+            <input v-model="testForm.subject" type="text" required placeholder="Test email" class="field" />
           </label>
 
           <label class="col-span-2 flex flex-col gap-1 text-xs text-slate-400">
@@ -156,7 +156,7 @@
         </div>
 
         <div class="flex items-center gap-3 pt-2">
-          <button type="submit" :disabled="testSending" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white">
+          <button type="submit" :disabled="testSending" class="btn btn-primary">
             {{ testSending ? 'Sending…' : 'Send Test Email' }}
           </button>
           <span v-if="testResult === 'ok'" class="text-xs text-emerald-400">Sent.</span>
@@ -172,30 +172,30 @@
             v-model="logSearch"
             type="text"
             placeholder="Search to, subject, status…"
-            class="flex-1 min-w-[180px] px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800 placeholder:text-slate-500"
+            class="field flex-1 min-w-[180px]"
           />
-          <select v-model="logFilter" @change="resetAndLoad" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800">
+          <select v-model="logFilter" @change="resetAndLoad" class="field">
             <option value="">All statuses</option>
             <option value="sent">Sent</option>
             <option value="failed">Failed</option>
           </select>
-          <select v-model="logOrder" @change="resetAndLoad" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800">
+          <select v-model="logOrder" @change="resetAndLoad" class="field">
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
           </select>
-          <select v-model="logPageSize" @change="resetAndLoad" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-200 light:text-slate-800">
+          <select v-model="logPageSize" @change="resetAndLoad" class="field">
             <option :value="10">10 / page</option>
             <option :value="25">25 / page</option>
             <option :value="50">50 / page</option>
             <option :value="100">100 / page</option>
           </select>
-          <button type="button" @click="loadLog" :disabled="logLoading" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white">
+          <button type="button" @click="loadLog" :disabled="logLoading" class="btn btn-primary">
             {{ logLoading ? 'Loading…' : 'Refresh' }}
           </button>
           <button
             type="button"
             :disabled="selectedIds.size === 0 || deleting"
-            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white"
+            class="btn btn-danger"
             @click="deleteSelected"
           >
             {{ deleting ? 'Deleting…' : `Delete${selectedIds.size ? ` (${selectedIds.size})` : ''}` }}
@@ -270,7 +270,7 @@
       <div v-show="activeTab === 'templates'" class="space-y-4">
         <div class="flex items-center justify-between gap-2">
           <p class="text-xs text-slate-500">Reusable email templates referenced by Form notifications. Text templates edit inline; HTML templates open in the embedded Whoobe One editor.</p>
-          <button type="button" @click="startNewTemplate" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shrink-0">
+          <button type="button" @click="startNewTemplate" class="btn btn-primary shrink-0">
             New template
           </button>
         </div>
@@ -282,56 +282,56 @@
         <div v-else-if="editingId !== '' || creatingNew" class="rounded-xl border border-slate-800 light:border-slate-200 p-4 space-y-3">
           <div class="flex items-center justify-between">
             <h4 class="text-xs font-semibold text-slate-200 light:text-slate-800">{{ editingId ? 'Edit template' : 'New template' }}</h4>
-            <button type="button" class="text-slate-500 hover:text-slate-300 text-lg leading-none" @click="closeTemplateEditor">×</button>
+            <button type="button" class="btn btn-link-muted" @click="closeTemplateEditor">×</button>
           </div>
 
           <div class="grid grid-cols-2 gap-3">
             <label class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
               Name
-              <input v-model="templateForm.name" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+              <input v-model="templateForm.name" type="text" class="field" />
             </label>
             <label class="flex flex-col gap-1 text-xs text-slate-400">
               Kind
-              <select v-model="templateForm.kind" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800">
+              <select v-model="templateForm.kind" class="field">
                 <option value="text">Text</option>
                 <option value="html">HTML</option>
               </select>
             </label>
             <label class="flex flex-col gap-1 text-xs text-slate-400">
               Subject (supports {form.field} tokens)
-              <input v-model="templateForm.subject" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" placeholder="New submission from {form.firstname}" />
+              <input v-model="templateForm.subject" type="text" class="field" placeholder="New submission from {form.firstname}" />
             </label>
             <label class="flex flex-col gap-1 text-xs text-slate-400">
               To (optional, supports {form.field} tokens)
-              <input v-model="templateForm.to" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" placeholder="{form.email} or team@example.com" />
+              <input v-model="templateForm.to" type="text" class="field" placeholder="{form.email} or team@example.com" />
             </label>
             <label class="flex flex-col gap-1 text-xs text-slate-400">
               BCC / CCN (optional, supports {form.field} tokens)
-              <input v-model="templateForm.bcc" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" placeholder="archive@example.com or {form.email}" />
+              <input v-model="templateForm.bcc" type="text" class="field" placeholder="archive@example.com or {form.email}" />
             </label>
             <label class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
               Description
-              <input v-model="templateForm.description" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+              <input v-model="templateForm.description" type="text" class="field" />
             </label>
           </div>
 
           <div v-if="templateForm.kind === 'text'">
             <label class="flex flex-col gap-1 text-xs text-slate-400">
               Body (supports {form.field} tokens)
-              <textarea v-model="templateForm.body" rows="8" class="w-full px-3 py-2 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800 resize-none font-mono" placeholder="Hello {form.firstname},&#10;&#10;thank you for contacting us."></textarea>
+              <textarea v-model="templateForm.body" rows="8" class="field w-full resize-none font-mono" placeholder="Hello {form.firstname},&#10;&#10;thank you for contacting us."></textarea>
             </label>
           </div>
 
           <div v-else>
             <div v-if="!editingId" class="text-xs text-slate-500">Save this template first, then open it in the Whoobe One editor.</div>
             <div v-else class="flex flex-wrap items-center gap-3">
-              <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white" @click="editorFullscreen = true">Open full-screen editor</button>
+              <button type="button" class="btn btn-primary" @click="editorFullscreen = true">Open full-screen editor</button>
               <span class="text-xs text-slate-500">Edit the HTML body in the Whoobe One page editor, then click Save inside the editor to persist it.</span>
             </div>
           </div>
 
           <div class="flex items-center gap-3 pt-1">
-            <button type="button" :disabled="templateSaving" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white" @click="saveTemplate">
+            <button type="button" :disabled="templateSaving" class="btn btn-primary" @click="saveTemplate">
               {{ templateSaving ? 'Saving…' : 'Save' }}
             </button>
             <span v-if="templateSaveOk" class="text-xs text-emerald-400">Saved.</span>
@@ -387,17 +387,15 @@
   </div>
 
   <!-- Mail preview modal -->
-  <div v-if="previewOpen" class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center p-4" @click.self="closePreview">
-    <div class="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-slate-900 light:bg-white border border-slate-700 light:border-slate-200 shadow-xl overflow-hidden">
-      <div class="flex items-center justify-between px-5 py-3 border-b border-slate-800 light:border-slate-200">
-        <div class="min-w-0">
-          <h4 class="text-sm font-semibold text-slate-100 light:text-slate-900 truncate">{{ previewEntry?.subject }}</h4>
-          <p class="text-xs text-slate-500">{{ previewEntry?.status }} · {{ previewEntry ? formatLogTime(previewEntry.sentAt) : '' }}</p>
-        </div>
-        <button type="button" class="text-slate-500 hover:text-slate-300 text-lg leading-none" @click="closePreview">×</button>
-      </div>
-
-      <div v-if="previewLoading" class="text-xs text-slate-500 text-center py-10">Loading…</div>
+  <BaseModal v-if="previewOpen" :open="true" size="lg" @close="closePreview">
+    <template #header>
+      <div class="min-w-0">
+      <h4 class="text-sm font-semibold text-slate-100 light:text-slate-900 truncate">{{ previewEntry?.subject }}</h4>
+      <p class="ui-modal-subtitle">{{ previewEntry?.status }} · {{ previewEntry ? formatLogTime(previewEntry.sentAt) : '' }}</p>
+    </div>
+    </template>
+    <div class="space-y-4">
+        <div v-if="previewLoading" class="text-xs text-slate-500 text-center py-10">Loading…</div>
       <div v-else-if="previewError" class="text-xs text-rose-400 text-center py-10">{{ previewError }}</div>
       <template v-else-if="previewEntry">
         <div class="px-5 py-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs border-b border-slate-800 light:border-slate-200">
@@ -413,17 +411,18 @@
           <p v-else class="text-xs text-slate-500 p-4">No body stored for this entry.</p>
         </div>
         <div class="flex items-center gap-3 px-5 py-3 border-t border-slate-800 light:border-slate-200">
-          <button type="button" :disabled="resending" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white" @click="resend">
+          <button type="button" :disabled="resending" class="btn btn-primary" @click="resend">
             {{ resending ? 'Resending…' : 'Resend' }}
           </button>
           <span v-if="resendResult" class="text-xs text-emerald-400">{{ resendResult }}</span>
           <span v-if="resendError" class="text-xs text-rose-400">{{ resendError }}</span>
           <span class="flex-1"></span>
-          <button type="button" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-200 text-slate-200 light:text-slate-800 hover:bg-slate-700 light:hover:bg-slate-300" @click="closePreview">Close</button>
+          <button type="button" class="btn btn-secondary light:hover:bg-slate-300" @click="closePreview">Close</button>
         </div>
     </template>
-  </div>
-  </div>
+
+    </div>
+  </BaseModal>
 
   <!-- Full-screen Whoobe One editor for HTML mail templates -->
   <div v-if="editorFullscreen" class="fixed inset-0 z-[10000] bg-slate-950 flex flex-col">
@@ -431,7 +430,7 @@
       <span class="text-sm font-semibold text-slate-100">{{ templateForm.name || 'Mail template' }} — HTML editor</span>
       <div class="flex items-center gap-2">
         <span class="text-xs text-slate-500 hidden sm:inline">Save inside the editor, then close.</span>
-        <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white" @click="editorFullscreen = false">Close editor</button>
+        <button type="button" class="btn btn-secondary" @click="editorFullscreen = false">Close editor</button>
       </div>
     </div>
     <div class="flex-1 min-h-0">
@@ -450,6 +449,7 @@
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../ui/BaseModal.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import { useWebsitesStore } from '../../stores/websitesStore'

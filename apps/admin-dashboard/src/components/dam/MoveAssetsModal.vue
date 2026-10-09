@@ -1,15 +1,11 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between">
-        <h3 class="text-base font-bold text-slate-100 light:text-slate-900 flex items-center gap-2">
-          <FolderInput class="w-4 h-4 text-indigo-400" />
-          Move {{ assetCount }} Asset{{ assetCount === 1 ? '' : 's' }}
-        </h3>
-        <button @click="close" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition text-sm">✕</button>
-      </div>
-
-      <div>
+  <BaseModal v-if="isOpen" :open="true" size="md" persistent @close="close">
+    <template #header>
+      <h2 class="ui-modal-title flex items-center gap-2"><FolderInput class="w-4 h-4 text-indigo-400" />
+    Move {{ assetCount }} Asset{{ assetCount === 1 ? '' : 's' }}</h2>
+    </template>
+    <div class="space-y-4">
+        <div>
         <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1.5">Destination folder</label>
         <div class="max-h-64 overflow-y-auto rounded-xl border border-slate-800 light:border-slate-200 divide-y divide-slate-800/60 light:divide-slate-200/60">
           <button
@@ -41,23 +37,26 @@
         Moving {{ progress.current }} / {{ progress.total }}…
       </div>
 
-      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800 light:border-slate-200">
-        <button @click="close" :disabled="moving" class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition disabled:opacity-50">
-          Cancel
-        </button>
-        <button
-          @click="move"
-          :disabled="!targetFolderPath || moving"
-          class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition disabled:opacity-50"
-        >
-          {{ moving ? 'Moving…' : `Move to ${targetFolderPath || '…'}` }}
-        </button>
-      </div>
+
     </div>
-  </div>
+    <template #footer>
+        <button @click="close" :disabled="moving" class="btn btn-link-muted">
+        Cancel
+      </button>
+      <button
+        @click="move"
+        :disabled="!targetFolderPath || moving"
+        class="btn btn-primary"
+      >
+        {{ moving ? 'Moving…' : `Move to ${targetFolderPath || '…'}` }}
+      </button>
+
+    </template>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../ui/BaseModal.vue'
 import { computed, ref, watch } from 'vue'
 import { FolderInput, Folder, Loader2 } from '@lucide/vue'
 import { useDamStore } from '../../stores/damStore'

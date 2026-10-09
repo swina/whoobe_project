@@ -21,10 +21,10 @@
     <div v-else class="min-w-0 flex-1 text-xs text-slate-500 italic">No asset selected</div>
 
     <div class="flex items-center gap-2 shrink-0">
-      <button @click="isPickerOpen = true" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">
+      <button @click="isPickerOpen = true" type="button" class="btn btn-link">
         {{ modelValue ? 'Change' : '+ Choose Asset' }}
       </button>
-      <button v-if="modelValue" @click="emit('update:modelValue', null)" type="button" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Remove</button>
+      <button v-if="modelValue" @click="emit('update:modelValue', null)" type="button" class="btn btn-link-danger">Remove</button>
     </div>
 
     <AssetPickerModal

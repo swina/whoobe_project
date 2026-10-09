@@ -5,7 +5,7 @@
         <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800">Roles</h3>
         <p class="text-xs text-slate-500">{{ roles.length }} role(s)</p>
       </div>
-      <button @click="openCreate" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5">
+      <button @click="openCreate" class="btn btn-primary flex items-center gap-1.5">
         <Plus class="w-3.5 h-3.5" />
         Add Role
       </button>
@@ -34,10 +34,10 @@
             <td class="px-4 py-3 text-slate-400">{{ role.userCount }}</td>
             <td class="px-4 py-3 text-right">
               <div class="flex items-center justify-end gap-2">
-                <button @click="openEdit(role)" class="text-indigo-400 hover:text-indigo-300 transition" title="Edit">
+                <button @click="openEdit(role)" class="btn btn-link" title="Edit">
                   <Pencil class="w-3.5 h-3.5" />
                 </button>
-                <button @click="confirmDelete(role)" class="text-rose-400 hover:text-rose-300 transition" title="Delete">
+                <button @click="confirmDelete(role)" class="btn btn-link-danger" title="Delete">
                   <Trash2 class="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -48,17 +48,19 @@
     </div>
 
     <!-- Create/Edit Modal -->
-    <div v-if="showModal" class="fixed inset-0 z-50 flex items-start justify-center pt-12 bg-black/60" @click.self="closeModal">
-      <div class="w-full max-w-2xl p-6 rounded-2xl bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-sm font-bold text-slate-100 light:text-slate-900">{{ isEditing ? 'Edit Role' : 'Add Role' }}</h3>
-        <div class="space-y-3">
+    <BaseModal v-if="showModal" :open="true" size="lg" @close="closeModal">
+      <template #header>
+        <h2 class="ui-modal-title flex items-center gap-2">{{ isEditing ? 'Edit Role' : 'Add Role' }}</h2>
+      </template>
+      <div class="space-y-4">
+            <div class="space-y-3">
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Name</label>
-            <input v-model="form.name" type="text" required class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="form.name" type="text" required class="field w-full" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Description</label>
-            <input v-model="form.description" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="form.description" type="text" class="field w-full" />
           </div>
 
           <div>
@@ -104,18 +106,21 @@
           </div>
         </div>
         <div v-if="errorMessage" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">{{ errorMessage }}</div>
-        <div class="flex justify-end gap-2">
-          <button @click="closeModal" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-200 text-slate-300 light:text-slate-700 hover:bg-slate-700 light:hover:bg-slate-300 transition">Cancel</button>
-          <button @click="saveRole" :disabled="isSubmitting" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-50">
-            {{ isSubmitting ? 'Saving...' : 'Save' }}
-          </button>
-        </div>
+
       </div>
-    </div>
+      <template #footer>
+            <button @click="closeModal" class="btn btn-secondary light:hover:bg-slate-300">Cancel</button>
+        <button @click="saveRole" :disabled="isSubmitting" class="btn btn-primary">
+          {{ isSubmitting ? 'Saving...' : 'Save' }}
+        </button>
+
+      </template>
+    </BaseModal>
   </div>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../components/ui/BaseModal.vue'
 import { ref, computed, onMounted } from 'vue'
 import { Plus, Pencil, Trash2 } from '@lucide/vue'
 import { listRoles, createRole, updateRole, deleteRole, listAllPermissions, getDefaultCoreApiUrl, type RoleAdmin, type PermissionItem } from '../utils/auth-api'

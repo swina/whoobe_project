@@ -70,7 +70,7 @@
       <span class="text-sm font-semibold text-slate-100">{{ page?.title || 'Editor' }}</span>
       <div class="flex items-center gap-2">
         <span class="text-xs text-slate-500 hidden sm:inline">Edit the page, then close.</span>
-        <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white" @click="fullscreen = false">Close editor</button>
+        <button type="button" class="btn btn-secondary" @click="fullscreen = false">Close editor</button>
       </div>
     </div>
     <div class="flex-1 min-h-0">

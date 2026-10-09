@@ -4,7 +4,7 @@
     <div class="relative w-96 h-full bg-slate-900 light:bg-white border-l border-slate-800 light:border-slate-200 shadow-2xl flex flex-col z-10">
       <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800 light:border-slate-200">
         <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800">Link a Page</h3>
-        <button @click="$emit('close')" class="text-slate-500 hover:text-slate-300 text-xs">✕</button>
+        <button @click="$emit('close')" class="btn btn-link-muted">✕</button>
       </div>
 
       <div class="px-4 py-2 border-b border-slate-800/60 light:border-slate-200/60">
@@ -12,7 +12,7 @@
           v-model="search"
           type="text"
           placeholder="Search pages by title or slug…"
-          class="w-full px-3 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 placeholder-slate-600"
+          class="field w-full"
         />
       </div>
 
@@ -41,7 +41,7 @@
       <div class="px-4 py-3 border-t border-slate-800 light:border-slate-200">
         <button
           @click="creating = true"
-          class="w-full px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition"
+          class="btn btn-primary w-full"
         >
           + Create New Page
         </button>
@@ -49,11 +49,11 @@
 
       <!-- Quick-create form -->
       <div v-if="creating" class="px-4 py-3 border-t border-slate-800 light:border-slate-200 space-y-2 text-xs">
-        <input v-model="newTitle" type="text" placeholder="Page title" class="w-full px-2 py-1 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
-        <input v-model="newSlug" type="text" placeholder="slug" class="w-full px-2 py-1 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+        <input v-model="newTitle" type="text" placeholder="Page title" class="field w-full" />
+        <input v-model="newSlug" type="text" placeholder="slug" class="field w-full font-mono" />
         <div class="flex justify-end gap-2">
-          <button @click="creating = false" class="px-2 py-1 rounded text-[10px] text-slate-400 hover:text-slate-200">Cancel</button>
-          <button @click="createPage" :disabled="!newTitle.trim() || !newSlug.trim()" class="px-2 py-1 rounded text-[10px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50">Create</button>
+          <button @click="creating = false" class="btn btn-link-muted">Cancel</button>
+          <button @click="createPage" :disabled="!newTitle.trim() || !newSlug.trim()" class="btn btn-primary btn-sm">Create</button>
         </div>
       </div>
     </div>

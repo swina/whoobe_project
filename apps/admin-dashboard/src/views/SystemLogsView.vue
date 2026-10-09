@@ -15,7 +15,7 @@
             <select
               :value="logStore.selectedApp"
               @change="logStore.selectApp(($event.target as HTMLSelectElement).value)"
-              class="bg-slate-800 light:bg-slate-100 border border-slate-700 light:border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-200 light:text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500"
+              class="field"
             >
               <option v-for="app in logStore.APPS" :key="app" :value="app">{{ app }}</option>
             </select>
@@ -27,7 +27,7 @@
               type="date"
               :value="logStore.selectedDate"
               @change="logStore.selectDate(($event.target as HTMLInputElement).value)"
-              class="bg-slate-800 light:bg-slate-100 border border-slate-700 light:border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-200 light:text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500"
+              class="field"
             />
           </div>
 
@@ -62,7 +62,7 @@
           />
           <button
             @click="copyFilteredLogs"
-            class="ml-auto px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition"
+            class="btn btn-primary btn-sm ml-auto"
           >
             Copy filtered
           </button>

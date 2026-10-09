@@ -14,7 +14,7 @@
         <span class="text-sm text-slate-200 light:text-slate-800">Enabled</span>
       </div>
       <button
-        class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800"
+        class="btn btn-secondary"
         @click="phase = 'confirmDisable'"
       >
         Disable
@@ -29,18 +29,18 @@
         type="password"
         autocomplete="current-password"
         required
-        class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+        class="field w-full"
       />
       <div v-if="error" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">{{ error }}</div>
       <div class="flex gap-2">
         <button
           type="submit"
           :disabled="submitting"
-          class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-700 hover:bg-rose-600 text-white disabled:opacity-50"
+          class="btn btn-danger"
         >
           {{ submitting ? 'Disabling...' : 'Confirm disable' }}
         </button>
-        <button type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800" @click="resetToStatus">
+        <button type="button" class="btn btn-secondary" @click="resetToStatus">
           Cancel
         </button>
       </div>
@@ -53,7 +53,7 @@
         <span class="text-sm text-slate-200 light:text-slate-800">Not enabled</span>
       </div>
       <button
-        class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white"
+        class="btn btn-primary"
         @click="beginSetup"
       >
         Enable
@@ -77,18 +77,18 @@
         placeholder="123456"
         autocomplete="one-time-code"
         required
-        class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 tracking-widest"
+        class="field w-full tracking-widest"
       />
       <div v-if="error" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">{{ error }}</div>
       <div class="flex gap-2">
         <button
           type="submit"
           :disabled="submitting"
-          class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
+          class="btn btn-primary"
         >
           {{ submitting ? 'Verifying...' : 'Confirm' }}
         </button>
-        <button type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800" @click="resetToStatus">
+        <button type="button" class="btn btn-secondary" @click="resetToStatus">
           Cancel
         </button>
       </div>
@@ -105,7 +105,7 @@
         </code>
       </div>
       <button
-        class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white"
+        class="btn btn-primary"
         @click="acknowledgeRecoveryCodes"
       >
         I've saved these codes

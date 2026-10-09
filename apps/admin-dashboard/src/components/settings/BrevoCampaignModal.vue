@@ -1,15 +1,13 @@
 <template>
-  <div class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center p-4" @click.self="$emit('close')">
-    <div class="w-full max-w-lg max-h-[90vh] flex flex-col rounded-2xl bg-slate-900 light:bg-white border border-slate-700 light:border-slate-200 shadow-xl overflow-hidden">
-      <div class="flex items-center justify-between px-5 py-3 border-b border-slate-800 light:border-slate-200">
-        <div class="min-w-0">
-          <h4 class="text-sm font-semibold text-slate-100 light:text-slate-900 truncate">Send as Brevo campaign</h4>
-          <p class="text-xs text-slate-500 truncate">{{ sourceKindLabel }} · {{ props.sourceLabel }}</p>
-        </div>
-        <button type="button" class="text-slate-500 hover:text-slate-300 text-lg leading-none" @click="$emit('close')">×</button>
-      </div>
-
-      <div class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-3 text-xs">
+  <BaseModal :open="true" size="md" @close="$emit('close')">
+    <template #header>
+      <div class="min-w-0">
+      <h4 class="text-sm font-semibold text-slate-100 light:text-slate-900 truncate">Send as Brevo campaign</h4>
+      <p class="ui-modal-subtitle">{{ sourceKindLabel }} · {{ props.sourceLabel }}</p>
+    </div>
+    </template>
+    <div class="space-y-4">
+        <div class="min-h-0 px-5 py-4 space-y-3 text-xs">
         <p class="text-slate-500">
           Renders this {{ sourceKindLabel.toLowerCase() }}'s HTML (images resolved, Tailwind inlined - the same
           pipeline a Form notification's own send uses) and creates it as a <strong>draft</strong> campaign in Brevo.
@@ -24,7 +22,7 @@
         <template v-else>
           <label class="flex flex-col gap-1 text-slate-400">
             Gateway endpoint
-            <select v-model="selectedEndpointId" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800">
+            <select v-model="selectedEndpointId" class="field">
               <option value="" disabled>Choose an endpoint…</option>
               <option v-for="ep in endpoints" :key="ep.id" :value="ep.id">{{ ep.name }}</option>
             </select>
@@ -33,7 +31,7 @@
           <div v-if="loadingRoutes" class="text-slate-500">Loading routes…</div>
           <label v-else-if="selectedEndpointId" class="flex flex-col gap-1 text-slate-400">
             Create-campaign route
-            <select v-model="selectedRouteId" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800">
+            <select v-model="selectedRouteId" class="field">
               <option value="" disabled>Choose a route…</option>
               <option v-for="r in routes" :key="r.id" :value="r.id">{{ r.method }} {{ r.path }}</option>
             </select>
@@ -45,20 +43,20 @@
 
           <label class="flex flex-col gap-1 text-slate-400">
             Campaign name <span class="text-slate-600">(Brevo's internal reference, not shown to recipients)</span>
-            <input v-model="campaignName" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+            <input v-model="campaignName" type="text" class="field" />
           </label>
           <label class="flex flex-col gap-1 text-slate-400">
             Subject line
-            <input v-model="subject" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+            <input v-model="subject" type="text" class="field" />
           </label>
           <div class="grid grid-cols-2 gap-3">
             <label class="flex flex-col gap-1 text-slate-400">
               Sender name
-              <input v-model="senderName" type="text" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+              <input v-model="senderName" type="text" class="field" />
             </label>
             <label class="flex flex-col gap-1 text-slate-400">
               Sender email
-              <input v-model="senderEmail" type="email" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" placeholder="Must be a verified sender in Brevo" />
+              <input v-model="senderEmail" type="email" class="field" placeholder="Must be a verified sender in Brevo" />
             </label>
           </div>
 
@@ -103,28 +101,30 @@
           </label>
         </template>
 
-       
+
       </div>
 
       <div class="flex items-center gap-3 px-5 py-3 border-t border-slate-800 light:border-slate-200">
         <button
           type="button"
           :disabled="!canSubmit || submitting"
-          class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white"
+          class="btn btn-primary"
           @click="submit"
         >
           {{ submitting ? 'Creating draft…' : 'Create draft in Brevo' }}
         </button>
         <span class="flex-1"></span>
-        <button type="button" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-200 text-slate-200 light:text-slate-800 hover:bg-slate-700 light:hover:bg-slate-300" @click="$emit('close')">
+        <button type="button" class="btn btn-secondary light:hover:bg-slate-300" @click="$emit('close')">
           Close
         </button>
       </div>
+
     </div>
-  </div>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../ui/BaseModal.vue'
 // Whoobe → Brevo campaign integration: turns an HTML mail template, a
 // snippet, or a page into a Brevo draft campaign - three content sources,
 // one modal, since they all boil down to "render this Element tree to

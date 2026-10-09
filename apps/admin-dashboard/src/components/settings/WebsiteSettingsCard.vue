@@ -6,13 +6,13 @@
         <p class="text-xs text-slate-500 mt-1">Manage websites, domains, and supported locales. Each website can have its own set of pages and menus.</p>
       </div>
       <div class="flex items-center gap-2">
-        <!---<button @click="showAiModal = true" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 flex items-center gap-1.5">
+        <!---<button @click="showAiModal = true" class="btn btn-soft-primary flex items-center gap-1.5">
           <Sparkles class="w-3.5 h-3.5" />
           AI Website Wizard
         </button>--->
-        <button @click="createNewWebsite" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">+ New Website</button>
-        <button data-testid="new-docs-site" @click="createNewDocsSite" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40">+ New Documentation</button>
-        <button @click="triggerImport" :disabled="!!busy" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 disabled:opacity-50">Import</button>
+        <button @click="createNewWebsite" class="btn btn-primary">+ New Website</button>
+        <button data-testid="new-docs-site" @click="createNewDocsSite" class="btn btn-soft-primary">+ New Documentation</button>
+        <button @click="triggerImport" :disabled="!!busy" class="btn btn-secondary">Import</button>
         <input ref="importFileInput" type="file" accept=".zip,.json" class="hidden" @change="handleImportFile" />
       </div>
     </div>
@@ -31,7 +31,7 @@
             <span v-if="isDocsSite(website)" class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300">documentation</span>
           </div>
           <div class="text-xs text-slate-500 font-mono mt-0.5 space-x-3">
-            <span>id: <button @click="copyId(website.id)" class="text-indigo-400 hover:text-indigo-300 cursor-pointer" :title="'Click to copy'">{{ website.id.slice(0, 8) }}…</button></span>
+            <span>id: <button @click="copyId(website.id)" class="btn btn-link" :title="'Click to copy'">{{ website.id.slice(0, 8) }}…</button></span>
             <span>default: {{ website.defaultLocale }}</span>
             <span>locales: {{ website.supportedLocales.join(', ') }}</span>
             <span v-if="website.domains.length">domains: {{ website.domains.join(', ') }}</span>
@@ -40,17 +40,17 @@
         <div class="flex items-center gap-2 shrink-0 ml-3">
           <template v-if="isDocsSite(website)">
             <a :href="docsPreviewUrl(website.rootPath)" target="_blank" rel="noopener" :data-testid="`docs-preview-${website.id}`" class="text-xs font-semibold text-sky-400 hover:text-sky-300" title="Open the documentation site">Preview</a>
-            <button :data-testid="`docs-open-${website.id}`" @click="openDocs(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Documents</button>
-            <button :data-testid="`docs-export-${website.id}`" @click="exportWebsiteAction(website)" :disabled="!!busy" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 disabled:opacity-50" title="Export the documentation (files, images, index) as a .zip">Export</button>
+            <button :data-testid="`docs-open-${website.id}`" @click="openDocs(website)" class="btn btn-link">Documents</button>
+            <button :data-testid="`docs-export-${website.id}`" @click="exportWebsiteAction(website)" :disabled="!!busy" class="btn btn-link-success" title="Export the documentation (files, images, index) as a .zip">Export</button>
           </template>
           <template v-else>
-            <button @click="openPublish(website)" class="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1"><Rocket class="w-3 h-3" />Publish</button>
-            <button @click="exportWebsiteAction(website)" :disabled="!!busy" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 disabled:opacity-50">Export</button>
-            <button @click="openPaths(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Paths</button>
-            <button @click="openTemplates(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Templates</button>
-            <button @click="openWebsiteTab(website)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Edit</button>
+            <button @click="openPublish(website)" class="btn btn-link-warning flex items-center gap-1"><Rocket class="w-3 h-3" />Publish</button>
+            <button @click="exportWebsiteAction(website)" :disabled="!!busy" class="btn btn-link-success">Export</button>
+            <button @click="openPaths(website)" class="btn btn-link">Paths</button>
+            <button @click="openTemplates(website)" class="btn btn-link">Templates</button>
+            <button @click="openWebsiteTab(website)" class="btn btn-link">Edit</button>
           </template>
-          <button @click="handleDelete(website)" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Delete</button>
+          <button @click="handleDelete(website)" class="btn btn-link-danger">Delete</button>
         </div>
       </div>
     </div>

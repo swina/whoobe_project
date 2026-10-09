@@ -82,8 +82,8 @@
               </div>
               <div class="flex items-center gap-2">
                 <span v-if="placeholderPimcorePath" class="text-xs text-slate-400 font-mono truncate max-w-[200px]">{{ placeholderPimcorePath }}</span>
-                <button @click="openPicker" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40">Pick</button>
-                <button v-if="placeholderPimcorePath" @click="clearPlaceholder" class="text-xs text-rose-400 hover:text-rose-300">Clear</button>
+                <button @click="openPicker" class="btn btn-soft-primary">Pick</button>
+                <button v-if="placeholderPimcorePath" @click="clearPlaceholder" class="btn btn-link-danger">Clear</button>
               </div>
             </div>
 
@@ -104,10 +104,10 @@
                   step="5"
                   v-model.number="autosaveInterval"
                   :disabled="!autosaveEnabled"
-                  class="w-20 px-2 py-1.5 rounded-lg text-xs bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-slate-200 light:text-slate-800 text-center disabled:opacity-50"
+                  class="field w-20 text-center"
                 />
                 <span class="text-xs text-slate-500">sec</span>
-                <button @click="saveAutosave" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40">Save</button>
+                <button @click="saveAutosave" class="btn btn-soft-primary">Save</button>
               </div>
             </div>
 

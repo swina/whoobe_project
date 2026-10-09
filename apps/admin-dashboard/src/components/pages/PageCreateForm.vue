@@ -13,7 +13,7 @@
           type="text"
           required
           placeholder="e.g. About Us"
-          class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+          class="field w-full"
           @input="autoSlug"
         />
       </div>
@@ -24,7 +24,7 @@
           type="text"
           required
           placeholder="/about-us"
-          class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+          class="field w-full font-mono"
         />
       </div>
       <div>
@@ -33,7 +33,7 @@
           v-model="category"
           type="text"
           placeholder="e.g. Landing page"
-          class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+          class="field w-full"
         />
       </div>
 
@@ -58,10 +58,10 @@
       <div v-if="error" class="px-3 py-2 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs">{{ error }}</div>
 
       <div class="flex justify-end gap-2 pt-2">
-        <button type="button" class="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 disabled:opacity-50" @click="$emit('cancel')">
+        <button type="button" class="btn btn-secondary" @click="$emit('cancel')">
           Cancel
         </button>
-        <button type="submit" :disabled="creating" class="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50">
+        <button type="submit" :disabled="creating" class="btn btn-primary">
           {{ creating ? 'Creating…' : 'Create Page' }}
         </button>
       </div>

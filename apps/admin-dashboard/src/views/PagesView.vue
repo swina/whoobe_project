@@ -7,7 +7,7 @@
       </div>
       <button
         @click="handleCreate"
-        class="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition"
+        class="btn btn-primary"
       >
         + Create Page
       </button>
@@ -36,11 +36,11 @@
           v-model="searchQuery"
           type="text"
           placeholder="Search by title or slug..."
-          class="flex-1 px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+          class="field flex-1"
         />
         <select
           v-model="filterWebsiteId"
-          class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 min-w-[10rem]"
+          class="field min-w-[10rem]"
         >
           <option value="">All websites</option>
           <option v-for="w in websitesStore.websites" :key="w.id" :value="w.id">{{ w.name }}</option>
@@ -58,11 +58,11 @@
               <div v-for="(col, idx) in displayColumns" :key="col.name"
                 class="flex items-center gap-1.5 text-xs text-slate-300 light:text-slate-700 group">
                 <button @click="moveColumn(col.name, -1)" :disabled="idx === 0"
-                  class="text-slate-600 hover:text-slate-300 disabled:opacity-20 shrink-0" title="Move up">
+                  class="btn btn-link-muted shrink-0" title="Move up">
                   <ChevronUp class="w-3 h-3" />
                 </button>
                 <button @click="moveColumn(col.name, 1)" :disabled="idx === displayColumns.length - 1"
-                  class="text-slate-600 hover:text-slate-300 disabled:opacity-20 shrink-0" title="Move down">
+                  class="btn btn-link-muted shrink-0" title="Move down">
                   <ChevronDown class="w-3 h-3" />
                 </button>
                 <input type="checkbox" :checked="activeColumnNames.includes(col.name)"
@@ -88,11 +88,11 @@
       <button @click="handleBatchPublish"
         class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-white">Publish</button>
       <button @click="handleBatchUnpublish"
-        class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white">Unpublish</button>
+        class="btn btn-warning">Unpublish</button>
       <button @click="handleBatchDelete"
-        class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-700 hover:bg-rose-600 text-white">Delete</button>
+        class="btn btn-danger">Delete</button>
       <button @click="selectedPageIds = new Set()"
-        class="text-xs text-slate-400 hover:text-slate-200 light:text-slate-500 ml-auto">Clear</button>
+        class="btn btn-link-muted ml-auto">Clear</button>
     </div>
 
     <div v-if="mode === 'pages' && pagesStore.isLoading && pagesStore.pages.length === 0" class="p-12 text-center text-xs text-slate-500">
@@ -199,7 +199,7 @@
       <div class="flex items-center justify-between px-4 py-3 border-t border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-white/40">
         <div class="flex items-center gap-2 text-xs text-slate-400 light:text-slate-600">
           <span>Rows per page:</span>
-          <select v-model.number="pageSize" class="px-2 py-1 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500">
+          <select v-model.number="pageSize" class="field">
             <option v-for="size in [10, 25, 50, 100]" :key="size" :value="size">{{ size }}</option>
           </select>
         </div>
@@ -227,14 +227,14 @@
             @click="handlePromoteAll"
             :disabled="stagedPages.length === 0 || promoting"
             type="button"
-            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50"
+            class="btn btn-warning"
           >
             {{ promoting ? 'Promoting…' : 'Promote All' }}
           </button>
           <button
             @click="refreshStaged"
             type="button"
-            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800"
+            class="btn btn-secondary"
           >
             Refresh
           </button>
@@ -276,7 +276,7 @@
                   @click="promoteOne(sp)"
                   :disabled="promoting"
                   type="button"
-                  class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50"
+                  class="btn btn-warning btn-sm"
                 >
                   Promote
                 </button>
@@ -294,22 +294,20 @@
       </div>
 
       <!-- Staged detail drawer: inspect one staged page's converted content -->
-      <div v-if="selectedStaged"
-        class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="selectedStaged = null">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl h-[80vh] flex flex-col overflow-hidden">
-          <div class="flex items-center justify-between px-4 py-3 border-b shrink-0">
-            <div class="min-w-0">
-              <div class="text-sm font-semibold text-gray-800 truncate">{{ selectedStaged.title }}</div>
-              <div class="text-xs text-gray-500 font-mono truncate">{{ selectedStaged.slug }} · {{ selectedStaged.locale }} · pimcore {{ selectedStaged.pimcoreId }}</div>
-            </div>
-            <button class="text-xs text-gray-400 hover:text-gray-700 shrink-0" @click="selectedStaged = null"><X class="w-4 h-4" /></button>
-          </div>
-          <div class="flex items-center gap-2 px-4 py-2 border-b shrink-0">
+      <BaseModal v-if="selectedStaged" :open="true" size="xl" @close="selectedStaged = null">
+        <template #header>
+          <div class="min-w-0">
+      <div class="text-sm font-semibold text-gray-800 truncate">{{ selectedStaged.title }}</div>
+      <div class="text-xs text-gray-500 font-mono truncate">{{ selectedStaged.slug }} · {{ selectedStaged.locale }} · pimcore {{ selectedStaged.pimcoreId }}</div>
+    </div>
+        </template>
+        <div class="space-y-4">
+                <div class="flex items-center gap-2 px-4 py-2 border-b shrink-0">
             <button
               @click="promoteOne(selectedStaged)"
               :disabled="promoting"
               type="button"
-              class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50"
+              class="btn btn-warning"
             >
               {{ promoting ? 'Promoting…' : 'Promote this page' }}
             </button>
@@ -324,19 +322,18 @@
           <div class="flex-1 min-h-0 overflow-auto p-4">
             <pre class="text-[11px] leading-relaxed text-gray-700 whitespace-pre-wrap font-mono">{{ formattedStagedContent }}</pre>
           </div>
+
         </div>
-      </div>
+      </BaseModal>
     </div>
 
     <!-- Filter Query-->
-    <div v-if="showFilterModal"
-      class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="showFilterModal = false">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl h-[60vh] max-h-[80vh] flex flex-col overflow-hidden">
-        <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
-          <span class="text-xs font-semibold text-gray-600">Filter pages</span>
-          <button class="text-xs text-gray-400 hover:text-gray-700" @click="showFilterModal = false"><X class="w-4 h-4" /></button>
-        </div>
-        <div class="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
+    <BaseModal v-if="showFilterModal" :open="true" size="lg" @close="showFilterModal = false">
+      <template #header>
+        <h2 class="ui-modal-title flex items-center gap-2">Filter pages</h2>
+      </template>
+      <div class="space-y-4">
+            <div class="min-h-0 p-3 space-y-2">
           <div class="text-[10px] text-gray-400 mb-1">Filters (all must match)</div>
           <div v-if="queryFilters.length === 0" class="text-xs text-gray-400 text-center py-4">No filters — shows all pages.</div>
           <div v-for="(f, i) in queryFilters" :key="i" class="flex items-center gap-2">
@@ -380,8 +377,9 @@
             <button class="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white" @click="showFilterModal = false">Apply</button>
           </div>
         </div>
+
       </div>
-    </div>
+    </BaseModal>
   </div>
 
   <BrevoCampaignModal
@@ -396,6 +394,7 @@
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../components/ui/BaseModal.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { FileText, ChevronUp, ChevronDown, Filter, Plus, Trash2, X, Send } from '@lucide/vue'
 import { usePagesStore } from '../stores/pagesStore'

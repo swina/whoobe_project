@@ -9,7 +9,7 @@
         <button
           @click="handleSave"
           :disabled="isSaving || !name.trim() || !label.trim()"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
+          class="btn btn-primary"
         >
           {{ isSaving ? 'Saving…' : 'Save Class' }}
         </button>
@@ -23,7 +23,7 @@
             :disabled="!isNew"
             type="text"
             placeholder="e.g. Product"
-            class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+            class="field w-full"
           />
         </div>
         <div>
@@ -32,7 +32,7 @@
             v-model="label"
             type="text"
             placeholder="e.g. Product"
-            class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+            class="field w-full"
           />
         </div>
       </div>
@@ -76,7 +76,7 @@
             Group fields into sections - each becomes its own tab on the object edit form. Fields left ungrouped still show, under an
             "Other fields" tab. Use the eye to hide a field from the form (its stored values are kept; required fields can't be hidden).
           </p>
-          <button @click="addSection" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 shrink-0 ml-3">+ Add section</button>
+          <button @click="addSection" type="button" class="btn btn-link shrink-0 ml-3">+ Add section</button>
         </div>
 
         <p v-if="namedFields.length === 0" class="text-xs text-slate-600 light:text-slate-400 italic">Add fields on the Fields tab first.</p>
@@ -106,7 +106,7 @@
                   <select
                     :value="''"
                     @change="assignFieldToSection(field.name, ($event.target as HTMLSelectElement).value)"
-                    class="px-1.5 py-1 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500 shrink-0"
+                    class="field shrink-0"
                   >
                     <option value="">Ungrouped</option>
                     <option v-for="(section, i) in viewConfig.detailSections" :key="i" :value="i">→ {{ section.title || `Section ${i + 1}` }}</option>
@@ -117,7 +117,7 @@
                   v-if="relationDisplayOptions(field)"
                   :value="field.relationDisplayField ?? ''"
                   @change="setRelationDisplayField(field, ($event.target as HTMLSelectElement).value)"
-                  class="w-52 px-1.5 py-1 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+                  class="field w-52"
                 >
                   <option value="">Show: Key (default)</option>
                   <option v-for="f in relationDisplayOptions(field)" :key="f.name" :value="f.name">{{ f.title || f.name }}</option>
@@ -137,12 +137,12 @@
                 v-model="section.title"
                 type="text"
                 placeholder="Section title (e.g. Pricing)"
-                class="flex-1 px-2 py-1 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+                class="field flex-1"
               />
               <span class="text-[10px] text-slate-600 light:text-slate-400 shrink-0">({{ sectionFields(sectionIndex).length }})</span>
-              <button @click="moveSection(sectionIndex, -1)" type="button" :disabled="sectionIndex === 0" class="text-xs text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30 shrink-0">↑</button>
-              <button @click="moveSection(sectionIndex, 1)" type="button" :disabled="sectionIndex === viewConfig.detailSections.length - 1" class="text-xs text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30 shrink-0">↓</button>
-              <button @click="removeSection(sectionIndex)" type="button" class="text-xs text-rose-400 hover:text-rose-300 shrink-0">Remove</button>
+              <button @click="moveSection(sectionIndex, -1)" type="button" :disabled="sectionIndex === 0" class="btn btn-link-muted shrink-0">↑</button>
+              <button @click="moveSection(sectionIndex, 1)" type="button" :disabled="sectionIndex === viewConfig.detailSections.length - 1" class="btn btn-link-muted shrink-0">↓</button>
+              <button @click="removeSection(sectionIndex)" type="button" class="btn btn-link-danger shrink-0">Remove</button>
             </div>
             <div v-if="isExpanded(sectionIndex)" class="pl-6 pb-2 pr-2 space-y-2 border-t border-slate-800/60 light:border-slate-200/60 pt-1.5">
               <div class="space-y-1">
@@ -150,7 +150,7 @@
                   v-model="section.containerClass"
                   type="text"
                   placeholder="Custom container classes (e.g. grid grid-cols-2 gap-4)"
-                  class="w-full px-2 py-1 text-[11px] font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+                  class="field w-full font-mono"
                 />
                 <p class="text-[10px] text-slate-600 light:text-slate-400 italic">
                   Optional Tailwind classes applied to this section's field container on the object edit form - replaces the default
@@ -180,18 +180,18 @@
                       @click="moveFieldInSection(sectionIndex, field.name, -1)"
                       type="button"
                       :disabled="fieldIndex === 0"
-                      class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30"
+                      class="btn btn-link-muted"
                     >↑</button>
                     <button
                       @click="moveFieldInSection(sectionIndex, field.name, 1)"
                       type="button"
                       :disabled="fieldIndex === sectionFields(sectionIndex).length - 1"
-                      class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30"
+                      class="btn btn-link-muted"
                     >↓</button>
                     <select
                       :value="String(sectionIndex)"
                       @change="assignFieldToSection(field.name, ($event.target as HTMLSelectElement).value)"
-                      class="px-1.5 py-1 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+                      class="field"
                     >
                       <option value="">Ungrouped</option>
                       <option v-for="(s, i) in viewConfig.detailSections" :key="i" :value="i">→ {{ s.title || `Section ${i + 1}` }}</option>
@@ -202,7 +202,7 @@
                   v-if="relationDisplayOptions(field)"
                   :value="field.relationDisplayField ?? ''"
                   @change="setRelationDisplayField(field, ($event.target as HTMLSelectElement).value)"
-                  class="w-52 px-1.5 py-1 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+                  class="field w-52"
                 >
                   <option value="">Show: Key (default)</option>
                   <option v-for="f in relationDisplayOptions(field)" :key="f.name" :value="f.name">{{ f.title || f.name }}</option>
@@ -254,28 +254,28 @@
                   v-model="column.title"
                   type="text"
                   placeholder="Custom header (optional)"
-                  class="px-2 py-0.5 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+                  class="field"
                 />
                 <select
                   v-if="relationDisplayOptions(classFieldByName(column.name))"
                   :value="classFieldByName(column.name)?.relationDisplayField ?? ''"
                   @change="setRelationDisplayField(classFieldByName(column.name)!, ($event.target as HTMLSelectElement).value)"
-                  class="px-2 py-0.5 text-[11px] bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+                  class="field"
                 >
                   <option value="">Show: Key (default)</option>
                   <option v-for="f in relationDisplayOptions(classFieldByName(column.name))" :key="f.name" :value="f.name">{{ f.title || f.name }}</option>
                 </select>
               </div>
-              <button @click="moveListColumn(columnIndex, -1)" type="button" :disabled="columnIndex === 0" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30 shrink-0">↑</button>
-              <button @click="moveListColumn(columnIndex, 1)" type="button" :disabled="columnIndex === listColumns.length - 1" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30 shrink-0">↓</button>
-              <button @click="removeListColumn(columnIndex)" type="button" class="text-xs text-rose-400 hover:text-rose-300 shrink-0">✕</button>
+              <button @click="moveListColumn(columnIndex, -1)" type="button" :disabled="columnIndex === 0" class="btn btn-link-muted shrink-0">↑</button>
+              <button @click="moveListColumn(columnIndex, 1)" type="button" :disabled="columnIndex === listColumns.length - 1" class="btn btn-link-muted shrink-0">↓</button>
+              <button @click="removeListColumn(columnIndex)" type="button" class="btn btn-link-danger shrink-0">✕</button>
             </div>
           </div>
 
           <div class="flex items-center gap-2">
             <select
               v-model="pendingColumnName"
-              class="flex-1 px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+              class="field flex-1"
             >
               <option value="" disabled>Pick a column to add…</option>
               <optgroup v-if="availableSystemColumns.length > 0" label="System">
@@ -289,7 +289,7 @@
               @click="addListColumn"
               :disabled="!pendingColumnName"
               type="button"
-              class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 shrink-0"
+              class="btn btn-primary shrink-0"
             >+ Add</button>
           </div>
         </template>

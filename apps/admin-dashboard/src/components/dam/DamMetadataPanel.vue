@@ -93,7 +93,7 @@
             v-model="form.camera.make"
             type="text"
             placeholder="e.g. Sony, Canon, Apple"
-            class="w-full px-3 py-2 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+            class="field w-full font-mono"
           />
         </div>
 
@@ -103,7 +103,7 @@
             v-model="form.camera.model"
             type="text"
             placeholder="e.g. ILCE-7RM4, EOS R5"
-            class="w-full px-3 py-2 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+            class="field w-full font-mono"
           />
         </div>
 
@@ -113,7 +113,7 @@
             v-model="form.camera.lens"
             type="text"
             placeholder="e.g. FE 24-70mm F2.8 GM"
-            class="w-full px-3 py-2 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+            class="field w-full font-mono"
           />
         </div>
 
@@ -123,7 +123,7 @@
             v-model.number="form.camera.iso"
             type="number"
             placeholder="e.g. 100, 400, 1600"
-            class="w-full px-3 py-2 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+            class="field w-full font-mono"
           />
         </div>
 
@@ -134,7 +134,7 @@
             type="number"
             step="0.1"
             placeholder="e.g. 2.8, 5.6"
-            class="w-full px-3 py-2 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+            class="field w-full font-mono"
           />
         </div>
 
@@ -144,7 +144,7 @@
             v-model="form.camera.exposureTime"
             type="text"
             placeholder="e.g. 1/250, 1/1000"
-            class="w-full px-3 py-2 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+            class="field w-full font-mono"
           />
         </div>
       </div>
@@ -158,7 +158,7 @@
             type="number"
             step="0.000001"
             placeholder="e.g. 37.774929"
-            class="w-full px-3 py-2 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+            class="field w-full font-mono"
           />
         </div>
 
@@ -169,7 +169,7 @@
             type="number"
             step="0.000001"
             placeholder="e.g. -122.419416"
-            class="w-full px-3 py-2 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+            class="field w-full font-mono"
           />
         </div>
 
@@ -179,7 +179,7 @@
             v-model.number="form.gps.altitude"
             type="number"
             placeholder="e.g. 15.5"
-            class="w-full px-3 py-2 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+            class="field w-full font-mono"
           />
         </div>
       </div>
@@ -192,7 +192,7 @@
             v-model="form.rights.artist"
             type="text"
             placeholder="e.g. Whoobe Media Team"
-            class="w-full px-3 py-2 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs focus:border-indigo-500 focus:outline-none"
+            class="field w-full"
           />
         </div>
 
@@ -202,7 +202,7 @@
             v-model="form.rights.copyright"
             type="text"
             placeholder="e.g. © 2026 WhoobeCMS. All rights reserved."
-            class="w-full px-3 py-2 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs focus:border-indigo-500 focus:outline-none"
+            class="field w-full"
           />
         </div>
 
@@ -212,7 +212,7 @@
             v-model="form.rights.createDate"
             type="text"
             placeholder="e.g. 2026-08-01T10:00:00Z"
-            class="w-full px-3 py-2 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+            class="field w-full font-mono"
           />
         </div>
 
@@ -222,7 +222,7 @@
             v-model="form.rights.software"
             type="text"
             placeholder="e.g. WhoobeCMS DAM Phase 3 Engine"
-            class="w-full px-3 py-2 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs focus:border-indigo-500 focus:outline-none"
+            class="field w-full"
           />
         </div>
       </div>
@@ -237,14 +237,14 @@
     <div class="flex items-center justify-between border-t border-slate-800 light:border-slate-200 pt-4">
       <button
         @click="populateForm"
-        class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-300 light:text-slate-700 transition"
+        class="btn btn-secondary"
       >
         Discard Changes
       </button>
 
       <button
         @click="saveMetadata"
-        class="px-5 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition flex items-center gap-1.5"
+        class="btn btn-primary flex items-center gap-1.5"
       >
         <span>Save Metadata Changes</span>
       </button>

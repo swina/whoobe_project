@@ -7,9 +7,9 @@
       </div>
       <div class="flex items-center gap-3 shrink-0">
         <a v-if="siteUrl" data-testid="docs-doc-preview" :href="siteUrl" target="_blank" rel="noopener" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/40 flex items-center gap-1.5" title="Open this page in the site (saved version)"><ExternalLink class="w-3.5 h-3.5" />Preview</a>
-        <button data-testid="docs-insert-image" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 disabled:opacity-50" :disabled="!loaded" @click="imageDialog = true">Insert image</button>
+        <button data-testid="docs-insert-image" class="btn btn-secondary" :disabled="!loaded" @click="imageDialog = true">Insert image</button>
         <label class="text-xs text-slate-400 flex items-center gap-1.5"><input v-model="isPublic" data-testid="docs-edit-public" type="checkbox" @change="markDirty" />Public</label>
-        <button data-testid="docs-edit-save" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="!!busy || !dirty" @click="save">Save</button>
+        <button data-testid="docs-edit-save" class="btn btn-primary" :disabled="!!busy || !dirty" @click="save">Save</button>
       </div>
     </div>
     <div v-if="error" class="mx-4 mt-2 text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2 whitespace-pre-line">{{ error }}</div>

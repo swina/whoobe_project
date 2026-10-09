@@ -58,7 +58,7 @@
           <p class="text-xs text-rose-400 max-w-sm mx-auto">{{ previewError }}</p>
           <button
             @click="openAssetInNewTab"
-            class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition"
+            class="btn btn-primary"
           >
             Open in New Tab
           </button>
@@ -139,7 +139,7 @@
         </button>
         <button
           @click="openAssetInNewTab"
-          class="w-full px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow transition flex items-center gap-1.5"
+          class="btn btn-primary w-full flex items-center gap-1.5"
           title="Open Asset URL in New Tab"
         >
           <ExternalLink class="w-3.5 h-3.5" />
@@ -154,7 +154,7 @@
         </button>
         <button
           @click="copyAssetUrl"
-          class="w-full px-3 py-2 rounded-xl bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 font-medium transition flex items-center gap-1.5"
+          class="btn btn-secondary w-full flex items-center gap-1.5"
         >
           <Link class="w-3.5 h-3.5" />
           <span>Copy URL</span>
