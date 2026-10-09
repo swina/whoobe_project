@@ -129,6 +129,8 @@ const alpineAttrs = computed(() => {
 const extraAttrs = computed(() => ({
   ...customAttrs((props.element as any).data?.attributes),
   ...alpineAttrs.value,
+  // an Upload field names itself to the page when it asks for an upload (form-actions.ts)
+  ...((props.element as any).element === 'input' && (props.element as any).data?.attributes?.type === 'file' ? { 'data-whoobe-upload': (props.element as any).id } : {}),
 }))
 
 // A real DOM handle via template ref, NOT document.getElementById(element.

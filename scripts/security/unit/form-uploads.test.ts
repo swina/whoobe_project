@@ -152,17 +152,21 @@ describe('the Upload fields of the pages', () => {
   it('finds a file input inside a form, at any depth, with its class, name, website and settings', () => {
     const page = { websiteId: 'w1', content: { id: 'r', blocks: [{ id: 'box', blocks: [form('c1', { id: 'row', blocks: [file('f1', 'cv', { uploadConfig: { extensions: ['.PDF', 'png'], maxFiles: 1.9, targetFolder: ' private/cv ' } })] })] }] } }
     const found = collectAuthoredUploadFields([page])
-    expect(found.get('f1')).toEqual({ fieldId: 'f1', name: 'cv', targetClassId: 'c1', websiteId: 'w1', config: { extensions: ['pdf', 'png'], maxFiles: 1, targetFolder: 'private/cv' } })
+    expect(found.find((f) => f.fieldId === 'f1')).toEqual({ fieldId: 'f1', name: 'cv', targetClassId: 'c1', websiteId: 'w1', config: { extensions: ['pdf', 'png'], maxFiles: 1, targetFolder: 'private/cv' } })
   })
   it('ignores a file input outside a form, a disabled form, and other kinds of input', () => {
     const outside = { websiteId: 'w', content: { blocks: [file('f-out', 'x')] } }
     const disabled = { websiteId: 'w', content: { blocks: [{ id: 'fm', formConfig: { enabled: false, targetClassId: 'c' }, blocks: [] }, { blocks: [file('f-d', 'x')] }] } }
     const text = { websiteId: 'w', content: { blocks: [form('c', { id: 't', element: 'input', data: { attributes: { type: 'text', name: 'a' } } }, file('f-noname', ''))] } }
-    expect(collectAuthoredUploadFields([outside, disabled, text]).size).toBe(0)
+    expect(collectAuthoredUploadFields([outside, disabled, text])).toHaveLength(0)
   })
-  it('a hostile uploadConfig is cleaned and the first field with an id wins', () => {
-    const page = { websiteId: 'w', content: { blocks: [form('c', file('f', 'a', { uploadConfig: 'nope' }), file('f', 'b'))] } }
-    expect(collectAuthoredUploadFields([page]).get('f')).toMatchObject({ name: 'a', config: {} })
+  it('a hostile uploadConfig is cleaned', () => {
+    const page = { websiteId: 'w', content: { blocks: [form('c', file('f', 'a', { uploadConfig: 'nope' }))] } }
+    expect(collectAuthoredUploadFields([page])[0]).toMatchObject({ name: 'a', config: {} })
+  })
+  it('the same node id in two pages (a duplicated page) is returned for each website', () => {
+    const page = (websiteId: string) => ({ websiteId, content: { blocks: [form('c', file('same-id', 'cv'))] } })
+    expect(collectAuthoredUploadFields([page('w1'), page('w2')]).map((f) => f.websiteId)).toEqual(['w1', 'w2'])
   })
 })
 

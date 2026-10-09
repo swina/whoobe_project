@@ -103,3 +103,20 @@ describe('WhoobeNode (SSR)', () => {
     expect(html).not.toContain('<script>')
   })
 })
+
+describe('Upload field', () => {
+  it('renders a file input that names itself, with accept and multiple', async () => {
+    const tree = {
+      id: 'root', type: 'container', tag: 'document', element: 'div', css: { css: '', container: '' },
+      blocks: [{ id: 'up1', type: 'file', tag: 'input', element: 'input', css: { css: 'block', container: '' }, uploadConfig: { extensions: ['pdf'], maxFiles: 3, targetFolder: 'private/x' },
+        data: { attributes: { type: 'file', name: 'cv', accept: '.pdf', multiple: true } } }],
+    }
+    const html = await renderTree(tree)
+    const input = html.match(/<input[^>]*>/)?.[0] ?? ''
+    expect(input).toContain('type="file"')
+    expect(input).toContain('name="cv"')
+    expect(input).toContain('accept=".pdf"')
+    expect(input).toContain('multiple')
+    expect(input).toContain('data-whoobe-upload="up1"')
+  })
+})

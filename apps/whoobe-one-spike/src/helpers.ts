@@ -97,6 +97,8 @@ export function friendlyElementName(el: any): string {
           return 'Number'
         case 'hidden':
           return 'Hidden'
+        case 'file':
+          return 'File Upload'
         case 'checkbox':
           return 'Checkbox'
         case 'textarea':

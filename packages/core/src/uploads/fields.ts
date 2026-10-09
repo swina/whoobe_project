@@ -22,9 +22,10 @@ export interface AuthoredUploadField {
   config: UploadFieldConfig;
 }
 
-/** Every file input found inside a form (a node with `formConfig`), keyed by the id of the input. */
-export function collectAuthoredUploadFields(pages: Iterable<{ content: unknown; websiteId: string | null }>): Map<string, AuthoredUploadField> {
-  const found = new Map<string, AuthoredUploadField>();
+/** Every file input found inside a form (a node with `formConfig`). The same node id can be in several pages (a page duplicated into
+ *  another website keeps its ids), so all of them are returned, each with its own website. */
+export function collectAuthoredUploadFields(pages: Iterable<{ content: unknown; websiteId: string | null }>): AuthoredUploadField[] {
+  const found: AuthoredUploadField[] = [];
   for (const page of pages) {
     const walk = (node: unknown, classId: string | null): void => {
       if (Array.isArray(node)) { node.forEach((n) => walk(n, classId)); return; }
@@ -33,8 +34,8 @@ export function collectAuthoredUploadFields(pages: Iterable<{ content: unknown; 
       const form = rec.formConfig as { enabled?: unknown; targetClassId?: unknown } | null | undefined;
       const here = form && form.enabled !== false && typeof form.targetClassId === 'string' && form.targetClassId ? form.targetClassId : classId;
       const attrs = rec.data?.attributes as Record<string, unknown> | undefined;
-      if (here && typeof rec.id === 'string' && rec.element === 'input' && attrs?.type === 'file' && typeof attrs.name === 'string' && attrs.name && !found.has(rec.id)) {
-        found.set(rec.id, { fieldId: rec.id, name: attrs.name, targetClassId: here, websiteId: page.websiteId, config: cleanFieldConfig(rec.uploadConfig) });
+      if (here && typeof rec.id === 'string' && rec.element === 'input' && attrs?.type === 'file' && typeof attrs.name === 'string' && attrs.name) {
+        found.push({ fieldId: rec.id, name: attrs.name, targetClassId: here, websiteId: page.websiteId, config: cleanFieldConfig(rec.uploadConfig) });
       }
       for (const v of Object.values(rec)) if (v && typeof v === 'object') walk(v, here);
     };

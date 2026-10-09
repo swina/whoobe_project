@@ -195,6 +195,10 @@ export default class Element {
                         icon: 'text_format'
                     },
                     {
+                        name: 'File Upload',
+                        icon: 'upload_file'
+                    },
+                    {
                         name: 'Select',
                         icon: 'input'
                     },
@@ -260,6 +264,7 @@ export default class Element {
             element === 'Input Text'    ? this.InputText() :
             element === 'Email'         ? this.InputEmail() :
             element === 'Textarea'      ? this.InputTextarea() :
+            element === 'File Upload'   ? this.InputFile() :
             element === 'Checkbox'      ? this.InputCheckbox() :
             element === 'Radio Group'   ? this.RadioGroup() :
             element === 'Number'        ? this.InputNumber() :
@@ -979,6 +984,20 @@ export default class Element {
         this.tag = 'input'
         this.type = 'number'
         this.data.attributes.type = 'number'
+        return this
+    }
+
+    // A file chosen by the visitor in a form. It is not sent with the form: the page uploads it first (the website's limits apply:
+    // Settings > Form uploads) and the form carries a reference. `uploadConfig` can only narrow the website's rules:
+    //   extensions  a subset of the types the website allows (also written as the input's `accept`)
+    //   maxFiles    how many files (more than one makes the input `multiple`)
+    //   targetFolder  a library folder for this field's files (private unless the website allows a public one)
+    InputFile(){
+        this.inputElement()
+        this.tag = 'input'
+        this.type = 'file'
+        this.data.attributes.type = 'file'
+        this.uploadConfig = {}
         return this
     }
 

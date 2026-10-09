@@ -3,8 +3,10 @@
 // turns the uploads a submitted form refers to into library assets.
 import { collectAuthoredUploadFields, type AuthoredUploadField } from '@whoobe-cms/core';
 
+const MIN_RELOAD_MS = 2_000;
+
 export function createAuthoredUploadFieldsCache(load: () => Promise<Iterable<{ content: unknown; websiteId: string | null }>>, ttlMs = 30_000, now: () => number = Date.now) {
-  let found: Map<string, AuthoredUploadField> | null = null;
+  let found: AuthoredUploadField[] | null = null;
   let loadedAt = 0;
   const fresh = async () => {
     if (!found || now() - loadedAt > ttlMs) {
@@ -14,13 +16,33 @@ export function createAuthoredUploadFieldsCache(load: () => Promise<Iterable<{ c
     return found;
   };
   return {
-    async lookup(fieldId: string): Promise<AuthoredUploadField | null> { return (await fresh()).get(fieldId) ?? null; },
-    /** The upload fields of the forms that write to one data class, by attribute name (the first one wins). */
-    async forClass(classId: string): Promise<Map<string, AuthoredUploadField>> {
-      const out = new Map<string, AuthoredUploadField>();
-      for (const f of (await fresh()).values()) if (f.targetClassId === classId && !out.has(f.name)) out.set(f.name, f);
-      return out;
+    /** The field with this id. When several pages carry the same id (a duplicated page), the one of `websiteId` if given and present,
+     *  else the first. */
+    async lookup(fieldId: string, websiteId?: string | null): Promise<AuthoredUploadField | null> {
+      const pick = (list: AuthoredUploadField[]) => {
+        const all = list.filter((f) => f.fieldId === fieldId);
+        const exact = websiteId ? all.find((f) => f.websiteId === websiteId) : undefined;
+        return { exact, any: all[0] ?? null };
+      };
+      let r = pick(await fresh());
+      // Not found (or not for the website asked): the page may have been published a moment ago. Read the pages again, but not more
+      // often than every 2 seconds - this is reachable without a login.
+      if ((websiteId ? !r.exact : !r.any) && now() - loadedAt > MIN_RELOAD_MS) {
+        found = null;
+        r = pick(await fresh());
+      }
+      return r.exact ?? r.any;
     },
+    /** The fields of the forms that write to one data class, with the given attribute name (a field per website/page). */
+    async forClassAndName(classId: string, name: string): Promise<AuthoredUploadField[]> {
+      return (await fresh()).filter((f) => f.targetClassId === classId && f.name === name);
+    },
+    /** The names of the upload fields of the forms that write to one data class. */
+    async namesForClass(classId: string): Promise<string[]> {
+      return [...new Set((await fresh()).filter((f) => f.targetClassId === classId).map((f) => f.name))];
+    },
+    /** Reads the pages again unless they were read less than `ms` ago. */
+    async refreshIfOlderThan(ms: number): Promise<void> { if (!found || now() - loadedAt > ms) { found = null; await fresh(); } },
     clear(): void { found = null; },
   };
 }

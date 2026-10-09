@@ -70,7 +70,7 @@ function buildStyle(node: WhoobeElementNode): string {
 
 function buildAttributes(node: WhoobeElementNode): Record<string, unknown> {
   const attrs = node.data?.attributes
-  const base = attrs && typeof attrs === 'object' ? (attrs as Record<string, unknown>) : {}
+  const base: Record<string, unknown> = attrs && typeof attrs === 'object' ? { ...(attrs as Record<string, unknown>) } : {}
   // Merge Alpine.js directives from the node's native `alpine` field,
   // safely coercing non-string values to empty string so Alpine never
   // receives `x-data="[object Object]"`.
@@ -79,6 +79,8 @@ function buildAttributes(node: WhoobeElementNode): Record<string, unknown> {
       base[k] = typeof v === 'string' ? v : ''
     }
   }
+  // The id of an Upload field travels in the DOM so the page can name it when it asks for an upload (form-values.ts)
+  if (base.type === 'file' && node.element === 'input') base['data-whoobe-upload'] = node.id
   return base
 }
 

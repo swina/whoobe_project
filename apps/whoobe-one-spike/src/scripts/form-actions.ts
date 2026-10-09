@@ -14,6 +14,41 @@ export interface FormSubmitResult {
   message: string
 }
 
+/** A file the server refused (or could not take): its own message is what the visitor needs to read. */
+class UploadRefused extends Error {}
+
+/** The values of the form. A chosen file is not sent with it: it is uploaded first (the same two steps as ApiClient.uploadFile of
+ *  the published sites: the server approves it and returns an address, then the bytes go there) and the form carries `{ uploadId }`. */
+async function collectFormValues(formEl: HTMLFormElement, coreApiUrl: string | null): Promise<Record<string, unknown>> {
+  const attributes: Record<string, unknown> = {}
+  for (const [key, value] of new FormData(formEl).entries()) if (typeof value === 'string') attributes[key] = value
+  for (const input of Array.from(formEl.querySelectorAll<HTMLInputElement>('input[type="file"]'))) {
+    if (!input.name || !input.files || input.files.length === 0) continue
+    const fieldId = input.getAttribute('data-whoobe-upload') || input.id
+    if (!fieldId || !coreApiUrl) throw new UploadRefused('File upload is not available for this form')
+    const refs: { uploadId: string }[] = []
+    for (const file of Array.from(input.files)) refs.push({ uploadId: await uploadOneFile(coreApiUrl, fieldId, file) })
+    attributes[input.name] = refs.length === 1 ? refs[0] : refs
+  }
+  return attributes
+}
+
+async function uploadOneFile(coreApiUrl: string, fieldId: string, file: File): Promise<string> {
+  const intentRes = await fetch(`${coreApiUrl}/public/uploads/intent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fieldId, filename: file.name, size: file.size }),
+  })
+  const intent = await intentRes.json().catch(() => ({}))
+  if (!intentRes.ok) throw new UploadRefused(intent?.error || 'The file could not be uploaded')
+  const putRes = await fetch(intent.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: file })
+  if (!putRes.ok) {
+    const body = await putRes.json().catch(() => ({}))
+    throw new UploadRefused(body?.error || 'The file could not be uploaded')
+  }
+  return intent.uploadId as string
+}
+
 /** Attaches a submit handler to `formEl`, gated on `doc.formConfig.enabled`
  *  + a chosen target (a data class or a gateway endpoint) - a no-op mount
  *  (returns a no-op cleanup) for any Form that isn't configured yet, same
@@ -57,8 +92,8 @@ export function mountFormSubmit(
   async function onSubmit(e: Event) {
     e.preventDefault()
     onResult(null)
-    const attributes = Object.fromEntries(new FormData(formEl).entries())
     try {
+      const attributes = await collectFormValues(formEl, config.gatewayBindingId ? null : getDefaultCoreApiUrl())
       // Gateway-targeted Forms (config.gatewayEndpointName set) forward to
       // the Gateway's public submit route instead of core-api's Data Object
       // one - but only by bindingId, resolved server-side at page-save time
@@ -102,7 +137,7 @@ export function mountFormSubmit(
         window.location.href = config.errorRedirectUrl
         return
       }
-      onResult({ ok: false, message: config.errorMessage || 'Something went wrong, please try again.' })
+      onResult({ ok: false, message: err instanceof UploadRefused ? err.message : config.errorMessage || 'Something went wrong, please try again.' })
     }
   }
 

@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef, useCallback, createElement, type FormEvent, type ReactNode } from 'react'
 import { sanitizeRichText } from '@whoobe-cms/schema'
 import * as LucideIcons from 'lucide-react'
-import type { RenderDescriptor } from '@whoobe-cms/renderer'
+import { collectFormValues, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
 import { useWhoobe } from './context.js'
 import type { NodeComponent } from './types.js'
 
@@ -271,16 +271,16 @@ export const DefaultForm: NodeComponent = ({ descriptor, children }) => {
     const fc = descriptor.formConfig
     if (!fc) return
     const formEl = e.currentTarget
-    const attributes = Object.fromEntries(new FormData(formEl).entries())
     try {
+      const attributes = await collectFormValues(formEl, ctx.api.uploadFile?.bind(ctx.api))
       await ctx.api.submitForm(fc.targetClassId, attributes, {
         notify: fc.notify,
         gatewayBindingId: fc.gatewayBindingId,
       })
       formEl.reset()
       setResult({ ok: true, message: fc.successMessage || 'Submitted.' })
-    } catch {
-      setResult({ ok: false, message: fc.errorMessage || 'Something went wrong, please try again.' })
+    } catch (err) {
+      setResult({ ok: false, message: submitErrorMessage(err, fc.errorMessage) })
     }
   }
 
