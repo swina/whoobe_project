@@ -1,7 +1,7 @@
 # Security status - single summary
 
-State at **2026-10-07** (see `git log` for the exact commit). Source of detail:
-`findings.md` (register F-001 ... F-054), `security-testing-plan.md` (plan), `manual-test-checklist.md`
+State at **2026-10-09** (see `git log` for the exact commit). Source of detail:
+`findings.md` (register F-001 ... F-058), `security-testing-plan.md` (plan), `manual-test-checklist.md`
 (browser/terminal checks), `../../security/security-test-suite.md` (description of the automated suites, written
 for reviewers), `scripts/security/README.md` (how to run).
 
@@ -9,10 +9,10 @@ for reviewers), `scripts/security/README.md` (how to run).
 
 | | |
 |---|---|
-| Findings recorded | **54** (F-001 ... F-054) |
-| By current severity | 28 Medium, 13 Low, 10 High, 3 Info (F-049 TLS and F-050 images added 2026-10-03/04, F-051 public settings 2026-10-06 and F-052 website import vs. `objects:publish` and F-053 public form notification as a mail relay, both 2026-10-07, and F-054 SMTP password in clear text, 2026-10-08, all fixed the day they were found) |
+| Findings recorded | **58** (F-001 ... F-058) |
+| By current severity | 30 Medium, 15 Low, 10 High, 3 Info (F-055 to F-058 were found on 2026-10-09 by the documentation review and are **open**: clear-text third-party credentials, sessions never purged / stored unhashed, a default DB password in code, granular permissions not enforced and seeded roles without `objects:*`; F-049 TLS and F-050 images added 2026-10-03/04, F-051 public settings 2026-10-06 and F-052 website import vs. `objects:publish` and F-053 public form notification as a mail relay, both 2026-10-07, and F-054 SMTP password in clear text, 2026-10-08, all fixed the day they were found) |
 | Fixed in code | all 9 High; all but a few Medium (see section 3) |
-| Automated checks | `pnpm security:api` **1127 tests / 25 files**, `pnpm security:isolation` **14 tests** (two stacks) and `pnpm security:browser` **16 Playwright tests** (Chromium) green on a disposable stack, plus **DAST with OWASP ZAP** (`scripts/security/dast/run-zap.sh`: active API scan of 154 routes of core-api, gateway and asset-processor with an admin session: 0 findings above Info; passive baseline of the admin and editor SPAs); `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 179 (+4 database round-trip tests of the website bundle, run against a disposable database) |
+| Automated checks | `pnpm security:api` **1171 tests / 22 files** (counted 2026-10-09 with `vitest run api`), `unit` **269 tests / 21 files**, `pnpm security:isolation` **14 tests** (two stacks) and `pnpm security:browser` **30 Playwright tests** (Chromium) green on a disposable stack, plus **DAST with OWASP ZAP** (last run before the 2026-10-08/09 features; the release gate requires a new run on the release commit) (`scripts/security/dast/run-zap.sh`: active API scan of 154 routes of core-api, gateway and asset-processor with an admin session: 0 findings above Info; passive baseline of the admin and editor SPAs); `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 179 (+4 database round-trip tests of the website bundle, run against a disposable database) |
 | Runs leave evidence | `scripts/security/reports/<date>/api-*.txt/.json`, `static-*.txt/.json` (git-ignored) |
 
 The High findings (all fixed; nine): F-002 token embedded in git remotes, F-011 credentialed CORS reflection, F-020
@@ -50,10 +50,26 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | **F-003** `xlsx` (2 high advisories, write-only use, no npm fix) and `@tiptap/core` (major upgrade) | accepted / deferred, baselined until 2027-01-31 | decision: move to the SheetJS tarball or replace; plan the tiptap 3 upgrade |
 | **F-008** residual `v-html` sinks (editor tables, form-result messages, Studio, generated sites) | sanitised in code but not covered by a browser test | extend `browser/xss-sinks.spec.ts`; run the generated sites through a build and the same payloads |
 | **F-014** full CSP for the admin/editor SPAs (nginx) | postponed on purpose (clickjacking and baseline headers are done, F-047): becomes essential in SaaS mode; a too strict policy breaks the editor | design with a report-only phase when SaaS mode starts |
+| **F-055** clear-text AI provider keys, Figma token and push-provider key in the database | found 2026-10-09; same class as F-054 | apply the F-054 pattern (key per area, `enc:v1:`, startup backfill) |
+| **F-056** sessions never purged, session ids stored unhashed | found 2026-10-09 | purge job; store `sha256(token)` |
+| **F-057** default database password in code when `DB_PASSWORD` is unset | found 2026-10-09 | no default outside development |
+| **F-058** granular permissions never enforced; seeded `editor`/`viewer` roles have no `objects:*` | found 2026-10-09 | seed the two keys; then enforce or remove the 34 granular keys |
 | **F-044** deleting a website can answer 500 | functional, not a security issue | fix when convenient |
 | **F-050** residual: MinIO's own dependencies (62 fixable HIGH/CRITICAL on its last release) and postgres' `gosu` (22) | upstream; not patchable without forking. MinIO is now opt-in (overlay), Garage is the default | keep MinIO off public networks or move to Garage / a cloud S3 |
 | TLS on a real hostname | testssl ran on the rendered template, not on a public host with a Let's Encrypt certificate | run `testssl.sh` against the production hostname once HTTPS is enabled |
 | Not covered by design or yet | SQL fuzzing of the remaining endpoints (3.3), AI prompt-injection impact (3.10), `next build`/`nuxt build` of generated sites (3.11), no load testing (3.15) | decide if/when |
+
+### New surface since 2026-10-07 (reviewed 2026-10-09)
+
+| Feature | Security-relevant behaviour | Evidence |
+|---|---|---|
+| **Form uploads** (visitors send files through a form) | off by default per website; allow-list of verifiable types only; first bytes checked against the type; pictures decoded and rewritten; size cut while streaming; signed single-use 10-minute ticket; private storage; staging deleted after 2 hours; rate limits and a daily quota; names generated. Residual: no antivirus, text/CSV/zip/Office accepted by structure only. Design: `docs/plans/forms/form-upload-plan.md`; guide `guides/form-uploads.md` | `api/form-uploads` (26), `api/upload-settings`, `unit/form-uploads` + `unit/form-values`, `browser/form-upload`, `browser/upload-settings` |
+| **Download element** | a link with `download` to an asset or URL; no new server route | renderer, Vue and React tests, `browser/download-element` |
+| **Snippet lock** | `PUT /whoobe-one/snippets/:id/lock` (needs `objects:write`); an autosave of a locked snippet answers 423 | `api/snippet-lock`, in the route contract |
+| **Documentation sites** | Markdown rendered by a safe-by-construction renderer; documents read from a DAM folder through the service token; only public assets served | `api/docs-site`, `unit/docs-*` |
+| **UI consistency, editor sidebar, collapsed-nav menu** | front-end only | `unit/ui-contrast`, browser specs |
+
+The DAST scan and the manual checklist have **not** been repeated for these features.
 
 ## 4. Actions that are yours (cannot be done from here)
 

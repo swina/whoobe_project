@@ -1,7 +1,7 @@
 # Encryption: at rest, in transit, backups and keys
 
 What Whoobe encrypts itself, what the infrastructure must encrypt, and how to answer an enterprise security
-questionnaire about it. Short version: **Whoobe encrypts the secrets it stores in its database (field level), can
+questionnaire about it. Short version: **Whoobe encrypts most of the secrets it stores in its database (field level; AI, Figma and push-provider keys are still clear text, F-055), can
 connect to Postgres over TLS, and produces encrypted backups; encrypting the database files themselves is done by the
 disk/volume or the managed database service underneath, not by Whoobe.**
 
@@ -12,7 +12,7 @@ disk/volume or the managed database service underneath, not by Whoobe.**
 | 1. Disk / volume encryption (LUKS, cloud volume encryption) | Theft of a disk, a snapshot or decommissioned hardware | The infrastructure | You enable it; checklist below |
 | 2. TLS in transit (app to Postgres, app to object storage, browser to proxy) | Sniffing on the network | Whoobe (configuration) + the proxy | `DB_SSL` (below); HTTPS at the proxy (`enable-tls.sh`) |
 | 3. Database engine encryption (TDE) | Same as level 1, inside the engine | Not in community PostgreSQL. Managed services (RDS, Cloud SQL, Azure Database) encrypt the storage; Percona/EDB/Crunchy ship TDE | Out of Whoobe's scope |
-| 4. Field-level encryption | A DBA, a leaked dump, a stolen backup | Whoobe | For secrets: done. For page/data content: not done (see "What is not encrypted") |
+| 4. Field-level encryption | A DBA, a leaked dump, a stolen backup | Whoobe | For most secrets: done (AI, Figma and push-provider keys are the exception, F-055). For page/data content: not done (see "What is not encrypted") |
 
 Most enterprise checklists ("database encryption at rest") are satisfied by level 1 or by the managed database's own
 encryption, plus level 2 and encrypted backups. Ask which of them the customer actually requires before building more.
@@ -28,6 +28,11 @@ screens never show a secret again after it is saved.
 | Gateway endpoint credentials (auth of the external service) | `GATEWAY_AUTH_ENCRYPTION_KEY` | |
 | Credentials of migration sources | `MIGRATION_SOURCE_ENCRYPTION_KEY` | |
 | Outgoing mail: SMTP password and provider API keys | `MAIL_SETTINGS_ENCRYPTION_KEY` | F-054; an old plaintext password is encrypted at startup |
+
+**Not in this list, and stored in clear text today (finding F-055):** the AI provider API keys (one per user, text / image /
+translation), the Figma access token and the push-notification provider key (OneSignal). They are write-only in the API, but a
+database read or a backup exposes them. Protect the database and its backups accordingly until they are encrypted with the same
+pattern.
 
 User passwords are not encrypted but hashed with argon2id (one-way); password-reset tokens are stored as SHA-256 hashes. Session ids are long random opaque values stored as they are (the id is the token): a leaked copy of the database or of a backup would allow session hijacking until they expire, which is one more reason to encrypt backups and the volume.
 
@@ -135,7 +140,7 @@ cloud S3; `rclone`/`mc` for Garage/MinIO into an encrypted location). See [creat
 
 | Question | Answer |
 |---|---|
-| Is data encrypted at rest? | Disk/volume or managed-database encryption (level 1/3) on the customer's or provider's infrastructure; secrets additionally AES-256-GCM at field level. |
+| Is data encrypted at rest? | Disk/volume or managed-database encryption (level 1/3) on the customer's or provider's infrastructure; most secrets additionally AES-256-GCM at field level (gateway, mail, migration sources, MFA); **AI, Figma and push-provider keys are not yet encrypted** (F-055). |
 | Is it encrypted in transit? | HTTPS at the edge; TLS to Postgres with `DB_SSL=verify-full`; HTTPS to object storage and to the external providers (mail, gateway). |
 | Are backups encrypted? | Yes: `backup-workspace.sh` (age or GPG), public-key encryption, the decryption key is not on the server. |
 | Who holds the keys? | The operator: environment variables per workspace (field level), the volume/KMS key (level 1), the backup private key (offline). |

@@ -41,7 +41,9 @@ md = [os.path.join(d, f) for d, _, fs in os.walk('docs/release') for f in fs if 
 for f in sorted(md):
     t = open(f, encoding='utf-8').read()
     t_nocode = re.sub(r'```.*?```', '', t, flags=re.S)
-    for l in set(re.findall(r'\]\((?!https?:|#|mailto)([^)#\s]+)', t_nocode)):
+    # a link written as an example inside backticks (documentation-sites.md shows the Markdown syntax) is not a link of this document
+    t_links = re.sub(r'`[^`\n]*`', '', t_nocode)
+    for l in set(re.findall(r'\]\((?!https?:|#|mailto)([^)#\s]+)', t_links)):
         if not os.path.exists(os.path.normpath(os.path.join(os.path.dirname(f), l))):
             problems.append(f'{f}: broken link {l}')
     for m in set(re.findall(r'docs/[A-Za-z0-9_./-]+\.(?:md|yaml|py|json)\b', t)):
@@ -56,6 +58,27 @@ for f in sorted(md):
             continue
         problems.append(f'{f}: quoted path does not exist: {m}')
 print(f'  documents checked: {len(md)}')
+
+# --- 3b. every environment variable the services read is in the configuration reference
+cfg = open('docs/release/operations/configuration-reference.md', encoding='utf-8').read()
+names = set()
+for line in open('.env.example', encoding='utf-8'):
+    m = re.match(r'#?\s*([A-Z][A-Z0-9_]{3,})=', line)
+    if m: names.add(m.group(1))
+for root in ('apps', 'packages/core/src', 'packages/logger/src'):
+    for d, ds, fs in os.walk(root):
+        ds[:] = [x for x in ds if x not in ('node_modules', 'dist', 'tests', '.nuxt', '.next')]
+        for f in fs:
+            if not f.endswith(('.ts', '.js', '.mjs')) or f.endswith(('.test.ts', '.d.ts')) or '/scripts/' in d: continue
+            src = open(os.path.join(d, f), encoding='utf-8', errors='ignore').read()
+            names.update(re.findall(r'process\.env\.([A-Z][A-Z0-9_]{3,})', src))
+            names.update(re.findall(r"envLimit\('([A-Z][A-Z0-9_]+)'", src))
+# set by the platform or only in tests/tools: not configuration of the product
+NOT_CONFIG = {'NODE_OPTIONS', 'CI', 'HOME', 'PATH', 'TZ', 'VITEST', 'DEBUG', 'npm_package_version'}
+missing = sorted(n for n in names - NOT_CONFIG if n not in cfg)
+for n in missing:
+    problems.append(f'docs/release/operations/configuration-reference.md: environment variable not documented: {n}')
+print(f'  environment variables: {len(names - NOT_CONFIG)} read or listed, {len(missing)} undocumented')
 
 # --- 4. alignment line
 readme = open('docs/release/README.md', encoding='utf-8').read()

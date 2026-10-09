@@ -1,7 +1,7 @@
 # Whoobe CMS 0.1.0 - release notes
 
 First release. One version number for the whole product (`0.1.0`: while the version starts with `0.`, a minor release
-may change behaviour). Written from `CHANGES.md` and checked against the code on **2026-10-07**; the procedure that
+may change behaviour). Written from `CHANGES.md` and checked against the code on **2026-10-09**; the procedure that
 turns this into a release is in [`release-process.md`](release-process.md) (copy the text into
 `.release/notes-v0.1.0.md` after `scripts/release.sh prepare`).
 
@@ -21,6 +21,17 @@ turns this into a release is in [`release-process.md`](release-process.md) (copy
   objects, asset files - and the references rewritten on import, so the copy is a twin. Dry run, rollback on failure.
   Guide: [`guides/website-bundle.md`](guides/website-bundle.md).
 
+- **Documentation sites**: a website whose source is a folder of Markdown assets, with an index (automatic or edited in the
+  dashboard), navigation and client-side search, rendered by the editor app or generated as a static site. Guide:
+  [`guides/documentation-sites.md`](guides/documentation-sites.md).
+- **Download element** tied to an asset or a URL (link with `download`, or opened in a new tab); guide
+  [`guides/download-element.md`](guides/download-element.md).
+- **Snippet lock**: a locked snippet is not saved automatically.
+- **File upload in forms**: a *File Upload* field, per-website limits (Settings > Form uploads), content checks, private
+  storage. Guide: [`guides/form-uploads.md`](guides/form-uploads.md).
+- A consistent look for buttons, fields and windows (checked for contrast), the editor's tools as an icon bar, a menu
+  next to the collapsed navigation.
+
 **Data and assets**
 - Data classes, components and objects (Pimcore-style), with workflow and publication; DAM with folders, thumbnails,
   visibility rules, optional CDN mirror; **Garage** as the default S3 store for local/LAN, an external S3 in production.
@@ -37,7 +48,7 @@ turns this into a release is in [`release-process.md`](release-process.md) (copy
 - **Public sandbox**: a workspace with a profile (`deploy/profiles/sandbox.env`) that turns AI, mail, imports, CDN mirror
   and outbound HTTP off, caps assets, and is rebuilt every three hours. [`operations/sandbox.md`](operations/sandbox.md).
 
-**Security** - 53 findings recorded, all 9 High fixed; API (1127 tests), isolation (14), browser (16) and static suites,
+**Security** - 58 findings recorded, all High fixed, 5 open (F-055 to F-058 are new, see below); API (1171 tests), unit (269), isolation (14), browser (30) and static suites,
 OWASP ZAP and image/TLS scans run in CI on every release commit.
 [`security/status-summary.md`](security/status-summary.md).
 
@@ -62,12 +73,19 @@ OWASP ZAP and image/TLS scans run in CI on every release commit.
 | **A public form's notification e-mail** is sent only for the notify block an author saved in a form of a page (F-053) | mail that relied on a recipient or subject changed in the browser request stops; a confirmation to the visitor goes to one plain address, 3 an hour per address | save the page after configuring the notification; the recipient comes from the form or the template |
 | **Website previews live at the root preview path** (`https://host/whoobe-website/blog`), not under `/whoobe-one/`; the proxy asks core-api (`GET /site-root`) which paths are websites | a root preview path equal to a name the host uses (`/api`, `/auth`, `/assets`, `/login`, `/settings`, `/whoobe-one`, `/editor` ...) is refused; a workspace provisioned earlier still previews at `/whoobe-one/<root>/...` until its routing include is rendered again | `./scripts/render-workspace-nginx.sh <slug>` (see `operations/creating-workspaces.md`) |
 | **Outgoing mail**: a configuration per website, SMTP or an HTTP provider (OneSignal built in); SMTP passwords and API keys are encrypted at rest | saving a password or key needs `MAIL_SETTINGS_ENCRYPTION_KEY` (new workspaces get one; older ones must add it); the mail settings API has a new shape (the old flat `PUT` body still works) | add `MAIL_SETTINGS_ENCRYPTION_KEY=$(openssl rand -hex 32)` to the workspace's env file and recreate the services; see `guides/mail-providers.md` |
+| **File upload in forms** needs `UPLOAD_TOKEN_SECRET`; the proxy must route `/public/upload-data/` to the asset service | without the secret uploads answer 503; without the route a visitor's upload gets a 404/405 from core-api | `UPLOAD_TOKEN_SECRET=$(openssl rand -hex 32)` in the workspace's env file (new workspaces get one); `./scripts/render-workspace-nginx.sh <slug>`; see `guides/form-uploads.md` |
+| The public form submit limit (10 per address per 15 minutes) is configurable | no change unless you set `FORM_SUBMIT_RATE_LIMIT_PER_WINDOW` | - |
 | Website export is a `.zip` | the file has another extension and carries the asset files | the old `.json` is still accepted on import |
 
 New or changed variables are documented in `.env.example`; the full list of what each fix changed is in
 [`security/status-summary.md`](security/status-summary.md) (section 5).
 
 ## Known limits
+
+- **Open security findings (new in this review):** AI provider keys, the Figma token and the push-provider key are stored in clear text in the database (F-055); expired sessions are never deleted and session ids are stored unhashed (F-056); a default database password exists in code outside Compose (F-057); the granular permissions are not enforced and the seeded `editor` and `viewer` roles lack `objects:read`/`objects:write`, so create the roles you need explicitly (F-058, see `architecture/authentication-and-authorization.md`).
+- Form uploads: no malware scan; forms that send to a gateway endpoint do not take files.
+- The DAST scan and the manual security checklist were not repeated for the features added on 2026-10-08/09 (run the DAST on the release commit, as the release gate requires).
+- No audit log of administrative actions; `/health` does not check the database; no metrics; one instance per service (see `operations/observability-and-logging.md` and `operations/capacity-and-scaling.md`).
 
 - Fresh install: done on an arm64 host (Ubuntu 22.04, nginx on the host, Let's Encrypt) following `operations/creating-workspaces.md`; it found and fixed three defects in the TLS scripts. A workspace answers on **one** host name (no `www` alias or redirect).
 - **Not tested: upgrading** from an earlier installation (there is no earlier release). The first upgrade test belongs to
