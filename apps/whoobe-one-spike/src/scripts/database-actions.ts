@@ -433,6 +433,7 @@ export async function loadSnippet(editor: EditorStore, id: string): Promise<void
   editor.setDocument(root)
   editor.setCurrent(null)
   editor.setSnippetId(id)
+  editor.setSnippetLocked(saved.locked === true)
 }
 
 /** Loads one entry from a page/snippet's version history (content-versions-
@@ -503,7 +504,8 @@ export function nodeFromDocument(doc: unknown): unknown {
  *  wrapper itself, so re-saving never accumulates a `document` tag on the
  *  snippet subtree. If the user arranged multiple top-level blocks while
  *  editing, those become a single container subtree holding them all. */
-export async function saveSnippet(editor: EditorStore): Promise<void> {
+/** `autosave`: the save is the timer's, not the user's - the server refuses it for a locked snippet (the editor then marks it locked). */
+export async function saveSnippet(editor: EditorStore, opts: { autosave?: boolean } = {}): Promise<void> {
   if (!editor.page || !editor.document) return
   editor.page.json.blocks = editor.document
   const node = nodeFromDocument(editor.document)
@@ -519,11 +521,18 @@ export async function saveSnippet(editor: EditorStore): Promise<void> {
     editor.setSnippetId(created.id)
     notifyParentSnippetSaved({ id: created.id, name: created.name, category: created.category, created: true, ownDocument: true })
   } else {
-    const updated = await apiUpdateSnippet(String(editor.page.id), {
-      name: editor.page.name || 'Untitled',
-      category: editor.page.category || '',
-      node: storedNode,
-    })
+    let updated
+    try {
+      updated = await apiUpdateSnippet(String(editor.page.id), {
+        name: editor.page.name || 'Untitled',
+        category: editor.page.category || '',
+        node: storedNode,
+        ...(opts.autosave ? { autosave: true } : {}),
+      })
+    } catch (e: any) {
+      if (e?.status === 423) editor.setSnippetLocked(true)     // locked elsewhere (another tab, the snippets list): autosave stops
+      throw e
+    }
     notifyParentSnippetSaved({ id: updated.id, name: updated.name, category: updated.category, created: false, ownDocument: true })
   }
 }

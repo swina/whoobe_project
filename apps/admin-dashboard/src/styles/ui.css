@@ -78,6 +78,8 @@
   .field::placeholder { color: var(--field-placeholder); opacity: 1; }
   .field:hover:not(:disabled) { border-color: var(--field-border-hover); }
   .field:focus { border-color: var(--field-focus); box-shadow: 0 0 0 3px var(--field-ring); }
+  /* a select in a flex row sizes to its options: with width:100% it used to push the search input beside it to ~0 */
+  :where(.flex, .inline-flex) > select.field { width: auto; flex: 0 0 auto; }
   .field:disabled { opacity: .55; cursor: not-allowed; }
   .field-error { --field-border: #e11d48; --field-focus: #e11d48; }
   .field-label { display: block; margin-bottom: .25rem; font-size: .75rem; font-weight: 600; color: var(--ui-label); }

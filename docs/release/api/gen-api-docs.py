@@ -50,6 +50,7 @@ CORE_API_SECTIONS = [
   ("PATCH", "/whoobe-one/snippets/:id", "Update a snippet in place. Snapshots the pre-update node into version history if it changed."),
   ("DELETE", "/whoobe-one/snippets/:id", "Delete a snippet."),
   ("PUT", "/whoobe-one/snippets/:id/thumbnail", "Set (or clear with `null`) the snippet thumbnail: an image data URL under 400k characters."),
+  ("PUT", "/whoobe-one/snippets/:id/lock", "Lock or unlock a snippet (`{ locked }`). A locked snippet is not saved automatically: the editor's autosave skips it and `PATCH /whoobe-one/snippets/:id` with `autosave: true` answers 423. Manual saves are unaffected."),
 ]),
 ("Whoobe One: Templates & Kits", [
   ("GET", "/whoobe-one/templates", "List whole-page templates."),

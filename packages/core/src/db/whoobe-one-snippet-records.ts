@@ -12,6 +12,7 @@ export interface WhoobeOneSnippetRecord {
   themeId: string | null;
   notes: string | null;
   thumbnail: string | null;
+  locked: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,13 +37,21 @@ export async function createWhoobeOneSnippet(input: {
   themeId?: string | null;
   notes?: string | null;
   thumbnail?: string | null;
+  locked?: boolean;
 }): Promise<WhoobeOneSnippetRecord> {
   const db = getDb();
   const [row] = await db
     .insert(whoobeOneSnippets)
-    .values({ ...(input.id ? { id: input.id } : {}), thumbnail: input.thumbnail ?? null, name: input.name, category: input.category, icon: input.icon ?? null, node: input.node, themeId: input.themeId ?? null, notes: input.notes ?? null })
+    .values({ ...(input.id ? { id: input.id } : {}), thumbnail: input.thumbnail ?? null, locked: input.locked ?? false, name: input.name, category: input.category, icon: input.icon ?? null, node: input.node, themeId: input.themeId ?? null, notes: input.notes ?? null })
     .returning();
   return row;
+}
+
+/** Locks or unlocks a snippet (a locked one is not saved automatically). Does not touch `updatedAt`: it is not a change of content. */
+export async function setWhoobeOneSnippetLocked(id: string, locked: boolean): Promise<WhoobeOneSnippetRecord | null> {
+  const db = getDb();
+  const [row] = await db.update(whoobeOneSnippets).set({ locked }).where(eq(whoobeOneSnippets.id, id)).returning();
+  return row ?? null;
 }
 
 export async function deleteWhoobeOneSnippet(id: string): Promise<void> {

@@ -271,7 +271,7 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
     for (const s of bundle.snippets) {
       const created = await createWhoobeOneSnippet({
         id: snippetIds.get(s)!, name: s.name, category: s.category, icon: s.icon, node: fix(s.node),
-        themeId: s.themeId ? idMap.get(s.themeId) ?? null : null, notes: s.notes, thumbnail: s.thumbnail,
+        themeId: s.themeId ? idMap.get(s.themeId) ?? null : null, notes: s.notes, thumbnail: s.thumbnail, locked: s.locked === true,
       });
       undo.push(() => deleteWhoobeOneSnippet(created.id));
     }

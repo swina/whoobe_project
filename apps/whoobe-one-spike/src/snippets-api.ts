@@ -22,6 +22,8 @@ export interface WhoobeOneSnippet {
   // Captured preview image (data URL) - set via the editor Preview's
   // "Capture thumbnail"; shown on the Snippets panel chip instead of the icon.
   thumbnail?: string | null
+  // Locked: never saved automatically (autosave skips it). Manual saves work.
+  locked?: boolean
 }
 
 import { getDefaultCoreApiUrl } from './core-api-url'
@@ -35,7 +37,8 @@ async function parseJsonOrThrow(res: Response): Promise<any> {
     } catch {
       // Ignore body parse failures; use the generic message above.
     }
-    throw new Error(message)
+    // the status travels with the error: a refused automatic save (423) is told apart from a failure
+    throw Object.assign(new Error(message), { status: res.status })
   }
   return res.json()
 }
@@ -74,7 +77,7 @@ export async function createSnippet(input: {
 // already saved rather than piling up another near-duplicate snippet.
 export async function updateSnippet(
   id: string,
-  input: { name: string; category: string; icon?: string | null; node: unknown; notes?: string | null }
+  input: { name: string; category: string; icon?: string | null; node: unknown; notes?: string | null; autosave?: boolean }
 ): Promise<WhoobeOneSnippet> {
   const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/snippets/${id}`, {
     method: 'PATCH',
@@ -128,4 +131,16 @@ export async function setSnippetThumbnail(id: string, thumbnail: string | null):
     credentials: 'include',
   })
   await parseJsonOrThrow(res)
+}
+
+/** Locks or unlocks a snippet: a locked one is not saved automatically (the server also refuses a save flagged `autosave`). */
+export async function setSnippetLocked(id: string, locked: boolean): Promise<WhoobeOneSnippet> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/snippets/${id}/lock`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ locked }),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.snippet
 }

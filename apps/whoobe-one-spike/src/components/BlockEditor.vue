@@ -39,6 +39,15 @@
         title="Version history"
         @click="showVersionHistory = true"
       ><History class="w-3.5 h-3.5" /> History</button>
+      <!-- A locked snippet is not saved automatically (manual Save still works). Only a saved snippet can be locked. -->
+      <button
+        v-if="editor.snippetMode && editor.snippetId"
+        :class="[topbarBtnClass, editor.snippetLocked ? 'ring-2 ring-amber-400' : '']"
+        :title="editor.snippetLocked ? 'Locked: this snippet is not saved automatically. Click to unlock.' : 'Unlocked: autosave applies. Click to lock (no automatic saves).'"
+        :aria-pressed="editor.snippetLocked"
+        data-testid="snippet-lock"
+        @click="onToggleSnippetLock"
+      ><component :is="editor.snippetLocked ? Lock : LockOpen" class="w-3.5 h-3.5" /> {{ editor.snippetLocked ? 'Locked' : 'Lock' }}</button>
       <button :class="topbarBtnClass" @click="showThemeModal = true"><Palette class="w-3.5 h-3.5" /> Theme</button>
       <button v-if="editor.page?.id && !editor.mailTemplateId && !editor.snippetMode" :class="topbarBtnClass" @click="onSaveAs"><CopyPlus class="w-3.5 h-3.5" /> Save As</button>
       <button v-if="editor.page?.id && !editor.mailTemplateId && !editor.snippetMode" :class="topbarBtnClass" @click="showTranslatePage = true"><Languages class="w-3.5 h-3.5" /> Translate</button>
@@ -239,6 +248,8 @@ import {
   History,
   Image,
   Keyboard,
+  Lock,
+  LockOpen,
   Languages,
   ListTree,
   Package,
@@ -292,7 +303,8 @@ import { useAppModeBreakpoints } from '../composables/useAppModeBreakpoints'
 import { clean, findNodeById, removeNodeById, findParentAndIndex, applyImagePlaceholder, normalizeGeneratedTree } from '../helpers'
 import { editorBus, dialogBus } from '../bus'
 import { exportDocument, importDocument, cloneWithFreshIds, insertGeneratedSnippet } from '../scripts/editor-actions'
-import { savePage, saveMailTemplate, saveSnippet, saveAsNewTemplate, updatePageSlug } from '../scripts/database-actions'
+import { savePage, saveMailTemplate, saveSnippet, saveAsNewTemplate, updatePageSlug, notifyParentSnippetSaved } from '../scripts/database-actions'
+import { setSnippetLocked } from '../snippets-api'
 import { resolveDocumentData } from '../scripts/data-resolver'
 import { insertFigmaAsPage, insertFigmaAsSnippet } from '../scripts/figma-actions'
 
@@ -456,7 +468,9 @@ function onNew() {
 // two always-visible, clearly distinct actions (once there's something to
 // tell them apart from) rather than one button that silently asks a
 // choice via a confirm() popup.
-async function onSave() {
+async function onSave(auto: unknown = false) {
+  // `auto` is true only for the autosave timer (a click handler passes its event)
+  const isAuto = auto === true
   if (!editor.page) return
 
   // Editing a whoobe snippet (admin-dashboard's Snippets item) - saves to
@@ -464,12 +478,13 @@ async function onSave() {
   if (editor.snippetMode) {
     saveState.value = 'saving…'
     try {
-      await saveSnippet(editor)
+      await saveSnippet(editor, { autosave: isAuto })
       saveState.value = 'saved ' + new Date().toLocaleTimeString()
       flash('Snippet saved')
     } catch (e: any) {
       saveState.value = ''
-      flash(e?.message || 'Failed to save snippet', 'error')
+      // 423: it was locked meanwhile; the autosave stops and says so, a failure of a manual save is shown as before
+      flash(e?.status === 423 && isAuto ? 'Snippet is locked: not saved automatically' : (e?.message || 'Failed to save snippet'), 'error')
     }
     return
   }
@@ -712,6 +727,21 @@ async function onImportFile(e: Event) {
   flash('Imported')
 }
 
+async function onToggleSnippetLock() {
+  const id = editor.snippetId
+  if (!id) return
+  const next = !editor.snippetLocked
+  try {
+    const updated = await setSnippetLocked(id, next)
+    editor.setSnippetLocked(updated.locked === true)
+    flash(updated.locked ? 'Snippet locked: no autosave' : 'Snippet unlocked')
+    // the dashboard's Snippets list shows the lock: tell it
+    notifyParentSnippetSaved({ id: updated.id, name: updated.name, category: updated.category, created: false, ownDocument: false })
+  } catch (e: any) {
+    flash(e?.message || 'Could not change the lock', 'error')
+  }
+}
+
 // Autosave timer - periodically calls onSave() when enabled.
 // The timer interval is read reactively from the store so changing the
 // setting takes effect without a page reload. The timer is started/restarted
@@ -724,7 +754,9 @@ function startAutosave() {
   const ms = editor.autosave.interval * 1000
   if (ms < 10000) return
   autosaveTimer.value = setInterval(() => {
-    if (editor.document && editor.page) onSave()
+    // a locked snippet is not saved automatically
+    if (editor.snippetMode && editor.snippetLocked) return
+    if (editor.document && editor.page) onSave(true)
   }, ms)
 }
 

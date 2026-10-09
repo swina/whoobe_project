@@ -27,7 +27,7 @@ export interface BundlePage {
 
 export interface BundleTemplate { id: string | null; name: string; description: string | null; layout: Record<string, unknown>; pathPatterns: string[]; locale: string | null; isDefault: boolean }
 export interface BundleMenu { id: string | null; name: string; items: Record<string, unknown>[] }
-export interface BundleSnippet { id: string; name: string; category: string; icon: string | null; node: unknown; themeId: string | null; notes: string | null; thumbnail: string | null }
+export interface BundleSnippet { id: string; name: string; category: string; icon: string | null; node: unknown; themeId: string | null; notes: string | null; thumbnail: string | null; /** absent in bundles made before snippets could be locked */ locked?: boolean }
 export interface BundleComponent { name: string; label: string; fields: unknown[] }
 export interface BundleClass { id: string; name: string; label: string; fields: unknown[]; viewConfig: unknown }
 export interface BundleObject {

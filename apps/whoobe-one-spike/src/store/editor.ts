@@ -125,6 +125,8 @@ export const useEditorStore = defineStore('editor', () => {
   // mode flag (new or existing).
 const snippetId = ref<string | null>(null)
 const snippetMode = ref<boolean>(false)
+// The snippet being edited is locked: the editor's autosave does not save it (manual Save does).
+const snippetLocked = ref<boolean>(false)
 const pageThemeId = ref<string | null>(null)
 const websiteId = ref<string | null>(null)
 const locale = ref<string>('en')
@@ -209,10 +211,12 @@ const locale = ref<string>('en')
   function setSnippetId(v: string | null) {
     snippetId.value = v
     snippetMode.value = v !== null
+    if (v === null) snippetLocked.value = false
   }
+  function setSnippetLocked(v: boolean) { snippetLocked.value = v }
   function setSnippetMode(v: boolean) {
     snippetMode.value = v
-    if (!v) snippetId.value = null
+    if (!v) { snippetId.value = null; snippetLocked.value = false }
   }
   function setWebsiteId(v: string | null) { websiteId.value = v }
   function setLocale(v: string) { locale.value = v }
@@ -239,13 +243,13 @@ const locale = ref<string>('en')
     mode, settings, elements, document, project, selected, page, current,
     component, action, subaction, level, parent, startTime, autosave, stripHtmlComments, alpinePresets,
     exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
-    mailTemplateId, snippetId, snippetMode, pageThemeId, websiteId, locale, websiteTheme, websiteThemes, templateBody,
+    mailTemplateId, snippetId, snippetMode, snippetLocked, pageThemeId, websiteId, locale, websiteTheme, websiteThemes, templateBody,
     defaultPlaceholderUrl,
     appMode, pwaConfig,
     setMode, setSettings, setElements, setDocument, setProject, setSelected,
     setPage, setCurrent, setComponent, setAction, setSubAction, setLevel,
     setParent, setStartTime, setAutosave, setAutosaveDefault, setStripHtmlComments, setAlpinePresets, setExportMode, setPreview, setSave,
-    setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, setPageThemeId, setSnippetId, setSnippetMode, resolvedData,
+    setArticle, setCustomizeTab, setEmbedded, setMailTemplateId, setPageThemeId, setSnippetId, setSnippetMode, setSnippetLocked, resolvedData,
     collapsedIds, toggleCollapsed, isCollapsed, setWebsiteTheme, setWebsiteThemes, setTemplateBody, setWebsiteId, setLocale,
     setDefaultPlaceholderUrl,
     setAppMode, setPwaConfig,

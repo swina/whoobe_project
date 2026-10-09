@@ -13,6 +13,8 @@ export interface WhoobeSnippet {
   notes?: string | null
   /** Captured preview image (data URL) shown in the grid view. */
   thumbnail?: string | null
+  /** Locked: never saved automatically (the editor's autosave skips it). */
+  locked?: boolean
   createdAt: string
   updatedAt: string
 }
@@ -82,4 +84,20 @@ export async function deleteSnippet(baseUrl: string, id: string): Promise<void> 
     credentials: 'include',
   })
   await parseJsonOrThrow(res)
+}
+
+/** Locks or unlocks a snippet: a locked one is not saved automatically. */
+export async function setSnippetLocked(baseUrl: string, id: string, locked: boolean): Promise<WhoobeSnippet> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/snippets/${id}/lock`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ locked }),
+    credentials: 'include',
+  })
+  if (!res.ok) {
+    let message = `Request failed with status ${res.status}`
+    try { const b = await res.json(); if (b?.error) message = b.error } catch { /* generic */ }
+    throw new Error(message)
+  }
+  return (await res.json()).snippet
 }

@@ -1,4 +1,4 @@
-import { pgTable, text, jsonb, uuid, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, text, jsonb, uuid, timestamp, boolean } from 'drizzle-orm/pg-core';
 
 /**
  * Reusable Element subtrees saved from the whoobe-one-spike editor
@@ -27,6 +27,8 @@ export const whoobeOneSnippets = pgTable('whoobe_one_snippets', {
   notes: text('notes'),
   // Captured preview image (small WebP data URL) for the Snippets grid.
   thumbnail: text('thumbnail'),
+  // Locked: never saved automatically (editor autosave skips it; the API refuses a save flagged `autosave`). Manual saves still work.
+  locked: boolean('locked').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
