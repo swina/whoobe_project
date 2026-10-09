@@ -8,8 +8,11 @@ import PagesView from '../views/PagesView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 import ResetPasswordView from '../views/ResetPasswordView.vue'
+import UiKitView from '../views/UiKitView.vue'
 
 const routes: Array<RouteRecordRaw> = [
+  // reference page for the shared look (styles/ui.css, components/ui): not in the navigation
+  { path: '/ui-kit', name: 'UiKit', component: UiKitView, meta: { title: 'UI kit' } },
   {
     path: '/forgot-password',
     name: 'ForgotPassword',
