@@ -132,6 +132,8 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `GET /whoobe-one/websites/:id` | Get one website. |
 | `PATCH /whoobe-one/websites/:id` | Update a website. |
 | `DELETE /whoobe-one/websites/:id` | Delete a website. |
+| `GET /whoobe-one/websites/:id/upload-settings` | The file-upload limits of a website's forms (`settings.uploads`: enabled, allowed file types, size, count, daily bytes, target folder), normalized, with the ceilings and the file types that can be allowed. |
+| `PUT /whoobe-one/websites/:id/upload-settings` | Save them. Only file types whose content can be checked are accepted (never html, svg, scripts, programs); numbers are held within the ceilings; the target folder is private unless a public one is explicitly allowed. |
 | `GET /whoobe-one/websites/:id/themes` | List themes available to this website (its settings.themes catalog). |
 | `POST /whoobe-one/websites/:id/themes` | Add a theme to this website's catalog. |
 | `PUT /whoobe-one/websites/:id/themes/:themeId` | Update one of this website's catalog themes. |
