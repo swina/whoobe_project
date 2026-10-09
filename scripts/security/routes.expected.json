@@ -1221,6 +1221,11 @@
         "SETTINGS_MANAGE"
       ],
       "note": "writes the upload limits of a website; validated, extensions that cannot be verified or are active content are refused"
+    },
+    "POST /public/uploads/intent": {
+      "access": "public",
+      "permissions": [],
+      "note": "approves one file for a form Upload field (limits of the website; rate limited) and returns the signed ticket and the address to send the bytes to"
     }
   }
 }

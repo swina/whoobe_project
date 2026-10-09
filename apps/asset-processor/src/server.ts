@@ -3,7 +3,7 @@ import multer from 'multer';
 import { timingSafeEqual } from 'node:crypto';
 import cookieParser from 'cookie-parser';
 import { Readable } from 'node:stream';
-import { S3Client, GetObjectCommand, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, HeadObjectCommand, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import {
   ImageProcessingPipeline,
@@ -18,6 +18,13 @@ import {
   isSandbox,
   assetMaxFileBytes,
   assetMaxCount,
+  normalizeUploadLimits,
+  contentMatchesExtension,
+  SNIFF_BYTES,
+  storedFileName,
+  isPrivateFolder,
+  formUploadStagingKey,
+  FORM_UPLOAD_PUT_PATH,
 } from '@whoobe-cms/core';
 import {
   requireAuth,
@@ -44,6 +51,16 @@ import {
   SESSION_COOKIE_NAME,
   getAssetVisibilityByKey,
   createSelfHealingClient,
+  createFixedWindowLimiter,
+  verifyUploadTicket,
+  uploadTokenSecret,
+  sanitizeUploadedFile,
+  UploadContentError,
+  getFormUpload,
+  markFormUploadStaged,
+  markFormUploadRejected,
+  markFormUploadAttached,
+  expireStaleFormUploads,
 } from '@whoobe-cms/core/server';
 import { createLogger, attachLoggingToggle } from '@whoobe-cms/logger';
 
@@ -246,13 +263,15 @@ async function assetQuotaExceeded(pimcorePath: string): Promise<boolean> {
   return (await countAssets()) >= max;
 }
 
-app.use(express.json({ limit: isSandbox() ? '1mb' : '50mb' }));
+const jsonBody = express.json({ limit: isSandbox() ? '1mb' : '50mb' });
+// The bytes of a form upload are read from the raw stream by their own route (with their own cap), never parsed as JSON
+app.use((req: Request, res: Response, next: NextFunction): void => (req.path.startsWith(`${FORM_UPLOAD_PUT_PATH}/`) ? next() : jsonBody(req, res, next)));
 app.use(cookieParser());
 // Credentialed CORS only for an allowlist (WHOOBE_HOSTNAME, CORS_ALLOWED_HOSTS, CORS_ALLOWED_ORIGINS;
 // localhost too outside production). Asset delivery routes answer any origin without credentials.
 app.disable('x-powered-by');
 app.use(securityHeaders());
-app.use(corsPolicy({ publicPathPrefixes: ['/dam-asset/', '/health', '/public/'], methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'] }));
+app.use(corsPolicy({ publicPathPrefixes: ['/dam-asset/', '/health', '/public/'], methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] }));
 app.use(sanitizeServerErrors());
 app.use('/api/v1/dam', (req: Request, res: Response, next: NextFunction): void => {
   for (const source of [req.query, req.body]) {
@@ -493,6 +512,143 @@ app.post('/api/v1/dam/upload', serviceTokenAuth, upload.single('file'), async (r
     res.status(500).json({ error: error.message || 'Asset upload failed' });
   }
 });
+
+
+// --- File upload in forms (docs/plans/forms/form-upload-plan.md) ---
+// The bytes of ONE file, sent by a visitor's browser with the ticket core-api's /public/uploads/intent issued. The ticket says which
+// upload row this is, the extension that was approved and the largest body allowed; nothing else the request says is trusted.
+// The body is read with a hard cap (cut as soon as it is exceeded), the first bytes must be those of the approved type, pictures are
+// decoded and written again, and only then is the file put in a private staging key. It becomes a library asset when the form that
+// refers to it is submitted (POST /api/v1/dam/form-uploads/attach, called by core-api), or is deleted by the cleanup below.
+const uploadPutLimiter = createFixedWindowLimiter({ max: Number(process.env.UPLOAD_PUT_RATE_LIMIT_PER_MINUTE) > 0 ? Number(process.env.UPLOAD_PUT_RATE_LIMIT_PER_MINUTE) : 30, windowMs: 60_000 });
+
+class UploadRefusal extends Error {
+  constructor(message: string, readonly status: number, readonly reason: string) { super(message); }
+}
+
+function refuseUpload(req: Request, res: Response, status: number, message: string): void {
+  // the rest of the body is not wanted: answer, then drop the connection
+  res.setHeader('Connection', 'close');
+  res.once('finish', () => req.destroy());
+  res.status(status).json({ error: message });
+}
+
+app.put(`${FORM_UPLOAD_PUT_PATH}/:token`, async (req: Request, res: Response): Promise<void> => {
+  const secret = uploadTokenSecret();
+  if (!secret) { res.status(503).json({ error: 'File upload is not configured on this server' }); return; }
+  if (uploadPutLimiter.hit(req.ip ?? 'unknown')) { refuseUpload(req, res, 429, 'Too many uploads, please try again later'); return; }
+  const ticket = verifyUploadTicket(req.params.token, secret);
+  if (!ticket) { refuseUpload(req, res, 401, 'This upload link is not valid or has expired'); return; }
+  let rowId = ticket.u;
+  try {
+    const row = await getFormUpload(ticket.u);
+    if (!row || row.websiteId !== ticket.w || row.formRef !== ticket.f || row.extension !== ticket.x) { refuseUpload(req, res, 404, 'Upload not found'); return; }
+    if (row.status !== 'pending') { refuseUpload(req, res, 409, 'This upload link was already used'); return; }
+    // never more than the ticket allows, nor more than was declared when the file was approved
+    const limit = Math.min(ticket.m, row.declaredSize);
+    const declared = Number(req.headers['content-length']);
+    try {
+      if (Number.isFinite(declared) && declared > limit) throw new UploadRefusal('The file is larger than allowed', 413, 'too-large');
+      const chunks: Buffer[] = [];
+      let total = 0;
+      let headChecked = false;
+      const checkHead = (): void => {
+        const head = Buffer.concat(chunks).subarray(0, SNIFF_BYTES);
+        if (!contentMatchesExtension(ticket.x, head)) throw new UploadRefusal(`The file is not a valid .${ticket.x} file`, 415, 'content-mismatch');
+        headChecked = true;
+      };
+      for await (const chunk of req) {
+        total += (chunk as Buffer).length;
+        if (total > limit) throw new UploadRefusal('The file is larger than allowed', 413, 'too-large');
+        chunks.push(chunk as Buffer);
+        if (!headChecked && total >= SNIFF_BYTES) checkHead();
+      }
+      if (total === 0) throw new UploadRefusal('The file is empty', 400, 'empty');
+      if (!headChecked) checkHead();
+      let body: Buffer;
+      try {
+        body = await sanitizeUploadedFile(Buffer.concat(chunks), ticket.x);
+      } catch (err) {
+        if (err instanceof UploadContentError) throw new UploadRefusal(err.message, 415, 'content-invalid');
+        throw err;
+      }
+      const key = formUploadStagingKey(ticket.w, ticket.u, ticket.x);
+      await s3ClientForProxy.send(new PutObjectCommand({ Bucket: damBaseConfig.bucket, Key: key, Body: body, ContentType: 'application/octet-stream' }));
+      if (!(await markFormUploadStaged(ticket.u, { s3Key: key, size: body.length }))) {
+        await s3ClientForProxy.send(new DeleteObjectCommand({ Bucket: damBaseConfig.bucket, Key: key })).catch(() => {});
+        throw new UploadRefusal('This upload link was already used', 409, 'used');
+      }
+      res.status(201).json({ uploadId: ticket.u, size: body.length });
+    } catch (err) {
+      if (err instanceof UploadRefusal) {
+        if (err.reason !== 'used') await markFormUploadRejected(rowId, err.reason).catch(() => {});
+        logger.warn({ uploadId: ticket.u, websiteId: ticket.w, reason: err.reason }, 'Form upload refused');
+        refuseUpload(req, res, err.status, err.message);
+        return;
+      }
+      throw err;
+    }
+  } catch (error: any) {
+    logger.error({ err: error }, 'Form upload error');
+    if (!res.headersSent) res.status(500).json({ error: 'The upload failed' });
+  }
+});
+
+// Called by core-api when a submitted form refers to a staged upload (service token): the file becomes an asset of the library under a
+// generated name, in the folder core-api resolved from the website's and the field's settings (checked again here: private unless a
+// public folder is explicitly allowed), and the staging copy is removed.
+app.post('/api/v1/dam/form-uploads/attach', serviceTokenAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { uploadId, websiteId, formRef, targetFolder, allowPublicFolder } = req.body ?? {};
+    if (![uploadId, websiteId, formRef, targetFolder].every((v) => typeof v === 'string' && v)) { res.status(400).json({ error: 'uploadId, websiteId, formRef and targetFolder are required' }); return; }
+    const row = await getFormUpload(uploadId);
+    if (!row || row.status !== 'staged' || row.websiteId !== websiteId || row.formRef !== formRef || !row.s3Key) { res.status(409).json({ error: 'The upload is not available' }); return; }
+    const limits = normalizeUploadLimits({ enabled: true, allowedExtensions: [row.extension], targetFolder, allowPublicFolder: allowPublicFolder === true });
+    if (limits.allowedExtensions.length === 0 || limits.targetFolder !== String(targetFolder).replace(/^\/+|\/+$/g, '')) { res.status(400).json({ error: 'The target folder or the file type is not acceptable' }); return; }
+    const object = await s3ClientForProxy.send(new GetObjectCommand({ Bucket: damBaseConfig.bucket, Key: row.s3Key }));
+    const buffer = Buffer.from(await (object.Body as { transformToByteArray(): Promise<Uint8Array> }).transformToByteArray());
+    if (!contentMatchesExtension(row.extension, buffer.subarray(0, SNIFF_BYTES))) { res.status(415).json({ error: 'The file does not match its type' }); return; }
+
+    const filename = storedFileName(row.id, row.extension);
+    const pimcorePath = `/${limits.targetFolder}/${filename}`;
+    if (await assetQuotaExceeded(pimcorePath)) { res.status(409).json({ error: `Asset limit reached (${assetMaxCount()})` }); return; }
+    const isPublic = !isPrivateFolder(limits.targetFolder);
+    const { fileType, mimeType } = getFileTypeFromFilename(filename);
+    const provider = createDamProvider([]);
+    const response = await finalizeAssetUpload(provider, {
+      pimcorePath, buffer, mimeType, isPublic, filename, folderPath: deriveFolderPath(pimcorePath), fileType,
+      metadata: { formUpload: { uploadId: row.id, originalName: row.originalName, websiteId: row.websiteId, formRef: row.formRef } },
+    }, forwardOrigin(req));
+
+    if (!(await markFormUploadAttached(row.id, { websiteId, formRef, s3Key: response.s3Key, assetId: response.asset.id }))) {
+      // lost a race with another submission: take the copy back
+      await deleteAssetRecord(response.asset.id).catch(() => {});
+      await s3ClientForProxy.send(new DeleteObjectCommand({ Bucket: damBaseConfig.bucket, Key: response.s3Key })).catch(() => {});
+      res.status(409).json({ error: 'The upload was already used' });
+      return;
+    }
+    await s3ClientForProxy.send(new DeleteObjectCommand({ Bucket: damBaseConfig.bucket, Key: row.s3Key })).catch(() => {});
+    res.json({ asset: { id: response.asset.id, pimcorePath, filename, sizeBytes: buffer.length, isPublic } });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Form upload attach error');
+    res.status(500).json({ error: 'Failed to store the upload' });
+  }
+});
+
+// Uploads that were approved but never attached to a submitted form (the visitor left, or the form was never sent): the staged copy
+// is deleted and the row marked expired. Every 30 minutes; anything older than 2 hours.
+const STALE_UPLOAD_MS = 2 * 60 * 60 * 1000;
+async function cleanStaleFormUploads(): Promise<void> {
+  try {
+    for (const row of await expireStaleFormUploads(STALE_UPLOAD_MS)) {
+      if (row.s3Key) await s3ClientForProxy.send(new DeleteObjectCommand({ Bucket: damBaseConfig.bucket, Key: row.s3Key })).catch(() => {});
+    }
+  } catch (err) {
+    logger.warn({ err }, 'Form upload cleanup failed');
+  }
+}
+setInterval(cleanStaleFormUploads, 30 * 60 * 1000).unref();
+void cleanStaleFormUploads();
 
 // Re-transforms an already-uploaded image asset through sharp (server-side
 // only - the browser has no way to run sharp) and persists the result,

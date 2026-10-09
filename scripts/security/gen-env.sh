@@ -89,6 +89,11 @@ TOTP_ENCRYPTION_KEY=sectest-$(hex 16)
 
 # outgoing-mail credentials encrypted at rest (test value)
 MAIL_SETTINGS_ENCRYPTION_KEY=sectest-$(hex 16)
+UPLOAD_TOKEN_SECRET=sectest-upload-$(hex 24)
+# the upload tests send many files from one address
+UPLOAD_INTENT_RATE_LIMIT_PER_MINUTE=1000
+UPLOAD_PUT_RATE_LIMIT_PER_MINUTE=1000
+FORM_SUBMIT_RATE_LIMIT_PER_WINDOW=1000
 ENV
 )
 # DB_PASSWORD must equal POSTGRES_PASSWORD

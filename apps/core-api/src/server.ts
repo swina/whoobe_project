@@ -250,16 +250,28 @@ import {
   importWebsiteBundle,
   parseWebsiteBundle,
   ImportError,
+  signUploadTicket,
+  uploadTokenSecret,
+  createFormUpload,
+  getFormUpload,
+  websiteUploadBytesToday,
+  markFormUploadRejected,
 } from '@whoobe-cms/core/server';
 // Root package entry, not '/server' - compileDynamicSchema lives in
 // schema/dynamic.ts, exported from index.ts and kept out of the Node-only
 // './server' barrel on purpose (no DB/crypto dependency, so it's also
 // reachable from browser bundles - admin-dashboard already imports other
 // root-package exports like ClassFieldDefinition the same way).
+import { createAuthoredUploadFieldsCache, uploadBaseUrl, SubmitUploadError } from './form-uploads.js';
 import {
   normalizeUploadLimits,
   UPLOAD_CEILINGS,
   SNIFFABLE_EXTENSIONS,
+  checkUploadIntent,
+  effectiveUploadLimits,
+  displayFileName,
+  readUploadRefs,
+  FORM_UPLOAD_PUT_PATH,
   compileDynamicSchema,
   seoHasTokens,
   pickSeoBinding,
@@ -489,7 +501,7 @@ function clearFailedAttempts(email: string, ip?: string): void {
 // success or failure doesn't matter) - different enough semantics to be a
 // real bug if conflated (e.g. a burst of legitimate submissions would never
 // trip a failure-counting lockout at all).
-const FORM_SUBMIT_MAX = 10;
+const FORM_SUBMIT_MAX = envLimit('FORM_SUBMIT_RATE_LIMIT_PER_WINDOW', 10);
 const FORM_SUBMIT_WINDOW_MS = 15 * 60 * 1000;
 const formSubmitCounts = new Map<string, { count: number; windowStart: number }>();
 
@@ -4751,6 +4763,87 @@ app.post('/public/data-objects/query', async (req: Request, res: Response): Prom
   }
 });
 
+// --- File upload in forms (docs/plans/forms/form-upload-plan.md) ---
+// Step 1, the "intent": the page asks to send one file for an Upload field. Nothing the visitor says is trusted beyond the field's
+// id: the website, its limits and the data class come from the page the field is authored in. The answer is a short-lived signed
+// ticket and the address to send the bytes to (asset-processor, PUT /public/upload-data/<ticket>, where the size and the content are
+// checked again as the bytes arrive). Step 2 is the form submission, which refers to the uploads by id (attachSubmittedUploads).
+const authoredUploadFields = createAuthoredUploadFieldsCache(async () => (await listWhoobePages()).map((p) => ({ content: p.content, websiteId: p.websiteId })));
+const uploadIntentLimiter = createFixedWindowLimiter({ max: envLimit('UPLOAD_INTENT_RATE_LIMIT_PER_MINUTE', 20), windowMs: 60_000 });
+const UPLOAD_TICKET_TTL_SECONDS = 600;
+
+function websiteUploadLimits(website: { settings?: unknown } | null) {
+  return normalizeUploadLimits((website?.settings as Record<string, unknown> | null | undefined)?.uploads);
+}
+
+app.post('/public/uploads/intent', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const secret = uploadTokenSecret();
+    if (!secret) { res.status(503).json({ error: 'File upload is not configured on this server' }); return; }
+    if (uploadIntentLimiter.hit(req.ip ?? 'unknown')) { res.status(429).json({ error: 'Too many uploads, please try again later' }); return; }
+    const { fieldId, filename, size } = req.body ?? {};
+    const field = typeof fieldId === 'string' ? await authoredUploadFields.lookup(fieldId) : null;
+    const website = field?.websiteId ? await getWebsite(field.websiteId) : null;
+    if (!field || !website) { res.status(404).json({ error: 'Upload field not found' }); return; }
+    const limits = effectiveUploadLimits(websiteUploadLimits(website), field.config);
+    const verdict = checkUploadIntent(limits, { filename, size }, await websiteUploadBytesToday(website.id));
+    if (!verdict.ok) {
+      const status = { disabled: 403, name: 400, empty: 400, 'extension-blocked': 415, 'extension-not-allowed': 415, 'too-large': 413, quota: 429 }[verdict.reason];
+      res.status(status).json({ error: verdict.message, reason: verdict.reason });
+      return;
+    }
+    const row = await createFormUpload({ websiteId: website.id, formRef: field.fieldId, extension: verdict.extension, originalName: displayFileName(String(filename)), declaredSize: size as number });
+    const token = signUploadTicket({ u: row.id, w: website.id, f: field.fieldId, x: verdict.extension, m: limits.maxFileBytes, e: Math.floor(Date.now() / 1000) + UPLOAD_TICKET_TTL_SECONDS }, secret);
+    res.status(201).json({ uploadId: row.id, uploadUrl: `${uploadBaseUrl(req)}${FORM_UPLOAD_PUT_PATH}/${token}`, expiresIn: UPLOAD_TICKET_TTL_SECONDS, maxBytes: limits.maxFileBytes });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Upload intent error');
+    res.status(500).json({ error: 'Failed to prepare the upload' });
+  }
+});
+
+/** Step 3, on submit: the uploads a submitted form refers to (by id, for the Upload fields of the form's own page) become library
+ *  assets, and the attribute is replaced by what the data class field stores (`{assetId}`, or a list of them). Every check is made
+ *  before the first file is moved. */
+async function attachSubmittedUploads(attributes: Record<string, unknown>, dataClass: { id: string; fields?: unknown }): Promise<void> {
+  const fields = await authoredUploadFields.forClass(dataClass.id);
+  for (const [name, field] of fields) {
+    if (!(name in attributes)) continue;
+    const ids = readUploadRefs(attributes[name]);
+    if (!ids) throw new SubmitUploadError(`"${name}" must be files uploaded through the form`);
+    const website = field.websiteId ? await getWebsite(field.websiteId) : null;
+    if (!website) throw new SubmitUploadError('Upload field not found', 404);
+    const limits = effectiveUploadLimits(websiteUploadLimits(website), field.config);
+    if (!limits.enabled) throw new SubmitUploadError('File upload is not enabled for this website', 403);
+    if (ids.length > limits.maxFiles) throw new SubmitUploadError(`At most ${limits.maxFiles} file(s) in "${name}"`);
+    const classField = (Array.isArray(dataClass.fields) ? dataClass.fields : []).find((f: any) => f?.name === name) as { fieldType?: string } | undefined;
+    // What the data class field keeps: one file as {assetId} (a relation without a target, asset, image field); several files as a list of
+    // asset ids (`array`) or of {assetId} (`json`). The object relation fields hold data objects, not files.
+    const kind = classField?.fieldType;
+    const many = kind === 'array' || kind === 'json';
+    if (!many && ids.length > 1) throw new SubmitUploadError(`"${name}" takes one file`);
+    for (const id of ids) {
+      const row = await getFormUpload(id);
+      if (!row || row.status !== 'staged' || row.formRef !== field.fieldId || row.websiteId !== website.id) throw new SubmitUploadError('A file was not uploaded or is no longer available: upload it again');
+      if (!limits.allowedExtensions.includes(row.extension)) throw new SubmitUploadError('This kind of file is not accepted');
+    }
+    const assets: { assetId: string }[] = [];
+    for (const id of ids) {
+      const r = await fetch(`${ASSET_PROCESSOR_URL}/api/v1/dam/form-uploads/attach`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(DAM_SERVICE_TOKEN ? { Authorization: `Bearer ${DAM_SERVICE_TOKEN}` } : {}) },
+        body: JSON.stringify({ uploadId: id, websiteId: website.id, formRef: field.fieldId, targetFolder: limits.targetFolder, allowPublicFolder: limits.allowPublicFolder }),
+      });
+      const body: any = await r.json().catch(() => ({}));
+      if (!r.ok || !body?.asset?.id) {
+        logger.warn({ status: r.status, error: body?.error }, 'Form upload attach failed');
+        throw new SubmitUploadError(r.status === 409 ? 'A file was already used by another submission' : 'The file could not be stored, please try again', r.status === 409 ? 409 : 502);
+      }
+      assets.push({ assetId: body.asset.id });
+    }
+    attributes[name] = kind === 'array' ? assets.map((a) => a.assetId) : many ? assets : assets[0];
+  }
+}
+
 // --- Public form submission endpoint (docs/plans/forms/cms-forms.md) ---
 // No requireAuth/requirePermission, same as the query endpoint above - a
 // site visitor submitting a page's contact/registration/etc. form has no
@@ -4783,6 +4876,14 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
     if (!dataClass) {
       res.status(404).json({ error: 'Form target not found' });
       return;
+    }
+
+    // Files the visitor uploaded first (see /public/uploads/intent): turned into assets before the class validates the values
+    try {
+      await attachSubmittedUploads(attributes as Record<string, unknown>, dataClass as { id: string; fields?: unknown });
+    } catch (uploadError) {
+      if (uploadError instanceof SubmitUploadError) { res.status(uploadError.status).json({ error: uploadError.message }); return; }
+      throw uploadError;
     }
 
     let parsed: Record<string, unknown>;
