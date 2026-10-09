@@ -6,6 +6,7 @@
 - Editor (`whoobe-one-spike`): a Lock/Unlock toggle in the top bar while a snippet is edited (`data-testid="snippet-lock"`, `aria-pressed`); the autosave timer skips a locked snippet, manual Save still saves, a 423 is explained and switches the editor to locked.
 - Dashboard: Snippets list and grid show a lock toggle (amber when locked) per snippet; `snippetsStore.setLocked`.
 - Fix (reported): the search input of Snippets and Pages was ~5 px wide with invisible text. `.field` has `width:100%`, so a `select.field` beside the flex-1 search input took the whole row. `ui.css`: a `select.field` directly inside a flex container sizes to its options (also fixes rows-per-page and the mail log filters); the two selects also get `sm:w-auto`.
+- Follow-up: the editor's lock button is shown for every snippet, disabled (with a hint) until the snippet has been saved; before, it was hidden for a new unsaved snippet and looked missing.
 - Tests: `api/snippet-lock.test.ts` (400/404/permission, 423 on autosave while locked and nothing saved, manual save works, unlocked autosave works); `browser/snippet-lock.spec.ts` (search inputs > 200 px, lock toggle from the list).
 
 ## [Navigation: a collapsed sidebar shows the children of an item as a menu to its right] — 2026-10-09
