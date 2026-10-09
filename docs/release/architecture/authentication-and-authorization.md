@@ -69,34 +69,58 @@ attribute-based rules. Three roles are seeded (`admin`, `editor`, `viewer`); mor
 
 ### Permissions
 
-44 keys exist (`packages/core/src/auth/permissions.ts`): 9 flat keys, 1 gateway key and 34 granular ones. **core-api enforces eight
-flat keys; the 34 granular ones are never checked**:
+44 keys exist (`packages/core/src/auth/permissions.ts`): 9 broad keys, 1 gateway key and 34 **function keys** of the form
+`<area>:<action>` for seven areas (`websites`, `pages`, `snippets`, `themes`, `components`, `data_objects`, `assets`) and the
+actions `list`, `view`, `edit`, `create`, `delete` (`assets` also `rename`). The model is deliberately about **functions** (who may
+do what), not about divisions or sites (see section 7 of the [architecture overview](architecture-overview.md#7-deployment-model-one-organisation-per-instance)).
 
-| Key | Routes that require it (core-api contract) |
+**Content routes accept a function key or the broad key that always covered them** (`requireAnyPermission`): `PATCH /whoobe-one/pages/:id`
+needs `pages:edit` *or* `objects:write`. So a role built from function keys is limited to those functions, and a role that has the broad
+keys keeps working exactly as before. 90 of the 172 permission-guarded routes work this way:
+
+| Area | Routes | Function keys |
+|---|---|---|
+| pages (and the page templates gallery) | 21 | `pages:list|view|create|edit|delete` |
+| websites (and their menus, themes catalogue, site key, export/import) | 21 | `websites:list|view|create|edit|delete` |
+| data objects (objects, documents, reading classes and workflows) | 18 | `data_objects:list|view|create|edit|delete` |
+| snippets and kits | 18 | `snippets:list|view|create|edit|delete` |
+| themes | 6 | `themes:list|view|create|edit|delete` |
+| components | 6 | `components:list|view|create|edit|delete` |
+
+The action follows the request: listing a collection is `list`, reading one item (or its versions, translations, preview) is `view`,
+`POST` creating is `create`, `PATCH`/`PUT` changing (also thumbnails, lock, translate, render of a snippet) is `edit`, `DELETE` is `delete`.
+A role needs `view` to open an item and `list` to see the collection; `edit` alone does not imply either.
+
+The other routes stay on the broad keys, on purpose: they are workspace-level or administrative tools.
+
+| Key | Routes (core-api) |
 |---|---|
-| `objects:write` | 70 (create, change and delete content, upload approval settings, imports ...) |
-| `objects:read` | 50 |
-| `settings:manage` | 31 |
-| `users:manage` | 12 |
-| `assets:view` | 4 |
+| `settings:manage` | 31 (mail, AI and Figma settings, website templates, upload limits, PWA generation) |
+| `objects:write` | 24 (workspace settings such as autosave and CDN mirror, defining data classes, migration sources and imports, AI generation, Figma import, search reindex, push send) |
+| `users:manage` | 12 (users, roles) |
+| `objects:read` | 6 (the matching reads: settings, search, generated AI items) |
+| `assets:view` / `assets:list` | 4 / 1 (documentation-site reads) |
 | `objects:publish` | 2 (and the publish state of pages and objects, F-035; website import, F-052) |
 | `workflows:manage` | 2 |
-| `assets:list` | 1 |
 
 asset-processor additionally checks `assets:upload` and `assets:delete`, and the gateway admin routes `gateway:manage`.
 
-The other keys - the granular `<context>:<action>` family (`pages:edit`, `snippets:create`, `data_objects:view`,
-`websites:delete`, `themes:*`, `components:*`) - are created, seeded into the default roles and shown in the roles screen,
-but **no route checks them** (finding F-058). Granting or removing one changes nothing. Real access control is
-`objects:read`, `objects:write`, `objects:publish`, `settings:manage`, `users:manage`, `assets:*`, `workflows:manage`
-and `gateway:manage`.
+**Building a restricted role.** Start from `objects:read` (so the dashboard can load its lists and settings) and add the function keys:
+
+| Role | Keys |
+|---|---|
+| Page editor | `objects:read`, `pages:list`, `pages:view`, `pages:create`, `pages:edit`, `snippets:list`, `snippets:view`, `themes:list`, `themes:view`, `assets:upload` |
+| Reviewer (read only) | `objects:read` |
+| Site manager | the above plus `websites:*`, `snippets:*`, `themes:*` |
+
+`objects:write` is the broad "all content" key: do not give it to a role that must be limited, because it overrides the function keys.
 
 ### Default roles (seed)
 
 | Role | Seeded with | What that means in practice |
 |---|---|---|
 | admin | all 44 keys | everything |
-| editor | `objects:read`, `objects:write`, `assets:upload`, `assets:delete`, `workflows:manage` and 24 granular keys (list/view/edit/create on websites, pages, snippets, data objects, components, assets; list/view on themes) | reads and writes content and assets; **cannot** publish (`objects:publish`), delete objects, manage settings, users or the gateway |
+| editor | `objects:read`, `objects:write`, `assets:upload`, `assets:delete`, `workflows:manage` and 24 function keys (list/view/edit/create on websites, pages, snippets, data objects, components, assets; list/view on themes) | reads and writes content and assets; **cannot** publish (`objects:publish`), delete objects, manage settings, users or the gateway |
 | viewer | `objects:read` and 14 granular list/view keys | reads everything, writes nothing |
 
 Before 2026-10-09 the seeded editor and viewer had **no** `objects:*` key and got 403 on most routes (F-058); the seed now adds
@@ -107,7 +131,7 @@ suite logs in as a user with each seeded role and checks what it can and cannot 
 ### Enforcement and proof
 
 Every route of core-api is declared in `scripts/security/routes.expected.json`: **214 routes - 172 need a permission, 8
-need only a login, 34 are public** (the permission is always one of the eight above). The `authz-matrix` suite calls every route as five identities (anonymous, no
+need only a login, 34 are public** (a permission key, or one of two keys for the 90 content routes). The `authz-matrix` suite calls every route as five identities (anonymous, no
 permission, read, write, admin) and compares the answer with the contract; the `route-drift` suite fails when a route
 exists in the code and not in the contract (or the reverse). asset-processor and gateway routes are guarded in code
 (`requireAuth`, `requirePermission`, `serviceTokenAuth`, site-key middleware) and covered by their own suites
@@ -146,7 +170,7 @@ See [API Gateway security](../guides/api-gateway-security.md).
 
 ## 9. Known gaps (for a risk assessment)
 
-No SSO/OIDC; no mandatory MFA; no per-website roles; the 34 granular permissions are not enforced (F-058); no password policy beyond length; no session list or remote
+No SSO/OIDC; no mandatory MFA; no per-website roles; no password policy beyond length; no session list or remote
 sign-out for the user; no CSRF token; no full CSP on the SPAs (F-014);
 third-party credentials are in clear text on installations without `INTEGRATION_SECRETS_ENCRYPTION_KEY` (F-055); login and MFA throttling is in process memory
 (per replica, lost at restart).

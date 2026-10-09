@@ -131,272 +131,362 @@
     "GET /documents": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /documents/:id": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "PATCH /documents/:id": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /snippets": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /snippets": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /snippets/:id": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_DELETE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/snippets": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/snippets": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/snippets/:id": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/snippets/:id/versions": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/snippets/:id/versions/:versionId": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/snippets/:id/render": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "PATCH /whoobe-one/snippets/:id": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /whoobe-one/snippets/:id": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_DELETE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/templates": {
       "access": "permission",
       "permissions": [
+        "PAGES_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/templates/:id": {
       "access": "permission",
       "permissions": [
+        "PAGES_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/templates": {
       "access": "permission",
       "permissions": [
+        "PAGES_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "PATCH /whoobe-one/templates/:id": {
       "access": "permission",
       "permissions": [
+        "PAGES_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /whoobe-one/templates/:id": {
       "access": "permission",
       "permissions": [
+        "PAGES_DELETE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/kits": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/kits/:id": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/kits": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/kits/:id/templates": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /whoobe-one/kits/:id": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_DELETE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/pages": {
       "access": "permission",
       "permissions": [
+        "PAGES_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/pages/staged": {
       "access": "permission",
       "permissions": [
+        "PAGES_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /whoobe-one/pages/staged/:id": {
       "access": "permission",
       "permissions": [
+        "PAGES_DELETE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/pages/staged/promote": {
       "access": "permission",
       "permissions": [
+        "PAGES_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/pages/staged/:id/promote": {
       "access": "permission",
       "permissions": [
+        "PAGES_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/pages/:id": {
       "access": "permission",
       "permissions": [
+        "PAGES_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/pages/:id/versions": {
       "access": "permission",
       "permissions": [
+        "PAGES_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/pages/:id/versions/:versionId": {
       "access": "permission",
       "permissions": [
+        "PAGES_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/pages/:id/layout": {
       "access": "permission",
       "permissions": [
+        "PAGES_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/pages/:id/render": {
       "access": "permission",
       "permissions": [
+        "PAGES_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/pages/:id/translations": {
       "access": "permission",
       "permissions": [
+        "PAGES_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/pages/:id/translate": {
       "access": "permission",
       "permissions": [
+        "PAGES_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/pages": {
       "access": "permission",
       "permissions": [
+        "PAGES_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "PATCH /whoobe-one/pages/:id": {
       "access": "permission",
       "permissions": [
+        "PAGES_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "PUT /whoobe-one/snippets/:id/thumbnail": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "PUT /whoobe-one/pages/:id/thumbnail": {
       "access": "permission",
       "permissions": [
+        "PAGES_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /whoobe-one/pages/:id": {
       "access": "permission",
       "permissions": [
+        "PAGES_DELETE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/websites": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/websites": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/websites/:id/gateway-api-key/regenerate": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /whoobe-one/websites/:id/gateway-api-key": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/settings/default-placeholder-image": {
       "access": "permission",
@@ -471,92 +561,122 @@
     "GET /whoobe-one/websites/:id": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "PATCH /whoobe-one/websites/:id": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /whoobe-one/websites/:id": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_DELETE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/websites/:id/themes": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/websites/:id/themes": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "PUT /whoobe-one/websites/:id/themes/:themeId": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /whoobe-one/websites/:id/themes/:themeId": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/themes/all": {
       "access": "permission",
       "permissions": [
+        "THEMES_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/websites/:id/theme": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "PUT /whoobe-one/websites/:id/theme": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/themes": {
       "access": "permission",
       "permissions": [
+        "THEMES_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/themes": {
       "access": "permission",
       "permissions": [
+        "THEMES_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/themes/:id": {
       "access": "permission",
       "permissions": [
+        "THEMES_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "PUT /whoobe-one/themes/:id": {
       "access": "permission",
       "permissions": [
+        "THEMES_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /whoobe-one/themes/:id": {
       "access": "permission",
       "permissions": [
+        "THEMES_DELETE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/websites/:websiteId/templates": {
       "access": "permission",
@@ -591,32 +711,42 @@
     "GET /whoobe-one/website-paths": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/website-paths": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/website-paths/:id": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "PATCH /whoobe-one/website-paths/:id": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /whoobe-one/website-paths/:id": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_DELETE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /public/pages/:locale/*": {
       "access": "public",
@@ -690,14 +820,18 @@
     "GET /data-classes": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /data-classes/:id": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /data-classes": {
       "access": "permission",
@@ -720,38 +854,50 @@
     "GET /data-components": {
       "access": "permission",
       "permissions": [
+        "COMPONENTS_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /data-components/:id": {
       "access": "permission",
       "permissions": [
+        "COMPONENTS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /data-components/:id/usage": {
       "access": "permission",
       "permissions": [
+        "COMPONENTS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /data-components": {
       "access": "permission",
       "permissions": [
+        "COMPONENTS_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "PATCH /data-components/:id": {
       "access": "permission",
       "permissions": [
+        "COMPONENTS_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /data-components/:id": {
       "access": "permission",
       "permissions": [
+        "COMPONENTS_DELETE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /migration-sources": {
       "access": "permission",
@@ -810,56 +956,74 @@
     "GET /data-objects": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /data-objects/batch": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /data-objects/batch": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /data-objects/:id": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /data-objects/:id/translations": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /data-objects/translations/:translationGroupId": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /data-objects": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "PATCH /data-objects/:id": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_EDIT",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /data-objects/:id": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_DELETE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /public/data-objects": {
       "access": "public",
@@ -872,8 +1036,10 @@
     "POST /data-objects/query": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_LIST",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /public/data-objects/query": {
       "access": "public",
@@ -1008,20 +1174,26 @@
     "POST /whoobe-one/websites/from-ai": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/websites/:id/export": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "POST /whoobe-one/websites/import": {
       "access": "permission",
       "permissions": [
+        "WEBSITES_CREATE",
         "OBJECTS_WRITE"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /ai/image-settings": {
       "access": "permission",
@@ -1066,8 +1238,10 @@
     "GET /data-objects/:id/preview-links": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "DELETE /data-objects/preview-links/:token": {
       "access": "permission",
@@ -1083,8 +1257,10 @@
     "GET /data-classes/:id/workflow": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "PUT /data-classes/:id/workflow": {
       "access": "permission",
@@ -1105,8 +1281,10 @@
     "GET /data-objects/:id/transitions": {
       "access": "permission",
       "permissions": [
+        "DATA_OBJECTS_VIEW",
         "OBJECTS_READ"
-      ]
+      ],
+      "mode": "any"
     },
     "GET /whoobe-one/search": {
       "access": "permission",
@@ -1204,9 +1382,11 @@
     "PUT /whoobe-one/snippets/:id/lock": {
       "access": "permission",
       "permissions": [
+        "SNIPPETS_EDIT",
         "OBJECTS_WRITE"
       ],
-      "note": "locks or unlocks a snippet: a locked snippet is not saved automatically"
+      "note": "locks or unlocks a snippet: a locked snippet is not saved automatically",
+      "mode": "any"
     },
     "GET /whoobe-one/websites/:id/upload-settings": {
       "access": "permission",

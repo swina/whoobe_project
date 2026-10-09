@@ -17,6 +17,7 @@ import {
   verifyPassword,
   requireAuth,
   requirePermission,
+  requireAnyPermission,
   PERMISSIONS,
   bootstrapDatabase,
   listDocuments,
@@ -1116,7 +1117,7 @@ app.get('/auth/permissions', requirePermission(PERMISSIONS.USERS_MANAGE), async 
 // docs/plans/cms/pimcore-areablock-import-plan.md. Reuses the objects:read
 // permission rather than introducing a separate documents:* domain, since
 // no distinct access-control need has come up yet.
-app.get('/documents', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+app.get('/documents', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_LIST, PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
   try {
     const documents = await listDocuments();
     res.json({ documents });
@@ -1126,7 +1127,7 @@ app.get('/documents', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: 
   }
 });
 
-app.get('/documents/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/documents/:id', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const document = await getDocumentById(req.params.id);
     if (!document) {
@@ -1146,7 +1147,7 @@ app.get('/documents/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (re
 // transitioning to 'published' additionally requires objects:publish, kept
 // separate from the base objects:write gate on this route since editors can
 // autosave drafts without necessarily being allowed to publish.
-app.patch('/documents/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+app.patch('/documents/:id', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { title, rootBlock, status } = req.body ?? {};
     if (typeof title !== 'string' || !rootBlock) {
@@ -1180,7 +1181,7 @@ app.patch('/documents/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async 
 // action (a full WhoobeBlockNode subtree, not a whole document) - see
 // packages/core/src/db/snippet-schema.ts. Reuses the same objects:read/write
 // permissions as documents, same rationale as that route's comment above.
-app.get('/snippets', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+app.get('/snippets', requireAnyPermission(PERMISSIONS.SNIPPETS_LIST, PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
   try {
     const snippets = await listSnippets();
     res.json({ snippets });
@@ -1190,7 +1191,7 @@ app.get('/snippets', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: R
   }
 });
 
-app.post('/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/snippets', requireAnyPermission(PERMISSIONS.SNIPPETS_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, icon, node } = req.body ?? {};
     if (typeof name !== 'string' || !name.trim() || !node) {
@@ -1206,7 +1207,7 @@ app.post('/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: 
   }
 });
 
-app.delete('/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/snippets/:id', requireAnyPermission(PERMISSIONS.SNIPPETS_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteSnippet(req.params.id);
     res.json({ success: true });
@@ -1223,7 +1224,7 @@ app.delete('/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async 
 // dam-api.ts's callers), so these routes work for it exactly like the DAM
 // ones do - as long as there's already a session cookie for the current
 // hostname.
-app.get('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/snippets', requireAnyPermission(PERMISSIONS.SNIPPETS_LIST, PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
   try {
     const snippets = await listWhoobeOneSnippets();
     res.json({ snippets });
@@ -1233,7 +1234,7 @@ app.get('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_READ), asy
   }
 });
 
-app.post('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/snippets', requireAnyPermission(PERMISSIONS.SNIPPETS_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, category, icon, node, themeId, notes, locked } = req.body ?? {};
     if (typeof name !== 'string' || !name.trim() || typeof category !== 'string' || !category.trim() || node == null) {
@@ -1260,7 +1261,7 @@ app.post('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), a
 // Overwrites an existing snippet in place - lets a minor tweak get saved
 // back onto the snippet it came from instead of always creating a new,
 // near-duplicate one (see SaveSnippetModal.vue's "Update existing" mode).
-app.get('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/snippets/:id', requireAnyPermission(PERMISSIONS.SNIPPETS_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const snippet = await getWhoobeOneSnippet(req.params.id);
     if (!snippet) {
@@ -1276,7 +1277,7 @@ app.get('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_READ),
 
 // Instant version history - see the equivalent /whoobe-one/pages/:id/versions
 // routes' comment; same shape, scoped to this snippet's `node` instead.
-app.get('/whoobe-one/snippets/:id/versions', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/snippets/:id/versions', requireAnyPermission(PERMISSIONS.SNIPPETS_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const versions = await listContentVersions('snippet', req.params.id);
     res.json({ versions });
@@ -1286,7 +1287,7 @@ app.get('/whoobe-one/snippets/:id/versions', requirePermission(PERMISSIONS.OBJEC
   }
 });
 
-app.get('/whoobe-one/snippets/:id/versions/:versionId', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/snippets/:id/versions/:versionId', requireAnyPermission(PERMISSIONS.SNIPPETS_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const version = await getContentVersion(req.params.versionId);
     if (!version || version.resourceType !== 'snippet' || version.resourceId !== req.params.id) {
@@ -1306,7 +1307,7 @@ app.get('/whoobe-one/snippets/:id/versions/:versionId', requirePermission(PERMIS
 // unit than a whole mail template for a campaign's body). Uses
 // renderStaticHtml() for the same reason: no context to substitute
 // against, and an ESP's own merge-tag syntax must reach it untouched.
-app.post('/whoobe-one/snippets/:id/render', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/snippets/:id/render', requireAnyPermission(PERMISSIONS.SNIPPETS_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const snippet = await getWhoobeOneSnippet(req.params.id);
     if (!snippet) {
@@ -1321,7 +1322,7 @@ app.post('/whoobe-one/snippets/:id/render', requirePermission(PERMISSIONS.OBJECT
   }
 });
 
-app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/whoobe-one/snippets/:id', requireAnyPermission(PERMISSIONS.SNIPPETS_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, category, icon, node, themeId, notes, autosave } = req.body ?? {};
     // A locked snippet is never saved automatically: the editor's autosave leaves it alone, and a save the editor flags as
@@ -1359,7 +1360,7 @@ app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRIT
 });
 
 // Locks or unlocks a snippet. Locked = no autosave (see PATCH above); it is not a change of content, so no new version is kept.
-app.put('/whoobe-one/snippets/:id/lock', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/snippets/:id/lock', requireAnyPermission(PERMISSIONS.SNIPPETS_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const locked = req.body?.locked;
     if (typeof locked !== 'boolean') { res.status(400).json({ error: 'locked must be true or false' }); return; }
@@ -1372,7 +1373,7 @@ app.put('/whoobe-one/snippets/:id/lock', requirePermission(PERMISSIONS.OBJECTS_W
   }
 });
 
-app.delete('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/snippets/:id', requireAnyPermission(PERMISSIONS.SNIPPETS_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     // A website template's header/footer/aside/404 slots reference snippets
     // by id (not by copy), so deleting one that's in use would silently break
@@ -1405,7 +1406,7 @@ app.delete('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRI
 // 23505 (unique_violation) is what a path collision actually looks like,
 // surfaced as a 409 rather than a generic 500 so the UI can tell the user
 // to pick a different path instead of just failing.
-app.get('/whoobe-one/templates', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/templates', requireAnyPermission(PERMISSIONS.PAGES_LIST, PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
   try {
     const templates = await listWhoobeOneTemplates();
     res.json({ templates });
@@ -1415,7 +1416,7 @@ app.get('/whoobe-one/templates', requirePermission(PERMISSIONS.OBJECTS_READ), as
   }
 });
 
-app.get('/whoobe-one/templates/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/templates/:id', requireAnyPermission(PERMISSIONS.PAGES_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const template = await getWhoobeOneTemplate(req.params.id);
     if (!template) {
@@ -1429,7 +1430,7 @@ app.get('/whoobe-one/templates/:id', requirePermission(PERMISSIONS.OBJECTS_READ)
   }
 });
 
-app.post('/whoobe-one/templates', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/templates', requireAnyPermission(PERMISSIONS.PAGES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, category, path, description, node } = req.body ?? {};
     if (typeof name !== 'string' || !name.trim() || typeof path !== 'string' || !path.trim() || node == null) {
@@ -1455,7 +1456,7 @@ app.post('/whoobe-one/templates', requirePermission(PERMISSIONS.OBJECTS_WRITE), 
   }
 });
 
-app.patch('/whoobe-one/templates/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/whoobe-one/templates/:id', requireAnyPermission(PERMISSIONS.PAGES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, category, description, node } = req.body ?? {};
     if (typeof name !== 'string' || !name.trim() || node == null) {
@@ -1480,7 +1481,7 @@ app.patch('/whoobe-one/templates/:id', requirePermission(PERMISSIONS.OBJECTS_WRI
   }
 });
 
-app.delete('/whoobe-one/templates/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/templates/:id', requireAnyPermission(PERMISSIONS.PAGES_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteWhoobeOneTemplate(req.params.id);
     res.json({ success: true });
@@ -1497,7 +1498,7 @@ app.delete('/whoobe-one/templates/:id', requirePermission(PERMISSIONS.OBJECTS_WR
 // db/seed.ts's seedWhoobeOneKits(), see bootstrapDatabase()) rather than
 // fetched-and-imported from the client, so there's no client-facing
 // "import" endpoint here at all - only real CRUD.
-app.get('/whoobe-one/kits', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/kits', requireAnyPermission(PERMISSIONS.SNIPPETS_LIST, PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
   try {
     const kits = await listWhoobeOneKits();
     res.json({ kits });
@@ -1507,7 +1508,7 @@ app.get('/whoobe-one/kits', requirePermission(PERMISSIONS.OBJECTS_READ), async (
   }
 });
 
-app.get('/whoobe-one/kits/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/kits/:id', requireAnyPermission(PERMISSIONS.SNIPPETS_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const kit = await getWhoobeOneKit(req.params.id);
     if (!kit) {
@@ -1521,7 +1522,7 @@ app.get('/whoobe-one/kits/:id', requirePermission(PERMISSIONS.OBJECTS_READ), asy
   }
 });
 
-app.post('/whoobe-one/kits', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/kits', requireAnyPermission(PERMISSIONS.SNIPPETS_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, description, category, templates } = req.body ?? {};
     if (typeof name !== 'string' || !name.trim()) {
@@ -1546,7 +1547,7 @@ app.post('/whoobe-one/kits', requirePermission(PERMISSIONS.OBJECTS_WRITE), async
 // (rather than a generic PATCH the client would have to fetch-modify-
 // write through) so the read-modify-write on `templates` happens exactly
 // once, at the DB layer, not racily from the client.
-app.post('/whoobe-one/kits/:id/templates', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/kits/:id/templates', requireAnyPermission(PERMISSIONS.SNIPPETS_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { template } = req.body ?? {};
     if (template == null) {
@@ -1565,7 +1566,7 @@ app.post('/whoobe-one/kits/:id/templates', requirePermission(PERMISSIONS.OBJECTS
   }
 });
 
-app.delete('/whoobe-one/kits/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/kits/:id', requireAnyPermission(PERMISSIONS.SNIPPETS_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteWhoobeOneKit(req.params.id);
     res.json({ success: true });
@@ -1579,7 +1580,7 @@ app.delete('/whoobe-one/kits/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE),
 // cms/whoobe-one-editor-integration-plan.md §4. Distinct from the
 // `/whoobe-one/templates` routes above: templates stay a reusable
 // starting-point library, pages are the CMS's actual content.
-app.get('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/pages', requireAnyPermission(PERMISSIONS.PAGES_LIST, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : undefined;
     const pages = await listWhoobePages(websiteId);
@@ -1597,7 +1598,7 @@ app.get('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_READ), async 
 // (reject/re-stage). Registered BEFORE the /whoobe-one/pages/:id GET and
 // DELETE routes below so the literal "staged" segment isn't captured as an
 // id (same reason /data-objects/batch precedes /data-objects/:id).
-app.get('/whoobe-one/pages/staged', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/pages/staged', requireAnyPermission(PERMISSIONS.PAGES_LIST, PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
   try {
     const staged = await listStagedWhoobePages();
     res.json({ pages: staged });
@@ -1609,7 +1610,7 @@ app.get('/whoobe-one/pages/staged', requirePermission(PERMISSIONS.OBJECTS_READ),
 
 app.delete(
   '/whoobe-one/pages/staged/:id',
-  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  requireAnyPermission(PERMISSIONS.PAGES_DELETE, PERMISSIONS.OBJECTS_WRITE),
   async (req: Request, res: Response): Promise<void> => {
     try {
       await deleteStagedWhoobePage(req.params.id);
@@ -1629,7 +1630,7 @@ app.delete(
 // runPromoteDocuments.
 app.post(
   '/whoobe-one/pages/staged/promote',
-  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  requireAnyPermission(PERMISSIONS.PAGES_CREATE, PERMISSIONS.OBJECTS_WRITE),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { dryRun, clear } = req.body ?? {};
@@ -1652,7 +1653,7 @@ app.post(
 // the other staged rows.
 app.post(
   '/whoobe-one/pages/staged/:id/promote',
-  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  requireAnyPermission(PERMISSIONS.PAGES_CREATE, PERMISSIONS.OBJECTS_WRITE),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { dryRun, clear } = req.body ?? {};
@@ -1669,7 +1670,7 @@ app.post(
   }
 );
 
-app.get('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/pages/:id', requireAnyPermission(PERMISSIONS.PAGES_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const page = await getWhoobePage(req.params.id);
     if (!page) {
@@ -1689,7 +1690,7 @@ app.get('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_READ), as
 // autosave). List omits `content` itself (can be a large tree) - the
 // version-history panel fetches a specific version's full content only
 // when the user opens/restores it, via the :versionId route below.
-app.get('/whoobe-one/pages/:id/versions', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/pages/:id/versions', requireAnyPermission(PERMISSIONS.PAGES_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const versions = await listContentVersions('page', req.params.id);
     res.json({ versions });
@@ -1699,7 +1700,7 @@ app.get('/whoobe-one/pages/:id/versions', requirePermission(PERMISSIONS.OBJECTS_
   }
 });
 
-app.get('/whoobe-one/pages/:id/versions/:versionId', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/pages/:id/versions/:versionId', requireAnyPermission(PERMISSIONS.PAGES_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const version = await getContentVersion(req.params.versionId);
     if (!version || version.resourceType !== 'page' || version.resourceId !== req.params.id) {
@@ -1720,7 +1721,7 @@ app.get('/whoobe-one/pages/:id/versions/:versionId', requirePermission(PERMISSIO
 // canvas/editor-preview can default to matching the live site's body
 // background instead of starting blank. Only the body slot is resolved
 // here - the editor canvas has no use for header/aside/footer module pages.
-app.get('/whoobe-one/pages/:id/layout', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/pages/:id/layout', requireAnyPermission(PERMISSIONS.PAGES_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const page = await getWhoobePage(req.params.id);
     if (!page) {
@@ -1749,7 +1750,7 @@ app.get('/whoobe-one/pages/:id/layout', requirePermission(PERMISSIONS.OBJECTS_RE
 // `kind` ('content'/'module'/'app') - a genuinely nonsensical source (an
 // app-kind page with no static markup) just renders to near-empty HTML
 // rather than needing a special-cased rejection here.
-app.post('/whoobe-one/pages/:id/render', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/pages/:id/render', requireAnyPermission(PERMISSIONS.PAGES_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const page = await getWhoobePage(req.params.id);
     if (!page) {
@@ -1769,7 +1770,7 @@ app.post('/whoobe-one/pages/:id/render', requirePermission(PERMISSIONS.OBJECTS_R
 // not part of the plain CRUD set above.
 app.get(
   '/whoobe-one/pages/:id/translations',
-  requirePermission(PERMISSIONS.OBJECTS_READ),
+  requireAnyPermission(PERMISSIONS.PAGES_VIEW, PERMISSIONS.OBJECTS_READ),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const page = await getWhoobePage(req.params.id);
@@ -1797,7 +1798,7 @@ app.get(
 // page/publish workflow every other page already goes through.
 app.post(
   '/whoobe-one/pages/:id/translate',
-  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  requireAnyPermission(PERMISSIONS.PAGES_EDIT, PERMISSIONS.OBJECTS_WRITE),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { locale } = req.body ?? {};
     if (typeof locale !== 'string' || !locale.trim()) {
@@ -1989,7 +1990,7 @@ app.post(
   }
 );
 
-app.post('/whoobe-one/pages', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/pages', requireAnyPermission(PERMISSIONS.PAGES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { translationGroupId, locale, slug, title, category, kind, content, seo, sitemap, search, pimcoreId, path, websiteId, themeId } = req.body ?? {};
     if (typeof slug !== 'string' || !slug.trim() || typeof title !== 'string' || !title.trim() || content == null) {
@@ -2048,7 +2049,7 @@ async function isEditorRequest(req: Request): Promise<boolean> {
 
 const PUBLISH_DENIED = { error: 'Publishing requires the objects:publish permission' };
 
-app.patch('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/whoobe-one/pages/:id', requireAnyPermission(PERMISSIONS.PAGES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { slug, title, category, kind, published, workflowState, content, locale, path, websiteId, themeId, seo, sitemap, search } = req.body ?? {};
 
@@ -2113,7 +2114,7 @@ function parseThumbnail(body: any): { ok: true; value: string | null } | { ok: f
   return { ok: false };
 }
 
-app.put('/whoobe-one/snippets/:id/thumbnail', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/snippets/:id/thumbnail', requireAnyPermission(PERMISSIONS.SNIPPETS_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const parsed = parseThumbnail(req.body);
     if (!parsed.ok) { res.status(400).json({ error: 'thumbnail must be null or an image data URL under 400k chars' }); return; }
@@ -2125,7 +2126,7 @@ app.put('/whoobe-one/snippets/:id/thumbnail', requirePermission(PERMISSIONS.OBJE
   }
 });
 
-app.put('/whoobe-one/pages/:id/thumbnail', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/pages/:id/thumbnail', requireAnyPermission(PERMISSIONS.PAGES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const parsed = parseThumbnail(req.body);
     if (!parsed.ok) { res.status(400).json({ error: 'thumbnail must be null or an image data URL under 400k chars' }); return; }
@@ -2137,7 +2138,7 @@ app.put('/whoobe-one/pages/:id/thumbnail', requirePermission(PERMISSIONS.OBJECTS
   }
 });
 
-app.delete('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/pages/:id', requireAnyPermission(PERMISSIONS.PAGES_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteWhoobePage(req.params.id);
     res.json({ success: true });
@@ -2148,7 +2149,7 @@ app.delete('/whoobe-one/pages/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE)
 });
 
 // --- Websites ---
-app.get('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/websites', requireAnyPermission(PERMISSIONS.WEBSITES_LIST, PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
   try {
     const result = await listWebsites();
     res.json({ websites: result });
@@ -2158,7 +2159,7 @@ app.get('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_READ), asy
   }
 });
 
-app.post('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/websites', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, rootPath, domains, defaultLocale, supportedLocales, settings, themeId } = req.body ?? {};
     if (!name || typeof name !== 'string') {
@@ -2200,7 +2201,7 @@ app.post('/whoobe-one/websites', requirePermission(PERMISSIONS.OBJECTS_WRITE), a
 // returned exactly once and never stored (only its hash is) - see docs/
 // plans/api-gateway/gateway-auth-authz.md. Overwrites any previous key,
 // immediately invalidating it for any already-deployed site still using it.
-app.post('/whoobe-one/websites/:id/gateway-api-key/regenerate', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/websites/:id/gateway-api-key/regenerate', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await setWebsiteGatewayApiKey(req.params.id);
     if (!result) {
@@ -2214,7 +2215,7 @@ app.post('/whoobe-one/websites/:id/gateway-api-key/regenerate', requirePermissio
   }
 });
 
-app.delete('/whoobe-one/websites/:id/gateway-api-key', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/websites/:id/gateway-api-key', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     await clearWebsiteGatewayApiKey(req.params.id);
     res.json({ success: true });
@@ -2417,7 +2418,7 @@ app.put('/whoobe-one/settings/cdn-mirror', requirePermission(PERMISSIONS.OBJECTS
   }
 });
 
-app.get('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/websites/:id', requireAnyPermission(PERMISSIONS.WEBSITES_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const website = await getWebsite(req.params.id);
     if (!website) {
@@ -2431,7 +2432,7 @@ app.get('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_READ),
   }
 });
 
-app.patch('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/whoobe-one/websites/:id', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, rootPath, domains, defaultLocale, supportedLocales, settings, themeId, pwaEnabled, pwaConfig } = req.body ?? {};
     if (rootPath !== undefined) {
@@ -2472,7 +2473,7 @@ app.patch('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRIT
   }
 });
 
-app.delete('/whoobe-one/websites/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/websites/:id', requireAnyPermission(PERMISSIONS.WEBSITES_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteWebsite(req.params.id);
     siteRootCache.clear();
@@ -2545,7 +2546,7 @@ app.put('/whoobe-one/websites/:id/upload-settings', requirePermission(PERMISSION
   }
 });
 
-app.get('/whoobe-one/websites/:id/themes', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/websites/:id/themes', requireAnyPermission(PERMISSIONS.WEBSITES_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const website = await getWebsite(req.params.id);
     if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
@@ -2558,7 +2559,7 @@ app.get('/whoobe-one/websites/:id/themes', requirePermission(PERMISSIONS.OBJECTS
   }
 });
 
-app.post('/whoobe-one/websites/:id/themes', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/websites/:id/themes', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, colors, fonts, styles, tailwindClasses } = req.body ?? {};
     const website = await getWebsite(req.params.id);
@@ -2582,7 +2583,7 @@ app.post('/whoobe-one/websites/:id/themes', requirePermission(PERMISSIONS.OBJECT
   }
 });
 
-app.put('/whoobe-one/websites/:id/themes/:themeId', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/websites/:id/themes/:themeId', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, colors, fonts, styles, tailwindClasses, isDefault } = req.body ?? {};
     const website = await getWebsite(req.params.id);
@@ -2605,7 +2606,7 @@ app.put('/whoobe-one/websites/:id/themes/:themeId', requirePermission(PERMISSION
   }
 });
 
-app.delete('/whoobe-one/websites/:id/themes/:themeId', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/websites/:id/themes/:themeId', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const website = await getWebsite(req.params.id);
     if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
@@ -2627,7 +2628,7 @@ app.delete('/whoobe-one/websites/:id/themes/:themeId', requirePermission(PERMISS
 
 // All themes from all websites — for snippet/standalone editors that don't
 // belong to a specific website.
-app.get('/whoobe-one/themes/all', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/themes/all', requireAnyPermission(PERMISSIONS.THEMES_LIST, PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
   try {
     const allWebsites = await listWebsites();
     const allThemes: { websiteId: string; websiteName: string; themes: { id: string; name: string; colors: { name: string; hex: string }[]; fonts: string[]; styles: string; tailwindClasses: string }[] }[] = [];
@@ -2645,7 +2646,7 @@ app.get('/whoobe-one/themes/all', requirePermission(PERMISSIONS.OBJECTS_READ), a
 });
 
 // Backward-compatible single-theme endpoints — read/write the default theme.
-app.get('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/websites/:id/theme', requireAnyPermission(PERMISSIONS.WEBSITES_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const website = await getWebsite(req.params.id);
     if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
@@ -2659,7 +2660,7 @@ app.get('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_
   }
 });
 
-app.put('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/websites/:id/theme', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { colors, fonts } = req.body ?? {};
     const parsed = {
@@ -2688,7 +2689,7 @@ app.put('/whoobe-one/websites/:id/theme', requirePermission(PERMISSIONS.OBJECTS_
 
 // --- Themes (independent entity, own DB table) ---
 
-app.get('/whoobe-one/themes', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/themes', requireAnyPermission(PERMISSIONS.THEMES_LIST, PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
   try {
     const result = await listThemes();
     res.json({ themes: result });
@@ -2698,7 +2699,7 @@ app.get('/whoobe-one/themes', requirePermission(PERMISSIONS.OBJECTS_READ), async
   }
 });
 
-app.post('/whoobe-one/themes', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/themes', requireAnyPermission(PERMISSIONS.THEMES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, colors, fonts, styles, tailwindClasses } = req.body ?? {};
     if (!name || typeof name !== 'string') {
@@ -2719,7 +2720,7 @@ app.post('/whoobe-one/themes', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
   }
 });
 
-app.get('/whoobe-one/themes/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/themes/:id', requireAnyPermission(PERMISSIONS.THEMES_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const theme = await getTheme(req.params.id);
     if (!theme) {
@@ -2733,7 +2734,7 @@ app.get('/whoobe-one/themes/:id', requirePermission(PERMISSIONS.OBJECTS_READ), a
   }
 });
 
-app.put('/whoobe-one/themes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/themes/:id', requireAnyPermission(PERMISSIONS.THEMES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, colors, fonts, styles, tailwindClasses } = req.body ?? {};
     const theme = await updateTheme(req.params.id, {
@@ -2754,7 +2755,7 @@ app.put('/whoobe-one/themes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), 
   }
 });
 
-app.delete('/whoobe-one/themes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/themes/:id', requireAnyPermission(PERMISSIONS.THEMES_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteTheme(req.params.id);
     res.json({ success: true });
@@ -2856,7 +2857,7 @@ app.delete('/whoobe-one/websites/:websiteId/templates/:id', requirePermission(PE
 });
 
 // --- Website Paths ---
-app.get('/whoobe-one/website-paths', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/website-paths', requireAnyPermission(PERMISSIONS.WEBSITES_LIST, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : undefined;
     const result = await listWebsitePaths(websiteId);
@@ -2867,7 +2868,7 @@ app.get('/whoobe-one/website-paths', requirePermission(PERMISSIONS.OBJECTS_READ)
   }
 });
 
-app.post('/whoobe-one/website-paths', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/website-paths', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { websiteId, name, items } = req.body ?? {};
     if (!websiteId || typeof websiteId !== 'string') {
@@ -2890,7 +2891,7 @@ app.post('/whoobe-one/website-paths', requirePermission(PERMISSIONS.OBJECTS_WRIT
   }
 });
 
-app.get('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/website-paths/:id', requireAnyPermission(PERMISSIONS.WEBSITES_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const path = await getWebsitePath(req.params.id);
     if (!path) {
@@ -2904,7 +2905,7 @@ app.get('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECTS_R
   }
 });
 
-app.patch('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/whoobe-one/website-paths/:id', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, items } = req.body ?? {};
     const path = await updateWebsitePath(req.params.id, {
@@ -2922,7 +2923,7 @@ app.patch('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECTS
   }
 });
 
-app.delete('/whoobe-one/website-paths/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/website-paths/:id', requireAnyPermission(PERMISSIONS.WEBSITES_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteWebsitePath(req.params.id);
     res.json({ success: true });
@@ -3905,7 +3906,7 @@ app.get('/public/search', async (req: Request, res: Response): Promise<void> => 
 // class-specific permission strings - that's this codebase's own existing
 // convention for "any admin-managed content", not something this plan
 // introduces new permissions for.
-app.get('/data-classes', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+app.get('/data-classes', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_LIST, PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
   try {
     const classes = await listDataClasses();
     res.json({ classes });
@@ -3915,7 +3916,7 @@ app.get('/data-classes', requirePermission(PERMISSIONS.OBJECTS_READ), async (_re
   }
 });
 
-app.get('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/data-classes/:id', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const dataClass = await getDataClass(req.params.id);
     if (!dataClass) {
@@ -4049,7 +4050,7 @@ app.delete('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), as
 // Phase 1 scope only: no in-use guardrail on delete yet (component-fields-
 // plan.md §2.5/Phase 4 is real, separate work - deliberately not built
 // here, same as this plan's own stated phase boundary).
-app.get('/data-components', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+app.get('/data-components', requireAnyPermission(PERMISSIONS.COMPONENTS_LIST, PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
   try {
     const components = await listDataComponents();
     res.json({ components });
@@ -4059,7 +4060,7 @@ app.get('/data-components', requirePermission(PERMISSIONS.OBJECTS_READ), async (
   }
 });
 
-app.get('/data-components/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/data-components/:id', requireAnyPermission(PERMISSIONS.COMPONENTS_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const component = await getDataComponent(req.params.id);
     if (!component) {
@@ -4077,7 +4078,7 @@ app.get('/data-components/:id', requirePermission(PERMISSIONS.OBJECTS_READ), asy
 // ComponentSettingsCard.vue show a live warning the same way
 // ClassSettingsCard.vue's own `objectCount` already does for classes,
 // rather than only surfacing the guardrail reactively via a 409 on save.
-app.get('/data-components/:id/usage', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/data-components/:id/usage', requireAnyPermission(PERMISSIONS.COMPONENTS_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const component = await getDataComponent(req.params.id);
     if (!component) {
@@ -4092,7 +4093,7 @@ app.get('/data-components/:id/usage', requirePermission(PERMISSIONS.OBJECTS_READ
   }
 });
 
-app.post('/data-components', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/data-components', requireAnyPermission(PERMISSIONS.COMPONENTS_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, label, fields } = req.body ?? {};
     if (typeof name !== 'string' || !name.trim() || typeof label !== 'string' || !label.trim() || !Array.isArray(fields)) {
@@ -4112,7 +4113,7 @@ app.post('/data-components', requirePermission(PERMISSIONS.OBJECTS_WRITE), async
   }
 });
 
-app.patch('/data-components/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/data-components/:id', requireAnyPermission(PERMISSIONS.COMPONENTS_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, label, fields, confirmTypeChange } = req.body ?? {};
 
@@ -4174,7 +4175,7 @@ app.patch('/data-components/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), 
   }
 });
 
-app.delete('/data-components/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/data-components/:id', requireAnyPermission(PERMISSIONS.COMPONENTS_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const component = await getDataComponent(req.params.id);
     if (!component) {
@@ -4421,7 +4422,7 @@ app.post(
 // datamodel/advanced-data-modeling-plan.md §4.2/§6. `?classId=` supports
 // ObjectsView.vue's own class filter (§6.2) - a plain query param, not a
 // separate route, since it's an optional narrowing of the same list.
-app.get('/data-objects', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/data-objects', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_LIST, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const classId = typeof req.query.classId === 'string' ? req.query.classId : undefined;
     const objects = await listDataObjects(classId);
@@ -4436,7 +4437,7 @@ app.get('/data-objects', requirePermission(PERMISSIONS.OBJECTS_READ), async (req
 // before /batch and /:id so the path is not captured as an id.
 app.post(
   '/data-objects/batch',
-  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  requireAnyPermission(PERMISSIONS.DATA_OBJECTS_CREATE, PERMISSIONS.OBJECTS_WRITE),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { ids, action } = req.body ?? {};
@@ -4511,7 +4512,7 @@ app.post(
 // "batch" would otherwise be captured as an :id).
 app.get(
   '/data-objects/batch',
-  requirePermission(PERMISSIONS.OBJECTS_READ),
+  requireAnyPermission(PERMISSIONS.DATA_OBJECTS_LIST, PERMISSIONS.OBJECTS_READ),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const ids = (typeof req.query.ids === 'string' ? req.query.ids : '')
@@ -4527,7 +4528,7 @@ app.get(
   }
 );
 
-app.get('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/data-objects/:id', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const dataObject = await getDataObject(req.params.id);
     if (!dataObject) {
@@ -4545,7 +4546,7 @@ app.get('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_READ), async 
 // /whoobe-one/pages/:id/translations plays for pages.
 app.get(
   '/data-objects/:id/translations',
-  requirePermission(PERMISSIONS.OBJECTS_READ),
+  requireAnyPermission(PERMISSIONS.DATA_OBJECTS_VIEW, PERMISSIONS.OBJECTS_READ),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const dataObject = await getDataObject(req.params.id);
@@ -4572,7 +4573,7 @@ app.get(
 // filter the shared list store instead).
 app.get(
   '/data-objects/translations/:translationGroupId',
-  requirePermission(PERMISSIONS.OBJECTS_READ),
+  requireAnyPermission(PERMISSIONS.DATA_OBJECTS_VIEW, PERMISSIONS.OBJECTS_READ),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const translations = await listDataObjectTranslations(req.params.translationGroupId);
@@ -4584,7 +4585,7 @@ app.get(
   }
 );
 
-app.post('/data-objects', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/data-objects', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { classId, key, path, parentId, translationGroupId, locale, attributes, pimcoreId } = req.body ?? {};
     if (typeof classId !== 'string' || !classId.trim() || typeof key !== 'string' || !key.trim() || attributes == null) {
@@ -4613,7 +4614,7 @@ app.post('/data-objects', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
   }
 });
 
-app.patch('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/data-objects/:id', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const { key, path, parentId, published, workflowState, attributes } = req.body ?? {};
 
@@ -4648,7 +4649,7 @@ app.patch('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
   }
 });
 
-app.delete('/data-objects/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/data-objects/:id', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteDataObject(req.params.id);
     res.json({ success: true });
@@ -4709,7 +4710,7 @@ app.get('/public/data-objects/batch', async (req: Request, res: Response): Promi
 
 app.post(
   '/data-objects/query',
-  requirePermission(PERMISSIONS.OBJECTS_READ),
+  requireAnyPermission(PERMISSIONS.DATA_OBJECTS_LIST, PERMISSIONS.OBJECTS_READ),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { class: className, filters, orderBy, offset, limit, locale } = req.body ?? {};
@@ -5608,7 +5609,7 @@ const settings = await getAiSettings(req.user!.id);
 
 // Creates a website from the AI-generated structure — creates the website,
 // all its pages, and all its snippets in one orchestrated call.
-app.post('/whoobe-one/websites/from-ai', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+app.post('/whoobe-one/websites/from-ai', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const { structure } = req.body ?? {};
   if (!structure || typeof structure.website !== 'object' || !Array.isArray(structure.pages) || !Array.isArray(structure.snippets)) {
     res.status(400).json({ error: 'structure with website, pages, and snippets is required' });
@@ -5654,7 +5655,7 @@ app.post('/whoobe-one/websites/from-ai', requirePermission(PERMISSIONS.OBJECTS_W
 // data classes/components/objects and the asset records. The files of the assets are fetched by the client from the
 // asset-processor and zipped next to the JSON; on import the client stores them first and sends the id mapping.
 // `?dataObjects=referenced` leaves out the objects a data binding would list (only the ones reached by id are kept).
-app.get('/whoobe-one/websites/:id/export', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+app.get('/whoobe-one/websites/:id/export', requireAnyPermission(PERMISSIONS.WEBSITES_VIEW, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const dataObjects = req.query.dataObjects === 'referenced' ? 'referenced' : 'all';
     const bundle = await buildWebsiteBundle(req.params.id, { dataObjects });
@@ -5672,7 +5673,7 @@ app.get('/whoobe-one/websites/:id/export', requirePermission(PERMISSIONS.OBJECTS
 // Accepts a version 1 or 2 export. `?dryRun=1` writes nothing and reports what would happen, including the plan for
 // the assets (upload / reuse / conflict). The body is the bundle, plus `assetMap` ({ oldAssetId: { id, pimcorePath } })
 // for the assets the client has stored.
-app.post('/whoobe-one/websites/import', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/websites/import', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
     const parsed = parseWebsiteBundle(req.body);
     if ('error' in parsed) {
@@ -5919,7 +5920,7 @@ app.post(
 
 app.get(
   '/data-objects/:id/preview-links',
-  requirePermission(PERMISSIONS.OBJECTS_READ),
+  requireAnyPermission(PERMISSIONS.DATA_OBJECTS_VIEW, PERMISSIONS.OBJECTS_READ),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const tokens = await listPreviewTokensForObject(req.params.id);
@@ -5993,7 +5994,7 @@ app.get('/preview/objects/:token', async (req: Request, res: Response): Promise<
 // than reading/writing/publishing individual objects.
 app.get(
   '/data-classes/:id/workflow',
-  requirePermission(PERMISSIONS.OBJECTS_READ),
+  requireAnyPermission(PERMISSIONS.DATA_OBJECTS_VIEW, PERMISSIONS.OBJECTS_READ),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const definition = await getWorkflowDefinitionByClassId(req.params.id);
@@ -6106,7 +6107,7 @@ app.post(
 
 app.get(
   '/data-objects/:id/transitions',
-  requirePermission(PERMISSIONS.OBJECTS_READ),
+  requireAnyPermission(PERMISSIONS.DATA_OBJECTS_VIEW, PERMISSIONS.OBJECTS_READ),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const transitions = await listWorkflowTransitionsForObject(req.params.id);

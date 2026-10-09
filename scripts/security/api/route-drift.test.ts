@@ -6,7 +6,7 @@ import { resolve } from 'node:path'
 import { extractRoutes } from '../extract-routes'
 import { SECURITY_DIR } from '../lib/config'
 
-interface Expected { access: string; permissions: string[]; note?: string }
+interface Expected { access: string; permissions: string[]; mode?: string; note?: string }
 const expected: Record<string, Expected> = JSON.parse(readFileSync(resolve(SECURITY_DIR, 'routes.expected.json'), 'utf8')).routes
 const actual = extractRoutes()
 
@@ -24,8 +24,8 @@ describe('route table drift (core-api)', () => {
   it('keeps each route access level and permission as expected', () => {
     const diffs = actual
       .filter((r) => expected[r.key])
-      .filter((r) => expected[r.key].access !== r.access || expected[r.key].permissions.join() !== r.permissions.join())
-      .map((r) => `${r.key}: expected ${expected[r.key].access}[${expected[r.key].permissions}] got ${r.access}[${r.permissions}]`)
+      .filter((r) => expected[r.key].access !== r.access || expected[r.key].permissions.join() !== r.permissions.join() || (expected[r.key].mode ?? 'all') !== r.mode)
+      .map((r) => `${r.key}: expected ${expected[r.key].access}[${expected[r.key].permissions}] ${expected[r.key].mode ?? 'all'} got ${r.access}[${r.permissions}] ${r.mode}`)
     expect(diffs).toEqual([])
   })
 
