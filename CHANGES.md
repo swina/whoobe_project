@@ -1,3 +1,6 @@
+## [Plan: file upload in forms] — 2026-10-09
+- Branch: `feat/download-element`. `docs/plans/forms/form-upload-plan.md`: two-step upload, limits per website, private target folder by default, content checks, phases. Open point: B (pre-signed S3 URL, needs S3 reachable by visitors) vs B' (signed token, bytes streamed through our own endpoint, recommended).
+
 ## [Download element tied to a file] — 2026-10-09
 - Branch: `feat/download-element`. Request: the download must be associated with a file, hence an asset (or a URL); the element keeps the same customization.
 - Data: the file is kept in `image.url` (like Audio, Image, Video), so asset resolution and the website export/import reference rewriting need no change.
