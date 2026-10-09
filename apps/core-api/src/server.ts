@@ -257,6 +257,9 @@ import {
 // reachable from browser bundles - admin-dashboard already imports other
 // root-package exports like ClassFieldDefinition the same way).
 import {
+  normalizeUploadLimits,
+  UPLOAD_CEILINGS,
+  SNIFFABLE_EXTENSIONS,
   compileDynamicSchema,
   seoHasTokens,
   pickSeoBinding,
@@ -2480,6 +2483,43 @@ function readDefaultThemeId(settings: Record<string, unknown> | null): string {
 function themeId(): string {
   return 'theme-' + randomBytes(4).toString('hex');
 }
+
+// File upload in forms (docs/plans/forms/form-upload-plan.md): the limits a website sets live in its settings (`settings.uploads`).
+// Whatever is written goes through normalizeUploadLimits, so the stored value is always one the upload endpoints can trust
+// (verifiable extensions only, numbers within the ceilings, a private folder unless a public one is explicitly allowed).
+app.get('/whoobe-one/websites/:id/upload-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const website = await getWebsite(req.params.id);
+    if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
+    const raw = (website.settings as Record<string, unknown> | null)?.uploads;
+    res.json({ uploads: normalizeUploadLimits(raw), ceilings: UPLOAD_CEILINGS, availableExtensions: [...SNIFFABLE_EXTENSIONS].sort() });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Read website upload settings error');
+    res.status(500).json({ error: 'Failed to read upload settings' });
+  }
+});
+
+app.put('/whoobe-one/websites/:id/upload-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const body = req.body;
+    if (!body || typeof body !== 'object' || Array.isArray(body)) { res.status(400).json({ error: 'A settings object is required' }); return; }
+    const website = await getWebsite(req.params.id);
+    if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
+    const uploads = normalizeUploadLimits(body);
+    // Say so instead of silently dropping what was asked for
+    const asked = Array.isArray((body as any).allowedExtensions) ? (body as any).allowedExtensions.map((e: unknown) => String(e).trim().toLowerCase().replace(/^\./, '')).filter(Boolean) : [];
+    const dropped = asked.filter((e: string) => !uploads.allowedExtensions.includes(e));
+    if (dropped.length) { res.status(400).json({ error: `These file types cannot be allowed: ${[...new Set(dropped)].join(', ')}`, rejectedExtensions: [...new Set(dropped)] }); return; }
+    if (typeof (body as any).targetFolder === 'string' && (body as any).targetFolder.trim() && (body as any).targetFolder.trim().replace(/^\/+|\/+$/g, '') !== uploads.targetFolder) {
+      res.status(400).json({ error: 'The target folder is not valid, or a public folder needs "allow a public folder"' }); return;
+    }
+    await updateWebsite(req.params.id, { settings: { ...((website.settings as Record<string, unknown>) ?? {}), uploads } });
+    res.json({ uploads });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Write website upload settings error');
+    res.status(500).json({ error: 'Failed to save upload settings' });
+  }
+});
 
 app.get('/whoobe-one/websites/:id/themes', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {

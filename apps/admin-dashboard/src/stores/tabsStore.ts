@@ -24,7 +24,7 @@ export type WebsiteSubTab = 'settings' | 'paths' | 'templates'
 // A fixed, known-upfront set (docs/plans/UI/settings-ui-plan.md) - unlike
 // objectSubTab's free-form string (which varies per class's locales),
 // this is a real enum, matching AssetSubTab/DocumentSubTab's own pattern.
-export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'roles' | 'security' | 'workflows' | 'figma' | 'pwa'
+export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'roles' | 'security' | 'workflows' | 'figma' | 'pwa' | 'uploads'
 
 export interface MainTab {
   id: string

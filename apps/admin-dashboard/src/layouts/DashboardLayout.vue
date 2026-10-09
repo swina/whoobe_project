@@ -559,6 +559,7 @@ import {
   Image,
   Languages,
   Smartphone,
+  Upload,
   Table2,
   Mail,
   Sparkles,
@@ -839,6 +840,7 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'figma', name: 'Figma', icon: Palette },
   { key: 'pwa', name: 'Mobile App', icon: Smartphone },
+  { key: 'uploads', name: 'Form uploads', icon: Upload },
 ]
 
 const settingsSubLabels: Record<SettingsSubSection, string> = {
@@ -850,6 +852,7 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   workflows: 'Workflows',
   figma: 'Figma',
   pwa: 'Mobile App',
+  uploads: 'Form uploads',
 }
 
 const aiSubItems: { key: AiSubSection; name: string; icon: any }[] = [

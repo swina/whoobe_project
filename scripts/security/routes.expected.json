@@ -1207,6 +1207,20 @@
         "OBJECTS_WRITE"
       ],
       "note": "locks or unlocks a snippet: a locked snippet is not saved automatically"
+    },
+    "GET /whoobe-one/websites/:id/upload-settings": {
+      "access": "permission",
+      "permissions": [
+        "SETTINGS_MANAGE"
+      ],
+      "note": "reads the upload limits of a website (settings.uploads, normalized)"
+    },
+    "PUT /whoobe-one/websites/:id/upload-settings": {
+      "access": "permission",
+      "permissions": [
+        "SETTINGS_MANAGE"
+      ],
+      "note": "writes the upload limits of a website; validated, extensions that cannot be verified or are active content are refused"
     }
   }
 }

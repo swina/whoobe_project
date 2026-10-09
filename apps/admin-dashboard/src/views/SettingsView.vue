@@ -71,6 +71,8 @@
 
         <PwaSettingsCard v-if="activeSubSection === 'pwa'" />
 
+        <UploadSettingsCard v-if="activeSubSection === 'uploads'" />
+
         <div v-if="activeSubSection === 'general'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-6">
           <div class="space-y-4">
             <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">General Options</h3>
@@ -153,6 +155,7 @@ import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'
 import FigmaSettingsCard from '../components/settings/FigmaSettingsCard.vue'
 import PwaSettingsCard from '../components/settings/PwaSettingsCard.vue'
+import UploadSettingsCard from '../components/settings/UploadSettingsCard.vue'
 import UsersView from './UsersView.vue'
 import RolesView from './RolesView.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
@@ -288,6 +291,7 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'figma', name: 'Figma', icon: Palette },
   { key: 'pwa', name: 'PWA', icon: Smartphone },
+  { key: 'uploads', name: 'Form uploads', icon: Upload },
 ]
 
 type ClassesSubTab = 'classes' | 'pimcore' | 'file'
@@ -349,6 +353,7 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   figma: { title: 'Figma Integration', description: 'Figma Personal Access Token configuration for importing designs into the Whoobe One editor.' },
   //pwa: { title: 'Mobile App', description: 'Configure Progressive Web App settings, push notification providers, and manifest options per website.' },
   pwa: { title: 'Mobile App', description: 'Publish your website as a mobile app.' },
+  uploads: { title: 'Form uploads', description: 'What visitors may send through a form: file types, sizes and where the files go, per website.' },
 }
 
 const sectionTitle = computed(() => sectionTitles[activeSubSection.value].title)
