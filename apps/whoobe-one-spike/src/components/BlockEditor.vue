@@ -96,125 +96,21 @@
         <BlockContainer v-else-if="editor.document" :doc="editor.document" :level="0" />
       </div>
 
-      <!-- Right sidebar: a tab switcher between the "add element" palette
-           and the Tailwind customizer, mirroring the source's own right-
-           side toolbar (Elements/Tailwind/CSS/Attributes/... tabs) rather
-           than the earlier single-purpose always-elements sidebar.
-           Horizontally collapsible - width lives here on the wrapper (not
-           on each panel's own root, which used to each hardcode their own
-           `w-64`) so collapsing doesn't need to reach into every panel. -->
-      <div class="shrink-0 relative flex border border-slate-300 text-[9px] font-medium" :class="sidebarCollapsed ? 'w-0 border-l-0' : 'w-64'">
-        <button
-          type="button"
-          :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-          class="absolute top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full border bg-white shadow flex items-center justify-center text-gray-400 hover:text-indigo-600"
-          :class="sidebarCollapsed ? '-left-5' : '-left-4'"
-          @click="sidebarCollapsed = !sidebarCollapsed"
-        >
-          <ChevronLeft v-if="sidebarCollapsed" class="w-3.5 h-3.5" />
-          <ChevronRight v-else class="w-3.5 h-3.5" />
-        </button>
-
-        <div v-show="!sidebarCollapsed" class="w-64 min-w-0 flex flex-col overflow-hidden text-xs">
-          <div class="flex border-b text-xs shrink-0 bg-violet-200">
-
-            <button
-              type="button"
-              title="Elements"
-              class="flex-1 flex items-center justify-center py-2"
-              :class="sidebarTab === 'elements' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
-              @click="sidebarTab = 'elements'"
-            >
-              <Shapes class="w-6 h-6" />
-            </button>
-
-            <button
-              type="button"
-              title="Snippets"
-              class="flex-1 flex items-center justify-center py-2"
-              :class="sidebarTab === 'snippets' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
-              @click="sidebarTab = 'snippets'"
-            >
-              <Component class="w-6 h-6" />
-            </button>
-
-            <button
-              type="button"
-              title="Customize"
-              class="flex-1 flex items-center justify-center py-2"
-              :class="sidebarTab === 'customize' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
-              @click="sidebarTab = 'customize'"
-            >
-              <Palette class="w-6 h-6" />
-            </button>
-
-            <button
-              type="button"
-              title="Advanced"
-              class="flex-1 flex items-center justify-center py-2"
-              :class="sidebarTab === 'advanced' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
-              @click="sidebarTab = 'advanced'"
-            >
-              <Settings2 class="w-6 h-6" />
-            </button>
-
-            <button
-              type="button"
-              title="Tree"
-              class="flex-1 flex items-center justify-center py-2"
-              :class="sidebarTab === 'tree' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
-              @click="sidebarTab = 'tree'"
-            >
-              <ListTree class="w-6 h-6" />
-            </button>
-            
-            <button
-              type="button"
-              title="Kits"
-              class="flex-1 flex items-center justify-center py-2"
-              :class="sidebarTab === 'kits' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
-              @click="sidebarTab = 'kits'"
-            >
-              <Package class="w-6 h-6" />
-            </button>
-
-            <button
-              type="button"
-              title="AI generations"
-              class="flex-1 flex items-center justify-center py-2"
-              :class="sidebarTab === 'ai' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
-              @click="sidebarTab = 'ai'"
-            >
-              <WandSparkles class="w-6 h-6" />
-            </button>
-
-            <button
-              type="button"
-              title="Integrations"
-              class="flex-1 flex items-center justify-center py-2"
-              :class="sidebarTab === 'gateway' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
-              @click="sidebarTab = 'gateway'"
-            >
-              <Plug class="w-6 h-6" />
-            </button>
-
-            <button
-              v-if="editor.appMode"
-              type="button"
-              title="App Config"
-              class="flex-1 flex items-center justify-center py-2"
-              :class="sidebarTab === 'pwa' ? 'text-violet-600 border-b-2 border-indigo-600 -mb-px' : 'text-gray-400 hover:text-gray-600'"
-              @click="sidebarTab = 'pwa'"
-            >
-              <Smartphone class="w-6 h-6" />
+      <!-- Right side of the editor: a narrow vertical bar of tool icons at the far right (always there), and, to its left, the
+           panel of the tool that is switched on. Every panel is hidden until its icon is clicked; clicking the icon again - or the
+           close button in the panel's header - hides it. One panel at a time (they share the same width). The bar replaces the
+           old horizontal tab strip and the collapse handle: the canvas has the whole width until a tool is wanted. -->
+      <div class="shrink-0 flex border-l border-slate-300" data-testid="editor-sidebar">
+        <div v-if="sidebarTab" class="w-64 min-w-0 flex flex-col overflow-hidden border-r border-slate-300 bg-white text-xs" data-testid="editor-panel">
+          <div class="flex items-center justify-between gap-2 px-3 py-1.5 border-b shrink-0 bg-violet-100">
+            <span class="text-[11px] font-semibold text-violet-700 truncate">{{ activeToolTitle }}</span>
+            <button type="button" class="w-5 h-5 rounded flex items-center justify-center text-violet-700 hover:bg-violet-200" title="Hide the panel" aria-label="Hide the panel" data-testid="editor-panel-close" @click="sidebarTab = null">
+              <X class="w-3.5 h-3.5" />
             </button>
           </div>
-          <!-- Real BlockElements.vue port (categorized, drag-to-add) - see
-               BlockElementsPalette.vue. Dragging out of it works exactly like
-               the old flat palette row did (same data-type="template"/
-               data-template attributes, same dragula-source-container class),
-               so the shared dragula instance/drop handler below need no
-               changes. -->
+          <!-- Real BlockElements.vue port (categorized, drag-to-add) - see BlockElementsPalette.vue. Dragging out of it works exactly
+               like the old flat palette row did (same data-type="template"/data-template attributes, same dragula-source-container
+               class), so the shared dragula instance/drop handler below need no changes. -->
           <BlockElementsPalette v-if="sidebarTab === 'elements'" />
           <TailwindCustomizer v-else-if="sidebarTab === 'customize'" />
           <AdvancedPanel v-else-if="sidebarTab === 'advanced'" />
@@ -223,8 +119,25 @@
           <KitsPanel v-else-if="sidebarTab === 'kits'" @loaded="sidebarTab = 'elements'" />
           <GatewayPanel v-else-if="sidebarTab === 'gateway'" />
           <PwaConfigPanel v-else-if="sidebarTab === 'pwa'" />
-          <AiGeneratedPanel v-else @import="onAiGeneratedImport" @preview="onAiGeneratedPreview" />
+          <AiGeneratedPanel v-else-if="sidebarTab === 'ai'" @import="onAiGeneratedImport" @preview="onAiGeneratedPreview" />
         </div>
+
+        <nav class="w-10 shrink-0 flex flex-col items-center gap-1 px-1 py-2 bg-violet-100 overflow-y-auto" role="toolbar" aria-orientation="vertical" aria-label="Editor tools" data-testid="editor-toolbar">
+          <button
+            v-for="tool in sidebarTools"
+            v-show="!tool.appModeOnly || editor.appMode"
+            :key="tool.key"
+            type="button"
+            :title="tool.title"
+            :aria-label="tool.title"
+            :aria-pressed="sidebarTab === tool.key"
+            class="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center transition"
+            :class="sidebarTab === tool.key ? 'bg-white text-violet-700 shadow-sm ring-1 ring-violet-300' : 'text-violet-500 hover:bg-violet-200 hover:text-violet-700'"
+            @click="toggleTool(tool.key)"
+          >
+            <component :is="tool.icon" class="w-5 h-5" />
+          </button>
+        </nav>
       </div>
     </div>
 
@@ -316,8 +229,6 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import dragula from 'dragula'
 import {
-  ChevronLeft,
-  ChevronRight,
   Component,
   CopyPlus,
   Download,
@@ -343,6 +254,7 @@ import {
   Upload,
   Wand2,
   WandSparkles,
+  X,
 } from '@lucide/vue'
 import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
@@ -390,8 +302,24 @@ const editor = useEditorStore()
 const snippetsStore = useSnippetsStore()
 const message = ref('')
 const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-violet-400 hover:bg-violet-800 text-white'
-const sidebarTab = ref<'elements' | 'customize' | 'tree' | 'advanced' | 'snippets' | 'kits' | 'ai' | 'pwa' | 'gateway'>('elements')
-const sidebarCollapsed = ref(false)
+type SidebarTool = 'elements' | 'customize' | 'tree' | 'advanced' | 'snippets' | 'kits' | 'ai' | 'pwa' | 'gateway'
+// null = every panel hidden (the default): only the bar of icons is on screen
+const sidebarTab = ref<SidebarTool | null>(null)
+const sidebarTools: { key: SidebarTool; title: string; icon: any; appModeOnly?: boolean }[] = [
+  { key: 'elements', title: 'Elements', icon: Shapes },
+  { key: 'snippets', title: 'Snippets', icon: Component },
+  { key: 'customize', title: 'Customize', icon: Palette },
+  { key: 'advanced', title: 'Advanced', icon: Settings2 },
+  { key: 'tree', title: 'Tree', icon: ListTree },
+  { key: 'kits', title: 'Kits', icon: Package },
+  { key: 'ai', title: 'AI generations', icon: WandSparkles },
+  { key: 'gateway', title: 'Integrations', icon: Plug },
+  { key: 'pwa', title: 'App Config', icon: Smartphone, appModeOnly: true },
+]
+const activeToolTitle = computed(() => sidebarTools.find((t) => t.key === sidebarTab.value)?.title ?? '')
+function toggleTool(key: SidebarTool) { sidebarTab.value = sidebarTab.value === key ? null : key }
+// the App Config panel only exists in app mode
+watch(() => editor.appMode, (on) => { if (!on && sidebarTab.value === 'pwa') sidebarTab.value = null })
 const showAddToKit = ref(false)
 const showTranslatePage = ref(false)
 const showTemplateGallery = ref(false)
