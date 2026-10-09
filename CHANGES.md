@@ -1,3 +1,7 @@
+## [Documentation: deployment model stated explicitly (one organisation per instance)] — 2026-10-09
+- Branch: `docs/deployment-model`. Decision: Whoobe is not a shared multi-tenant platform; divisions of one entity share a workspace (roles), different entities get their own workspace.
+- `architecture/architecture-overview.md` section 7 now states the rule and why; `security/threat-model.md` assumption 1 says deployments outside the model are not covered and the CSP residual risk is reworded; the "SaaS mode" wording in `status-summary.md`, `release-notes-0.1.0.md`, `security-test-suite.md` and `security-ci-for-forks.md` and the "multi-tenant" wording in the configuration reference are aligned; `docs/release/README.md` carries the rule at the top; the authentication page says roles describe function, not division, and that per-website permissions do not exist.
+
 ## [Security fixes: F-056 sessions, F-057 database password] — 2026-10-09
 - Branch: `fix/sessions-and-db-password`.
 - **F-056**: `sessions.id` now stores `sha256(cookie value)` (`hashSessionToken` in `auth/session.ts`); the token is never written to the database, and the stored hash cannot be replayed as a cookie. Expired or revoked sessions older than a week are deleted at core-api start and every six hours (`purgeStaleSessions`). Migration `0053_sessions_hashed` deletes the old rows (data change only, no schema change). **Behaviour change: everyone logs in once more after the upgrade.**

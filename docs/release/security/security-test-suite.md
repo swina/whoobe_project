@@ -295,7 +295,7 @@ with an admin session cookie injected into every request; the admin and editor S
 passive rules). `summarize.py` compares the alerts with `dast/baseline.json` (accepted alerts with a reason and a
 review date) and fails on a High alert that is not listed; Medium and lower are reported. First full run: the three
 API scans passed all 118 active rules with nothing above Info; the SPA scans found the missing anti-clickjacking
-header and baseline headers (fixed, F-047) and the missing CSP (F-014, accepted until the SaaS mode). Reports:
+header and baseline headers (fixed, F-047) and the missing CSP (F-014, accepted; see the status summary). Reports:
 `reports/<date>/zap-*.html|json` and `zap-summary-<time>.txt`. `--quick` runs passive rules only (about 2 minutes).
 OWASP A01-A10 coverage by ZAP rules; it complements, and does not replace, the authorisation and logic tests above.
 

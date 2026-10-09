@@ -28,7 +28,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | 3.2 | Authorization: 196 routes x 5 identities, route contract/drift, publish permission | done (`authz-matrix`, `route-drift`, `limits-and-publish`) |
 | 3.3 | Input validation / injection | public query, malformed ids/JSON, prototype keys covered; public filters run in JS, not SQL; **no SQL fuzzing of the remaining endpoints** |
 | 3.4 | Public surface, drafts, preview tokens, forms | done (`public-surface`) |
-| 3.5 | CORS, CSRF, security headers | done for the three services and the two nginx SPAs (clickjacking, baseline headers; ZAP baseline); **no full CSP on the SPAs** (postponed to the SaaS mode) |
+| 3.5 | CORS, CSRF, security headers | done for the three services and the two nginx SPAs (clickjacking, baseline headers; ZAP baseline); **no full CSP on the SPAs** (postponed: see F-014) |
 | 3.6 | Stored/reflected XSS in browser sinks | done for the editor, published pages, admin lists/previews, data object fields, editor tables and form-result messages (`browser/xss-sinks.spec.ts`, 8 tests) and the SDK React/Vue adapters (SSR unit tests); **not browser-tested**: Studio, generated Next/Nuxt sites, mobile/PWA templates |
 | 3.7 | Uploads, DAM, asset-processor | done (`uploads`) |
 | 3.8 | SSRF / outbound requests | done (`ssrf`, `safeFetch` guard) |
@@ -49,7 +49,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | **F-009** old env files already copied to Oracle by earlier deploys | `deploy.sh` is fixed, existing copies remain on the host | owner: remove `.env.*` copies on the host (done by the rebuild) |
 | **F-003** `xlsx` (2 high advisories, write-only use, no npm fix) and `@tiptap/core` (major upgrade) | accepted / deferred, baselined until 2027-01-31 | decision: move to the SheetJS tarball or replace; plan the tiptap 3 upgrade |
 | **F-008** residual `v-html` sinks (editor tables, form-result messages, Studio, generated sites) | sanitised in code but not covered by a browser test | extend `browser/xss-sinks.spec.ts`; run the generated sites through a build and the same payloads |
-| **F-014** full CSP for the admin/editor SPAs (nginx) | postponed on purpose (clickjacking and baseline headers are done, F-047): becomes essential in SaaS mode; a too strict policy breaks the editor | design with a report-only phase when SaaS mode starts |
+| **F-014** full CSP for the admin/editor SPAs (nginx) | postponed on purpose (clickjacking and baseline headers are done, F-047): more valuable the more people of different trust levels use the editor (not the supported model: one organisation per instance); a too strict policy breaks the editor | design with a report-only phase if the editor is opened to less trusted users |
 | **F-055** AI provider keys, Figma token and push-provider key were clear text | **fixed 2026-10-09**: `INTEGRATION_SECRETS_ENCRYPTION_KEY`, startup backfill; operators of existing installations must set the key | set the key and restart |
 | **F-059 (High)** the OneSignal REST API key was served by the public `GET /public/apps/:id` and to every reader | **fixed 2026-10-09** (records never carry it; encrypted; blank keeps it) | rotate any push key that was saved on an internet-reachable installation |
 | **F-056** sessions never purged, session ids stored unhashed | **fixed 2026-10-09** (hashed ids, purge every six hours; everyone logs in once more) | - |
@@ -83,7 +83,7 @@ The DAST scan and the manual checklist have **not** been repeated for these feat
 2. **Environment of every deployment** (all documented in `.env.example`): `WHOOBE_HOSTNAME` and, if admin, editor or
    sites live on other hosts, `CORS_ALLOWED_HOSTS` / `CORS_ALLOWED_ORIGINS`; `TRUST_PROXY=1` behind nginx (the
    login lockout and every limiter use the client address); `ADMIN_PUBLIC_URL` if the admin is not on
-   `http://<host>:3000`; `OUTBOUND_ALLOW_PRIVATE=false` on internet-facing or multi-tenant installs.
+   `http://<host>:3000`; `OUTBOUND_ALLOW_PRIVATE=false` on internet-facing installs or where authors are not fully trusted.
 3. **Pages with gateway forms**: save them again and republish the sites, then set
    `GATEWAY_REQUIRE_FIELD_ALLOWLIST=true` (F-029).
 4. **Roles that publish**: grant `objects:publish` where it is intended; the permission is now enforced (F-035,
