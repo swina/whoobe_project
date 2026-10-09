@@ -4781,8 +4781,8 @@ app.post('/public/uploads/intent', async (req: Request, res: Response): Promise<
     const secret = uploadTokenSecret();
     if (!secret) { res.status(503).json({ error: 'File upload is not configured on this server' }); return; }
     if (uploadIntentLimiter.hit(req.ip ?? 'unknown')) { res.status(429).json({ error: 'Too many uploads, please try again later' }); return; }
-    const { fieldId, filename, size } = req.body ?? {};
-    const field = typeof fieldId === 'string' ? await authoredUploadFields.lookup(fieldId) : null;
+    const { fieldId, filename, size, websiteId: websiteHint } = req.body ?? {};
+    const field = typeof fieldId === 'string' ? await authoredUploadFields.lookup(fieldId, typeof websiteHint === 'string' ? websiteHint : null) : null;
     const website = field?.websiteId ? await getWebsite(field.websiteId) : null;
     if (!field || !website) { res.status(404).json({ error: 'Upload field not found' }); return; }
     const limits = effectiveUploadLimits(websiteUploadLimits(website), field.config);
@@ -4805,11 +4805,27 @@ app.post('/public/uploads/intent', async (req: Request, res: Response): Promise<
  *  assets, and the attribute is replaced by what the data class field stores (`{assetId}`, or a list of them). Every check is made
  *  before the first file is moved. */
 async function attachSubmittedUploads(attributes: Record<string, unknown>, dataClass: { id: string; fields?: unknown }): Promise<void> {
-  const fields = await authoredUploadFields.forClass(dataClass.id);
-  for (const [name, field] of fields) {
+  let names = await authoredUploadFields.namesForClass(dataClass.id);
+  // a value that is an upload reference for a field not known yet: the page may have been published a moment ago
+  if (Object.entries(attributes).some(([k, v]) => !names.includes(k) && readUploadRefs(v))) {
+    await authoredUploadFields.refreshIfOlderThan(2_000);
+    names = await authoredUploadFields.namesForClass(dataClass.id);
+  }
+  for (const name of names) {
     if (!(name in attributes)) continue;
     const ids = readUploadRefs(attributes[name]);
     if (!ids) throw new SubmitUploadError(`"${name}" must be files uploaded through the form`);
+    const candidates = await authoredUploadFields.forClassAndName(dataClass.id, name);
+    const rows = [];
+    for (const id of ids) {
+      const row = await getFormUpload(id);
+      if (!row || row.status !== 'staged') throw new SubmitUploadError('A file was not uploaded or is no longer available: upload it again');
+      rows.push(row);
+    }
+    // The field is the one the files were approved for: all of them for the same field of the same website
+    const first = rows[0];
+    const field = candidates.find((c) => c.fieldId === first.formRef && c.websiteId === first.websiteId);
+    if (!field || rows.some((r) => r.formRef !== field.fieldId || r.websiteId !== field.websiteId)) throw new SubmitUploadError('A file was not uploaded or is no longer available: upload it again');
     const website = field.websiteId ? await getWebsite(field.websiteId) : null;
     if (!website) throw new SubmitUploadError('Upload field not found', 404);
     const limits = effectiveUploadLimits(websiteUploadLimits(website), field.config);
@@ -4821,17 +4837,15 @@ async function attachSubmittedUploads(attributes: Record<string, unknown>, dataC
     const kind = classField?.fieldType;
     const many = kind === 'array' || kind === 'json';
     if (!many && ids.length > 1) throw new SubmitUploadError(`"${name}" takes one file`);
-    for (const id of ids) {
-      const row = await getFormUpload(id);
-      if (!row || row.status !== 'staged' || row.formRef !== field.fieldId || row.websiteId !== website.id) throw new SubmitUploadError('A file was not uploaded or is no longer available: upload it again');
+    for (const row of rows) {
       if (!limits.allowedExtensions.includes(row.extension)) throw new SubmitUploadError('This kind of file is not accepted');
     }
     const assets: { assetId: string }[] = [];
-    for (const id of ids) {
+    for (const row of rows) {
       const r = await fetch(`${ASSET_PROCESSOR_URL}/api/v1/dam/form-uploads/attach`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(DAM_SERVICE_TOKEN ? { Authorization: `Bearer ${DAM_SERVICE_TOKEN}` } : {}) },
-        body: JSON.stringify({ uploadId: id, websiteId: website.id, formRef: field.fieldId, targetFolder: limits.targetFolder, allowPublicFolder: limits.allowPublicFolder }),
+        body: JSON.stringify({ uploadId: row.id, websiteId: website.id, formRef: field.fieldId, targetFolder: limits.targetFolder, allowPublicFolder: limits.allowPublicFolder }),
       });
       const body: any = await r.json().catch(() => ({}));
       if (!r.ok || !body?.asset?.id) {

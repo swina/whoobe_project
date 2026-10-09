@@ -43,6 +43,7 @@ import FormConfigControl from './advanced/FormConfigControl.vue'
 import SearchConfigControl from './advanced/SearchConfigControl.vue'
 import AudioControl from './advanced/AudioControl.vue'
 import DownloadControl from './advanced/DownloadControl.vue'
+import UploadFieldControl from './advanced/UploadFieldControl.vue'
 import CustomClassesControl from './tailwind-controls/CustomClassesControl.vue'
 import DataBindingTransformControl from './tailwind-controls/DataBindingTransformControl.vue'
 
@@ -75,7 +76,8 @@ watch(
     const cur = editor.current as any
     if (cur?.element === 'audio') openSection.value = 'audio'
     else if (cur?.tag === 'file') openSection.value = 'download'
-    else if (openSection.value === 'audio' || openSection.value === 'download') openSection.value = 'customClasses'
+    else if (cur?.element === 'input' && cur?.data?.attributes?.type === 'file') openSection.value = 'upload'
+    else if (openSection.value === 'audio' || openSection.value === 'download' || openSection.value === 'upload') openSection.value = 'customClasses'
   },
   { immediate: true },
 )
@@ -95,6 +97,7 @@ const sections = computed(() => {
     // The Audio element's own settings (source, look, title): first, since for that element they are what matters
     ...(current?.element === 'audio' ? [{ key: 'audio', label: 'Audio', component: AudioControl }] : []),
     ...(current?.tag === 'file' ? [{ key: 'download', label: 'Download', component: DownloadControl }] : []),
+    ...(current?.element === 'input' && current?.data?.attributes?.type === 'file' ? [{ key: 'upload', label: 'File upload', component: UploadFieldControl }] : []),
     { key: 'customClasses', label: 'Custom Classes', component: CustomClassesControl },
     { key: 'style', label: 'Style', component: StyleControl },
     ...(showDataBinding ? [{ key: 'dataBinding', label: 'Data Binding', component: DataBindingTransformControl }] : []),

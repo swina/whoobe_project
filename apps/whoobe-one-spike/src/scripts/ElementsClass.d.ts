@@ -471,6 +471,7 @@ export default class Element {
   InputEmail(): this
   InputNumber(): this
   InputHidden(): this
+  InputFile(): this
   InputCheckbox(): this
   InputTextarea(): this
   InputSelect(): this

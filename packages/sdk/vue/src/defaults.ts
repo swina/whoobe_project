@@ -5,7 +5,7 @@
 import { defineComponent, h, inject, ref, computed, onMounted, onUnmounted, type PropType, type VNode } from 'vue'
 import { sanitizeRichText } from '@whoobe-cms/schema'
 import { icons as lucideIcons } from '@lucide/vue'
-import type { RenderDescriptor } from '@whoobe-cms/renderer'
+import { collectFormValues, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
 import { WHOOBE_KEY, type NodeComponent, type WhoobeApi } from './types.js'
 
 // Resolves a Lucide icon by name synchronously (mirrors
@@ -269,16 +269,17 @@ export const DefaultForm: NodeComponent = defineComponent({
       const fc = props.descriptor.formConfig
       if (!fc) return
       const formEl = e.currentTarget as HTMLFormElement
-      const attributes = Object.fromEntries(new FormData(formEl).entries())
       try {
-        await (ctx.api as WhoobeApi).submitForm(fc.targetClassId, attributes, {
+        const api = ctx.api as WhoobeApi
+        const attributes = await collectFormValues(formEl, api.uploadFile?.bind(api))
+        await api.submitForm(fc.targetClassId, attributes, {
           notify: fc.notify,
           gatewayBindingId: fc.gatewayBindingId,
         })
         formEl.reset()
         result.value = { ok: true, message: fc.successMessage || 'Submitted.' }
-      } catch {
-        result.value = { ok: false, message: fc.errorMessage || 'Something went wrong, please try again.' }
+      } catch (err) {
+        result.value = { ok: false, message: submitErrorMessage(err, fc.errorMessage) }
       }
     }
 

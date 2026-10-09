@@ -25,6 +25,8 @@ export interface WhoobeApi {
   }): Promise<Record<string, unknown>[]>
   search(params: Record<string, unknown>): Promise<Record<string, unknown>>
   submitForm(classId: string, attributes: Record<string, unknown>, formConfig?: unknown): Promise<{ success: boolean }>
+  /** uploads one file of a form's Upload field; the form then carries `{ uploadId }` (ApiClient implements it) */
+  uploadFile?(fieldId: string, file: any): Promise<{ uploadId: string }>
 }
 
 export interface WhoobeContext {

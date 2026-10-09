@@ -62,6 +62,10 @@ function walkAndStrip(value: unknown): void {
     delete (formConfig as Record<string, unknown>).gatewayRoutePath;
   }
 
+  // An Upload field's own folder is the author's business: the server picks it, a visitor's browser never needs it
+  const uploadConfig = obj.uploadConfig;
+  if (uploadConfig && typeof uploadConfig === 'object') delete (uploadConfig as Record<string, unknown>).targetFolder;
+
   const gatewayBinding = obj.gatewayBinding;
   if (gatewayBinding && typeof gatewayBinding === 'object') {
     delete (gatewayBinding as Record<string, unknown>).endpointName;

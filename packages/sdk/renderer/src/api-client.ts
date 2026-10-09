@@ -2,6 +2,7 @@
 // §2). Framework-agnostic: an injectable `fetch` works in Node 18+, browsers,
 // and RSC/server components. No window/document at module scope - fully SSR-safe.
 
+import { FormUploadError } from './form-values.js'
 import type { DataBindingFilter, DataBindingOrderBy } from '@whoobe-cms/schema'
 import type { PublicLayout } from './compose-layout.js'
 
@@ -214,6 +215,33 @@ export class ApiClient implements RenderApi {
       method: 'POST',
       body: JSON.stringify({ attributes, formConfig }),
     })
+  }
+
+  /** Uploads one file for a form's Upload field: the server approves it (`/public/uploads/intent`: the website's limits), then the
+   *  bytes go to the address it returns. Resolves to the id the form submission carries in place of the file. The server's own
+   *  message is kept in the error (too large, type not allowed ...), as it is meant for the visitor. */
+  async uploadFile(fieldId: string, file: { name: string; size: number } & Record<string, unknown>): Promise<{ uploadId: string }> {
+    let intent: { uploadId: string; uploadUrl: string }
+    try {
+      intent = await this.request<{ uploadId: string; uploadUrl: string }>('/public/uploads/intent', {
+        method: 'POST',
+        body: JSON.stringify({ fieldId, filename: file.name, size: file.size }),
+      })
+    } catch (err) {
+      throw new FormUploadError(err instanceof Error ? err.message : 'The file could not be uploaded')
+    }
+    const res = await this.fetchImpl(intent.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: file as any })
+    if (!res.ok) {
+      let message = `The file could not be uploaded (${res.status})`
+      try {
+        const body = await res.json()
+        if (body?.error) message = body.error
+      } catch {
+        // keep the generic message
+      }
+      throw new FormUploadError(message)
+    }
+    return { uploadId: intent.uploadId }
   }
 
   /** GET /public/pages?websiteId=... - all published pages for a website. */
