@@ -32,7 +32,7 @@
       </label>
 
       <div class="col-span-2 flex items-center gap-3 pt-2">
-        <button type="submit" :disabled="saving" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50">
+        <button type="submit" :disabled="saving" class="btn btn-primary">
           {{ saving ? 'Saving...' : 'Save' }}
         </button>
         <span v-if="savedAt" class="text-xs text-emerald-400">Saved.</span>

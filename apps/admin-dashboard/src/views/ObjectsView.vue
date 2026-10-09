@@ -8,7 +8,7 @@
       <button
         v-if="selectedClassId"
         @click="handleCreate"
-        class="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition"
+        class="btn btn-primary"
       >
         + Create {{ classLabel(selectedClassId) }}
       </button>
@@ -18,16 +18,16 @@
       <div class="flex flex-col sm:flex-row gap-4 items-center">
         <label class="bg-slate-800 light:bg-slate-300 text-slate-300 light:text-slate-700 px-3 py-2 rounded-lg">{{ classLabel(selectedClassId) }}</label>
         <input v-model="searchQuery" type="text" placeholder="Filter by key or path..."
-          class="flex-1 px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+          class="field flex-1" />
         <button
         v-if="selectedClassId"
         @click="handleCreate"
-        class="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition"
+        class="btn btn-primary"
       >
         + Create {{ classLabel(selectedClassId) }}
       </button>
         <select v-model="selectedClassId" @change="handleClassChange"
-          class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500">
+          class="field">
           <option value="">All Classes</option>
           <option v-for="dataClass in dataClassesStore.classes" :key="dataClass.id" :value="dataClass.id">{{ dataClass.label }}</option>
         </select>
@@ -47,11 +47,11 @@
                 <div v-for="(col, idx) in displayColumns" :key="col.name"
                   class="flex items-center gap-1.5 text-xs text-slate-300 light:text-slate-700 group">
                   <button @click="moveColumn(col.name, -1)" :disabled="idx === 0"
-                    class="text-slate-600 hover:text-slate-300 disabled:opacity-20 shrink-0" title="Move up">
+                    class="btn btn-link-muted shrink-0" title="Move up">
                     <ChevronUp class="w-3 h-3" />
                   </button>
                   <button @click="moveColumn(col.name, 1)" :disabled="idx === displayColumns.length - 1"
-                    class="text-slate-600 hover:text-slate-300 disabled:opacity-20 shrink-0" title="Move down">
+                    class="btn btn-link-muted shrink-0" title="Move down">
                     <ChevronDown class="w-3 h-3" />
                   </button>
                   <input type="checkbox" :checked="activeColumnNames.includes(col.name)"
@@ -63,11 +63,11 @@
             </div>
             <div class="flex items-center gap-2 pt-1 border-t border-slate-800 light:border-slate-200">
               <button @click="saveCurrentAsPreset" :disabled="activeColumnNames.length === 0"
-                class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 disabled:opacity-40">
+                class="btn btn-link">
                 + Save preset
               </button>
               <button v-if="activePreset" @click="updateCurrentPreset"
-                class="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+                class="btn btn-link-success"
                 :title="'Update &quot;' + activePreset.name + '&quot;'">
                 Update
               </button>
@@ -90,9 +90,9 @@
                 </button>
                 <div class="flex items-center gap-1 shrink-0">
                   <button v-if="!preset.isDefault" @click.stop="setDefaultPresetAction(preset.name)" type="button"
-                    title="Set as default" class="text-[10px] text-indigo-400 hover:text-indigo-300">Default</button>
+                    title="Set as default" class="btn btn-link">Default</button>
                   <button @click.stop="removePreset(preset.name)" type="button"
-                    class="text-xs text-rose-400 hover:text-rose-300 shrink-0">×</button>
+                    class="btn btn-link-danger shrink-0">×</button>
                 </div>
               </div>
             </div>
@@ -130,13 +130,13 @@
       <button @click="handleBatchPublish"
         class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-white">Publish</button>
       <button @click="handleBatchUnpublish"
-        class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white">Unpublish</button>
+        class="btn btn-warning">Unpublish</button>
       <button @click="handleBatchDelete"
-        class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-700 hover:bg-rose-600 text-white">Delete</button>
+        class="btn btn-danger">Delete</button>
       <button @click="handleBatchResolveAssets"
-        class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white">Resolve assets</button>
+        class="btn btn-secondary">Resolve assets</button>
       <button @click="selectedGroupIds = new Set()"
-        class="text-xs text-slate-400 hover:text-slate-200 light:text-slate-500 ml-auto">Clear</button>
+        class="btn btn-link-muted ml-auto">Clear</button>
     </div>
 
     <div v-if="isLoading && objects.length === 0"
@@ -217,9 +217,9 @@
           </div>
           <div class="px-4 py-3.5 text-right shrink-0 flex items-center justify-end gap-3" @click.stop>
             <button @click="openRecord(record)"
-              class="text-xs font-medium text-indigo-400 hover:text-indigo-300">Edit</button>
+              class="btn btn-link">Edit</button>
             <button @click="handleDelete(record)"
-              class="text-xs font-medium text-rose-400 hover:text-rose-300">Delete</button>
+              class="btn btn-link-danger">Delete</button>
           </div>
         </div>
       </div>
@@ -230,7 +230,7 @@
         <div class="flex items-center gap-2 text-xs text-slate-400 light:text-slate-600">
           <span>Rows per page:</span>
           <select v-model="pageSize"
-            class="px-2 py-1 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700">
+            class="field">
             <option value="10">10</option>
             <option value="25">25</option>
             <option value="50">50</option>
@@ -239,7 +239,7 @@
             <option value="custom">Custom...</option>
           </select>
           <input v-if="pageSize === 'custom'" v-model.number="customPageSize" type="number" min="1"
-            class="w-16 px-2 py-1 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 text-xs"
+            class="field w-16"
             placeholder="Rows" />
         </div>
         <div class="flex items-center gap-3 text-xs text-slate-400 light:text-slate-600">
@@ -255,14 +255,12 @@
     </div>
 
     <!-- Filter Query-->
-    <div v-if="showFilterModal && selectedDataClass"
-      class="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center" @click.self="showFilterModal = false">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl h-[60vh] max-h-[80vh] flex flex-col overflow-hidden">
-        <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
-          <span class="text-xs font-semibold text-gray-600">Filter {{ selectedDataClass.label }} objects</span>
-          <button class="text-xs text-gray-400 hover:text-gray-700" @click="showFilterModal = false"><X class="w-4 h-4" /></button>
-        </div>
-        <div class="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
+    <BaseModal v-if="showFilterModal && selectedDataClass" :open="true" size="lg" @close="showFilterModal = false">
+      <template #header>
+        <h2 class="ui-modal-title flex items-center gap-2">Filter {{ selectedDataClass.label }} objects</h2>
+      </template>
+      <div class="space-y-4">
+            <div class="min-h-0 p-3 space-y-2">
           <div class="text-[10px] text-gray-400 mb-1">Filters (all must match)</div>
           <div v-if="queryFilters.length === 0" class="text-xs text-gray-400 text-center py-4">No filters — shows all objects of this class.</div>
           <div v-for="(f, i) in queryFilters" :key="i" class="flex items-center gap-2">
@@ -330,12 +328,14 @@
             <button class="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white" @click="showFilterModal = false">Apply</button>
           </div>
         </div>
+
       </div>
-    </div>
+    </BaseModal>
   </div>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../components/ui/BaseModal.vue'
 import { ref, reactive, computed, watch } from 'vue'
 import { ChevronUp, ChevronDown, Filter, Plus, Trash2, X } from '@lucide/vue'
 import { useDataClassesStore } from '../stores/dataClassesStore'

@@ -19,7 +19,7 @@
             type="email"
             autocomplete="username"
             required
-            class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+            class="field w-full"
           />
         </div>
 
@@ -30,7 +30,7 @@
             type="password"
             autocomplete="current-password"
             required
-            class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+            class="field w-full"
           />
         </div>
 
@@ -41,7 +41,7 @@
         <button
           type="submit"
           :disabled="isSubmitting"
-          class="w-full px-4 py-2.5 text-sm font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
+          class="btn btn-primary w-full flex items-center justify-center gap-2"
         >
           <span v-if="isSubmitting" class="animate-spin w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span>
           <span>{{ isSubmitting ? 'Signing in...' : 'Sign In' }}</span>
@@ -68,7 +68,7 @@
             autocomplete="one-time-code"
             autofocus
             required
-            class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 tracking-widest"
+            class="field w-full tracking-widest"
           />
         </div>
 
@@ -79,17 +79,17 @@
         <button
           type="submit"
           :disabled="isSubmitting"
-          class="w-full px-4 py-2.5 text-sm font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
+          class="btn btn-primary w-full flex items-center justify-center gap-2"
         >
           <span v-if="isSubmitting" class="animate-spin w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span>
           <span>{{ isSubmitting ? 'Verifying...' : 'Verify' }}</span>
         </button>
 
         <div class="flex items-center justify-between text-xs">
-          <button type="button" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800" @click="toggleRecoveryMode">
+          <button type="button" class="btn btn-link-muted" @click="toggleRecoveryMode">
             {{ useRecoveryCode ? 'Use authenticator code instead' : "Use a recovery code instead" }}
           </button>
-          <button type="button" class="text-slate-500 hover:text-slate-300 light:text-slate-700" @click="backToCredentials">Cancel</button>
+          <button type="button" class="btn btn-link-muted" @click="backToCredentials">Cancel</button>
         </div>
       </form>
     </div>

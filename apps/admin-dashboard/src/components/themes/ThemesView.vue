@@ -4,7 +4,7 @@
     <template v-if="!editing">
       <div class="flex items-center justify-between mb-4 shrink-0">
         <h2 class="text-lg font-bold text-slate-100 light:text-slate-900">Themes</h2>
-        <button type="button" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold" @click="addTheme">+ New Theme</button>
+        <button type="button" class="btn btn-primary" @click="addTheme">+ New Theme</button>
       </div>
 
       <div v-if="loading" class="flex-1 flex items-center justify-center text-xs text-slate-500">Loading themes…</div>
@@ -27,7 +27,7 @@
             </div>
           </div>
           <div class="flex items-center gap-2 shrink-0 ml-3">
-            <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white" @click="editTheme(t)">Edit</button>
+            <button type="button" class="btn btn-primary" @click="editTheme(t)">Edit</button>
             <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-400 hover:text-rose-300 border border-rose-500/30 hover:border-rose-500/60" @click="removeTheme(t.id)">Delete</button>
           </div>
         </div>
@@ -37,7 +37,7 @@
     <!-- Edit view -->
     <template v-else-if="draft">
       <div class="flex items-center gap-2 mb-4 shrink-0">
-        <button type="button" class="text-xs text-slate-400 hover:text-slate-200 light:hover:text-slate-800 flex items-center gap-1" @click="editing = false">
+        <button type="button" class="btn btn-link-muted light:hover:text-slate-800 flex items-center gap-1" @click="editing = false">
           ← Back
         </button>
         <h2 class="text-lg font-bold text-slate-100 light:text-slate-900">{{ draft.name }}</h2>
@@ -48,19 +48,19 @@
           <label class="block mb-1">
             <span class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Name</span>
           </label>
-          <input v-model="draft.name" type="text" class="w-full text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1.5 text-slate-200 light:text-slate-800" />
+          <input v-model="draft.name" type="text" class="field w-full" />
         </div>
 
         <div class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-900/40 light:bg-white/40 p-4">
           <div class="flex items-center justify-between mb-2">
             <span class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Colors</span>
-            <button type="button" class="text-[10px] text-indigo-400 hover:text-indigo-300" @click="addColor(draft)">+ Add</button>
+            <button type="button" class="btn btn-link" @click="addColor(draft)">+ Add</button>
           </div>
           <div v-for="(c, i) in draft.colors" :key="i" class="flex items-center gap-2 mb-1">
-            <input v-model="c.name" type="text" placeholder="name" class="flex-1 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1 text-slate-200 light:text-slate-800" />
+            <input v-model="c.name" type="text" placeholder="name" class="field flex-1" />
             <input v-model="c.hex" type="color" class="w-7 h-7 rounded border border-slate-700 cursor-pointer" />
             <span class="text-[10px] text-slate-500 font-mono w-14">{{ c.hex }}</span>
-            <button type="button" class="text-rose-400 hover:text-rose-300 text-xs" @click="removeColor(draft, i)">✕</button>
+            <button type="button" class="btn btn-link-danger" @click="removeColor(draft, i)">✕</button>
           </div>
         </div>
 
@@ -68,13 +68,13 @@
           <div class="flex items-center justify-between mb-2">
             <span class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Fonts</span>
             <div class="flex items-center gap-1">
-              <input v-model="newFont" type="text" placeholder="Font name" class="text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1 text-slate-200 light:text-slate-800 w-32" @keydown.enter="addFont(draft)" />
-              <button type="button" class="text-[10px] text-indigo-400 hover:text-indigo-300" @click="addFont(draft)">+ Add</button>
+              <input v-model="newFont" type="text" placeholder="Font name" class="field w-32" @keydown.enter="addFont(draft)" />
+              <button type="button" class="btn btn-link" @click="addFont(draft)">+ Add</button>
             </div>
           </div>
           <div v-for="(f, i) in draft.fonts" :key="i" class="flex items-center gap-2 mb-0.5">
             <span class="text-xs text-slate-300 flex-1">{{ f.replace('+', ' ') }}</span>
-            <button type="button" class="text-rose-400 hover:text-rose-300 text-xs" @click="draft.fonts.splice(i, 1)">✕</button>
+            <button type="button" class="btn btn-link-danger" @click="draft.fonts.splice(i, 1)">✕</button>
           </div>
         </div>
 
@@ -82,7 +82,7 @@
           <span class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Custom Styles</span>
           <textarea
             v-model="draft.styles"
-            class="mt-2 w-full text-xs font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1.5 text-slate-200 light:text-slate-800 min-h-[250px] resize-y"
+            class="field mt-2 w-full font-mono min-h-[250px] resize-y"
             placeholder="/* CSS rules */ .my-class { color: red; }"
             @blur="validateStyles"
           ></textarea>
@@ -93,7 +93,7 @@
           <span class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Tailwind Custom Classes</span>
           <textarea
             v-model="draft.tailwindClasses"
-            class="mt-2 w-full text-xs font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded px-2 py-1.5 text-slate-200 light:text-slate-800 min-h-[120px] resize-y"
+            class="field mt-2 w-full font-mono min-h-[120px] resize-y"
             placeholder="space-separated Tailwind utility classes, e.g.&#10;shadow-lg rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600"
           ></textarea>
         </div>
@@ -101,7 +101,7 @@
 
       <div class="flex justify-end gap-2 pt-4 shrink-0">
         <button type="button" class="text-xs px-4 py-2 rounded border border-slate-700 light:border-slate-300 text-slate-300 light:text-slate-700 hover:bg-slate-800 light:hover:bg-slate-100" :disabled="saving" @click="editing = false">Cancel</button>
-        <button type="button" class="text-xs px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="saving" @click="saveTheme">{{ saving ? 'Saving…' : 'Save' }}</button>
+        <button type="button" class="btn btn-primary" :disabled="saving" @click="saveTheme">{{ saving ? 'Saving…' : 'Save' }}</button>
       </div>
     </template>
   </div>

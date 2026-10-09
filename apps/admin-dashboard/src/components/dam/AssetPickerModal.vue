@@ -9,10 +9,10 @@
           <span v-if="filter && filter !== 'any'" class="px-2 py-0.5 text-[10px] font-bold rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 uppercase">{{ ASSET_CATEGORY_LABELS[filter] }}</span>
         </h3>
         <div class="flex items-center gap-2">
-          <button @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'" class="p-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:hover:bg-slate-200 text-slate-300 light:text-slate-700 border border-slate-700 light:border-slate-300 transition" :title="viewMode === 'grid' ? 'List view' : 'Grid view'">
+          <button @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'" class="btn btn-secondary light:hover:bg-slate-200" :title="viewMode === 'grid' ? 'List view' : 'Grid view'">
             <component :is="viewMode === 'grid' ? List : Grid" class="w-4 h-4" />
           </button>
-          <button @click="emit('close')" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition text-sm">✕</button>
+          <button @click="emit('close')" class="btn btn-link-muted">✕</button>
         </div>
       </div>
 
@@ -48,7 +48,7 @@
               v-model="searchQuery"
               type="text"
               placeholder="Search by filename..."
-              class="w-full px-3 py-1.5 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+              class="field w-full"
             />
           </div>
           <div class="flex-1 min-h-0 overflow-y-auto p-3">

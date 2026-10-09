@@ -21,8 +21,8 @@
             <div class="text-xs text-slate-600 light:text-slate-400 font-mono">{{ source.classesPath }}</div>
           </div>
           <div class="flex items-center gap-3 shrink-0">
-            <button @click="openEditor(source)" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">Edit</button>
-            <button @click="handleDelete(source)" type="button" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Delete</button>
+            <button @click="openEditor(source)" type="button" class="btn btn-link">Edit</button>
+            <button @click="handleDelete(source)" type="button" class="btn btn-link-danger">Delete</button>
           </div>
         </div>
 
@@ -32,7 +32,7 @@
             v-model="classNameFilter[source.id]"
             type="text"
             placeholder="Class name (blank = all)"
-            class="flex-1 min-w-[10rem] px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+            class="field flex-1 min-w-[10rem]"
           />
           <label class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600">
             <input type="checkbox" v-model="dryRunClasses[source.id]" class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
@@ -42,7 +42,7 @@
             @click="handleImportClasses(source)"
             :disabled="runningClasses === source.id"
             type="button"
-            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 disabled:opacity-50"
+            class="btn btn-secondary"
           >
             {{ runningClasses === source.id ? 'Importing…' : 'Import Classes' }}
           </button>
@@ -52,7 +52,7 @@
         <div class="flex items-center gap-2 flex-wrap">
           <select
             v-model="objectClassName[source.id]"
-            class="px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+            class="field"
           >
             <option value="">Class…</option>
             <option v-for="c in migratedClasses" :key="c.id" :value="c.name">{{ c.label }}</option>
@@ -62,7 +62,7 @@
             type="number"
             min="1"
             placeholder="limit"
-            class="w-20 px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+            class="field w-20"
           />
           <label class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600">
             <input type="checkbox" v-model="dryRunObjects[source.id]" class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
@@ -76,7 +76,7 @@
             @click="handleImportObjects(source)"
             :disabled="runningObjects === source.id || !objectClassName[source.id]"
             type="button"
-            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 disabled:opacity-50"
+            class="btn btn-secondary"
           >
             {{ runningObjects === source.id ? 'Importing…' : 'Import Objects' }}
           </button>
@@ -90,7 +90,7 @@
             type="number"
             min="1"
             placeholder="limit"
-            class="w-20 px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+            class="field w-20"
           />
           <label class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600">
             <input type="checkbox" v-model="dryRunDocuments[source.id]" class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
@@ -104,7 +104,7 @@
             @click="handleImportDocuments(source)"
             :disabled="runningDocuments === source.id"
             type="button"
-            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 disabled:opacity-50"
+            class="btn btn-secondary"
           >
             {{ runningDocuments === source.id ? 'Importing…' : 'Import Documents' }}
           </button>
@@ -125,7 +125,7 @@
             @click="handlePromoteDocuments(source)"
             :disabled="runningPromote === source.id"
             type="button"
-            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 disabled:opacity-50"
+            class="btn btn-secondary"
           >
             {{ runningPromote === source.id ? 'Promoting…' : 'Promote Staging' }}
           </button>
@@ -138,7 +138,7 @@
             v-model="classNameExtract[source.id]"
             type="text"
             placeholder="Class name (blank = all)"
-            class="flex-1 min-w-[10rem] px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+            class="field flex-1 min-w-[10rem]"
           />
           <label class="flex items-center gap-1.5 text-xs text-slate-400 light:text-slate-600">
             <input type="checkbox" v-model="dryRunExtract[source.id]" class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
@@ -152,7 +152,7 @@
             @click="handleExtractComponents(source)"
             :disabled="runningExtract === source.id"
             type="button"
-            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 disabled:opacity-50"
+            class="btn btn-secondary"
           >
             {{ runningExtract === source.id ? 'Extracting…' : 'Extract Components' }}
           </button>
@@ -168,30 +168,30 @@
         </div>
       </div>
 
-      <button @click="openEditor(null)" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 pt-1">+ New source</button>
+      <button @click="openEditor(null)" type="button" class="btn btn-link">+ New source</button>
     </div>
 
     <!-- Source editor -->
     <div v-else class="space-y-3">
       <div class="grid grid-cols-2 gap-2">
-        <input v-model="label" type="text" placeholder="Label (e.g. My Pimcore 10)" class="col-span-2 px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
-        <input v-model="dbHost" type="text" placeholder="DB host" class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
-        <input v-model.number="dbPort" type="number" placeholder="DB port (3306)" class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
-        <input v-model="dbUser" type="text" placeholder="DB user" class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
-        <input v-model="dbPassword" type="password" :placeholder="isNew ? 'DB password' : 'DB password (blank = keep current)'" class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
-        <input v-model="dbName" type="text" placeholder="DB name" class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
-        <input v-model="classesPath" type="text" placeholder="Filesystem path to var/classes" class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+        <input v-model="label" type="text" placeholder="Label (e.g. My Pimcore 10)" class="field col-span-2" />
+        <input v-model="dbHost" type="text" placeholder="DB host" class="field" />
+        <input v-model.number="dbPort" type="number" placeholder="DB port (3306)" class="field" />
+        <input v-model="dbUser" type="text" placeholder="DB user" class="field" />
+        <input v-model="dbPassword" type="password" :placeholder="isNew ? 'DB password' : 'DB password (blank = keep current)'" class="field" />
+        <input v-model="dbName" type="text" placeholder="DB name" class="field" />
+        <input v-model="classesPath" type="text" placeholder="Filesystem path to var/classes" class="field" />
       </div>
       <p class="text-[11px] text-slate-600 light:text-slate-400 italic">
         The classes path must be readable by this server's own process (a shared filesystem/mount with the source Pimcore install) - not something this form can verify.
       </p>
 
       <div class="flex items-center justify-between pt-2">
-        <button @click="closeEditor" type="button" class="text-xs font-semibold text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800">Cancel</button>
+        <button @click="closeEditor" type="button" class="btn btn-link-muted">Cancel</button>
         <button
           @click="handleSave"
           :disabled="isSaving || !label.trim() || !dbHost.trim() || !dbUser.trim() || !dbName.trim() || !classesPath.trim() || (isNew && !dbPassword.trim())"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
+          class="btn btn-primary"
         >
           {{ isSaving ? 'Saving…' : 'Save Source' }}
         </button>

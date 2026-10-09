@@ -26,7 +26,7 @@
       <div class="flex items-center justify-between pt-4">
         <button
           @click="resetControls"
-          class="px-3.5 py-2 mr-2 text-xs font-semibold rounded-xl bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-300 light:text-slate-700 transition"
+          class="btn btn-secondary mr-2"
         >
           Reset Options
         </button>
@@ -43,7 +43,7 @@
           <button
             @click="saveTransformedAsset(true)"
             :disabled="isProcessing"
-            class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition flex items-center gap-1.5"
+            class="btn btn-primary flex items-center gap-1.5"
           >
             <span>Save as New Version</span>
           </button>
@@ -128,7 +128,7 @@
                 v-model.number="width"
                 type="number"
                 placeholder="Auto"
-                class="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+                class="field w-full font-mono"
               />
             </div>
             <div>
@@ -137,7 +137,7 @@
                 v-model.number="height"
                 type="number"
                 placeholder="Auto"
-                class="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+                class="field w-full font-mono"
               />
             </div>
           </div>
@@ -146,7 +146,7 @@
             <label class="block text-slate-400 light:text-slate-600 mb-1">Fit Mode</label>
             <select
               v-model="fitMode"
-              class="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs focus:border-indigo-500 focus:outline-none"
+              class="field w-full"
             >
               <option value="inside">Inside (Maintain Aspect Ratio)</option>
               <option value="cover">Cover (Crop to Fit)</option>
@@ -164,7 +164,7 @@
               <label class="block text-slate-400 light:text-slate-600 mb-1">Target Format</label>
               <select
                 v-model="targetFormat"
-                class="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs focus:border-indigo-500 focus:outline-none font-mono"
+                class="field w-full font-mono"
               >
                 <option value="webp">WEBP (Recommended)</option>
                 <option value="avif">AVIF (Ultra High Compress)</option>
@@ -227,7 +227,7 @@
               v-model="watermarkText"
               type="text"
               placeholder="e.g. © WhoobeCMS 2026"
-              class="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs focus:border-indigo-500 focus:outline-none"
+              class="field w-full"
             />
           </div>
           <div class="grid grid-cols-2 gap-3">
@@ -235,7 +235,7 @@
               <label class="block text-slate-400 light:text-slate-600 mb-1">Position</label>
               <select
                 v-model="watermarkPosition"
-                class="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs focus:border-indigo-500 focus:outline-none"
+                class="field w-full"
               >
                 <option value="southeast">Bottom Right</option>
                 <option value="southwest">Bottom Left</option>
@@ -266,7 +266,7 @@
     <!--<div class="flex items-center justify-between border-t border-slate-800 light:border-slate-200 pt-4">
       <button
         @click="resetControls"
-        class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-300 light:text-slate-700 transition"
+        class="btn btn-secondary"
       >
         Reset Options
       </button>
@@ -283,7 +283,7 @@
         <button
           @click="saveTransformedAsset(true)"
           :disabled="isProcessing"
-          class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition flex items-center gap-1.5"
+          class="btn btn-primary flex items-center gap-1.5"
         >
           <span>Save as New Version</span>
         </button>

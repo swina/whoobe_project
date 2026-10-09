@@ -5,7 +5,7 @@
         <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800">Endpoint: {{ endpointName }}</h3>
         <p class="text-xs text-slate-500">{{ store.routes.length }} route(s)</p>
       </div>
-      <button @click="openCreateRoute" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5">
+      <button @click="openCreateRoute" class="btn btn-primary flex items-center gap-1.5">
         <Plus class="w-3.5 h-3.5" />
         Add Route
       </button>
@@ -44,7 +44,7 @@
             </td>
             <td class="px-4 py-3 text-slate-200 light:text-slate-800 font-mono">
               {{ route.path }}
-              <div class="text-slate-500 font-mono mt-0.5">id: <button @click="copyId(route.id)" class="text-indigo-400 hover:text-indigo-300 cursor-pointer" :title="'Click to copy'">{{ route.id.slice(0, 8) }}…</button></div>
+              <div class="text-slate-500 font-mono mt-0.5">id: <button @click="copyId(route.id)" class="btn btn-link" :title="'Click to copy'">{{ route.id.slice(0, 8) }}…</button></div>
             </td>
             <td class="px-4 py-3 text-slate-400 light:text-slate-600">{{ route.description || '—' }}</td>
             <td class="px-4 py-3">
@@ -53,17 +53,17 @@
             </td>
             <td class="px-4 py-3 text-right">
               <div class="flex items-center justify-end gap-2">
-                <button @click="testRoute(route)" :disabled="testingId === route.id" class="text-emerald-400 hover:text-emerald-300 transition" title="Test & Infer Schema">
+                <button @click="testRoute(route)" :disabled="testingId === route.id" class="btn btn-link-success" title="Test & Infer Schema">
                   <TestTube v-if="testingId !== route.id" class="w-3.5 h-3.5" />
                   <Loader v-else class="w-3.5 h-3.5 animate-spin" />
                 </button>
-                <button @click="viewSchema(route)" class="text-sky-400 hover:text-sky-300 transition" title="View Schema">
+                <button @click="viewSchema(route)" class="btn btn-link-info" title="View Schema">
                   <FileJson class="w-3.5 h-3.5" />
                 </button>
-                <button @click="editRoute(route)" class="text-indigo-400 hover:text-indigo-300 transition" title="Edit">
+                <button @click="editRoute(route)" class="btn btn-link" title="Edit">
                   <Pencil class="w-3.5 h-3.5" />
                 </button>
-                <button @click="confirmDeleteRoute(route)" class="text-rose-400 hover:text-rose-300 transition" title="Delete">
+                <button @click="confirmDeleteRoute(route)" class="btn btn-link-danger" title="Delete">
                   <Trash2 class="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -76,25 +76,31 @@
     <div v-if="!store.routes.length && !store.isLoading" class="text-center py-12 text-slate-500 text-xs">No routes configured for this endpoint.</div>
 
     <!-- Schema Viewer Modal -->
-    <div v-if="showSchemaModal && store.currentSchema" class="fixed inset-0 Z-50 flex items-center justify-center bg-black/60" @click.self="showSchemaModal = false">
-      <div class="w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6 rounded-2xl bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-2xl space-y-4">
-        <h3 class="text-sm font-bold text-slate-100 light:text-slate-900">Inferred Schema</h3>
-        <pre class="text-xs text-Slate-300 light:text-slate-700 bg-slate-950 light:bg-slate-50 p-4 rounded-xl overflow-x-auto">{{ JSON.stringify(store.currentSchema.schema, null, 2) }}</pre>
-        <div class="flex justify-end gap-2 mt-4">
-          <button @click="showSchemaModal = false" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-200 text-slate-300 light:text-slate-700 hover:bg-slate-700 light:hover:bg-slate-300 transition">Close</button>
-          <button @click="refreshRouteSchema(routeForSchema!)" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition">Refresh Schema</button>
-        </div>
+    <BaseModal v-if="showSchemaModal && store.currentSchema" :open="true" size="lg" @close="showSchemaModal = false">
+      <template #header>
+        <h2 class="ui-modal-title flex items-center gap-2">Inferred Schema</h2>
+      </template>
+      <div class="space-y-4">
+            <pre class="text-xs text-Slate-300 light:text-slate-700 bg-slate-950 light:bg-slate-50 p-4 rounded-xl overflow-x-auto">{{ JSON.stringify(store.currentSchema.schema, null, 2) }}</pre>
+
       </div>
-    </div>
+      <template #footer>
+            <button @click="showSchemaModal = false" class="btn btn-secondary light:hover:bg-slate-300">Close</button>
+        <button @click="refreshRouteSchema(routeForSchema!)" class="btn btn-success">Refresh Schema</button>
+
+      </template>
+    </BaseModal>
 
     <!-- Create/Edit Route Modal -->
-    <div v-if="showRouteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="closeRouteModal">
-      <div class="w-full max-w-lg p-6 rounded-2xl bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-2xl space-y-4">
-        <h3 class="text-sm font-bold text-slate-100 light:text-slate-900">{{ isEditingRoute ? 'Edit Route' : 'Add Route' }}</h3>
-        <div class="space-y-3">
+    <BaseModal v-if="showRouteModal" :open="true" size="md" @close="closeRouteModal">
+      <template #header>
+        <h2 class="ui-modal-title flex items-center gap-2">{{ isEditingRoute ? 'Edit Route' : 'Add Route' }}</h2>
+      </template>
+      <div class="space-y-4">
+            <div class="space-y-3">
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Method</label>
-            <select v-model="routeForm.method" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500">
+            <select v-model="routeForm.method" class="field w-full">
               <option value="GET">GET</option>
               <option value="POST">POST</option>
               <option value="PUT">PUT</option>
@@ -104,11 +110,11 @@
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Path</label>
-            <input v-model="routeForm.path" type="text" placeholder="products.json" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="routeForm.path" type="text" placeholder="products.json" class="field w-full" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Description</label>
-            <input v-model="routeForm.description" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="routeForm.description" type="text" class="field w-full" />
           </div>
           <div>
             <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
@@ -118,18 +124,21 @@
           </div>
         </div>
         <div v-if="store.errorMessage" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">{{ store.errorMessage }}</div>
-        <div class="flex justify-end gap-2">
-          <button @click="closeRouteModal" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-200 text-slate-300 light:text-slate-700 hover:bg-slate-700 light:hover:bg-slate-300 transition">Cancel</button>
-          <button @click="saveRoute" :disabled="isSubmittingRoute" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-50">
-            {{ isSubmittingRoute ? 'Saving...' : 'Save' }}
-          </button>
-        </div>
+
       </div>
-    </div>
+      <template #footer>
+            <button @click="closeRouteModal" class="btn btn-secondary light:hover:bg-slate-300">Cancel</button>
+        <button @click="saveRoute" :disabled="isSubmittingRoute" class="btn btn-primary">
+          {{ isSubmittingRoute ? 'Saving...' : 'Save' }}
+        </button>
+
+      </template>
+    </BaseModal>
   </div>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../components/ui/BaseModal.vue'
 import { ref, onMounted, reactive, watch } from 'vue'
 import { Plus, Pencil, Trash2, TestTube, Loader, FileJson } from '@lucide/vue'
 import { useGatewayStore } from '../stores/gatewayStore'

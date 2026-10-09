@@ -1,12 +1,12 @@
 <template>
-  <div class="fixed inset-0 z-[220] bg-black/70 flex items-center justify-center p-4" @click.self="$emit('close')">
-    <div class="w-full max-w-3xl max-h-[88vh] flex flex-col rounded-2xl bg-slate-900 light:bg-white border border-slate-700 light:border-slate-300 shadow-2xl" data-testid="docs-image-dialog">
-      <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-800 light:border-slate-200 shrink-0">
-        <div class="text-sm font-semibold text-slate-100 light:text-slate-900">Insert an image</div>
-        <button class="text-slate-400 hover:text-slate-200" aria-label="Close" @click="$emit('close')"><X class="w-4 h-4" /></button>
-      </div>
-
-      <div class="flex items-center gap-2 px-4 pt-3 shrink-0">
+  <BaseModal :open="true" size="xl" @close="$emit('close')">
+    <template #header>
+      <div class="min-w-0">
+      Insert an image
+    </div>
+    </template>
+    <div class="space-y-4">
+        <div class="flex items-center gap-2 px-4 pt-3 shrink-0">
         <button v-for="t in sources" :key="t.key" :data-testid="`docs-image-src-${t.key}`" @click="source = t.key"
           :class="['px-3 py-1.5 rounded-lg text-xs font-semibold transition', source === t.key ? 'bg-slate-800 light:bg-slate-200 text-slate-100 light:text-slate-900' : 'text-slate-500 hover:text-slate-300 light:hover:text-slate-700']">{{ t.name }}</button>
       </div>
@@ -29,7 +29,7 @@
 
         <!-- the asset library -->
         <template v-else-if="source === 'library'">
-          <input v-model="libQuery" placeholder="Search the library by name…" class="w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm text-slate-200 light:text-slate-800 px-3 py-1.5 outline-none focus:border-indigo-500" />
+          <input v-model="libQuery" placeholder="Search the library by name…" class="field w-full" />
           <p class="text-xs text-slate-500">A library image outside the documentation folder is <strong>copied</strong> into <span class="font-mono">{{ imagesFolder }}/</span>, so the document refers to it with a relative path and the published site is self-contained.</p>
           <div v-if="libImages.length === 0" class="text-xs text-slate-500 italic py-4 text-center">No image found.</div>
           <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -47,7 +47,7 @@
             <input data-testid="docs-image-file" type="file" accept="image/*" class="mt-1 block w-full text-xs text-slate-300" @change="onFile" />
           </label>
           <label class="block text-xs text-slate-400">Stored in the folder
-            <input v-model="uploadDir" class="mt-1 w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm font-mono text-slate-200 light:text-slate-800 px-3 py-1.5 outline-none focus:border-indigo-500" />
+            <input v-model="uploadDir" class="field mt-1 w-full font-mono" />
           </label>
           <div v-if="uploadPreview" class="rounded-lg bg-slate-950/40 p-2 inline-block"><img :src="uploadPreview" alt="" class="max-h-40 rounded" /></div>
         </template>
@@ -55,7 +55,7 @@
         <!-- address -->
         <template v-else>
           <label class="block text-xs text-slate-400">Image address (https://…)
-            <input v-model="urlText" data-testid="docs-image-url" placeholder="https://example.com/picture.png" class="mt-1 w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm font-mono text-slate-200 light:text-slate-800 px-3 py-1.5 outline-none focus:border-indigo-500" @input="chooseUrl" />
+            <input v-model="urlText" data-testid="docs-image-url" placeholder="https://example.com/picture.png" class="field mt-1 w-full font-mono" @input="chooseUrl" />
           </label>
           <p class="text-xs text-slate-500">The image stays where it is: it is not copied into the folder or into a published site.</p>
           <img v-if="urlValid" :src="urlText" alt="" class="max-h-40 rounded" />
@@ -64,20 +64,20 @@
         <!-- how it is shown -->
         <div class="grid sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800 light:border-slate-200">
           <label class="block text-xs text-slate-400 sm:col-span-3">Description (alternative text)
-            <input v-model="alt" data-testid="docs-image-alt" class="mt-1 w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm text-slate-200 light:text-slate-800 px-3 py-1.5 outline-none focus:border-indigo-500" />
+            <input v-model="alt" data-testid="docs-image-alt" class="field mt-1 w-full" />
           </label>
           <label class="block text-xs text-slate-400">Width
-            <select v-model="widthChoice" data-testid="docs-image-width" class="mt-1 w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm text-slate-200 light:text-slate-800 px-2 py-1.5">
+            <select v-model="widthChoice" data-testid="docs-image-width" class="field mt-1 w-full">
               <option value="">Original size</option>
               <option v-for="w in widths" :key="w" :value="w">{{ w }}</option>
               <option value="custom">Custom…</option>
             </select>
           </label>
           <label v-if="widthChoice === 'custom'" class="block text-xs text-slate-400">Custom width
-            <input v-model="customWidth" data-testid="docs-image-custom-width" placeholder="320px or 40%" class="mt-1 w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm font-mono text-slate-200 light:text-slate-800 px-3 py-1.5 outline-none focus:border-indigo-500" />
+            <input v-model="customWidth" data-testid="docs-image-custom-width" placeholder="320px or 40%" class="field mt-1 w-full font-mono" />
           </label>
           <label class="block text-xs text-slate-400">Position
-            <select v-model="position" data-testid="docs-image-position" class="mt-1 w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm text-slate-200 light:text-slate-800 px-2 py-1.5">
+            <select v-model="position" data-testid="docs-image-position" class="field mt-1 w-full">
               <option value="">Inline (as written)</option>
               <option value="align:left">Left, on its own line</option>
               <option value="align:center">Centered</option>
@@ -90,15 +90,18 @@
         <div class="text-xs text-slate-500">Will insert: <span data-testid="docs-image-markdown" class="font-mono text-slate-300 break-all">{{ markdown || '(choose an image)' }}</span></div>
       </div>
 
-      <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-slate-800 light:border-slate-200 shrink-0">
-        <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" @click="$emit('close')">Cancel</button>
-        <button data-testid="docs-image-insert" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="!markdown || !!busy" @click="insert">{{ busy || 'Insert' }}</button>
-      </div>
+
     </div>
-  </div>
+    <template #footer>
+        <button class="btn btn-secondary" @click="$emit('close')">Cancel</button>
+      <button data-testid="docs-image-insert" class="btn btn-primary" :disabled="!markdown || !!busy" @click="insert">{{ busy || 'Insert' }}</button>
+
+    </template>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../ui/BaseModal.vue'
 // Insert an image into a document (docs/plans/docs-sites/docs-site-plan.md): from the documentation folder, from the asset library
 // (copied into the folder when it is elsewhere), by uploading, or by address - with a width and a position. What is written is
 // ordinary Markdown: ![alt](relative/path.png){width=50% align=center}.

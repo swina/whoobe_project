@@ -7,12 +7,12 @@
         <span class="text-xs font-semibold text-slate-400 light:text-slate-600">
           Fields <span class="text-slate-600 light:text-slate-400">({{ modelValue.length }})</span>
         </span>
-        <button @click="addField" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">+ Add field</button>
+        <button @click="addField" type="button" class="btn btn-link">+ Add field</button>
       </div>
 
       <div v-if="modelValue.length === 0" class="flex-1 flex flex-col items-center justify-center gap-2 p-6 text-center">
         <p class="text-xs text-slate-600 light:text-slate-400">No fields yet.</p>
-        <button @click="addField" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">+ Add field</button>
+        <button @click="addField" type="button" class="btn btn-primary">+ Add field</button>
       </div>
 
       <ul v-else class="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-800/60 light:divide-slate-200/60">
@@ -41,14 +41,14 @@
               @click.stop="moveField(index, -1)"
               type="button"
               :disabled="index === 0"
-              class="p-1 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30"
+              class="btn btn-link-muted"
               title="Move up"
             >↑</button>
             <button
               @click.stop="moveField(index, 1)"
               type="button"
               :disabled="index === modelValue.length - 1"
-              class="p-1 text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30"
+              class="btn btn-link-muted"
               title="Move down"
             >↓</button>
             <button
@@ -88,7 +88,7 @@
             v-model="selectedField.name"
             type="text"
             placeholder="name (attribute key)"
-            class="px-2 py-1.5 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+            class="field"
           />
           </div>
           <div class="flex flex-col gap-1">
@@ -97,14 +97,14 @@
             v-model="selectedField.title"
             type="text"
             placeholder="Title (display label)"
-            class="px-2 py-1.5 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+            class="field"
           />
           </div>
           <div class="flex flex-col gap-1">
           <span class="text-xs text-slate-400 light:text-slate-600">Type</span>
           <select
             v-model="selectedField.fieldType"
-            class="px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+            class="field"
           >
             <option v-for="ft in fieldTypes" :key="ft.value" :value="ft.value">{{ ft.label }}</option>
           </select>
@@ -138,13 +138,13 @@
           @input="selectedField.options = splitList(($event.target as HTMLInputElement).value)"
           type="text"
           placeholder="options (comma-separated)"
-          class="w-full px-2 py-1.5 text-xs mt-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+          class="field w-full mt-2"
         />
 
         <select
           v-if="selectedField.fieldType === 'manyToOneRelation' || selectedField.fieldType === 'manyToManyRelation'"
           v-model="selectedField.relationTarget"
-          class="w-full px-2 py-1.5 text-xs mt-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+          class="field w-full mt-2"
         >
           <option value="">Relates to…</option>
           <option v-for="dataClass in dataClassesStore.classes" :key="dataClass.id" :value="dataClass.name">{{ dataClass.label }}</option>
@@ -153,7 +153,7 @@
         <select
           v-if="selectedField.fieldType === 'asset'"
           v-model="selectedField.assetFilter"
-          class="w-full px-2 py-1.5 text-xs mt-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+          class="field w-full mt-2"
         >
           <option v-for="opt in ASSET_FILTER_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
@@ -186,15 +186,15 @@
           v-model="selectedField.className"
           type="text"
           placeholder="Custom classes for this field's control (e.g. col-span-2, bg-slate-50, p-3) - optional"
-          class="w-full px-2 py-1.5 text-[11px] font-mono mt-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+          class="field w-full font-mono mt-2"
         />
 
         <div class="flex items-center justify-between pt-3 mt-2 border-t border-slate-800/60 light:border-slate-200/60">
           <div class="flex items-center gap-2">
-            <button @click="moveField(selectedIndex, -1)" type="button" :disabled="selectedIndex === 0" class="text-xs text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30">↑ Move up</button>
-            <button @click="moveField(selectedIndex, 1)" type="button" :disabled="selectedIndex === modelValue.length - 1" class="text-xs text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 disabled:opacity-30">Move down ↓</button>
+            <button @click="moveField(selectedIndex, -1)" type="button" :disabled="selectedIndex === 0" class="btn btn-link-muted">↑ Move up</button>
+            <button @click="moveField(selectedIndex, 1)" type="button" :disabled="selectedIndex === modelValue.length - 1" class="btn btn-link-muted">Move down ↓</button>
           </div>
-          <button @click="removeField(selectedIndex)" type="button" class="text-xs text-rose-400 hover:text-rose-300">Remove field</button>
+          <button @click="removeField(selectedIndex)" type="button" class="btn btn-link-danger">Remove field</button>
         </div>
       </template>
     </div>

@@ -15,10 +15,10 @@
         <p class="text-slate-400 light:text-slate-600 text-sm">System performance and repository status across Whoobe CMS modules.</p>
       </div>
       <div class="mt-4 md:mt-0 flex items-center space-x-3 relative z-10">
-        <button class="px-4 py-2 text-sm font-medium rounded-xl bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 border border-slate-700 light:border-slate-300 transition">
+        <button class="btn btn-secondary">
           View Logs
         </button>
-        <button class="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 transition">
+        <button class="btn btn-primary">
           + New Data Object
         </button>
       </div>
@@ -56,7 +56,7 @@
             <h3 class="font-semibold text-slate-100 light:text-slate-900">Recent Data Objects</h3>
             <p class="text-xs text-slate-400 light:text-slate-600">Latest modified Whoobe CMS objects and entities</p>
           </div>
-          <button @click="tabsStore.openSection('objects')" class="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition">
+          <button @click="tabsStore.openSection('objects')" class="btn btn-link">
             View All →
           </button>
         </div>

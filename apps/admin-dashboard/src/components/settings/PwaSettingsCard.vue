@@ -19,11 +19,11 @@
         <div class="grid grid-cols-2 gap-4">
           <label class="flex flex-col gap-1">
             <span class="text-xs text-slate-400">App Name (short)</span>
-            <input v-model="config.shortName" class="bg-slate-800 light:bg-white border border-slate-700 light:border-slate-300 rounded px-3 py-2 text-xs text-slate-200 light:text-slate-800" placeholder="MyApp" maxlength="12" />
+            <input v-model="config.shortName" class="field" placeholder="MyApp" maxlength="12" />
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-xs text-slate-400">Website</span>
-            <select v-model="selectedWebsiteId" class="bg-slate-800 light:bg-white border border-slate-700 light:border-slate-300 rounded px-3 py-2 text-xs text-slate-200 light:text-slate-800">
+            <select v-model="selectedWebsiteId" class="field">
               <option value="">Select a website...</option>
               <option v-for="w in websites" :key="w.id" :value="w.id">{{ w.name }}</option>
             </select>
@@ -33,7 +33,7 @@
         <div class="grid grid-cols-2 gap-4">
           <label class="flex flex-col gap-1">
             <span class="text-xs text-slate-400">Display Mode</span>
-            <select v-model="config.display" class="bg-slate-800 light:bg-white border border-slate-700 light:border-slate-300 rounded px-3 py-2 text-xs text-slate-200 light:text-slate-800">
+            <select v-model="config.display" class="field">
               <option value="standalone">Standalone</option>
               <option value="fullscreen">Fullscreen</option>
               <option value="minimal-ui">Minimal UI</option>
@@ -41,7 +41,7 @@
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-xs text-slate-400">Orientation</span>
-            <select v-model="config.orientation" class="bg-slate-800 light:bg-white border border-slate-700 light:border-slate-300 rounded px-3 py-2 text-xs text-slate-200 light:text-slate-800">
+            <select v-model="config.orientation" class="field">
               <option value="portrait">Portrait</option>
               <option value="landscape">Landscape</option>
               <option value="any">Any</option>
@@ -54,14 +54,14 @@
             <span class="text-xs text-slate-400">Background Color</span>
             <div class="flex gap-2">
               <input v-model="config.backgroundColor" type="color" class="w-10 h-10 rounded cursor-pointer border border-slate-700" />
-              <input v-model="config.backgroundColor" class="flex-1 bg-slate-800 light:bg-white border border-slate-700 light:border-slate-300 rounded px-3 py-2 text-xs font-mono text-slate-200 light:text-slate-800" />
+              <input v-model="config.backgroundColor" class="field flex-1 font-mono" />
             </div>
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-xs text-slate-400">Theme Color</span>
             <div class="flex gap-2">
               <input v-model="config.themeColor" type="color" class="w-10 h-10 rounded cursor-pointer border border-slate-700" />
-              <input v-model="config.themeColor" class="flex-1 bg-slate-800 light:bg-white border border-slate-700 light:border-slate-300 rounded px-3 py-2 text-xs font-mono text-slate-200 light:text-slate-800" />
+              <input v-model="config.themeColor" class="field flex-1 font-mono" />
             </div>
           </label>
         </div>
@@ -90,11 +90,11 @@
           <template v-if="pushProvider === 'onesignal'">
             <label class="flex flex-col gap-1">
               <span class="text-xs text-slate-400">OneSignal App ID</span>
-              <input v-model="onesignalAppId" class="bg-slate-800 light:bg-white border border-slate-700 light:border-slate-300 rounded px-3 py-2 text-xs font-mono text-slate-200 light:text-slate-800" placeholder="..." />
+              <input v-model="onesignalAppId" class="field font-mono" placeholder="..." />
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-xs text-slate-400">REST API Key</span>
-              <input v-model="onesignalApiKey" type="password" class="bg-slate-800 light:bg-white border border-slate-700 light:border-slate-300 rounded px-3 py-2 text-xs font-mono text-slate-200 light:text-slate-800" placeholder="..." />
+              <input v-model="onesignalApiKey" type="password" class="field font-mono" placeholder="..." />
             </label>
           </template>
 
@@ -102,30 +102,30 @@
             <div class="grid grid-cols-2 gap-3">
               <label class="flex flex-col gap-1">
                 <span class="text-xs text-slate-400">Project ID</span>
-                <input v-model="firebaseProjectId" class="bg-slate-800 light:bg-white border border-slate-700 light:border-slate-300 rounded px-3 py-2 text-xs font-mono" />
+                <input v-model="firebaseProjectId" class="field font-mono" />
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-xs text-slate-400">Web API Key</span>
-                <input v-model="firebaseApiKey" class="bg-slate-800 light:bg-white border border-slate-700 light:border-slate-300 rounded px-3 py-2 text-xs font-mono" />
+                <input v-model="firebaseApiKey" class="field font-mono" />
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-xs text-slate-400">Sender ID</span>
-                <input v-model="firebaseSenderId" class="bg-slate-800 light:bg-white border border-slate-700 light:border-slate-300 rounded px-3 py-2 text-xs font-mono" />
+                <input v-model="firebaseSenderId" class="field font-mono" />
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-xs text-slate-400">App ID</span>
-                <input v-model="firebaseAppId" class="bg-slate-800 light:bg-white border border-slate-700 light:border-slate-300 rounded px-3 py-2 text-xs font-mono" />
+                <input v-model="firebaseAppId" class="field font-mono" />
               </label>
             </div>
             <label class="flex flex-col gap-1">
               <span class="text-xs text-slate-400">Service Account JSON</span>
-              <textarea v-model="firebaseServiceAccount" class="bg-slate-800 light:bg-white border border-slate-700 light:border-slate-300 rounded px-3 py-2 text-xs font-mono text-slate-200 light:text-slate-800" rows="4" placeholder="Paste the service account JSON..."></textarea>
+              <textarea v-model="firebaseServiceAccount" class="field font-mono" rows="4" placeholder="Paste the service account JSON..."></textarea>
             </label>
           </template>
         </fieldset>
 
         <div class="flex items-center gap-3 pt-2">
-          <button type="submit" :disabled="saving" class="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50">
+          <button type="submit" :disabled="saving" class="btn btn-primary">
             {{ saving ? 'Saving...' : 'Save Configuration' }}
           </button>
           <span v-if="savedAt" class="text-xs text-emerald-400">Saved at {{ savedAt }}</span>
@@ -145,7 +145,7 @@
           <button
             type="button"
             :disabled="generating"
-            class="px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50 flex items-center gap-2"
+            class="btn btn-success flex items-center gap-2"
             @click="generatePwa"
           >
             <span v-if="generating" class="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
@@ -169,7 +169,7 @@
             <span class="text-[10px] text-slate-500">{{ result.fileTree.length }} files</span>
             <button
               type="button"
-              class="ml-auto text-xs text-indigo-400 hover:text-indigo-300"
+              class="btn btn-link ml-auto"
               @click="downloadZip"
             >Download Project</button>
           </div>
@@ -212,7 +212,7 @@
             <div class="text-[11px] text-slate-400 mb-1">1. From the CMS repo root, run the interactive script:</div>
             <div class="flex items-center gap-2 bg-slate-950 rounded-lg px-3 py-2">
               <code class="flex-1 text-[11px] font-mono text-emerald-400/90">./publish-mobile.sh</code>
-              <button type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 shrink-0" @click="copyToClipboard('./publish-mobile.sh')">Copy</button>
+              <button type="button" class="btn btn-link shrink-0" @click="copyToClipboard('./publish-mobile.sh')">Copy</button>
             </div>
             <p class="text-[11px] text-slate-500 mt-1">
               It'll prompt for the CMS API URL, the website ID below, an app name/bundle identifier, an output
@@ -224,7 +224,7 @@
             <div class="text-[11px] text-slate-400 mb-1">This website's ID (for the prompt above):</div>
             <div class="flex items-center gap-2 bg-slate-950 rounded-lg px-3 py-2">
               <code class="flex-1 text-[11px] font-mono text-slate-300 truncate">{{ selectedWebsiteId }}</code>
-              <button type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 shrink-0" @click="copyToClipboard(selectedWebsiteId)">Copy</button>
+              <button type="button" class="btn btn-link shrink-0" @click="copyToClipboard(selectedWebsiteId)">Copy</button>
             </div>
           </div>
 
@@ -232,7 +232,7 @@
             <div class="text-[11px] text-slate-400 mb-1">Or skip the prompts with a single non-interactive command:</div>
             <div class="flex items-start gap-2 bg-slate-950 rounded-lg px-3 py-2">
               <pre class="flex-1 text-[11px] font-mono text-emerald-400/90 whitespace-pre-wrap">{{ capacitorCliCommand }}</pre>
-              <button type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 shrink-0" @click="copyToClipboard(capacitorCliCommand)">Copy</button>
+              <button type="button" class="btn btn-link shrink-0" @click="copyToClipboard(capacitorCliCommand)">Copy</button>
             </div>
             <p class="text-[11px] text-slate-200 mt-1 bg-slate-800/50 rounded-lg p-2">
               Add <code class="text-slate-300">--static</code> for a fully offline build.<br>
@@ -248,7 +248,7 @@
             <div class="text-[11px] text-slate-400 mb-1">2. Build the generated project and open it natively:</div>
             <div class="flex items-start gap-2 bg-slate-950 rounded-lg px-3 py-2">
               <pre class="flex-1 text-[11px] font-mono text-emerald-400/90 whitespace-pre-wrap">{{ capacitorNextStepsCommand }}</pre>
-              <button type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 shrink-0" @click="copyToClipboard(capacitorNextStepsCommand)">Copy</button>
+              <button type="button" class="btn btn-link shrink-0" @click="copyToClipboard(capacitorNextStepsCommand)">Copy</button>
             </div>
           </div>
         </div>

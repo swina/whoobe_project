@@ -1,15 +1,11 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 z-50" @click.self="emit('close')">
-    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800 light:border-slate-200 shrink-0">
-        <h3 class="text-base font-bold text-slate-100 light:text-slate-900 flex items-center gap-2">
-          <Rocket class="w-4 h-4 text-indigo-400" />
-          Publish "{{ website?.name }}"
-        </h3>
-        <button @click="emit('close')" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition text-sm">✕</button>
-      </div>
-
-      <div class="flex-1 overflow-y-auto p-5 space-y-5">
+  <BaseModal v-if="isOpen" :open="true" size="xl" @close="emit('close')">
+    <template #header>
+      <h2 class="ui-modal-title flex items-center gap-2"><Rocket class="w-4 h-4 text-indigo-400" />
+    Publish "{{ website?.name }}"</h2>
+    </template>
+    <div class="space-y-4">
+        <div class="space-y-5">
         <p class="text-xs text-slate-500">
           Fill in the fields below - the ready-to-run script at the bottom updates live. Nothing runs from here: copy it and paste it into a terminal with this repo cloned.
         </p>
@@ -18,38 +14,38 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">API URL (core-api)</label>
-            <input v-model="apiUrl" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+            <input v-model="apiUrl" type="text" class="field w-full font-mono" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Gateway URL</label>
-            <input v-model="gatewayUrl" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+            <input v-model="gatewayUrl" type="text" class="field w-full font-mono" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Asset Base URL</label>
-            <input v-model="assetBaseUrl" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+            <input v-model="assetBaseUrl" type="text" class="field w-full font-mono" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Public domain</label>
-            <input v-model="domain" type="text" placeholder="www.example.com" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+            <input v-model="domain" type="text" placeholder="www.example.com" class="field w-full font-mono" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Framework</label>
-            <select v-model="framework" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500">
+            <select v-model="framework" class="field w-full">
               <option value="vue">Nuxt 3 (Vue)</option>
               <option value="next">Next.js (React)</option>
             </select>
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Base path</label>
-            <input v-model="basePath" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+            <input v-model="basePath" type="text" class="field w-full font-mono" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Slug (folder / deploy name)</label>
-            <input v-model="slug" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+            <input v-model="slug" type="text" class="field w-full font-mono" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Revalidate (seconds)</label>
-            <input v-model.number="revalidate" type="number" min="0" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+            <input v-model.number="revalidate" type="number" min="0" class="field w-full font-mono" />
           </div>
         </div>
 
@@ -68,10 +64,10 @@
           </div>
           <div class="flex items-center gap-3">
             <span class="text-xs text-slate-500 font-mono">{{ siteKeyPrefix ? `${siteKeyPrefix}…` : 'No key generated yet' }}</span>
-            <button @click="regenerateSiteKey" :disabled="siteKeyLoading" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 disabled:opacity-50">
+            <button @click="regenerateSiteKey" :disabled="siteKeyLoading" class="btn btn-link">
               {{ siteKeyPrefix ? 'Rotate' : 'Generate' }}
             </button>
-            <button v-if="siteKeyPrefix" @click="revokeSiteKey" :disabled="siteKeyLoading" class="text-xs font-semibold text-rose-400 hover:text-rose-300 disabled:opacity-50">
+            <button v-if="siteKeyPrefix" @click="revokeSiteKey" :disabled="siteKeyLoading" class="btn btn-link-danger">
               Revoke
             </button>
           </div>
@@ -93,15 +89,15 @@
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Gateway Route ID</label>
-                <input v-model="cdnGatewayRouteId" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+                <input v-model="cdnGatewayRouteId" type="text" class="field w-full font-mono" />
               </div>
               <div>
                 <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Upload Preset</label>
-                <input v-model="cdnUploadPreset" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+                <input v-model="cdnUploadPreset" type="text" class="field w-full font-mono" />
               </div>
               <div class="col-span-2">
                 <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Asset Processor URL <span class="text-slate-500 font-normal">(leave empty if same as API URL - only needed in local dev, where it runs on a different port)</span></label>
-                <input v-model="assetProcessorUrl" type="text" placeholder="e.g. http://localhost:3002" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+                <input v-model="assetProcessorUrl" type="text" placeholder="e.g. http://localhost:3002" class="field w-full font-mono" />
               </div>
             </div>
             <p class="text-xs text-slate-500">The script uses the <code class="font-mono">WHOOBE_SYNC_EMAIL</code>/<code class="font-mono">WHOOBE_SYNC_PASSWORD</code> environment variables - a dedicated service account, <strong>without MFA enabled</strong>. Replace the placeholders before running - left blank here on purpose, credentials are never auto-filled or held in this form.</p>
@@ -119,16 +115,16 @@
           <div v-if="includeDeploy" class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Remote host (user@host)</label>
-              <input v-model="remoteTarget" type="text" placeholder="deploy@example.com" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+              <input v-model="remoteTarget" type="text" placeholder="deploy@example.com" class="field w-full font-mono" />
             </div>
             <div>
               <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Destination path on the remote host</label>
-              <input v-model="remotePath" type="text" placeholder="/opt/sites" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+              <input v-model="remotePath" type="text" placeholder="/opt/sites" class="field w-full font-mono" />
               <p class="text-xs text-slate-500 mt-1">Any directory - it doesn't need to already exist, and doesn't need to be a whoobe_cms checkout.</p>
             </div>
             <div>
               <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Container port</label>
-              <input v-model="deployPort" type="text" placeholder="e.g. 3100" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+              <input v-model="deployPort" type="text" placeholder="e.g. 3100" class="field w-full font-mono" />
               <p class="text-xs text-slate-500 mt-1">Pick a free port on the remote host - not auto-detected.</p>
             </div>
           </div>
@@ -138,7 +134,7 @@
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700">Ready-to-run script</label>
-            <button @click="copyScript" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+            <button @click="copyScript" class="btn btn-link flex items-center gap-1">
               <Copy class="w-3 h-3" />
               {{ copied ? 'Copied!' : 'Copy' }}
             </button>
@@ -147,20 +143,23 @@
             :value="script"
             readonly
             rows="16"
-            class="w-full px-3 py-2 text-xs font-mono rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+            class="field w-full font-mono"
             @focus="($event.target as HTMLTextAreaElement).select()"
           ></textarea>
         </div>
       </div>
 
-      <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-800 light:border-slate-200 shrink-0">
-        <button @click="emit('close')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:hover:bg-slate-200 text-slate-300 light:text-slate-700 border border-slate-700 light:border-slate-300 transition">Close</button>
-      </div>
+
     </div>
-  </div>
+    <template #footer>
+        <button @click="emit('close')" class="btn btn-secondary light:hover:bg-slate-200">Close</button>
+
+    </template>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../ui/BaseModal.vue'
 import { ref, computed, watch } from 'vue'
 import { Rocket, CloudUpload, Server, Copy, KeyRound } from '@lucide/vue'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'

@@ -2,8 +2,8 @@
   <div class="h-full min-h-0 grid md:grid-cols-[minmax(0,1fr)_16rem] gap-4" data-testid="docs-nav-editor">
     <div class="min-w-0 min-h-0 flex flex-col gap-2">
       <div class="shrink-0 flex items-center gap-2 flex-wrap">
-        <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" data-testid="nav-add-section" @click="addSection">+ Section</button>
-        <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" data-testid="nav-add-link" @click="addLink">+ Link</button>
+        <button class="btn btn-secondary btn-sm" data-testid="nav-add-section" @click="addSection">+ Section</button>
+        <button class="btn btn-secondary btn-sm" data-testid="nav-add-link" @click="addLink">+ Link</button>
         <span class="text-[11px] text-slate-500">Drag rows to reorder or to move them into a section. Keyboard: Alt+arrows move, F2 renames, Delete takes out.</span>
       </div>
       <div class="rounded-lg border border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-slate-50 p-1.5 flex-1 min-h-[8rem] overflow-y-auto" role="tree" data-testid="nav-tree"
@@ -27,7 +27,7 @@
             <div class="text-sm text-slate-300 light:text-slate-700 truncate">{{ d.title }}</div>
             <div class="text-[10px] font-mono text-slate-600 truncate">{{ d.path }}</div>
           </div>
-          <button type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 shrink-0" title="Add at the end of the index" @click="addToEnd(d)">Add</button>
+          <button type="button" class="btn btn-link shrink-0" title="Add at the end of the index" @click="addToEnd(d)">Add</button>
         </div>
       </div>
     </div>

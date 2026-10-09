@@ -17,7 +17,7 @@
       <label class="flex flex-col gap-1 text-xs text-slate-400">
         Provider
         <select v-model="form.provider" required
-          class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800">
+          class="field">
           <option value="">— Leave empty (use text AI config) —</option>
           <option value="openai">OpenAI</option>
           <option value="google">Google (Gemini)</option>
@@ -29,23 +29,23 @@
       <label class="flex flex-col gap-1 text-xs text-slate-400">
         Model (image generation)
         <input v-model="form.model" type="text" placeholder="dall-e-3, gemini-2.5-flash-image, black-forest-labs/flux-schnell, flux-dev…"
-          class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+          class="field" />
       </label>
 
       <label v-if="showEndpoint" class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
         Endpoint (required for "Custom", optional otherwise — leave blank for the provider default)
         <input v-model="form.endpoint" type="text" placeholder="https://api.openai.com/v1, https://generativelanguage.googleapis.com/v1beta, https://openrouter.ai/api/v1 or http://localhost:1234/v1"
-          class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+          class="field" />
       </label>
 
       <label class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
         API Key {{ existing?.hasApiKey ? '(leave blank to keep current)' : '(required for cloud providers)' }}
         <input v-model="form.apiKey" type="password" placeholder="••••••••"
-          class="px-3 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+          class="field" />
       </label>
 
       <div class="col-span-2 flex items-center gap-3 pt-2">
-        <button type="submit" :disabled="saving" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white">
+        <button type="submit" :disabled="saving" class="btn btn-primary">
           {{ saving ? 'Saving…' : 'Save' }}
         </button>
         <span v-if="savedAt" class="text-xs text-emerald-400">Saved.</span>

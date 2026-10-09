@@ -23,7 +23,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label class="flex flex-col gap-1 text-xs text-slate-400">
           Gateway endpoint
-          <select v-model="selectedEndpointId" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800">
+          <select v-model="selectedEndpointId" class="field">
             <option value="" disabled>Choose an endpoint…</option>
             <option v-for="ep in endpoints" :key="ep.id" :value="ep.id">{{ ep.name }}</option>
           </select>
@@ -32,7 +32,7 @@
         <label class="flex flex-col gap-1 text-xs text-slate-400">
           Upload route
           <div v-if="loadingRoutes" class="text-slate-500 py-1.5">Loading routes…</div>
-          <select v-else v-model="gatewayRouteId" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800">
+          <select v-else v-model="gatewayRouteId" class="field">
             <option value="" disabled>Choose a route…</option>
             <option v-for="r in routes" :key="r.id" :value="r.id">{{ r.method }} {{ r.path }}</option>
           </select>
@@ -40,7 +40,7 @@
 
         <label class="flex flex-col gap-1 text-xs text-slate-400">
           Cloudinary unsigned upload preset
-          <input v-model="uploadPreset" type="text" placeholder="e.g. whoobe-mirror" class="px-2 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800" />
+          <input v-model="uploadPreset" type="text" placeholder="e.g. whoobe-mirror" class="field" />
           <span class="text-slate-600">Created once in Cloudinary's own dashboard, marked "unsigned" - see the plan doc for why signed uploads aren't supported here.</span>
         </label>
       </div>
@@ -49,7 +49,7 @@
     <div v-if="error" class="px-3 py-2 rounded-lg bg-rose-900/30 border border-rose-700/40 text-xs text-rose-300">{{ error }}</div>
 
     <div class="flex items-center gap-3 pt-1">
-      <button type="button" :disabled="saving" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white" @click="save">
+      <button type="button" :disabled="saving" class="btn btn-primary" @click="save">
         {{ saving ? 'Saving…' : 'Save' }}
       </button>
       <span v-if="saveOk" class="text-xs text-emerald-400">Saved.</span>

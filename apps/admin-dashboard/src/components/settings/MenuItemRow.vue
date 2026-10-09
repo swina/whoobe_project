@@ -11,7 +11,7 @@
       :class="{ 'ring-2 ring-indigo-500/50': isDragOver }"
     >
       <div class="flex justify-start min-w-0 gap-2 w-1/2">
-        <button @click="editing = !editing" class="text-[16px] text-slate-500 hover:text-slate-300 shrink-0 w-4 text-center">{{ editing ? '▼' : '▶' }}</button>
+        <button @click="editing = !editing" class="btn btn-link-muted shrink-0 w-4 text-center">{{ editing ? '▼' : '▶' }}</button>
         <div class="flex items-center gap-1.5 w-[200px]" @click="editing = !editing">
           <span class="text-[14px] text-slate-300 light:text-slate-700 truncate">{{ item.label }}</span>
           <span v-if="item.pageId" :class="['inline-block w-1.5 h-1.5 rounded-full shrink-0', pagePublished ? 'bg-emerald-400' : 'bg-amber-400']" :title="pagePublished ? 'Published' : 'Draft'"></span>
@@ -32,11 +32,11 @@
       </div>
       <div class="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition cursor-pointer">
         <a v-if="previewUrl" :href="previewUrl" target="_blank" rel="noopener noreferrer" title="Preview this path" class="text-[16px] text-emerald-400 hover:text-emerald-300 px-0.5 no-underline">👁</a>
-        <button @click="openLinkPage" class="text-[16px] text-indigo-400 hover:text-indigo-300 px-0.5" title="Link a page">🔗</button>
-        <button @click="moveUp" :disabled="index === 0" class="text-[16px] text-slate-500 hover:text-slate-300 disabled:opacity-30 px-0.5">▲</button>
-        <button @click="moveDown" :disabled="index === items.length - 1" class="text-[16px] text-slate-500 hover:text-slate-300 disabled:opacity-30 px-0.5">▼</button>
-        <button @click="emitInsertBelow" class="text-[16px] text-indigo-400 hover:text-indigo-300 px-0.5">+</button>
-        <button @click="$emit('remove')" class="text-[16px] text-rose-400 hover:text-rose-300 px-0.5">✕</button>
+        <button @click="openLinkPage" class="btn btn-link" title="Link a page">🔗</button>
+        <button @click="moveUp" :disabled="index === 0" class="btn btn-link-muted">▲</button>
+        <button @click="moveDown" :disabled="index === items.length - 1" class="btn btn-link-muted">▼</button>
+        <button @click="emitInsertBelow" class="btn btn-link">+</button>
+        <button @click="$emit('remove')" class="btn btn-link-danger">✕</button>
       </div>
     </div>
 
@@ -44,7 +44,7 @@
 <div v-if="editing" class="ml-6 p-2 rounded-md bg-slate-950/30 light:bg-white/30 border border-slate-800/40 light:border-slate-200/40 space-y-2 text-xs">
         <div>
           <label class="block text-[12px] font-semibold text-slate-500 mb-0.5">Label</label>
-          <input v-model="editItem.label" type="text" class="w-full px-2 py-1 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+          <input v-model="editItem.label" type="text" class="field w-full" />
         </div>
         <div>
           <label class="block text-[12px] font-semibold text-slate-500 mb-0.5">Path</label>
@@ -54,24 +54,24 @@
           </div>
           <div v-else class="flex items-center gap-1">
             <span class="text-[12px] text-slate-500 font-mono shrink-0">/</span>
-            <input v-model="editItem.path" type="text" placeholder="my-page-path" class="flex-1 px-2 py-1 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono text-[12px]" @input="validatePathUniqueness" />
+            <input v-model="editItem.path" type="text" placeholder="my-page-path" class="field flex-1 font-mono" @input="validatePathUniqueness" />
           </div>
           <div v-if="editItem.pageId" class="text-[11px] text-slate-500 mt-0.5">Set automatically from the linked page's own URL - unlink the page to set a custom path.</div>
           <div v-if="pathConflict" class="text-[12px] text-rose-400 mt-0.5">Path already used within this group</div>
         </div>
         <div v-if="editItem.pageId" class="flex items-center gap-2">
           <span class="text-[12px] text-indigo-400 font-mono">Linked page: {{ editItem.pageId }}</span>
-          <button @click="editItem.pageId = undefined; editItem.url = undefined; userUnlinked = true" class="text-[12px] text-rose-400 hover:text-rose-300">Unlink</button>
+          <button @click="editItem.pageId = undefined; editItem.url = undefined; userUnlinked = true" class="btn btn-link-danger">Unlink</button>
         </div>
         <div class="flex gap-2">
           <div class="flex-1">
             <label class="block text-[12px] font-semibold text-slate-500 mb-0.5">External URL (optional)</label>
-            <input v-model="editItem.url" type="text" placeholder="https://..." class="w-full px-2 py-1 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono text-[12px]" />
+            <input v-model="editItem.url" type="text" placeholder="https://..." class="field w-full font-mono" />
           </div>
         </div>
         <div class="flex justify-end gap-1">
-          <button @click="editing = false" class="px-2 py-0.5 rounded text-[12px] font-semibold text-slate-400 hover:text-slate-200">Cancel</button>
-          <button @click="saveEdit" :disabled="pathConflict" class="px-2 py-0.5 rounded text-[12px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50">Save</button>
+          <button @click="editing = false" class="btn btn-link-muted">Cancel</button>
+          <button @click="saveEdit" :disabled="pathConflict" class="btn btn-primary btn-sm">Save</button>
         </div>
       </div>
 

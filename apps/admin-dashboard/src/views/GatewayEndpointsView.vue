@@ -13,7 +13,7 @@
           </span>
           <span v-else class="text-xs text-slate-500">Checking ...</span>
         </div>
-        <button @click="checkHealth" class="text-xs text-indigo-400 hover:text-indigo-300 transition" title="Check gateway health">
+        <button @click="checkHealth" class="btn btn-link" title="Check gateway health">
           <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': checkingHealth }" />
         </button>
       </div>
@@ -47,11 +47,11 @@
         <p class="text-xs text-slate-500">{{ endpoints.length }} endpoint(s) — each endpoint is an external API the gateway proxies to</p>
       </div>
       <div class="flex items-center gap-2">
-        <button @click="loadAll" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-200 text-slate-300 light:text-slate-700 hover:bg-slate-700 light:hover:bg-slate-300 transition flex items-center gap-1.5">
+        <button @click="loadAll" class="btn btn-secondary light:hover:bg-slate-300 flex items-center gap-1.5">
           <RefreshCw class="w-3.5 h-3.5" />
           Refresh
         </button>
-        <button @click="openCreate" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5">
+        <button @click="openCreate" class="btn btn-primary flex items-center gap-1.5">
           <Plus class="w-3.5 h-3.5" />
           Add Endpoint
         </button>
@@ -72,10 +72,10 @@
             </div>
           </div>
           <div class="flex items-center gap-2" @click.stop>
-            <button @click="openEdit(ep)" class="text-indigo-400 hover:text-indigo-300 transition p-1" title="Edit">
+            <button @click="openEdit(ep)" class="btn btn-link" title="Edit">
               <Pencil class="w-3.5 h-3.5" />
             </button>
-            <button @click="confirmDelete(ep)" class="text-rose-400 hover:text-rose-300 transition p-1" title="Delete">
+            <button @click="confirmDelete(ep)" class="btn btn-link-danger" title="Delete">
               <Trash2 class="w-3.5 h-3.5" />
             </button>
           </div>
@@ -108,10 +108,10 @@
             <div class="px-4 py-2 flex items-center justify-between bg-slate-900/30 light:bg-slate-50/30">
               <span class="text-xs text-slate-500">Routes</span>
               <div class="flex items-center gap-3">
-                <button @click="openImportOpenApi(ep)" class="text-xs text-emerald-400 hover:text-emerald-300 transition flex items-center gap-1">
+                <button @click="openImportOpenApi(ep)" class="btn btn-link-success flex items-center gap-1">
                   <FileUp class="w-3 h-3" /> Import OpenAPI/Swagger
                 </button>
-                <button @click="openCreateRoute(ep)" class="text-xs text-indigo-400 hover:text-indigo-300 transition flex items-center gap-1">
+                <button @click="openCreateRoute(ep)" class="btn btn-link flex items-center gap-1">
                   <Plus class="w-3 h-3" /> Add Route
                 </button>
               </div>
@@ -135,13 +135,13 @@
                   <button @click="openSendRequest(ep, route)" class="text-amber-500 hover:text-amber-400 transition p-1" title="Send Request">
                     <Send class="w-3.5 h-3.5" />
                   </button>
-                  <button @click="viewRouteSchema(route)" class="text-sky-400 hover:text-sky-300 transition p-1" title="View Schema">
+                  <button @click="viewRouteSchema(route)" class="btn btn-link-info" title="View Schema">
                     <FileJson class="w-3.5 h-3.5" />
                   </button>
-                  <button @click="editRoute(ep, route)" class="text-indigo-400 hover:text-indigo-300 transition p-1" title="Edit Route">
+                  <button @click="editRoute(ep, route)" class="btn btn-link" title="Edit Route">
                     <Pencil class="w-3.5 h-3.5" />
                   </button>
-                  <button @click="confirmDeleteRoute(route)" class="text-rose-400 hover:text-rose-300 transition p-1" title="Delete Route">
+                  <button @click="confirmDeleteRoute(route)" class="btn btn-link-danger" title="Delete Route">
                     <Trash2 class="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -156,35 +156,34 @@
     <div v-if="!endpoints.length && !loading" class="text-center py-12 text-slate-500 text-xs">No endpoints configured. Add one to connect an external API.</div>
 
     <!-- Schema Viewer Modal -->
-    <div v-if="showSchemaModal && schemaData" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="showSchemaModal = false">
-      <div class="w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6 rounded-2xl bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-bold text-slate-100 light:text-slate-900">Inferred Schema</h3>
-          <button @click="refreshRouteSchema(schemaRouteId)" class="text-xs text-emerald-400 hover:text-emerald-300 transition">Refresh</button>
-        </div>
-        <pre class="text-xs text-slate-300 light:text-slate-700 bg-slate-950 light:bg-slate-50 p-4 rounded-xl overflow-x-auto max-h-96 overflow-y-auto">{{ JSON.stringify(schemaData, null, 2) }}</pre>
-        <div class="flex justify-end">
-          <button @click="showSchemaModal = false" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-200 text-slate-300 light:text-slate-700 hover:bg-slate-700 light:hover:bg-slate-300 transition">Close</button>
-        </div>
+    <BaseModal v-if="showSchemaModal && schemaData" :open="true" size="lg" @close="showSchemaModal = false">
+      <template #header>
+        <h2 class="ui-modal-title flex items-center gap-2">Inferred Schema</h2>
+      </template>
+      <div class="space-y-4">
+            <pre class="text-xs text-slate-300 light:text-slate-700 bg-slate-950 light:bg-slate-50 p-4 rounded-xl overflow-x-auto max-h-96 overflow-y-auto">{{ JSON.stringify(schemaData, null, 2) }}</pre>
+
       </div>
-    </div>
+      <template #footer>
+            <button @click="showSchemaModal = false" class="btn btn-secondary light:hover:bg-slate-300">Close</button>
+
+      </template>
+    </BaseModal>
 
     <!-- Send Request Modal -->
-    <div v-if="showSendModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="closeSendModal">
-      <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-bold text-slate-100 light:text-slate-900">Send Request to {{ sendEndpointName }}</h3>
-          <button @click="closeSendModal" class="text-slate-400 hover:text-slate-300 transition"><X class="w-5 h-5" /></button>
-        </div>
-
-        <div v-if="sendRoutes.length === 0" class="px-3 py-4 rounded-lg bg-amber-950/40 border border-amber-800 text-amber-300 text-xs text-center">
-          No routes configured for this endpoint. <button @click="closeSendModal" class="text-indigo-400 hover:text-indigo-300 underline">Add a route</button>, then send requests.
+    <BaseModal v-if="showSendModal" :open="true" size="xl" @close="closeSendModal">
+      <template #header>
+        <h2 class="ui-modal-title flex items-center gap-2">Send Request to {{ sendEndpointName }}</h2>
+      </template>
+      <div class="space-y-4">
+            <div v-if="sendRoutes.length === 0" class="px-3 py-4 rounded-lg bg-amber-950/40 border border-amber-800 text-amber-300 text-xs text-center">
+          No routes configured for this endpoint. <button @click="closeSendModal" class="btn btn-link underline">Add a route</button>, then send requests.
         </div>
 
         <template v-if="sendRoutes.length > 0">
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Route</label>
-            <select v-model="sendSelectedRouteIndex" @change="onSendRouteChange; onParamValueChange()" class="w-full px-3 py-2 text-xs font-mono rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500">
+            <select v-model="sendSelectedRouteIndex" @change="onSendRouteChange; onParamValueChange()" class="field w-full font-mono">
               <option v-for="(r, i) in sendRoutes" :key="r.id" :value="i">
                 {{ r.method }} {{ r.path }}{{ r.description ? ' — ' + r.description : '' }}
               </option>
@@ -197,20 +196,20 @@
           <div v-if="sendDynamicParams.length > 0" class="grid grid-cols-2 gap-3">
             <div v-for="param in sendDynamicParams" :key="param">
               <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">{{ param }}</label>
-              <input v-model="sendParamValues[param]" type="text" @input="onParamValueChange" :placeholder="'Value for {' + param + '}'" class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+              <input v-model="sendParamValues[param]" type="text" @input="onParamValueChange" :placeholder="'Value for {' + param + '}'" class="field w-full" />
             </div>
           </div>
 
           <div v-if="sendMethod !== 'GET'">
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Request Body (JSON)</label>
-            <textarea v-model="sendBodyText" rows="6" class="w-full px-3 py-2 text-xs font-mono rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" placeholder='{ "key": "value" }'></textarea>
+            <textarea v-model="sendBodyText" rows="6" class="field w-full font-mono" placeholder='{ "key": "value" }'></textarea>
           </div>
 
           <div v-if="sendError" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">{{ sendError }}</div>
 
           <div class="flex justify-end gap-2">
-            <button @click="closeSendModal" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-200 text-slate-300 light:text-slate-700 hover:bg-slate-700 light:hover:bg-slate-300 transition">Close</button>
-            <button @click="sendRequest" :disabled="sendingRequest || !sendRouteId" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition flex items-center gap-1.5 disabled:opacity-50">
+            <button @click="closeSendModal" class="btn btn-secondary light:hover:bg-slate-300">Close</button>
+            <button @click="sendRequest" :disabled="sendingRequest || !sendRouteId" class="btn btn-warning flex items-center gap-1.5">
               <Send class="w-3.5 h-3.5" />
               {{ sendingRequest ? 'Sending...' : 'Send' }}
             </button>
@@ -238,14 +237,17 @@
             </div>
           </div>
         </template>
+
       </div>
-    </div>
+    </BaseModal>
 
     <!-- Create/Edit Endpoint Modal -->
-    <div v-if="showEndpointModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="closeEndpointModal">
-      <div class="w-full max-w-lg p-6 rounded-2xl bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-2xl space-y-4">
-        <h3 class="text-sm font-bold text-slate-100 light:text-slate-900">{{ isEditingEndpoint ? 'Edit Endpoint' : 'Add Endpoint' }}</h3>
-        <div v-if="!isEditingEndpoint" class="space-y-1.5">
+    <BaseModal v-if="showEndpointModal" :open="true" size="md" @close="closeEndpointModal">
+      <template #header>
+        <h2 class="ui-modal-title flex items-center gap-2">{{ isEditingEndpoint ? 'Edit Endpoint' : 'Add Endpoint' }}</h2>
+      </template>
+      <div class="space-y-4">
+            <div v-if="!isEditingEndpoint" class="space-y-1.5">
           <label class="block text-xs font-medium text-slate-300 light:text-slate-700">Start from a template</label>
           <div class="flex flex-wrap gap-1.5">
             <button
@@ -268,19 +270,19 @@
         <div class="space-y-3">
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Name</label>
-            <input v-model="epForm.name" type="text" required class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="epForm.name" type="text" required class="field w-full" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Description</label>
-            <input v-model="epForm.description" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="epForm.description" type="text" class="field w-full" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Base URL</label>
-            <input v-model="epForm.baseUrl" type="url" placeholder="https://api.example.com/v1" required class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="epForm.baseUrl" type="url" placeholder="https://api.example.com/v1" required class="field w-full" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Auth Type</label>
-            <select v-model="epForm.authType" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500">
+            <select v-model="epForm.authType" class="field w-full">
               <option value="none">None</option>
               <option value="api-key">API Key</option>
               <option value="bearer">Bearer Token</option>
@@ -293,42 +295,42 @@
           </div>
           <div v-if="epForm.authType === 'api-key'">
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">API Key Header</label>
-            <input v-model="epForm.authConfig.keyHeader" type="text" placeholder="X-API-Key" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="epForm.authConfig.keyHeader" type="text" placeholder="X-API-Key" class="field w-full" />
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1 mt-2">API Key Value</label>
-            <input v-model="epForm.authConfig.keyValue" type="password" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="epForm.authConfig.keyValue" type="password" class="field w-full" />
           </div>
           <div v-if="epForm.authType === 'bearer'">
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Bearer Token</label>
-            <input v-model="epForm.authConfig.token" type="password" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="epForm.authConfig.token" type="password" class="field w-full" />
           </div>
           <div v-if="epForm.authType === 'basic'">
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Username</label>
-            <input v-model="epForm.authConfig.username" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="epForm.authConfig.username" type="text" class="field w-full" />
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1 mt-2">Password</label>
-            <input v-model="epForm.authConfig.password" type="password" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="epForm.authConfig.password" type="password" class="field w-full" />
           </div>
           <div v-if="epForm.authType === 'oauth2'" class="space-y-2">
             <p class="text-[11px] text-slate-500">Client-credentials grant: the gateway fetches and caches an access token server-side, refreshing it automatically before it expires.</p>
             <div>
               <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Client ID</label>
-              <input v-model="epForm.authConfig.clientId" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+              <input v-model="epForm.authConfig.clientId" type="text" class="field w-full" />
             </div>
             <div>
               <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Client Secret</label>
-              <input v-model="epForm.authConfig.clientSecret" type="password" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+              <input v-model="epForm.authConfig.clientSecret" type="password" class="field w-full" />
             </div>
             <div>
               <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Token URL</label>
-              <input v-model="epForm.authConfig.tokenUrl" type="url" placeholder="https://api.example.com/oauth/token" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+              <input v-model="epForm.authConfig.tokenUrl" type="url" placeholder="https://api.example.com/oauth/token" class="field w-full" />
             </div>
             <div>
               <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Scope <span class="text-slate-600">(optional)</span></label>
-              <input v-model="epForm.authConfig.scope" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+              <input v-model="epForm.authConfig.scope" type="text" class="field w-full" />
             </div>
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Rate Limit (requests/sec)</label>
-            <input v-model.number="epForm.rateLimitRps" type="number" min="0" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model.number="epForm.rateLimitRps" type="number" min="0" class="field w-full" />
           </div>
           <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
             <input type="checkbox" v-model="epForm.isActive" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-slate-800 light:border-slate-200" />
@@ -336,23 +338,27 @@
           </label>
         </div>
         <div v-if="errorMsg" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">{{ errorMsg }}</div>
-        <div class="flex justify-end gap-2">
-          <button @click="closeEndpointModal" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-200 text-slate-300 light:text-slate-700 hover:bg-slate-700 light:hover:bg-slate-300 transition">Cancel</button>
-          <button @click="saveEndpoint" :disabled="epSubmitting" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-50">
-            {{ epSubmitting ? 'Saving...' : 'Save' }}
-          </button>
-        </div>
+
       </div>
-    </div>
+      <template #footer>
+            <button @click="closeEndpointModal" class="btn btn-secondary light:hover:bg-slate-300">Cancel</button>
+        <button @click="saveEndpoint" :disabled="epSubmitting" class="btn btn-primary">
+          {{ epSubmitting ? 'Saving...' : 'Save' }}
+        </button>
+
+      </template>
+    </BaseModal>
 
     <!-- Create/Edit Route Modal -->
-    <div v-if="showRouteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="closeRouteModal">
-      <div class="w-full max-w-lg p-6 rounded-2xl bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-2xl space-y-4">
-        <h3 class="text-sm font-bold text-slate-100 light:text-slate-900">{{ isEditingRoute ? 'Edit Route' : 'Add Route' }}</h3>
-        <div class="space-y-3">
+    <BaseModal v-if="showRouteModal" :open="true" size="md" @close="closeRouteModal">
+      <template #header>
+        <h2 class="ui-modal-title flex items-center gap-2">{{ isEditingRoute ? 'Edit Route' : 'Add Route' }}</h2>
+      </template>
+      <div class="space-y-4">
+            <div class="space-y-3">
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Method</label>
-            <select v-model="routeForm.method" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500">
+            <select v-model="routeForm.method" class="field w-full">
               <option value="GET">GET</option>
               <option value="POST">POST</option>
               <option value="PUT">PUT</option>
@@ -362,11 +368,11 @@
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Path</label>
-            <input v-model="routeForm.path" type="text" placeholder="products.json" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="routeForm.path" type="text" placeholder="products.json" class="field w-full" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Description</label>
-            <input v-model="routeForm.description" type="text" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="routeForm.description" type="text" class="field w-full" />
           </div>
           <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
             <input type="checkbox" v-model="routeForm.autoUpdateSchema" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 light:bg-slate-50 border-slate-800 light:border-slate-200" />
@@ -374,29 +380,33 @@
           </label>
         </div>
         <div v-if="routeError" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">{{ routeError }}</div>
-        <div class="flex justify-end gap-2">
-          <button @click="closeRouteModal" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-200 text-slate-300 light:text-slate-700 hover:bg-slate-700 light:hover:bg-slate-300 transition">Cancel</button>
-          <button @click="saveRoute" :disabled="routeSubmitting" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-50">
-            {{ routeSubmitting ? 'Saving...' : 'Save' }}
-          </button>
-        </div>
+
       </div>
-    </div>
+      <template #footer>
+            <button @click="closeRouteModal" class="btn btn-secondary light:hover:bg-slate-300">Cancel</button>
+        <button @click="saveRoute" :disabled="routeSubmitting" class="btn btn-primary">
+          {{ routeSubmitting ? 'Saving...' : 'Save' }}
+        </button>
+
+      </template>
+    </BaseModal>
 
     <!-- Import OpenAPI/Swagger Modal -->
-    <div v-if="showImportModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="closeImportModal">
-      <div class="w-full max-w-lg p-6 rounded-2xl bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-2xl space-y-4">
-        <h3 class="text-sm font-bold text-slate-100 light:text-slate-900">Import OpenAPI/Swagger for {{ importEndpointName }}</h3>
-        <p class="text-xs text-slate-500">Bulk-creates routes and inferred response schemas from a spec. Provide either a URL or paste the spec directly — not both.</p>
+    <BaseModal v-if="showImportModal" :open="true" size="md" @close="closeImportModal">
+      <template #header>
+        <h2 class="ui-modal-title flex items-center gap-2">Import OpenAPI/Swagger for {{ importEndpointName }}</h2>
+      </template>
+      <div class="space-y-4">
+            <p class="text-xs text-slate-500">Bulk-creates routes and inferred response schemas from a spec. Provide either a URL or paste the spec directly — not both.</p>
         <div class="space-y-3">
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Spec URL</label>
-            <input v-model="importSpecUrl" type="url" placeholder="https://api.example.com/openapi.json" :disabled="!!importSpecRaw" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 disabled:opacity-50" />
+            <input v-model="importSpecUrl" type="url" placeholder="https://api.example.com/openapi.json" :disabled="!!importSpecRaw" class="field w-full" />
           </div>
           <div class="text-center text-xs text-slate-600">— or —</div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Paste Spec (JSON or YAML)</label>
-            <textarea v-model="importSpecRaw" rows="6" :disabled="!!importSpecUrl" placeholder='{ "openapi": "3.0.0", ... }' class="w-full px-3 py-2 text-xs font-mono rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 disabled:opacity-50"></textarea>
+            <textarea v-model="importSpecRaw" rows="6" :disabled="!!importSpecUrl" placeholder='{ "openapi": "3.0.0", ... }' class="field w-full font-mono"></textarea>
           </div>
         </div>
         <div v-if="importError" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">{{ importError }}</div>
@@ -406,18 +416,21 @@
             <div v-for="(s, i) in importResult.skipped" :key="i">{{ s.method }} {{ s.path }} — {{ s.reason }}</div>
           </div>
         </div>
-        <div class="flex justify-end gap-2">
-          <button @click="closeImportModal" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-200 text-slate-300 light:text-slate-700 hover:bg-slate-700 light:hover:bg-slate-300 transition">Close</button>
-          <button @click="submitImportOpenApi" :disabled="importSubmitting || (!importSpecUrl && !importSpecRaw)" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-50">
-            {{ importSubmitting ? 'Importing...' : 'Import' }}
-          </button>
-        </div>
+
       </div>
-    </div>
+      <template #footer>
+            <button @click="closeImportModal" class="btn btn-secondary light:hover:bg-slate-300">Close</button>
+        <button @click="submitImportOpenApi" :disabled="importSubmitting || (!importSpecUrl && !importSpecRaw)" class="btn btn-primary">
+          {{ importSubmitting ? 'Importing...' : 'Import' }}
+        </button>
+
+      </template>
+    </BaseModal>
   </div>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../components/ui/BaseModal.vue'
 import { ref, reactive, onMounted } from 'vue'
 import { Plus, Pencil, Trash2, ChevronRight, RefreshCw, TestTube, Loader, FileJson, FileUp, Send, X } from '@lucide/vue'
 import {

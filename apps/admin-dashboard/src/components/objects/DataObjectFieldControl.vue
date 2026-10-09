@@ -54,12 +54,12 @@
         :value="(modelValue as string) ?? ''"
         @input="emitUpdate(($event.target as HTMLInputElement).value)"
         type="text"
-        class="flex-1 min-w-0 px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+        class="field flex-1 min-w-0"
       />
       <button
         type="button"
         title="Generate a friendly slug from this text"
-        class="shrink-0 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:hover:bg-slate-200 text-slate-300 light:text-slate-700 flex items-center gap-1.5"
+        class="btn btn-secondary shrink-0 light:hover:bg-slate-200 flex items-center gap-1.5"
         @click="emitUpdate(slugify((modelValue as string) ?? ''))"
       >
         <Wand2 class="w-3.5 h-3.5" /> Generate
@@ -74,7 +74,7 @@
         @input="onArrayInput(($event.target as HTMLInputElement).value)"
         type="text"
         placeholder="item 1; item 2; item 3"
-        class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+        class="field w-full"
       />
       <p class="text-[10px] text-slate-500">Separate items with ";" - {{ arrayCount }} item(s)</p>
     </div>
@@ -200,21 +200,21 @@
         @input="emitUpdate({ ...linkValue, path: ($event.target as HTMLInputElement).value || null })"
         type="text"
         placeholder="Path/URL"
-        class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+        class="field"
       />
       <input
         :value="linkValue.text ?? ''"
         @input="emitUpdate({ ...linkValue, text: ($event.target as HTMLInputElement).value || null })"
         type="text"
         placeholder="Text"
-        class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+        class="field"
       />
       <input
         :value="linkValue.target ?? ''"
         @input="emitUpdate({ ...linkValue, target: ($event.target as HTMLInputElement).value || null })"
         type="text"
         placeholder="Target (_self, _blank...)"
-        class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+        class="field"
       />
     </div>
 
@@ -224,13 +224,13 @@
         <button
           @click="removeBlockRow(index)"
           type="button"
-          class="absolute top-2 right-2 text-[10px] text-rose-400 hover:text-rose-300"
+          class="btn btn-link-danger absolute top-2 right-2"
         >
           Remove
         </button>
         <DataObjectForm :fields="field.blockFields ?? []" :model-value="row" @update:model-value="(v) => updateBlockRow(index, v)" />
       </div>
-      <button @click="addBlockRow" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">+ Add row</button>
+      <button @click="addBlockRow" type="button" class="btn btn-link">+ Add row</button>
     </div>
 
     <!-- fieldcollections: a real repeatable-row editor across several
@@ -249,8 +249,8 @@
           <span class="px-2 py-0.5 text-[10px] font-bold rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 uppercase">{{ item.collectionType }}</span>
           <div class="flex items-center gap-2">
             <button v-if="index > 0" @click="moveCollectionItem(index, -1)" type="button" class="text-[10px] text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800">↑</button>
-            <button v-if="index < collectionItems.length - 1" @click="moveCollectionItem(index, 1)" type="button" class="text-[10px] text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800">↓</button>
-            <button @click="removeCollectionItem(index)" type="button" class="text-[10px] text-rose-400 hover:text-rose-300">Remove</button>
+            <button v-if="index < collectionItems.length - 1" @click="moveCollectionItem(index, 1)" type="button" class="btn btn-link-muted">↓</button>
+            <button @click="removeCollectionItem(index)" type="button" class="btn btn-link-danger">Remove</button>
           </div>
         </div>
         <DataObjectForm
@@ -263,7 +263,7 @@
         <select
           :value="''"
           @change="addCollectionItem(($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
-          class="w-full px-3 py-2 text-xs bg-slate-900 light:bg-white border border-dashed border-slate-700 light:border-slate-300 rounded-lg text-indigo-400 focus:outline-none focus:border-indigo-500"
+          class="field w-full"
         >
           <option value="" disabled>+ Add block…</option>
           <option v-for="type in field.collectionTypes" :key="type.name" :value="type.name">{{ type.label }}</option>

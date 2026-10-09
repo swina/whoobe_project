@@ -31,14 +31,14 @@
           <button
             @click="damStore.testConnection()"
             :disabled="damStore.connectionStatus === 'testing'"
-            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 border border-slate-700 light:border-slate-300 transition flex items-center gap-1.5"
+            class="btn btn-secondary flex items-center gap-1.5"
           >
             <span v-if="damStore.connectionStatus === 'testing'" class="animate-spin w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full"></span>
             Test & Sync MinIO Storage
           </button>
           <button
             @click="damStore.resetToDefaults()"
-            class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition"
+            class="btn btn-link-muted"
           >
             Reset
           </button>
@@ -67,7 +67,7 @@
             v-model="damStore.config.assetProcessorUrl"
             type="text"
             placeholder="http://localhost:3002"
-            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono"
+            class="field w-full font-mono"
           />
           <p class="text-[10px] text-slate-500 mt-1">
             The admin dashboard never holds S3/MinIO credentials directly. All uploads, deletes, and URL signing are
@@ -127,7 +127,7 @@
           v-model="newRulePath"
           type="text"
           placeholder="Path prefix or wildcard (e.g. /public/**, /uploads/marketing/**)"
-          class="flex-1 px-3 py-2 text-xs rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+          class="field flex-1"
           @keyup.enter="submitAddRule"
         />
         <div class="flex items-center gap-2">
@@ -145,7 +145,7 @@
           <button
             type="button"
             @click="submitAddRule"
-            class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition"
+            class="btn btn-primary"
           >
             + Add Rule
           </button>

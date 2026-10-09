@@ -20,16 +20,16 @@
       <template v-if="activeTab === 'general'">
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Title</label>
-          <input v-model="form.title" type="text" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+          <input v-model="form.title" type="text" class="field w-full" />
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Slug</label>
           <div class="flex gap-2">
-            <input v-model="form.slug" type="text" class="flex-1 px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="form.slug" type="text" class="field flex-1 font-mono" />
             <button
               type="button"
               title="Generate a friendly slug from the title"
-              class="shrink-0 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:hover:bg-slate-200 text-slate-300 light:text-slate-700 flex items-center gap-1.5"
+              class="btn btn-secondary shrink-0 light:hover:bg-slate-200 flex items-center gap-1.5"
               @click="generateSlug"
             >
               <Wand2 class="w-3.5 h-3.5" /> Generate
@@ -38,11 +38,11 @@
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Category</label>
-          <input v-model="form.category" type="text" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+          <input v-model="form.category" type="text" class="field w-full" />
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Kind</label>
-          <select v-model="form.kind" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500">
+          <select v-model="form.kind" class="field w-full">
             <option value="content">Content (routable page)</option>
             <option value="module">Module (website template fragment)</option>
             <option value="app">App (mobile app page)</option>
@@ -62,7 +62,7 @@
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Workflow State</label>
-          <input v-model="form.workflowState" type="text" placeholder="e.g. draft, review, approved" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+          <input v-model="form.workflowState" type="text" placeholder="e.g. draft, review, approved" class="field w-full" />
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
@@ -79,7 +79,7 @@
               v-model="form.locale"
               type="text"
               placeholder="e.g. en, it, de"
-              class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+              class="field w-full"
             />
             <p v-if="selectedWebsite && selectedWebsite.supportedLocales.length > 0 && !selectedWebsite.supportedLocales.includes(form.locale)" class="text-[10px] text-amber-400 mt-0.5">
               "{{ form.locale }}" isn't in {{ selectedWebsite.name }}'s supported locales.
@@ -87,7 +87,7 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Website</label>
-            <select v-model="form.websiteId" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500">
+            <select v-model="form.websiteId" class="field w-full">
               <option value="">None (single-site)</option>
               <option v-for="w in websites" :key="w.id" :value="w.id">{{ w.name }}</option>
             </select>
@@ -109,7 +109,7 @@
           </p>
           <div v-if="seoBindings.length" class="flex items-center gap-2">
             <label class="shrink-0 font-semibold text-slate-400 light:text-slate-600">Data source</label>
-            <select v-model="form.seo.sourceBindingId" class="flex-1 min-w-0 px-2 py-1 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500">
+            <select v-model="form.seo.sourceBindingId" class="field flex-1 min-w-0">
               <option :value="null">{{ autoSeoBinding ? `Automatic - ${bindingLabel(autoSeoBinding)}` : 'Automatic - none (pick one below)' }}</option>
               <option v-for="b in seoBindings" :key="b.nodeId" :value="b.nodeId">{{ bindingLabel(b) }}</option>
             </select>
@@ -128,7 +128,7 @@
               :key="t.name"
               type="button"
               :title="t.title"
-              class="px-1.5 py-0.5 rounded bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:hover:bg-slate-200 text-slate-300 light:text-slate-700 font-mono"
+              class="btn btn-secondary btn-sm light:hover:bg-slate-200"
               @click="insertToken(t.name)"
             >{{ '{' + t.name + '}' }}</button>
           </div>
@@ -175,7 +175,7 @@
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Structured Data (JSON-LD)</label>
-          <textarea v-model="structuredDataText" rows="5" class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 resize-none" placeholder="{}"></textarea>
+          <textarea v-model="structuredDataText" rows="5" class="field w-full font-mono resize-none" placeholder="{}"></textarea>
         </div>
       </template>
 
@@ -188,14 +188,14 @@
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Priority</label>
-          <select v-model="form.sitemap.priority" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500">
+          <select v-model="form.sitemap.priority" class="field w-full">
             <option :value="null">Auto</option>
             <option v-for="p in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]" :key="p" :value="p">{{ p.toFixed(1) }}</option>
           </select>
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Change Frequency</label>
-          <select v-model="form.sitemap.changefreq" class="w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500">
+          <select v-model="form.sitemap.changefreq" class="field w-full">
             <option :value="null">Auto</option>
             <option value="always">Always</option>
             <option value="hourly">Hourly</option>
@@ -232,10 +232,10 @@
               v-model="newKeyword"
               type="text"
               placeholder="Type a keyword and press Enter"
-              class="flex-1 px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+              class="field flex-1"
               @keydown.enter.prevent="addKeyword"
             />
-            <button type="button" class="px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="!newKeyword.trim()" @click="addKeyword">Add</button>
+            <button type="button" class="btn btn-primary" :disabled="!newKeyword.trim()" @click="addKeyword">Add</button>
           </div>
         </div>
       </template>
@@ -244,7 +244,7 @@
       <div v-if="success" class="px-3 py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs">{{ success }}</div>
 
       <div class="flex justify-end gap-2 pt-2">
-        <button type="submit" :disabled="saving" class="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50">
+        <button type="submit" :disabled="saving" class="btn btn-primary">
           {{ saving ? 'Saving…' : 'Save Settings' }}
         </button>
       </div>

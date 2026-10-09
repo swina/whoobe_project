@@ -29,7 +29,7 @@
         </button>
         <button
           @click="handleImportClick"
-          class="px-3 py-2 text-sm font-medium rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow transition"
+          class="btn btn-success"
         >
           Import
         </button>
@@ -42,7 +42,7 @@
         />
         <button
           @click="handleCreate"
-          class="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition"
+          class="btn btn-primary"
         >
           + New Snippet
         </button>
@@ -65,11 +65,11 @@
           v-model="searchQuery"
           type="text"
           placeholder="Search by name..."
-          class="flex-1 px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+          class="field flex-1"
         />
         <select
           v-model="categoryFilter"
-          class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+          class="field"
         >
           <option value="" class="capitalize">All categories</option>
           <option v-for="cat in categories" :key="cat" :value="cat" class="capitalize">{{ cat }}</option>
@@ -156,16 +156,16 @@
             <td class="py-2.5 px-4 text-slate-400 light:text-slate-600 capitalize">{{ snippet.category || '—' }}</td>
             <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ new Date(snippet.updatedAt).toLocaleString() }}</td>
             <td class="py-2.5 px-4" @click.stop>
-              <button @click="openSnippetTab(snippet.id)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 mr-3" title="Edit snippet">
+              <button @click="openSnippetTab(snippet.id)" class="btn btn-link mr-3" title="Edit snippet">
                 <PencilSparkles class="w-4 h-4"/>
               </button>
-              <button v-if="snippet.notes" @click="notesSnippet = snippet" class="text-xs font-semibold text-sky-400 hover:text-sky-300 mr-3" title="View usage notes">
+              <button v-if="snippet.notes" @click="notesSnippet = snippet" class="btn btn-link-info mr-3" title="View usage notes">
                 <Info class="w-4 h-4"/>
               </button>
-              <button @click="campaignModalSnippet = snippet" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 mr-3" title="Send as Brevo campaign">
+              <button @click="campaignModalSnippet = snippet" class="btn btn-link-success mr-3" title="Send as Brevo campaign">
                 <Send class="w-4 h-4"/>
               </button>
-              <button @click="handleDelete(snippet.id, snippet.name)" class="text-xs font-semibold text-rose-400 hover:text-rose-300" title="Delete snippet">
+              <button @click="handleDelete(snippet.id, snippet.name)" class="btn btn-link-danger" title="Delete snippet">
                 <Trash class="w-4 h-4"/>
               </button>
 
@@ -244,20 +244,19 @@
 <!-- Usage notes overlay - the snippets-manager counterpart of the
      whoobe-one-spike editor's own snippet-notes affordances (its Snippets
      sidebar chip icon and the inserted element's Advanced > Info panel). -->
-<div v-if="notesSnippet" class="fixed inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 z-50" @click.self="notesSnippet = null">
-  <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 rounded-2xl max-w-md w-full shadow-2xl">
-    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800 light:border-slate-200">
-      <span class="text-sm font-semibold text-slate-100 light:text-slate-900 flex items-center gap-2">
-        <Puzzle class="w-4 h-4 text-teal-400" /> {{ notesSnippet.name }}
-      </span>
-      <button class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition text-sm" @click="notesSnippet = null">✕</button>
-    </div>
+<BaseModal v-if="notesSnippet" :open="true" size="md" @close="notesSnippet = null">
+  <template #header>
+    <h2 class="ui-modal-title flex items-center gap-2"><Puzzle class="w-4 h-4 text-teal-400" /> {{ notesSnippet.name }}</h2>
+  </template>
+  <div class="space-y-4">
     <p class="p-4 text-sm text-slate-300 light:text-slate-700 whitespace-pre-wrap">{{ notesSnippet.notes }}</p>
+
   </div>
-</div>
+</BaseModal>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../components/ui/BaseModal.vue'
 import { ref, computed, onMounted } from 'vue'
 import { Puzzle, PencilSparkles, Trash, List, LayoutGrid, Send, Info } from '@lucide/vue'
 import { useSnippetsStore } from '../stores/snippetsStore'

@@ -25,16 +25,16 @@
           <!-- Documents -->
           <template v-if="tab === 'documents'">
             <div class="flex items-center gap-2 flex-wrap">
-              <button data-testid="docs-new" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white" @click="newDocument">+ New document</button>
-              <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" @click="filesInput?.click()">Upload files</button>
-              <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" @click="folderInput?.click()">Upload folder</button>
+              <button data-testid="docs-new" class="btn btn-primary" @click="newDocument">+ New document</button>
+              <button class="btn btn-secondary" @click="filesInput?.click()">Upload files</button>
+              <button class="btn btn-secondary" @click="folderInput?.click()">Upload folder</button>
               <label class="text-xs text-slate-400 flex items-center gap-1.5 ml-2"><input v-model="uploadPublic" type="checkbox" />Uploaded files are public</label>
               <input ref="filesInput" data-testid="docs-upload" type="file" multiple accept=".md,.markdown,.yml,.yaml,.png,.jpg,.jpeg,.gif,.webp,.svg,.pdf" class="hidden" @change="onFiles($event, false)" />
               <input ref="folderInput" type="file" multiple webkitdirectory class="hidden" @change="onFiles($event, true)" />
             </div>
             <p class="text-xs text-slate-500">Markdown files (and the images and files they use) in this folder are the documentation. Folders are sections; the index follows them unless you write one in the <em>Index</em> tab. Only <strong>public</strong> files are shown on the published site. A document opens in a tab of its own.</p>
 
-            <input v-model="filter" data-testid="docs-filter" type="search" placeholder="Find a document by title or path, or search in the text…" class="w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm text-slate-200 light:text-slate-800 px-3 py-1.5 outline-none focus:border-indigo-500" @input="onFilter" />
+            <input v-model="filter" data-testid="docs-filter" type="search" placeholder="Find a document by title or path, or search in the text…" class="field w-full" @input="onFilter" />
 
             <div v-if="textMatches.length" class="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-2 space-y-1" data-testid="docs-text-matches">
               <div class="text-[11px] uppercase tracking-wider text-indigo-300 px-1">Found in the text</div>
@@ -57,8 +57,8 @@
                 <span v-if="d.hidden" class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">hidden</span>
                 <span :class="['text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded', d.isPublic ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300']">{{ d.isPublic ? 'public' : 'private' }}</span>
                 <a :href="docUrl(d.route)" target="_blank" rel="noopener" class="text-xs font-semibold text-sky-400 hover:text-sky-300" :data-testid="`docs-preview-${d.path}`" title="Open this page in the site" @click.stop>Preview</a>
-                <button class="text-xs font-semibold text-indigo-400 hover:text-indigo-300" @click="openDoc(d.path)">Edit</button>
-                <button class="text-xs font-semibold text-rose-400 hover:text-rose-300" @click="removePath(d.path)">Delete</button>
+                <button class="btn btn-link" @click="openDoc(d.path)">Edit</button>
+                <button class="btn btn-link-danger" @click="removePath(d.path)">Delete</button>
               </div>
             </div>
             <div v-if="tree.files.length" class="text-xs text-slate-500">
@@ -79,22 +79,22 @@
               </div>
               <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] uppercase">{{ navStatus }}</span>
               <div class="ml-auto flex items-center gap-2">
-                <button class="text-xs font-semibold text-indigo-400 hover:text-indigo-300" @click="fillFromFolders">Start from the folders</button>
-                <button v-if="tree.navSource === 'manual' || tree.navText !== null" class="text-xs font-semibold text-rose-400 hover:text-rose-300" @click="removeNavFile">Use the folders again</button>
+                <button class="btn btn-link" @click="fillFromFolders">Start from the folders</button>
+                <button v-if="tree.navSource === 'manual' || tree.navText !== null" class="btn btn-link-danger" @click="removeNavFile">Use the folders again</button>
               </div>
             </div>
 
             <div class="flex-1 min-h-0">
               <DocsNavEditor v-if="navMode === 'visual'" :root="navRoot" :documents="tree.documents" @change="onTreeChange" />
               <textarea v-else v-model="navText" data-testid="docs-nav-text" spellcheck="false" placeholder="Leave empty to follow the folders. Example:&#10;- title: Getting started&#10;  items:&#10;    - doc: install.md&#10;    - doc: first-site.md&#10;      title: Your first site&#10;- link: https://example.org&#10;  title: Changelog"
-                class="w-full h-full resize-none rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-xs font-mono text-slate-200 light:text-slate-800 p-2 outline-none focus:border-indigo-500"></textarea>
+                class="field w-full h-full resize-none font-mono"></textarea>
             </div>
 
             <!-- always in view: the actions and what they found stay below the editor, which scrolls inside -->
             <div class="shrink-0 space-y-1.5 pt-1 border-t border-slate-800 light:border-slate-200">
             <div class="flex items-center gap-2">
-              <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" @click="checkNav">Check</button>
-              <button data-testid="docs-nav-save" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="!!busy || (navMode === 'text' && !navText.trim())" @click="saveNav">Save index</button>
+              <button class="btn btn-secondary" @click="checkNav">Check</button>
+              <button data-testid="docs-nav-save" class="btn btn-primary" :disabled="!!busy || (navMode === 'text' && !navText.trim())" @click="saveNav">Save index</button>
             </div>
             <ul v-if="navErrors.length" class="text-xs text-rose-300 space-y-0.5 list-disc pl-5 max-h-24 overflow-y-auto"><li v-for="e in navErrors" :key="e">{{ e }}</li></ul>
             <ul v-if="navWarnings.length" class="text-xs text-amber-300 space-y-0.5 list-disc pl-5 max-h-24 overflow-y-auto"><li v-for="w in navWarnings" :key="w">{{ w }}</li></ul>
@@ -107,14 +107,14 @@
             <div class="space-y-3 max-w-3xl">
               <p class="text-xs text-slate-400">Publishing makes <strong>static HTML</strong>: one page per document, the index, search (the index of the words is a file the browser downloads) and the images the documents use. The folder can be put on any web server, with no connection to this CMS. Only <strong>public</strong> files are published ({{ publicCount }} of {{ tree.documents.length }} documents are public).</p>
               <label class="block text-xs text-slate-400">Path the site is served under (<span class="font-mono">/</span> for a domain of its own)
-                <input v-model="publishBase" class="mt-1 w-48 rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm font-mono text-slate-200 light:text-slate-800 px-3 py-1.5 outline-none focus:border-indigo-500" />
+                <input v-model="publishBase" class="field mt-1 w-48 font-mono" />
               </label>
               <label class="block text-xs text-slate-400">Public address (optional, for the sitemap)
-                <input v-model="publishSiteUrl" placeholder="https://docs.example.com" class="mt-1 w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm font-mono text-slate-200 light:text-slate-800 px-3 py-1.5 outline-none focus:border-indigo-500" />
+                <input v-model="publishSiteUrl" placeholder="https://docs.example.com" class="field mt-1 w-full font-mono" />
               </label>
               <div class="text-xs text-slate-400">Run this in the Whoobe repository (or choose <em>Documentation</em> in <span class="font-mono">./publish-site.sh</span>):</div>
               <pre data-testid="docs-publish-command" class="rounded-lg bg-slate-950 border border-slate-800 p-3 text-xs font-mono text-slate-200 whitespace-pre-wrap break-all">{{ publishCommand }}</pre>
-              <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200" @click="copyPublishCommand">{{ copied ? 'Copied' : 'Copy command' }}</button>
+              <button class="btn btn-secondary" @click="copyPublishCommand">{{ copied ? 'Copied' : 'Copy command' }}</button>
               <p class="text-xs text-slate-500">Then copy the output folder to the server (<span class="font-mono">rsync -a --delete ./sites/{{ website.rootPath.replace('/', '') }}/ user@host:/var/www/docs/</span>). Broken links are listed when it is generated (add <span class="font-mono">--strict</span> to make them an error).</p>
             </div>
           </template>
@@ -123,15 +123,15 @@
           <template v-else>
             <div class="space-y-3 max-w-xl">
               <label class="block text-xs text-slate-400">Title of the site
-                <input v-model="settingsForm.title" class="mt-1 w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm text-slate-200 light:text-slate-800 px-3 py-1.5 outline-none focus:border-indigo-500" />
+                <input v-model="settingsForm.title" class="field mt-1 w-full" />
               </label>
               <label class="block text-xs text-slate-400">Source folder (in the asset library)
-                <input v-model="settingsForm.sourceFolder" class="mt-1 w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm font-mono text-slate-200 light:text-slate-800 px-3 py-1.5 outline-none focus:border-indigo-500" />
+                <input v-model="settingsForm.sourceFolder" class="field mt-1 w-full font-mono" />
               </label>
               <label class="block text-xs text-slate-400">Home document (optional, default <span class="font-mono">index.md</span>)
-                <input v-model="settingsForm.homeDoc" placeholder="index.md" class="mt-1 w-full rounded-lg bg-slate-950 light:bg-white border border-slate-700 light:border-slate-300 text-sm font-mono text-slate-200 light:text-slate-800 px-3 py-1.5 outline-none focus:border-indigo-500" />
+                <input v-model="settingsForm.homeDoc" placeholder="index.md" class="field mt-1 w-full font-mono" />
               </label>
-              <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50" :disabled="!!busy" @click="saveSettings">Save settings</button>
+              <button class="btn btn-primary" :disabled="!!busy" @click="saveSettings">Save settings</button>
               <p class="text-xs text-slate-500">Changing the source folder does not move any file.</p>
             </div>
           </template>

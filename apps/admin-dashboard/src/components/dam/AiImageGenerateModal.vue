@@ -1,15 +1,11 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 bg-slate-950/80 light:bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between">
-        <h3 class="text-base font-bold text-slate-100 light:text-slate-900 flex items-center gap-2">
-          <Sparkles class="w-4 h-4 text-indigo-400" />
-          Generate Image with AI
-        </h3>
-        <button @click="close" class="text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition text-sm">✕</button>
-      </div>
-
-      <!-- Step 1: Prompt & options -->
+  <BaseModal v-if="isOpen" :open="true" size="md" persistent @close="close">
+    <template #header>
+      <h2 class="ui-modal-title flex items-center gap-2"><Sparkles class="w-4 h-4 text-indigo-400" />
+    Generate Image with AI</h2>
+    </template>
+    <div class="space-y-4">
+        <!-- Step 1: Prompt & options -->
       <template v-if="step === 'generate'">
         <div class="p-2.5 rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-400 light:text-slate-600 flex items-center justify-between">
           <span>Will be saved to:</span>
@@ -30,13 +26,13 @@
           rows="4"
           required
           placeholder="Describe the image you want to generate…"
-          class="w-full text-sm rounded-xl px-3 py-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 placeholder-slate-500"
+          class="field w-full"
         />
 
         <div class="grid grid-cols-2 gap-3">
           <label class="flex flex-col gap-1 text-xs text-slate-400 light:text-slate-600">
             Size
-            <select v-model="size" class="px-2.5 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs">
+            <select v-model="size" class="field">
               <option value="256x256">256×256</option>
               <option value="512x512">512×512</option>
               <option value="1024x1024">1024×1024</option>
@@ -45,7 +41,7 @@
           </label>
           <label class="flex flex-col gap-1 text-xs text-slate-400 light:text-slate-600">
             Images
-            <select v-model="n" class="px-2.5 py-1.5 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 text-xs">
+            <select v-model="n" class="field">
               <option v-for="i in 4" :key="i" :value="i">{{ i }}</option>
             </select>
           </label>
@@ -79,13 +75,13 @@
         <div v-if="error" class="text-xs text-rose-400 bg-rose-400/10 border border-rose-400/30 rounded-lg px-3 py-2">{{ error }}</div>
 
         <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800 light:border-slate-200">
-          <button @click="close" class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition">
+          <button @click="close" class="btn btn-link-muted">
             Cancel
           </button>
           <button
             @click="generate"
             :disabled="!prompt.trim() || generating"
-            class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition disabled:opacity-50 flex items-center gap-1.5"
+            class="btn btn-primary flex items-center gap-1.5"
           >
             <Loader2 v-if="generating" class="w-3.5 h-3.5 animate-spin" />
             <span>{{ generating ? 'Generating…' : 'Generate' }}</span>
@@ -103,19 +99,21 @@
         </div>
         <p class="text-xs text-slate-400 light:text-slate-600">Saved to <code class="font-mono text-indigo-300">{{ folderPath }}</code>.</p>
         <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800 light:border-slate-200">
-          <button @click="step = 'generate'" class="px-4 py-2 text-xs font-medium rounded-xl text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 transition">
+          <button @click="step = 'generate'" class="btn btn-link-muted">
             Generate more
           </button>
-          <button @click="close" class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition">
+          <button @click="close" class="btn btn-primary">
             Done
           </button>
         </div>
       </template>
+
     </div>
-  </div>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../ui/BaseModal.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { Sparkles, Loader2 } from '@lucide/vue'
 import { useAuthStore } from '../../stores/authStore'

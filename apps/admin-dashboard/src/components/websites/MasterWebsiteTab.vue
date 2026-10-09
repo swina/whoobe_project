@@ -27,37 +27,37 @@
         <form class="space-y-4 text-xs max-w-lg" @submit.prevent="save">
           <div>
             <label class="block font-semibold text-slate-400 light:text-slate-600 mb-1">Name <span class="text-rose-400">*</span></label>
-            <input v-model="form.name" type="text" required class="w-full px-3 py-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <input v-model="form.name" type="text" required class="field w-full" />
           </div>
           <div>
             <label class="block font-semibold text-slate-400 light:text-slate-600 mb-1">Root preview path <span class="text-rose-400">*</span></label>
-            <input v-model="form.rootPath" type="text" required pattern="^\/[a-z0-9_-]+$" placeholder="/default" title="Must start with / and contain only lowercase letters, digits, hyphens, or underscores" class="w-full px-3 py-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono" />
+            <input v-model="form.rootPath" type="text" required pattern="^\/[a-z0-9_-]+$" placeholder="/default" title="Must start with / and contain only lowercase letters, digits, hyphens, or underscores" class="field w-full font-mono" />
             <p class="text-[10px] text-slate-500 mt-0.5">All pages from this website are previewed under this path (e.g. /default/about-us). Changing it will break existing bookmarked preview URLs.</p>
           </div>
           <div>
             <label class="block font-semibold text-slate-400 light:text-slate-600 mb-1">Domains (one per line)</label>
-            <textarea v-model="form.domainsText" rows="3" placeholder="example.com&#10;www.example.com" class="w-full px-3 py-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500 font-mono resize-none"></textarea>
+            <textarea v-model="form.domainsText" rows="3" placeholder="example.com&#10;www.example.com" class="field w-full font-mono resize-none"></textarea>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block font-semibold text-slate-400 light:text-slate-600 mb-1">Default Locale</label>
-              <input v-model="form.defaultLocale" type="text" placeholder="en" class="w-full px-3 py-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+              <input v-model="form.defaultLocale" type="text" placeholder="en" class="field w-full" />
             </div>
             <div>
               <label class="block font-semibold text-slate-400 light:text-slate-600 mb-1">Supported Locales (comma separated)</label>
-              <input v-model="form.supportedLocalesText" type="text" placeholder="en, it, de" class="w-full px-3 py-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500" />
+              <input v-model="form.supportedLocalesText" type="text" placeholder="en, it, de" class="field w-full" />
             </div>
           </div>
           <div>
             <label class="block font-semibold text-slate-400 light:text-slate-600 mb-1">Theme</label>
-            <select v-model="form.themeId" class="w-full px-3 py-2 bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500">
+            <select v-model="form.themeId" class="field w-full">
               <option value="">No theme</option>
               <option v-for="t in themeOptions" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
           </div>
           <div v-if="error" class="px-3 py-2 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-300">{{ error }}</div>
           <div class="flex justify-end gap-2 pt-2">
-            <button type="submit" :disabled="saving" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-50">{{ saving ? 'Saving…' : 'Save' }}</button>
+            <button type="submit" :disabled="saving" class="btn btn-primary">{{ saving ? 'Saving…' : 'Save' }}</button>
           </div>
         </form>
       </div>
@@ -81,9 +81,9 @@
               </div>
             </div>
             <div class="flex items-center gap-2 shrink-0 ml-3">
-              <button @click="addRootItem(pg)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">+ Add item</button>
-              <button @click="renamePathGroup(pg)" class="text-xs text-slate-400 hover:text-slate-200">Rename</button>
-              <button @click="deletePathGroup(pg)" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Delete</button>
+              <button @click="addRootItem(pg)" class="btn btn-link">+ Add item</button>
+              <button @click="renamePathGroup(pg)" class="btn btn-link-muted">Rename</button>
+              <button @click="deletePathGroup(pg)" class="btn btn-link-danger">Delete</button>
             </div>
           </div>
           <div v-if="pg.items.length" class="p-2 space-y-1">
@@ -108,7 +108,7 @@
         </div>
 
         <div class="flex justify-center pt-2">
-          <button @click="createPathGroup" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">+ New Path Group</button>
+          <button @click="createPathGroup" class="btn btn-primary">+ New Path Group</button>
         </div>
       </div>
 

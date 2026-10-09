@@ -1,15 +1,13 @@
 <template>
-  <div class="fixed inset-0 z-[10001] bg-black/40 flex items-center justify-center" @click.self="$emit('close')">
-    <div class="bg-slate-900 light:bg-white rounded-xl shadow-xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[85vh] border border-slate-800 light:border-slate-200">
-      <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-800 light:border-slate-200 shrink-0">
-        <div>
-          <span class="text-sm font-semibold text-slate-200 light:text-slate-800">Path Groups — {{ websiteName }}</span>
-          <p class="text-[10px] text-slate-500 mt-0.5">Create and manage navigation path groups for this website.</p>
-        </div>
-        <button class="text-xs text-slate-400 hover:text-slate-200" @click="$emit('close')">✕</button>
-      </div>
-
-      <div class="flex-1 overflow-y-auto p-4 space-y-4">
+  <BaseModal :open="true" size="lg" @close="$emit('close')">
+    <template #header>
+      <div class="min-w-0">
+      <h2 class="ui-modal-title">Path Groups — {{ websiteName }}</h2>
+      <p class="ui-modal-subtitle">Create and manage navigation path groups for this website.</p>
+    </div>
+    </template>
+    <div class="space-y-4">
+        <div class="space-y-4">
         <div v-if="pathsStore.isLoading && pathsStore.paths.length === 0" class="text-xs text-slate-500 text-center py-4">Loading path groups…</div>
 
         <div v-else-if="pathsStore.paths.length === 0" class="text-xs text-slate-500 text-center py-4 italic">No path groups yet for this website.</div>
@@ -18,9 +16,9 @@
           <div class="flex items-center justify-between px-3 py-2 border-b border-slate-800/60 light:border-slate-200/60 bg-slate-950/60 light:bg-white/60">
             <span class="text-xs font-semibold text-slate-200 light:text-slate-800">{{ pg.name }}</span>
             <div class="flex items-center gap-2">
-              <button @click="addRootItem(pg)" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">+ Add item</button>
-              <button @click="renamePathGroup(pg)" class="text-xs text-slate-400 hover:text-slate-200">Rename</button>
-              <button @click="deletePathGroup(pg)" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Delete</button>
+              <button @click="addRootItem(pg)" class="btn btn-link">+ Add item</button>
+              <button @click="renamePathGroup(pg)" class="btn btn-link-muted">Rename</button>
+              <button @click="deletePathGroup(pg)" class="btn btn-link-danger">Delete</button>
             </div>
           </div>
           <div v-if="pg.items.length" class="p-2 space-y-1">
@@ -40,14 +38,16 @@
         </div>
 
         <div class="flex justify-center pt-2">
-          <button @click="createPathGroup" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">+ New Path Group</button>
+          <button @click="createPathGroup" class="btn btn-primary">+ New Path Group</button>
         </div>
       </div>
+
     </div>
-  </div>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../ui/BaseModal.vue'
 import { onMounted, ref } from 'vue'
 import { usePathStore } from '../../stores/menusStore'
 import type { MenuItem, WebsitePathRecord } from '../../utils/menus-api'

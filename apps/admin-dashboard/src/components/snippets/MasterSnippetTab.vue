@@ -17,7 +17,7 @@
     <div :class="fullscreen ? 'fixed inset-0 z-[10000] bg-slate-950 flex flex-col' : 'flex-1 min-h-0 px-2 pb-1 pt-2'">
       <div v-if="fullscreen" class="shrink-0 flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-800">
         <span class="text-sm font-semibold text-slate-100 truncate">{{ title }}</span>
-        <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white flex items-center gap-1.5" @click="fullscreen = false">
+        <button type="button" class="btn btn-secondary flex items-center gap-1.5" @click="fullscreen = false">
           <Minimize class="w-4 h-4" /> Close editor
         </button>
       </div>

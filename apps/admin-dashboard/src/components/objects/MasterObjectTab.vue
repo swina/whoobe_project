@@ -20,21 +20,21 @@
           <input
             v-model="key"
             type="text"
-            class="w-72 max-w-[40vw] px-2 py-0.5 text-[11px] font-mono normal-case bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500"
+            class="field w-72 max-w-[40vw] font-mono normal-case"
           />
         </label>
         <div class="flex-1"></div>
         <button
           @click="save(false)"
           :disabled="!!isSaving || !key.trim()"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-slate-200 light:text-slate-800 disabled:opacity-50"
+          class="btn btn-secondary"
         >
           {{ isSaving === 'draft' ? 'Saving…' : 'Save as Draft' }}
         </button>
         <button
           @click="save(true)"
           :disabled="!!isSaving || !key.trim()"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
+          class="btn btn-primary"
         >
           {{ isSaving === 'published' ? 'Publishing…' : 'Save and Publish' }}
         </button>
@@ -43,10 +43,10 @@
       <!-- Preview links (object-publish-workflow-plan.md §2.3/§5) - the
            list lives in a modal; this row, under the title, opens it. -->
       <div v-if="currentRow" class="flex items-center gap-3">
-        <button type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300" @click="previewLinksOpen = true">
+        <button type="button" class="btn btn-link" @click="previewLinksOpen = true">
           Preview Links ({{ activePreviewLinkCount }})
         </button>
-        <button @click="generateLink" :disabled="isGeneratingLink" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 disabled:opacity-50">
+        <button @click="generateLink" :disabled="isGeneratingLink" class="btn btn-link">
           {{ isGeneratingLink ? 'Generating…' : '+ Generate Preview Link' }}
         </button>
       </div>
@@ -72,7 +72,7 @@
           <select
             :value="''"
             @change="setLocale(($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
-            class="px-2 py-1.5 text-xs bg-slate-950 light:bg-slate-50 border border-dashed border-slate-700 light:border-slate-300 rounded-lg text-indigo-400 focus:outline-none focus:border-indigo-500"
+            class="field"
           >
             <option value="" disabled>+ Add locale…</option>
             <option v-for="locale in availableNewLocales" :key="locale" :value="locale">{{ locale }}</option>

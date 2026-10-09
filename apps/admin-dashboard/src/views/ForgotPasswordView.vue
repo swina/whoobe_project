@@ -19,7 +19,7 @@
             type="email"
             autocomplete="email"
             required
-            class="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500"
+            class="field w-full"
           />
         </div>
 
@@ -30,7 +30,7 @@
         <button
           type="submit"
           :disabled="isSubmitting"
-          class="w-full px-4 py-2.5 text-sm font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
+          class="btn btn-primary w-full flex items-center justify-center gap-2"
         >
           <span v-if="isSubmitting" class="animate-spin w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span>
           <span>{{ isSubmitting ? 'Sending...' : 'Send Reset Link' }}</span>

@@ -37,8 +37,15 @@
   .btn-warning   { --btn-bg: #f59e0b; --btn-fg: #0f172a; --btn-bg-hover: #d97706; --btn-fg-hover: #0f172a; --btn-ring: #b45309; }
   .btn-secondary { --btn-bg: #334155; --btn-fg: #f1f5f9; --btn-bg-hover: #475569; }
   .btn-ghost     { --btn-bg: transparent; --btn-fg: #cbd5e1; --btn-bg-hover: #1e293b; --btn-fg-hover: #f1f5f9; --btn-border: #475569; }
-  .btn-link      { --btn-bg: transparent; --btn-fg: #a5b4fc; --btn-bg-hover: transparent; --btn-fg-hover: #e0e7ff; padding-left: .25rem; padding-right: .25rem; }
-  .btn-link:hover:not(:disabled) { text-decoration: underline; }
+  /* text-only actions (Edit, Delete, Preview ... next to a row): a colour and an underline on hover, no box */
+  .btn-link, .btn-link-danger, .btn-link-success, .btn-link-info, .btn-link-warning, .btn-link-muted { --btn-bg: transparent; --btn-bg-hover: transparent; padding-left: .25rem; padding-right: .25rem; }
+  .btn-link:hover:not(:disabled), .btn-link-danger:hover:not(:disabled), .btn-link-success:hover:not(:disabled), .btn-link-info:hover:not(:disabled), .btn-link-warning:hover:not(:disabled), .btn-link-muted:hover:not(:disabled) { text-decoration: underline; }
+  .btn-link         { --btn-fg: #a5b4fc; --btn-fg-hover: #e0e7ff; }
+  .btn-link-danger  { --btn-fg: #fda4af; --btn-fg-hover: #ffe4e6; }
+  .btn-link-success { --btn-fg: #6ee7b7; --btn-fg-hover: #d1fae5; }
+  .btn-link-info    { --btn-fg: #7dd3fc; --btn-fg-hover: #e0f2fe; }
+  .btn-link-warning { --btn-fg: #fcd34d; --btn-fg-hover: #fef3c7; }
+  .btn-link-muted   { --btn-fg: #94a3b8; --btn-fg-hover: #e2e8f0; }
   /* tinted: the quiet action next to a primary one */
   .btn-soft-primary { --btn-bg: #202752; --btn-fg: #c7d2fe; --btn-bg-hover: #2c3370; --btn-border: #3b4590; }
   .btn-soft-success { --btn-bg: #0f373b; --btn-fg: #a7f3d0; --btn-bg-hover: #0f5048; --btn-border: #11695a; }
@@ -47,7 +54,12 @@
 
   .light .btn-secondary { --btn-bg: #e2e8f0; --btn-fg: #0f172a; --btn-bg-hover: #cbd5e1; }
   .light .btn-ghost     { --btn-bg: transparent; --btn-fg: #334155; --btn-bg-hover: #f1f5f9; --btn-fg-hover: #0f172a; --btn-border: #94a3b8; }
-  .light .btn-link      { --btn-fg: #4338ca; --btn-fg-hover: #312e81; }
+  .light .btn-link         { --btn-fg: #4338ca; --btn-fg-hover: #312e81; }
+  .light .btn-link-danger  { --btn-fg: #be123c; --btn-fg-hover: #881337; }
+  .light .btn-link-success { --btn-fg: #047857; --btn-fg-hover: #064e3b; }
+  .light .btn-link-info    { --btn-fg: #0369a1; --btn-fg-hover: #0c4a6e; }
+  .light .btn-link-warning { --btn-fg: #b45309; --btn-fg-hover: #78350f; }
+  .light .btn-link-muted   { --btn-fg: #475569; --btn-fg-hover: #0f172a; }
   .light .btn-soft-primary { --btn-bg: #e0e7ff; --btn-fg: #3730a3; --btn-bg-hover: #c7d2fe; --btn-border: #a5b4fc; }
   .light .btn-soft-success { --btn-bg: #d1fae5; --btn-fg: #065f46; --btn-bg-hover: #a7f3d0; --btn-border: #6ee7b7; }
   .light .btn-soft-danger  { --btn-bg: #ffe4e6; --btn-fg: #9f1239; --btn-bg-hover: #fecdd3; --btn-border: #fda4af; }
