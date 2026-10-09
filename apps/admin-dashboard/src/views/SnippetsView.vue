@@ -69,7 +69,7 @@
         />
         <select
           v-model="categoryFilter"
-          class="field"
+          class="field sm:w-auto"
         >
           <option value="" class="capitalize">All categories</option>
           <option v-for="cat in categories" :key="cat" :value="cat" class="capitalize">{{ cat }}</option>
@@ -130,7 +130,7 @@
             v-for="snippet in filteredSnippets"
             :key="snippet.id"
             @click="openSnippetTab(snippet.id)"
-            class="cursor-pointer hover:bg-slate-300/50 light:bg-slate-100/50 transition"
+            class="cursor-pointer hover:bg-slate-800/90 light:bg-slate-100/50 transition"
           >
             <td class="py-2.5 px-4 w-10" @click.stop>
               <input
@@ -158,6 +158,9 @@
             <td class="py-2.5 px-4" @click.stop>
               <button @click="openSnippetTab(snippet.id)" class="btn btn-link mr-3" title="Edit snippet">
                 <PencilSparkles class="w-4 h-4"/>
+              </button>
+              <button @click="toggleLock(snippet)" class="btn btn-link mr-3" :class="snippet.locked ? 'text-amber-500' : ''" :aria-pressed="snippet.locked === true" :data-testid="`snippet-lock-${snippet.id}`" :title="snippet.locked ? 'Locked: not saved automatically (click to unlock)' : 'Lock (no autosave)'">
+                <Lock v-if="snippet.locked" class="w-4 h-4"/><LockOpen v-else class="w-4 h-4"/>
               </button>
               <button v-if="snippet.notes" @click="notesSnippet = snippet" class="btn btn-link-info mr-3" title="View usage notes">
                 <Info class="w-4 h-4"/>
@@ -215,6 +218,9 @@
             <button @click="openSnippetTab(snippet.id)" class="p-1.5 rounded text-slate-400 light:text-slate-600 hover:text-indigo-400 hover:bg-slate-400/60 light:bg-slate-100/60 transition" title="Edit snippet">
               <PencilSparkles class="w-3.5 h-3.5" />
             </button>
+            <button @click="toggleLock(snippet)" class="p-1.5 rounded hover:bg-slate-400/60 light:bg-slate-100/60 transition" :class="snippet.locked ? 'text-amber-500' : 'text-slate-400 light:text-slate-600'" :aria-pressed="snippet.locked === true" :title="snippet.locked ? 'Locked: not saved automatically (click to unlock)' : 'Lock (no autosave)'">
+              <Lock v-if="snippet.locked" class="w-3.5 h-3.5" /><LockOpen v-else class="w-3.5 h-3.5" />
+            </button>
             <button v-if="snippet.notes" @click="notesSnippet = snippet" class="p-1.5 rounded text-slate-400 light:text-slate-600 hover:text-sky-400 hover:bg-slate-400/60 light:bg-slate-100/60 transition" title="View usage notes">
               <Info class="w-3.5 h-3.5" />
             </button>
@@ -258,7 +264,7 @@
 <script setup lang="ts">
 import BaseModal from '../components/ui/BaseModal.vue'
 import { ref, computed, onMounted } from 'vue'
-import { Puzzle, PencilSparkles, Trash, List, LayoutGrid, Send, Info } from '@lucide/vue'
+import { Puzzle, PencilSparkles, Trash, List, LayoutGrid, Send, Info, Lock, LockOpen } from '@lucide/vue'
 import { useSnippetsStore } from '../stores/snippetsStore'
 import { useTabsStore } from '../stores/tabsStore'
 import { useToastStore } from '../stores/toastStore'
@@ -325,6 +331,14 @@ function openSnippetTab(id: string) {
 
 function handleCreate() {
   tabsStore.openSnippet(`new:${randomUUID()}`)
+}
+
+async function toggleLock(snippet: { id: string; locked?: boolean }) {
+  try {
+    await snippetsStore.setLocked(snippet.id, !snippet.locked)
+  } catch (e: any) {
+    alert(e?.message || 'Failed to change the lock')
+  }
 }
 
 async function handleDelete(id: string, name: string) {

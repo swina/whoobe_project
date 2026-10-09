@@ -41,7 +41,7 @@ export const dbDependencyResolvers: DependencyResolvers = {
     const found = await findBundleEntitiesByIds(ids);
     return {
       pages: found.pages.map((p) => ({ ...toPage(p), id: p.id, websiteId: p.websiteId })),
-      snippets: found.snippets.map((s) => ({ id: s.id, name: s.name, category: s.category, icon: s.icon, node: s.node, themeId: s.themeId, notes: s.notes, thumbnail: s.thumbnail })),
+      snippets: found.snippets.map((s) => ({ id: s.id, name: s.name, category: s.category, icon: s.icon, node: s.node, themeId: s.themeId, notes: s.notes, thumbnail: s.thumbnail, locked: s.locked })),
       dataObjects: found.dataObjects.map((o) => toObject(o as any)),
       themes: found.themes.map(toTheme) as (BundleTheme & { id: string })[],
     };

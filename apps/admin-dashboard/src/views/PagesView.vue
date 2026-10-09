@@ -40,7 +40,7 @@
         />
         <select
           v-model="filterWebsiteId"
-          class="field min-w-[10rem]"
+          class="field sm:w-auto min-w-[10rem]"
         >
           <option value="">All websites</option>
           <option v-for="w in websitesStore.websites" :key="w.id" :value="w.id">{{ w.name }}</option>
@@ -123,7 +123,7 @@
             v-for="page in pagedPages"
             :key="page.id"
             @click="tabsStore.openPage(page.id)"
-            class="cursor-pointer hover:bg-slate-300/60 light:bg-slate-100/50 transition"
+            class="cursor-pointer hover:bg-slate-800/90 light:bg-slate-100/50 transition"
           >
             <td class="py-2.5 px-4 text-center" @click.stop>
               <input type="checkbox" :checked="selectedPageIds.has(page.id)"
@@ -263,7 +263,7 @@
             <tr
               v-for="sp in stagedPages"
               :key="sp.id"
-              class="cursor-pointer hover:bg-slate-800/50 light:bg-slate-100/50 transition"
+              class="cursor-pointer hover:bg-slate-800/90 light:bg-slate-100/50 transition"
               @click="openStagedDetail(sp)"
             >
               <td class="py-2.5 px-4 font-semibold text-slate-100 light:text-slate-900">{{ sp.title }}</td>

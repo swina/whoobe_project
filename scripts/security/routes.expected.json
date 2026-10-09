@@ -1200,6 +1200,13 @@
       "access": "public",
       "permissions": [],
       "note": "documentation site: serialised search index of the public documents"
+    },
+    "PUT /whoobe-one/snippets/:id/lock": {
+      "access": "permission",
+      "permissions": [
+        "OBJECTS_WRITE"
+      ],
+      "note": "locks or unlocks a snippet: a locked snippet is not saved automatically"
     }
   }
 }

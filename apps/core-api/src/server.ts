@@ -52,6 +52,7 @@ import {
   listWhoobeOneSnippets,
   createWhoobeOneSnippet,
   updateWhoobeOneSnippet,
+  setWhoobeOneSnippetLocked,
   setWhoobeOneSnippetThumbnail,
   findTemplatesUsingSnippet,
   deleteWhoobeOneSnippet,
@@ -1207,7 +1208,7 @@ app.get('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_READ), asy
 
 app.post('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, category, icon, node, themeId, notes } = req.body ?? {};
+    const { name, category, icon, node, themeId, notes, locked } = req.body ?? {};
     if (typeof name !== 'string' || !name.trim() || typeof category !== 'string' || !category.trim() || node == null) {
       res.status(400).json({ error: 'name, category, and node are required' });
       return;
@@ -1220,6 +1221,7 @@ app.post('/whoobe-one/snippets', requirePermission(PERMISSIONS.OBJECTS_WRITE), a
       node,
       themeId: typeof themeId === 'string' ? themeId : null,
       notes: typeof notes === 'string' ? notes : null,
+      locked: locked === true,
     });
     res.status(201).json({ snippet });
   } catch (error: any) {
@@ -1294,7 +1296,16 @@ app.post('/whoobe-one/snippets/:id/render', requirePermission(PERMISSIONS.OBJECT
 
 app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, category, icon, node, themeId, notes } = req.body ?? {};
+    const { name, category, icon, node, themeId, notes, autosave } = req.body ?? {};
+    // A locked snippet is never saved automatically: the editor's autosave leaves it alone, and a save the editor flags as
+    // automatic (a second tab that still believes the snippet is unlocked, say) is refused here. A manual save goes through.
+    if (autosave === true) {
+      const current = await getWhoobeOneSnippet(req.params.id);
+      if (current?.locked) {
+        res.status(423).json({ error: 'This snippet is locked: it is not saved automatically', locked: true });
+        return;
+      }
+    }
     // category may be empty (an uncategorised snippet), name/node required.
     if (typeof name !== 'string' || !name.trim() || typeof category !== 'string' || node == null) {
       res.status(400).json({ error: 'name, category, and node are required' });
@@ -1317,6 +1328,20 @@ app.patch('/whoobe-one/snippets/:id', requirePermission(PERMISSIONS.OBJECTS_WRIT
   } catch (error: any) {
     logger.error({ err: error }, 'Update whoobe-one snippet error');
     res.status(500).json({ error: error.message || 'Failed to update snippet' });
+  }
+});
+
+// Locks or unlocks a snippet. Locked = no autosave (see PATCH above); it is not a change of content, so no new version is kept.
+app.put('/whoobe-one/snippets/:id/lock', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const locked = req.body?.locked;
+    if (typeof locked !== 'boolean') { res.status(400).json({ error: 'locked must be true or false' }); return; }
+    const snippet = await setWhoobeOneSnippetLocked(req.params.id, locked);
+    if (!snippet) { res.status(404).json({ error: 'Snippet not found' }); return; }
+    res.json({ snippet });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Lock whoobe-one snippet error');
+    res.status(500).json({ error: error.message || 'Failed to lock the snippet' });
   }
 });
 

@@ -811,6 +811,32 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/snippets/{id}/lock:
+    put:
+      tags: ["core-api: Whoobe One: Snippets"]
+      summary: "Lock or unlock a snippet (`{ locked }`). A locked snippet is not saved automatically: the editor's autosave skips it and `PATCH /whoobe-one/snippets/:id` with `autosave: true` answers 423. Manual saves are unaffected."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /whoobe-one/templates:
     get:
       tags: ["core-api: Whoobe One: Templates & Kits"]

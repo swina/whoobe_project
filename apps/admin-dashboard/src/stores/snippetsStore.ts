@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './authStore'
-import { fetchSnippets, createSnippet, deleteSnippet, type WhoobeSnippet, type WhoobeSnippetInput } from '../utils/snippets-api'
+import { fetchSnippets, createSnippet, deleteSnippet, setSnippetLocked, type WhoobeSnippet, type WhoobeSnippetInput } from '../utils/snippets-api'
 
 export const useSnippetsStore = defineStore('snippets', () => {
   const snippets = ref<WhoobeSnippet[]>([])
@@ -24,6 +24,12 @@ export const useSnippetsStore = defineStore('snippets', () => {
     }
   }
 
+  async function setLocked(id: string, locked: boolean) {
+    const updated = await setSnippetLocked(getBaseUrl(), id, locked)
+    const i = snippets.value.findIndex((s) => s.id === id)
+    if (i >= 0) snippets.value[i] = { ...snippets.value[i], locked: updated.locked === true }
+  }
+
   async function remove(id: string) {
     await deleteSnippet(getBaseUrl(), id)
     snippets.value = snippets.value.filter((s) => s.id !== id)
@@ -44,5 +50,5 @@ export const useSnippetsStore = defineStore('snippets', () => {
     return { created, skipped: inputs.length - created - errors.length, errors }
   }
 
-  return { snippets, isLoading, error, refresh, remove, importSnippets }
+  return { snippets, isLoading, error, refresh, remove, setLocked, importSnippets }
 })
