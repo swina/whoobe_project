@@ -252,6 +252,7 @@ import {
   ImportError,
   signUploadTicket,
   uploadTokenSecret,
+  getWebsitePushApiKey,
   createFormUpload,
   getFormUpload,
   websiteUploadBytesToday,
@@ -424,6 +425,16 @@ for (const name of ['id', 'versionId', 'websiteId', 'translationGroupId']) {
 // Asked by the reverse proxy (nginx auth_request, deploy/nginx/_locations.conf.template) for every request that no
 // location claims by name: is the first segment of the URI the root path of a website? 204 = yes (the proxy sends it
 // to the editor, which renders the page), 403 = no (it goes to the dashboard). Answers from a 5 s cache of the roots.
+/** The PWA configuration as an anonymous app may see it: no push provider key, and not even the flag that one is set. */
+function publicPwaConfig(config: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  const c = { ...(config ?? {}) } as Record<string, unknown>;
+  if (c.push && typeof c.push === 'object' && !Array.isArray(c.push)) {
+    const { onesignalApiKey: _k, onesignalApiKeySet: _s, clearOnesignalApiKey: _c, ...push } = c.push as Record<string, unknown>;
+    c.push = push;
+  }
+  return c;
+}
+
 const siteRootCache = createSiteRootCache(async () => (await listWebsites()).map((w) => w.rootPath).filter((r): r is string => !!r));
 app.get('/site-root', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -3604,7 +3615,8 @@ app.get('/public/apps/:websiteId', async (req: Request, res: Response): Promise<
         rootPath: website.rootPath,
         domains: website.domains,
       },
-      pwaConfig: website.pwaConfig ?? {},
+      // public: only what an app needs. The push provider key never appears here (F-059), nor the flag that says one is set
+      pwaConfig: publicPwaConfig(website.pwaConfig),
       pages,
       paths,
     }));
@@ -3659,7 +3671,8 @@ app.post('/pwa/send', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: 
     }
 
     const pwaConfig = (website.pwaConfig ?? {}) as Record<string, unknown>;
-    const pushConfig = (pwaConfig.push ?? {}) as Record<string, unknown>;
+    // the website record never carries the provider key (F-059); it is read, decrypted, only to send
+    const pushConfig = { ...((pwaConfig.push ?? {}) as Record<string, unknown>), onesignalApiKey: (await getWebsitePushApiKey(websiteId)) ?? undefined } as Record<string, unknown>;
     const providerName = (pushConfig.provider ?? 'self') as PushProviderName;
 
     const initError = initializePushProvider(providerName, pushConfig);

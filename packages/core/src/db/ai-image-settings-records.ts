@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { getDb } from './client.js';
+import { encryptIntegrationSecret, decryptIntegrationSecret } from './integration-secrets-crypto.js';
 import { aiImageSettings } from './ai-image-settings-schema.js';
 
 export interface AiImageSettingsRecord {
@@ -14,7 +15,7 @@ export interface AiImageSettingsRecord {
 export async function getAiImageSettings(userId: string): Promise<AiImageSettingsRecord | null> {
   const db = getDb();
   const [row] = await db.select().from(aiImageSettings).where(eq(aiImageSettings.userId, userId)).limit(1);
-  return row ?? null;
+  return row ? { ...row, apiKey: decryptIntegrationSecret(row.apiKey) } : null;
 }
 
 export async function upsertAiImageSettings(
@@ -27,12 +28,13 @@ export async function upsertAiImageSettings(
   }
 ): Promise<AiImageSettingsRecord> {
   const db = getDb();
+  const storedKey = encryptIntegrationSecret(input.apiKey);
   const values = {
     userId,
     provider: input.provider,
     model: input.model,
     endpoint: input.endpoint ?? null,
-    apiKey: input.apiKey ?? null,
+    apiKey: storedKey,
     updatedAt: new Date(),
   };
   const [row] = await db.insert(aiImageSettings).values(values).onConflictDoUpdate({
@@ -41,9 +43,9 @@ export async function upsertAiImageSettings(
       provider: input.provider,
       model: input.model,
       endpoint: input.endpoint ?? null,
-      apiKey: input.apiKey ?? null,
+      apiKey: storedKey,
       updatedAt: new Date(),
     },
   }).returning();
-  return row;
+  return { ...row, apiKey: decryptIntegrationSecret(row.apiKey) };
 }

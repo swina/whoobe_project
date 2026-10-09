@@ -44,6 +44,7 @@ export * from './db/mail-settings-records.js';
 export * from './mail/providers.js';
 export * from './mail/http-transport.js';
 export * from './db/mail-settings-crypto.js';
+export * from './db/integration-secrets-crypto.js';
 export * from './db/ai-settings-schema.js';
 export * from './db/ai-settings-records.js';
 export * from './db/ai-image-settings-schema.js';

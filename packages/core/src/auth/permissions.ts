@@ -61,6 +61,10 @@ export type DefaultRoleName = (typeof DEFAULT_ROLES)[number];
 export const DEFAULT_ROLE_PERMISSIONS: Record<DefaultRoleName, PermissionKey[]> = {
   admin: ALL_PERMISSION_KEYS,
   editor: [
+    // The flat keys are what the routes actually check (F-058): without them the role could not read or save anything.
+    // Publishing, deleting, settings and users stay with the administrator.
+    PERMISSIONS.OBJECTS_READ,
+    PERMISSIONS.OBJECTS_WRITE,
     PERMISSIONS.WEBSITES_LIST,
     PERMISSIONS.WEBSITES_VIEW,
     PERMISSIONS.WEBSITES_EDIT,
@@ -88,6 +92,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<DefaultRoleName, PermissionKey[]> 
     PERMISSIONS.WORKFLOWS_MANAGE,
   ],
   viewer: [
+    PERMISSIONS.OBJECTS_READ,
     PERMISSIONS.WEBSITES_LIST,
     PERMISSIONS.WEBSITES_VIEW,
     PERMISSIONS.PAGES_LIST,

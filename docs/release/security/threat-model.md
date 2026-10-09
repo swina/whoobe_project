@@ -27,7 +27,7 @@ Assumptions the controls depend on (if one is false, the corresponding risks in 
 | Asset | Why it matters | Where |
 |---|---|---|
 | Administrator and editor accounts, sessions, TOTP secrets | control of the site and its integrations | `users`, `sessions` |
-| Third-party credentials: gateway upstreams, mail providers, AI keys, Figma token | abuse of the customer's accounts and budgets | database (encrypted for gateway, mail, migration sources; **clear text for AI, Figma, push** - F-055) |
+| Third-party credentials: gateway upstreams, mail providers, AI keys, Figma token | abuse of the customer's accounts and budgets | database (AES-256-GCM for gateway, mail, migration sources, AI, Figma and push keys; the last three **only when `INTEGRATION_SECRETS_ENCRYPTION_KEY` is set**, otherwise clear text - F-055) |
 | Encryption keys and shared secrets | decrypt everything above | `.env.<slug>` |
 | Published content and drafts | integrity (defacement), confidentiality (unpublished) | database |
 | Assets, including private files and form uploads | personal data, documents | object store |
@@ -74,7 +74,7 @@ Severity is the residual risk after the controls, for a correctly installed work
 | Threat | Controls | Evidence | Residual |
 |---|---|---|---|
 | Missing authorization on a route | every route in a contract file checked against 5 identities; drift test fails on new routes | `authz-matrix` (900 checks), `route-drift` | asset-processor and gateway routes are not in the contract (covered by suites and ZAP) - **Low** |
-| Privilege escalation by a low-privilege author | publish needs `objects:publish` (F-035); user and settings management need their own keys; website import cannot publish without it (F-052) | `limits-and-publish`, `authz-matrix` | granular permissions are not enforced and seeded roles are inconsistent (F-058); no per-website scoping - **Medium** inside a multi-site workspace |
+| Privilege escalation by a low-privilege author | publish needs `objects:publish` (F-035); user and settings management need their own keys; website import cannot publish without it (F-052) | `limits-and-publish`, `authz-matrix` | the 34 granular permissions are not enforced (F-058); no per-website scoping - **Medium** inside a multi-site workspace |
 | IDOR on ids | UUID ids; malformed ids answer 4xx without SQL text | `public-surface`, `harness` | |
 | Cross-tenant access | separate databases, buckets, secrets and containers per workspace | isolation suite on two stacks (14 tests) | a shared host and Docker socket are a shared fate |
 
@@ -129,10 +129,9 @@ Severity is the residual risk after the controls, for a correctly installed work
 
 ## 6. Top residual risks (what we would tell a risk committee)
 
-1. **Third-party credentials in clear text in the database** (AI, Figma, push) - F-055. A database read or backup
-   leak exposes them. Fix is known (same pattern as mail settings).
-2. **Authorization model is coarse and partly decorative** - workspace-wide roles, 34 unenforced permission keys,
-   seeded editor/viewer roles that cannot use the API (F-058). Use separate workspaces for separate customers.
+1. **Third-party credentials**: encrypted at rest only when `INTEGRATION_SECRETS_ENCRYPTION_KEY` is set (F-055, fixed; an installation that never sets it keeps clear text and a log warning). The push provider key used to be served by an unauthenticated route (F-059, fixed): after upgrading, rotate any push key that was saved on an internet-reachable installation.
+2. **Authorization model is coarse and partly decorative** - workspace-wide roles and 34 unenforced permission keys
+   (F-058; the seeded roles themselves now work). Use separate workspaces for separate customers.
 3. **No MFA enforcement and no SSO**; password policy is length only.
 4. **No full CSP on the admin and editor applications**; CSRF relies on SameSite/CORS alone.
 5. **Files from visitors are not scanned for malware** (planned as an optional step).

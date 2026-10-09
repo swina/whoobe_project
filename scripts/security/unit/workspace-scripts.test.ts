@@ -82,13 +82,13 @@ describe('workspace provisioning keeps secrets private and never ships placehold
     expect(src).toMatch(/chmod 600 "\$ENV_FILE"/)
   })
   it('generates every secret that .env.example only has a placeholder for', () => {
-    for (const k of ['MIGRATION_SOURCE_ENCRYPTION_KEY', 'GATEWAY_AUTH_ENCRYPTION_KEY', 'DAM_SERVICE_TOKEN', 'SITE_API_KEY_PEPPER', 'TOTP_ENCRYPTION_KEY', 'MAIL_SETTINGS_ENCRYPTION_KEY', 'UPLOAD_TOKEN_SECRET', 'POSTGRES_PASSWORD', 'S3_SECRET_ACCESS_KEY']) {
+    for (const k of ['MIGRATION_SOURCE_ENCRYPTION_KEY', 'GATEWAY_AUTH_ENCRYPTION_KEY', 'DAM_SERVICE_TOKEN', 'SITE_API_KEY_PEPPER', 'TOTP_ENCRYPTION_KEY', 'MAIL_SETTINGS_ENCRYPTION_KEY', 'UPLOAD_TOKEN_SECRET', 'INTEGRATION_SECRETS_ENCRYPTION_KEY', 'POSTGRES_PASSWORD', 'S3_SECRET_ACCESS_KEY']) {
       expect(src, k).toMatch(new RegExp(`set_env "${k}" "`))
     }
   })
   it('the example file does not contain a usable pepper or key (only change_me placeholders)', () => {
     const ex = readFileSync(join(ROOT_DIR, '.env.example'), 'utf8')
-    for (const m of ex.matchAll(/^(SITE_API_KEY_PEPPER|GATEWAY_AUTH_ENCRYPTION_KEY|MIGRATION_SOURCE_ENCRYPTION_KEY|UPLOAD_TOKEN_SECRET)=(.*)$/gm)) expect(m[2], m[1]).toMatch(/change_me/)
+    for (const m of ex.matchAll(/^(SITE_API_KEY_PEPPER|GATEWAY_AUTH_ENCRYPTION_KEY|MIGRATION_SOURCE_ENCRYPTION_KEY|UPLOAD_TOKEN_SECRET|INTEGRATION_SECRETS_ENCRYPTION_KEY)=(.*)$/gm)) expect(m[2], m[1]).toMatch(/change_me/)
   })
 })
 

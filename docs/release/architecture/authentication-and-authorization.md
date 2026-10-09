@@ -96,11 +96,13 @@ and `gateway:manage`.
 | Role | Seeded with | What that means in practice |
 |---|---|---|
 | admin | all 44 keys | everything |
-| editor | 25 granular keys, `assets:upload`, `assets:delete`, `workflows:manage`; **no `objects:*`** | because routes need `objects:read` / `objects:write`, the seeded editor **cannot use most of the editing API** until an administrator adds those two keys (F-058). Checked on a fresh database: `editor` has 25 permissions, none of them `objects:*` |
-| viewer | 14 view/list keys; **no `objects:*`** | same problem for reading |
+| editor | `objects:read`, `objects:write`, `assets:upload`, `assets:delete`, `workflows:manage` and 24 granular keys (list/view/edit/create on websites, pages, snippets, data objects, components, assets; list/view on themes) | reads and writes content and assets; **cannot** publish (`objects:publish`), delete objects, manage settings, users or the gateway |
+| viewer | `objects:read` and 14 granular list/view keys | reads everything, writes nothing |
 
-Operators should create their working roles explicitly (at least `objects:read`, plus `objects:write` for editors,
-`objects:publish` for people who publish). The security suites do this with their own roles.
+Before 2026-10-09 the seeded editor and viewer had **no** `objects:*` key and got 403 on most routes (F-058); the seed now adds
+the missing links at every start, so existing installations are corrected at their next start. The `api/third-party-credentials`
+suite logs in as a user with each seeded role and checks what it can and cannot do. Roles you create yourself need the same flat keys
+(`objects:read` to read, `objects:write` to change, `objects:publish` to publish).
 
 ### Enforcement and proof
 
@@ -144,7 +146,7 @@ See [API Gateway security](../guides/api-gateway-security.md).
 
 ## 9. Known gaps (for a risk assessment)
 
-No SSO/OIDC; no mandatory MFA; no per-website roles; the granular permissions are not enforced and the seeded editor and viewer roles lack `objects:*` (F-058); no password policy beyond length; no session list or remote
+No SSO/OIDC; no mandatory MFA; no per-website roles; the 34 granular permissions are not enforced (F-058); no password policy beyond length; no session list or remote
 sign-out for the user; sessions stored unhashed and never purged (F-056); no CSRF token; no full CSP on the SPAs (F-014);
-the third-party credentials of finding F-055 are stored in clear text; login and MFA throttling is in process memory
+third-party credentials are in clear text on installations without `INTEGRATION_SECRETS_ENCRYPTION_KEY` (F-055); login and MFA throttling is in process memory
 (per replica, lost at restart).

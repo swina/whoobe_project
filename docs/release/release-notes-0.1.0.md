@@ -48,7 +48,7 @@ turns this into a release is in [`release-process.md`](release-process.md) (copy
 - **Public sandbox**: a workspace with a profile (`deploy/profiles/sandbox.env`) that turns AI, mail, imports, CDN mirror
   and outbound HTTP off, caps assets, and is rebuilt every three hours. [`operations/sandbox.md`](operations/sandbox.md).
 
-**Security** - 58 findings recorded, all High fixed, 5 open (F-055 to F-058 are new, see below); API (1171 tests), unit (269), isolation (14), browser (30) and static suites,
+**Security** - 59 findings recorded, all High fixed; F-056, F-057 and the unenforced granular permissions of F-058 are open (see below); API (1171 tests), unit (269), isolation (14), browser (30) and static suites,
 OWASP ZAP and image/TLS scans run in CI on every release commit.
 [`security/status-summary.md`](security/status-summary.md).
 
@@ -74,6 +74,8 @@ OWASP ZAP and image/TLS scans run in CI on every release commit.
 | **Website previews live at the root preview path** (`https://host/whoobe-website/blog`), not under `/whoobe-one/`; the proxy asks core-api (`GET /site-root`) which paths are websites | a root preview path equal to a name the host uses (`/api`, `/auth`, `/assets`, `/login`, `/settings`, `/whoobe-one`, `/editor` ...) is refused; a workspace provisioned earlier still previews at `/whoobe-one/<root>/...` until its routing include is rendered again | `./scripts/render-workspace-nginx.sh <slug>` (see `operations/creating-workspaces.md`) |
 | **Outgoing mail**: a configuration per website, SMTP or an HTTP provider (OneSignal built in); SMTP passwords and API keys are encrypted at rest | saving a password or key needs `MAIL_SETTINGS_ENCRYPTION_KEY` (new workspaces get one; older ones must add it); the mail settings API has a new shape (the old flat `PUT` body still works) | add `MAIL_SETTINGS_ENCRYPTION_KEY=$(openssl rand -hex 32)` to the workspace's env file and recreate the services; see `guides/mail-providers.md` |
 | **File upload in forms** needs `UPLOAD_TOKEN_SECRET`; the proxy must route `/public/upload-data/` to the asset service | without the secret uploads answer 503; without the route a visitor's upload gets a 404/405 from core-api | `UPLOAD_TOKEN_SECRET=$(openssl rand -hex 32)` in the workspace's env file (new workspaces get one); `./scripts/render-workspace-nginx.sh <slug>`; see `guides/form-uploads.md` |
+| **Third-party credentials are encrypted at rest** (AI provider keys, Figma token, push provider key) and the push provider key is no longer returned by any API (F-055, F-059) | without `INTEGRATION_SECRETS_ENCRYPTION_KEY` they stay in clear text and a warning is logged; the dashboard shows "saved - leave blank to keep it" in the push key field; if a push key was ever saved on an internet-reachable installation it was served by `GET /public/apps/:id`: rotate it | `INTEGRATION_SECRETS_ENCRYPTION_KEY=$(openssl rand -hex 32)` in the workspace's env file (new workspaces get one), recreate the services; keep it with the other keys |
+| The seeded `editor` role gets `objects:read` and `objects:write`, `viewer` gets `objects:read` (they had neither, F-058) | existing installations: the missing links are added at the next start, so editors can now read and write content | review the roles you use |
 | The public form submit limit (10 per address per 15 minutes) is configurable | no change unless you set `FORM_SUBMIT_RATE_LIMIT_PER_WINDOW` | - |
 | Website export is a `.zip` | the file has another extension and carries the asset files | the old `.json` is still accepted on import |
 
@@ -82,7 +84,7 @@ New or changed variables are documented in `.env.example`; the full list of what
 
 ## Known limits
 
-- **Open security findings (new in this review):** AI provider keys, the Figma token and the push-provider key are stored in clear text in the database (F-055); expired sessions are never deleted and session ids are stored unhashed (F-056); a default database password exists in code outside Compose (F-057); the granular permissions are not enforced and the seeded `editor` and `viewer` roles lack `objects:read`/`objects:write`, so create the roles you need explicitly (F-058, see `architecture/authentication-and-authorization.md`).
+- **Open security findings (new in this review):** expired sessions are never deleted and session ids are stored unhashed (F-056); a default database password exists in code outside Compose (F-057); the 34 granular permission keys are not enforced (F-058, see `architecture/authentication-and-authorization.md`). Fixed in this release: AI/Figma/push credentials in clear text (F-055, needs `INTEGRATION_SECRETS_ENCRYPTION_KEY`), the OneSignal REST API key served by a public route (F-059), the seeded editor/viewer roles without `objects:*` (F-058, part).
 - Form uploads: no malware scan; forms that send to a gateway endpoint do not take files.
 - The DAST scan and the manual security checklist were not repeated for the features added on 2026-10-08/09 (run the DAST on the release commit, as the release gate requires).
 - No audit log of administrative actions; `/health` does not check the database; no metrics; one instance per service (see `operations/observability-and-logging.md` and `operations/capacity-and-scaling.md`).

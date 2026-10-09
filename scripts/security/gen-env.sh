@@ -90,6 +90,7 @@ TOTP_ENCRYPTION_KEY=sectest-$(hex 16)
 # outgoing-mail credentials encrypted at rest (test value)
 MAIL_SETTINGS_ENCRYPTION_KEY=sectest-$(hex 16)
 UPLOAD_TOKEN_SECRET=sectest-upload-$(hex 24)
+INTEGRATION_SECRETS_ENCRYPTION_KEY=sectest-integration-$(hex 24)
 # where a visitor's browser sends the bytes of a file (the asset service of this stack)
 UPLOAD_PUBLIC_BASE_URL=http://localhost:$((3102 + OFF))
 # the upload tests send many files from one address
