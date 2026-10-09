@@ -3322,6 +3322,25 @@ paths:
             application/json:
               schema:
                 type: object
+  /public/uploads/intent:
+    post:
+      tags: ["core-api: Public Data Objects & Forms (no auth, published only)"]
+      summary: "Public. Approve one file for a form Upload field: `{ fieldId, filename, size }` is checked against the website's upload limits (type, size, daily quota) and the field's own; answers `{ uploadId, uploadUrl, expiresIn, maxBytes }`. The bytes go to `uploadUrl` (asset service, `PUT /public/upload-data/<ticket>`), then the form submission refers to the upload as `{ uploadId }`. 503 when `UPLOAD_TOKEN_SECRET` is not set."
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
   /public/forms/{classId}/submit:
     post:
       tags: ["core-api: Public Data Objects & Forms (no auth, published only)"]

@@ -2,8 +2,9 @@
 // refused before any byte is sent, what the content must look like, and the ticket that lets one file be sent.
 import { describe, it, expect } from 'vitest'
 import { checkUploadIntent, normalizeUploadLimits, DEFAULT_UPLOAD_LIMITS, UPLOAD_CEILINGS, storedFileName, displayFileName, extensionOf, isPrivateFolder } from '../../../packages/core/src/uploads/limits'
+import { collectAuthoredUploadFields, effectiveUploadLimits, readUploadRefs, formUploadStagingKey } from '../../../packages/core/src/uploads/fields'
 import { contentMatchesExtension, SNIFFABLE_EXTENSIONS } from '../../../packages/core/src/uploads/sniff'
-import { signUploadTicket, verifyUploadTicket, type UploadTicket } from '../../../packages/core/src/uploads/token'
+import { signUploadTicket, verifyUploadTicket, uploadTokenSecret, type UploadTicket } from '../../../packages/core/src/uploads/token'
 
 const on = (extra: object = {}) => normalizeUploadLimits({ enabled: true, allowedExtensions: ['pdf', 'png', 'jpg', 'docx', 'txt'], ...extra })
 const bytes = (...v: number[]) => new Uint8Array(v)
@@ -141,5 +142,65 @@ describe('upload ticket', () => {
   it('will not sign without a real secret', () => {
     expect(() => signUploadTicket(t, '')).toThrow()
     expect(() => signUploadTicket(t, 'short')).toThrow()
+  })
+})
+
+describe('the Upload fields of the pages', () => {
+  const file = (id: string, name: string, extra: object = {}) => ({ id, element: 'input', data: { attributes: { type: 'file', name } }, ...extra })
+  const form = (cls: string, ...children: unknown[]) => ({ id: `form-${cls}`, formConfig: { enabled: true, targetClassId: cls }, blocks: children })
+
+  it('finds a file input inside a form, at any depth, with its class, name, website and settings', () => {
+    const page = { websiteId: 'w1', content: { id: 'r', blocks: [{ id: 'box', blocks: [form('c1', { id: 'row', blocks: [file('f1', 'cv', { uploadConfig: { extensions: ['.PDF', 'png'], maxFiles: 1.9, targetFolder: ' private/cv ' } })] })] }] } }
+    const found = collectAuthoredUploadFields([page])
+    expect(found.get('f1')).toEqual({ fieldId: 'f1', name: 'cv', targetClassId: 'c1', websiteId: 'w1', config: { extensions: ['pdf', 'png'], maxFiles: 1, targetFolder: 'private/cv' } })
+  })
+  it('ignores a file input outside a form, a disabled form, and other kinds of input', () => {
+    const outside = { websiteId: 'w', content: { blocks: [file('f-out', 'x')] } }
+    const disabled = { websiteId: 'w', content: { blocks: [{ id: 'fm', formConfig: { enabled: false, targetClassId: 'c' }, blocks: [] }, { blocks: [file('f-d', 'x')] }] } }
+    const text = { websiteId: 'w', content: { blocks: [form('c', { id: 't', element: 'input', data: { attributes: { type: 'text', name: 'a' } } }, file('f-noname', ''))] } }
+    expect(collectAuthoredUploadFields([outside, disabled, text]).size).toBe(0)
+  })
+  it('a hostile uploadConfig is cleaned and the first field with an id wins', () => {
+    const page = { websiteId: 'w', content: { blocks: [form('c', file('f', 'a', { uploadConfig: 'nope' }), file('f', 'b'))] } }
+    expect(collectAuthoredUploadFields([page]).get('f')).toMatchObject({ name: 'a', config: {} })
+  })
+})
+
+describe('effectiveUploadLimits: a field can ask for less, never for more', () => {
+  const site = normalizeUploadLimits({ enabled: true, allowedExtensions: ['pdf', 'png', 'txt'], maxFiles: 4, targetFolder: 'private/forms' })
+  it('narrows the types and the number of files', () => {
+    expect(effectiveUploadLimits(site, { extensions: ['pdf', 'zip', 'html'], maxFiles: 2 })).toMatchObject({ allowedExtensions: ['pdf'], maxFiles: 2 })
+    expect(effectiveUploadLimits(site, { maxFiles: 99 }).maxFiles).toBe(4)
+    expect(effectiveUploadLimits(site, undefined)).toBe(site)
+    expect(effectiveUploadLimits(site, {}).allowedExtensions).toEqual(['pdf', 'png', 'txt'])
+  })
+  it('a field folder follows the same rules as the website: private unless a public one is allowed', () => {
+    expect(effectiveUploadLimits(site, { targetFolder: 'private/cv' }).targetFolder).toBe('private/cv')
+    expect(effectiveUploadLimits(site, { targetFolder: 'public/cv' }).targetFolder).toBe('private/forms')
+    expect(effectiveUploadLimits(site, { targetFolder: '../x' }).targetFolder).toBe('private/forms')
+    const open = normalizeUploadLimits({ ...site, allowPublicFolder: true })
+    expect(effectiveUploadLimits(open, { targetFolder: 'public/cv' }).targetFolder).toBe('public/cv')
+  })
+})
+
+describe('readUploadRefs', () => {
+  const id = '3f2b8c1e-5a4d-4e7b-9c1a-0d2e4f6a8b10'
+  it('reads one reference or a list, normalised', () => {
+    expect(readUploadRefs({ uploadId: id.toUpperCase() })).toEqual([id])
+    expect(readUploadRefs([{ uploadId: id }, { uploadId: '11111111-1111-4111-8111-111111111111' }])).toHaveLength(2)
+  })
+  it.each([null, undefined, 'a-string', 7, {}, { uploadId: 'not-a-uuid' }, { assetId: id }, [], [{ uploadId: id }, { uploadId: id }], [{ uploadId: id }, 'x']])('%j is not a reference', (v) => {
+    expect(readUploadRefs(v)).toBeNull()
+  })
+})
+
+describe('staging key and secret', () => {
+  it('the staging key is private and cannot be steered by the extension', () => {
+    expect(formUploadStagingKey('w1', 'u1', 'pdf')).toBe('private/_uploads/w1/u1.pdf')
+    expect(formUploadStagingKey('w1', 'u1', '../x')).toBe('private/_uploads/w1/u1.x')
+  })
+  it('the secret must be set, long enough, and not the placeholder of .env.example', () => {
+    expect(uploadTokenSecret({ UPLOAD_TOKEN_SECRET: 'a'.repeat(32) } as any)).toBe('a'.repeat(32))
+    for (const v of [undefined, '', '  ', 'short', 'change_me_upload_token_secret']) expect(uploadTokenSecret({ UPLOAD_TOKEN_SECRET: v } as any), String(v)).toBeNull()
   })
 })

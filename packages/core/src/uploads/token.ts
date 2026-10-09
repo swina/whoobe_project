@@ -52,3 +52,9 @@ export function verifyUploadTicket(token: unknown, secret: string, nowSeconds = 
     return null;
   }
 }
+
+/** The secret from the environment, or null when it is missing, too short or still the placeholder of .env.example. */
+export function uploadTokenSecret(env: NodeJS.ProcessEnv = process.env): string | null {
+  const v = env.UPLOAD_TOKEN_SECRET?.trim();
+  return v && v.length >= 16 && !/^change_me/i.test(v) ? v : null;
+}
