@@ -120,7 +120,7 @@ docker compose -f docker-compose.data.yml down
 
 Good for: **real users, public internet, custom domain.**
 
-All services run natively on a single VM (or separate VMs). Postgres is installed as a system service and the object store is an external S3 (OCI Object Storage or another cloud S3). App servers run under PM2. nginx terminates SSL and reverse-proxies to the apps.
+All services run natively on a single VM (or separate VMs). Postgres is installed as a system service and the object store is Garage (native binary, systemd service) or an external S3 (OCI Object Storage, another cloud S3). App servers run under PM2. nginx terminates SSL and reverse-proxies to the apps.
 
 Full production guide: [`docs/release/operations/deployment.md`](deployment.md) (Oracle Free Tier, 469 lines).
 
@@ -141,17 +141,17 @@ All backend services listen on `127.0.0.1` only — the public surface is solely
 | Aspect | Dev / Eval | Production |
 |---|---|---|
 | Postgres | Docker container | Native `postgresql-16` systemd service |
-| Object store | Garage (Docker container) | OCI Object Storage / cloud S3 |
+| Object store | Garage (Docker container) | Garage native binary (systemd) or OCI Object Storage / cloud S3 |
 | App runtime | Docker / terminal | PM2 with auto-restart + `pm2 startup` |
 | nginx | SPA fallback inside container | Full reverse proxy with SSL |
 | TLS/SSL | None | Let's Encrypt certbot |
 | Security | None | UFW, security headers, HTTPS redirect |
 | Port exposure | All ports on 0.0.0.0 | Only 80/443 open; apps on 127.0.0.1 |
 | DB credentials | `postgres / postgrespassword` | Strong unique password |
-| S3 endpoint | `http://garage:3900` (Docker) or `http://localhost:9000` | OCI Object Storage / cloud S3 endpoint |
+| S3 endpoint | `http://garage:3900` (Docker) or `http://localhost:9000` | `http://127.0.0.1:3900` (native Garage) or the OCI / cloud S3 endpoint |
 | S3_PUBLIC_BASE_URL | `http://localhost:3002/dam-asset` | `https://your-domain.com/dam-asset` |
 | VITE_* URLs | `http://localhost:3003` etc. | `https://your-domain.com` (same domain, nginx routes) |
-| CORS | Docker env `*` | CORS rule on the bucket for `https://your-domain.com` |
+| CORS | Docker env `*` | none needed for Garage on loopback (assets are proxied); a cloud bucket needs a rule for `https://your-domain.com` |
 | Backups | None | pg_dump cron + bucket copy (rclone) |
 
 ### Quick-start steps
@@ -162,7 +162,8 @@ All backend services listen on `127.0.0.1` only — the public surface is solely
 sudo apt install -y nodejs postgresql-16 nginx certbot python3-certbot-nginx
 sudo npm install -g pnpm@9 pm2
 
-# 3. Create the OCI Object Storage bucket and a Customer Secret Key (see docs/release/operations/deployment.md, section 4)
+# 3. Object storage: install Garage as a systemd service, or create an OCI bucket + Customer Secret Key
+#    (see docs/release/operations/deployment.md, section 4)
 
 # 4. Configure PostgreSQL
 sudo -u postgres psql -c "CREATE USER whoobe WITH PASSWORD 'strong_password';"
@@ -228,7 +229,7 @@ If you prefer containerized apps but native DB/S3, use `docker-compose.apps.yml`
 docker compose -f docker-compose.apps.yml up -d --build
 ```
 
-This runs only the 4 app containers. Postgres and the S3 store are expected to be running externally, configured via `.env` (DB_HOST, S3_ENDPOINT point to external services). Place these containers behind a host nginx for SSL.
+This runs only the 4 app containers. Postgres and the S3 store (Garage or a cloud S3) are expected to be running externally, configured via `.env` (DB_HOST, S3_ENDPOINT point to external services). Place these containers behind a host nginx for SSL.
 
 ---
 
