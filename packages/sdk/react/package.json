@@ -21,7 +21,7 @@
   "dependencies": {
     "@whoobe-cms/renderer": "workspace:*",
     "@whoobe-cms/schema": "workspace:*",
-    "lucide-react": "^0.400.0"
+    "lucide-react": "^0.577.0"
   },
   "peerDependencies": {
     "react": ">=18.0.0"
