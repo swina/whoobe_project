@@ -56,7 +56,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | **F-057** default database password in code when `DB_PASSWORD` is unset | **fixed 2026-10-09** (default only for `NODE_ENV` development/test) | - |
 | **F-058** function permissions never enforced; seeded roles without `objects:*` | **fixed 2026-10-09**: 90 content routes accept the function key or the broad key; seeded roles corrected; 182 tests | - |
 | **F-044** deleting a website can answer 500 | functional, not a security issue | fix when convenient |
-| **F-050** residual: MinIO's own dependencies (62 fixable HIGH/CRITICAL on its last release) and postgres' `gosu` (22) | upstream; not patchable without forking. MinIO is now opt-in (overlay), Garage is the default | keep MinIO off public networks or move to Garage / a cloud S3 |
+| **F-050** residual: postgres' `gosu` (22) | upstream; not patchable without forking. MinIO (62 fixable HIGH/CRITICAL on its last release) was removed from the repository on 2026-10-10, Garage is the only local store | none for MinIO; an existing MinIO used as an external S3 stays the operator's responsibility |
 | TLS on a real hostname | testssl ran on the rendered template, not on a public host with a Let's Encrypt certificate | run `testssl.sh` against the production hostname once HTTPS is enabled |
 | Not covered by design or yet | SQL fuzzing of the remaining endpoints (3.3), AI prompt-injection impact (3.10), `next build`/`nuxt build` of generated sites (3.11), no load testing (3.15) | decide if/when |
 
@@ -92,7 +92,7 @@ The DAST scan and the manual checklist have **not** been repeated for these feat
    `WS_DATA_BIND_ADDRESS=0.0.0.0` to `.env` if a client on another machine needs them (F-043).
 6. **Run the manual checklist** (`manual-test-checklist.md`) on the throwaway stack once, and report any KO.
 7. Decide: the `xlsx` replacement and when to start the CSP work (the F-024 flag is decided: on by default).
-8. **Object storage**: decided - Garage is the default for local/LAN (automatic bucket and key), production uses a cloud or enterprise S3 through configuration, self-hosted MinIO is documented as discouraged (F-048/F-050, `docs/release/operations/storage-backends.md`). Remaining for you: copy existing MinIO data to the new store when switching a server (see the doc) and rebuild with `docker compose up -d --build`.
+8. **Object storage**: decided - Garage is the default for local/LAN (automatic bucket and key), production uses a cloud or enterprise S3 through configuration, MinIO was removed from the stack (F-048/F-050, `docs/release/operations/storage-backends.md`). Remaining for you: copy existing MinIO data to the new store when switching a server (see the doc) and rebuild with `docker compose up -d --build`.
 
 ## 5. Behaviour changes introduced by the fixes (check these when something "stops working")
 
@@ -110,7 +110,7 @@ The DAST scan and the manual checklist have **not** been repeated for these feat
 | Public limits (search 120/min, query 600/min, all `/public` 3000/min per address) | 429 for a server-side rendering host | `PUBLIC_*_RATE_LIMIT_PER_MINUTE`, `TRUST_PROXY` |
 | Outbound requests refuse loopback/metadata (and optionally private ranges) | gateway or AI endpoint on a local address refused | `OUTBOUND_ALLOW_HOSTS`, `OUTBOUND_ALLOW_LOOPBACK` |
 | Asset visibility is enforced by default; `/public/**` is public | 404 without a session for assets outside a public folder | move them under `/public`, or `DAM_ENFORCE_ASSET_VISIBILITY=false` |
-| Garage is the default S3 store for local/LAN; MinIO is opt-in | a fresh stack has no MinIO | `docker-compose.minio.yml`, `docs/release/operations/storage-backends.md` |
+| Garage is the only S3 store in the stack for local/LAN; MinIO is removed | a fresh stack has no MinIO and the overlay is gone | `docs/release/operations/storage-backends.md` |
 | Website export is a `.zip` (bundle version 2); import also accepts the old `.json` | the downloaded file has another extension and holds the asset files | - |
 | Importing a website restores `published` only with `objects:publish` | pages and objects arrive as drafts (the report says how many were live) | grant the permission (F-052) |
 | A gateway preset in `GATEWAY_PRESETS_PATH` replaces a built-in one with the same id; presets are read per request | a custom folder now overrides a vendor preset instead of listing it twice | rename the file's `id` to keep both |

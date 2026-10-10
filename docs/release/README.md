@@ -67,7 +67,7 @@ route documented, no broken link or quoted repository path, every environment va
 | Bare-metal guides (`operations/deployment.md`, `miniguide-deployment.md`) | flagged as not re-verified; the container workspace is the tested path | rewrite or retire |
 | [User manual](getting-started/manual/README.md) | partial by design: chapters listed in its table of contents are not written; no App Mode, thumbnail capture, documentation-site, form-upload chapters (the guides cover them) | write after the release |
 | [`guides/headless-sdk.md`](guides/headless-sdk.md), [`guides/dynamic-website-paths.md`](guides/dynamic-website-paths.md), publishing guides | names checked, not read line by line | review |
-| [Executive summary](getting-started/executive-summary.md) | positioning text dated 2026-09-18 (still mentions MinIO among the stores); not a technical reference | refresh before external use |
+| [Executive summary](getting-started/executive-summary.md) | positioning text dated 2026-09-18; not a technical reference | refresh before external use |
 | Runbooks never rehearsed: restore on a new host, upgrade, workspace removal and re-creation | written, not run end to end | rehearse once and note the date here |
 | Generated documentation sites | the product can publish this folder as a documentation site (Markdown, index, search); not set up for the release | optional: publish `docs/release` with the product's own *documentation site* feature |
 | Languages | English only | |

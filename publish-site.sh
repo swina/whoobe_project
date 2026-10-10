@@ -64,7 +64,7 @@ read -r -p "Custom domain (e.g. www.example.com) [leave empty for CMS hostname]:
 # ── 4. Public Asset URL ────────────────────────────────────────────────────
 echo ""
 DEFAULT_ASSET_URL="${API_URL%/}"
-echo -e "${YELLOW}Tip:${NC} The public URL for DAM assets (S3/MinIO public base)."
+echo -e "${YELLOW}Tip:${NC} The public URL for DAM assets (S3 public base)."
 echo -e "     This can differ from the API URL when using a CDN or separate asset domain."
 echo -e "     Check your CMS settings for the Public DAM URL (S3_PUBLIC_BASE_URL)."
 echo -e "     Leave empty to use the CMS API URL (${CYAN}${API_URL%/}/dam-asset${NC})."

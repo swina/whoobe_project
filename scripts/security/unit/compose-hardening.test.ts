@@ -105,17 +105,6 @@ describe('object storage selection (docs/release/operations/storage-backends.md)
     expect(json.services['asset-processor'].depends_on?.garage?.required).toBe(false)
   })
 
-  it('MinIO is opt-in through its own overlay and replaces Garage', () => {
-    const envFile = join(dir, 'env-minio'); writeFileSync(envFile, Object.entries(required).map(([k, v]) => `${k}=${v}`).join('\n') + '\n')
-    const r = spawnSync('docker', ['compose', '--env-file', envFile, '-f', join(ROOT_DIR, 'docker-compose.yml'), '-f', join(ROOT_DIR, 'docker-compose.minio.yml'), 'config', '--format', 'json'], { encoding: 'utf8', env: { ...process.env, ENV_FILE: envFile } })
-    expect(r.status, r.stderr).toBe(0)
-    const json = JSON.parse(r.stdout)
-    expect(Object.keys(json.services)).toContain('minio')
-    expect(Object.keys(json.services)).not.toContain('garage')
-    expect(hostIps(json.services.minio)).toEqual(['127.0.0.1', '127.0.0.1'])
-    expect(json.services['asset-processor'].environment.S3_ENDPOINT).toBe('http://minio:9000')
-  })
-
   it('the data stack is only Postgres and Garage', () => {
     const { json } = render(required, 'docker-compose.data.yml')
     expect(Object.keys(json.services).sort()).toEqual(['garage', 'garage-perms', 'postgres'])

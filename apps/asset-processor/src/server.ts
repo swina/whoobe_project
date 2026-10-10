@@ -83,7 +83,7 @@ attachLoggingToggle(logger, isLoggingEnabled);
 const app = express();
 const port = process.env.PORT || 3002;
 
-// S3/MinIO credentials & bucket config live ONLY on this server (env vars),
+// S3 credentials & bucket config live ONLY on this server (env vars),
 // never shipped to the browser. The admin-dashboard SPA talks to this
 // service over HTTP and never sees an access key or secret.
 const damBaseConfig = {
@@ -452,7 +452,7 @@ function serviceTokenAuth(req: Request, res: Response, next: any): void {
   requirePermission(PERMISSIONS.ASSETS_UPLOAD)(req, res, next);
 }
 
-// Upload an asset to S3/MinIO. Credentials never leave this process.
+// Upload an asset to S3. Credentials never leave this process.
 app.post('/api/v1/dam/upload', serviceTokenAuth, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
   try {
     const pimcorePath = req.body?.pimcorePath as string | undefined;
@@ -731,7 +731,7 @@ app.post('/api/v1/dam/transform', requirePermission(PERMISSIONS.ASSETS_UPLOAD), 
   }
 });
 
-// Delete an asset (and its thumbnail variants) from S3/MinIO, plus its DB record.
+// Delete an asset (and its thumbnail variants) from S3, plus its DB record.
 app.delete('/api/v1/dam/asset', requirePermission(PERMISSIONS.ASSETS_DELETE), async (req: Request, res: Response): Promise<void> => {
   try {
     const pimcorePath = req.body?.pimcorePath as string | undefined;
@@ -1226,9 +1226,9 @@ app.post('/api/v1/dam/ensure-bucket', requireAuth, async (req: Request, res: Res
 });
 
 // S3 client for the proxy — created once with the same credentials as the
-// DAM provider, so the proxy can serve authenticated requests to MinIO.
+// DAM provider, so the proxy can serve authenticated requests to the S3 store.
 // requestHandler timeouts: without them (the SDK's default is 0/disabled),
-// a stalled-but-not-refused MinIO connection hangs the awaiting request
+// a stalled-but-not-refused the S3 store connection hangs the awaiting request
 // forever with no error, permanently occupying one of this shared client's
 // pooled sockets - repeated often enough, the whole pool wedges and every
 // subsequent /dam-asset/* request queues forever too, with nothing ever
@@ -1241,7 +1241,7 @@ app.post('/api/v1/dam/ensure-bucket', requireAuth, async (req: Request, res: Res
 // connectionTimeout. Restarting the process "fixed" it only because that
 // throws away the pool and its zombie sockets. Disabling keep-alive opens a
 // fresh TCP connection per request instead of reusing pooled ones - there's
-// no pool left to go stale. MinIO is local (sub-millisecond connect), so
+// no pool left to go stale. the S3 store is local (sub-millisecond connect), so
 // the per-request handshake cost is negligible.
 // createSelfHealingClient: after a connection timeout the client is rebuilt and the call repeated once (the process used to
 // stay broken until restarted; see packages/core/src/dam/self-healing-client.ts).
@@ -1290,9 +1290,9 @@ async function findOriginalS3Key(basePath: string): Promise<string | null> {
   return null;
 }
 
-// Proxy endpoint: serves files from S3/MinIO through this server so the
-// browser never hits S3/MinIO directly (avoids CORS, presigned URL expiry,
-// and cross-host issues). Uses a signed GetObjectCommand so MinIO
+// Proxy endpoint: serves files from S3 through this server so the
+// browser never hits S3 directly (avoids CORS, presigned URL expiry,
+// and cross-host issues). Uses a signed GetObjectCommand so the S3 store
 // authenticated access works (the bucket is not publicly readable).
 //
 // Range support matters specifically for video/audio: a <video> element
@@ -1301,7 +1301,7 @@ async function findOriginalS3Key(basePath: string): Promise<string | null> {
 // one of those gets the full file back at 200 instead of a 206 partial
 // response, which browsers generally don't tolerate well for media and
 // frequently react to by aborting and retrying, which multiplies how many
-// connections to MinIO a single video load can open.
+// connections to the S3 store a single video load can open.
 // Keys that must never be served anonymously: the system `private/` area (e.g. private/logs/...) and,
 // unless DAM_ENFORCE_ASSET_VISIBILITY=false, every asset whose record is not public. Private assets then
 // need a valid session (the admin's <img>/<video> requests carry the cookie). Public = the asset's folder matches

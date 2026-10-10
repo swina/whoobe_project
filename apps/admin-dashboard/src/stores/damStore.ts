@@ -687,7 +687,7 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
         await refreshFolders()
         await refreshAssets()
         connectionStatus.value = 'success'
-        statusMessage.value = `Successfully connected to S3/MinIO bucket "${info.bucket}" via DAM backend`
+        statusMessage.value = `Successfully connected to S3 bucket "${info.bucket}" via DAM backend`
       } catch (e: any) {
         connectionStatus.value = 'error'
         statusMessage.value = `Connection failed: ${e?.message || 'Could not reach the DAM asset-processor backend.'}`

@@ -101,7 +101,7 @@ services:
   #     S3_PUBLIC_BASE_URL: http://localhost:3002/dam-asset
   #     S3_FORCE_PATH_STYLE: "true"
   #   depends_on:
-  #     minio:
+  #     garage:
   #       condition: service_healthy
   #     postgres:
   #       condition: service_healthy

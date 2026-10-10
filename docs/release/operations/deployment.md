@@ -4,7 +4,7 @@
 > services installed on the VM, run by PM2). The path that is tested and used for releases is the **container
 > workspace** in [`creating-workspaces.md`](creating-workspaces.md) (Docker Compose, Node 22 images, Garage, hardened
 > defaults, generated secrets, encrypted backups). This page has **not been re-verified for 0.1.0**: in particular it
-> installs Node 20 and MinIO (the images use Node 22 and Garage, and MinIO is discouraged, F-050), does not set the new
+> installs Node 20 (the images use Node 22 and Garage; MinIO was removed from the project, F-050), does not set the new
 > secrets (`MAIL_SETTINGS_ENCRYPTION_KEY`, `TOTP_ENCRYPTION_KEY`, `UPLOAD_TOKEN_SECRET`; see the
 > [configuration reference](configuration-reference.md)) and starts services outside Compose, where a missing `DB_PASSWORD` now stops the service at start (F-057). Use it only if Docker is not an option, and set every
 > variable of the configuration reference explicitly.
@@ -50,11 +50,6 @@ sudo npm install -g pnpm@9
 # PostgreSQL 16
 sudo apt-get install -y postgresql-16
 
-# MinIO (standalone binary)
-wget https://dl.min.io/server/minio/release/linux-arm64/minio
-chmod +x minio
-sudo mv minio /usr/local/bin/
-
 # nginx + certbot (Let's Encrypt)
 sudo apt-get install -y nginx certbot python3-certbot-nginx
 
@@ -95,51 +90,16 @@ sudo systemctl restart postgresql
 sudo systemctl enable postgresql
 ```
 
-## 4. Object storage (OCI Object Storage recommended; MinIO only as a fallback)
+## 4. Object storage (OCI Object Storage)
 
-> **Security note.** Self-hosting MinIO in production is discouraged: upstream no longer publishes container images, it is
-> maintained as source only, and its pinned dependencies carry known vulnerabilities (F-050). For this VM prefer **OCI
-> Object Storage** (S3-compatible, see the alternative below) or another cloud S3. The Docker-based stack uses Garage for
-> local/LAN and takes any S3 endpoint for production by configuration only: [storage-backends.md](storage-backends.md).
-> If you do run MinIO, replace the example credentials below with generated ones (`openssl rand -hex 16`), never keep `minioadmin`.
+Use **OCI Object Storage** (S3-compatible, free tier included) or another cloud S3; self-hosting the store on the VM is not part of this guide
+(MinIO was removed from the project, F-048/F-050; the Docker-based stack uses Garage for local/LAN and takes any S3 endpoint
+by configuration only: [storage-backends.md](storage-backends.md)).
 
-Create a systemd service `/etc/systemd/system/minio.service`:
-
-```ini
-[Unit]
-Description=MinIO S3
-After=network.target
-
-[Service]
-User=minio
-Group=minio
-ExecStart=/usr/local/bin/minio server /data --console-address ":9001"
-Environment="MINIO_ROOT_USER=<generated-access-key>"
-Environment="MINIO_ROOT_PASSWORD=<generated-secret>"
-Environment="MINIO_API_CORS_ALLOW_ORIGIN=https://your-domain.com"
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo useradd -r minio
-sudo mkdir -p /data && sudo chown minio:minio /data
-sudo systemctl enable --now minio
-```
-
-Create the bucket:
-
-```bash
-# Install mc client
-wget https://dl.min.io/client/mc/release/linux-arm64/mc
-chmod +x mc && sudo mv mc /usr/local/bin/
-mc alias set local http://127.0.0.1:9000 <generated-access-key> <generated-secret>
-mc mb local/whoobe-cms
-mc anonymous set public local/whoobe-cms
-```
-
-> **Alternative — OCI Object Storage:** If you prefer using OCI native S3-compatible object storage instead of MinIO, set `S3_ENDPOINT` to `https://<namespace>.compat.objectstorage.<region>.oraclecloud.com` and configure an OCI Customer Secret Key as `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`. CORS must be configured on the OCI bucket for your domain.
+1. Create a bucket `whoobe-cms` (private) in your compartment.
+2. Create an OCI Customer Secret Key and use it as `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`.
+3. Set `S3_ENDPOINT` to `https://<namespace>.compat.objectstorage.<region>.oraclecloud.com`, `S3_REGION` to your region and `S3_FORCE_PATH_STYLE=true`.
+4. Configure CORS on the bucket for your domain.
 
 ## 5. Clone & Build Whoobe CMS
 
@@ -176,7 +136,7 @@ DB_NAME=whoobe_db
 # core-api
 MIGRATION_SOURCE_ENCRYPTION_KEY=$(openssl rand -hex 32)
 
-# S3 / MinIO
+# S3 (OCI Object Storage endpoint, see section 4)
 S3_ENDPOINT=http://${S3_ENDPOINT_HOSTNAME}:9000
 S3_BUCKET=whoobe-cms
 S3_REGION=us-east-1
@@ -484,8 +444,8 @@ For encrypted backups (and disk/volume encryption, TLS to Postgres, keys) see [e
 # Database
 pg_dump -U whoobe whoobe_db | gzip > /backup/whoobe_db-$(date +%Y%m%d).sql.gz
 
-# MinIO data (if not using OCI Object Storage)
-mc mirror --watch local/whoobe-cms /backup/minio/
+# Object storage: OCI Object Storage / cloud S3 keeps its own durability; to copy the bucket elsewhere use
+# rclone sync <remote>:whoobe-cms /backup/objects/
 
 # Environment (keep a safe copy of .env)
 cp /opt/whoobe/cms/.env /backup/
@@ -508,5 +468,4 @@ Set a cron job for automated daily DB backups:
   maintenance_work_mem = 256MB
   effective_cache_size = 3GB    # 75% of available RAM
   ```
-- If using MinIO on the same VM, consider limiting its memory with `--address ":9000" --console-address ":9001"` flags (no extra config needed).
-- For high traffic, you can move Postgres or MinIO to separate free-tier VMs within the same VCN (private subnet).
+- For high traffic, you can move Postgres to a separate free-tier VMs within the same VCN (private subnet).
