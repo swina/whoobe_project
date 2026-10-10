@@ -73,15 +73,20 @@
             :stroke-dasharray="dashArrayFor(edge.lineStyle)"
             style="pointer-events: none;"
           />
-          <polygon
-            v-if="edgeArrow(edge)"
-            :points="edgeArrow(edge)"
-            :fill="edge.color || '#6366f1'"
-            fill-opacity="0.8"
-            style="pointer-events: none;"
-          />
         </g>
         <path v-if="pendingConnection" :d="pendingPath()" fill="none" stroke="#6366f1" stroke-width="2" stroke-opacity="0.4" stroke-dasharray="6 4" />
+      </svg>
+
+      <!-- Arrow heads: their own layer above the boxes and their ports, so the tip sits exactly on the box side (the
+           port circle is centred on that side and would otherwise cover it) -->
+      <svg class="absolute inset-0 w-full h-full overflow-visible" style="pointer-events: none; z-index: 35;">
+        <polygon
+          v-for="edge in edges.filter((e) => edgeArrow(e))"
+          :key="edge.id"
+          :points="edgeArrow(edge)"
+          :fill="edge.color || '#6366f1'"
+          fill-opacity="0.9"
+        />
       </svg>
 
       <!-- Connection style popover - opened by clicking a cable (above),

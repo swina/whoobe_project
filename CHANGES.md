@@ -3,6 +3,7 @@
 - New `apps/whoobe-one-spike/src/isometric-ports.ts`: port positions, cable path and arrow head, shared by `BlockIsometric.vue` (editor) and `preview/BlockIsometricPreview.vue` (preview and published pages), which used to carry their own copy of the bezier. Boxes now also track their measured height (ResizeObserver) for the bottom port.
 - Data: `IsometricEdge` gets optional `fromSide` / `toSide` (`ElementsClass.d.ts`). Connections saved before have neither and read as right -> left: their cable is byte-for-byte the old horizontal bezier (tested). Dragging between two ports of the same box is ignored, as before; the same pair of ports is not connected twice.
 - Visible change for existing pages: **every cable now ends with a small arrow head** pointing into the box it enters (colour and size follow the connection's colour/thickness), also in the preview and in published sites.
+- Fix after the owner's first look: the arrow tips floated ~8 px off the box side. The tip is now exactly on the side (the port position); in the editor the arrow heads are drawn in their own layer above the boxes and ports (the port circle is centred on that side and covered them), in the preview they are drawn with the cables.
 - Test: `unit/isometric-ports.test.ts` (7). `vue-tsc --noEmit` clean. Not looked at in a browser yet.
 
 ## [Editor: readable text in the expandable text fields (Slider tab button classes)] — 2026-10-09
