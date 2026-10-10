@@ -92,6 +92,17 @@
                 </label>
               </div>
 
+              <div class="flex flex-col gap-0.5 border rounded p-1.5">
+                <label class="flex items-center gap-1.5 text-xs text-gray-600">
+                  <input type="checkbox" :checked="formConfig.showResultMessage !== false" @change="formConfig.showResultMessage = ($event.target as HTMLInputElement).checked" />
+                  Show the message popup
+                </label>
+                <p class="text-[10px] text-gray-400">
+                  Turn it off when the page reacts to the result itself: the form sends a <code>whoobe-form-result</code> event
+                  (<code>$event.detail.ok</code>, <code>$event.detail.outcome</code>) that an element's AlpineJS directives can listen for.
+                </p>
+              </div>
+
               <div v-if="formConfig.notify" class="flex flex-col gap-1 border rounded p-1.5">
                 <label class="flex items-center gap-1.5 text-xs text-gray-600">
                   <input type="checkbox" v-model="formConfig.notify.enabled" />

@@ -41,6 +41,20 @@ describe('ApiClient', () => {
     expect(body.attributes).toEqual({ name: 'A' })
   })
 
+  it('a Gateway form returns only the outcome key of the service reply', async () => {
+    const { fn, client } = mockFetch(() => ({ ok: true, json: () => ({ success: true, outcome: 'qualified', response: { contact: { score: 91, email: 'x@y.z' } } }) }))
+    const out = await client.submitForm('', { email: 'x@y.z' }, { gatewayBindingId: 'b1' })
+    expect(out).toEqual({ success: true, outcome: 'qualified' }) // the rest of the reply is not passed on
+    expect(fn.mock.calls[0][0]).toBe('http://localhost:3001/api/v1/gateway/submit')
+  })
+
+  it('a Gateway form drops an outcome that is not a plain key', async () => {
+    for (const bad of ['<img src=x onerror=alert(1)>', 'a b', '', 'x'.repeat(33), 42, null, { a: 1 }]) {
+      const { client } = mockFetch(() => ({ ok: true, json: () => ({ success: true, outcome: bad }) }))
+      expect(await client.submitForm('', {}, { gatewayBindingId: 'b1' }), JSON.stringify(bad)).toEqual({ success: true })
+    }
+  })
+
   it('surfaces API errors', async () => {
     const { client } = mockFetch(() => ({ ok: false, status: 400, json: () => ({ error: 'bad request' }) }))
     await expect(client.getObject('x')).rejects.toThrow('bad request')

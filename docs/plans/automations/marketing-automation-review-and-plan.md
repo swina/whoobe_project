@@ -167,6 +167,8 @@ public route) a row in the route contract and an authorisation test.
 
 ### Phase 1: form outcomes (M)
 
+> *Prototype (2026-10-10):* the outcome key and the `whoobe-form-result` event are implemented, with the page reacting through AlpineJS; see [form-result-event.md](form-result-event.md). The response mapping, the outcome map in the form settings and dropping the service's raw reply below are still to do.
+
 *Goal: after a form submit, the page reacts to what the vendor said, without leaking the vendor's reply.*
 
 - Gateway: a per-route **response mapping** (extend `preset-types.ts` and the route model): `outcomes: [{ when: <structured predicate on the vendor body>, outcome: 'qualified' | ... , message?: string }]`. The submit reply becomes
