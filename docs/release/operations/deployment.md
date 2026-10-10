@@ -4,7 +4,7 @@
 > services installed on the VM, run by PM2). The path that is tested and used for releases is the **container
 > workspace** in [`creating-workspaces.md`](creating-workspaces.md) (Docker Compose, Node 22 images, Garage, hardened
 > defaults, generated secrets, encrypted backups). This page has **not been re-verified for 0.1.0**: in particular it
-> installs Node 20 (the images use Node 22 and Garage; MinIO was removed from the project, F-050), does not set the new
+> installs Node 20 (the images use Node 22), does not set the new
 > secrets (`MAIL_SETTINGS_ENCRYPTION_KEY`, `TOTP_ENCRYPTION_KEY`, `UPLOAD_TOKEN_SECRET`; see the
 > [configuration reference](configuration-reference.md)) and starts services outside Compose, where a missing `DB_PASSWORD` now stops the service at start (F-057). Use it only if Docker is not an option, and set every
 > variable of the configuration reference explicitly.
@@ -17,7 +17,7 @@ Deploy Whoobe CMS on an **Oracle Cloud Infrastructure (OCI) Always Free Tier** V
 |---|---|
 | **Ampere A1 ARM** | Up to 4 OCPUs / 24 GB memory (across up to 4 instances) |
 | **Block volume** | 200 GB total (boot + attached) |
-| **Object storage** | 10 GB (use it instead of self-hosting MinIO) |
+| **Object storage** | 10 GB (Garage on the VM or OCI Object Storage) |
 | **Bandwidth** | 10 TB/month outbound |
 | **Load balancer** | 1 instance (10 Mbps) |
 
@@ -90,16 +90,87 @@ sudo systemctl restart postgresql
 sudo systemctl enable postgresql
 ```
 
-## 4. Object storage (OCI Object Storage)
+## 4. Object storage (Garage on the VM, or OCI Object Storage)
 
-Use **OCI Object Storage** (S3-compatible, free tier included) or another cloud S3; self-hosting the store on the VM is not part of this guide
-(MinIO was removed from the project, F-048/F-050; the Docker-based stack uses Garage for local/LAN and takes any S3 endpoint
-by configuration only: [storage-backends.md](storage-backends.md)).
+Two supported choices (MinIO was removed from the project, F-048/F-050). Both end in the same five variables in `.env`
+(`S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, plus `S3_FORCE_PATH_STYLE=true`);
+see also [storage-backends.md](storage-backends.md).
+
+### Option A: Garage as a native service (single node)
+
+Garage is one static binary. Same version and layout as the Docker stack (`docker/garage`), bound to loopback only.
+
+```bash
+# binary (arm64 build for the Ampere VM; use x86_64-unknown-linux-musl on x86). Compare the checksum with the one
+# you trust: sha256 seen on 2026-10-10 for v2.4.1 arm64 = 004b6081c6e3cccbb80317c69e3c5749fbb3fc889e217cc9b89c215bf0dd7ded
+wget https://garagehq.deuxfleurs.fr/_releases/v2.4.1/aarch64-unknown-linux-musl/garage
+sha256sum garage && chmod +x garage && sudo mv garage /usr/local/bin/
+sudo useradd -r -s /usr/sbin/nologin garage
+sudo mkdir -p /var/lib/garage/meta /var/lib/garage/data && sudo chown -R garage:garage /var/lib/garage
+```
+
+`/etc/garage.toml` (readable by the `garage` user only, it contains the RPC secret: `openssl rand -hex 32`):
+
+```toml
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "lmdb"
+replication_factor = 1
+rpc_bind_addr = "127.0.0.1:3901"
+rpc_public_addr = "127.0.0.1:3901"
+rpc_secret = "<64 hex characters>"
+
+[s3_api]
+s3_region = "us-east-1"
+api_bind_addr = "127.0.0.1:3900"
+```
+
+```bash
+sudo chown garage:garage /etc/garage.toml && sudo chmod 600 /etc/garage.toml
+sudo tee /etc/systemd/system/garage.service >/dev/null <<'UNIT'
+[Unit]
+Description=Garage S3
+After=network.target
+
+[Service]
+User=garage
+Group=garage
+ExecStart=/usr/local/bin/garage -c /etc/garage.toml server
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/garage
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+sudo systemctl daemon-reload && sudo systemctl enable --now garage
+```
+
+First-time setup (the Docker image does the same on every start): layout, access key, bucket. Garage's key format is `GK` + 24 hex for the id and 64 hex for the secret.
+
+```bash
+G="sudo -u garage garage -c /etc/garage.toml"
+$G layout assign -z dc1 -c 100G "$($G node id -q | cut -d@ -f1)" && $G layout apply --version 1
+AK="GK$(openssl rand -hex 12)"; SK="$(openssl rand -hex 32)"
+$G key import --yes -n whoobe "$AK" "$SK"
+$G bucket create whoobe-cms
+$G bucket allow --read --write --owner whoobe-cms --key "$AK"
+echo "S3_ACCESS_KEY_ID=$AK"; echo "S3_SECRET_ACCESS_KEY=$SK"     # put them in .env, then clear the shell history/scrollback
+```
+
+In `.env`: `S3_ENDPOINT=http://127.0.0.1:3900`, `S3_REGION=us-east-1` (the `s3_region` above), `S3_BUCKET=whoobe-cms`,
+`S3_FORCE_PATH_STYLE=true`. The S3 port stays on loopback: browsers get assets through the asset-processor
+(`/dam-asset/...`), so no CORS rule and no public bucket are needed. Garage does not support bucket policies; Whoobe skips them.
+Back up `/var/lib/garage` (stop the service or use `garage meta snapshot`) together with the database dump.
+
+### Option B: OCI Object Storage (or another cloud S3)
+
+Nothing to run on the VM; durability and backups are the provider's.
 
 1. Create a bucket `whoobe-cms` (private) in your compartment.
 2. Create an OCI Customer Secret Key and use it as `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`.
 3. Set `S3_ENDPOINT` to `https://<namespace>.compat.objectstorage.<region>.oraclecloud.com`, `S3_REGION` to your region and `S3_FORCE_PATH_STYLE=true`.
-4. Configure CORS on the bucket for your domain.
 
 ## 5. Clone & Build Whoobe CMS
 
@@ -136,7 +207,7 @@ DB_NAME=whoobe_db
 # core-api
 MIGRATION_SOURCE_ENCRYPTION_KEY=$(openssl rand -hex 32)
 
-# S3 (OCI Object Storage endpoint, see section 4)
+# S3 (Garage http://127.0.0.1:3900 or the OCI endpoint, see section 4)
 S3_ENDPOINT=http://${S3_ENDPOINT_HOSTNAME}:9000
 S3_BUCKET=whoobe-cms
 S3_REGION=us-east-1
@@ -444,8 +515,8 @@ For encrypted backups (and disk/volume encryption, TLS to Postgres, keys) see [e
 # Database
 pg_dump -U whoobe whoobe_db | gzip > /backup/whoobe_db-$(date +%Y%m%d).sql.gz
 
-# Object storage: OCI Object Storage / cloud S3 keeps its own durability; to copy the bucket elsewhere use
-# rclone sync <remote>:whoobe-cms /backup/objects/
+# Object storage: Garage on the VM -> copy the bucket (rclone sync garage:whoobe-cms /backup/objects/) or snapshot /var/lib/garage;
+# OCI / cloud S3 keeps its own durability
 
 # Environment (keep a safe copy of .env)
 cp /opt/whoobe/cms/.env /backup/
