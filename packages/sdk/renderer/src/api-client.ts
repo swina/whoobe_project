@@ -3,6 +3,7 @@
 // and RSC/server components. No window/document at module scope - fully SSR-safe.
 
 import { FormUploadError } from './form-values.js'
+import { sanitizeOutcome } from './form-result.js'
 import type { DataBindingFilter, DataBindingOrderBy } from '@whoobe-cms/schema'
 import type { PublicLayout } from './compose-layout.js'
 
@@ -181,7 +182,7 @@ export class ApiClient implements RenderApi {
     classId: string,
     attributes: Record<string, unknown>,
     formConfig?: { gatewayBindingId?: string } & Record<string, unknown>,
-  ): Promise<{ success: boolean }> {
+  ): Promise<{ success: boolean; outcome?: string }> {
     if (formConfig?.gatewayBindingId) {
       const bindingId = formConfig.gatewayBindingId
       const useProxy = !!this.gatewaySubmitProxyPath
@@ -208,10 +209,13 @@ export class ApiClient implements RenderApi {
         }
         throw new Error(message)
       }
-      return res.json() as Promise<{ success: boolean }>
+      // Only the outcome key of the service's reply is kept (see form-result.ts); the rest of the body is not passed on.
+      const reply = (await res.json()) as { success: boolean; outcome?: unknown }
+      const outcome = sanitizeOutcome(reply?.outcome)
+      return outcome ? { success: reply.success, outcome } : { success: reply.success }
     }
 
-    return this.request<{ success: boolean }>(`/public/forms/${encodeURIComponent(classId)}/submit`, {
+    return this.request<{ success: boolean; outcome?: string }>(`/public/forms/${encodeURIComponent(classId)}/submit`, {
       method: 'POST',
       body: JSON.stringify({ attributes, formConfig }),
     })

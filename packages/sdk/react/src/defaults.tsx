@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef, useCallback, createElement, type FormEvent, type ReactNode } from 'react'
 import { sanitizeRichText } from '@whoobe-cms/schema'
 import * as LucideIcons from 'lucide-react'
-import { collectFormValues, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
+import { collectFormValues, dispatchFormResult, sanitizeOutcome, showsResultMessage, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
 import { useWhoobe } from './context.js'
 import type { NodeComponent } from './types.js'
 
@@ -273,14 +273,16 @@ export const DefaultForm: NodeComponent = ({ descriptor, children }) => {
     const formEl = e.currentTarget
     try {
       const attributes = await collectFormValues(formEl, ctx.api.uploadFile?.bind(ctx.api))
-      await ctx.api.submitForm(fc.targetClassId, attributes, {
+      const reply = await ctx.api.submitForm(fc.targetClassId, attributes, {
         notify: fc.notify,
         gatewayBindingId: fc.gatewayBindingId,
       })
       formEl.reset()
-      setResult({ ok: true, message: fc.successMessage || 'Submitted.' })
+      setResult(showsResultMessage(fc) ? { ok: true, message: fc.successMessage || 'Submitted.' } : null)
+      dispatchFormResult(formEl, { ok: true, outcome: sanitizeOutcome(reply?.outcome) })
     } catch (err) {
-      setResult({ ok: false, message: submitErrorMessage(err, fc.errorMessage) })
+      setResult(showsResultMessage(fc) ? { ok: false, message: submitErrorMessage(err, fc.errorMessage) } : null)
+      dispatchFormResult(formEl, { ok: false, outcome: null })
     }
   }
 

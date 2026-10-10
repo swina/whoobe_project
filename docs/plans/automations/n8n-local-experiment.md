@@ -115,12 +115,17 @@ really has are forwarded).
 - Do not run n8n with the owner account's password in a shared place; its credentials store holds the keys of every service it calls.
 - Pin the n8n image tag and back up the `whoobe-n8n-test` volume (workflows and credentials live there).
 
-## 7. What this experiment did not cover
+## 7. Reacting to n8n's answer
+
+A workflow can answer `{ "outcome": "qualified" }` and the page can show different blocks for different outcomes, using the
+form's `whoobe-form-result` event and AlpineJS directives. See [form-result-event.md](form-result-event.md) (prototype).
+
+## 8. What this experiment did not cover
 
 Verified e-mail before unlocking content, personalised content, retries and a run log (n8n has its own executions list), and the
-visual editor inside Whoobe. These are the parts of the plan that n8n does not give you.
+visual editor inside Whoobe. (The form does not use n8n's answer in this first setup; section 7 is the prototype that does.) These are the parts of the plan that n8n does not give you.
 
-## 8. Clean up
+## 9. Clean up
 
 ```bash
 docker rm -f whoobe-n8n-test && docker volume rm whoobe-n8n-test

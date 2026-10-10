@@ -84,6 +84,8 @@ export interface ElementFormConfig {
   errorMessage: string
   successRedirectUrl: string
   errorRedirectUrl: string
+  /** Show the success / error message popup. Absent = true; off when the page reacts to the `whoobe-form-result` event. */
+  showResultMessage?: boolean
   notify: ElementFormNotifyConfig
 }
 
