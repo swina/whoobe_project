@@ -1,3 +1,10 @@
+## [Editor, Isometric: connection ports on all four sides] — 2026-10-10
+- Branch: `feat/isometric-ports-all-sides` (from `master`). Every box of an Isometric canvas now has a port on the top and bottom sides as well as left and right, and any port can start or receive a cable (before: one IN on the left, one OUT on the right).
+- New `apps/whoobe-one-spike/src/isometric-ports.ts`: port positions, cable path and arrow head, shared by `BlockIsometric.vue` (editor) and `preview/BlockIsometricPreview.vue` (preview and published pages), which used to carry their own copy of the bezier. Boxes now also track their measured height (ResizeObserver) for the bottom port.
+- Data: `IsometricEdge` gets optional `fromSide` / `toSide` (`ElementsClass.d.ts`). Connections saved before have neither and read as right -> left: their cable is byte-for-byte the old horizontal bezier (tested). Dragging between two ports of the same box is ignored, as before; the same pair of ports is not connected twice.
+- Visible change for existing pages: **every cable now ends with a small arrow head** pointing into the box it enters (colour and size follow the connection's colour/thickness), also in the preview and in published sites.
+- Test: `unit/isometric-ports.test.ts` (7). `vue-tsc --noEmit` clean. Not looked at in a browser yet.
+
 ## [Editor: readable text in the expandable text fields (Slider tab button classes)] — 2026-10-09
 - Branch: `fix/slider-class-textarea-contrast`. Report: in the Slider settings, the textarea of the *Tab button classes* window showed light grey text on white.
 - `ExpandableTextInput.vue`: the inline input and the popup's textarea set `bg-white text-gray-900` (and a grey placeholder), and the popup panel sets `text-gray-900`: the popup is teleported to `<body>` and used to inherit the page's light text colour. The same component is used by the other Slider class fields and by `BlockTable.vue`, which get the fix too. `FloatingToolbar.vue`: the label of *Tab button classes* had a typo (`text-gray-00`, not a class), now `text-gray-900` like its neighbours.

@@ -2,16 +2,17 @@
   <component :is="semantic" :id="doc.id" :class="classe" :style="stile" v-bind="extraAttrs">
     <div class="relative" :style="{ height: canvasHeight + 'px' }">
       <svg class="absolute inset-0 w-full h-full overflow-visible" style="pointer-events: none;">
-        <path
-          v-for="edge in edges"
-          :key="edge.id"
-          :d="edgePath(edge)"
-          fill="none"
-          :stroke="edge.color || '#6366f1'"
-          :stroke-width="edge.width || 2"
-          stroke-opacity="0.8"
-          :stroke-dasharray="dashArrayFor(edge.lineStyle)"
-        />
+        <g v-for="edge in edges" :key="edge.id">
+          <path
+            :d="edgePath(edge)"
+            fill="none"
+            :stroke="edge.color || '#6366f1'"
+            :stroke-width="edge.width || 2"
+            stroke-opacity="0.8"
+            :stroke-dasharray="dashArrayFor(edge.lineStyle)"
+          />
+          <polygon v-if="edgeArrow(edge)" :points="edgeArrow(edge)" :fill="edge.color || '#6366f1'" fill-opacity="0.8" />
+        </g>
       </svg>
       <div
         v-for="box in doc.blocks"
@@ -38,6 +39,8 @@ import { computed, onMounted, onUnmounted, reactive } from 'vue'
 import type { Component } from 'vue'
 import type Element from '../../scripts/ElementsClass.js'
 import type { IsometricEdge } from '../../scripts/ElementsClass.js'
+import { BOX_W, arrowPoints, cablePath, edgeFromSide, edgeToSide, portPos } from '../../isometric-ports'
+import type { PortSide } from '../../isometric-ports'
 import { resolveDisplayUrl } from '../../resolve-display-url'
 import { customAttrs, safeAlpineValue } from '../../helpers'
 import BlockElementPreview from './BlockElementPreview.vue'
@@ -56,12 +59,10 @@ const props = defineProps<{
   doc: WhoobeElement
 }>()
 
-// Fallback only, used before a box's real width has been measured - see
-// ../BlockIsometric.vue's boxWidth()/setBoxEl() for the full reasoning
-// (same fix, mirrored here since this preview also renders real DOM boxes
-// whose width comes from their own css.css, not a fixed constant).
-const BOX_W = 240
-const PORT_Y = 18
+// BOX_W (../../isometric-ports.ts) is a fallback only, used before a box's real size has been measured - see
+// ../BlockIsometric.vue's boxWidth()/setBoxEl() for the full reasoning (same fix, mirrored here since this preview
+// also renders real DOM boxes whose size comes from their own css.css, not a fixed constant).
+const BOX_H = 120
 
 const edges = computed<IsometricEdge[]>(() => (props.doc as any).isometricEdges ?? [])
 
@@ -71,10 +72,14 @@ function boxById(id: string): WhoobeElement | undefined {
 
 const boxEls = new Map<string, HTMLElement>()
 const boxWidths = reactive<Record<string, number>>({})
+const boxHeights = reactive<Record<string, number>>({})
 let resizeObserver: ResizeObserver | null = null
 
 function boxWidth(id: string): number {
   return boxWidths[id] ?? BOX_W
+}
+function boxHeight(id: string): number {
+  return boxHeights[id] ?? BOX_H
 }
 
 function setBoxEl(id: string, el: unknown) {
@@ -85,10 +90,12 @@ function setBoxEl(id: string, el: unknown) {
   if (node) {
     boxEls.set(id, node)
     boxWidths[id] = node.offsetWidth || BOX_W
+    boxHeights[id] = node.offsetHeight || BOX_H
     resizeObserver?.observe(node)
   } else {
     boxEls.delete(id)
     delete boxWidths[id]
+    delete boxHeights[id]
   }
 }
 
@@ -98,6 +105,7 @@ onMounted(() => {
       for (const [id, node] of boxEls) {
         if (node !== entry.target) continue
         boxWidths[id] = entry.borderBoxSize?.[0]?.inlineSize ?? entry.contentRect.width
+        boxHeights[id] = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
         break
       }
     }
@@ -115,18 +123,24 @@ function dashArrayFor(lineStyle: IsometricEdge['lineStyle']): string | undefined
   return undefined
 }
 
-function bezier(x1: number, y1: number, x2: number, y2: number): string {
-  const cx = (x1 + x2) / 2
-  return `M ${x1} ${y1} C ${cx} ${y1} ${cx} ${y2} ${x2} ${y2}`
+function boxPortPos(box: WhoobeElement, side: PortSide) {
+  return portPos((box as any).position ?? { x: 0, y: 0 }, boxWidth(box.id), boxHeight(box.id), side)
 }
 
 function edgePath(edge: IsometricEdge): string {
   const from = boxById(edge.fromId)
   const to = boxById(edge.toId)
   if (!from || !to) return ''
-  const fp = (from as any).position ?? { x: 0, y: 0 }
-  const tp = (to as any).position ?? { x: 0, y: 0 }
-  return bezier(fp.x + boxWidth(from.id), fp.y + PORT_Y, tp.x, tp.y + PORT_Y)
+  const s1 = edgeFromSide(edge)
+  const s2 = edgeToSide(edge)
+  return cablePath(boxPortPos(from, s1), s1, boxPortPos(to, s2), s2)
+}
+
+function edgeArrow(edge: IsometricEdge): string {
+  const to = boxById(edge.toId)
+  if (!to || !boxById(edge.fromId)) return ''
+  const s2 = edgeToSide(edge)
+  return arrowPoints(boxPortPos(to, s2), s2, edge.width || 2)
 }
 
 const canvasHeight = computed(() => {

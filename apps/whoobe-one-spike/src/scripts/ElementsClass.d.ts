@@ -287,6 +287,10 @@ export interface IsometricEdge {
   id: string
   fromId: string
   toId: string
+  // Port sides of the connection (every box has one on each side). Absent on connections saved before the top/bottom
+  // ports existed: those read as right -> left. See isometric-ports.ts.
+  fromSide?: 'top' | 'right' | 'bottom' | 'left'
+  toSide?: 'top' | 'right' | 'bottom' | 'left'
   color?: string
   width?: number
   lineStyle?: 'solid' | 'dashed' | 'dotted'
