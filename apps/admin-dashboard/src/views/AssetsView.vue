@@ -10,7 +10,7 @@
             DAM Storage
           </span>
         </h2>
-        <p class="text-[10px] text-slate-400 light:text-slate-600">Manage S3/MinIO media assets, virtual folders, visibility strategies, versioning, and ZIP archives.</p>
+        <p class="text-[10px] text-slate-400 light:text-slate-600">Manage S3 media assets, virtual folders, visibility strategies, versioning, and ZIP archives.</p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">

@@ -29,7 +29,7 @@
 # Object storage: Garage (S3-compatible, docker/garage) runs here by default (profile `local-s3`, enabled through
 # COMPOSE_PROFILES=local-s3 in the env file); it creates its own bucket and key on first start. To use AWS S3, another
 # cloud or an existing enterprise store instead: drop `local-s3` from COMPOSE_PROFILES and set S3_CONTAINER_ENDPOINT
-# (+ S3_REGION/S3_BUCKET/credentials, S3_FORCE_PATH_STYLE). MinIO: docker-compose.minio.yml overlay. See
+# (+ S3_REGION/S3_BUCKET/credentials, S3_FORCE_PATH_STYLE). See
 # docs/release/operations/storage-backends.md.
 
 services:

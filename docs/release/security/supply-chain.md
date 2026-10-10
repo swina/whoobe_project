@@ -33,8 +33,7 @@ below are summarised; the exact commands and pass criteria of each tool are in [
 Heavy suites are limited to master pushes, nightly and manual runs to save CI minutes; the release procedure
 requires a green run **on the release commit**, including DAST (`scripts/release.sh check`).
 
-Known residual advisories: MinIO's own dependencies and PostgreSQL's `gosu` in upstream images (F-050; MinIO is opt-in,
-keep it off public networks), the two accepted npm advisories above, and the base-image lag handled by explicit
+Known residual advisories: PostgreSQL's `gosu` in the upstream image (F-050; MinIO was removed from the stack), the two accepted npm advisories above, and the base-image lag handled by explicit
 `apt-get --only-upgrade` / `apk upgrade` lines in the `Dockerfile` that are removed when the pinned digest catches up.
 
 ## 3. Software bill of materials

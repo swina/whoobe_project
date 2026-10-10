@@ -48,7 +48,7 @@ when a variable read by the services or listed in `.env.example` is missing from
 | `S3_KEY_PREFIX` | asset-processor | empty | | prefix inside the bucket |
 | `S3_PUBLIC_BASE_URL` | asset-processor | `http://$WHOOBE_HOSTNAME:3002/dam-asset` | | base of the public asset URLs the API returns |
 | `WS_S3_API_PORT` | Compose | 9000 | | host side of the S3 port |
-| `MINIO_ENDPOINT`, `MINIO_BUCKET`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `WS_MINIO_CONSOLE_PORT` | `docker-compose.minio.yml` overlay, legacy names | | root user and password are **secret** | only when MinIO is chosen; discouraged ([storage backends](storage-backends.md)) |
+| `MINIO_ENDPOINT`, `MINIO_BUCKET`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | legacy aliases of `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` still read by core-api and asset-processor | | user and password are **secret** | use the `S3_*` names; MinIO itself is no longer part of the stack ([storage backends](storage-backends.md)) |
 | `ASSET_PROCESSOR_URL` | core-api, logger | `http://$WHOOBE_HOSTNAME:3002` | | where core-api reaches asset-processor (inside Compose: the service name) |
 | `DAM_SERVICE_TOKEN` | core-api, asset-processor, logger | none | **yes** | the service-to-service bearer ([auth](../architecture/authentication-and-authorization.md)) |
 | `DAM_ENFORCE_ASSET_VISIBILITY` | asset-processor | `true` | | `false`: anyone with a URL can read any asset |

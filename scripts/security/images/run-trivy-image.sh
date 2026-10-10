@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Scan the built stack images with `trivy image` (OS packages + app dependencies), HIGH/CRITICAL, fixed-only.
-# Usage: run-trivy-image.sh [image ...]   (default: the throwaway-stack images, MinIO and postgres)
+# Usage: run-trivy-image.sh [image ...]   (default: the throwaway-stack images, Garage and postgres)
 set -u
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 REPORTS="${SECURITY_REPORTS:-$ROOT/scripts/security/reports/$(date +%F)}"
@@ -11,10 +11,9 @@ if [ ${#IMAGES[@]} -eq 0 ]; then
           whoobe-sectest-admin-dashboard:latest whoobe-sectest-whoobe-one-spike:latest
           whoobe-garage:v2.4.1 postgres:16-alpine)
 fi
-# Third-party images whose findings sit in the vendor's own pinned dependencies (postgres' gosu, MinIO's go.mod; MinIO is
-# only built with the docker-compose.minio.yml overlay):
-# reported, not gating. We cannot patch them without forking; F-050 tracks the decision (replace MinIO / wait for tags).
-ADVISORY='^(whoobe-minio:|postgres:)'
+# Third-party images whose findings sit in the vendor's own pinned dependencies (postgres' gosu):
+# reported, not gating. We cannot patch them without forking (F-050).
+ADVISORY='^(postgres:)'
 rc=0
 for img in "${IMAGES[@]}"; do
   out="$REPORTS/trivy-image-$(echo "$img" | tr '/:' '__').json"

@@ -56,7 +56,7 @@ Do it where the data lives, not in Whoobe:
   dedicated one mounted there. The key is released at boot (passphrase, TPM or a network key server such as Tang/Clevis).
 - **Managed PostgreSQL** (RDS, Cloud SQL, Azure, Aiven ...): "encryption at rest" is a switch at creation time; it cannot be
   turned on later for an existing instance on some providers, so decide early. Point Whoobe at it with `DB_HOST` and `DB_SSL`.
-- **Object storage**: with a cloud S3, enable default bucket encryption (SSE-S3 or SSE-KMS). With Garage or MinIO the
+- **Object storage**: with a cloud S3, enable default bucket encryption (SSE-S3 or SSE-KMS). With Garage the
   data directory is on the encrypted volume (do not rely on server-side encryption features of these two without checking the version you run).
 
 How to verify, for an audit: `lsblk -f` showing `crypto_LUKS` under the data path, or the provider's console/CLI showing the
@@ -122,7 +122,7 @@ Copy the files off the host (object storage with versioning/object lock, another
 because they are encrypted. Retention and offsite copy are yours to set.
 
 Assets in object storage are not in these files: back them up with the provider's tools (versioning/replication for a
-cloud S3; `rclone`/`mc` for Garage/MinIO into an encrypted location). See [creating workspaces](creating-workspaces.md#backups).
+cloud S3; `rclone` for Garage into an encrypted location). See [creating workspaces](creating-workspaces.md#backups).
 
 ## Keys
 

@@ -5118,7 +5118,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/info:
     get:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Non-secret storage config (bucket, endpoint, public base URL) for the admin UI."
       responses:
         "200":
@@ -5131,8 +5131,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/upload:
     post:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
-      summary: "Upload a file to S3/MinIO and record it (path, visibility, metadata)."
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
+      summary: "Upload a file to S3 and record it (path, visibility, metadata)."
       requestBody:
         required: false
         content:
@@ -5151,7 +5151,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/transform:
     post:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Re-process an already-uploaded image (resize/format/watermark/etc.) and save it as a new version or _edited copy."
       requestBody:
         required: false
@@ -5171,7 +5171,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/asset:
     delete:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Delete an asset (and its thumbnails) from storage and the DB."
       responses:
         "200":
@@ -5184,7 +5184,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/assets/move:
     post:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Move/rename an asset to a new folder path."
       requestBody:
         required: false
@@ -5204,7 +5204,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/folders:
     get:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "List DAM folders."
       responses:
         "200":
@@ -5216,7 +5216,7 @@ paths:
         "401":
           $ref: '#/components/responses/Unauthorized'
     post:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Create a folder."
       requestBody:
         required: false
@@ -5235,7 +5235,7 @@ paths:
         "401":
           $ref: '#/components/responses/Unauthorized'
     delete:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Delete a folder and everything under it (descendant folders, asset records, and S3 objects)."
       responses:
         "200":
@@ -5248,7 +5248,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/assets:
     get:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "List assets in a folder, with resolved URLs + thumbnails."
       responses:
         "200":
@@ -5260,7 +5260,7 @@ paths:
         "401":
           $ref: '#/components/responses/Unauthorized'
     post:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "List assets in a folder (POST variant, avoids URL-length limits for large folder-rule payloads)."
       requestBody:
         required: false
@@ -5280,7 +5280,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/assets/{id}:
     get:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Get a single asset by record id, with resolved URLs."
       parameters:
         - name: id
@@ -5299,7 +5299,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/assets/metadata:
     patch:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Update an asset's stored metadata."
       requestBody:
         required: false
@@ -5319,7 +5319,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/assets/{id}/mirror-cdn:
     post:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Push a copy of this asset to the configured CDN mirror target."
       parameters:
         - name: id
@@ -5345,7 +5345,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/asset-urls:
     get:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Resolve an asset's (public or freshly presigned) URL + thumbnail URLs by path."
       responses:
         "200":
@@ -5357,7 +5357,7 @@ paths:
         "401":
           $ref: '#/components/responses/Unauthorized'
     post:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Resolve URLs for a batch of asset paths in one call."
       requestBody:
         required: false
@@ -5377,7 +5377,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/exists:
     get:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Check whether an asset exists at a given path."
       responses:
         "200":
@@ -5389,7 +5389,7 @@ paths:
         "401":
           $ref: '#/components/responses/Unauthorized'
     post:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Check existence for a batch of paths in one call."
       requestBody:
         required: false
@@ -5409,7 +5409,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/regenerate-thumbnails:
     post:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Regenerate thumbnail variants for one or more assets."
       requestBody:
         required: false
@@ -5429,7 +5429,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/dam/ensure-bucket:
     post:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
       summary: "Ensure the target bucket exists with the correct public-read policy for current folder rules."
       requestBody:
         required: false
@@ -5449,8 +5449,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /dam-asset/{splat}:
     get:
-      tags: ["asset-processor: DAM assets (S3/MinIO-backed, Postgres-tracked)"]
-      summary: "Streams a stored object through this server (signed S3 GetObject), so the browser never talks to S3/MinIO directly."
+      tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
+      summary: "Streams a stored object through this server (signed S3 GetObject), so the browser never talks to S3 directly."
       parameters:
         - name: splat
           in: path

@@ -57,7 +57,7 @@ OWASP ZAP and image/TLS scans run in CI on every release commit.
 | Change | What you see | What to do |
 |---|---|---|
 | **Compose refuses to start without credentials**; Postgres and the S3 store listen on `127.0.0.1` only | `docker compose` names the missing variable; a database client on another machine cannot connect | set `POSTGRES_PASSWORD`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`; `WS_DATA_BIND_ADDRESS=0.0.0.0` to open the ports |
-| **Garage replaces MinIO as the default store** | a fresh stack has no MinIO | copy existing data to the new store (see `operations/storage-backends.md`) or use `docker-compose.minio.yml` |
+| **Garage replaces MinIO as the default store** | a fresh stack has no MinIO; the MinIO overlay (`docker-compose.minio.yml`, `docker/minio`) is removed | copy existing data to the new store (see `operations/storage-backends.md`); an existing MinIO can stay as an external S3 endpoint |
 | **Asset visibility is enforced** (`DAM_ENFORCE_ASSET_VISIBILITY`, on by default); `/public/**` is public | assets recorded as private answer 404 without a session | move what public pages use under `/public`, or set the flag to `false` |
 | **Credentialed CORS only for an allowlist** | "Failed to fetch" from an origin that is not `WHOOBE_HOSTNAME` | `CORS_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS` |
 | **Publishing needs `objects:publish`** (pages, data objects, and now website import) | 403 when an editor changes `published`; an imported site arrives as drafts | grant the permission; `ENFORCE_PUBLISH_PERMISSION=false` restores the old behaviour |
@@ -99,8 +99,7 @@ New or changed variables are documented in `.env.example`; the full list of what
 - Images are built and published by hand (`ghcr.io`); the automation of the release workflow is not done yet.
 - No full Content-Security-Policy on the admin and editor SPAs (baseline headers and clickjacking protection are in);
   postponed on purpose (Whoobe is deployed one organisation per instance; see `architecture/architecture-overview.md` section 7).
-- MinIO (opt-in) and the Postgres image carry upstream advisories that cannot be patched here: keep MinIO off public
-  networks. `xlsx` has two accepted advisories (write-only use), reviewed until 2027-01-31.
+- The Postgres image carries upstream advisories that cannot be patched here. `xlsx` has two accepted advisories (write-only use), reviewed until 2027-01-31.
 - A website import does not copy users and roles, gateway endpoints and keys, mail and AI settings, domains or the
   version history of pages.
 - The test instance on Oracle must be rebuilt with newly generated secrets (findings F-001 and F-009) before it is used

@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  // S3/MinIO bucket, endpoint, and credentials are intentionally NOT
+  // S3 bucket, endpoint, and credentials are intentionally NOT
   // exposed here: they are owned exclusively by the asset-processor
   // backend's own environment variables and must never be bundled into
   // the browser-shipped SPA. See apps/asset-processor/src/server.ts.

@@ -1,5 +1,5 @@
 # Whoobe CMS - application services only.
-# Postgres and MinIO/S3 are EXCLUDED by design: they run as external
+# Postgres and S3 are EXCLUDED by design: they run as external
 # infrastructure and are reached through the root .env (DB_HOST, S3_ENDPOINT).
 #
 # Build:

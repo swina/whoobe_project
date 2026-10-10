@@ -494,7 +494,7 @@ async function migrateObjects(flags: CliFlags): Promise<void> {
  * nested inside every areablock brick - the bricks' own mapped/unmapped
  * converters consume the same normalized editables), then for each referenced
  * path: read the real bytes from the source install's filesystem
- * (readAssetFile), upload to MinIO via the DAM's own S3 provider, and
+ * (readAssetFile), upload to S3 via the DAM's own S3 provider, and
  * insert/upsert the `assets` row path-keyed exactly like a normal DAM upload
  * (upsertAssetRecord) - reusing the DAM's conventions, not inventing a second
  * asset store.
@@ -866,7 +866,7 @@ export function runMigrationCli(args: string[] = process.argv.slice(2)): void {
       console.log('                       Flags: --dry-run, --source=<mysql|fixture> (default: mysql),');
       console.log('                              --limit=<N>, --class=<Name> (required)');
       console.log('  migrate-assets     - Upload Pimcore assets referenced by migrated documents into');
-  console.log('                       this system\'s own S3/MinIO bucket + assets table, so migrated');
+  console.log('                       this system\'s own S3 bucket + assets table, so migrated');
   console.log('                       pages\' images/videos actually load (documents-migration plan');
   console.log('                       Phase 1 - the site\'s biggest correctness blocker). Walks the same');
   console.log('                       documents migrate-documents walks, uploads only what they');

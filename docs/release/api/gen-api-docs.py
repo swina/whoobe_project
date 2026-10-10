@@ -274,9 +274,9 @@ ASSET_PROCESSOR_SECTIONS = [
   ("POST", "/api/v1/process", "Resize/convert an uploaded (or base64) image; `?mode=variants` returns multiple sizes in one call."),
   ("POST", "/api/v1/metadata", "Extract EXIF/IPTC/GPS/camera metadata from an uploaded file."),
 ]),
-("DAM assets (S3/MinIO-backed, Postgres-tracked)", [
+("DAM assets (S3-backed, Postgres-tracked)", [
   ("GET", "/api/v1/dam/info", "Non-secret storage config (bucket, endpoint, public base URL) for the admin UI."),
-  ("POST", "/api/v1/dam/upload", "Upload a file to S3/MinIO and record it (path, visibility, metadata)."),
+  ("POST", "/api/v1/dam/upload", "Upload a file to S3 and record it (path, visibility, metadata)."),
   ("POST", "/api/v1/dam/transform", "Re-process an already-uploaded image (resize/format/watermark/etc.) and save it as a new version or _edited copy."),
   ("DELETE", "/api/v1/dam/asset", "Delete an asset (and its thumbnails) from storage and the DB."),
   ("POST", "/api/v1/dam/assets/move", "Move/rename an asset to a new folder path."),
@@ -294,7 +294,7 @@ ASSET_PROCESSOR_SECTIONS = [
   ("POST", "/api/v1/dam/exists", "Check existence for a batch of paths in one call."),
   ("POST", "/api/v1/dam/regenerate-thumbnails", "Regenerate thumbnail variants for one or more assets."),
   ("POST", "/api/v1/dam/ensure-bucket", "Ensure the target bucket exists with the correct public-read policy for current folder rules."),
-  ("GET", "/dam-asset/*", "Streams a stored object through this server (signed S3 GetObject), so the browser never talks to S3/MinIO directly."),
+  ("GET", "/dam-asset/*", "Streams a stored object through this server (signed S3 GetObject), so the browser never talks to S3 directly."),
 ]),
 ("Health", [
   ("GET", "/health", "Liveness/uptime check."),

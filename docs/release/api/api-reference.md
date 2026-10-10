@@ -411,7 +411,7 @@ Federated API Gateway: lets a published site or the admin editor reach third-par
 
 ## `asset-processor` (port 3002)
 
-DAM (Digital Asset Management) microservice: image processing/transform, metadata extraction, and S3/MinIO-backed asset & folder storage, plus optional CDN mirroring. Isolated from `core-api` so heavy image work never blocks the main API.
+DAM (Digital Asset Management) microservice: image processing/transform, metadata extraction, and S3-backed asset & folder storage, plus optional CDN mirroring. Isolated from `core-api` so heavy image work never blocks the main API.
 
 <!-- GENERATED:ASSET_PROCESSOR:START - do not hand-edit below; run `python3 docs/release/api/gen-api-docs.py` after editing that script's route table instead. -->
 ### Stateless image processing
@@ -421,12 +421,12 @@ DAM (Digital Asset Management) microservice: image processing/transform, metadat
 | `POST /api/v1/process` | Resize/convert an uploaded (or base64) image; `?mode=variants` returns multiple sizes in one call. |
 | `POST /api/v1/metadata` | Extract EXIF/IPTC/GPS/camera metadata from an uploaded file. |
 
-### DAM assets (S3/MinIO-backed, Postgres-tracked)
+### DAM assets (S3-backed, Postgres-tracked)
 
 | Method & path | Description |
 | --- | --- |
 | `GET /api/v1/dam/info` | Non-secret storage config (bucket, endpoint, public base URL) for the admin UI. |
-| `POST /api/v1/dam/upload` | Upload a file to S3/MinIO and record it (path, visibility, metadata). |
+| `POST /api/v1/dam/upload` | Upload a file to S3 and record it (path, visibility, metadata). |
 | `POST /api/v1/dam/transform` | Re-process an already-uploaded image (resize/format/watermark/etc.) and save it as a new version or _edited copy. |
 | `DELETE /api/v1/dam/asset` | Delete an asset (and its thumbnails) from storage and the DB. |
 | `POST /api/v1/dam/assets/move` | Move/rename an asset to a new folder path. |
@@ -444,7 +444,7 @@ DAM (Digital Asset Management) microservice: image processing/transform, metadat
 | `POST /api/v1/dam/exists` | Check existence for a batch of paths in one call. |
 | `POST /api/v1/dam/regenerate-thumbnails` | Regenerate thumbnail variants for one or more assets. |
 | `POST /api/v1/dam/ensure-bucket` | Ensure the target bucket exists with the correct public-read policy for current folder rules. |
-| `GET /dam-asset/*` | Streams a stored object through this server (signed S3 GetObject), so the browser never talks to S3/MinIO directly. |
+| `GET /dam-asset/*` | Streams a stored object through this server (signed S3 GetObject), so the browser never talks to S3 directly. |
 
 ### Health
 
@@ -469,7 +469,7 @@ pnpm --filter @whoobe-cms/migration-tool cli -- help
 | `promote-staging` | Copy `whoobe_pages_staging` rows into `whoobe_pages` (completes the staged workflow). Flags: `--dry-run`, `--clear`. |
 | `migrate-classes` | Translate Pimcore class definitions (`var/classes/*.php`) into `data_classes`. |
 | `migrate-objects --class=<Name>` | Import one class's real object instances into `data_objects`. |
-| `migrate-assets` | Upload Pimcore assets referenced by migrated documents into this system's S3/MinIO bucket + `assets` table (documents-migration plan Phase 1). Flags: `--dry-run`, `--source=`, `--limit=`, `--public`. Requires `PIMCORE_VAR_ASSETS_PATH` pointing at the source install's asset directory. |
+| `migrate-assets` | Upload Pimcore assets referenced by migrated documents into this system's S3 bucket + `assets` table (documents-migration plan Phase 1). Flags: `--dry-run`, `--source=`, `--limit=`, `--public`. Requires `PIMCORE_VAR_ASSETS_PATH` pointing at the source install's asset directory. |
 
 ---
 

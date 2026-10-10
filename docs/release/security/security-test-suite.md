@@ -66,7 +66,7 @@ The suite targets three services of a dedicated, throwaway deployment:
 | asset-processor | Image processing, DAM uploads, asset delivery (`/dam-asset/*`) | `http://localhost:3102` |
 
 The stack is created with `scripts/security/stack.sh up`, which starts the production `docker-compose.yml` under a
-**separate compose project** (`whoobe-sectest`), with its **own volumes** (database and object storage: Garage by default, `S3_BACKEND=minio` for the MinIO overlay), host
+**separate compose project** (`whoobe-sectest`), with its **own volumes** (database and object storage: Garage), host
 ports shifted by +100, and an env file `scripts/security/.env.sectest` (git-ignored, kept by the operator).
 Services run with `NODE_ENV=production`, so production code paths (error sanitisation, outbound-request policy,
 cookie handling) are what is tested. `stack.sh down` deletes the stack **and its volumes**.
@@ -303,7 +303,7 @@ OWASP A01-A10 coverage by ZAP rules; it complements, and does not replace, the a
 Generates a self-signed certificate for `localhost`, renders the production edge templates (`deploy/nginx/workspace-ssl.conf.template` + locations) into a throwaway nginx container (host network, port 8443) and runs `drwetter/testssl.sh` against it. Pass an older image (`nginx:1.18-alpine`) to see what a host with an old distro nginx would do. `summarize.py` ignores certificate-trust findings (self-signed), fails on HIGH/CRITICAL not in `tls/baseline.json`, and **fails if HSTS is missing**; it prints protocols and any MEDIUM/LOW/WARN. Reports: `scripts/security/reports/<date>/testssl-*.json/.txt`. Covers the template only, not a live certificate (run testssl against the public hostname for that).
 
 #### 2.5.17 Container images - `scripts/security/images/run-trivy-image.sh [image...]` (`pnpm security:images`)
-`trivy image` (vulnerabilities, HIGH/CRITICAL, `--ignore-unfixed`) on the throwaway-stack images (build them first with `stack.sh up`), the Garage image and postgres. Gating: the five own images and Garage; postgres and MinIO (overlay only) are advisory (vendor dependencies, F-050). Accepted CVEs go in `scripts/security/images/.trivyignore` with a reason and an `exp:` date. Reports: `scripts/security/reports/<date>/trivy-image-*.json`.
+`trivy image` (vulnerabilities, HIGH/CRITICAL, `--ignore-unfixed`) on the throwaway-stack images (build them first with `stack.sh up`), the Garage image and postgres. Gating: the five own images and Garage; postgres is advisory (vendor dependencies, F-050). Accepted CVEs go in `scripts/security/images/.trivyignore` with a reason and an `exp:` date. Reports: `scripts/security/reports/<date>/trivy-image-*.json`.
 
 #### 2.5.18 Workspace isolation - `scripts/security/isolation/` (`pnpm security:isolation`)
 Two throwaway stacks stand for two workspaces of one host: A (`.env.sectest`) and B (`SEC_STACK=b`, `.env.sectest-b`, ports +200, own project, database `whoobe_sec_test_b`, bucket and secrets; `gen-env.sh --offset 200 --name b`). `isolation/run.sh` starts both with only the services the tests need (postgres, garage, core-api, asset-processor, gateway) and removes B afterwards. `isolation/isolation.test.ts` (14 tests) checks that they share nothing:
@@ -495,7 +495,7 @@ Findings that are fixed but **not** observable through the API suite, and how ea
 | F-047 | SPA clickjacking / baseline headers | `api/spa-headers.test.ts`, browser embedding test, ZAP baseline |
 | F-039, F-040 | Content/option injection into generated sites | `publish.test.ts`, `unit/publish-hygiene.test.ts` |
 | F-041, F-042 | Workspace provisioning, default credentials | `unit/workspace-scripts.test.ts`, `unit/compose-hardening.test.ts` |
-| F-043 | Postgres/S3 store exposure, default credentials, storage selection (Garage default, external S3, MinIO overlay, data stack) | `unit/compose-hardening.test.ts` |
+| F-043 | Postgres/S3 store exposure, default credentials, storage selection (Garage default, external S3, data stack) | `unit/compose-hardening.test.ts` |
 | F-038 | TOTP secrets encrypted at rest | Unit tests of `totp-crypto` (`packages/core`); the MFA suite runs on the encrypted path; storage format checked once on the test database (not automated). |
 
 Full descriptions, severities and status: `docs/release/security/findings.md`.
