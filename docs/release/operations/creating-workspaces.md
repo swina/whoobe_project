@@ -153,14 +153,13 @@ docker compose -p ws-client-a --env-file .env.client-a --profile local-s3 rm -sf
 docker compose -p ws-client-a --env-file .env.client-a up -d
 ```
 
-The `garagedata` volume stays until `down -v`; copy any existing assets to the new bucket first (`rclone sync` / `aws s3 sync` between the two endpoints — keys, not endpoints, are stored in the database). Details and the MinIO overlay: `docs/release/operations/storage-backends.md`.
+The `garagedata` volume stays until `down -v`; copy any existing assets to the new bucket first (`rclone sync` / `aws s3 sync` between the two endpoints — keys, not endpoints, are stored in the database). Details: `docs/release/operations/storage-backends.md`.
 
 ## Workspaces created before the Garage default
 
-Workspaces provisioned earlier (MinIO) keep working only if you tell Compose so: their `.env.<slug>` has old-format S3 credentials and `WS_MINIO_API_PORT`, and the current `docker-compose.yml` would start Garage, which refuses credentials that are not in its key format.
+Workspaces provisioned earlier on MinIO have old-format S3 credentials and `WS_MINIO_API_PORT` in their `.env.<slug>`; the current `docker-compose.yml` starts Garage, which refuses credentials that are not in its key format, so they must be moved to Garage (the MinIO overlay no longer exists).
 
-- **Stay on MinIO** (it is discouraged for production, see `docs/release/operations/storage-backends.md`): rename `WS_MINIO_API_PORT` to `WS_S3_API_PORT`, add `COMPOSE_PROFILES=local-s3`, `TRUST_PROXY=1` and `ADMIN_PUBLIC_URL=https://<hostname>`, and use the overlay in every command: `docker compose -p ws-<slug> --env-file .env.<slug> -f docker-compose.yml -f docker-compose.minio.yml up -d --build`. The `miniodata` volume is reused.
-- **Move to Garage**: copy the bucket out of MinIO first (`mc mirror` / `rclone sync`), generate Garage-format credentials (`GK$(openssl rand -hex 12)`, `$(openssl rand -hex 32)`), put them and the variables above in the env file, `up -d --build` without the overlay, then copy the data into the new bucket (the endpoint of the new store is `http://127.0.0.1:<WS_S3_API_PORT>`), and only then remove the old `miniodata` volume.
+- **Move to Garage**: start Garage on a spare port with new keys, copy the bucket out of MinIO first (`mc mirror` / `rclone sync`), generate Garage-format credentials (`GK$(openssl rand -hex 12)`, `$(openssl rand -hex 32)`), put them and the variables above in the env file, `up -d --build` without the overlay, then copy the data into the new bucket (the endpoint of the new store is `http://127.0.0.1:<WS_S3_API_PORT>`), and only then remove the old `miniodata` volume.
 - A workspace that must be recreated from scratch (for example because secrets are rotated) is simplest: remove it (below) and run `create-workspace.sh` again.
 
 ## Removing a workspace

@@ -41,7 +41,7 @@ The comparison below picks one representative per category — Contentful, Webfl
 | Visual page builder | Drag-and-drop, live preview matches published output | None — headless only | Best-in-class visual builder | Plugin-dependent (Elementor, Divi) | None | Visual builder, mobile-only |
 | Native integrations / gateway | Built-in: OpenAPI auto-detect, OAuth2, visual field binding + result filters, encrypted credentials | None native — via Zapier or custom code | Limited (Zapier, webhooks) | Plugin-dependent, quality varies widely | 7,000+ app catalog, purpose-built for automation | Limited (Zapier, generic API connector) |
 | Headless SDK | React, Vue, Next.js, Nuxt, Svelte adapters | Strong, mature, multi-SDK | Limited API access | REST/GraphQL via plugins | Not applicable | Not applicable |
-| Digital Asset Management | Built-in, S3/MinIO, on-demand transforms | Basic asset API | Basic asset manager | Media library, plugin-dependent | Not applicable | Not applicable |
+| Digital Asset Management | Built-in, S3, on-demand transforms | Basic asset API | Basic asset manager | Media library, plugin-dependent | Not applicable | Not applicable |
 | Native mobile app generation | One-click Capacitor build from the same content tree | None | None | PWA only, via plugins | Not applicable | Core product — mobile-only, no web |
 | AI-native authoring | Built into the builder: page/snippet/image generation, Figma import | Add-on AI content tagging | AI page generation (beta) | Plugin-dependent | AI steps inside automations | None |
 | Self-hosted / data ownership | Yes — full control of DB, assets, infrastructure | No — SaaS only | No — SaaS only | Yes | No — SaaS only | No — SaaS only |

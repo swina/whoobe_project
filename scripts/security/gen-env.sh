@@ -24,8 +24,6 @@ hex() { openssl rand -hex "$1"; }
 WHOOBE_HOSTNAME=localhost
 WS_POSTGRES_PORT=$((5532 + OFF))
 WS_S3_API_PORT=$((9100 + OFF))
-# only with S3_BACKEND=minio:
-WS_MINIO_CONSOLE_PORT=$((9101 + OFF))
 COMPOSE_PROFILES=local-s3
 WS_CORE_API_PORT=$((3103 + OFF))
 WS_ASSET_PROCESSOR_PORT=$((3102 + OFF))
@@ -50,7 +48,7 @@ DAM_SERVICE_TOKEN=$(hex 24)
 S3_ENDPOINT=http://garage:3900
 S3_BUCKET=whoobe-cms-sectest${DSFX}
 S3_REGION=us-east-1
-# Garage's key format (GK + 24 hex / 64 hex); MinIO accepts it as well
+# Garage's key format (GK + 24 hex / 64 hex)
 S3_ACCESS_KEY_ID=GK$(hex 12)
 S3_SECRET_ACCESS_KEY=$(hex 32)
 S3_FORCE_PATH_STYLE=true

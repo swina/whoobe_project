@@ -345,7 +345,7 @@ function setSubTab(key: SettingsSubSection) {
 
 const sectionTitles: Record<SettingsSubSection, { title: string; description: string }> = {
   general: { title: 'General Settings', description: 'Sync and logging options for the admin dashboard.' },
-  dam: { title: 'DAM Configuration', description: 'Configure DAM S3/MinIO storage, folder visibility rules, and sync options.' },
+  dam: { title: 'DAM Configuration', description: 'Configure DAM S3 storage, folder visibility rules, and sync options.' },
   classes: { title: 'Data Object Classes', description: 'Define classes and fields, and import them on demand from Pimcore or structured files.' },
   roles: { title: 'Roles / Users / Workspaces', description: 'Manage who can access this dashboard and what they can do.' },
   security: { title: 'Security', description: 'Two-factor authentication and account security.' },

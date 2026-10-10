@@ -40,7 +40,7 @@ Per workspace, daily unless the business needs better:
 
 1. `BACKUP_AGE_RECIPIENT=age1… ./scripts/backup-workspace.sh <slug> --out-dir /var/backups/whoobe --keep 14` (cron, 03:00).
 2. Bucket: versioning + cross-region replication (cloud S3), or `rclone sync` of the bucket to an encrypted location
-   (Garage/MinIO). Run it **right after** step 1 so the two are as close as possible.
+   (Garage). Run it **right after** step 1 so the two are as close as possible.
 3. Copy everything off the host (object storage with versioning or object lock, a second site). The files are encrypted,
    so the copy can be on infrastructure you do not fully trust.
 4. Keep the backup **private key off the host** and with a second person.

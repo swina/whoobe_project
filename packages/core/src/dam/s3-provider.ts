@@ -55,9 +55,9 @@ export class S3AssetStorageProvider implements AssetStorageProvider {
     const clientConfig: S3ClientConfig = {
       region: config.region ?? 'us-east-1',
       endpoint: config.endpoint,
-      forcePathStyle: config.forcePathStyle ?? true, // Default to true for MinIO compatibility
+      forcePathStyle: config.forcePathStyle ?? true, // Default to true for S3-compatible stores
       // AWS SDK v3's default connection/socket timeouts are 0 (disabled) -
-      // a stalled (not refused/reset) S3/MinIO connection would otherwise
+      // a stalled (not refused/reset) S3 connection would otherwise
       // hang the calling await forever with no error, silently occupying a
       // pool slot. socketTimeout is inactivity-based (won't kill a large
       // file that's still actively streaming), unlike a flat total-duration
