@@ -4,7 +4,7 @@
 # Usage: scripts/security/stack.sh build | up | status | down
 # SEC_STACK=b   a second, fully separate stack (project whoobe-sectest-b, .env.sectest-b, ports +200) for the
 #               workspace-isolation tests; SEC_SERVICES="postgres garage core-api ..." starts only those (default: all).
-# S3 store: Garage by default (creates its own bucket/key); S3_BACKEND=minio uses docker-compose.minio.yml instead.
+# S3 store: Garage (creates its own bucket/key).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SUFFIX=""; PROJECT=whoobe-sectest; GEN=()
@@ -14,24 +14,14 @@ ENVF="${SEC_ENV_FILE:-$ROOT/scripts/security/.env.sectest$SUFFIX}"
 export ENV_FILE="$ENVF"   # service env_file (compose resolves it relative to the compose file)
 FILES=(-f "$ROOT/docker-compose.yml")
 export COMPOSE_PROFILES=local-s3
-[ "${S3_BACKEND:-garage}" = minio ] && FILES+=(-f "$ROOT/docker-compose.minio.yml")
 dc() { docker compose -p "$PROJECT" --env-file "$ENVF" "${FILES[@]}" "$@"; }
 case "${1:-}" in
   build)  dc build ;;
   up)
     # shellcheck disable=SC2086  # SEC_SERVICES is a word list on purpose
     dc up -d --build ${SEC_SERVICES:-}
-    # one-time bucket (idempotent)
-    # read only what is needed: the file is a compose env file, not valid shell (VITE_FONT_FAMILIES contains '|')
-    getv() { grep -E "^$1=" "$ENVF" | head -n1 | cut -d= -f2-; }
-    S3_ACCESS_KEY_ID=$(getv S3_ACCESS_KEY_ID); S3_SECRET_ACCESS_KEY=$(getv S3_SECRET_ACCESS_KEY); S3_BUCKET=$(getv S3_BUCKET)
-    if [ "${S3_BACKEND:-garage}" = minio ]; then
-      dc exec -T minio sh -c "mc alias set local http://localhost:9000 '$S3_ACCESS_KEY_ID' '$S3_SECRET_ACCESS_KEY' >/dev/null && mc mb --ignore-existing local/$S3_BUCKET" || echo "bucket creation failed - create $S3_BUCKET manually"
-    fi   # Garage creates its bucket and key by itself
-    dc ps ;;
+    dc ps ;;   # Garage creates its bucket and key by itself
   status) dc ps ;;
-  down)   # both S3 variants, whichever was running (the overlay disables the Garage services, so each variant is taken down on its own)
-          dc down -v --remove-orphans
-          FILES+=(-f "$ROOT/docker-compose.minio.yml"); dc down -v --remove-orphans ;;   # -v also deletes the test DB and object-store volumes
+  down)   dc down -v --remove-orphans ;;   # -v also deletes the test DB and object-store volumes
   *) echo "usage: $0 build|up|status|down"; exit 1 ;;
 esac

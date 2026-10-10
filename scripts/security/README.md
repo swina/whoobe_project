@@ -32,7 +32,7 @@ last day, manual: disposable stack + API + browser suites), `dast` (monthly or m
 stack's `.env.sectest` is generated on the runner by `gen-env.sh` (random secrets, nothing stored); `stack.sh up`
 calls it when the file is missing. Reports are uploaded as artifacts. `.github/dependabot.yml` opens grouped pull
 requests (one per ecosystem: minor/patch npm updates, Docker images, GitHub Actions); major upgrades are never proposed
-automatically (plan them by hand), `node` stays on 22 LTS and `golang` on the (optional) MinIO build line. The static scan runs on each.
+automatically (plan them by hand), `node` stays on 22 LTS. The static scan runs on each.
 
 ## How it works
 
@@ -77,7 +77,7 @@ serially (`fileParallelism: false`) because lockout/rate-limit checks are order-
 ## TLS and container images
 
 - `pnpm security:tls [nginx-image]` - testssl.sh against the production nginx TLS template (needs docker; throwaway container on port 8443).
-- `pnpm security:images [image...]` - `trivy image` on the built stack images (run `stack.sh up` first). Own images and Garage gate; postgres (and MinIO, overlay only) are advisory (F-050). Accepted CVEs: `images/.trivyignore`.
+- `pnpm security:images [image...]` - `trivy image` on the built stack images (run `stack.sh up` first). Own images and Garage gate; postgres is advisory (F-050). Accepted CVEs: `images/.trivyignore`.
 - `pnpm security:isolation` - two stacks standing for two workspaces (A and `SEC_STACK=b`): no shared session, account, object, secret, network path or database. Starts and removes stack B itself (`--keep` leaves it up).
 
 ## In CI (`.github/workflows/security.yml`)

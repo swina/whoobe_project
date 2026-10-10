@@ -1,6 +1,6 @@
 import type { FolderVisibilityRule, ThumbnailPreset, ExtractedAssetMetadata, SupportedImageFormat, CdnMirrorRecord } from '@whoobe-cms/core'
 
-// Thin HTTP client for the asset-processor DAM endpoints. S3/MinIO
+// Thin HTTP client for the asset-processor DAM endpoints. S3
 // credentials never touch the browser: the backend owns them via its
 // own environment variables and only ever hands back URLs/keys.
 //

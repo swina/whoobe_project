@@ -6,7 +6,7 @@ import type { CdnMirrorRecord } from '../dam/cdn-mirror.js';
  * DAM records: which assets/folders exist and their metadata. This is the
  * multi-user source of truth - the admin-dashboard used to keep this in
  * browser localStorage, which meant two admins (or two browsers) never saw
- * the same asset list. The actual file bytes still live in S3/MinIO; these
+ * the same asset list. The actual file bytes still live in S3; these
  * tables never store URLs (public links are stable but presigned private
  * links expire in ~1h, so they're always resolved fresh - see
  * apps/asset-processor's /api/v1/dam/asset-urls).

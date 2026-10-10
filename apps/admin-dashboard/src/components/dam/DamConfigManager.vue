@@ -23,7 +23,7 @@
             </svg>
           </div>
           <div>
-            <h3 class="text-lg font-bold text-slate-100 light:text-slate-900">DAM Storage & S3/MinIO Configuration</h3>
+            <h3 class="text-lg font-bold text-slate-100 light:text-slate-900">DAM Storage & S3 Configuration</h3>
             <p class="text-xs text-slate-400 light:text-slate-600">Configure the DAM backend connection and public/private folder visibility rules. Bucket credentials are managed server-side only.</p>
           </div>
         </div>
@@ -34,7 +34,7 @@
             class="btn btn-secondary flex items-center gap-1.5"
           >
             <span v-if="damStore.connectionStatus === 'testing'" class="animate-spin w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full"></span>
-            Test & Sync MinIO Storage
+            Test & Sync S3 Storage
           </button>
           <button
             @click="damStore.resetToDefaults()"
@@ -70,7 +70,7 @@
             class="field w-full font-mono"
           />
           <p class="text-[10px] text-slate-500 mt-1">
-            The admin dashboard never holds S3/MinIO credentials directly. All uploads, deletes, and URL signing are
+            The admin dashboard never holds S3 credentials directly. All uploads, deletes, and URL signing are
             performed by this backend service, which reads its own bucket/credentials from server-side environment
             variables.
           </p>
@@ -87,7 +87,7 @@
         </div>
 
         <div>
-          <span class="block text-xs font-medium text-slate-400 light:text-slate-600 mb-1">S3 / MinIO Endpoint (server-configured)</span>
+          <span class="block text-xs font-medium text-slate-400 light:text-slate-600 mb-1">S3 Endpoint (server-configured)</span>
           <div class="w-full px-3 py-2 text-xs rounded-xl bg-slate-950/60 light:bg-white/60 border border-slate-800/60 light:border-slate-200/60 text-slate-300 light:text-slate-700 font-mono">
             {{ damStore.damInfo.endpoint || '—' }}
           </div>

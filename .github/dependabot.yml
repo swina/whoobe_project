@@ -19,15 +19,13 @@ updates:
         patterns: ['*']
         update-types: [minor, patch]
   - package-ecosystem: docker
-    directories: ['/', '/docker/minio']
+    directories: ['/']
     schedule:
       interval: monthly
     open-pull-requests-limit: 2
     ignore:
       - dependency-name: node         # stay on the 22 LTS line
         update-types: ['version-update:semver-major']
-      - dependency-name: golang       # MinIO is built with a specific Go release (docker/minio/Dockerfile)
-        update-types: ['version-update:semver-major', 'version-update:semver-minor']
     groups:
       docker-images:
         patterns: ['*']

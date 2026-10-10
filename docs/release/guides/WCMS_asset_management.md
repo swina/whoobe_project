@@ -13,7 +13,7 @@ The DAM layer maps virtual asset paths (e.g. `/logos/hero_banner.png` or `/docum
 
 - **Garage** (the default for local and LAN installs) runs inside the Compose project and creates its own bucket and access key on first start.
 - **An external S3** (AWS S3, OCI, an enterprise S3 service) is a configuration change; see `docs/release/operations/storage-backends.md` and the "Using an external S3" section of the workspace guide.
-- **MinIO** is still supported as an opt-in overlay but is discouraged for production.
+- **MinIO** is no longer part of the stack (removed in 0.1.0, F-048/F-050); an existing one can still be used as an external S3 endpoint.
 
 - **Root Bucket Mapping**: By default, asset keys are formatted directly under the root bucket level (e.g. `logos/hero_banner.png`). A key prefix (e.g. `media/`) is set with `S3_KEY_PREFIX`.
 - **Thumbnail Namespace**: Generated WebP thumbnails are saved under `.thumbnails/` (e.g. `.thumbnails/logos/hero_banner_thumb.webp`).
@@ -31,19 +31,19 @@ The browser never talks to the S3 store. Every asset is served by the asset-proc
 
 ## 3. Storage Configuration
 
-The DAM screen (**Settings > DAM Configuration**, titled "DAM Storage & S3/MinIO Configuration") does not hold credentials: bucket, endpoint and keys are read by the asset-processor from its server-side environment. The screen shows them read-only:
+The DAM screen (**Settings > DAM Configuration**, titled "DAM Storage & S3 Configuration") does not hold credentials: bucket, endpoint and keys are read by the asset-processor from its server-side environment. The screen shows them read-only:
 
 | Shown (server-configured) | Environment variable | Description |
 | :--- | :--- | :--- |
 | **S3 Bucket** | `S3_BUCKET` | The bucket name (a workspace gets `whoobe-cms-<slug>`). |
-| **S3 / MinIO Endpoint** | `S3_ENDPOINT` | The store's endpoint. |
+| **S3 Endpoint** | `S3_ENDPOINT` | The store's endpoint. |
 | **Key Prefix** | `S3_KEY_PREFIX` | Optional prefix for every key; empty means root-bucket storage. |
 | **Public Base URL / CDN** | `S3_PUBLIC_BASE_URL` | Optional CDN or custom domain in front of public assets. |
 
 Also in the environment, not shown on the screen: `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE` (`true` for most self-hosted stores, `false` for AWS). The one editable field is the **DAM Asset Processor API URL** the dashboard talks to. Changing any of the environment values means recreating the asset-processor container.
 
 ### 3.1 Test & Sync Storage Connection
-**`Test & Sync MinIO Storage`** (the label predates Garage; it works with any S3-compatible store) asks the asset-processor for its storage information, makes sure the bucket exists and applies the folder visibility rules where the store supports bucket policies (Garage does not, and does not need them: visibility is enforced by the asset-processor), then reloads the folder tree and the asset list. The result is shown in the status bar.
+**`Test & Sync S3 Storage`** (it works with any S3-compatible store) asks the asset-processor for its storage information, makes sure the bucket exists and applies the folder visibility rules where the store supports bucket policies (Garage does not, and does not need them: visibility is enforced by the asset-processor), then reloads the folder tree and the asset list. The result is shown in the status bar.
 
 ---
 

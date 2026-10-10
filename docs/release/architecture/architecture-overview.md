@@ -166,7 +166,7 @@ CSP and rate limits per tenant), not a configuration.
 | Runtime | Node.js 22 (`node:22-bookworm-slim`, pinned by digest) | no npm/pnpm/corepack in the runtime images |
 | Containers | run as an unprivileged user (UID 1000 for Node, 101 for nginx); `HEALTHCHECK` on the three backends | the main compose file sets no read-only root filesystem, no dropped capabilities and no resource limits; the overlay `docker-compose.sandbox.yml` does (read-only root with tmpfs for `/tmp` and logs, `cap_drop: ALL`, `no-new-privileges`, `pids_limit`, memory and CPU limits) and can be layered on any workspace with `COMPOSE_FILE` |
 | Database | PostgreSQL 16 | other versions untested; migrations are plain SQL (53 files) |
-| Object storage | Garage v2.4.1 (default), AWS S3 or any S3 API (`S3_FORCE_PATH_STYLE`), MinIO as an opt-in overlay | MinIO carries upstream advisories (F-050) |
+| Object storage | Garage v2.4.1 (default), AWS S3 or any S3 API (`S3_FORCE_PATH_STYLE`) | MinIO was removed from the stack (F-048/F-050) |
 | Browsers | current Chromium-based browsers are what the Playwright suite uses; no support matrix is defined | |
 | CPU | amd64 and arm64 (the reference install ran on arm64) | |
 | Reverse proxy | nginx (host or `docker-compose.proxy.yml`) | other proxies need the routing table of section 3 |

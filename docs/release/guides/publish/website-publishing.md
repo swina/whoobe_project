@@ -17,7 +17,7 @@ This guide covers how to publish a Whoobe CMS website as a standalone, deployabl
 │  gateway             │◄────│  → submitForm()/data bindings │
 │  (Brevo, etc.)       │     │                               │
 │                      │     │  Tailwind v4 (build-time)     │
-│  MinIO / S3          │◄────│  Theme CSS @theme variables   │
+│  S3 (Garage or cloud)│◄────│  Theme CSS @theme variables   │
 │  (assets, optionally │     │                               │
 │   mirrored to a CDN) │     │                               │
 └──────────────────────┘     └───────────────────────────────┘
@@ -43,7 +43,7 @@ The CMS **remains the single source of truth**. The published site is a read-onl
 - Pages are authored and published in the CMS
 - Themes are configured in the CMS per website
 - Data objects are managed in the CMS
-- Assets are stored in MinIO/S3, optionally mirrored to a CDN (Cloudinary, via the Gateway), and served from either
+- Assets are stored in S3, optionally mirrored to a CDN (Cloudinary, via the Gateway), and served from either
 
 ### What gets generated
 
@@ -238,7 +238,7 @@ certbot certonly --webroot -w /var/www/certbot -d www.example.com
 
 ### Option C: Fully static deployment (Nuxt only) - no Whoobe runtime dependency except the Gateway
 
-**The scenario this solves**: you author content on a local/private Whoobe instance (local Postgres, local MinIO/S3, never exposed to the internet) and want to publish a genuinely static site on a separate public domain, where the *only* thing that needs to stay reachable at runtime is the Gateway (for a Brevo form, say) - not the CMS's API, not its DAM, nothing else. This is different from Option B: that runs a live Node server that keeps calling `--api-url` on every request/revalidate forever, which would mean your local instance would need to stay up and be reachable from the public deployment permanently. Static export instead only touches the CMS at **build time, on your own machine** - the output is self-contained afterwards.
+**The scenario this solves**: you author content on a local/private Whoobe instance (local Postgres, local S3, never exposed to the internet) and want to publish a genuinely static site on a separate public domain, where the *only* thing that needs to stay reachable at runtime is the Gateway (for a Brevo form, say) - not the CMS's API, not its DAM, nothing else. This is different from Option B: that runs a live Node server that keeps calling `--api-url` on every request/revalidate forever, which would mean your local instance would need to stay up and be reachable from the public deployment permanently. Static export instead only touches the CMS at **build time, on your own machine** - the output is self-contained afterwards.
 
 This works today because Nuxt's prerender crawler (`nitro.prerender.crawlLinks: true`, already set in the generated `nuxt.config.ts`) doesn't just copy files - it actually **executes** each page's `<script setup>` during the crawl, which runs `getPageData()`, fetches `/public/pages/...`, reads `cdnMirrors`, and lets `resolveImageUrl()` pick the CDN URL - all *before* the static HTML is written to disk. The resulting files reference the CDN directly; nothing in them points back at your local instance.
 
