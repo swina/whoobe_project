@@ -24,7 +24,7 @@ as written:
    - The "automation orchestrator" is described as a worker but needs durable state, retries, idempotency and an audit
      trail; that is a small product on its own.
    - The visual canvas cannot store its logic inside page content (it is served publicly).
-   - The mobile offline container (SQLCipher) does not exist in the repository.
+   - The mobile offline container (SQLCipher) does not exist in the repository (only a plain, unencrypted IndexedDB queue in the generated PWA scaffold).
 
 The plan below keeps the phases of the source document in spirit but re-orders and splits them so that each step ships
 something usable and the security prerequisites come before the features that depend on them.
@@ -42,7 +42,7 @@ something usable and the security prerequisites come before the features that de
 | Zod-validated layout trees, `@whoobe-cms/schema` | **Yes** (`packages/sdk/schema`, zod 3). No `visibilityRules` yet. |
 | `core-api` intercepts SDK payload reads | Public reads are `GET /public/page/*`, `/public/pages/:locale/*`, `/public/pages` (`apps/core-api/src/server.ts`), answered with `Cache-Control: public, max-age=0, must-revalidate`. |
 | Internal events (`Form_Submitted`, `Asset_Downloaded`) | **None on the server.** `whoobe-one-spike/src/bus.ts` is the editor's front-end bus only. Form submissions are not an event anybody can subscribe to. |
-| SQLCipher container, biometrics, offline queue | **Not found.** `packages/mobile-app` generates a Capacitor project; no SQLCipher, no offline mutation queue. |
+| SQLCipher container, biometrics, offline queue | **SQLCipher and biometrics: not found** (`packages/mobile-app` generates a Capacitor project without them). **A plain offline queue does exist** in the PWA scaffold that `packages/publish/src/cli.ts` generates: `enqueueMutation` / `replayQueue` keep mutations in an **unencrypted IndexedDB** store (`whoobe-offline-queue`) and replay them with `submitForm`. Whether it is wired to the form components, and whether the payload it replays still matches `submitForm`'s current signature, was **not verified**. |
 | Edge middleware routing file | Nothing exists. The static export is produced by `packages/publish`. |
 
 ---
@@ -140,7 +140,7 @@ integration configurations. A new file format duplicates them. Prefer extending 
 
 ### 3.3 Scope and product
 
-- **Offline SQLCipher container**: not present, depends on a native plugin and biometric unlocking, and an offline queue
+- **Offline SQLCipher container**: not present (only the unencrypted IndexedDB queue above), depends on a native plugin and biometric unlocking, and an offline queue
   of form submissions raises its own questions (replay, duplicate leads, server-side validation of stale payloads). Move to
   a separate plan; do not let it block the rest.
 - **Email delivery stays out of scope** (the source document is right); the existing draft-campaign flow is the model.
