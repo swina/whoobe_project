@@ -33,13 +33,19 @@ describe('isometric port geometry', () => {
     expect(c1x).toBe(220); expect(c1y).toBeGreaterThan(170) // leaves downwards
     expect(c2x).toBe(220); expect(c2y).toBeLessThan(300) // enters from above
   })
-  it('the arrow head points into the box through the side the cable enters', () => {
+  it('the arrow head has its tip exactly on the box side and points into the box', () => {
     const pts = (s: string) => s.split(' ').map((p) => p.split(',').map(Number))
     const top = pts(arrowPoints({ x: 220, y: 50 }, 'top'))
-    expect(top[0][1]).toBeLessThan(50) // tip just above the top port
-    expect(top[1][1]).toBeLessThan(top[0][1]) // base further out
+    expect(top[0]).toEqual([220, 50]) // tip on the port, i.e. on the side
+    expect(top[1][1]).toBeLessThan(50) // base further out, above the box
+    expect(top[2][1]).toBeLessThan(50)
     const left = pts(arrowPoints({ x: 100, y: 68 }, 'left'))
-    expect(left[0][0]).toBeLessThan(100)
+    expect(left[0]).toEqual([100, 68])
+    expect(left[1][0]).toBeLessThan(100)
+    const bottom = pts(arrowPoints({ x: 220, y: 170 }, 'bottom'))
+    expect(bottom[0]).toEqual([220, 170]); expect(bottom[1][1]).toBeGreaterThan(170)
+    const right = pts(arrowPoints({ x: 340, y: 68 }, 'right'))
+    expect(right[0]).toEqual([340, 68]); expect(right[1][0]).toBeGreaterThan(340)
     expect(oppositeSide('top')).toBe('bottom')
   })
 })

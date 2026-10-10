@@ -48,12 +48,12 @@ export function cablePath(p1: Point, s1: PortSide, p2: Point, s2: PortSide): str
   return `M ${p1.x} ${p1.y} C ${p1.x + d1.x * k} ${p1.y + d1.y * k} ${p2.x + d2.x * k} ${p2.y + d2.y * k} ${p2.x} ${p2.y}`
 }
 
-/** Small arrow head at the end of a cable, pointing into the box through `side`. Returns an SVG `points` value. */
+/** Small arrow head at the end of a cable, its tip exactly on the box side `end`, pointing into the box. Returns an SVG `points` value. */
 export function arrowPoints(end: Point, side: PortSide, strokeWidth = 2): string {
   const d = DIR[side]
   const len = 7 + strokeWidth * 1.5
   const half = 3 + strokeWidth
-  const tip = { x: end.x + d.x * 8, y: end.y + d.y * 8 } // just outside the port circle
+  const tip = end // touches the side of the box
   const base = { x: tip.x + d.x * len, y: tip.y + d.y * len }
   const n = { x: -d.y, y: d.x }
   const f = (p: Point) => `${p.x},${p.y}`
