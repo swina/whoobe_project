@@ -50,7 +50,7 @@
       @mouseup="onCanvasMouseup"
     >
       <div v-if="!doc.blocks.length" class="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <span class="text-[10px] text-gray-400 text-center px-4">Click "Add box" to start, then drag OUT ● to ●IN on another box to connect them.</span>
+        <span class="text-[10px] text-gray-400 text-center px-4">Click "Add box" to start, then drag from a connection point ● of one box to a ● of another to connect them.</span>
       </div>
 
       <!-- Cable layer -->
@@ -71,6 +71,13 @@
             :stroke-width="edge.width || 2"
             stroke-opacity="0.8"
             :stroke-dasharray="dashArrayFor(edge.lineStyle)"
+            style="pointer-events: none;"
+          />
+          <polygon
+            v-if="edgeArrow(edge)"
+            :points="edgeArrow(edge)"
+            :fill="edge.color || '#6366f1'"
+            fill-opacity="0.8"
             style="pointer-events: none;"
           />
         </g>
@@ -135,39 +142,26 @@
         :class="'absolute select-none group/' + box.id"
         :style="{ left: (box.position?.x ?? 0) + 'px', top: (box.position?.y ?? 0) + 'px', zIndex: editor.current?.id === box.id ? 3 : 2 }"
       >
-        <!-- IN port. z-[60] (not the z-4 this started with) is load-bearing,
-             not cosmetic: BlockContainer.vue's own corner tag button (the
-             "isometric-box" label every box gets) is absolutely positioned
-             at -top-2.5 -left-2.5 relative to the box's *content*, which
-             sits right below this port in the same stacking context (box
-             content has no z-index of its own, so it doesn't isolate a new
-             stacking context - z-index values compare directly against
-             this port). At z-50 that corner tag geometrically overlaps this
-             port's small hit-area and, being higher, silently ate every
-             mouseup meant for it - a drag from another box's OUT port would
-             visually reach here but never complete a connection. z-[60]
-             (and the OUT port/header below, same reasoning) simply outranks
-             it so this port always wins the overlap. -->
+        <!-- Connection ports, one on each side of the box; any port can start a cable (mousedown) or receive one
+             (mouseup). z-[60] (not the z-4 this started with) is load-bearing, not cosmetic: BlockContainer.vue's own
+             corner tag button (the "isometric-box" label every box gets) is absolutely positioned at -top-2.5
+             -left-2.5 relative to the box's *content*, which sits right below these ports in the same stacking
+             context (box content has no z-index of its own, so it doesn't isolate a new stacking context - z-index
+             values compare directly against the ports). At z-50 that corner tag geometrically overlaps the left
+             port's small hit-area and, being higher, silently ate every mouseup meant for it - a drag from another
+             box's port would visually reach here but never complete a connection. z-[60] (and the drag handle below,
+             same reasoning) simply outranks it so a port always wins the overlap. The position tracks this box's real
+             measured size (boxWidth()/boxHeight()), not a fixed constant - see boxWidth()'s own comment for why. -->
         <svg
+          v-for="side in PORT_SIDES"
+          :key="side"
           class="absolute z-[60]"
-          :style="{ left: '-9px', top: (PORT_Y - 9) + 'px', width: '18px', height: '18px', pointerEvents: 'all', cursor: 'crosshair' }"
-          @mouseup.stop="onInPortMouseup(box)"
+          :style="portStyle(box, side)"
+          @mousedown.stop="onPortMousedown($event, box, side)"
+          @mouseup.stop="onPortMouseup(box, side)"
         >
           <circle cx="9" cy="9" r="6" fill="white" stroke="#4f46e5" stroke-width="2" />
-          <title>IN</title>
-        </svg>
-        <!-- OUT port - same z-[60] reasoning as the IN port above. `left`
-             tracks this box's real measured width (boxWidth()), not a
-             fixed constant - see that function's own comment for why a
-             fixed value left this port stuck at the box's original width
-             whenever the box was restyled wider/narrower. -->
-        <svg
-          class="absolute z-[60]"
-          :style="{ left: (boxWidth(box.id) - 9) + 'px', top: (PORT_Y - 9) + 'px', width: '18px', height: '18px', pointerEvents: 'all', cursor: 'crosshair' }"
-          @mousedown.stop="onOutPortMousedown($event, box)"
-        >
-          <circle cx="9" cy="9" r="6" fill="white" stroke="#4f46e5" stroke-width="2" />
-          <title>OUT</title>
+          <title>Connection point ({{ side }})</title>
         </svg>
 
         <!-- Drag handle + remove, replacing the permanent header bar this
@@ -221,7 +215,8 @@
 // ElementsClass.js's Isometric()/IsometricBox()) - a freely-positioned,
 // connectable node canvas modeled on a MIDI-style patch bay: boxes
 // (`doc.blocks`, each a real container) placed by absolute `position`, wired
-// together by dragging OUT ● to ●IN, wires stored as `doc.isometricEdges`.
+// together by dragging from a port ● on any side of a box to a port on another box, wires stored as
+// `doc.isometricEdges` (with the side each end uses; see ../isometric-ports.ts).
 //
 // Deliberately NOT a port of any existing block component - closest kin is
 // BlockSlider.vue (same corner-tag/selection/dragula-container conventions,
@@ -239,9 +234,12 @@
 // canvas (a fast drag) still ends the gesture instead of leaving a phantom
 // pending connection or a box stuck mid-drag.
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import type { CSSProperties } from 'vue'
 import { GripVertical, Plus, Trash2, X } from '@lucide/vue'
 import Element from '../scripts/ElementsClass.js'
 import type { IsometricEdge } from '../scripts/ElementsClass.js'
+import { BOX_W, PORT_SIDES, arrowPoints, cablePath, edgeFromSide, edgeToSide, oppositeSide, portPos } from '../isometric-ports'
+import type { PortSide } from '../isometric-ports'
 import { useEditorStore } from '../store/editor'
 import { resolveDisplayUrl } from '../resolve-display-url'
 import { customAttrs } from '../helpers'
@@ -258,13 +256,10 @@ const props = defineProps<{
 
 const editor = useEditorStore()
 
-// Fallback only, used before a box's real width has ever been measured
-// (first paint, one frame) - see boxWidth()/setBoxEl() below for why the
-// OUT port no longer trusts a fixed constant at all past that point.
-// Matches IsometricBox()'s own `w-60` default (ElementsClass.js), so that
-// one frame looks right too.
-const BOX_W = 240
-const PORT_Y = 18
+// BOX_W (../isometric-ports.ts) is a fallback only, used before a box's real size has ever been measured (first paint,
+// one frame) - see boxWidth()/setBoxEl() below for why ports no longer trust a fixed constant past that point. It
+// matches IsometricBox()'s own `w-60` default (ElementsClass.js), so that one frame looks right too.
+const BOX_H = 120
 
 const edges = computed<IsometricEdge[]>(() => (props.doc as any).isometricEdges ?? [])
 
@@ -284,10 +279,14 @@ function boxById(id: string): WhoobeElement | undefined {
 // this fixes).
 const boxEls = new Map<string, HTMLElement>()
 const boxWidths = reactive<Record<string, number>>({})
+const boxHeights = reactive<Record<string, number>>({})
 let resizeObserver: ResizeObserver | null = null
 
 function boxWidth(id: string): number {
   return boxWidths[id] ?? BOX_W
+}
+function boxHeight(id: string): number {
+  return boxHeights[id] ?? BOX_H
 }
 
 // Vue 3 function-ref callback (`:ref="(el) => setBoxEl(box.id, el)"` on the
@@ -302,34 +301,41 @@ function setBoxEl(id: string, el: unknown) {
   if (node) {
     boxEls.set(id, node)
     boxWidths[id] = node.offsetWidth || BOX_W
+    boxHeights[id] = node.offsetHeight || BOX_H
     resizeObserver?.observe(node)
   } else {
     boxEls.delete(id)
     delete boxWidths[id]
+    delete boxHeights[id]
   }
 }
 
-function inPortPos(box: WhoobeElement) {
-  const p = (box as any).position ?? { x: 0, y: 0 }
-  return { x: p.x, y: p.y + PORT_Y }
-}
-function outPortPos(box: WhoobeElement) {
-  const p = (box as any).position ?? { x: 0, y: 0 }
-  return { x: p.x + boxWidth(box.id), y: p.y + PORT_Y }
+function boxPortPos(box: WhoobeElement, side: PortSide) {
+  return portPos((box as any).position ?? { x: 0, y: 0 }, boxWidth(box.id), boxHeight(box.id), side)
 }
 
-function bezier(x1: number, y1: number, x2: number, y2: number): string {
-  const cx = (x1 + x2) / 2
-  return `M ${x1} ${y1} C ${cx} ${y1} ${cx} ${y2} ${x2} ${y2}`
+// Box-local style of a port's <svg> (18x18, centred on the port position)
+function portStyle(box: WhoobeElement, side: PortSide): CSSProperties {
+  const w = boxWidth(box.id)
+  const h = boxHeight(box.id)
+  const at = portPos({ x: 0, y: 0 }, w, h, side)
+  return { left: at.x - 9 + 'px', top: at.y - 9 + 'px', width: '18px', height: '18px', pointerEvents: 'all', cursor: 'crosshair' }
 }
 
 function edgePath(edge: IsometricEdge): string {
   const from = boxById(edge.fromId)
   const to = boxById(edge.toId)
   if (!from || !to) return ''
-  const p1 = outPortPos(from)
-  const p2 = inPortPos(to)
-  return bezier(p1.x, p1.y, p2.x, p2.y)
+  const s1 = edgeFromSide(edge)
+  const s2 = edgeToSide(edge)
+  return cablePath(boxPortPos(from, s1), s1, boxPortPos(to, s2), s2)
+}
+
+function edgeArrow(edge: IsometricEdge): string {
+  const to = boxById(edge.toId)
+  if (!to || !boxById(edge.fromId)) return ''
+  const s2 = edgeToSide(edge)
+  return arrowPoints(boxPortPos(to, s2), s2, edge.width || 2)
 }
 
 function removeEdge(id: string) {
@@ -357,8 +363,8 @@ const editingEdgeMidpoint = computed(() => {
   const from = boxById(edge.fromId)
   const to = boxById(edge.toId)
   if (!from || !to) return { x: 0, y: 0 }
-  const p1 = outPortPos(from)
-  const p2 = inPortPos(to)
+  const p1 = boxPortPos(from, edgeFromSide(edge))
+  const p2 = boxPortPos(to, edgeToSide(edge))
   return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
 })
 
@@ -405,21 +411,21 @@ function onBoxMousedown(e: MouseEvent, box: WhoobeElement) {
 }
 
 // --- Cable dragging ---
-const pendingConnection = ref<{ fromId: string; mx: number; my: number } | null>(null)
+const pendingConnection = ref<{ fromId: string; fromSide: PortSide; mx: number; my: number } | null>(null)
 
-function onOutPortMousedown(e: MouseEvent, box: WhoobeElement) {
+function onPortMousedown(e: MouseEvent, box: WhoobeElement, side: PortSide) {
   const { x, y } = canvasRelative(e)
-  pendingConnection.value = { fromId: box.id, mx: x, my: y }
+  pendingConnection.value = { fromId: box.id, fromSide: side, mx: x, my: y }
 }
 
-function onInPortMouseup(box: WhoobeElement) {
+function onPortMouseup(box: WhoobeElement, side: PortSide) {
   const pending = pendingConnection.value
   pendingConnection.value = null
   if (!pending || pending.fromId === box.id) return
   const doc = props.doc as any
   const list: IsometricEdge[] = doc.isometricEdges ?? (doc.isometricEdges = [])
-  const exists = list.some((e) => e.fromId === pending.fromId && e.toId === box.id)
-  if (!exists) list.push({ id: new Element().randomID(), fromId: pending.fromId, toId: box.id })
+  const exists = list.some((e) => e.fromId === pending.fromId && e.toId === box.id && edgeFromSide(e) === pending.fromSide && edgeToSide(e) === side)
+  if (!exists) list.push({ id: new Element().randomID(), fromId: pending.fromId, fromSide: pending.fromSide, toId: box.id, toSide: side })
 }
 
 function pendingPath(): string {
@@ -427,8 +433,7 @@ function pendingPath(): string {
   if (!pending) return ''
   const from = boxById(pending.fromId)
   if (!from) return ''
-  const p1 = outPortPos(from)
-  return bezier(p1.x, p1.y, pending.mx, pending.my)
+  return cablePath(boxPortPos(from, pending.fromSide), pending.fromSide, { x: pending.mx, y: pending.my }, oppositeSide(pending.fromSide))
 }
 
 function onCanvasMousemove(e: MouseEvent) {
@@ -456,6 +461,7 @@ onMounted(() => {
       for (const [id, node] of boxEls) {
         if (node !== entry.target) continue
         boxWidths[id] = entry.borderBoxSize?.[0]?.inlineSize ?? entry.contentRect.width
+        boxHeights[id] = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
         break
       }
     }
