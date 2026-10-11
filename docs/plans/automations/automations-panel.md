@@ -1,6 +1,6 @@
 # Automations panel and list (prototype)
 
-*Date: 2026-10-11. Status: implemented, unit-tested (the scan), **not yet tried in a browser** (checks in section 4).*
+*Date: 2026-10-11. Status: implemented, unit-tested (the scan), tried by the owner in the editor panel and in the dashboard list (2026-10-11).*
 *Part of [marketing-automation-review-and-plan.md](marketing-automation-review-and-plan.md); follows [why-no-custom-automation-engine.md](why-no-custom-automation-engine.md).*
 
 Whoobe does not run automations, but a form can be connected to a flow in an external engine, and without a list one has to
@@ -35,7 +35,7 @@ Search box, endpoint filter and *Only forms sent to an endpoint* (on by default;
 - It cannot tell whether the flow exists or is published in the engine; that is the engine's own screen (*Service*).
 - A listener on a **sibling or below** the form does not count as "reacts" (the event bubbles up, never down).
 
-## 4. Still to check in a browser
+## 4. Checks made (worth repeating after changes)
 
 1. The icon is in the bar; the panel lists a known form, with the right endpoint, route and "reacts" badge.
 2. *Open* in a new tab selects the form (page and snippet); an unknown `elementId` just opens the page.
