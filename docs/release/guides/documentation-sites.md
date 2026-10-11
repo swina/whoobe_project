@@ -27,6 +27,11 @@ Plain Markdown (GitHub flavour: tables, task lists, fenced code with a language)
   slug: setup                    # last part of the address instead of the file name
   ---
   ```
+- **Diagrams**: a fenced block written as `mermaid` is drawn as a picture (flowcharts, sequence diagrams ...), in the editor's preview, in the
+  dashboard's document preview and in the generated site. The syntax is [Mermaid](https://mermaid.js.org/)'s. The drawing library
+  is loaded only on pages that have a diagram; in the generated site it is copied into `assets/mermaid/` (no external address), and it runs in its
+  strict security mode (the text of a diagram is encoded, no raw HTML, no click handlers). If a diagram has a mistake, its code is shown
+  instead, with a note on the published page. The pictures are made in the browser: an HTML page read without scripts shows the code.
 - **Notes**: `:::tip`, `:::note`, `:::info`, `:::warning`, `:::danger` ... `:::` (an optional title after the keyword).
 - **Links between documents** are written as files: `[install](01-install.md#steps)`, `[usage](../guide/usage.md)`. They become
   the site's addresses. Images and files the same way: `![diagram](../images/flow.png)`. A link to a file that does not exist is
@@ -119,7 +124,7 @@ The output folder is plain HTML you copy to any web server (`rsync -a --delete .
 - one `index.html` per page (`guide/install/index.html`), `404.html`, `sitemap.xml` (with `--site-url`), `robots.txt`;
 - `assets/`: the styles, one small script (menu, "on this page", copy buttons, search), MiniSearch, the search index
   (`search-index.json`) and the images and files the documents use (copied; `--no-copy-assets` links to the CMS instead);
-- code is highlighted in the browser with a library that is loaded only on pages that have code;
+- code is highlighted in the browser with a library that is loaded only on pages that have code; `mermaid` blocks are drawn as diagrams by another library (about 3.5 MB, copied only when a page has one);
 - it follows the visitor's light/dark preference and prints cleanly.
 
 Only **public** documents are published, read from the public API, so a private file cannot end in the output. Broken links
