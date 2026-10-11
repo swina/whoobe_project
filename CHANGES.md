@@ -1,3 +1,7 @@
+## [Release docs: marketing automation] — 2026-10-11
+- Branch: `feat/form-result-event`. Documentation only. New `docs/release/guides/marketing-automation.md` (how a form hands a submission to an engine, the `outcome` and the `whoobe-form-result` event, setup, the Automations list, Activepieces / n8n and their licences, security, limits); listed in `docs/release/README.md`; a feature bullet and a known limit in `release-notes-0.1.0.md`; the `/api/v1/gateway/submit` reply (`outcome`, `response`) documented in `gen-api-docs.py` and the regenerated `api-reference.md` / `openapi.yaml`.
+- The release docs gate (`scripts/release/check-docs.py`) failed on two historical mentions of the removed `docker/minio` path (release notes, findings F-048): reworded without the quoted path. The gate passes.
+
 ## [Docs: Automations panel and list confirmed working] — 2026-10-11
 - Branch: `feat/form-result-event`. Documentation only: `automations-panel.md` status updated, the owner tried the editor panel and the dashboard list.
 

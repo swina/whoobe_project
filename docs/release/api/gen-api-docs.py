@@ -323,7 +323,7 @@ GATEWAY_SECTIONS = [
 ]),
 ("Gateway published-site endpoints (site API key or bound content only - see docs/release/guides/api-gateway-security.md)", [
   ("POST", "/api/v1/gateway/resolve", "Resolve a gateway-bound content field for a published page - the only way a published site reads third-party data. Requires a resolved gatewayBindingId (server-assigned at page-save time), not a free endpoint/route choice."),
-  ("POST", "/api/v1/gateway/submit", "Submit a gateway-bound form for a published page. Requires a resolved gatewayBindingId, same as /resolve."),
+  ("POST", "/api/v1/gateway/submit", "Submit a gateway-bound form for a published page. Requires a resolved gatewayBindingId, same as /resolve. The reply is `{ success, response }`, plus `outcome` when the service answered a plain key of 1-32 letters, digits, `_` or `-` (the page reacts to it, see guides/marketing-automation.md)."),
 ]),
 ("Gateway internal proxies (auth: wcms_session, admin-dashboard use only)", [
   ("ALL", "/api/internal/*", "Authenticated passthrough proxy to core-api, for admin-dashboard requests that need to cross from the Gateway's own origin."),
@@ -432,6 +432,11 @@ SCHEMA_OVERRIDES = {
                 type: object
                 properties:
                   success: { type: boolean }
+                  outcome:
+                    type: string
+                    description: Only when the service answered a plain key (1-32 letters, digits, underscore or hyphen); anything else is dropped.
+                  response:
+                    description: The service's whole reply.
         "401":
           description: Missing/invalid site key, or the binding doesn't belong to this site.
           content:

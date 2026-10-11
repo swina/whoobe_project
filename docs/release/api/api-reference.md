@@ -379,7 +379,7 @@ Federated API Gateway: lets a published site or the admin editor reach third-par
 | Method & path | Description |
 | --- | --- |
 | `POST /api/v1/gateway/resolve` | Resolve a gateway-bound content field for a published page - the only way a published site reads third-party data. Requires a resolved gatewayBindingId (server-assigned at page-save time), not a free endpoint/route choice. |
-| `POST /api/v1/gateway/submit` | Submit a gateway-bound form for a published page. Requires a resolved gatewayBindingId, same as /resolve. |
+| `POST /api/v1/gateway/submit` | Submit a gateway-bound form for a published page. Requires a resolved gatewayBindingId, same as /resolve. The reply is `{ success, response }`, plus `outcome` when the service answered a plain key of 1-32 letters, digits, `_` or `-` (the page reacts to it, see guides/marketing-automation.md). |
 
 ### Gateway internal proxies (auth: wcms_session, admin-dashboard use only)
 
