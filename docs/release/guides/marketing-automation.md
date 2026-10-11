@@ -5,6 +5,9 @@ can react to the engine's answer: show a "thank you" block, another one for a vi
 Whoobe does **not** run automations itself. It connects the form to the engine, keeps a list of where each connection is, and
 leaves building the flow (send an e-mail, create a contact in HubSpot or Brevo, decide who qualifies) to the engine's own editor.
 
+For where this sits in the architecture (boundaries, state, failure behaviour, deployment of the engine) see
+[`architecture/automations.md`](../architecture/automations.md).
+
 ## 1. How it works
 
 1. The visitor submits a form. Its target is a **Gateway endpoint**: the request goes to the Gateway (`POST /api/v1/gateway/submit`),
