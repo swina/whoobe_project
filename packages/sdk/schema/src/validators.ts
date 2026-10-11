@@ -46,6 +46,8 @@ export const formConfigSchema: z.ZodType<ElementFormConfig> = z.object({
   errorMessage: z.string(),
   successRedirectUrl: z.string(),
   errorRedirectUrl: z.string(),
+  showResultMessage: z.boolean().optional(),
+  name: z.string().max(80).optional(),
   notify: formNotifySchema,
 })
 

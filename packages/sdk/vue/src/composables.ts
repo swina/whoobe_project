@@ -2,7 +2,7 @@
 // wrap the renderer/api in reactive async helpers.
 
 import { inject, ref, type Ref } from 'vue'
-import { walkTree, composeLayout, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
+import { walkTree, composeLayout, dispatchFormResult, sanitizeOutcome, showsResultMessage, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
 import { WHOOBE_KEY, type WhoobeContext } from './types.js'
 
 export function useWhoobe(): WhoobeContext {
@@ -100,25 +100,28 @@ export function useQuery(params: { class: string; filters?: unknown[]; orderBy?:
 
 /** Form submission helper mirroring DefaultForm's behavior: resets on
  *  success, keeps values on error, exposes the result popup state. */
-export function useForm(formConfig: { targetClassId: string; gatewayBindingId?: string; successMessage?: string; errorMessage?: string; notify?: unknown }) {
+export function useForm(formConfig: { targetClassId: string; gatewayBindingId?: string; successMessage?: string; errorMessage?: string; showResultMessage?: boolean; notify?: unknown }) {
   const ctx = useWhoobe()
   const submitting = ref(false)
   const result = ref<{ ok: boolean; message: string } | null>(null)
 
-  async function submit(attributes: Record<string, unknown>, formEl?: HTMLFormElement): Promise<{ ok: boolean }> {
+  async function submit(attributes: Record<string, unknown>, formEl?: HTMLFormElement): Promise<{ ok: boolean; outcome: string | null }> {
     submitting.value = true
     result.value = null
     try {
-      await ctx.api.submitForm(formConfig.targetClassId, attributes, {
+      const reply = await ctx.api.submitForm(formConfig.targetClassId, attributes, {
         notify: formConfig.notify,
         gatewayBindingId: formConfig.gatewayBindingId,
       })
       formEl?.reset()
-      result.value = { ok: true, message: formConfig.successMessage || 'Submitted.' }
-      return { ok: true }
+      result.value = showsResultMessage(formConfig) ? { ok: true, message: formConfig.successMessage || 'Submitted.' } : null
+      const outcome = sanitizeOutcome(reply?.outcome)
+      dispatchFormResult(formEl, { ok: true, outcome })
+      return { ok: true, outcome }
     } catch {
-      result.value = { ok: false, message: formConfig.errorMessage || 'Something went wrong, please try again.' }
-      return { ok: false }
+      result.value = showsResultMessage(formConfig) ? { ok: false, message: formConfig.errorMessage || 'Something went wrong, please try again.' } : null
+      dispatchFormResult(formEl, { ok: false, outcome: null })
+      return { ok: false, outcome: null }
     } finally {
       submitting.value = false
     }

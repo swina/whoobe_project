@@ -1,0 +1,55 @@
+# Sample: Activepieces (automation engine, MIT core) next to a Whoobe instance. Not part of the product stack; see
+# docs/plans/automations/activepieces-local-experiment.md and why-no-custom-automation-engine.md.
+#   AP_JWT_SECRET=$(openssl rand -hex 32) AP_ENCRYPTION_KEY=$(openssl rand -hex 16) AP_POSTGRES_PASSWORD=$(openssl rand -hex 16) \
+#     docker compose -f docker-compose.automation.yml up -d
+# KEEP the same three values (put them in a file with mode 600 and use --env-file): the encryption key decrypts the stored
+# connections, so a new value makes them unreadable. Bound to 127.0.0.1: put it behind HTTPS before exposing it, and give
+# every webhook a secret (Header Auth in the flow, an API-key endpoint in the Whoobe Gateway).
+# Pin the image tag below to the version you tested. The code under packages/ee/ of Activepieces has a commercial licence.
+name: whoobe-automation
+
+services:
+  activepieces:
+    image: activepieces/activepieces:latest
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+    ports:
+      - "127.0.0.1:${AP_PORT:-8090}:80"
+    environment:
+      AP_DB_TYPE: POSTGRES
+      AP_POSTGRES_HOST: postgres
+      AP_POSTGRES_PORT: "5432"
+      AP_POSTGRES_DATABASE: activepieces
+      AP_POSTGRES_USERNAME: activepieces
+      AP_POSTGRES_PASSWORD: ${AP_POSTGRES_PASSWORD:?set AP_POSTGRES_PASSWORD}
+      AP_REDIS_HOST: redis
+      AP_REDIS_PORT: "6379"
+      AP_JWT_SECRET: ${AP_JWT_SECRET:?set AP_JWT_SECRET (openssl rand -hex 32)}
+      AP_ENCRYPTION_KEY: ${AP_ENCRYPTION_KEY:?set AP_ENCRYPTION_KEY (openssl rand -hex 16)}
+      AP_FRONTEND_URL: ${AP_FRONTEND_URL:-http://localhost:8090}
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: activepieces
+      POSTGRES_USER: activepieces
+      POSTGRES_PASSWORD: ${AP_POSTGRES_PASSWORD:?set AP_POSTGRES_PASSWORD}
+    volumes:
+      - ap-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U activepieces"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - ap-redis:/data
+
+volumes:
+  ap-postgres:
+  ap-redis:

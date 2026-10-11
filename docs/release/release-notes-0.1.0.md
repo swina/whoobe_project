@@ -27,6 +27,10 @@ turns this into a release is in [`release-process.md`](release-process.md) (copy
 - **Download element** tied to an asset or a URL (link with `download`, or opened in a new tab); guide
   [`guides/download-element.md`](guides/download-element.md).
 - **Snippet lock**: a locked snippet is not saved automatically.
+- **Marketing automation**: a form sends its submission to an automation engine (Activepieces, n8n or any webhook) through the Gateway, the
+  engine can answer a one-word `outcome`, and the page reacts with AlpineJS directives to the new `whoobe-form-result` event. The forms
+  that start an automation are listed in **Data & Communication > Automations** (and in the editor). Whoobe does not run flows
+  itself. Guide: [`guides/marketing-automation.md`](guides/marketing-automation.md).
 - **File upload in forms**: a *File Upload* field, per-website limits (Settings > Form uploads), content checks, private
   storage. Guide: [`guides/form-uploads.md`](guides/form-uploads.md).
 - A consistent look for buttons, fields and windows (checked for contrast), the editor's tools as an icon bar, a menu
@@ -57,7 +61,7 @@ OWASP ZAP and image/TLS scans run in CI on every release commit.
 | Change | What you see | What to do |
 |---|---|---|
 | **Compose refuses to start without credentials**; Postgres and the S3 store listen on `127.0.0.1` only | `docker compose` names the missing variable; a database client on another machine cannot connect | set `POSTGRES_PASSWORD`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`; `WS_DATA_BIND_ADDRESS=0.0.0.0` to open the ports |
-| **Garage replaces MinIO as the default store** | a fresh stack has no MinIO; the MinIO overlay (`docker-compose.minio.yml`, `docker/minio`) is removed | copy existing data to the new store (see `operations/storage-backends.md`); an existing MinIO can stay as an external S3 endpoint |
+| **Garage replaces MinIO as the default store** | a fresh stack has no MinIO; the MinIO overlay (its compose file and Docker build folder) is removed | copy existing data to the new store (see `operations/storage-backends.md`); an existing MinIO can stay as an external S3 endpoint |
 | **Asset visibility is enforced** (`DAM_ENFORCE_ASSET_VISIBILITY`, on by default); `/public/**` is public | assets recorded as private answer 404 without a session | move what public pages use under `/public`, or set the flag to `false` |
 | **Credentialed CORS only for an allowlist** | "Failed to fetch" from an origin that is not `WHOOBE_HOSTNAME` | `CORS_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS` |
 | **Publishing needs `objects:publish`** (pages, data objects, and now website import) | 403 when an editor changes `published`; an imported site arrives as drafts | grant the permission; `ENFORCE_PUBLISH_PERMISSION=false` restores the old behaviour |
@@ -89,6 +93,7 @@ New or changed variables are documented in `.env.example`; the full list of what
 - **Deployment model:** one workspace per organisation. Different companies or legal entities need different workspaces; roles are for the functions and divisions of one organisation, and permissions apply to the whole workspace (there is no per-website permission).
 
 - **Findings from the review, all fixed in this release:** function-level permissions (F-058: 90 content routes accept `pages:edit`, `snippets:delete` ... or the broad key; see `architecture/authentication-and-authorization.md`), session ids stored as hashes and old sessions purged (F-056), no default database password outside development/test (F-057), AI/Figma/push credentials in clear text (F-055, needs `INTEGRATION_SECRETS_ENCRYPTION_KEY`), the OneSignal REST API key served by a public route (F-059), the seeded editor/viewer roles without `objects:*` (F-058, part).
+- Marketing automation: a form submission is the only trigger; the Gateway still returns the engine's whole reply to the browser next to `outcome` (the flow must not answer with secrets or personal data); the AlpineJS reaction was not checked against a Content-Security-Policy without `unsafe-eval`.
 - Form uploads: no malware scan; forms that send to a gateway endpoint do not take files.
 - The DAST scan and the manual security checklist were not repeated for the features added on 2026-10-08/09 (run the DAST on the release commit, as the release gate requires).
 - No audit log of administrative actions; `/health` does not check the database; no metrics; one instance per service (see `operations/observability-and-logging.md` and `operations/capacity-and-scaling.md`).

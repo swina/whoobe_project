@@ -4,6 +4,7 @@ import { logGatewayError, logger } from './log-error.js';
 import { buildAuthHeaders } from './gateway-auth-headers.js';
 import { resolveGatewayUrl } from './resolve-gateway-url.js';
 import { checkSiteAuth } from './site-auth.js';
+import { extractOutcome } from './submit-outcome.js';
 import { submitIpLimiter, submitSiteLimiter, validateSubmittedAttributes, isUuid } from './public-limits.js';
 
 // Brevo's POST /contacts only recognizes these keys at the top level of the
@@ -158,7 +159,10 @@ export function createSubmitHandler(): Router {
       const result = await proxyFetch(upstreamUrl, route.method, headers, requestBody, 15000);
 
       if (result.status >= 200 && result.status < 300) {
-        res.status(result.status).json({ success: true, response: result.body });
+        // `outcome`: the only part of the service's reply the page acts on (a validated key, see submit-outcome.ts).
+        // `response` (the whole body) is still passed on for now; it is to be dropped, see docs/plans/automations/.
+        const outcome = extractOutcome(result.body);
+        res.status(result.status).json(outcome ? { success: true, outcome, response: result.body } : { success: true, response: result.body });
       } else {
         logger.error(
           { upstreamStatus: result.status, upstreamBody: result.body, bindingId, routePath: route.path },
