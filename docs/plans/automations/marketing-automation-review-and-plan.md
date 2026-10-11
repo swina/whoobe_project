@@ -200,24 +200,15 @@ public route) a row in the route contract and an authorisation test.
 - Tests: rule evaluation matrix, cache headers, restricted node absent from the response body for a visitor without the token (grep the body), publish refuses a restricted node in a public static export.
 - *Acceptance*: same page, two visitors, two different trees; the restricted block is not in the bytes sent to the second visitor.
 
-### Phase 4: automation engine (L)
+### Phase 4: external automation engine (S)  *(replaces the custom engine and visual editor of the first draft)*
 
-> *Proposed change (2026-10-11):* do not build this phase; plug in an existing engine instead. Reasons and consequences in [why-no-custom-automation-engine.md](why-no-custom-automation-engine.md). Pending the owner's decision.
+Decided 2026-10-11, see [why-no-custom-automation-engine.md](why-no-custom-automation-engine.md): Whoobe does not build an
+engine or a flow editor; the organisation plugs in Activepieces (MIT core) or n8n through the Gateway.
 
-- Schema: `automations` (definition, version, status), `automation_runs`, `automation_outbox` (A2). Definition = Zod-validated JSON: trigger, steps `condition | action(gateway route) | wait | set_segment | end`.
-- Producers: form submit (Gateway), later asset download (opt-in, sampled: a DAM proxy request is high volume) and manual trigger.
-- Worker in the Gateway process with advisory lock; retries, dead-letter, kill switch; actions call existing Gateway routes through `proxyFetch` only (S7).
-- API: `automations:view` / `automations:manage` permissions, CRUD, "run with sample payload" (dry-run: actions are logged, not sent), run history.
-- Admin UI: list, status, last runs, run log with each step's input / output (secrets redacted).
-- Security tests: loop detection, run budget, permission matrix, SSRF through an action, secrets never in the run log.
-- *Acceptance*: "Form submit -> Brevo contact -> if MQL then set segment" runs unattended, survives a core restart in the middle, and its log explains every step.
-
-### Phase 5: visual editor (M-L)
-
-- Dedicated screen (A3), typed nodes, node inspector (the same fields as the JSON), validation (one trigger, no dangling nodes, no cycles without a wait), save as draft / activate, version history.
-- Reuse the canvas code: factor drag / ports / cable drawing out of `BlockIsometric.vue` into shared composables so the page canvas and the automation editor do not diverge.
-- Compile definition -> XState machine with the same function as the worker, so the editor can *simulate* a path.
-- *Acceptance*: a marketer builds the Phase 4 flow without touching JSON; a test round-trips editor -> JSON -> worker.
+- Done: the form -> Gateway -> webhook -> `outcome` contract, and two tried guides ([activepieces](activepieces-local-experiment.md), [n8n](n8n-local-experiment.md)).
+- Sample compose file with Activepieces (`docker-compose.automation.yml`, MIT core only).
+- To do, when wanted: a webhook **emitter** for events other than form submission (asset downloaded, content published), with a signed payload and the same retry / rate rules as the Gateway; the engine's own run history is the run log.
+- *Acceptance*: a marketer builds "form submit -> Brevo contact -> branch on the outcome" in the engine's editor and the page shows the right block, with no change to Whoobe.
 
 ### Phase 6 (optional, separate plans)
 
@@ -229,10 +220,10 @@ public route) a row in the route contract and an authorisation test.
 
 ```
 Phase 0 -> Phase 1 -> Phase 2 -> Phase 3
-                  \-> Phase 4 -> Phase 5
+                  \-> Phase 4 (external engine, small)
 ```
 
-Phases 3 and 4 are independent of each other once Phase 2 exists; Phase 4 can start after Phase 1 if "unlock" is not
+Phases 3 and 4 are independent of each other once Phase 2 exists; Phase 4 needs only Phase 1 if "unlock" is not
 in its first flows. The smallest release that already delivers value: Phases 0-2 (forms that react and unlock safely).
 
 ---
@@ -242,7 +233,7 @@ in its first flows. The smallest release that already delivers value: Phases 0-2
 1. **Static or dynamic?** Which kind of sites do the first marketing users run: static exports (Nuxt/Next generated) or SSR reading the public API? It decides whether Phase 3's server side is used at all (A1).
 2. **Verification step**: is double opt-in acceptable in the flows you have in mind? Without it the "unlock" feature should not ship (S3).
 3. **Consent**: is there, or should there be, a consent element in the editor that the cookie logic can rely on (S6)?
-4. **Where the first automation runs**: inside the Gateway process (recommended) or a separate container from the start?
+4. ~~Where the first automation runs~~ Decided 2026-10-11: in an external engine, no engine inside Whoobe (Phase 4).
 5. **Response change in Phase 1**: removing `response: <vendor body>` from the submit reply changes an existing public API; acceptable for 0.1.x or does it need a compatibility flag?
 6. **Scope of the mobile offline container**: confirm it moves to its own plan.
 
@@ -253,6 +244,6 @@ in its first flows. The smallest release that already delivers value: Phases 0-2
 | Restricted content leaks through caching | Phase 3 cache-header rule + a test per public route that serves rules |
 | Fake e-mail unlocks content | Phase 2 verification before any entitlement |
 | Vendor reply leaks personal data | Phase 1 response mapping, reply body dropped |
-| Automations loop or flood a vendor | run budget, per-automation rate limit, kill switch, dead-letter |
-| Automation config exposed by page content | definitions live in `automations`, never in page trees (A3) |
+| Automations loop or flood a vendor | the engine's own limits; Gateway rate limits per visitor and per site |
+| Automation config exposed by page content | flows live in the engine, never in page trees (A3) |
 | Scope creep into analytics / mail delivery | keep the two limits of the source document, reviewed at each phase |
