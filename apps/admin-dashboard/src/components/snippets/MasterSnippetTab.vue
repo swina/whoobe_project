@@ -22,7 +22,7 @@
         </button>
       </div>
       <div :class="fullscreen ? 'flex-1 min-h-0' : 'h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-2'">
-        <SnippetEditorEmbed :snippet-id="props.snippetId" :title="title" @created="onSnippetCreated" />
+        <SnippetEditorEmbed :snippet-id="props.snippetId" :element-id="props.elementId" :title="title" @created="onSnippetCreated" />
       </div>
     </div>
   </div>
@@ -35,7 +35,7 @@ import { useSnippetsStore } from '../../stores/snippetsStore'
 import { useTabsStore, snippetTabId } from '../../stores/tabsStore'
 import SnippetEditorEmbed from './SnippetEditorEmbed.vue'
 
-const props = defineProps<{ snippetId: string }>()
+const props = defineProps<{ snippetId: string; elementId?: string }>()
 
 const snippetsStore = useSnippetsStore()
 const tabsStore = useTabsStore()

@@ -1,4 +1,4 @@
-# Automations panel (prototype)
+# Automations panel and list (prototype)
 
 *Date: 2026-10-11. Status: implemented, unit-tested (the scan), **not yet tried in a browser** (checks in section 4).*
 *Part of [marketing-automation-review-and-plan.md](marketing-automation-review-and-plan.md); follows [why-no-custom-automation-engine.md](why-no-custom-automation-engine.md).*
@@ -42,11 +42,24 @@ Search box, endpoint filter and *Only forms sent to an endpoint* (on by default;
 3. Filters, an empty site, a failing API (the red message).
 4. The *Automation name* field saves and shows in the list after Refresh.
 
-## 5. Files
+## 5. The list outside the editor (admin dashboard)
+
+**Data & Communication > Automations** in the main navigation shows the same list as a table: name, where (page / snippet), website,
+endpoint and route, page reaction, with search, endpoint and website filters and *Only forms sent to an endpoint*. Both screens use
+`collectAutomations()` from `@whoobe-cms/schema`, so they always agree.
+
+- **Open** (or a click on the row) opens the page or snippet as a tab of the dashboard (the embedded editor) with the form selected.
+  If that page is **already open in a tab** the tab is only focused: its editor is loaded and may hold unsaved work, so the form is not selected again.
+- The external-link icon opens the endpoint's address (the engine), as *Service* does in the editor.
+- The website filter keeps the pages of that site; snippets have no website and are hidden while a site is chosen.
+- After changing `packages/sdk/schema`, rebuild it (`pnpm --filter @whoobe-cms/schema build`): the apps read its `dist`.
+
+## 6. Files
 
 | Where | What |
 |---|---|
-| `apps/whoobe-one-spike/src/scripts/automations-registry.ts` | `collectAutomations`, `filterAutomations`, `automationEditorUrl` (pure) |
+| `packages/sdk/schema/src/automations.ts` | `collectAutomations`, `filterAutomations`, `automationEditorUrl` (pure, shared by the editor and the dashboard) |
+| `apps/admin-dashboard/src/views/AutomationsView.vue`, `DashboardLayout.vue`, `tabsStore.ts`, the page / snippet tab and embed components | the list in the main navigation; `elementId` reaches the embedded editor |
 | `apps/whoobe-one-spike/src/components/AutomationsPanel.vue`, `BlockEditor.vue` | the panel and its tool in the bar |
 | `apps/whoobe-one-spike/src/views/Editor.vue` | `?elementId=` selects the element after loading |
 | `packages/sdk/schema` (`node.ts`, `validators.ts`), `ElementsClass.d.ts`, `FormConfigControl.vue` | optional `formConfig.name` |

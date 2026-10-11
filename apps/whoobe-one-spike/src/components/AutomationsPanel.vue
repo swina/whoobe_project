@@ -58,13 +58,13 @@
 
 <script setup lang="ts">
 // Every form that starts an automation, in one list (docs/plans/automations/automations-panel.md). Pages and snippets are read
-// whole and scanned in the browser by scripts/automations-registry.ts; nothing is stored. Whoobe does not run the flows: the
+// whole and scanned in the browser by @whoobe-cms/schema (automations.ts); nothing is stored. Whoobe does not run the flows: the
 // "Service" link only opens the endpoint's address, where the engine (Activepieces, n8n...) has its own editor.
 import { computed, onMounted, ref } from 'vue'
 import { listPages } from '../pages-api'
 import { listSnippets } from '../snippets-api'
 import { listEndpoints, type GatewayEndpoint } from '../gateway-api'
-import { collectAutomations, filterAutomations, automationEditorUrl, type AutomationEntry } from '../scripts/automations-registry'
+import { collectAutomations, filterAutomations, automationEditorUrl, type AutomationEntry } from '@whoobe-cms/schema'
 
 const entries = ref<AutomationEntry[]>([])
 const endpoints = ref<GatewayEndpoint[]>([])

@@ -1,4 +1,5 @@
-// Finds the forms that start an automation in a page or snippet tree, so the Automations panel can list them in one place
+// Finds the forms that start an automation in a page or snippet tree, so the Automations panel (editor) and the Automations
+// list (admin dashboard) can show them in one place
 // (docs/plans/automations/automations-panel.md). Pure functions, no Vue and no network: the panel feeds them the trees.
 // An "automation" here is a form with its submission handling on; Whoobe does not run flows (docs/plans/automations/
 // why-no-custom-automation-engine.md), it records where a form is connected and whether the page reacts to the answer.
