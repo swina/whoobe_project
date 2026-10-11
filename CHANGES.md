@@ -1,3 +1,6 @@
+## [Docs: Automations panel and list confirmed working] — 2026-10-11
+- Branch: `feat/form-result-event`. Documentation only: `automations-panel.md` status updated, the owner tried the editor panel and the dashboard list.
+
 ## [Automations list in the admin dashboard (Data & Communication > Automations)] — 2026-10-11
 - Branch: `feat/form-result-event`. New main-navigation entry **Automations** (group Data & Communication, after Integrations, `Zap` icon): `views/AutomationsView.vue` lists the forms that start an automation across all pages and snippets (name, where, website, endpoint and route, page reaction; search, endpoint / website filters; *Only forms sent to an endpoint*). Open (or the row) opens the page / snippet tab of the dashboard with the form selected; the icon opens the endpoint's http(s) address.
 - `tabsStore.openPage(id, subTab?, elementId?)` / `openSnippet(id, elementId?)`, `MainTab.elementId`, props `elementId` on `MasterPageTab`, `MasterSnippetTab`, `WhoobeOneEmbed`, `SnippetEditorEmbed` (passed to the editor as `?elementId=`; an already open tab is only focused).
