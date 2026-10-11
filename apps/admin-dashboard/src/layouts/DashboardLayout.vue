@@ -471,8 +471,8 @@
             </div>
             <MasterAssetTab v-else-if="tab.type === 'item' && tab.itemKind === 'asset' && tab.itemId" :asset-id="tab.itemId" />
             <MasterDocumentTab v-else-if="tab.type === 'item' && tab.itemKind === 'document' && tab.itemId" :document-id="tab.itemId" />
-            <MasterPageTab v-else-if="tab.type === 'item' && tab.itemKind === 'page' && tab.itemId" :page-id="tab.itemId" />
-            <MasterSnippetTab v-else-if="tab.type === 'item' && tab.itemKind === 'snippet' && tab.itemId" :snippet-id="tab.itemId" />
+            <MasterPageTab v-else-if="tab.type === 'item' && tab.itemKind === 'page' && tab.itemId" :page-id="tab.itemId" :element-id="tab.elementId" />
+            <MasterSnippetTab v-else-if="tab.type === 'item' && tab.itemKind === 'snippet' && tab.itemId" :snippet-id="tab.itemId" :element-id="tab.elementId" />
             <MasterObjectTab
               v-else-if="tab.type === 'item' && tab.itemKind === 'object' && tab.itemId && tab.objectClassId"
               :translation-group-id="tab.itemId"
@@ -567,6 +567,7 @@ import {
   Network,
   ScrollText,
   BookOpen,
+  Zap,
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
@@ -601,6 +602,7 @@ import SystemLogsView from '../views/SystemLogsView.vue'
 import ThemesView from '../components/themes/ThemesView.vue'
 import GatewayEndpointsView from '../views/GatewayEndpointsView.vue'
 import GatewayPluginsView from '../views/GatewayPluginsView.vue'
+import AutomationsView from '../views/AutomationsView.vue'
 import { usePagesStore } from '../stores/pagesStore'
 import { useSnippetsStore } from '../stores/snippetsStore'
 import { adminSearch, reindexSearchIndex, type SearchResult } from '../utils/search-api'
@@ -888,6 +890,7 @@ const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Outgoing Mail', section: 'mail', icon: Mail },
   { name: 'Themes', section: 'themes', icon: Palette },
   { name: 'Integrations', section: 'gateway', icon: Network },
+  { name: 'Automations', section: 'automations', icon: Zap },
   { name: 'System Logs', section: 'system-logs', icon: ScrollText },
   { name: 'AI', section: 'ai', icon: Sparkles },
   { name: 'Settings', section: 'settings', icon: Settings }
@@ -916,6 +919,7 @@ const sectionGroup: Partial<Record<SectionKind, NavGroupId>> = {
   documents: 'data',
   mail: 'data',
   gateway: 'data',
+  automations: 'data',
   'system-logs': 'system',
   ai: 'system',
   settings: 'system'
@@ -960,6 +964,7 @@ const sectionComponents: Record<SectionKind, any> = {
   ai: AiView,
   gateway: GatewayEndpointsView,
   'gateway-plugins': GatewayPluginsView,
+  automations: AutomationsView,
   'system-logs': SystemLogsView,
 }
 
@@ -976,6 +981,7 @@ const sectionLabels: Record<SectionKind, string> = {
   themes: 'Themes',
   gateway: 'Integrations',
   'gateway-plugins': 'Integration Plugins',
+  automations: 'Automations',
   'system-logs': 'System Logs',
   ai: 'AI',
   settings: 'Settings'
@@ -994,6 +1000,7 @@ const sectionIcons: Record<SectionKind, any> = {
   themes: Palette,
   gateway: Network,
   'gateway-plugins': Network,
+  automations: Zap,
   'system-logs': ScrollText,
   ai: Sparkles,
   settings: Settings

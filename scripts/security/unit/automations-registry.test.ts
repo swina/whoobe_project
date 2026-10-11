@@ -1,7 +1,7 @@
 // The Automations panel lists the forms that start an automation, found in the page and snippet trees
 // (docs/plans/automations/automations-panel.md).
 import { describe, it, expect } from 'vitest'
-import { collectAutomations, filterAutomations, automationEditorUrl, type AutomationSource } from '../../../apps/whoobe-one-spike/src/scripts/automations-registry'
+import { collectAutomations, filterAutomations, automationEditorUrl, type AutomationSource } from '../../../packages/sdk/schema/src/automations'
 
 const page: AutomationSource = { kind: 'page', id: 'p1', title: 'Landing', websiteId: 'w1', published: true }
 const snippet: AutomationSource = { kind: 'snippet', id: 's1', title: 'Signup box' }

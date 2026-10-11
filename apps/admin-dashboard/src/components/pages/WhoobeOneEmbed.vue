@@ -45,6 +45,8 @@ import { getWhoobeOneSpikeUrl } from '../../utils/editor-urls'
 
 const props = defineProps<{
   pageId: string
+  /** The element to select once the editor has loaded the page (the Automations list). */
+  elementId?: string
 }>()
 
 const isConnecting = ref(true)
@@ -55,6 +57,7 @@ const embedSrc = computed(() => {
     pageId: props.pageId,
     parentOrigin: window.location.origin,
   })
+  if (props.elementId) params.set('elementId', props.elementId)
   return `${base}/editor?${params.toString()}`
 })
 </script>

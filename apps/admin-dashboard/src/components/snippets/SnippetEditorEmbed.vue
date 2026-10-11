@@ -32,6 +32,8 @@ const props = defineProps<{
   snippetId: string
   websiteId?: string
   title?: string
+  /** The element to select once the editor has loaded the snippet (the Automations list). */
+  elementId?: string
 }>()
 
 const emit = defineEmits<{
@@ -53,6 +55,7 @@ const embedSrc = computed(() => {
     parentOrigin: window.location.origin,
   }
   if (props.websiteId) params.websiteId = props.websiteId
+  if (props.elementId && !isNew) params.elementId = props.elementId
   return `${base}/editor?${new URLSearchParams(params).toString()}`
 })
 
