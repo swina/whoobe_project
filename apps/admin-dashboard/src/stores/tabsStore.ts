@@ -12,7 +12,7 @@ import { ref } from 'vue'
 // with Preview (the read-only rendered HTML) as a second sub-tab, mirroring
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
-export type SectionKind = 'overview' | 'ai' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'components' | 'mail' | 'themes' | 'settings' | 'gateway' | 'gateway-plugins' | 'system-logs'
+export type SectionKind = 'overview' | 'ai' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'components' | 'mail' | 'themes' | 'settings' | 'gateway' | 'gateway-plugins' | 'automations' | 'system-logs'
 export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'classList' | 'website' | 'docsSite' | 'docsDoc'
 // The AI section of the navigation (its own sidebar entry, no longer part of Settings): one card per kind of AI provider.
 export type AiSubSection = 'text' | 'image' | 'translate'
@@ -35,6 +35,8 @@ export interface MainTab {
   assetSubTab?: AssetSubTab
   documentSubTab?: DocumentSubTab
   pageSubTab?: PageSubTab
+  // Page / snippet tab opened from the Automations list: the form to select once the editor has loaded it (editor `?elementId=`).
+  elementId?: string
   websiteSubTab?: WebsiteSubTab
   // A Data Object tab's sub-tab is a *locale*, not a fixed enum like
   // assets/documents use - see openObject()'s own comment for why the
@@ -188,10 +190,11 @@ export const useTabsStore = defineStore('tabs', () => {
   // No sub-tab state here (unlike documents) - MasterPageTab.vue wraps a
   // single embedded whoobe-one-spike editor with no Editor/Preview toggle
   // of its own (the embedded app already has its own Preview mode inline).
-  function openPage(pageId: string, subTab?: PageSubTab) {
+  function openPage(pageId: string, subTab?: PageSubTab, elementId?: string) {
     const id = pageTabId(pageId)
+    // an already open tab is only focused: its editor is loaded and may hold unsaved work, so `elementId` applies to a new tab
     if (findIndex(id) === -1) {
-      tabs.value.push({ id, type: 'item', itemKind: 'page', itemId: pageId, pageSubTab: subTab ?? 'editor' })
+      tabs.value.push({ id, type: 'item', itemKind: 'page', itemId: pageId, pageSubTab: subTab ?? 'editor', elementId })
     }
     activeTabId.value = id
   }
@@ -203,10 +206,10 @@ export const useTabsStore = defineStore('tabs', () => {
 
   // Opens (or focuses) a whoobe snippet's editor tab - the embedded
   // whoobe-one-spike editor pointed at /editor?snippetId=.
-  function openSnippet(snippetId: string) {
+  function openSnippet(snippetId: string, elementId?: string) {
     const id = snippetTabId(snippetId)
     if (findIndex(id) === -1) {
-      tabs.value.push({ id, type: 'item', itemKind: 'snippet', itemId: snippetId })
+      tabs.value.push({ id, type: 'item', itemKind: 'snippet', itemId: snippetId, elementId })
     }
     activeTabId.value = id
   }

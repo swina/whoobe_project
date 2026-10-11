@@ -4,7 +4,7 @@
   // honeypot, resets on success and shows a click-to-close result popup.
   import WhoobeNode from './WhoobeNode.svelte'
   import { getWhoobeContext } from './context.js'
-  import { collectFormValues, submitErrorMessage } from '@whoobe-cms/renderer'
+  import { collectFormValues, dispatchFormResult, sanitizeOutcome, showsResultMessage, submitErrorMessage } from '@whoobe-cms/renderer'
 
   let { descriptor } = $props()
 
@@ -18,14 +18,16 @@
     const formEl = e.currentTarget
     try {
       const attributes = await collectFormValues(formEl, ctx.api.uploadFile?.bind(ctx.api))
-      await ctx.api.submitForm(fc.targetClassId, attributes, {
+      const reply = await ctx.api.submitForm(fc.targetClassId, attributes, {
         notify: fc.notify,
         gatewayBindingId: fc.gatewayBindingId,
       })
       formEl.reset()
-      result = { ok: true, message: fc.successMessage || 'Submitted.' }
+      result = showsResultMessage(fc) ? { ok: true, message: fc.successMessage || 'Submitted.' } : null
+      dispatchFormResult(formEl, { ok: true, outcome: sanitizeOutcome(reply?.outcome) })
     } catch (err) {
-      result = { ok: false, message: submitErrorMessage(err, fc.errorMessage) }
+      result = showsResultMessage(fc) ? { ok: false, message: submitErrorMessage(err, fc.errorMessage) } : null
+      dispatchFormResult(formEl, { ok: false, outcome: null })
     }
   }
 </script>

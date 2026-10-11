@@ -6,6 +6,7 @@
 import type Element from './ElementsClass.js'
 import { getDefaultCoreApiUrl } from '../core-api-url'
 import { gatewayBaseUrl } from '../gateway-api'
+import { dispatchFormResult, sanitizeOutcome, showsResultMessage } from './form-result'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -125,19 +126,24 @@ export function mountFormSubmit(
             body: JSON.stringify({ attributes, formConfig: { notify: config.notify } }),
           })
       if (!res.ok) throw new Error(`status ${res.status}`)
+      // a Gateway form's service may answer an outcome key (n8n: `{ "outcome": "qualified" }`): the page reacts to it through the
+      // `whoobe-form-result` event (docs/plans/automations/form-result-event.md); nothing else of the reply is used
+      const reply = config.gatewayBindingId ? await res.json().catch(() => null) : null
+      dispatchFormResult(formEl, { ok: true, outcome: sanitizeOutcome(reply?.outcome) })
       if (config.successRedirectUrl) {
         window.location.href = config.successRedirectUrl
         return
       }
       formEl.reset()
-      onResult({ ok: true, message: config.successMessage || 'Submitted.' })
+      onResult(showsResultMessage(config) ? { ok: true, message: config.successMessage || 'Submitted.' } : null)
     } catch (err) {
       console.warn('[form-actions] submit failed:', err)
+      dispatchFormResult(formEl, { ok: false, outcome: null })
       if (config.errorRedirectUrl) {
         window.location.href = config.errorRedirectUrl
         return
       }
-      onResult({ ok: false, message: err instanceof UploadRefused ? err.message : config.errorMessage || 'Something went wrong, please try again.' })
+      onResult(showsResultMessage(config) ? { ok: false, message: err instanceof UploadRefused ? err.message : config.errorMessage || 'Something went wrong, please try again.' } : null)
     }
   }
 

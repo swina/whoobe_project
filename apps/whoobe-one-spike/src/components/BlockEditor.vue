@@ -128,6 +128,7 @@
           <SnippetsPanel v-else-if="sidebarTab === 'snippets'" />
           <KitsPanel v-else-if="sidebarTab === 'kits'" @loaded="sidebarTab = 'elements'" />
           <GatewayPanel v-else-if="sidebarTab === 'gateway'" />
+          <AutomationsPanel v-else-if="sidebarTab === 'automations'" />
           <PwaConfigPanel v-else-if="sidebarTab === 'pwa'" />
           <AiGeneratedPanel v-else-if="sidebarTab === 'ai'" @import="onAiGeneratedImport" @preview="onAiGeneratedPreview" />
         </div>
@@ -258,6 +259,7 @@ import {
   Palette,
   Pencil,
   Plug,
+  Workflow,
   Save,
   Settings2,
   Shapes,
@@ -294,6 +296,7 @@ import SaveSnippetModal from './SaveSnippetModal.vue'
 import ShortcutsModal from './ShortcutsModal.vue'
 import PwaConfigPanel from './PwaConfigPanel.vue'
 import GatewayPanel from './GatewayPanel.vue'
+import AutomationsPanel from './AutomationsPanel.vue'
 import type { AiGeneratedRecord } from '../ai-api'
 import type { WhoobeOnePage } from '../pages-api'
 import { GATEWAY_FIELD_DRAG_MIME_TYPE, type GatewayFieldDragPayload } from '../utils/gateway-drag'
@@ -315,7 +318,7 @@ const editor = useEditorStore()
 const snippetsStore = useSnippetsStore()
 const message = ref('')
 const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-violet-400 hover:bg-violet-800 text-white'
-type SidebarTool = 'elements' | 'customize' | 'tree' | 'advanced' | 'snippets' | 'kits' | 'ai' | 'pwa' | 'gateway'
+type SidebarTool = 'elements' | 'customize' | 'tree' | 'advanced' | 'snippets' | 'kits' | 'ai' | 'pwa' | 'gateway' | 'automations'
 // null = every panel hidden (the default): only the bar of icons is on screen
 const sidebarTab = ref<SidebarTool | null>(null)
 const sidebarTools: { key: SidebarTool; title: string; icon: any; appModeOnly?: boolean }[] = [
@@ -327,6 +330,7 @@ const sidebarTools: { key: SidebarTool; title: string; icon: any; appModeOnly?: 
   { key: 'kits', title: 'Kits', icon: Package },
   { key: 'ai', title: 'AI generations', icon: WandSparkles },
   { key: 'gateway', title: 'Integrations', icon: Plug },
+  { key: 'automations', title: 'Automations', icon: Workflow },
   { key: 'pwa', title: 'App Config', icon: Smartphone, appModeOnly: true },
 ]
 const activeToolTitle = computed(() => sidebarTools.find((t) => t.key === sidebarTab.value)?.title ?? '')

@@ -25,6 +25,10 @@
 
             <template v-if="formConfig.enabled">
               <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
+                Automation name (optional, shown in the Automations panel)
+                <input v-model="formConfig.name" type="text" maxlength="80" placeholder="e.g. Newsletter signup" class="text-xs border rounded px-1.5 py-1 bg-white" />
+              </label>
+              <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
                 Target
                 <select v-model="targetType" class="text-xs border rounded px-1.5 py-1 bg-white">
                   <option value="database">Data class (create a record)</option>
@@ -90,6 +94,17 @@
                   Redirect URL (optional - overrides the message above)
                   <input v-model="formConfig.errorRedirectUrl" type="text" class="text-xs border rounded px-1.5 py-1" placeholder="/error" />
                 </label>
+              </div>
+
+              <div class="flex flex-col gap-0.5 border rounded p-1.5">
+                <label class="flex items-center gap-1.5 text-xs text-gray-600">
+                  <input type="checkbox" :checked="formConfig.showResultMessage !== false" @change="formConfig.showResultMessage = ($event.target as HTMLInputElement).checked" />
+                  Show the message popup
+                </label>
+                <p class="text-[10px] text-gray-400">
+                  Turn it off when the page reacts to the result itself: the form sends a <code>whoobe-form-result</code> event
+                  (<code>$event.detail.ok</code>, <code>$event.detail.outcome</code>) that an element's AlpineJS directives can listen for.
+                </p>
               </div>
 
               <div v-if="formConfig.notify" class="flex flex-col gap-1 border rounded p-1.5">
@@ -184,12 +199,20 @@ onMounted(async () => {
   } catch (e) {
     console.warn('[FormConfigControl] Failed to load mail templates:', e)
   }
+  await loadEndpoints()
+})
+
+// Endpoints and routes are edited in another screen while the page stays open, so they are read again every time the modal
+// opens; the per-endpoint routes cache is dropped so `writeRoutes` fetches the current ones.
+async function loadEndpoints() {
   try {
     endpoints.value = await listEndpoints()
+    routesByEndpoint.value = {}
   } catch (e) {
     console.warn('[FormConfigControl] Failed to load gateway endpoints:', e)
   }
-})
+}
+watch(showModal, (open) => { if (open) loadEndpoints() })
 
 // Backfills `notify` in place for a Form saved before that field existed -
 // same "absent until actually set" treatment other late-added fields on

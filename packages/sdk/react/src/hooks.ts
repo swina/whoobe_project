@@ -2,7 +2,7 @@
 // React hooks wrapping the renderer/api (usePage/useObject/useQuery/useForm).
 
 import { useCallback, useEffect, useState } from 'react'
-import { walkTree, composeLayout, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
+import { walkTree, composeLayout, dispatchFormResult, sanitizeOutcome, showsResultMessage, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
 import { useWhoobe } from './context.js'
 
 export type AsyncStatus = 'loading' | 'ready' | 'error'
@@ -123,7 +123,7 @@ export function useQuery(params: QueryParams): AsyncState<Record<string, unknown
 }
 
 /** Form submission helper mirroring DefaultForm's behavior. */
-export function useForm(formConfig: { targetClassId: string; gatewayBindingId?: string; successMessage?: string; errorMessage?: string; notify?: unknown }) {
+export function useForm(formConfig: { targetClassId: string; gatewayBindingId?: string; successMessage?: string; errorMessage?: string; showResultMessage?: boolean; notify?: unknown }) {
   const ctx = useWhoobe()
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
@@ -132,16 +132,19 @@ export function useForm(formConfig: { targetClassId: string; gatewayBindingId?: 
     setSubmitting(true)
     setResult(null)
     try {
-      await ctx.api.submitForm(formConfig.targetClassId, attributes, {
+      const reply = await ctx.api.submitForm(formConfig.targetClassId, attributes, {
         notify: formConfig.notify,
         gatewayBindingId: formConfig.gatewayBindingId,
       })
       formEl?.reset()
-      setResult({ ok: true, message: formConfig.successMessage || 'Submitted.' })
-      return { ok: true as const }
+      setResult(showsResultMessage(formConfig) ? { ok: true, message: formConfig.successMessage || 'Submitted.' } : null)
+      const outcome = sanitizeOutcome(reply?.outcome)
+      dispatchFormResult(formEl, { ok: true, outcome })
+      return { ok: true as const, outcome }
     } catch {
-      setResult({ ok: false, message: formConfig.errorMessage || 'Something went wrong, please try again.' })
-      return { ok: false as const }
+      setResult(showsResultMessage(formConfig) ? { ok: false, message: formConfig.errorMessage || 'Something went wrong, please try again.' } : null)
+      dispatchFormResult(formEl, { ok: false, outcome: null })
+      return { ok: false as const, outcome: null }
     } finally {
       setSubmitting(false)
     }

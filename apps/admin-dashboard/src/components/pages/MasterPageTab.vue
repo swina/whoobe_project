@@ -49,7 +49,7 @@
     </div>
     <div class="flex-1 min-h-0 px-2 pb-2 pt-2">
       <div v-show="activeSubTab === 'editor'" class="h-full rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-2">
-        <WhoobeOneEmbed v-if="!isNewPage" :page-id="props.pageId" />
+        <WhoobeOneEmbed v-if="!isNewPage" :page-id="props.pageId" :element-id="props.elementId" />
         <div v-else class="h-full flex items-center justify-center text-xs text-slate-500">Save this page first to open the editor.</div>
       </div>
       <div v-show="activeSubTab === 'settings'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 px-6 py-4">
@@ -74,7 +74,7 @@
       </div>
     </div>
     <div class="flex-1 min-h-0">
-      <WhoobeOneEmbed v-if="!isNewPage" :page-id="props.pageId" />
+      <WhoobeOneEmbed v-if="!isNewPage" :page-id="props.pageId" :element-id="props.elementId" />
     </div>
   </div>
 
@@ -102,6 +102,7 @@ import { getSitePreviewBaseUrl } from '../../utils/editor-urls'
 
 const props = defineProps<{
   pageId: string
+  elementId?: string
 }>()
 
 const pagesStore = usePagesStore()
