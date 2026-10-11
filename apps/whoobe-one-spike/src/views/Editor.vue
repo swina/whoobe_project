@@ -37,7 +37,7 @@ import Block from '../scripts/BlocksClass.js'
 import BlockEditor from '../components/BlockEditor.vue'
 import { useEditorStore } from '../store/editor'
 import { loadPage, loadMailTemplate, loadSnippet, loadWebsiteTheme, loadAllThemes, createEmptyMailTemplateRoot, createEmptyDocumentRoot } from '../scripts/database-actions'
-import { clean } from '../helpers'
+import { clean, findNodeById } from '../helpers'
 import { getDefaultCoreApiUrl } from '../core-api-url'
 import { fetchAlpinePresets } from '../alpine-presets-api'
 import { resolveDocumentData } from '../scripts/data-resolver'
@@ -106,6 +106,13 @@ onMounted(async () => {
   await loadAlpinePresets()
   await fetchAutosaveDefault()
   await fetchStripHtmlComments()
+  // `elementId` (the Automations panel opens a form this way): select that element once the page or snippet is loaded
+  function selectRequestedElement() {
+    const elementId = typeof route.query.elementId === 'string' ? route.query.elementId : null
+    if (!elementId || !editor.document) return
+    const found = findNodeById(editor.document as any, elementId)
+    if (found) editor.setCurrent(found as any)
+  }
   const parentOrigin = typeof route.query.parentOrigin === 'string' ? route.query.parentOrigin : null
   if (parentOrigin) editor.setEmbedded(true, parentOrigin)
 
@@ -132,6 +139,7 @@ onMounted(async () => {
       editor.setWebsiteId(wsId)
       await loadWebsiteTheme(editor, wsId)
     } else await loadAllThemes(editor)
+    selectRequestedElement()
     return
   }
   if (route.query.snippetNew !== undefined) {
@@ -184,6 +192,7 @@ onMounted(async () => {
     } catch (e) {
       console.warn('Failed to load page:', e)
     }
+    selectRequestedElement()
     return
   }
 
