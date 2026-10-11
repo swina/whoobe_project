@@ -25,6 +25,10 @@
 
             <template v-if="formConfig.enabled">
               <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
+                Automation name (optional, shown in the Automations panel)
+                <input v-model="formConfig.name" type="text" maxlength="80" placeholder="e.g. Newsletter signup" class="text-xs border rounded px-1.5 py-1 bg-white" />
+              </label>
+              <label class="flex flex-col gap-0.5 text-[10px] text-gray-500">
                 Target
                 <select v-model="targetType" class="text-xs border rounded px-1.5 py-1 bg-white">
                   <option value="database">Data class (create a record)</option>

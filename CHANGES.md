@@ -1,3 +1,8 @@
+## [Automations panel: every form connected to an automation, in one list (prototype)] — 2026-10-11
+- Branch: `feat/form-result-event`. New editor tool **Automations** (`AutomationsPanel.vue`, in the right-hand bar after Integrations): lists the forms with submission handling on found in all pages and snippets, with name, where, endpoint and route, whether the page reacts to `whoobe-form-result` and whether the popup is off; search, endpoint filter, *Open* (new tab, `/editor?pageId|snippetId=...&elementId=...`, `Editor.vue` selects the element) and *Service* (the endpoint's http(s) address). Pure scan in `scripts/automations-registry.ts`.
+- Optional `formConfig.name` ("Automation name" in the form settings): `node.ts`, `validators.ts` (max 80), `ElementsClass.d.ts`, `FormConfigControl.vue`.
+- Tests: `scripts/security/unit/automations-registry.test.ts` (8); the 20 unit files still pass. **Not tried in a browser** (no browser available in the session). Guide: `docs/plans/automations/automations-panel.md`.
+
 ## [Plan: external automation engine decided; sample Activepieces compose file] — 2026-10-11
 - Branch: `feat/form-result-event`. Owner confirmed the decision of `why-no-custom-automation-engine.md`. In `marketing-automation-review-and-plan.md` Phases 4 and 5 (custom engine, visual editor) are replaced by a small Phase 4 "external engine" (dependency diagram, decision 4 and two risk rows updated). New `docker-compose.automation.yml`: Activepieces + Postgres + Redis, secrets required from the environment (`:?`), bound to 127.0.0.1; tried (it answers on its port; `AP_POSTGRES_PORT` is required and was missing in the first version).
 

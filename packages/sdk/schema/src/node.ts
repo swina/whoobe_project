@@ -59,6 +59,8 @@ export interface ElementFormConfig {
   /** Show the success / error message popup after a submission. Absent = true. Turn it off when the page itself reacts to the
    *  `whoobe-form-result` event (docs/plans/automations/form-result-event.md). */
   showResultMessage?: boolean
+  /** Optional name shown in the Automations panel (docs/plans/automations/automations-panel.md). */
+  name?: string
   notify: ElementFormNotifyConfig
 }
 
