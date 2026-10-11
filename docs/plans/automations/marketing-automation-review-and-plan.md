@@ -202,6 +202,8 @@ public route) a row in the route contract and an authorisation test.
 
 ### Phase 4: automation engine (L)
 
+> *Proposed change (2026-10-11):* do not build this phase; plug in an existing engine instead. Reasons and consequences in [why-no-custom-automation-engine.md](why-no-custom-automation-engine.md). Pending the owner's decision.
+
 - Schema: `automations` (definition, version, status), `automation_runs`, `automation_outbox` (A2). Definition = Zod-validated JSON: trigger, steps `condition | action(gateway route) | wait | set_segment | end`.
 - Producers: form submit (Gateway), later asset download (opt-in, sampled: a DAM proxy request is high volume) and manual trigger.
 - Worker in the Gateway process with advisory lock; retries, dead-letter, kill switch; actions call existing Gateway routes through `proxyFetch` only (S7).

@@ -1,5 +1,15 @@
+## [Docs: why no custom automation engine; Activepieces flow verified] — 2026-10-11
+- Branch: `feat/form-result-event`. Documentation only. New `docs/plans/automations/why-no-custom-automation-engine.md` (proposed decision: plug in Activepieces / n8n instead of the plan's Phases 4-5; reasons, licence fit, what is given up, when to revisit); a pointer under Phase 4 of the plan; the Activepieces guide marks the flow as verified by the owner (e-mail through Mailhog and `outcome` in the page).
+
+## [Script: toggle the local automation test containers] — 2026-10-11
+- Branch: `feat/form-result-event`. New `scripts/automation-test.sh [activepieces|n8n]`: stops the container(s) if running, otherwise starts them (creating network, volume and containers when missing). `activepieces` also manages `whoobe-smtp-forward` (socat 2525 -> Mailhog, `MAILHOG_ADDR` to change), because the Activepieces SMTP piece only offers ports 25/465/587/2525. Secrets are read from `~/.config/whoobe/activepieces.env` (outside the repo, mode 600).
+
 ## [Form settings: endpoints and routes refresh when the modal opens] — 2026-10-11
 - Branch: `feat/form-result-event`. `FormConfigControl.vue` loaded the Gateway endpoints once on mount and cached each endpoint's routes forever, so an endpoint or route added/edited meanwhile did not show up until the page was closed and reopened. Both are now read again every time the form settings modal opens (`loadEndpoints`, routes cache cleared).
+- Also: `docs/plans/automations/activepieces-local-experiment.md` (see the entry below).
+
+## [Guide: Activepieces as MIT alternative to n8n] — 2026-10-11
+- Branch: `feat/form-result-event`. Documentation only. New `docs/plans/automations/activepieces-local-experiment.md`: licence note (MIT core, commercial `ee` folder), single-container local run (needs `AP_JWT_SECRET`, otherwise the worker loops), webhook + Return Response flow, Whoobe side unchanged.
 
 ## [Forms: result event and outcome key from the Gateway service (prototype)] — 2026-10-10
 - Branch: `feat/form-result-event` (from `docs/marketing-automation-plan`). A form now tells the page how a submission ended: it dispatches a bubbling DOM event `whoobe-form-result` with `{ ok, outcome }` on its `<form>`, from the editor preview and from the Vue/Nuxt, React/Next and Svelte runtimes (success and failure). The page reacts with the AlpineJS directives every element already has. Guide: `docs/plans/automations/form-result-event.md`.
