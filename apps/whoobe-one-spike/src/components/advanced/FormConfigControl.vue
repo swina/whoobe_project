@@ -195,12 +195,20 @@ onMounted(async () => {
   } catch (e) {
     console.warn('[FormConfigControl] Failed to load mail templates:', e)
   }
+  await loadEndpoints()
+})
+
+// Endpoints and routes are edited in another screen while the page stays open, so they are read again every time the modal
+// opens; the per-endpoint routes cache is dropped so `writeRoutes` fetches the current ones.
+async function loadEndpoints() {
   try {
     endpoints.value = await listEndpoints()
+    routesByEndpoint.value = {}
   } catch (e) {
     console.warn('[FormConfigControl] Failed to load gateway endpoints:', e)
   }
-})
+}
+watch(showModal, (open) => { if (open) loadEndpoints() })
 
 // Backfills `notify` in place for a Form saved before that field existed -
 // same "absent until actually set" treatment other late-added fields on
