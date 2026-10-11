@@ -17,7 +17,7 @@
       <textarea ref="textarea" v-model="text" data-testid="docs-edit-text" spellcheck="false" :disabled="!loaded" class="min-h-0 resize-none p-3 text-sm font-mono bg-slate-950 light:bg-white text-slate-200 light:text-slate-800 outline-none" @input="onEdit" @keydown.ctrl.s.prevent="save" @keydown.meta.s.prevent="save"></textarea>
       <div class="min-h-0 overflow-y-auto bg-slate-900 light:bg-slate-50 p-4">
         <div v-if="preview.warnings.length" class="mb-3 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2"><div v-for="w in preview.warnings" :key="w">{{ w }}</div></div>
-        <div data-testid="docs-edit-preview" class="docs-preview" v-html="preview.html"></div>
+        <div ref="previewEl" data-testid="docs-edit-preview" class="docs-preview" v-html="preview.html"></div>
       </div>
     </div>
     <DocsImageDialog v-if="imageDialog && tree" :tree="tree" :doc-path="path" @close="imageDialog = false" @insert="insertImage" />
@@ -27,7 +27,7 @@
 <script setup lang="ts">
 // One document of a documentation site in a tab of its own (docs/plans/docs-sites/docs-site-plan.md): the Markdown on one side,
 // the page as it will look on the other. The tab asks before it is closed with unsaved changes (tabsStore `dirty`).
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ExternalLink } from '@lucide/vue'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import { useDamStore } from '../../stores/damStore'
@@ -37,6 +37,7 @@ import { useDocsSitesStore } from '../../stores/docsSitesStore'
 import { uploadAssetToDam } from '../../utils/dam-api'
 import { docsPreviewUrl, readDocsFile, renderDocsDraft, cleanRelativePath } from '../../utils/docs-sites-api'
 import DocsImageDialog from './DocsImageDialog.vue'
+import { drawMermaid } from '../../utils/docs-mermaid'
 
 const props = defineProps<{ websiteId: string; path: string }>()
 
@@ -65,6 +66,9 @@ const error = ref('')
 const imageDialog = ref(false)
 const textarea = ref<HTMLTextAreaElement | null>(null)
 const preview = ref<{ html: string; warnings: string[] }>({ html: '', warnings: [] })
+const previewEl = ref<HTMLElement | null>(null)
+// the preview is replaced as a whole on each change: diagrams are drawn again after it
+watch(() => preview.value.html, async () => { await nextTick(); void drawMermaid(previewEl.value) })
 const status = computed(() => (busy.value || (dirty.value ? 'Unsaved changes' : isNew.value ? 'Not saved yet' : 'Saved')))
 
 watch(dirty, (v) => tabs.setDirty(tabId, v))
@@ -161,6 +165,8 @@ async function insertImage(md: string) {
 .docs-preview :deep(ol) { list-style: decimal; padding-left: 1.4rem; }
 .docs-preview :deep(a) { color: #818cf8; text-decoration: underline; }
 .docs-preview :deep(pre) { background: #0b1020; color: #e2e8f0; padding: .75rem; border-radius: .5rem; overflow-x: auto; font-size: .8rem; }
+.docs-preview :deep(.doc-mermaid) { margin: 0 0 .8rem; overflow-x: auto; text-align: center; }
+.docs-preview :deep(.doc-mermaid svg) { max-width: 100%; height: auto; }
 .docs-preview :deep(code) { font-family: ui-monospace, monospace; font-size: .85em; }
 .docs-preview :deep(:not(pre) > code) { background: rgba(148,163,184,.2); padding: .1rem .3rem; border-radius: .25rem; }
 .docs-preview :deep(table) { border-collapse: collapse; }

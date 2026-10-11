@@ -100,6 +100,12 @@ describe('renderMarkdown', () => {
     expect(r.html).toContain('<pre class="doc-code"><code class="language-ts">const a = &quot;&lt;b&gt;&quot; &amp;&amp; 1</code></pre>');
     expect(r.html).toContain('<code>x</code>');
   });
+  it('a mermaid block stays inert escaped text with its language: the diagram is drawn later, in the browser', () => {
+    const r = renderMarkdown('```mermaid\nflowchart LR\n  A[\"<img src=x onerror=1>\"] --> B\n```', ctx());
+    expect(r.html).toContain('<pre class="doc-code"><code class="language-mermaid">flowchart LR');
+    expect(r.html).toContain('--&gt; B');
+    expect(r.html).not.toMatch(/<(img|svg|script)\b/i);
+  });
   it('admonitions, tables and task lists', () => {
     const r = renderMarkdown(':::warning Careful\nDo not **do** this\n:::\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n- [x] done\n- [ ] todo', ctx());
     expect(r.html).toContain('<div class="doc-admonition doc-admonition-warning"><p class="doc-admonition-title">Careful</p>');

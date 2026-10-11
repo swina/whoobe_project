@@ -76,6 +76,7 @@
 // the page, "on this page" on the right, previous/next. Rendered by the editor application at the website's root path.
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { drawMermaid } from '../docs-mermaid'
 import { loadDocsSearch, loadDocsView, type DocsSiteRef, type DocsView, type SearchHit } from '../docs-api'
 import DocsNavTree from '../components/DocsNavTree.vue'
 import { getDefaultAssetProcessorUrl } from '../dam-api'
@@ -116,6 +117,7 @@ async function load() {
   }
   await nextTick()
   watchHeadings()
+  void drawMermaid(content.value)
   const hash = window.location.hash.slice(1)
   if (hash) scrollTo(hash, false); else window.scrollTo({ top: 0 })
 }
