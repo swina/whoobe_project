@@ -5,7 +5,7 @@ boundaries are and which parts hold state. Every statement here was taken from t
 repository; where something is **not** implemented it says so. Companion documents:
 [data and storage](data-and-storage.md), [authentication and authorization](authentication-and-authorization.md),
 [threat model](../security/threat-model.md), [configuration reference](../operations/configuration-reference.md),
-[capacity and scaling](../operations/capacity-and-scaling.md).
+[capacity and scaling](../operations/capacity-and-scaling.md), [automations](automations.md).
 
 ## 1. What the product is, technically
 
