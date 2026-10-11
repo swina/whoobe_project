@@ -25,6 +25,7 @@
     "@highlightjs/cdn-assets": "^11.12.0",
     "@whoobe-cms/renderer": "workspace:*",
     "commander": "^12.0.0",
+    "mermaid": "11.17.2",
     "minisearch": "^7.2.0"
   },
   "devDependencies": {
