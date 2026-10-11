@@ -1,6 +1,6 @@
 # Why Whoobe does not build its own automation engine
 
-*Date: 2026-10-11. Status: **proposed decision**, for the owner to confirm. Context: [marketing-automation-review-and-plan.md](marketing-automation-review-and-plan.md)
+*Date: 2026-10-11. Status: **decided by the owner, 2026-10-11**. Context: [marketing-automation-review-and-plan.md](marketing-automation-review-and-plan.md)
 (Phases 4 and 5 propose a custom engine and visual editor; this document argues for replacing them).*
 
 ## 1. The decision
@@ -71,6 +71,6 @@ Until then the cost of the first option is a few hundred lines (webhook emitter,
 
 ## 6. Consequences for the plan
 
-- **Phases 4 and 5** (automation engine, visual editor) are replaced by: a documented integration (done: two guides), a webhook **emitter** for non-form events, and a sample compose file with Activepieces (optional, MIT core).
+- **Phases 4 and 5** (automation engine, visual editor) are replaced by: a documented integration (done: two guides), a sample compose file with Activepieces (`docker-compose.automation.yml`, MIT core) and, when wanted, a webhook **emitter** for non-form events.
 - **Phases 1 to 3** are unchanged: form outcomes (prototype done), signed entitlements, visibility rules. They are the parts no external engine can do.
 - Section 5 of the plan gains a decision: "Engine: plug in (this document) or build (Phases 4-5)".

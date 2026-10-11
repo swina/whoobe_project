@@ -1,3 +1,6 @@
+## [Plan: external automation engine decided; sample Activepieces compose file] — 2026-10-11
+- Branch: `feat/form-result-event`. Owner confirmed the decision of `why-no-custom-automation-engine.md`. In `marketing-automation-review-and-plan.md` Phases 4 and 5 (custom engine, visual editor) are replaced by a small Phase 4 "external engine" (dependency diagram, decision 4 and two risk rows updated). New `docker-compose.automation.yml`: Activepieces + Postgres + Redis, secrets required from the environment (`:?`), bound to 127.0.0.1; tried (it answers on its port; `AP_POSTGRES_PORT` is required and was missing in the first version).
+
 ## [Docs: why no custom automation engine; Activepieces flow verified] — 2026-10-11
 - Branch: `feat/form-result-event`. Documentation only. New `docs/plans/automations/why-no-custom-automation-engine.md` (proposed decision: plug in Activepieces / n8n instead of the plan's Phases 4-5; reasons, licence fit, what is given up, when to revisit); a pointer under Phase 4 of the plan; the Activepieces guide marks the flow as verified by the owner (e-mail through Mailhog and `outcome` in the page).
 
