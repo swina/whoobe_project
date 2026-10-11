@@ -24,6 +24,7 @@ turns this into a release is in [`release-process.md`](release-process.md) (copy
 - **Documentation sites**: a website whose source is a folder of Markdown assets, with an index (automatic or edited in the
   dashboard), navigation and client-side search, rendered by the editor app or generated as a static site. Guide:
   [`guides/documentation-sites.md`](guides/documentation-sites.md).
+- Documentation sites draw `mermaid` code blocks as diagrams (editor, dashboard preview and generated site; the library is copied into the site, not loaded from a CDN). Guide: [`guides/documentation-sites.md`](guides/documentation-sites.md).
 - **Download element** tied to an asset or a URL (link with `download`, or opened in a new tab); guide
   [`guides/download-element.md`](guides/download-element.md).
 - **Snippet lock**: a locked snippet is not saved automatically.

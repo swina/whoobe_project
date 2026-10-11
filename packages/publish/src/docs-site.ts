@@ -96,7 +96,7 @@ export function rewritePageHtml(html: string, base: string, assetUrl: (damPath: 
 }
 
 export function pageHtml(p: {
-  site: string; page: PageData | null; html: string; nav: NavNode[]; base: string; siteUrl?: string; accent?: string; hasCode: boolean; notFound?: boolean
+  site: string; page: PageData | null; html: string; nav: NavNode[]; base: string; siteUrl?: string; accent?: string; hasCode: boolean; hasMermaid?: boolean; notFound?: boolean
 }): string {
   const { page, base } = p
   const title = p.notFound ? 'Page not found' : (page as PageData).title
@@ -127,7 +127,7 @@ ${canonical}
 <link rel="stylesheet" href="${esc(base)}assets/docs.css">
 ${accent}
 </head>
-<body data-base="${esc(base)}" data-code="${p.hasCode ? '1' : '0'}">
+<body data-base="${esc(base)}" data-code="${p.hasCode ? '1' : '0'}" data-mermaid="${p.hasMermaid ? '1' : '0'}">
 <header class="top">
   <button id="menu" type="button" aria-label="Menu" aria-controls="nav">☰</button>
   <a class="brand" href="${esc(base)}">${esc(p.site)}</a>
@@ -184,6 +184,7 @@ main{flex:1;min-width:0;padding:2rem 0}article{max-width:62rem}
 .doc-anchor{margin-left:.5rem;color:var(--muted);text-decoration:none;opacity:0;font-weight:400}h1:hover .doc-anchor,h2:hover .doc-anchor,h3:hover .doc-anchor,h4:hover .doc-anchor{opacity:1}
 .doc-content pre{position:relative;background:var(--code);color:var(--codefg);padding:1rem;border-radius:.6rem;overflow-x:auto;font-size:.85rem;line-height:1.55}
 .doc-content pre code.hljs{padding:0;background:none}
+.doc-content .doc-mermaid{margin:0 0 1rem;overflow-x:auto;text-align:center}.doc-content .doc-mermaid svg{max-width:100%;height:auto}.doc-content .doc-mermaid-error{font-size:.8rem;color:var(--muted);margin:0 0 .3rem}
 .doc-content code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em}
 .doc-content :not(pre)>code{background:var(--soft);border:1px solid var(--line);padding:.05rem .35rem;border-radius:.3rem}
 .copy{position:absolute;top:.4rem;right:.4rem;font:inherit;font-size:.7rem;padding:.15rem .5rem;border-radius:.3rem;border:1px solid #334155;background:#1e293b;color:#cbd5e1;cursor:pointer;opacity:0}
@@ -213,6 +214,7 @@ export const DOCS_JS = `(function () {
 
   // copy buttons on code blocks
   document.querySelectorAll('.doc-content pre').forEach(function (pre) {
+    if (pre.querySelector('code.language-mermaid')) return;
     var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
     b.addEventListener('click', function () {
       var code = pre.querySelector('code'); var text = (code || pre).textContent || '';
@@ -223,11 +225,35 @@ export const DOCS_JS = `(function () {
   });
 
   // syntax highlighting: the library is loaded only on pages that have code
-  if (document.body.getAttribute('data-code') === '1' && document.querySelector('pre code[class*="language-"]')) {
+  if (document.body.getAttribute('data-code') === '1' && document.querySelector('pre code[class*="language-"]:not(.language-mermaid)')) {
     var css = document.createElement('link'); css.rel = 'stylesheet'; css.href = base + 'assets/hljs/theme.css'; document.head.appendChild(css);
     var s = document.createElement('script'); s.src = base + 'assets/hljs/highlight.min.js';
-    s.onload = function () { if (window.hljs) document.querySelectorAll('pre code[class*="language-"]').forEach(function (el) { window.hljs.highlightElement(el); }); };
+    s.onload = function () { if (window.hljs) document.querySelectorAll('pre code[class*="language-"]:not(.language-mermaid)').forEach(function (el) { window.hljs.highlightElement(el); }); };
     document.head.appendChild(s);
+  }
+
+  // diagrams: a code block written as mermaid is drawn as a picture; the library is loaded only on pages that have one, and if it
+  // cannot be loaded or a diagram does not parse, the code stays where it was
+  if (document.body.getAttribute('data-mermaid') === '1' && document.querySelector('pre code.language-mermaid')) {
+    var ms = document.createElement('script'); ms.src = base + 'assets/mermaid/mermaid.min.js';
+    ms.onload = function () {
+      if (!window.mermaid) return;
+      var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'dark' : 'default' });
+      var chain = Promise.resolve();
+      document.querySelectorAll('pre code.language-mermaid').forEach(function (code, i) {
+        chain = chain.then(function () {
+          var pre = code.parentNode;
+          return window.mermaid.render('doc-mermaid-' + i, code.textContent || '').then(function (r) {
+            var d = document.createElement('div'); d.className = 'doc-mermaid'; d.innerHTML = r.svg; pre.replaceWith(d);
+          }).catch(function () {
+            var n = document.createElement('p'); n.className = 'doc-mermaid-error'; n.textContent = 'This diagram could not be drawn.'; pre.parentNode.insertBefore(n, pre);
+            var junk = document.getElementById('ddoc-mermaid-' + i); if (junk) junk.remove();
+          });
+        });
+      });
+    };
+    document.head.appendChild(ms);
   }
 
   // "on this page": the heading being read
@@ -399,20 +425,23 @@ export async function generateDocsSite(raw: DocsGenerateOptions): Promise<{ page
 
   let broken = 0
   let anyCode = false
+  let anyMermaid = false
   const rendered: { route: string; html: string; page: PageData }[] = []
   for (const { route, data } of pages) {
     const html = rewritePageHtml(data.html, base, assetUrl)
     const brokenLinks = (html.match(/<a href="#"/g) ?? []).length
     if (brokenLinks) { broken += brokenLinks; warnings.push(`${data.path}: ${brokenLinks} broken link(s)`) }
-    const hasCode = /<code class="language-/.test(html)
+    const hasCode = /<code class="language-(?!mermaid")/.test(html)
     anyCode = anyCode || hasCode
+    anyMermaid = anyMermaid || /<code class="language-mermaid"/.test(html)
     rendered.push({ route, html, page: data })
   }
   if (raw.strict && broken > 0) throw new Error(`${broken} broken link(s):\n  ${warnings.filter((w) => /broken link/.test(w)).join('\n  ')}`)
 
   for (const r of rendered) {
-    const hasCode = /<code class="language-/.test(r.html)
-    await put(`${routeDir(r.route)}index.html`, pageHtml({ site, page: r.page, html: r.html, nav: navBody.nav, base, siteUrl: raw.siteUrl, hasCode }))
+    const hasCode = /<code class="language-(?!mermaid")/.test(r.html)
+    const hasMermaid = /<code class="language-mermaid"/.test(r.html)
+    await put(`${routeDir(r.route)}index.html`, pageHtml({ site, page: r.page, html: r.html, nav: navBody.nav, base, siteUrl: raw.siteUrl, hasCode, hasMermaid }))
   }
   await put('404.html', pageHtml({ site, page: null, html: '', nav: navBody.nav, base, hasCode: false, notFound: true }))
   await put('assets/docs.css', DOCS_CSS)
@@ -426,6 +455,7 @@ export async function generateDocsSite(raw: DocsGenerateOptions): Promise<{ page
     await copyFrom(join(hl, 'highlight.min.js'), 'assets/hljs/highlight.min.js')
     await copyFrom(join(hl, 'styles', 'github-dark.min.css'), 'assets/hljs/theme.css')
   }
+  if (anyMermaid) await copyFrom(join(packageRoot('mermaid'), 'dist', 'mermaid.min.js'), 'assets/mermaid/mermaid.min.js')
 
   // the files the documents use
   let copied = 0
