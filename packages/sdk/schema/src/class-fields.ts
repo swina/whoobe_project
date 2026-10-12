@@ -45,6 +45,13 @@ function addFields(obj: unknown, names: readonly string[], into: Set<string>): v
   for (const name of names) addClasses(obj[name], into)
 }
 
+function addTransformClasses(transform: unknown, into: Set<string>): void {
+  if (!isObject(transform) || transform.type !== 'valueMap' || !isObject(transform.options)) return
+  const o = transform.options
+  addClasses(o.fallbackClassName, into)
+  if (Array.isArray(o.rules)) for (const r of o.rules) addFields(r, ['className'], into)
+}
+
 /** Adds to `into` every class an authored tree (a page, a snippet) can need: those of the node, its table, slider, search and
  *  bindings, and the default classes of the built-in components that node uses. Recurses into `blocks`. */
 export function collectTreeClasses(node: unknown, into: Set<string>, depth = 0): void {
@@ -67,6 +74,11 @@ export function collectTreeClasses(node: unknown, into: Set<string>, depth = 0):
     }
     if (Array.isArray(table.columns)) for (const col of table.columns) addFields(col, CLASS_FIELDS.tableColumn, into)
   }
+
+  // a "map value to label/class" transform carries Tailwind classes of its own (a badge per value), on a field binding or a table column
+  addTransformClasses(isObject(node.dataBinding) ? node.dataBinding.transform : null, into)
+  addTransformClasses(isObject(node.gatewayBinding) ? node.gatewayBinding.transform : null, into)
+  if (isObject(table) && Array.isArray(table.columns)) for (const col of table.columns) addTransformClasses(isObject(col) ? col.transform : null, into)
 
   // what the built-in components bring with them when the author set nothing
   if (node.tag === 'slider') for (const c of SLIDER_DEFAULT_CLASSES) addClasses(c, into)

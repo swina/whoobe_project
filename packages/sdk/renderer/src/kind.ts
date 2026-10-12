@@ -14,6 +14,8 @@ export function normalizeKind(node: WhoobeElementNode): string {
   switch (node.tag) {
     case 'slider':
       return 'slider'
+    case 'table':
+      return 'table'
     case 'youtube':
       return 'youtube'
     case 'vimeo':

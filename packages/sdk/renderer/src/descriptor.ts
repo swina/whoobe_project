@@ -5,6 +5,7 @@
 // un-normalized config. Fully serializable (no functions, no classes), so it
 // can cross an SSR boundary.
 
+import type { TableDescriptor } from './table.js'
 import type {
   WhoobeElementNode,
   ElementFormConfig,
@@ -46,6 +47,8 @@ export interface RenderDescriptor {
   formConfig: ElementFormConfig | null
   searchConfig: ElementSearchConfig | null
   slider: ElementSlider | null
+  /** The Table element (kind 'table'): a typed grid, or one pre-formatted row per record of a bound list. Null for every other kind. */
+  table: TableDescriptor | null
   dataBinding: ElementDataBinding | null
   /** Select/radiogroup options (from data.options). */
   options: FieldOption[] | null
