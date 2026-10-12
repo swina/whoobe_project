@@ -150,6 +150,11 @@ export const gatewayBindingSchema: z.ZodType<GatewayBinding> = z.object({
   filters: z.array(dataBindingFilterSchema).nullable().optional(),
   transform: fieldTransformSchema,
   bindingId: z.string().optional(),
+  rowsPerPage: z.number().nullable().optional(),
+  paginationMode: z.enum(['standard', 'lazyload']).nullable().optional(),
+  loadMoreText: z.string().nullable().optional(),
+  loadMoreClass: z.string().nullable().optional(),
+  paginationContainerClass: z.string().nullable().optional(),
 })
 
 // --- slider ---

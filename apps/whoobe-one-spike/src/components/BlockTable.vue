@@ -16,6 +16,8 @@
          keep their own structural editing (add slide/box) inline rather
          than in the shared sidebar. -->
     <div class="flex flex-wrap items-center gap-2 mb-2 bg-slate-100 p-1.5 rounded text-[10px] text-gray-600" @click.stop>
+      <span v-if="bound.isBound.value" class="text-amber-700 font-medium">Bound to data: {{ bound.total.value }} record(s)</span>
+      <template v-if="!bound.isBound.value">
       <span class="text-gray-400">Rows: {{ table.body.length }}</span>
       <button type="button" class="px-1.5 py-0.5 rounded border border-gray-300 hover:border-indigo-400 hover:text-indigo-600" @click="addRow">+ row</button>
       <button
@@ -32,8 +34,35 @@
         :disabled="table.cols <= 1"
         @click="removeColumn"
       >- col</button>
+      </template>
       <label class="ml-2 flex items-center gap-1"><input type="checkbox" v-model="table.hasHeader" /> Header</label>
-      <label class="flex items-center gap-1"><input type="checkbox" v-model="table.hasFooter" /> Footer</label>
+      <label v-if="!bound.isBound.value" class="flex items-center gap-1"><input type="checkbox" v-model="table.hasFooter" /> Footer</label>
+    </div>
+
+    <!-- Columns of a table bound to a list (the toolbar's "Bind to data object" / "Bind to gateway endpoint"): one row per record.
+         The pagination of the list is set in the same binding window ("Rows per page"). -->
+    <div v-if="bound.isBound.value" class="mb-2 bg-amber-50 border border-amber-200 p-2 rounded text-[10px] text-amber-900 flex flex-col gap-1.5" @click.stop>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="font-medium">Columns</span>
+        <button type="button" class="px-1.5 py-0.5 rounded border border-amber-300 hover:bg-amber-100" @click="addBoundColumn">+ column</button>
+        <button type="button" class="px-1.5 py-0.5 rounded border border-amber-300 hover:bg-amber-100 disabled:opacity-40" :disabled="!suggestedFields.length" @click="fillColumnsFromData">Fill from data</button>
+        <label class="flex items-center gap-1 ml-auto">Empty text <input v-model="table.emptyText" type="text" placeholder="No data" class="w-28 px-1 py-0.5 rounded border border-amber-300 bg-white" /></label>
+      </div>
+      <p v-if="!(table.columns && table.columns.length)" class="text-amber-700">
+        No column set yet: the fields of the first record are shown. Use "Fill from data" to edit them, or add columns.
+      </p>
+      <datalist :id="`${doc.id}-fields`"><option v-for="f in suggestedFields" :key="f.field" :value="f.field">{{ f.header }}</option></datalist>
+      <div v-for="(col, i) in (table.columns || [])" :key="col.id" class="flex flex-wrap items-center gap-1">
+        <input v-model="col.header" type="text" placeholder="Header" class="w-28 px-1 py-0.5 rounded border border-amber-300 bg-white" />
+        <input v-model="col.field" type="text" placeholder="field or path" :list="`${doc.id}-fields`" class="w-32 px-1 py-0.5 rounded border border-amber-300 bg-white font-mono" />
+        <select :value="col.transform?.type || 'none'" class="px-1 py-0.5 rounded border border-amber-300 bg-white" @change="setColumnFormat(col, ($event.target as HTMLSelectElement).value)">
+          <option value="none">Plain</option>
+          <option v-for="t in columnFormats" :key="t.type" :value="t.type">{{ t.label }}</option>
+        </select>
+        <button type="button" class="px-1 rounded border border-amber-300 hover:bg-amber-100 disabled:opacity-30" :disabled="i === 0" title="Move left" @click="moveBoundColumn(i, -1)">←</button>
+        <button type="button" class="px-1 rounded border border-amber-300 hover:bg-amber-100 disabled:opacity-30" :disabled="i === (table.columns || []).length - 1" title="Move right" @click="moveBoundColumn(i, 1)">→</button>
+        <button type="button" class="px-1 rounded border border-rose-300 text-rose-600 hover:bg-rose-50" title="Remove" @click="removeBoundColumn(i)">×</button>
+      </div>
     </div>
 
     <!-- Per-cell colspan/rowspan editor - only shown once a cell is
@@ -41,7 +70,7 @@
          at a time. Rowspan is hidden for header/footer cells: those are
          each a single logical row, so spanning rows there has nothing to
          span into (see ElementsClass.js's Table() comment). -->
-    <div v-if="selectedCellData" class="flex flex-wrap items-end gap-2 mb-2 bg-indigo-50 border border-indigo-200 p-1.5 rounded text-[10px] text-indigo-900" @click.stop>
+    <div v-if="selectedCellData && !bound.isBound.value" class="flex flex-wrap items-end gap-2 mb-2 bg-indigo-50 border border-indigo-200 p-1.5 rounded text-[10px] text-indigo-900" @click.stop>
       <span class="font-medium pb-1">Cell {{ selectedCell!.section }}[{{ selectedCell!.row + 1 }},{{ selectedCell!.col + 1 }}]</span>
       <label class="flex items-center gap-1">
         Colspan
@@ -78,21 +107,37 @@
       <caption v-if="table.caption" class="text-left text-xs text-gray-400 mb-1">{{ table.caption }}</caption>
       <thead v-if="table.hasHeader">
         <tr :class="table.headerRowClass">
-          <template v-for="(cell, c) in table.header" :key="cell.id">
-            <th
-              v-if="!cell.merged"
-              :colspan="cell.colspan > 1 ? cell.colspan : undefined"
-              :class="[table.headerCellClass, cell.cellClass, isCellSelected('header', 0, c) ? 'ring-2 ring-inset ring-indigo-400' : '']"
-              contenteditable="true"
-              v-html="safeHtml(cell.content)"
-              @click.stop="selectCell('header', 0, c)"
-              @input="editedCells.add(cell)"
-              @blur="onCellBlur(cell, $event)"
-            ></th>
+          <template v-if="bound.isBound.value">
+            <th v-for="col in bound.columns.value" :key="col.id" :class="[table.headerCellClass, col.headerCellClass]">{{ col.header }}</th>
+          </template>
+          <template v-else>
+            <template v-for="(cell, c) in table.header" :key="cell.id">
+              <th
+                v-if="!cell.merged"
+                :colspan="cell.colspan > 1 ? cell.colspan : undefined"
+                :class="[table.headerCellClass, cell.cellClass, isCellSelected('header', 0, c) ? 'ring-2 ring-inset ring-indigo-400' : '']"
+                contenteditable="true"
+                v-html="safeHtml(cell.content)"
+                @click.stop="selectCell('header', 0, c)"
+                @input="editedCells.add(cell)"
+                @blur="onCellBlur(cell, $event)"
+              ></th>
+            </template>
           </template>
         </tr>
       </thead>
-      <tbody>
+      <tbody v-if="bound.isBound.value">
+        <tr v-for="row in bound.rows.value" :key="row.key" :class="table.bodyRowClass">
+          <td v-for="cell in row.cells" :key="cell.key" :class="[table.bodyCellClass, cell.cellClass]">
+            <a v-if="cell.result.kind === 'link'" :href="cell.result.href" @click.prevent>{{ cell.result.text }}</a>
+            <span v-else :class="cell.result.className">{{ cell.result.text }}</span>
+          </td>
+        </tr>
+        <tr v-if="!bound.rows.value.length">
+          <td :colspan="Math.max(1, bound.columns.value.length)" :class="table.bodyCellClass" class="text-center opacity-60">{{ table.emptyText || 'No data' }}</td>
+        </tr>
+      </tbody>
+      <tbody v-else>
         <tr v-for="(row, r) in table.body" :key="r" :class="table.bodyRowClass">
           <template v-for="(cell, c) in row" :key="cell.id">
             <td
@@ -109,7 +154,26 @@
           </template>
         </tr>
       </tbody>
-      <tfoot v-if="table.hasFooter">
+      <tfoot v-if="bound.isBound.value && bound.needsControls.value" @click.stop>
+        <tr>
+          <td :colspan="Math.max(1, bound.columns.value.length)" class="p-0">
+            <div :class="bound.pagination.value.containerClass">
+              <template v-if="bound.pagination.value.mode === 'standard'">
+                <div class="flex items-center justify-center gap-3 text-xs text-gray-500">
+                  <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="bound.page.value <= 1" @click="bound.prev()">‹ Prev</button>
+                  <span>Page {{ bound.page.value }} of {{ bound.pages.value }}</span>
+                  <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="bound.page.value >= bound.pages.value" @click="bound.next()">Next ›</button>
+                </div>
+              </template>
+              <template v-else>
+                <span class="text-xs text-gray-500">{{ bound.rows.value.length }} / {{ bound.total.value }}</span>
+                <button v-if="bound.rows.value.length < bound.total.value" type="button" :class="bound.pagination.value.loadMoreClass" @click="bound.more()">{{ bound.pagination.value.loadMoreText }}</button>
+              </template>
+            </div>
+          </td>
+        </tr>
+      </tfoot>
+      <tfoot v-else-if="table.hasFooter && !bound.isBound.value">
         <tr :class="table.footerRowClass">
           <template v-for="(cell, c) in table.footer" :key="cell.id">
             <td
@@ -150,6 +214,9 @@ import Element from '../scripts/ElementsClass.js'
 import type { TableCell } from '../scripts/ElementsClass.js'
 import { useEditorStore } from '../store/editor'
 import ExpandableTextInput from './ExpandableTextInput.vue'
+import { columnsFromRecords } from '@whoobe-cms/schema'
+import { useBoundTable } from '../composables/useBoundTable'
+import { TRANSFORMERS } from '../scripts/field-transforms'
 
 type WhoobeElement = InstanceType<typeof Element>
 type Section = 'header' | 'body' | 'footer'
@@ -165,6 +232,36 @@ const editor = useEditorStore()
 // so the shim covers instances imported directly from ElementsClass.d.ts's
 // own `table?: ElementTable` field.
 const table = computed(() => (props.doc as any).table as NonNullable<WhoobeElement['table']>)
+
+// Bound to a list (a Data Class query or a gateway array, set from the toolbar): header and rows come from the data
+// (read-only on the canvas) and the columns are edited in the panel above the table. See composables/useBoundTable.ts.
+const bound = useBoundTable(computed(() => props.doc))
+const suggestedFields = computed(() => columnsFromRecords(bound.records.value, 40))
+const columnFormats = (['date', 'number', 'truncate', 'url'] as const).map((type) => ({ type, label: TRANSFORMERS[type].label }))
+
+function newColumn(field = '', header = ''): NonNullable<NonNullable<WhoobeElement['table']>['columns']>[number] {
+  return { id: (props.doc as any).randomID?.() ?? Math.random().toString(36).slice(2, 10), header, field }
+}
+function addBoundColumn() {
+  if (!table.value.columns) table.value.columns = []
+  table.value.columns.push(newColumn())
+}
+function fillColumnsFromData() {
+  table.value.columns = suggestedFields.value.slice(0, 12).map((f) => newColumn(f.field, f.header))
+}
+function removeBoundColumn(i: number) {
+  table.value.columns?.splice(i, 1)
+}
+function moveBoundColumn(i: number, by: -1 | 1) {
+  const cols = table.value.columns
+  if (!cols || i + by < 0 || i + by >= cols.length) return
+  const [c] = cols.splice(i, 1)
+  cols.splice(i + by, 0, c)
+}
+function setColumnFormat(col: { transform?: any }, type: string) {
+  const def = (TRANSFORMERS as Record<string, { defaultOptions: unknown }>)[type]
+  col.transform = def ? { type, options: structuredClone(def.defaultOptions) } : null
+}
 
 const isSelected = computed(() => editor.current?.id === props.doc.id)
 const groupClass = computed(() => `group/${props.doc.id}`)

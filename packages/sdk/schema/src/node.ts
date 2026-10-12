@@ -155,6 +155,13 @@ export interface GatewayBinding {
    *  vocabulary as DataBindingFilter for consistency. */
   filters?: DataBindingFilter[] | null
   transform?: import('./transform.js').FieldTransform | null
+  /** Pagination of the resolved list for a repeater container or a Table (same meaning as on ElementDataBinding): 0 / absent =
+   *  the whole list. Done in the browser over the list the gateway returned. */
+  rowsPerPage?: number | null
+  paginationMode?: 'standard' | 'lazyload' | null
+  loadMoreText?: string | null
+  loadMoreClass?: string | null
+  paginationContainerClass?: string | null
 }
 
 export interface ElementSlider {

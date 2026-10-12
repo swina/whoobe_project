@@ -3,17 +3,33 @@
     <caption v-if="table.caption">{{ table.caption }}</caption>
     <thead v-if="table.hasHeader">
       <tr :class="table.headerRowClass">
-        <template v-for="(cell, c) in table.header" :key="cell.id">
-          <th
-            v-if="!cell.merged"
-            :colspan="cell.colspan > 1 ? cell.colspan : undefined"
-            :class="[table.headerCellClass, cell.cellClass]"
-            v-html="safeHtml(cell.content)"
-          ></th>
+        <template v-if="bound.isBound.value">
+          <th v-for="col in bound.columns.value" :key="col.id" :class="[table.headerCellClass, col.headerCellClass]">{{ col.header }}</th>
+        </template>
+        <template v-else>
+          <template v-for="(cell, c) in table.header" :key="cell.id">
+            <th
+              v-if="!cell.merged"
+              :colspan="cell.colspan > 1 ? cell.colspan : undefined"
+              :class="[table.headerCellClass, cell.cellClass]"
+              v-html="safeHtml(cell.content)"
+            ></th>
+          </template>
         </template>
       </tr>
     </thead>
-    <tbody>
+    <tbody v-if="bound.isBound.value">
+      <tr v-for="row in bound.rows.value" :key="row.key" :class="table.bodyRowClass">
+        <td v-for="cell in row.cells" :key="cell.key" :class="[table.bodyCellClass, cell.cellClass]">
+          <a v-if="cell.result.kind === 'link'" :href="cell.result.href" :target="cell.result.target" rel="noopener noreferrer">{{ cell.result.text }}</a>
+          <span v-else :class="cell.result.className">{{ cell.result.text }}</span>
+        </td>
+      </tr>
+      <tr v-if="!bound.rows.value.length">
+        <td :colspan="Math.max(1, bound.columns.value.length)" :class="table.bodyCellClass" class="text-center opacity-60">{{ table.emptyText || 'No data' }}</td>
+      </tr>
+    </tbody>
+    <tbody v-else>
       <tr v-for="(row, r) in table.body" :key="r" :class="table.bodyRowClass">
         <template v-for="cell in row" :key="cell.id">
           <td
@@ -26,7 +42,27 @@
         </template>
       </tr>
     </tbody>
-    <tfoot v-if="table.hasFooter">
+    <!-- A bound table has no static footer (its rows come from the data); the pagination controls sit in the table, in one row. -->
+    <tfoot v-if="bound.isBound.value && bound.needsControls.value">
+      <tr>
+        <td :colspan="Math.max(1, bound.columns.value.length)" class="p-0">
+          <div :class="bound.pagination.value.containerClass">
+            <template v-if="bound.pagination.value.mode === 'standard'">
+              <div class="flex items-center justify-center gap-3 text-xs text-gray-500">
+                <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="bound.page.value <= 1" @click="bound.prev()">‹ Prev</button>
+                <span>Page {{ bound.page.value }} of {{ bound.pages.value }}</span>
+                <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="bound.page.value >= bound.pages.value" @click="bound.next()">Next ›</button>
+              </div>
+            </template>
+            <template v-else>
+              <span class="text-xs text-gray-500">{{ bound.rows.value.length }} / {{ bound.total.value }}</span>
+              <button v-if="bound.rows.value.length < bound.total.value" type="button" :class="bound.pagination.value.loadMoreClass" @click="bound.more()">{{ bound.pagination.value.loadMoreText }}</button>
+            </template>
+          </div>
+        </td>
+      </tr>
+    </tfoot>
+    <tfoot v-else-if="table.hasFooter && !bound.isBound.value">
       <tr :class="table.footerRowClass">
         <template v-for="(cell, c) in table.footer" :key="cell.id">
           <td
@@ -59,6 +95,7 @@ import { sanitizeRichText as safeHtml } from '@whoobe-cms/schema'
 // source targeting this exact same tag (see ElementsClass.js's Table()
 // comment).
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { useBoundTable } from '../../composables/useBoundTable'
 import type Element from '../../scripts/ElementsClass.js'
 import { resolveDisplayUrl } from '../../resolve-display-url'
 import { customAttrs, safeAlpineValue } from '../../helpers'
@@ -71,6 +108,8 @@ const props = defineProps<{
 }>()
 
 const table = computed(() => (props.doc as any).table as NonNullable<WhoobeElement['table']>)
+// Bound to a list (a Data Class query or a gateway array): the header and the rows come from the data, see useBoundTable.ts
+const bound = useBoundTable(computed(() => props.doc))
 
 const classe = computed(() => {
   const doc = props.doc as any

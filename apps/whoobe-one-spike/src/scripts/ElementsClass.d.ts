@@ -140,6 +140,13 @@ export interface GatewayBinding {
   /** Server-resolved at page-save time - see docs/plans/api-gateway/
    *  gateway-auth-authz.md and data-resolver.ts's resolveGatewayBinding(). */
   bindingId?: string
+  /** Pagination of the resolved list for a repeater container or a Table (same meaning as on ElementDataBinding): 0 / absent =
+   *  the whole list. Done in the browser over the list the gateway returned. */
+  rowsPerPage?: number | null
+  paginationMode?: 'standard' | 'lazyload' | null
+  loadMoreText?: string | null
+  loadMoreClass?: string | null
+  paginationContainerClass?: string | null
 }
 
 export interface DataBindingOrderBy {
@@ -322,7 +329,23 @@ export interface TableCell {
 
 // Only present on nodes built via .Table() - see that method's own comment
 // in ElementsClass.js for the full grid-model rationale.
+// A column of a Table bound to a list (a Data Class query or a gateway array): the header text and the field shown. The cell
+// can be formatted with the same transforms as any bound field. Absent / empty `columns` on a bound table = the scalar fields
+// of the first record. See packages/sdk/schema/src/table-binding.ts.
+export interface TableBoundColumn {
+  id: string
+  header: string
+  field: string
+  cellClass?: string
+  headerCellClass?: string
+  transform?: FieldTransform | null
+}
+
 export interface ElementTable {
+  /** Columns when the table has a `dataBinding` (list) or a `gatewayBinding` (array): one row per record. */
+  columns?: TableBoundColumn[]
+  /** Shown instead of the rows when a bound table has no record. */
+  emptyText?: string
   cols: number
   hasHeader: boolean
   hasFooter: boolean

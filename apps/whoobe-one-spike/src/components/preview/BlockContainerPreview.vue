@@ -176,9 +176,15 @@ const collectionResolved = computed<DataObjectRecord[]>(() => {
 // plus a configurable "More" button). Ephemeral, not persisted: resets
 // whenever the resolved set itself changes, same as ObjectsView.vue's own
 // currentPage pattern.
-const rowsPerPage = computed(() => Number((props.doc as any).dataBinding?.rowsPerPage) || 0)
+// The binding that feeds the list carries the pagination settings: a Data Class query, else a gateway array (same precedence
+// as collectionResolved above).
+const pagBinding = computed(() => {
+  const el = props.doc as any
+  return el.dataBinding && !el.dataBinding.field ? el.dataBinding : el.gatewayBinding ?? null
+})
+const rowsPerPage = computed(() => Number(pagBinding.value?.rowsPerPage) || 0)
 const paginationMode = computed<'standard' | 'lazyload'>(() =>
-  (props.doc as any).dataBinding?.paginationMode === 'lazyload' ? 'lazyload' : 'standard'
+  pagBinding.value?.paginationMode === 'lazyload' ? 'lazyload' : 'standard'
 )
 const currentPage = ref(1)
 const totalPages = computed(() =>
@@ -187,13 +193,13 @@ const totalPages = computed(() =>
 // Lazyload: how many rows are currently shown (grows by rowsPerPage per
 // "More" click). Standard mode ignores it and pages instead.
 const visibleCount = ref(rowsPerPage.value || 0)
-const loadMoreButtonText = computed(() => (props.doc as any).dataBinding?.loadMoreText?.trim() || 'More')
+const loadMoreButtonText = computed(() => pagBinding.value?.loadMoreText?.trim() || 'More')
 const loadMoreButtonClass = computed(() => {
-  const cls = (props.doc as any).dataBinding?.loadMoreClass?.trim()
+  const cls = pagBinding.value?.loadMoreClass?.trim()
   return cls || 'px-4 py-2 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50'
 })
 const paginationContainerClass = computed(() => {
-  const cls = (props.doc as any).dataBinding?.paginationContainerClass?.trim()
+  const cls = pagBinding.value?.paginationContainerClass?.trim()
   return cls || 'w-full flex flex-col items-center justify-center md:gap-3 gap-2 md:p-4 p-2'
 })
 const pagedItems = computed(() => {
