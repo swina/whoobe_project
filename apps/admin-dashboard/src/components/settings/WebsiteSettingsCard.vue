@@ -56,7 +56,6 @@
     </div>
 
     <AiWebsiteWizardModal :is-open="showAiModal" @close="showAiModal = false" />
-    <WebsitePublishModal :is-open="showPublishModal" :website="publishTarget" @close="showPublishModal = false" />
   </div>
 </template>
 
@@ -77,13 +76,10 @@ import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
 import { docsPreviewUrl } from '../../utils/docs-sites-api'
 import AiWebsiteWizardModal from './AiWebsiteWizardModal.vue'
-import WebsitePublishModal from './WebsitePublishModal.vue'
 
 const websitesStore = useWebsitesStore()
 const tabsStore = useTabsStore()
 const showAiModal = ref(false)
-const showPublishModal = ref(false)
-const publishTarget = ref<WebsiteRecord | null>(null)
 const importFileInput = ref<HTMLInputElement | null>(null)
 
 const isDocsSite = (w: WebsiteRecord) => (w.settings as Record<string, unknown> | null)?.kind === 'docs'
@@ -110,8 +106,7 @@ async function createNewDocsSite() {
 }
 
 function openPublish(website: WebsiteRecord) {
-  publishTarget.value = website
-  showPublishModal.value = true
+  tabsStore.openPublish(website.id)
 }
 
 function openWebsiteTab(website: WebsiteRecord) {

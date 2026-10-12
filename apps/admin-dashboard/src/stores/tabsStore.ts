@@ -12,7 +12,7 @@ import { ref } from 'vue'
 // with Preview (the read-only rendered HTML) as a second sub-tab, mirroring
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
-export type SectionKind = 'overview' | 'ai' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'components' | 'mail' | 'themes' | 'settings' | 'gateway' | 'gateway-plugins' | 'automations' | 'system-logs'
+export type SectionKind = 'overview' | 'ai' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'components' | 'mail' | 'themes' | 'settings' | 'gateway' | 'gateway-plugins' | 'automations' | 'system-logs' | 'publish'
 export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'classList' | 'website' | 'docsSite' | 'docsDoc'
 // The AI section of the navigation (its own sidebar entry, no longer part of Settings): one card per kind of AI provider.
 export type AiSubSection = 'text' | 'image' | 'translate'
@@ -135,6 +135,13 @@ export const useTabsStore = defineStore('tabs', () => {
 
   function findIndex(id: string): number {
     return tabs.value.findIndex((t) => t.id === id)
+  }
+
+  // The website the Publish tab shows; set by "Publish" in the websites list before it opens the tab.
+  const publishWebsiteId = ref<string | null>(null)
+  function openPublish(websiteId?: string) {
+    if (websiteId) publishWebsiteId.value = websiteId
+    openSection('publish')
   }
 
   function openSection(section: SectionKind) {
@@ -386,7 +393,7 @@ export const useTabsStore = defineStore('tabs', () => {
   return {
     tabs,
     activeTabId,
-    openSection,
+    openSection, openPublish, publishWebsiteId,
     openSettingsSubSection,
     openAiSubSection,
     openAsset,
