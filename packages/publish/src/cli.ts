@@ -2,6 +2,7 @@ import { mkdir, writeFile, readFile } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { ApiClient } from '@whoobe-cms/renderer'
+import { collectTreeClasses } from '@whoobe-cms/schema'
 
 // --- Input hygiene -----------------------------------------------------------------------------------------
 // Everything below ends up inside generated source files (TS, JS, CSS, HTML, shell, nginx) that are then BUILT
@@ -294,25 +295,11 @@ export async function generateNextSite(rawOptions: GenerateOptions): Promise<voi
 
 // --- Class extraction ---
 
-function collectClasses(content: unknown, set: Set<string>): void {
-  if (!content || typeof content !== 'object') return
-  const node = content as Record<string, unknown>
-  if (typeof node.css === 'object' && node.css) {
-    const css = node.css as Record<string, unknown>
-    if (typeof css.css === 'string') splitAndAdd(css.css, set)
-    if (typeof css.container === 'string') splitAndAdd(css.container, set)
-  }
-  const blocks = node.blocks
-  if (Array.isArray(blocks)) {
-    for (const child of blocks) collectClasses(child, set)
-  }
-}
-
-function splitAndAdd(s: string, set: Set<string>): void {
-  for (const cls of s.split(/\s+/)) {
-    const t = cls.trim()
-    if (t) set.add(t)
-  }
+/** Adds every Tailwind class the content asks for to `set` (the generated site's safelist). Reads all the class-bearing fields, not only
+ *  `css.css` / `css.container`: the sections and columns of a table, a binding's pagination, a slider's navigation, a search box, and the
+ *  default classes of the built-in slider and table components (packages/sdk/schema/src/class-fields.ts). */
+export function collectClasses(content: unknown, set: Set<string>): void {
+  collectTreeClasses(content, set)
 }
 
 // --- Theme CSS generation ---
