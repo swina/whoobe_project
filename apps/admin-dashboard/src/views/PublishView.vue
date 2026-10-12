@@ -142,7 +142,7 @@
                 <input v-model="assetProcessorUrl" type="text" placeholder="e.g. http://localhost:3002" class="field w-full font-mono" />
               </div>
             </div>
-            <p class="text-xs text-slate-500">The script uses the <code class="font-mono">WHOOBE_SYNC_EMAIL</code>/<code class="font-mono">WHOOBE_SYNC_PASSWORD</code> environment variables - a dedicated service account, <strong>without MFA enabled</strong>. Replace the placeholders before running - left blank here on purpose, credentials are never auto-filled or held in this form.</p>
+            <p class="text-xs text-slate-500">The script reads the <code class="font-mono">WHOOBE_SYNC_EMAIL</code>/<code class="font-mono">WHOOBE_SYNC_PASSWORD</code> environment variables - a dedicated service account, <strong>without MFA enabled</strong>. <code class="font-mono">export</code> them in the terminal before running the script and it stops with a message if they are missing - credentials are never auto-filled or held in this form.</p>
           </div>
         </div>
 
@@ -245,7 +245,8 @@ const cdnGatewayRouteId = ref('')
 const cdnUploadPreset = ref('')
 const assetProcessorUrl = ref('')
 
-const includeDeploy = ref(true)
+// off until a host is typed in: with the placeholders the step would try to rsync to a host that does not exist
+const includeDeploy = ref(false)
 const remoteTarget = ref('')
 const remotePath = ref('')
 const deployPort = ref('')
@@ -368,9 +369,10 @@ const script = computed(() => {
   if (includeCdn.value) {
     lines.push(
       `# ${step}. CDN Mirroring - mirror the referenced images before publishing (idempotent).`,
-      '#    Dedicated service account, WITHOUT MFA enabled - replace the placeholders.',
-      'WHOOBE_SYNC_EMAIL=<service-account-email> \\',
-      'WHOOBE_SYNC_PASSWORD=<service-account-password> \\',
+      '#    Dedicated service account, WITHOUT MFA enabled. Export the two variables in your shell first',
+      '#    (export WHOOBE_SYNC_EMAIL=... WHOOBE_SYNC_PASSWORD=...); they are not written here on purpose.',
+      ': "${WHOOBE_SYNC_EMAIL:?export WHOOBE_SYNC_EMAIL (service account, no MFA) before running this script}"',
+      ': "${WHOOBE_SYNC_PASSWORD:?export WHOOBE_SYNC_PASSWORD before running this script}"',
       'pnpm publish:sync-cdn \\',
       `  --api-url "${apiUrl.value}" \\`,
       `  --website-id "${id}" \\`,
