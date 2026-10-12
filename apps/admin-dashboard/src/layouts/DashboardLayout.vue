@@ -569,6 +569,7 @@ import {
   BookOpen,
   Zap,
   Rocket,
+  Link2,
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
@@ -605,6 +606,7 @@ import ThemesView from '../components/themes/ThemesView.vue'
 import GatewayEndpointsView from '../views/GatewayEndpointsView.vue'
 import GatewayPluginsView from '../views/GatewayPluginsView.vue'
 import AutomationsView from '../views/AutomationsView.vue'
+import DataBindingsView from '../views/DataBindingsView.vue'
 import { usePagesStore } from '../stores/pagesStore'
 import { useSnippetsStore } from '../stores/snippetsStore'
 import { adminSearch, reindexSearchIndex, type SearchResult } from '../utils/search-api'
@@ -893,6 +895,7 @@ const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Outgoing Mail', section: 'mail', icon: Mail },
   { name: 'Themes', section: 'themes', icon: Palette },
   { name: 'Integrations', section: 'gateway', icon: Network },
+  { name: 'Data bindings', section: 'data-bindings', icon: Link2 },
   { name: 'Automations', section: 'automations', icon: Zap },
   { name: 'System Logs', section: 'system-logs', icon: ScrollText },
   { name: 'AI', section: 'ai', icon: Sparkles },
@@ -923,6 +926,7 @@ const sectionGroup: Partial<Record<SectionKind, NavGroupId>> = {
   documents: 'data',
   mail: 'data',
   gateway: 'data',
+  'data-bindings': 'data',
   automations: 'data',
   'system-logs': 'system',
   ai: 'system',
@@ -969,6 +973,7 @@ const sectionComponents: Record<SectionKind, any> = {
   ai: AiView,
   gateway: GatewayEndpointsView,
   'gateway-plugins': GatewayPluginsView,
+  'data-bindings': DataBindingsView,
   automations: AutomationsView,
   'system-logs': SystemLogsView,
 }
@@ -987,6 +992,7 @@ const sectionLabels: Record<SectionKind, string> = {
   themes: 'Themes',
   gateway: 'Integrations',
   'gateway-plugins': 'Integration Plugins',
+  'data-bindings': 'Data bindings',
   automations: 'Automations',
   'system-logs': 'System Logs',
   ai: 'AI',
@@ -1007,6 +1013,7 @@ const sectionIcons: Record<SectionKind, any> = {
   themes: Palette,
   gateway: Network,
   'gateway-plugins': Network,
+  'data-bindings': Link2,
   automations: Zap,
   'system-logs': ScrollText,
   ai: Sparkles,
