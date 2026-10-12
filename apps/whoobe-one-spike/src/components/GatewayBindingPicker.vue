@@ -98,6 +98,36 @@
           </button>
         </div>
 
+        <!-- Pagination of the list, for a repeater container or a Table: done in the browser over the list the gateway returned. -->
+        <div v-if="filterableFields" class="space-y-2">
+          <label class="text-xs font-medium text-gray-600 block">Pagination <span class="text-gray-400 font-normal">(repeaters and tables)</span></label>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <div class="text-[10px] text-gray-400 mb-1">Rows per page</div>
+              <input v-model.number="rowsPerPage" type="number" min="0" class="text-xs border rounded px-2 py-1 w-full" placeholder="0 = no pagination" />
+            </div>
+            <div>
+              <div class="text-[10px] text-gray-400 mb-1">Style</div>
+              <select v-model="paginationMode" class="text-xs border rounded px-2 py-1 w-full" :disabled="!rowsPerPage">
+                <option value="standard">Standard (arrows)</option>
+                <option value="lazyload">Lazy load (More button)</option>
+              </select>
+            </div>
+            <div v-if="rowsPerPage && paginationMode === 'lazyload'">
+              <div class="text-[10px] text-gray-400 mb-1">More button text</div>
+              <input v-model="loadMoreText" type="text" class="text-xs border rounded px-2 py-1 w-full" placeholder="More" />
+            </div>
+            <div v-if="rowsPerPage && paginationMode === 'lazyload'">
+              <div class="text-[10px] text-gray-400 mb-1">More button CSS</div>
+              <input v-model="loadMoreClass" type="text" class="text-xs border rounded px-2 py-1 w-full" placeholder="Tailwind classes" />
+            </div>
+          </div>
+          <div v-if="rowsPerPage">
+            <div class="text-[10px] text-gray-400 mb-1">Pagination container CSS</div>
+            <input v-model="paginationContainerClass" type="text" class="text-xs border rounded px-2 py-1 w-full" placeholder="Tailwind classes for the whole pagination area (default: centered, on its own line)" />
+          </div>
+        </div>
+
 <!-- Preview binding expression -->
         <div v-if="canConfirm" class="border-t pt-3 space-y-2">
           <div class="text-[10px] text-gray-400 mb-0.5">Binding expression</div>
@@ -181,6 +211,11 @@ interface GatewayBinding {
   params?: Record<string, string> | null
   filters?: GatewayResultFilter[] | null
   transform?: Record<string, unknown> | null
+  rowsPerPage?: number | null
+  paginationMode?: 'standard' | 'lazyload' | null
+  loadMoreText?: string | null
+  loadMoreClass?: string | null
+  paginationContainerClass?: string | null
 }
 
 const emit = defineEmits<{
@@ -230,6 +265,12 @@ const filterableFields = computed<FlatSchemaField[] | null>(() =>
 )
 
 const filters = ref<GatewayResultFilter[]>([])
+// Pagination of a list result (repeater container / Table); kept when the binding is edited again
+const rowsPerPage = ref<number>(props.initial?.rowsPerPage ?? 0)
+const paginationMode = ref<'standard' | 'lazyload'>(props.initial?.paginationMode === 'lazyload' ? 'lazyload' : 'standard')
+const loadMoreText = ref(props.initial?.loadMoreText ?? '')
+const loadMoreClass = ref(props.initial?.loadMoreClass ?? '')
+const paginationContainerClass = ref(props.initial?.paginationContainerClass ?? '')
 
 function addFilter() {
   filters.value.push({ field: filterableFields.value?.[0]?.key ?? '', operator: 'eq', value: '' })
@@ -401,6 +442,12 @@ function confirm() {
     params: params && Object.keys(params).length > 0 ? params : null,
     filters: filters.value.length > 0 ? filters.value : null,
     transform,
+    // a list only: pagination means nothing for a single value
+    rowsPerPage: filterableFields.value && rowsPerPage.value > 0 ? rowsPerPage.value : undefined,
+    paginationMode: filterableFields.value && rowsPerPage.value > 0 ? (paginationMode.value === 'lazyload' ? 'lazyload' : 'standard') : undefined,
+    loadMoreText: filterableFields.value && rowsPerPage.value > 0 && loadMoreText.value ? loadMoreText.value : undefined,
+    loadMoreClass: filterableFields.value && rowsPerPage.value > 0 && loadMoreClass.value ? loadMoreClass.value : undefined,
+    paginationContainerClass: filterableFields.value && rowsPerPage.value > 0 && paginationContainerClass.value ? paginationContainerClass.value : undefined,
   }
   emit('select', binding)
 }

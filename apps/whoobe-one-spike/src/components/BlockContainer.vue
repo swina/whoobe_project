@@ -235,22 +235,27 @@ const collectionResolved = computed<DataObjectRecord[]>(() => {
 // pagedItems (kept duplicated rather than a shared composable, matching
 // this exact file pair's existing extensive duplication), plus the
 // lazyload variant.
-const rowsPerPage = computed(() => Number((props.doc as any).dataBinding?.rowsPerPage) || 0)
+// The binding that feeds the list carries the settings: a Data Class query, else a gateway array (same precedence as above).
+const pagBinding = computed(() => {
+  const el = props.doc as any
+  return el.dataBinding && !el.dataBinding.field ? el.dataBinding : el.gatewayBinding ?? null
+})
+const rowsPerPage = computed(() => Number(pagBinding.value?.rowsPerPage) || 0)
 const paginationMode = computed<'standard' | 'lazyload'>(() =>
-  (props.doc as any).dataBinding?.paginationMode === 'lazyload' ? 'lazyload' : 'standard'
+  pagBinding.value?.paginationMode === 'lazyload' ? 'lazyload' : 'standard'
 )
 const currentPage = ref(1)
 const totalPages = computed(() =>
   rowsPerPage.value > 0 ? Math.max(1, Math.ceil(collectionResolved.value.length / rowsPerPage.value)) : 1
 )
 const visibleCount = ref(rowsPerPage.value || 0)
-const loadMoreButtonText = computed(() => (props.doc as any).dataBinding?.loadMoreText?.trim() || 'More')
+const loadMoreButtonText = computed(() => pagBinding.value?.loadMoreText?.trim() || 'More')
 const loadMoreButtonClass = computed(() => {
-  const cls = (props.doc as any).dataBinding?.loadMoreClass?.trim()
+  const cls = pagBinding.value?.loadMoreClass?.trim()
   return cls || 'px-3 py-1 rounded border border-gray-300 text-xs text-gray-500 hover:bg-gray-100'
 })
 const paginationContainerClass = computed(() => {
-  const cls = (props.doc as any).dataBinding?.paginationContainerClass?.trim()
+  const cls = pagBinding.value?.paginationContainerClass?.trim()
   return cls || 'w-full'
 })
 const pagedItems = computed(() => {
