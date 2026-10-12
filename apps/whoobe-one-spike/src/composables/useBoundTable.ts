@@ -9,9 +9,11 @@ import {
   nextSort,
   normalizeSearchText,
   pageCount,
+  formatRowCount,
   pageRows,
   paginationOf,
   plainCellText,
+  rowRange,
   searchTerms,
   sortRecords,
   tableCellValue,
@@ -95,6 +97,13 @@ export function useBoundTable(doc: Ref<any>) {
   const pages = computed(() => pageCount(total.value, pagination.value.rowsPerPage))
   const shown = computed(() => pageRows(processed.value, pagination.value, page.value, visible.value))
   const needsControls = computed(() => pagination.value.rowsPerPage > 0 && total.value > pagination.value.rowsPerPage)
+  // The counter: the rows on screen out of the result (and out of the whole list when a search narrowed it)
+  const countLabel = computed(() => {
+    const { from, to } = rowRange(total.value, pagination.value, page.value, shown.value.length)
+    return formatRowCount(doc.value?.table?.countText, { from, to, total: total.value, all: recordCount.value })
+  })
+  const showCount = computed(() => doc.value?.table?.showCount === true)
+  const hasFooter = computed(() => needsControls.value || showCount.value)
   const searching = computed(() => searchEnabled.value && searchTerms(query.value).length > 0)
 
   watch(records, () => { page.value = 1; visible.value = pagination.value.rowsPerPage })
@@ -128,6 +137,7 @@ export function useBoundTable(doc: Ref<any>) {
 
   return {
     binding, isBound, records, columns, rows, pagination, page, pages, visible, total, recordCount, needsControls, prev, next, more,
+    countLabel, showCount, hasFooter,
     query, searchEnabled, searching, sortEnabled, canSort, setSort, ariaSort, sortMark,
   }
 }
