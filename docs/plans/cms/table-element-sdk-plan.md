@@ -179,7 +179,9 @@ Shipped as `collectTreeClasses` in `packages/sdk/schema/src/class-fields.ts`, us
 - The adapters' default table classes listed for the safelist.
 - *Acceptance*: a generated site with a slider and a table whose classes live only in the extra fields has them in the built CSS (checked by building a small fixture; the generator output is currently only parsed in tests, not built, so this needs a real build step).
 
-### Phase 2: the contract (M)
+### Phase 2: the contract (M)  — **done 2026-10-12**
+
+Shipped: `ElementTable` / `TableCell` / `TableColumnConfig` and tolerant Zod schemas in `@whoobe-cms/schema` (a wrong type is refused, unknown fields are kept); `kind: 'table'`; `RenderDescriptor.table` built by `buildTableDescriptor` in `packages/sdk/renderer/src/table.ts` (typed grid with sanitised cells; bound table with pre-formatted rows, sort keys, search text, cap `tableMaxRows` = 1,000, `truncated` / `totalRows`). The walker no longer resolves a table's gateway binding a second time as if it were a content field.
 
 - Zod types for `ElementTable`, `TableCell`, the column; `kind: 'table'`; `RenderDescriptor.table`.
 - `walkNode`: typed grid (sanitised) and bound table (resolve the node's `dataBinding` / `gatewayBinding`, build columns, format cells with `applyTransform`, `sortKeys`, `search`, the cap).

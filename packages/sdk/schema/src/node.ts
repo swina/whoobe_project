@@ -164,6 +164,59 @@ export interface GatewayBinding {
   paginationContainerClass?: string | null
 }
 
+// --- table ---
+// The Table element: a typed grid (header / body / footer of cells) or, when the element has a `dataBinding` (Data Class query) or a
+// `gatewayBinding` (an array), one row per record with the configured columns. See table-binding.ts for the rules.
+
+export interface TableCell {
+  id?: string
+  /** Authored HTML (sanitised by the renderer). */
+  content?: string
+  colspan?: number
+  rowspan?: number
+  merged?: boolean
+  cellClass?: string
+}
+
+export interface TableColumnConfig {
+  id: string
+  header: string
+  field: string
+  cellClass?: string
+  headerCellClass?: string
+  /** false = the visitor cannot sort by this column. */
+  sortable?: boolean
+  /** false = the search box ignores this column. */
+  searchable?: boolean
+  transform?: import('./transform.js').FieldTransform | null
+}
+
+export interface ElementTable {
+  cols?: number
+  hasHeader?: boolean
+  hasFooter?: boolean
+  caption?: string
+  header?: TableCell[]
+  body?: TableCell[][]
+  footer?: TableCell[]
+  headerRowClass?: string
+  bodyRowClass?: string
+  footerRowClass?: string
+  headerCellClass?: string
+  bodyCellClass?: string
+  footerCellClass?: string
+  // bound to a list
+  columns?: TableColumnConfig[]
+  emptyText?: string
+  sortable?: boolean
+  searchable?: boolean
+  searchPlaceholder?: string
+  searchClass?: string
+  showCount?: boolean
+  countText?: string
+  countClass?: string
+}
+
 export interface ElementSlider {
   autoplay: boolean
   interval: number
@@ -210,6 +263,7 @@ export interface WhoobeElementNode {
   formConfig?: ElementFormConfig
   searchConfig?: ElementSearchConfig
   slider?: ElementSlider
+  table?: ElementTable
   gsap?: ElementGsap
   alpine?: Record<string, unknown>
   theme?: { colors: { name: string; hex: string }[]; fonts: string[] }

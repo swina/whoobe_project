@@ -5,7 +5,7 @@
 // fields survive a round-trip unchanged.
 
 import { z } from 'zod'
-import type { WhoobeElementNode, ElementDataBinding, ElementFormConfig, ElementSearchConfig, ElementSlider, DynamicLinkBinding, GatewayBinding } from './node.js'
+import type { WhoobeElementNode, ElementDataBinding, ElementFormConfig, ElementSearchConfig, ElementSlider, DynamicLinkBinding, GatewayBinding, ElementTable, TableCell, TableColumnConfig } from './node.js'
 
 // --- primitives ---
 
@@ -157,6 +157,57 @@ export const gatewayBindingSchema: z.ZodType<GatewayBinding> = z.object({
   paginationContainerClass: z.string().nullable().optional(),
 })
 
+// --- table ---
+// Tolerant on purpose: tables saved by older editors have fewer fields and the editor may add more; only a wrong TYPE is refused.
+
+const optStr = z.string().optional()
+const optBool = z.boolean().optional()
+
+export const tableCellSchema: z.ZodType<TableCell> = z.object({
+  id: optStr,
+  content: z.string().optional(),
+  colspan: z.number().optional(),
+  rowspan: z.number().optional(),
+  merged: optBool,
+  cellClass: optStr,
+}).passthrough() as unknown as z.ZodType<TableCell>
+
+export const tableColumnSchema: z.ZodType<TableColumnConfig> = z.object({
+  id: z.string(),
+  header: z.string(),
+  field: z.string(),
+  cellClass: optStr,
+  headerCellClass: optStr,
+  sortable: optBool,
+  searchable: optBool,
+  transform: fieldTransformSchema,
+}).passthrough() as unknown as z.ZodType<TableColumnConfig>
+
+export const tableSchema: z.ZodType<ElementTable> = z.object({
+  cols: z.number().optional(),
+  hasHeader: optBool,
+  hasFooter: optBool,
+  caption: optStr,
+  header: z.array(tableCellSchema).optional(),
+  body: z.array(z.array(tableCellSchema)).optional(),
+  footer: z.array(tableCellSchema).optional(),
+  headerRowClass: optStr,
+  bodyRowClass: optStr,
+  footerRowClass: optStr,
+  headerCellClass: optStr,
+  bodyCellClass: optStr,
+  footerCellClass: optStr,
+  columns: z.array(tableColumnSchema).optional(),
+  emptyText: optStr,
+  sortable: optBool,
+  searchable: optBool,
+  searchPlaceholder: optStr,
+  searchClass: optStr,
+  showCount: optBool,
+  countText: optStr,
+  countClass: optStr,
+}).passthrough() as unknown as z.ZodType<ElementTable>
+
 // --- slider ---
 
 export const sliderSchema: z.ZodType<ElementSlider> = z.object({
@@ -208,6 +259,7 @@ export const whoobeElementSchema: z.ZodType<WhoobeElementNode> = z.lazy(() =>
       formConfig: formConfigSchema.optional(),
       searchConfig: searchConfigSchema.optional(),
       slider: sliderSchema.optional(),
+      table: tableSchema.optional(),
       gsap: elementGsapSchema.optional(),
       alpine: z.record(z.unknown()).optional(),
       theme: z.object({

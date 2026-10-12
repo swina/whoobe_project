@@ -8,6 +8,7 @@ import type { RenderDescriptor } from './descriptor.js'
 import { normalizeKind, resolveTag } from './kind.js'
 import { resolveImageUrl } from './url.js'
 import { resolveDynamicLinkPath } from './path-pattern.js'
+import { buildTableDescriptor } from './table.js'
 import { formatBoundContent, resolveDataBinding, resolveFieldValue, resolveRecordField, resolveGatewayBinding, resolveGatewayFieldValue, resolveFieldFromRecord } from './resolve.js'
 import type { RenderApi } from './api-client.js'
 
@@ -50,6 +51,8 @@ export interface RenderOptions {
    *  stripped from the front of any stored `node.link` href that starts
    *  with it - see WhoobeAdapterOptions.rootPath for why. */
   rootPath?: string
+  /** Most rows a Table keeps from its list (default 1000); the rest are left out and the table says so. */
+  tableMaxRows?: number
 }
 
 /** Strips a website's CMS-internal `rootPath` prefix from a stored link
@@ -195,6 +198,8 @@ async function walkChildren(node: WhoobeElementNode, ctx: WalkContext, options: 
 export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, options: RenderOptions): Promise<RenderDescriptor> {
   const scope = { ctx, api: options.api }
 
+  const kind = normalizeKind(node)
+
   let content = ''
   let contentIsHtml = false
   let transformClassName: string | undefined
@@ -205,7 +210,7 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
     content = formatted.content
     contentIsHtml = true
     transformClassName = formatted.className
-  } else if (node.gatewayBinding?.fieldPath) {
+  } else if (node.gatewayBinding?.fieldPath && kind !== 'table') {
     const transform = node.gatewayBinding.transform
     const format = (value: unknown) => {
       if (transform && transform.type !== 'none') {
@@ -255,8 +260,6 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
 
   const className = [node.css?.css ?? '', node.css?.container ?? '', transformClassName ?? ''].filter(Boolean).join(' ')
 
-  const kind = normalizeKind(node)
-
   const optionsData = node.data?.options
   const optionsList = Array.isArray(optionsData) ? (optionsData as Array<{ label: string; value: string }>) : null
 
@@ -278,6 +281,9 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
     formConfig: node.formConfig ?? null,
     searchConfig: node.searchConfig ?? null,
     slider: node.slider ?? null,
+    table: kind === 'table'
+      ? await buildTableDescriptor(node, scope, { maxRows: options.tableMaxRows, gatewayUrl: options.api.gatewayUrl, urlParams: ctx.urlParams, gatewaySiteAuth: options.api.gatewaySiteAuth })
+      : null,
     dataBinding: node.dataBinding ?? null,
     options: optionsList,
     ...(node.gsap ? { gsap: node.gsap } : {}),
