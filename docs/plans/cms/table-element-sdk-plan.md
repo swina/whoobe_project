@@ -113,9 +113,9 @@ the three renderers drifting.
 ### 3.5 Payload and limits
 
 All rows of the (already filtered, ordered and limited) list are serialised into the page (RSC payload in Next, Nuxt payload) so that sorting and
-search work on the whole list. A 2,000-row table with six short columns is roughly a few hundred kilobytes (an estimate, to be measured in the phase 0 spike); ten times that is a problem.
+search work on the whole list. A 1,000-row table with six short columns is roughly a few hundred kilobytes (an estimate, to be measured in the phase 0 spike); ten times that is a problem.
 
-- The binding's own **limit** and filters keep the list sensible; the walker adds a **hard cap** (proposal: 2,000 rows) with a build warning and a flag in the descriptor
+- The binding's own **limit** and filters keep the list sensible; the walker adds a **hard cap** (decided: 1,000 rows) with a build warning and a flag in the descriptor
   (`truncated: true`) that the component shows as a note.
 - Anything larger belongs to **server-side mode** (phase 5): page, sort and search become requests to a small public endpoint; out of scope here.
 - Data freshness follows the site: build time for a static export, `revalidate` (default 60 s) for ISR. Interactions never refetch.
@@ -134,26 +134,46 @@ that fails when a new `*Class` field is added to the node types without being li
 Sortable headers are real buttons inside the `th`, with `aria-sort`; the search input has a label; the counter is `aria-live="polite"`; the
 pager buttons are disabled at the ends; the search box lives in the `caption`. These are already how the editor draws it; the adapters copy that markup.
 
-## 4. Decisions needed from the owner
+## 4. Decisions
+
+Taken by the owner on 2026-10-12:
+
+| # | Decision |
+|---|---|
+| D1 | **Pre-formatted rows** in the descriptor (text and link per cell, produced by the walker) |
+| D2 | **React/Next first, then Vue/Nuxt, then Svelte** |
+| D3 | **Only page 1** in the server-rendered HTML |
+| D4 | **Hard cap of 1,000 rows per table** (a walker option, `tableMaxRows`), with a build warning and a visible note in the table ("first 1,000 of N") |
+| D5 | **The class-collection fix is its own change, first** (phase 1) |
+| D6 | "Whichever is most convenient": decided as **after the table adapters** (phase 5), because it needs the same controller and the adapters' container changes, and nothing in the table depends on it |
+
+Consequence of D4 to keep in view: sorting and search work over the rows that were kept (the first 1,000 of the list, in the binding's own order), not over a longer list; the note
+in the table says so. A longer list needs the server-side mode of phase 5.
+
+The options that were put to the owner:
+
+## 4a. Options considered
 
 | # | Decision | Recommendation |
 |---|---|---|
 | D1 | Pre-formatted rows in the descriptor (section 3.1), or raw records with the transformer engine in each adapter | **Pre-formatted**: smaller adapters, one place for the rules |
 | D2 | Which adapters, in which order | React/Next first, then Vue/Nuxt, then Svelte (Svelte lacks other elements too; confirm it is in scope) |
 | D3 | Only page 1 in the HTML, or an option to put every row in the HTML (hidden) | Page 1 only; the option later, when someone needs the SEO |
-| D4 | Hard cap of rows per table and its value | 2,000, with a warning at build time |
+| D4 | Hard cap of rows per table and its value | 2,000, with a warning at build time (the owner chose 1,000) |
 | D5 | The class-collection fix for the generator as part of this work, or as its own change first | **Own change first** (phase 1): it also fixes other elements |
 | D6 | Pagination of container repeaters in the SDK in the same stream | Yes, after the table (phase 5): same controller, the missing feature is visible today |
 
 ## 5. Plan
 
-### Phase 0: decisions and a spike (S)
+### Phase 0: decisions (done) and a spike (S)
 
 - Settle D1 to D6.
-- Spike: add `kind: 'table'` and a hard-coded descriptor for one fixture, render it with a throwaway React component, measure the payload of 2,000 rows.
+- Spike: add `kind: 'table'` and a hard-coded descriptor for one fixture, render it with a throwaway React component, measure the payload of 1,000 rows.
 - *Acceptance*: numbers for the payload; the decisions recorded here.
 
-### Phase 1: the generator learns every class (S-M)  *(independent; useful on its own)*
+### Phase 1: the generator learns every class (S-M)  *(independent; useful on its own)*  — **done 2026-10-12**
+
+Shipped as `collectTreeClasses` in `packages/sdk/schema/src/class-fields.ts`, used by the generator for Next.js and Nuxt; the list of class fields is checked by a test against the node types (it found four slider fields nobody collected: `tabContainerClass`, `dotClass`, `activeDotClass`, `dotContainerClass`). Not done: building a real fixture site to see the CSS (the generator output is only parsed in tests); do it with the first adapter in phase 4.
 
 - `classFieldsOf(node)` in `@whoobe-cms/schema`, used by `collectClasses` in `packages/publish/src/cli.ts`; a test that walks the node types.
 - The adapters' default table classes listed for the safelist.

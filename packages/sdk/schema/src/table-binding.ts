@@ -19,6 +19,24 @@ export interface TableColumn {
 
 export type PaginationMode = 'standard' | 'lazyload'
 
+/** The classes a table draws with when the author set none. The editor, the generated sites and the generator's safelist share them. */
+export const TABLE_DEFAULTS = {
+  loadMore: 'px-4 py-2 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50',
+  paginationContainer: 'w-full flex flex-col items-center justify-center md:gap-3 gap-2 md:p-4 p-2',
+  countOnlyContainer: 'w-full flex justify-center p-2',
+  pager: 'flex items-center justify-center gap-3 text-xs text-gray-500',
+  pagerButton: 'px-2 py-1 rounded border disabled:opacity-40',
+  count: 'text-xs text-gray-500',
+  search: 'w-full max-w-xs px-3 py-1.5 mb-2 rounded border border-gray-300 text-sm',
+  searchWrapper: 'text-left',
+  sortButton: 'inline-flex items-center gap-1 text-left font-[inherit] cursor-pointer select-none',
+  sortMark: 'text-[0.7em] opacity-70',
+  empty: 'text-center opacity-60',
+  footerCell: 'p-0',
+} as const
+
+export const TABLE_DEFAULT_CLASSES: readonly string[] = Object.values(TABLE_DEFAULTS)
+
 export interface PaginationSettings {
   /** 0 = no pagination: the whole working set is drawn. */
   rowsPerPage: number
@@ -112,8 +130,8 @@ export function paginationOf(binding: unknown): PaginationSettings {
     rowsPerPage: Number.isFinite(rows) && rows > 0 ? Math.min(rows, 1000) : 0,
     mode: b.paginationMode === 'lazyload' ? 'lazyload' : 'standard',
     loadMoreText: str(b.loadMoreText) || 'More',
-    loadMoreClass: str(b.loadMoreClass) || 'px-4 py-2 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50',
-    containerClass: str(b.paginationContainerClass) || 'w-full flex flex-col items-center justify-center md:gap-3 gap-2 md:p-4 p-2',
+    loadMoreClass: str(b.loadMoreClass) || TABLE_DEFAULTS.loadMore,
+    containerClass: str(b.paginationContainerClass) || TABLE_DEFAULTS.paginationContainer,
   }
 }
 
