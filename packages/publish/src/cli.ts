@@ -625,7 +625,11 @@ ENV NEXT_PUBLIC_CMS_API_URL=$NEXT_PUBLIC_CMS_API_URL \\
 # references to real version numbers, so a plain \`pnpm install\` here
 # resolves everything from this directory alone).
 FROM node:22-bookworm-slim AS base
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+# COREPACK_HOME outside /root: the run stage drops to USER 1000, which would
+# otherwise not see the prepared pnpm 9 and let corepack fetch the latest
+# pnpm (ignores package.json pnpm.overrides -> ERR_PNPM_VERIFY_DEPS_BEFORE_RUN).
+ENV COREPACK_HOME=/opt/corepack
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate && chmod -R a+rX /opt/corepack
 WORKDIR /app
 
 FROM base AS build
@@ -1738,9 +1742,13 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
   },${pwaModule}
+  // page data stays inline in the HTML: with the extracted _payload.json the client hydrated with an empty useAsyncData cache and the page turned into error.vue ("Page not found") a moment after it appeared
+  experimental: { payloadExtraction: false },
   nitro: {
     prerender: {
       crawlLinks: true,
+      // a link in the content that points to a page that is not published (404) is reported in the build log but must not stop the build
+      failOnError: false,
     },
   },
   runtimeConfig: {
@@ -1929,7 +1937,7 @@ if (data.value) {
   const seo = data.value.page.seo || {} as any
   const title = seo.metaTitle || data.value.page.title
   const description = seo.metaDescription || undefined
-  const ogImage = seo.ogImage ? (String(seo.ogImage).startsWith('http') ? String(seo.ogImage) : String(config.public.cmsApiUrl).replace(/\/+$/, '') + String(seo.ogImage)) : undefined
+  const ogImage = seo.ogImage ? (String(seo.ogImage).startsWith('http') ? String(seo.ogImage) : String(config.public.cmsApiUrl).replace(/\\/+$/, '') + String(seo.ogImage)) : undefined
   useHead({ title, link: seo.canonicalUrl ? [{ rel: 'canonical', href: seo.canonicalUrl }] : [] })
   useSeoMeta({
     description,
@@ -2063,7 +2071,7 @@ if (data.value) {
   const seo = data.value.page.seo || {} as any
   const title = seo.metaTitle || data.value.page.title
   const description = seo.metaDescription || undefined
-  const ogImage = seo.ogImage ? (String(seo.ogImage).startsWith('http') ? String(seo.ogImage) : String(config.public.cmsApiUrl).replace(/\/+$/, '') + String(seo.ogImage)) : undefined
+  const ogImage = seo.ogImage ? (String(seo.ogImage).startsWith('http') ? String(seo.ogImage) : String(config.public.cmsApiUrl).replace(/\\/+$/, '') + String(seo.ogImage)) : undefined
   useHead({ title, link: seo.canonicalUrl ? [{ rel: 'canonical', href: seo.canonicalUrl }] : [] })
   useSeoMeta({
     description,
@@ -2123,7 +2131,7 @@ if (data.value) {
   const seo = data.value.page.seo || {} as any
   const title = seo.metaTitle || data.value.page.title
   const description = seo.metaDescription || undefined
-  const ogImage = seo.ogImage ? (String(seo.ogImage).startsWith('http') ? String(seo.ogImage) : String(config.public.cmsApiUrl).replace(/\/+$/, '') + String(seo.ogImage)) : undefined
+  const ogImage = seo.ogImage ? (String(seo.ogImage).startsWith('http') ? String(seo.ogImage) : String(config.public.cmsApiUrl).replace(/\\/+$/, '') + String(seo.ogImage)) : undefined
   useHead({ title, link: seo.canonicalUrl ? [{ rel: 'canonical', href: seo.canonicalUrl }] : [] })
   useSeoMeta({
     description,

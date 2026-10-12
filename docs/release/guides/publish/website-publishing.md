@@ -225,11 +225,12 @@ What it does:
 **Deploying to a different host than you generated the site on**: transfer the whole generated folder (it's self-contained) and run `deploy.sh` there:
 
 ```bash
+ssh user@remote-host "mkdir -p /opt/sites/my-company-site"   # rsync only creates the last folder, not the parents
 rsync -az --delete ./sites/my-company-site/ user@remote-host:/opt/sites/my-company-site/
 ssh user@remote-host "cd /opt/sites/my-company-site && PORT=3100 ./deploy.sh"
 ```
 
-The Websites list in the admin dashboard has a **Publish** button that generates this exact two-command sequence (plus the CDN mirroring and site-generation steps before it) pre-filled for a given website - see the admin dashboard's Settings → Websites.
+The Websites list in the admin dashboard has a **Publish** button that generates this exact three-command sequence (plus the CDN mirroring and site-generation steps before it) pre-filled for a given website - see the admin dashboard's Settings → Websites.
 
 **TLS**: not automated by `deploy.sh`. The rendered vhost's `/.well-known/acme-challenge/` location is ready for a manual run:
 

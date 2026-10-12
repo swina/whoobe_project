@@ -1,3 +1,31 @@
+## [Generated Nuxt site: page no longer turns into "Page not found" after hydration] — 2026-10-12
+- Branch: `master`
+- `packages/publish/src/cli.ts` (`nuxt.config.ts` template): `experimental.payloadExtraction: false`. With the default extracted `_payload.json` (prerendered by `crawlLinks`), the page showed for a second and then `pages/index.vue` threw its 404: on the client `payload.data` was empty during hydration (the file is served 200 and complete, no Nuxt warning; cause inside Nuxt 3.21.11 not found), `useAsyncData` stayed `idle` and `data.value` was null. Reproduced in headless Chromium on two builds of the same site: without the flag it ends on the error page, with the flag the page stays. Data is inline in the HTML now (bigger HTML, no extra request).
+- `packages/publish/dist` rebuilt. Regenerate the site and re-run `deploy.sh`.
+- Not fixed here: the service worker precache fails with `bad-precaching-response` for `/safelist` (404; the file is `public/safelist.html`), which only breaks the SW install.
+
+## [Rebuilt publish and renderer dist] — 2026-10-12
+- Branch: `master`
+- `packages/publish/dist` and `packages/sdk/renderer/dist` rebuilt (`pnpm build`, both gitignored). Regenerating a site from the dashboard uses the compiled output, which still had the old Dockerfile (no `COREPACK_HOME`, so the container kept restarting with `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`) and the old container gateway binding. Regenerate the site and re-run `deploy.sh` to get both fixes.
+
+## [Renderer: a failing gateway binding on a container no longer replaces the page with the error screen] — 2026-10-12
+- Branch: `master`
+- `packages/sdk/renderer/src/walk.ts`: `resolveGatewayBinding` for a container had no try/catch (the field and table bindings did). A gateway 401 (site without a site key) or an unreachable gateway threw out of the whole walk, and the generated Nuxt site showed its `error.vue` ("You're offline") right after hydration. The container now logs a warning and renders its children unbound. Typecheck and the 76 renderer tests pass; no new test yet. Regenerate the site to pick it up (the SDK is vendored as tarballs).
+
+## [Generated site Dockerfile: the container runs pnpm 9, not the latest pnpm] — 2026-10-12
+- Branch: `master`
+- `packages/publish/src/cli.ts` (`scaffoldDockerfile`): `corepack prepare pnpm@9.0.0` cached pnpm under root's home, but the run stage switches to `USER 1000`, so corepack fetched the latest pnpm there, which ignores `package.json` `pnpm.overrides` and made `pnpm start` crash-loop with `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`. `COREPACK_HOME=/opt/corepack` (world-readable) now holds the prepared pnpm 9. Regenerate the site and re-run `deploy.sh` to get it.
+
+## [Nuxt generated site: build no longer fails on a dead link, fixed og:image regex] — 2026-10-12
+- Branch: `master`
+- `packages/publish/src/cli.ts`: the generated Nuxt page code lost a backslash in the `replace(/\/+$/, '')` of the og:image URL (template literal), which broke every page with SEO data (500 during prerender). Fixed in the three places.
+- Nuxt `nitro.prerender.failOnError: false`: a content link to a page that is not published (here `/sycore`, 404 from the CMS) is logged but no longer stops `pnpm build` (and the Docker build).
+
+## [Remote deploy: the target folder is created before rsync] — 2026-10-12
+- Branch: `master`
+- Publish tab: the remote deploy step now runs `ssh <host> "mkdir -p <path>/<slug>"` before `rsync` (rsync failed with `mkdir ... No such file or directory` when the parent folders did not exist).
+- Guide `website-publishing.md` updated with the same step.
+
 ## [Slider rendered for real (React and Vue), and the home page gets its title and meta tags] — 2026-10-12
 - Branch: `feat/table-data-binding`. Page "aaaa" on the Next site: the slider showed unlabelled tabs, empty slides and arrows that its settings did not ask for, and the tab title / meta tags were missing. Causes (found in the code, then checked in `next dev` with Playwright):
   - **React slider** rendered each slide with `registry[kind]` and no children (so every slide was empty), left the tab buttons without text, and showed the arrows in tabs mode. **Vue** had the labels and the home button missing. Both now follow the editor's preview: the slides are the node's children, tabs are named from each slide's `tabLabel` (else "Slide N"), tabs mode shows only the tabs, standard mode the arrows (`arrowIcon` glyph) and the home button (`showHome`) over the viewport, dots when `showDots`. What is shown is decided once in the new `packages/sdk/renderer/src/slider.ts` (`sliderView`, with the editor's defaults), used by both adapters; test `slider.test.ts` (4) and two SSR tests in `react/components.test.tsx`. `SLIDER_DEFAULT_CLASSES` (the classes the generated site's CSS must contain) now lists the new defaults and the test reads `slider.ts`.
