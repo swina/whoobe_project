@@ -1,32 +1,26 @@
 // What a Table element draws when it is bound to a list (the element's own `dataBinding` or `gatewayBinding`, set from the toolbar):
-// the columns, one row per record with each cell read and formatted, and the page of rows to show. Shared by BlockTable.vue
-// (editor canvas) and preview/BlockTablePreview.vue (preview and published pages) so both draw the same thing. The pure rules
-// are in @whoobe-cms/schema (table-binding.ts); this file only adds the reactive state and the field transforms.
+// the columns, one row per record, and the rows of the page the visitor is on. Shared by BlockTable.vue (editor canvas) and
+// preview/BlockTablePreview.vue (preview and published pages). This file only holds the STATE (search words, sort, page) and the
+// list of columns; the rows and the view of them (search, sort, page, counter) come from @whoobe-cms/schema (table-view.ts), the same
+// two functions the SDK adapters of the generated sites call, so a table behaves the same wherever it is drawn.
 import { computed, ref, watch, type Ref } from 'vue'
 import {
+  ariaSortOf,
+  buildTableRows,
   columnsFromRecords,
-  matchesTerms,
+  computeTableView,
   nextSort,
-  normalizeSearchText,
-  pageCount,
-  formatRowCount,
-  pageRows,
   paginationOf,
-  plainCellText,
-  rowRange,
-  searchTerms,
-  sortRecords,
-  tableCellValue,
+  sortMarkOf,
   tableRecords,
+  type TableCellData,
   type TableSort,
 } from '@whoobe-cms/schema'
 import { useEditorStore } from '../store/editor'
-import { applyTransform, type TransformResult } from '../scripts/field-transforms'
 import type { TableBoundColumn } from '../scripts/ElementsClass.js'
 
-export interface BoundCell {
+export interface BoundCell extends TableCellData {
   key: string
-  result: TransformResult
   cellClass?: string
 }
 
@@ -56,80 +50,53 @@ export function useBoundTable(doc: Ref<any>) {
   })
 
   const pagination = computed(() => paginationOf(binding.value))
-  const page = ref(1)
-  const visible = ref(0)
-
-  // What the visitor does to the list: search it, sort it. Both act on the whole list, then it is cut into pages.
   const sortEnabled = computed(() => doc.value?.table?.sortable === true)
   const searchEnabled = computed(() => doc.value?.table?.searchable === true)
+  const showCount = computed(() => doc.value?.table?.showCount === true)
+
+  // The state of the visitor's controls
+  const page = ref(1)
+  const visible = ref(pagination.value.rowsPerPage)
   const query = ref('')
   const sort = ref<TableSort | null>(null)
 
-  function cellResult(record: unknown, col: BoundColumn): TransformResult {
-    const raw = tableCellValue(record, col.field)
-    return col.transform && col.transform.type !== 'none'
-      ? applyTransform(raw, col.transform, editor.page?.locale)
-      : ({ kind: 'text', text: plainCellText(raw) } as TransformResult)
-  }
-
-  // What the search looks at: the text the visitor sees in each searchable column. Built only while a query is typed.
-  const searchTexts = computed(() => {
-    const cols = columns.value.filter((c) => c.searchable !== false)
-    return records.value.map((r) => normalizeSearchText(cols.map((c) => cellResult(r, c).text).join(' ')))
-  })
-  const filtered = computed<unknown[]>(() => {
-    const terms = searchEnabled.value ? searchTerms(query.value) : []
-    if (!terms.length) return records.value
-    const texts = searchTexts.value
-    return records.value.filter((_, i) => matchesTerms(texts[i], terms))
-  })
-  // a sort on a column that no longer exists (or one the author switched off) is ignored
-  const activeSort = computed<TableSort | null>(() => {
-    const s = sort.value
-    if (!sortEnabled.value || !s) return null
-    const col = columns.value.find((c) => c.field === s.field)
-    return col && col.sortable !== false ? s : null
-  })
-  const processed = computed<unknown[]>(() => sortRecords(filtered.value, activeSort.value))
-
-  const recordCount = computed(() => records.value.length)
-  const total = computed(() => processed.value.length)
-  const pages = computed(() => pageCount(total.value, pagination.value.rowsPerPage))
-  const shown = computed(() => pageRows(processed.value, pagination.value, page.value, visible.value))
-  const needsControls = computed(() => pagination.value.rowsPerPage > 0 && total.value > pagination.value.rowsPerPage)
-  // The counter: the rows on screen out of the result (and out of the whole list when a search narrowed it)
-  const countLabel = computed(() => {
-    const { from, to } = rowRange(total.value, pagination.value, page.value, shown.value.length)
-    return formatRowCount(doc.value?.table?.countText, { from, to, total: total.value, all: recordCount.value })
-  })
-  const showCount = computed(() => doc.value?.table?.showCount === true)
-  const hasFooter = computed(() => needsControls.value || showCount.value)
-  const searching = computed(() => searchEnabled.value && searchTerms(query.value).length > 0)
+  const rowData = computed(() => buildTableRows(records.value, columns.value, editor.page?.locale))
+  const view = computed(() => computeTableView(
+    {
+      columns: columns.value,
+      rows: rowData.value,
+      pagination: pagination.value,
+      sortable: sortEnabled.value,
+      searchable: searchEnabled.value,
+      countText: doc.value?.table?.countText,
+    },
+    { query: query.value, sort: sort.value, page: page.value, visible: visible.value },
+  ))
 
   watch(records, () => { page.value = 1; visible.value = pagination.value.rowsPerPage })
   watch([query, sort], () => { page.value = 1; visible.value = pagination.value.rowsPerPage })
   watch(() => pagination.value.rowsPerPage, (n) => { visible.value = n })
-  watch(pages, (p) => { if (page.value > p) page.value = p })
-  visible.value = pagination.value.rowsPerPage
+  watch(() => view.value.pages, (p) => { if (page.value > p) page.value = p })
 
-  function cellsOf(record: unknown): BoundCell[] {
-    return columns.value.map((col) => ({ key: col.id, result: cellResult(record, col), cellClass: col.cellClass }))
-  }
+  const rows = computed(() => view.value.rows.map((r, i) => ({
+    key: i,
+    cells: r.cells.map((c, j): BoundCell => ({ ...c, key: columns.value[j].id, cellClass: columns.value[j].cellClass })),
+  })))
 
-  const rows = computed(() => shown.value.map((record, i) => ({ key: i, cells: cellsOf(record) })))
+  const total = computed(() => view.value.total)
+  const recordCount = computed(() => records.value.length)
+  const pages = computed(() => view.value.pages)
+  const needsControls = computed(() => view.value.needsControls)
+  const countLabel = computed(() => view.value.countLabel)
+  const hasFooter = computed(() => needsControls.value || showCount.value)
+  const searching = computed(() => view.value.searching)
 
-  const canSort = (col: TableSort | { field: string; sortable?: boolean }) => sortEnabled.value && (col as any).sortable !== false
+  const canSort = (col: { sortable?: boolean }) => sortEnabled.value && col.sortable !== false
   function setSort(col: { field: string; sortable?: boolean }) {
     if (canSort(col)) sort.value = nextSort(sort.value, col.field)
   }
-  function ariaSort(col: { field: string }): 'ascending' | 'descending' | 'none' {
-    const s = activeSort.value
-    return s && s.field === col.field ? (s.direction === 'asc' ? 'ascending' : 'descending') : 'none'
-  }
-  function sortMark(col: { field: string }): string {
-    const a = ariaSort(col)
-    return a === 'ascending' ? '▲' : a === 'descending' ? '▼' : '↕'
-  }
+  const ariaSort = (col: { field: string }) => ariaSortOf(view.value.sort, col.field)
+  const sortMark = (col: { field: string }) => sortMarkOf(view.value.sort, col.field)
 
   function prev() { page.value = Math.max(1, page.value - 1) }
   function next() { page.value = Math.min(pages.value, page.value + 1) }

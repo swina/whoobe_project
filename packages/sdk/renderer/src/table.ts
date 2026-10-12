@@ -7,18 +7,17 @@
 // searching and the counter are in table-binding.ts (shared with the editor).
 
 import {
-  applyTransform,
+  buildTableRows,
   columnsFromRecords,
-  normalizeSearchText,
   paginationOf,
-  plainCellText,
   sanitizeRichText,
-  tableCellValue,
   tableRecords,
   type ElementTable,
   type PaginationSettings,
   type TableCell,
+  type TableCellData,
   type TableColumnConfig,
+  type TableRowData,
   type WhoobeElementNode,
 } from '@whoobe-cms/schema'
 import type { RenderApi } from './api-client.js'
@@ -27,16 +26,9 @@ import { resolveDataBinding, resolveGatewayBinding } from './resolve.js'
 export const DEFAULT_TABLE_MAX_ROWS = 1000
 
 export interface TableGridCell { html: string; colspan: number; rowspan: number; className?: string }
-export type SortKey = string | number | boolean | null
-
-export interface TableBoundCell {
-  text: string
-  /** A checked address (the "turn into link" format); absent for plain text. */
-  href?: string
-  target?: string
-  /** Classes of a "map value to label/class" format. */
-  className?: string
-}
+// The row and cell shapes (and the code that builds them) are shared with the editor: @whoobe-cms/schema, table-view.ts
+export type TableBoundCell = TableCellData
+export type TableBoundRow = TableRowData
 
 export interface TableDescriptorColumn {
   id: string
@@ -46,14 +38,6 @@ export interface TableDescriptorColumn {
   cellClass?: string
   sortable: boolean
   searchable: boolean
-}
-
-export interface TableBoundRow {
-  cells: TableBoundCell[]
-  /** The comparable value of each cell, for sorting (a number stays a number). */
-  sortKeys: SortKey[]
-  /** Normalised text of the searchable columns, ready to be matched. */
-  search: string
 }
 
 export interface TableDescriptor {
@@ -92,13 +76,6 @@ function gridCell(cell: TableCell): TableGridCell | null {
 
 const gridRow = (cells: TableCell[] | undefined): TableGridCell[] =>
   (Array.isArray(cells) ? cells : []).map(gridCell).filter((c): c is TableGridCell => c !== null)
-
-function sortKeyOf(raw: unknown): SortKey {
-  if (raw === null || raw === undefined || raw === '') return null
-  if (typeof raw === 'number' || typeof raw === 'boolean') return raw
-  const text = plainCellText(raw)
-  return text === '' ? null : text
-}
 
 async function resolveRecords(
   node: WhoobeElementNode,
@@ -160,27 +137,7 @@ export async function buildTableDescriptor(
       }))
     : columnsFromRecords(records).map((c, i) => ({ id: `detected-${i}`, header: c.header, field: c.field, sortable: true, searchable: true }))
 
-  const rows: TableBoundRow[] = records.map((record) => {
-    const cells: TableBoundCell[] = []
-    const sortKeys: SortKey[] = []
-    const searchParts: string[] = []
-    for (const col of columns) {
-      const raw = tableCellValue(record, col.field)
-      sortKeys.push(sortKeyOf(raw))
-      let cell: TableBoundCell
-      if (col.transform && col.transform.type !== 'none') {
-        const r = applyTransform(raw, col.transform)
-        cell = r.kind === 'link'
-          ? { text: r.text, href: r.href, ...(r.target ? { target: r.target } : {}) }
-          : { text: r.text, ...(r.className ? { className: r.className } : {}) }
-      } else {
-        cell = { text: plainCellText(raw) }
-      }
-      cells.push(cell)
-      if (col.searchable) searchParts.push(cell.text)
-    }
-    return { cells, sortKeys, search: normalizeSearchText(searchParts.join(' ')) }
-  })
+  const rows: TableBoundRow[] = buildTableRows(records, columns)
 
   return {
     mode: 'bound', ...base,

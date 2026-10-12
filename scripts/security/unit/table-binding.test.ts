@@ -61,7 +61,7 @@ describe('table binding: the components', () => {
     for (const f of ['apps/whoobe-one-spike/src/components/BlockTable.vue', 'apps/whoobe-one-spike/src/components/preview/BlockTablePreview.vue']) {
       expect(read(f), f).toContain('col.headerCellClass')
     }
-    expect(read('apps/whoobe-one-spike/src/composables/useBoundTable.ts')).toContain('cellClass: col.cellClass')
+    expect(read('apps/whoobe-one-spike/src/composables/useBoundTable.ts')).toContain('cellClass: columns.value[j].cellClass')
   })
   it('a bound table can be sorted by its headers and searched, in the canvas and the preview', () => {
     for (const f of ['apps/whoobe-one-spike/src/components/BlockTable.vue', 'apps/whoobe-one-spike/src/components/preview/BlockTablePreview.vue']) {
@@ -71,10 +71,13 @@ describe('table binding: the components', () => {
       expect(src, f).toContain('v-model="bound.query.value"')
       expect(src, f).toContain('type="search"')
     }
+    // the editor calls the shared functions (the same ones the SDK adapters call) and the order of the work is: search, sort, page
     const c = read('apps/whoobe-one-spike/src/composables/useBoundTable.ts')
-    // the order of the work: search, then sort, then pages
-    expect(c.indexOf('const filtered')).toBeLessThan(c.indexOf('const processed'))
-    expect(c.indexOf('const processed')).toBeLessThan(c.indexOf('const shown'))
+    expect(c).toContain('computeTableView(')
+    expect(c).toContain('buildTableRows(')
+    const v = read('packages/sdk/schema/src/table-view.ts')
+    expect(v.indexOf('const filtered')).toBeLessThan(v.indexOf('sortRowsByKey(filtered'))
+    expect(v.indexOf('sortRowsByKey(filtered')).toBeLessThan(v.indexOf('pageRows(ordered'))
   })
   it('the row counter is drawn as text, in the canvas and the preview, and follows search and pages', () => {
     for (const f of ['apps/whoobe-one-spike/src/components/BlockTable.vue', 'apps/whoobe-one-spike/src/components/preview/BlockTablePreview.vue']) {
@@ -83,9 +86,10 @@ describe('table binding: the components', () => {
       expect(src, f).toContain('bound.hasFooter.value')
       expect(src, f).not.toMatch(/v-html="[^"]*count/i)
     }
-    const c = read('apps/whoobe-one-spike/src/composables/useBoundTable.ts')
-    expect(c).toContain('rowRange(total.value')
-    expect(c).toContain('all: recordCount.value')
+    const v = read('packages/sdk/schema/src/table-view.ts')
+    expect(v).toContain('rowRange(total, input.pagination, page, rows.length)')
+    expect(v).toContain('all: input.rows.length')
+    expect(read('apps/whoobe-one-spike/src/composables/useBoundTable.ts')).toContain('countText: doc.value?.table?.countText')
   })
   it('the container repeaters read the pagination of a gateway binding too', () => {
     for (const f of ['apps/whoobe-one-spike/src/components/BlockContainer.vue', 'apps/whoobe-one-spike/src/components/preview/BlockContainerPreview.vue']) {
