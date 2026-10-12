@@ -7,6 +7,7 @@ import { sanitizeRichText } from '@whoobe-cms/schema'
 import { icons as lucideIcons } from '@lucide/vue'
 import { collectFormValues, dispatchFormResult, sanitizeOutcome, showsResultMessage, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
 import { WHOOBE_KEY, type NodeComponent, type WhoobeApi } from './types.js'
+import { DefaultTable } from './table.js'
 
 // Resolves a Lucide icon by name synchronously (mirrors
 // apps/whoobe-one-spike/src/helpers.ts's resolveLucideIcon, which is async
@@ -594,4 +595,5 @@ export const defaults: Record<string, NodeComponent> = {
   youtube: DefaultYoutube,
   vimeo: DefaultVimeo,
   slider: DefaultSlider,
+  table: DefaultTable,
 }

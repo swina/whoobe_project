@@ -43,6 +43,7 @@ export function usePage(
         assetBaseUrl: ctx.options.assetBaseUrl,
         keyPrefix: ctx.options.keyPrefix,
         resolveTargetPage: ctx.options.resolveTargetPage,
+        tableMaxRows: ctx.options.tableMaxRows,
       }
       const descriptor = await walkTree(lookup.page.content, { urlParams: lookup.params }, walkOptions)
       setData(descriptor)

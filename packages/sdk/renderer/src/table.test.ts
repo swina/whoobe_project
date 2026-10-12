@@ -161,7 +161,7 @@ describe('one implementation for the editor and the SDK', () => {
     const cols = [{ id: 'a', header: 'Name', field: 'name' }, { id: 'b', header: 'Price', field: 'price', transform: { type: 'number', options: { style: 'decimal', minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: true } } }]
     const d = await run(table({ columns: cols, sortable: true, searchable: true, showCount: true }, { dataBinding: { className: 'P', target: 'custom', resolveMode: 'query', rowsPerPage: 2 } }), makeApi({ queryObjects: async () => records as never }))
     const b = d.table!.bound!
-    const direct = buildTableRows(records, cols)
+    const direct = buildTableRows(records, cols as never)
     expect(b.rows).toEqual(direct)
     const input = (rows: typeof direct) => ({ columns: b.columns, rows, pagination: b.pagination, sortable: b.sortable, searchable: b.searchable, countText: b.countText })
     for (const state of [

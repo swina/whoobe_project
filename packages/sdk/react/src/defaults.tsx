@@ -9,6 +9,7 @@ import * as LucideIcons from 'lucide-react'
 import { collectFormValues, dispatchFormResult, sanitizeOutcome, showsResultMessage, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
 import { useWhoobe } from './context.js'
 import type { NodeComponent } from './types.js'
+import { DefaultTable } from './table.js'
 
 // Resolves a Lucide icon by name synchronously (mirrors
 // apps/whoobe-one-spike/src/helpers.ts's resolveLucideIcon, which is async
@@ -36,26 +37,8 @@ function resolveLucideIcon(name: string | null | undefined): any {
   return (LucideIcons as any)[key] ?? (LucideIcons as any).HelpCircle
 }
 
-export function cssToReactStyle(css: string): Record<string, string> {
-  const obj: Record<string, string> = {}
-  for (const decl of css.split(';')) {
-    const colon = decl.indexOf(':')
-    if (colon === -1) continue
-    const prop = decl.slice(0, colon).trim()
-    const val = decl.slice(colon + 1).trim()
-    if (!prop || !val) continue
-    const camel = prop.replace(/-([a-z])/g, (_, c) => c.toUpperCase())
-    obj[camel] = val.replace(/^['"]|['"]$/g, '')
-  }
-  return obj
-}
-
-function baseProps(d: RenderDescriptor): Record<string, unknown> {
-  const props: Record<string, unknown> = { ...d.attributes }
-  if (d.className) props.className = d.className
-  if (d.style) props.style = cssToReactStyle(d.style)
-  return props
-}
+export { cssToReactStyle, baseProps } from './style.js'
+import { baseProps } from './style.js'
 
 /** Wraps children in <a> when the descriptor has a link. */
 function withLink(descriptor: RenderDescriptor, children: ReactNode, props?: Record<string, unknown>): ReactNode {
@@ -505,4 +488,5 @@ export const defaults: Record<string, NodeComponent> = {
   youtube: DefaultYoutube,
   vimeo: DefaultVimeo,
   slider: DefaultSlider,
+  table: DefaultTable,
 }

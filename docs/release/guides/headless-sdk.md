@@ -93,6 +93,7 @@ interface RenderDescriptor {
   formConfig: ElementFormConfig | null
   searchConfig: ElementSearchConfig | null
   slider: ElementSlider | null
+  table: TableDescriptor | null    // kind 'table' only (see the Table element below)
   dataBinding: ElementDataBinding | null
   options: FieldOption[] | null   // select/radiogroup options
 }
@@ -115,7 +116,32 @@ Because it's a plain object graph, it can cross an SSR boundary: walk once serve
 | `search` | `tag: 'search'` |
 | `slider`, `youtube`, `vimeo`, `video`, `audio` | media (`audio` renders the plain browser player; the waveform look is editor/public-page only, see the [Audio element guide](audio-element.md)) |
 | (Markdown element) | has no kind of its own: the public API converts its Markdown to HTML and sends an ordinary element, see the [Markdown element guide](markdown-element.md) |
+| `table` | `tag: 'table'`: the Table element, see below |
 | `icon` | `tag: 'lucideicon'` |
+
+### The Table element
+
+A Table node becomes kind `table` with a `descriptor.table`, fully serialisable:
+
+- a **typed table** (`mode: 'static'`): `grid.header / body / footer` with the cells already sanitised, merged cells dropped, the spans kept, and the section classes;
+- a table **bound to a list** (`mode: 'bound'`), when the node has a `dataBinding` (a Data Class query) or a `gatewayBinding` (an array in a gateway reply): `bound.columns`
+  and one **pre-formatted row** per record (`cells` as text or a checked link, `sortKeys`, `search`), the options of sorting, search and counter, the pagination settings, and
+  `totalRows` / `truncated`. A table keeps at most **1,000 rows** (`tableMaxRows` in the options of the walker or the adapter); when it is cut the table says so.
+
+The built-in `table` component of each adapter (React/Next, Vue/Nuxt, Svelte) draws it. The server renders the **first page**; sorting, search and paging run in the browser after
+hydration, over the rows that were kept. The behaviour is not in the adapters but in `@whoobe-cms/schema`, the same code the editor runs: `computeTableView(input, state)` gives the
+rows to draw, the counter text and the paging, and `reduceTableState(state, action, input, view)` gives the next state for `query`, `sort`, `prev`, `next` and `more`. A registry
+override can call them and draw its own markup (React exports `useTableView(bound)` and Vue `useTableView(() => bound)`, which keep the state for you; in Svelte call the two functions directly):
+
+```ts
+import { initialTableState, computeTableView, reduceTableState } from '@whoobe-cms/schema'
+const input = { columns: b.columns, rows: b.rows, pagination: b.pagination, sortable: b.sortable, searchable: b.searchable, countText: b.countText }
+let state = initialTableState(b.pagination)
+const view = computeTableView(input, state)            // view.rows, view.countLabel, view.page, view.pages ...
+state = reduceTableState(state, { type: 'next' }, input, view)
+```
+
+Cells are text or checked links, never HTML (only a typed table's cells hold sanitised HTML). Not in the SDK: GSAP animation on a table. See the [Table element guide](table-element.md) for what the editor offers.
 
 ### The registry contract
 

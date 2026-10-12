@@ -79,6 +79,7 @@ export async function getPageData(
     keyPrefix: options.keyPrefix,
     resolveTargetPage: options.resolveTargetPage,
     rootPath: options.rootPath,
+    tableMaxRows: options.tableMaxRows,
     cdnMirrors,
   }
   const descriptor = await walkTree(page.content, { urlParams: params }, walkOptions)
