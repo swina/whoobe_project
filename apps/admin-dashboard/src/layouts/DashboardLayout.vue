@@ -568,6 +568,7 @@ import {
   ScrollText,
   BookOpen,
   Zap,
+  Rocket,
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
@@ -589,6 +590,7 @@ import MasterDocsSiteTab from '../components/websites/MasterDocsSiteTab.vue'
 import MasterDocsDocTab from '../components/websites/MasterDocsDocTab.vue'
 import OverviewView from '../views/OverviewView.vue'
 import WebsitesView from '../views/WebsitesView.vue'
+import PublishView from '../views/PublishView.vue'
 import ObjectsView from '../views/ObjectsView.vue'
 import AssetsView from '../views/AssetsView.vue'
 import DocumentsView from '../views/DocumentsView.vue'
@@ -881,6 +883,7 @@ function isSettingsSubSectionActive(key: SettingsSubSection): boolean {
 // sectionComponents.overview.
 const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Websites', section: 'websites', icon: Globe },
+  { name: 'Publish', section: 'publish', icon: Rocket },
   { name: 'Pages', section: 'pages', icon: FileStack },
   { name: 'Snippets', section: 'snippets', icon: Puzzle },
   { name: 'Components', section: 'components', icon: Blocks },
@@ -910,6 +913,7 @@ const navGroupLabels: Record<NavGroupId, string> = {
 }
 const sectionGroup: Partial<Record<SectionKind, NavGroupId>> = {
   websites: 'content',
+  publish: 'content',
   pages: 'content',
   snippets: 'content',
   components: 'content',
@@ -952,6 +956,7 @@ const navRows = computed<NavRow[]>(() => {
 const sectionComponents: Record<SectionKind, any> = {
   overview: OverviewView,
   websites: WebsitesView,
+  publish: PublishView,
   objects: ObjectsView,
   assets: AssetsView,
   documents: DocumentsView,
@@ -971,6 +976,7 @@ const sectionComponents: Record<SectionKind, any> = {
 const sectionLabels: Record<SectionKind, string> = {
   overview: 'Overview',
   websites: 'Websites',
+  publish: 'Publish',
   objects: 'Data Objects',
   assets: 'Assets',
   documents: 'Documents',
@@ -990,6 +996,7 @@ const sectionLabels: Record<SectionKind, string> = {
 const sectionIcons: Record<SectionKind, any> = {
   overview: LayoutDashboard,
   websites: Globe,
+  publish: Rocket,
   objects: Database,
   assets: FolderArchive,
   documents: FileText,

@@ -1,14 +1,56 @@
 <template>
-  <BaseModal v-if="isOpen" :open="true" size="xl" @close="emit('close')">
-    <template #header>
-      <h2 class="ui-modal-title flex items-center gap-2"><Rocket class="w-4 h-4 text-indigo-400" />
-    Publish "{{ website?.name }}"</h2>
-    </template>
-    <div class="space-y-4">
-        <div class="space-y-5">
-        <p class="text-xs text-slate-500">
-          Fill in the fields below - the ready-to-run script at the bottom updates live. Nothing runs from here: copy it and paste it into a terminal with this repo cloned.
-        </p>
+  <div class="max-w-5xl mx-auto space-y-6" data-testid="publish-view">
+    <div>
+      <h1 class="text-xl font-bold flex items-center gap-2"><Rocket class="w-5 h-5 text-indigo-400" />Publish</h1>
+      <p class="text-xs text-slate-500 mt-1">
+        Generates a standalone site from a website of this CMS. Fill in the fields - the checks and the ready-to-run command update live.
+        Nothing runs from here: copy the command and paste it into a terminal with this repo cloned.
+      </p>
+    </div>
+
+    <div v-if="websitesStore.isLoading && sites.length === 0" class="text-xs text-slate-500">Loading websites…</div>
+    <div v-else-if="sites.length === 0" class="text-xs text-slate-500 italic">No website to publish yet. Documentation sites are published from their own Publish tab.</div>
+
+    <template v-else>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Website</label>
+          <select v-model="websiteId" class="field w-full" data-testid="publish-website">
+            <option v-for="w in sites" :key="w.id" :value="w.id">{{ w.name }} ({{ w.id.slice(0, 8) }}…)</option>
+          </select>
+        </div>
+      </div>
+
+      <template v-if="website">
+        <!-- Checks -->
+        <div class="rounded-xl border border-slate-800 light:border-slate-200 p-4 space-y-2" data-testid="publish-checks">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-semibold text-slate-200 light:text-slate-800 flex items-center gap-2"><ShieldCheck class="w-3.5 h-3.5 text-indigo-400" />Checks before generating</span>
+            <button @click="runChecks" :disabled="checking" class="btn btn-link">{{ checking ? 'Checking…' : 'Check again' }}</button>
+          </div>
+          <p v-if="checkError" class="text-xs text-red-400">{{ checkError }}</p>
+          <ul v-else class="text-xs space-y-1">
+            <li v-if="usage && usage.gateway === 0" class="text-slate-400">✓ The published pages do not use the API Gateway: the gateway URL is not needed.</li>
+            <template v-if="usage && usage.gateway > 0">
+              <li class="text-slate-300">The published pages use the API Gateway in <strong>{{ usage.gateway }}</strong> places (bound tables, containers, fields, gateway forms).</li>
+              <li v-if="probe === 'gateway'" class="text-emerald-400">✓ A gateway answers at {{ gatewayUrl }}.</li>
+              <li v-else-if="probe === 'other'" class="text-amber-400">
+                ✗ Something answers at {{ gatewayUrl }}, but it is not the Gateway (the CMS API on port 3003 has no gateway route): tables and bound fields would stay empty.
+                <button v-for="c in otherCandidates" :key="c" @click="gatewayUrl = c" class="btn btn-link ml-1">Try {{ c }}</button>
+              </li>
+              <li v-else-if="probe === 'unreachable'" class="text-amber-400">
+                ✗ Nothing answers at {{ gatewayUrl }} from this browser (not running, or not reachable from here).
+                <button v-for="c in otherCandidates" :key="c" @click="gatewayUrl = c" class="btn btn-link ml-1">Try {{ c }}</button>
+              </li>
+              <li v-if="usage.dangling > 0" class="text-amber-400">✗ {{ usage.dangling }} binding(s) are not tied to a gateway route (the endpoint or route was missing when the page was saved): they stay empty. Open and re-save those pages in the editor.</li>
+              <li v-if="bindingCheck && probe === 'gateway'" :class="bindingCheck.failed.length ? 'text-amber-400' : 'text-emerald-400'">
+                <template v-if="bindingCheck.failed.length">✗ {{ bindingCheck.failed.length }} binding(s) do not resolve at this gateway: {{ bindingCheck.failed.join(', ') }}.</template>
+                <template v-else>✓ {{ bindingCheck.resolved }} of {{ usage.bindings.length }} bindings resolve at this gateway.</template>
+                <span v-if="bindingCheck.needsKey" class="text-slate-400"> {{ bindingCheck.needsKey }} need the website's gateway site key (below), not checked here.</span>
+              </li>
+            </template>
+          </ul>
+        </div>
 
         <!-- Base fields -->
         <div class="grid grid-cols-2 gap-3">
@@ -17,8 +59,8 @@
             <input v-model="apiUrl" type="text" class="field w-full font-mono" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Gateway URL</label>
-            <input v-model="gatewayUrl" type="text" class="field w-full font-mono" />
+            <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Gateway URL <span class="text-slate-500 font-normal">(the gateway service, port 3001 in dev - not the CMS API)</span></label>
+            <input v-model="gatewayUrl" type="text" class="field w-full font-mono" data-testid="publish-gateway" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Asset Base URL</label>
@@ -56,7 +98,7 @@
             Gateway site key <span class="text-xs font-normal text-slate-500">(optional)</span>
           </label>
           <p class="text-xs text-slate-500">
-            Scopes/rate-limits/revokes this site's Gateway traffic independently of every other published site. Not required - the Gateway's mandatory per-form/per-binding checks apply either way (see docs/plans/api-gateway/gateway-auth-authz.md).
+            Scopes/rate-limits/revokes this site's Gateway traffic independently of every other published site. Not required - the Gateway's mandatory per-form/per-binding checks apply either way (see docs/plans/api-gateway/gateway-auth-authz.md). It stays on the site's server; a static export cannot use it.
           </p>
           <div v-if="revealedKey" class="text-xs px-3 py-2 rounded-lg bg-amber-900/30 border border-amber-700/40 text-amber-300 space-y-1">
             <p class="font-semibold">Shown once - copy it now, it won't be shown again:</p>
@@ -142,38 +184,37 @@
           <textarea
             :value="script"
             readonly
-            rows="16"
+            rows="18"
             class="field w-full font-mono"
+            data-testid="publish-script"
             @focus="($event.target as HTMLTextAreaElement).select()"
           ></textarea>
         </div>
-      </div>
-
-
-    </div>
-    <template #footer>
-        <button @click="emit('close')" class="btn btn-secondary light:hover:bg-slate-200">Close</button>
-
+      </template>
     </template>
-  </BaseModal>
+  </div>
 </template>
 
 <script setup lang="ts">
-import BaseModal from '../ui/BaseModal.vue'
-import { ref, computed, watch } from 'vue'
-import { Rocket, CloudUpload, Server, Copy, KeyRound } from '@lucide/vue'
-import { getDefaultCoreApiUrl } from '../../utils/auth-api'
-import { fetchCdnMirrorSettings, regenerateWebsiteGatewayApiKey, clearWebsiteGatewayApiKey } from '../../utils/websites-api'
-import type { WebsiteRecord } from '../../utils/websites-api'
+import { ref, computed, watch, onMounted } from 'vue'
+import { Rocket, CloudUpload, Server, Copy, KeyRound, ShieldCheck } from '@lucide/vue'
+import { gatewayCandidates, type GatewayUsage } from '@whoobe-cms/schema'
+import { useWebsitesStore } from '../stores/websitesStore'
+import { useTabsStore } from '../stores/tabsStore'
+import { getDefaultCoreApiUrl } from '../utils/auth-api'
+import { fetchCdnMirrorSettings, regenerateWebsiteGatewayApiKey, clearWebsiteGatewayApiKey } from '../utils/websites-api'
+import { fetchGatewayUsage, probeGateway, checkBindings, type GatewayProbe, type BindingCheck } from '../utils/publish-check'
 
-const props = defineProps<{ isOpen: boolean; website: WebsiteRecord | null }>()
-const emit = defineEmits<{ (e: 'close'): void }>()
+const websitesStore = useWebsitesStore()
+const tabsStore = useTabsStore()
 
-// Local-dev vs production default: window.location's own port is the admin
-// dashboard's port, not core-api's/gateway's - fine for the admin app's own
-// fetches (proxied by vite.config.ts), but a raw CLI command pasted into a
-// terminal needs the real service port. Behind nginx (non-localhost), every
-// service shares the same hostname/443, no port needed.
+// A documentation site has its own Publish tab (static HTML), it is not listed here.
+const sites = computed(() => websitesStore.websites.filter((w) => (w.settings as Record<string, unknown> | null)?.kind !== 'docs'))
+const websiteId = ref('')
+const website = computed(() => sites.value.find((w) => w.id === websiteId.value) ?? null)
+
+// Local-dev vs production default: window.location's own port is the admin dashboard's port, not core-api's/gateway's. Behind nginx
+// (non-localhost), every service shares the same hostname/443, no port needed.
 function defaultServiceUrl(port: number): string {
   if (typeof window === 'undefined') return ''
   const { protocol, hostname } = window.location
@@ -202,7 +243,6 @@ const includeCdn = ref(true)
 const cdnSettingsLoading = ref(false)
 const cdnGatewayRouteId = ref('')
 const cdnUploadPreset = ref('')
-const cdnProvider = ref('cloudinary')
 const assetProcessorUrl = ref('')
 
 const includeDeploy = ref(true)
@@ -212,40 +252,91 @@ const deployPort = ref('')
 
 const copied = ref(false)
 
-// Re-derive every field's default whenever a different website is opened -
-// watch immediate so it also runs on first open.
-watch(
-  () => props.website,
-  async (website) => {
-    if (!website) return
-    apiUrl.value = getDefaultCoreApiUrl()
-    gatewayUrl.value = defaultServiceUrl(3001)
-    assetBaseUrl.value = apiUrl.value
-    domain.value = website.domains?.[0] ?? ''
-    slug.value = slugify(website.name) || website.id.slice(0, 8)
-    siteKeyPrefix.value = website.gatewayApiKeyPrefix ?? ''
-    revealedKey.value = ''
+// The checks
+const usage = ref<GatewayUsage | null>(null)
+const probe = ref<GatewayProbe | null>(null)
+const bindingCheck = ref<BindingCheck | null>(null)
+const checking = ref(false)
+const checkError = ref('')
+const otherCandidates = computed(() => gatewayCandidates(apiUrl.value).filter((c) => c !== gatewayUrl.value.replace(/\/+$/, '')))
 
-    cdnSettingsLoading.value = true
-    try {
-      const saved = await fetchCdnMirrorSettings(apiUrl.value)
-      cdnGatewayRouteId.value = saved.gatewayRouteId ?? ''
-      cdnUploadPreset.value = saved.uploadPreset ?? ''
-      cdnProvider.value = saved.provider || 'cloudinary'
-    } catch {
-      // No saved settings (or not permitted) - leave blank for manual entry.
-    } finally {
-      cdnSettingsLoading.value = false
+let checkRun = 0
+async function runChecks() {
+  if (!website.value) return
+  const run = ++checkRun
+  checking.value = true
+  checkError.value = ''
+  try {
+    const u = await fetchGatewayUsage(apiUrl.value, website.value.id)
+    if (run !== checkRun) return
+    usage.value = u
+    probe.value = null
+    bindingCheck.value = null
+    if (u.gateway > 0 && gatewayUrl.value) {
+      const p = await probeGateway(gatewayUrl.value)
+      if (run !== checkRun) return
+      probe.value = p
+      if (p === 'gateway' && u.bindings.length) {
+        const b = await checkBindings(gatewayUrl.value, u.bindings)
+        if (run !== checkRun) return
+        bindingCheck.value = b
+      }
     }
-  },
-  { immediate: true },
-)
+  } catch (e) {
+    if (run === checkRun) checkError.value = e instanceof Error ? e.message : 'The checks failed'
+  } finally {
+    if (run === checkRun) checking.value = false
+  }
+}
+
+onMounted(async () => {
+  if (websitesStore.websites.length === 0) await websitesStore.refreshWebsites()
+  const wanted = tabsStore.publishWebsiteId
+  websiteId.value = sites.value.find((w) => w.id === wanted)?.id ?? sites.value[0]?.id ?? ''
+})
+
+// Opened again from "Publish" in the websites list while the tab is already there
+watch(() => tabsStore.publishWebsiteId, (id) => {
+  if (id && sites.value.some((w) => w.id === id)) websiteId.value = id
+})
+
+// Re-derive every field's default whenever a different website is chosen.
+watch(website, async (w) => {
+  if (!w) return
+  apiUrl.value = getDefaultCoreApiUrl()
+  gatewayUrl.value = defaultServiceUrl(3001)
+  assetBaseUrl.value = apiUrl.value
+  domain.value = w.domains?.[0] ?? ''
+  slug.value = slugify(w.name) || w.id.slice(0, 8)
+  siteKeyPrefix.value = w.gatewayApiKeyPrefix ?? ''
+  revealedKey.value = ''
+  usage.value = null; probe.value = null; bindingCheck.value = null
+
+  cdnSettingsLoading.value = true
+  try {
+    const saved = await fetchCdnMirrorSettings(apiUrl.value)
+    cdnGatewayRouteId.value = saved.gatewayRouteId ?? ''
+    cdnUploadPreset.value = saved.uploadPreset ?? ''
+  } catch {
+    // No saved settings (or not permitted) - leave blank for manual entry.
+  } finally {
+    cdnSettingsLoading.value = false
+  }
+  void runChecks()
+}, { immediate: true })
+
+// A changed gateway URL is checked again once the typing stops
+let gatewayTimer: ReturnType<typeof setTimeout> | undefined
+watch(gatewayUrl, () => {
+  clearTimeout(gatewayTimer)
+  gatewayTimer = setTimeout(() => { void runChecks() }, 600)
+})
 
 async function regenerateSiteKey() {
-  if (!props.website) return
+  if (!website.value) return
   siteKeyLoading.value = true
   try {
-    const result = await regenerateWebsiteGatewayApiKey(apiUrl.value, props.website.id)
+    const result = await regenerateWebsiteGatewayApiKey(apiUrl.value, website.value.id)
     revealedKey.value = result.key
     siteKeyPrefix.value = result.prefix
   } catch {
@@ -256,10 +347,10 @@ async function regenerateSiteKey() {
 }
 
 async function revokeSiteKey() {
-  if (!props.website) return
+  if (!website.value) return
   siteKeyLoading.value = true
   try {
-    await clearWebsiteGatewayApiKey(apiUrl.value, props.website.id)
+    await clearWebsiteGatewayApiKey(apiUrl.value, website.value.id)
     siteKeyPrefix.value = ''
     revealedKey.value = ''
   } finally {
@@ -268,8 +359,8 @@ async function revokeSiteKey() {
 }
 
 const script = computed(() => {
-  if (!props.website) return ''
-  const websiteId = props.website.id
+  if (!website.value) return ''
+  const id = website.value.id
   const outDir = `./sites/${slug.value}`
   const lines: string[] = ['#!/usr/bin/env bash', 'set -euo pipefail', '', '# Run from the root of the whoobe_cms repo.', '']
 
@@ -282,7 +373,7 @@ const script = computed(() => {
       'WHOOBE_SYNC_PASSWORD=<service-account-password> \\',
       'pnpm publish:sync-cdn \\',
       `  --api-url "${apiUrl.value}" \\`,
-      `  --website-id "${websiteId}" \\`,
+      `  --website-id "${id}" \\`,
       `  --gateway-route-id "${cdnGatewayRouteId.value || '<gateway-route-id>'}" \\`,
       `  --upload-preset "${cdnUploadPreset.value || '<upload-preset>'}"${assetProcessorUrl.value ? ' \\' : ''}`,
     )
@@ -291,24 +382,26 @@ const script = computed(() => {
     step++
   }
 
-  const siteKeyLine = revealedKey.value
-    ? `  --site-api-key "${revealedKey.value}"`
+  // publish-site.sh checks the gateway and the bindings again before it generates; the key goes in the environment, not in the arguments
+  const keyEnv = revealedKey.value
+    ? `PUBLISH_SITE_KEY="${revealedKey.value}" \\`
     : siteKeyPrefix.value
-      ? `  --site-api-key "<regenerate above to reveal the plaintext - ${siteKeyPrefix.value}… is already active>"`
+      ? `PUBLISH_SITE_KEY="<regenerate above to reveal the plaintext - ${siteKeyPrefix.value}… is already active>" \\`
       : null
+  const gw = !usage.value || usage.value.gateway > 0
   lines.push(
     `# ${step}. Generate the site (${framework.value === 'vue' ? 'Nuxt' : 'Next.js'}).`,
-    'pnpm publish:site \\',
+    ...(keyEnv ? [keyEnv] : []),
+    './publish-site.sh --yes \\',
     `  --api-url "${apiUrl.value}" \\`,
-    `  --website-id "${websiteId}" \\`,
+    `  --website "${id}" \\`,
     `  --out-dir "${outDir}" \\`,
-    `  --framework ${framework.value} \\`,
-    `  --domain "${domain.value || '<domain>'}" \\`,
-    `  --asset-base-url "${assetBaseUrl.value}" \\`,
-    `  --gateway-url "${gatewayUrl.value}" \\`,
+    `  --framework ${framework.value === 'vue' ? 'nuxt' : 'next'} \\`,
+    `  --domain "${domain.value}" \\`,
+    `  --asset-url "${assetBaseUrl.value}" \\`,
+    ...(gw ? [`  --gateway-url "${gatewayUrl.value}" \\`] : []),
     `  --base-path "${basePath.value}" \\`,
-    `  --revalidate ${revalidate.value}${siteKeyLine ? ' \\' : ''}`,
-    ...(siteKeyLine ? [siteKeyLine] : []),
+    `  --revalidate ${revalidate.value}`,
     '',
   )
   step++

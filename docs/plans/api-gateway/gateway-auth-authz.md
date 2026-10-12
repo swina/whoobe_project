@@ -184,7 +184,7 @@ path. The key is **optional per the earlier decision** - if a website has no
 key configured (`gatewayApiKeyHash` is null), the binding-based checks alone
 still apply; if it does, the header must match.
 
-### 7. Admin UI (`WebsitePublishModal.vue`)
+### 7. Admin UI (the Publish tab, `views/PublishView.vue`; it was `WebsitePublishModal.vue`)
 
 Add a "Site API Key" block: a "Generate/Rotate" button calling the new
 regenerate endpoint (pattern to reuse: `fetchCdnMirrorSettings` at line 202
@@ -252,7 +252,7 @@ under the admin's own session context.
 - Confirm the dead `gateway_endpoints.requiredPermission` field's replacement
   (the new binding+site-key model) actually gates a Brevo-configured
   endpoint end-to-end: create a website with a gateway-submit Form, publish
-  it via `WebsitePublishModal`, deploy locally with Docker per the existing
+  it in the Publish tab (`PublishView.vue`), deploy locally with Docker per the existing
   self-contained flow, and confirm from a plain `curl` (no cookies) that (a)
   submitting through the real published form succeeds, (b) POSTing a
   fabricated `bindingId`/guessed `endpointName` directly to `/api/v1/gateway/
