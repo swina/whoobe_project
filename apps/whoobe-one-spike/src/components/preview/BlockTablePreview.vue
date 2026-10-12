@@ -1,10 +1,19 @@
 <template>
   <table :id="doc.id" ref="rootEl" :class="classe" :style="stile" v-bind="extraAttrs">
-    <caption v-if="table.caption">{{ table.caption }}</caption>
+    <caption v-if="table.caption || (bound.isBound.value && table.searchable)">
+      <div v-if="bound.isBound.value && table.searchable" class="text-left">
+        <input v-model="bound.query.value" type="search" :placeholder="table.searchPlaceholder || 'Search…'" aria-label="Search the table" :class="table.searchClass || 'w-full max-w-xs px-3 py-1.5 mb-2 rounded border border-gray-300 text-sm'" @click.stop />
+      </div>
+      {{ table.caption }}</caption>
     <thead v-if="table.hasHeader">
       <tr :class="table.headerRowClass">
         <template v-if="bound.isBound.value">
-          <th v-for="col in bound.columns.value" :key="col.id" :class="[table.headerCellClass, col.headerCellClass]">{{ col.header }}</th>
+          <th v-for="col in bound.columns.value" :key="col.id" :class="[table.headerCellClass, col.headerCellClass]" :aria-sort="bound.canSort(col) ? bound.ariaSort(col) : undefined">
+              <button v-if="bound.canSort(col)" type="button" class="inline-flex items-center gap-1 text-left font-[inherit] cursor-pointer select-none" @click.stop="bound.setSort(col)">
+                {{ col.header }}<span aria-hidden="true" class="text-[0.7em] opacity-70">{{ bound.sortMark(col) }}</span>
+              </button>
+              <template v-else>{{ col.header }}</template>
+            </th>
         </template>
         <template v-else>
           <template v-for="(cell, c) in table.header" :key="cell.id">
@@ -26,7 +35,7 @@
         </td>
       </tr>
       <tr v-if="!bound.rows.value.length">
-        <td :colspan="Math.max(1, bound.columns.value.length)" :class="table.bodyCellClass" class="text-center opacity-60">{{ table.emptyText || 'No data' }}</td>
+        <td :colspan="Math.max(1, bound.columns.value.length)" :class="table.bodyCellClass" class="text-center opacity-60">{{ bound.searching.value ? 'No matching rows' : (table.emptyText || 'No data') }}</td>
       </tr>
     </tbody>
     <tbody v-else>

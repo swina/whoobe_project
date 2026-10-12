@@ -37,7 +37,21 @@ bound table has **no static footer**: its footer area is used by the pagination.
 The rows are text: a value is never interpreted as HTML. A *Turn into link* column becomes a link only to a safe address (http, https,
 mailto, tel or a path on the site).
 
-## 3. Pagination
+## 3. Sorting and searching
+
+Two switches in the Columns panel, both for the visitor of the page:
+
+- **Sortable columns**: the header of each column becomes a button. One click sorts ascending, a second descending, a third removes the sort;
+  an arrow shows the state. Numbers are compared as numbers, text without regard to case or accents, and numbers inside text in natural order
+  ("item 2" before "item 10"). Empty values always go last. Untick **sort** on a column to leave it out.
+- **Search box**: a field above the table. Every word typed must be found, in any of the searchable columns, ignoring case and accents. It searches the
+  text as the visitor sees it (after the column's format). Untick **search** on a column to leave it out. The placeholder and the classes of the box are
+  set next to the switch.
+
+Both work on the **whole list**, before it is cut into pages: the page counter follows the result and goes back to page 1 when the search or the sort changes.
+When nothing matches, the table says "No matching rows". Like the pagination, they happen in the browser, over the list that was downloaded.
+
+## 4. Pagination
 
 Set it in the same binding window:
 
@@ -49,11 +63,11 @@ The same settings now work for a list bound to a **gateway endpoint** (the windo
 bound the same way. Paging happens **in the browser**, over the list that was fetched: use the filters, the order, the offset and the limit
 of the binding to keep that list a reasonable size, because all of it is downloaded.
 
-## 4. Limits
+## 5. Limits
 
 - **Published sites generated for Next.js or Nuxt, and the headless SDK, do not draw the Table element at all** (with or without data): the
   element is not part of what the SDK renders. A table is drawn by the editor application (the editor, its preview and the pages it serves). Use a bound container for a list in a generated site.
-- No column sorting or search in the table; no sticky header; no choosing the number of rows per page by the visitor.
+- No sticky header; the visitor cannot choose the number of rows per page; sorting is by one column at a time; the search is a plain "contains" over words (no fuzzy matching).
 - Merged cells (column and row spans) belong to the typed table; a bound table does not use them.
 - A column's format uses the transformer's default options; the options themselves (a date style, decimals) are not editable per column yet.
-- Pages are cut in the browser. A very long list is still downloaded whole; limit it in the binding.
+- Pages, search and sort all work in the browser. A very long list is still downloaded whole, and searched whole; limit it in the binding.

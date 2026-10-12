@@ -339,6 +339,10 @@ export interface TableBoundColumn {
   cellClass?: string
   headerCellClass?: string
   transform?: FieldTransform | null
+  /** false = the visitor cannot sort by this column */
+  sortable?: boolean
+  /** false = the search box ignores this column */
+  searchable?: boolean
 }
 
 export interface ElementTable {
@@ -346,6 +350,12 @@ export interface ElementTable {
   columns?: TableBoundColumn[]
   /** Shown instead of the rows when a bound table has no record. */
   emptyText?: string
+  /** Bound table: clicking a header sorts by that column (in the browser, over the whole list). */
+  sortable?: boolean
+  /** Bound table: a search box over the whole list. */
+  searchable?: boolean
+  searchPlaceholder?: string
+  searchClass?: string
   cols: number
   hasHeader: boolean
   hasFooter: boolean

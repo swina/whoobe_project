@@ -16,7 +16,7 @@
          keep their own structural editing (add slide/box) inline rather
          than in the shared sidebar. -->
     <div class="flex flex-wrap items-center gap-2 mb-2 bg-slate-100 p-1.5 rounded text-[10px] text-gray-600" @click.stop>
-      <span v-if="bound.isBound.value" class="text-amber-700 font-medium">Bound to data: {{ bound.total.value }} record(s)</span>
+      <span v-if="bound.isBound.value" class="text-amber-700 font-medium">Bound to data: {{ bound.recordCount.value }} record(s)</span>
       <template v-if="!bound.isBound.value">
       <span class="text-gray-400">Rows: {{ table.body.length }}</span>
       <button type="button" class="px-1.5 py-0.5 rounded border border-gray-300 hover:border-indigo-400 hover:text-indigo-600" @click="addRow">+ row</button>
@@ -61,6 +61,15 @@
           <input type="checkbox" :checked="hasColumn(f.field)" :disabled="hasColumn(f.field) && bound.columns.value.length <= 1" @change="toggleField(f)" /> {{ f.field }}
         </label>
       </div>
+      <!-- What the visitor can do with the list: sort by a header, search. Both work over the whole list, before the pages. -->
+      <div class="flex flex-wrap items-center gap-3 border-t border-amber-200 pt-1.5">
+        <label class="flex items-center gap-1"><input v-model="table.sortable" type="checkbox" /> Sortable columns</label>
+        <label class="flex items-center gap-1"><input v-model="table.searchable" type="checkbox" /> Search box</label>
+        <template v-if="table.searchable">
+          <input v-model="table.searchPlaceholder" type="text" placeholder="Search…" title="Placeholder of the search box" class="w-28 px-1 py-0.5 rounded border border-amber-300 bg-white" />
+          <input v-model="table.searchClass" type="text" placeholder="Search box classes" title="Tailwind classes of the search box (empty = default)" class="w-44 px-1 py-0.5 rounded border border-amber-300 bg-white font-mono" />
+        </template>
+      </div>
       <p v-if="!(table.columns && table.columns.length)" class="text-amber-700">
         No column set yet: the fields of the first record are shown. Use "Choose fields" to pick them, or add columns.
       </p>
@@ -74,6 +83,8 @@
           <option value="none">Plain</option>
           <option v-for="t in columnFormats" :key="t.type" :value="t.type">{{ t.label }}</option>
         </select>
+        <label v-if="table.sortable" class="flex items-center gap-0.5" title="The visitor can sort by this column"><input type="checkbox" :checked="col.sortable !== false" @change="col.sortable = ($event.target as HTMLInputElement).checked" /> sort</label>
+        <label v-if="table.searchable" class="flex items-center gap-0.5" title="The search box looks at this column"><input type="checkbox" :checked="col.searchable !== false" @change="col.searchable = ($event.target as HTMLInputElement).checked" /> search</label>
         <button type="button" class="px-1 rounded border border-amber-300 hover:bg-amber-100 disabled:opacity-30" :disabled="i === 0" title="Move left" @click="moveBoundColumn(i, -1)">←</button>
         <button type="button" class="px-1 rounded border border-amber-300 hover:bg-amber-100 disabled:opacity-30" :disabled="i === (table.columns || []).length - 1" title="Move right" @click="moveBoundColumn(i, 1)">→</button>
         <button type="button" class="px-1 rounded border border-rose-300 text-rose-600 hover:bg-rose-50" title="Remove" @click="removeBoundColumn(i)">×</button>
@@ -120,11 +131,20 @@
       :data-id="doc.id"
       @click.self="onSelect"
     >
-      <caption v-if="table.caption" class="text-left text-xs text-gray-400 mb-1">{{ table.caption }}</caption>
+      <caption v-if="table.caption || (bound.isBound.value && table.searchable)" class="text-left text-xs text-gray-400 mb-1">
+        <div v-if="bound.isBound.value && table.searchable" class="text-left">
+        <input v-model="bound.query.value" type="search" :placeholder="table.searchPlaceholder || 'Search…'" aria-label="Search the table" :class="table.searchClass || 'w-full max-w-xs px-3 py-1.5 mb-2 rounded border border-gray-300 text-sm'" @click.stop />
+      </div>
+      {{ table.caption }}</caption>
       <thead v-if="table.hasHeader">
         <tr :class="table.headerRowClass">
           <template v-if="bound.isBound.value">
-            <th v-for="col in bound.columns.value" :key="col.id" :class="[table.headerCellClass, col.headerCellClass]">{{ col.header }}</th>
+            <th v-for="col in bound.columns.value" :key="col.id" :class="[table.headerCellClass, col.headerCellClass]" :aria-sort="bound.canSort(col) ? bound.ariaSort(col) : undefined">
+              <button v-if="bound.canSort(col)" type="button" class="inline-flex items-center gap-1 text-left font-[inherit] cursor-pointer select-none" @click.stop="bound.setSort(col)">
+                {{ col.header }}<span aria-hidden="true" class="text-[0.7em] opacity-70">{{ bound.sortMark(col) }}</span>
+              </button>
+              <template v-else>{{ col.header }}</template>
+            </th>
           </template>
           <template v-else>
             <template v-for="(cell, c) in table.header" :key="cell.id">
@@ -150,7 +170,7 @@
           </td>
         </tr>
         <tr v-if="!bound.rows.value.length">
-          <td :colspan="Math.max(1, bound.columns.value.length)" :class="table.bodyCellClass" class="text-center opacity-60">{{ table.emptyText || 'No data' }}</td>
+          <td :colspan="Math.max(1, bound.columns.value.length)" :class="table.bodyCellClass" class="text-center opacity-60">{{ bound.searching.value ? 'No matching rows' : (table.emptyText || 'No data') }}</td>
         </tr>
       </tbody>
       <tbody v-else>

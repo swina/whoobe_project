@@ -116,3 +116,61 @@ describe('editing the columns', () => {
     expect(appendMissingColumns(out, fields, (f) => col(f.field))).toHaveLength(3)
   })
 })
+
+import { compareCellValues, matchesTerms, nextSort, normalizeSearchText, searchTerms, sortRecords } from './table-binding.js'
+
+describe('sorting', () => {
+  it('a click goes unsorted, ascending, descending, unsorted; another column starts again', () => {
+    const a = nextSort(null, 'x')
+    expect(a).toEqual({ field: 'x', direction: 'asc' })
+    const d = nextSort(a, 'x')
+    expect(d).toEqual({ field: 'x', direction: 'desc' })
+    expect(nextSort(d, 'x')).toBeNull()
+    expect(nextSort(d, 'y')).toEqual({ field: 'y', direction: 'asc' })
+  })
+  it('compares numbers as numbers, text with numbers inside in natural order, ignoring case and accents', () => {
+    expect(compareCellValues(2, 10)).toBeLessThan(0)
+    expect(compareCellValues('item 2', 'item 10')).toBeLessThan(0)
+    expect(compareCellValues('Élan', 'elan')).toBe(0)
+    expect(compareCellValues('b', 'A')).toBeGreaterThan(0)
+    expect(compareCellValues(false, true)).toBeLessThan(0)
+    expect(compareCellValues('9', 10)).toBeLessThan(0)
+  })
+  const rows = [
+    { attributes: { n: 10, t: 'b' } }, { attributes: { n: 2, t: 'A' } }, { attributes: { n: null, t: 'c' } },
+    { attributes: { n: 2, t: '' } }, { attributes: { t: 'd' } },
+  ]
+  it('sorts by a field in both directions, keeps equal values in their order, and puts empty values last', () => {
+    expect(sortRecords(rows, { field: 'n', direction: 'asc' }).map((r) => r.attributes.t)).toEqual(['A', '', 'b', 'c', 'd'])
+    expect(sortRecords(rows, { field: 'n', direction: 'desc' }).map((r) => r.attributes.t)).toEqual(['b', 'A', '', 'c', 'd'])
+    expect(sortRecords(rows, { field: 't', direction: 'asc' }).map((r) => r.attributes.t)).toEqual(['A', 'b', 'c', 'd', ''])
+  })
+  it('does not touch the original list, and no sort or an empty field returns it as it is', () => {
+    const copy = [...rows]
+    sortRecords(rows, { field: 'n', direction: 'asc' })
+    expect(rows).toEqual(copy)
+    expect(sortRecords(rows, null)).toBe(rows)
+    expect(sortRecords(rows, { field: ' ', direction: 'asc' })).toBe(rows)
+  })
+  it('a field that is a prototype key sorts nothing', () => {
+    const out = sortRecords(rows, { field: '__proto__', direction: 'asc' })
+    expect(out).toHaveLength(rows.length)
+    expect(out.map((r) => r.attributes.t)).toEqual(rows.map((r) => r.attributes.t))
+  })
+})
+
+describe('searching', () => {
+  it('normalizes accents, case and spaces', () => {
+    expect(normalizeSearchText('  Caffè   LATTE ')).toBe('caffe latte')
+    expect(searchTerms('  Café  au  lait ')).toEqual(['cafe', 'au', 'lait'])
+    expect(searchTerms('   ')).toEqual([])
+    expect(searchTerms('a b c d e f g h i j')).toHaveLength(8)
+  })
+  it('every word must be found', () => {
+    const hay = normalizeSearchText('Caffè Latte 4.50 hot')
+    expect(matchesTerms(hay, searchTerms('latte hot'))).toBe(true)
+    expect(matchesTerms(hay, searchTerms('CAFFE'))).toBe(true)
+    expect(matchesTerms(hay, searchTerms('latte cold'))).toBe(false)
+    expect(matchesTerms(hay, [])).toBe(true)
+  })
+})
