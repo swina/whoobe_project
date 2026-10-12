@@ -153,3 +153,24 @@ describe('a table bound to a gateway list', () => {
     }
   })
 })
+
+describe('one implementation for the editor and the SDK', () => {
+  it('the rows and the views of the descriptor are exactly what the shared functions give for the same records', async () => {
+    const { buildTableRows, computeTableView } = await import('@whoobe-cms/schema')
+    const records = [rec('Caffè', 3), rec('Tea', 10), rec('Água', null), rec('Cola', 5), rec('Juice', 7)]
+    const cols = [{ id: 'a', header: 'Name', field: 'name' }, { id: 'b', header: 'Price', field: 'price', transform: { type: 'number', options: { style: 'decimal', minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: true } } }]
+    const d = await run(table({ columns: cols, sortable: true, searchable: true, showCount: true }, { dataBinding: { className: 'P', target: 'custom', resolveMode: 'query', rowsPerPage: 2 } }), makeApi({ queryObjects: async () => records as never }))
+    const b = d.table!.bound!
+    const direct = buildTableRows(records, cols)
+    expect(b.rows).toEqual(direct)
+    const input = (rows: typeof direct) => ({ columns: b.columns, rows, pagination: b.pagination, sortable: b.sortable, searchable: b.searchable, countText: b.countText })
+    for (const state of [
+      { query: '', sort: null, page: 1, visible: 0 },
+      { query: '', sort: { field: 'price', direction: 'desc' as const }, page: 2, visible: 0 },
+      { query: 'c', sort: { field: 'name', direction: 'asc' as const }, page: 1, visible: 0 },
+      { query: 'zzz', sort: null, page: 1, visible: 0 },
+    ]) {
+      expect(computeTableView(input(b.rows), state)).toEqual(computeTableView(input(direct), state))
+    }
+  })
+})

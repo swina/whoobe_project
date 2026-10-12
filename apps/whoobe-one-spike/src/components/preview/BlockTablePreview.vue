@@ -30,8 +30,8 @@
     <tbody v-if="bound.isBound.value">
       <tr v-for="row in bound.rows.value" :key="row.key" :class="table.bodyRowClass">
         <td v-for="cell in row.cells" :key="cell.key" :class="[table.bodyCellClass, cell.cellClass]">
-          <a v-if="cell.result.kind === 'link'" :href="cell.result.href" :target="cell.result.target" rel="noopener noreferrer">{{ cell.result.text }}</a>
-          <span v-else :class="cell.result.className">{{ cell.result.text }}</span>
+          <a v-if="cell.href" :href="cell.href" :target="cell.target" rel="noopener noreferrer">{{ cell.text }}</a>
+          <span v-else :class="cell.className">{{ cell.text }}</span>
         </td>
       </tr>
       <tr v-if="!bound.rows.value.length">

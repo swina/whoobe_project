@@ -188,7 +188,9 @@ Shipped: `ElementTable` / `TableCell` / `TableColumnConfig` and tolerant Zod sch
 - *Tests*: `kind.test`, `walk.test` for static, Data Class, gateway, no columns (detected), formats, links refused when unsafe, hostile cell HTML, prototype keys, empty list, the cap.
 - *Acceptance*: the probe that today returns `children=0, content=""` returns a populated `table`.
 
-### Phase 3: the controller, shared with the editor (S-M)
+### Phase 3: the controller, shared with the editor (S-M)  — **done 2026-10-12**
+
+Shipped in `@whoobe-cms/schema` (`table-view.ts`), not in the renderer as first written: the editor depends on the schema package only. `buildTableRows` and `computeTableView` are called by the editor's composable and by the descriptor builder; the parity test compares the descriptor's rows and views with the direct call. Behaviour of the editor was re-checked state by state after the change (pages, sort, search, counter, switches off, link and label cells).
 
 - `computeTableView` in the renderer, built from the existing `table-binding.ts` functions.
 - `useBoundTable` in the editor reimplemented on top of it; the existing render checks keep passing.
