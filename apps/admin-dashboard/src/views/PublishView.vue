@@ -453,6 +453,7 @@ const script = computed(() => {
       `# ${step}. Transfer the site to the production host and run it there.`,
       '#    Only Docker (and optionally nginx) is required there - no whoobe_cms',
       '#    checkout needed on that host, the generated site is self-contained.',
+      `ssh "${target}" "mkdir -p ${rpath}/${slug.value}"`,
       `rsync -az --delete "${outDir}/" "${target}:${rpath}/${slug.value}/"`,
       `ssh "${target}" "cd ${rpath}/${slug.value} && PORT=${port} ./deploy.sh"`,
     )

@@ -199,7 +199,13 @@ async function walkChildren(node: WhoobeElementNode, ctx: WalkContext, options: 
   // record to the resolved value for child field bindings.
   if (node.type === 'container' && node.gatewayBinding) {
     const gatewayUrl = options.api.gatewayUrl || 'http://localhost:3001'
-    const resolved = await resolveGatewayBinding(node.gatewayBinding, gatewayUrl, ctx.urlParams, options.api.gatewaySiteAuth)
+    // a failing gateway (401 without a site key, unreachable, ...) must not abort the whole page: like the field and table bindings, the container then renders its children unbound
+    let resolved: unknown
+    try {
+      resolved = await resolveGatewayBinding(node.gatewayBinding, gatewayUrl, ctx.urlParams, options.api.gatewaySiteAuth)
+    } catch (err) {
+      console.warn(`[whoobe] container ${node.id ?? ''}: gateway binding failed, rendering it unbound:`, err instanceof Error ? err.message : err)
+    }
     if (Array.isArray(resolved)) {
       for (const item of resolved) {
         for (const child of node.blocks ?? []) {
