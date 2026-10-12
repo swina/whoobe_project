@@ -63,6 +63,19 @@ describe('table binding: the components', () => {
     }
     expect(read('apps/whoobe-one-spike/src/composables/useBoundTable.ts')).toContain('cellClass: col.cellClass')
   })
+  it('a bound table can be sorted by its headers and searched, in the canvas and the preview', () => {
+    for (const f of ['apps/whoobe-one-spike/src/components/BlockTable.vue', 'apps/whoobe-one-spike/src/components/preview/BlockTablePreview.vue']) {
+      const src = read(f)
+      expect(src, f).toContain('bound.setSort(col)')
+      expect(src, f).toContain(':aria-sort=')
+      expect(src, f).toContain('v-model="bound.query.value"')
+      expect(src, f).toContain('type="search"')
+    }
+    const c = read('apps/whoobe-one-spike/src/composables/useBoundTable.ts')
+    // the order of the work: search, then sort, then pages
+    expect(c.indexOf('const filtered')).toBeLessThan(c.indexOf('const processed'))
+    expect(c.indexOf('const processed')).toBeLessThan(c.indexOf('const shown'))
+  })
   it('the container repeaters read the pagination of a gateway binding too', () => {
     for (const f of ['apps/whoobe-one-spike/src/components/BlockContainer.vue', 'apps/whoobe-one-spike/src/components/preview/BlockContainerPreview.vue']) {
       expect(read(f), f).toContain('pagBinding')

@@ -11,6 +11,10 @@ export interface TableColumn {
   field: string
   cellClass?: string
   headerCellClass?: string
+  /** false = the visitor cannot sort by this column (when the table is sortable). */
+  sortable?: boolean
+  /** false = the search box does not look at this column (when the table is searchable). */
+  searchable?: boolean
 }
 
 export type PaginationMode = 'standard' | 'lazyload'
@@ -148,4 +152,56 @@ export function missingColumnFields<F extends { field: string }>(columns: { fiel
 /** Appends a column for each missing field; the existing ones stay as they are. */
 export function appendMissingColumns<C extends { field: string }, F extends { field: string }>(columns: C[], available: F[], make: (f: F) => C): C[] {
   return [...columns, ...missingColumnFields(columns, available).map(make)]
+}
+
+// --- sorting and searching (the visitor's side) ---
+// Both act on the whole list, before it is cut into pages.
+
+export type SortDirection = 'asc' | 'desc'
+export interface TableSort { field: string; direction: SortDirection }
+
+/** What a click on a header does: unsorted -> ascending -> descending -> unsorted; a click on another column starts it ascending. */
+export function nextSort(current: TableSort | null, field: string): TableSort | null {
+  if (!current || current.field !== field) return { field, direction: 'asc' }
+  return current.direction === 'asc' ? { field, direction: 'desc' } : null
+}
+
+const isEmptyValue = (v: unknown): boolean => v === null || v === undefined || v === ''
+
+/** Order of two non-empty cell values: numbers as numbers, yes/no as 0/1, everything else as text with numbers inside it in
+ *  numeric order ("item 2" before "item 10") and without regard to case or accents. */
+export function compareCellValues(a: unknown, b: unknown): number {
+  if (typeof a === 'number' && typeof b === 'number') return a - b
+  if (typeof a === 'boolean' && typeof b === 'boolean') return Number(a) - Number(b)
+  return plainCellText(a).localeCompare(plainCellText(b), undefined, { numeric: true, sensitivity: 'base' })
+}
+
+/** A sorted copy; the original order stays for equal values. Empty values are always last, whatever the direction. */
+export function sortRecords<T>(records: T[], sort: TableSort | null): T[] {
+  if (!sort || !sort.field.trim()) return records
+  const keyed = records.map((record, index) => ({ record, index, value: tableCellValue(record, sort.field) }))
+  const sign = sort.direction === 'desc' ? -1 : 1
+  keyed.sort((x, y) => {
+    const xe = isEmptyValue(x.value)
+    const ye = isEmptyValue(y.value)
+    if (xe || ye) return xe && ye ? x.index - y.index : xe ? 1 : -1
+    return sign * compareCellValues(x.value, y.value) || x.index - y.index
+  })
+  return keyed.map((k) => k.record)
+}
+
+/** Lower case, without accents, spaces collapsed: both the text searched and the words typed go through it. */
+export function normalizeSearchText(text: string): string {
+  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
+/** The words of a query (all of them must be found), at most 8. */
+export function searchTerms(query: string): string[] {
+  const n = normalizeSearchText(query)
+  return n ? n.split(' ').slice(0, 8) : []
+}
+
+/** `haystack` must already be normalized. */
+export function matchesTerms(haystack: string, terms: string[]): boolean {
+  return terms.every((t) => haystack.includes(t))
 }
