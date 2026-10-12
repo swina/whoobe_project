@@ -99,7 +99,9 @@ pnpm publish:site \
   --site-api-key "whb_site_<your-site-secret-key>"
 ```
 
-Or run `./publish-site.sh` for an interactive prompt (asks for all of the below, including the Gateway URL and base path, with sensible defaults) instead of passing flags directly.
+Or run `./publish-site.sh` for an interactive prompt instead of passing flags directly. It lists the websites of the CMS to pick from (no UUID to paste), reads the published pages and asks for the **Gateway URL** and the **site key** only when they use the API Gateway (a bound table, container or field, or a form posting to a gateway endpoint). It proposes a gateway that really answers (in dev `http://localhost:3001`, not the CMS API on 3003), warns about bindings that were never tied to a gateway route (re-save those pages) and checks that every binding resolves before generating. For scripts and CI: `./publish-site.sh --yes --api-url <url> --website <uuid> --framework next|nuxt|docs --gateway-url <url> [--site-key ...] [--domain ...] [--asset-url ...] [--base-path ...] [--revalidate ...] [--out-dir ...]` (every answer is also a `PUBLISH_*` variable; `--help` lists them).
+
+**Which gateway URL?** The address of the *gateway service* (`apps/gateway`, port 3001 in dev; in production the host/path nginx exposes it on), never the CMS API: `/api/v1/gateway/resolve` does not exist on core-api, so a table or bound field would simply stay empty. The generated site calls it from its own server (server rendering) and from the visitor's browser, so it must be reachable from both. A table whose data cannot be loaded now logs `[whoobe] table <id>: its data could not be loaded (...)` on the site's server.
 
 ### Options
 
