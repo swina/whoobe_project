@@ -73,3 +73,21 @@ describe('findDocByRoute', () => {
     expect(findDocByRoute(mk([]), '')).toBeNull()
   })
 })
+
+describe('dark / light theme switch of the generated documentation site', () => {
+  it('the page has the button, and the saved choice is applied in the head before the stylesheet', async () => {
+    const { pageHtml } = await import('../../../packages/publish/src/docs-site')
+    const html = pageHtml({ site: 'Docs', page: null, html: '', nav: [], base: '/', hasCode: false, notFound: true })
+    expect(html).toContain('id="theme"')
+    expect(html.indexOf("localStorage.getItem('docs-theme')")).toBeGreaterThan(0)
+    expect(html.indexOf("localStorage.getItem('docs-theme')")).toBeLessThan(html.indexOf('assets/docs.css'))
+  })
+  it('the stylesheet follows the system unless a theme is chosen, and a custom accent still wins', async () => {
+    const { DOCS_CSS, DOCS_JS, pageHtml } = await import('../../../packages/publish/src/docs-site')
+    expect(DOCS_CSS).toContain(':root:not([data-theme=light])')
+    expect(DOCS_CSS).toContain(':root[data-theme=dark]')
+    expect(() => new Function(DOCS_JS)).not.toThrow()
+    expect(DOCS_JS).toContain("localStorage.setItem('docs-theme'")
+    expect(pageHtml({ site: 'D', page: null, html: '', nav: [], base: '/', accent: '#ff0000', hasCode: false, notFound: true })).toContain(':root:root{--accent:#ff0000}')
+  })
+})

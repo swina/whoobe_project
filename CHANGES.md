@@ -1,3 +1,9 @@
+## Documentation websites: dark / light theme switch — 2026-10-12
+- Branch: `master`
+- Generated documentation site (`packages/publish/src/docs-site.ts`): button in the header; follows the system theme until the reader picks one, the choice is kept in `localStorage` (`docs-theme`) and applied by a small script in `<head>` before the first paint (no flash). CSS: `:root[data-theme=dark|light]` plus the system media query guarded by `:not([data-theme=light])`; a custom accent still wins (`:root:root{--accent}`). Mermaid diagrams are drawn again with the matching theme when the reader switches (source kept in `data-src`). `packages/publish/dist` rebuilt.
+- Live documentation view (`apps/whoobe-one-spike`): same button and storage key in `views/DocsView.vue`; dark colours for the utilities and the document content are set under `data-docs-theme="dark"`; `docs-mermaid.ts` picks the diagram theme from it and has `redrawMermaid`.
+- Tests: `scripts/security/unit/docs-site.test.ts` (theme markup, CSS, script), `docs-mermaid.test.ts`.
+
 ## [Gateway: the inferred response schema now describes all the items of an array, not only the first] — 2026-10-12
 - Branch: `master`
 - `apps/gateway/src/schema-inferrer.ts`: an array was described by `value[0]` alone, so a field the first record lacks (or has as `null`) never reached the schema and the table column / field pickers did not offer it (e.g. `email` of the HubSpot contacts; typing the name by hand worked because the page reads the real response). Items are now merged: fields are the union of the keys (in order of first appearance), the type and sample come from the first record that has a value, a field missing or null in some record is `nullable`; nested objects and arrays are merged the same way; the first 500 items are read (a field that first appears after that is still not seen). Same output shape as before.

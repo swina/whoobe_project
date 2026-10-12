@@ -37,6 +37,7 @@ describe('documentation site: mermaid', () => {
       expect(src, f).toContain('code.language-mermaid')
       expect(src, f).toContain('catch')
     }
+    expect(read('apps/whoobe-one-spike/src/docs-mermaid.ts')).toContain('redrawMermaid')
     expect(read('apps/whoobe-one-spike/src/views/DocsView.vue')).toContain('drawMermaid(content.value)')
     expect(read('apps/admin-dashboard/src/components/websites/MasterDocsDocTab.vue')).toContain('drawMermaid(previewEl.value)')
   })

@@ -115,7 +115,7 @@ export function pageHtml(p: {
   const body = p.notFound
     ? `<h1>Page not found</h1><p>The page you are looking for does not exist. <a href="${esc(base)}">Go to the start page</a> or use the search.</p>`
     : `<div class="doc-content">${p.html}</div>`
-  const accent = p.accent ? `<style>:root{--accent:${esc(p.accent)}}</style>` : ''
+  const accent = p.accent ? `<style>:root:root{--accent:${esc(p.accent)}}</style>` : ''
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -124,6 +124,7 @@ export function pageHtml(p: {
 <title>${esc(title)} | ${esc(p.site)}</title>
 ${desc}
 ${canonical}
+<script>try{var t=localStorage.getItem('docs-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <link rel="stylesheet" href="${esc(base)}assets/docs.css">
 ${accent}
 </head>
@@ -135,6 +136,7 @@ ${accent}
     <input id="q" type="search" placeholder="Search the documentation…  (Ctrl K)" aria-label="Search the documentation" autocomplete="off">
     <div id="results" role="listbox" hidden></div>
   </div>
+  <button id="theme" type="button" aria-label="Switch between light and dark theme" title="Switch between light and dark theme"></button>
 </header>
 <div class="shell">
   <aside id="nav" aria-label="Documentation index">${navHtml(p.nav, page?.route ?? '', base)}</aside>
@@ -150,11 +152,14 @@ ${accent}
 
 export const DOCS_CSS = `*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:4.5rem}
 :root{--accent:#4f46e5;--bg:#fff;--fg:#1f2937;--muted:#6b7280;--line:#e5e7eb;--soft:#f9fafb;--code:#0f172a;--codefg:#e2e8f0}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--fg:#e2e8f0;--muted:#94a3b8;--line:#232733;--soft:#161a22;--accent:#818cf8;--code:#0b0d12}}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0f1115;--fg:#e2e8f0;--muted:#94a3b8;--line:#232733;--soft:#161a22;--accent:#818cf8;--code:#0b0d12;color-scheme:dark}}
+:root[data-theme=dark]{--bg:#0f1115;--fg:#e2e8f0;--muted:#94a3b8;--line:#232733;--soft:#161a22;--accent:#818cf8;--code:#0b0d12;color-scheme:dark}
+:root[data-theme=light]{color-scheme:light}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 a{color:var(--accent)}
 .top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:1rem;height:3.5rem;padding:0 1rem;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
 .brand{font-weight:700;color:var(--fg);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#theme{flex:none;width:2.1rem;height:2.1rem;border:1px solid var(--line);border-radius:.5rem;background:var(--soft);color:var(--fg);font-size:1rem;line-height:1;cursor:pointer}#theme:hover{border-color:var(--accent)}
 #menu{display:none;background:none;border:0;font-size:1.3rem;color:var(--fg);cursor:pointer}
 .search{margin-left:auto;position:relative;width:100%;max-width:24rem}
 #q{width:100%;padding:.4rem .75rem;border:1px solid var(--line);border-radius:.5rem;background:var(--soft);color:var(--fg);font:inherit;font-size:.9rem;outline:0}
@@ -212,6 +217,23 @@ export const DOCS_JS = `(function () {
   var q = document.getElementById('q'), box = document.getElementById('results');
   document.getElementById('menu').addEventListener('click', function () { document.body.classList.toggle('menu-open'); });
 
+  // light / dark: follows the system until the reader picks one; the choice is kept in this browser (the head script applies it before the first paint)
+  var root = document.documentElement, themeBtn = document.getElementById('theme');
+  function isDark() {
+    var t = root.getAttribute('data-theme');
+    return t ? t === 'dark' : !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+  function paintTheme() { themeBtn.textContent = isDark() ? '\u2600' : '\u263E'; themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false'); }
+  var onTheme = null;
+  themeBtn.addEventListener('click', function () {
+    var next = isDark() ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('docs-theme', next); } catch (e) {}
+    paintTheme();
+    if (onTheme) onTheme();
+  });
+  paintTheme();
+
   // copy buttons on code blocks
   document.querySelectorAll('.doc-content pre').forEach(function (pre) {
     if (pre.querySelector('code.language-mermaid')) return;
@@ -238,20 +260,32 @@ export const DOCS_JS = `(function () {
     var ms = document.createElement('script'); ms.src = base + 'assets/mermaid/mermaid.min.js';
     ms.onload = function () {
       if (!window.mermaid) return;
-      var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'dark' : 'default' });
+      function init() { window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: isDark() ? 'dark' : 'default' }); }
+      init();
       var chain = Promise.resolve();
       document.querySelectorAll('pre code.language-mermaid').forEach(function (code, i) {
         chain = chain.then(function () {
-          var pre = code.parentNode;
-          return window.mermaid.render('doc-mermaid-' + i, code.textContent || '').then(function (r) {
-            var d = document.createElement('div'); d.className = 'doc-mermaid'; d.innerHTML = r.svg; pre.replaceWith(d);
+          var pre = code.parentNode, src = code.textContent || '';
+          return window.mermaid.render('doc-mermaid-' + i, src).then(function (r) {
+            var d = document.createElement('div'); d.className = 'doc-mermaid'; d.setAttribute('data-src', src); d.innerHTML = r.svg; pre.replaceWith(d);
           }).catch(function () {
             var n = document.createElement('p'); n.className = 'doc-mermaid-error'; n.textContent = 'This diagram could not be drawn.'; pre.parentNode.insertBefore(n, pre);
             var junk = document.getElementById('ddoc-mermaid-' + i); if (junk) junk.remove();
           });
         });
       });
+      // the colours of a drawn diagram are fixed in the picture: draw it again when the theme changes
+      onTheme = function () {
+        init();
+        chain = chain.then(function () {
+          var boxes = Array.prototype.slice.call(document.querySelectorAll('.doc-mermaid[data-src]'));
+          return boxes.reduce(function (p, d, i) {
+            return p.then(function () {
+              return window.mermaid.render('doc-mermaid-t' + Date.now() + '-' + i, d.getAttribute('data-src')).then(function (r) { d.innerHTML = r.svg; }).catch(function () {});
+            });
+          }, Promise.resolve());
+        });
+      };
     };
     document.head.appendChild(ms);
   }
