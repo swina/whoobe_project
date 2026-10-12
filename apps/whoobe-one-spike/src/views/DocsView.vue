@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-white text-gray-800">
+  <div class="docs-root min-h-screen bg-white text-gray-800" :data-docs-theme="dark ? 'dark' : 'light'">
     <header class="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200">
       <div class="max-w-[100rem] mx-auto px-4 h-14 flex items-center gap-4">
         <button class="md:hidden p-1 -ml-1 text-gray-600" aria-label="Menu" @click="menuOpen = !menuOpen">☰</button>
@@ -21,6 +21,8 @@
             </a>
           </div>
         </div>
+        <button type="button" class="shrink-0 w-9 h-9 rounded-lg border border-gray-300 bg-gray-50 text-base leading-none hover:border-indigo-500" data-testid="docs-theme"
+          aria-label="Switch between light and dark theme" title="Switch between light and dark theme" :aria-pressed="dark" @click="toggleTheme">{{ dark ? '\u2600' : '\u263E' }}</button>
       </div>
     </header>
 
@@ -76,7 +78,7 @@
 // the page, "on this page" on the right, previous/next. Rendered by the editor application at the website's root path.
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { drawMermaid } from '../docs-mermaid'
+import { drawMermaid, redrawMermaid } from '../docs-mermaid'
 import { loadDocsSearch, loadDocsView, type DocsSiteRef, type DocsView, type SearchHit } from '../docs-api'
 import DocsNavTree from '../components/DocsNavTree.vue'
 import { getDefaultAssetProcessorUrl } from '../dam-api'
@@ -92,6 +94,18 @@ const menuOpen = ref(false)
 const query = ref('')
 const activeHeading = ref('')
 const content = ref<HTMLElement | null>(null)
+
+// light / dark: follows the system until the reader picks one; the choice is kept in this browser
+const dark = ref(false)
+try {
+  const saved = localStorage.getItem('docs-theme')
+  dark.value = saved ? saved === 'dark' : !!window.matchMedia?.('(prefers-color-scheme: dark)').matches
+} catch { /* storage blocked: follow the system */ }
+function toggleTheme() {
+  dark.value = !dark.value
+  try { localStorage.setItem('docs-theme', dark.value ? 'dark' : 'light') } catch { /* not kept */ }
+  void nextTick(() => redrawMermaid(content.value))
+}
 let observer: IntersectionObserver | null = null
 
 /** The address of a document of this site, base path of the application included. */
@@ -208,6 +222,29 @@ onMounted(() => { void load(); window.addEventListener('keydown', onKey) })
 onBeforeUnmount(() => { observer?.disconnect(); window.removeEventListener('keydown', onKey) })
 </script>
 
+<!-- Dark theme: this application styles with Tailwind utilities generated in the browser, which has no dark variant tied to a switch,
+     so the few utilities this view and its index use are remapped under data-docs-theme="dark" (same colours as the generated sites). -->
+<style>
+.docs-root[data-docs-theme='dark'] { color-scheme: dark; background: #0f1115; color: #e2e8f0; }
+.docs-root[data-docs-theme='dark'] .bg-white { background-color: #0f1115; }
+.docs-root[data-docs-theme='dark'] .bg-white\/95 { background-color: rgb(15 17 21 / 0.95); }
+.docs-root[data-docs-theme='dark'] .bg-gray-50, .docs-root[data-docs-theme='dark'] .hover\:bg-gray-50:hover { background-color: #161a22; }
+.docs-root[data-docs-theme='dark'] .hover\:bg-gray-100:hover { background-color: #1c212b; }
+.docs-root[data-docs-theme='dark'] .focus\:bg-white:focus { background-color: #0f1115; }
+.docs-root[data-docs-theme='dark'] .bg-indigo-50 { background-color: #1e2140; }
+.docs-root[data-docs-theme='dark'] .text-gray-800, .docs-root[data-docs-theme='dark'] .text-gray-900, .docs-root[data-docs-theme='dark'] .hover\:text-gray-800:hover { color: #e2e8f0; }
+.docs-root[data-docs-theme='dark'] .text-gray-600, .docs-root[data-docs-theme='dark'] .text-gray-500, .docs-root[data-docs-theme='dark'] .text-gray-400 { color: #94a3b8; }
+.docs-root[data-docs-theme='dark'] .text-indigo-600 { color: #818cf8; }
+.docs-root[data-docs-theme='dark'] .border-gray-100, .docs-root[data-docs-theme='dark'] .border-gray-200, .docs-root[data-docs-theme='dark'] .border-gray-300 { border-color: #232733; }
+.docs-root[data-docs-theme='dark'] .border-gray-200 { border-color: #232733; }
+.docs-root[data-docs-theme='dark'] .bg-amber-50, .docs-root[data-docs-theme='dark'] .bg-amber-100 { background-color: #2b2110; }
+.docs-root[data-docs-theme='dark'] .text-amber-700 { color: #fbbf24; }
+.docs-root[data-docs-theme='dark'] .border-amber-200 { border-color: #5c4510; }
+.docs-root[data-docs-theme='dark'] .text-rose-600 { color: #fb7185; }
+.docs-root[data-docs-theme='dark'] .shadow-xl { box-shadow: 0 10px 30px rgb(0 0 0 / 0.5); }
+</style>
+
+
 <style scoped>
 .doc-content :deep(h1) { font-size: 2rem; font-weight: 800; margin: 0 0 1rem; line-height: 1.2; }
 .doc-content :deep(h2) { font-size: 1.5rem; font-weight: 700; margin: 2.2rem 0 .75rem; padding-top: .5rem; border-top: 1px solid #e5e7eb; scroll-margin-top: 4.5rem; }
@@ -242,4 +279,15 @@ onBeforeUnmount(() => { observer?.disconnect(); window.removeEventListener('keyd
 .doc-content :deep(.doc-admonition-danger) { border-color: #ef4444; background: #fef2f2; }
 .doc-content :deep(.doc-admonition-title) { font-weight: 700; margin: 0 0 .25rem; }
 .doc-content :deep(.doc-admonition > :last-child) { margin-bottom: 0; }
+.docs-root[data-docs-theme='dark'] .doc-content :deep(h2) { border-top-color: #232733; }
+.docs-root[data-docs-theme='dark'] .doc-content :deep(a) { color: #818cf8; }
+.docs-root[data-docs-theme='dark'] .doc-content :deep(pre) { background: #0b0d12; }
+.docs-root[data-docs-theme='dark'] .doc-content :deep(:not(pre) > code) { background: #161a22; color: #f9a8d4; }
+.docs-root[data-docs-theme='dark'] .doc-content :deep(th), .docs-root[data-docs-theme='dark'] .doc-content :deep(td), .docs-root[data-docs-theme='dark'] .doc-content :deep(hr) { border-color: #232733; }
+.docs-root[data-docs-theme='dark'] .doc-content :deep(th) { background: #161a22; }
+.docs-root[data-docs-theme='dark'] .doc-content :deep(blockquote) { border-left-color: #3b4180; color: #94a3b8; }
+.docs-root[data-docs-theme='dark'] .doc-content :deep(.doc-admonition) { background: #1e2140; }
+.docs-root[data-docs-theme='dark'] .doc-content :deep(.doc-admonition-tip) { background: #0f2a22; }
+.docs-root[data-docs-theme='dark'] .doc-content :deep(.doc-admonition-warning) { background: #2b2110; }
+.docs-root[data-docs-theme='dark'] .doc-content :deep(.doc-admonition-danger) { background: #2d1518; }
 </style>
