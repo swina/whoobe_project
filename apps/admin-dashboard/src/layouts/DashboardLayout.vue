@@ -885,29 +885,29 @@ function isSettingsSubSectionActive(key: SettingsSubSection): boolean {
 // sectionComponents.overview.
 const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Websites', section: 'websites', icon: Globe },
-  { name: 'Publish', section: 'publish', icon: Rocket },
   { name: 'Pages', section: 'pages', icon: FileStack },
   { name: 'Snippets', section: 'snippets', icon: Puzzle },
-  { name: 'Components', section: 'components', icon: Blocks },
+  { name: 'Themes', section: 'themes', icon: Palette },
+  { name: 'Publish', section: 'publish', icon: Rocket },
   { name: 'Assets', section: 'assets', icon: FolderArchive },
   { name: 'Data Objects', section: 'objects', icon: Database },
-  { name: 'Documents', section: 'documents', icon: FileText },
-  { name: 'Outgoing Mail', section: 'mail', icon: Mail },
-  { name: 'Themes', section: 'themes', icon: Palette },
+  { name: 'Components', section: 'components', icon: Blocks },
   { name: 'Integrations', section: 'gateway', icon: Network },
   { name: 'Data bindings', section: 'data-bindings', icon: Link2 },
   { name: 'Automations', section: 'automations', icon: Zap },
-  { name: 'System Logs', section: 'system-logs', icon: ScrollText },
+  { name: 'Outgoing Mail', section: 'mail', icon: Mail },
+  { name: 'Documents', section: 'documents', icon: FileText },
   { name: 'AI', section: 'ai', icon: Sparkles },
-  { name: 'Settings', section: 'settings', icon: Settings }
+  { name: 'Settings', section: 'settings', icon: Settings },
+  { name: 'System Logs', section: 'system-logs', icon: ScrollText }
 ]
 
 // Grouped-view categories for the sidebar toggle above. Assets stays its
 // own group (rather than folded into Content) since it already carries
 // its own DAM folder sub-tree in the nav. Sections with no entry here
 // (currently none) would simply not render a header in grouped mode.
-type NavGroupId = 'content' | 'assets' | 'data' | 'system'
-const navGroupOrder: NavGroupId[] = ['content', 'assets', 'data', 'system']
+type NavGroupId = 'content' | 'data'  | 'assets' | 'system'  
+const navGroupOrder: NavGroupId[] = ['content', 'data', 'assets', 'system' ]
 const navGroupLabels: Record<NavGroupId, string> = {
   content: 'Content',
   assets: 'Assets',
@@ -919,10 +919,10 @@ const sectionGroup: Partial<Record<SectionKind, NavGroupId>> = {
   publish: 'content',
   pages: 'content',
   snippets: 'content',
-  components: 'content',
   themes: 'content',
   assets: 'assets',
   objects: 'data',
+  components: 'data',
   documents: 'data',
   mail: 'data',
   gateway: 'data',
