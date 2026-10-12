@@ -379,6 +379,20 @@
       "when": 1789840000000,
       "tag": "0053_sessions_hashed",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1789850000000,
+      "tag": "0054_publish_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1789860000000,
+      "tag": "0055_publish_jobs_site_key",
+      "breakpoints": true
     }
   ]
 }

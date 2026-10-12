@@ -211,11 +211,11 @@ export const tableSchema: z.ZodType<ElementTable> = z.object({
 // --- slider ---
 
 export const sliderSchema: z.ZodType<ElementSlider> = z.object({
-  autoplay: z.boolean(),
-  interval: z.number(),
-  loop: z.boolean(),
-  showNav: z.boolean(),
-  showHome: z.boolean(),
+  autoplay: z.boolean().optional(),
+  interval: z.number().optional(),
+  loop: z.boolean().optional(),
+  showNav: z.boolean().optional(),
+  showHome: z.boolean().optional(),
   showDots: z.boolean().optional(),
   mode: z.enum(['standard', 'tabs']).optional(),
   tabsPosition: z.enum(['above', 'below']).optional(),

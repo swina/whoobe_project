@@ -64,11 +64,36 @@ function stripRootPath(href: string, rootPath?: string): string {
   return href.slice(rootPath.length) || '/'
 }
 
-function buildStyle(node: WhoobeElementNode): string {
+/** A CSS-safe form of a resolved image address for `url(...)`, or null: the value ends up in an inline style, so anything that could close
+ *  the url, the declaration or the attribute is refused (no quotes, parentheses, semicolons, backslashes, angle brackets, whitespace);
+ *  a data: URL only for raster images in base64. */
+function cssBackgroundUrl(url: string | null): string | null {
+  if (!url) return null
+  if (/^data:/i.test(url)) return /^data:image\/(png|jpe?g|gif|webp|avif);base64,[A-Za-z0-9+/=]+$/i.test(url) ? url : null
+  return /^[^\s"'()\\<>;]+$/.test(url) ? url : null
+}
+
+/** Elements whose `image.url` is their own source (img, video, audio, Download); on every other element it is a CSS background image
+ *  (the editor draws it that way, and so does the mail renderer). */
+function imageIsBackground(node: WhoobeElementNode): boolean {
+  return node.element !== 'img' && node.element !== 'video' && node.element !== 'audio' && node.tag !== 'file'
+}
+
+function buildStyle(node: WhoobeElementNode, background: string | null): string {
   let style = ''
+  if (background) style += `background-image:url(${background});`
   if (node.font) style += `font-family:"${node.font.replaceAll('+', ' ')}";`
   if (node.style) style += node.style
   return style
+}
+
+const BLOCK_HTML_RE = /<(?:p|div|ul|ol|li|h[1-6]|blockquote|pre|table|section|article|figure|hr|form)\b/i
+
+/** A paragraph cannot contain block elements: an authored `<p>` whose rich text already holds `<p>` or a list would be split by the HTML
+ *  parser on the server, so the browser and the framework disagree about the page (React refuses to hydrate it). Such a text is rendered in a
+ *  `div` instead; the look comes from the classes, which do not depend on the tag. */
+function htmlSafeTag(tag: string, content: unknown, contentIsHtml: boolean): string {
+  return tag === 'p' && contentIsHtml && typeof content === 'string' && BLOCK_HTML_RE.test(content) ? 'div' : tag
 }
 
 function buildAttributes(node: WhoobeElementNode): Record<string, unknown> {
@@ -81,6 +106,11 @@ function buildAttributes(node: WhoobeElementNode): Record<string, unknown> {
     for (const [k, v] of Object.entries(node.alpine)) {
       base[k] = typeof v === 'string' ? v : ''
     }
+  }
+  // Alpine's shorthands cannot be attribute names everywhere (`@click` is refused by the DOM and dropped by React): the long forms mean the same
+  for (const k of Object.keys(base)) {
+    const long = k.startsWith('@') ? `x-on:${k.slice(1)}` : k.startsWith(':') ? `x-bind:${k.slice(1)}` : null
+    if (long && !(long in base)) { base[long] = base[k]; delete base[k] }
   }
   // The id of an Upload field travels in the DOM so the page can name it when it asks for an upload (form-values.ts)
   if (base.type === 'file' && node.element === 'input') base['data-whoobe-upload'] = node.id
@@ -116,8 +146,8 @@ async function resolveNodeImage(
   scope: { ctx: WalkContext; api: RenderApi },
   options: RenderOptions,
 ): Promise<{ url: string; alt?: string | null } | null> {
-  // img, audio and the Download element (tag 'file'): each keeps its source (a DAM asset or a URL) in `image.url`
-  if (node.element !== 'img' && node.element !== 'audio' && node.tag !== 'file') return null
+  // img, video, audio and the Download element (tag 'file'): each keeps its source (a DAM asset or a URL) in `image.url`
+  if (node.element !== 'img' && node.element !== 'video' && node.element !== 'audio' && node.tag !== 'file') return null
   let url: string | null = null
   let alt: string | undefined
   if (node.dataBinding?.field) {
@@ -249,14 +279,21 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
     resolveNodeImage(node, scope, options),
     resolveNodeLink(node, scope, options),
   ])
+  // an editor-set background image of a container or a leaf: resolved to the DAM address like any other asset
+  const background = imageIsBackground(node) && typeof node.image?.url === 'string'
+    ? cssBackgroundUrl(resolveImageUrl(node.image.url, options.assetBaseUrl, options.keyPrefix, options.cdnMirrors))
+    : null
   // A Download element is a link to its file (an asset of the library or a URL), saved rather than opened. Without a
   // source it stays an inert button. "Open in a new tab" (linkTarget _blank) means open it, so no `download` then.
   // Without a file chosen it stays an inert button: nothing to download, nothing to link to.
   const isDownload = node.tag === 'file'
   const image = isDownload ? null : resolvedImage
-  const link = isDownload
+  const ownLink = isDownload
     ? (resolvedImage ? { href: resolvedImage.url, target: node.linkTarget ?? undefined, download: node.linkTarget !== '_blank' } : null)
     : resolvedLink
+  // An anchor cannot contain another anchor (the HTML parser closes the outer one, so server and browser disagree and React refuses to
+  // hydrate): inside a linked element an inner link is dropped, the outer one keeps the whole area clickable.
+  const link = ctx.insideLink ? null : ownLink
 
   const className = [node.css?.css ?? '', node.css?.container ?? '', transformClassName ?? ''].filter(Boolean).join(' ')
 
@@ -266,10 +303,10 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
   return {
     id: node.id,
     kind,
-    tag: resolveTag(node),
+    tag: htmlSafeTag(resolveTag(node), content, contentIsHtml),
     node,
     className,
-    style: buildStyle(node),
+    style: buildStyle(node, background),
     attributes: buildAttributes(node),
     data: node.data ?? null,
     content,
@@ -277,7 +314,7 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
     image,
     link,
     ...(kind === 'heading' && node.level != null ? { headingLevel: Number(node.level) } : {}),
-    children: await walkChildren(node, ctx, options),
+    children: await walkChildren(node, link ? { ...ctx, insideLink: true } : ctx, options),
     formConfig: node.formConfig ?? null,
     searchConfig: node.searchConfig ?? null,
     slider: node.slider ?? null,

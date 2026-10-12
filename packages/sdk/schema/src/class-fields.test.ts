@@ -61,13 +61,12 @@ describe('the class fields are all listed', () => {
 })
 
 describe('defaults the adapters bring', () => {
-  it('the slider defaults listed here are the ones in the React and Vue slider', () => {
-    const react = read('../../react/src/defaults.tsx')
-    const vue = read('../../vue/src/defaults.ts')
-    for (const c of SLIDER_DEFAULT_CLASSES) {
-      expect(react.includes(`'${c}'`), `react: ${c}`).toBe(true)
-      expect(vue.includes(`'${c}'`), `vue: ${c}`).toBe(true)
-    }
+  it('the slider defaults listed here are the ones the adapters use (renderer/slider.ts)', () => {
+    const shared = read('../../renderer/src/slider.ts')
+    for (const c of SLIDER_DEFAULT_CLASSES) expect(shared.includes(`'${c}'`), `slider.ts: ${c}`).toBe(true)
+    // both adapters take their defaults from there, not from a copy
+    expect(read('../../react/src/defaults.tsx')).toContain('sliderView(')
+    expect(read('../../vue/src/defaults.ts')).toContain('sliderView(')
   })
   it('the pagination defaults are the table defaults', () => {
     const p = paginationOf({ rowsPerPage: 5 })

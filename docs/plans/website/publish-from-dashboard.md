@@ -1,6 +1,6 @@
 # Publishing a website from the dashboard: plan
 
-*Date: 2026-10-12. Status: **decisions D1-D5 taken by the owner (section 5); nothing in this plan is implemented.** Statements about the code were
+*Date: 2026-10-12. Status: **decisions D1-D5 taken by the owner (section 5); phase 0 and the generation part of phase 1 are implemented (2026-10-12), phases 2-4 are not.** Statements about the code were
 checked in the repository on the date above; the ones that were not are marked **(not verified)**.*
 
 Today a site is generated from a terminal: `./publish-site.sh` (prompts, preflight checks, `--yes` for scripts) or `whoobe-publish`.
@@ -79,6 +79,13 @@ Scope is the 0.1.0 release (D1), so the phases are ordered by what must ship and
 
 Phases 0 and 1 are the minimum for the release; 2 and 3 are the part the owner wants for the final check ("pnpm dev for a last verification");
 4 can follow if the release date is tight, because phase 1-3 already work on the CMS host with limits.
+
+**Phase 1 as built (2026-10-12), and where it differs from the sketch above.** The runner is `apps/publisher` and **pulls** jobs from core-api over
+HTTP (`POST /publish/runner/claim | /jobs/:id/log | /jobs/:id/finish`, bearer `PUBLISH_RUNNER_TOKEN`) instead of reading the database, so it has no DB
+credentials and can be remote (this is also the phase 4 protocol). The dashboard follows a job by polling `GET /publish/jobs/:id?from=<offset>`
+(no SSE yet). Audit is the job row plus core-api log lines, not a separate audit table. Not done: install and build (phase 2), preview
+(phase 3), nginx location for `current`, per-day quota, the site key. Asked and answered: a container per job would need the Docker socket in
+core-api (root on the host), so the runner stays a long-lived service.
 
 ## 5. Decisions (owner, 2026-10-12)
 

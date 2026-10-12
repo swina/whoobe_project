@@ -6,6 +6,7 @@
 
 export * from './kind.js'
 export * from './table.js'
+export * from './slider.js'
 export * from './descriptor.js'
 export * from './url.js'
 export * from './path-pattern.js'

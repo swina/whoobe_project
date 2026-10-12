@@ -6,14 +6,17 @@
 
 import { TABLE_DEFAULT_CLASSES } from './table-binding.js'
 
-/** The classes the default slider components of the React and Vue adapters use when the author sets none. */
+/** The classes the default slider components of the React and Vue adapters use when the author sets none: the defaults of
+ *  packages/sdk/renderer/src/slider.ts (the same ones the editor's preview uses). */
 export const SLIDER_DEFAULT_CLASSES: readonly string[] = [
-  'flex items-center justify-center gap-1.5 px-2 py-1',
+  'flex items-center justify-center gap-1.5 flex-wrap px-2 py-2',
   'w-8 h-8 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white',
+  'w-7 h-7 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white',
+  'px-2.5 py-1 rounded-full text-xs font-medium truncate max-w-[9rem] transition-colors border bg-white text-gray-600 border-gray-300 hover:border-indigo-400',
+  'px-2.5 py-1 rounded-full text-xs font-medium truncate max-w-[9rem] transition-colors border bg-indigo-600 text-white border-indigo-600',
   'w-2.5 h-2.5 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors',
   'w-2.5 h-2.5 rounded-full bg-indigo-600 transition-colors',
   'flex items-center justify-center gap-2 pt-3',
-  'flex items-center justify-center gap-2',
 ]
 
 /** Name of every property that holds a class string, by the object it sits in. `cells` / `columns` / `rows` are lists of objects. */

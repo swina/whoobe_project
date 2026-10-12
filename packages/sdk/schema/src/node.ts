@@ -218,11 +218,12 @@ export interface ElementTable {
 }
 
 export interface ElementSlider {
-  autoplay: boolean
-  interval: number
-  loop: boolean
-  showNav: boolean
-  showHome: boolean
+  // all settings are optional: a slider saved before a setting existed has none of it, and the editor falls back to defaults (sliderView)
+  autoplay?: boolean
+  interval?: number
+  loop?: boolean
+  showNav?: boolean
+  showHome?: boolean
   mode?: 'standard' | 'tabs'
   tabsPosition?: 'above' | 'below'
   navClass?: string

@@ -58,3 +58,24 @@ services:
     ports:
       - "${WS_APP_BIND_ADDRESS:-0.0.0.0}:3006:8080"
     restart: unless-stopped
+
+  # Optional: runs the site generator for the dashboard's Publish tab. Start it with `--profile publisher`. It reaches
+  # core-api over HTTP only (no DB_* / S3_* variables here on purpose); releases land in the publish volume.
+  publisher:
+    profiles: ["publisher"]
+    build:
+      context: .
+      target: publisher
+    container_name: whoobe_publisher
+    environment:
+      CORE_API_URL: http://core-api:3003
+      PUBLISH_RUNNER_TOKEN: ${PUBLISH_RUNNER_TOKEN:?set PUBLISH_RUNNER_TOKEN (same value as core-api)}
+      PUBLISH_ROOT: /publish
+    volumes:
+      - whoobe_published:/publish
+    restart: unless-stopped
+    depends_on:
+      - core-api
+
+volumes:
+  whoobe_published:

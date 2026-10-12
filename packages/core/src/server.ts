@@ -75,6 +75,8 @@ export * from './dam/resolve-content-image-refs.js';
 export * from './mail/html-to-text.js';
 export * from './db/form-uploads-schema.js';
 export * from './db/form-uploads-records.js';
+export * from './db/publish-jobs-schema.js';
+export * from './db/publish-jobs-records.js';
 export * from './uploads/token.js';
 export * from './uploads/images.js';
 export * from './db/mail-log-schema.js';

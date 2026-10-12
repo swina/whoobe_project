@@ -5,7 +5,7 @@
 import { defineComponent, h, inject, ref, computed, onMounted, onUnmounted, type PropType, type VNode } from 'vue'
 import { sanitizeRichText } from '@whoobe-cms/schema'
 import { icons as lucideIcons } from '@lucide/vue'
-import { collectFormValues, dispatchFormResult, sanitizeOutcome, showsResultMessage, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
+import { collectFormValues, dispatchFormResult, sliderView, sanitizeOutcome, showsResultMessage, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
 import { WHOOBE_KEY, type NodeComponent, type WhoobeApi } from './types.js'
 import { DefaultTable } from './table.js'
 
@@ -368,7 +368,7 @@ export const DefaultVideo: NodeComponent = defineComponent({
   setup(props) {
     return () => {
       const d = props.descriptor
-      return h('video', { ...fieldAttrs(d), src: d.node.src ?? undefined, controls: true })
+      return h('video', { ...fieldAttrs(d), src: d.image?.url ?? d.node.src ?? undefined, controls: true })
     }
   },
 })
@@ -420,34 +420,14 @@ export const DefaultSlider: NodeComponent = defineComponent({
   name: 'WhoobeSlider',
   props: { ...descriptorProp, ...childrenProp },
   setup(props) {
+    // what is shown (tabs / arrows / home / dots, labels, defaults) is decided by sliderView(), shared with the other adapters
     const current = ref(0)
     let timer: ReturnType<typeof setInterval> | null = null
-
-    const settings = computed(() => ({
-      autoplay: false,
-      interval: 5000,
-      loop: true,
-      showNav: true,
-      showDots: true,
-      mode: 'standard',
-      tabsPosition: 'below',
-      tabClass: 'px-2.5 py-1 rounded-full text-xs font-medium transition-colors border bg-white text-gray-600 border-gray-300',
-      activeTabClass: 'px-2.5 py-1 rounded-full text-xs font-medium transition-colors border bg-indigo-600 text-white border-indigo-600',
-      navClass: 'flex items-center justify-center gap-1.5 px-2 py-1',
-      arrowClass: 'w-8 h-8 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white',
-      homeClass: 'w-7 h-7 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white',
-      arrowIcon: 'chevron',
-      homeIcon: 'home',
-      tabContainerClass: 'flex items-center justify-center gap-2',
-      dotClass: 'w-2.5 h-2.5 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors',
-      activeDotClass: 'w-2.5 h-2.5 rounded-full bg-indigo-600 transition-colors',
-      dotContainerClass: 'flex items-center justify-center gap-2 pt-3',
-      ...(props.descriptor.slider ?? {}),
-    }))
+    const view = computed(() => sliderView(props.descriptor, props.descriptor.children))
 
     function goTo(i: number) {
       const total = (props.children ?? []).length
-      if (settings.value.loop) {
+      if (view.value.settings.loop) {
         current.value = ((i % total) + total) % total
       } else {
         current.value = Math.max(0, Math.min(i, total - 1))
@@ -460,13 +440,13 @@ export const DefaultSlider: NodeComponent = defineComponent({
 
     function startAutoplay() {
       stopAutoplay()
-      const s = settings.value
+      const s = view.value.settings
       if (s.autoplay && (props.children ?? []).length > 1) {
         timer = setInterval(() => {
           const total = (props.children ?? []).length
           if (current.value < total - 1) current.value++
           else if (s.loop) current.value = 0
-        }, Math.max(500, s.interval || 5000))
+        }, Math.max(500, Number(s.interval) || 5000))
       }
     }
 
@@ -474,24 +454,15 @@ export const DefaultSlider: NodeComponent = defineComponent({
       if (timer !== null) { clearInterval(timer); timer = null }
     }
 
-    // Deep-link support: a URL like `/features#slide2` (or `#slide-2`/
-    // `#slide_2`, 1-based) jumps this slider straight to that slide on
-    // load, without waiting for autoplay/manual navigation - the same
-    // `#slideN` convention already documented as an in-page anchor example
-    // (see packages/mobile-app's generated App.vue) extended to actually
-    // switch the active slide, not just scroll to it. Re-applied on
-    // `hashchange` too, so an in-page link to `#slide3` clicked while
-    // already on this page also works, not just a fresh page load. If a
-    // page has more than one slider, every one of them reacts to the same
-    // hash - there's no per-slider id in the hash to disambiguate.
+    // Deep-link support: `/features#slide2` (also `#slide-2`, `#slide_2`, 1-based) jumps to that slide, on load and on `hashchange`.
+    // Every slider of the page reacts to the same hash.
     function applyHashSlide() {
       if (typeof window === 'undefined') return
       const match = /^#?slide[-_]?(\d+)$/i.exec(window.location.hash)
       if (!match) return
       const total = (props.children ?? []).length
       if (total === 0) return
-      const requested = parseInt(match[1], 10) - 1
-      current.value = Math.max(0, Math.min(requested, total - 1))
+      current.value = Math.max(0, Math.min(parseInt(match[1], 10) - 1, total - 1))
     }
 
     onMounted(() => {
@@ -507,65 +478,32 @@ export const DefaultSlider: NodeComponent = defineComponent({
     return () => {
       const d = props.descriptor
       const slides = props.children ?? []
-      const s = settings.value
-      const total = slides.length
+      const v = view.value
+      const s = v.settings
+      if (slides.length === 0) return h('div', elementProps(d))
 
-      if (total === 0) return h('div', elementProps(d))
-
-      const slideNodes = slides.map((child, i) =>
-        h('div', { key: (child as any)?.key ?? i, style: { minWidth: '100%', boxSizing: 'border-box' } }, child)
-      )
+      const tabRow = () => h('div', { class: v.tabsClass }, v.labels.map((label, i) =>
+        h('button', { key: i, type: 'button', class: i === current.value ? s.activeTabClass : s.tabClass, onClick: () => goTo(i) }, label)))
+      const overlay = { position: 'absolute' }
 
       const track = h('div', {
-        style: { display: 'flex', transition: 'transform 0.5s ease', transform: `translateX(-${current.value * 100}%)` },
-      }, slideNodes)
+        style: { display: 'flex', transition: 'transform 0.5s ease-out', transform: `translateX(-${current.value * 100}%)` },
+      }, slides.map((child, i) => h('div', { key: (child as any)?.key ?? i, style: { width: '100%', flexShrink: 0 } }, child)))
 
-      const viewport = h('div', { style: { overflow: 'hidden', position: 'relative' } }, track)
+      const inner = [
+        h('div', { style: { overflow: 'hidden' } }, track),
+        v.arrows ? h('button', { type: 'button', class: s.arrowClass, 'aria-label': 'Previous slide', onClick: prev, style: { ...overlay, left: '8px', top: '50%', transform: 'translateY(-50%)' } }, v.glyphs.prev) : null,
+        v.arrows ? h('button', { type: 'button', class: s.arrowClass, 'aria-label': 'Next slide', onClick: next, style: { ...overlay, right: '8px', top: '50%', transform: 'translateY(-50%)' } }, v.glyphs.next) : null,
+        v.home ? h('button', { type: 'button', class: s.homeClass, 'aria-label': 'First slide', onClick: () => goTo(0), style: { ...overlay, bottom: '8px', left: '50%', transform: 'translateX(-50%)' } }, v.glyphs.home) : null,
+        v.dots ? h('div', { class: s.dotContainerClass }, slides.map((_, i) =>
+          h('button', { key: i, type: 'button', 'aria-label': `Go to slide ${i + 1}`, class: i === current.value ? s.activeDotClass : s.dotClass, onClick: () => goTo(i) }))) : null,
+      ].filter(Boolean)
 
-      let dots = null
-      if (s.showDots && total > 1) {
-        dots = h('div', {
-          class: s.dotContainerClass,
-        }, slides.map((_, i) =>
-          h('button', {
-            key: i,
-            type: 'button',
-            'aria-label': `Go to slide ${i + 1}`,
-            class: i === current.value ? s.activeDotClass : s.dotClass,
-            onClick: () => goTo(i),
-          })
-        ))
-      }
-
-      let nav = null
-      if (s.mode !== 'tabs' && s.showNav && total > 1) {
-        nav = h('div', {
-          class: s.navClass,
-        }, [
-          h('button', { type: 'button', class: s.arrowClass, onClick: prev, 'aria-label': 'Previous' }, '‹'),
-          h('button', { type: 'button', class: s.arrowClass, onClick: next, 'aria-label': 'Next' }, '›'),
-        ])
-      }
-
-      let tabsAbove = null
-      if (s.mode === 'tabs' && s.tabsPosition === 'above' && total > 1) {
-        tabsAbove = h('div', { class: s.tabContainerClass },
-          slides.map((_, i) =>
-            h('button', { key: i, type: 'button', class: i === current.value ? s.activeTabClass : s.tabClass, onClick: () => goTo(i) })
-          )
-        )
-      }
-
-      let tabsBelow = null
-      if (s.mode === 'tabs' && s.tabsPosition !== 'above' && total > 1) {
-        tabsBelow = h('div', { class: s.tabContainerClass },
-          slides.map((_, i) =>
-            h('button', { key: i, type: 'button', class: i === current.value ? s.activeTabClass : s.tabClass, onClick: () => goTo(i) })
-          )
-        )
-      }
-
-      const children = [tabsAbove, viewport, nav, dots, tabsBelow].filter(Boolean)
+      const children = [
+        v.tabs === 'above' ? tabRow() : null,
+        h('div', { style: { position: 'relative' } }, inner),
+        v.tabs === 'below' ? tabRow() : null,
+      ].filter(Boolean)
       return h('div', { ...elementProps(d), 'data-slider': 'true' }, children)
     }
   },

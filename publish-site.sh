@@ -16,6 +16,7 @@
 #   --gateway-url / PUBLISH_GATEWAY_URL    API Gateway URL                   --site-key / PUBLISH_SITE_KEY    gateway site key
 #   --base-path / PUBLISH_BASE_PATH        mount path (default /)            --revalidate / PUBLISH_REVALIDATE seconds (default 60)
 #   --site-url / PUBLISH_SITE_URL          public address of a docs site     --yes                            no prompts
+#   --clean / PUBLISH_CLEAN=1              empty the output folder first (keeps node_modules, .git, lockfile; refuses a folder that is not a generated site)
 #
 # Prerequisites:
 #   - Node.js 20+ and pnpm 9+
@@ -49,10 +50,12 @@ BASE_PATH="${PUBLISH_BASE_PATH:-}"
 REVALIDATE="${PUBLISH_REVALIDATE:-}"
 SITE_URL="${PUBLISH_SITE_URL:-}"
 ASSUME_YES=0
+CLEAN="${PUBLISH_CLEAN:-0}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --yes|-y) ASSUME_YES=1; shift ;;
+    --clean) CLEAN=1; shift ;;
     --api-url|--website|--framework|--out-dir|--domain|--asset-url|--gateway-url|--site-key|--base-path|--revalidate|--site-url)
       [ $# -ge 2 ] || { echo -e "${RED}Error:${NC} $1 needs a value." >&2; exit 2; }
       case "$1" in
@@ -69,7 +72,7 @@ while [ $# -gt 0 ]; do
         --site-url) SITE_URL="$2" ;;
       esac
       shift 2 ;;
-    -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo -e "${RED}Error:${NC} unknown option $1 (see --help)." >&2; exit 2 ;;
   esac
 done
@@ -147,15 +150,14 @@ if [ -z "$FRAMEWORK_CHOICE" ] && [ "$ASSUME_YES" = 0 ]; then
   echo "Select target framework:"
   echo "  1) Nuxt 3   (Vue 3 — SSR/SSG, Nitro)  [default]"
   echo "  2) Next.js  (React — SSR/ISR, Vercel)"
-  echo "  3) Svelte   (SvelteKit SSR — coming soon)"
-  echo "  4) Documentation (static HTML, for a documentation website: index, search, no framework)"
+  echo "  3) Documentation (static HTML, for a documentation website: index, search, no framework)"
   echo ""
   read -r -p "Framework [1]: " FRAMEWORK_CHOICE
 fi
 
 KIND=site
 case "${FRAMEWORK_CHOICE:-1}" in
-  4|docs|Docs|DOCS)
+  3|4|docs|Docs|DOCS)
     KIND=docs
     FRAMEWORK="docs"
     ;;
@@ -165,12 +167,8 @@ case "${FRAMEWORK_CHOICE:-1}" in
   2|next|Next|NEXT)
     FRAMEWORK="next"
     ;;
-  3|svelte|Svelte|SVELTE)
-    echo -e "${YELLOW}Note:${NC} Svelte framework support is planned. Defaulting to Nuxt."
-    FRAMEWORK="vue"
-    ;;
   *)
-    FRAMEWORK="vue"
+    die "Unknown framework \"$FRAMEWORK_CHOICE\": use nuxt, next or docs (Svelte has an SDK adapter but no site generator)."
     ;;
 esac
 
@@ -183,7 +181,7 @@ if [ -z "$ASSET_URL" ] && [ "$ASSUME_YES" = 0 ]; then
   echo -e "${YELLOW}Tip:${NC} The public URL for DAM assets (S3 public base). It can differ from the API URL"
   echo -e "     when using a CDN or separate asset domain (CMS settings → S3_PUBLIC_BASE_URL)."
 fi
-ask ASSET_URL "Public Asset Base URL" "$API_URL"
+ask ASSET_URL "Public Asset Base URL" "${API_URL/:3003/:3002}"
 ASSET_URL="${ASSET_URL%/}"
 
 # ── 5. API Gateway: asked only when the pages use it ───────────────────────
@@ -311,6 +309,7 @@ EXTRA_ARGS=()
 [ -n "$GATEWAY_URL" ] && EXTRA_ARGS+=(--gateway-url "$GATEWAY_URL")
 [ -n "$SITE_KEY" ] && EXTRA_ARGS+=(--site-api-key "$SITE_KEY")
 [ -n "$BASE_PATH" ] && EXTRA_ARGS+=(--base-path "$BASE_PATH")
+[ "$CLEAN" = 1 ] && [ "$KIND" != "docs" ] && EXTRA_ARGS+=(--clean)
 
 # A documentation website: static HTML, nothing to install or build afterwards
 if [ "$KIND" = "docs" ]; then
