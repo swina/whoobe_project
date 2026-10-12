@@ -1,3 +1,8 @@
+## Admin dashboard: layout and CSS adjustments — 2026-10-12
+- Branch: `master`
+- `apps/admin-dashboard/src/layouts/DashboardLayout.vue`: order of the navigation items and of the groups (Data & Communication before Assets, Components moved to Data), Themes next to Publish.
+- `apps/admin-dashboard/src/views/AutomationsView.vue`, `DataBindingsView.vue`: CSS class adjustments.
+
 ## Documentation websites: dark / light theme switch — 2026-10-12
 - Branch: `master`
 - Generated documentation site (`packages/publish/src/docs-site.ts`): button in the header; follows the system theme until the reader picks one, the choice is kept in `localStorage` (`docs-theme`) and applied by a small script in `<head>` before the first paint (no flash). CSS: `:root[data-theme=dark|light]` plus the system media query guarded by `:not([data-theme=light])`; a custom accent still wins (`:root:root{--accent}`). Mermaid diagrams are drawn again with the matching theme when the reader switches (source kept in `data-src`). `packages/publish/dist` rebuilt.

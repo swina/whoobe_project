@@ -56,14 +56,14 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-800/60 light:divide-slate-200/60">
-          <tr v-for="e in shown" :key="e.key" class="cursor-pointer hover:bg-slate-800/90 light:hover:bg-slate-100/50 transition" @click="open(e)">
+          <tr v-for="e in shown" :key="e.key" class="cursor-pointer hover:bg-slate-800/90 light:hover:bg-slate-300/50 transition" @click="open(e)">
             <td class="py-2.5 px-4">
-              <span class="px-1.5 py-0.5 rounded bg-slate-800 light:bg-slate-200 text-[10px] uppercase">{{ e.source.kind }}</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] uppercase mr-2" :class="e.source.kind === 'page' ? 'bg-teal-800 light:text-white':'bg-amber-700 light:text-white'">{{ e.source.kind }}</span>
               <span class="font-medium text-slate-200 light:text-slate-800"> {{ e.source.title }}</span><span v-if="e.source.kind === 'page' && e.source.published === false" class="text-slate-500"> (draft)</span>
             </td>
             <td class="py-2.5 px-4">{{ websiteName(e.source.websiteId) }}</td>
             <td class="py-2.5 px-4">
-              <span class="px-1.5 py-0.5 rounded text-[10px] uppercase" :class="e.kind === 'gateway' ? 'bg-sky-900/60 text-sky-300' : 'bg-emerald-900/60 text-emerald-300'">{{ e.kind === 'gateway' ? 'API' : 'Data Object' }}</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] uppercase mr-2" :class="e.kind === 'gateway' ? 'bg-sky-900/60 text-sky-300' : 'bg-emerald-900/60 text-emerald-300'">{{ e.kind === 'gateway' ? 'API' : 'Data Object' }}</span>
               <span class="font-mono"> {{ e.target }}</span><span v-if="e.route" class="font-mono text-slate-500"> {{ e.route }}</span>
             </td>
             <td class="py-2.5 px-4">{{ e.elementIds.length }}</td>
