@@ -126,3 +126,26 @@ export function pageRows<T>(items: T[], p: Pick<PaginationSettings, 'rowsPerPage
   const start = (current - 1) * p.rowsPerPage
   return items.slice(start, start + p.rowsPerPage)
 }
+
+// --- editing the columns (the Columns panel of the editor) ---
+// Pure, and they return a new list: the author's columns (headers, formats, classes, order) are never replaced by a fresh set.
+
+/** Adds the column of `field` if there is none, removes it if there is one. The last column is never removed: with none the
+ *  table would fall back to showing every field. */
+export function toggleColumnField<C extends { field: string }>(columns: C[], field: string, make: () => C): C[] {
+  const i = columns.findIndex((c) => c.field === field)
+  if (i < 0) return [...columns, make()]
+  if (columns.length <= 1) return columns
+  return columns.filter((_, k) => k !== i)
+}
+
+/** The available fields that are not a column yet, in the order they are offered. */
+export function missingColumnFields<F extends { field: string }>(columns: { field: string }[], available: F[]): F[] {
+  const have = new Set(columns.map((c) => c.field))
+  return available.filter((f) => !have.has(f.field))
+}
+
+/** Appends a column for each missing field; the existing ones stay as they are. */
+export function appendMissingColumns<C extends { field: string }, F extends { field: string }>(columns: C[], available: F[], make: (f: F) => C): C[] {
+  return [...columns, ...missingColumnFields(columns, available).map(make)]
+}

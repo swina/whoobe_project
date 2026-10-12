@@ -89,3 +89,30 @@ describe('pagination', () => {
     expect(pageRows(items, { rowsPerPage: 0, mode: 'standard' }, 2, 0)).toBe(items)
   })
 })
+
+import { appendMissingColumns, missingColumnFields, toggleColumnField } from './table-binding.js'
+
+describe('editing the columns', () => {
+  const col = (field: string, extra: object = {}) => ({ id: field, field, header: field.toUpperCase(), ...extra })
+  const fields = [{ field: 'a', header: 'A' }, { field: 'b', header: 'B' }, { field: 'c', header: 'C' }]
+  it('toggling a field adds a column at the end or removes it, without touching the others', () => {
+    const base = [col('a', { cellClass: 'x', transform: { type: 'date' } }), col('b')]
+    const added = toggleColumnField(base, 'c', () => col('c'))
+    expect(added.map((c) => c.field)).toEqual(['a', 'b', 'c'])
+    expect(added[0]).toBe(base[0])
+    expect(toggleColumnField(added, 'a', () => col('a')).map((c) => c.field)).toEqual(['b', 'c'])
+    expect(base).toHaveLength(2)
+  })
+  it('never removes the last column', () => {
+    const one = [col('a')]
+    expect(toggleColumnField(one, 'a', () => col('a'))).toBe(one)
+  })
+  it('lists and appends only the missing fields, keeping what the author set', () => {
+    const base = [col('b', { header: 'My title', transform: { type: 'number' } })]
+    expect(missingColumnFields(base, fields).map((f) => f.field)).toEqual(['a', 'c'])
+    const out = appendMissingColumns(base, fields, (f) => col(f.field, { header: f.header }))
+    expect(out.map((c) => c.field)).toEqual(['b', 'a', 'c'])
+    expect(out[0]).toBe(base[0])
+    expect(appendMissingColumns(out, fields, (f) => col(f.field))).toHaveLength(3)
+  })
+})
