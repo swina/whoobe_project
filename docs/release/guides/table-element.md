@@ -72,8 +72,9 @@ of the binding to keep that list a reasonable size, because all of it is downloa
 
 ## 6. Limits
 
-- **Published sites generated for Next.js or Nuxt, and the headless SDK, do not draw the Table element at all** (with or without data): the
-  element is not part of what the SDK renders. A table is drawn by the editor application (the editor, its preview and the pages it serves). Use a bound container for a list in a generated site.
+- **Published sites generated for Next.js or Nuxt, and the headless SDK, do not draw the Table's content**: the SDK does not know the element and
+  emits an **empty `<table>`**, for a typed table as well as for a bound one. A table is drawn by the editor application (the editor, its preview and the pages
+  it serves). Use a bound container for a list in a generated site. Plan to close this gap: [`table-element-sdk-plan.md`](../../plans/cms/table-element-sdk-plan.md).
 - No sticky header; the visitor cannot choose the number of rows per page; sorting is by one column at a time; the search is a plain "contains" over words (no fuzzy matching).
 - Merged cells (column and row spans) belong to the typed table; a bound table does not use them.
 - A column's format uses the transformer's default options; the options themselves (a date style, decimals) are not editable per column yet.
