@@ -8,6 +8,7 @@ import {
   compareCellValues,
   formatRowCount,
   matchesTerms,
+  nextSort,
   normalizeSearchText,
   pageCount,
   pageRows,
@@ -174,4 +175,38 @@ export function ariaSortOf(sort: TableSort | null, field: string): 'ascending' |
 export function sortMarkOf(sort: TableSort | null, field: string): string {
   const a = ariaSortOf(sort, field)
   return a === 'ascending' ? '▲' : a === 'descending' ? '▼' : '↕'
+}
+
+// --- the state machine of the controls (shared by every adapter) ---
+
+export type TableViewAction =
+  | { type: 'query'; value: string }
+  | { type: 'sort'; field: string }
+  | { type: 'prev' }
+  | { type: 'next' }
+  | { type: 'more' }
+
+export function initialTableState(pagination: Pick<PaginationSettings, 'rowsPerPage'>): TableViewState {
+  return { query: '', sort: null, page: 1, visible: pagination.rowsPerPage }
+}
+
+/** The next state for an action of the visitor. A new search or sort goes back to the first page / the first rows; paging stays inside the
+ *  range of the CURRENT result (`view`, computed from `state`). A sort on a column that cannot be sorted changes nothing. */
+export function reduceTableState(state: TableViewState, action: TableViewAction, input: TableViewInput, view: TableView): TableViewState {
+  const rpp = input.pagination.rowsPerPage
+  switch (action.type) {
+    case 'query':
+      return { ...state, query: action.value, page: 1, visible: rpp }
+    case 'sort': {
+      const col = input.columns.find((c) => c.field === action.field)
+      if (!input.sortable || !col || col.sortable === false) return state
+      return { ...state, sort: nextSort(state.sort, action.field), page: 1, visible: rpp }
+    }
+    case 'prev':
+      return { ...state, page: Math.max(1, view.page - 1) }
+    case 'next':
+      return { ...state, page: Math.min(view.pages, view.page + 1) }
+    case 'more':
+      return { ...state, visible: Math.min(Math.max(state.visible, rpp) + rpp, view.total) }
+  }
 }

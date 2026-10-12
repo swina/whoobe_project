@@ -29,7 +29,7 @@ This guide covers how to publish a Whoobe CMS website as a standalone, deployabl
 |---|---|
 | **Build-time API calls** | The generated app fetches the CMS public API at build time (no auth needed). ISR/revalidate re-fetches periodically for fresh content. |
 | **Server-side rendering** | `walkTree()` from `@whoobe-cms/renderer` runs on the server, producing serializable `RenderDescriptor` trees. |
-| **Tailwind CSS** | `whoobe-publish` extracts all CSS classes from the element trees and generates a `tailwind.config.ts` `safelist`. Tailwind v4's JIT engine generates only the used utilities at build time. |
+| **Tailwind CSS** | `whoobe-publish` extracts all CSS classes from the element trees (the classes of an element, of a table's sections and columns, of a binding's pagination, of a slider, and the default classes of the built-in slider and table components) and generates a `tailwind.config.ts` `safelist`. Tailwind v4's JIT engine generates only the used utilities at build time. |
 | **Theme injection** | Website theme colors are emitted as `@theme { --color-* }` CSS variables. Fonts are loaded via Google Fonts `<link>` tags. |
 | **Assets** | DAM references resolve to the CMS `/dam-asset/` proxy by default, but **prefer a CDN mirror** when the referenced asset has one (`cdnMirrors` in the page API response) - see [Step 1b](#step-1b-mirror-images-to-a-cdn-optional-but-recommended). |
 | **API Gateway** | Forms wired to a Gateway endpoint (e.g. Brevo) and Gateway-backed data bindings need the Gateway's own public URL, not just the CMS API URL - see `--gateway-url` below. Without it, they silently fall back to `http://localhost:3001` and only work when the published site happens to run on the CMS's own host. |

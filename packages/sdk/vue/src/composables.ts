@@ -37,6 +37,7 @@ export function usePage(locale: Ref<string> | string, path: Ref<string> | string
       const walkOptions = {
         api: ctx.api as never,
         assetBaseUrl: ctx.options.assetBaseUrl,
+        tableMaxRows: ctx.options.tableMaxRows,
         keyPrefix: ctx.options.keyPrefix,
         resolveTargetPage: ctx.options.resolveTargetPage,
       }

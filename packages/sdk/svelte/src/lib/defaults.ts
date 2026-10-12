@@ -14,6 +14,7 @@ import WhoobeRadioGroup from './WhoobeRadioGroup.svelte'
 import WhoobeButton from './WhoobeButton.svelte'
 import WhoobeSearch from './WhoobeSearch.svelte'
 import WhoobeMedia from './WhoobeMedia.svelte'
+import WhoobeTable from './WhoobeTable.svelte'
 
 export const defaults = {
   container: WhoobeContainer,
@@ -39,4 +40,5 @@ export const defaults = {
   youtube: WhoobeMedia,
   vimeo: WhoobeMedia,
   slider: WhoobeMedia,
+  table: WhoobeTable,
 }

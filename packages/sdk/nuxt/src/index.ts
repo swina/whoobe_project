@@ -57,6 +57,7 @@ export async function getPageData(
     resolveTargetPage: options.resolveTargetPage,
     resolveAssetUuid: options.resolveAssetUuid,
     rootPath: options.rootPath,
+    tableMaxRows: options.tableMaxRows,
     cdnMirrors,
   }
   const descriptor = await walkTree(page.content, { urlParams: params }, walkOptions)

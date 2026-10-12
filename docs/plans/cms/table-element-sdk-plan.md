@@ -196,7 +196,9 @@ Shipped in `@whoobe-cms/schema` (`table-view.ts`), not in the renderer as first 
 - `useBoundTable` in the editor reimplemented on top of it; the existing render checks keep passing.
 - *Tests*: view for every state (pages, last short page, lazyload, search, sort, empty), plus the **parity test**: one fixture, editor path versus descriptor path, identical views.
 
-### Phase 4: the adapters (M each)
+### Phase 4: the adapters (M each)  — **done 2026-10-12** (React/Next, Vue/Nuxt, Svelte)
+
+Shipped: `table.tsx` (React, `DefaultTable` + `useTableView`), `table.ts` (Vue, the same), `WhoobeTable.svelte`; registry key `table` in all three; `tableMaxRows` passed through the React, Vue and Svelte options and the Next and Nuxt page helpers. The transitions of the controls are one shared state machine, `reduceTableState` in the schema package, tested without a DOM; the markup is tested as server-rendered output (first page, counter, pager, sort buttons with `aria-sort`, search box, More button, empty text, the row-cap note, hostile content inert, a registry override). Not done: a build of a real generated site to see the CSS and the hydrated behaviour in a browser, and GSAP on the table.
 
 - React/Next: `DefaultTable`, `useTableView`, registry key `table`. Vue/Nuxt: the same. Svelte: the same, if D2 says so.
 - *Tests*: component tests as for the slider (initial HTML has page 1; clicking *Next*, a header and typing in the box change what is drawn), SSR output contains the first page, hostile content is inert.

@@ -100,3 +100,46 @@ describe('header state', () => {
     expect([sortMarkOf(s, 'price'), sortMarkOf({ field: 'price', direction: 'asc' }, 'price'), sortMarkOf(s, 'name')]).toEqual(['▼', '▲', '↕'])
   })
 })
+
+import { initialTableState, reduceTableState, type TableViewAction } from './table-view.js'
+
+describe('the state machine of the controls', () => {
+  const inp = input({ pagination: { rowsPerPage: 2, mode: 'standard' } })
+  const step = (s: ReturnType<typeof initialTableState>, a: TableViewAction, i = inp) => reduceTableState(s, a, i, computeTableView(i, s))
+  it('starts on the first page with the first rows revealed', () => {
+    expect(initialTableState({ rowsPerPage: 5 })).toEqual({ query: '', sort: null, page: 1, visible: 5 })
+  })
+  it('pages forward and back, never out of the range of the result', () => {
+    let s = initialTableState(inp.pagination)
+    s = step(s, { type: 'next' }); expect(s.page).toBe(2)
+    s = step(s, { type: 'next' }); s = step(s, { type: 'next' }); expect(s.page).toBe(3)
+    s = step(s, { type: 'next' }); expect(s.page).toBe(3)
+    s = step(s, { type: 'prev' }); expect(s.page).toBe(2)
+    s = step(step(step(s, { type: 'prev' }), { type: 'prev' }), { type: 'prev' }); expect(s.page).toBe(1)
+  })
+  it('a search or a sort goes back to the first page', () => {
+    let s = step(step(initialTableState(inp.pagination), { type: 'next' }), { type: 'next' })
+    expect(s.page).toBe(3)
+    s = step(s, { type: 'query', value: 'a' }); expect(s).toMatchObject({ query: 'a', page: 1 })
+    s = step(step(s, { type: 'next' }), { type: 'sort', field: 'name' }); expect(s).toMatchObject({ page: 1, sort: { field: 'name', direction: 'asc' } })
+  })
+  it('a sort goes ascending, descending, off; a column that cannot be sorted, or a table that is not sortable, changes nothing', () => {
+    let s = initialTableState(inp.pagination)
+    s = step(s, { type: 'sort', field: 'name' }); expect(s.sort).toEqual({ field: 'name', direction: 'asc' })
+    s = step(s, { type: 'sort', field: 'name' }); expect(s.sort).toEqual({ field: 'name', direction: 'desc' })
+    s = step(s, { type: 'sort', field: 'name' }); expect(s.sort).toBeNull()
+    const off = input({ sortable: false, pagination: inp.pagination })
+    expect(step(initialTableState(inp.pagination), { type: 'sort', field: 'name' }, off).sort).toBeNull()
+    const no = input({ columns: [{ field: 'name', sortable: false }, { field: 'price' }, { field: 'note' }], pagination: inp.pagination })
+    expect(step(initialTableState(inp.pagination), { type: 'sort', field: 'name' }, no).sort).toBeNull()
+    expect(step(initialTableState(inp.pagination), { type: 'sort', field: 'nope' }).sort).toBeNull()
+  })
+  it('"more" reveals one page of rows at a time, up to the total', () => {
+    const lazy = input({ pagination: { rowsPerPage: 4, mode: 'lazyload' } })
+    let s = initialTableState(lazy.pagination)
+    expect(computeTableView(lazy, s).rows).toHaveLength(4)
+    s = step(s, { type: 'more' }, lazy); expect(s.visible).toBe(6)
+    s = step(s, { type: 'more' }, lazy); expect(s.visible).toBe(6)
+    expect(computeTableView(lazy, s).rows).toHaveLength(6)
+  })
+})

@@ -9,6 +9,8 @@ export const WHOOBE_KEY = Symbol('whoobe')
 export interface WhoobeAdapterOptions {
   assetBaseUrl?: string
   keyPrefix?: string
+  /** Most rows a Table keeps from its list (default 1000). */
+  tableMaxRows?: number
   resolveTargetPage?: (id: string) => Promise<{ slug: string; locale: string } | null>
 }
 

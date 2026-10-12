@@ -26,6 +26,8 @@ export interface WhoobeAdapterOptions {
    *  published/generated site has no such prefix, so left un-stripped every
    *  internal link/menu item 404s once deployed standalone. */
   rootPath?: string
+  /** Most rows a Table keeps from its list (default 1000). */
+  tableMaxRows?: number
   resolveTargetPage?: (id: string) => Promise<{ slug: string; locale: string } | null>
   resolveAssetUuid?: (uuid: string) => Promise<string | null>
 }

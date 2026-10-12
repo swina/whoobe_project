@@ -35,6 +35,7 @@
           assetBaseUrl: ctx.options.assetBaseUrl,
           keyPrefix: ctx.options.keyPrefix,
           resolveTargetPage: ctx.options.resolveTargetPage,
+          tableMaxRows: ctx.options.tableMaxRows,
         }
         const walked = await walkTree(lookup.page.content, {}, walkOptions)
         resolved = walked

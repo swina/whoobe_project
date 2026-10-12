@@ -4,5 +4,6 @@
 
 export * from './types.js'
 export * from './defaults.js'
+export * from './table.js'
 export * from './components.js'
 export * from './composables.js'
