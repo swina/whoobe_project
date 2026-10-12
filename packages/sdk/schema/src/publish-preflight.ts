@@ -5,9 +5,9 @@
 export interface GatewayUsage {
   /** Nodes that use the gateway: resolve bindings and forms with a gateway endpoint. */
   gateway: number
-  /** Of those, the ones with no binding id: authored, but never tied to a gateway route (re-save the page). */
+  /** Of those, the forms that name a gateway endpoint but have no binding id: never tied to a gateway route (re-save the page). */
   dangling: number
-  /** The binding ids to check against the gateway. */
+  /** The ids of the READ bindings (tables, containers, fields): the ones `/api/v1/gateway/resolve` answers. A form's submit binding is not in the list: the resolve route does not know it (404), it is only counted. */
   bindings: string[]
 }
 
@@ -19,16 +19,15 @@ export function scanGatewayUsage(tree: unknown): GatewayUsage {
     const n = node as Record<string, unknown>
     const gb = n.gatewayBinding
     if (gb && typeof gb === 'object') {
-      acc.gateway++
+      // Without a binding id it is a field of a repeated container (it only has a `fieldPath` and reads the container's record), or
+      // one the editor could not pin: the public content has no endpoint name left to tell them apart, so it is not counted.
       const id = (gb as Record<string, unknown>).bindingId
-      if (typeof id === 'string' && id) acc.bindings.add(id)
-      else acc.dangling++
+      if (typeof id === 'string' && id) { acc.gateway++; acc.bindings.add(id) }
     }
     const fc = n.formConfig as Record<string, unknown> | undefined
     if (fc && typeof fc === 'object' && (fc.gatewayEndpointName || fc.gatewayBindingId)) {
       acc.gateway++
-      if (typeof fc.gatewayBindingId === 'string' && fc.gatewayBindingId) acc.bindings.add(fc.gatewayBindingId)
-      else acc.dangling++
+      if (!(typeof fc.gatewayBindingId === 'string' && fc.gatewayBindingId)) acc.dangling++
     }
     if (Array.isArray(n.blocks)) n.blocks.forEach(walk)
   }

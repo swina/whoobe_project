@@ -232,8 +232,12 @@ if [ "$GATEWAY_COUNT" -gt 0 ]; then
     echo -e "${YELLOW}Warning:${NC} $GATEWAY_DANGLING binding(s) in the published pages are not tied to a gateway route (endpoint or route missing when the page was saved): they will stay empty. Re-save those pages in the editor."
   fi
   if [ -n "$GATEWAY_BINDINGS" ]; then
-    if FAILED="$(SITE_KEY="$SITE_KEY" "${PREFLIGHT[@]}" check "$GATEWAY_URL" "$WEBSITE_ID" "$GATEWAY_BINDINGS")"; then
+    CHECK_RC=0
+    FAILED="$(SITE_KEY="$SITE_KEY" "${PREFLIGHT[@]}" check "$GATEWAY_URL" "$WEBSITE_ID" "$GATEWAY_BINDINGS")" || CHECK_RC=$?
+    if [ "$CHECK_RC" = 0 ]; then
       echo -e "  → ${GREEN}every gateway binding resolves at ${GATEWAY_URL}${NC}"
+    elif [ "$CHECK_RC" = 4 ]; then
+      echo -e "  → ${YELLOW}the gateway asks for the website's site key${NC} (none given: the bindings could not be checked). Pass it with --site-key or PUBLISH_SITE_KEY (Publish tab → Gateway site key)."
     else
       echo -e "${RED}These gateway bindings do not resolve at ${GATEWAY_URL}:${NC}"
       echo "$FAILED" | sed 's/^/     /'

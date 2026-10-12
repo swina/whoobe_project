@@ -1,8 +1,19 @@
 import { mkdir, writeFile, readFile } from 'node:fs/promises'
-import { join, relative, resolve } from 'node:path'
+import { join, relative, resolve, dirname } from 'node:path'
+import { existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { ApiClient } from '@whoobe-cms/renderer'
 import { collectTreeClasses } from '@whoobe-cms/schema'
+
+/** The monorepo whose SDK packages are vendored into a generated site. Found from where this generator lives, so the output folder can be
+ *  anywhere; the old guess (`<outDir>/../..`, right only for `<repo>/sites/<slug>`) is the fallback. */
+export function defaultMonorepoRoot(outDir: string, from: string = dirname(fileURLToPath(import.meta.url))): string {
+  for (let dir = resolve(from), i = 0; i < 8; i++, dir = dirname(dir)) {
+    if (existsSync(join(dir, 'pnpm-workspace.yaml')) && existsSync(join(dir, 'packages', 'sdk'))) return dir
+  }
+  return join(outDir, '..', '..')
+}
 
 // --- Input hygiene -----------------------------------------------------------------------------------------
 // Everything below ends up inside generated source files (TS, JS, CSS, HTML, shell, nginx) that are then BUILT
@@ -236,7 +247,7 @@ export async function generateNextSite(rawOptions: GenerateOptions): Promise<voi
     const singleLocale = supportedLocales.length <= 1
 
     console.log('Packing SDK dependencies (makes the site installable anywhere, no monorepo needed)...')
-    const monorepoRoot = options.monorepoRoot ?? join(outDir, '..', '..')
+    const monorepoRoot = options.monorepoRoot ?? defaultMonorepoRoot(outDir)
     const vendoredPackages = await packSdkDependencies(outDir, 'next', monorepoRoot)
 
     console.log('Scaffolding project...')
@@ -1393,7 +1404,7 @@ export async function generateNuxtSite(rawOptions: GenerateOptions): Promise<voi
     const pwaConfig = pwaEnabled ? (website.pwaConfig as Record<string, unknown> ?? {}) : undefined
 
     console.log('Packing SDK dependencies (makes the site installable anywhere, no monorepo needed)...')
-    const monorepoRoot = options.monorepoRoot ?? join(outDir, '..', '..')
+    const monorepoRoot = options.monorepoRoot ?? defaultMonorepoRoot(outDir)
     const vendoredPackages = await packSdkDependencies(outDir, 'vue', monorepoRoot)
 
     console.log('Scaffolding Nuxt project...')

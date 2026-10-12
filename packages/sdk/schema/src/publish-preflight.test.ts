@@ -5,12 +5,14 @@ describe('scanGatewayUsage', () => {
   it('counts tables, containers and forms, and the bindings never pinned to a route', () => {
     const r = scanGatewayUsage({ blocks: [
       { gatewayBinding: { bindingId: 'b1' } },
-      { blocks: [{ gatewayBinding: { endpointName: 'x', routePath: '/y' } }] },
+      // a field of a repeated container: only a fieldPath, not a use of the gateway of its own
+      { blocks: [{ gatewayBinding: { fieldPath: 'title' } }] },
       { formConfig: { gatewayEndpointName: 'brevo', gatewayBindingId: 'b2' } },
       { formConfig: { gatewayEndpointName: 'brevo' } },
       { formConfig: {} },
     ] })
-    expect(r).toEqual({ gateway: 4, dangling: 2, bindings: ['b1', 'b2'] })
+    // b2 is a form's submit binding: counted, but not to be checked against the resolve route
+    expect(r).toEqual({ gateway: 3, dangling: 1, bindings: ['b1'] })
   })
   it('a page without gateway usage, or no page', () => {
     expect(scanGatewayUsage({ blocks: [{ tag: 'p' }] }).gateway).toBe(0)
