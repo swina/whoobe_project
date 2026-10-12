@@ -85,6 +85,7 @@ async function resolveRecords(
   // a gateway array wins over a Data Class query, as in the editor; a Data Class binding with a `field` is a single value, not a list
   try {
     if (node.gatewayBinding) {
+      if (!(node.gatewayBinding as { bindingId?: string }).bindingId) console.warn(`[whoobe] table ${node.id ?? ''}: its gateway binding has no bindingId (re-save the page in the editor); no rows`)
       const resolved = await resolveGatewayBinding(node.gatewayBinding as never, options.gatewayUrl || 'http://localhost:3001', options.urlParams, options.gatewaySiteAuth as never)
       return { bound: true, records: tableRecords(resolved) }
     }
@@ -92,8 +93,9 @@ async function resolveRecords(
       const resolved = await resolveDataBinding(node.dataBinding, scope as never)
       return { bound: true, records: tableRecords(resolved.records) }
     }
-  } catch {
-    // an unreachable API shows the empty text, not a broken page
+  } catch (err) {
+    // an unreachable API shows the empty text, not a broken page; the cause goes to the server log (a wrong gateway URL looks like "no data")
+    console.warn(`[whoobe] table ${node.id ?? ''}: its data could not be loaded (${err instanceof Error ? err.message : String(err)})`)
     return { bound: true, records: [] }
   }
   return { bound: false, records: [] }
