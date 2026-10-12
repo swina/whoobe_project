@@ -1,3 +1,10 @@
+## [Gateway: the inferred response schema now describes all the items of an array, not only the first] — 2026-10-12
+- Branch: `master`
+- `apps/gateway/src/schema-inferrer.ts`: an array was described by `value[0]` alone, so a field the first record lacks (or has as `null`) never reached the schema and the table column / field pickers did not offer it (e.g. `email` of the HubSpot contacts; typing the name by hand worked because the page reads the real response). Items are now merged: fields are the union of the keys (in order of first appearance), the type and sample come from the first record that has a value, a field missing or null in some record is `nullable`; nested objects and arrays are merged the same way; the first 500 items are read (a field that first appears after that is still not seen). Same output shape as before.
+- Run over the schemas stored in the database: 2 of them were incomplete (HubSpot contacts missing `contacts.email` and 6 `attributes.*`; a files route missing `files.url/text/title`).
+- Test: `scripts/security/unit/gateway-schema-inferrer.test.ts` (6); gateway typecheck clean.
+- Schemas already stored keep the old shape until the route is tested again (Integrations > route > Test); nothing was rewritten in the database.
+
 ## [Admin dashboard: Data bindings list (pages and snippets with dynamic data)] — 2026-10-12
 - Branch: `master`
 - New section Data & Communication > **Data bindings** (`views/DataBindingsView.vue`, same pattern as Automations): every page and snippet with a Data Object (`dataBinding`) or Integrations (`gatewayBinding`) binding, one row per page/snippet and target (class, or endpoint + route) with the number of bound elements. A page row says which snippet the block was inserted from (`sourceSnippetId`), a snippet row says in how many blocks of pages it is used. Filters: text, Data Objects / API, from a snippet / built in the page, website. "Open" selects the first bound element in the editor; a second button opens the originating snippet.
