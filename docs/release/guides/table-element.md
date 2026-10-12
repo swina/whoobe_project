@@ -23,12 +23,15 @@ The table now shows **one row per record**. The bar above it changes to a **Colu
 | Control | What it does |
 |---|---|
 | **+ column** | adds a column: the header text and the **field** to show. The field is the name of the Data Class attribute, or a path into the gateway item (`address.city`, `items[0].name`). System fields such as `updatedAt` also work for a Data Class. |
-| **Fill from data** | proposes the columns from the first record (its text, number and yes/no fields) for you to edit. |
+| **Choose fields** | opens the list of the fields found in the first record, with a check box each: tick a field to add its column, untick it to remove it. The last column cannot be removed. |
+| **Add missing fields** | adds a column for every field that is not a column yet. It never replaces the columns you have: their headers, formats, classes and order stay. |
+| **Columns (n)** | the arrow in front folds the whole panel away. |
+| Cell classes, Header classes | Tailwind classes for the cells of that column and for its header cell, on top of the table's own body and header cell classes. |
 | Format | *Plain*, or *Format date*, *Format number*, *Truncate text*, *Turn into link* (the same transformers as any bound field, with their default options). |
 | ← → × | reorder or remove a column. |
 | **Empty text** | what a table with no record says (default "No data"). |
 
-If you add no column, the table shows the fields of the first record. The header row is the column headers; switch it off with *Header*. A
+If you set no column, the table shows the fields of the first record (as many as 12); the first change you make turns them into real columns. The header row is the column headers; switch it off with *Header*. A
 bound table has **no static footer**: its footer area is used by the pagination.
 
 The rows are text: a value is never interpreted as HTML. A *Turn into link* column becomes a link only to a safe address (http, https,

@@ -54,6 +54,15 @@ describe('table binding: the components', () => {
       expect(boundBody, f).not.toContain('v-html')
     }
   })
+  it('each column has its own cell and header classes, used when the table is drawn', () => {
+    const canvas = read('apps/whoobe-one-spike/src/components/BlockTable.vue')
+    expect(canvas).toContain('v-model="col.cellClass"')
+    expect(canvas).toContain('v-model="col.headerCellClass"')
+    for (const f of ['apps/whoobe-one-spike/src/components/BlockTable.vue', 'apps/whoobe-one-spike/src/components/preview/BlockTablePreview.vue']) {
+      expect(read(f), f).toContain('col.headerCellClass')
+    }
+    expect(read('apps/whoobe-one-spike/src/composables/useBoundTable.ts')).toContain('cellClass: col.cellClass')
+  })
   it('the container repeaters read the pagination of a gateway binding too', () => {
     for (const f of ['apps/whoobe-one-spike/src/components/BlockContainer.vue', 'apps/whoobe-one-spike/src/components/preview/BlockContainerPreview.vue']) {
       expect(read(f), f).toContain('pagBinding')

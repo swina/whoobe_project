@@ -43,18 +43,33 @@
          The pagination of the list is set in the same binding window ("Rows per page"). -->
     <div v-if="bound.isBound.value" class="mb-2 bg-amber-50 border border-amber-200 p-2 rounded text-[10px] text-amber-900 flex flex-col gap-1.5" @click.stop>
       <div class="flex flex-wrap items-center gap-2">
-        <span class="font-medium">Columns</span>
-        <button type="button" class="px-1.5 py-0.5 rounded border border-amber-300 hover:bg-amber-100" @click="addBoundColumn">+ column</button>
-        <button type="button" class="px-1.5 py-0.5 rounded border border-amber-300 hover:bg-amber-100 disabled:opacity-40" :disabled="!suggestedFields.length" @click="fillColumnsFromData">Fill from data</button>
-        <label class="flex items-center gap-1 ml-auto">Empty text <input v-model="table.emptyText" type="text" placeholder="No data" class="w-28 px-1 py-0.5 rounded border border-amber-300 bg-white" /></label>
+        <button type="button" class="font-medium flex items-center gap-1" :aria-expanded="columnsOpen" @click="columnsOpen = !columnsOpen">
+          <span>{{ columnsOpen ? '▾' : '▸' }}</span> Columns ({{ bound.columns.value.length }})
+        </button>
+        <template v-if="columnsOpen">
+          <button type="button" class="px-1.5 py-0.5 rounded border border-amber-300 hover:bg-amber-100" @click="addBoundColumn">+ column</button>
+          <button type="button" class="px-1.5 py-0.5 rounded border border-amber-300 hover:bg-amber-100 disabled:opacity-40" :disabled="!suggestedFields.length" @click="fieldsOpen = !fieldsOpen">
+            {{ fieldsOpen ? 'Hide fields' : 'Choose fields' }}
+          </button>
+          <button type="button" class="px-1.5 py-0.5 rounded border border-amber-300 hover:bg-amber-100 disabled:opacity-40" :disabled="!missingFields.length" title="Adds the fields that are not columns yet; the columns you have are kept" @click="addMissingFields">Add missing fields ({{ missingFields.length }})</button>
+          <label class="flex items-center gap-1 ml-auto">Empty text <input v-model="table.emptyText" type="text" placeholder="No data" class="w-28 px-1 py-0.5 rounded border border-amber-300 bg-white" /></label>
+        </template>
+      </div>
+      <template v-if="columnsOpen">
+      <div v-if="fieldsOpen" class="flex flex-wrap gap-x-3 gap-y-1 bg-white border border-amber-200 rounded p-1.5">
+        <label v-for="f in suggestedFields" :key="f.field" class="flex items-center gap-1 font-mono">
+          <input type="checkbox" :checked="hasColumn(f.field)" :disabled="hasColumn(f.field) && bound.columns.value.length <= 1" @change="toggleField(f)" /> {{ f.field }}
+        </label>
       </div>
       <p v-if="!(table.columns && table.columns.length)" class="text-amber-700">
-        No column set yet: the fields of the first record are shown. Use "Fill from data" to edit them, or add columns.
+        No column set yet: the fields of the first record are shown. Use "Choose fields" to pick them, or add columns.
       </p>
       <datalist :id="`${doc.id}-fields`"><option v-for="f in suggestedFields" :key="f.field" :value="f.field">{{ f.header }}</option></datalist>
       <div v-for="(col, i) in (table.columns || [])" :key="col.id" class="flex flex-wrap items-center gap-1">
         <input v-model="col.header" type="text" placeholder="Header" class="w-28 px-1 py-0.5 rounded border border-amber-300 bg-white" />
         <input v-model="col.field" type="text" placeholder="field or path" :list="`${doc.id}-fields`" class="w-32 px-1 py-0.5 rounded border border-amber-300 bg-white font-mono" />
+        <input v-model="col.cellClass" type="text" placeholder="Cell classes" title="Tailwind classes for the cells of this column" class="w-32 px-1 py-0.5 rounded border border-amber-300 bg-white font-mono" />
+        <input v-model="col.headerCellClass" type="text" placeholder="Header classes" title="Tailwind classes for the header cell of this column" class="w-32 px-1 py-0.5 rounded border border-amber-300 bg-white font-mono" />
         <select :value="col.transform?.type || 'none'" class="px-1 py-0.5 rounded border border-amber-300 bg-white" @change="setColumnFormat(col, ($event.target as HTMLSelectElement).value)">
           <option value="none">Plain</option>
           <option v-for="t in columnFormats" :key="t.type" :value="t.type">{{ t.label }}</option>
@@ -63,6 +78,7 @@
         <button type="button" class="px-1 rounded border border-amber-300 hover:bg-amber-100 disabled:opacity-30" :disabled="i === (table.columns || []).length - 1" title="Move right" @click="moveBoundColumn(i, 1)">→</button>
         <button type="button" class="px-1 rounded border border-rose-300 text-rose-600 hover:bg-rose-50" title="Remove" @click="removeBoundColumn(i)">×</button>
       </div>
+      </template>
     </div>
 
     <!-- Per-cell colspan/rowspan editor - only shown once a cell is
@@ -214,7 +230,7 @@ import Element from '../scripts/ElementsClass.js'
 import type { TableCell } from '../scripts/ElementsClass.js'
 import { useEditorStore } from '../store/editor'
 import ExpandableTextInput from './ExpandableTextInput.vue'
-import { columnsFromRecords } from '@whoobe-cms/schema'
+import { appendMissingColumns, columnsFromRecords, missingColumnFields, toggleColumnField } from '@whoobe-cms/schema'
 import { useBoundTable } from '../composables/useBoundTable'
 import { TRANSFORMERS } from '../scripts/field-transforms'
 
@@ -243,11 +259,25 @@ function newColumn(field = '', header = ''): NonNullable<NonNullable<WhoobeEleme
   return { id: (props.doc as any).randomID?.() ?? Math.random().toString(36).slice(2, 10), header, field }
 }
 function addBoundColumn() {
-  if (!table.value.columns) table.value.columns = []
-  table.value.columns.push(newColumn())
+  table.value.columns = [...currentColumns(), newColumn()]
 }
-function fillColumnsFromData() {
-  table.value.columns = suggestedFields.value.slice(0, 12).map((f) => newColumn(f.field, f.header))
+// The panel can be folded away, and the list of fields can be opened to pick the columns with check boxes.
+const columnsOpen = ref(true)
+const fieldsOpen = ref(false)
+
+// A column per field is only written once the author changes something: until then `table.columns` stays empty and the
+// fields of the first record are shown. The first change turns what is shown into real, editable columns.
+function currentColumns() {
+  return table.value.columns?.length ? table.value.columns : bound.columns.value.map((c) => newColumn(c.field, c.header))
+}
+const hasColumn = (field: string) => bound.columns.value.some((c) => c.field === field)
+const missingFields = computed(() => missingColumnFields(bound.columns.value, suggestedFields.value))
+function toggleField(f: { field: string; header: string }) {
+  table.value.columns = toggleColumnField(currentColumns(), f.field, () => newColumn(f.field, f.header))
+}
+// Never replaces what the author set: headers, formats, classes and order of the existing columns are kept
+function addMissingFields() {
+  table.value.columns = appendMissingColumns(currentColumns(), suggestedFields.value, (f) => newColumn(f.field, f.header))
 }
 function removeBoundColumn(i: number) {
   table.value.columns?.splice(i, 1)
