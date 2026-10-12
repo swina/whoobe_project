@@ -3,7 +3,8 @@
 //   sites <apiUrl>                          -> "<id>\t<name>" per website
 //   scan <apiUrl> <websiteId>               -> "gateway=<n>", "dangling=<n>", "bindings=<id,id,...>"
 //   probe <gatewayUrl>                      -> exit 0 when a Whoobe Gateway answers there
-//   check <gatewayUrl> <websiteId> <ids>    -> exit 1 listing the binding ids the gateway cannot resolve (env SITE_KEY: gateway site key)
+//   check <gatewayUrl> <websiteId> <ids>    -> exit 1 listing the binding ids the gateway cannot resolve, exit 4 when it only asks for the site key
+//                                              (env SITE_KEY: the gateway site key)
 //   suggest <apiUrl>                        -> the first candidate URL where a gateway answers (empty line when none)
 // Needs Node 20+ (global fetch). The page walking and the candidates are exported for the unit test.
 
@@ -15,15 +16,15 @@ export function scanTree(tree, acc = { gateway: 0, dangling: 0, bindings: new Se
   if (Array.isArray(tree)) { tree.forEach((n) => scanTree(n, acc)); return acc }
   const gb = tree.gatewayBinding
   if (gb && typeof gb === 'object') {
-    acc.gateway++
-    if (typeof gb.bindingId === 'string' && gb.bindingId) acc.bindings.add(gb.bindingId)
-    else acc.dangling++ // authored, but never pinned to a gateway route (unknown endpoint or route at save time)
+    // no binding id: a field of a repeated container (only a `fieldPath`), or one the editor could not pin; the public content has no
+    // endpoint name left to tell them apart, so it is not counted
+    if (typeof gb.bindingId === 'string' && gb.bindingId) { acc.gateway++; acc.bindings.add(gb.bindingId) }
   }
   const fc = tree.formConfig
   if (fc && typeof fc === 'object' && (fc.gatewayEndpointName || fc.gatewayBindingId)) {
     acc.gateway++
-    if (typeof fc.gatewayBindingId === 'string' && fc.gatewayBindingId) acc.bindings.add(fc.gatewayBindingId)
-    else acc.dangling++
+    // a form's SUBMIT binding: the resolve route does not know it (404), so it is counted but not checked
+    if (!(typeof fc.gatewayBindingId === 'string' && fc.gatewayBindingId)) acc.dangling++
   }
   for (const child of tree.blocks ?? []) scanTree(child, acc)
   return acc
@@ -90,16 +91,20 @@ async function main([cmd, ...args]) {
       const [gatewayUrl, websiteId, ids] = args
       const headers = process.env.SITE_KEY ? { 'X-Whoobe-Site-Id': websiteId, 'X-Whoobe-Site-Key': process.env.SITE_KEY } : {}
       const failed = []
+      let needsKey = 0
       for (const id of (ids ?? '').split(',').filter(Boolean)) {
         try {
           const res = await post(`${gatewayUrl.replace(/\/+$/, '')}/api/v1/gateway/resolve`, { bindingId: id }, headers)
-          if (!res.ok) failed.push(`${id} (${res.status})`)
+          // 401/403 without a site key: the website needs one, which says nothing about the binding
+          if ((res.status === 401 || res.status === 403) && !process.env.SITE_KEY) needsKey++
+          else if (!res.ok) failed.push(`${id} (${res.status})`)
         } catch (err) {
           failed.push(`${id} (${err instanceof Error ? err.message : 'unreachable'})`)
         }
       }
       for (const f of failed) console.log(f)
-      return failed.length ? 1 : 0
+      if (needsKey) console.log(`needs-key=${needsKey}`)
+      return failed.length ? 1 : needsKey ? 4 : 0
     }
     default:
       console.error('usage: publish-preflight.mjs sites|scan|probe|suggest|check ...')

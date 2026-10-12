@@ -12,15 +12,15 @@ describe('publish-preflight: scanTree', () => {
   it('counts bindings of tables, containers and forms, and the ones never pinned to a route', () => {
     const tree = { id: 'r', blocks: [
       { id: 'a', gatewayBinding: { bindingId: 'b1' } },
-      { id: 'b', blocks: [{ id: 'c', gatewayBinding: { endpointName: 'x', routePath: '/y' } }] },
+      { id: 'b', blocks: [{ id: 'c', gatewayBinding: { fieldPath: 'title' } }] },
       { id: 'f', formConfig: { gatewayEndpointName: 'brevo', gatewayBindingId: 'b2' } },
       { id: 'g', formConfig: { gatewayEndpointName: 'brevo' } },
       { id: 'h', formConfig: {} },
     ] }
     const r = scanTree(tree)
-    expect(r.gateway).toBe(4)
-    expect(r.dangling).toBe(2)
-    expect([...r.bindings].sort()).toEqual(['b1', 'b2'])
+    expect(r.gateway).toBe(3)
+    expect(r.dangling).toBe(1)
+    expect([...r.bindings].sort()).toEqual(['b1'])
   })
   it('a page with no gateway usage needs no gateway', () => {
     expect(scanTree({ blocks: [{ tag: 'p' }] }).gateway).toBe(0)
@@ -63,5 +63,13 @@ describe('publish-preflight: the script and the dashboard (schema package) agree
   it('the same gateway candidates', () => {
     for (const u of ['http://localhost:3003', 'https://cms.example.com', 'http://whoobecms.local:3003', 'https://cms.example.com:8443', 'nope'])
       expect(gatewayCandidates(u)).toEqual(schemaCandidates(u))
+  })
+})
+
+describe('whoobe-publish: where the SDK packages come from', () => {
+  it('is found from the generator, so the output folder can be anywhere', async () => {
+    const { defaultMonorepoRoot } = await import('../../../packages/publish/src/cli')
+    expect(defaultMonorepoRoot('/tmp/somewhere/else/site')).toBe(ROOT_DIR)
+    expect(defaultMonorepoRoot('/a/b/c', '/nowhere')).toBe('/a')
   })
 })
