@@ -205,3 +205,32 @@ export function searchTerms(query: string): string[] {
 export function matchesTerms(haystack: string, terms: string[]): boolean {
   return terms.every((t) => haystack.includes(t))
 }
+
+// --- the row counter ("Showing 1-10 of 87") ---
+
+/** The rows on screen, 1-based and inclusive: `shown` is how many rows are drawn now, `page` the current page (standard mode). */
+export function rowRange(total: number, p: Pick<PaginationSettings, 'rowsPerPage' | 'mode'>, page: number, shown: number): { from: number; to: number } {
+  if (total <= 0 || shown <= 0) return { from: 0, to: 0 }
+  if (p.rowsPerPage <= 0 || p.mode === 'lazyload') return { from: 1, to: Math.min(shown, total) }
+  const pages = pageCount(total, p.rowsPerPage)
+  const current = Math.min(Math.max(1, Math.floor(page) || 1), pages)
+  const from = (current - 1) * p.rowsPerPage + 1
+  return { from, to: Math.min(from + shown - 1, total) }
+}
+
+export const DEFAULT_COUNT_TEXT = 'Showing {from}–{to} of {total}'
+export const DEFAULT_COUNT_TEXT_FILTERED = 'Showing {from}–{to} of {total} (filtered from {all})'
+export const DEFAULT_COUNT_TEXT_NONE = 'No records'
+
+/** The text of the counter. Placeholders: {from} {to} {total} (rows in the result) {all} (rows before the search). Plain text: the
+ *  caller shows it as text, never as HTML. Without a `pattern`, a default is used (one for a filtered result, one for no record). */
+export function formatRowCount(
+  pattern: string | undefined,
+  n: { from: number; to: number; total: number; all: number },
+): string {
+  const custom = typeof pattern === 'string' && pattern.trim() ? pattern : ''
+  const template = custom
+    || (n.total === 0 ? DEFAULT_COUNT_TEXT_NONE : n.total !== n.all ? DEFAULT_COUNT_TEXT_FILTERED : DEFAULT_COUNT_TEXT)
+  const values: Record<string, number> = { from: n.from, to: n.to, total: n.total, all: n.all }
+  return template.replace(/\{(from|to|total|all)\}/g, (_, k: string) => String(values[k]))
+}

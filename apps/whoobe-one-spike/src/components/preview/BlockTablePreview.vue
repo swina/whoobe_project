@@ -52,20 +52,23 @@
       </tr>
     </tbody>
     <!-- A bound table has no static footer (its rows come from the data); the pagination controls sit in the table, in one row. -->
-    <tfoot v-if="bound.isBound.value && bound.needsControls.value">
+    <tfoot v-if="bound.isBound.value && bound.hasFooter.value">
       <tr>
         <td :colspan="Math.max(1, bound.columns.value.length)" class="p-0">
-          <div :class="bound.pagination.value.containerClass">
-            <template v-if="bound.pagination.value.mode === 'standard'">
-              <div class="flex items-center justify-center gap-3 text-xs text-gray-500">
-                <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="bound.page.value <= 1" @click="bound.prev()">‹ Prev</button>
-                <span>Page {{ bound.page.value }} of {{ bound.pages.value }}</span>
-                <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="bound.page.value >= bound.pages.value" @click="bound.next()">Next ›</button>
-              </div>
-            </template>
-            <template v-else>
-              <span class="text-xs text-gray-500">{{ bound.rows.value.length }} / {{ bound.total.value }}</span>
-              <button v-if="bound.rows.value.length < bound.total.value" type="button" :class="bound.pagination.value.loadMoreClass" @click="bound.more()">{{ bound.pagination.value.loadMoreText }}</button>
+          <div :class="bound.needsControls.value ? bound.pagination.value.containerClass : 'w-full flex justify-center p-2'">
+            <span v-if="bound.showCount.value" :class="table.countClass || 'text-xs text-gray-500'" aria-live="polite">{{ bound.countLabel.value }}</span>
+            <template v-if="bound.needsControls.value">
+              <template v-if="bound.pagination.value.mode === 'standard'">
+                <div class="flex items-center justify-center gap-3 text-xs text-gray-500">
+                  <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="bound.page.value <= 1" @click="bound.prev()">‹ Prev</button>
+                  <span>Page {{ bound.page.value }} of {{ bound.pages.value }}</span>
+                  <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="bound.page.value >= bound.pages.value" @click="bound.next()">Next ›</button>
+                </div>
+              </template>
+              <template v-else>
+                <span v-if="!bound.showCount.value" class="text-xs text-gray-500">{{ bound.rows.value.length }} / {{ bound.total.value }}</span>
+                <button v-if="bound.rows.value.length < bound.total.value" type="button" :class="bound.pagination.value.loadMoreClass" @click="bound.more()">{{ bound.pagination.value.loadMoreText }}</button>
+              </template>
             </template>
           </div>
         </td>

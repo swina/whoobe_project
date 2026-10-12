@@ -356,6 +356,11 @@ export interface ElementTable {
   searchable?: boolean
   searchPlaceholder?: string
   searchClass?: string
+  /** Bound table: a row counter under the rows ("Showing 1–10 of 87"). */
+  showCount?: boolean
+  /** Text of the counter; placeholders {from} {to} {total} {all}. Empty = a default. */
+  countText?: string
+  countClass?: string
   cols: number
   hasHeader: boolean
   hasFooter: boolean

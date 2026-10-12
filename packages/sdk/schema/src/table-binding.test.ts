@@ -174,3 +174,33 @@ describe('searching', () => {
     expect(matchesTerms(hay, [])).toBe(true)
   })
 })
+
+import { DEFAULT_COUNT_TEXT, formatRowCount, rowRange } from './table-binding.js'
+
+describe('the row counter', () => {
+  const std = { rowsPerPage: 10, mode: 'standard' as const }
+  it('computes the rows on screen for each page, the last one short', () => {
+    expect(rowRange(23, std, 1, 10)).toEqual({ from: 1, to: 10 })
+    expect(rowRange(23, std, 2, 10)).toEqual({ from: 11, to: 20 })
+    expect(rowRange(23, std, 3, 3)).toEqual({ from: 21, to: 23 })
+    expect(rowRange(23, std, 99, 3)).toEqual({ from: 21, to: 23 })
+  })
+  it('without pages or in lazyload mode, from the first row to what is drawn', () => {
+    expect(rowRange(87, { rowsPerPage: 0, mode: 'standard' }, 1, 87)).toEqual({ from: 1, to: 87 })
+    expect(rowRange(87, { rowsPerPage: 10, mode: 'lazyload' }, 1, 30)).toEqual({ from: 1, to: 30 })
+  })
+  it('is 0-0 when there is nothing to show', () => {
+    expect(rowRange(0, std, 1, 0)).toEqual({ from: 0, to: 0 })
+    expect(rowRange(5, std, 1, 0)).toEqual({ from: 0, to: 0 })
+  })
+  it('fills the placeholders and picks a default for a filtered result and for none', () => {
+    expect(formatRowCount(undefined, { from: 1, to: 10, total: 87, all: 87 })).toBe('Showing 1–10 of 87')
+    expect(formatRowCount('', { from: 1, to: 3, total: 3, all: 87 })).toBe('Showing 1–3 of 3 (filtered from 87)')
+    expect(formatRowCount('  ', { from: 0, to: 0, total: 0, all: 87 })).toBe('No records')
+    expect(formatRowCount('{from}-{to} / {total} ({all})', { from: 11, to: 20, total: 23, all: 40 })).toBe('11-20 / 23 (40)')
+    expect(DEFAULT_COUNT_TEXT).toContain('{total}')
+  })
+  it('only knows its four placeholders; anything else is written as it is, as text', () => {
+    expect(formatRowCount('{total} {nope} <b>x</b> {__proto__}', { from: 1, to: 1, total: 1, all: 1 })).toBe('1 {nope} <b>x</b> {__proto__}')
+  })
+})

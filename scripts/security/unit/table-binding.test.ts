@@ -76,6 +76,17 @@ describe('table binding: the components', () => {
     expect(c.indexOf('const filtered')).toBeLessThan(c.indexOf('const processed'))
     expect(c.indexOf('const processed')).toBeLessThan(c.indexOf('const shown'))
   })
+  it('the row counter is drawn as text, in the canvas and the preview, and follows search and pages', () => {
+    for (const f of ['apps/whoobe-one-spike/src/components/BlockTable.vue', 'apps/whoobe-one-spike/src/components/preview/BlockTablePreview.vue']) {
+      const src = read(f)
+      expect(src, f).toContain('bound.countLabel.value')
+      expect(src, f).toContain('bound.hasFooter.value')
+      expect(src, f).not.toMatch(/v-html="[^"]*count/i)
+    }
+    const c = read('apps/whoobe-one-spike/src/composables/useBoundTable.ts')
+    expect(c).toContain('rowRange(total.value')
+    expect(c).toContain('all: recordCount.value')
+  })
   it('the container repeaters read the pagination of a gateway binding too', () => {
     for (const f of ['apps/whoobe-one-spike/src/components/BlockContainer.vue', 'apps/whoobe-one-spike/src/components/preview/BlockContainerPreview.vue']) {
       expect(read(f), f).toContain('pagBinding')

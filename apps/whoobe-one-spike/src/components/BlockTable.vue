@@ -65,10 +65,15 @@
       <div class="flex flex-wrap items-center gap-3 border-t border-amber-200 pt-1.5">
         <label class="flex items-center gap-1"><input v-model="table.sortable" type="checkbox" /> Sortable columns</label>
         <label class="flex items-center gap-1"><input v-model="table.searchable" type="checkbox" /> Search box</label>
+        <label class="flex items-center gap-1"><input v-model="table.showCount" type="checkbox" /> Row count</label>
         <template v-if="table.searchable">
           <input v-model="table.searchPlaceholder" type="text" placeholder="Search…" title="Placeholder of the search box" class="w-28 px-1 py-0.5 rounded border border-amber-300 bg-white" />
           <input v-model="table.searchClass" type="text" placeholder="Search box classes" title="Tailwind classes of the search box (empty = default)" class="w-44 px-1 py-0.5 rounded border border-amber-300 bg-white font-mono" />
         </template>
+      </div>
+      <div v-if="table.showCount" class="flex flex-wrap items-center gap-2">
+        <input v-model="table.countText" type="text" placeholder="Showing {from}–{to} of {total}" title="Text of the counter. Placeholders: {from} {to} {total} (rows in the result) {all} (rows before a search). Empty = the default." class="w-64 px-1 py-0.5 rounded border border-amber-300 bg-white font-mono" />
+        <input v-model="table.countClass" type="text" placeholder="Counter classes" title="Tailwind classes of the counter (empty = default)" class="w-36 px-1 py-0.5 rounded border border-amber-300 bg-white font-mono" />
       </div>
       <p v-if="!(table.columns && table.columns.length)" class="text-amber-700">
         No column set yet: the fields of the first record are shown. Use "Choose fields" to pick them, or add columns.
@@ -190,20 +195,23 @@
           </template>
         </tr>
       </tbody>
-      <tfoot v-if="bound.isBound.value && bound.needsControls.value" @click.stop>
+      <tfoot v-if="bound.isBound.value && bound.hasFooter.value" @click.stop>
         <tr>
           <td :colspan="Math.max(1, bound.columns.value.length)" class="p-0">
-            <div :class="bound.pagination.value.containerClass">
-              <template v-if="bound.pagination.value.mode === 'standard'">
-                <div class="flex items-center justify-center gap-3 text-xs text-gray-500">
-                  <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="bound.page.value <= 1" @click="bound.prev()">‹ Prev</button>
-                  <span>Page {{ bound.page.value }} of {{ bound.pages.value }}</span>
-                  <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="bound.page.value >= bound.pages.value" @click="bound.next()">Next ›</button>
-                </div>
-              </template>
-              <template v-else>
-                <span class="text-xs text-gray-500">{{ bound.rows.value.length }} / {{ bound.total.value }}</span>
-                <button v-if="bound.rows.value.length < bound.total.value" type="button" :class="bound.pagination.value.loadMoreClass" @click="bound.more()">{{ bound.pagination.value.loadMoreText }}</button>
+            <div :class="bound.needsControls.value ? bound.pagination.value.containerClass : 'w-full flex justify-center p-2'">
+              <span v-if="bound.showCount.value" :class="table.countClass || 'text-xs text-gray-500'" aria-live="polite">{{ bound.countLabel.value }}</span>
+              <template v-if="bound.needsControls.value">
+                <template v-if="bound.pagination.value.mode === 'standard'">
+                  <div class="flex items-center justify-center gap-3 text-xs text-gray-500">
+                    <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="bound.page.value <= 1" @click="bound.prev()">‹ Prev</button>
+                    <span>Page {{ bound.page.value }} of {{ bound.pages.value }}</span>
+                    <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="bound.page.value >= bound.pages.value" @click="bound.next()">Next ›</button>
+                  </div>
+                </template>
+                <template v-else>
+                  <span v-if="!bound.showCount.value" class="text-xs text-gray-500">{{ bound.rows.value.length }} / {{ bound.total.value }}</span>
+                  <button v-if="bound.rows.value.length < bound.total.value" type="button" :class="bound.pagination.value.loadMoreClass" @click="bound.more()">{{ bound.pagination.value.loadMoreText }}</button>
+                </template>
               </template>
             </div>
           </td>

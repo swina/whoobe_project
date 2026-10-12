@@ -51,7 +51,14 @@ Two switches in the Columns panel, both for the visitor of the page:
 Both work on the **whole list**, before it is cut into pages: the page counter follows the result and goes back to page 1 when the search or the sort changes.
 When nothing matches, the table says "No matching rows". Like the pagination, they happen in the browser, over the list that was downloaded.
 
-## 4. Pagination
+## 4. Row counter
+
+Tick **Row count** in the Columns panel to show how many rows there are, under the table: "Showing 11–20 of 87". It follows the page, the search and
+the "More" button; after a search it also says how many there were before ("Showing 1–6 of 6 (filtered from 87)"), and "No records" when there
+is nothing. You can write your own text with the placeholders `{from}`, `{to}`, `{total}` (rows in the result) and `{all}` (rows before the search), and give it
+classes. The text is shown as plain text, never as HTML. In *Lazy load* mode the counter replaces the small "n / total" figure.
+
+## 5. Pagination
 
 Set it in the same binding window:
 
@@ -63,7 +70,7 @@ The same settings now work for a list bound to a **gateway endpoint** (the windo
 bound the same way. Paging happens **in the browser**, over the list that was fetched: use the filters, the order, the offset and the limit
 of the binding to keep that list a reasonable size, because all of it is downloaded.
 
-## 5. Limits
+## 6. Limits
 
 - **Published sites generated for Next.js or Nuxt, and the headless SDK, do not draw the Table element at all** (with or without data): the
   element is not part of what the SDK renders. A table is drawn by the editor application (the editor, its preview and the pages it serves). Use a bound container for a list in a generated site.
