@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 import { DocsConfigError, checkNavText, createContentReader, docsSearchIndex, renderDraft, describeDocsSite, docsConfigOf, findDocByRoute, loadDocsSite, renderDocPage } from './docs-site.js';
+import { publishJobsRouter } from './publish-jobs.js';
 import { createAuthoredNotifyCache, createRecipientThrottle, isSingleEmail, notifyKey } from './form-notify.js';
 import {
   findUserByEmail,
@@ -6331,6 +6332,9 @@ app.get('/api/v1/system/logs/download', requireAuth, async (req: Request, res: R
     res.status(500).json({ error: 'Failed to download log file' })
   }
 })
+
+// Publishing from the dashboard (docs/plans/website/publish-from-dashboard.md): jobs for an external runner.
+app.use(publishJobsRouter(process.env.PUBLISH_RUNNER_TOKEN ?? '', logger));
 
 // Documentation sites (docs/plans/docs-sites/docs-site-plan.md): a website of kind "docs" is built from the Markdown assets of a
 // DAM folder. The routes below only read; documents are written with the ordinary DAM upload.

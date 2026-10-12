@@ -34,7 +34,7 @@ export const SANDBOX_DISABLED_MESSAGE = 'This feature is disabled in the public 
 
 // Features that reach outside the stack or run builds: refused in the sandbox (path prefixes of core-api).
 const BLOCKED_PREFIXES = [
-  '/ai/', '/mail-settings', '/mail-templates', '/mail-log', '/figma/', '/migration-sources',
+  '/publish/', '/ai/', '/mail-settings', '/mail-templates', '/mail-log', '/figma/', '/migration-sources',
   '/whoobe-one/settings/cdn-mirror', '/public/dam/assets/mirror-status',
 ];
 const BLOCKED_PATTERNS = [

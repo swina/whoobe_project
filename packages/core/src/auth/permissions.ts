@@ -16,6 +16,8 @@ export const PERMISSIONS = {
   WEBSITES_EDIT: 'websites:edit',
   WEBSITES_CREATE: 'websites:create',
   WEBSITES_DELETE: 'websites:delete',
+  // Start a publication of a website from the dashboard (docs/plans/website/publish-from-dashboard.md)
+  WEBSITES_PUBLISH: 'websites:publish',
   PAGES_LIST: 'pages:list',
   PAGES_VIEW: 'pages:view',
   PAGES_EDIT: 'pages:edit',
@@ -54,7 +56,7 @@ export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
 export const ALL_PERMISSION_KEYS: PermissionKey[] = Object.values(PERMISSIONS);
 
-export const DEFAULT_ROLES = ['admin', 'editor', 'viewer'] as const;
+export const DEFAULT_ROLES = ['admin', 'editor', 'viewer', 'publisher'] as const;
 export type DefaultRoleName = (typeof DEFAULT_ROLES)[number];
 
 // Seed mapping: which default role gets which permissions out of the box.
@@ -107,5 +109,16 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<DefaultRoleName, PermissionKey[]> 
     PERMISSIONS.THEMES_VIEW,
     PERMISSIONS.COMPONENTS_LIST,
     PERMISSIONS.COMPONENTS_VIEW,
+  ],
+  // Roles by function: the person who puts the site online. Reads websites and pages, starts publications; no editing, settings, users or deletion.
+  publisher: [
+    PERMISSIONS.OBJECTS_READ,
+    PERMISSIONS.WEBSITES_LIST,
+    PERMISSIONS.WEBSITES_VIEW,
+    PERMISSIONS.WEBSITES_PUBLISH,
+    PERMISSIONS.PAGES_LIST,
+    PERMISSIONS.PAGES_VIEW,
+    PERMISSIONS.THEMES_LIST,
+    PERMISSIONS.THEMES_VIEW,
   ],
 };

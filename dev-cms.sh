@@ -22,6 +22,7 @@ APPS=(
   "core-api"
   "asset-processor"
   "gateway"
+  "publisher"
   "whoobe-one-spike"
 )
 
@@ -103,6 +104,7 @@ if [ "$BUILD" = "1" ]; then
     --filter '@whoobe-cms/core-api^...' \
     --filter '@whoobe-cms/asset-processor^...' \
     --filter '@whoobe-cms/gateway^...' \
+    --filter '@whoobe-cms/publisher^...' \
     --filter '@whoobe-cms/whoobe-one-spike^...' \
     build
 fi
@@ -120,6 +122,7 @@ echo "  gateway          → http://localhost:3001"
 echo "  asset-processor  → http://localhost:3002"
 echo "  core-api         → http://localhost:3003"
 echo "  whoobe-one-spike → http://localhost:3006"
+echo "  publisher        → no port (runs the dashboard's Publish jobs; needs PUBLISH_RUNNER_TOKEN in .env)"
 echo ""
 
 # Start each app in background, prefixing output with its name

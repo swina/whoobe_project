@@ -3,10 +3,10 @@
 // renders with an empty registry. Consumers override any kind via the
 // registry to map it to their own design-system component.
 
-import { useState, useEffect, useRef, useCallback, createElement, type FormEvent, type ReactNode } from 'react'
+import { Children, useState, useEffect, useRef, useCallback, createElement, type FormEvent, type ReactNode } from 'react'
 import { sanitizeRichText } from '@whoobe-cms/schema'
 import * as LucideIcons from 'lucide-react'
-import { collectFormValues, dispatchFormResult, sanitizeOutcome, showsResultMessage, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
+import { collectFormValues, dispatchFormResult, sliderView, sanitizeOutcome, showsResultMessage, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
 import { useWhoobe } from './context.js'
 import type { NodeComponent } from './types.js'
 import { DefaultTable } from './table.js'
@@ -313,7 +313,7 @@ export const DefaultSearch: NodeComponent = ({ descriptor }) => {
 // --- media ---
 
 export const DefaultVideo: NodeComponent = ({ descriptor }) => (
-  <video {...fieldProps(descriptor)} src={descriptor.node.src ?? undefined} controls />
+  <video {...fieldProps(descriptor)} src={descriptor.image?.url ?? descriptor.node.src ?? undefined} controls />
 )
 
 // Audio: the plain browser player, from the element's `options` (controls, loop, autoplay, preload). The 'waveform'
@@ -343,28 +343,16 @@ export const DefaultVimeo: NodeComponent = ({ descriptor }) => (
 )
 
 // --- slider ---
+// Same behaviour as the editor's preview: the slides are the node's children (rendered by WhoobeNode, passed in as `children`), the tab
+// row is named from each slide's `tabLabel`, and which of tabs / arrows / home / dots appear comes from sliderView() (shared by the adapters).
 
-const DEFAULT_SLIDER_SETTINGS = {
-  autoplay: false,
-  interval: 5000,
-  loop: true,
-  showNav: true,
-  showDots: true,
-  mode: 'standard',
-  navClass: 'flex items-center justify-center gap-1.5 px-2 py-1',
-  arrowClass: 'w-8 h-8 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white',
-  dotClass: 'w-2.5 h-2.5 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors',
-  activeDotClass: 'w-2.5 h-2.5 rounded-full bg-indigo-600 transition-colors',
-  dotContainerClass: 'flex items-center justify-center gap-2 pt-3',
-}
-
-export const DefaultSlider: NodeComponent = ({ descriptor }) => {
-  const ctx = useWhoobe()
-  const slides = descriptor.children ?? []
-  const s = { ...DEFAULT_SLIDER_SETTINGS, ...(descriptor.slider ?? {}) } as any
+export const DefaultSlider: NodeComponent = ({ descriptor, children }) => {
+  const slides = Children.toArray(children)
+  const view = sliderView(descriptor, descriptor.children)
+  const s = view.settings
+  const total = slides.length
   const [current, setCurrent] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const total = slides.length
 
   const goTo = useCallback((i: number) => {
     if (s.loop) setCurrent(((i % total) + total) % total)
@@ -374,31 +362,21 @@ export const DefaultSlider: NodeComponent = ({ descriptor }) => {
   const next = useCallback(() => goTo(current + 1), [current, goTo])
   const prev = useCallback(() => goTo(current - 1), [current, goTo])
 
+  // a manual move restarts the autoplay countdown (the interval is rebuilt whenever `current` changes through next)
   useEffect(() => {
     if (!s.autoplay || total <= 1) return
-    timerRef.current = setInterval(next, s.interval)
+    timerRef.current = setInterval(next, Math.max(500, Number(s.interval) || 5000))
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [s.autoplay, s.interval, next, total])
 
-  // Deep-link support: a URL like `/features#slide2` (or `#slide-2`/
-  // `#slide_2`, 1-based) jumps this slider straight to that slide on load -
-  // the same `#slideN` convention already documented as an in-page anchor
-  // example (see packages/mobile-app's generated App.vue) extended to
-  // actually switch the active slide, not just scroll to it. Run in an
-  // effect (not a useState initializer) so server-rendered/statically
-  // exported markup always starts at slide 0 and only the client applies
-  // the hash, avoiding a hydration mismatch. Re-applied on `hashchange`
-  // too, so an in-page link to `#slide3` clicked while already on this page
-  // also works. If a page has more than one slider, every one of them
-  // reacts to the same hash - there's no per-slider id in the hash to
-  // disambiguate.
+  // Deep-link support: `/features#slide2` (also `#slide-2`, `#slide_2`, 1-based) jumps to that slide. Applied in an effect, not in the
+  // initial state, so the server markup always starts at slide 0 and hydration matches. Every slider of the page reacts to the same hash.
   useEffect(() => {
     if (typeof window === 'undefined' || total === 0) return
     const applyHashSlide = () => {
       const match = /^#?slide[-_]?(\d+)$/i.exec(window.location.hash)
       if (!match) return
-      const requested = parseInt(match[1], 10) - 1
-      setCurrent(Math.max(0, Math.min(requested, total - 1)))
+      setCurrent(Math.max(0, Math.min(parseInt(match[1], 10) - 1, total - 1)))
     }
     applyHashSlide()
     window.addEventListener('hashchange', applyHashSlide)
@@ -407,59 +385,44 @@ export const DefaultSlider: NodeComponent = ({ descriptor }) => {
 
   if (total === 0) return <div {...baseProps(descriptor)} />
 
+  const tabRow = (
+    <div className={view.tabsClass}>
+      {view.labels.map((label, i) => (
+        <button key={i} type="button" onClick={() => goTo(i)} className={i === current ? s.activeTabClass : s.tabClass}>{label}</button>
+      ))}
+    </div>
+  )
+  const overlay = { position: 'absolute' as const }
+
   return (
-    <div {...baseProps(descriptor)}>
-      {/* Sliding track */}
-      <div style={{ overflow: 'hidden', position: 'relative' }}>
-        <div style={{ display: 'flex', transition: 'transform 0.5s ease', transform: `translateX(-${current * 100}%)` }}>
-          {slides.map((child, i) => {
-          const SlideComp = (ctx.registry[child.kind] ?? DefaultContainer) as NodeComponent
-          return (
-            <div key={child.id} style={{ minWidth: '100%', boxSizing: 'border-box' }}>
-              <SlideComp descriptor={child} />
-            </div>
-          )
-        })}
+    <div {...baseProps(descriptor)} data-slider="true">
+      {view.tabs === 'above' && tabRow}
+      <div style={{ position: 'relative' }}>
+        <div style={{ overflow: 'hidden' }}>
+          <div style={{ display: 'flex', transition: 'transform 0.5s ease-out', transform: `translateX(-${current * 100}%)` }}>
+            {slides.map((slide, i) => (
+              <div key={i} style={{ width: '100%', flexShrink: 0 }}>{slide}</div>
+            ))}
+          </div>
         </div>
+        {view.arrows && (
+          <>
+            <button type="button" aria-label="Previous slide" onClick={prev} className={s.arrowClass} style={{ ...overlay, left: 8, top: '50%', transform: 'translateY(-50%)' }}>{view.glyphs.prev}</button>
+            <button type="button" aria-label="Next slide" onClick={next} className={s.arrowClass} style={{ ...overlay, right: 8, top: '50%', transform: 'translateY(-50%)' }}>{view.glyphs.next}</button>
+          </>
+        )}
+        {view.home && (
+          <button type="button" aria-label="First slide" onClick={() => goTo(0)} className={s.homeClass} style={{ ...overlay, bottom: 8, left: '50%', transform: 'translateX(-50%)' }}>{view.glyphs.home}</button>
+        )}
+        {view.dots && (
+          <div className={s.dotContainerClass}>
+            {slides.map((_, i) => (
+              <button key={i} type="button" aria-label={`Go to slide ${i + 1}`} onClick={() => goTo(i)} className={i === current ? s.activeDotClass : s.dotClass} />
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Tab navigation (mode: tabs) */}
-      {s.mode === 'tabs' && s.tabsPosition === 'above' && (
-        <div className={s.tabContainerClass || 'flex items-center justify-center gap-2'}>
-          {slides.map((_, i) => (
-            <button key={i} onClick={() => goTo(i)}
-              className={i === current ? s.activeTabClass : s.tabClass}>{/* label */}</button>
-          ))}
-        </div>
-      )}
-
-      {/* Arrow navigation (mode: standard) */}
-      {s.showNav && total > 1 && (
-        <div className={s.navClass} style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 8 }}>
-          <button onClick={prev} className={s.arrowClass} aria-label="Previous">‹</button>
-          <button onClick={next} className={s.arrowClass} aria-label="Next">›</button>
-        </div>
-      )}
-
-      {/* Dot navigation */}
-      {s.showDots && total > 1 && (
-        <div className={s.dotContainerClass}>
-          {slides.map((_, i) => (
-            <button key={i} onClick={() => goTo(i)}
-              className={i === current ? s.activeDotClass : s.dotClass} aria-label={`Slide ${i + 1}`} />
-          ))}
-        </div>
-      )}
-
-      {/* Tab navigation (mode: tabs, below) */}
-      {s.mode === 'tabs' && s.tabsPosition === 'below' && (
-        <div className={s.tabContainerClass || 'flex items-center justify-center gap-2'}>
-          {slides.map((_, i) => (
-            <button key={i} onClick={() => goTo(i)}
-              className={i === current ? s.activeTabClass : s.tabClass}>{/* label */}</button>
-          ))}
-        </div>
-      )}
+      {view.tabs === 'below' && tabRow}
     </div>
   )
 }

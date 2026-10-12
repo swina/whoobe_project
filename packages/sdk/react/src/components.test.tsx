@@ -24,6 +24,30 @@ async function renderTree(tree: unknown, registry = {}, ctx: Record<string, unkn
 }
 
 describe('WhoobeNode (SSR)', () => {
+  it('renders the slides of a slider (their content), labelled tabs in tabs mode and no arrows', async () => {
+    const slide = (id: string, text: string, tabLabel?: string) => ({ id, type: 'container', tag: 'flex', element: 'div', tabLabel, css: { css: '', container: '' }, blocks: [{ id: id + 'p', type: 'element', tag: 'element', element: 'p', content: text }] })
+    const tree = {
+      id: 'root', type: 'container', tag: 'document', element: 'div', css: { css: '', container: '' },
+      blocks: [{ id: 's', type: 'container', tag: 'slider', element: 'div', css: { css: '', container: '' }, slider: { mode: 'tabs', tabsPosition: 'above', showNav: true, showHome: true, showDots: false, tabClass: 'tab', activeTabClass: 'tab-on' }, blocks: [slide('a', 'First slide text', 'Intro'), slide('b', 'Second slide text')] }],
+    }
+    const html = await renderTree(tree)
+    expect(html).toContain('First slide text')
+    expect(html).toContain('Second slide text')
+    expect(html).toContain('>Intro</button>')
+    expect(html).toContain('>Slide 2</button>')
+    expect(html).not.toContain('Previous slide')
+    expect(html).not.toContain('First slide"')
+  })
+
+  it('a standard slider shows arrows and home, and dots when asked', async () => {
+    const slide = (id: string) => ({ id, type: 'container', tag: 'flex', element: 'div', css: { css: '', container: '' }, blocks: [] })
+    const tree = { id: 'root', type: 'container', tag: 'document', element: 'div', css: { css: '', container: '' }, blocks: [{ id: 's', type: 'container', tag: 'slider', element: 'div', css: { css: '', container: '' }, slider: { showDots: true }, blocks: [slide('a'), slide('b')] }] }
+    const html = await renderTree(tree)
+    expect(html).toContain('aria-label="Previous slide"')
+    expect(html).toContain('aria-label="First slide"')
+    expect(html).toContain('aria-label="Go to slide 2"')
+  })
+
   it('renders a Download element as a link to its asset or URL, with the download attribute', async () => {
     const mk = (id: string, image: any, extra: any = {}) => ({ id, type: 'file', tag: 'file', element: 'button', content: 'Get the PDF', image, css: { css: 'btn px-4', container: '' }, ...extra })
     const tree = {

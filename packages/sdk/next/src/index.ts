@@ -101,10 +101,10 @@ export async function getObjectData(id: string, options: WhoobeNextOptions): Pro
  *  `baseUrl` is used to absolutize relative open-graph images. */
 export function generateMetadataFromPage(page: PublicPageRecord, baseUrl?: string): Record<string, unknown> {
   const seo = (page.seo ?? {}) as Record<string, unknown>
-  const title = (seo.metaTitle as string) ?? page.title
-  const description = (seo.metaDescription as string) ?? undefined
-  const ogTitle = (seo.ogTitle as string) ?? title
-  const ogDescription = (seo.ogDescription as string) ?? description
+  const title = (seo.metaTitle as string) || page.title
+  const description = (seo.metaDescription as string) || undefined
+  const ogTitle = (seo.ogTitle as string) || title
+  const ogDescription = (seo.ogDescription as string) || description
   let ogImage: unknown
   if (seo.ogImage) {
     const url = String(seo.ogImage)

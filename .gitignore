@@ -36,3 +36,6 @@ deploy/certbot/
 deploy/nginx/00-sandbox-zones.conf
 deploy/nginx/sandbox.conf
 deploy/nginx/_locations-sandbox.inc
+
+# Output of the publisher service (apps/publisher)
+published

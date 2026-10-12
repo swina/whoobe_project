@@ -38,6 +38,62 @@ describe('walkTree', () => {
     expect(img.image?.alt).toBe('Hero')
   })
 
+  it('resolves the source of a video and an audio to the DAM address, like an image', async () => {
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      blocks: [
+        { id: 'v', type: 'element', tag: 'element', element: 'video', image: { url: '/video/public/clip.mp4' } },
+        { id: 'a', type: 'element', tag: 'element', element: 'audio', image: { url: '/audio/song.mp3' } },
+      ],
+    }
+    const out = await walkTree(tree, {}, { api: makeApi(), assetBaseUrl: 'http://dam:3002/dam-asset' })
+    expect(out.children.map((c) => c.image?.url)).toEqual(['http://dam:3002/dam-asset/video/public/clip.mp4', 'http://dam:3002/dam-asset/audio/song.mp3'])
+  })
+
+  it('a container image becomes a background-image with the DAM address, before the node style', async () => {
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      blocks: [
+        { id: 'c', type: 'container', tag: 'div', image: { url: '/uploads/bg.jpg' }, style: 'background-color:#fff;' },
+        { id: 'e', type: 'container', tag: 'div', image: { url: '/uploads/x.jpg");color:red;/*' } },
+        { id: 'i', type: 'element', tag: 'element', element: 'img', image: { url: '/uploads/hero.jpg' } },
+      ],
+    }
+    const out = await walkTree(tree, {}, { api: makeApi(), assetBaseUrl: 'http://dam:3002/dam-asset' })
+    expect(out.children[0].style).toBe('background-image:url(http://dam:3002/dam-asset/uploads/bg.jpg);background-color:#fff;')
+    expect(out.children[1].style).not.toContain('background-image')
+    expect(out.children[2].style).toBe('')
+  })
+
+  it('an inner link inside a linked element is dropped (no anchor in an anchor)', async () => {
+    const tree = { id: 'root', type: 'container', tag: 'document', blocks: [
+      { id: 'o', type: 'container', tag: 'div', link: '/outer', blocks: [{ id: 'i', type: 'element', tag: 'element', element: 'a', link: '/inner', content: 'x' }] },
+      { id: 's', type: 'element', tag: 'element', element: 'a', link: '/solo', content: 'y' },
+    ] }
+    const out = await walkTree(tree, {}, { api: makeApi() })
+    expect(out.children[0].link?.href).toBe('/outer')
+    expect(out.children[0].children[0].link).toBeNull()
+    expect(out.children[1].link?.href).toBe('/solo')
+  })
+
+  it('Alpine shorthands become their long form in the attributes', async () => {
+    const tree = { id: 'root', type: 'container', tag: 'document', blocks: [
+      { id: 'b', type: 'element', tag: 'element', element: 'button', alpine: { '@click': 'open = !open', ':class': "{a: open}", 'x-data': '{}' } },
+    ] }
+    const out = await walkTree(tree, {}, { api: makeApi() })
+    expect(out.children[0].attributes).toMatchObject({ 'x-on:click': 'open = !open', 'x-bind:class': '{a: open}', 'x-data': '{}' })
+    expect(out.children[0].attributes).not.toHaveProperty('@click')
+  })
+
+  it('a paragraph whose rich text holds block elements is rendered in a div', async () => {
+    const tree = { id: 'root', type: 'container', tag: 'document', blocks: [
+      { id: 'a', type: 'element', tag: 'element', element: 'p', content: '<p>one</p><p>two</p>' },
+      { id: 'b', type: 'element', tag: 'element', element: 'p', content: 'plain <b>bold</b>' },
+    ] }
+    const out = await walkTree(tree, {}, { api: makeApi() })
+    expect(out.children.map((c) => c.tag)).toEqual(['div', 'p'])
+  })
+
   it('resolves relative bound fields against the context record', async () => {
     const tree = {
       id: 'root', type: 'container', tag: 'document',

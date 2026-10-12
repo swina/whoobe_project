@@ -4,7 +4,7 @@
       <h1 class="text-xl font-bold flex items-center gap-2"><Rocket class="w-5 h-5 text-indigo-400" />Publish</h1>
       <p class="text-xs text-slate-500 mt-1">
         Generates a standalone site from a website of this CMS. Fill in the fields - the checks and the ready-to-run command update live.
-        Nothing runs from here: copy the command and paste it into a terminal with this repo cloned.
+        You can run it from here when the publisher service is running (needs the <code>websites:publish</code> permission), or copy the command and paste it into a terminal with this repo cloned.
       </p>
     </div>
 
@@ -89,6 +89,13 @@
             <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Revalidate (seconds)</label>
             <input v-model.number="revalidate" type="number" min="0" class="field w-full font-mono" />
           </div>
+          <div class="sm:col-span-2">
+            <label class="flex items-center gap-2 text-xs font-medium text-slate-300 light:text-slate-700">
+              <input v-model="clean" type="checkbox" data-testid="publish-clean" />
+              Start from an empty folder (<code>--clean</code>)
+            </label>
+            <p class="text-xs text-slate-500 mt-1">Deletes everything in the output folder first, except <code>node_modules</code>, <code>.git</code> and the lockfile, so pages removed in the CMS and stale caches do not linger. Files you added by hand are deleted too. A folder that is not a generated site is refused.</p>
+          </div>
         </div>
 
         <!-- Site API key -->
@@ -172,6 +179,31 @@
           </div>
         </div>
 
+        <!-- Run from here -->
+        <div v-if="canRun" class="rounded-xl border border-slate-800 light:border-slate-200 p-4 space-y-3" data-testid="publish-run">
+          <div class="flex items-center justify-between gap-3">
+            <label class="text-sm font-semibold text-slate-200 light:text-slate-800 flex items-center gap-2"><Play class="w-3.5 h-3.5 text-indigo-400" />Run from here</label>
+            <div class="flex gap-2">
+              <button class="btn btn-primary" :disabled="runBusy || (job !== null && isActive(job.status))" @click="startRun" data-testid="publish-run-start">Generate site</button>
+              <button v-if="job && isActive(job.status)" class="btn" @click="cancelRun" data-testid="publish-run-cancel">Cancel</button>
+            </div>
+          </div>
+          <p class="text-xs text-slate-500">
+            The publisher service generates the site into a new release folder under its publish root and switches <code>current</code> to it only when the generation succeeded: a failed run never touches the live site, so "start from an empty folder" does not apply here. The gateway site key is sent with the run only when it is shown above (right after generating it); it is kept encrypted until the publisher takes the job, then erased.
+          </p>
+          <p v-if="needsKeyNotice" class="text-xs text-amber-400" data-testid="publish-run-key-notice">This website has a gateway site key and its pages use the gateway, but the key is not shown above (only its first characters are stored). Without it the gateway answers 401 and bound tables stay empty: regenerate the key above, then run.</p>
+          <p v-if="runError" class="text-xs text-red-400" data-testid="publish-run-error">{{ runError }}</p>
+          <div v-if="job" class="space-y-1">
+            <p class="text-xs" :class="job.status === 'succeeded' ? 'text-emerald-400' : job.status === 'failed' ? 'text-red-400' : 'text-slate-300'" data-testid="publish-run-status">
+              {{ job.status }}<template v-if="job.cancelRequested && job.status === 'running'"> (cancelling…)</template>
+              <template v-if="job.status === 'succeeded' && job.releasePath"> - release <code class="font-mono">{{ job.releasePath }}</code>, now <code class="font-mono">{{ job.releasePath.split('/')[0] }}/current</code></template>
+              <template v-if="job.error"> - {{ job.error }}</template>
+            </p>
+            <p v-if="job.status === 'queued' && queuedLong" class="text-xs text-amber-400">Nobody picked the job up yet: is the publisher service running (<code>PUBLISH_RUNNER_TOKEN</code> set on both sides)?</p>
+            <pre class="field w-full font-mono text-xs overflow-auto max-h-80 whitespace-pre-wrap" data-testid="publish-run-log">{{ logText }}</pre>
+          </div>
+        </div>
+
         <!-- Generated script -->
         <div>
           <div class="flex items-center justify-between mb-1">
@@ -196,11 +228,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { Rocket, CloudUpload, Server, Copy, KeyRound, ShieldCheck } from '@lucide/vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { Rocket, CloudUpload, Server, Copy, KeyRound, ShieldCheck, Play } from '@lucide/vue'
 import { gatewayCandidates, type GatewayUsage } from '@whoobe-cms/schema'
 import { useWebsitesStore } from '../stores/websitesStore'
 import { useTabsStore } from '../stores/tabsStore'
+import { useAuthStore } from '../stores/authStore'
+import { startPublishJob, getPublishJob, listPublishJobs, cancelPublishJob, isActive, type PublishJobView } from '../utils/publish-jobs-api'
 import { getDefaultCoreApiUrl } from '../utils/auth-api'
 import { fetchCdnMirrorSettings, regenerateWebsiteGatewayApiKey, clearWebsiteGatewayApiKey } from '../utils/websites-api'
 import { fetchGatewayUsage, probeGateway, checkBindings, type GatewayProbe, type BindingCheck } from '../utils/publish-check'
@@ -229,6 +263,7 @@ function slugify(name: string): string {
 const apiUrl = ref('')
 const gatewayUrl = ref('')
 const assetBaseUrl = ref('')
+const clean = ref(false)
 const domain = ref('')
 const framework = ref<'vue' | 'next'>('vue')
 const basePath = ref('/')
@@ -306,7 +341,8 @@ watch(website, async (w) => {
   if (!w) return
   apiUrl.value = getDefaultCoreApiUrl()
   gatewayUrl.value = defaultServiceUrl(3001)
-  assetBaseUrl.value = apiUrl.value
+  // /dam-asset is served by the asset processor (3002 in dev), not by the CMS API; behind nginx both share the host.
+  assetBaseUrl.value = defaultServiceUrl(3002)
   domain.value = w.domains?.[0] ?? ''
   slug.value = slugify(w.name) || w.id.slice(0, 8)
   siteKeyPrefix.value = w.gatewayApiKeyPrefix ?? ''
@@ -403,6 +439,7 @@ const script = computed(() => {
     `  --asset-url "${assetBaseUrl.value}" \\`,
     ...(gw ? [`  --gateway-url "${gatewayUrl.value}" \\`] : []),
     `  --base-path "${basePath.value}" \\`,
+    ...(clean.value ? ['  --clean \\'] : []),
     `  --revalidate ${revalidate.value}`,
     '',
   )
@@ -423,6 +460,70 @@ const script = computed(() => {
 
   return lines.join('\n')
 })
+
+// --- Run from here: a job for the publisher service, followed by polling (the log is fetched from the offset already held) ---
+const authStore = useAuthStore()
+const canRun = computed(() => authStore.can('websites:publish'))
+const needsKeyNotice = computed(() => !!siteKeyPrefix.value && !revealedKey.value && !!usage.value && usage.value.gateway > 0)
+const job = ref<PublishJobView | null>(null)
+const logText = ref('')
+const runBusy = ref(false)
+const runError = ref('')
+const queuedLong = ref(false)
+let pollTimer: ReturnType<typeof setTimeout> | undefined
+let queuedSince = 0
+
+function stopPolling() { clearTimeout(pollTimer); pollTimer = undefined }
+
+async function poll(id: string) {
+  try {
+    const next = await getPublishJob(id, logText.value.length)
+    logText.value += next.log
+    job.value = next
+    queuedLong.value = next.status === 'queued' && Date.now() - queuedSince > 15_000
+    if (isActive(next.status)) pollTimer = setTimeout(() => { void poll(id) }, 1500)
+  } catch (e) {
+    runError.value = (e as Error).message
+  }
+}
+
+async function follow(id: string) {
+  stopPolling(); logText.value = ''; queuedSince = Date.now(); queuedLong.value = false
+  await poll(id)
+}
+
+async function startRun() {
+  if (!website.value) return
+  runBusy.value = true; runError.value = ''
+  try {
+    const gw = !usage.value || usage.value.gateway > 0
+    const { id } = await startPublishJob(website.value.id, {
+      apiUrl: apiUrl.value, framework: framework.value, slug: slug.value, revalidate: revalidate.value,
+      domain: domain.value || undefined, assetBaseUrl: assetBaseUrl.value || undefined, gatewayUrl: gw ? gatewayUrl.value || undefined : undefined, basePath: basePath.value || undefined,
+    }, gw ? revealedKey.value || undefined : undefined)
+    await follow(id)
+  } catch (e) {
+    runError.value = (e as Error).message
+  } finally {
+    runBusy.value = false
+  }
+}
+
+async function cancelRun() {
+  if (!job.value) return
+  try { await cancelPublishJob(job.value.id); await follow(job.value.id) } catch (e) { runError.value = (e as Error).message }
+}
+
+// Picks up a run still going (or the last one) when the website changes or the tab is opened again
+watch(websiteId, async (id) => {
+  stopPolling(); job.value = null; logText.value = ''; runError.value = ''
+  if (!id || !canRun.value) return
+  try {
+    const last = (await listPublishJobs(id)).jobs[0]
+    if (last) await follow(last.id)
+  } catch { /* the runs list is a convenience */ }
+})
+onBeforeUnmount(stopPolling)
 
 async function copyScript() {
   try {

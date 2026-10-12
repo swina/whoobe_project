@@ -120,3 +120,14 @@ CMD ["node", "apps/gateway/dist/server.js"]
 # stage here: its dependencies are vendored *.tgz tarballs (packSdkDependencies),
 # not workspace:* references into this repo, so it builds and deploys on any
 # host with Docker alone - see CHANGES.md.
+
+# ─── Publisher (runs the site generator for the dashboard's Publish tab) ────
+# Unlike the services above it needs pnpm and the whole workspace: the generator packs the SDK packages (`pnpm pack`) into the
+# site. It holds no database or object-store credentials: it talks to core-api over HTTP with PUBLISH_RUNNER_TOKEN.
+# Not part of the public sandbox profile (docs/plans/website/publish-from-dashboard.md).
+FROM base AS publisher
+COPY --from=build --chown=node:node /app /app
+RUN mkdir -p /publish && chown node:node /publish
+ENV NODE_ENV=production PUBLISH_ROOT=/publish
+USER 1000:1000
+CMD ["node", "apps/publisher/dist/server.js"]

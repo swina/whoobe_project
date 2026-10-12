@@ -101,7 +101,7 @@ pnpm publish:site \
 
 In the dashboard, the **Publish** tab (sidebar, Content; also the **Publish** button of a website in the Websites list) lists the websites, runs the same checks in the browser (does a gateway answer at the URL, do the bindings resolve, are some never tied to a route) and builds the ready-to-run command, with the site key, CDN mirroring and remote deploy steps. Nothing runs from the dashboard.
 
-Or run `./publish-site.sh` for an interactive prompt instead of passing flags directly. It lists the websites of the CMS to pick from (no UUID to paste), reads the published pages and asks for the **Gateway URL** and the **site key** only when they use the API Gateway (a bound table, container or field, or a form posting to a gateway endpoint). It proposes a gateway that really answers (in dev `http://localhost:3001`, not the CMS API on 3003), warns about bindings that were never tied to a gateway route (re-save those pages) and checks that every binding resolves before generating. For scripts and CI: `./publish-site.sh --yes --api-url <url> --website <uuid> --framework next|nuxt|docs --gateway-url <url> [--site-key ...] [--domain ...] [--asset-url ...] [--base-path ...] [--revalidate ...] [--out-dir ...]` (every answer is also a `PUBLISH_*` variable; `--help` lists them).
+Or run `./publish-site.sh` for an interactive prompt instead of passing flags directly. It lists the websites of the CMS to pick from (no UUID to paste), reads the published pages and asks for the **Gateway URL** and the **site key** only when they use the API Gateway (a bound table, container or field, or a form posting to a gateway endpoint). It proposes a gateway that really answers (in dev `http://localhost:3001`, not the CMS API on 3003), warns about bindings that were never tied to a gateway route (re-save those pages) and checks that every binding resolves before generating. For scripts and CI: `./publish-site.sh --yes --api-url <url> --website <uuid> --framework next|nuxt|docs --gateway-url <url> [--site-key ...] [--domain ...] [--asset-url ...] [--base-path ...] [--revalidate ...] [--out-dir ...] [--clean]` (every answer is also a `PUBLISH_*` variable; `--help` lists them).
 
 **Which gateway URL?** The address of the *gateway service* (`apps/gateway`, port 3001 in dev; in production the host/path nginx exposes it on), never the CMS API: `/api/v1/gateway/resolve` does not exist on core-api, so a table or bound field would simply stay empty. The generated site calls it from its own server (server rendering) and from the visitor's browser, so it must be reachable from both. A table whose data cannot be loaded now logs `[whoobe] table <id>: its data could not be loaded (...)` on the site's server.
 
@@ -112,7 +112,7 @@ Or run `./publish-site.sh` for an interactive prompt instead of passing flags di
 | `--api-url` | (required) | Base URL of the CMS public API |
 | `--website-id` | (required) | UUID of the website to publish |
 | `--out-dir` | (required) | Output directory for the generated project |
-| `--framework` | `next` | `next` or `vue` (generates Nuxt 3) |
+| `--framework` | `next` | `next` or `vue` (generates Nuxt 3). Sites are generated for React/Next.js and Vue/Nuxt only: Svelte has an SDK adapter (`@whoobe-cms/svelte`) but no site generator, and `svelte` is refused. |
 | `--domain` | CMS hostname | Custom domain for SEO metadata (sitemap, robots, canonical URLs) |
 | `--asset-base-url` | API URL host | Public base URL for DAM assets, when it differs from the API URL (e.g. a separate media domain) |
 | `--gateway-url` | *(none)* | Base URL of the API Gateway. **Set this** whenever the site uses a Gateway-backed form (Brevo, etc.) or data binding - without it those fall back to `http://localhost:3001` |
@@ -477,3 +477,32 @@ The `safelist` in `tailwind.config.ts` is generated from the element trees at ge
 - `apps/core-api/src/server.ts` - `GET /public/pages/:locale/*` / `GET /public/page/*` include `cdnMirrors`; `GET /public/dam/assets/mirror-status` reports mirror state for a set of references (public, no auth - mirror status isn't sensitive once mirrored).
 - `apps/asset-processor/src/server.ts` - `POST /api/v1/dam/assets/:id/mirror-cdn` (authenticated) actually performs a mirror, via the Gateway's generic route executor.
 - `packages/publish/src/sync-cdn-assets.ts` - the `whoobe-sync-cdn` orchestration script (Step 1b).
+
+**Publishing again into the same folder.** Without `--clean` the generator overwrites the files it writes and leaves everything else: pages removed in the CMS keep their old generated file, and caches (`.nuxt`, `.next`) stay. With `--clean` (`whoobe-publish --clean`, `publish-site.sh --clean` or `PUBLISH_CLEAN=1`) the folder is emptied first, except `node_modules`, `.git` and the lockfile. It refuses a folder that does not look like a generated site (no `package.json` with `vendor/whoobe-cms-*.tgz`), so a wrong `--out-dir` deletes nothing; an empty or missing folder is fine. Files you added by hand are deleted too. Documentation sites already drop their own stale files and ignore the flag.
+
+## Running the publication from the dashboard
+
+The **Publish** tab has a **Run from here** box when the signed-in user has the `websites:publish` permission (the `admin` role and the new
+`publisher` role, which can read websites and pages and start publications but cannot edit, change settings, manage users or delete).
+It queues a job; a separate **publisher** service runs the same `whoobe-publish` generator with an argument array (no shell, no command
+typed by anyone) and the tab follows the log.
+
+- **Start the publisher.** Set `PUBLISH_RUNNER_TOKEN` (`openssl rand -hex 32`) to the same value for core-api and the publisher. In
+  development: `pnpm --filter @whoobe-cms/publisher dev` with `CORE_API_URL`, `PUBLISH_RUNNER_TOKEN` and `PUBLISH_ROOT` (default `./published`) in the
+  environment. With Docker: `docker compose -f docker-compose.apps.yml --profile publisher up -d publisher`. Without a token core-api refuses
+  the runner (503) and a queued job just waits ("is the publisher service running?" appears after 15 seconds).
+- **Why a service and not a container per job.** Starting a container from core-api would need the Docker socket, which is root on the host:
+  the one thing this design avoids. The publisher is an ordinary container that holds no database or object-store credentials and only calls
+  core-api over HTTP (outbound), so it can also run on another machine.
+- **Releases.** Each run writes `<PUBLISH_ROOT>/<slug>/releases/<job id>` and, only when it succeeded, moves `<slug>/current` to it
+  (a symlink renamed into place); the last three releases are kept. A failed, cancelled or timed-out run deletes its half-written folder and
+  leaves the live one alone. For this reason `--clean` does not apply to runs from the dashboard (every release starts empty).
+- **Limits (phase 1).** One queued or running job per website (a second start answers 409); 15 minutes per job (`PUBLISH_JOB_TIMEOUT_MS`);
+  a job whose runner stops reporting for 10 minutes is marked failed; the log is capped at 512 000 characters. The output is the generated
+  project (sources); it is not installed or built yet, and nothing serves it: point nginx at `current` or build it yourself (phases 2 and 3 of
+  `docs/plans/website/publish-from-dashboard.md`). The gateway site key goes with the run only when it is shown in the tab (right after you generate
+  it - the CMS keeps just a hash): it is stored encrypted (`INTEGRATION_SECRETS_ENCRYPTION_KEY`) in the job row, erased when the runner takes the job (or on cancel),
+  passed to the generator in its environment (never its arguments) and masked in the log. A website that has a key and uses the gateway needs it: without it the
+  gateway answers 401 and bound tables show 0 records. The public sandbox refuses `/publish/*`.
+- **Who started what.** The job row keeps who started it, the options (never the site key), the log and the outcome, and core-api logs the
+  start, cancel and finish with the user id.
