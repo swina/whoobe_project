@@ -44,6 +44,7 @@ What an application can reach today:
 |---|---|---|
 | Integrations routes (the endpoints you configured: CRM, ERP, mail...) | `/client/v1/gateway/<endpoint>/<route>` | `gateway:call:...` scopes |
 | Published Data Objects (read) | `/client/v1/data/<class>` and `/client/v1/data/<class>/<id>` | `data:read:<Class>` scopes |
+| Automations (start a flow in Activepieces / n8n and get its answer) | `/client/v1/automations/<endpoint>/<route>` | `automation:run:...` scopes |
 | Who am I (diagnostics) | `/client/v1/me` | any valid credential |
 
 Assets and writing Data Objects are not on `/client/v1` yet (section 15).
@@ -114,6 +115,8 @@ The select **Add an API...** lists every Integrations endpoint and *Data Objects
 - an endpoint card lists its routes (`GET orders.json`, `POST contacts`...) to tick, and **all routes** (every route of the endpoint,
   any method, including routes added later: use it only for a client you fully trust);
 - the Data Objects card lists the Data Classes to tick, and **all classes** (including classes created later);
+- the Automations card lists the automations found in your pages and snippets (forms that submit to an Integrations endpoint, by the
+  name given in *Form settings*, with the endpoint and route) to tick;
 - the number after the name says how many permissions the card gives; the **x** removes the API and its permissions from the client.
 
 Opening an existing client shows the cards of the APIs it already uses. A permission the picker does not recognise (for example an
@@ -151,7 +154,19 @@ A scope is one text. The dashboard writes them for you; you read them in the lis
 - `data:read:*` covers every class, including classes created later (the dashboard marks it as wide).
 - There is no write scope yet.
 
-### 5.3 Scopes of a token client
+### 5.3 Automations
+
+`automation:run:<endpoint name>:<route>` (or `automation:run:<endpoint name>:*` for every POST route of the endpoint)
+
+- Lets the client **start the flow** behind that route and receive its answer. The route is the webhook route configured in
+  Integrations for the engine (Activepieces `webhooks/<flow id>`, n8n `webhook/<path>`); see [marketing automation](marketing-automation.md).
+- It is a separate permission from `gateway:call`: an automation scope does not allow calling the route through `/gateway/`, and a
+  gateway scope does not allow `/automations/`.
+- Only `POST` routes are reachable. There are no prefix patterns (`webhook/*` is refused), only an exact route or `*`.
+- The picker proposes the automations it finds in your pages and snippets, but the scope is just the endpoint and the route: renaming
+  the form later changes nothing, and a client may be given a route no form uses (type it in the administration API).
+
+### 5.4 Scopes of a token client
 
 A token client has the scopes ticked in the editor as its **ceiling**. With **claim rules** (section 10) each signed-in user gets
 only the part of the ceiling that their claims give.
@@ -205,7 +220,27 @@ state, import id and creation date are not returned. Relations come back as ids 
 **Never returned:** drafts. A draft, a class outside the scopes, an unknown class, a malformed id and the id of an object of another
 class all answer the same `404 Not found`.
 
-### 6.4 `ANY /client/v1/gateway/<endpoint>/<route>` - call an Integrations route
+### 6.4 `POST /client/v1/automations/<endpoint>/<route>` - start a flow and wait for the answer
+
+```bash
+curl -X POST -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+     -d '{"email":"anna@example.com","name":"Anna"}' "$BASE/automations/n8n/webhook/newsletter-signup"
+```
+
+```json
+{ "ok": true, "outcome": "qualified", "response": { "outcome": "qualified", "score": 82 } }
+```
+
+- The JSON body (up to 1 MB) is sent to the engine's webhook with the endpoint's credentials, which the client never sees. The call
+  **waits** for the flow's last step (up to the endpoint's timeout, at most 30 seconds). A flow that takes longer than that cannot be
+  used this way: have it answer at once and report back by another route.
+- `ok` is `true` when the engine answered with a status below 400. `response` is the engine's reply as it is.
+- `outcome` is present only if the reply has an `"outcome"` key that is a plain key (1-32 letters, digits, `_`, `-`); anything else is
+  left out. Act on `outcome`, not on text taken from `response`: it comes from a third-party flow.
+- An engine error (`5xx`) answers `502` with `{ "ok": false, "error": ... }` and no body of the engine.
+- Only `POST` and only a route allowed by an `automation:run` scope; everything else is the usual `404 Not found`.
+
+### 6.5 `ANY /client/v1/gateway/<endpoint>/<route>` - call an Integrations route
 
 The address is the endpoint's **name** (spaces as `%20`) and the route path under it:
 
@@ -255,7 +290,22 @@ Future<List<dynamic>> latestPosts(String accessToken) async {
 }
 ```
 
-### 7.3 A browser app (token)
+### 7.3 A server that starts an automation
+
+```js
+const res = await fetch(`${BASE}/automations/n8n/webhook/newsletter-signup`, {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email, name }),
+})
+const { ok, outcome } = await res.json()
+if (ok && outcome === 'qualified') { /* ... */ }
+```
+
+An engine can also be a client itself: a flow in Activepieces or n8n that calls Whoobe (for example `GET /client/v1/data/Product`) holds
+a **key** and sends it with its HTTP step, because it is a server.
+
+### 7.4 A browser app (token)
 
 ```js
 const res = await fetch('https://cms.example.com/client/v1/data/Blog/' + id, {
@@ -264,7 +314,7 @@ const res = await fetch('https://cms.example.com/client/v1/data/Blog/' + id, {
 ```
 Cross-origin calls are allowed for `/client/v1` (without cookies). Never put a `wbk_` key here: it would be refused anyway.
 
-### 7.4 Insomnia / Postman
+### 7.5 Insomnia / Postman
 Create a request, method `GET`, address as above, **Auth > Bearer token** with the key or the access token (or the header
 `X-Whoobe-Key`). In the list of clients, clicking an entry in *Allowed* copies the right address.
 
@@ -276,7 +326,7 @@ Create a request, method `GET`, address as above, **Auth > Bearer token** with t
 | `400` | an invalid path (empty or relative segment), or an invalid `data` query (unknown field or operator, `limit` out of range, bad `locale`); the text says which |
 | `401` | missing, wrong, revoked or expired credential; a token that is not valid for this client (signature, issuer, audience, expiry, authorized party); a suspended client. **Always the same message**: the reason is only in the server log |
 | `403` | the credential cannot be used from this address; a **key sent by a browser**; or a **valid token whose claims give no access** |
-| `404 Not found` | the endpoint, route, class or object does not exist **or is outside the client's scopes**, or the object is a draft. Same answer for all, so a client cannot learn what else exists |
+| `404 Not found` | the endpoint, route, class, automation or object does not exist **or is outside the client's scopes**, or the object is a draft. Same answer for all, so a client cannot learn what else exists |
 | `413` / `415` | body over 1 MB / not JSON |
 | `429` | over the per-second limit (client or user), the daily quota, or after 20 failed credentials from one address. `Retry-After` gives the seconds |
 | `502` | the service could not be reached or answered `5xx` (its body is not relayed) |
@@ -380,6 +430,7 @@ the configuration from one to the other is planned (plan, section 4.5).
 |---|---|
 | `404` on `/client/v1/gateway/data/Blog` | wrong address: Data Objects are at `/client/v1/data/Blog`, `gateway/` is only for Integrations endpoints |
 | `404` on a data call | class name differs (case counts); no `data:read:` scope for it; the object is a draft; the id belongs to another class; the **gateway is running an older build** (restart it) |
+| `404` on an automation call | the scope is `automation:run:`, not `gateway:call:`; the route is not a `POST` route of the endpoint; the endpoint name or route differs from Integrations |
 | `404` on a gateway call | the endpoint was renamed (its scopes no longer match); the route is not ticked; `GET` ticked but the call is `POST`; the endpoint is inactive |
 | `401` | wrong or revoked key; expired client; for a token: expired, wrong issuer or audience, `azp` mismatch. The server log has the reason |
 | `403` "A key is for servers" | the key was sent by a browser. Use a token client for browsers and apps |
@@ -393,6 +444,7 @@ the configuration from one to the other is planned (plan, section 4.5).
 ## 15. What it does not do (yet)
 
 - **Writing Data Objects** and **assets** on `/client/v1` (the plan's next steps).
+- **Long-running automations:** the call waits at most 30 seconds; there is no "accepted, ask later" mode yet.
 - **Binary replies, multipart bodies and streaming** through `gateway/` calls.
 - **Opaque tokens, introspection, revocation lists** for identity provider tokens.
 - **Usage statistics** per hour in the dashboard (only counters and the log).

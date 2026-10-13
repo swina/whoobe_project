@@ -173,6 +173,16 @@
                 <span v-if="!(routes[a.id] ?? []).length" class="text-[11px] text-slate-500">No routes.</span>
               </div>
             </template>
+            <template v-else-if="a.kind === 'automations'">
+              <p class="text-[11px] text-slate-500 mb-1">Starts the flow and returns its answer, <code class="font-mono">POST /automations/&lt;endpoint&gt;/&lt;route&gt;</code>. Taken from the forms of your pages and snippets that submit to an Integrations endpoint.</p>
+              <div class="space-y-1">
+                <label v-for="au in automations" :key="au.scope" class="flex items-start gap-1.5 text-[11px] cursor-pointer">
+                  <input type="checkbox" class="mt-0.5" :checked="form.scopes.has(au.scope)" @change="toggleScope(au.scope)" />
+                  <span><span class="font-semibold">{{ au.names.join(', ') }}</span> <span class="font-mono text-slate-500">{{ au.endpoint }} /{{ au.route }}</span></span>
+                </label>
+                <span v-if="!automations.length" class="text-[11px] text-slate-500">No form submits to an endpoint yet. Set one up in the editor (Form settings > Gateway endpoint).</span>
+              </div>
+            </template>
             <template v-else>
               <p class="text-[11px] text-slate-500 mb-1">Read of the published objects, <code class="font-mono">GET /data/&lt;class&gt;</code>.</p>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
@@ -225,7 +235,10 @@ import { KeyRound } from '@lucide/vue'
 import BaseModal from '../ui/BaseModal.vue'
 import { useAuthStore } from '../../stores/authStore'
 import { useTabsStore } from '../../stores/tabsStore'
+import { collectAutomations } from '@whoobe-cms/schema'
 import { fetchDataClasses, type DataClass } from '../../utils/data-classes-api'
+import { fetchPages } from '../../utils/pages-api'
+import { fetchSnippets } from '../../utils/snippets-api'
 import {
   clientApiBaseUrl, createApiClient, listApiClients, listEndpoints, listRoutes, updateApiClient,
   type ApiClient, type GatewayEndpoint, type GatewayRoute,
@@ -266,6 +279,8 @@ const editing = ref<ApiClient | null>(null)
 const endpoints = ref<GatewayEndpoint[]>([])
 const routes = ref<Record<string, GatewayRoute[]>>({})
 const dataClasses = ref<DataClass[]>([])
+// the forms that submit to an Integrations endpoint, one entry per endpoint and route
+const automations = ref<{ scope: string; endpoint: string; route: string; names: string[] }[]>([])
 const loading = ref(true)
 const loadError = ref('')
 const saving = ref(false)
@@ -282,10 +297,11 @@ const copied = ref(false)
 const wide = (endpoint: string) => `gateway:call:${endpoint}:*:*`
 const scopeOf = (endpoint: string, r: GatewayRoute) => `gateway:call:${endpoint}:${r.method.toUpperCase()}:${r.path.replace(/^\/+/, '')}`
 
-type Api = { key: string; label: string } & ({ kind: 'endpoint'; id: string; name: string } | { kind: 'data'; id: ''; name: '' })
+type Api = { key: string; label: string } & ({ kind: 'endpoint'; id: string; name: string } | { kind: 'data' | 'automations'; id: ''; name: '' })
 const apiList = computed<Api[]>(() => [
   ...endpoints.value.map((e): Api => ({ key: `ep:${e.name}`, label: e.name, kind: 'endpoint', id: e.id, name: e.name })),
   { key: 'data', label: 'Data Objects (published, read)', kind: 'data', id: '', name: '' },
+  { key: 'automations', label: 'Automations (start a flow)', kind: 'automations', id: '', name: '' },
 ])
 // the APIs shown as cards: the ones the client already has something of, plus the ones just added
 const added = ref<string[]>([])
@@ -294,7 +310,7 @@ const addable = computed(() => apiList.value.filter((a) => !added.value.includes
 const toAdd = ref('')
 function addApi() { if (toAdd.value && !added.value.includes(toAdd.value)) added.value.push(toAdd.value); toAdd.value = '' }
 function scopesOfApi(a: Api): string[] {
-  return [...form.scopes].filter((s) => (a.kind === 'data' ? s.startsWith('data:') : s.startsWith(`gateway:call:${a.name}:`)))
+  return [...form.scopes].filter((s) => (a.kind === 'data' ? s.startsWith('data:') : a.kind === 'automations' ? s.startsWith('automation:') : s.startsWith(`gateway:call:${a.name}:`)))
 }
 const countFor = (a: Api) => scopesOfApi(a).length
 function removeApi(a: Api) {
@@ -304,6 +320,7 @@ function removeApi(a: Api) {
 const knownScopes = computed(() => {
   const set = new Set<string>(['data:read:*'])
   for (const dc of dataClasses.value) set.add(`data:read:${dc.name}`)
+  for (const au of automations.value) set.add(au.scope)
   for (const ep of endpoints.value) {
     set.add(wide(ep.name))
     for (const r of routes.value[ep.id] ?? []) set.add(scopeOf(ep.name, r))
@@ -336,13 +353,29 @@ async function load() {
   loading.value = true
   loadError.value = ''
   try {
-    const [e, dcs, clients] = await Promise.all([
-      listEndpoints(), fetchDataClasses(authStore.config.coreApiUrl).catch(() => [] as DataClass[]), isNew ? Promise.resolve([] as ApiClient[]) : listApiClients(),
+    const base = authStore.config.coreApiUrl
+    const [e, dcs, clients, pages, snippets] = await Promise.all([
+      listEndpoints(), fetchDataClasses(base).catch(() => [] as DataClass[]), isNew ? Promise.resolve([] as ApiClient[]) : listApiClients(),
+      fetchPages(base).catch(() => []), fetchSnippets(base).catch(() => []),
     ])
+    const found = new Map<string, { scope: string; endpoint: string; route: string; names: string[] }>()
+    const entries = [
+      ...pages.flatMap((p: any) => collectAutomations(p.content, { kind: 'page', id: p.id, title: p.title || p.slug })),
+      ...snippets.flatMap((sn: any) => collectAutomations(sn.node, { kind: 'snippet', id: sn.id, title: sn.name })),
+    ]
+    for (const a of entries) {
+      if (a.target !== 'gateway' || !a.endpoint || !a.route || a.endpoint.includes(':')) continue
+      const route = a.route.replace(/^\/+/, '')
+      const scope = `automation:run:${a.endpoint}:${route}`
+      const f = found.get(scope) ?? { scope, endpoint: a.endpoint, route, names: [] }
+      if (!f.names.includes(a.name)) f.names.push(a.name)
+      found.set(scope, f)
+    }
+    automations.value = [...found.values()].sort((x, y) => x.names[0].localeCompare(y.names[0]))
     endpoints.value = e
     dataClasses.value = dcs
-    const entries = await Promise.all(e.map(async (ep) => [ep.id, await listRoutes(ep.id).catch(() => [] as GatewayRoute[])] as const))
-    routes.value = Object.fromEntries(entries)
+    const routeEntries = await Promise.all(e.map(async (ep) => [ep.id, await listRoutes(ep.id).catch(() => [] as GatewayRoute[])] as const))
+    routes.value = Object.fromEntries(routeEntries)
     if (!isNew) {
       const c = clients.find((x) => x.id === props.clientId)
       if (!c) { loadError.value = 'This client no longer exists.'; return }

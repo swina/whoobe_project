@@ -4765,6 +4765,37 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /client/v1/automations/{endpoint}/{splat}:
+    post:
+      tags: ["gateway: Gateway client surface (auth: an API key `wbk_...` from a server, or an identity provider token from a browser or an app, as `Authorization: Bearer`; the key also as `X-Whoobe-Key`; no session - see docs/release/guides/integrations/integrations.md)"]
+      summary: "Start the flow behind a POST route of an engine endpoint (Activepieces, n8n) named in an `automation:run:<endpoint>:<route>` scope, wait for its answer and return `{ ok, outcome?, response }`; `outcome` is the validated key (1-32 letters, digits, `_`, `-`) the flow answered. JSON body up to 1 MB. Outside the scopes: `404 Not found`; an engine error: `502`."
+      parameters:
+        - name: endpoint
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: splat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /client/v1/gateway/{endpoint}/{splat}:
     get:
       tags: ["gateway: Gateway client surface (auth: an API key `wbk_...` from a server, or an identity provider token from a browser or an app, as `Authorization: Bearer`; the key also as `X-Whoobe-Key`; no session - see docs/release/guides/integrations/integrations.md)"]

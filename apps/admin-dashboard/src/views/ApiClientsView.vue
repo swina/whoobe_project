@@ -58,7 +58,8 @@
             <td class="py-2.5 px-4">
               <button v-for="s in c.scopes.slice(0, 6)" :key="s" type="button" class="block text-left font-mono text-[11px] hover:text-indigo-300"
                 :class="isWide(s) || s === 'data:read:*' ? 'text-amber-400' : ''" :title="`${callUrl(s)}\nClick to copy this address`" @click="copy(callUrl(s))">
-                <template v-if="isData(s)"><span class="font-bold">GET</span> data<span class="text-slate-500"> /</span>{{ dataClassOf(s) === '*' ? '* (every class)' : dataClassOf(s) }}</template>
+                <template v-if="isAutomation(s)"><span class="font-bold">RUN</span> automations<span class="text-slate-500"> /</span>{{ automationOf(s) }}</template>
+                <template v-else-if="isData(s)"><span class="font-bold">GET</span> data<span class="text-slate-500"> /</span>{{ dataClassOf(s) === '*' ? '* (every class)' : dataClassOf(s) }}</template>
                 <template v-else><span class="font-bold">{{ method(s) }}</span> {{ endpointOf(s) }}<span class="text-slate-500"> /</span>{{ routeOf(s) }}</template>
               </button>
               <div v-if="c.scopes.length > 6" class="text-slate-500">+ {{ c.scopes.length - 6 }} more</div>
@@ -138,6 +139,9 @@ const revealed = ref<{ name: string; key: string } | null>(null)
 const copied = ref(false)
 
 const isData = (s: string) => s.startsWith('data:')
+const isAutomation = (s: string) => s.startsWith('automation:')
+// automation:run:<endpoint>:<route> -> <endpoint>/<route>
+const automationOf = (s: string) => { const [, , endpoint = '', ...route] = s.split(':'); return `${endpoint}/${route.join(':')}` }
 const dataClassOf = (s: string) => s.split(':').slice(2).join(':')
 const isWide = (s: string) => s.endsWith(':*:*')
 // gateway:call:<endpoint>:<METHOD>:<route> -> the parts, and the address an application calls
@@ -146,6 +150,7 @@ const method = (s: string) => (partsOf(s).method === '*' ? 'ANY' : partsOf(s).me
 const endpointOf = (s: string) => partsOf(s).endpoint
 const routeOf = (s: string) => (partsOf(s).route === '*' ? '* (every route)' : partsOf(s).route)
 const callUrl = (s: string) => {
+  if (isAutomation(s)) return `${apiBase}/automations/${automationOf(s).split('/').map(encodeURIComponent).join('/')}`
   if (isData(s)) return `${apiBase}/data/${dataClassOf(s) === '*' ? '' : encodeURIComponent(dataClassOf(s))}`
   const p = partsOf(s)
   return `${apiBase}/gateway/${encodeURIComponent(p.endpoint)}/${p.route === '*' ? '' : p.route.replace(/\/\*$/, '/')}`

@@ -27,6 +27,35 @@ export function formatGatewayScope(s: GatewayScope): string {
   return `gateway:call:${s.endpoint}:${s.method}:${s.route}`;
 }
 
+// An automation scope is  automation:run:<endpoint name>:<route template | *>   (start the flow behind a POST route of an engine endpoint,
+// Activepieces / n8n, and read its answer). The route is the one configured in Integrations, as in a gateway scope.
+export interface AutomationScope { endpoint: string; route: string }
+
+export const formatAutomationScope = (s: AutomationScope): string => `automation:run:${s.endpoint}:${s.route}`;
+
+export function parseAutomationScope(text: string): AutomationScope | { error: string } {
+  if (typeof text !== 'string' || text.length > MAX_SCOPE_LENGTH) return { error: 'Scope is too long or not text' };
+  const parts = text.split(':');
+  if (parts.length < 4 || parts[0] !== 'automation' || parts[1] !== 'run') return { error: `Not an automation scope: ${text}` };
+  // same endpoint and route rules as a gateway scope: reuse them
+  const g = parseGatewayScope(`gateway:call:${parts[2]}:POST:${parts.slice(3).join(':')}`);
+  if ('error' in g) return { error: g.error.replace('gateway scope', 'automation scope') };
+  if (g.route.endsWith('/*')) return { error: 'An automation scope names a route, or * for every POST route of the endpoint' };
+  return { endpoint: g.endpoint, route: g.route };
+}
+
+/** Does any scope allow starting the flow behind this route (the template the request was matched to)? */
+export function automationScopeAllows(scopes: readonly string[], endpoint: string, routeTemplate: string): boolean {
+  const tpl = routeTemplate.replace(/^\/+/, '');
+  for (const text of scopes) {
+    if (!text.startsWith('automation:')) continue;
+    const s = parseAutomationScope(text);
+    if ('error' in s) continue;
+    if (s.endpoint === endpoint && (s.route === '*' || s.route === tpl)) return true;
+  }
+  return false;
+}
+
 // A data scope is  data:read:<class name | *>   (read of the published objects of one Data Class; the class is named, never matched by pattern)
 export interface DataScope { action: 'read'; className: string }
 
@@ -78,6 +107,13 @@ export function validateClientScopes(scopes: unknown): { ok: true; scopes: strin
   if (scopes.length > MAX_SCOPES) return { ok: false, error: `At most ${MAX_SCOPES} scopes` };
   const out: string[] = [];
   for (const raw of scopes) {
+    if (typeof raw === 'string' && raw.startsWith('automation:')) {
+      const a = parseAutomationScope(raw);
+      if ('error' in a) return { ok: false, error: a.error };
+      const norm = formatAutomationScope(a);
+      if (!out.includes(norm)) out.push(norm);
+      continue;
+    }
     if (typeof raw === 'string' && raw.startsWith('data:')) {
       const d = parseDataScope(raw);
       if ('error' in d) return { ok: false, error: d.error };

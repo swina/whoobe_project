@@ -10,6 +10,7 @@ import { pickSafeResponseHeaders } from './redact.js';
 import { ipAllowed } from './client-ip.js';
 import { createGatewayJwtVerifier, JwtRejected } from './jwt-verify.js';
 import { decodeJwt } from 'jose';
+import { extractOutcome } from './submit-outcome.js';
 
 // /client/v1: what an application that holds an API key may call (docs/plans/api-gateway/client-access-hub.md).
 // The key is read from `Authorization: Bearer wbk_...` or `X-Whoobe-Key`; there is no cookie and no session.
@@ -207,6 +208,57 @@ export function createClientRouter(): Router {
     }
   });
 
+  // Start the flow behind a POST route of an engine endpoint (scope `automation:run:<endpoint>:<route>`) and wait for its answer:
+  // { ok, outcome, response }. `outcome` is the validated key (see submit-outcome.ts), the only part of the reply meant to be acted on.
+  router.post('/automations/:endpoint/*', async (req: ClientRequest, res: Response): Promise<void> => {
+    const started = Date.now();
+    const client = req.apiClient!;
+    const scopes = req.callerScopes ?? client.scopes;
+    const endpointName = req.params.endpoint as string;
+    const path = (req.params[0] as string) || '';
+    const notFound = (why: string): void => {
+      logger.info({ clientId: client.id, endpoint: endpointName, why }, '[gateway] client automation call not served');
+      res.status(404).json({ error: 'Not found' });
+    };
+    try {
+      const core = await import('@whoobe-cms/core/server');
+      if (!scopes.some((s) => s.startsWith(`automation:run:${endpointName}:`))) { notFound('no scope for the endpoint'); return; }
+      const bad = core.unsafePathReason(path);
+      if (bad) { res.status(400).json({ error: bad }); return; }
+      const endpoint = await core.getGatewayEndpointByName(endpointName);
+      if (!endpoint || !endpoint.isActive) { notFound('unknown or inactive endpoint'); return; }
+      const routes = await core.listGatewayRoutes(endpoint.id);
+      let matched = core.matchRoute(routes, 'POST', path);
+      if (matched === 'ambiguous') matched = core.matchRoute(routes.filter((r) => core.automationScopeAllows(scopes, endpoint.name, r.path)), 'POST', path, 'first');
+      if (matched === 'none' || matched === 'ambiguous') { notFound(matched); return; }
+      if (!core.automationScopeAllows(scopes, endpoint.name, matched.route.path)) { notFound('outside the scopes'); return; }
+
+      const declared = Number(req.headers['content-length'] ?? 0);
+      if (declared > MAX_BODY_BYTES) { res.status(413).json({ error: 'Body too large' }); return; }
+      if (declared > 0 && !String(req.headers['content-type'] ?? '').includes('application/json')) { res.status(415).json({ error: 'Send JSON (Content-Type: application/json)' }); return; }
+
+      const query = queryOf(req);
+      const result = await callRoute({
+        req, res, endpoint,
+        route: matched.route,
+        upstreamUrl: resolveGatewayUrl(endpoint.baseUrl, matched.route.path, matched.params) + (query ? `?${query}` : ''),
+        headers: passedHeaders(req),
+        body: declared > 0 ? req.body : undefined,
+        timeoutMs: Math.min(endpoint.requestTimeoutMs, 30_000),
+      });
+      const outcome = extractOutcome(result.body);
+      logger.info({
+        clientId: client.id, client: client.name, sub: req.subject, endpoint: endpoint.name, route: matched.route.path, status: result.status,
+        outcome: outcome ?? undefined, ms: Date.now() - started,
+      }, '[gateway] client automation run');
+      if (result.status >= 500) { res.status(502).json({ ok: false, error: 'The automation answered with an error' }); return; }
+      res.status(result.status).json({ ok: result.status < 400, ...(outcome ? { outcome } : {}), response: result.body });
+    } catch (err) {
+      logGatewayError('client automation run', err);
+      res.status(502).json({ ok: false, error: 'The automation could not be reached' });
+    }
+  });
+
   router.all('/gateway/:endpoint/*', async (req: ClientRequest, res: Response): Promise<void> => {
     const started = Date.now();
     const client = req.apiClient!;
@@ -272,6 +324,9 @@ export function createClientRouter(): Router {
       res.status(502).json({ error: 'Upstream request failed' });
     }
   });
+
+  // anything else under /client/v1: the same JSON answer as a call outside the scopes
+  router.use((_req: Request, res: Response): void => { res.status(404).json({ error: 'Not found' }); });
 
   return router;
 }
