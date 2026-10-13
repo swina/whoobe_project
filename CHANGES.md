@@ -1,3 +1,8 @@
+## Third-party notices and credits — 2026-10-13
+- New `scripts/release/third-party-notices.py`: generates `THIRD_PARTY_NOTICES.md` (root; 618 production packages with licence and copyright, one licence text per licence, NOTICE files) from `pnpm licenses`, and with `--check` fails when the file is out of date or a licence is neither allowed (permissive list) nor reviewed with a reason. Hooked into the licence gate of `scripts/release.sh`.
+- Findings from the first run, written in the notices file and in `docs/release/security/supply-chain.md`: **GSAP** (editor animations) is under a proprietary licence with a restriction on visual animation builders that compete with the licensor, to be decided before release; **libvips** (sharp) is LGPL-3.0-or-later; two packages lack a licence field (khroma, thirty-two: MIT in their files).
+- New `docs/release/credits.md`: thanks by role (interface, server, delivered stack and tooling, generated outputs, works with); inspirations stay in the story. Linked from the release README and the story.
+
 ## Community files: CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, and a page on sponsoring and contributing — 2026-10-13
 - Branch: `master`
 - New root files `CONTRIBUTING.md` (ways to help, setup notes, tests, the rules of the repository: `CHANGES.md`, true documentation, hand-written migrations, no secrets; pull request steps; MIT), `SECURITY.md` (private reporting, what to expect, supported versions, scope, testing in good faith) and `CODE_OF_CONDUCT.md` (own text inspired by the Contributor Covenant 2.1, with reporting). The contact is the address already in `LICENSE.md`.

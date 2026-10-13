@@ -69,6 +69,7 @@ gate_license() {
   local f missing=""
   while read -r f; do grep -q '"license": "MIT"' "$f" || missing="$missing $f"; done <<< "$(version_files)"
   if [ -z "$missing" ]; then ok "every product package.json declares \"license\": \"MIT\""; else bad "no MIT license field in:$missing"; fi
+  if python3 scripts/release/third-party-notices.py --check >/dev/null; then ok "THIRD_PARTY_NOTICES.md is current and every dependency licence is allowed or reviewed"; else bad "third-party licences: run python3 scripts/release/third-party-notices.py --check"; fi
 }
 
 gate_docs() {

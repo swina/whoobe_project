@@ -46,6 +46,7 @@ The detailed documentation is organised by what Whoobe does. Each pillar has an 
 | [`by-role/`](by-role) | Reading paths for CEO, IT manager, operators, security and compliance, marketing, data owners, developers |
 | [`api/`](api) | [API reference](api/api-reference.md) and [`openapi.yaml`](api/openapi.yaml), both generated from one route table by [`gen-api-docs.py`](api/gen-api-docs.py) |
 | [`whoobe-history.md`](whoobe-history.md) | The story of Whoobe |
+| [`credits.md`](credits.md) | Thanks to the open-source projects Whoobe is built with and works with; the legal record is [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md) |
 | [`community/`](community/why-sponsor-and-contribute.md) | Why sponsor and why contribute to open-source projects, and how to help Whoobe |
 | [`release-process.md`](release-process.md) | How a release is made: versions, support policy, release gates, procedure |
 | [`release-notes-0.1.0.md`](release-notes-0.1.0.md) | What 0.1.0 contains, behaviour changes to check before installing over a development setup, known limits |

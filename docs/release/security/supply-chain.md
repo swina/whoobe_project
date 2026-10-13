@@ -50,8 +50,17 @@ Attach the files to the GitHub Release. They are not generated automatically by 
 ## 4. Licences
 
 The product is **MIT** (`LICENSE.md`); every product `package.json` declares `"license": "MIT"` and the release gate
-checks it. A licence inventory of third-party dependencies is **not produced**: the CycloneDX SBOM carries the licence
-fields trivy can resolve, which is the starting point for a legal review; copyleft packages have not been audited.
+checks it.
+
+**Third-party licences.** `THIRD_PARTY_NOTICES.md` (root) lists the production dependencies of every workspace with version, licence and copyright notice, and the
+licence texts. It is **generated** by `scripts/release/third-party-notices.py` from the installed packages (`pnpm licenses`) and checked by the release gate:
+the check fails when the file is out of date, or when a dependency has a licence that is neither on the permissive allow-list (MIT, ISC, Apache-2.0, BSD,
+and similar) nor reviewed with a written reason in the script. Today (618 packages) two are reviewed: the **libvips** binaries of `sharp` (LGPL-3.0-or-later,
+a separate library, not modified) and **GSAP** (a proprietary licence, free for commercial use but with restrictions on tools that let users build visual
+animations without code if they compete with the licensor's; the editor has an animation control, so **this needs a decision before release**, see the
+file). Packages whose metadata lacks a licence (two) are set to MIT by hand after reading their licence files. Operating-system packages in the images are not covered
+(the image SBOMs carry them). A legal review of the inventory has not been done.
+
 Fonts loaded from Google Fonts by the editor, dashboard and generated sites are third-party content under their own
 licences (and a privacy consideration, see [data protection](data-protection.md)).
 

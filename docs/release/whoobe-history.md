@@ -129,4 +129,4 @@ and Whoobe is also the result of what they taught him.
 To **Salvatore Sanfilippo** (antirez, the developer who created Redis), whom the author does not know personally but whose story as a developer, and
 above all whose YouTube channel in recent months, have been an inspiration: AI is a tool, and it is up to us to use it to create innovative solutions.
 
-Whoobe also stands on the shoulders of the open-source projects it is built with, and takes its model of classes, objects and relations from **Pimcore**.
+Whoobe also stands on the shoulders of the open-source projects it is built with: see the [credits](credits.md). It takes its model of classes, objects and relations from **Pimcore**.
