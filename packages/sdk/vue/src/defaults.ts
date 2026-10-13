@@ -2,12 +2,13 @@
 // renders with an empty registry. Consumers override any kind via the
 // registry to map it to their own design-system component.
 
-import { defineComponent, h, inject, ref, computed, onMounted, onUnmounted, type PropType, type VNode } from 'vue'
+import { defineComponent, h, inject, ref, computed, onMounted, onUnmounted, withDirectives, type PropType, type VNode } from 'vue'
 import { sanitizeRichText } from '@whoobe-cms/schema'
 import { icons as lucideIcons } from '@lucide/vue'
 import { collectFormValues, dispatchFormResult, sliderView, sanitizeOutcome, showsResultMessage, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
 import { WHOOBE_KEY, type NodeComponent, type WhoobeApi } from './types.js'
 import { DefaultTable } from './table.js'
+import { vWhoobeAnimation } from './animation.js'
 
 // Resolves a Lucide icon by name synchronously (mirrors
 // apps/whoobe-one-spike/src/helpers.ts's resolveLucideIcon, which is async
@@ -63,6 +64,12 @@ function withLink(d: RenderDescriptor, children: VNode | VNode[] | undefined): V
   return children
 }
 
+/** Adds the element's animation (`node.gsap`) to a rendered vnode; the vnode itself when it has none. */
+function withAnimation(d: RenderDescriptor, vnode: VNode): VNode {
+  const config = (d.node as { gsap?: { animation?: string | null } } | undefined)?.gsap
+  return config?.animation ? withDirectives(vnode, [[vWhoobeAnimation, config as never]]) : vnode
+}
+
 /** Container (grid/flex/section/...): renders the resolved tag + class/style
  *  and the resolved children. */
 export const DefaultContainer: NodeComponent = defineComponent({
@@ -76,7 +83,7 @@ export const DefaultContainer: NodeComponent = defineComponent({
       if (!children && d.content) {
         attrs.innerHTML = sanitizeRichText(d.content)
       }
-      return h(d.tag, attrs, withLink(d, children))
+      return withAnimation(d, h(d.tag, attrs, withLink(d, children)))
     }
   },
 })
@@ -91,7 +98,7 @@ export function makeTextComponent(name: string): NodeComponent {
         const d = props.descriptor
         const p = elementProps(d)
         if (d.content) p.innerHTML = sanitizeRichText(d.content)
-        return h(d.tag, p)
+        return withAnimation(d, h(d.tag, p))
       }
     },
   })

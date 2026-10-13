@@ -101,7 +101,7 @@ import { useEditorStore } from '../../store/editor'
 import { resolveFieldValue, resolveFieldFromRecord } from '../../scripts/data-resolver'
 import type { DataObjectRecord } from '../../data-objects-api'
 import { applyTransform, escapeHtml, renderMarkdown, stripHtmlComments } from '../../scripts/field-transforms'
-import { mountAnimation } from '../../scripts/gsap-actions'
+import { mountAnimation } from '../../scripts/animation-actions'
 
 type WhoobeElement = InstanceType<typeof Element>
 

@@ -36,7 +36,7 @@
     </button>
     <p class="text-[10px] text-gray-400">
       Plays via GSAP ScrollTrigger once this element scrolls into view on the published page (or on hover, if checked above) - see
-      <code>gsap-actions.ts</code>'s <code>mountAnimation()</code>.
+      <code>animation-actions.ts</code>'s <code>mountAnimation()</code>.
     </p>
   </div>
 </template>
@@ -52,7 +52,7 @@
 import { computed } from 'vue'
 import { Play } from '@lucide/vue'
 import animations from '../../scripts/animations.js'
-import { previewAnimation } from '../../scripts/gsap-actions'
+import { previewAnimation } from '../../scripts/animation-actions'
 import { useEditorStore } from '../../store/editor'
 
 const editor = useEditorStore()

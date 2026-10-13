@@ -263,7 +263,7 @@ export function normalizeGeneratedTree(node: any, options?: { replacePlaceholder
 // Attribute names that already have their own dedicated, authoritative
 // binding on the rendered <component> in every canvas/preview renderer -
 // `id`/`data-id` specifically are load-bearing for the canvas (selection,
-// dragula, gsap-actions.ts's document.getElementById(element.id) lookup),
+// dragula, animation-actions.ts's document.getElementById(element.id) lookup),
 // so a user-typed custom attribute of the same name must never win.
 /** Element `element` values (BlockElement.vue's `props.element.element`,
  *  same field kind.ts's normalizeKind() switches on) whose HTML content
