@@ -1,3 +1,20 @@
+## Editor Preview: a gateway form is submitted with the admin session — 2026-10-14
+- Branch: `master`
+- Form result: new section 4.1 of `docs/plans/automations/form-result-event.md` (reading `outcome` in the child elements: `x-text`, `x-show`, `:class`, a message map, `.window` listener) and a summary in `docs/release/communication/marketing-automation.md`; the same page now says where the Alpine state may sit (on the form or on a wrapper; messages inside it); checked in the Preview with three layouts.
+- Problem: submitting a Gateway form from the editor's Preview answered `401 Site authentication required` for a website that has a gateway API key: the Preview used the public `/api/v1/gateway/submit`, which needs the site key, and the editor has none (and, for a public route, the gateway answers any origin without credentials, so the admin cookie could not be used there).
+- Gateway: `POST /api/v1/gateway/preview-submit` (`router.ts`), the same handler and checks as the public submit (binding, field allowlist, limits, outcome) behind the admin session and `gateway:manage`, without the site-key step (`createSubmitHandler({ adminPreview })`).
+- Editor: `mountFormSubmit(..., { viaSession })`; the Preview (`BlockContainerPreview.vue`) uses it, a page served by the editor app as a site (PublicPage) keeps the public route.
+- Checked on the running gateway with a temporary admin session (revoked after): public submit `401`, preview-submit without a session `401`, preview-submit with the session passes the site-key step (reaches the field validation, `400`, nothing sent to the automation).
+
+## Data bindings read GET routes only; failed previews are not repeated — 2026-10-14
+- Branch: `master`
+- Problem seen in the editor: `POST /api/v1/gateway/preview-resolve` answered `502` ("aborted" in the gateway log) for bindings on the Activepieces webhook route. The preview forces a GET; a sync webhook (`POST .../sync`) answers only when its flow ends, so the GET waited for the 15 s timeout (checked: `curl` GET on that route does not answer in 20 s), and the editor repeated it at every change.
+- Core: `unreadableRouteReason()` (`gateway/route-readable.ts`, 3 tests). Gateway `preview-resolve` answers `400` with the reason at once when the route is configured only with another method.
+- Editor: the Gateway panel and the binding picker list GET routes only; `data-resolver.ts` does not ask again for 30 s for a binding that just failed and logs one warning (with the endpoint and route and the reason) instead of an error with a stack.
+- Docs: `communication/integrations.md` ("A data binding reads GET routes only").
+- The Gateway panel and the picker say, for an endpoint that has only POST routes, that those routes are used from the form (Advanced > Form > Target > Gateway endpoint). Checked in the running editor with a real session: that form control lists `POST /w11…/sync` for Activepieces; `preview-resolve` on it now answers `400` in 8 ms.
+- Not changed: an existing binding on a POST route stays in the page (it shows nothing); remove it or rebind it to a GET route.
+
 ## Linked bindings: a selection as a route parameter (dynamic bindings) — 2026-10-14
 - Branch: `master`
 - A binding whose `params` hold `{selection.name}` (for example `catalogue/category/{id}` with `id = {selection.category}`) is loaded in the browser when the visitor chooses an item of another list, and at load when the choice is in the address. Plan and guide updated (`docs/plans/cms/linked-bindings.md`, `docs/release/content/linked-bindings.md`).

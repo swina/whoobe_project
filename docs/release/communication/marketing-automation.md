@@ -133,3 +133,16 @@ The SMTP piece of Activepieces only offers the ports 25, 465, 587 and 2525; for 
 - A form that sends to an endpoint does not take file uploads ([`form-uploads.md`](form-uploads.md)).
 
 Why Whoobe does not build its own engine: [`docs/plans/automations/why-no-custom-automation-engine.md`](../../plans/automations/why-no-custom-automation-engine.md).
+
+## Testing a form from the editor's Preview
+
+The Preview sends a Gateway form with your **admin session** (`/api/v1/gateway/preview-submit`), so it works even when the website has a gateway API key, which the editor does not hold. The page must have been **saved** first (the form's route is pinned at save time). A published site sends the form through its own server route, which adds the key.
+
+## Reading the outcome in the children (AlpineJS)
+
+The state (`x-data` and `@whoobe-form-result`) sits on the form or on a container around it; every element **inside** it reads `outcome`, `ok` and `done` by name, with no listener of its own: `x-text` = `outcome` shows the key, `x-show` = `outcome === 'qualified'` shows a block for one outcome, `:class` = `outcome === 'qualified' ? 'text-green-600' : 'text-red-600'` changes classes. For a different message for each outcome, put the texts in the parent's state (`messages: { qualified: 'Thanks', not_qualified: 'We will get back to you' }`) and use `x-text` = `messages[outcome] ?? ''` on a child. An element can also listen by itself with `@whoobe-form-result.window`. The full table is in [form result, section 4.1](../../plans/automations/form-result-event.md).
+
+## Showing the automation's answer
+
+A form does not "bind" to the route it posts to: the route is a POST (a write) and a data binding only reads GET routes. What the page can use from the answer is the **outcome** key (`{ "outcome": "qualified" }`), see [form result](../../plans/automations/form-result-event.md): the page reacts with the Alpine directives of its blocks. Text or markup from the automation's reply is deliberately not put in the page.
+

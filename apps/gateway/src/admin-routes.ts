@@ -335,6 +335,13 @@ export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPres
       let routeMethod: string;
 
       if (routePath) {
+        // a binding reads with a GET: a POST route (an automation's webhook) would not read anything, and may wait until the timeout
+        const { unreadableRouteReason } = await import('@whoobe-cms/core/server');
+        const notReadable = unreadableRouteReason(await listGatewayRoutes(endpoint.id), routePath);
+        if (notReadable) {
+          res.status(400).json({ error: notReadable });
+          return;
+        }
         upstreamUrl = resolveGatewayUrl(endpoint.baseUrl, routePath, params || undefined);
         routeMethod = 'GET';
       } else {

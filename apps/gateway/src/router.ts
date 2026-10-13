@@ -118,6 +118,8 @@ export function createRouter(): Router {
   router.use('/client/v1', createClientRouter());
   router.use('/api/v1/gateway/resolve', createResolveHandler());
   router.use('/api/v1/gateway/submit', createSubmitHandler());
+  // the editor's Preview submits a form with the admin session instead of the site key (same handler, same checks, no site-key step)
+  router.use('/api/v1/gateway/preview-submit', requirePermission(PERMISSIONS.GATEWAY_MANAGE), createSubmitHandler({ adminPreview: true }));
 
   return router;
 }

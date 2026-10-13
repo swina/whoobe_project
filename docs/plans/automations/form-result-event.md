@@ -49,8 +49,7 @@ fields; they are not used, see section 6.)
 
 ## 4. Reacting in the page (AlpineJS)
 
-Put the listener on an element that **contains** the form (a container around it) and the blocks that change inside the same
-container. In **Advanced > AlpineJS** of the container add:
+Put the listener (`x-data` and `@whoobe-form-result`) on **the form itself or on a container around it**, and the blocks that change **inside that same element**: an Alpine scope reaches only the element that declares it and what is inside it. Two layouts work (both checked in the editor's Preview): the state on the form with the messages inside the form, or the state on a wrapper with the form and the messages as its children (needed when the form is hidden after sending, because a hidden form hides what is inside it). A message that is a *sibling* of the form, with the state on the form, does not see it (`outcome is not defined`). In **Advanced > AlpineJS** of the container add:
 
 | Directive | Value |
 |---|---|
@@ -73,6 +72,35 @@ The directives work on the preview and on published sites, **not on the editor c
 
 Other things the same event can do: `@whoobe-form-result="if ($event.detail.outcome === 'qualified') window.location = '/thank-you'"`
 (redirect depending on the outcome; the form's own *Redirect URL* is the same thing without an outcome), or toggling a dialog.
+
+### 4.1 Reading the outcome in the child elements
+
+The state lives on the parent (the form or a container around it, see above); every element **inside** it reads the variables by name. A child does not need a listener, and `$event` exists only in the parent's listener.
+
+On the parent (Advanced > AlpineJS):
+
+| Directive | Value |
+|---|---|
+| `x-data` | `{ done: false, ok: false, outcome: null }` |
+| `@whoobe-form-result` | `done = true; ok = $event.detail.ok; outcome = $event.detail.outcome` |
+
+On any child, inside the parent:
+
+| What you want | Directive | Value |
+|---|---|---|
+| Show the outcome as text | `x-text` | `outcome` |
+| Show a block for one outcome | `x-show` | `outcome === 'qualified'` |
+| Show a block when the submission failed | `x-show` | `done && !ok` |
+| Change classes | `:class` | `outcome === 'qualified' ? 'text-green-600' : 'text-red-600'` |
+
+**A different message for each outcome.** The outcome is only a key (`qualified`, `not_qualified`); the texts are written in the page, in a map held by the parent's state:
+
+- `x-data` of the parent: `{ done: false, ok: false, outcome: null, messages: { qualified: 'Thanks, you are qualified', not_qualified: 'We will get back to you' } }`
+- on a child, `x-text`: `messages[outcome] ?? ''`
+
+**An element that listens by itself**, with no parent holding the state: `x-data` = `{ outcome: null }` and `@whoobe-form-result.window` = `outcome = $event.detail.outcome` (the event bubbles up to the window, so the element receives it wherever it is on the page). With several forms on the page it reacts to all of them.
+
+Checked in the editor's Preview: text, message map, classes and the `.window` listener change at every outcome, with no error.
 
 ## 5. Turn the popup off
 

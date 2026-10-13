@@ -43,7 +43,7 @@ function nestBrevoContactAttributes(body: Record<string, unknown>): Record<strin
  *  exact Form at page-save time (bindPageGatewayContent, core-api), never
  *  one the client picks by name. Mounted at /api/v1/gateway/submit. See
  *  docs/plans/api-gateway/gateway-auth-authz.md. */
-export function createSubmitHandler(): Router {
+export function createSubmitHandler(opts: { adminPreview?: boolean } = {}): Router {
   const router = Router();
 
   router.post('/', async (req: Request, res: Response): Promise<void> => {
@@ -85,7 +85,8 @@ export function createSubmitHandler(): Router {
         return;
       }
 
-      const auth = await checkSiteAuth(req, binding.websiteId);
+      // The editor's Preview (mounted behind an admin session and permission, see router.ts) has no site key to send: the session is the proof.
+      const auth = opts.adminPreview ? { ok: true as const } : await checkSiteAuth(req, binding.websiteId);
       if (!auth.ok) {
         res.status(auth.status ?? 403).json({ error: auth.error ?? 'Not authorized' });
         return;

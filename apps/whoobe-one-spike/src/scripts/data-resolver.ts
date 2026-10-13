@@ -24,6 +24,9 @@ export async function resolveDocumentData(doc: WhoobeElement, locale?: string, u
   await resolveTree(doc, locale, urlParams, editor)
 }
 
+const failedGatewayBindings = new Map<string, number>()
+const FAILED_BINDING_RETRY_MS = 30_000
+
 async function resolveTree(
   node: WhoobeElement,
   locale: string | undefined,
@@ -43,11 +46,21 @@ async function resolveTree(
   const gb = (node as any).gatewayBinding as GatewayBinding | undefined
   // (a list whose route parameters take the visitor's selection is loaded when the selection is made, not here)
   if (gb && gb.scope !== 'item' && !bindingSelectionNames(gb.params).length) {
-    try {
-      editor.resolvedData[node.id] = await resolveGatewayBinding(gb, urlParams)
-    } catch (err: any) {
-      console.error(`[data-resolver] Failed to resolve gateway binding for element ${node.id}:`, err)
+    // A binding that just failed is not asked again for a while: the document is resolved at every change of any binding, and a route that
+    // hangs (a webhook that answers when its flow ends) would wait for its timeout each time.
+    const signature = JSON.stringify([gb.endpointName, gb.routePath, gb.fieldPath, gb.params, gb.filters, urlParams])
+    const failedAt = failedGatewayBindings.get(signature)
+    if (failedAt && Date.now() - failedAt < FAILED_BINDING_RETRY_MS) {
       editor.resolvedData[node.id] = null
+    } else {
+      try {
+        editor.resolvedData[node.id] = await resolveGatewayBinding(gb, urlParams)
+        failedGatewayBindings.delete(signature)
+      } catch (err: any) {
+        failedGatewayBindings.set(signature, Date.now())
+        console.warn(`[data-resolver] Could not resolve the gateway binding of element ${node.id} (${gb.endpointName ?? '?'} ${gb.routePath ?? ''}): ${err?.message ?? err}`)
+        editor.resolvedData[node.id] = null
+      }
     }
   }
   for (const child of (node as any).blocks ?? []) {

@@ -71,7 +71,10 @@ async function uploadOneFile(coreApiUrl: string, fieldId: string, file: File): P
 export function mountFormSubmit(
   doc: WhoobeElement,
   formEl: HTMLFormElement,
-  onResult: (result: FormSubmitResult | null) => void
+  onResult: (result: FormSubmitResult | null) => void,
+  /** The editor's Preview: a Gateway form is sent with the admin session (preview-submit) because the page has no site key to show. A site
+   *  served by this app (PublicPage) is a visitor and uses the public route. */
+  options: { viaSession?: boolean } = {},
 ): () => void {
   const config = (doc as any).formConfig
   if (!config?.enabled || (!config.targetClassId && !config.gatewayEndpointName)) return () => {}
@@ -108,8 +111,9 @@ export function mountFormSubmit(
         return
       }
       const res = config.gatewayBindingId
-        ? await fetch(`${gatewayBaseUrl()}/api/v1/gateway/submit`, {
+        ? await fetch(`${gatewayBaseUrl()}/api/v1/gateway/${options.viaSession ? 'preview-submit' : 'submit'}`, {
             method: 'POST',
+            ...(options.viaSession ? { credentials: 'include' as const } : {}),
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               bindingId: config.gatewayBindingId,

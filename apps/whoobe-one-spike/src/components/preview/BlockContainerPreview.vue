@@ -528,7 +528,7 @@ onMounted(() => {
   if ((props.doc as any).tag === 'form' && rootEl.value) {
     stopFormSubmit = mountFormSubmit(props.doc, rootEl.value as unknown as HTMLFormElement, (result) => {
       submitResult.value = result
-    })
+    }, { viaSession: inEditorPreview || !!props.editorPreview })
   }
   // Alpine attributes are already on the element via v-bind="extraAttrs",
   // but Alpine's MutationObserver doesn't always catch them on initial

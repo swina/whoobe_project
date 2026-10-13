@@ -20,7 +20,7 @@
       </button>
 
       <div v-if="openEndpointId === ep.id" class="border-b border-slate-300 bg-gray-50">
-        <div v-if="!routesByEndpoint[ep.id]?.length" class="px-3 py-2 text-xs text-gray-400">No routes configured for this endpoint.</div>
+        <div v-if="!routesByEndpoint[ep.id]?.length" class="px-3 py-2 text-xs text-gray-400">No GET routes configured for this endpoint (a data binding reads GET routes).<template v-if="otherRoutesByEndpoint[ep.id]"> Its POST routes are used by a form: Advanced &gt; Form &gt; Target &gt; Gateway endpoint.</template></div>
         <template v-for="route in routesByEndpoint[ep.id]" :key="route.id">
           <button
             type="button"
@@ -104,6 +104,7 @@ const endpoints = ref<EndpointInfo[]>([])
 const loading = ref(false)
 const openEndpointId = ref<string | null>(null)
 const routesByEndpoint = ref<Record<string, RouteInfo[]>>({})
+const otherRoutesByEndpoint = ref<Record<string, number>>({})
 
 const openRouteId = ref<string | null>(null)
 const routeLoading = ref(false)
@@ -119,7 +120,10 @@ async function toggleEndpoint(id: string) {
   if (!routesByEndpoint.value[id]) {
     try {
       const { listRoutes } = await import('../gateway-api')
-      routesByEndpoint.value[id] = await listRoutes(id)
+      // a data binding reads GET routes: the POST ones (a form's target, an automation's webhook) are set up elsewhere
+      const all = await listRoutes(id)
+      routesByEndpoint.value[id] = all.filter((r) => String(r.method).toUpperCase() === 'GET')
+      otherRoutesByEndpoint.value[id] = all.length - routesByEndpoint.value[id].length
     } catch {
       routesByEndpoint.value[id] = []
     }

@@ -413,3 +413,8 @@ audience the API identifier, permissions in `permissions` or `scope`. Opaque (no
 - [Configuration reference](../operations/configuration-reference.md): every `GATEWAY_*` variable.
 - [Architecture overview](../architecture/architecture-overview.md) and [automations](automations-architecture.md).
 - [API reference](../api/api-reference.md): the gateway routes.
+
+## A data binding reads GET routes only
+
+A binding (a list, a text, a table) is resolved with a **GET**. The route of a webhook (`POST /webhook/...` of Activepieces or n8n) or any write route is not offered in the Gateway panel and the binding picker, and the editor's preview refuses it at once with the reason. Use such a route from the **Form settings** (a form that starts the flow) or as an [automation](marketing-automation.md). A GET to a webhook that answers when its flow ends would otherwise wait until the timeout (15 s) and fail with `502`.
+

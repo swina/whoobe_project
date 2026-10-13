@@ -27,7 +27,10 @@
             <option value="">-- Select route --</option>
             <option v-for="r in routes" :key="r.id" :value="r.id">{{ r.method }} {{ r.path }}{{ r.description ? ' — ' + r.description : '' }}</option>
           </select>
-          <div v-if="!routes.length" class="text-xs text-gray-400 mt-1">No routes configured for this endpoint.</div>
+          <div v-if="!routes.length" class="text-xs text-gray-400 mt-1">
+            No GET routes configured for this endpoint.
+            <template v-if="otherRoutes">It has {{ otherRoutes }} other route(s) (POST, PUT...): a data binding only reads. To send a form to it (a webhook, an automation) use <strong>Advanced &gt; Form</strong> of the form, Target &gt; Gateway endpoint.</template>
+          </div>
         </div>
 
         <!-- Step 3: Dynamic params -->
@@ -238,6 +241,8 @@ const props = withDefaults(
 
 const endpoints = ref<EndpointInfo[]>([])
 const routes = ref<RouteInfo[]>([])
+// routes of the endpoint that are not GET (a form's or an automation's target): not offered here
+const otherRoutes = ref(0)
 const selectedEndpointId = ref('')
 const selectedRouteId = ref('')
 const selectedFieldPath = ref('')
@@ -398,7 +403,9 @@ async function onEndpointChange() {
   loading.value = true
   try {
     const { listRoutes } = await import('../gateway-api')
-    routes.value = await listRoutes(selectedEndpointId.value)
+    const all = await listRoutes(selectedEndpointId.value)
+    routes.value = all.filter((r) => String(r.method).toUpperCase() === 'GET') // a data binding reads GET routes
+    otherRoutes.value = all.length - routes.value.length
   } catch {
     routes.value = []
   } finally {

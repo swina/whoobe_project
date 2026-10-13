@@ -123,3 +123,4 @@ export * from './gateway/client-jwt.js';
 export * from './gateway/client-data.js';
 export * from './gateway/client-assets.js';
 export * from './gateway/client-write.js';
+export * from './gateway/route-readable.js';
