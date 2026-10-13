@@ -270,9 +270,6 @@ importers:
 
   apps/whoobe-one-spike:
     dependencies:
-      '@alpinejs/collapse':
-        specifier: ^3.17.2
-        version: 3.17.2
       '@lucide/vue':
         specifier: ^1.1.0
         version: 1.28.0(vue@3.5.43(typescript@5.9.3))
@@ -315,6 +312,9 @@ importers:
       '@whoobe-cms/logger':
         specifier: workspace:^
         version: link:../../packages/logger
+      '@whoobe-cms/renderer':
+        specifier: workspace:*
+        version: link:../../packages/sdk/renderer
       '@whoobe-cms/schema':
         specifier: workspace:*
         version: link:../../packages/sdk/schema
@@ -330,9 +330,6 @@ importers:
       file-saver:
         specifier: ^2.0.5
         version: 2.0.5
-      gsap:
-        specifier: ^3.12.5
-        version: 3.15.0
       html-to-image:
         specifier: ^1.11.13
         version: 1.11.13
@@ -361,9 +358,6 @@ importers:
       '@types/alpinejs':
         specifier: ^3.13.11
         version: 3.13.11
-      '@types/alpinejs__collapse':
-        specifier: ^3.13.4
-        version: 3.13.4
       '@types/dragula':
         specifier: ^3.7.5
         version: 3.7.5
@@ -825,9 +819,6 @@ packages:
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
-
-  '@alpinejs/collapse@3.17.2':
-    resolution: {integrity: sha512-OugjrAUGXkg8Msmitgf3rXFyoSYXchN00LPQYC2zDjaTcuRaVXXseBZcCU7DZ7b6cyZzCvYbIYngbaaEzvEfuw==}
 
   '@antfu/install-pkg@2.1.0':
     resolution: {integrity: sha512-sdg9NxU3zR4Mnawfbc/x6GB5Wf17WYud5qOuEuxXjaKpYpMkISSJEjItGebXJ2bQ4DIcly4NYH23mtkGJjvKUw==}
@@ -2974,9 +2965,6 @@ packages:
   '@types/alpinejs@3.13.11':
     resolution: {integrity: sha512-3KhGkDixCPiLdL3Z/ok1GxHwLxEWqQOKJccgaQL01wc0EVM2tCTaqlC3NIedmxAXkVzt/V6VTM8qPgnOHKJ1MA==}
 
-  '@types/alpinejs__collapse@3.13.4':
-    resolution: {integrity: sha512-kUBJWEDrHahD2Tb1lrir7iNTGN9ukvoJFjOY41EGC7F21E1KMSch5NrGgE0sqINrRT3lf1UZm3wxB3CNjJHBwg==}
-
   '@types/body-parser@1.19.6':
     resolution: {integrity: sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g==}
 
@@ -4375,9 +4363,6 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
-
-  gsap@3.15.0:
-    resolution: {integrity: sha512-dMW4CWBTUK1AEEDeZc1g4xpPGIrSf9fJF960qbTZmN/QwZIWY5wgliS6JWl9/25fpTGJrMRtSjGtOmPnfjZB+A==}
 
   hachure-fill@0.5.2:
     resolution: {integrity: sha512-3GKBOn+m2LX9iq+JC1064cSFprJY4jL1jCXTcpnfER5HYE2l/4EfWSGzkPa/ZDBmYI0ZOEj5VHV/eKnPGkHuOg==}
@@ -6351,8 +6336,6 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@alpinejs/collapse@3.17.2': {}
-
   '@antfu/install-pkg@2.1.0':
     dependencies:
       package-manager-detector: 1.9.0
@@ -8301,10 +8284,6 @@ snapshots:
 
   '@types/alpinejs@3.13.11': {}
 
-  '@types/alpinejs__collapse@3.13.4':
-    dependencies:
-      '@types/alpinejs': 3.13.11
-
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
@@ -9902,8 +9881,6 @@ snapshots:
   gopd@1.2.0: {}
 
   graceful-fs@4.2.11: {}
-
-  gsap@3.15.0: {}
 
   hachure-fill@0.5.2: {}
 
