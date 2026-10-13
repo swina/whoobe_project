@@ -215,6 +215,8 @@ privileges of the gateway process: install only code you have read.
 
 ## 4. Applications that call Whoobe (API clients)
 
+> The complete reference, with code examples, errors and troubleshooting, is the [API clients guide](../api-clients.md). This section is the short version.
+
 The routes you configure can also be used **by an application outside Whoobe**: a mobile app, a back-end, another company's system.
 It authenticates with a **key** (a server) or with a **token of your identity provider** (a browser or an app), never with a user
 account in Whoobe (Whoobe stores no users for it), and sees only what you allow. The

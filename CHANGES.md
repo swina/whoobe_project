@@ -1,3 +1,7 @@
+## Documentation: API clients guide — 2026-10-13
+- Branch: `master`
+- New `docs/release/guides/api-clients.md`: key or token, quick start, the editor field by field, scopes (Integrations routes and Data Objects), every `/client/v1` call with parameters and replies, code examples (Node, Flutter, browser, Insomnia), answers and errors, limits and the Valkey store, identity provider tokens (Keycloak steps; Entra ID, Cognito, Auth0 values, untested), operations, security model, development and production, troubleshooting, gaps, administration API. Linked from `docs/release/README.md` and from section 4 of the Integrations guide.
+
 ## API client editor in a main tab, APIs chosen from a select — 2026-10-13
 - Branch: `master`
 - `components/api-clients/MasterApiClientTab.vue`: creating and editing an API client opens a main tab (`tabsStore.openApiClient`, item kind `apiClient`, `DashboardLayout.vue` label, icon and rendering) instead of a modal. Sections: General, Authentication, Limits, What this client may call. Unsaved changes mark the tab and closing asks first; a new key client shows its key once, then the tab closes.
