@@ -4,13 +4,13 @@ Whoobe is released under the MIT licence ([LICENSE.md](LICENSE.md)). It includes
 licence. This file is **generated** from the production dependencies of every workspace by `scripts/release/third-party-notices.py`; do not edit it by hand.
 The human-readable thanks are in [docs/release/credits.md](docs/release/credits.md).
 
-**618 packages** under 16 licence identifiers.
+**616 packages** under 15 licence identifiers.
 
 ## Summary by licence
 
 | Licence | Packages |
 |---|---|
-| MIT | 475 |
+| MIT | 474 |
 | ISC | 56 |
 | Apache-2.0 | 51 |
 | BSD-3-Clause | 12 |
@@ -21,7 +21,6 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | CC0-1.0 | 1 |
 | Python-2.0 | 1 |
 | (MPL-2.0 OR Apache-2.0) | 1 |
-| Standard 'no charge' license: https://gsap.com/standard-license. | 1 |
 | (MIT OR GPL-3.0-or-later) | 1 |
 | MIT-0 | 1 |
 | (MIT AND Zlib) | 1 |
@@ -30,7 +29,6 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 ## Licences that need attention
 
 - **LGPL-3.0-or-later** (@img/sharp-libvips-linux-x64 1.3.4, @img/sharp-libvips-linuxmusl-x64 1.3.4): libvips binaries shipped by `sharp` (image processing in asset-processor). LGPL: used as a separate dynamically linked library, not modified; the licence text and the source location (https://github.com/lovell/sharp-libvips) are given here.
-- **Standard 'no charge' license: https://gsap.com/standard-license.** (gsap 3.15.0): GSAP (animation library in the editor). **Proprietary licence, not open source**: free for commercial use, but it forbids use in tools that let users build visual animations without code if they compete with the licensor's animation builder. Review before every release: https://gsap.com/standard-license
 - **Licence field missing in the package metadata**: khroma, thirty-two (their licence files say MIT).
 
 ## Packages
@@ -38,7 +36,6 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | Package | Version | Licence | Copyright |
 |---|---|---|---|
 | @alloc/quick-lru | 5.2.0 | MIT | Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com) |
-| @alpinejs/collapse | 3.17.2 | MIT | Caleb Porzio |
 | @antfu/install-pkg | 2.1.0 | MIT | Copyright (c) 2021 Anthony Fu <https://github.com/antfu> |
 | @anthropic-ai/sdk | 0.117.1 | MIT | Copyright 2023 Anthropic, PBC. |
 | @apidevtools/json-schema-ref-parser | 15.5.2 | MIT | Copyright (c) 2015 James Messinger |
@@ -372,7 +369,6 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | glob-parent | 5.1.2 | ISC | Copyright (c) 2015, 2019 Elan Shanker |
 | glob-parent | 6.0.2 | ISC | Copyright (c) 2015, 2019 Elan Shanker, 2021 Blaine Bublitz <blaine.bublitz@gmail.com>, Eric Schoffstall <yo@contra.io> and other contributors |
 | gopd | 1.2.0 | MIT | Copyright (c) 2022 Jordan Harband |
-| gsap | 3.15.0 | Standard 'no charge' license: https://gsap.com/standard-license. |  |
 | hachure-fill | 0.5.2 | MIT | Copyright (c) 2023 Preet Shihn |
 | has-symbols | 1.1.0 | MIT | Copyright (c) 2016 Jordan Harband |
 | hasown | 2.0.4 | MIT | Copyright (c) Jordan Harband and contributors |
@@ -2337,10 +2333,6 @@ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
-
-### Standard 'no charge' license: https://gsap.com/standard-license.
-
-No licence file was found in the packages; see their homepages.
 
 ### Unlicense
 

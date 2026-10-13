@@ -141,7 +141,7 @@ const view = computeTableView(input, state)            // view.rows, view.countL
 state = reduceTableState(state, { type: 'next' }, input, view)
 ```
 
-Cells are text or checked links, never HTML (only a typed table's cells hold sanitised HTML). Not in the SDK: GSAP animation on a table. See the [Table element guide](table-element.md) for what the editor offers.
+Cells are text or checked links, never HTML (only a typed table's cells hold sanitised HTML). Not in the SDK: an entrance animation on a table. See the [Table element guide](table-element.md) for what the editor offers.
 
 ### The registry contract
 

@@ -1,3 +1,23 @@
+## Collapse: the x-collapse directive and a collapse animation, without the Alpine plugin — 2026-10-13
+- Branch: `master`
+- New `packages/sdk/renderer/src/collapse.ts` (`alpineCollapse`, exported from `@whoobe-cms/renderer`): `x-collapse` for Alpine on the Web Animations API, compatible with `x-show`, `.duration` and `.min`. Compared with the real plugin in Chromium (same initial and final states in four scenarios) and in the running editor.
+- Replaces `@alpinejs/collapse` in the editor (`apps/whoobe-one-spike`, with its types), in the generated Next.js and Nuxt sites (`packages/publish`) and in the mobile app generator (`packages/mobile-app` copies the compiled file); the dependency and the `declare module` lines are removed, `pnpm-lock.yaml` and `THIRD_PARTY_NOTICES.md` (616 packages) updated; `packages/publish` and `packages/mobile-app` rebuilt.
+- New effect `collapse` in the animation list (`animations.ts`): opens the element from nothing to its measured height when it scrolls into view, then returns to its natural size; the scroll observer no longer pauses an animation that already finished. Test added (17 in `animations.test.ts`).
+- Docs: plan `replace-gsap.md` section 9, user manual (page builder).
+
+## GSAP replaced by the Web Animations API — 2026-10-13
+- Branch: `master`
+- New `packages/sdk/renderer/src/animations.ts` (shared by the editor and every output; exported from `@whoobe-cms/renderer`): 19 effects, 14 eases, `createAnimation`, `previewAnimation`, `mountAnimation` (scroll into view with restart, or hover with reverse; cleanup; reduced motion). Tests `animations.test.ts` (16, eases against values measured on GSAP). Parity with GSAP checked in Chromium on all 19 effects and 10 eases (30 cases, largest deviation 0.3 px).
+- Editor (`apps/whoobe-one-spike`): `scripts/gsap-actions.ts` renamed `animation-actions.ts` and rewritten on the module; `scripts/animations.js` exposes the name lists only; imports updated in the toolbar, the animation panel and the four preview components; `gsap` dependency removed, `@whoobe-cms/renderer` added. `pnpm-lock.yaml` updated.
+- Outputs: `packages/sdk/react` uses the module instead of a dynamic import of `gsap`; `packages/sdk/vue` (directive `vWhoobeAnimation`) and `packages/sdk/svelte` (action `animate`) now play animations too (they did not before); `packages/publish` no longer adds `gsap` to generated Next.js sites.
+- Schema: `trigger` added to `ElementGsap` and `elementGsapSchema` (the hover flag the editor writes was not in the schema).
+- Fixes found on the way: the effect `growh-eight` could never play (now `grow-height`); the editor's default duration was effectively 0 (effect defaults were never applied), so animations without a set duration jumped; an empty duration now means 0.7 s. `rough`, `slow` and `steps` get a curve (they never worked).
+- `THIRD_PARTY_NOTICES.md` regenerated (617 packages, GSAP gone) and the GSAP exception removed from `scripts/release/third-party-notices.py`; docs updated (plan `docs/plans/cms/replace-gsap.md` section 8, credits, supply chain, user manual, content guides).
+
+## Analysis: replacing GSAP — 2026-10-13
+- Branch: `master`
+- New `docs/plans/cms/replace-gsap.md` (no code changed): where GSAP is used (editor, React adapter, every generated Next site), what the 19 effects need, options (Web Animations API plus IntersectionObserver as a shared module in `packages/sdk/renderer`; Motion; CSS and Alpine; keep GSAP with Webflow's consent), recommendation, design, a parity test, a 3 to 4 day estimate, and four findings (effect `growh-eight` misnamed, `trigger` missing from the animation schema, `close-right`, animations not run on Vue, Svelte and Nuxt outputs).
+
 ## Third-party notices and credits — 2026-10-13
 - New `scripts/release/third-party-notices.py`: generates `THIRD_PARTY_NOTICES.md` (root; 618 production packages with licence and copyright, one licence text per licence, NOTICE files) from `pnpm licenses`, and with `--check` fails when the file is out of date or a licence is neither allowed (permissive list) nor reviewed with a reason. Hooked into the licence gate of `scripts/release.sh`.
 - Findings from the first run, written in the notices file and in `docs/release/security/supply-chain.md`: **GSAP** (editor animations) is under a proprietary licence with a restriction on visual animation builders that compete with the licensor, to be decided before release; **libvips** (sharp) is LGPL-3.0-or-later; two packages lack a licence field (khroma, thirty-two: MIT in their files).

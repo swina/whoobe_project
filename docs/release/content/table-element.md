@@ -74,7 +74,7 @@ of the binding to keep that list a reasonable size, because all of it is downloa
 
 - **Generated sites and the headless SDK** draw the Table (React/Next, Vue/Nuxt and Svelte), with the same rules as the editor. Differences: the page the server sends holds only the
   **first page** of rows (sorting, search and paging start working when the page is loaded in the browser); a table keeps at most **1,000 rows** and says "Showing the first 1,000 of N rows"
-  when it was cut; sorting and search work over the rows that were kept; there is no GSAP animation on a table; the data is as old as the last build or revalidation. See the
+  when it was cut; sorting and search work over the rows that were kept; there is no entrance animation on a table; the data is as old as the last build or revalidation. See the
   [headless SDK guide](headless-sdk.md).
 - No sticky header; the visitor cannot choose the number of rows per page; sorting is by one column at a time; the search is a plain "contains" over words (no fuzzy matching).
 - Merged cells (column and row spans) belong to the typed table; a bound table does not use them.
