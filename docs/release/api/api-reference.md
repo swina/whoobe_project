@@ -374,6 +374,25 @@ Federated API Gateway: lets a published site or the admin editor reach third-par
 | `GET /api/v1/gateway/plugins` | List loaded custom Gateway plugins. |
 | `GET /api/v1/gateway/presets` | List available connector presets (HubSpot, Brevo, Stripe, etc.). |
 
+### Gateway admin: API clients (auth: wcms_session + GATEWAY_MANAGE)
+
+| Method & path | Description |
+| --- | --- |
+| `GET /api/v1/gateway/clients` | List the API clients (applications that call the gateway with a key) with their keys' prefixes; never a key or a hash. |
+| `POST /api/v1/gateway/clients` | Create a client (name, scopes, limits, allowed addresses, expiry; `authMode` `key` or `jwt`; a `jwt` client carries the identity provider registration in `jwt`). A key client gets its first key, in the reply, once; a token client has none. |
+| `GET /api/v1/gateway/clients/:id` | Get one client with its keys. |
+| `PATCH /api/v1/gateway/clients/:id` | Change a client: name, status (`active` / `suspended`), scopes, limits, addresses, expiry. Scopes are checked against the resulting kind. |
+| `DELETE /api/v1/gateway/clients/:id` | Delete a client and its keys. |
+| `POST /api/v1/gateway/clients/:id/keys` | Add a key to a key client (rotation). The key is in the reply, once. |
+| `DELETE /api/v1/gateway/clients/:id/keys/:keyId` | Revoke a key. |
+
+### Gateway client surface (auth: an API key `wbk_...` from a server, or an identity provider token from a browser or an app, as `Authorization: Bearer`; the key also as `X-Whoobe-Key`; no session - see docs/release/guides/integrations/integrations.md)
+
+| Method & path | Description |
+| --- | --- |
+| `GET /client/v1/me` | What the calling key is: name, auth mode, scopes, limits, state of the rate-limit store. No secret. |
+| `ALL /client/v1/gateway/:endpoint/*` | Call a configured route of an endpoint the client's scopes allow: the path is matched to a route (templates such as `customers/{id}` included), query string and JSON body are passed on, the gateway adds the credentials. Anything outside the scopes answers `404 Not found`; `429` with `Retry-After` over the client's limits. A key sent with an `Origin` header (a browser) is refused with `403`; a valid token whose claims give no access gets `403`. |
+
 ### Gateway published-site endpoints (site API key or bound content only - see docs/release/guides/api-gateway-security.md)
 
 | Method & path | Description |

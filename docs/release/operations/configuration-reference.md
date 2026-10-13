@@ -100,8 +100,9 @@ cannot be lost** - see [secrets and keys](secrets-and-keys.md).
 |---|---|---|
 | `GATEWAY_CORE_API_URL`, `GATEWAY_ASSET_PROCESSOR_URL` | `http://$WHOOBE_HOSTNAME:3003` / `:3002` | where the gateway reaches the other services |
 | `GATEWAY_DEFAULT_RATE_LIMIT_RPS` | 10 | per-key limit when a route sets none |
-| `GATEWAY_RATE_LIMIT_BACKEND` | `memory` | `redis` is accepted but **the Redis backend is not implemented**: it falls back to memory |
-| `GATEWAY_REDIS_URL` | unset | read, but unused (see above) |
+| `GATEWAY_RATE_LIMIT_BACKEND` | `memory` | where the counters of the per-endpoint limit (`/api/remote`) and of the API clients (`/client/v1`) are kept: `memory` (this process) or `redis` (any Redis-protocol server, shared between processes). The limits of the public `resolve` and `submit` stay in the process |
+| `GATEWAY_REDIS_URL` | unset | with `redis`: `redis://:password@host:6379`, `rediss://` for TLS. If the store cannot be reached the gateway counts in memory, logs a warning and `GET /health` reports `rateLimit.degraded: true` |
+| `VALKEY_PASSWORD` | unset | password of the optional `valkey` service of `docker-compose.yml` (compose profile `ratelimit`, no published port); put the same value in `GATEWAY_REDIS_URL`. `provision-workspace.sh` generates both |
 | `GATEWAY_PROXY_TIMEOUT_MS` | 30000 | upstream timeout |
 | `GATEWAY_PRESETS_PATH` | unset | extra vendor presets (`*.json`), read per request |
 | `GATEWAY_PLUGINS_PATH` | unset | gateway plugins (code), loaded at start |
