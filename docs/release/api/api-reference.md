@@ -391,6 +391,8 @@ Federated API Gateway: lets a published site or the admin editor reach third-par
 | Method & path | Description |
 | --- | --- |
 | `GET /client/v1/me` | What the calling key is: name, auth mode, scopes, limits, state of the rate-limit store. No secret. |
+| `GET /client/v1/data/:class` | Published objects of a Data Class named in a `data:read:<Class>` scope: `filter=field:op:value` (up to 5), `orderBy`, `dir`, `limit` (1-100), `offset`, `locale`. Only the class's own attributes are returned. Outside the scopes or an unknown class: `404 Not found`. |
+| `GET /client/v1/data/:class/:id` | One published object of that class; a draft, another class's id or a malformed id answer `404 Not found`. |
 | `ALL /client/v1/gateway/:endpoint/*` | Call a configured route of an endpoint the client's scopes allow: the path is matched to a route (templates such as `customers/{id}` included), query string and JSON body are passed on, the gateway adds the credentials. Anything outside the scopes answers `404 Not found`; `429` with `Retry-After` over the client's limits. A key sent with an `Origin` header (a browser) is refused with `403`; a valid token whose claims give no access gets `403`. |
 
 ### Gateway published-site endpoints (site API key or bound content only - see docs/release/guides/api-gateway-security.md)

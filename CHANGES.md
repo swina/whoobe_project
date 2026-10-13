@@ -1,3 +1,12 @@
+## Client access: published Data Objects on `/client/v1/data` (read) — 2026-10-13
+- Branch: `master`
+- New scope `data:read:<Class name>` (or `data:read:*`) in `packages/core/src/gateway/client-scopes.ts` (`parseDataScope`, `dataScopeAllows`; `validateClientScopes` accepts it). Works for key clients and for token clients (claim rules can grant it).
+- `packages/core/src/gateway/client-data.ts`: `projectClientObject` (id, key, locale, translationGroupId, publishedAt, updatedAt and only the attributes the class defines; no class id, path, parent, workflow state, import id) and `parseClientDataQuery` (`filter=field:op:value` up to 5, `orderBy`, `dir`, `limit` 1-100, `offset`, `locale`; only class fields plus `key`, `locale`, `updatedAt`).
+- Gateway `client-router.ts`: `GET /client/v1/data/:class` and `GET /client/v1/data/:class/:id`, published objects only (`queryPublishedDataObjects`, `getPublishedDataObject`); no scope, unknown class, draft, malformed id and an id of another class all answer the same `404`; log line per call.
+- Dashboard `ApiClientsView.vue`: Data Objects picker (classes, all classes) and data scopes in the list.
+- Test `scripts/security/unit/client-data.test.ts` (7); run against the development database (published only, draft hidden, scope per class, other class id 404). `packages/core/dist` rebuilt.
+- Docs: guide 4.3 and 4.6, API reference, plan.
+
 ## Client access to Integrations: API clients, `/client/v1/gateway`, shared rate limits — 2026-10-12
 - Branch: `master`
 - 2026-10-13: the plan is revised (section 14): static keys only server-to-server; browsers and apps send identity-provider tokens, validated by Whoobe. The `public` client kind is to be removed.

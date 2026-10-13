@@ -281,6 +281,23 @@ The scope is checked against **the route the path was matched to**, never agains
 wildcard, and it cannot contain a `:`. If you rename an endpoint its scopes stop matching until you edit the client (it fails
 closed). Two equally specific routes (`products/{id}` and `products/{name}`) are resolved among those the client may call.
 
+#### Data Objects
+
+`data:read:<Class name>` lets the client read the **published** objects of one Data Class (`data:read:*` all classes, including later
+ones; the dashboard warns). The class is named exactly; there is no pattern.
+
+| Call | Answers |
+|---|---|
+| `GET /client/v1/data/Blog` | `{ class, objects: [...], limit, offset }` |
+| `GET /client/v1/data/Blog/<id>` | `{ object }` |
+
+Query parameters of the list: `filter=field:operator:value` (repeat, up to 5; operators `eq`, `neq`, `contains`, `gt`, `lt`),
+`orderBy=field` with `dir=asc|desc`, `limit` (1-100, default 50), `offset`, `locale`. A field is one of the class's own fields, or `key`,
+`locale`, `updatedAt`. An object carries `id`, `key`, `locale`, `translationGroupId`, `publishedAt`, `updatedAt` and `attributes`
+(only the fields the class defines). Drafts never appear, and a draft, an unknown class, a class outside the scopes and the id of an
+object of another class all answer the same `404`. Relations are returned as ids and asset fields as references; they are not
+expanded.
+
 ### 4.4 Where the counters live
 
 The per-second limit and the daily quota are counted in the gateway's memory by default: correct for one process. With several gateway
@@ -303,7 +320,7 @@ the CDN mirror of assets is a separate feature of the asset manager.
 
 ### 4.6 What it does not do (yet)
 
-- **Data objects and assets** are not yet on `/client/v1`; phases 3 and 4 of the plan.
+- **Data objects** are readable (4.3), not writable; **assets** are not yet on `/client/v1`.
 - **Binary replies, multipart bodies and streaming** are not relayed.
 - **A key from a browser** is refused (`403`) when the request carries an `Origin` header, and logged. A script can leave the header out,
   so also set the client's allowed addresses: they are the real control.

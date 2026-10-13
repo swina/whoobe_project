@@ -158,6 +158,55 @@ export function createClientRouter(): Router {
     });
   });
 
+  // Published Data Objects of the classes named in the scopes (`data:read:<Class>`). Unknown class, no scope, draft and other class's id
+  // all answer the same 404.
+  const dataNotFound = (req: ClientRequest, res: Response, why: string): void => {
+    logger.info({ clientId: req.apiClient!.id, method: req.method, path: req.path, why }, '[gateway] client data call not served');
+    res.status(404).json({ error: 'Not found' });
+  };
+  const dataClass = async (req: ClientRequest, res: Response) => {
+    const core = await import('@whoobe-cms/core/server');
+    const className = String(req.params.className ?? '');
+    if (!core.dataScopeAllows(req.callerScopes ?? [], 'read', className)) { dataNotFound(req, res, 'no scope for the class'); return null; }
+    const cls = await core.getDataClassByName(className);
+    if (!cls) { dataNotFound(req, res, 'unknown class'); return null; }
+    return { core, cls };
+  };
+
+  router.get('/data/:className', async (req: ClientRequest, res: Response): Promise<void> => {
+    try {
+      const found = await dataClass(req, res);
+      if (!found) return;
+      const { core, cls } = found;
+      const fields = (cls.fields ?? []) as import('@whoobe-cms/core/server').ClassFieldDefinition[];
+      const q = core.parseClientDataQuery(req.query as Record<string, unknown>, fields);
+      if ('error' in q) { res.status(400).json({ error: q.error }); return; }
+      const rows = await core.queryPublishedDataObjects(cls.id, { filters: q.filters, orderBy: q.orderBy, offset: q.offset, limit: q.limit, locale: q.locale });
+      logger.info({ clientId: req.apiClient!.id, client: req.apiClient!.name, sub: req.subject, class: cls.name, count: rows.length }, '[gateway] client data list');
+      res.json({ class: cls.name, objects: rows.map((o) => core.projectClientObject(o, fields)), limit: q.limit, offset: q.offset });
+    } catch (err) {
+      logGatewayError('client data list', err);
+      res.status(500).json({ error: 'Failed to read objects' });
+    }
+  });
+
+  router.get('/data/:className/:id', async (req: ClientRequest, res: Response): Promise<void> => {
+    try {
+      const found = await dataClass(req, res);
+      if (!found) return;
+      const { core, cls } = found;
+      const id = String(req.params.id ?? '');
+      if (!/^[0-9a-f-]{36}$/i.test(id)) { dataNotFound(req, res, 'malformed id'); return; }
+      const obj = await core.getPublishedDataObject(id);
+      if (!obj || obj.classId !== cls.id) { dataNotFound(req, res, 'no published object of this class'); return; }
+      logger.info({ clientId: req.apiClient!.id, client: req.apiClient!.name, sub: req.subject, class: cls.name, id }, '[gateway] client data get');
+      res.json({ object: core.projectClientObject(obj, (cls.fields ?? []) as import('@whoobe-cms/core/server').ClassFieldDefinition[]) });
+    } catch (err) {
+      logGatewayError('client data get', err);
+      res.status(500).json({ error: 'Failed to read the object' });
+    }
+  });
+
   router.all('/gateway/:endpoint/*', async (req: ClientRequest, res: Response): Promise<void> => {
     const started = Date.now();
     const client = req.apiClient!;

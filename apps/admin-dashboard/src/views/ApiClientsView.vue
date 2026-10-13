@@ -57,8 +57,9 @@
             </td>
             <td class="py-2.5 px-4">
               <button v-for="s in c.scopes.slice(0, 6)" :key="s" type="button" class="block text-left font-mono text-[11px] hover:text-indigo-300"
-                :class="isWide(s) ? 'text-amber-400' : ''" :title="`${callUrl(s)}\nClick to copy this address`" @click="copy(callUrl(s))">
-                <span class="font-bold">{{ method(s) }}</span> {{ endpointOf(s) }}<span class="text-slate-500"> /</span>{{ routeOf(s) }}
+                :class="isWide(s) || s === 'data:read:*' ? 'text-amber-400' : ''" :title="`${callUrl(s)}\nClick to copy this address`" @click="copy(callUrl(s))">
+                <template v-if="isData(s)"><span class="font-bold">GET</span> data<span class="text-slate-500"> /</span>{{ dataClassOf(s) === '*' ? '* (every class)' : dataClassOf(s) }}</template>
+                <template v-else><span class="font-bold">{{ method(s) }}</span> {{ endpointOf(s) }}<span class="text-slate-500"> /</span>{{ routeOf(s) }}</template>
               </button>
               <div v-if="c.scopes.length > 6" class="text-slate-500">+ {{ c.scopes.length - 6 }} more</div>
               <div v-if="!c.scopes.length" class="text-slate-500">nothing yet</div>
@@ -231,6 +232,21 @@
               </div>
             </div>
           </div>
+          <div class="mt-2 rounded-lg border border-slate-800 light:border-slate-200 p-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-200 light:text-slate-800">Data Objects <span class="font-normal text-slate-500">(read, published only)</span></span>
+              <label class="flex items-center gap-1.5 text-[11px] text-amber-400 cursor-pointer" title="Every class, including classes created later">
+                <input type="checkbox" :checked="form.scopes.has('data:read:*')" @change="toggleScope('data:read:*')" /> all classes
+              </label>
+            </div>
+            <div class="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
+              <label v-for="dc in dataClasses" :key="dc.id" class="flex items-center gap-1.5 text-[11px] font-mono cursor-pointer" :class="form.scopes.has('data:read:*') ? 'opacity-40' : ''">
+                <input type="checkbox" :checked="form.scopes.has(`data:read:${dc.name}`)" :disabled="form.scopes.has('data:read:*') || dc.name.includes(':')" @change="toggleScope(`data:read:${dc.name}`)" />
+                <span class="truncate" :title="dc.name.includes(':') ? 'name contains “:”, rename it to use it here' : dc.name">{{ dc.name }}</span>
+              </label>
+              <span v-if="!dataClasses.length" class="text-[11px] text-slate-500">No Data Class yet.</span>
+            </div>
+          </div>
           <div v-if="otherScopes.length" class="mt-2 text-[11px] text-slate-500">
             Other scopes kept as they are:
             <span v-for="s in otherScopes" :key="s" class="inline-flex items-center gap-1 mr-2 font-mono">
@@ -274,6 +290,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { Ban, KeyRound, Pause, Pencil, Play, Plus, RefreshCw, Trash2 } from '@lucide/vue'
 import BaseModal from '../components/ui/BaseModal.vue'
+import { useAuthStore } from '../stores/authStore'
+import { fetchDataClasses, type DataClass } from '../utils/data-classes-api'
 import {
   addApiClientKey, clientApiBaseUrl, createApiClient, deleteApiClient, listApiClients, listEndpoints, listRoutes, revokeApiClientKey, updateApiClient,
   type ApiClient, type ApiClientKey, type GatewayEndpoint, type GatewayRoute,
@@ -310,6 +328,8 @@ const endpoints = ref<GatewayEndpoint[]>([])
 const routes = ref<Record<string, GatewayRoute[]>>({})
 const loading = ref(false)
 const error = ref('')
+const authStore = useAuthStore()
+const dataClasses = ref<DataClass[]>([])
 const apiBase = clientApiBaseUrl()
 
 const showForm = ref(false)
@@ -327,6 +347,8 @@ const copied = ref(false)
 const wide = (endpoint: string) => `gateway:call:${endpoint}:*:*`
 // the dashboard writes a route without its leading slash, as the gateway reads it
 const scopeOf = (endpoint: string, r: GatewayRoute) => `gateway:call:${endpoint}:${r.method.toUpperCase()}:${r.path.replace(/^\/+/, '')}`
+const isData = (s: string) => s.startsWith('data:')
+const dataClassOf = (s: string) => s.split(':').slice(2).join(':')
 const isWide = (s: string) => s.endsWith(':*:*')
 // gateway:call:<endpoint>:<METHOD>:<route> -> the parts, and the address an application calls
 const partsOf = (s: string) => { const [, , endpoint = '', m = '', ...route] = s.split(':'); return { endpoint, method: m, route: route.join(':') } }
@@ -334,13 +356,15 @@ const method = (s: string) => (partsOf(s).method === '*' ? 'ANY' : partsOf(s).me
 const endpointOf = (s: string) => partsOf(s).endpoint
 const routeOf = (s: string) => (partsOf(s).route === '*' ? '* (every route)' : partsOf(s).route)
 const callUrl = (s: string) => {
+  if (isData(s)) return `${apiBase}/data/${dataClassOf(s) === '*' ? '' : encodeURIComponent(dataClassOf(s))}`
   const p = partsOf(s)
   return `${apiBase}/gateway/${encodeURIComponent(p.endpoint)}/${p.route === '*' ? '' : p.route.replace(/\/\*$/, '/')}`
 }
 const isExpired = (d: string | null) => !!d && new Date(d).getTime() <= Date.now()
 
 const knownScopes = computed(() => {
-  const set = new Set<string>()
+  const set = new Set<string>(['data:read:*'])
+  for (const dc of dataClasses.value) set.add(`data:read:${dc.name}`)
   for (const ep of endpoints.value) {
     set.add(wide(ep.name))
     for (const r of routes.value[ep.id] ?? []) set.add(scopeOf(ep.name, r))
@@ -358,7 +382,8 @@ async function refresh() {
   loading.value = true
   error.value = ''
   try {
-    const [c, e] = await Promise.all([listApiClients(), listEndpoints()])
+    const [c, e, dcs] = await Promise.all([listApiClients(), listEndpoints(), fetchDataClasses(authStore.config.coreApiUrl).catch(() => [])])
+    dataClasses.value = dcs
     clients.value = c
     endpoints.value = e
     const entries = await Promise.all(e.map(async (ep) => [ep.id, await listRoutes(ep.id).catch(() => [] as GatewayRoute[])] as const))

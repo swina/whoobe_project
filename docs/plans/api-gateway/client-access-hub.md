@@ -210,7 +210,7 @@ Each phase ends in something usable, with tests and documentation.
 | Phase | Content | Size |
 |---|---|---|
 | **1. Gateway for clients** (done 2026-10-12) | `api_clients` table and migration (expand only); key creation, hashing, verification in `packages/core`; `callRoute()` extracted from `/api/remote` (templates, query string, status, header allow-list, binary); `/client/v1/gateway/*` with route-level scopes; per-client rate limit; usage log; dashboard page (create, scopes, revoke, rotate); `clients:manage` permission | the largest; this alone answers the original question |
-| **2. Data objects** | `/client/v1/data/*` read and write with class scopes, draft rule, validation; `GET /client/v1/me` | medium |
+| **2. Data objects** | read done 2026-10-13: `GET /client/v1/data/:class[/:id]`, scope `data:read:<Class>`, published only. Write (class scopes, validation, draft rule) still to do | medium |
 | **3. Assets and OpenAPI** | `/client/v1/assets` read with CDN-mirror and signed URLs, upload with folder scope; per-key `openapi.json`; hourly usage counters in the dashboard | medium |
 | **4. Environments** | configuration bundle export / import without secrets or keys; "prefer CDN mirror" workspace setting | medium |
 | **5. Hub-only workspace** | module switches in the dashboard | small |
