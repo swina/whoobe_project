@@ -570,6 +570,7 @@ import {
   Zap,
   Rocket,
   Link2,
+  KeyRound,
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
@@ -607,6 +608,7 @@ import GatewayEndpointsView from '../views/GatewayEndpointsView.vue'
 import GatewayPluginsView from '../views/GatewayPluginsView.vue'
 import AutomationsView from '../views/AutomationsView.vue'
 import DataBindingsView from '../views/DataBindingsView.vue'
+import ApiClientsView from '../views/ApiClientsView.vue'
 import { usePagesStore } from '../stores/pagesStore'
 import { useSnippetsStore } from '../stores/snippetsStore'
 import { adminSearch, reindexSearchIndex, type SearchResult } from '../utils/search-api'
@@ -893,6 +895,7 @@ const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Data Objects', section: 'objects', icon: Database },
   { name: 'Components', section: 'components', icon: Blocks },
   { name: 'Integrations', section: 'gateway', icon: Network },
+  { name: 'API clients', section: 'api-clients', icon: KeyRound },
   { name: 'Data bindings', section: 'data-bindings', icon: Link2 },
   { name: 'Automations', section: 'automations', icon: Zap },
   { name: 'Outgoing Mail', section: 'mail', icon: Mail },
@@ -926,6 +929,7 @@ const sectionGroup: Partial<Record<SectionKind, NavGroupId>> = {
   documents: 'data',
   mail: 'data',
   gateway: 'data',
+  'api-clients': 'data',
   'data-bindings': 'data',
   automations: 'data',
   'system-logs': 'system',
@@ -973,6 +977,7 @@ const sectionComponents: Record<SectionKind, any> = {
   ai: AiView,
   gateway: GatewayEndpointsView,
   'gateway-plugins': GatewayPluginsView,
+  'api-clients': ApiClientsView,
   'data-bindings': DataBindingsView,
   automations: AutomationsView,
   'system-logs': SystemLogsView,
@@ -992,6 +997,7 @@ const sectionLabels: Record<SectionKind, string> = {
   themes: 'Themes',
   gateway: 'Integrations',
   'gateway-plugins': 'Integration Plugins',
+  'api-clients': 'API clients',
   'data-bindings': 'Data bindings',
   automations: 'Automations',
   'system-logs': 'System Logs',
@@ -1013,6 +1019,7 @@ const sectionIcons: Record<SectionKind, any> = {
   themes: Palette,
   gateway: Network,
   'gateway-plugins': Network,
+  'api-clients': KeyRound,
   'data-bindings': Link2,
   automations: Zap,
   'system-logs': ScrollText,

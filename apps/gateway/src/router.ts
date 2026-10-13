@@ -4,6 +4,8 @@ import { requireAuth } from './auth.js';
 import { GATEWAY_CORE_API_URL, GATEWAY_ASSET_PROCESSOR_URL } from './config.js';
 import { createAdminRoutes } from './admin-routes.js';
 import { createRemoteRouter, setLoadedPlugins } from './remote-router.js';
+import { createClientRouter } from './client-router.js';
+import { createClientAdminRoutes } from './client-admin-routes.js';
 import { createResolveHandler } from './resolve-handler.js';
 import { createSubmitHandler } from './submit-handler.js';
 import { loadPlugins } from './plugin-loader.js';
@@ -11,6 +13,7 @@ import type { GatewayPlugin } from './plugin-types.js';
 import { createPresetSource } from './preset-loader.js';
 import { PERMISSIONS, requirePermission } from './auth.js';
 import { logGatewayError } from './log-error.js';
+import { limiter } from './limiter.js';
 
 export function createRouter(): Router {
   const router = Router();
@@ -18,7 +21,7 @@ export function createRouter(): Router {
   const plugins: GatewayPlugin[] = [];
 
   router.get('/health', (_req: Request, res: Response) => {
-    res.json({ status: 'ok', service: 'gateway', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString() });
+    res.json({ status: 'ok', service: 'gateway', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString(), rateLimit: limiter.status() });
   });
 
   router.all('/api/internal/*', requireAuth, async (req: Request, res: Response): Promise<void> => {
@@ -109,8 +112,10 @@ export function createRouter(): Router {
 
   const presets = createPresetSource(process.env.GATEWAY_PRESETS_PATH);
 
+  router.use('/api/v1/gateway/clients', createClientAdminRoutes());
   router.use('/api/v1/gateway', createAdminRoutes(plugins, presets));
   router.use('/api/remote', createRemoteRouter());
+  router.use('/client/v1', createClientRouter());
   router.use('/api/v1/gateway/resolve', createResolveHandler());
   router.use('/api/v1/gateway/submit', createSubmitHandler());
 

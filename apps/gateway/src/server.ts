@@ -26,7 +26,7 @@ app.disable('x-powered-by');
 app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
 app.use(securityHeaders());
 app.use(corsPolicy({
-  publicPathPrefixes: ['/health', '/public/', '/api/remote', '/api/v1/gateway/resolve', '/api/v1/gateway/submit'],
+  publicPathPrefixes: ['/health', '/public/', '/api/remote', '/client/v1', '/api/v1/gateway/resolve', '/api/v1/gateway/submit'],
 }));
 
 app.use('/', createRouter());
