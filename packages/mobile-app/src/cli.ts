@@ -359,6 +359,19 @@ async function copyAudioPlayer(outDir: string): Promise<void> {
   }
 }
 
+/** The x-collapse directive of @whoobe-cms/renderer (Web Animations API), copied as compiled text so the app needs no Alpine plugin: the same
+ *  file the editor and the generated sites use, so a page that uses `x-collapse` behaves the same everywhere. */
+async function copyAlpineCollapse(outDir: string): Promise<void> {
+  const dist = (file: string) => new URL(`../../../packages/sdk/renderer/dist/${file}`, import.meta.url)
+  try {
+    await mkdir(join(outDir, 'src/lib'), { recursive: true })
+    await writeFile(join(outDir, 'src/lib/alpine-collapse.js'), (await readFile(dist('collapse.js'), 'utf8')).replace(/\n\/\/# sourceMappingURL=.*$/m, ''))
+    await writeFile(join(outDir, 'src/lib/alpine-collapse.d.ts'), (await readFile(dist('collapse.d.ts'), 'utf8')).replace(/\n\/\/# sourceMappingURL=.*$/m, ''))
+  } catch (e) {
+    throw new Error(`Cannot copy the collapse directive from packages/sdk/renderer (build it first: pnpm build): ${(e as Error).message}`)
+  }
+}
+
 async function scaffoldMobileApp(opts: ScaffoldOptions): Promise<void> {
   const dirs = ['src/views', 'src/router', 'src/composables', 'src/assets', 'src/components', 'src/scripts', 'public']
   for (const d of dirs) {
@@ -379,6 +392,7 @@ async function scaffoldMobileApp(opts: ScaffoldOptions): Promise<void> {
   await writeFile(join(opts.outDir, 'src/composables/useApi.ts'), useApiTs(opts))
   await writeFile(join(opts.outDir, 'src/assets/main.css'), mainCss(opts))
   await copyAudioPlayer(opts.outDir)
+  await copyAlpineCollapse(opts.outDir)
   await writeFile(join(opts.outDir, 'public/favicon.ico'), '')
 
   if (opts.staticMode) {
@@ -409,7 +423,6 @@ function pkgJson(opts: ScaffoldOptions): string {
       vue: '^3.5.0',
       'vue-router': '^4.5.0',
       alpinejs: '^3.16.0',
-      '@alpinejs/collapse': '^3.16.0',
       '@lucide/vue': '^1.1.0',
       '@capacitor/core': '^7.0.0',
       '@capacitor/splash-screen': '^7.0.0',
@@ -496,10 +509,6 @@ declare module 'alpinejs' {
   export default Alpine
 }
 
-declare module '@alpinejs/collapse' {
-  const collapse: any
-  export default collapse
-}
 `
 }
 
@@ -599,12 +608,12 @@ if (isNative) {
 `
   return `import { createApp } from 'vue'
 import Alpine from 'alpinejs'
-import Collapse from '@alpinejs/collapse'
+import { alpineCollapse } from './lib/alpine-collapse'
 import App from './App.vue'
 import router from './router'
 import './assets/main.css'
 
-Alpine.plugin(Collapse)
+Alpine.plugin(alpineCollapse)
 
 ;(async () => {
   const { default: tailwindUrl } = await import('@tailwindcss/browser?url')

@@ -540,7 +540,7 @@ async function scaffoldNextSite(opts: ScaffoldOptions): Promise<void> {
   await writeFile(join(opts.outDir, 'src/lib/api.ts'), scaffoldApi(opts))
   await writeFile(join(opts.outDir, 'src/lib/registry.ts'), scaffoldRegistry())
   await writeFile(join(opts.outDir, 'src/lib/AlpineStarter.tsx'), scaffoldAlpineStarter())
-  await writeFile(join(opts.outDir, 'src/lib/alpine.d.ts'), "declare module 'alpinejs'\ndeclare module '@alpinejs/collapse'\n")
+  await writeFile(join(opts.outDir, 'src/lib/alpine.d.ts'), "declare module 'alpinejs'\n")
   await writeFile(join(opts.outDir, '.env.local'), scaffoldEnv(opts), { mode: 0o600 })
 
   // Self-contained deploy (Docker + nginx) - see each function's own comment.
@@ -570,12 +570,8 @@ function scaffoldPackageJson(opts: ScaffoldOptions): string {
       react: '^18.3.0',
       'react-dom': '^18.3.0',
       'lucide-react': '^0.400.0',
-      // the React adapter loads gsap on demand for elements with an animation (the editor's gsap setting); without the package the
-      // bundler warns "Module not found: gsap" and the animations never run
-      gsap: '^3.12.5',
       // Alpine.js for the x-data / x-show / ... directives of the pages (started in the browser by src/lib/AlpineStarter.tsx)
       alpinejs: '^3.16.0',
-      '@alpinejs/collapse': '^3.16.0',
       ...vendoredDeps,
     },
     devDependencies: {
@@ -1060,9 +1056,10 @@ export default function AlpineStarter() {
       const w = window as unknown as { Alpine?: unknown }
       if (w.Alpine) return
       const { default: Alpine } = await import('alpinejs')
-      const { default: collapse } = await import('@alpinejs/collapse')
+      // x-collapse: the directive of @whoobe-cms/renderer (the Web Animations API), no separate Alpine plugin
+      const { alpineCollapse } = await import('@whoobe-cms/renderer')
       if (cancelled || w.Alpine) return
-      Alpine.plugin(collapse)
+      Alpine.plugin(alpineCollapse)
       w.Alpine = Alpine
       Alpine.start()
     })()
@@ -1658,7 +1655,6 @@ function nuxtPackageJson(opts: ScaffoldOptions): string {
     vue: '^3.5.0',
     'vue-router': '^4.5.0',
     'alpinejs': '^3.16.0',
-    '@alpinejs/collapse': '^3.16.0',
     '@lucide/vue': '^1.1.0',
     ...vendoredDeps,
   }
@@ -1835,9 +1831,9 @@ ${pwaEnabled ? "import { useOnlineStatus } from '~/composables/useOfflineQueue'"
 // \`nuxi generate\` regardless of this site's content.
 if (import.meta.client) {
   const { default: Alpine } = await import('alpinejs')
-  // x-collapse: the editor registers the same plugin, so a page that uses it behaves the same here
-  const { default: collapse } = await import('@alpinejs/collapse')
-  Alpine.plugin(collapse)
+  // x-collapse: the editor registers the same directive (@whoobe-cms/renderer), so a page that uses it behaves the same here
+  const { alpineCollapse } = await import('@whoobe-cms/renderer')
+  Alpine.plugin(alpineCollapse)
   window.Alpine = Alpine as any
   Alpine.start()
 }
