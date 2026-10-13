@@ -1,3 +1,7 @@
+## API clients: Auth0 verified — 2026-10-13
+- Branch: `master`
+- `docs/release/communication/api-clients.md`: Auth0 tested with a machine-to-machine token (client credentials); the issuer must include the region and the final slash (copy it from the token's `iss`); Entra ID and Cognito still untested.
+
 ## Collapse: the x-collapse directive and a collapse animation, without the Alpine plugin — 2026-10-13
 - Branch: `master`
 - New `packages/sdk/renderer/src/collapse.ts` (`alpineCollapse`, exported from `@whoobe-cms/renderer`): `x-collapse` for Alpine on the Web Animations API, compatible with `x-show`, `.duration` and `.min`. Compared with the real plugin in Chromium (same initial and final states in four scenarios) and in the running editor.

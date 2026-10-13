@@ -381,14 +381,14 @@ sees a password or a refresh token and creates no user. The `sub` appears in the
    party the client's id; rules such as `realm_access.roles` = `orders-reader` giving the read routes, `orders-admin` giving all.
 5. The application sends `Authorization: Bearer <access token>`.
 
-### Entra ID, Cognito, Auth0 (not tested)
-They issue JWT access tokens and work the same way; only Keycloak has been run against Whoobe. Where the values come from:
+### Auth0, Entra ID, Cognito
+They issue JWT access tokens and work the same way. Keycloak and Auth0 have been run against Whoobe (Auth0 with a machine-to-machine application and client credentials); Entra ID and Cognito have not. Where the values come from:
 
 | Provider | Issuer | Audience | Roles |
 |---|---|---|---|
 | Entra ID | `https://login.microsoftonline.com/<tenant>/v2.0` | application ID URI or client id of the API registration | `roles` (app roles) or `groups` |
 | Cognito | `https://cognito-idp.<region>.amazonaws.com/<pool id>` | app client id (ID tokens); for access tokens set the authorized party to the client id | `cognito:groups` |
-| Auth0 | `https://<tenant>.auth0.com/` (with the slash) | the API identifier | `permissions` or `scope` |
+| Auth0 | `https://<tenant>.<region>.auth0.com/` (with the slash and, for tenants outside the US, the region: `moodgiver.eu.auth0.com`; copy it from the `iss` of a token) | the API identifier | `permissions` or `scope` |
 
 Opaque (non-JWT) access tokens are not supported.
 
