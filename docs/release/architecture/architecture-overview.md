@@ -5,7 +5,8 @@ boundaries are and which parts hold state. Every statement here was taken from t
 repository; where something is **not** implemented it says so. Companion documents:
 [data and storage](data-and-storage.md), [authentication and authorization](authentication-and-authorization.md),
 [threat model](../security/threat-model.md), [configuration reference](../operations/configuration-reference.md),
-[capacity and scaling](../operations/capacity-and-scaling.md), [automations](automations.md).
+[capacity and scaling](../operations/capacity-and-scaling.md), [automations](../communication/automations-architecture.md).
+The reasons behind the main choices are in [design decisions](design-decisions/README.md).
 
 ## 1. What the product is, technically
 
@@ -17,9 +18,10 @@ PostgreSQL 16, and an S3-compatible object store (Garage by default, any S3 in p
 |---|---|---|---|---|
 | **core-api** | Express service | 3003 | Authentication and sessions, users/roles/permissions, websites, pages, snippets, data classes and objects, themes, menus, workflows, mail, AI calls, website export/import, public read API, public form submission, form-upload approval. **Runs the database migrations at start.** | PostgreSQL (all CMS data); in-memory limiters and caches |
 | **asset-processor** | Express service | 3002 | DAM: upload, folders, image transforms and thumbnails, metadata, the `/dam-asset/*` delivery proxy that reads S3 with its own credentials, receipt of form-upload bytes, log file storage | S3 bucket; asset records in PostgreSQL |
-| **gateway** | Express service | 3001 | API Gateway: stored upstream endpoints and routes, OpenAPI import, credential injection, rate limiting, result filters, form submit forwarding, plugins and vendor presets | PostgreSQL (endpoints, routes, bindings); encrypted upstream credentials |
+| **gateway** | Express service | 3001 | API Gateway: stored upstream endpoints and routes, OpenAPI import, credential injection, rate limiting, result filters, form submit forwarding, plugins and vendor presets, and the **Client Hub** (`/client/v1`: API clients, key and identity-provider-token validation, scopes, per-client and per-user limits) | PostgreSQL (endpoints, routes, bindings); encrypted upstream credentials |
 | **admin-dashboard** | Vue 3 SPA behind nginx | 8080 (published as 3000) | The administration UI | none (static files) |
 | **whoobe-one-spike** (the editor) | Vue 3 SPA behind nginx | 8080 (published as 3006) | The page, snippet and template editor; embedded by the dashboard in a frame; also serves published pages for preview | none (static files) |
+| **valkey** (profile `ratelimit`, optional) | Valkey (Redis-protocol) | 6379, no published port | Shared rate-limit counters for several gateway processes; without it the gateway counts in memory | none (no persistence) |
 | **postgres** | PostgreSQL 16 (alpine, pinned by digest) | 5432 | The system of record | volume `pgdata` |
 | **garage** (profile `local-s3`) | S3-compatible store | 3900 (published as 9000) | Asset storage when no external S3 is configured | volume `garagedata` |
 
@@ -84,6 +86,7 @@ into `deploy/nginx/_locations-<slug>.inc`; re-render with `scripts/render-worksp
 | `/auth`, `/documents`, `/snippets`, `/data-*`, `/mail-*`, `/public`, `/ai`, `/settings`, `/users`, `/roles`, `/preview`, `/health`, … | core-api | the regular expression is in the template |
 | `/public/upload-data/` | asset-processor | bytes of form uploads, request buffering off (`^~` so the rule above does not take it) |
 | `/api/v1/gateway/`, `/api/remote/` | gateway | |
+| `/client/v1/` | gateway | the Client Hub: applications call integration routes, published data and automations with a key or an identity-provider token ([API clients](../communication/api-clients.md)); CORS open without cookies |
 | `/api/v1/` | asset-processor | DAM and image API |
 | `/dam-asset/` | asset-processor | asset delivery, `expires 1y` for public files |
 | `/assets/` | static assets of the SPAs | |

@@ -33,7 +33,7 @@ Plain Markdown (GitHub flavour: tables, task lists, fenced code with a language)
   strict security mode (the text of a diagram is encoded, no raw HTML, no click handlers). If a diagram has a mistake, its code is shown
   instead, with a note on the published page. The pictures are made in the browser: an HTML page read without scripts shows the code.
 - **Notes**: `:::tip`, `:::note`, `:::info`, `:::warning`, `:::danger` ... `:::` (an optional title after the keyword).
-- **Links between documents** are written as files: `[install](01-install.md#steps)`, `[usage](../guide/usage.md)`. They become
+- **Links between documents** are written as files: `[install](../guides/01-install.md#steps)`, `[usage](../guide/usage.md)`. They become
   the site's addresses. Images and files the same way: `![diagram](../images/flow.png)`. A link to a file that does not exist is
   reported in the editor while you write (and in the Documents tab), and shown as a dead link.
 - **Images**: `![description](../images/schema.png)` - a path **relative to the document**, to an image in the documentation
@@ -41,7 +41,7 @@ Plain Markdown (GitHub flavour: tables, task lists, fenced code with a language)
 
   ```markdown
   ![Architecture](../images/architecture.png){width=60% align=center}
-  ![Screenshot](shot.png){width=320px float=right}
+  ![Screenshot](../guides/shot.png){width=320px float=right}
   ```
 
   `width` is a number with `px`, `%`, `rem`, `em` or `vw` (a bare number is pixels; at most 100% for `%`/`vw`);

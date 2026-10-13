@@ -157,7 +157,7 @@ All gated on `PERMISSIONS.SETTINGS_MANAGE` (same as mail settings):
 ### Phase 6 — Headless SDK shell
 
 - `@whoobe-cms/renderer`: a `composeLayout(body, layout, options)` helper that walks the slot module trees (via the existing `walkTree`) and produces header/aside/main/footer descriptors; adapters (`react`/`next`/`vue`/`svelte`) add a `layout` prop to `<WhoobePage>` to render the shell (backwards compatible: no `layout` → body only).
-- Guide (`docs/release/guides/headless-sdk.md`) documents the `layout` prop and a sample composition.
+- Guide (`docs/release/content/headless-sdk.md`) documents the `layout` prop and a sample composition.
 
 ## Sequencing & Dependencies
 
@@ -175,7 +175,7 @@ Modified:
 - `apps/core-api/src/server.ts` (templates CRUD + public-route `layout` composition)
 - `apps/admin-dashboard`: `PagesView.vue`/`PageSettingsTab.vue` (kind), `WebsiteSettingsCard.vue` (Templates section), `utils/pages-api.ts`/a new `website-templates-api.ts`
 - `apps/whoobe-one-spike`: `pages-api.ts` (`kind` passthrough)
-- `packages/sdk/renderer` (`composeLayout`), `packages/sdk/{react,next,vue,svelte}` (`layout` prop), `docs/release/guides/headless-sdk.md`
+- `packages/sdk/renderer` (`composeLayout`), `packages/sdk/{react,next,vue,svelte}` (`layout` prop), `docs/release/content/headless-sdk.md`
 - `CHANGES.md`
 
 ## Verification

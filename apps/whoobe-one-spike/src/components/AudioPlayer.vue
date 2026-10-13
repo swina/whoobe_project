@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-// The Audio element (ElementsClass.js Audio(), docs/release/guides/audio-element.md). Mode 'player': the browser's own
+// The Audio element (ElementsClass.js Audio(), docs/release/content/audio-element.md). Mode 'player': the browser's own
 // <audio controls>. Mode 'waveform': a custom player; if the waveform cannot be computed the plain player is shown instead,
 // so the audio is never lost. The template has ONE root element and no comment before it: in development Vue keeps a
 // leading comment, which turns the component into a fragment (no attribute fallthrough, $el is not the element).

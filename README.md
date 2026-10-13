@@ -80,6 +80,15 @@ The product itself is branded **Whoobe** (npm scope `@whoobe-cms/*`).
 
 > Some admin sections are still placeholders pending future work — e.g. Roles/Users management and file-based migration — while the rest above are implemented end to end.
 
+## Documentation
+
+The release documentation is in [`docs/release`](docs/release/README.md): [what Whoobe is](docs/release/overview/what-is-whoobe.md), the architecture and the
+[reasons behind its design](docs/release/architecture/design-decisions/README.md), the detail by pillar (Content, Data, Communication, DAM, AI, Settings, Security,
+Operations, Guides) and [reading paths by role](docs/release/by-role/README.md).
+
+Contributions of every kind are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md), the [code of conduct](CODE_OF_CONDUCT.md) and, for security problems,
+[SECURITY.md](SECURITY.md).
+
 ## Monorepo layout
 
 Managed with **pnpm workspaces** + **Turborepo**.
@@ -281,7 +290,7 @@ npx cap sync
 npx cap open android # or: npx cap open ios
 ```
 
-The generated app is a minimal Vite + Vue 3 SPA with hash routing, Alpine.js, Tailwind (browser runtime), and Capacitor v7. It fetches pages live from the CMS public API — same renderer that powers the browser preview. See `docs/release/guides/publish/capacitor-mobile-app.md` for the full guide.
+The generated app is a minimal Vite + Vue 3 SPA with hash routing, Alpine.js, Tailwind (browser runtime), and Capacitor v7. It fetches pages live from the CMS public API — same renderer that powers the browser preview. See `docs/release/content/publishing/capacitor-mobile-app.md` for the full guide.
 
 ## Publish a Website (SSR)
 
@@ -300,7 +309,7 @@ node packages/publish/bin/whoobe-publish.js \
   --framework vue
 ```
 
-See `docs/release/guides/publish/website-publishing.md` for the full guide.
+See `docs/release/content/publishing/website-publishing.md` for the full guide.
 
 ## License
 

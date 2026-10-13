@@ -1,9 +1,9 @@
 # Automations: how they relate to the architecture
 
-For IT architects, DevOps and security reviewers. Read [architecture overview](architecture-overview.md) first. This page says
+For IT architects, DevOps and security reviewers. Read [architecture overview](../architecture/architecture-overview.md) first. This page says
 where an *automation* sits in the system: what Whoobe does, what an external engine does, what travels between them, where the
 state lives and which guarantees you get. The editor's view (setting a form up, the page reacting) is in
-[`guides/marketing-automation.md`](../guides/marketing-automation.md).
+[`communication/marketing-automation.md`](marketing-automation.md).
 
 An "automation" here is any process started by a form on a Whoobe page and carried out by a system outside Whoobe: a lead sent to a CRM,
 an e-mail, a request routed for approval, a record created in an ERP, a notification to a chat. Marketing is the first use, not a
@@ -109,10 +109,10 @@ Properties that matter for the design (taken from `apps/gateway/src/submit-handl
 
 | Crossing | Control |
 |---|---|
-| Visitor → Gateway | public route; limits (10 per 15 minutes per address, 300 per 15 minutes per website), optional per-website site key, decoy field, field allow-list, size and shape checks of the attributes ([API Gateway security](../guides/api-gateway-security.md)) |
+| Visitor → Gateway | public route; limits (10 per 15 minutes per address, 300 per 15 minutes per website), optional per-website site key, decoy field, field allow-list, size and shape checks of the attributes ([API Gateway security](api-gateway-security.md)) |
 | Gateway → engine | outbound HTTPS through `safeFetch` (SSRF guard: link-local and metadata always blocked; loopback and private ranges according to `OUTBOUND_ALLOW_LOOPBACK` / `OUTBOUND_ALLOW_PRIVATE`; `OUTBOUND_ALLOW_HOSTS` exempts a named internal host). An engine on the same host or a private address needs the matching setting (see [configuration reference](../operations/configuration-reference.md)); redirects are re-checked and credentials are not forwarded across origins |
 | Engine → Whoobe's visitors | the reply is reduced to a validated key; the check is made in the Gateway and again in the browser. Hidden blocks are still in the page's HTML: this is experience, not access control |
-| Engine → Whoobe (the other direction) | there is **no machine credential** in Whoobe ([authentication](authentication-and-authorization.md), section 1): a flow that needs to read or write Whoobe uses the **public surface** (published content, public form submit) or a dedicated user account with a minimal role (a session). Do not give a flow an administrator account |
+| Engine → Whoobe (the other direction) | there is **no machine credential** in Whoobe ([authentication](../architecture/authentication-and-authorization.md), section 1): a flow that needs to read or write Whoobe uses the **public surface** (published content, public form submit) or a dedicated user account with a minimal role (a session). Do not give a flow an administrator account |
 | Engine → third parties | the engine's own credentials; they never pass through Whoobe |
 | Editor → engine | the engine's own login. Whoobe only links to its address (the *Service* link, `http(s)` only) |
 
@@ -139,7 +139,7 @@ Whoobe does not keep a record of a submission it forwards, so the guarantees com
 | Separate host | the engine on its own machine, reached over HTTPS | separation of duties, heavier flows |
 | Hosted by the engine vendor | the vendor's cloud | no engine to operate; credentials of third parties then live at the vendor |
 
-The deployment model applies unchanged ([overview](architecture-overview.md), section 7): **one workspace per organisation, so one engine per
+The deployment model applies unchanged ([overview](../architecture/architecture-overview.md), section 7): **one workspace per organisation, so one engine per
 organisation**. Do not share one engine between organisations: its credentials store holds the keys of every service its flows call.
 The engine is outside the workspace, so [workspace scripts](../operations/creating-workspaces.md) do not create, update or back it up.
 
@@ -161,5 +161,5 @@ key**):
 - Other triggers (asset downloaded, page published, a schedule inside Whoobe). A flow can poll the public API; Whoobe does not emit events.
 - Run history, status or retries inside Whoobe.
 - Access to private content decided by an answer, or a verified e-mail address: the page only reacts to a word.
-- A shared queue between the Gateway and the engine ([overview](architecture-overview.md), section 4: there is no message queue).
+- A shared queue between the Gateway and the engine ([overview](../architecture/architecture-overview.md), section 4: there is no message queue).
 - A Whoobe-side machine credential for flows.

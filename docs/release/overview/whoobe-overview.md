@@ -4,9 +4,11 @@
 on 2026-10-11. Every statement about the product is taken from the code and from the technical documentation in this folder; where
 something has not been tested, it says so.*
 
+*Short on time? [What Whoobe is](what-is-whoobe.md) is the one-page picture, and [documentation by role](../by-role/README.md) lists what to read for your role.*
+
 ---
 
-## A word from the CEO
+## A word from the author
 
 I will start with what I would want to read if I were in your seat.
 
@@ -27,7 +29,7 @@ something you need today, we would rather you know now.
 
 Read the part that is yours (chapter 2 tells you which), then chapter 4. Tell us what is missing. That is how the next release gets better.
 
-*[Name], founder and CEO*
+*Antonio Nardone, IT architect and consultant, author of Whoobe*
 
 ---
 
@@ -67,7 +69,7 @@ many unrelated companies. Chapter 4 explains each.
 |---|---|---|
 | CEO / owner / sponsor | Chapter 1, 4 (the limits), 5 (costs), 6 (organisation and processes), 9 (fit), 10 (how to start) | Section 7.1 |
 | IT manager / architect / DevOps | Chapter 3 (capabilities), 4, 7.2 (what you operate) | The [architecture overview](../architecture/architecture-overview.md), [capacity and scaling](../operations/capacity-and-scaling.md) |
-| Marketing manager | Chapter 3 (authoring, forms, campaigns), 4, 7.3 | The [user manual](manual/README.md), [marketing automation](../guides/marketing-automation.md) |
+| Marketing manager | Chapter 3 (authoring, forms, campaigns), 4, 7.3 | The [user manual](../guides/user-manual/README.md), [marketing automation](../communication/marketing-automation.md) |
 | Security officer / DPO | Chapter 4, 7.4, 8 | The [threat model](../security/threat-model.md), [status summary](../security/status-summary.md), [data protection](../security/data-protection.md) |
 
 ---
@@ -109,7 +111,10 @@ Only what exists in release 0.1.0. Items marked *(beta)* work but have had less 
 - **Visual binding.** An editor connects a list or a field to an external result, with filters, without code.
 - **Presets** for Brevo, Cloudinary, HubSpot, Mailchimp, Shopify and Stripe, plus a demo. Anything else is added by describing it.
 - **Safeguards.** Outbound calls pass an SSRF guard; calls are rate limited; a form can only forward the fields it actually has.
-- Full description, limits and troubleshooting: [Integrations guide](../guides/integrations/integrations.md).
+- **Client Hub.** Your own applications use the same integration routes, your published data and your automations through **API clients**: a server key for back-ends, or the access
+  token of your identity provider (Keycloak, Entra ID...) for browsers and mobile apps. Whoobe creates no end-user accounts, and a key sent by a browser is refused.
+  [API clients guide](../communication/api-clients.md).
+- Full description, limits and troubleshooting: [Integrations guide](../communication/integrations.md).
 
 ### 3.5 Forms, mail and automation
 
@@ -121,7 +126,7 @@ Only what exists in release 0.1.0. Items marked *(beta)* work but have had less 
   the editor.
 - **Outgoing mail** per website through SMTP or an HTTP mail provider; an email **campaign draft** can be pushed to Brevo from a page or snippet.
 - We do **not** build the automation engine ourselves. [Why](../../plans/automations/why-no-custom-automation-engine.md), and
-  [how the pieces fit](../architecture/automations.md).
+  [how the pieces fit](../communication/automations-architecture.md).
 
 ### 3.6 Publishing
 
@@ -301,7 +306,7 @@ database with encryption, restore it, and remove the workspace. Security scannin
 | Backup of the asset bucket | Your storage provider's versioning or a sync job. Not scripted. |
 | High availability | One instance per service; restore from backup is the recovery path. |
 | Retention and erasure jobs | Yours to write ([data protection](../security/data-protection.md) lists where the data is). |
-| An automation engine, if you want one | A second system, outside the workspace, with its own database and secrets ([how](../architecture/automations.md)). |
+| An automation engine, if you want one | A second system, outside the workspace, with its own database and secrets ([how](../communication/automations-architecture.md)). |
 
 **Things to do before production.** Rehearse a restore on a spare host; test an upgrade between two versions when the second one exists;
 run your own load test; run the testssl check against your real hostname; decide how long each kind of log and personal data is kept.
@@ -327,8 +332,8 @@ tool, your e-mail platform and your CRM; Whoobe connects them to your pages.
 **A good first project.** One landing page with a form that creates the contact in your CRM and shows a message that depends on the
 answer. It touches the editor, the gateway, the engine and the page, and it takes days, not months.
 
-**Start here:** the [user manual](manual/README.md), [marketing automation](../guides/marketing-automation.md), [mail providers](../guides/mail-providers.md),
-[Brevo integration](../guides/integrations/Brevo-Integration.md).
+**Start here:** the [user manual](../guides/user-manual/README.md), [marketing automation](../communication/marketing-automation.md), [mail providers](../communication/mail-providers.md),
+[Brevo integration](../communication/brevo-integration.md).
 
 ### 7.4 For security officers and data-protection officers
 
@@ -413,7 +418,7 @@ changes to check before installing over a development setup.
 If you tell us what you need that chapter 4 says is missing, we will tell you plainly whether it is planned, whether it is hard, and whether it
 is something we would advise you to solve outside Whoobe.
 
-*[Name], founder and CEO. [Contact details.]*
+*Antonio Nardone, IT architect and consultant, author of Whoobe. [Contact details.]*
 
 ---
 
@@ -428,6 +433,6 @@ is something we would advise you to solve outside Whoobe.
 | Installing and operating | [Creating workspaces](../operations/creating-workspaces.md), [configuration reference](../operations/configuration-reference.md), [secrets and keys](../operations/secrets-and-keys.md) |
 | Capacity and the road to more than one replica | [Capacity and scaling](../operations/capacity-and-scaling.md) |
 | Security evidence | [Threat model](../security/threat-model.md), [status summary](../security/status-summary.md), [findings](../security/findings.md) |
-| Marketing automation and the automation engine | [Guide](../guides/marketing-automation.md), [architecture](../architecture/automations.md) |
-| Using the editor | [User manual](manual/README.md) |
+| Marketing automation and the automation engine | [Guide](../communication/marketing-automation.md), [architecture](../communication/automations-architecture.md) |
+| Using the editor | [User manual](../guides/user-manual/README.md) |
 | Earlier positioning text (dated 2026-09-18; compare tables are not maintained) | [Executive summary](executive-summary.md) |

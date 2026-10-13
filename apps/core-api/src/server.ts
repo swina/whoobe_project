@@ -2347,7 +2347,7 @@ app.put('/whoobe-one/settings/autosave', requirePermission(PERMISSIONS.OBJECTS_W
   }
 });
 
-// Alpine presets (docs/release/guides/alpine-presets.md): named sets of Alpine directives that an administrator defines
+// Alpine presets (docs/release/content/alpine-presets.md): named sets of Alpine directives that an administrator defines
 // once and applies to any element from the editor's Advanced > AlpineJS panel. Installation-wide, stored in the first
 // website's settings like the other values here. Applying a preset copies its directives into the element, so pages
 // never depend on this catalog at render time. Reading needs `objects:read`, writing `objects:write` (an editor can

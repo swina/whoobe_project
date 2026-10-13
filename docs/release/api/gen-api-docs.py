@@ -330,14 +330,14 @@ GATEWAY_SECTIONS = [
   ("POST", "/api/v1/gateway/clients/:id/keys", "Add a key to a key client (rotation). The key is in the reply, once."),
   ("DELETE", "/api/v1/gateway/clients/:id/keys/:keyId", "Revoke a key."),
 ]),
-("Gateway client surface (auth: an API key `wbk_...` from a server, or an identity provider token from a browser or an app, as `Authorization: Bearer`; the key also as `X-Whoobe-Key`; no session - see docs/release/guides/integrations/integrations.md)", [
+("Gateway client surface (auth: an API key `wbk_...` from a server, or an identity provider token from a browser or an app, as `Authorization: Bearer`; the key also as `X-Whoobe-Key`; no session - see docs/release/communication/integrations.md)", [
   ("GET", "/client/v1/me", "What the calling key is: name, auth mode, scopes, limits, state of the rate-limit store. No secret."),
   ("GET", "/client/v1/data/:class", "Published objects of a Data Class named in a `data:read:<Class>` scope: `filter=field:op:value` (up to 5), `orderBy`, `dir`, `limit` (1-100), `offset`, `locale`. Only the class's own attributes are returned. Outside the scopes or an unknown class: `404 Not found`."),
   ("GET", "/client/v1/data/:class/:id", "One published object of that class; a draft, another class's id or a malformed id answer `404 Not found`."),
   ("POST", "/client/v1/automations/:endpoint/*", "Start the flow behind a POST route of an engine endpoint (Activepieces, n8n) named in an `automation:run:<endpoint>:<route>` scope, wait for its answer and return `{ ok, outcome?, response }`; `outcome` is the validated key (1-32 letters, digits, `_`, `-`) the flow answered. JSON body up to 1 MB. Outside the scopes: `404 Not found`; an engine error: `502`."),
   ("ALL", "/client/v1/gateway/:endpoint/*", "Call a configured route of an endpoint the client's scopes allow: the path is matched to a route (templates such as `customers/{id}` included), query string and JSON body are passed on, the gateway adds the credentials. Anything outside the scopes answers `404 Not found`; `429` with `Retry-After` over the client's limits. A key sent with an `Origin` header (a browser) is refused with `403`; a valid token whose claims give no access gets `403`."),
 ]),
-("Gateway published-site endpoints (site API key or bound content only - see docs/release/guides/api-gateway-security.md)", [
+("Gateway published-site endpoints (site API key or bound content only - see docs/release/communication/api-gateway-security.md)", [
   ("POST", "/api/v1/gateway/resolve", "Resolve a gateway-bound content field for a published page - the only way a published site reads third-party data. Requires a resolved gatewayBindingId (server-assigned at page-save time), not a free endpoint/route choice."),
   ("POST", "/api/v1/gateway/submit", "Submit a gateway-bound form for a published page. Requires a resolved gatewayBindingId, same as /resolve. The reply is `{ success, response }`, plus `outcome` when the service answered a plain key of 1-32 letters, digits, `_` or `-` (the page reacts to it, see guides/marketing-automation.md)."),
 ]),
@@ -576,7 +576,7 @@ def openapi_for(all_services):
     lines.append("      in: header")
     lines.append("      name: X-Whoobe-Site-Key")
     lines.append("      description: >")
-    lines.append("        Optional per-website key (see docs/release/guides/api-gateway-security.md).")
+    lines.append("        Optional per-website key (see docs/release/communication/api-gateway-security.md).")
     lines.append("        A resolved gatewayBindingId is the mandatory server-side check either")
     lines.append("        way; this key adds per-site scoping/rate-limiting/revocation on top.")
     lines.append("  schemas:")

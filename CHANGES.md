@@ -1,3 +1,16 @@
+## Community files: CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, and a page on sponsoring and contributing — 2026-10-13
+- Branch: `master`
+- New root files `CONTRIBUTING.md` (ways to help, setup notes, tests, the rules of the repository: `CHANGES.md`, true documentation, hand-written migrations, no secrets; pull request steps; MIT), `SECURITY.md` (private reporting, what to expect, supported versions, scope, testing in good faith) and `CODE_OF_CONDUCT.md` (own text inspired by the Contributor Covenant 2.1, with reporting). The contact is the address already in `LICENSE.md`.
+- New `docs/release/community/why-sponsor-and-contribute.md` (why sponsor, why contribute, concrete ways to help Whoobe taken from the documented gaps, how to sponsor, what sponsorship does not do), linked from the release README, the story, the CEO and developer reading paths and the root `README.md`.
+
+## Release documentation reorganised by pillar — 2026-10-13
+- Branch: `master`
+- `docs/release` is now organised as: `overview/` (new one-page [what Whoobe is](docs/release/overview/what-is-whoobe.md), the full overview and the dated executive summary), `architecture/` (with new `design-decisions/`: nine pages, each with decision, why, what it costs, when to revisit), the pillars `content/`, `data/`, `communication/`, `dam/`, `ai/`, `settings/`, `security/`, `operations/` and `guides/` (user manual and an index of all how-tos), `by-role/` (reading paths for CEO, IT manager, operators, security and compliance, marketing, data owners, developers), `whoobe-history.md` (the story of Whoobe, written by the author and completed from his answers; the overview's letter is now signed by the author instead of a placeholder), `api/` unchanged.
+- Moved with `git mv` and all links and quoted paths rewritten (documentation files, code comments, plans, scripts): `guides/*` to `content/`, `communication/`, `dam/`; `guides/integrations/*` and `guides/api-clients.md` to `communication/`; `architecture/automations.md` to `communication/automations-architecture.md`; `getting-started/whoobe-overview.md` and `executive-summary.md` to `overview/`; `getting-started/manual/` to `guides/user-manual/`.
+- New: `data/README.md` and `data/data-model.md`; `ai/README.md` and `ai/ai-features.md`; `settings/README.md` and `settings/settings-guide.md`; index pages for Content, Communication, DAM, Security, Operations ("start here"), Guides; a new `docs/release/README.md`; a Documentation section in the root `README.md`.
+- Updated: architecture overview (Client Hub route `/client/v1`, optional Valkey), full overview (Client Hub bullet, pointers to the new pages), link labels in the release notes.
+- `scripts/release/check-docs.py` passes (links, paths, routes), apart from the five `PUBLISH_*` variables that were already undocumented.
+
 ## Client access: start automations from an API client — 2026-10-13
 - Branch: `master`
 - New scope `automation:run:<endpoint>:<route | *>` (`client-scopes.ts`: `parseAutomationScope`, `automationScopeAllows`; `validateClientScopes` accepts it). Separate from `gateway:call`: neither allows the other's address. No prefix patterns.

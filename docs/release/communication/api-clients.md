@@ -4,7 +4,7 @@ An **API client** is the registration of one application (a back-end, a job, a m
 Whoobe through the public surface **`/client/v1`**. It sees only what you allow, with its own limits, and the credentials of the
 third-party services stay inside Whoobe. No user account is created in Whoobe for it.
 
-This guide is the complete reference. The [Integrations guide](integrations/integrations.md) (section 4) is the short version; the
+This guide is the complete reference. The [Integrations guide](integrations.md) (section 4) is the short version; the
 design and the decisions are in [`docs/plans/api-gateway/client-access-hub.md`](../../plans/api-gateway/client-access-hub.md).
 
 **Contents**

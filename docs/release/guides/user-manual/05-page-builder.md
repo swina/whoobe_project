@@ -17,8 +17,8 @@ When a block is selected, a **floating toolbar** also appears attached to it, wi
 Open the **Elements** tab in the sidebar. Blocks are grouped into four categories:
 
 - **Containers** — Grid, Flexbox, Dropdown Menu. These hold other blocks and control how their children are arranged.
-- **Text** — Heading, Paragraph, Markdown, Inline Text, Span, Blockquote, Code. (Markdown keeps Markdown text and shows it as formatted HTML: paste the text in *Edit content*, see the [Markdown element guide](../../guides/markdown-element.md).)
-- **Media** — Image, Slider, Video, Audio, YouTube, Vimeo, Icon, Download (a button that saves a file of the library or a URL: see the [Download element guide](../../guides/download-element.md)). (Audio plays a library asset or any URL, as the browser's player or with a waveform: see the [Audio element guide](../../guides/audio-element.md).)
+- **Text** — Heading, Paragraph, Markdown, Inline Text, Span, Blockquote, Code. (Markdown keeps Markdown text and shows it as formatted HTML: paste the text in *Edit content*, see the [Markdown element guide](../../content/markdown-element.md).)
+- **Media** — Image, Slider, Video, Audio, YouTube, Vimeo, Icon, Download (a button that saves a file of the library or a URL: see the [Download element guide](../../content/download-element.md)). (Audio plays a library asset or any URL, as the browser's player or with a waveform: see the [Audio element guide](../../content/audio-element.md).)
 - **Form** — Form, Input, Email, Number, Checkbox, Radio Group, Textarea, Select, Submit, Reset, Button.
 
 **Drag** a block from the palette onto the canvas and drop it where you want it — there's no click-to-insert; the palette is drag-only. Dropping onto an existing container nests the new block inside it, which is how you build layout: drag a Flexbox onto the page, then drag other blocks inside that Flexbox to lay them out side by side or stacked.

@@ -166,11 +166,11 @@ Routes under `/public/*`, `/preview/*`, `/dam-asset/*` and `/health` answer with
 Upstream credentials (API key, bearer, basic, OAuth2 client-credentials) are entered once, encrypted with
 `GATEWAY_AUTH_ENCRYPTION_KEY`, and used only inside the gateway proxy; the browser, the editor and the published site
 see an opaque binding id. Outbound calls go through `safeFetch` (SSRF guard, [threat model](../security/threat-model.md)).
-See [API Gateway security](../guides/api-gateway-security.md).
+See [API Gateway security](../communication/api-gateway-security.md).
 
 ### API clients (applications)
 
-An application that is not a person calls the gateway at `/client/v1` with an **API client key** (`wbk_<8>_<secret>`, `Authorization: Bearer` or `X-Whoobe-Key`), not a session. The key is stored as an HMAC-SHA-256 with `SITE_API_KEY_PEPPER`, shown once, and belongs to a client with explicit scopes, limits, optional address list and expiry; no user is created. A browser or an app does not hold a key: it sends the access token of the organisation's identity provider (Keycloak, Entra ID, Cognito...), which the gateway validates (signature against the provider's JWKS, issuer, audience, expiry) and maps to scopes through claim rules. Clients are managed by users with `gateway:manage`. See the [Integrations guide](../guides/integrations/integrations.md), section 4, and the [plan](../../plans/api-gateway/client-access-hub.md).
+An application that is not a person calls the gateway at `/client/v1` with an **API client key** (`wbk_<8>_<secret>`, `Authorization: Bearer` or `X-Whoobe-Key`), not a session. The key is stored as an HMAC-SHA-256 with `SITE_API_KEY_PEPPER`, shown once, and belongs to a client with explicit scopes, limits, optional address list and expiry; no user is created. A browser or an app does not hold a key: it sends the access token of the organisation's identity provider (Keycloak, Entra ID, Cognito...), which the gateway validates (signature against the provider's JWKS, issuer, audience, expiry) and maps to scopes through claim rules. Clients are managed by users with `gateway:manage`. See the [Integrations guide](../communication/integrations.md), section 4, and the [plan](../../plans/api-gateway/client-access-hub.md).
 
 ## 9. Known gaps (for a risk assessment)
 
