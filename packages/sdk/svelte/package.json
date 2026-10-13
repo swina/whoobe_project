@@ -28,16 +28,16 @@
     "@whoobe-cms/schema": "workspace:*"
   },
   "peerDependencies": {
-    "svelte": "^5.0.0"
+    "svelte": "^5.57.2"
   },
   "devDependencies": {
     "@sveltejs/package": "^2.3.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
-    "svelte": "^5.0.0",
+    "svelte": "^5.57.2",
     "svelte-check": "^4.0.0",
     "svelte2tsx": "^0.7.0",
     "typescript": "^5.4.0",
-    "vite": "^6.0.0",
+    "vite": "^6.4.4",
     "vitest": "^1.6.0"
   }
 }
