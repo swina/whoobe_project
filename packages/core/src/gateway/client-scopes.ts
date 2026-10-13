@@ -27,6 +27,34 @@ export function formatGatewayScope(s: GatewayScope): string {
   return `gateway:call:${s.endpoint}:${s.method}:${s.route}`;
 }
 
+// A data scope is  data:read:<class name | *>   (read of the published objects of one Data Class; the class is named, never matched by pattern)
+export interface DataScope { action: 'read'; className: string }
+
+export function formatDataScope(s: DataScope): string {
+  return `data:${s.action}:${s.className}`;
+}
+
+export function parseDataScope(text: string): DataScope | { error: string } {
+  if (typeof text !== 'string' || text.length > MAX_SCOPE_LENGTH) return { error: 'Scope is too long or not text' };
+  const m = /^data:([a-z]+):(.+)$/.exec(text);
+  if (!m) return { error: `Not a data scope: ${text}` };
+  if (m[1] !== 'read') return { error: `Unknown data action: ${m[1]} (only read exists)` };
+  const className = m[2];
+  if (className.includes(':') || /[\u0000-\u001f]/.test(className) || className.trim() !== className) return { error: `Invalid class name in scope: ${className}` };
+  return { action: 'read', className };
+}
+
+/** Does any scope allow reading the published objects of this class? */
+export function dataScopeAllows(scopes: readonly string[], action: 'read', className: string): boolean {
+  for (const text of scopes) {
+    if (!text.startsWith('data:')) continue;
+    const s = parseDataScope(text);
+    if ('error' in s) continue;
+    if (s.action === action && (s.className === '*' || s.className === className)) return true;
+  }
+  return false;
+}
+
 /** Returns the parsed scope, or an error text. The endpoint name cannot contain ':' (it is the separator). */
 export function parseGatewayScope(text: string): GatewayScope | { error: string } {
   if (typeof text !== 'string' || text.length > MAX_SCOPE_LENGTH) return { error: 'Scope is too long or not text' };
@@ -50,6 +78,13 @@ export function validateClientScopes(scopes: unknown): { ok: true; scopes: strin
   if (scopes.length > MAX_SCOPES) return { ok: false, error: `At most ${MAX_SCOPES} scopes` };
   const out: string[] = [];
   for (const raw of scopes) {
+    if (typeof raw === 'string' && raw.startsWith('data:')) {
+      const d = parseDataScope(raw);
+      if ('error' in d) return { ok: false, error: d.error };
+      const norm = formatDataScope(d);
+      if (!out.includes(norm)) out.push(norm);
+      continue;
+    }
     const p = typeof raw === 'string' ? parseGatewayScope(raw) : { error: 'A scope must be text' };
     if ('error' in p) return { ok: false, error: p.error };
     const norm = formatGatewayScope(p);
