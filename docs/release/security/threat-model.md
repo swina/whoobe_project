@@ -45,6 +45,7 @@ Assumptions the controls depend on (if one is false, the corresponding risks in 
 | Visitor with a hostile intent | submits forms, uploads files, crafts URLs, tries to read unpublished data |
 | Malicious or compromised author (low privilege) | logs in, edits content, uploads assets, configures gateway bindings |
 | Compromised administrator account | full application access |
+| Application holding an API client key (or someone who extracted it from an app) | calls `/client/v1` with that key, at volume, from anywhere its address rule allows |
 | Hostile site on the internet | lures a logged-in user's browser to send requests (CSRF/CORS) |
 | Malicious tenant | owns another workspace on the same host |
 | Supply-chain attacker | a poisoned dependency or base image |
@@ -106,6 +107,8 @@ Severity is the residual risk after the controls, for a correctly installed work
 |---|---|---|---|
 | SSRF through gateway upstreams, OpenAPI import, AI endpoints | `safeFetch` refuses link-local/metadata, unspecified, multicast, reserved; loopback off in production; private ranges allowed by default (`OUTBOUND_ALLOW_PRIVATE=false` for internet-facing installs); host allow-list | `ssrf` suite | default allows RFC1918 targets - **Medium** unless `OUTBOUND_ALLOW_PRIVATE=false` |
 | Credential theft from the gateway | AES-256-GCM at rest, injected server-side, never returned; vendor presets carry no secrets | `gateway`, `api-gateway-security` guide | key and process access = all credentials |
+| Misuse or theft of an API client key | keys are random (256 bits), stored as a keyed hash, shown once, revocable, rotatable, optionally limited by address and expiry; each client has explicit scopes (deny by default, matched against the configured route, not the path), a rate limit and a daily quota, and its own log lines; a key is for servers: a request carrying a key and an `Origin` header (a browser) is refused and logged, and an address list is available; every refusal about what exists answers the same `404`; failed attempts lock an address for a minute | `client-keys-scopes`, `gateway-limiter` unit | Forged, replayed or stolen identity-provider token | signature checked against the provider's keys, algorithm allow-list (no `none`, no HS256), `iss`, `aud`, `exp` required, `azp` optionally, 60 s tolerance; claim rules narrow what a user may call; each user has a rate limit; keys and discovery fetched through the SSRF guard, cached, re-read at most every 30 s | `gateway-jwt` unit, run against Keycloak 26 | a stolen valid token works until it expires (short token lifetimes are the provider's setting); no revocation check (no introspection) |
+| a script can omit `Origin`, so the address list is the real control; a key placed in an app is exposed (the documentation says not to; identity-provider tokens for browsers and apps are the next step) |
 | Mail relay abuse via forms | notification only for a block an author saved; single plain recipient; 3 mails per hour per address; honeypot; form rate limit (F-053) | `form-notify` unit, API tests | |
 | Abuse of the AI budget | per-user rate limit, keys per user | | cost control is the provider's |
 

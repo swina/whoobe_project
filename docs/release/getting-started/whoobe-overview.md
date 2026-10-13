@@ -109,6 +109,7 @@ Only what exists in release 0.1.0. Items marked *(beta)* work but have had less 
 - **Visual binding.** An editor connects a list or a field to an external result, with filters, without code.
 - **Presets** for Brevo, Cloudinary, HubSpot, Mailchimp, Shopify and Stripe, plus a demo. Anything else is added by describing it.
 - **Safeguards.** Outbound calls pass an SSRF guard; calls are rate limited; a form can only forward the fields it actually has.
+- Full description, limits and troubleshooting: [Integrations guide](../guides/integrations/integrations.md).
 
 ### 3.5 Forms, mail and automation
 
