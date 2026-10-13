@@ -115,3 +115,8 @@ export * from './http/safe-fetch.js';
 export * from './dam/self-healing-client.js';
 export * from './portability/index.js';
 export * from './routing/site-roots.js';
+export * from './db/api-clients-schema.js';
+export * from './db/api-clients-records.js';
+export * from './gateway/client-keys.js';
+export * from './gateway/client-scopes.js';
+export * from './gateway/client-jwt.js';

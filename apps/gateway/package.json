@@ -17,6 +17,8 @@
     "@whoobe-cms/logger": "workspace:^",
     "cookie-parser": "^1.4.7",
     "express": "^4.21.2",
+    "ioredis": "5",
+    "jose": "5",
     "js-yaml": "^5.4.2"
   },
   "devDependencies": {

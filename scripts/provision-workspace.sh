@@ -157,6 +157,10 @@ set_env "DB_NAME" "whoobe_${DB_SAFE_SLUG}"
 set_env "MIGRATION_SOURCE_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
 set_env "GATEWAY_AUTH_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
 set_env "DAM_SERVICE_TOKEN" "$(openssl rand -hex 24)"
+# password of the optional rate-limit store (compose profile `ratelimit`); the gateway uses it only when GATEWAY_RATE_LIMIT_BACKEND=redis
+VALKEY_PW="$(openssl rand -hex 24)"
+set_env "VALKEY_PASSWORD" "${VALKEY_PW}"
+set_env "GATEWAY_REDIS_URL" "redis://:${VALKEY_PW}@valkey:6379"
 # the example file carries placeholders for these: never ship a workspace with the shared defaults
 set_env "SITE_API_KEY_PEPPER" "$(openssl rand -hex 32)"
 set_env "TOTP_ENCRYPTION_KEY" "$(openssl rand -hex 32)"

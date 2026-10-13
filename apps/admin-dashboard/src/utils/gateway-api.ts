@@ -247,3 +247,69 @@ export async function listPresets(): Promise<GatewayPreset[]> {
   const res = await fetch(`${baseUrl()}/api/v1/gateway/presets`, { credentials: 'include' })
   return parseJsonOrThrow(res)
 }
+// --- API clients (applications that call Whoobe with a key; docs/plans/api-gateway/client-access-hub.md) ---
+
+export interface ApiClientKey {
+  id: string
+  clientId: string
+  prefix: string
+  label: string
+  expiresAt: string | null
+  revokedAt: string | null
+  createdAt: string
+}
+
+export interface ApiClient {
+  id: string
+  name: string
+  description: string
+  authMode: 'key' | 'jwt'
+  /** The identity-provider registration of a token client (not secret). */
+  jwtConfig: { issuer: string; audience: string[]; [k: string]: unknown } | null
+  status: 'active' | 'suspended'
+  scopes: string[]
+  rateLimitRps: number
+  dailyQuota: number | null
+  allowedIps: string[] | null
+  expiresAt: string | null
+  lastUsedAt: string | null
+  createdAt: string
+  keys: ApiClientKey[]
+}
+
+export type ApiClientInput = Partial<Pick<ApiClient, 'name' | 'description' | 'authMode' | 'status' | 'scopes' | 'rateLimitRps' | 'dailyQuota' | 'allowedIps' | 'expiresAt'>> & { jwt?: Record<string, unknown> }
+
+const jsonInit = (method: string, body?: unknown): RequestInit => ({
+  method, credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+})
+
+export async function listApiClients(): Promise<ApiClient[]> {
+  const res = await fetch(`${baseUrl()}/api/v1/gateway/clients`, { credentials: 'include' })
+  return (await parseJsonOrThrow(res)).clients
+}
+
+/** `plaintext` is the key: it is returned this once and never again. */
+export async function createApiClient(input: ApiClientInput): Promise<{ client: ApiClient; plaintext?: string }> {
+  return parseJsonOrThrow(await fetch(`${baseUrl()}/api/v1/gateway/clients`, jsonInit('POST', input)))
+}
+
+export async function updateApiClient(id: string, input: ApiClientInput): Promise<void> {
+  await parseJsonOrThrow(await fetch(`${baseUrl()}/api/v1/gateway/clients/${id}`, jsonInit('PATCH', input)))
+}
+
+export async function deleteApiClient(id: string): Promise<void> {
+  await parseJsonOrThrow(await fetch(`${baseUrl()}/api/v1/gateway/clients/${id}`, jsonInit('DELETE')))
+}
+
+export async function addApiClientKey(id: string, input: { label?: string; expiresAt?: string | null }): Promise<{ plaintext: string }> {
+  return parseJsonOrThrow(await fetch(`${baseUrl()}/api/v1/gateway/clients/${id}/keys`, jsonInit('POST', input)))
+}
+
+export async function revokeApiClientKey(id: string, keyId: string): Promise<void> {
+  await parseJsonOrThrow(await fetch(`${baseUrl()}/api/v1/gateway/clients/${id}/keys/${keyId}`, jsonInit('DELETE')))
+}
+
+/** Where an application calls Whoobe: the gateway address as the browser knows it. */
+export function clientApiBaseUrl(): string {
+  return `${baseUrl()}/client/v1`
+}

@@ -393,6 +393,27 @@
       "when": 1789860000000,
       "tag": "0055_publish_jobs_site_key",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1789870000000,
+      "tag": "0056_api_clients",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1789880000000,
+      "tag": "0057_api_clients_auth_mode",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1789890000000,
+      "tag": "0058_api_clients_jwt",
+      "breakpoints": true
     }
   ]
 }

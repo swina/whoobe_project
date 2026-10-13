@@ -173,12 +173,31 @@ services:
       GATEWAY_CORE_API_URL: http://core-api:3003
       GATEWAY_ASSET_PROCESSOR_URL: http://asset-processor:3002
       GATEWAY_DEFAULT_RATE_LIMIT_RPS: "10"
-      GATEWAY_RATE_LIMIT_BACKEND: memory
+      # `redis` (with GATEWAY_REDIS_URL, see the valkey service below) shares the counters between processes; the default counts in memory
+      GATEWAY_RATE_LIMIT_BACKEND: ${GATEWAY_RATE_LIMIT_BACKEND:-memory}
     depends_on:
       core-api:
         condition: service_healthy
       asset-processor:
         condition: service_healthy
+    restart: unless-stopped
+
+  # Shared counter store of the gateway's rate limits (docs/plans/api-gateway/client-access-hub.md, section 13). Optional: start it
+  # with the profile `ratelimit` (COMPOSE_PROFILES=local-s3,ratelimit), then set in the env file
+  #   GATEWAY_RATE_LIMIT_BACKEND=redis
+  #   GATEWAY_REDIS_URL=redis://:<VALKEY_PASSWORD>@valkey:6379
+  # Not published on any port, password required, nothing written to disk (the counters are disposable).
+  valkey:
+    image: valkey/valkey@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+    profiles: ["ratelimit"]
+    command: ["sh", "-c", "[ -n \"$$VALKEY_PASSWORD\" ] || { echo 'VALKEY_PASSWORD is not set in the env file' >&2; exit 1; }; exec valkey-server --requirepass \"$$VALKEY_PASSWORD\" --save '' --appendonly no --maxmemory 128mb --maxmemory-policy allkeys-lru"]
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD:-}
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli -a \"$$VALKEY_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
 volumes:

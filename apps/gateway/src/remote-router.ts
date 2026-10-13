@@ -1,37 +1,54 @@
 import { Router, type Request, type Response } from 'express';
 import { PERMISSIONS, requirePermission } from './auth.js';
-import { proxyFetch } from './proxy-engine.js';
 import { checkRateLimit } from './rate-limiter.js';
-import type { GatewayPlugin, RequestContext, ResponseContext } from './plugin-types.js';
 import { logGatewayError } from './log-error.js';
-import { buildAuthHeaders } from './gateway-auth-headers.js';
+import { callRoute } from './route-call.js';
+import { resolveGatewayUrl } from './resolve-gateway-url.js';
 
-const loadedPlugins: GatewayPlugin[] = [];
+export { setLoadedPlugins } from './route-call.js';
 
-export function setLoadedPlugins(plugins: GatewayPlugin[]): void {
-  loadedPlugins.length = 0;
-  loadedPlugins.push(...plugins);
+/** Content type and accept of the caller, the only request headers passed on to an upstream. */
+export function passedHeaders(req: Request): Record<string, string> {
+  const out: Record<string, string> = {};
+  const contentType = req.headers['content-type'];
+  if (contentType) out['Content-Type'] = Array.isArray(contentType) ? contentType[0] : contentType;
+  const accept = req.headers['accept'];
+  if (accept) out['Accept'] = Array.isArray(accept) ? accept[0] : accept;
+  return out;
+}
+
+/** The query string of the request as sent (without the '?'), bounded. */
+export function queryOf(req: Request): string {
+  const i = req.originalUrl.indexOf('?');
+  return i < 0 ? '' : req.originalUrl.slice(i + 1, i + 1 + 2048);
 }
 
 export function createRemoteRouter(): Router {
   const router = Router();
 
+  // The way for a signed-in dashboard user to call a configured route directly. Applications use /client/v1/gateway (client-router.ts).
   router.all('/:endpointName/*', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
     try {
       const { getGatewayEndpointByName, listGatewayRoutes } = await import('@whoobe-cms/core/server');
+      const { matchRoute, unsafePathReason } = await import('@whoobe-cms/core/server');
 
       const endpointName = req.params.endpointName as string;
-      const wildcardPath = req.params[0] as string || '';
+      const wildcardPath = (req.params[0] as string) || '';
 
       const endpoint = await getGatewayEndpointByName(endpointName);
       if (!endpoint || !endpoint.isActive) {
         res.status(404).json({ error: `Endpoint '${endpointName}' not found or inactive` });
         return;
       }
+      const bad = unsafePathReason(wildcardPath);
+      if (bad) {
+        res.status(400).json({ error: bad });
+        return;
+      }
 
       const routes = await listGatewayRoutes(endpoint.id);
-      const matchingRoute = routes.find(r => r.path === wildcardPath && r.method === req.method);
-      if (!matchingRoute) {
+      const matched = matchRoute(routes, req.method, wildcardPath, 'first');
+      if (matched === 'none' || matched === 'ambiguous') {
         res.status(404).json({ error: `Route '${req.method} ${wildcardPath}' not found on endpoint '${endpointName}'` });
         return;
       }
@@ -41,65 +58,16 @@ export function createRemoteRouter(): Router {
         return;
       }
 
-      const upstreamUrl = `${endpoint.baseUrl.replace(/\/$/, '')}/${wildcardPath}`;
-      const upstreamHeaders: Record<string, string> = {};
-
-      const contentType = req.headers['content-type'];
-      if (contentType) upstreamHeaders['Content-Type'] = Array.isArray(contentType) ? contentType[0] : contentType;
-
-      const accept = req.headers['accept'];
-      if (accept) upstreamHeaders['Accept'] = Array.isArray(accept) ? accept[0] : accept;
-
-      Object.assign(upstreamHeaders, await buildAuthHeaders(endpoint));
-
-      const requestContext: RequestContext = {
-        req: req as unknown as Request,
-        endpoint: { id: endpoint.id, name: endpoint.name, baseUrl: endpoint.baseUrl },
-        route: { id: matchingRoute.id, path: matchingRoute.path, method: matchingRoute.method },
-        upstreamUrl,
-        upstreamHeaders,
-        upstreamBody: req.body,
-      };
-      let currentRequestContext = requestContext;
-
-      for (const plugin of loadedPlugins) {
-        if (plugin.requestMiddleware) {
-          currentRequestContext = await plugin.requestMiddleware(currentRequestContext);
-        }
-      }
-
-      const result = await proxyFetch(
-        currentRequestContext.upstreamUrl,
-        req.method,
-        currentRequestContext.upstreamHeaders,
-        currentRequestContext.upstreamBody,
-        endpoint.requestTimeoutMs
-      );
-
-      let responseBody = result.body;
-      let currentResponseContext: ResponseContext = {
-        req: req as unknown as Request,
-        res: res as unknown as Response,
-        endpoint: { id: endpoint.id, name: endpoint.name, baseUrl: endpoint.baseUrl },
-        route: { id: matchingRoute.id, path: matchingRoute.path, method: matchingRoute.method },
-        upstreamResponse: new Response(null as unknown as BodyInit),
-        body: responseBody,
-      };
-
-      for (const plugin of loadedPlugins) {
-        if (plugin.responseMiddleware) {
-          currentResponseContext = await plugin.responseMiddleware(currentResponseContext);
-        }
-      }
-
-      responseBody = currentResponseContext.body;
-
-      if (result.status >= 400) {
-        res.status(result.status).json(responseBody);
-        return;
-      }
-
-      res.status(result.status).json(responseBody);
+      const query = queryOf(req);
+      const result = await callRoute({
+        req, res, endpoint,
+        route: matched.route,
+        upstreamUrl: resolveGatewayUrl(endpoint.baseUrl, matched.route.path, matched.params) + (query ? `?${query}` : ''),
+        headers: passedHeaders(req),
+        body: req.body,
+        timeoutMs: endpoint.requestTimeoutMs,
+      });
+      res.status(result.status).json(result.body);
     } catch (err) {
       logGatewayError('remote gateway request', err);
       res.status(502).json({ error: 'Upstream request failed' });
