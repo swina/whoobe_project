@@ -6,7 +6,7 @@ Whoobe does **not** run automations itself. It connects the form to the engine, 
 leaves building the flow (send an e-mail, create a contact in HubSpot or Brevo, decide who qualifies) to the engine's own editor.
 
 For where this sits in the architecture (boundaries, state, failure behaviour, deployment of the engine) see
-[`architecture/automations.md`](../architecture/automations.md).
+[`architecture/automations.md`](automations-architecture.md).
 
 ## 1. How it works
 

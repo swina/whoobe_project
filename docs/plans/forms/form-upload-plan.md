@@ -1,6 +1,6 @@
 # Form file upload (plan)
 
-Status: **phases 1, 2 and 3 built** (limits, content checks, ticket, table, website settings, the endpoints, attaching on submit, cleanup, the File Upload element, the sending from published sites); phase 4 (antivirus hook, uploads listed in the submissions view) to do. Author guide: `docs/release/guides/form-uploads.md`. Branch: `feat/download-element`.
+Status: **phases 1, 2 and 3 built** (limits, content checks, ticket, table, website settings, the endpoints, attaching on submit, cleanup, the File Upload element, the sending from published sites); phase 4 (antivirus hook, uploads listed in the submissions view) to do. Author guide: `docs/release/communication/form-uploads.md`. Branch: `feat/download-element`.
 
 Decision taken: **B'** (ticket + our own endpoint; S3 is never exposed).
 

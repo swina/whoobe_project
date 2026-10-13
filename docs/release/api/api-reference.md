@@ -1,8 +1,8 @@
 # API Reference
 
-Overview of the HTTP APIs exposed by this monorepo's backend services, grouped by service and resource. Every endpoint returns/accepts JSON unless noted otherwise. Endpoints under `/public/*` and `/preview/*` (and `/health`, `/dam-asset/*`) require no authentication; everything else requires a valid `wcms_session` cookie (see [Auth](#auth)) and, in most cases, a specific permission. `gateway`'s own `/api/v1/gateway/resolve`/`/submit` are a third case: a published site (not an admin session) authenticates with a resolved `gatewayBindingId` and, optionally, a per-site API key — see [`docs/release/guides/api-gateway-security.md`](../guides/api-gateway-security.md).
+Overview of the HTTP APIs exposed by this monorepo's backend services, grouped by service and resource. Every endpoint returns/accepts JSON unless noted otherwise. Endpoints under `/public/*` and `/preview/*` (and `/health`, `/dam-asset/*`) require no authentication; everything else requires a valid `wcms_session` cookie (see [Auth](#auth)) and, in most cases, a specific permission. `gateway`'s own `/api/v1/gateway/resolve`/`/submit` are a third case: a published site (not an admin session) authenticates with a resolved `gatewayBindingId` and, optionally, a per-site API key — see [`docs/release/communication/api-gateway-security.md`](../communication/api-gateway-security.md).
 
-For exact request/response shapes, see the route handlers in each service's `src/server.ts` (or, for `gateway`, `src/router.ts` + `src/admin-routes.ts`/`src/resolve-handler.ts`/`src/submit-handler.ts`). A machine-readable companion spec covering every route on this page lives at [`docs/release/api/openapi.yaml`](../api/openapi.yaml) — see its own section below for what it does and doesn't model.
+For exact request/response shapes, see the route handlers in each service's `src/server.ts` (or, for `gateway`, `src/router.ts` + `src/admin-routes.ts`/`src/resolve-handler.ts`/`src/submit-handler.ts`). A machine-readable companion spec covering every route on this page lives at [`docs/release/api/openapi.yaml`](openapi.yaml) — see its own section below for what it does and doesn't model.
 
 ## Services
 
@@ -349,7 +349,7 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 
 ## `gateway` (port 3001)
 
-Federated API Gateway: lets a published site or the admin editor reach third-party REST APIs (HubSpot, Brevo, Stripe, or any custom endpoint) through server-side-only credentials, plus a couple of authenticated/public proxy passthroughs to `core-api`/`asset-processor` for callers that only have the Gateway's own origin configured. See [`docs/release/guides/api-gateway-security.md`](../guides/api-gateway-security.md) for the authorization model behind `/resolve`/`/submit` (a mandatory server-resolved `gatewayBindingId`, plus an optional per-site API key) — a published site never gets to pick an arbitrary endpoint/route itself.
+Federated API Gateway: lets a published site or the admin editor reach third-party REST APIs (HubSpot, Brevo, Stripe, or any custom endpoint) through server-side-only credentials, plus a couple of authenticated/public proxy passthroughs to `core-api`/`asset-processor` for callers that only have the Gateway's own origin configured. See [`docs/release/communication/api-gateway-security.md`](../communication/api-gateway-security.md) for the authorization model behind `/resolve`/`/submit` (a mandatory server-resolved `gatewayBindingId`, plus an optional per-site API key) — a published site never gets to pick an arbitrary endpoint/route itself.
 
 <!-- GENERATED:GATEWAY:START - do not hand-edit below; run `python3 docs/release/api/gen-api-docs.py` after editing that script's route table instead. -->
 ### Gateway admin: endpoints, routes, schemas (auth: wcms_session + GATEWAY_MANAGE)
@@ -386,7 +386,7 @@ Federated API Gateway: lets a published site or the admin editor reach third-par
 | `POST /api/v1/gateway/clients/:id/keys` | Add a key to a key client (rotation). The key is in the reply, once. |
 | `DELETE /api/v1/gateway/clients/:id/keys/:keyId` | Revoke a key. |
 
-### Gateway client surface (auth: an API key `wbk_...` from a server, or an identity provider token from a browser or an app, as `Authorization: Bearer`; the key also as `X-Whoobe-Key`; no session - see docs/release/guides/integrations/integrations.md)
+### Gateway client surface (auth: an API key `wbk_...` from a server, or an identity provider token from a browser or an app, as `Authorization: Bearer`; the key also as `X-Whoobe-Key`; no session - see docs/release/communication/integrations.md)
 
 | Method & path | Description |
 | --- | --- |
@@ -396,7 +396,7 @@ Federated API Gateway: lets a published site or the admin editor reach third-par
 | `POST /client/v1/automations/:endpoint/*` | Start the flow behind a POST route of an engine endpoint (Activepieces, n8n) named in an `automation:run:<endpoint>:<route>` scope, wait for its answer and return `{ ok, outcome?, response }`; `outcome` is the validated key (1-32 letters, digits, `_`, `-`) the flow answered. JSON body up to 1 MB. Outside the scopes: `404 Not found`; an engine error: `502`. |
 | `ALL /client/v1/gateway/:endpoint/*` | Call a configured route of an endpoint the client's scopes allow: the path is matched to a route (templates such as `customers/{id}` included), query string and JSON body are passed on, the gateway adds the credentials. Anything outside the scopes answers `404 Not found`; `429` with `Retry-After` over the client's limits. A key sent with an `Origin` header (a browser) is refused with `403`; a valid token whose claims give no access gets `403`. |
 
-### Gateway published-site endpoints (site API key or bound content only - see docs/release/guides/api-gateway-security.md)
+### Gateway published-site endpoints (site API key or bound content only - see docs/release/communication/api-gateway-security.md)
 
 | Method & path | Description |
 | --- | --- |
@@ -497,6 +497,6 @@ pnpm --filter @whoobe-cms/migration-tool cli -- help
 
 ## OpenAPI spec
 
-[`docs/release/api/openapi.yaml`](../api/openapi.yaml) is a generated, machine-readable OpenAPI 3.0 companion to this page — importable into Swagger UI, Postman, Insomnia, or any OpenAPI-driven client generator. It's generated from the exact same route table as this page (see [`docs/release/api/gen-api-docs.py`](../api/gen-api-docs.py)), so the two can't silently drift apart — **when a route changes, edit that script's table and re-run it (`python3 docs/release/api/gen-api-docs.py` from `docs/api/`), not the YAML or this page's tables directly.**
+[`docs/release/api/openapi.yaml`](openapi.yaml) is a generated, machine-readable OpenAPI 3.0 companion to this page — importable into Swagger UI, Postman, Insomnia, or any OpenAPI-driven client generator. It's generated from the exact same route table as this page (see [`docs/release/api/gen-api-docs.py`](gen-api-docs.py)), so the two can't silently drift apart — **when a route changes, edit that script's table and re-run it (`python3 docs/release/api/gen-api-docs.py` from `docs/api/`), not the YAML or this page's tables directly.**
 
 Scope, by design: every one of the ~226 routes documented above gets a real path, method, tag, auth requirement, and path parameters — that part is exhaustive. Request/response **bodies** are intentionally generic (`type: object`, no field-by-field modeling) for most routes, since hand-modeling every payload shape across three services would be a much larger, separate effort and would need to be re-verified against the handlers constantly to stay honest. A handful of flagship endpoints (`POST /auth/login`, `GET /auth/me`, `POST /api/v1/gateway/resolve`, `POST /api/v1/gateway/submit`, and the Whoobe One Pages CRUD) get real, hand-written schemas instead, as a quality anchor and a template for extending the rest incrementally.

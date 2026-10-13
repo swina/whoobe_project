@@ -8,24 +8,51 @@ project stays in [`../plans`](../plans) and is deliberately not part of a releas
 
 **Deployment model.** One workspace per organisation. Divisions of the same entity share a workspace and are told apart with
 roles; different companies or legal entities get separate workspaces. Whoobe is not a shared multi-tenant platform
-([architecture overview](architecture/architecture-overview.md), section 7).
+([why](architecture/design-decisions/one-workspace-per-organisation.md)).
 
-## Contents
+## 1. Start here
 
-| Folder | Audience | What is in it |
+| If you want to... | Read |
+|---|---|
+| understand what Whoobe is and why a platform like it | [What Whoobe is](overview/what-is-whoobe.md) (one page) |
+| judge fit, cost and limits | [Full overview](overview/whoobe-overview.md) |
+| understand how it is built and why | [Architecture overview](architecture/architecture-overview.md), [design decisions](architecture/design-decisions/README.md) |
+| read what is written for **your role** | [Documentation by role](by-role/README.md): CEO, IT manager, operators, security and compliance, marketing, data owners, developers |
+| learn to use it | [User manual](guides/user-manual/README.md) |
+| install it | [Operations: start here](operations/README.md) |
+
+## 2. The pillars
+
+The detailed documentation is organised by what Whoobe does. Each pillar has an index page.
+
+| Pillar | What it is | Index |
 |---|---|---|
-| [`architecture/`](architecture) | IT architects, DevOps, security | [Architecture overview](architecture/architecture-overview.md) (components, ports, routing, trust boundaries, topologies, tenancy), [data and storage](architecture/data-and-storage.md) (tables, object layout, migrations, retention), [authentication and authorization](architecture/authentication-and-authorization.md) (identities, sessions, MFA, permissions, public surface), [automations](architecture/automations.md) (where external automation engines sit, what travels, state, failure semantics) |
-| [`operations/`](operations) | Operators, DevOps | [Creating and managing workspaces](operations/creating-workspaces.md) (the tested install), [configuration reference](operations/configuration-reference.md) (every environment variable), [secrets and keys](operations/secrets-and-keys.md), [encryption and encrypted backups](operations/encryption.md), [backup, restore and disaster recovery](operations/backup-restore-and-dr.md), [upgrading and migrations](operations/upgrade-and-migrations.md), [observability and logging](operations/observability-and-logging.md), [capacity, scaling and availability](operations/capacity-and-scaling.md), [storage backends](operations/storage-backends.md), [public sandbox](operations/sandbox.md); bare-metal alternatives: [deployment](operations/deployment.md), [deployment mini-guide](operations/miniguide-deployment.md) (not re-verified for 0.1.0) |
-| [`security/`](security) | Security and compliance reviewers, fork maintainers | [Threat model](security/threat-model.md), [status summary](security/status-summary.md), [findings register](security/findings.md), [data protection](security/data-protection.md), [supply chain and SBOM](security/supply-chain.md), [test suite summary](security/test-suite-summary.md) (one page), [automated test suite](security/security-test-suite.md), [test plan](security/security-testing-plan.md), [manual checklist](security/manual-test-checklist.md), [Security CI for forks](security/security-ci-for-forks.md) |
-| [`api/`](api) | Integrators | [API reference](api/api-reference.md) and [`openapi.yaml`](api/openapi.yaml), both generated from one route table by [`gen-api-docs.py`](api/gen-api-docs.py) |
-| [`guides/`](guides) | Editors, developers, integrators | [Asset management (DAM)](guides/WCMS_asset_management.md), [Alpine presets](guides/alpine-presets.md), [Audio element](guides/audio-element.md), [Download element](guides/download-element.md), [Table element](guides/table-element.md) (typed or bound to data, with pagination), [Markdown element](guides/markdown-element.md), [file uploads in forms](guides/form-uploads.md), [marketing automation](guides/marketing-automation.md) (forms that start a flow in Activepieces or n8n, the list of automations), [documentation sites](guides/documentation-sites.md), [outgoing mail and providers](guides/mail-providers.md), [dynamic website paths](guides/dynamic-website-paths.md), [website export and import](guides/website-bundle.md), [headless SDK](guides/headless-sdk.md), [API Gateway security](guides/api-gateway-security.md), [Integrations: presentation, capabilities and technical notes](guides/integrations/integrations.md), [API clients: applications outside Whoobe using your integrations and data](guides/api-clients.md), [Brevo integration](guides/integrations/Brevo-Integration.md), [website publishing](guides/publish/website-publishing.md), [Capacitor mobile app](guides/publish/capacitor-mobile-app.md) |
-| [`getting-started/`](getting-started) | Everyone | [Whoobe overview](getting-started/whoobe-overview.md) (a presentation for managers, marketing and security officers: what it does, what it does not, costs, fit), [Executive summary](getting-started/executive-summary.md) (earlier positioning, dated) and the [user manual](getting-started/manual/README.md) (dashboard tour, first page, page builder, snippets and kits, themes) |
-| [`release-process.md`](release-process.md) | Maintainers | How a release is made: versions, support policy, release gates, procedure |
-| [`release-notes-0.1.0.md`](release-notes-0.1.0.md) | Operators | What 0.1.0 contains, the behaviour changes to check before installing over a development setup, known limits |
+| **Content** | Websites, pages, snippets, themes, languages, documentation sites, publishing to sites, apps and headless | [content/](content/README.md) |
+| **Data** (PIM, MDM) | Data Classes and Objects, relations, languages, publish workflow, import from Pimcore, using data in pages and apps | [data/](data/README.md) |
+| **Communication** | Integrations, Automations, the Client Hub (API clients), forms and mail | [communication/](communication/README.md) |
+| **DAM** | The media library: storage, folders, visibility, transforms, CDN mirror | [dam/](dam/README.md) |
+| **AI** | Generating pages, snippets and images, translation, Figma import; your provider, your key | [ai/](ai/README.md) |
+| **Settings** | Configuration in the dashboard and in the environment | [settings/](settings/README.md) |
+| **Security** | Threat model, findings, data protection, test evidence, supply chain | [security/](security/README.md) |
+| **Operations** | Install, configure, back up, upgrade, observe | [operations/](operations/README.md) |
+| **Guides** | The user manual and an index of every how-to | [guides/](guides/README.md) |
 
-**Reading paths.** *Architect*: architecture overview → data and storage → authentication → capacity. *DevOps*: creating
-workspaces → configuration reference → secrets and keys → backup/DR → upgrade → observability. *Security / compliance*:
-threat model → status summary and findings → data protection → supply chain → encryption.
+## 3. Other sections
+
+| Section | What is in it |
+|---|---|
+| [`overview/`](overview) | [What Whoobe is](overview/what-is-whoobe.md), the [full overview](overview/whoobe-overview.md) (what it does and does not do, costs, fit, by role), the dated [executive summary](overview/executive-summary.md) |
+| [`architecture/`](architecture) | [Architecture overview](architecture/architecture-overview.md), [data and storage](architecture/data-and-storage.md), [authentication and authorization](architecture/authentication-and-authorization.md), and the [design decisions](architecture/design-decisions/README.md) |
+| [`by-role/`](by-role) | Reading paths for CEO, IT manager, operators, security and compliance, marketing, data owners, developers |
+| [`api/`](api) | [API reference](api/api-reference.md) and [`openapi.yaml`](api/openapi.yaml), both generated from one route table by [`gen-api-docs.py`](api/gen-api-docs.py) |
+| [`whoobe-history.md`](whoobe-history.md) | The story of Whoobe |
+| [`community/`](community/why-sponsor-and-contribute.md) | Why sponsor and why contribute to open-source projects, and how to help Whoobe |
+| [`release-process.md`](release-process.md) | How a release is made: versions, support policy, release gates, procedure |
+| [`release-notes-0.1.0.md`](release-notes-0.1.0.md) | What 0.1.0 contains, behaviour changes to check before installing over a development setup, known limits |
+
+**Reading paths.** *Architect*: architecture overview, data and storage, authentication, capacity. *DevOps*: creating workspaces, configuration
+reference, secrets and keys, backup/DR, upgrade, observability. *Security / compliance*: threat model, status summary and findings, data
+protection, supply chain, encryption. More in [documentation by role](by-role/README.md).
 
 ## What is not here
 
@@ -50,7 +77,8 @@ threat model → status summary and findings → data protection → supply chai
 
 ## Status
 
-Reorganised on **2026-10-05**; technical layer (architecture, operations, security reviews) added on **2026-10-09**.
+Reorganised on **2026-10-05**; technical layer (architecture, operations, security reviews) added on **2026-10-09**; restructured by pillar, with the platform overview,
+design decisions, reading paths by role and the pillars Data, AI and Settings, on **2026-10-13**.
 The documentation gate of the release (`./scripts/release.sh check`, `scripts/release/check-docs.py`) passes: every core-api
 route documented, no broken link or quoted repository path, every environment variable documented.
 
@@ -59,15 +87,15 @@ route documented, no broken link or quoted repository path, every environment va
 | Item | State | Owner / next step |
 |---|---|---|
 | Alignment line (the release this documentation matches) | set by `scripts/release.sh prepare` | release manager |
-| Technical set for architects, DevOps and security (this page's first three folders) | **written 2026-10-09 from the code**; statements that depend on running systems (TLS on a live host, upgrade, restore, load, multi-replica) are marked as untested | review by someone other than the author; rehearse the runbooks once ([backup](operations/backup-restore-and-dr.md), [upgrade](operations/upgrade-and-migrations.md)) |
+| Technical set for architects, DevOps and security (`architecture/`, `operations/`, `security/`) | **written 2026-10-09 from the code**; statements that depend on running systems (TLS on a live host, upgrade, restore, load, multi-replica) are marked as untested | review by someone other than the author; rehearse the runbooks once ([backup](operations/backup-restore-and-dr.md), [upgrade](operations/upgrade-and-migrations.md)) |
 | Findings found by the review: F-055 to F-058 | recorded in [`security/findings.md`](security/findings.md), **open** | fix before or accept explicitly in the release notes |
 | Security status summary, DAST, manual security checklist | summary updated 2026-10-09; **DAST and the manual checklist not repeated** for the features of 2026-10-08/09 | run on the release commit (release gate) |
 | SBOM | `scripts/release/sbom.sh` works (CycloneDX, 669 components in the source tree); not attached automatically | attach to the GitHub Release; automate in `release.yml` |
 | Image digests, signatures, provenance | not available (images are published by hand) | `release.yml` ([release process](release-process.md) section 7) |
 | Bare-metal guides (`operations/deployment.md`, `miniguide-deployment.md`) | flagged as not re-verified; the container workspace is the tested path | rewrite or retire |
-| [User manual](getting-started/manual/README.md) | partial by design: chapters listed in its table of contents are not written; no App Mode, thumbnail capture, documentation-site, form-upload chapters (the guides cover them) | write after the release |
-| [`guides/headless-sdk.md`](guides/headless-sdk.md), [`guides/dynamic-website-paths.md`](guides/dynamic-website-paths.md), publishing guides | names checked, not read line by line | review |
-| [Executive summary](getting-started/executive-summary.md) | positioning text dated 2026-09-18; not a technical reference | refresh before external use |
+| [User manual](guides/user-manual/README.md) | partial by design: chapters listed in its table of contents are not written; no App Mode, thumbnail capture, documentation-site, form-upload chapters (the guides cover them) | write after the release |
+| [`content/headless-sdk.md`](content/headless-sdk.md), [`content/dynamic-website-paths.md`](content/dynamic-website-paths.md), publishing guides | names checked, not read line by line | review |
+| [Executive summary](overview/executive-summary.md) | positioning text dated 2026-09-18; not a technical reference | refresh before external use |
 | Runbooks never rehearsed: restore on a new host, upgrade, workspace removal and re-creation | written, not run end to end | rehearse once and note the date here |
 | Generated documentation sites | the product can publish this folder as a documentation site (Markdown, index, search); not set up for the release | optional: publish `docs/release` with the product's own *documentation site* feature |
 | Languages | English only | |

@@ -6,7 +6,7 @@ checked in the repository on the date above; the ones that were not are marked *
 The Table element (typed grid, or bound to a Data Class query or a gateway list, with columns, formats, classes, pagination, sorting,
 search and a row counter) works in the editor and in what the editor application serves. This plan brings it to the **generated sites**
 (Next.js, Nuxt, static) and to the **headless SDK** (React, Vue, Svelte). User-facing description of the element:
-[`docs/release/guides/table-element.md`](../../release/guides/table-element.md).
+[`docs/release/content/table-element.md`](../../release/guides/table-element.md).
 
 ---
 
@@ -234,5 +234,5 @@ The smallest useful release is phases 0 to 2 plus the React adapter: typed and b
 
 ## 7. Documentation to change when it ships
 
-`docs/release/guides/table-element.md` (the "Limits" section: generated sites and the SDK), `docs/release/guides/headless-sdk.md` (the `table` kind and
-`useTableView`), `docs/release/guides/publish/website-publishing.md` (the safelist), the release notes, and `CHANGES.md`.
+`docs/release/content/table-element.md` (the "Limits" section: generated sites and the SDK), `docs/release/content/headless-sdk.md` (the `table` kind and
+`useTableView`), `docs/release/content/publishing/website-publishing.md` (the safelist), the release notes, and `CHANGES.md`.

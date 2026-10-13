@@ -7,17 +7,17 @@ without code and without ever putting a credential in a page.
 In the dashboard it is called *Integrations*; in the code it is the **API Gateway** (`apps/gateway`, port 3001). This guide has
 four parts: [what it is for](#1-what-it-is-for), [how to use it](#2-using-it), [how it works](#3-how-it-works-technical-notes) and [use from an application](#4-applications-that-call-whoobe-api-clients),
 including its [limits](#5-limits-and-known-gaps). For credential protection in detail see
-[API Gateway security](../api-gateway-security.md).
+[API Gateway security](api-gateway-security.md).
 
 ## 1. What it is for
 
 | You want to | How |
 |---|---|
 | Show a value from an API in a page (a price, a headline, a counter) | bind an element to a **field** of a route's reply |
-| Show a list from an API (products, events, posts) | bind a container (a repeater) or a [table](../table-element.md) to an **array** in the reply, with filters |
+| Show a list from an API (products, events, posts) | bind a container (a repeater) or a [table](../content/table-element.md) to an **array** in the reply, with filters |
 | Send what a visitor typed in a form to another system (create a contact, open a ticket) | set the form's target to a route (a `POST`, `PUT` or `PATCH`) |
-| Start a flow in an automation engine and react to its answer | form to a webhook route, see [marketing automation](../marketing-automation.md) |
-| Push an email campaign draft to Brevo from a page or snippet | built-in preset, see [Brevo integration](Brevo-Integration.md) |
+| Start a flow in an automation engine and react to its answer | form to a webhook route, see [marketing automation](marketing-automation.md) |
+| Push an email campaign draft to Brevo from a page or snippet | built-in preset, see [Brevo integration](brevo-integration.md) |
 | Use a vendor API quickly | start from a **preset** (Brevo, Cloudinary, HubSpot, Mailchimp, Shopify, Stripe, a demo shop) |
 | Use a documented API quickly | **import its OpenAPI / Swagger** file: the routes are created for you |
 
@@ -67,7 +67,7 @@ Binding a list: bind the container to the array (for example the field `products
 (`title`, `price`, `images[0]`). Filters narrow the list, see 3.3.
 
 Parameters: a route `customers/{id}` needs a value for `id`. Give it a fixed text, or `{id}` to take it from the address of the page
-(a dynamic page such as `/customer/{id}`, see [dynamic website paths](../dynamic-website-paths.md)).
+(a dynamic page such as `/customer/{id}`, see [dynamic website paths](../content/dynamic-website-paths.md)).
 
 ### 2.3 Presets
 
@@ -100,7 +100,7 @@ A form whose target is a route sends its fields to the upstream API when the vis
 - For Brevo's *create contact*, fields that Brevo only accepts under `attributes` are moved there automatically.
 - If the upstream answers `2xx`, the visitor sees success. Any other answer is a failure for the visitor (the reason is only in the server log).
 - If the reply contains `"outcome": "<key>"` (letters, digits, `-`, `_`, up to 32), the page can react to it, see
-  [marketing automation](../marketing-automation.md).
+  [marketing automation](marketing-automation.md).
 
 ## 3. How it works (technical notes)
 
@@ -127,7 +127,7 @@ flowchart LR
 - **Save.** Saving a page (core-api) walks the content and writes one **binding** row per bound container, field or form: endpoint,
   route, field path, filters, the names of the parameters allowed, and its kind, `resolve` (read) or `submit` (write). The page keeps
   only an opaque `bindingId`; endpoint name, route path and filters are removed from the content sent to published sites.
-- **Visit.** A published page is rendered by the renderer ([headless SDK](../headless-sdk.md)), which calls
+- **Visit.** A published page is rendered by the renderer ([headless SDK](../content/headless-sdk.md)), which calls
   `POST /api/v1/gateway/resolve` with `{ bindingId, params }`, or `POST /api/v1/gateway/submit` with `{ bindingId, attributes }` for a
   form. The gateway looks up the binding and answers with the requested value only.
 
@@ -194,7 +194,7 @@ The counters of the public limits above are kept in the memory of the gateway pr
 Every outgoing call (routes, OAuth token requests, OpenAPI download) goes through the SSRF guard: addresses of the cloud metadata
 service, link-local, unspecified and reserved ranges are refused; loopback is refused in production; private ranges (RFC 1918) are
 allowed unless `OUTBOUND_ALLOW_PRIVATE=false`, which an installation reachable from the internet should set
-([threat model](../../security/threat-model.md)).
+([threat model](../security/threat-model.md)).
 
 Errors: the real cause is written to the gateway log; the caller gets a short fixed message (`502`, `Resolution failed`,
 `Upstream rejected the submission`). An upstream URL, host name or key can therefore not leak through an error.
@@ -215,7 +215,7 @@ privileges of the gateway process: install only code you have read.
 
 ## 4. Applications that call Whoobe (API clients)
 
-> The complete reference, with code examples, errors and troubleshooting, is the [API clients guide](../api-clients.md). This section is the short version.
+> The complete reference, with code examples, errors and troubleshooting, is the [API clients guide](api-clients.md). This section is the short version.
 
 The routes you configure can also be used **by an application outside Whoobe**: a mobile app, a back-end, another company's system.
 It authenticates with a **key** (a server) or with a **token of your identity provider** (a browser or an app), never with a user
@@ -380,10 +380,10 @@ audience the API identifier, permissions in `permissions` or `scope`. Opaque (no
   use an unsigned or token-based form of that API, or a plugin.
 - **Rate counters.** By default they are per process. With a shared store (4.4) the API client limits and the endpoint limit are
   shared between processes; the public `resolve` and `submit` limits are still per process. See the
-  [configuration reference](../../operations/configuration-reference.md).
+  [configuration reference](../operations/configuration-reference.md).
 - **The endpoint's rate limit does not apply to `resolve` and `submit`**, which have the address and website limits of 3.5.
 - **Credential key.** `GATEWAY_AUTH_ENCRYPTION_KEY` lives in the process environment and there is no rotation tool yet; details and
-  the other open points in [API Gateway security](../api-gateway-security.md).
+  the other open points in [API Gateway security](api-gateway-security.md).
 - **A bound page copy does not follow the snippet it came from.** Inserting a snippet copies it; changing the snippet later does not
   change the pages. The *Data bindings* list shows which snippet a block came from.
 - **A schema is a snapshot.** If the API changes its reply, test the route again; until then the editor offers the old fields.
@@ -400,16 +400,16 @@ audience the API identifier, permissions in `permissions` or `scope`. Opaque (no
 | A list shows too much or too little | filters are AND only; `eq` on a number typed as text; the parameter `{id}` has no value on the page |
 | A form says it failed, the service received nothing | the route is not a write method; the field is not in the form's recorded list (save the page again); the upstream refused (see the gateway log) |
 | `429` | the address or website limit of 3.5 was reached; for an application, its own limit or quota (4.2) |
-| `Gateway resolve failed: 401` while publishing a site | the site key is missing in the build environment; see [website publishing](../publish/website-publishing.md) |
+| `Gateway resolve failed: 401` while publishing a site | the site key is missing in the build environment; see [website publishing](../content/publishing/website-publishing.md) |
 | The container of a generated site cannot reach the API | the gateway address (`GATEWAY_URL`) must be reachable **from the container**, not just from your browser |
 
 ## 7. Related documents
 
-- [API Gateway security](../api-gateway-security.md): encryption at rest, redaction, error handling, what is deferred.
-- [Marketing automation](../marketing-automation.md): forms that start a flow in Activepieces or n8n.
-- [Brevo integration](Brevo-Integration.md): the preset and the campaign draft.
-- [Table element](../table-element.md): tables bound to an API list.
-- [Headless SDK](../headless-sdk.md): how a published site resolves bindings.
-- [Configuration reference](../../operations/configuration-reference.md): every `GATEWAY_*` variable.
-- [Architecture overview](../../architecture/architecture-overview.md) and [automations](../../architecture/automations.md).
-- [API reference](../../api/api-reference.md): the gateway routes.
+- [API Gateway security](api-gateway-security.md): encryption at rest, redaction, error handling, what is deferred.
+- [Marketing automation](marketing-automation.md): forms that start a flow in Activepieces or n8n.
+- [Brevo integration](brevo-integration.md): the preset and the campaign draft.
+- [Table element](../content/table-element.md): tables bound to an API list.
+- [Headless SDK](../content/headless-sdk.md): how a published site resolves bindings.
+- [Configuration reference](../operations/configuration-reference.md): every `GATEWAY_*` variable.
+- [Architecture overview](../architecture/architecture-overview.md) and [automations](automations-architecture.md).
+- [API reference](../api/api-reference.md): the gateway routes.

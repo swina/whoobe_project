@@ -28,7 +28,7 @@ rest. Form uploads waiting in `private/_uploads/` are disposable (they expire af
 | `scripts/restore-workspace-db.sh --check <file>` | decrypts and test-reads a backup without touching a workspace or Docker | |
 | `scripts/restore-workspace-db.sh <slug> <file>` | drops and recreates the workspace database from the dump after you type the slug | restore the bucket or the env file; run while the apps are up (stop them first) |
 | Page/snippet history (`content_versions`, the editor's *History*) | undo of editing mistakes inside the application | protect against deletion of the whole object or table |
-| Website export (`.zip` bundle) | portable copy of one website (pages, snippets, module pages, data classes and objects, asset files) | users, roles, gateway endpoints/keys, mail and AI settings, domains, version history (see [website bundle](../guides/website-bundle.md)) |
+| Website export (`.zip` bundle) | portable copy of one website (pages, snippets, module pages, data classes and objects, asset files) | users, roles, gateway endpoints/keys, mail and AI settings, domains, version history (see [website bundle](../content/website-bundle.md)) |
 | `docker compose down` / `scripts/remove-workspace.sh` | remove a workspace (with `-v` the volumes): **destructive**, asks for the slug | |
 
 Not provided: point-in-time recovery (WAL archiving, `pg_basebackup`), replication or a standby, backup monitoring or

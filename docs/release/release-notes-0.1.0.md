@@ -14,29 +14,29 @@ turns this into a release is in [`release-process.md`](release-process.md) (copy
 - Rich text with TipTap: colour, highlight, alignment, links, lists. The colours now survive selecting the paragraph and
   using another control.
 - **Audio element** (player or waveform, from an asset or a URL, optional title) and **Alpine presets** (named sets of
-  directives applied from the editor). Guides: [`guides/audio-element.md`](guides/audio-element.md),
-  [`guides/alpine-presets.md`](guides/alpine-presets.md).
+  directives applied from the editor). Guides: [`content/audio-element.md`](content/audio-element.md),
+  [`content/alpine-presets.md`](content/alpine-presets.md).
 - Customize > Border sliders can give 1px (`border`), and their first step removes the class instead of setting a 0.
 - **Website export and import as a `.zip`** with everything the site refers to - snippets, module pages, data classes and
   objects, asset files - and the references rewritten on import, so the copy is a twin. Dry run, rollback on failure.
-  Guide: [`guides/website-bundle.md`](guides/website-bundle.md).
+  Guide: [`content/website-bundle.md`](content/website-bundle.md).
 
 - **Documentation sites**: a website whose source is a folder of Markdown assets, with an index (automatic or edited in the
   dashboard), navigation and client-side search, rendered by the editor app or generated as a static site. Guide:
-  [`guides/documentation-sites.md`](guides/documentation-sites.md).
-- Documentation sites draw `mermaid` code blocks as diagrams (editor, dashboard preview and generated site; the library is copied into the site, not loaded from a CDN). Guide: [`guides/documentation-sites.md`](guides/documentation-sites.md).
+  [`content/documentation-sites.md`](content/documentation-sites.md).
+- Documentation sites draw `mermaid` code blocks as diagrams (editor, dashboard preview and generated site; the library is copied into the site, not loaded from a CDN). Guide: [`content/documentation-sites.md`](content/documentation-sites.md).
 - **Table element bound to data**: a table can show a Data Class query or a gateway list, with chosen columns and formats, and paginate it
   (arrows or a *More* button); the pagination also works for gateway-bound repeaters. Also drawn by the generated Next.js, Nuxt and Svelte sites and the SDK (first page in the HTML; at most 1,000 rows). Guide:
-  [`guides/table-element.md`](guides/table-element.md).
+  [`content/table-element.md`](content/table-element.md).
 - **Download element** tied to an asset or a URL (link with `download`, or opened in a new tab); guide
-  [`guides/download-element.md`](guides/download-element.md).
+  [`content/download-element.md`](content/download-element.md).
 - **Snippet lock**: a locked snippet is not saved automatically.
 - **Marketing automation**: a form sends its submission to an automation engine (Activepieces, n8n or any webhook) through the Gateway, the
   engine can answer a one-word `outcome`, and the page reacts with AlpineJS directives to the new `whoobe-form-result` event. The forms
   that start an automation are listed in **Data & Communication > Automations** (and in the editor). Whoobe does not run flows
-  itself. Guide: [`guides/marketing-automation.md`](guides/marketing-automation.md).
+  itself. Guide: [`communication/marketing-automation.md`](communication/marketing-automation.md).
 - **File upload in forms**: a *File Upload* field, per-website limits (Settings > Form uploads), content checks, private
-  storage. Guide: [`guides/form-uploads.md`](guides/form-uploads.md).
+  storage. Guide: [`communication/form-uploads.md`](communication/form-uploads.md).
 - A consistent look for buttons, fields and windows (checked for contrast), the editor's tools as an icon bar, a menu
   next to the collapsed navigation.
 
@@ -45,7 +45,7 @@ turns this into a release is in [`release-process.md`](release-process.md) (copy
   visibility rules, optional CDN mirror; **Garage** as the default S3 store for local/LAN, an external S3 in production.
 
 **Integration and publishing**
-- **Outgoing mail** per website: SMTP or an HTTP mail provider described by a JSON file (**OneSignal** built in, more are a file each), secrets encrypted at rest. [`guides/mail-providers.md`](guides/mail-providers.md).
+- **Outgoing mail** per website: SMTP or an HTTP mail provider described by a JSON file (**OneSignal** built in, more are a file each), secrets encrypted at rest. [`communication/mail-providers.md`](communication/mail-providers.md).
 - API Gateway with endpoints, routes, OpenAPI import, site keys, forms; **vendor presets** for the "Add Endpoint" picker
   (Brevo, Cloudinary, HubSpot, Mailchimp, Shopify, Stripe, a fake-products demo). A preset can now be added to a running
   gateway: drop the `.json` in `apps/gateway/presets/` or in `GATEWAY_PRESETS_PATH` (a mounted volume) and reload the page.
