@@ -1,3 +1,10 @@
+## API client editor in a main tab, APIs chosen from a select — 2026-10-13
+- Branch: `master`
+- `components/api-clients/MasterApiClientTab.vue`: creating and editing an API client opens a main tab (`tabsStore.openApiClient`, item kind `apiClient`, `DashboardLayout.vue` label, icon and rendering) instead of a modal. Sections: General, Authentication, Limits, What this client may call. Unsaved changes mark the tab and closing asks first; a new key client shows its key once, then the tab closes.
+- Access: an **Add an API...** select (Integrations endpoints and Data Objects); each added API is a card with its routes (or classes) to tick, *all routes* / *all classes*, a count and a remove button. A client's existing APIs appear as cards when it is opened; scopes the picker does not know stay listed.
+- `ApiClientsView.vue` is now only the list (New client and Edit open the tab; the list refreshes when the tab saves, `tabsStore.apiClientsRevision`). Guide section 4.1 updated.
+- Checked in headless Chromium: create (key shown), list, edit; test client and sessions removed.
+
 ## Client access: published Data Objects on `/client/v1/data` (read) — 2026-10-13
 - Branch: `master`
 - New scope `data:read:<Class name>` (or `data:read:*`) in `packages/core/src/gateway/client-scopes.ts` (`parseDataScope`, `dataScopeAllows`; `validateClientScopes` accepts it). Works for key clients and for token clients (claim rules can grant it).
