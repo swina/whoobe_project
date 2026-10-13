@@ -361,3 +361,20 @@ Implementation notes (2026-10-13): registration and claim rules in `packages/cor
 valid but gives no access answers `403`; any other failure `401`. Several token clients may share an issuer (different audiences or
 authorized parties): the gateway tries each active client of the issuer until one accepts. Verified against Keycloak 26 (realm roles,
 audience mapper, tampered and foreign-application tokens, a user without a role, suspension, CORS preflight, per-user limit).
+
+## 14. Assets for API clients (phase 3, read part) — 2026-10-13
+
+A Data Object stores an asset as `{ "assetId" }`; a public address does not exist for private files and, in a local installation, the
+storage is not reachable from the application. Decisions:
+
+- Scope `assets:read:<folder | *>`; a folder includes its sub-folders (`/products` does not match `/products-old`). The scope decides,
+  not the DAM's public / private flag.
+- `GET /client/v1/assets?folder=`, `GET /client/v1/assets/:id`: facts (no storage key) plus `url` (CDN mirror, or the public address of a
+  public asset, else `null`) and `contentPath`.
+- `GET /client/v1/assets/:id/content`: the gateway streams the file from the asset processor with `DAM_SERVICE_TOKEN` (works for private
+  assets and for local installs), passes `Range`, and sends active content (HTML, SVG) as a download. Always available, so the application
+  chooses between `url` and `contentPath`.
+- `?expand=assets` on the data calls adds `asset` next to each `{ assetId }`, only for folders the scopes allow; otherwise the bare id stays.
+- Left for later: upload (`assets:write`), short-lived signed links (they need the storage origin to be reachable by the application),
+  hourly usage counters, per-key `openapi.json`.
+

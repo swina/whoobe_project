@@ -11,6 +11,8 @@ import { ipAllowed } from './client-ip.js';
 import { createGatewayJwtVerifier, JwtRejected } from './jwt-verify.js';
 import { decodeJwt } from 'jose';
 import { extractOutcome } from './submit-outcome.js';
+import { Readable } from 'node:stream';
+import { GATEWAY_ASSET_PROCESSOR_URL } from './config.js';
 
 // /client/v1: what an application that holds an API key may call (docs/plans/api-gateway/client-access-hub.md).
 // The key is read from `Authorization: Bearer wbk_...` or `X-Whoobe-Key`; there is no cookie and no session.
@@ -174,6 +176,22 @@ export function createClientRouter(): Router {
     return { core, cls };
   };
 
+  // `?expand=assets`: next to each `{ assetId }` of an image / asset field, the file's facts and addresses, for the assets the scopes allow
+  const publicAssetUrl = (core: typeof import('@whoobe-cms/core/server')) => (a: { pimcorePath: string }): string | null => core.damPathToProxyUrl(a.pimcorePath) || null;
+  const expandRows = async <T extends { attributes: Record<string, unknown> }>(
+    req: ClientRequest, rows: T[], fields: import('@whoobe-cms/core/server').ClassFieldDefinition[],
+  ): Promise<T[]> => {
+    if (req.query.expand !== 'assets') return rows;
+    const scopes = req.callerScopes ?? [];
+    if (!scopes.some((s) => s.startsWith('assets:'))) return rows;
+    const core = await import('@whoobe-cms/core/server');
+    const ids = [...new Set(rows.flatMap((o) => core.collectAssetRefs(o.attributes ?? {}, fields)))].slice(0, core.CLIENT_ASSET_MAX_EXPAND);
+    const map = new Map(
+      (await core.getAssetsByIds(ids)).map((a) => [a.id, core.projectClientAsset(a, publicAssetUrl(core))] as const),
+    );
+    return rows.map((o) => ({ ...o, attributes: core.expandAssetRefs(o.attributes ?? {}, fields, scopes, map) }));
+  };
+
   router.get('/data/:className', async (req: ClientRequest, res: Response): Promise<void> => {
     try {
       const found = await dataClass(req, res);
@@ -184,7 +202,8 @@ export function createClientRouter(): Router {
       if ('error' in q) { res.status(400).json({ error: q.error }); return; }
       const rows = await core.queryPublishedDataObjects(cls.id, { filters: q.filters, orderBy: q.orderBy, offset: q.offset, limit: q.limit, locale: q.locale });
       logger.info({ clientId: req.apiClient!.id, client: req.apiClient!.name, sub: req.subject, class: cls.name, count: rows.length }, '[gateway] client data list');
-      res.json({ class: cls.name, objects: rows.map((o) => core.projectClientObject(o, fields)), limit: q.limit, offset: q.offset });
+      const objects = await expandRows(req, rows.map((o) => core.projectClientObject(o, fields) as { attributes: Record<string, unknown> }), fields);
+      res.json({ class: cls.name, objects, limit: q.limit, offset: q.offset });
     } catch (err) {
       logGatewayError('client data list', err);
       res.status(500).json({ error: 'Failed to read objects' });
@@ -201,10 +220,102 @@ export function createClientRouter(): Router {
       const obj = await core.getPublishedDataObject(id);
       if (!obj || obj.classId !== cls.id) { dataNotFound(req, res, 'no published object of this class'); return; }
       logger.info({ clientId: req.apiClient!.id, client: req.apiClient!.name, sub: req.subject, class: cls.name, id }, '[gateway] client data get');
-      res.json({ object: core.projectClientObject(obj, (cls.fields ?? []) as import('@whoobe-cms/core/server').ClassFieldDefinition[]) });
+      const fields = (cls.fields ?? []) as import('@whoobe-cms/core/server').ClassFieldDefinition[];
+      const [object] = await expandRows(req, [core.projectClientObject(obj, fields) as { attributes: Record<string, unknown> }], fields);
+      res.json({ object });
     } catch (err) {
       logGatewayError('client data get', err);
       res.status(500).json({ error: 'Failed to read the object' });
+    }
+  });
+
+  // Assets of the DAM folders named in the scopes (`assets:read:<folder>`). Unknown id, id outside the scopes and malformed id all
+  // answer the same 404.
+  const assetNotFound = (req: ClientRequest, res: Response, why: string): void => {
+    logger.info({ clientId: req.apiClient!.id, method: req.method, path: req.path, why }, '[gateway] client asset call not served');
+    res.status(404).json({ error: 'Not found' });
+  };
+  const hasAssetScope = (req: ClientRequest): boolean => (req.callerScopes ?? []).some((s) => s.startsWith('assets:'));
+
+  router.get('/assets', async (req: ClientRequest, res: Response): Promise<void> => {
+    try {
+      if (!hasAssetScope(req)) { assetNotFound(req, res, 'no asset scope'); return; }
+      const core = await import('@whoobe-cms/core/server');
+      const scopes = req.callerScopes ?? [];
+      const folderParam = typeof req.query.folder === 'string' ? req.query.folder : '';
+      const folder = folderParam ? '/' + folderParam.split('/').filter(Boolean).join('/') : null;
+      // without `folder` the whole library is listed, which only a `*` scope allows
+      if (!core.assetScopeAllows(scopes, 'read', folder ?? '/')) { assetNotFound(req, res, 'folder outside the scopes'); return; }
+      const num = (v: unknown, def: number, max: number): number => {
+        const n = Number(v);
+        return v === undefined || v === '' || !Number.isInteger(n) || n < 0 ? def : Math.min(n, max);
+      };
+      const limit = Math.max(1, num(req.query.limit, 50, 100));
+      const offset = num(req.query.offset, 0, 100000);
+      const rows = await core.listAssetsPage(folder, limit, offset);
+      const assets = rows.filter((a) => core.assetScopeAllows(scopes, 'read', a.folderPath)).map((a) => core.projectClientAsset(a, publicAssetUrl(core)));
+      logger.info({ clientId: req.apiClient!.id, client: req.apiClient!.name, sub: req.subject, folder, count: assets.length }, '[gateway] client asset list');
+      res.json({ folder: folder ?? '*', assets, limit, offset });
+    } catch (err) {
+      logGatewayError('client asset list', err);
+      res.status(500).json({ error: 'Failed to list assets' });
+    }
+  });
+
+  const loadAsset = async (req: ClientRequest, res: Response) => {
+    if (!hasAssetScope(req)) { assetNotFound(req, res, 'no asset scope'); return null; }
+    const id = String(req.params.id ?? '');
+    if (!/^[0-9a-f-]{36}$/i.test(id)) { assetNotFound(req, res, 'malformed id'); return null; }
+    const core = await import('@whoobe-cms/core/server');
+    const asset = await core.getAssetById(id);
+    if (!asset || !core.assetScopeAllows(req.callerScopes ?? [], 'read', asset.folderPath)) { assetNotFound(req, res, 'unknown asset or outside the scopes'); return null; }
+    return { core, asset };
+  };
+
+  router.get('/assets/:id', async (req: ClientRequest, res: Response): Promise<void> => {
+    try {
+      const found = await loadAsset(req, res);
+      if (!found) return;
+      logger.info({ clientId: req.apiClient!.id, client: req.apiClient!.name, sub: req.subject, id: found.asset.id }, '[gateway] client asset get');
+      res.json({ asset: found.core.projectClientAsset(found.asset, publicAssetUrl(found.core)) });
+    } catch (err) {
+      logGatewayError('client asset get', err);
+      res.status(500).json({ error: 'Failed to read the asset' });
+    }
+  });
+
+  // The file itself, streamed from the asset processor with the service token: works for private assets and for workspaces whose
+  // storage cannot be reached from the application. `Range` is passed on (video, resumed downloads).
+  router.get('/assets/:id/content', async (req: ClientRequest, res: Response): Promise<void> => {
+    const abort = new AbortController();
+    res.on('close', () => abort.abort());
+    try {
+      const found = await loadAsset(req, res);
+      if (!found) return;
+      const key = found.asset.s3Key.split('/').map(encodeURIComponent).join('/');
+      const token = process.env.DAM_SERVICE_TOKEN;
+      const upstream = await fetch(`${GATEWAY_ASSET_PROCESSOR_URL}/dam-asset/${key}`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(typeof req.headers.range === 'string' ? { Range: req.headers.range } : {}) },
+        signal: abort.signal,
+      });
+      if (upstream.status === 416) { res.status(416).end(); return; }
+      if (!upstream.ok && upstream.status !== 206 || !upstream.body) { assetNotFound(req, res, `asset processor answered ${upstream.status}`); return; }
+      for (const h of ['content-type', 'content-length', 'content-range', 'accept-ranges', 'content-disposition']) {
+        const v = upstream.headers.get(h);
+        if (v) res.setHeader(h, v);
+      }
+      res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'private, max-age=60');
+      res.status(upstream.status);
+      logger.info({ clientId: req.apiClient!.id, client: req.apiClient!.name, sub: req.subject, id: found.asset.id, status: upstream.status }, '[gateway] client asset content');
+      const body = Readable.fromWeb(upstream.body as import('node:stream/web').ReadableStream);
+      body.on('error', () => { if (!res.headersSent) res.status(502).end(); else res.destroy(); });
+      body.pipe(res);
+    } catch (err) {
+      if (abort.signal.aborted) return;
+      logGatewayError('client asset content', err);
+      if (!res.headersSent) res.status(502).json({ error: 'The file could not be read' });
     }
   });
 

@@ -1,4 +1,4 @@
-import { eq, or, like, sql } from 'drizzle-orm';
+import { eq, or, like, sql, inArray, asc } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { folders, assets } from './dam-schema.js';
 import type { ExtractedAssetMetadata } from '../dam/metadata-extractor.js';
@@ -139,6 +139,19 @@ export async function listAssetsUnderFolder(folderPrefix: string): Promise<Asset
   const db = getDb();
   const normalized = folderPrefix.replace(/\/+$/, '');
   return db.select().from(assets).where(pathOrDescendant(assets.folderPath, normalized));
+}
+
+/** The records with these ids (ids that do not exist are simply missing from the result). */
+export async function getAssetsByIds(ids: readonly string[]): Promise<AssetRecord[]> {
+  if (!ids.length) return [];
+  return getDb().select().from(assets).where(inArray(assets.id, [...ids]));
+}
+
+/** One page of the assets of a folder and everything below it, in a stable order; `folderPrefix` null means every folder. */
+export async function listAssetsPage(folderPrefix: string | null, limit: number, offset: number): Promise<AssetRecord[]> {
+  const q = getDb().select().from(assets);
+  const filtered = folderPrefix ? q.where(pathOrDescendant(assets.folderPath, folderPrefix.replace(/\/+$/, ''))) : q;
+  return filtered.orderBy(asc(assets.pimcorePath)).limit(limit).offset(offset);
 }
 
 export async function getAssetByPath(pimcorePath: string): Promise<AssetRecord | null> {

@@ -121,3 +121,4 @@ export * from './gateway/client-keys.js';
 export * from './gateway/client-scopes.js';
 export * from './gateway/client-jwt.js';
 export * from './gateway/client-data.js';
+export * from './gateway/client-assets.js';

@@ -44,10 +44,11 @@ What an application can reach today:
 |---|---|---|
 | Integrations routes (the endpoints you configured: CRM, ERP, mail...) | `/client/v1/gateway/<endpoint>/<route>` | `gateway:call:...` scopes |
 | Published Data Objects (read) | `/client/v1/data/<class>` and `/client/v1/data/<class>/<id>` | `data:read:<Class>` scopes |
+| Assets: the files of the DAM (metadata, address, the file itself) | `/client/v1/assets`, `/client/v1/assets/<id>`, `/client/v1/assets/<id>/content` | `assets:read:<folder>` scopes |
 | Automations (start a flow in Activepieces / n8n and get its answer) | `/client/v1/automations/<endpoint>/<route>` | `automation:run:...` scopes |
 | Who am I (diagnostics) | `/client/v1/me` | any valid credential |
 
-Assets and writing Data Objects are not on `/client/v1` yet (section 15).
+Writing Data Objects and uploading assets are not on `/client/v1` yet (section 15).
 
 ## 2. Key or token: choose how the application proves who it is
 
@@ -154,6 +155,14 @@ A scope is one text. The dashboard writes them for you; you read them in the lis
 - `data:read:*` covers every class, including classes created later (the dashboard marks it as wide).
 - There is no write scope yet.
 
+### 5.2b Assets
+
+`assets:read:<folder>` or `assets:read:*`
+
+- Read of the assets of a DAM folder **and its sub-folders**: `assets:read:/products` allows `/products` and `/products/summer`, not `/products-old`. Folder names are written as in the DAM tree; `*` covers every folder, including folders created later (the dashboard marks it as wide).
+- The scope decides, not the folder's public / private setting: a client with the scope reads private files too. An asset outside the scopes, an unknown id and a malformed id all answer `404`.
+- There is no upload scope yet.
+
 ### 5.3 Automations
 
 `automation:run:<endpoint name>:<route>` (or `automation:run:<endpoint name>:*` for every POST route of the endpoint)
@@ -215,10 +224,52 @@ Returns `{ "object": { ... } }` with the same shape. The object must be publishe
 
 What an object contains: `id`, `key`, `locale`, `translationGroupId` (the same value links the translations of one record),
 `publishedAt`, `updatedAt` and `attributes` (**only** the fields the Data Class defines). The class id, folder path, parent, workflow
-state, import id and creation date are not returned. Relations come back as ids and asset fields as references; they are not expanded.
+state, import id and creation date are not returned. Relations come back as ids and asset fields as references (`{ "assetId": "..." }`); add `?expand=assets` to get the file's facts and addresses next to them (section 6.3b).
 
 **Never returned:** drafts. A draft, a class outside the scopes, an unknown class, a malformed id and the id of an object of another
 class all answer the same `404 Not found`.
+
+### 6.3b Assets: `?expand=assets`, `/assets`, `/assets/<id>`, `/assets/<id>/content`
+
+A data object keeps an asset as a reference, `{ "assetId": "74046bf3-..." }`, because the file's address depends on where the workspace is
+(a CDN, a public bucket, or only a private store that the application cannot reach). The client reaches the file in one of three ways.
+
+**1. Ask for the addresses with the data: `?expand=assets`** on `/data/<class>` and `/data/<class>/<id>`. Next to each `{ assetId }` of an
+image, video or asset field (also in a list) comes the `asset`:
+
+```json
+"cover": { "assetId": "74046bf3-...",
+           "asset": { "id": "74046bf3-...", "filename": "builder.png", "folder": "/images", "mimeType": "image/png", "type": "PNG",
+                      "size": 682726, "width": 1024, "height": 1024, "updatedAt": "2026-09-12T10:45:04.711Z",
+                      "url": "https://cdn.example/builder.webp", "contentPath": "/client/v1/assets/74046bf3-.../content" } }
+```
+
+Only assets of folders the client's `assets:read:` scopes allow are expanded; any other reference stays as `{ "assetId": "..." }`, so
+the data does not tell a client that a file it may not read exists. Without an asset scope, `expand` changes nothing. At most 200 distinct
+assets are expanded per call.
+
+- `url`: an address that needs **no credential**: the **CDN mirror** when the asset has one, otherwise the public address of a **public** asset
+  (when the workspace has a public address for its files). `null` for a private asset, or when there is no public address. In development it
+  may point to `localhost`, which a phone cannot reach: use `contentPath`.
+- `contentPath`: always present. The path (on the same address as the other `/client/v1` calls) that streams the file **with the client's credential**.
+
+**2. `GET /client/v1/assets?folder=/products&limit=50&offset=0`**: one page (limit 1-100, default 50) of the assets of a folder and its
+sub-folders, in a stable order, with the same `asset` shape: `{ "folder", "assets": [...], "limit", "offset" }`. `folder` is required unless
+the client has `assets:read:*`; a folder outside the scopes answers `404`.
+
+**3. `GET /client/v1/assets/<id>`** returns `{ "asset": { ... } }`.
+
+**`GET /client/v1/assets/<id>/content`** returns the file itself, with its `Content-Type` and `Content-Length`; `Range` is supported (video,
+resumed downloads). It works for private assets and when the application cannot reach the storage, because the gateway reads the file
+from the asset processor. The file needs the `Authorization` header: a browser `<img src>` cannot send it, so for web pages use `url`
+(public assets and CDN) or fetch the file with the token and show it from a `blob:` address. Files a browser would run (HTML, SVG, XML,
+JavaScript) are sent as a download. The storage key and the bucket are never shown.
+
+```bash
+curl -H "Authorization: Bearer $KEY" "$BASE/data/Blog?limit=1&expand=assets"
+curl -H "Authorization: Bearer $KEY" "$BASE/assets?folder=/images&limit=20"
+curl -H "Authorization: Bearer $KEY" -o cover.png "$BASE/assets/74046bf3-.../content"
+```
 
 ### 6.4 `POST /client/v1/automations/<endpoint>/<route>` - start a flow and wait for the answer
 
@@ -429,6 +480,7 @@ the configuration from one to the other is planned (plan, section 4.5).
 | Symptom | Likely cause |
 |---|---|
 | `404` on `/client/v1/gateway/data/Blog` | wrong address: Data Objects are at `/client/v1/data/Blog`, `gateway/` is only for Integrations endpoints |
+| `404` on an asset call | the id does not exist, or its folder is outside the `assets:read:` scopes (the answer is the same), or `GET /assets` was sent without `folder` to a client that has no `assets:read:*`; the **gateway is running an older build** (restart it) |
 | `404` on a data call | class name differs (case counts); no `data:read:` scope for it; the object is a draft; the id belongs to another class; the **gateway is running an older build** (restart it) |
 | `404` on an automation call | the scope is `automation:run:`, not `gateway:call:`; the route is not a `POST` route of the endpoint; the endpoint name or route differs from Integrations |
 | `404` on a gateway call | the endpoint was renamed (its scopes no longer match); the route is not ticked; `GET` ticked but the call is `POST`; the endpoint is inactive |
@@ -443,7 +495,7 @@ the configuration from one to the other is planned (plan, section 4.5).
 
 ## 15. What it does not do (yet)
 
-- **Writing Data Objects** and **assets** on `/client/v1` (the plan's next steps).
+- **Writing Data Objects** and **uploading assets** on `/client/v1` (the plan's next steps), and **short-lived signed links** for private files (today the file goes through `/assets/<id>/content`).
 - **Long-running automations:** the call waits at most 30 seconds; there is no "accepted, ask later" mode yet.
 - **Binary replies, multipart bodies and streaming** through `gateway/` calls.
 - **Opaque tokens, introspection, revocation lists** for identity provider tokens.

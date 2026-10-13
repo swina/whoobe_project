@@ -84,6 +84,38 @@ export function dataScopeAllows(scopes: readonly string[], action: 'read', class
   return false;
 }
 
+// An asset scope is  assets:read:<folder | *>   (metadata and content of the assets of a DAM folder and its sub-folders: `/products`
+// allows `/products` and `/products/summer`, never `/products-old`; `*` is every folder).
+export interface AssetScope { action: 'read'; folder: string }
+
+export const formatAssetScope = (s: AssetScope): string => `assets:${s.action}:${s.folder}`;
+
+export function parseAssetScope(text: string): AssetScope | { error: string } {
+  if (typeof text !== 'string' || text.length > MAX_SCOPE_LENGTH) return { error: 'Scope is too long or not text' };
+  const m = /^assets:([a-z]+):(.+)$/.exec(text);
+  if (!m) return { error: `Not an asset scope: ${text}` };
+  if (m[1] !== 'read') return { error: `Unknown asset action: ${m[1]} (only read exists)` };
+  let folder = m[2];
+  if (folder !== '*') {
+    folder = '/' + folder.split('/').filter(Boolean).join('/');
+    if (folder === '/') return { error: 'An asset scope names a folder (/products), or * for all folders' };
+    if (/[\u0000-\u001f:\\*?#]/.test(folder) || folder.split('/').some((seg) => seg === '.' || seg === '..')) return { error: `Invalid folder in scope: ${m[2]}` };
+  }
+  return { action: 'read', folder };
+}
+
+/** Does any scope allow reading the assets of this folder (the folder itself or a folder below a scoped one)? */
+export function assetScopeAllows(scopes: readonly string[], action: 'read', folderPath: string): boolean {
+  const folder = '/' + folderPath.split('/').filter(Boolean).join('/');
+  for (const text of scopes) {
+    if (!text.startsWith('assets:')) continue;
+    const s = parseAssetScope(text);
+    if ('error' in s || s.action !== action) continue;
+    if (s.folder === '*' || folder === s.folder || folder.startsWith(s.folder + '/')) return true;
+  }
+  return false;
+}
+
 /** Returns the parsed scope, or an error text. The endpoint name cannot contain ':' (it is the separator). */
 export function parseGatewayScope(text: string): GatewayScope | { error: string } {
   if (typeof text !== 'string' || text.length > MAX_SCOPE_LENGTH) return { error: 'Scope is too long or not text' };
@@ -111,6 +143,13 @@ export function validateClientScopes(scopes: unknown): { ok: true; scopes: strin
       const a = parseAutomationScope(raw);
       if ('error' in a) return { ok: false, error: a.error };
       const norm = formatAutomationScope(a);
+      if (!out.includes(norm)) out.push(norm);
+      continue;
+    }
+    if (typeof raw === 'string' && raw.startsWith('assets:')) {
+      const a = parseAssetScope(raw);
+      if ('error' in a) return { ok: false, error: a.error };
+      const norm = formatAssetScope(a);
       if (!out.includes(norm)) out.push(norm);
       continue;
     }

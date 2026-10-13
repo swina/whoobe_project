@@ -1,3 +1,11 @@
+## API clients: assets (scope assets:read, /client/v1/assets, expand=assets) — 2026-10-13
+- Branch: `master`
+- Core: scope `assets:read:<folder | *>` (`parseAssetScope`, `assetScopeAllows`, validated with the other scopes); new `gateway/client-assets.ts` (`projectClientAsset`, `collectAssetRefs`, `expandAssetRefs`); `getAssetsByIds`, `listAssetsPage` in `db/asset-records.ts`.
+- Gateway (`client-router.ts`): `GET /client/v1/assets`, `/assets/:id`, `/assets/:id/content` (streamed from the asset processor with `DAM_SERVICE_TOKEN`, `Range` supported, same 404 for unknown or out-of-scope ids), and `?expand=assets` on `/client/v1/data/...`.
+- Dashboard: "Assets (files of the DAM, read)" in the API client editor, with the DAM folders.
+- Tested on the running stack with a temporary key client (list, get, content with and without `Range`, private asset, folder and asset outside the scopes, no credential, `expand` with and without scope); the test client was deleted. 8 new unit tests (`client-assets.test.ts`).
+- Docs: `communication/api-clients.md` (sections 5.2b and 6.3b), plan `client-access-hub.md` section 14.
+
 ## API clients: Auth0 verified — 2026-10-13
 - Branch: `master`
 - `docs/release/communication/api-clients.md`: Auth0 tested with a machine-to-machine token (client credentials); the issuer must include the region and the final slash (copy it from the token's `iss`); Entra ID and Cognito still untested.

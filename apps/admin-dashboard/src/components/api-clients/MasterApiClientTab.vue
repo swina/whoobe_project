@@ -159,6 +159,9 @@
               <label v-else-if="a.kind === 'data'" class="flex items-center gap-1.5 text-[11px] text-amber-400 cursor-pointer" title="Every class, including classes created later">
                 <input type="checkbox" :checked="form.scopes.has('data:read:*')" @change="toggleScope('data:read:*')" /> all classes
               </label>
+              <label v-else-if="a.kind === 'assets'" class="flex items-center gap-1.5 text-[11px] text-amber-400 cursor-pointer" title="Every folder, including folders created later">
+                <input type="checkbox" :checked="form.scopes.has('assets:read:*')" @change="toggleScope('assets:read:*')" /> all folders
+              </label>
               <button type="button" class="text-rose-400 px-1" title="Remove this API and its routes from the client" @click="removeApi(a)">×</button>
             </div>
           </div>
@@ -181,6 +184,16 @@
                   <span><span class="font-semibold">{{ au.names.join(', ') }}</span> <span class="font-mono text-slate-500">{{ au.endpoint }} /{{ au.route }}</span></span>
                 </label>
                 <span v-if="!automations.length" class="text-[11px] text-slate-500">No form submits to an endpoint yet. Set one up in the editor (Form settings > Gateway endpoint).</span>
+              </div>
+            </template>
+            <template v-else-if="a.kind === 'assets'">
+              <p class="text-[11px] text-slate-500 mb-1">Metadata and file of the assets, <code class="font-mono">GET /assets</code>, <code class="font-mono">/assets/&lt;id&gt;</code>, <code class="font-mono">/assets/&lt;id&gt;/content</code>, and the file addresses inside data objects (<code class="font-mono">?expand=assets</code>). A folder includes its sub-folders.</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                <label v-for="f in damFolders" :key="f" class="flex items-center gap-1.5 text-[11px] font-mono cursor-pointer" :class="form.scopes.has('assets:read:*') ? 'opacity-40' : ''">
+                  <input type="checkbox" :checked="form.scopes.has(`assets:read:${f}`)" :disabled="form.scopes.has('assets:read:*') || f.includes(':')" @change="toggleScope(`assets:read:${f}`)" />
+                  <span class="truncate" :title="f">{{ f }}</span>
+                </label>
+                <span v-if="!damFolders.length" class="text-[11px] text-slate-500">No folder yet.</span>
               </div>
             </template>
             <template v-else>
@@ -228,7 +241,7 @@
 
 <script setup lang="ts">
 // The editor of one API client, in a main tab (docs/plans/api-gateway/client-access-hub.md). Scopes are one text each
-// (`gateway:call:<endpoint>:<METHOD>:<route>`, `data:read:<Class>`); the picker writes them from the APIs and routes that exist, and any
+// (`gateway:call:<endpoint>:<METHOD>:<route>`, `data:read:<Class>`, `assets:read:<folder>`); the picker writes them from the APIs and routes that exist, and any
 // scope it does not recognise stays listed so saving never drops it silently.
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { KeyRound } from '@lucide/vue'
@@ -237,6 +250,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { useTabsStore } from '../../stores/tabsStore'
 import { collectAutomations } from '@whoobe-cms/schema'
 import { fetchDataClasses, type DataClass } from '../../utils/data-classes-api'
+import { fetchFolders } from '../../utils/dam-api'
 import { fetchPages } from '../../utils/pages-api'
 import { fetchSnippets } from '../../utils/snippets-api'
 import {
@@ -279,6 +293,7 @@ const editing = ref<ApiClient | null>(null)
 const endpoints = ref<GatewayEndpoint[]>([])
 const routes = ref<Record<string, GatewayRoute[]>>({})
 const dataClasses = ref<DataClass[]>([])
+const damFolders = ref<string[]>([])
 // the forms that submit to an Integrations endpoint, one entry per endpoint and route
 const automations = ref<{ scope: string; endpoint: string; route: string; names: string[] }[]>([])
 const loading = ref(true)
@@ -297,10 +312,11 @@ const copied = ref(false)
 const wide = (endpoint: string) => `gateway:call:${endpoint}:*:*`
 const scopeOf = (endpoint: string, r: GatewayRoute) => `gateway:call:${endpoint}:${r.method.toUpperCase()}:${r.path.replace(/^\/+/, '')}`
 
-type Api = { key: string; label: string } & ({ kind: 'endpoint'; id: string; name: string } | { kind: 'data' | 'automations'; id: ''; name: '' })
+type Api = { key: string; label: string } & ({ kind: 'endpoint'; id: string; name: string } | { kind: 'data' | 'automations' | 'assets'; id: ''; name: '' })
 const apiList = computed<Api[]>(() => [
   ...endpoints.value.map((e): Api => ({ key: `ep:${e.name}`, label: e.name, kind: 'endpoint', id: e.id, name: e.name })),
   { key: 'data', label: 'Data Objects (published, read)', kind: 'data', id: '', name: '' },
+  { key: 'assets', label: 'Assets (files of the DAM, read)', kind: 'assets', id: '', name: '' },
   { key: 'automations', label: 'Automations (start a flow)', kind: 'automations', id: '', name: '' },
 ])
 // the APIs shown as cards: the ones the client already has something of, plus the ones just added
@@ -310,7 +326,7 @@ const addable = computed(() => apiList.value.filter((a) => !added.value.includes
 const toAdd = ref('')
 function addApi() { if (toAdd.value && !added.value.includes(toAdd.value)) added.value.push(toAdd.value); toAdd.value = '' }
 function scopesOfApi(a: Api): string[] {
-  return [...form.scopes].filter((s) => (a.kind === 'data' ? s.startsWith('data:') : a.kind === 'automations' ? s.startsWith('automation:') : s.startsWith(`gateway:call:${a.name}:`)))
+  return [...form.scopes].filter((s) => (a.kind === 'data' ? s.startsWith('data:') : a.kind === 'assets' ? s.startsWith('assets:') : a.kind === 'automations' ? s.startsWith('automation:') : s.startsWith(`gateway:call:${a.name}:`)))
 }
 const countFor = (a: Api) => scopesOfApi(a).length
 function removeApi(a: Api) {
@@ -318,7 +334,8 @@ function removeApi(a: Api) {
   added.value = added.value.filter((k) => k !== a.key)
 }
 const knownScopes = computed(() => {
-  const set = new Set<string>(['data:read:*'])
+  const set = new Set<string>(['data:read:*', 'assets:read:*'])
+  for (const f of damFolders.value) set.add(`assets:read:${f}`)
   for (const dc of dataClasses.value) set.add(`data:read:${dc.name}`)
   for (const au of automations.value) set.add(au.scope)
   for (const ep of endpoints.value) {
@@ -354,10 +371,11 @@ async function load() {
   loadError.value = ''
   try {
     const base = authStore.config.coreApiUrl
-    const [e, dcs, clients, pages, snippets] = await Promise.all([
+    const [e, dcs, clients, pages, snippets, folders] = await Promise.all([
       listEndpoints(), fetchDataClasses(base).catch(() => [] as DataClass[]), isNew ? Promise.resolve([] as ApiClient[]) : listApiClients(),
-      fetchPages(base).catch(() => []), fetchSnippets(base).catch(() => []),
+      fetchPages(base).catch(() => []), fetchSnippets(base).catch(() => []), fetchFolders(base).catch(() => []),
     ])
+    damFolders.value = folders.map((f: { path: string }) => f.path).sort()
     const found = new Map<string, { scope: string; endpoint: string; route: string; names: string[] }>()
     const entries = [
       ...pages.flatMap((p: any) => collectAutomations(p.content, { kind: 'page', id: p.id, title: p.title || p.slug })),
