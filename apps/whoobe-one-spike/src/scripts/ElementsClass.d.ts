@@ -127,6 +127,9 @@ export interface DataBindingFilter {
 }
 
 export interface GatewayBinding {
+  /** 'item': a nested list or a field of the item the element sits in (fieldPath relative to it, `^.` for the item above); nothing is fetched. */
+  scope?: 'item' | null
+  limit?: number | null
   endpointName: string
   routePath: string
   fieldPath: string

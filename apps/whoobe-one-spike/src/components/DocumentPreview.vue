@@ -155,6 +155,7 @@ import { resolveDocumentData } from '../scripts/data-resolver'
 import { isDynamicSlug, matchAgainstPattern } from '../scripts/path-pattern'
 import { useEditorStore } from '../store/editor'
 import BlockContainerPreview from './preview/BlockContainerPreview.vue'
+import { resetSelections } from '../scripts/selection-state'
 import { useThemeStyles } from '../composables/useThemeStyles'
 import { captureElementThumbnail, notifyParentThumbnailSaved, pageBackgroundColor, type CaptureOptions } from '../scripts/capture-thumbnail'
 import { setPageThumbnail } from '../pages-api'
@@ -175,6 +176,8 @@ const previewUrl = computed(() => {
 })
 
 const editor = useEditorStore()
+// Linked bindings: the Preview starts with no selection each time it opens
+resetSelections()
 
 // Serialize the document and store it in sessionStorage so PreviewView.vue
 // inside the iframe can read it. Uses JSON round-trip, same pattern as

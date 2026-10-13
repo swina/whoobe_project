@@ -34,6 +34,7 @@ interface FormConfigLike {
 interface GatewayBindingLike {
   endpointName?: string;
   routePath?: string;
+  scope?: string | null;
   fieldPath?: string;
   params?: Record<string, string> | null;
   filters?: unknown;
@@ -116,6 +117,8 @@ async function resolveResolveBinding(
   warnings: BindPageContentWarning[],
 ): Promise<void> {
   const binding = node.gatewayBinding;
+  // a field or list of the item the element sits in (docs/plans/cms/nested-bindings.md): nothing to pin, nothing is fetched
+  if (binding?.scope === 'item') { delete binding.bindingId; return; }
   if (!binding?.endpointName || !binding.routePath) return;
 
   const endpoint = await getGatewayEndpointByName(binding.endpointName);

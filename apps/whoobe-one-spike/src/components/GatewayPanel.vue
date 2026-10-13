@@ -80,6 +80,7 @@ import { ref, onMounted } from 'vue'
 import { ChevronDown, ChevronRight, GripVertical } from '@lucide/vue'
 import { useEditorStore } from '../store/editor'
 import { flattenSchemaFields, type FlatSchemaField } from '../utils/gateway-schema-walk'
+import { toRelativeGatewayBinding } from '../scripts/nested-binding-author'
 import { GATEWAY_FIELD_DRAG_MIME_TYPE, type GatewayFieldDragPayload } from '../utils/gateway-drag'
 
 interface EndpointInfo {
@@ -153,7 +154,7 @@ function onDragStart(event: DragEvent, ep: EndpointInfo, route: RouteInfo, field
 
 function applyBinding(ep: EndpointInfo, route: RouteInfo, fieldPath: string) {
   if (!editor.current) return
-  ;(editor.current as any).gatewayBinding = { endpointName: ep.name, routePath: route.path, fieldPath, params: null, transform: null }
+  ;(editor.current as any).gatewayBinding = toRelativeGatewayBinding(editor.document, (editor.current as any).id, { endpointName: ep.name, routePath: route.path, fieldPath, params: null, transform: null })
 }
 
 onMounted(async () => {

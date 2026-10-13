@@ -64,3 +64,15 @@ describe('sanitizePublicGatewayContent - Markdown element', () => {
     expect((sanitizePublicGatewayContent(page(md(''))) as any).blocks[0].content).toBe('');
   });
 });
+
+describe('sanitizePublicGatewayContent - gateway bindings', () => {
+  const filters = [{ field: 'title', operator: 'eq', value: 'x' }];
+  it('strips the endpoint, the route and the filters of a binding that is resolved by the gateway', () => {
+    const out = sanitizePublicGatewayContent({ blocks: [{ id: 'l', type: 'container', gatewayBinding: { endpointName: 'shop', routePath: '/c', fieldPath: 'p', filters, bindingId: 'b' } }] }) as any;
+    expect(out.blocks[0].gatewayBinding).toEqual({ fieldPath: 'p', bindingId: 'b' });
+  });
+  it('keeps the filters of a nested list (scope item): the renderer applies them to the item it sits in', () => {
+    const out = sanitizePublicGatewayContent({ blocks: [{ id: 'l', type: 'container', gatewayBinding: { scope: 'item', fieldPath: 'products', filters, limit: 3 } }] }) as any;
+    expect(out.blocks[0].gatewayBinding).toEqual({ scope: 'item', fieldPath: 'products', filters, limit: 3 });
+  });
+});

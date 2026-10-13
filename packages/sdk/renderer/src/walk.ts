@@ -3,7 +3,7 @@
 // tree of RenderDescriptors with data/image/link resolution applied. Async
 // because object/query data bindings hit the public API.
 
-import { parsePageContent, escapeHtml, type WhoobeElementNode } from '@whoobe-cms/schema'
+import { parsePageContent, escapeHtml, isSelectionName, selectionKeys, encodeSelectionKeys, readItemPath, nestedGatewayList, nestedDataList, withParent, bindingSelectionNames, type WhoobeElementNode } from '@whoobe-cms/schema'
 import type { RenderDescriptor } from './descriptor.js'
 import { normalizeKind, resolveTag } from './kind.js'
 import { resolveImageUrl } from './url.js'
@@ -150,7 +150,7 @@ async function resolveNodeImage(
   if (node.element !== 'img' && node.element !== 'video' && node.element !== 'audio' && node.tag !== 'file') return null
   let url: string | null = null
   let alt: string | undefined
-  if (node.dataBinding?.field) {
+  if (node.dataBinding?.field && !(node.type === 'container' && node.dataBinding.target === 'list')) {
     const value = await resolveFieldValue(node.dataBinding, scope)
     if (typeof value === 'string') url = resolveImageUrl(value, options.assetBaseUrl, options.keyPrefix, options.cdnMirrors)
   } else if (node.image?.url) {
@@ -170,9 +170,80 @@ async function resolveNodeImage(
   return { url, alt }
 }
 
+/** Linked bindings (docs/plans/cms/linked-bindings.md): the attributes that make one repeated item publish a selection when it is clicked and/or
+ *  listen to one. The browser part is selection.ts. A listening item is rendered hidden: with nothing selected (the server knows no URL
+ *  query) it is not shown, and the page does not flash the whole list before the script runs. */
+function withSelection(node: WhoobeElementNode, item: RenderDescriptor, record: Record<string, unknown> | null | undefined, gateway: boolean): RenderDescriptor {
+  const sel = node.selection
+  if (!sel || (!sel.publish && !sel.listen)) return item
+  const read = (field: string): unknown => (record ? (gateway ? resolveFieldFromRecord(record, field) : resolveRecordField(record, field)) : undefined)
+  const attributes: Record<string, unknown> = { ...item.attributes }
+  let style = item.style
+  if (sel.publish && isSelectionName(sel.publish.name)) {
+    attributes['data-whoobe-select'] = sel.publish.name
+    attributes['data-whoobe-value'] = selectionKeys(read(sel.publish.field))[0] ?? ''
+  }
+  if (sel.listen && isSelectionName(sel.listen.name)) {
+    attributes['data-whoobe-listen'] = sel.listen.name
+    attributes['data-whoobe-key'] = encodeSelectionKeys(selectionKeys(read(sel.listen.field)))
+    if (sel.listen.whenEmpty === 'all') attributes['data-whoobe-when-empty'] = 'all'
+    else style = `${style}display:none!important;`
+  }
+  return { ...item, attributes, style }
+}
+
+/** The children of a container bound to an Integrations value: repeated for each item of a list, or once with the object as the record.
+ *  null when the value is neither (the container then renders its children unbound). Shared with the browser-side refresh of a dynamic list. */
+export async function walkGatewayValue(node: WhoobeElementNode, resolved: unknown, ctx: WalkContext, options: RenderOptions): Promise<RenderDescriptor[] | null> {
+  const children: RenderDescriptor[] = []
+  if (Array.isArray(resolved)) {
+    for (const item of resolved) {
+      const record = typeof item === 'object' && item ? (item as Record<string, unknown>) : undefined
+      for (const child of node.blocks ?? []) {
+        children.push(withSelection(node, await walkNode(child, { ...ctx, record, gatewayResponse: resolved }, options), record, true))
+      }
+    }
+    return children
+  }
+  if (typeof resolved === 'object' && resolved) {
+    const record = resolved as Record<string, unknown>
+    for (const child of node.blocks ?? []) {
+      children.push(await walkNode(child, { ...ctx, record, gatewayResponse: resolved }, options))
+    }
+    return children
+  }
+  return null
+}
+
 async function walkChildren(node: WhoobeElementNode, ctx: WalkContext, options: RenderOptions): Promise<RenderDescriptor[]> {
   const scope = { ctx, api: options.api }
   const children: RenderDescriptor[] = []
+
+  // Nested lists (docs/plans/cms/nested-bindings.md): a container inside a repeated item that repeats over a list that is PART OF that item.
+  // The data came with the parent item, so nothing is fetched. A path that holds one object (not a list) is a single record for the children.
+  const nestedData = node.type === 'container' && node.dataBinding?.resolveMode === 'parent' && node.dataBinding.target === 'list' && node.dataBinding.field ? node.dataBinding : null
+  const nestedGateway = node.type === 'container' && node.gatewayBinding?.scope === 'item' ? node.gatewayBinding : null
+  if (nestedData || nestedGateway) {
+    const opts = { limit: (nestedData ?? nestedGateway)?.limit, filters: nestedData?.filters ?? nestedGateway?.filters }
+    const parent = ctx.record
+    if (parent) {
+      const items = nestedData ? nestedDataList(parent, nestedData.field!, opts) : nestedGatewayList(parent, nestedGateway!.fieldPath, opts)
+      if (items) {
+        for (const record of items as Record<string, unknown>[]) {
+          for (const child of node.blocks ?? []) {
+            children.push(withSelection(node, await walkNode(child, { ...ctx, record }, options), record, !nestedData))
+          }
+        }
+        return children
+      }
+      const single = nestedGateway ? readItemPath(parent, nestedGateway.fieldPath) : undefined
+      if (single && typeof single === 'object' && !Array.isArray(single)) {
+        const record = withParent(single as Record<string, unknown>, parent)
+        for (const child of node.blocks ?? []) children.push(await walkNode(child, { ...ctx, record }, options))
+      }
+    }
+    return children // no item in scope, or nothing at that path: an empty list, not a failed page
+  }
 
   // A container with a dataBinding selects the record(s) its children bind
   // against - a `query` binding is a repeater (children per record), any
@@ -182,7 +253,7 @@ async function walkChildren(node: WhoobeElementNode, ctx: WalkContext, options: 
     if (resolved.records && resolved.records.length > 0) {
       for (const record of resolved.records) {
         for (const child of node.blocks ?? []) {
-          children.push(await walkNode(child, { ...ctx, record }, options))
+          children.push(withSelection(node, await walkNode(child, { ...ctx, record }, options), record, false))
         }
       }
       return children
@@ -198,6 +269,9 @@ async function walkChildren(node: WhoobeElementNode, ctx: WalkContext, options: 
   // children for each item if the result is an array, or sets the context
   // record to the resolved value for child field bindings.
   if (node.type === 'container' && node.gatewayBinding) {
+    // Its parameters take a value the visitor chooses in another list (`{selection.x}`): nothing to fetch on the server, the adapter fills the
+    // container in the browser when the selection is made (dynamic-list.ts)
+    if (bindingSelectionNames(node.gatewayBinding.params).length) return children
     const gatewayUrl = options.api.gatewayUrl || 'http://localhost:3001'
     // a failing gateway (401 without a site key, unreachable, ...) must not abort the whole page: like the field and table bindings, the container then renders its children unbound
     let resolved: unknown
@@ -206,22 +280,8 @@ async function walkChildren(node: WhoobeElementNode, ctx: WalkContext, options: 
     } catch (err) {
       console.warn(`[whoobe] container ${node.id ?? ''}: gateway binding failed, rendering it unbound:`, err instanceof Error ? err.message : err)
     }
-    if (Array.isArray(resolved)) {
-      for (const item of resolved) {
-        for (const child of node.blocks ?? []) {
-          const record = typeof item === 'object' && item ? (item as Record<string, unknown>) : undefined
-          children.push(await walkNode(child, { ...ctx, record, gatewayResponse: resolved }, options))
-        }
-      }
-      return children
-    }
-    if (typeof resolved === 'object' && resolved) {
-      const record = resolved as Record<string, unknown>
-      for (const child of node.blocks ?? []) {
-        children.push(await walkNode(child, { ...ctx, record, gatewayResponse: resolved }, options))
-      }
-      return children
-    }
+    const walked = await walkGatewayValue(node, resolved, ctx, options)
+    if (walked) return walked
   }
 
   for (const child of node.blocks ?? []) {
@@ -246,7 +306,21 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
     content = formatted.content
     contentIsHtml = true
     transformClassName = formatted.className
-  } else if (node.gatewayBinding?.fieldPath && kind !== 'table') {
+  } else if (node.gatewayBinding?.scope === 'item') {
+    // a field of the item this element sits in (or `^.field` of the item above): read from the record, never fetched
+    if (node.type !== 'container' && kind !== 'table') {
+      const value = ctx.record ? readItemPath(ctx.record, node.gatewayBinding.fieldPath) : undefined
+      const transform = node.gatewayBinding.transform
+      if (transform && transform.type !== 'none') {
+        const formatted = formatBoundContent(value, transform)
+        content = formatted.content
+        transformClassName = formatted.className
+      } else {
+        content = escapeHtml(typeof value === 'string' ? value : value !== undefined && value !== null ? (typeof value === 'object' ? JSON.stringify(value) : String(value)) : '')
+      }
+      contentIsHtml = true
+    }
+  } else if (node.gatewayBinding?.fieldPath && kind !== 'table' && !(node.type === 'container' && bindingSelectionNames(node.gatewayBinding.params).length)) {
     const transform = node.gatewayBinding.transform
     const format = (value: unknown) => {
       if (transform && transform.type !== 'none') {
@@ -330,6 +404,9 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
     dataBinding: node.dataBinding ?? null,
     options: optionsList,
     ...(node.gsap ? { gsap: node.gsap } : {}),
+    ...(node.type === 'container' && node.gatewayBinding && node.gatewayBinding.scope !== 'item' && bindingSelectionNames(node.gatewayBinding.params).length
+      ? { dynamicList: { selections: bindingSelectionNames(node.gatewayBinding.params), ...(ctx.urlParams ? { urlParams: ctx.urlParams } : {}) } }
+      : {}),
   }
 }
 

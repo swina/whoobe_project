@@ -300,6 +300,7 @@ import AutomationsPanel from './AutomationsPanel.vue'
 import type { AiGeneratedRecord } from '../ai-api'
 import type { WhoobeOnePage } from '../pages-api'
 import { GATEWAY_FIELD_DRAG_MIME_TYPE, type GatewayFieldDragPayload } from '../utils/gateway-drag'
+import { toRelativeGatewayBinding } from '../scripts/nested-binding-author'
 import { useEditorStore } from '../store/editor'
 import { useSnippetsStore } from '../store/snippets'
 import { useThemeStyles } from '../composables/useThemeStyles'
@@ -985,9 +986,10 @@ function onGatewayFieldDrop(event: DragEvent) {
     return
   }
 
-  ;(targetNode as any).gatewayBinding = { endpointName: payload.endpointName, routePath: payload.routePath, fieldPath: payload.fieldPath, params: null, transform: null }
+  const bound = toRelativeGatewayBinding(editor.document, targetId, { endpointName: payload.endpointName, routePath: payload.routePath, fieldPath: payload.fieldPath, params: null, transform: null })
+  ;(targetNode as any).gatewayBinding = bound
   editor.setCurrent(targetNode)
-  flash(`Bound to ${payload.endpointName}${payload.fieldPath ? '.' + payload.fieldPath : ''}`)
+  flash((bound as any).scope === 'item' ? `Bound to ${bound.fieldPath} of the item it sits in` : `Bound to ${payload.endpointName}${payload.fieldPath ? '.' + payload.fieldPath : ''}`)
 }
 
 // Data binding preview in the editor canvas: whenever the document's set of

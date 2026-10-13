@@ -716,7 +716,9 @@
     v-if="showDataPicker && editor.current"
     :target="bindingTarget"
     :initial="editor.current.dataBinding"
-    :allow-relative="allowRelativeBinding"
+    :allow-relative="allowRelativeBinding || !!pickerScope.fields"
+    :item-fields="pickerScope.fields"
+    :item-class-name="pickerScope.className"
     @select="onDataBound"
     @clear="onDataClear"
     @generate-template="onGenerateTemplate"
@@ -728,7 +730,9 @@
     v-if="showFieldDataPicker && editor.current"
     :target="fieldDataTarget"
     :initial="editor.current.dataBinding"
-    :allow-relative="allowRelativeBinding"
+    :allow-relative="allowRelativeBinding || !!pickerScope.fields"
+    :item-fields="pickerScope.fields"
+    :item-class-name="pickerScope.className"
     @select="onFieldDataBound"
     @clear="onFieldDataClear"
     @generate-template="onGenerateTemplate"
@@ -829,7 +833,8 @@ import { insertGeneratedSnippet } from '../scripts/editor-actions'
 import { generateAiText } from '../ai-api'
 import { generateTemplateFromClass } from '../scripts/template-generator'
 import { resolveDocumentData } from '../scripts/data-resolver'
-import { getDataClass, getDataClassByName } from '../data-objects-api'
+import { toRelativeGatewayBinding, dataScopeOf, fieldsInScope } from '../scripts/nested-binding-author'
+import { getDataClass, getDataClassByName, listDataClasses } from '../data-objects-api'
 import { listPages } from '../scripts/database-actions'
 import { listEndpoints, listRoutes, getRouteSchema } from '../gateway-api'
 import { isDynamicSlug } from '../scripts/path-pattern'
@@ -957,6 +962,19 @@ const showSemanticPicker = ref(false)
 const showDataPicker = ref(false)
 const showGatewayPicker = ref(false)
 const showFieldDataPicker = ref(false)
+// Inside a nested list of a Data Object (docs/plans/cms/nested-bindings.md) the picker offers the fields of the list's items
+const pickerScope = ref<{ fields: any[] | null; className: string | null }>({ fields: null, className: null })
+watch([showDataPicker, showFieldDataPicker], async ([a, b]) => {
+  pickerScope.value = { fields: null, className: null }
+  const cur = editor.current as any
+  if (!(a || b) || !cur || !editor.document) return
+  const scope = dataScopeOf(editor.document, cur.id)
+  if (!scope?.listField) return
+  try {
+    const cls = (await listDataClasses()).find((c) => c.name === scope.className)
+    if (cls) pickerScope.value = { fields: fieldsInScope(editor.document, cur.id, cls.fields as any), className: cls.name }
+  } catch { /* the picker falls back to the class's own fields */ }
+})
 const fieldDataTarget = ref<'src' | 'href'>('src')
 
 // Same `tw.classes.js` list the Tailwind customizer's own controls already
@@ -1080,7 +1098,7 @@ function onDataClear() {
 }
 
 function onGatewayBound(binding: any) {
-  if (editor.current) (editor.current as any).gatewayBinding = binding
+  if (editor.current) (editor.current as any).gatewayBinding = binding && editor.document ? toRelativeGatewayBinding(editor.document, (editor.current as any).id, binding) : binding
   showGatewayPicker.value = false
   if (editor.document) resolveDocumentData(editor.document)
 }

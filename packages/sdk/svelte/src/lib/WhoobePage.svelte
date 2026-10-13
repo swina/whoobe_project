@@ -3,7 +3,7 @@
   // header/aside/main/footer shell when the website has a template. Accepts
   // a pre-walked `descriptor`/`layout` for the SSR path (walk once
   // server-side, hydrate from the descriptors).
-  import { walkTree, composeLayout } from '@whoobe-cms/renderer'
+  import { walkTree, composeLayout, mountSelection } from '@whoobe-cms/renderer'
   import { getWhoobeContext } from './context.js'
   import WhoobeNode from './WhoobeNode.svelte'
 
@@ -18,6 +18,12 @@
   let error = $state(null)
   let resolved = $state(initial ?? null)
   let composed = $state(initialLayout ?? null)
+
+  // Linked bindings: the click on a list item that publishes a selection (docs/plans/cms/linked-bindings.md)
+  $effect(() => {
+    const selection = mountSelection()
+    return () => selection.destroy()
+  })
 
   $effect(() => {
     if (resolved) return

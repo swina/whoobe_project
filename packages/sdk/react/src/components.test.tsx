@@ -222,4 +222,31 @@ describe('the Table element (SSR)', () => {
     expect(html).toContain('7 rows')
     expect(typeof useTableView).toBe('function')
   })
+
+  it('linked bindings: the items of the two lists carry the selection attributes, and the listening ones start hidden', async () => {
+    const rec = (attributes: Record<string, unknown>) => ({ id: String(attributes.id), attributes })
+    const rows: Record<string, unknown[]> = { Category: [rec({ id: 12, name: 'Shoes' })], Product: [rec({ id: 1, title: 'Boot', category_id: 12 })] }
+    const dataApi: WhoobeApi = { ...api, queryObjects: (async (q: { class: string }) => rows[q.class] ?? []) as never }
+    const list = (id: string, cls: string, field: string, selection: unknown) => ({ id, type: 'container', tag: 'div', css: { css: '', container: '' }, dataBinding: { className: cls, resolveMode: 'query', target: 'children' }, selection, blocks: [{ id: id + 'p', type: 'element', tag: 'p', element: 'p', css: { css: '', container: '' }, dataBinding: { className: cls, field, target: 'content', resolveMode: 'parent' } }] })
+    const tree = { id: 'root', type: 'container', tag: 'document', css: { css: '', container: '' }, blocks: [list('cats', 'Category', 'name', { publish: { name: 'category', field: 'id' } }), list('prods', 'Product', 'title', { listen: { name: 'category', field: 'category_id' } })] }
+    const descriptor = await walkTree(tree, {}, { api: dataApi as never })
+    const html = renderToStaticMarkup(<WhoobeProvider registry={{}} api={dataApi}><WhoobeNode descriptor={descriptor} /></WhoobeProvider>)
+    expect(html).toContain('data-whoobe-select="category"')
+    expect(html).toContain('data-whoobe-value="12"')
+    expect(html).toContain('data-whoobe-listen="category"')
+    expect(html).toContain('data-whoobe-key="12"')
+    expect(html).toMatch(/display:\s*none\s*!important/)
+  })
+
+  it('a list that depends on a selection is rendered empty on the server and never calls the gateway there', async () => {
+    const dyn = { id: 'root', type: 'container', tag: 'document', css: { css: '', container: '' }, blocks: [{ id: 'prods', type: 'container', tag: 'div', css: { css: 'prods', container: '' }, gatewayBinding: { endpointName: 's', routePath: '/c/{id}', fieldPath: 'products', params: { id: '{selection.category}' }, bindingId: 'b' }, blocks: [{ id: 'p', type: 'element', tag: 'p', element: 'p', content: 'TEMPLATE', css: { css: '', container: '' } }] }] }
+    let called = 0
+    const spy: WhoobeApi = { ...api, queryObjects: async () => { called++; return [] } }
+    const descriptor = await walkTree(dyn, {}, { api: spy as never })
+    expect(descriptor.children[0].dynamicList).toEqual({ selections: ['category'] })
+    const html = renderToStaticMarkup(<WhoobeProvider registry={{}} api={spy}><WhoobeNode descriptor={descriptor} /></WhoobeProvider>)
+    expect(html).toContain('prods')
+    expect(html).not.toContain('TEMPLATE')
+    expect(called).toBe(0)
+  })
 })

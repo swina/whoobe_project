@@ -99,6 +99,7 @@ import { resolveDisplayUrl } from '../../resolve-display-url'
 import AudioPlayer from '../AudioPlayer.vue'
 import { useEditorStore } from '../../store/editor'
 import { resolveFieldValue, resolveFieldFromRecord } from '../../scripts/data-resolver'
+import { dataFieldOf, gatewayFieldOf } from '../../scripts/nested-context'
 import type { DataObjectRecord } from '../../data-objects-api'
 import { applyTransform, escapeHtml, renderMarkdown, stripHtmlComments } from '../../scripts/field-transforms'
 import { mountAnimation } from '../../scripts/animation-actions'
@@ -190,7 +191,7 @@ const resolvedData = computed(() => {
       return resolveFieldValue(resolved, db)
     }
     if (props.dataContext && db.field) {
-      return (props.dataContext.attributes as any)?.[db.field]
+      return dataFieldOf(props.dataContext, db.field)
     }
     if (props.dataContext && !db.field) {
       return props.dataContext
@@ -202,8 +203,9 @@ const resolvedData = computed(() => {
   const gb = el.gatewayBinding
   if (gb) {
     if (props.dataContext && gb.fieldPath) {
-      return resolveFieldFromRecord(props.dataContext, gb.fieldPath)
+      return gatewayFieldOf(props.dataContext, gb)
     }
+    if (gb.scope === 'item') return undefined // outside any item: nothing to show, and nothing to fetch
     if (props.dataContext && !gb.fieldPath) {
       return props.dataContext
     }

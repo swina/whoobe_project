@@ -103,6 +103,8 @@ export interface ElementDataBinding {
   fieldType?: string | null
   target: string
   dataKey?: string | null
+  /** `parent` with `target: 'list'` on a container: repeats over the list held by `field` (a block, a field collection) of the Data Object the
+   *  container sits in (docs/plans/cms/nested-bindings.md). */
   resolveMode: 'explicit' | 'first' | 'query' | 'parent' | 'currentPage'
   filters?: DataBindingFilter[]
   orderBy?: DataBindingOrderBy | null
@@ -130,6 +132,12 @@ export interface DynamicLinkBinding {
 }
 
 export interface GatewayBinding {
+  /** 'item': nested list / field of the item the element sits in (docs/plans/cms/nested-bindings.md). `fieldPath` is then relative to that item
+   *  (`products`, `details.size`, or `^.name` for the item above) and nothing is fetched: the data came with the parent item. Absent: the
+   *  path is in the endpoint's response, as before. */
+  scope?: 'item' | null
+  /** A nested list (`scope: 'item'`): at most this many items. */
+  limit?: number | null
   /** Authoring-only - stripped from public content (core-api's
    *  sanitizePublicGatewayContent) once `bindingId` has been resolved, so a
    *  published site's own copy of this object never has these two. Present
@@ -268,6 +276,8 @@ export interface WhoobeElementNode {
   slider?: ElementSlider
   table?: ElementTable
   gsap?: ElementGsap
+  /** Linked bindings: this repeater publishes a selection when its items are clicked, and/or shows the items that match one. */
+  selection?: import('./selection.js').ElementSelection | null
   alpine?: Record<string, unknown>
   theme?: { colors: { name: string; hex: string }[]; fonts: string[] }
   helper?: string | null

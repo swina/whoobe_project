@@ -12,6 +12,8 @@ ways to publish them. Pages are a tree of elements that the editor, the preview 
 | [Alpine presets](alpine-presets.md) | Named sets of interactive directives applied to any element |
 | [Audio element](audio-element.md), [Download element](download-element.md), [Markdown element](markdown-element.md), [Table element](table-element.md) | The media, text and data elements |
 | [Dynamic website paths](dynamic-website-paths.md) | A list page linking each record to its own detail page |
+| [Nested bindings](nested-bindings.md) | A list inside the item of another list (categories > products > variants), from an API or from a block / field collection |
+| [Linked bindings](linked-bindings.md) | A click in one list (categories) shows the related records of another (products) on the same page |
 | [Documentation sites](documentation-sites.md) | A folder of Markdown becomes a searchable site, live or static |
 | [Forms and automations](../communication/README.md) | Forms, file uploads, mail and flows (Communication pillar) |
 | [AI assistance](../ai/README.md) | Generate pages, snippets, images, translations |

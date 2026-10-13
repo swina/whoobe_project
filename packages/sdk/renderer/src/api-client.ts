@@ -35,6 +35,9 @@ export interface RenderApi {
    *  what actually happens in a browser-triggered submit (useForm), where
    *  gatewaySiteAuth above would otherwise have to be shipped to the client. */
   gatewaySubmitProxyPath?: string
+  /** The same for the resolution of a binding that depends on a selection in the visitor's browser (`resolveDynamicChildren`): a SAME-ORIGIN
+   *  path of the published site's server, which adds the site key; the browser never holds it. */
+  gatewayResolveProxyPath?: string
 }
 
 export interface QueryObjectsParams {
@@ -81,6 +84,7 @@ export interface SearchParams {
 export interface ApiClientOptions {
   gatewaySiteAuth?: GatewaySiteAuth
   gatewaySubmitProxyPath?: string
+  gatewayResolveProxyPath?: string
 }
 
 export class ApiClient implements RenderApi {
@@ -88,6 +92,7 @@ export class ApiClient implements RenderApi {
   gatewayUrl?: string
   gatewaySiteAuth?: GatewaySiteAuth
   gatewaySubmitProxyPath?: string
+  gatewayResolveProxyPath?: string
 
   constructor(
     baseUrl: string,
@@ -107,6 +112,7 @@ export class ApiClient implements RenderApi {
     this.gatewayUrl = gatewayUrl
     this.gatewaySiteAuth = options?.gatewaySiteAuth
     this.gatewaySubmitProxyPath = options?.gatewaySubmitProxyPath
+    this.gatewayResolveProxyPath = options?.gatewayResolveProxyPath
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {

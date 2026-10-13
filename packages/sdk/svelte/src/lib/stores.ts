@@ -61,6 +61,6 @@ export function createQueryStore(
 }
 
 /** Convenience: an ApiClient over a base URL satisfies the WhoobeApi shape. */
-export function createWhoobeApi(baseUrl: string): WhoobeApi {
-  return new ApiClient(baseUrl) as unknown as WhoobeApi
+export function createWhoobeApi(baseUrl: string, gatewayUrl?: string, submitProxyPath?: string, resolveProxyPath?: string): WhoobeApi {
+  return new ApiClient(baseUrl, undefined, gatewayUrl, { gatewaySubmitProxyPath: submitProxyPath, gatewayResolveProxyPath: resolveProxyPath }) as unknown as WhoobeApi
 }

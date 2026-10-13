@@ -2,8 +2,31 @@
 // React hooks wrapping the renderer/api (usePage/useObject/useQuery/useForm).
 
 import { useCallback, useEffect, useState } from 'react'
-import { walkTree, composeLayout, dispatchFormResult, sanitizeOutcome, showsResultMessage, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
+import { walkTree, composeLayout, mountSelection, resolveDynamicChildren, dispatchFormResult, sanitizeOutcome, showsResultMessage, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
 import { useWhoobe } from './context.js'
+
+/** The children of a container whose list depends on a selection (`{selection.x}` in its route parameters): filled in the browser at load and at
+ *  every change of the selection. null for any other descriptor, which then keeps the children it was walked with. */
+export function useDynamicChildren(descriptor: RenderDescriptor): RenderDescriptor[] | null {
+  const ctx = useWhoobe()
+  const names = descriptor.dynamicList?.selections
+  const [children, setChildren] = useState<RenderDescriptor[]>([])
+  useEffect(() => {
+    if (!names) return
+    const selection = mountSelection()
+    let latest = 0
+    const refresh = async () => {
+      const mine = ++latest
+      const kids = await resolveDynamicChildren(descriptor, { api: ctx.api as never, assetBaseUrl: ctx.options.assetBaseUrl, keyPrefix: ctx.options.keyPrefix, resolveTargetPage: ctx.options.resolveTargetPage }, (n) => selection.get(n))
+      if (mine === latest && kids) setChildren(kids)
+    }
+    const off = selection.subscribe((name) => { if (names.includes(name)) void refresh() })
+    names.forEach((n) => selection.track(n))
+    void refresh()
+    return () => { latest++; off(); selection.destroy() }
+  }, [descriptor, ctx.api]) // eslint-disable-line react-hooks/exhaustive-deps
+  return names ? children : null
+}
 
 export type AsyncStatus = 'loading' | 'ready' | 'error'
 

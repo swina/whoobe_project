@@ -36,8 +36,12 @@
           <div class="grid grid-cols-2 gap-2">
             <div v-for="p in dynamicParams" :key="p">
               <label class="text-[10px] text-gray-400 block">\{ {{ p }} \}</label>
-              <input v-model="paramValues[p]" type="text" :placeholder="p" class="w-full text-xs border rounded px-2 py-1" />
+              <input v-model="paramValues[p]" type="text" :placeholder="p" list="whoobe-selection-refs" class="w-full text-xs border rounded px-2 py-1" />
             </div>
+          </div>
+          <datalist id="whoobe-selection-refs"><option v-for="n in selectionNames" :key="n" :value="`{selection.${n}}`" /></datalist>
+          <div class="text-[10px] text-indigo-600 mt-1">
+            <code class="font-mono">{selection.name}</code> takes the value the visitor chooses in another list on this page (the name set under Advanced &gt; Linked bindings of that list): the list is loaded when the choice is made, and stays empty until then.
           </div>
           <div class="text-[10px] text-gray-400 mt-1">
             Type a literal value, or type <code class="font-mono">{paramName}</code> matching this page's own dynamic slug segment (e.g. a page at <code class="font-mono">/product/{id}</code> can use <code class="font-mono">{id}</code>) to fetch the record matching whatever the visitor actually requested.
@@ -182,6 +186,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { Play, Plus, Trash2, Unlink, X } from '@lucide/vue'
 import { flattenSchemaFields, itemFieldsForArrayPath, type FlatSchemaField } from '../utils/gateway-schema-walk'
+import { useEditorStore } from '../store/editor'
 
 interface EndpointInfo {
   id: string
@@ -267,6 +272,17 @@ const filterableFields = computed<FlatSchemaField[] | null>(() =>
 const filters = ref<GatewayResultFilter[]>([])
 // Pagination of a list result (repeater container / Table); kept when the binding is edited again
 const rowsPerPage = ref<number>(props.initial?.rowsPerPage ?? 0)
+// selection names the lists of this page publish: offered as {selection.name} for a route parameter
+const selectionNames = computed(() => {
+  const names = new Set<string>()
+  const visit = (n: any, depth: number) => {
+    if (!n || typeof n !== 'object' || depth > 100) return
+    if (n.selection?.publish?.name) names.add(n.selection.publish.name)
+    for (const b of Array.isArray(n.blocks) ? n.blocks : []) visit(b, depth + 1)
+  }
+  visit(useEditorStore().document, 0)
+  return [...names]
+})
 const paginationMode = ref<'standard' | 'lazyload'>(props.initial?.paginationMode === 'lazyload' ? 'lazyload' : 'standard')
 const loadMoreText = ref(props.initial?.loadMoreText ?? '')
 const loadMoreClass = ref(props.initial?.loadMoreClass ?? '')
@@ -333,6 +349,10 @@ function formatPreview(value: unknown): string {
 async function fetchPreview() {
   const ep = matchedEndpoint.value
   if (!ep || !selectedRouteId.value) return
+  if (Object.values(paramValues.value).some((v) => /^\{selection\./.test(String(v)))) {
+    previewError.value = 'This list depends on a choice the visitor makes, so there is nothing to preview here: use the editor Preview.'
+    return
+  }
   previewLoading.value = true
   previewError.value = ''
   previewValue.value = undefined

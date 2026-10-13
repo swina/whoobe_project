@@ -1,3 +1,30 @@
+## Linked bindings: a selection as a route parameter (dynamic bindings) — 2026-10-14
+- Branch: `master`
+- A binding whose `params` hold `{selection.name}` (for example `catalogue/category/{id}` with `id = {selection.category}`) is loaded in the browser when the visitor chooses an item of another list, and at load when the choice is in the address. Plan and guide updated (`docs/plans/cms/linked-bindings.md`, `docs/release/content/linked-bindings.md`).
+- Schema: `selectionRefOf`, `bindingSelectionNames`, `substituteSelectionParams`. Renderer: the walker renders such a container empty and marks it (`dynamicList`), `walkGatewayValue` shared with the browser, new `resolveDynamicChildren` (`dynamic-list.ts`), `resolveGatewayBinding` with a same-origin proxy path, `ApiClient.gatewayResolveProxyPath`, `track` / `subscribe` on the selection handle. 6 + 2 tests.
+- Adapters: React (`useDynamicChildren`), Vue (`WhoobeNode`), Svelte (`WhoobeContainer`, `dynamic.js`); `createWhoobeApi` takes the resolve path; one SSR test each; checked in a real browser with each adapter (start empty, click, change, clear, `?category=13` at load, resolved through the proxy without a key header).
+- Generated sites (`packages/publish`): Next.js `app/api/whoobe-gateway-resolve/route.ts` and Nuxt `server/api/whoobe-gateway-resolve.post.ts` (forward only `bindingId` and `params`, adding the site key); the layouts pass the path.
+- Editor: Preview loads the list when the selection is made (tested with mocked gateway: no call with an empty choice), `resolveTree` skips it, the gateway picker suggests `{selection.name}` and explains; such a binding is never made relative to an item (2 tests).
+- Not done: a Data Class query with a `{selection.x}` filter, mobile app.
+
+## Nested bindings: a list inside the item of another list — 2026-10-13
+- Branch: `master`
+- Problem: a binding worked on the first array only (the gateway's path reader stops at an array, a container always re-fetched, an element read by the last segment of its path). Plan `docs/plans/cms/nested-bindings.md`, guide `docs/release/content/nested-bindings.md`.
+- Schema: `GatewayBinding.scope = 'item'` (+ `limit`), `nested-binding.ts` (`withParent`, `readItemPath` with `^.` for the item above, `nestedGatewayList`, `nestedDataList`, `applyItemFilters`, `MAX_NESTED_DEPTH` 5); the Data bindings list ignores nested bindings. 12 tests.
+- Renderer walker: a container with `scope: 'item'`, or `dataBinding` `parent` + `target: 'list'` + `field`, repeats over the list of the item it sits in (nothing fetched; one object = one record; no item = empty list); elements read relative fields and `^.field`; linked bindings work on nested lists. 7 tests (three levels, limit and filters, Data Object blocks).
+- Server: `bind-page-content.ts` skips nested bindings; `sanitize-public-content.ts` keeps their filters (2 tests).
+- Editor: live canvas and Preview render nested lists (`scripts/nested-context.ts`, tested in the running editor with mocked data: three levels, one gateway call; Data Object blocks); binding an Integrations field to an element inside a list of the same response is saved relative automatically (`scripts/nested-binding-author.ts`, drag from the Gateway panel, its click, and the picker; 7 tests); Advanced > "Nested list" for Data Objects (`NestedListControl.vue`) and the data picker offers the fields of the items.
+- Not done: Table on a nested list, mobile app, pagination of a nested list on the published site, an id-only item that needs a second call.
+
+## Linked bindings: a click in one list filters another (catalogue > categories > products) — 2026-10-13
+- Branch: `master`
+- Plan `docs/plans/cms/linked-bindings.md`; guide `docs/release/content/linked-bindings.md` (content README, guides README and headless SDK page updated).
+- Schema (`@whoobe-cms/schema`): `selection` on an element (`publish` / `listen`, `ElementSelection`), `selection.ts` helpers (`isSelectionName`, `selectionKeys`, `selectionMatches`, key encoding); a malformed selection is dropped, not a page error. 10 tests.
+- Renderer: `walk.ts` marks the repeated items (`data-whoobe-select` / `-value`, `data-whoobe-listen` / `-key` / `-when-empty`; listeners start hidden); new `selection.ts` (`mountSelection`, `createSelectionStore`): one document handler, URL (`?name=value`, `pushState`, `popstate`), `aria-pressed` and `data-whoobe-selected`, keyboard, re-applied when the framework re-renders, `whoobe-select` event; tested in a real Chromium and with 11 + 6 unit tests.
+- Adapters: `WhoobePage` of React, Vue and Svelte (so Next.js and Nuxt sites) call `mountSelection()`; one SSR test each.
+- Editor: Advanced > "Linked bindings" (`SelectionControl.vue`, only for a container bound to a list; writes only complete parts); the Preview (`BlockContainerPreview.vue`, `scripts/selection-state.ts`) filters before its own pagination, keeps the editor's address untouched; tested in the running editor with mocked data (filter, toggle, clear, attributes). The AnimationControl text no longer mentions GSAP.
+- Not done: mobile app (own renderer), a query per click for big catalogues.
+
 ## API clients: write Data Objects as drafts (scope data:write, POST/PATCH /client/v1/data) — 2026-10-13
 - Branch: `master`
 - Core: scope `data:write:<Class | *>` (own scope, `data:read` does not write); new `gateway/client-write.ts` (`validateClientWrite`: strict validation against the Data Class, only `attributes` / `key` / `locale`, rich text cleaned, `writtenAssetIds`).

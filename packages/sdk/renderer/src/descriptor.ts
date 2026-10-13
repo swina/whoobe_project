@@ -54,4 +54,7 @@ export interface RenderDescriptor {
   options: FieldOption[] | null
   /** Animation configuration (GSAP). */
   gsap?: ElementGsap | null
+  /** A container whose list depends on a selection (docs/plans/cms/linked-bindings.md, dynamic bindings): it is rendered without children and the
+   *  adapter fills it in the browser (`resolveDynamicChildren`) when the selection changes. */
+  dynamicList?: { selections: string[]; urlParams?: Record<string, string> }
 }

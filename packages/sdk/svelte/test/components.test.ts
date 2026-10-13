@@ -20,6 +20,31 @@ async function renderTree(tree: unknown, registry: Record<string, any> = {}, ctx
   return r.body
 }
 
+describe('linked bindings (SSR)', () => {
+  it('a list that depends on a selection is rendered empty on the server', async () => {
+    const dyn = { id: 'root', type: 'container', tag: 'document', css: { css: '', container: '' }, blocks: [{ id: 'prods', type: 'container', tag: 'div', css: { css: 'prods', container: '' }, gatewayBinding: { endpointName: 's', routePath: '/c/{id}', fieldPath: 'products', params: { id: '{selection.category}' }, bindingId: 'b' }, blocks: [{ id: 'p', type: 'element', tag: 'p', element: 'p', content: 'TEMPLATE', css: { css: '', container: '' } }] }] }
+    const descriptor = await walkTree(dyn, {}, { api })
+    expect(descriptor.children[0].dynamicList).toEqual({ selections: ['category'] })
+    const html = render(TestTree, { props: { registry: {}, api, assetBaseUrl: 'http://dam:3002/dam-asset', descriptor } }).body
+    expect(html).toContain('prods')
+    expect(html).not.toContain('TEMPLATE')
+  })
+  it('the items of the two lists carry the selection attributes, and the listening ones start hidden', async () => {
+    const rec = (attributes: Record<string, unknown>) => ({ id: String(attributes.id), attributes })
+    const rows: Record<string, unknown[]> = { Category: [rec({ id: 12, name: 'Shoes' })], Product: [rec({ id: 1, title: 'Boot', category_id: 12 })] }
+    const dataApi: any = { ...api, queryObjects: async (q: { class: string }) => rows[q.class] ?? [] }
+    const list = (id: string, cls: string, field: string, selection: unknown) => ({ id, type: 'container', tag: 'div', css: { css: '', container: '' }, dataBinding: { className: cls, resolveMode: 'query', target: 'children' }, selection, blocks: [{ id: id + 'p', type: 'element', tag: 'p', element: 'p', css: { css: '', container: '' }, dataBinding: { className: cls, field, target: 'content', resolveMode: 'parent' } }] })
+    const tree = { id: 'root', type: 'container', tag: 'document', css: { css: '', container: '' }, blocks: [list('cats', 'Category', 'name', { publish: { name: 'category', field: 'id' } }), list('prods', 'Product', 'title', { listen: { name: 'category', field: 'category_id' } })] }
+    const descriptor = await walkTree(tree, {}, { api: dataApi })
+    const html = render(TestTree, { props: { registry: {}, api: dataApi, assetBaseUrl: 'http://dam:3002/dam-asset', descriptor } }).body
+    expect(html).toContain('data-whoobe-select="category"')
+    expect(html).toContain('data-whoobe-value="12"')
+    expect(html).toContain('data-whoobe-listen="category"')
+    expect(html).toContain('data-whoobe-key="12"')
+    expect(html).toMatch(/display:\s*none\s*!important/)
+  })
+})
+
 describe('WhoobeNode (SSR)', () => {
   it('renders a container with heading + paragraph + image defaults', async () => {
     const tree = {

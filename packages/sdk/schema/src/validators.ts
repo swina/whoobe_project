@@ -5,6 +5,7 @@
 // fields survive a round-trip unchanged.
 
 import { z } from 'zod'
+import type { ElementSelection } from './selection.js'
 import type { WhoobeElementNode, ElementDataBinding, ElementFormConfig, ElementSearchConfig, ElementSlider, DynamicLinkBinding, GatewayBinding, ElementTable, TableCell, TableColumnConfig } from './node.js'
 
 // --- primitives ---
@@ -25,6 +26,12 @@ export const elementGsapSchema = z.object({
   duration: z.union([z.number(), z.string()]),
   delay: z.union([z.number(), z.string()]),
   trigger: z.boolean().nullable().optional(),
+})
+
+const selectionRef = z.object({ name: z.string().regex(/^[A-Za-z][A-Za-z0-9_-]{0,31}$/), field: z.string().min(1).max(200) })
+export const elementSelectionSchema = z.object({
+  publish: selectionRef.nullable().optional(),
+  listen: selectionRef.extend({ whenEmpty: z.enum(['none', 'all']).optional() }).nullable().optional(),
 })
 
 // --- form ---
@@ -144,6 +151,8 @@ export const dynamicLinkSchema: z.ZodType<DynamicLinkBinding> = z.object({
 // fails page-save validation instead of reaching bind-page-content.ts.
 
 export const gatewayBindingSchema: z.ZodType<GatewayBinding> = z.object({
+  scope: z.enum(['item']).nullable().optional(),
+  limit: z.number().nullable().optional(),
   endpointName: z.string().optional(),
   routePath: z.string().optional(),
   fieldPath: z.string(),
@@ -262,6 +271,8 @@ export const whoobeElementSchema: z.ZodType<WhoobeElementNode> = z.lazy(() =>
       slider: sliderSchema.optional(),
       table: tableSchema.optional(),
       gsap: elementGsapSchema.optional(),
+      // a malformed selection is dropped instead of making the whole page invalid: a published page must keep rendering
+      selection: elementSelectionSchema.nullable().optional().catch(undefined) as unknown as z.ZodType<ElementSelection | null | undefined>,
       alpine: z.record(z.unknown()).optional(),
       theme: z.object({
         colors: z.array(z.object({ name: z.string(), hex: z.string() })),

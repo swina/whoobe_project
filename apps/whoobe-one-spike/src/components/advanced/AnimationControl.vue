@@ -35,8 +35,8 @@
       <Play class="w-3 h-3" /> Preview
     </button>
     <p class="text-[10px] text-gray-400">
-      Plays via GSAP ScrollTrigger once this element scrolls into view on the published page (or on hover, if checked above) - see
-      <code>animation-actions.ts</code>'s <code>mountAnimation()</code>.
+      Plays once this element scrolls into view on the published page (or on hover, if checked above), with the Web Animations API - see
+      <code>mountAnimation()</code> in <code>@whoobe-cms/renderer</code>.
     </p>
   </div>
 </template>

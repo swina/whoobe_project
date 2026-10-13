@@ -507,7 +507,7 @@ async function scaffoldNextSite(opts: ScaffoldOptions): Promise<void> {
 
   // Create directory structure — single locale gets clean /{slug} routes
   const slugDir = singleLocale ? 'app/[...slug]' : 'app/[locale]/[...slug]'
-  const dirs = [slugDir, 'app/api/whoobe-gateway-submit', 'src/lib', 'public']
+  const dirs = [slugDir, 'app/api/whoobe-gateway-submit', 'app/api/whoobe-gateway-resolve', 'src/lib', 'public']
   if (!singleLocale) dirs.push('app/[locale]')
   for (const d of dirs) {
     await mkdir(join(opts.outDir, d), { recursive: true })
@@ -537,6 +537,7 @@ async function scaffoldNextSite(opts: ScaffoldOptions): Promise<void> {
   }
 
   await writeFile(join(opts.outDir, 'app/api/whoobe-gateway-submit/route.ts'), scaffoldGatewaySubmitRoute())
+  await writeFile(join(opts.outDir, 'app/api/whoobe-gateway-resolve/route.ts'), scaffoldGatewayResolveRoute())
   await writeFile(join(opts.outDir, 'src/lib/api.ts'), scaffoldApi(opts))
   await writeFile(join(opts.outDir, 'src/lib/registry.ts'), scaffoldRegistry())
   await writeFile(join(opts.outDir, 'src/lib/AlpineStarter.tsx'), scaffoldAlpineStarter())
@@ -1017,7 +1018,7 @@ import './globals.css'
 
 const apiUrl = process.env.NEXT_PUBLIC_CMS_API_URL || ''
 const assetBaseUrl = process.env.NEXT_PUBLIC_ASSET_BASE_URL || apiUrl
-const api = createWhoobeApi(apiUrl, process.env.NEXT_PUBLIC_GATEWAY_URL, '/api/whoobe-gateway-submit')
+const api = createWhoobeApi(apiUrl, process.env.NEXT_PUBLIC_GATEWAY_URL, '/api/whoobe-gateway-submit', '/api/whoobe-gateway-resolve')
 
 export default function RootLayout({
   children,
@@ -1404,6 +1405,39 @@ export async function POST(request: Request) {
 `
 }
 
+/** Same-origin proxy for a list that depends on a selection the visitor makes (a binding with `{selection.x}` in its route parameters, resolved
+ *  in the browser, docs/plans/cms/linked-bindings.md). It adds the site key like the submit route and forwards only the binding id and the
+ *  parameters; the gateway still checks that the binding exists and which parameter names it allows. */
+function scaffoldGatewayResolveRoute(): string {
+  return `import { NextResponse } from 'next/server'
+
+const GATEWAY_URL = (process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001').replace(/\\/+$/, '')
+const SITE_ID = process.env.CMS_WEBSITE_ID || ''
+const SITE_KEY = process.env.CMS_SITE_API_KEY || ''
+
+export async function POST(request: Request) {
+  let input: { bindingId?: unknown; params?: unknown } = {}
+  try { input = await request.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  if (typeof input.bindingId !== 'string' || !input.bindingId) return NextResponse.json({ error: 'bindingId is required' }, { status: 400 })
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (SITE_KEY) {
+    headers['X-Whoobe-Site-Id'] = SITE_ID
+    headers['X-Whoobe-Site-Key'] = SITE_KEY
+  }
+  const upstream = await fetch(\`\${GATEWAY_URL}/api/v1/gateway/resolve\`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ bindingId: input.bindingId, params: input.params }),
+  })
+  const text = await upstream.text()
+  return new NextResponse(text, {
+    status: upstream.status,
+    headers: { 'Content-Type': upstream.headers.get('content-type') || 'application/json' },
+  })
+}
+`
+}
+
 function scaffoldApi(opts: ScaffoldOptions): string {
   return `import { ApiClient } from '@whoobe-cms/renderer'
 
@@ -1603,6 +1637,7 @@ async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
   await writeFile(join(opts.outDir, 'server/routes/sitemap.xml.ts'), nuxtSitemap(opts))
   await writeFile(join(opts.outDir, 'server/routes/robots.txt.ts'), nuxtRobots(opts))
   await writeFile(join(opts.outDir, 'server/api/whoobe-gateway-submit.post.ts'), nuxtGatewaySubmitRoute())
+  await writeFile(join(opts.outDir, 'server/api/whoobe-gateway-resolve.post.ts'), nuxtGatewayResolveRoute())
 
   if (singleLocale) {
     await writeFile(join(opts.outDir, 'pages/[...slug].vue'), nuxtCatchAllPage(opts))
@@ -1843,7 +1878,7 @@ const apiUrl = config.public.cmsApiUrl
 const assetBaseUrl = config.public.cmsAssetBaseUrl || apiUrl
 // A gateway form posts to the site's own server route (which holds the site key) only when the site HAS a key; without
 // one the route would add nothing, and a static export has no server to answer it: the form posts to the gateway.
-const api = createWhoobeApi(apiUrl, config.public.gatewayUrl, ${opts.siteApiKey ? "'/api/whoobe-gateway-submit'" : 'undefined'})
+const api = createWhoobeApi(apiUrl, config.public.gatewayUrl, ${opts.siteApiKey ? "'/api/whoobe-gateway-submit'" : 'undefined'}, ${opts.siteApiKey ? "'/api/whoobe-gateway-resolve'" : 'undefined'})
 
 ${pwaEnabled ? `const { online } = useOnlineStatus()
 // Replay offline mutation queue when coming back online
@@ -2215,6 +2250,32 @@ function nuxtGatewaySubmitRoute(): string {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
+  })
+  setResponseStatus(event, upstream.status)
+  return upstream.json()
+})
+`
+}
+
+/** The same for the Nuxt site: the browser resolves a selection-dependent list through this route, which holds the site key. */
+function nuxtGatewayResolveRoute(): string {
+  return `export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig(event)
+  const input = await readBody<{ bindingId?: unknown; params?: unknown }>(event)
+  if (!input || typeof input.bindingId !== 'string' || !input.bindingId) {
+    setResponseStatus(event, 400)
+    return { error: 'bindingId is required' }
+  }
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (config.cmsSiteApiKey) {
+    headers['X-Whoobe-Site-Id'] = String(config.public.cmsWebsiteId || '')
+    headers['X-Whoobe-Site-Key'] = String(config.cmsSiteApiKey)
+  }
+  const gatewayUrl = String(config.public.gatewayUrl || 'http://localhost:3001').replace(/\\/+$/, '')
+  const upstream = await fetch(\`\${gatewayUrl}/api/v1/gateway/resolve\`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ bindingId: input.bindingId, params: input.params }),
   })
   setResponseStatus(event, upstream.status)
   return upstream.json()

@@ -38,6 +38,8 @@ import InfoControl from './advanced/InfoControl.vue'
 import AttributesControl from './advanced/AttributesControl.vue'
 import AnimationControl from './advanced/AnimationControl.vue'
 import AlpineControl from './advanced/AlpineControl.vue'
+import SelectionControl from './advanced/SelectionControl.vue'
+import NestedListControl from './advanced/NestedListControl.vue'
 import FormFieldControl from './advanced/FormFieldControl.vue'
 import FormConfigControl from './advanced/FormConfigControl.vue'
 import SearchConfigControl from './advanced/SearchConfigControl.vue'
@@ -92,6 +94,8 @@ const sections = computed(() => {
   const gb = current?.gatewayBinding
   const showGatewayBinding = Boolean(gb && gb.fieldPath)
   const showDataBinding = showDataObjectBinding || showGatewayBinding
+  // a container bound to a list (Data Class query, or an Integrations list): the only kind of element that can publish or listen to a selection
+  const isBoundList = current?.type === 'container' && Boolean((db && (!db.field || db.target === 'list')) || gb)
   return [
     ...(current?.sourceSnippetId ? [{ key: 'info', label: 'Info', component: InfoControl }] : []),
     // The Audio element's own settings (source, look, title): first, since for that element they are what matters
@@ -102,6 +106,8 @@ const sections = computed(() => {
     { key: 'style', label: 'Style', component: StyleControl },
     ...(showDataBinding ? [{ key: 'dataBinding', label: 'Data Binding', component: DataBindingTransformControl }] : []),
     { key: 'attributes', label: 'Attributes', component: AttributesControl },
+    ...(current?.type === 'container' && !(gb && gb.scope !== 'item') ? [{ key: 'nestedList', label: 'Nested list', component: NestedListControl }] : []),
+    ...(isBoundList ? [{ key: 'selection', label: 'Linked bindings', component: SelectionControl }] : []),
     { key: 'animation', label: 'Animation', component: AnimationControl },
     { key: 'alpine', label: 'AlpineJS', component: AlpineControl },
     ...(isCheckbox || isOptionsField ? [{ key: 'field', label: 'Field', component: FormFieldControl }] : []),

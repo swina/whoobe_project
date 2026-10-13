@@ -3,7 +3,7 @@
 // the public API, formats bound values with the shared transform engine, and
 // mirrors the editor's escaping rules.
 
-import { applyTransform, escapeHtml, type DataBindingFilter, type ElementDataBinding, type FieldTransform, type TransformResult } from '@whoobe-cms/schema'
+import { applyTransform, escapeHtml, splitUp, type DataBindingFilter, type ElementDataBinding, type FieldTransform, type TransformResult } from '@whoobe-cms/schema'
 import type { RenderApi, GatewaySiteAuth } from './api-client.js'
 import type { WalkContext } from './walk.js'
 
@@ -13,6 +13,11 @@ const TOP_LEVEL_FIELDS = new Set(['id', 'classId', 'locale', 'key', 'published',
 
 /** Reads a field off a public data-object record (attributes or top-level). */
 export function resolveRecordField(record: Record<string, unknown> | null | undefined, field: string): unknown {
+  // `^.field`: a field of the item the nested list sits in (docs/plans/cms/nested-bindings.md)
+  if (field.startsWith('^.')) {
+    const up = splitUp(record, field)
+    return resolveRecordField(up.record as Record<string, unknown> | null | undefined, up.path)
+  }
   if (!record) return undefined
   if (TOP_LEVEL_FIELDS.has(field)) return record[field]
   const attrs = record.attributes as Record<string, unknown> | undefined
@@ -93,6 +98,9 @@ export async function resolveFieldValue(binding: ElementDataBinding, scope: Reso
 }
 
 export interface GatewayBinding {
+  /** 'item': read from the item the element sits in, never fetched (see @whoobe-cms/schema's GatewayBinding). */
+  scope?: 'item' | null
+  limit?: number | null
   /** Stripped from public content (core-api's sanitizePublicGatewayContent)
    *  once bindingId is resolved - see the doc comment on bindingId below.
    *  Unused by resolveGatewayBinding() itself (bindingId-only), kept purely
@@ -137,11 +145,13 @@ export async function resolveGatewayBinding(
   gatewayUrl: string,
   urlParams?: Record<string, string>,
   siteAuth?: GatewaySiteAuth,
+  /** A same-origin path that resolves for the browser (it adds the site key); then no address and no key are used here. */
+  proxyPath?: string,
 ): Promise<unknown> {
   if (!binding.bindingId) return undefined
-  const url = `${gatewayUrl.replace(/\/+$/, '')}/api/v1/gateway/resolve`
+  const url = proxyPath ?? `${gatewayUrl.replace(/\/+$/, '')}/api/v1/gateway/resolve`
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (siteAuth) {
+  if (siteAuth && !proxyPath) {
     headers['X-Whoobe-Site-Id'] = siteAuth.siteId
     headers['X-Whoobe-Site-Key'] = siteAuth.siteKey
   }

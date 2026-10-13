@@ -21,16 +21,16 @@
     </template>
     
     <div :class="paginationContainerClass">
-      <template v-if="rowsPerPage > 0 && collectionResolved.length > rowsPerPage">
+      <template v-if="rowsPerPage > 0 && listItems.length > rowsPerPage">
         <div v-if="paginationMode === 'standard'" class="flex items-center justify-center gap-3 text-xs text-gray-500 py-2">
           <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="currentPage <= 1" @click="currentPage = Math.max(1, currentPage - 1)">‹ Prev</button>
           <span>Page {{ currentPage }} of {{ totalPages }}</span>
           <button type="button" class="px-2 py-1 rounded border disabled:opacity-40" :disabled="currentPage >= totalPages" @click="currentPage = Math.min(totalPages, currentPage + 1)">Next ›</button>
         </div>
         <div v-else class="flex flex-col items-center gap-2 py-2">
-          <span class="text-xs text-gray-500">{{ visibleCount }} / {{ collectionResolved.length }}</span>
+          <span class="text-xs text-gray-500">{{ visibleCount }} / {{ listItems.length }}</span>
           <button
-            v-if="visibleCount < collectionResolved.length"
+            v-if="visibleCount < listItems.length"
             :class="loadMoreButtonClass"
             @click="loadMoreMore"
           >{{ loadMoreButtonText }}</button>
@@ -41,7 +41,7 @@
     <!-- Normal children, or a single-object binding (no field = whole object
          passed down to the subtree; with a field = only the bound element
          itself shows the value). -->
-    <template v-else>
+    <template v-else-if="!isDynamicList && (!isNestedList(doc) || singleObjectContext)">
       <template v-for="child in doc.blocks" :key="child.id">
         <a v-if="(child as any).link" :href="(child as any).link" :target="(child as any).linkTarget || undefined">
           <component :is="childComponent(child)" v-bind="childPropsWithContext(child)" />
@@ -108,7 +108,7 @@ import { sanitizeRichText as safeHtml } from '@whoobe-cms/schema'
 // has to be written once instead of duplicated across all three branches.
 // `target` is new, not in the source at all (its own <a> never sets one) -
 // see FloatingToolbar.vue's Link popover.
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { X } from '@lucide/vue'
 import type Element from '../../scripts/ElementsClass.js'
@@ -121,6 +121,10 @@ import { mountAnimation } from '../../scripts/animation-actions'
 import { mountFormSubmit, type FormSubmitResult } from '../../scripts/form-actions'
 import { extractPlaceholderNames, substitutePattern } from '../../scripts/path-pattern'
 import { resolveGatewayFieldValue } from '../../scripts/data-resolver'
+import { getSelection, setSelection } from '../../scripts/selection-state'
+import { isNestedList, nestedItems, nestedSingle } from '../../scripts/nested-context'
+import { isSelectionName, selectionKeys, selectionMatches, bindingSelectionNames, substituteSelectionParams } from '@whoobe-cms/schema'
+import { resolveGatewayBinding } from '../../scripts/data-resolver'
 import BlockElementPreview from './BlockElementPreview.vue'
 import BlockIFramePreview from './BlockIFramePreview.vue'
 import BlockSliderPreview from './BlockSliderPreview.vue'
@@ -153,8 +157,41 @@ const editor = useEditorStore()
 // A container with a collection data binding (resolveMode 'query'/'first',
 // no field = bind the whole container to a list). The children are a
 // template, rendered once per resolved object.
+// the Preview keeps the editor's own address untouched; the flag reaches the nested containers, which are not given the prop
+if (props.editorPreview) provide('whoobeEditorPreview', true)
+const inEditorPreview = inject<boolean>('whoobeEditorPreview', false)
+// A list whose route parameters take the visitor's selection (`{selection.x}`): loaded when the selection is made, like the published sites do
+const dynamicNames = computed(() => {
+  const el = props.doc as any
+  return el.type === 'container' && el.gatewayBinding && el.gatewayBinding.scope !== 'item' ? bindingSelectionNames(el.gatewayBinding.params) : []
+})
+const isDynamicList = computed(() => dynamicNames.value.length > 0)
+const dynamicItems = ref<DataObjectRecord[]>([])
+let dynamicSeq = 0
+watch(
+  () => dynamicNames.value.map((n) => getSelection(n, !inEditorPreview && !props.editorPreview) ?? '').join('\u0001'),
+  async () => {
+    if (!dynamicNames.value.length) return
+    const gb = (props.doc as any).gatewayBinding
+    const params = substituteSelectionParams(gb.params, (n) => getSelection(n, !inEditorPreview && !props.editorPreview))
+    const mine = ++dynamicSeq
+    if (params === null) { dynamicItems.value = []; return }
+    try {
+      const value = await resolveGatewayBinding({ ...gb, params })
+      if (mine === dynamicSeq) dynamicItems.value = Array.isArray(value) ? (value as DataObjectRecord[]) : value && typeof value === 'object' ? [value as DataObjectRecord] : []
+    } catch (err) {
+      console.warn('[preview] the list for this selection could not be loaded:', err)
+    }
+  },
+  { immediate: true },
+)
+
 const collectionResolved = computed<DataObjectRecord[]>(() => {
   const el = props.doc as any
+  if (isDynamicList.value) return dynamicItems.value
+  // a list that is part of the item this container sits in (docs/plans/cms/nested-bindings.md): read from that item, never fetched
+  const nested = nestedItems(el, props.dataContext)
+  if (nested) return nested as DataObjectRecord[]
   const db = el.dataBinding
   if (db && !db.field) {
     const resolved = editor.resolvedData[el.id]
@@ -178,8 +215,29 @@ const collectionResolved = computed<DataObjectRecord[]>(() => {
 // currentPage pattern.
 // The binding that feeds the list carries the pagination settings: a Data Class query, else a gateway array (same precedence
 // as collectionResolved above).
+// Linked bindings (docs/plans/cms/linked-bindings.md): a repeater that listens to a selection shows only the items whose field equals it
+// (nothing selected: none, or all). The pagination below counts what is shown, not what was loaded.
+const selectionConfig = computed(() => (props.doc as any).selection as { publish?: { name: string; field: string } | null; listen?: { name: string; field: string; whenEmpty?: 'none' | 'all' } | null } | null | undefined)
+const useUrlForSelection = computed(() => !inEditorPreview && !props.editorPreview)
+const listensTo = computed(() => {
+  const l = selectionConfig.value?.listen
+  return l && isSelectionName(l.name) && l.field ? l : null
+})
+function itemField(obj: DataObjectRecord, field: string): unknown {
+  const el = props.doc as any
+  if (el.dataBinding && !el.dataBinding.field) return field in (obj as any) && field !== 'attributes' ? (obj as any)[field] : (obj.attributes as any)?.[field]
+  return resolveGatewayFieldValue(obj, field)
+}
+const listItems = computed<DataObjectRecord[]>(() => {
+  const l = listensTo.value
+  if (!l) return collectionResolved.value
+  const chosen = getSelection(l.name, useUrlForSelection.value)
+  return collectionResolved.value.filter((o) => selectionMatches(selectionKeys(itemField(o, l.field)), chosen, l.whenEmpty ?? 'none'))
+})
+
 const pagBinding = computed(() => {
   const el = props.doc as any
+  if (isNestedList(el)) return el.dataBinding?.target === 'list' ? el.dataBinding : el.gatewayBinding ?? null
   return el.dataBinding && !el.dataBinding.field ? el.dataBinding : el.gatewayBinding ?? null
 })
 const rowsPerPage = computed(() => Number(pagBinding.value?.rowsPerPage) || 0)
@@ -188,7 +246,7 @@ const paginationMode = computed<'standard' | 'lazyload'>(() =>
 )
 const currentPage = ref(1)
 const totalPages = computed(() =>
-  rowsPerPage.value > 0 ? Math.max(1, Math.ceil(collectionResolved.value.length / rowsPerPage.value)) : 1
+  rowsPerPage.value > 0 ? Math.max(1, Math.ceil(listItems.value.length / rowsPerPage.value)) : 1
 )
 // Lazyload: how many rows are currently shown (grows by rowsPerPage per
 // "More" click). Standard mode ignores it and pages instead.
@@ -203,17 +261,17 @@ const paginationContainerClass = computed(() => {
   return cls || 'w-full flex flex-col items-center justify-center md:gap-3 gap-2 md:p-4 p-2'
 })
 const pagedItems = computed(() => {
-  if (!rowsPerPage.value) return collectionResolved.value
+  if (!rowsPerPage.value) return listItems.value
   if (paginationMode.value === 'lazyload') {
-    return collectionResolved.value.slice(0, visibleCount.value)
+    return listItems.value.slice(0, visibleCount.value)
   }
   const start = (currentPage.value - 1) * rowsPerPage.value
-  return collectionResolved.value.slice(start, start + rowsPerPage.value)
+  return listItems.value.slice(start, start + rowsPerPage.value)
 })
 function loadMoreMore() {
-  visibleCount.value = Math.min(visibleCount.value + rowsPerPage.value, collectionResolved.value.length)
+  visibleCount.value = Math.min(visibleCount.value + rowsPerPage.value, listItems.value.length)
 }
-watch(collectionResolved, () => {
+watch(listItems, () => {
   currentPage.value = 1
   visibleCount.value = rowsPerPage.value
 })
@@ -229,6 +287,7 @@ watch(totalPages, (p) => {
 // their relative bindings (no objectId) resolve against it.
 const singleObjectContext = computed<DataObjectRecord | null>(() => {
   const el = props.doc as any
+  if (isNestedList(el)) return nestedSingle(el, props.dataContext)
   const db = el.dataBinding
   if (db && !db.field) {
     const resolved = editor.resolvedData[el.id]
@@ -246,9 +305,33 @@ const singleObjectContext = computed<DataObjectRecord | null>(() => {
 
 function boundChildProps(child: WhoobeElement, obj: DataObjectRecord): Record<string, unknown> {
   const c = child as any
-  if (c.tag === 'table') return { doc: child }
-  if (c.tag === 'isometric' || c.tag === 'slider' || c.type === 'container') return { doc: child, dataContext: obj }
-  return { element: child, dataContext: obj }
+  const base = c.tag === 'table'
+    ? { doc: child }
+    : c.tag === 'isometric' || c.tag === 'slider' || c.type === 'container'
+      ? { doc: child, dataContext: obj }
+      : { element: child, dataContext: obj }
+  return { ...base, ...publishAttrs(obj) }
+}
+
+// The items of a repeater that publishes a selection: the same attributes the published sites carry, plus the click (and Enter / Space).
+function publishAttrs(obj: DataObjectRecord): Record<string, unknown> {
+  const p = selectionConfig.value?.publish
+  if (!p || !isSelectionName(p.name) || !p.field) return {}
+  const value = selectionKeys(itemField(obj, p.field))[0] ?? ''
+  const url = useUrlForSelection.value
+  const on = value !== '' && getSelection(p.name, url) === value
+  const choose = () => setSelection(p.name, value === '' || getSelection(p.name, url) === value ? null : value, url)
+  return {
+    'data-whoobe-select': p.name,
+    'data-whoobe-value': value,
+    'data-whoobe-selected': on ? 'true' : 'false',
+    'aria-pressed': on ? 'true' : 'false',
+    role: 'button',
+    tabindex: 0,
+    style: 'cursor:pointer;',
+    onClick: choose,
+    onKeydown: (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose() } },
+  }
 }
 
 // List-to-detail linking (docs/plans/website/website-paths.md): per-record

@@ -8,8 +8,8 @@ export interface BindingNode {
   blocks?: BindingNode[]
   /** Stamped by the editor on the clone it makes when a snippet is inserted into a page. */
   sourceSnippetId?: string
-  dataBinding?: { className?: string; resolveMode?: string; field?: string | null } | null
-  gatewayBinding?: { endpointName?: string; routePath?: string; bindingId?: string } | null
+  dataBinding?: { className?: string; resolveMode?: string; field?: string | null; target?: string } | null
+  gatewayBinding?: { endpointName?: string; routePath?: string; bindingId?: string; scope?: string | null } | null
 }
 
 export interface DataBindingSource {
@@ -51,9 +51,10 @@ export function collectDataBindings(root: unknown, source: DataBindingSource): D
     const from = typeof node.sourceSnippetId === 'string' && node.sourceSnippetId ? node.sourceSnippetId : fromSnippetId
     if (typeof node.id === 'string') {
       const db = node.dataBinding
-      if (db && typeof db === 'object' && typeof db.className === 'string' && db.className) add('dataObject', db.className, '', from, node.id)
+      // a list or a field of the item the element sits in (nested bindings) is not a source of data: its source is the list above
+      if (db && typeof db === 'object' && typeof db.className === 'string' && db.className && !(db.resolveMode === 'parent' && db.target === 'list')) add('dataObject', db.className, '', from, node.id)
       const gb = node.gatewayBinding
-      if (gb && typeof gb === 'object' && (gb.endpointName || gb.bindingId)) {
+      if (gb && typeof gb === 'object' && gb.scope !== 'item' && (gb.endpointName || gb.bindingId)) {
         // the endpoint name is authoring-only (stripped from public content): a binding that only has its id is still a binding
         add('gateway', gb.endpointName || '(unnamed endpoint)', gb.routePath || '', from, node.id)
       }

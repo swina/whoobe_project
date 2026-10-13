@@ -2,8 +2,8 @@
 // WhoobeNode (recursive descriptor renderer), WhoobePage (fetch + walk +
 // render). Plain defineComponent + h() so the package builds with tsc.
 
-import { defineComponent, h, inject, provide, ref, type PropType } from 'vue'
-import { walkTree, composeLayout, ApiClient, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
+import { defineComponent, h, inject, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch, type PropType } from 'vue'
+import { walkTree, composeLayout, ApiClient, mountSelection, resolveDynamicChildren, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
 import { WHOOBE_KEY, type NodeComponent, type Registry, type WhoobeAdapterOptions, type WhoobeApi } from './types.js'
 import { defaults } from './defaults.js'
 
@@ -39,10 +39,35 @@ export const WhoobeNode: NodeComponent = defineComponent({
   },
   setup(props) {
     const ctx = inject(WHOOBE_KEY)
+    // A container whose list depends on a selection ({selection.x} in its route parameters) is filled in the browser, at load and at every
+    // change of the selection (docs/plans/cms/linked-bindings.md, dynamic bindings).
+    const dynamicKids = shallowRef<RenderDescriptor[]>([])
+    let stop: (() => void) | null = null
+    const start = () => {
+      stop?.()
+      stop = null
+      const d = props.descriptor
+      const names = d.dynamicList?.selections
+      if (!names || !ctx) return
+      const selection = mountSelection()
+      let latest = 0
+      const refresh = async () => {
+        const mine = ++latest
+        const kids = await resolveDynamicChildren(d, { api: ctx.api as never, assetBaseUrl: ctx.options.assetBaseUrl, keyPrefix: ctx.options.keyPrefix, resolveTargetPage: ctx.options.resolveTargetPage }, (n) => selection.get(n))
+        if (mine === latest && kids) dynamicKids.value = kids
+      }
+      const off = selection.subscribe((name) => { if (names.includes(name)) void refresh() })
+      names.forEach((n) => selection.track(n))
+      void refresh()
+      stop = () => { latest++; off(); selection.destroy() }
+    }
+    onMounted(start)
+    watch(() => props.descriptor, () => { dynamicKids.value = []; start() })
+    onBeforeUnmount(() => { stop?.(); stop = null })
     return () => {
       const d = props.descriptor
       const comp: NodeComponent = ctx?.registry[d.kind] ?? defaults[d.kind] ?? defaults.container
-      const children = d.children.map((child) => h(WhoobeNode, { key: child.id, descriptor: child }))
+      const children = (d.dynamicList ? dynamicKids.value : d.children).map((child) => h(WhoobeNode, { key: child.id, descriptor: child }))
       return h(comp, { descriptor: d, children })
     }
   },
@@ -99,6 +124,11 @@ export const WhoobePage = defineComponent({
 
     if (!props.descriptor) void load()
 
+    // Linked bindings: the click on a list item that publishes a selection (docs/plans/cms/linked-bindings.md)
+    let selection: { destroy(): void } | null = null
+    onMounted(() => { selection = mountSelection() })
+    onBeforeUnmount(() => { selection?.destroy(); selection = null })
+
     return () => {
       if (status.value === 'error') return h('div', { class: 'whoobe-error' }, error.value ?? 'Failed to load page')
       // When descriptor is pre-provided (SSR path), render immediately —
@@ -138,7 +168,7 @@ export const WhoobePage = defineComponent({
  *  Gateway directly from the browser - see docs/plans/api-gateway/gateway-
  *  auth-authz.md and packages/publish/src/cli.ts's generated
  *  server/api/whoobe-gateway-submit.post route. */
-export function createWhoobeApi(baseUrl: string, gatewayUrl?: string, submitProxyPath?: string): WhoobeApi {
-  const client = new ApiClient(baseUrl, undefined, gatewayUrl, { gatewaySubmitProxyPath: submitProxyPath })
+export function createWhoobeApi(baseUrl: string, gatewayUrl?: string, submitProxyPath?: string, resolveProxyPath?: string): WhoobeApi {
+  const client = new ApiClient(baseUrl, undefined, gatewayUrl, { gatewaySubmitProxyPath: submitProxyPath, gatewayResolveProxyPath: resolveProxyPath })
   return client as WhoobeApi
 }

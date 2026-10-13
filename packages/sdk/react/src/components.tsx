@@ -2,18 +2,20 @@
 // Core React components: WhoobeNode (recursive descriptor renderer) and
 // WhoobePage (fetch + walk + render, or a pre-walked descriptor for SSR).
 
-import { ApiClient, walkTree, composeLayout, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
+import { ApiClient, walkTree, composeLayout, mountSelection, type RenderDescriptor, type ComposedLayout } from '@whoobe-cms/renderer'
 import { WhoobeProvider, useWhoobe } from './context.js'
 import { defaults, cssToReactStyle } from './defaults.js'
-import { usePage } from './hooks.js'
+import { usePage, useDynamicChildren } from './hooks.js'
 import type { WhoobeApi } from './types.js'
 import type { ReactNode } from 'react'
+import { useEffect } from 'react'
 
 /** Recursively renders one descriptor through the registry (or defaults). */
 export function WhoobeNode({ descriptor }: { descriptor: RenderDescriptor }) {
   const ctx = useWhoobe()
   const Comp = ctx.registry[descriptor.kind] ?? defaults[descriptor.kind] ?? defaults.container
-  const children = descriptor.children.map((child) => <WhoobeNode key={child.id} descriptor={child} />)
+  const dynamic = useDynamicChildren(descriptor)
+  const children = (dynamic ?? descriptor.children).map((child) => <WhoobeNode key={child.id} descriptor={child} />)
   return <Comp descriptor={descriptor}>{children}</Comp>
 }
 
@@ -31,6 +33,11 @@ export interface WhoobePageProps {
  *  header/aside/main/footer shell when the website has a template). */
 export function WhoobePage({ locale, path, websiteId, descriptor: initial, layout: initialLayout }: WhoobePageProps) {
   const { status, data, layout, error } = usePage(locale, path, websiteId, initial)
+  // Linked bindings: the click on a list item that publishes a selection (docs/plans/cms/linked-bindings.md)
+  useEffect(() => {
+    const selection = mountSelection()
+    return () => selection.destroy()
+  }, [])
   if (status === 'error') return <div className="whoobe-error">{error}</div>
   if (!data) return <div className="whoobe-loading">Loading…</div>
 
@@ -66,6 +73,6 @@ export function WhoobePage({ locale, path, websiteId, descriptor: initial, layou
  *  app/api/whoobe-gateway-submit route. This function only ever runs
  *  client-side ("use client" file), so it must never be handed a real site
  *  key directly - only this public, harmless proxy path. */
-export function createWhoobeApi(baseUrl: string, gatewayUrl?: string, submitProxyPath?: string): WhoobeApi {
-  return new ApiClient(baseUrl, undefined, gatewayUrl, { gatewaySubmitProxyPath: submitProxyPath }) as unknown as WhoobeApi
+export function createWhoobeApi(baseUrl: string, gatewayUrl?: string, submitProxyPath?: string, resolveProxyPath?: string): WhoobeApi {
+  return new ApiClient(baseUrl, undefined, gatewayUrl, { gatewaySubmitProxyPath: submitProxyPath, gatewayResolveProxyPath: resolveProxyPath }) as unknown as WhoobeApi
 }

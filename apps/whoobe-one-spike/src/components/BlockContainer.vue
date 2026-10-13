@@ -44,7 +44,9 @@
       @click.stop="onSelect"
     >
       {{ doc.tag || 'container' }}
-      <span v-if="(doc as any).dataBinding" class="text-[9px] opacity-80 ml-1">{{ ((doc as any).dataBinding?.className || '?') }}</span>
+      <span v-if="(doc as any).dataBinding?.target === 'list'" class="text-[9px] opacity-80 ml-1">list:{{ (doc as any).dataBinding.field }}</span>
+      <span v-else-if="(doc as any).dataBinding" class="text-[9px] opacity-80 ml-1">{{ ((doc as any).dataBinding?.className || '?') }}</span>
+      <span v-else-if="(doc as any).gatewayBinding?.scope === 'item'" class="text-[9px] opacity-80 ml-1">list:{{ (doc as any).gatewayBinding.fieldPath }}</span>
       <span v-else-if="(doc as any).gatewayBinding" class="text-[9px] opacity-80 ml-1">gateway:{{ ((doc as any).gatewayBinding?.endpointName || '?') }}</span>
     </button>
     <button
@@ -180,6 +182,7 @@ import BlockSlider from './BlockSlider.vue'
 import BlockIsometric from './BlockIsometric.vue'
 import BlockTable from './BlockTable.vue'
 import { customAttrs, stripEditorHidden } from '../helpers'
+import { isNestedList, nestedItems, nestedSingle } from '../scripts/nested-context'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -194,6 +197,7 @@ const props = defineProps<{
 // instead of resolving independently.
 const resolvedContext = computed<DataObjectRecord | null>(() => {
   const editor = useEditorStore()
+  if (isNestedList(props.doc)) return nestedSingle(props.doc, props.dataContext)
   const db = (props.doc as any).dataBinding
   if (db && !db.field) {
     const resolved = editor.resolvedData[props.doc.id]
@@ -207,7 +211,8 @@ const resolvedContext = computed<DataObjectRecord | null>(() => {
   return null
 })
 
-const childContext = computed(() => props.dataContext ?? resolvedContext.value)
+// A nested list with no item yet shows its template unbound ({...} placeholders), not filled with the item above
+const childContext = computed(() => isNestedList(props.doc) ? resolvedContext.value : props.dataContext ?? resolvedContext.value)
 
 // A container with a collection/query data binding (whole-object, no
 // field) whose resolved value is an array - previously discarded entirely
@@ -217,6 +222,9 @@ const childContext = computed(() => props.dataContext ?? resolvedContext.value)
 // editable while building the page, not just in Preview.
 const collectionResolved = computed<DataObjectRecord[]>(() => {
   const editor = useEditorStore()
+  // a list that is part of the item this container sits in (docs/plans/cms/nested-bindings.md): read from that item, never fetched
+  const nested = nestedItems(props.doc, props.dataContext)
+  if (nested) return nested as DataObjectRecord[]
   const db = (props.doc as any).dataBinding
   if (db && !db.field) {
     const resolved = editor.resolvedData[props.doc.id]
@@ -238,6 +246,7 @@ const collectionResolved = computed<DataObjectRecord[]>(() => {
 // The binding that feeds the list carries the settings: a Data Class query, else a gateway array (same precedence as above).
 const pagBinding = computed(() => {
   const el = props.doc as any
+  if (isNestedList(el)) return el.dataBinding?.target === 'list' ? el.dataBinding : el.gatewayBinding ?? null
   return el.dataBinding && !el.dataBinding.field ? el.dataBinding : el.gatewayBinding ?? null
 })
 const rowsPerPage = computed(() => Number(pagBinding.value?.rowsPerPage) || 0)

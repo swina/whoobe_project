@@ -9,6 +9,7 @@ import {
   type DataObjectQueryFilter,
 } from '../data-objects-api'
 import { useEditorStore } from '../store/editor'
+import { bindingSelectionNames } from '@whoobe-cms/schema'
 
 type WhoobeElement = InstanceType<typeof import('./ElementsClass.js').default>
 
@@ -30,7 +31,8 @@ async function resolveTree(
   editor: ReturnType<typeof useEditorStore>
 ): Promise<void> {
   const db = (node as any).dataBinding as ElementDataBinding | undefined
-  if (db) {
+  // a nested list or a field of the item the element sits in: the data comes with the parent item, nothing to fetch
+  if (db && !(db.resolveMode === 'parent' && db.target === 'list')) {
     try {
       editor.resolvedData[node.id] = await resolveBinding(db, locale, urlParams)
     } catch (err: any) {
@@ -39,7 +41,8 @@ async function resolveTree(
     }
   }
   const gb = (node as any).gatewayBinding as GatewayBinding | undefined
-  if (gb) {
+  // (a list whose route parameters take the visitor's selection is loaded when the selection is made, not here)
+  if (gb && gb.scope !== 'item' && !bindingSelectionNames(gb.params).length) {
     try {
       editor.resolvedData[node.id] = await resolveGatewayBinding(gb, urlParams)
     } catch (err: any) {
@@ -336,7 +339,7 @@ function substituteGatewayParams(
 // bindingId present -> the real public route (no session, no raw identifiers
 // to leak); otherwise (editor, unsaved) -> the admin-authenticated preview
 // route, same as GatewayBindingPicker.vue's own preview fetch.
-async function resolveGatewayBinding(gb: GatewayBinding, urlParams?: Record<string, string>): Promise<unknown> {
+export async function resolveGatewayBinding(gb: GatewayBinding, urlParams?: Record<string, string>): Promise<unknown> {
   const baseUrl = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:3001'
   const base = baseUrl.replace(/\/+$/, '')
 

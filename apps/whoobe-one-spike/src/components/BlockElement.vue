@@ -175,6 +175,7 @@ import { useEditorStore } from '../store/editor'
 import { imageURL } from '../helpers'
 import { resolveDisplayUrl } from '../resolve-display-url'
 import { resolveFieldValue, resolveFieldFromRecord } from '../scripts/data-resolver'
+import { dataFieldOf, gatewayFieldOf } from '../scripts/nested-context'
 import type { DataObjectRecord } from '../data-objects-api'
 import { editorBus } from '../bus'
 import { applyTransform, escapeHtml, renderMarkdown } from '../scripts/field-transforms'
@@ -262,7 +263,7 @@ const resolvedDataValue = computed(() => {
       return resolveFieldValue(resolved, binding)
     }
     if (props.dataContext && binding.field) {
-      return (props.dataContext.attributes as any)?.[binding.field]
+      return dataFieldOf(props.dataContext, binding.field)
     }
     if (props.dataContext && !binding.field) {
       return props.dataContext
@@ -273,8 +274,9 @@ const resolvedDataValue = computed(() => {
   const gateway = gb.value
   if (gateway) {
     if (props.dataContext && gateway.fieldPath) {
-      return resolveFieldFromRecord(props.dataContext, gateway.fieldPath)
+      return gatewayFieldOf(props.dataContext, gateway)
     }
+    if (gateway.scope === 'item') return undefined // outside any item: nothing to show, and nothing to fetch
     if (props.dataContext && !gateway.fieldPath) {
       return props.dataContext
     }

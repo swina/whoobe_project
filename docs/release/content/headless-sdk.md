@@ -185,6 +185,8 @@ const descriptor = await walkTree(page.content, {}, {
 - **relative** (no `objectId`) — the field is read from the in-scope `ctx.record`/`ctx.form`.
 - **`explicit`** — `GET /public/data-objects/:id`.
 - **`first`** — `POST /public/data-objects/query`, first result.
+- **Nested lists** — a container with `gatewayBinding.scope = 'item'` (or a `dataBinding` with `resolveMode: 'parent'`, `target: 'list'`) repeats over a list that is part of the item it sits in, with nothing fetched; `^.field` reads the item above (see [nested bindings](nested-bindings.md)).
+- **Linked bindings** — a container with `selection` (`publish` / `listen`, see [linked bindings](linked-bindings.md)) gets `data-whoobe-*` attributes on each repeated item; `mountSelection()` (exported by `@whoobe-cms/renderer`, called by the React, Vue and Svelte `WhoobePage`) does the click, the URL and the show/hide in the browser.
 - **`query`** — same endpoint; the container repeats its children **once per record** (a collection/repeater), each with that record in scope — so per-record dynamic links and field values resolve correctly.
 - **`parent` / `currentPage`** — the record comes from the consumer-supplied context.
 

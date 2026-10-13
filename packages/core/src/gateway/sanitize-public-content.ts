@@ -70,7 +70,8 @@ function walkAndStrip(value: unknown): void {
   if (gatewayBinding && typeof gatewayBinding === 'object') {
     delete (gatewayBinding as Record<string, unknown>).endpointName;
     delete (gatewayBinding as Record<string, unknown>).routePath;
-    delete (gatewayBinding as Record<string, unknown>).filters;
+    // a nested list (scope 'item') is filtered by the renderer from the item it sits in; any other binding was filtered by the gateway
+    if ((gatewayBinding as Record<string, unknown>).scope !== 'item') delete (gatewayBinding as Record<string, unknown>).filters;
   }
 
   for (const key of Object.keys(obj)) {

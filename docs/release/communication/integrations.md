@@ -14,7 +14,7 @@ including its [limits](#5-limits-and-known-gaps). For credential protection in d
 | You want to | How |
 |---|---|
 | Show a value from an API in a page (a price, a headline, a counter) | bind an element to a **field** of a route's reply |
-| Show a list from an API (products, events, posts) | bind a container (a repeater) or a [table](../content/table-element.md) to an **array** in the reply, with filters |
+| Show a list from an API (products, events, posts) | bind a container (a repeater) or a [table](../content/table-element.md) to an **array** in the reply, with filters; a list inside each item (products of a category) is a [nested binding](../content/nested-bindings.md) |
 | Send what a visitor typed in a form to another system (create a contact, open a ticket) | set the form's target to a route (a `POST`, `PUT` or `PATCH`) |
 | Start a flow in an automation engine and react to its answer | form to a webhook route, see [marketing automation](marketing-automation.md) |
 | Push an email campaign draft to Brevo from a page or snippet | built-in preset, see [Brevo integration](brevo-integration.md) |

@@ -304,12 +304,15 @@ const props = withDefaults(
     target?: string
     initial?: ElementDataBinding | null
     allowRelative?: boolean
+    /** Inside a nested list: the fields of its items (a block or field collection), and the class of the object that holds it. */
+    itemFields?: ClassFieldDefinition[] | null
+    itemClassName?: string | null
   }>(),
-  { target: 'content', initial: null, allowRelative: false }
+  { target: 'content', initial: null, allowRelative: false, itemFields: null, itemClassName: null }
 )
 
 const classes = ref<DataClassRecord[]>([])
-const className = ref<string>(props.initial?.className ?? '')
+const className = ref<string>(props.initial?.className ?? props.itemClassName ?? '')
 const objects = ref<DataObjectRecord[]>([])
 const selectedObjectId = ref<string | null>(props.initial?.objectId ?? null)
 const mode = ref<'explicit' | 'query'>(props.initial?.resolveMode === 'query' ? 'query' : 'explicit')
@@ -337,7 +340,7 @@ const TEST_DISPLAY_CAP = 50
 
 const currentClass = computed(() => classes.value.find((c) => c.name === className.value) ?? null)
 const classLabel = computed(() => currentClass.value?.label || className.value)
-const fields = computed(() => currentClass.value?.fields ?? [])
+const fields = computed(() => props.itemFields ?? currentClass.value?.fields ?? [])
 // Synthetic ClassFieldDefinition-shaped entries for record metadata that
 // isn't part of any Data Class's own field list. SYSTEM_METADATA_FIELDS
 // (published/workflowState/updatedAt) is shared between filterFields
