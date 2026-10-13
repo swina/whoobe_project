@@ -13,7 +13,7 @@ import { ref } from 'vue'
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
 export type SectionKind = 'overview' | 'ai' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'components' | 'mail' | 'themes' | 'settings' | 'gateway' | 'gateway-plugins' | 'api-clients' | 'data-bindings' | 'automations' | 'system-logs' | 'publish'
-export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'classList' | 'website' | 'docsSite' | 'docsDoc'
+export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'classList' | 'website' | 'docsSite' | 'docsDoc' | 'apiClient'
 // The AI section of the navigation (its own sidebar entry, no longer part of Settings): one card per kind of AI provider.
 export type AiSubSection = 'text' | 'image' | 'translate'
 export type DocsSiteSubTab = 'documents' | 'index' | 'publish' | 'settings'
@@ -110,6 +110,10 @@ export function classTabId(classId: string): string {
 
 export function websiteTabId(websiteId: string): string {
   return `item:website:${websiteId}`
+}
+
+export function apiClientTabId(clientId: string): string {
+  return `item:apiClient:${clientId}`
 }
 
 export function docsSiteTabId(websiteId: string): string {
@@ -311,6 +315,16 @@ export const useTabsStore = defineStore('tabs', () => {
     closeTab(websiteTabId(websiteId))
   }
 
+  // An API client's editor: `clientId` is the client's id, or `new:<uuid>` for one that does not exist yet.
+  // `apiClientsRevision` goes up whenever a client is saved, so the list refreshes itself.
+  const apiClientsRevision = ref(0)
+  function openApiClient(clientId?: string) {
+    const itemId = clientId ?? `new:${crypto.randomUUID()}`
+    const id = apiClientTabId(itemId)
+    if (findIndex(id) === -1) tabs.value.push({ id, type: 'item', itemKind: 'apiClient', itemId })
+    activeTabId.value = id
+  }
+
   function openDocsSite(websiteId: string, subTab: DocsSiteSubTab = 'documents') {
     const id = docsSiteTabId(websiteId)
     const existing = tabs.value.find((t) => t.id === id)
@@ -422,6 +436,7 @@ export const useTabsStore = defineStore('tabs', () => {
     closeClassTab,
     openClassList,
     closeClassListTab,
+    openApiClient, apiClientsRevision,
     openWebsite,
     setWebsiteSubTab,
     closeWebsiteTab

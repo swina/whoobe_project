@@ -222,13 +222,15 @@ credentials of the third-party services stay in Whoobe; the application never re
 
 ### 4.1 Set up a client
 
-1. **API clients** in the dashboard (Data & Communication) > **New client**.
+1. **API clients** in the dashboard (Data & Communication) > **New client**. The editor opens in its own tab, with sections General,
+   Authentication, Limits and *What this client may call*.
 2. **Name**, and **how it proves who it is**:
    - *A key* (server to server): a static key that a **server** keeps (a back-end, a job, another system). Never put it in a web
      page or a mobile app: anyone can read it there. A request that carries a key and comes from a browser is refused (`403`).
    - *Identity provider token* (browser, app): the application signs in with your identity system (Keycloak, Entra ID, Cognito,
      Auth0...) and sends its **access token**. Whoobe checks it against the provider; there is no secret to keep or leak, see 4.7.
-3. **What this client may call:** tick the routes, endpoint by endpoint. *all routes* gives every route of the endpoint, any method,
+3. **What this client may call:** choose an API from **Add an API...** (an Integrations endpoint, or *Data Objects*), then tick its routes
+   (or classes). *all routes* gives every route of the endpoint, any method,
    including routes added later: use it only for a client you fully trust.
 4. **Limits:** requests per second, an optional daily quota, optional allowed addresses (`203.0.113.5`, `10.0.0.0/8`), an optional expiry.
 5. **Create.** For a key client the key is shown **once**: copy it into the server's configuration. A token client has nothing to copy.
