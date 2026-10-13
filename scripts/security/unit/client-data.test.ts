@@ -9,9 +9,16 @@ describe('data scopes', () => {
     expect(r).toEqual({ ok: true, scopes: ['data:read:Product', 'data:read:*'] });
   });
   it('refuses unknown actions, separators and control characters', () => {
-    for (const s of ['data:write:Product', 'data:read:A:B', 'data:read:', 'data:read: Product', 'data:read:A\u0000']) {
+    for (const s of ['data:delete:Product', 'data:publish:Product', 'data:read:A:B', 'data:read:', 'data:read: Product', 'data:read:A\u0000']) {
       expect(validateClientScopes([s]).ok, s).toBe(false);
     }
+  });
+  it('write is its own scope: it neither reads nor is implied by read', () => {
+    expect(validateClientScopes(['data:write:Blog', 'data:write:*'])).toEqual({ ok: true, scopes: ['data:write:Blog', 'data:write:*'] });
+    expect(dataScopeAllows(['data:write:Blog'], 'write', 'Blog')).toBe(true);
+    expect(dataScopeAllows(['data:write:Blog'], 'read', 'Blog')).toBe(false);
+    expect(dataScopeAllows(['data:read:Blog'], 'write', 'Blog')).toBe(false);
+    expect(dataScopeAllows(['data:write:*'], 'write', 'Order')).toBe(true);
   });
   it('allows only the named class, or all with *', () => {
     expect(dataScopeAllows(['data:read:Product'], 'read', 'Product')).toBe(true);

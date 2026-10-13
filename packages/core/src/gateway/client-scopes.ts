@@ -57,7 +57,9 @@ export function automationScopeAllows(scopes: readonly string[], endpoint: strin
 }
 
 // A data scope is  data:read:<class name | *>   (read of the published objects of one Data Class; the class is named, never matched by pattern)
-export interface DataScope { action: 'read'; className: string }
+// or            data:write:<class name | *>  (create objects as drafts and change drafts; it does not read, and nothing here publishes)
+export type DataAction = 'read' | 'write'
+export interface DataScope { action: DataAction; className: string }
 
 export function formatDataScope(s: DataScope): string {
   return `data:${s.action}:${s.className}`;
@@ -67,14 +69,14 @@ export function parseDataScope(text: string): DataScope | { error: string } {
   if (typeof text !== 'string' || text.length > MAX_SCOPE_LENGTH) return { error: 'Scope is too long or not text' };
   const m = /^data:([a-z]+):(.+)$/.exec(text);
   if (!m) return { error: `Not a data scope: ${text}` };
-  if (m[1] !== 'read') return { error: `Unknown data action: ${m[1]} (only read exists)` };
+  if (m[1] !== 'read' && m[1] !== 'write') return { error: `Unknown data action: ${m[1]} (read or write)` };
   const className = m[2];
   if (className.includes(':') || /[\u0000-\u001f]/.test(className) || className.trim() !== className) return { error: `Invalid class name in scope: ${className}` };
-  return { action: 'read', className };
+  return { action: m[1], className };
 }
 
-/** Does any scope allow reading the published objects of this class? */
-export function dataScopeAllows(scopes: readonly string[], action: 'read', className: string): boolean {
+/** Does any scope allow this action (`read` of the published objects, `write` of drafts) on this class? */
+export function dataScopeAllows(scopes: readonly string[], action: DataAction, className: string): boolean {
   for (const text of scopes) {
     if (!text.startsWith('data:')) continue;
     const s = parseDataScope(text);

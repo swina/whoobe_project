@@ -1,3 +1,11 @@
+## API clients: write Data Objects as drafts (scope data:write, POST/PATCH /client/v1/data) — 2026-10-13
+- Branch: `master`
+- Core: scope `data:write:<Class | *>` (own scope, `data:read` does not write); new `gateway/client-write.ts` (`validateClientWrite`: strict validation against the Data Class, only `attributes` / `key` / `locale`, rich text cleaned, `writtenAssetIds`).
+- Gateway (`client-router.ts`): `POST /client/v1/data/:class` creates a draft (`201`, `409` on a duplicate key), `PATCH /client/v1/data/:class/:id` merges into a draft (`409` if published, `412` with a stale `If-Match`); linked assets must be readable by the client; nothing publishes.
+- Dashboard: read / write checkboxes per Data Class in the API client editor, with a "write all classes" toggle.
+- Tested on the running stack with a temporary client (create, duplicate key, unknown field, `published` in the body, asset outside the scopes or unknown, draft invisible to `GET`, patch, stale and fresh `If-Match`, changing `key`, published object, malformed id, other class, wrong content type); the test object and client were deleted. 10 new unit tests (`client-write.test.ts`, scopes in `client-data.test.ts`).
+- Docs: `communication/api-clients.md` (5.2, 6.3c, errors, limits), plan `client-access-hub.md` section 15.
+
 ## API clients: assets (scope assets:read, /client/v1/assets, expand=assets) — 2026-10-13
 - Branch: `master`
 - Core: scope `assets:read:<folder | *>` (`parseAssetScope`, `assetScopeAllows`, validated with the other scopes); new `gateway/client-assets.ts` (`projectClientAsset`, `collectAssetRefs`, `expandAssetRefs`); `getAssetsByIds`, `listAssetsPage` in `db/asset-records.ts`.

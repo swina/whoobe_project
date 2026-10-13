@@ -12,6 +12,7 @@ import { createGatewayJwtVerifier, JwtRejected } from './jwt-verify.js';
 import { decodeJwt } from 'jose';
 import { extractOutcome } from './submit-outcome.js';
 import { Readable } from 'node:stream';
+import { randomUUID } from 'node:crypto';
 import { GATEWAY_ASSET_PROCESSOR_URL } from './config.js';
 
 // /client/v1: what an application that holds an API key may call (docs/plans/api-gateway/client-access-hub.md).
@@ -167,10 +168,10 @@ export function createClientRouter(): Router {
     logger.info({ clientId: req.apiClient!.id, method: req.method, path: req.path, why }, '[gateway] client data call not served');
     res.status(404).json({ error: 'Not found' });
   };
-  const dataClass = async (req: ClientRequest, res: Response) => {
+  const dataClass = async (req: ClientRequest, res: Response, action: 'read' | 'write' = 'read') => {
     const core = await import('@whoobe-cms/core/server');
     const className = String(req.params.className ?? '');
-    if (!core.dataScopeAllows(req.callerScopes ?? [], 'read', className)) { dataNotFound(req, res, 'no scope for the class'); return null; }
+    if (!core.dataScopeAllows(req.callerScopes ?? [], action, className)) { dataNotFound(req, res, 'no scope for the class'); return null; }
     const cls = await core.getDataClassByName(className);
     if (!cls) { dataNotFound(req, res, 'unknown class'); return null; }
     return { core, cls };
@@ -316,6 +317,78 @@ export function createClientRouter(): Router {
       if (abort.signal.aborted) return;
       logGatewayError('client asset content', err);
       if (!res.headersSent) res.status(502).json({ error: 'The file could not be read' });
+    }
+  });
+
+  // Writing (scope `data:write:<Class>`): a client creates DRAFTS and changes DRAFTS; nothing here publishes, and a published object is
+  // not changed (409). Unknown class, no scope and an id of another class answer the same 404 as for reading.
+  const readJsonBody = (req: ClientRequest, res: Response): unknown | undefined => {
+    const declared = Number(req.headers['content-length'] ?? 0);
+    if (declared > MAX_BODY_BYTES) { res.status(413).json({ error: 'Body too large' }); return undefined; }
+    if (!String(req.headers['content-type'] ?? '').includes('application/json')) { res.status(415).json({ error: 'Send JSON (Content-Type: application/json)' }); return undefined; }
+    return req.body ?? {};
+  };
+  // every file the written values link must be one this client may read; unknown and not allowed answer alike
+  const assetsAllowed = async (core: typeof import('@whoobe-cms/core/server'), req: ClientRequest, attributes: Record<string, unknown>): Promise<boolean> => {
+    const ids = [...core.writtenAssetIds(attributes)];
+    if (!ids.length) return true;
+    if (ids.length > core.CLIENT_ASSET_MAX_EXPAND) return false;
+    const found = await core.getAssetsByIds(ids);
+    return found.length === ids.length && found.every((a) => core.assetScopeAllows(req.callerScopes ?? [], 'read', a.folderPath));
+  };
+
+  router.post('/data/:className', async (req: ClientRequest, res: Response): Promise<void> => {
+    try {
+      const found = await dataClass(req, res, 'write');
+      if (!found) return;
+      const { core, cls } = found;
+      const body = readJsonBody(req, res);
+      if (body === undefined) return;
+      const fields = (cls.fields ?? []) as import('@whoobe-cms/core/server').ClassFieldDefinition[];
+      const checked = core.validateClientWrite('create', cls.name, fields, body);
+      if (!checked.ok) { res.status(400).json({ error: checked.error }); return; }
+      if (!(await assetsAllowed(core, req, checked.write.attributes))) { res.status(400).json({ error: 'A linked asset does not exist or is not available to this client' }); return; }
+      const obj = await core.createDataObject({
+        classId: cls.id, key: checked.write.key ?? `api-${randomUUID()}`, locale: checked.write.locale, attributes: checked.write.attributes,
+      });
+      logger.info({ clientId: req.apiClient!.id, client: req.apiClient!.name, sub: req.subject, class: cls.name, id: obj.id }, '[gateway] client data created (draft)');
+      res.status(201).json({ draft: true, object: core.projectClientObject(obj, fields) });
+    } catch (err: any) {
+      if ((err?.code ?? err?.cause?.code) === '23505') { res.status(409).json({ error: 'An object with this key already exists for this class and language' }); return; }
+      logGatewayError('client data create', err);
+      res.status(500).json({ error: 'Failed to create the object' });
+    }
+  });
+
+  router.patch('/data/:className/:id', async (req: ClientRequest, res: Response): Promise<void> => {
+    try {
+      const found = await dataClass(req, res, 'write');
+      if (!found) return;
+      const { core, cls } = found;
+      const id = String(req.params.id ?? '');
+      if (!/^[0-9a-f-]{36}$/i.test(id)) { dataNotFound(req, res, 'malformed id'); return; }
+      const obj = await core.getDataObject(id);
+      if (!obj || obj.classId !== cls.id) { dataNotFound(req, res, 'no object of this class'); return; }
+      if (obj.published) { res.status(409).json({ error: 'A published object cannot be changed through the API' }); return; }
+      const body = readJsonBody(req, res);
+      if (body === undefined) return;
+      const fields = (cls.fields ?? []) as import('@whoobe-cms/core/server').ClassFieldDefinition[];
+      const checked = core.validateClientWrite('update', cls.name, fields, body);
+      if (!checked.ok) { res.status(400).json({ error: checked.error }); return; }
+      if (!(await assetsAllowed(core, req, checked.write.attributes))) { res.status(400).json({ error: 'A linked asset does not exist or is not available to this client' }); return; }
+      // `If-Match: <updatedAt>` (as returned by the object): refuse when someone changed the draft in the meantime
+      const ifMatch = req.headers['if-match'];
+      if (typeof ifMatch === 'string' && ifMatch.replace(/^W\/|"/g, '') !== new Date(obj.updatedAt).toISOString()) {
+        res.status(412).json({ error: 'The object was changed since you read it' });
+        return;
+      }
+      const updated = await core.updateDataObject(id, { attributes: { ...(obj.attributes ?? {}), ...checked.write.attributes } });
+      if (!updated) { dataNotFound(req, res, 'vanished'); return; }
+      logger.info({ clientId: req.apiClient!.id, client: req.apiClient!.name, sub: req.subject, class: cls.name, id, fields: Object.keys(checked.write.attributes) }, '[gateway] client data updated (draft)');
+      res.json({ draft: true, object: core.projectClientObject(updated, fields) });
+    } catch (err) {
+      logGatewayError('client data update', err);
+      res.status(500).json({ error: 'Failed to update the object' });
     }
   });
 

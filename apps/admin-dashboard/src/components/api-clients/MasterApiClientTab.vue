@@ -157,7 +157,10 @@
                 </label>
               </template>
               <label v-else-if="a.kind === 'data'" class="flex items-center gap-1.5 text-[11px] text-amber-400 cursor-pointer" title="Every class, including classes created later">
-                <input type="checkbox" :checked="form.scopes.has('data:read:*')" @change="toggleScope('data:read:*')" /> all classes
+                <input type="checkbox" :checked="form.scopes.has('data:read:*')" @change="toggleScope('data:read:*')" /> read all classes
+              </label>
+              <label v-if="a.kind === 'data'" class="flex items-center gap-1.5 text-[11px] text-rose-400 cursor-pointer" title="Create and change drafts in every class, including classes created later">
+                <input type="checkbox" :checked="form.scopes.has('data:write:*')" @change="toggleScope('data:write:*')" /> write all classes
               </label>
               <label v-else-if="a.kind === 'assets'" class="flex items-center gap-1.5 text-[11px] text-amber-400 cursor-pointer" title="Every folder, including folders created later">
                 <input type="checkbox" :checked="form.scopes.has('assets:read:*')" @change="toggleScope('assets:read:*')" /> all folders
@@ -197,12 +200,17 @@
               </div>
             </template>
             <template v-else>
-              <p class="text-[11px] text-slate-500 mb-1">Read of the published objects, <code class="font-mono">GET /data/&lt;class&gt;</code>.</p>
+              <p class="text-[11px] text-slate-500 mb-1">Read of the published objects, <code class="font-mono">GET /data/&lt;class&gt;</code>. <strong>Write</strong> creates <em>drafts</em> and changes drafts, <code class="font-mono">POST /data/&lt;class&gt;</code>, <code class="font-mono">PATCH /data/&lt;class&gt;/&lt;id&gt;</code>; nothing is published by the API.</p>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
-                <label v-for="dc in dataClasses" :key="dc.id" class="flex items-center gap-1.5 text-[11px] font-mono cursor-pointer" :class="form.scopes.has('data:read:*') ? 'opacity-40' : ''">
-                  <input type="checkbox" :checked="form.scopes.has(`data:read:${dc.name}`)" :disabled="form.scopes.has('data:read:*') || dc.name.includes(':')" @change="toggleScope(`data:read:${dc.name}`)" />
-                  <span class="truncate" :title="dc.name.includes(':') ? 'name contains “:”, rename it to use it here' : dc.name">{{ dc.name }}</span>
-                </label>
+                <div v-for="dc in dataClasses" :key="dc.id" class="flex items-center gap-3 text-[11px] font-mono">
+                  <span class="truncate flex-1" :title="dc.name.includes(':') ? 'name contains “:”, rename it to use it here' : dc.name">{{ dc.name }}</span>
+                  <label class="flex items-center gap-1 cursor-pointer" :class="form.scopes.has('data:read:*') ? 'opacity-40' : ''">
+                    <input type="checkbox" :checked="form.scopes.has(`data:read:${dc.name}`)" :disabled="form.scopes.has('data:read:*') || dc.name.includes(':')" @change="toggleScope(`data:read:${dc.name}`)" /> read
+                  </label>
+                  <label class="flex items-center gap-1 cursor-pointer text-rose-400" :class="form.scopes.has('data:write:*') ? 'opacity-40' : ''">
+                    <input type="checkbox" :checked="form.scopes.has(`data:write:${dc.name}`)" :disabled="form.scopes.has('data:write:*') || dc.name.includes(':')" @change="toggleScope(`data:write:${dc.name}`)" /> write
+                  </label>
+                </div>
                 <span v-if="!dataClasses.length" class="text-[11px] text-slate-500">No Data Class yet.</span>
               </div>
             </template>
@@ -334,9 +342,9 @@ function removeApi(a: Api) {
   added.value = added.value.filter((k) => k !== a.key)
 }
 const knownScopes = computed(() => {
-  const set = new Set<string>(['data:read:*', 'assets:read:*'])
+  const set = new Set<string>(['data:read:*', 'data:write:*', 'assets:read:*'])
   for (const f of damFolders.value) set.add(`assets:read:${f}`)
-  for (const dc of dataClasses.value) set.add(`data:read:${dc.name}`)
+  for (const dc of dataClasses.value) { set.add(`data:read:${dc.name}`); set.add(`data:write:${dc.name}`) }
   for (const au of automations.value) set.add(au.scope)
   for (const ep of endpoints.value) {
     set.add(wide(ep.name))

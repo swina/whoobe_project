@@ -378,3 +378,14 @@ storage is not reachable from the application. Decisions:
 - Left for later: upload (`assets:write`), short-lived signed links (they need the storage origin to be reachable by the application),
   hourly usage counters, per-key `openapi.json`.
 
+## 15. Writing Data Objects from API clients (phase 3, write part) — 2026-10-13
+
+Decisions: the API writes **drafts only**, one language per call, and `PATCH` supports `If-Match`.
+
+- Scope `data:write:<Class | *>`, separate from `data:read`. There is no publish scope: an editor publishes in the dashboard.
+- `POST /client/v1/data/:class` (body `{ key?, locale?, attributes }`) creates a draft; `PATCH /client/v1/data/:class/:id` (body `{ attributes }`)
+  merges into a draft, and answers `409` for a published object. Only those properties are accepted; the others (`published`,
+  `workflowState`, `path`...) answer `400`, as does an unknown attribute (strict validation against the Data Class, mandatory fields only on create).
+- `wysiwyg` values go through the rich-text cleaner; every `assetId` written must be readable by the client (`assets:read`).
+- Left for later: publish, delete, several languages in one call, checks on relation targets, a "created by API client" mark in the dashboard.
+

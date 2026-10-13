@@ -44,11 +44,12 @@ What an application can reach today:
 |---|---|---|
 | Integrations routes (the endpoints you configured: CRM, ERP, mail...) | `/client/v1/gateway/<endpoint>/<route>` | `gateway:call:...` scopes |
 | Published Data Objects (read) | `/client/v1/data/<class>` and `/client/v1/data/<class>/<id>` | `data:read:<Class>` scopes |
+| Data Objects (create and change **drafts**) | `POST /client/v1/data/<class>`, `PATCH /client/v1/data/<class>/<id>` | `data:write:<Class>` scopes |
 | Assets: the files of the DAM (metadata, address, the file itself) | `/client/v1/assets`, `/client/v1/assets/<id>`, `/client/v1/assets/<id>/content` | `assets:read:<folder>` scopes |
 | Automations (start a flow in Activepieces / n8n and get its answer) | `/client/v1/automations/<endpoint>/<route>` | `automation:run:...` scopes |
 | Who am I (diagnostics) | `/client/v1/me` | any valid credential |
 
-Writing Data Objects and uploading assets are not on `/client/v1` yet (section 15).
+Publishing, deleting and uploading assets are not on `/client/v1` (section 15).
 
 ## 2. Key or token: choose how the application proves who it is
 
@@ -153,7 +154,8 @@ A scope is one text. The dashboard writes them for you; you read them in the lis
 
 - Read of the **published** objects of one Data Class. The class is named exactly (case counts: `Blog`, not `blog`); there are no patterns.
 - `data:read:*` covers every class, including classes created later (the dashboard marks it as wide).
-- There is no write scope yet.
+- `data:write:<Class name>` or `data:write:*`: create objects **as drafts** and change drafts (section 6.3c). It is its own scope: it does not
+  read, and `data:read` does not write. Nothing here publishes; a draft is published by an editor in the dashboard.
 
 ### 5.2b Assets
 
@@ -270,6 +272,44 @@ curl -H "Authorization: Bearer $KEY" "$BASE/data/Blog?limit=1&expand=assets"
 curl -H "Authorization: Bearer $KEY" "$BASE/assets?folder=/images&limit=20"
 curl -H "Authorization: Bearer $KEY" -o cover.png "$BASE/assets/74046bf3-.../content"
 ```
+
+### 6.3c Writing: `POST /client/v1/data/<class>`, `PATCH /client/v1/data/<class>/<id>`
+
+Scope `data:write:<Class>`. A client creates **drafts** and changes drafts; the API has no way to publish, and a published object cannot be
+changed through it. An editor reviews the draft in the dashboard (Objects) and publishes it. The new object is invisible to every
+`GET` (they return published objects only).
+
+**Create** (`Content-Type: application/json`, at most 1 MB):
+
+```bash
+curl -X POST -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" "$BASE/data/Blog" \
+  -d '{ "key": "my-first-post", "locale": "en", "attributes": { "title": "From the app", "tags": ["news"] } }'
+```
+
+| Property | Meaning |
+|---|---|
+| `attributes` | **required**: the fields of the Data Class; every mandatory field must be present |
+| `key` | optional, 1-120 characters without `/`; default `api-<random>`. Unique per class and language |
+| `locale` | optional, one language per call (default `en`) |
+
+Answer `201 { "draft": true, "object": { ... } }` with the same shape as a read (keep `object.id` and `object.updatedAt`).
+
+**Change** a draft: send only the fields to change; `null` clears an optional field; `key` and `locale` cannot be changed.
+
+```bash
+curl -X PATCH -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -H 'If-Match: "2026-10-13T13:02:52.712Z"' "$BASE/data/Blog/<id>" -d '{ "attributes": { "title": "Edited" } }'
+```
+
+`If-Match` (optional) takes the `updatedAt` you read: if the draft changed in the meantime the answer is `412` and nothing is written.
+
+Rules, all enforced by the server:
+- The values are validated against the Data Class like in the dashboard. An **unknown field**, a wrong type, a missing mandatory field and any property other than the ones above (`published`, `workflowState`, `path`, `classId`...) answer `400` with the reason.
+- Rich text (`wysiwyg`) fields are cleaned of script and unsafe markup before they are stored.
+- A `{ "assetId" }` (also inside lists and blocks) must be an asset the client may read (`assets:read:`); unknown and not allowed answer the same `400`.
+- Relations to other objects are stored as sent (their ids are not checked against the client's scopes).
+- `409`: the key already exists, or the object is **published**. `404`: unknown class, no scope, malformed id, or an id of another class.
+- Writes count against the rate limit and the daily quota, and each one is logged with the client and, for a token, its subject.
 
 ### 6.4 `POST /client/v1/automations/<endpoint>/<route>` - start a flow and wait for the answer
 
@@ -481,6 +521,8 @@ the configuration from one to the other is planned (plan, section 4.5).
 |---|---|
 | `404` on `/client/v1/gateway/data/Blog` | wrong address: Data Objects are at `/client/v1/data/Blog`, `gateway/` is only for Integrations endpoints |
 | `404` on an asset call | the id does not exist, or its folder is outside the `assets:read:` scopes (the answer is the same), or `GET /assets` was sent without `folder` to a client that has no `assets:read:*`; the **gateway is running an older build** (restart it) |
+| `400` on a write | the reason is in the message: unknown field, wrong type, missing mandatory field, a property that is not allowed, or an asset the client cannot read |
+| `409` on a write | the key exists for that class and language, or the object is published (the API changes drafts only) |
 | `404` on a data call | class name differs (case counts); no `data:read:` scope for it; the object is a draft; the id belongs to another class; the **gateway is running an older build** (restart it) |
 | `404` on an automation call | the scope is `automation:run:`, not `gateway:call:`; the route is not a `POST` route of the endpoint; the endpoint name or route differs from Integrations |
 | `404` on a gateway call | the endpoint was renamed (its scopes no longer match); the route is not ticked; `GET` ticked but the call is `POST`; the endpoint is inactive |
@@ -495,7 +537,7 @@ the configuration from one to the other is planned (plan, section 4.5).
 
 ## 15. What it does not do (yet)
 
-- **Writing Data Objects** and **uploading assets** on `/client/v1` (the plan's next steps), and **short-lived signed links** for private files (today the file goes through `/assets/<id>/content`).
+- **Publishing** or **deleting** Data Objects, writing several languages in one call, and **uploading assets** on `/client/v1` (the plan's next steps), and **short-lived signed links** for private files (today the file goes through `/assets/<id>/content`).
 - **Long-running automations:** the call waits at most 30 seconds; there is no "accepted, ask later" mode yet.
 - **Binary replies, multipart bodies and streaming** through `gateway/` calls.
 - **Opaque tokens, introspection, revocation lists** for identity provider tokens.
