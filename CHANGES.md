@@ -1,3 +1,11 @@
+## Client access: start automations from an API client — 2026-10-13
+- Branch: `master`
+- New scope `automation:run:<endpoint>:<route | *>` (`client-scopes.ts`: `parseAutomationScope`, `automationScopeAllows`; `validateClientScopes` accepts it). Separate from `gateway:call`: neither allows the other's address. No prefix patterns.
+- Gateway `client-router.ts`: `POST /client/v1/automations/:endpoint/*` calls the matched POST route (shared `callRoute`), waits (endpoint timeout, at most 30 s) and answers `{ ok, outcome?, response }`; `outcome` is validated with `extractOutcome` (same rule as form submissions); engine `5xx` answers `502` without the engine's body; out of scope, unknown endpoint, non-POST all `404`. Any other path under `/client/v1` now answers a JSON `404` instead of an HTML page.
+- Dashboard `MasterApiClientTab.vue`: an *Automations (start a flow)* API in the select, listing the forms that submit to an endpoint (from pages and snippets, by form name, with endpoint and route); the list shows `RUN automations /<endpoint>/<route>`.
+- Test `scripts/security/unit/client-automations.test.ts` (4); run against a local fake engine (outcome kept or dropped, route outside scope, unknown endpoint, GET, traversal, 415, engine 500, no credential); test endpoint, routes, client and sessions removed.
+- Docs: API clients guide (5.3, 6.4, 7.3, troubleshooting, gaps), API reference.
+
 ## Documentation: API clients guide — 2026-10-13
 - Branch: `master`
 - New `docs/release/guides/api-clients.md`: key or token, quick start, the editor field by field, scopes (Integrations routes and Data Objects), every `/client/v1` call with parameters and replies, code examples (Node, Flutter, browser, Insomnia), answers and errors, limits and the Valkey store, identity provider tokens (Keycloak steps; Entra ID, Cognito, Auth0 values, untested), operations, security model, development and production, troubleshooting, gaps, administration API. Linked from `docs/release/README.md` and from section 4 of the Integrations guide.
