@@ -19,6 +19,8 @@ export interface ElementGsap {
   ease?: string | null
   duration: number | string
   delay: number | string
+  /** true: play on hover (reversing on leave) instead of when scrolled into view. */
+  trigger?: boolean | null
 }
 
 /** Shared `data.options` shape for Select()/RadioGroup(). */

@@ -6,7 +6,7 @@
 import { Children, useState, useEffect, useRef, useCallback, createElement, type FormEvent, type ReactNode } from 'react'
 import { sanitizeRichText } from '@whoobe-cms/schema'
 import * as LucideIcons from 'lucide-react'
-import { collectFormValues, dispatchFormResult, sliderView, sanitizeOutcome, showsResultMessage, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
+import { collectFormValues, dispatchFormResult, mountAnimation, sliderView, sanitizeOutcome, showsResultMessage, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
 import { useWhoobe } from './context.js'
 import type { NodeComponent } from './types.js'
 import { DefaultTable } from './table.js'
@@ -52,65 +52,13 @@ function withLink(descriptor: RenderDescriptor, children: ReactNode, props?: Rec
   return children
 }
 
-/** Mounts GSAP animation on an element ref. */
+/** Plays the element's animation (`node.gsap`): on scroll into view, or on hover when `trigger` is set. Shared module of @whoobe-cms/renderer. */
 function useGsapAnimation(descriptor: RenderDescriptor, ref: React.RefObject<HTMLElement | null>) {
   useEffect(() => {
-    const gsapConfig = (descriptor.node as any)?.gsap
+    const config = (descriptor.node as any)?.gsap
     const el = ref.current
-    if (!gsapConfig?.animation || !el) return
-    let killed = false
-
-    const run = async () => {
-      try {
-        // @ts-expect-error - gsap is optional, loaded dynamically at runtime
-        const gsapModule = await import('gsap')
-        // @ts-expect-error - gsap/ScrollTrigger is optional, loaded dynamically
-        const stModule = await import('gsap/ScrollTrigger')
-        if (killed || !ref.current) return
-        const gsap = gsapModule.default
-        gsap.registerPlugin(stModule.ScrollTrigger)
-        const effect = (gsap as any).effects?.[gsapConfig.animation]
-        if (!effect) return
-
-        const opts = {
-          duration: parseFloat(String(gsapConfig.duration)) || undefined,
-          delay: parseFloat(String(gsapConfig.delay)) || undefined,
-          ease: gsapConfig.ease || undefined,
-        }
-
-        if (!gsapConfig.trigger) {
-          const animation = effect(ref.current, opts)
-          const trigger = stModule.ScrollTrigger.create({
-            start: 'top 99.99%',
-            trigger: ref.current,
-            toggleActions: 'play pause restart none',
-            animation,
-            onEnter: () => {
-              if (gsapConfig.delay) animation.play()
-              else animation.play(0)
-            },
-          })
-          return () => { trigger.kill(); killed = true }
-        } else {
-          let hoverAnim: any = null
-          const node = ref.current
-          if (!node) return
-          const onEnter = () => { hoverAnim = effect(node, opts); hoverAnim?.play() }
-          const onLeave = () => { hoverAnim?.reverse() }
-          node.addEventListener('mouseenter', onEnter)
-          node.addEventListener('mouseleave', onLeave)
-          return () => {
-            node.removeEventListener('mouseenter', onEnter)
-            node.removeEventListener('mouseleave', onLeave)
-            hoverAnim?.kill()
-            killed = true
-          }
-        }
-      } catch { /* GSAP not available */ }
-    }
-
-    const cleanupPromise = run()
-    return () => { killed = true; cleanupPromise.then((fn) => fn?.()) }
+    if (!config?.animation || !el) return
+    return mountAnimation(el, config)
   }, [ref])
 }
 

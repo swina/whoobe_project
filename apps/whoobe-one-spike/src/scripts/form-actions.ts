@@ -1,7 +1,7 @@
 // Wires a Form element's configured submission handling (docs/plans/forms/
 // cms-forms.md) to its live <form> DOM node - same "plain exported mount
 // function, called from onMounted() in the preview tree only" shape as
-// gsap-actions.ts's mountAnimation()/BlockElementPreview.vue's Alpine
+// animation-actions.ts's mountAnimation()/BlockElementPreview.vue's Alpine
 // wiring, not a Vue directive or component of its own.
 import type Element from './ElementsClass.js'
 import { getDefaultCoreApiUrl } from '../core-api-url'

@@ -24,6 +24,7 @@ export const elementGsapSchema = z.object({
   ease: z.string().nullable(),
   duration: z.union([z.number(), z.string()]),
   delay: z.union([z.number(), z.string()]),
+  trigger: z.boolean().nullable().optional(),
 })
 
 // --- form ---

@@ -22,7 +22,7 @@
        this outer wrapper, as SIBLINGS of the actual rendered `<component>`
        below - never as its children. A real, reported bug: previewing a
        GSAP animation (AnimationControl.vue's/FloatingToolbar.vue's own
-       "preview" action, scripts/gsap-actions.ts's previewAnimation()) runs
+       "preview" action, scripts/animation-actions.ts's previewAnimation()) runs
        a transform-based tween directly on the id'd content node; CSS
        transforms visually carry every DOM descendant along with them, so
        with these badges as CHILDREN of that node (the previous structure

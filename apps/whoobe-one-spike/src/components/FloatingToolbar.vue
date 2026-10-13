@@ -810,7 +810,7 @@ import type { Component } from 'vue'
 import Element from '../scripts/ElementsClass.js'
 import animations from '../scripts/animations.js'
 import twclasses from '../scripts/tw.classes.js'
-import { previewAnimation, previewAnimationActive } from '../scripts/gsap-actions'
+import { previewAnimation, previewAnimationActive } from '../scripts/animation-actions'
 import { playYouTubeVideo } from '../scripts/youtube-player'
 import { useEditorStore } from '../store/editor'
 import { editorBus } from '../bus'
@@ -1278,7 +1278,7 @@ const sliderPopoverMaxHeight = popoverMaxHeight
 
 let rafId: number | null = null
 function loop() {
-  // previewAnimationActive (gsap-actions.ts): frozen for the duration of a
+  // previewAnimationActive (animation-actions.ts): frozen for the duration of a
   // "preview this animation" click (AnimationControl.vue/this file's own
   // play button below) so this toolbar doesn't visibly chase the selected
   // element's own bounding rect as it bounces/scales/shakes through the

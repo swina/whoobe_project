@@ -111,7 +111,7 @@ import { useBoundTable } from '../../composables/useBoundTable'
 import type Element from '../../scripts/ElementsClass.js'
 import { resolveDisplayUrl } from '../../resolve-display-url'
 import { customAttrs, safeAlpineValue } from '../../helpers'
-import { mountAnimation } from '../../scripts/gsap-actions'
+import { mountAnimation } from '../../scripts/animation-actions'
 
 type WhoobeElement = InstanceType<typeof Element>
 
