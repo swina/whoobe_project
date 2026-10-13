@@ -23,9 +23,6 @@ OVERRIDES = {'khroma': 'MIT', 'thirty-two': 'MIT'}
 REVIEWED = {
     'LGPL-3.0-or-later': 'libvips binaries shipped by `sharp` (image processing in asset-processor). LGPL: used as a separate dynamically linked library, '
                          'not modified; the licence text and the source location (https://github.com/lovell/sharp-libvips) are given here.',
-    "Standard 'no charge' license: https://gsap.com/standard-license.": 'GSAP (animation library in the editor). **Proprietary licence, not open source**: free for commercial use, '
-                         'but it forbids use in tools that let users build visual animations without code if they compete with the licensor\'s animation builder. '
-                         'Review before every release: https://gsap.com/standard-license',
 }
 SPECIAL_TEXT = {  # canonical SPDX name -> file names to look for in a package
 }

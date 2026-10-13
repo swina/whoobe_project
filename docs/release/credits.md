@@ -20,7 +20,6 @@ It is a selection, not an inventory.
 | [dragula](https://github.com/bevacqua/dragula) | Drag and drop in the editor |
 | [Marked](https://marked.js.org), [Mermaid](https://mermaid.js.org) | Markdown and diagrams, including documentation sites |
 | [JSZip](https://stuk.github.io/jszip/) | Website export and import bundles |
-| [GSAP](https://gsap.com) | Animations in the editor. GSAP is **not open source**: it is used under its own licence, which the [notices file](../../THIRD_PARTY_NOTICES.md) flags for review |
 
 ## Server
 
