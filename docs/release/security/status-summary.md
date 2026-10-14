@@ -1,6 +1,6 @@
 # Security status - single summary
 
-State at **2026-10-09** (see `git log` for the exact commit). Source of detail:
+State at **2026-10-14** (see `git log` for the exact commit). Source of detail:
 `findings.md` (register F-001 ... F-059), `security-testing-plan.md` (plan), `manual-test-checklist.md`
 (browser/terminal checks), `../../security/security-test-suite.md` (description of the automated suites, written
 for reviewers), `scripts/security/README.md` (how to run).
@@ -55,6 +55,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | **F-056** sessions never purged, session ids stored unhashed | **fixed 2026-10-09** (hashed ids, purge every six hours; everyone logs in once more) | - |
 | **F-057** default database password in code when `DB_PASSWORD` is unset | **fixed 2026-10-09** (default only for `NODE_ENV` development/test) | - |
 | **F-058** function permissions never enforced; seeded roles without `objects:*` | **fixed 2026-10-09**: 90 content routes accept the function key or the broad key; seeded roles corrected; 182 tests | - |
+| The repository became public on 2026-10-14 | gitleaks over the whole history (613 commits) found no secret (four false positives, baselined); customer names, local paths and a private host name were removed from every commit and all branches were force-pushed first | GitHub keeps old commits reachable by hash and through pull-request refs until Support purges them: ask GitHub Support to run the purge |
 | **F-044** deleting a website can answer 500 | functional, not a security issue | fix when convenient |
 | **F-050** residual: postgres' `gosu` (22) | upstream; not patchable without forking. MinIO (62 fixable HIGH/CRITICAL on its last release) was removed from the repository on 2026-10-10, Garage is the only local store | none for MinIO; an existing MinIO used as an external S3 stays the operator's responsibility |
 | TLS on a real hostname | testssl ran on the rendered template, not on a public host with a Let's Encrypt certificate | run `testssl.sh` against the production hostname once HTTPS is enabled |

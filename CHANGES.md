@@ -1,3 +1,8 @@
+## Release 0.1.0 documents brought up to date — 2026-10-14
+- Branch: `master`
+- `docs/release/release-notes-0.1.0.md`: date; new features (Data and AlpineJS panels, status bar, form errors and hide-on-success, class creation from template/file/Integration, bulk import, unique, Empty data, Pimcore migration); two behaviour changes (unique is enforced; Compose needs `PUBLISH_RUNNER_TOKEN`); known limits of data import; the DAST line (it ran on the release commit).
+- `docs/release/security/status-summary.md`: date; open item for the repository becoming public (history scanned and cleaned; GitHub Support purge).
+
 ## API docs: the five new routes — 2026-10-14
 - Branch: `master`
 - `docs/release/api/gen-api-docs.py` (and the regenerated `api-reference.md`, `openapi.yaml`): `GET /data-classes/:id/object-count`, `POST /data-classes/:id/empty`, `POST /migration-sources/:id/preview-classes`, `GET /migration-sources/import-jobs/:jobId`, `POST /data-objects/bulk`. The release gate "Documentation" failed on them (219 routes, 214 documented).

@@ -1,7 +1,7 @@
 # Whoobe CMS 0.1.0 - release notes
 
 First release. One version number for the whole product (`0.1.0`: while the version starts with `0.`, a minor release
-may change behaviour). Written from `CHANGES.md` and checked against the code on **2026-10-09**; the procedure that
+may change behaviour). Written from `CHANGES.md` and checked against the code on **2026-10-14**; the procedure that
 turns this into a release is in [`release-process.md`](release-process.md) (copy the text into
 `.release/notes-v0.1.0.md` after `scripts/release.sh prepare`).
 
@@ -37,10 +37,16 @@ turns this into a release is in [`release-process.md`](release-process.md) (copy
   itself. Guide: [`communication/marketing-automation.md`](communication/marketing-automation.md).
 - **File upload in forms**: a *File Upload* field, per-website limits (Settings > Form uploads), content checks, private
   storage. Guide: [`communication/form-uploads.md`](communication/form-uploads.md).
+- **Editor tools**: a **Data** panel (the binding of the selected element, the fields of the nearest bound list as chips to click or drag, nested and linked bindings) and an **AlpineJS** panel (presets, with a built-in **Form result** preset that sets `done`, `ok` and `outcome` from `whoobe-form-result`, and the element's directives); a status bar with the selected element (`type > <tag> > #id`) and its Custom CSS (classes), a twin of Custom Classes in Advanced.
+- **Forms**: the message a visitor sees names the field that was refused (a field named differently from the class field is the usual cause); the form can be hidden once it has been sent (*On success > Hide the form once it has been sent*; editor preview and React, Vue, Svelte, Next.js and Nuxt sites). Guide: [`communication/marketing-automation.md`](communication/marketing-automation.md).
 - A consistent look for buttons, fields and windows (checked for contrast), the editor's tools as an icon bar, a menu
   next to the collapsed navigation.
 
 **Data and assets**
+- **Creating classes faster**: *+ From template* (Contact, Category, Product), *+ From file* (JSON, CSV, Excel: types are guessed, HTML becomes Rich text) and *Settings > Classes > Integration import* (from a GET route of an Integration); each can create the schema only or schema and data. **Bulk import** of objects (`POST /data-objects/bulk`: up to 500 rows per call, drafts, rows that break a rule come back in `rejected`).
+- **Unique fields**: a class field can be marked *unique*; a second object with the same value is refused (409 in the API, "<field> is already in use" in forms).
+- **Empty data**: removes every object of a class after typing the class name (Data Objects list and Settings > Classes); logged.
+- **Pimcore migration**: class files with text ids and the Fields Summary of real installations are read correctly; before importing, *Choose fields and import...* lets the user pick and map fields; objects import in the background with a progress bar and a downloadable list of failed records.
 - Data classes, components and objects (Pimcore-style), with workflow and publication; DAM with folders, thumbnails,
   visibility rules, optional CDN mirror; **Garage** as the default S3 store for local/LAN, an external S3 in production.
 
@@ -87,6 +93,8 @@ OWASP ZAP and image/TLS scans run in CI on every release commit.
 | **Function permissions are enforced** on 90 content routes (pages, websites, data objects, snippets and kits, themes, components): `pages:edit` etc. now do what their names say, and the broad `objects:read`/`objects:write` keep working as before | roles that only had function keys (and no `objects:*`) used to get 403 on those routes and now work; nothing that worked stops working | for a restricted role, give `objects:read` plus the function keys and **not** `objects:write` (it overrides them) |
 | The seeded `editor` role gets `objects:read` and `objects:write`, `viewer` gets `objects:read` (they had neither, F-058) | existing installations: the missing links are added at the next start, so editors can now read and write content | review the roles you use |
 | The public form submit limit (10 per address per 15 minutes) is configurable | no change unless you set `FORM_SUBMIT_RATE_LIMIT_PER_WINDOW` | - |
+| **A class field marked *unique* is enforced** on create, update, forms, the client API and bulk import | a second object with the same value is refused with 409 (`UNIQUE_VIOLATION`); duplicates that already exist are not detected, and Pimcore imports do not check it | clean existing duplicates before marking a field unique |
+| **`docker-compose.apps.yml` needs `PUBLISH_RUNNER_TOKEN`** (the publisher service that builds websites from the dashboard); five `PUBLISH_*` variables are new in the reference | `docker compose` refuses to start without it; without it on core-api the runner routes answer 503 | `PUBLISH_RUNNER_TOKEN=$(openssl rand -hex 32)` in the workspace's env file, same value for core-api and the publisher; see `operations/configuration-reference.md` section 7.1 |
 | Website export is a `.zip` | the file has another extension and carries the asset files | the old `.json` is still accepted on import |
 
 New or changed variables are documented in `.env.example`; the full list of what each fix changed is in
@@ -99,9 +107,10 @@ New or changed variables are documented in `.env.example`; the full list of what
 - **Findings from the review, all fixed in this release:** function-level permissions (F-058: 90 content routes accept `pages:edit`, `snippets:delete` ... or the broad key; see `architecture/authentication-and-authorization.md`), session ids stored as hashes and old sessions purged (F-056), no default database password outside development/test (F-057), AI/Figma/push credentials in clear text (F-055, needs `INTEGRATION_SECRETS_ENCRYPTION_KEY`), the OneSignal REST API key served by a public route (F-059), the seeded editor/viewer roles without `objects:*` (F-058, part).
 - Marketing automation: a form submission is the only trigger; the Gateway still returns the engine's whole reply to the browser next to `outcome` (the flow must not answer with secrets or personal data); the AlpineJS reaction was not checked against a Content-Security-Policy without `unsafe-eval`.
 - Form uploads: no malware scan; forms that send to a gateway endpoint do not take files.
-- The DAST scan and the manual security checklist were not repeated for the features added on 2026-10-08/09 (run the DAST on the release commit, as the release gate requires).
+- The DAST scan (OWASP ZAP) ran on the release commit and passed; the manual security checklist was not repeated for the features added after 2026-10-09.
 - No audit log of administrative actions; `/health` does not check the database; no metrics; one instance per service (see `operations/observability-and-logging.md` and `operations/capacity-and-scaling.md`).
 
+- Importing data: a background Pimcore import lives in the memory of core-api (a restart loses its progress, not the objects already written); the file and Integration wizards read one request, with no paging; *Empty data* cannot be undone; nested fields (blocks, field collections) cannot be mapped in the Pimcore field dialog; the Pimcore adapter expects the `o_` column prefix of Pimcore 10 and older.
 - Fresh install: done on an arm64 host (Ubuntu 22.04, nginx on the host, Let's Encrypt) following `operations/creating-workspaces.md`; it found and fixed three defects in the TLS scripts. A workspace answers on **one** host name (no `www` alias or redirect).
 - **Not tested: upgrading** from an earlier installation (there is no earlier release). The first upgrade test belongs to
   0.2.0.
