@@ -1,3 +1,9 @@
+## Repository made public: history cleaned of customer names, personal paths and a private host name — 2026-10-14
+- Branch: `master` (and all other branches)
+- Before opening the repository, customer and project names, absolute paths of the author's machine and the domain of a private site were replaced in every commit (files and commit messages) with neutral placeholders (`git filter-repo --replace-text/--replace-message`); all commit ids changed and every branch was force-pushed. Bot (Dependabot) branches built on the old history were deleted from GitHub.
+- Code touched only in comments and one input placeholder (`MigrationSourcesCard.vue`, `dynamic.ts`, `mysql-adapter.ts`); documents: `docs/DAM_implementation_plan.md`, `docs/plans/...`, `scripts/sandbox/systemd/override.conf.example`, `CHANGES.md`.
+- Nothing about the product changed. Anyone with an older clone must re-clone (or `git fetch && git reset --hard origin/<branch>`).
+
 ## Static scan baseline: two reviewed gitleaks false positives — 2026-10-14
 - Branch: `master`
 - `scripts/security/static/baseline.json`: the placeholder `wbk_...` in a curl example (`integrations.md`) and the invented `SITE_API_KEY=abcdef123456` of a log-masking test (`publish-runner.test.ts`) are accepted as false positives (review 2027-01-31). The `security` workflow's static scan failed only on them. No real secret found in the history (gitleaks, 613 commits).
