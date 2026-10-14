@@ -1,3 +1,139 @@
+## Editor: status bar with Custom CSS — 2026-10-14
+- Branch: `master`
+- New status bar at the bottom of the editor (`StatusBar.vue`) with a **Custom CSS** field: a twin of the Custom Classes section of the Advanced panel (both read and write the selected element's `css.css`, applied on Enter / blur), so classes can be edited without opening the panel. Disabled when nothing is selected.
+- The field is preceded by the selected element's `type > <semantic tag> > #id`.
+- The field has no border: transparent, light background on hover, white on focus (no outline).
+- The canvas top padding goes from `pt-10` to `pt-6`, and the old `pb-5` spacer under the editor area is gone (the bar takes its place).
+
+## Editor: AlpineJS is its own tool — 2026-10-14
+- Branch: `master`
+- New sidebar tool **AlpineJS** (`AlpinePanel.vue`, icon Zap, between Advanced and Data) with the presets and the directives of the selected element; the AlpineJS section is removed from the Advanced panel. Docs and comments that said "Advanced > AlpineJS" now say "AlpineJS tool".
+
+## Alpine: built-in preset "Form result" — 2026-10-14
+- Branch: `master`
+- Advanced > AlpineJS > Presets now lists a **Built-in** group (read-only, always present, apart from the administrator's **Yours** catalog). First one: **Form result** = `x-data="{ done: false, ok: false, outcome: null }"` + `@whoobe-form-result="done = true; ok = $event.detail.ok; outcome = $event.detail.outcome"`. Applying copies the directives like any preset. `apps/whoobe-one-spike/src/alpine-builtin-presets.ts`, `AlpineControl.vue`.
+- Docs: `docs/release/communication/marketing-automation.md` (2.4) mentions the preset.
+
+## Forms: "Hide the form once it has been sent" — 2026-10-14
+- Branch: `master`
+- New `formConfig.hideOnSuccess` (schema `node.ts` / `validators.ts`, off by default): after a successful submission the form is hidden. The success message popup, when shown, stays until it is closed (the message is part of the form in the published sites: the fields go at once, the form's own box goes when the popup is closed; in the editor Preview the popup is outside the form, so the form hides at once). A failed submission never hides it; a success redirect leaves the page anyway.
+- Editor: checkbox "Hide the form once it has been sent" under "On success" in the Form settings (`FormConfigControl.vue`); `form-actions.ts` hides the `<form>` after a success in the Preview.
+- Published sites: `DefaultForm` of the React, Vue and Svelte adapters (so the Next.js and Nuxt generated sites too); helper `hidesFormOnSuccess` in `@whoobe-cms/renderer` (+ test). Doc line in `docs/release/communication/marketing-automation.md`.
+- Checked: `tsc` of schema, renderer, react, vue, svelte and `vue-tsc`; the existing test suites of those packages pass (renderer 124, react 20, vue 16, svelte 11, schema 111). The hiding itself (a real submit) was not run in a browser or in an adapter test. Rebuild the sites to pick the new adapters up.
+
+## Form submit: the server's reason is shown under the form — 2026-10-14
+- Branch: `master`
+- `apps/whoobe-one-spike/src/scripts/form-actions.ts`: a failed submit used to show only the form's error message (the reason stayed in the Network tab). It now reads the answer's `error`: in the editor Preview the message is `<form error message> (lastName: Required)`; on a live site the visitor sees the form's own message (no field names leaked), except for a `409` ("Email is already in use", a `unique` field), whose text is written for visitors. `submitErrorMessage`, `SubmitRejected` exported. The error is still logged in the console with its reason.
+- Shown where the success / error message already was (`showResultMessage` on, which is the default); a form that hides the message or redirects on error (`errorRedirectUrl`) behaves as before.
+- Checked with a throw-away vitest run of `submitErrorMessage` (5 cases, passed; this app has no test runner of its own, so the test file was not kept); `vue-tsc` passes; not tried in the browser. Not changed: sites published with the SDK adapters (`ApiClient.submitForm`) keep their own error handling.
+
+## Form submit: readable validation errors — 2026-10-14
+- Branch: `master`
+- `POST /public/forms/:classId/submit` answered `400` with zod's JSON dump of the issues as the message. It now says `lastName: Required; email: Invalid email` and adds `fields` (`{ lastName: 'Required' }`). Seen with a form posting `lastname` to the Contact class, whose field is `lastName` (required): field names in the form must match the class field names exactly (case included).
+
+## Class fields: `unique` — 2026-10-14
+- Branch: `master`
+- `ClassFieldDefinition.unique` (core schema) and a "unique" checkbox next to required / localized in the class field editor (`FieldListEditor.vue`).
+- Enforced where objects are written: `createDataObject` and `updateDataObject` (so the dashboard, the form submit, the client API and the portability import all go through it) throw `UniqueViolationError` (`code: 'UNIQUE_VIOLATION'`) when another object of the class has the same value (JSONB containment check). An empty value (`''`, null, `[]`) never clashes, `0` and `false` are values; a localized field is compared within the same language; the language rows of one object never clash with each other.
+- Answers: core-api `POST` / `PATCH /data-objects` and the gateway client API `409` with the message and `field`; a form submit answers `409 "<field> is already in use"` (never the stored value).
+- Bulk import (`POST /data-objects/bulk`): a row whose value another object, or an earlier row of the same chunk, already has is left out and listed in `rejected` (`{ key, message }`); the rest of the chunk is saved. The class import counts them as failed and shows the first message.
+- Not checked: the Pimcore migration upserts (migrated data goes in as it is), and existing duplicates are not detected when the flag is turned on: the second of two equal objects cannot be saved again until one of them changes.
+- Tests: `uniqueValuesToCheck`, `UniqueViolationError` (4); `tsc` of core, core-api, gateway and `vue-tsc` pass. The database check itself has not been run against Postgres here. Restart core-api and the gateway.
+
+## Data classes: "Empty data" (truncate the objects of a class), with confirmation — 2026-10-14
+- Branch: `master`
+- Core API: `GET /data-classes/:id/object-count` and `POST /data-classes/:id/empty`; the second deletes every object of the class (all locales, published or not) and its search-index entries, keeps the class, and answers `{ deleted }`. Irreversible, so the body must carry `confirm` = the class name (`400` otherwise), enforced on the server, not only in the dashboard; the action is logged (`logger.warn`). Same permissions as deleting an object (`data_objects:delete` or `objects:write`). Core: `countDataObjectsByClassId`; `deleteDataObjectsByClassId` now returns how many it deleted (the migration "clear" option is unchanged).
+- Dashboard: `EmptyClassModal.vue` shows how many objects will go and asks to type the class name; opened by "Empty data" in Settings > Classes (each class) and in the Data Objects list toolbar (the list reloads afterwards).
+- `tsc` (core, core-api) and `vue-tsc` pass; not clicked through in the browser, nor run against a database. Restart core-api.
+
+## Pimcore object import: compatibility warning, progress, errors as text; Refresh in Data Objects — 2026-10-14
+- Branch: `master`
+- Before "Import Objects": if the class has top-level fields of a type Whoobe does not support (`unsupportedFields`, `utils/pimcore-field-mapping.ts`), an amber panel lists them and offers "Update the mapping" (opens the mapping dialog on that class only), "Import anyway" or Cancel.
+- Progress: `POST /migration-sources/:id/import-objects` with `background: true` starts the import on the server and answers `202 { jobId }`; `GET /migration-sources/import-jobs/:jobId` gives `{ status, processed, total, result }`; the card polls once a second and shows "processed / total record(s)" with a bar. `runObjectMigration({ onProgress })`; job registry `createMigrationJobRegistry` (`packages/migration-tool/src/import-jobs.ts`, 3 tests), in memory in core-api (a restart forgets the jobs; objects already imported stay, a re-run updates them by Pimcore id; the same source+class is not started twice). Without `background` the call is synchronous as before.
+- The list of failed records is a read-only textarea (it no longer stretches the page) with "Download errors (.txt)" (a header with date and counts, then one `item: message` per line).
+- Data Objects list: "Refresh" button (spinner while loading) next to Filter/Export.
+- `tsc`, `vue-tsc` and the migration-tool tests pass; not clicked through in the browser. Restart core-api.
+
+## Pimcore class import: the user chooses fields and types — 2026-10-14
+- Branch: `master`
+- Settings > Classes > Pimcore Migration Source: new "Choose fields and import…" next to "Import Classes" opens `PimcoreClassMappingModal.vue`: every class of the folder (tick the ones to import), its fields (tick the ones to keep, change the type from a list that includes the original type), then each chosen class is imported with exactly those fields. The old "Import Classes" (everything as parsed) stays.
+- Types of Pimcore plugins are proposed as the closest plain type (`firstname`, `lastname`, `gender`, `time`, `language` -> text; `datetime` -> date; `advancedManyToManyObjectRelation` -> relation (multiple)) or left out by default (`password`, tables, object bricks, target groups...); the screen says which and why (`utils/pimcore-field-mapping.ts`). A field left out is not read from the objects either (the object import converts the stored class fields).
+- migration-tool: `previewClassMigration` (reads the folder without writing; a file that cannot be read is listed with its error), `runClassMigration({ overrides })` (the user's fields per class name replace the parsed ones; the Pimcore system dates are still added), shared `readClassDefinition`. core-api: `POST /migration-sources/:id/preview-classes`, `overrides` in `import-classes`.
+- Checked: `tsc` / `vue-tsc`, the preview on the 18 real files of `<samples>/classes` (none unreadable) and the proposed mapping of Customer's plugin fields; the dialog itself not yet clicked through in the browser. Restart core-api to load the new code.
+
+## Pimcore object migration: text class ids ("Unknown column 'NaN'") — 2026-10-14
+- Branch: `master`
+- Problem: importing objects failed with `Unknown column 'NaN' in 'where clause'`: `runObjectMigration` did `Number(dataClass.pimcoreId)`, which is `NaN` for a Pimcore 10/11 class id such as `Car` or `CU`, and the id went into `WHERE o_classId = NaN`.
+- `pimcoreClassIdOf` (`source-adapter.ts`): all digits -> number, otherwise the text as it is; `PimcoreClassId = number | string` in the adapter interface (`listObjects`, `getObjectAttributes`, class and object summaries) and the MySQL adapter (the id names the `object_<id>`, `object_localized_<id>_<locale>`, `object_relations_<id>` and `object_collection_*_<id>` tables unchanged). 2 new tests.
+- Not run against the user's Pimcore database here (only types and unit tests): if the tables of the install differ (Pimcore 11 drops the `o_` column prefix of `objects`) the next error will name the column.
+
+## Pimcore class migration: the fields were not read (only the system dates) — 2026-10-14
+- Branch: `master`
+- Problem: importing a class gave only `o_creationDate` / `o_modificationDate`. `parseFieldsSummaryLines` expected summary lines like `- name [input]`, but Pimcore writes them as ` * - name [input]` (the hand-built test fixture had no ` * ` prefix, so the tests never caught it): no field was found. The `' * '` prefix is now stripped; a new test uses the real format (top-level, localized and block children).
+- Checked on the 18 real `definition_*.php` files of `<samples>/classes`: every file gives its id (numeric or text: `CU`, `DEALER`, `Car`...), its fields and relation targets (for example Car: `brand -> Brand`, `segment -> CustomerSegment`).
+- Known limits: field types of Pimcore plugins (`gender`, `firstname`, `lastname`, `time`, `table`, `targetGroup`, `objectbricks`) are kept by name and are not editable types in the dashboard yet; importing the objects of a class with a text id is not supported yet.
+
+## Pimcore class migration: class id/name parser accepts string ids — 2026-10-14
+- Branch: `master`
+- Problem: "Could not find the class's own id/name near the top of the file" for 13 of 18 `definition_*.php` files. `parsePimcoreClassMeta` (`packages/migration-tool`) only accepted a numeric `'id' => '12'` within 10 simple `'key' => value,` pairs after `ClassDefinition::__set_state(array(`: Pimcore 10/11 write string ids (`'CAR'`) and some classes have longer or comma-containing properties (description, implementsInterfaces) before the id.
+- Parser: any quoted or numeric id, then the name, inside a 600-character window at the top (a nested layout panel's id/name is still not taken). 4 new tests; the error message now says what was expected.
+- Not verified on the user's files (not available here). Known limit: importing the OBJECTS of a class still assumes a numeric Pimcore class id (`Number(pimcoreId)`, `object_store_<id>` tables in the adapter): classes now import, objects of a class with a string id need a follow-up.
+
+## Class import: data in chunks, one transaction each — 2026-10-14
+- Branch: `master`
+- Core: `bulkImportDataObjects(classId, rows, { onConflict, locale })` (`db/data-objects-records.ts`): a chunk of rows is inserted (and, with `onConflict: 'update'`, existing objects with the same key updated) in ONE transaction, all or nothing; drafts, default locale; attributes the class has no field for are dropped; search index updated after the commit (an indexing failure never undoes the import). `planBulkImport` (pure, 4 tests) decides insert / update / skip.
+- Core API: `POST /data-objects/bulk` (`classId`, `rows: [{ key?, attributes }]`, `onConflict`), at most 500 rows, same permissions as creating an object; 400 on a bad body, 404 for an unknown class.
+- Admin dashboard: the file and Integration imports send chunks of 100 rows one after the other (`utils/class-import.ts`) instead of one request per row (1000 rows: 10 requests, not 1000); a failed chunk is counted and the next one still goes. New choice "Object key": generated, or the value of a column (a repeated value is one object, the last row wins).
+- `tsc` of core and core-api, `vue-tsc` and the core unit tests pass; the endpoint and transaction have not been run against a database here.
+- Not done: a background job with progress that survives closing the tab (for tens of thousands of rows).
+
+## Class import: a column with HTML becomes Rich text — 2026-10-14
+- Branch: `master`
+- `guessType` (`utils/class-from-file.ts`, file and Integration import): a column where any value holds an HTML tag (`<p>`, `</div>`, `<br/>`, `<a href=..>`) is proposed as Rich text (`wysiwyg`) instead of Text/Textarea; a bare `a < b` is not a tag. The type can still be changed in the wizard.
+
+## Data Classes: Integration Import replaces the File Migration tab — 2026-10-14
+- Branch: `master`
+- Settings > Classes: the placeholder "FILE MIGRATION" tab is gone (files are handled by "+ From file" in Classes); the new "INTEGRATION IMPORT" tab opens a main tab (`MasterIntegrationImportTab.vue`, `tabsStore.openIntegrationImport()`, itemKind `integrationImport`).
+- The tab: choose an Integration and one of its GET routes (values for `{placeholders}` in the path), "Read records" (gateway `executeRoute`), choose the list of records found in the answer (`findRecordLists`: the array itself, or arrays inside its keys, or a single record), then the same class form as the file wizard and the same two modes, schema only or schema + data (draft Data Objects). Only the records one request returns are read (no paging).
+- Shared by the file and the integration import: `ClassProposalForm.vue` (name, label, columns, mode) and `utils/class-import.ts` (`importRows`, `importSummary`); `ClassFromFileWizard.vue` uses them.
+- `vue-tsc` checked; `findRecordLists` tried on sample bodies; not yet tried by hand against a real Integration.
+
+## Data Classes: create a class from a JSON, CSV or Excel file — 2026-10-14
+- Branch: `master`
+- Admin dashboard, Data Object Classes: "+ From file" (`ClassFromFileWizard.vue`): choose a file, pick the sheet (Excel) or list (JSON object of arrays), name the class, then for each column tick it, rename title / field name and change the guessed type; create; the class opens in its editor.
+- `utils/class-from-file.ts`: reading with the `xlsx` package already used for export (CSV, TSV, XLS, XLSX, ODS) and JSON (array of objects, object of arrays, single object); type guess from the values (checkbox, number, date, array, JSON, email, slug, textarea, select for a short repeated list, else text); field names made into valid identifiers and kept unique.
+- Two modes: schema only, or schema + data: the rows are created as draft Data Objects (4 requests at a time, a failing row does not stop the others; values that do not fit their field type are left out and counted in the final message). `coerceValue` / `attributesOfRow` in `class-from-file.ts`.
+- `vue-tsc` checked; not yet tried by hand in the dashboard.
+
+## Data Classes: wizard for Contact, Category and Product — 2026-10-14
+- Branch: `master`
+- Admin dashboard, Data Object Classes: "+ From template" opens a wizard (`ClassPresetWizard.vue`): choose Contact, Category or Product, rename it, tick the fields wanted (required ones stay), create; the new class opens in its editor tab.
+- `utils/class-presets.ts`: the three presets with their View Layout sections and list columns; `buildPreset` makes the class from the choice. A Category's optional `parent` relates to the class itself; a Product's `category` relates to an existing class or to a Category class created first in the same step.
+- `vue-tsc` checked; not yet tried by hand in the dashboard.
+
+## Nested list moved to the Data panel — 2026-10-14
+- Branch: `master`
+- `Nested list` is now a section of `DataPanel.vue` (same visibility rule), no longer in `AdvancedPanel.vue`; `docs/release/content/nested-bindings.md` says Data > Nested list.
+- `vue-tsc` checked.
+
+## Data panel: fields of the list an element sits in — 2026-10-14
+- Branch: `master`
+- `DataPanel.vue`: an element inside a bound container (Data Class query, nested list, Integrations list) shows the item fields of that list, in the same style as the Integrations panel; a click binds the selected element to the field (relative binding: `objectId: null` for a Data Class, `toRelativeGatewayBinding` for an Integration), gateway fields can also be dragged onto the canvas. The bound field is highlighted. "Bind to ..." still opens the pickers.
+- `scripts/binding-target.ts`: `bindingTargetOf`, moved out of `FloatingToolbar.vue` to be shared.
+- `vue-tsc` checked; not yet checked by hand in the browser.
+
+## Data panel: schema of the current binding — 2026-10-14
+- Branch: `master`
+- `DataPanel.vue`: under each current binding, its schema: the fields of the Data Class (the bound field highlighted), or the inferred schema of the Integration route (the bound field, and the fields inside a bound list, highlighted). A nested item binding says its fields are those of the list above.
+- `vue-tsc` checked; not yet checked by hand in the browser.
+
+## Editor: a Data panel with the binding, its transform and Linked bindings — 2026-10-14
+- Branch: `master`
+- New **Data** tool in the right bar (`DataPanel.vue`): the current binding of the selected element (Data Object and/or Integration, with Edit / Remove / Bind), then the data binding transform and Linked bindings, which moved there from Advanced (same visibility rules).
+- The pickers stay in `FloatingToolbar.vue`; the panel opens them through `editorBus` (`openDataPicker`, `openGatewayPicker`).
+- `AdvancedPanel.vue` no longer has the Data Binding and Linked bindings sections; Nested list stays in Advanced. `docs/release/content/linked-bindings.md` points to Data > Linked bindings.
+- `vue-tsc` clean; not yet checked by hand in the browser.
+
 ## Editor Preview: a gateway form is submitted with the admin session — 2026-10-14
 - Branch: `master`
 - Form result: new section 4.1 of `docs/plans/automations/form-result-event.md` (reading `outcome` in the child elements: `x-text`, `x-show`, `:class`, a message map, `.window` listener) and a summary in `docs/release/communication/marketing-automation.md`; the same page now says where the Alpine state may sit (on the form or on a wrapper; messages inside it); checked in the Preview with three layouts.
