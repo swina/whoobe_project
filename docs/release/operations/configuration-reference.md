@@ -115,6 +115,16 @@ cannot be lost** - see [secrets and keys](secrets-and-keys.md).
 | `MAIL_PROVIDERS_PATH` | unset | extra mail-provider definitions (`*.json`), read again when a file changes |
 | AI provider keys, Figma token, SMTP settings, push provider key | | not environment variables: entered in the dashboard and stored encrypted in the database (`INTEGRATION_SECRETS_ENCRYPTION_KEY` for AI, Figma and push; `MAIL_SETTINGS_ENCRYPTION_KEY` for SMTP and mail providers) |
 
+### 7.1 Publishing from the dashboard (publisher service)
+
+| Variable | Used by | Default | Secret | Meaning |
+|---|---|---|---|---|
+| `PUBLISH_RUNNER_TOKEN` | core-api **and** publisher (same value) | unset: the runner routes answer 503, the publisher does not start | **yes** | shared secret the publisher uses to claim jobs from core-api (`openssl rand -hex 32`); Compose requires it for the publisher |
+| `PUBLISH_ROOT` | publisher | `./published` (`/publish` in Compose) | | where each run writes `<slug>/releases/<job id>` and the `<slug>/current` link |
+| `PUBLISH_RUNNER_NAME` | publisher | `publisher@<host name>` | | name the runner shows in the job log |
+| `PUBLISH_POLL_MS` | publisher | 3000 | | how often the runner asks core-api for a queued job |
+| `PUBLISH_JOB_TIMEOUT_MS` | publisher | 900000 (15 minutes) | | a job running longer is stopped and marked failed |
+
 ## 8. Logging
 
 | Variable | Default | Meaning |

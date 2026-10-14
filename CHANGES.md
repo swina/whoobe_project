@@ -1,3 +1,7 @@
+## Docs: publisher environment variables in the configuration reference — 2026-10-14
+- Branch: `master`
+- `docs/release/operations/configuration-reference.md` section 7.1 documents `PUBLISH_RUNNER_TOKEN`, `PUBLISH_ROOT`, `PUBLISH_RUNNER_NAME`, `PUBLISH_POLL_MS` and `PUBLISH_JOB_TIMEOUT_MS` (read by the publisher, missing from the reference): the release gate "Documentation" failed on them.
+
 ## Editor: status bar with Custom CSS — 2026-10-14
 - Branch: `master`
 - New status bar at the bottom of the editor (`StatusBar.vue`) with a **Custom CSS** field: a twin of the Custom Classes section of the Advanced panel (both read and write the selected element's `css.css`, applied on Enter / blur), so classes can be edited without opening the panel. Disabled when nothing is selected.
