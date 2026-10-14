@@ -5,7 +5,7 @@
 import { defineComponent, h, inject, ref, computed, onMounted, onUnmounted, withDirectives, type PropType, type VNode } from 'vue'
 import { sanitizeRichText } from '@whoobe-cms/schema'
 import { icons as lucideIcons } from '@lucide/vue'
-import { collectFormValues, dispatchFormResult, sliderView, sanitizeOutcome, showsResultMessage, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
+import { collectFormValues, dispatchFormResult, sliderView, sanitizeOutcome, showsResultMessage, hidesFormOnSuccess, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
 import { WHOOBE_KEY, type NodeComponent, type WhoobeApi } from './types.js'
 import { DefaultTable } from './table.js'
 import { vWhoobeAnimation } from './animation.js'
@@ -271,6 +271,7 @@ export const DefaultForm: NodeComponent = defineComponent({
   setup(props) {
     const ctx = inject(WHOOBE_KEY)!
     const result = ref<{ ok: boolean; message: string } | null>(null)
+    const sent = ref(false)
 
     async function onSubmit(e: Event) {
       e.preventDefault()
@@ -285,6 +286,7 @@ export const DefaultForm: NodeComponent = defineComponent({
           gatewayBindingId: fc.gatewayBindingId,
         })
         formEl.reset()
+        if (hidesFormOnSuccess(fc)) sent.value = true
         result.value = showsResultMessage(fc) ? { ok: true, message: fc.successMessage || 'Submitted.' } : null
         dispatchFormResult(formEl, { ok: true, outcome: sanitizeOutcome(reply?.outcome) })
       } catch (err) {
@@ -318,9 +320,12 @@ export const DefaultForm: NodeComponent = defineComponent({
             ],
           )
         : null
-      return h('form', { ...elementProps(d), onSubmit }, [
+      // "Hide the form once it has been sent": the fields go at once; the form's own box goes when the message popup (inside it) is closed
+      const formProps = elementProps(d)
+      if (sent.value && !result.value) formProps.style = `${typeof formProps.style === 'string' ? formProps.style + ';' : ''}display:none`
+      return h('form', { ...formProps, onSubmit }, [
         honeypot,
-        ...(props.children ?? []),
+        ...(sent.value ? [] : props.children ?? []),
         popup,
       ])
     }

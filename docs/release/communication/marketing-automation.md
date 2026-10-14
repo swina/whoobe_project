@@ -40,6 +40,7 @@ In the editor, select the form, **Advanced > Form settings**:
 | **Automation name** (optional) | the name shown in the Automations list (otherwise the page or snippet title) |
 | **Target > Gateway endpoint**, endpoint and route | where the submission goes. The lists are read again each time the window opens |
 | **Show the message popup** | the built-in success / error message. Turn it **off** when the page shows its own blocks |
+| **Hide the form once it has been sent** (On success) | after a successful answer the fields disappear; the success message stays on screen until it is closed, then the form's box goes too. Without it the form is just reset |
 
 Save the page: the Gateway binding of the form is resolved on save.
 
@@ -56,8 +57,8 @@ third party sends ends up in the visitor's page. The check is made twice, in the
 
 ### 2.4 The page
 
-Put the listener on an element that **contains** the form, and the blocks that change inside the same element. In **Advanced > AlpineJS**
-of the container:
+Put the listener on an element that **contains** the form, and the blocks that change inside the same element. In the **AlpineJS** tool
+of the container, apply the built-in preset **Form result** (Presets > Built-in), or add the two directives by hand:
 
 | Directive | Value |
 |---|---|

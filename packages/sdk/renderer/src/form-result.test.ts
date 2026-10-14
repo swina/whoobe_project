@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { FORM_RESULT_EVENT, dispatchFormResult, sanitizeOutcome, showsResultMessage } from './form-result.js'
+import { FORM_RESULT_EVENT, dispatchFormResult, sanitizeOutcome, showsResultMessage, hidesFormOnSuccess } from './form-result.js'
 
 describe('form result', () => {
   it('accepts a plain key as outcome and nothing else', () => {
@@ -14,6 +14,13 @@ describe('form result', () => {
     expect(showsResultMessage({})).toBe(true)
     expect(showsResultMessage({ showResultMessage: true })).toBe(true)
     expect(showsResultMessage({ showResultMessage: false })).toBe(false)
+  })
+
+  it('keeps the form after a success unless the author chose to hide it', () => {
+    expect(hidesFormOnSuccess(undefined)).toBe(false)
+    expect(hidesFormOnSuccess({})).toBe(false)
+    expect(hidesFormOnSuccess({ hideOnSuccess: false })).toBe(false)
+    expect(hidesFormOnSuccess({ hideOnSuccess: true })).toBe(true)
   })
 
   it('dispatches a bubbling event with ok and outcome', () => {

@@ -4,7 +4,7 @@
 *Status: implemented as a prototype on branch `feat/form-result-event`; unit-tested, **not yet tried in a browser** (the checks in section 7 are the ones to do).*
 
 A form tells the page how a submission ended, and the page decides what to do: show a block, hide another, redirect, open a
-dialog. The "what to do" is written with the AlpineJS directives every element already has (**Advanced > AlpineJS**); no new
+dialog. The "what to do" is written with the AlpineJS directives every element already has (the **AlpineJS** tool); no new
 screen is needed. For a form wired to a service through the Gateway (for example an n8n workflow) the service can add one
 word to its reply, the **outcome**, so that different answers lead to different things on the page.
 
@@ -77,7 +77,7 @@ Other things the same event can do: `@whoobe-form-result="if ($event.detail.outc
 
 The state lives on the parent (the form or a container around it, see above); every element **inside** it reads the variables by name. A child does not need a listener, and `$event` exists only in the parent's listener.
 
-On the parent (Advanced > AlpineJS):
+On the parent (AlpineJS tool):
 
 | Directive | Value |
 |---|---|
@@ -146,4 +146,4 @@ off: form settings, **Show the message popup** (checkbox at the end of the *On e
 
 - A small **outcome map** in the form settings ("qualified" -> message / redirect) for editors who do not want to write directives; it would use this same event.
 - Stop returning the service's whole reply (plan, Phase 1).
-- A preset in **Advanced > AlpineJS > Presets** with the directives of section 4.
+- A preset in **AlpineJS > Presets** with the directives of section 4.

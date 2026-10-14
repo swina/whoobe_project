@@ -6,7 +6,7 @@
 import { Children, useState, useEffect, useRef, useCallback, createElement, type FormEvent, type ReactNode } from 'react'
 import { sanitizeRichText } from '@whoobe-cms/schema'
 import * as LucideIcons from 'lucide-react'
-import { collectFormValues, dispatchFormResult, mountAnimation, sliderView, sanitizeOutcome, showsResultMessage, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
+import { collectFormValues, dispatchFormResult, mountAnimation, sliderView, sanitizeOutcome, showsResultMessage, hidesFormOnSuccess, submitErrorMessage, type RenderDescriptor } from '@whoobe-cms/renderer'
 import { useWhoobe } from './context.js'
 import type { NodeComponent } from './types.js'
 import { DefaultTable } from './table.js'
@@ -196,6 +196,7 @@ export const DefaultReset: NodeComponent = ({ descriptor }) => buttonWithIcon(de
 export const DefaultForm: NodeComponent = ({ descriptor, children }) => {
   const ctx = useWhoobe()
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [sent, setSent] = useState(false)
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -209,6 +210,7 @@ export const DefaultForm: NodeComponent = ({ descriptor, children }) => {
         gatewayBindingId: fc.gatewayBindingId,
       })
       formEl.reset()
+      if (hidesFormOnSuccess(fc)) setSent(true)
       setResult(showsResultMessage(fc) ? { ok: true, message: fc.successMessage || 'Submitted.' } : null)
       dispatchFormResult(formEl, { ok: true, outcome: sanitizeOutcome(reply?.outcome) })
     } catch (err) {
@@ -217,11 +219,15 @@ export const DefaultForm: NodeComponent = ({ descriptor, children }) => {
     }
   }
 
+  // "Hide the form once it has been sent": the fields go at once; the form's own box goes when the message popup (inside it) is closed
+  const base = baseProps(descriptor)
+  const formProps = sent && !result ? { ...base, style: { ...(base.style as object | undefined), display: 'none' } } : base
+
   return (
-    <form {...baseProps(descriptor)} onSubmit={onSubmit}>
+    <form {...formProps} onSubmit={onSubmit}>
       <input name="_hp" type="text" tabIndex={-1} autoComplete="off" aria-hidden="true"
         style={{ position: 'absolute', left: -9999, width: 1, height: 1, overflow: 'hidden' }} />
-      {children}
+      {!sent && children}
       {result && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 100000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, cursor: 'pointer' }}
           onClick={() => setResult(null)}>

@@ -6,7 +6,7 @@
 import type Element from './ElementsClass.js'
 import { getDefaultCoreApiUrl } from '../core-api-url'
 import { gatewayBaseUrl } from '../gateway-api'
-import { dispatchFormResult, sanitizeOutcome, showsResultMessage } from './form-result'
+import { dispatchFormResult, hidesFormOnSuccess, sanitizeOutcome, showsResultMessage } from './form-result'
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -16,7 +16,29 @@ export interface FormSubmitResult {
 }
 
 /** A file the server refused (or could not take): its own message is what the visitor needs to read. */
-class UploadRefused extends Error {}
+export class UploadRefused extends Error {}
+
+/** The server answered an error: `reason` is its own message (`lastName: Required`), `status` the HTTP status. */
+export class SubmitRejected extends Error {
+  constructor(readonly status: number, readonly reason: string) {
+    super(`status ${status}${reason ? `: ${reason}` : ''}`)
+  }
+}
+
+/**
+ * What to tell the person who submitted. In the editor's Preview (the author testing the form) the server's own reason, so a wrong field
+ * name or a missing required value is visible at once. On a live site the visitor gets the form's error message, except for a 409 (a value
+ * the class asks to be unique is already in use), whose text is written for visitors.
+ */
+export function submitErrorMessage(err: unknown, configMessage: string | undefined, inEditor: boolean): string {
+  if (err instanceof UploadRefused) return err.message
+  const fallback = configMessage || 'Something went wrong, please try again.'
+  if (err instanceof SubmitRejected && err.reason) {
+    if (inEditor) return `${fallback} (${err.reason})`
+    if (err.status === 409) return err.reason
+  }
+  return fallback
+}
 
 /** The values of the form. A chosen file is not sent with it: it is uploaded first (the same two steps as ApiClient.uploadFile of
  *  the published sites: the server approves it and returns an address, then the bytes go there) and the form carries `{ uploadId }`. */
@@ -129,7 +151,10 @@ export function mountFormSubmit(
             // section 4.
             body: JSON.stringify({ attributes, formConfig: { notify: config.notify } }),
           })
-      if (!res.ok) throw new Error(`status ${res.status}`)
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new SubmitRejected(res.status, typeof body?.error === 'string' ? body.error : '')
+      }
       // a Gateway form's service may answer an outcome key (n8n: `{ "outcome": "qualified" }`): the page reacts to it through the
       // `whoobe-form-result` event (docs/plans/automations/form-result-event.md); nothing else of the reply is used
       const reply = config.gatewayBindingId ? await res.json().catch(() => null) : null
@@ -139,6 +164,8 @@ export function mountFormSubmit(
         return
       }
       formEl.reset()
+      // "Hide the form once it has been sent": the message popup is teleported out of the form, so it stays on screen
+      if (hidesFormOnSuccess(config)) formEl.style.display = 'none'
       onResult(showsResultMessage(config) ? { ok: true, message: config.successMessage || 'Submitted.' } : null)
     } catch (err) {
       console.warn('[form-actions] submit failed:', err)
@@ -147,7 +174,7 @@ export function mountFormSubmit(
         window.location.href = config.errorRedirectUrl
         return
       }
-      onResult(showsResultMessage(config) ? { ok: false, message: err instanceof UploadRefused ? err.message : config.errorMessage || 'Something went wrong, please try again.' } : null)
+      onResult(showsResultMessage(config) ? { ok: false, message: submitErrorMessage(err, config.errorMessage, !!options.viaSession) } : null)
     }
   }
 

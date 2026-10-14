@@ -19,6 +19,10 @@ export function showsResultMessage(formConfig: { showResultMessage?: boolean } |
   return formConfig?.showResultMessage !== false
 }
 
+export function hidesFormOnSuccess(formConfig: { hideOnSuccess?: boolean } | null | undefined): boolean {
+  return formConfig?.hideOnSuccess === true
+}
+
 export function dispatchFormResult(target: { dispatchEvent(event: Event): unknown } | null | undefined, detail: FormResultDetail): void {
   target?.dispatchEvent(new CustomEvent(FORM_RESULT_EVENT, { bubbles: true, detail }))
 }

@@ -4,12 +4,15 @@
   // honeypot, resets on success and shows a click-to-close result popup.
   import WhoobeNode from './WhoobeNode.svelte'
   import { getWhoobeContext } from './context.js'
-  import { collectFormValues, dispatchFormResult, sanitizeOutcome, showsResultMessage, submitErrorMessage } from '@whoobe-cms/renderer'
+  import { collectFormValues, dispatchFormResult, sanitizeOutcome, showsResultMessage, hidesFormOnSuccess, submitErrorMessage } from '@whoobe-cms/renderer'
 
   let { descriptor } = $props()
 
   const ctx = getWhoobeContext()
   let result = $state(null)
+  let sent = $state(false)
+  // "Hide the form once it has been sent": the fields go at once; the form's own box goes when the message popup (inside it) is closed
+  const formStyle = $derived(sent && !result ? `${descriptor.style ? descriptor.style + ';' : ''}display:none` : descriptor.style || undefined)
 
   async function onSubmit(e) {
     e.preventDefault()
@@ -23,6 +26,7 @@
         gatewayBindingId: fc.gatewayBindingId,
       })
       formEl.reset()
+      if (hidesFormOnSuccess(fc)) sent = true
       result = showsResultMessage(fc) ? { ok: true, message: fc.successMessage || 'Submitted.' } : null
       dispatchFormResult(formEl, { ok: true, outcome: sanitizeOutcome(reply?.outcome) })
     } catch (err) {
@@ -32,7 +36,7 @@
   }
 </script>
 
-<form class={descriptor.className || undefined} style={descriptor.style || undefined} {...descriptor.attributes} onsubmit={onSubmit}>
+<form class={descriptor.className || undefined} style={formStyle} {...descriptor.attributes} onsubmit={onSubmit}>
   <input
     name="_hp"
     type="text"
@@ -41,9 +45,11 @@
     aria-hidden="true"
     style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;"
   />
-  {#each descriptor.children as child}
-    <WhoobeNode descriptor={child} />
-  {/each}
+  {#if !sent}
+    {#each descriptor.children as child}
+      <WhoobeNode descriptor={child} />
+    {/each}
+  {/if}
   {#if result}
     <div
       class="fixed inset-0 z-[100000] bg-black/60 flex items-center justify-center p-4 cursor-pointer"

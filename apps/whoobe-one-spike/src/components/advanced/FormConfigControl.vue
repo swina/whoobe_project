@@ -82,6 +82,11 @@
                   Redirect URL (optional - overrides the message above)
                   <input v-model="formConfig.successRedirectUrl" type="text" class="text-xs border rounded px-1.5 py-1" placeholder="/thank-you" />
                 </label>
+                <label class="flex items-center gap-1.5 text-xs text-gray-600" data-testid="form-hide-on-success">
+                  <input type="checkbox" :checked="formConfig.hideOnSuccess === true" @change="formConfig.hideOnSuccess = ($event.target as HTMLInputElement).checked" />
+                  Hide the form once it has been sent
+                </label>
+                <p class="text-[10px] text-gray-400">Only after a successful answer. The message above stays on screen until it is closed.</p>
               </div>
 
               <div class="flex flex-col gap-1 border rounded p-1.5">

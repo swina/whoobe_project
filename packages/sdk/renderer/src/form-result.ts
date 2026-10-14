@@ -25,6 +25,11 @@ export function showsResultMessage(formConfig: { showResultMessage?: boolean } |
   return formConfig?.showResultMessage !== false
 }
 
+/** `formConfig.hideOnSuccess` is false when absent: the form stays (reset) after a successful submission unless the author chose to hide it. */
+export function hidesFormOnSuccess(formConfig: { hideOnSuccess?: boolean } | null | undefined): boolean {
+  return formConfig?.hideOnSuccess === true
+}
+
 /** Dispatches the result event on the form element (`target` is typed loosely so this also runs under test without a DOM). */
 export function dispatchFormResult(target: { dispatchEvent(event: any): unknown } | null | undefined, detail: FormResultDetail): void {
   target?.dispatchEvent(new CustomEvent(FORM_RESULT_EVENT, { bubbles: true, detail }))
