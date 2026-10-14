@@ -1,3 +1,8 @@
+# Release v0.1.0 — 2026-10-14
+
+## [Release v0.1.0] — 2026-10-14
+- Branch: `master`. Version 0.1.0 set in 21 package.json files (one product version, see docs/release/release-process.md); `docs/release/README.md` aligned to this release.
+
 ## Release 0.1.0 documents brought up to date — 2026-10-14
 - Branch: `master`
 - `docs/release/release-notes-0.1.0.md`: date; new features (Data and AlpineJS panels, status bar, form errors and hide-on-success, class creation from template/file/Integration, bulk import, unique, Empty data, Pimcore migration); two behaviour changes (unique is enforced; Compose needs `PUBLISH_RUNNER_TOKEN`); known limits of data import; the DAST line (it ran on the release commit).

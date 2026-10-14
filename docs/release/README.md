@@ -4,7 +4,7 @@ The documentation in this folder describes the product **as it is delivered and 
 checked against the code at the time of the last reorganisation (see [Status](#status)); the design history of the
 project stays in [`../plans`](../plans) and is deliberately not part of a release.
 
-**Aligned to release:** not released yet (set by `scripts/release.sh prepare`, see [`release-process.md`](release-process.md))
+**Aligned to release:** v0.1.0 (2026-10-14) - see [`release-process.md`](release-process.md)
 
 **Deployment model.** One workspace per organisation. Divisions of the same entity share a workspace and are told apart with
 roles; different companies or legal entities get separate workspaces. Whoobe is not a shared multi-tenant platform
