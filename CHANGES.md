@@ -1,3 +1,7 @@
+## Static scan baseline: CHANGES.md false positive — 2026-10-14
+- Branch: `master`
+- `scripts/security/static/baseline.json`: `CHANGES.md` accepted as a gitleaks false positive (an entry quotes the invented value of a test). No real secret.
+
 ## Repository made public: history cleaned of customer names, personal paths and a private host name — 2026-10-14
 - Branch: `master` (and all other branches)
 - Before opening the repository, customer and project names, absolute paths of the author's machine and the domain of a private site were replaced in every commit (files and commit messages) with neutral placeholders (`git filter-repo --replace-text/--replace-message`); all commit ids changed and every branch was force-pushed. Bot (Dependabot) branches built on the old history were deleted from GitHub.
