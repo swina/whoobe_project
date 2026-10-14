@@ -207,6 +207,8 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `POST /data-classes` | Create a class (name, label, fields, optional view config). |
 | `PATCH /data-classes/:id` | Update a class. Renaming/retyping a field is blocked once objects of that class exist. |
 | `DELETE /data-classes/:id` | Delete a class. Blocked while any object of that class still exists. |
+| `GET /data-classes/:id/object-count` | How many objects the class has (used before emptying it). |
+| `POST /data-classes/:id/empty` | Delete every object of the class, keeping the class. The body must carry `confirm` equal to the class name; the action is logged and returns the number deleted. |
 | `GET /data-classes/:id/workflow` | Get the class's publishing workflow definition, if any. |
 | `PUT /data-classes/:id/workflow` | Create/replace the class's workflow (places + transitions). |
 | `DELETE /data-classes/:id/workflow` | Remove the class's workflow. |
@@ -231,7 +233,9 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `PATCH /migration-sources/:id` | Update a source. |
 | `DELETE /migration-sources/:id` | Delete a source. |
 | `POST /migration-sources/:id/import-classes` | Import Pimcore class definitions into data-classes. |
+| `POST /migration-sources/:id/preview-classes` | Read the class definition files of the source and return the proposed fields of each class, without creating anything (the dashboard lets the user choose and map fields before importing). |
 | `POST /migration-sources/:id/import-objects` | Import one class's real object instances from the source MySQL DB. |
+| `GET /migration-sources/import-jobs/:jobId` | State of a background object import started with `background: true` (progress, counts, failed records). |
 | `POST /migration-sources/:id/extract-components` | Extract embedded collection types of the imported classes into standalone data components (no access to the Pimcore DB needed). |
 | `POST /migration-sources/:id/import-documents` | Convert the source's Pimcore documents into pages. With `staging: true` they land in the staging table for review instead of the live pages. |
 | `POST /migration-sources/:id/promote-documents` | Copy the staged documents of this source into the live pages table. |
@@ -243,6 +247,7 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `GET /data-objects` | List objects, optionally filtered by classId. |
 | `GET /data-objects/:id` | Get one object. |
 | `POST /data-objects` | Create an object. |
+| `POST /data-objects/bulk` | Create (or, with `onConflict: update`, update) up to 500 objects of one class in one call, as drafts; rows that break a rule (required, unique) are returned in `rejected` and do not stop the others. |
 | `PATCH /data-objects/:id` | Update an object. |
 | `DELETE /data-objects/:id` | Delete an object. |
 | `GET /data-objects/batch` | Fetch several objects by id (admin: drafts included). |

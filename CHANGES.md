@@ -1,3 +1,7 @@
+## API docs: the five new routes — 2026-10-14
+- Branch: `master`
+- `docs/release/api/gen-api-docs.py` (and the regenerated `api-reference.md`, `openapi.yaml`): `GET /data-classes/:id/object-count`, `POST /data-classes/:id/empty`, `POST /migration-sources/:id/preview-classes`, `GET /migration-sources/import-jobs/:jobId`, `POST /data-objects/bulk`. The release gate "Documentation" failed on them (219 routes, 214 documented).
+
 ## Security suite: three tests brought up to date (found by the CI run on the release candidate) — 2026-10-14
 - Branch: `master`
 - `scripts/security/routes.expected.json`: the five new core-api routes of this release are declared (`GET /data-classes/:id/object-count`, `POST /data-classes/:id/empty`, `POST /migration-sources/:id/preview-classes`, `GET /migration-sources/import-jobs/:jobId`, `POST /data-objects/bulk`), with the access the code enforces (permission, not public).

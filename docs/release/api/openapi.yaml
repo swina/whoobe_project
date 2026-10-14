@@ -2587,6 +2587,51 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /data-classes/{id}/object-count:
+    get:
+      tags: ["core-api: Data Classes (PIM/MDM class definitions)"]
+      summary: "How many objects the class has (used before emptying it)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-classes/{id}/empty:
+    post:
+      tags: ["core-api: Data Classes (PIM/MDM class definitions)"]
+      summary: "Delete every object of the class, keeping the class. The body must carry `confirm` equal to the class name; the action is logged and returns the number deleted."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /data-classes/{id}/workflow:
     get:
       tags: ["core-api: Data Classes (PIM/MDM class definitions)"]
@@ -2864,6 +2909,32 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /migration-sources/{id}/preview-classes:
+    post:
+      tags: ["core-api: Migration Sources & Pimcore import"]
+      summary: "Read the class definition files of the source and return the proposed fields of each class, without creating anything (the dashboard lets the user choose and map fields before importing)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /migration-sources/{id}/import-objects:
     post:
       tags: ["core-api: Migration Sources & Pimcore import"]
@@ -2881,6 +2952,25 @@ paths:
             schema:
               type: object
               description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /migration-sources/import-jobs/{jobId}:
+    get:
+      tags: ["core-api: Migration Sources & Pimcore import"]
+      summary: "State of a background object import started with `background: true` (progress, counts, failed records)."
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3053,6 +3143,26 @@ paths:
           required: true
           schema:
             type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-objects/bulk:
+    post:
+      tags: ["core-api: Data Objects (PIM/MDM instances)"]
+      summary: "Create (or, with `onConflict: update`, update) up to 500 objects of one class in one call, as drafts; rows that break a rule (required, unique) are returned in `rejected` and do not stop the others."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
       responses:
         "200":
           description: OK
