@@ -28,6 +28,9 @@ export type EditorEvents = {
   cssBlock: string
   preview: string
   save: string
+  /** the Data panel asks the floating toolbar to open its binding pickers (they live there) */
+  openDataPicker: void
+  openGatewayPicker: void
 }
 
 export const editorBus = mitt<EditorEvents>()

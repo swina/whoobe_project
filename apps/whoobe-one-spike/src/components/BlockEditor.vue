@@ -75,7 +75,7 @@
 
     <ShortcutsModal v-if="showShortcuts" @close="showShortcuts = false" />
 
-    <div class="flex-1 min-h-0 flex pb-5">
+    <div class="flex-1 min-h-0 flex">
       <!-- @click.self, not plain @click: a plain @click here would also
            fire on the way up from a click already handled deeper in the
            tree (e.g. BlockContainer's own @click.self selecting a
@@ -88,7 +88,7 @@
            outside the whole document tree. -->
       <div
         id="whoobe-editor-canvas"
-        class="flex-1 min-h-0 overflow-auto p-6 pt-10"
+        class="flex-1 min-h-0 overflow-auto p-6 pt-6"
         :class="editor.appMode ? 'flex justify-center bg-gray-200' : ''"
         @click.self="editor.setCurrent(null)"
         @dragover="onGatewayFieldDragOver"
@@ -124,6 +124,8 @@
           <BlockElementsPalette v-if="sidebarTab === 'elements'" />
           <TailwindCustomizer v-else-if="sidebarTab === 'customize'" />
           <AdvancedPanel v-else-if="sidebarTab === 'advanced'" />
+          <AlpinePanel v-else-if="sidebarTab === 'alpine'" />
+          <DataPanel v-else-if="sidebarTab === 'data'" />
           <DocumentTree v-else-if="sidebarTab === 'tree'" />
           <SnippetsPanel v-else-if="sidebarTab === 'snippets'" />
           <KitsPanel v-else-if="sidebarTab === 'kits'" @loaded="sidebarTab = 'elements'" />
@@ -151,6 +153,8 @@
         </nav>
       </div>
     </div>
+
+    <StatusBar />
 
     <FloatingToolbar />
 
@@ -262,6 +266,7 @@ import {
   Workflow,
   Save,
   Settings2,
+  Database,
   Shapes,
   Smartphone,
   Sparkles,
@@ -269,6 +274,7 @@ import {
   Wand2,
   WandSparkles,
   X,
+  Zap,
 } from '@lucide/vue'
 import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
@@ -278,6 +284,9 @@ import BlockElementsPalette from './BlockElementsPalette.vue'
 import TailwindCustomizer from './TailwindCustomizer.vue'
 import DocumentTree from './DocumentTree.vue'
 import AdvancedPanel from './AdvancedPanel.vue'
+import DataPanel from './DataPanel.vue'
+import AlpinePanel from './AlpinePanel.vue'
+import StatusBar from './StatusBar.vue'
 import DocumentPreview from './DocumentPreview.vue'
 import KitsPanel from './KitsPanel.vue'
 import SnippetsPanel from './SnippetsPanel.vue'
@@ -319,7 +328,7 @@ const editor = useEditorStore()
 const snippetsStore = useSnippetsStore()
 const message = ref('')
 const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-violet-400 hover:bg-violet-800 text-white'
-type SidebarTool = 'elements' | 'customize' | 'tree' | 'advanced' | 'snippets' | 'kits' | 'ai' | 'pwa' | 'gateway' | 'automations'
+type SidebarTool = 'elements' | 'customize' | 'tree' | 'advanced' | 'alpine' | 'data' | 'snippets' | 'kits' | 'ai' | 'pwa' | 'gateway' | 'automations'
 // null = every panel hidden (the default): only the bar of icons is on screen
 const sidebarTab = ref<SidebarTool | null>(null)
 const sidebarTools: { key: SidebarTool; title: string; icon: any; appModeOnly?: boolean }[] = [
@@ -327,6 +336,8 @@ const sidebarTools: { key: SidebarTool; title: string; icon: any; appModeOnly?: 
   { key: 'snippets', title: 'Snippets', icon: Component },
   { key: 'customize', title: 'Customize', icon: Palette },
   { key: 'advanced', title: 'Advanced', icon: Settings2 },
+  { key: 'alpine', title: 'AlpineJS', icon: Zap },
+  { key: 'data', title: 'Data', icon: Database },
   { key: 'tree', title: 'Tree', icon: ListTree },
   { key: 'kits', title: 'Kits', icon: Package },
   { key: 'ai', title: 'AI generations', icon: WandSparkles },

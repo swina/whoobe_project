@@ -1,6 +1,6 @@
 <template>
   <div class="flex-1 min-h-0 overflow-y-auto flex flex-col text-[10px] font-normal">
-    <div v-if="!editor.current" class="p-3 text-gray-400">Select an element to edit its style, attributes, animation or AlpineJS directives</div>
+    <div v-if="!editor.current" class="p-3 text-gray-400">Select an element to edit its style, attributes or animation</div>
     <template v-else>
       <template v-for="section in sections" :key="section.key">
         <button
@@ -37,9 +37,6 @@ import StyleControl from './advanced/StyleControl.vue'
 import InfoControl from './advanced/InfoControl.vue'
 import AttributesControl from './advanced/AttributesControl.vue'
 import AnimationControl from './advanced/AnimationControl.vue'
-import AlpineControl from './advanced/AlpineControl.vue'
-import SelectionControl from './advanced/SelectionControl.vue'
-import NestedListControl from './advanced/NestedListControl.vue'
 import FormFieldControl from './advanced/FormFieldControl.vue'
 import FormConfigControl from './advanced/FormConfigControl.vue'
 import SearchConfigControl from './advanced/SearchConfigControl.vue'
@@ -47,7 +44,6 @@ import AudioControl from './advanced/AudioControl.vue'
 import DownloadControl from './advanced/DownloadControl.vue'
 import UploadFieldControl from './advanced/UploadFieldControl.vue'
 import CustomClassesControl from './tailwind-controls/CustomClassesControl.vue'
-import DataBindingTransformControl from './tailwind-controls/DataBindingTransformControl.vue'
 
 const editor = useEditorStore()
 const openSection = ref<string | null>('customClasses')
@@ -60,16 +56,9 @@ const openSection = ref<string | null>('customClasses')
 // modal since a Form's config is a one-off dialog, not a per-element style
 // knob glanced at repeatedly like Style/Attributes/Animation.
 //
-// Custom Classes/Data Binding moved here from TailwindCustomizer.vue's own
-// accordion (its "custom classes"/"data binding" groups) - everything else
-// on this tab is already a per-element setting beyond plain TailwindCSS
-// utilities, so these two fit better here than mixed in among the ported
-// tw.groups.js utility groups. Data Binding keeps the exact same visibility
-// condition that control had there (see its own removal comment in
-// TailwindCustomizer.vue for why: 'content'-target bindings, plus 'src'-
-// target bindings specifically on an <img> element) - extended to gateway
-// bindings too (any gatewayBinding bound to a specific response field, not
-// a "Whole response" binding, since there's no single value to format).
+// Custom Classes moved here from TailwindCustomizer.vue's own accordion.
+// AlpineJS directives and presets live in the AlpineJS panel (AlpinePanel.vue).
+// Data binding, its transform, Nested list and Linked bindings live in the Data panel (DataPanel.vue).
 // Selecting an Audio element opens its section; leaving it for another element must not leave a section that no longer
 // exists "open" (nothing would show), so fall back to Custom Classes.
 watch(
@@ -88,14 +77,6 @@ const sections = computed(() => {
   const current = editor.current as any
   const isCheckbox = current?.tag === 'input' && current?.type === 'checkbox'
   const isOptionsField = current?.tag === 'select' || current?.tag === 'radiogroup'
-  const db = current?.dataBinding
-  const isImgSrcBinding = db?.target === 'src' && current?.element === 'img'
-  const showDataObjectBinding = db && (db.target === 'content' || isImgSrcBinding)
-  const gb = current?.gatewayBinding
-  const showGatewayBinding = Boolean(gb && gb.fieldPath)
-  const showDataBinding = showDataObjectBinding || showGatewayBinding
-  // a container bound to a list (Data Class query, or an Integrations list): the only kind of element that can publish or listen to a selection
-  const isBoundList = current?.type === 'container' && Boolean((db && (!db.field || db.target === 'list')) || gb)
   return [
     ...(current?.sourceSnippetId ? [{ key: 'info', label: 'Info', component: InfoControl }] : []),
     // The Audio element's own settings (source, look, title): first, since for that element they are what matters
@@ -104,12 +85,8 @@ const sections = computed(() => {
     ...(current?.element === 'input' && current?.data?.attributes?.type === 'file' ? [{ key: 'upload', label: 'File upload', component: UploadFieldControl }] : []),
     { key: 'customClasses', label: 'Custom Classes', component: CustomClassesControl },
     { key: 'style', label: 'Style', component: StyleControl },
-    ...(showDataBinding ? [{ key: 'dataBinding', label: 'Data Binding', component: DataBindingTransformControl }] : []),
     { key: 'attributes', label: 'Attributes', component: AttributesControl },
-    ...(current?.type === 'container' && !(gb && gb.scope !== 'item') ? [{ key: 'nestedList', label: 'Nested list', component: NestedListControl }] : []),
-    ...(isBoundList ? [{ key: 'selection', label: 'Linked bindings', component: SelectionControl }] : []),
     { key: 'animation', label: 'Animation', component: AnimationControl },
-    { key: 'alpine', label: 'AlpineJS', component: AlpineControl },
     ...(isCheckbox || isOptionsField ? [{ key: 'field', label: 'Field', component: FormFieldControl }] : []),
   ]
 })

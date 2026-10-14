@@ -2,12 +2,12 @@
 
 An **Alpine preset** is a named set of Alpine.js directives. You define it once (for example the six `x-transition:*`
 attributes of a "fade and scale" effect) and apply it to any element by name, from the page builder:
-**Advanced > AlpineJS > Presets**. It saves retyping the same directives on every element and keeps effects consistent
+**AlpineJS > Presets**. It saves retyping the same directives on every element and keeps effects consistent
 across a site.
 
 ## Using a preset
 
-1. Select an element in the page builder and open **Advanced > AlpineJS**.
+1. Select an element in the page builder and open the **AlpineJS** tool in the right-hand bar.
 2. In **Presets**, pick a preset from the list and press **Apply**. Its directives are added to the element's
    directive list below (an existing directive with the same name is replaced); a check mark in the list shows the
    presets whose directives are all already on the element.

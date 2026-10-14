@@ -8,10 +8,10 @@ Plan and decisions: [`docs/plans/cms/linked-bindings.md`](../../plans/cms/linked
 
 1. **Bind the first list.** A container bound to a list (Data Class query, or an Integrations array) whose child shows the fields of one category (the repeater, see [dynamic website paths](dynamic-website-paths.md) and [integrations](../communication/integrations.md)).
 2. **Bind the second list** the same way (products). Keep its **limit at 100 or less**; the filtering is done in the browser over what was loaded.
-3. Select the **first** container, open **Advanced > Linked bindings** and tick **When an item is clicked, select it**:
+3. Select the **first** container, open **Data > Linked bindings** and tick **When an item is clicked, select it**:
    - **Selection name**: a word of your choice, for example `category`. It is also the URL parameter.
    - **Value to pass**: the field of the category to pass on, usually its `id` or `slug`.
-4. Select the **second** container, open **Advanced > Linked bindings** and tick **Show only the items that match a selection**:
+4. Select the **second** container, open **Data > Linked bindings** and tick **Show only the items that match a selection**:
    - **Selection name**: the same word (`category`).
    - **Field that must equal the selection**: the field of the *product* that holds the category (`category_id`).
    - **While nothing is selected**: *show no item* (default) or *show every item*.

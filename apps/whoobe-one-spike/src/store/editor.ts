@@ -69,7 +69,7 @@ export const useEditorStore = defineStore('editor', () => {
   // previews render unchanged until an admin opts in.
   const stripHtmlComments = ref<boolean>(false)
 
-  // Catalog of named Alpine directive sets (Advanced > AlpineJS > Presets), loaded from core-api when the editor opens.
+  // Catalog of named Alpine directive sets (AlpineJS > Presets), loaded from core-api when the editor opens.
   const alpinePresets = ref<AlpinePreset[]>([])
   const exportMode = ref<string>('single')
   const preview = ref<boolean | string>(false)

@@ -818,6 +818,7 @@ import { previewAnimation, previewAnimationActive } from '../scripts/animation-a
 import { playYouTubeVideo } from '../scripts/youtube-player'
 import { useEditorStore } from '../store/editor'
 import { editorBus } from '../bus'
+import { bindingTargetOf } from '../scripts/binding-target'
 import { clean, findParentAndIndex, findAncestorChain, removeNodeById, friendlyElementName, resolveLucideIcon } from '../helpers'
 import TipTapPanel from './TipTapPanel.vue'
 import MarkdownPanel from './MarkdownPanel.vue'
@@ -1074,16 +1075,7 @@ const hasImageRef = computed(() => {
 
 // Auto-detect the binding target based on the current element's nature.
 // This matches the field compatibility table in DataObjectPicker.vue.
-const bindingTarget = computed(() => {
-  const el = editor.current as any
-  if (!el) return 'content'
-  if (el.type === 'container' || el.tag === 'slider' || el.tag === 'table') return 'custom'
-  if (el.element === 'img') return 'src'
-  if (el.tag === 'youtube' || el.tag === 'vimeo') return 'src'
-  if (el.tag === 'lucideicon') return 'icon'
-  if (el.link) return 'href'
-  return 'content'
-})
+const bindingTarget = computed(() => bindingTargetOf(editor.current))
 
 function onDataBound(binding: ElementDataBinding) {
   if (editor.current) (editor.current as any).dataBinding = binding
@@ -1322,8 +1314,18 @@ onUnmounted(() => {
 function onCssBlockEvent() {
   if (editor.current) showCssStyle.value = true
 }
-onMounted(() => editorBus.on('cssBlock', onCssBlockEvent))
-onUnmounted(() => editorBus.off('cssBlock', onCssBlockEvent))
+function onOpenDataPicker() { if (editor.current) showDataPicker.value = true }
+function onOpenGatewayPicker() { if (editor.current) showGatewayPicker.value = true }
+onMounted(() => {
+  editorBus.on('cssBlock', onCssBlockEvent)
+  editorBus.on('openDataPicker', onOpenDataPicker)
+  editorBus.on('openGatewayPicker', onOpenGatewayPicker)
+})
+onUnmounted(() => {
+  editorBus.off('cssBlock', onCssBlockEvent)
+  editorBus.off('openDataPicker', onOpenDataPicker)
+  editorBus.off('openGatewayPicker', onOpenGatewayPicker)
+})
 
 function onCustomClassesChange(e: Event) {
   if (!editor.current) return

@@ -16,7 +16,7 @@ In the reverse direction, a field of an **outer** item can be used inside an inn
 
 What the outer lists do:
 - The endpoint is called **once**, for the outer list. The nested lists come with each item.
-- A nested list can have a **limit** and **filters** (Advanced > Nested list); they are applied to the items of each parent (select the inner container, Advanced > Nested list).
+- A nested list can have a **limit** and **filters** (Data > Nested list); they are applied to the items of each parent (select the inner container, Data > Nested list).
 - An item without that list shows an empty inner list on the published page; in the editor's canvas the template stays visible, so it can be edited.
 
 ## Data Objects
@@ -24,7 +24,7 @@ What the outer lists do:
 A Data Class can hold a list inside an object (a **block** or a **field collection**).
 
 1. Bind the outer container to a Data Class (a dynamic query), as usual.
-2. Put a container inside it, select it, open **Advanced > Nested list** and choose the field that holds the list. Set "At most" if the list can be long.
+2. Put a container inside it, select it, open **Data > Nested list** and choose the field that holds the list. Set "At most" if the list can be long.
 3. Inside it, bind texts and images with the data binding button: the picker offers the fields **of the items** of that list.
 4. A field of the object above is reachable by typing `^.field` as the field of a relative binding.
 

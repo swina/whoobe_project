@@ -11,9 +11,14 @@
         </button>
       </div>
       <div class="flex gap-1">
-        <select v-model="selectedPreset" class="flex-1 min-w-0 text-xs border rounded px-1.5 py-1 bg-white" :disabled="!presets.length">
-          <option value="">{{ presets.length ? 'apply a preset...' : 'no presets yet' }}</option>
-          <option v-for="p in presets" :key="p.name" :value="p.name">{{ p.name }}{{ isApplied(p) ? '  \u2713' : '' }}</option>
+        <select v-model="selectedPreset" class="flex-1 min-w-0 text-xs border rounded px-1.5 py-1 bg-white">
+          <option value="">apply a preset...</option>
+          <optgroup label="Built-in">
+            <option v-for="p in BUILTIN_ALPINE_PRESETS" :key="'b:' + p.name" :value="'b:' + p.name">{{ p.name }}{{ isApplied(p) ? '  \u2713' : '' }}</option>
+          </optgroup>
+          <optgroup v-if="presets.length" label="Yours">
+            <option v-for="p in presets" :key="'u:' + p.name" :value="'u:' + p.name">{{ p.name }}{{ isApplied(p) ? '  \u2713' : '' }}</option>
+          </optgroup>
         </select>
         <button type="button" class="text-xs px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40" :disabled="!selectedPreset || !editor.current" @click="applySelected">Apply</button>
       </div>
@@ -96,6 +101,7 @@ import { computed, ref } from 'vue'
 import { X } from '@lucide/vue'
 import { useEditorStore } from '../../store/editor'
 import { saveAlpinePresets, type AlpinePreset } from '../../alpine-presets-api'
+import { BUILTIN_ALPINE_PRESETS } from '../../alpine-builtin-presets'
 
 const DIRECTIVES = [
   'x-data', 'x-init', 'x-show', 'x-collapse', 'x-collapse.duration' , 'x-bind', 'x-bind:class', 'x-bind:autoplay', 'x-on', 'x-on:click',
@@ -122,7 +128,11 @@ const busy = ref(false)
 const message = ref('')
 const messageIsError = ref(false)
 
-const selected = computed(() => presets.value.find((p) => p.name === selectedPreset.value) ?? null)
+const selected = computed(() => {
+  const [kind, ...rest] = selectedPreset.value.split(':')
+  const name = rest.join(':')
+  return (kind === 'b' ? BUILTIN_ALPINE_PRESETS : presets.value).find((p) => p.name === name) ?? null
+})
 const currentDirectives = computed<Record<string, string>>(() => ({ ...((editor.current as any)?.alpine ?? {}) }))
 const hasCurrentDirectives = computed(() => Object.keys(currentDirectives.value).length > 0)
 const canSave = computed(() => !!editor.current && hasCurrentDirectives.value && newPresetName.value.trim().length > 0)
@@ -172,7 +182,7 @@ async function saveCurrent() {
   const entry: AlpinePreset = { name: existing?.name ?? name, description: existing?.description ?? '', directives: currentDirectives.value }
   const next = existing ? presets.value.map((p) => (p === existing ? entry : p)) : [...presets.value, entry]
   if (await persist(next, existing ? `Updated "${entry.name}"` : `Saved "${entry.name}"`)) {
-    selectedPreset.value = entry.name
+    selectedPreset.value = 'u:' + entry.name
     newPresetName.value = ''
   }
 }
@@ -184,7 +194,7 @@ async function overwriteWithCurrent(p: AlpinePreset) {
 
 async function removePreset(p: AlpinePreset) {
   if (!window.confirm(`Delete the preset "${p.name}"? Pages that used it keep their directives.`)) return
-  if (await persist(presets.value.filter((x) => x !== p), `Deleted "${p.name}"`) && selectedPreset.value === p.name) selectedPreset.value = ''
+  if (await persist(presets.value.filter((x) => x !== p), `Deleted "${p.name}"`) && selectedPreset.value === 'u:' + p.name) selectedPreset.value = ''
 }
 
 function toggleEdit(p: AlpinePreset) {
