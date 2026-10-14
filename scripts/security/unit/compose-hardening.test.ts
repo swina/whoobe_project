@@ -76,7 +76,7 @@ describe('docker-compose.yml', () => {
   })
 
   it('docker-compose.apps.yml binds the application ports through the same switch', () => {
-    const r = render({ ...required, WS_APP_BIND_ADDRESS: '127.0.0.1' }, 'docker-compose.apps.yml')
+    const r = render({ ...required, PUBLISH_RUNNER_TOKEN: 'runner-secret-x', WS_APP_BIND_ADDRESS: '127.0.0.1' }, 'docker-compose.apps.yml')
     expect(r.status, r.stderr).toBe(0)
     for (const [name, svc] of Object.entries<any>(r.json.services).filter(([, s]: any) => s.ports?.length)) expect(hostIps(svc), name).toEqual(['127.0.0.1'])
   })

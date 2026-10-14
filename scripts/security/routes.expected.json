@@ -1406,6 +1406,45 @@
       "access": "public",
       "permissions": [],
       "note": "approves one file for a form Upload field (limits of the website; rate limited) and returns the signed ticket and the address to send the bytes to"
+    },
+    "GET /data-classes/:id/object-count": {
+      "access": "permission",
+      "permissions": [
+        "DATA_OBJECTS_LIST",
+        "OBJECTS_READ"
+      ],
+      "mode": "any"
+    },
+    "POST /data-classes/:id/empty": {
+      "access": "permission",
+      "permissions": [
+        "DATA_OBJECTS_DELETE",
+        "OBJECTS_WRITE"
+      ],
+      "mode": "any",
+      "note": "empties a class; the body must carry the class name as confirmation"
+    },
+    "POST /migration-sources/:id/preview-classes": {
+      "access": "permission",
+      "permissions": [
+        "OBJECTS_WRITE"
+      ],
+      "mode": "all"
+    },
+    "GET /migration-sources/import-jobs/:jobId": {
+      "access": "permission",
+      "permissions": [
+        "OBJECTS_WRITE"
+      ],
+      "mode": "all"
+    },
+    "POST /data-objects/bulk": {
+      "access": "permission",
+      "permissions": [
+        "DATA_OBJECTS_CREATE",
+        "OBJECTS_WRITE"
+      ],
+      "mode": "any"
     }
   }
 }

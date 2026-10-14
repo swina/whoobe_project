@@ -1,3 +1,10 @@
+## Security suite: three tests brought up to date (found by the CI run on the release candidate) — 2026-10-14
+- Branch: `master`
+- `scripts/security/routes.expected.json`: the five new core-api routes of this release are declared (`GET /data-classes/:id/object-count`, `POST /data-classes/:id/empty`, `POST /migration-sources/:id/preview-classes`, `GET /migration-sources/import-jobs/:jobId`, `POST /data-objects/bulk`), with the access the code enforces (permission, not public).
+- `api/publish.test.ts`: the Nuxt site without a site key now calls `createWhoobeApi(apiUrl, gatewayUrl, undefined, undefined)` (the generator passes the resolve route too since the bindings release); the expected text follows.
+- `unit/compose-hardening.test.ts`: the `docker-compose.apps.yml` render gets `PUBLISH_RUNNER_TOKEN` (the publisher service requires it).
+- No product code changed.
+
 ## Static scan baseline: CHANGES.md false positive — 2026-10-14
 - Branch: `master`
 - `scripts/security/static/baseline.json`: `CHANGES.md` accepted as a gitleaks false positive (an entry quotes the invented value of a test). No real secret.

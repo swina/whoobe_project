@@ -138,7 +138,7 @@ describe('gateway forms in a Nuxt site: the proxy only exists for a site that ha
   }
 
   it('without a key the form posts straight to the gateway (a static export has no server route to call)', () => {
-    expect(apiCall(outNoKey)).toMatch(/createWhoobeApi\(apiUrl, config\.public\.gatewayUrl, undefined\)/)
+    expect(apiCall(outNoKey)).toMatch(/createWhoobeApi\(apiUrl, config\.public\.gatewayUrl, undefined, undefined\)/)
     expect(apiCall(outNoKey)).not.toContain('whoobe-gateway-submit')
   })
 
