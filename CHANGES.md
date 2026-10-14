@@ -1,3 +1,7 @@
+## Static scan baseline: two reviewed gitleaks false positives — 2026-10-14
+- Branch: `master`
+- `scripts/security/static/baseline.json`: the placeholder `wbk_...` in a curl example (`integrations.md`) and the invented `SITE_API_KEY=abcdef123456` of a log-masking test (`publish-runner.test.ts`) are accepted as false positives (review 2027-01-31). The `security` workflow's static scan failed only on them. No real secret found in the history (gitleaks, 613 commits).
+
 ## Docs: publisher environment variables in the configuration reference — 2026-10-14
 - Branch: `master`
 - `docs/release/operations/configuration-reference.md` section 7.1 documents `PUBLISH_RUNNER_TOKEN`, `PUBLISH_ROOT`, `PUBLISH_RUNNER_NAME`, `PUBLISH_POLL_MS` and `PUBLISH_JOB_TIMEOUT_MS` (read by the publisher, missing from the reference): the release gate "Documentation" failed on them.

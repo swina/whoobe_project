@@ -35,6 +35,16 @@
       "file": "packages/core/src/dam/s3-provider.ts",
       "reason": "false positive: a code comment",
       "review": "2027-01-31"
+    },
+    {
+      "file": "docs/release/guides/integrations/integrations.md",
+      "reason": "false positive: curl example with the placeholder wbk_... (the file's path in an earlier commit; the history scan reports it there)",
+      "review": "2027-01-31"
+    },
+    {
+      "file": "scripts/security/unit/publish-runner.test.ts",
+      "reason": "false positive: invented value in a test of the log masking (SITE_API_KEY=abcdef123456)",
+      "review": "2027-01-31"
     }
   ],
   "semgrep": [
