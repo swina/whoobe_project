@@ -1,5 +1,5 @@
 // Alpine presets: named sets of Alpine.js directives (for example the six `x-transition:*` attributes of a fade-and-
-// scale effect) that an administrator defines once and applies to any element from the editor (Advanced > AlpineJS).
+// scale effect) that an administrator defines once and applies to any element from the editor (AlpineJS tool).
 //
 // A preset is applied by COPYING its directives into the element's own `alpine` map (see AlpineControl.vue), so every
 // renderer (editor preview, public page, mobile app) keeps working from `element.alpine` alone and a stored page never

@@ -1,7 +1,7 @@
-import { eq, and, desc, inArray } from 'drizzle-orm';
+import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { dataObjects } from './data-objects-schema.js';
-import { getDataClass } from './data-classes-records.js';
+import { getDataClass, type DataClassRecord } from './data-classes-records.js';
 import { indexObject, deleteIndexedByDocument, deleteIndexedByClass } from '../search/indexer.js';
 
 export interface DataObjectRecord {
@@ -330,6 +330,54 @@ async function syncNonLocalizedAttributes(row: DataObjectRecord): Promise<void> 
   }
 }
 
+// ---- `unique` fields ----
+
+/** Thrown when a `unique` field would hold a value another object already has. `code` is checked instead of `instanceof` (several packages). */
+export class UniqueViolationError extends Error {
+  readonly code = 'UNIQUE_VIOLATION';
+  constructor(readonly field: string, readonly title: string, readonly value: unknown) {
+    super(`"${title || field}" must be unique: another object already has the value ${JSON.stringify(value)}`);
+    this.name = 'UniqueViolationError';
+  }
+}
+
+/** The `unique` fields of a class that carry a value in these attributes (empty values never clash). */
+export function uniqueValuesToCheck(
+  fields: { name: string; title?: string; unique?: boolean; localized?: boolean }[],
+  attributes: Record<string, unknown>,
+): { name: string; title: string; localized: boolean; value: unknown }[] {
+  return fields
+    .filter((f) => f.unique)
+    .map((f) => ({ name: f.name, title: f.title ?? f.name, localized: !!f.localized, value: attributes[f.name] }))
+    .filter((f) => f.value !== undefined && f.value !== null && f.value !== '' && !(Array.isArray(f.value) && f.value.length === 0));
+}
+
+type Db = ReturnType<typeof getDb>;
+type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+
+/**
+ * Throws UniqueViolationError when another object of the class has the same value in a `unique` field. `except`: the object being saved
+ * (by id) and its language siblings (same translationGroupId), which never count as duplicates.
+ */
+async function assertUniqueValues(
+  runner: Db | Tx,
+  classDef: DataClassRecord,
+  attributes: Record<string, unknown>,
+  scope: { locale: string; exceptId?: string; exceptGroupId?: string },
+): Promise<void> {
+  for (const f of uniqueValuesToCheck(classDef.fields, attributes)) {
+    const conditions = [
+      eq(dataObjects.classId, classDef.id),
+      sql`${dataObjects.attributes} @> ${JSON.stringify({ [f.name]: f.value })}::jsonb`,
+    ];
+    if (f.localized) conditions.push(eq(dataObjects.locale, scope.locale));
+    if (scope.exceptId) conditions.push(sql`${dataObjects.id} <> ${scope.exceptId}`);
+    if (scope.exceptGroupId) conditions.push(sql`${dataObjects.translationGroupId} <> ${scope.exceptGroupId}`);
+    const [clash] = await runner.select({ id: dataObjects.id }).from(dataObjects).where(and(...conditions)).limit(1);
+    if (clash) throw new UniqueViolationError(f.name, f.title, f.value);
+  }
+}
+
 export async function createDataObject(input: {
   id?: string;
   classId: string;
@@ -342,6 +390,8 @@ export async function createDataObject(input: {
   pimcoreId?: string | null;
 }): Promise<DataObjectRecord> {
   const db = getDb();
+  const classForUnique = await getDataClass(input.classId);
+  if (classForUnique) await assertUniqueValues(db, classForUnique, input.attributes, { locale: input.locale ?? 'en', exceptGroupId: input.translationGroupId });
   const [row] = await db
     .insert(dataObjects)
     .values({
@@ -383,6 +433,12 @@ export async function updateDataObject(
 ): Promise<DataObjectRecord | null> {
   const db = getDb();
 
+  if (input.attributes !== undefined) {
+    const current = await getDataObject(id);
+    const classDef = current ? await getDataClass(current.classId) : null;
+    if (current && classDef) await assertUniqueValues(db, classDef, input.attributes, { locale: current.locale, exceptId: current.id, exceptGroupId: current.translationGroupId });
+  }
+
   const values: Record<string, unknown> = { updatedAt: new Date() };
   if (input.key !== undefined) values.key = input.key;
   if (input.path !== undefined) values.path = input.path;
@@ -414,10 +470,18 @@ export async function updateDataObject(
 
 /** Delete all data objects belonging to a class - used by the migration
  * clear-before-import option to reset a class's objects before retrying. */
-export async function deleteDataObjectsByClassId(classId: string): Promise<void> {
+export async function deleteDataObjectsByClassId(classId: string): Promise<number> {
   const db = getDb();
-  await db.delete(dataObjects).where(eq(dataObjects.classId, classId));
+  const deleted = await db.delete(dataObjects).where(eq(dataObjects.classId, classId)).returning({ id: dataObjects.id });
   await deleteIndexedByClass(classId);
+  return deleted.length;
+}
+
+/** How many objects (every locale row) a class has: the number "Empty data" asks the user to confirm. */
+export async function countDataObjectsByClassId(classId: string): Promise<number> {
+  const db = getDb();
+  const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(dataObjects).where(eq(dataObjects.classId, classId));
+  return row?.n ?? 0;
 }
 
 export async function deleteDataObject(id: string): Promise<void> {
@@ -491,4 +555,110 @@ export async function upsertDataObjectByPimcoreId(input: {
   const classDef = await getDataClass(row.classId);
   if (classDef) await indexObject(row, classDef);
   return row;
+}
+
+// ---- Bulk import (docs/plans/datamodel: class from a file / an Integration) ----
+
+export interface BulkImportRow {
+  /** The object's key; one is made when absent. With `onConflict` it is what identifies an existing object. */
+  key?: string;
+  attributes: Record<string, unknown>;
+}
+
+export interface BulkImportPlan {
+  inserts: { key: string; attributes: Record<string, unknown> }[];
+  updates: { id: string; attributes: Record<string, unknown> }[];
+  skipped: number;
+}
+
+/**
+ * Decides what a chunk of rows does, given the objects of the class that already hold one of its keys (key -> id): a new key is an
+ * insert; a key that exists is skipped or updated, per `onConflict`. A key repeated inside the chunk counts once (the last row wins).
+ */
+export function planBulkImport(
+  rows: BulkImportRow[],
+  existingByKey: Map<string, string>,
+  onConflict: 'skip' | 'update',
+  makeKey: () => string,
+): BulkImportPlan {
+  const byKey = new Map<string, Record<string, unknown>>();
+  for (const row of rows) byKey.set(row.key?.trim() || makeKey(), row.attributes);
+  const plan: BulkImportPlan = { inserts: [], updates: [], skipped: 0 };
+  for (const [key, attributes] of byKey) {
+    const id = existingByKey.get(key);
+    if (id === undefined) plan.inserts.push({ key, attributes });
+    else if (onConflict === 'update') plan.updates.push({ id, attributes });
+    else plan.skipped++;
+  }
+  return plan;
+}
+
+/**
+ * Creates (and, when asked, updates) a chunk of objects of one class in ONE transaction: all of the chunk or none of it. Objects are
+ * created as drafts, in the default locale; attributes the class has no field for are dropped. The search index is updated after the
+ * commit (an indexing failure never undoes the import).
+ */
+export async function bulkImportDataObjects(
+  classId: string,
+  rows: BulkImportRow[],
+  options: { onConflict?: 'skip' | 'update'; locale?: string } = {},
+): Promise<{ created: number; updated: number; skipped: number; rejected: { key: string; message: string }[] }> {
+  const classDef = await getDataClass(classId);
+  if (!classDef) throw new Error('Class not found');
+  const locale = options.locale ?? 'en';
+  const names = new Set(classDef.fields.map((f) => f.name));
+  const clean = rows.map((r) => ({
+    key: r.key,
+    attributes: Object.fromEntries(Object.entries(r.attributes ?? {}).filter(([k]) => names.has(k))),
+  }));
+
+  const db = getDb();
+  const saved: DataObjectRecord[] = [];
+  let plan: BulkImportPlan = { inserts: [], updates: [], skipped: 0 };
+  const rejected: { key: string; message: string }[] = [];
+  await db.transaction(async (tx) => {
+    const keys = clean.map((r) => r.key?.trim()).filter((k): k is string => !!k);
+    const existing = keys.length
+      ? await tx.select({ id: dataObjects.id, key: dataObjects.key }).from(dataObjects)
+          .where(and(eq(dataObjects.classId, classId), eq(dataObjects.locale, locale), inArray(dataObjects.key, keys)))
+      : [];
+    plan = planBulkImport(clean, new Map(existing.map((e) => [e.key, e.id])), options.onConflict ?? 'skip', () => crypto.randomUUID());
+    // `unique` fields: a row whose value another object (or an earlier row of this chunk) already has is left out and reported
+    const seen = new Map<string, Set<string>>();
+    const accept = async (key: string, attributes: Record<string, unknown>, exceptId?: string): Promise<boolean> => {
+      try {
+        await assertUniqueValues(tx, classDef, attributes, { locale, exceptId });
+        for (const f of uniqueValuesToCheck(classDef.fields, attributes)) {
+          const v = JSON.stringify(f.value);
+          if (seen.get(f.name)?.has(v)) throw new UniqueViolationError(f.name, f.title, f.value);
+        }
+      } catch (err) {
+        if (err instanceof UniqueViolationError) { rejected.push({ key, message: err.message }); return false; }
+        throw err;
+      }
+      for (const f of uniqueValuesToCheck(classDef.fields, attributes)) {
+        if (!seen.has(f.name)) seen.set(f.name, new Set());
+        seen.get(f.name)!.add(JSON.stringify(f.value));
+      }
+      return true;
+    };
+    if (classDef.fields.some((f) => f.unique)) {
+      const inserts: typeof plan.inserts = [];
+      for (const i of plan.inserts) if (await accept(i.key, i.attributes)) inserts.push(i);
+      const updates: typeof plan.updates = [];
+      for (const u of plan.updates) if (await accept(u.id, u.attributes, u.id)) updates.push(u);
+      plan = { ...plan, inserts, updates };
+    }
+    if (plan.inserts.length) {
+      saved.push(...(await tx.insert(dataObjects).values(plan.inserts.map((i) => ({ classId, key: i.key, path: '/', locale, attributes: i.attributes }))).returning()));
+    }
+    for (const u of plan.updates) {
+      const [row] = await tx.update(dataObjects).set({ attributes: u.attributes, updatedAt: new Date() }).where(eq(dataObjects.id, u.id)).returning();
+      if (row) saved.push(row);
+    }
+  });
+  for (const row of saved) {
+    try { await indexObject(row, classDef); } catch { /* the index is rebuilt by a reindex; the data is saved */ }
+  }
+  return { created: plan.inserts.length, updated: plan.updates.length, skipped: plan.skipped, rejected };
 }

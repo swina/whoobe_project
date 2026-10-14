@@ -99,6 +99,20 @@ export async function createDataObject(
   return body.object
 }
 
+/** Many objects of one class in one request (one transaction on the server, at most 500 rows): drafts, default locale. */
+export async function bulkImportDataObjects(
+  baseUrl: string,
+  input: { classId: string; rows: { key?: string; attributes: Record<string, unknown> }[]; onConflict?: 'skip' | 'update' }
+): Promise<{ created: number; updated: number; skipped: number; rejected: { key: string; message: string }[] }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-objects/bulk`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
 export async function updateDataObject(
   baseUrl: string,
   id: string,

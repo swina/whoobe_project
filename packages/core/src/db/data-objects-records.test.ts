@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sortDataObjects, compareSortValues, getSortValue, type DataObjectRecord } from './data-objects-records.js';
+import { sortDataObjects, compareSortValues, getSortValue, planBulkImport, uniqueValuesToCheck, UniqueViolationError, type DataObjectRecord } from './data-objects-records.js';
 
 function makeRecord(overrides: Partial<DataObjectRecord> & { attributes?: Record<string, unknown> }): DataObjectRecord {
   return {
@@ -88,5 +88,69 @@ describe('sortDataObjects', () => {
     const original = [...objs];
     sortDataObjects(objs, { field: 'price', direction: 'asc' });
     expect(objs).toEqual(original);
+  });
+});
+
+describe('planBulkImport', () => {
+  let n = 0;
+  const makeKey = () => `gen-${++n}`;
+  const existing = new Map([['a', 'id-a']]);
+
+  it('inserts rows with a new key and makes a key for rows without one', () => {
+    const plan = planBulkImport([{ key: 'b', attributes: { x: 1 } }, { attributes: { x: 2 } }], existing, 'skip', makeKey);
+    expect(plan.inserts.map((i) => i.key)).toEqual(['b', 'gen-1']);
+    expect(plan.updates).toEqual([]);
+    expect(plan.skipped).toBe(0);
+  });
+
+  it('skips a row whose key exists when onConflict is skip', () => {
+    const plan = planBulkImport([{ key: 'a', attributes: { x: 1 } }, { key: 'c', attributes: {} }], existing, 'skip', makeKey);
+    expect(plan.inserts.map((i) => i.key)).toEqual(['c']);
+    expect(plan.skipped).toBe(1);
+  });
+
+  it('updates the existing object when onConflict is update', () => {
+    const plan = planBulkImport([{ key: 'a', attributes: { x: 9 } }], existing, 'update', makeKey);
+    expect(plan.updates).toEqual([{ id: 'id-a', attributes: { x: 9 } }]);
+    expect(plan.inserts).toEqual([]);
+  });
+
+  it('counts a key repeated in the chunk once, the last row winning', () => {
+    const plan = planBulkImport([{ key: 'z', attributes: { v: 1 } }, { key: 'z', attributes: { v: 2 } }], existing, 'skip', makeKey);
+    expect(plan.inserts).toEqual([{ key: 'z', attributes: { v: 2 } }]);
+  });
+});
+
+describe('uniqueValuesToCheck', () => {
+  const fields = [
+    { name: 'email', title: 'Email', unique: true },
+    { name: 'sku', unique: true, localized: true },
+    { name: 'name' },
+  ];
+
+  it('returns only unique fields that hold a value', () => {
+    expect(uniqueValuesToCheck(fields, { email: 'a@b.it', sku: 'X1', name: 'A' }).map((f) => [f.name, f.value, f.localized])).toEqual([
+      ['email', 'a@b.it', false],
+      ['sku', 'X1', true],
+    ]);
+  });
+
+  it('never treats an empty value as a duplicate', () => {
+    expect(uniqueValuesToCheck(fields, { email: '', sku: null })).toEqual([]);
+    expect(uniqueValuesToCheck(fields, {})).toEqual([]);
+    expect(uniqueValuesToCheck([{ name: 'tags', unique: true }], { tags: [] })).toEqual([]);
+  });
+
+  it('keeps 0 and false as real values', () => {
+    expect(uniqueValuesToCheck([{ name: 'n', unique: true }, { name: 'b', unique: true }], { n: 0, b: false }).map((f) => f.name)).toEqual(['n', 'b']);
+  });
+});
+
+describe('UniqueViolationError', () => {
+  it('names the field title and the value, and carries a code', () => {
+    const e = new UniqueViolationError('email', 'Email', 'a@b.it');
+    expect(e.code).toBe('UNIQUE_VIOLATION');
+    expect(e.message).toContain('"Email" must be unique');
+    expect(e.message).toContain('"a@b.it"');
   });
 });

@@ -24,6 +24,10 @@ export interface ClassFieldDefinition {
   fieldType: string;
   mandatory?: boolean;
   localized?: boolean;
+  // No two objects of the class may hold the same value in this field (an empty value is never a duplicate). Checked when an object is
+  // created or changed (createDataObject / updateDataObject / bulk import); a localized field is compared within the same language, and
+  // the language rows of one object never clash with each other. Data migrated from Pimcore is not checked.
+  unique?: boolean;
   relationTarget?: string;
   // For relation-flavored fields (relationTarget set): the name of a field
   // on the related class whose value is shown for this relation wherever a

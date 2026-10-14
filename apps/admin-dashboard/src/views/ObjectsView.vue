@@ -104,6 +104,16 @@
           :class="queryFilters.length > 0 ? 'border-indigo-500 text-indigo-400' : ''">
           <Filter class="w-4 h-4" /> Filter{{ queryFilters.length > 0 ? ` (${queryFilters.length})` : '' }}
         </button>
+        <!-- Refresh: reload the list from the server (useful while a big import is running) -->
+        <button type="button" @click="fetchObjects" :disabled="isLoading" title="Refresh the list" aria-label="Refresh the list" data-testid="objects-refresh"
+          class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 hover:border-indigo-500 transition inline-flex items-center gap-1.5 disabled:opacity-60">
+          <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': isLoading }" /> Refresh
+        </button>
+        <button v-if="selectedDataClass" type="button" @click="showEmptyModal = true" title="Delete every object of this class" data-testid="objects-empty"
+          class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-rose-400 hover:border-rose-500 transition inline-flex items-center gap-1.5">
+          <Trash2 class="w-4 h-4" /> Empty data
+        </button>
+        <EmptyClassModal v-if="showEmptyModal && selectedDataClass" :data-class="selectedDataClass" @close="showEmptyModal = false" @emptied="fetchObjects" />
         <!-- Export -->
         <div class="relative">
           <button @click="isExportMenuOpen = !isExportMenuOpen"
@@ -337,7 +347,7 @@
 <script setup lang="ts">
 import BaseModal from '../components/ui/BaseModal.vue'
 import { ref, reactive, computed, watch } from 'vue'
-import { ChevronUp, ChevronDown, Filter, Plus, Trash2, X } from '@lucide/vue'
+import { ChevronUp, ChevronDown, Filter, Plus, RefreshCw, Trash2, X } from '@lucide/vue'
 import { useDataClassesStore } from '../stores/dataClassesStore'
 import { useDamStore } from '../stores/damStore'
 import { useTabsStore } from '../stores/tabsStore'
@@ -346,6 +356,7 @@ import { useAuthStore } from '../stores/authStore'
 import type { DataObject } from '../utils/data-objects-api'
 import { fetchDataObjects, deleteDataObject as apiDeleteDataObject, batchActionDataObjects, batchResolveAssets } from '../utils/data-objects-api'
 import type { DataObjectQueryFilter } from '../utils/data-objects-api'
+import EmptyClassModal from '../components/objects/EmptyClassModal.vue'
 import { exportRowsAsCsv, exportRowsAsJson, exportRowsAsXlsx } from '../utils/data-export'
 import { useRelationOptions } from '../composables/useRelationOptions'
 import { loadObjectListPresets, upsertObjectListPreset, deleteObjectListPreset, setDefaultPreset, getDefaultPreset, type ObjectListPreset } from '../utils/object-list-presets'
@@ -370,6 +381,7 @@ const isLoading = ref(false)
 const searchQuery = ref('')
 const selectedClassId = ref(props.classId)
 const isExportMenuOpen = ref(false)
+const showEmptyModal = ref(false)
 const isColumnsMenuOpen = ref(false)
 const activeColumnNames = ref<string[]>([])
 const presets = ref<ObjectListPreset[]>([])

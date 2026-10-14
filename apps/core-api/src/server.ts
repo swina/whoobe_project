@@ -99,6 +99,9 @@ import {
   getDataObject,
   listDataObjectTranslations,
   createDataObject,
+  bulkImportDataObjects,
+  deleteDataObjectsByClassId,
+  countDataObjectsByClassId,
   updateDataObject,
   deleteDataObject,
   listPublishedDataObjects,
@@ -289,7 +292,7 @@ import {
   sandboxStatus,
   SANDBOX_DISABLED_MESSAGE,
 } from '@whoobe-cms/core';
-import { runClassMigration, runObjectMigration, runDocumentMigration, runPromoteDocuments, runPromoteDocument, runExtractCollectionTypes } from '@whoobe-cms/migration-tool';
+import { runClassMigration, previewClassMigration, runObjectMigration, runDocumentMigration, runPromoteDocuments, runPromoteDocument, runExtractCollectionTypes, createMigrationJobRegistry } from '@whoobe-cms/migration-tool';
 import { fetchAndConvert } from '@whoobe-cms/figma-converter';
 
 
@@ -2348,7 +2351,7 @@ app.put('/whoobe-one/settings/autosave', requirePermission(PERMISSIONS.OBJECTS_W
 });
 
 // Alpine presets (docs/release/content/alpine-presets.md): named sets of Alpine directives that an administrator defines
-// once and applies to any element from the editor's Advanced > AlpineJS panel. Installation-wide, stored in the first
+// once and applies to any element from the editor's AlpineJS panel. Installation-wide, stored in the first
 // website's settings like the other values here. Applying a preset copies its directives into the element, so pages
 // never depend on this catalog at render time. Reading needs `objects:read`, writing `objects:write` (an editor can
 // already put any directive on any element, so this adds no power); the catalog is validated for shape and size.
@@ -4043,6 +4046,37 @@ app.delete('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), as
   }
 });
 
+// "Empty data": removes every object of a class (all locales, published or not) and keeps the class. Irreversible, so the caller must
+// send the class name back as `confirm` (the dashboard asks the user to type it); GET gives the number to show in that question.
+app.get('/data-classes/:id/object-count', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_LIST, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    res.json({ count: await countDataObjectsByClassId(req.params.id) });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Count data objects error');
+    res.status(500).json({ error: error.message || 'Failed to count objects' });
+  }
+});
+
+app.post('/data-classes/:id/empty', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const dataClass = await getDataClass(req.params.id);
+    if (!dataClass) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
+    if (req.body?.confirm !== dataClass.name) {
+      res.status(400).json({ error: `Send the class name ("${dataClass.name}") as "confirm" to empty it` });
+      return;
+    }
+    const deleted = await deleteDataObjectsByClassId(dataClass.id);
+    logger.warn({ classId: dataClass.id, className: dataClass.name, deleted, userId: (req as any).user?.id }, 'Data class emptied');
+    res.json({ deleted });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Empty data class error');
+    res.status(500).json({ error: error.message || 'Failed to empty the class' });
+  }
+});
+
 // Component Types - docs/plans/datamodel/component-fields-plan.md. This
 // plan's own name for Pimcore's "Field Collection" concept - a named,
 // reusable field-list definition a `fieldcollections`-type class field can
@@ -4295,11 +4329,13 @@ app.post(
         res.status(404).json({ error: 'Migration source not found' });
         return;
       }
-      const { dryRun, className } = req.body ?? {};
+      const { dryRun, className, overrides } = req.body ?? {};
       const result = await runClassMigration({
         classesDir: source.classesPath,
         dryRun: dryRun === true,
         className: typeof className === 'string' && className ? className : undefined,
+        // the user's own choice of fields per class (see /preview-classes): used instead of the parsed ones
+        overrides: overrides && typeof overrides === 'object' && !Array.isArray(overrides) ? overrides : undefined,
       });
       res.json({ result });
     } catch (error: any) {
@@ -4309,12 +4345,47 @@ app.post(
   }
 );
 
+// What importing the classes would make (fields and types as parsed), without writing: the screen where the user chooses them.
+app.post(
+  '/migration-sources/:id/preview-classes',
+  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const source = await getMigrationSource(req.params.id);
+      if (!source) {
+        res.status(404).json({ error: 'Migration source not found' });
+        return;
+      }
+      res.json({ classes: previewClassMigration({ classesDir: source.classesPath }) });
+    } catch (error: any) {
+      logger.error({ err: error }, 'Preview classes error');
+      res.status(500).json({ error: error.message || 'Failed to read the class definitions' });
+    }
+  }
+);
+
+// Object imports started with `background: true` run on after the response; the browser polls the job for "processed of total".
+const migrationJobs = createMigrationJobRegistry();
+
+app.get(
+  '/migration-sources/import-jobs/:jobId',
+  requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  (req: Request, res: Response): void => {
+    const job = migrationJobs.get(req.params.jobId);
+    if (!job) {
+      res.status(404).json({ error: 'Import job not found (the server may have restarted)' });
+      return;
+    }
+    res.json({ job });
+  }
+);
+
 app.post(
   '/migration-sources/:id/import-objects',
   requirePermission(PERMISSIONS.OBJECTS_WRITE),
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const { className, dryRun, limit, clear } = req.body ?? {};
+      const { className, dryRun, limit, clear, background } = req.body ?? {};
       if (typeof className !== 'string' || !className.trim()) {
         res.status(400).json({ error: 'className is required' });
         return;
@@ -4322,6 +4393,30 @@ app.post(
       const resolved = await getMigrationSourceConnectionConfig(req.params.id);
       if (!resolved) {
         res.status(404).json({ error: 'Migration source not found' });
+        return;
+      }
+      if (background === true) {
+        const already = migrationJobs.running(req.params.id, className.trim());
+        if (already) {
+          res.status(202).json({ jobId: already.id, alreadyRunning: true });
+          return;
+        }
+        const job = migrationJobs.start(req.params.id, className.trim());
+        runObjectMigration({
+          className: className.trim(),
+          source: 'mysql',
+          sourceConfig: { ...resolved.connection } as Record<string, unknown>,
+          dryRun: dryRun === true,
+          limit: typeof limit === 'number' ? limit : undefined,
+          clear: clear === true,
+          onProgress: (processed, total) => migrationJobs.progress(job.id, processed, total),
+        })
+          .then((result) => migrationJobs.finish(job.id, result))
+          .catch((error: any) => {
+            logger.error({ err: error }, 'Import objects (background) error');
+            migrationJobs.fail(job.id, error?.message || 'Failed to import objects');
+          });
+        res.status(202).json({ jobId: job.id });
         return;
       }
       const result = await runObjectMigration({
@@ -4606,12 +4701,50 @@ app.post('/data-objects', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_CREATE, 
     });
     res.status(201).json({ object: dataObject });
   } catch (error: any) {
+    if (error?.code === 'UNIQUE_VIOLATION') {
+      res.status(409).json({ error: error.message, field: error.field });
+      return;
+    }
     if (error?.code === '23505') {
       res.status(409).json({ error: `An object with key "${req.body?.key}" already exists for this class` });
       return;
     }
     logger.error({ err: error }, 'Create data object error');
     res.status(500).json({ error: error.message || 'Failed to create object' });
+  }
+});
+
+// Import many objects of one class at once (the class-from-file / Integration import): one transaction per request, so the client sends
+// chunks. Registered before /data-objects/:id like /batch. Drafts only.
+const BULK_IMPORT_MAX_ROWS = 500;
+app.post('/data-objects/bulk', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { classId, rows, onConflict, locale } = req.body ?? {};
+    if (typeof classId !== 'string' || !classId.trim() || !Array.isArray(rows) || rows.length === 0) {
+      res.status(400).json({ error: 'classId and a non-empty rows array are required' });
+      return;
+    }
+    if (rows.length > BULK_IMPORT_MAX_ROWS) {
+      res.status(400).json({ error: `At most ${BULK_IMPORT_MAX_ROWS} rows per request` });
+      return;
+    }
+    if (rows.some((r: any) => !r || typeof r !== 'object' || !r.attributes || typeof r.attributes !== 'object' || Array.isArray(r.attributes) || (r.key != null && typeof r.key !== 'string'))) {
+      res.status(400).json({ error: 'Every row needs an attributes object (and, optionally, a string key)' });
+      return;
+    }
+    if (onConflict != null && onConflict !== 'skip' && onConflict !== 'update') {
+      res.status(400).json({ error: "onConflict must be 'skip' or 'update'" });
+      return;
+    }
+    const result = await bulkImportDataObjects(classId, rows, { onConflict: onConflict ?? 'skip', locale: typeof locale === 'string' ? locale : undefined });
+    res.status(201).json(result);
+  } catch (error: any) {
+    if (error?.message === 'Class not found') {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
+    logger.error({ err: error }, 'Bulk import data objects error');
+    res.status(500).json({ error: error.message || 'Failed to import objects' });
   }
 });
 
@@ -4641,6 +4774,10 @@ app.patch('/data-objects/:id', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_EDI
     }
     res.json({ object: dataObject });
   } catch (error: any) {
+    if (error?.code === 'UNIQUE_VIOLATION') {
+      res.status(409).json({ error: error.message, field: error.field });
+      return;
+    }
     if (error?.code === '23505') {
       res.status(409).json({ error: `An object with key "${req.body?.key}" already exists for this class` });
       return;
@@ -4922,7 +5059,12 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
         attributes
       ) as Record<string, unknown>;
     } catch (validationError: any) {
-      res.status(400).json({ error: validationError?.message || 'Invalid submission' });
+      // zod's own message is a JSON dump of every issue: say it plainly (`lastName: Required`) and keep the per-field map for the client
+      const issues: { path?: (string | number)[]; message?: string }[] = Array.isArray(validationError?.issues) ? validationError.issues : [];
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of issues) fieldErrors[issue.path?.join('.') || '(form)'] = issue.message || 'Invalid';
+      const error = issues.length ? Object.entries(fieldErrors).map(([f, m]) => `${f}: ${m}`).join('; ') : validationError?.message || 'Invalid submission';
+      res.status(400).json({ error, fields: fieldErrors });
       return;
     }
 
@@ -5010,6 +5152,11 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
 
     res.status(201).json({ success: true });
   } catch (error: any) {
+    if (error?.code === 'UNIQUE_VIOLATION') {
+      // a `unique` field of the class: tell the visitor which one (never what is stored)
+      res.status(409).json({ error: `${error.title || error.field} is already in use`, field: error.field });
+      return;
+    }
     logger.error({ err: error }, 'Form submit error');
     res.status(500).json({ error: 'Failed to submit form' });
   }

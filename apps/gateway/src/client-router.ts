@@ -355,6 +355,7 @@ export function createClientRouter(): Router {
       res.status(201).json({ draft: true, object: core.projectClientObject(obj, fields) });
     } catch (err: any) {
       if ((err?.code ?? err?.cause?.code) === '23505') { res.status(409).json({ error: 'An object with this key already exists for this class and language' }); return; }
+      if (err?.code === 'UNIQUE_VIOLATION') { res.status(409).json({ error: err.message, field: err.field }); return; }
       logGatewayError('client data create', err);
       res.status(500).json({ error: 'Failed to create the object' });
     }
@@ -386,7 +387,8 @@ export function createClientRouter(): Router {
       if (!updated) { dataNotFound(req, res, 'vanished'); return; }
       logger.info({ clientId: req.apiClient!.id, client: req.apiClient!.name, sub: req.subject, class: cls.name, id, fields: Object.keys(checked.write.attributes) }, '[gateway] client data updated (draft)');
       res.json({ draft: true, object: core.projectClientObject(updated, fields) });
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.code === 'UNIQUE_VIOLATION') { res.status(409).json({ error: err.message, field: err.field }); return; }
       logGatewayError('client data update', err);
       res.status(500).json({ error: 'Failed to update the object' });
     }

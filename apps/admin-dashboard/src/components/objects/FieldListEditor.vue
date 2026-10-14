@@ -130,6 +130,16 @@
             />
             localized
           </label>
+          <label class="flex items-center gap-1.5 text-sm text-slate-400 light:text-slate-600" title="No two objects of this class may have the same value (an empty value is not a duplicate)">
+            <input
+              type="checkbox"
+              :checked="selectedField.unique === true"
+              @change="selectedField.unique = ($event.target as HTMLInputElement).checked || undefined"
+              class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600"
+              data-testid="field-unique"
+            />
+            unique
+          </label>
         </div>
 
         <input

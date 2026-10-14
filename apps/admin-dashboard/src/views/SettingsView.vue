@@ -37,11 +37,13 @@
 
           <ClassSettingsCard v-if="classesActiveTab === 'classes'" />
           <MigrationSourcesCard v-else-if="classesActiveTab === 'pimcore'" />
-          <div v-else-if="classesActiveTab === 'file'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-3">
-            <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">File Migration</h3>
+          <div v-else-if="classesActiveTab === 'integration'" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-3">
+            <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">Integration Import</h3>
             <p class="text-xs text-slate-500">
-              Import data objects from structured files (JSON, XLSX, CSV). Not yet implemented — this tab is a placeholder for future development.
+              Connect to one of your Integrations, read a list of records from a GET route and make a Data Class from it: the schema only, or the schema and the records as Data Objects.
+              To make a class from a JSON, CSV or Excel file use "+ From file" in Classes.
             </p>
+            <button type="button" class="btn btn-secondary" data-testid="open-integration-import" @click="tabsStore.openIntegrationImport()">Open Integration Import</button>
           </div>
         </template>
 
@@ -172,7 +174,7 @@ import {
   Shield,
   Workflow,
   Upload,
-  FileJson,
+  Plug,
   Sparkles,
   Image,
   Palette,
@@ -294,7 +296,7 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'uploads', name: 'Form uploads', icon: Upload },
 ]
 
-type ClassesSubTab = 'classes' | 'pimcore' | 'file'
+type ClassesSubTab = 'classes' | 'pimcore' | 'integration'
 
 const CLASSES_SUB_KEY = 'whoobe:settings-classes-subtab'
 const classesActiveTab = ref<ClassesSubTab>('classes')
@@ -302,13 +304,13 @@ const classesActiveTab = ref<ClassesSubTab>('classes')
 // Restore last active tab from localStorage
 try {
   const saved = localStorage.getItem(CLASSES_SUB_KEY) as ClassesSubTab | null
-  if (saved) classesActiveTab.value = saved
+  if (saved === 'classes' || saved === 'pimcore' || saved === 'integration') classesActiveTab.value = saved
 } catch { /* ignore */ }
 
 const classesSubTabs: { key: ClassesSubTab; name: string; icon: any }[] = [
   { key: 'classes', name: 'Classes', icon: Database },
   { key: 'pimcore', name: 'PIMCORE MIGRATION SOURCE', icon: Upload },
-  { key: 'file', name: 'FILE MIGRATION', icon: FileJson },
+  { key: 'integration', name: 'INTEGRATION IMPORT', icon: Plug },
 ]
 
 function setClassesSubTab(key: ClassesSubTab) {

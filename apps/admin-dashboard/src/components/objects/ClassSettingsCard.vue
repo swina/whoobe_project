@@ -24,11 +24,19 @@
         </div>
         <div class="flex items-center gap-3">
           <button @click="tabsStore.openClass(dataClass.id)" type="button" class="btn btn-link">Edit</button>
+          <button @click="emptyTarget = dataClass" type="button" class="btn btn-link-danger" data-testid="class-empty-data">Empty data</button>
           <button @click="handleDelete(dataClass)" type="button" class="btn btn-link-danger">Delete</button>
         </div>
       </div>
 
-      <button @click="handleCreate" type="button" class="btn btn-link">+ New class</button>
+      <div class="flex items-center gap-4">
+        <button @click="handleCreate" type="button" class="btn btn-link">+ New class</button>
+        <button @click="showWizard = true" type="button" class="btn btn-link" data-testid="class-from-template">+ From template</button>
+        <button @click="showFileWizard = true" type="button" class="btn btn-link" data-testid="class-from-file">+ From file (JSON, CSV, Excel)</button>
+      </div>
+      <EmptyClassModal v-if="emptyTarget" :data-class="emptyTarget" @close="emptyTarget = null" />
+      <ClassPresetWizard v-if="showWizard" @close="showWizard = false" @created="onWizardCreated" />
+      <ClassFromFileWizard v-if="showFileWizard" @close="showFileWizard = false" @created="(id: string) => { showFileWizard = false; tabsStore.openClass(id) }" />
     </div>
   </div>
 </template>
@@ -43,11 +51,23 @@ import type { DataClass } from '../../utils/data-classes-api'
 import { useDataClassesStore } from '../../stores/dataClassesStore'
 import { useTabsStore } from '../../stores/tabsStore'
 import { useToastStore } from '../../stores/toastStore'
+import { ref } from 'vue'
+import ClassPresetWizard from './ClassPresetWizard.vue'
+import ClassFromFileWizard from './ClassFromFileWizard.vue'
+import EmptyClassModal from './EmptyClassModal.vue'
 import { randomUUID } from '../../utils/random-id'
 
 const dataClassesStore = useDataClassesStore()
 const tabsStore = useTabsStore()
 const toastStore = useToastStore()
+
+const emptyTarget = ref<DataClass | null>(null)
+const showWizard = ref(false)
+const showFileWizard = ref(false)
+function onWizardCreated(id: string) {
+  showWizard.value = false
+  tabsStore.openClass(id)
+}
 
 function handleCreate() {
   tabsStore.openClass(`new:${randomUUID()}`)

@@ -88,6 +88,22 @@ export async function deleteDataClass(baseUrl: string, id: string): Promise<void
   await parseJsonOrThrow(res)
 }
 
+export async function fetchDataClassObjectCount(baseUrl: string, id: string): Promise<number> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-classes/${id}/object-count`, { credentials: 'include' })
+  return (await parseJsonOrThrow(res)).count
+}
+
+/** Deletes every object of the class (the class stays). The server wants the class name back as `confirm`. */
+export async function emptyDataClass(baseUrl: string, id: string, confirm: string): Promise<number> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-classes/${id}/empty`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ confirm }),
+    credentials: 'include',
+  })
+  return (await parseJsonOrThrow(res)).deleted
+}
+
 // Workflow definitions - docs/plans/backend/object-publish-workflow-
 // plan.md §2.4/§5/§7 Phase 3-4.
 export interface WorkflowDefinition {

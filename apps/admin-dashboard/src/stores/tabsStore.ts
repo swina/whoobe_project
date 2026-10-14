@@ -13,7 +13,7 @@ import { ref } from 'vue'
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
 export type SectionKind = 'overview' | 'ai' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'components' | 'mail' | 'themes' | 'settings' | 'gateway' | 'gateway-plugins' | 'api-clients' | 'data-bindings' | 'automations' | 'system-logs' | 'publish'
-export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'classList' | 'website' | 'docsSite' | 'docsDoc' | 'apiClient'
+export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'classList' | 'website' | 'docsSite' | 'docsDoc' | 'apiClient' | 'integrationImport'
 // The AI section of the navigation (its own sidebar entry, no longer part of Settings): one card per kind of AI provider.
 export type AiSubSection = 'text' | 'image' | 'translate'
 export type DocsSiteSubTab = 'documents' | 'index' | 'publish' | 'settings'
@@ -318,6 +318,13 @@ export const useTabsStore = defineStore('tabs', () => {
   // An API client's editor: `clientId` is the client's id, or `new:<uuid>` for one that does not exist yet.
   // `apiClientsRevision` goes up whenever a client is saved, so the list refreshes itself.
   const apiClientsRevision = ref(0)
+  // The "Integration import" tab (a class made from what an Integration route returns): one at a time.
+  function openIntegrationImport() {
+    const id = 'item:integrationImport'
+    if (findIndex(id) === -1) tabs.value.push({ id, type: 'item', itemKind: 'integrationImport', itemId: 'integrationImport' })
+    activeTabId.value = id
+  }
+
   function openApiClient(clientId?: string) {
     const itemId = clientId ?? `new:${crypto.randomUUID()}`
     const id = apiClientTabId(itemId)
@@ -437,6 +444,7 @@ export const useTabsStore = defineStore('tabs', () => {
     openClassList,
     closeClassListTab,
     openApiClient, apiClientsRevision,
+    openIntegrationImport,
     openWebsite,
     setWebsiteSubTab,
     closeWebsiteTab

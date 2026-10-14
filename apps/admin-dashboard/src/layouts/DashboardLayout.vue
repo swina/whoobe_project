@@ -484,6 +484,7 @@
               :class-id="tab.classListClassId"
             />
             <MasterWebsiteTab v-else-if="tab.type === 'item' && tab.itemKind === 'website' && tab.itemId" :website-id="tab.itemId" />
+            <MasterIntegrationImportTab v-else-if="tab.type === 'item' && tab.itemKind === 'integrationImport'" />
             <MasterApiClientTab v-else-if="tab.type === 'item' && tab.itemKind === 'apiClient' && tab.itemId" :client-id="tab.itemId" :tab-id="tab.id" />
             <MasterDocsSiteTab v-else-if="tab.type === 'item' && tab.itemKind === 'docsSite' && tab.itemId" :website-id="tab.itemId" />
             <MasterDocsDocTab v-else-if="tab.type === 'item' && tab.itemKind === 'docsDoc' && tab.itemId && tab.docsPath" :website-id="tab.itemId" :path="tab.docsPath" />
@@ -562,6 +563,7 @@ import {
   Smartphone,
   Upload,
   Table2,
+  Plug,
   Mail,
   Sparkles,
   X,
@@ -588,6 +590,7 @@ import MasterPageTab from '../components/pages/MasterPageTab.vue'
 import MasterSnippetTab from '../components/snippets/MasterSnippetTab.vue'
 import MasterObjectTab from '../components/objects/MasterObjectTab.vue'
 import MasterClassTab from '../components/objects/MasterClassTab.vue'
+import MasterIntegrationImportTab from '../components/objects/MasterIntegrationImportTab.vue'
 import MasterWebsiteTab from '../components/websites/MasterWebsiteTab.vue'
 import MasterApiClientTab from '../components/api-clients/MasterApiClientTab.vue'
 import MasterDocsSiteTab from '../components/websites/MasterDocsSiteTab.vue'
@@ -1052,6 +1055,7 @@ function tabLabel(tab: MainTab): string {
     }
     return sectionLabels[tab.section]
   }
+  if (tab.type === 'item' && tab.itemKind === 'integrationImport') return 'Integration import'
   if (tab.type === 'item' && tab.itemKind === 'asset' && tab.itemId) {
     const asset = damStore.assets.find((a) => a.id === tab.itemId)
     return asset?.filename || 'Asset'
@@ -1129,6 +1133,9 @@ function tabIcon(tab: MainTab) {
   }
   if (tab.type === 'item' && tab.itemKind === 'website') {
     return Globe
+  }
+  if (tab.type === 'item' && tab.itemKind === 'integrationImport') {
+    return Plug
   }
   if (tab.type === 'item' && tab.itemKind === 'apiClient') {
     return KeyRound
