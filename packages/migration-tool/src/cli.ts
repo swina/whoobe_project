@@ -31,7 +31,7 @@ import {
   parseAllowedTypes,
   parseFieldCollectionTypeFile,
 } from './pimcore-class-definition-parser.js';
-import { createPimcoreSourceAdapter } from './source-adapter.js';
+import { createPimcoreSourceAdapter, pimcoreClassIdOf } from './source-adapter.js';
 import './adapters/mysql-adapter.js';
 import './adapters/fixture-adapter.js';
 import './element-areabrick-mappings/index.js';
@@ -250,6 +250,44 @@ export interface RunClassMigrationOptions {
   classesDir: string;
   dryRun?: boolean;
   className?: string;
+  /** The user's own choice of fields per class (by class name, from `previewClassMigration`: fields left out, types changed): used instead of
+   *  the parsed ones for that class. The Pimcore system dates are still added. */
+  overrides?: Record<string, ClassFieldDefinition[]>;
+}
+
+export interface ClassMigrationPreview {
+  file: string;
+  /** The class id in the source (a number or text) and its name. */
+  pimcoreId: string;
+  name: string;
+  /** What would be imported (without the Pimcore system dates, which are always added). */
+  fields: ClassFieldDefinition[];
+  /** Set when the file could not be read: the reason. */
+  error?: string;
+}
+
+/** The class a `definition_*.php` file describes: its id/name and its fields (collection types included). */
+function readClassDefinition(classesDir: string, file: string): { meta: { id: string; name: string }; fields: ClassFieldDefinition[] } {
+  const source = readFileSync(join(classesDir, file), 'utf-8');
+  const meta = parsePimcoreClassMeta(source);
+  if (!meta) throw new Error("Could not find the class's own 'id' and 'name' (expected `'id' => ..., 'name' => '...'` near the top of the file): is this a Pimcore class definition_*.php file?");
+  const fields = parsePimcoreClassDefinitionFile(source);
+  enrichFieldCollectionTypes(fields, source, classesDir);
+  return { meta, fields };
+}
+
+/** What importing the classes of a folder would make, without writing anything: the screen where the user picks fields and types. */
+export function previewClassMigration(options: { classesDir: string; className?: string }): ClassMigrationPreview[] {
+  const files = readdirSync(options.classesDir).filter((f) => f.startsWith('definition_') && f.endsWith('.php'));
+  const toRead = options.className ? files.filter((f) => f === `definition_${options.className}.php`) : files;
+  return toRead.sort().map((file) => {
+    try {
+      const { meta, fields } = readClassDefinition(options.classesDir, file);
+      return { file, pimcoreId: meta.id, name: meta.name, fields };
+    } catch (err: any) {
+      return { file, pimcoreId: '', name: file.replace(/^definition_|\.php$/g, ''), fields: [], error: err.message };
+    }
+  });
 }
 
 /**
@@ -276,11 +314,9 @@ export async function runClassMigration(options: RunClassMigrationOptions): Prom
 
   for (const file of toProcess) {
     try {
-      const source = readFileSync(join(classesDir, file), 'utf-8');
-      const meta = parsePimcoreClassMeta(source);
-      if (!meta) throw new Error('Could not find the class\'s own id/name near the top of the file');
-      const fields = parsePimcoreClassDefinitionFile(source);
-      enrichFieldCollectionTypes(fields, source, classesDir);
+      const parsed = readClassDefinition(classesDir, file);
+      const meta = parsed.meta;
+      const fields = options.overrides?.[meta.name] ? JSON.parse(JSON.stringify(options.overrides[meta.name])) as ClassFieldDefinition[] : parsed.fields;
       appendPimcoreSystemFields(fields);
 
       if (dryRun) {
@@ -333,6 +369,8 @@ export interface RunObjectMigrationOptions {
    * of `{ assetId: "/path/string" }`. Set false to keep raw path strings.
    */
   resolveAssetUuids?: boolean;
+  /** Called before the first object (0 of N) and after each one, whether it worked or failed: N is the number of objects of the run. */
+  onProgress?: (processed: number, total: number) => void;
 }
 
 /**
@@ -364,7 +402,8 @@ export async function runObjectMigration(options: RunObjectMigrationOptions): Pr
       throw new Error(`Source adapter "${source}" does not support Data Object migration.`);
     }
 
-    const pimcoreClassId = Number(dataClass.pimcoreId);
+    // an old Pimcore's class id is a number, Pimcore 10/11's is text (`CAR`): either one names the object_* tables as it is
+    const pimcoreClassId = pimcoreClassIdOf(dataClass.pimcoreId);
     const objects = await adapter.listObjects(pimcoreClassId);
     const toProcess = limit ? objects.slice(0, limit) : objects;
     console.log(`[ETL] Found ${objects.length} "${className}" object(s)${limit ? `, processing first ${toProcess.length}` : ''}.`);
@@ -408,6 +447,8 @@ export async function runObjectMigration(options: RunObjectMigrationOptions): Pr
         }
       : undefined;
 
+    let processed = 0;
+    options.onProgress?.(0, toProcess.length);
     for (const obj of toProcess) {
       try {
         const raw = await adapter.getObjectAttributes(pimcoreClassId, obj.id);
@@ -466,6 +507,7 @@ export async function runObjectMigration(options: RunObjectMigrationOptions): Pr
         errors.push({ item: `${obj.id} (${obj.key})`, message: err.message });
         console.error(`[ETL] Failed to migrate object ${obj.id} (${obj.key}): ${err.message}`);
       }
+      options.onProgress?.(++processed, toProcess.length);
     }
 
     console.log(`[ETL] Done. ${succeeded} succeeded, ${errors.length} failed.`);

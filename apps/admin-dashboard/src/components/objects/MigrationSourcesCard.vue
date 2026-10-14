@@ -46,6 +46,7 @@
           >
             {{ runningClasses === source.id ? 'Importing…' : 'Import Classes' }}
           </button>
+          <button @click="mappingSource = source" type="button" class="btn btn-secondary" data-testid="pimcore-review-classes">Choose fields and import…</button>
         </div>
 
         <!-- Import objects: requires the target class already migrated (has a pimcoreId) -->
@@ -81,6 +82,33 @@
             {{ runningObjects === source.id ? 'Importing…' : 'Import Objects' }}
           </button>
           <span v-if="migratedClasses.length === 0" class="text-xs text-slate-600 light:text-slate-400 italic">Import classes first.</span>
+        </div>
+
+        <!-- Before an object import: the class has field types Whoobe cannot edit -->
+        <div v-if="compatWarning[source.id]" class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-2 text-xs" data-testid="pimcore-compat-warning">
+          <div class="font-semibold text-amber-400">Class "{{ compatWarning[source.id]!.className }}" has field types Whoobe does not support</div>
+          <ul class="font-mono text-slate-400 light:text-slate-600">
+            <li v-for="f in compatWarning[source.id]!.fields" :key="f.name">{{ f.name }} <span class="text-slate-500">({{ f.fieldType }})</span></li>
+          </ul>
+          <p class="text-slate-400 light:text-slate-600">
+            Their values are copied as they are and cannot be edited in the dashboard. Update the mapping first (change the type, or leave the field out), then import the objects.
+          </p>
+          <div class="flex items-center gap-3">
+            <button type="button" class="btn btn-secondary" data-testid="pimcore-compat-update" @click="updateMapping(source)">Update the mapping</button>
+            <button type="button" class="btn btn-link-muted" data-testid="pimcore-compat-anyway" @click="importObjectsAnyway(source)">Import anyway</button>
+            <button type="button" class="btn btn-link-muted" @click="delete compatWarning[source.id]">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Progress of the running object import -->
+        <div v-if="objectJob[source.id]" class="space-y-1" data-testid="pimcore-import-progress">
+          <div class="flex items-center justify-between text-xs text-slate-400 light:text-slate-600">
+            <span>{{ objectJob[source.id]!.className }}: {{ objectJob[source.id]!.processed }} / {{ objectJob[source.id]!.total || '…' }} record(s)</span>
+            <span v-if="objectJob[source.id]!.total">{{ Math.round((objectJob[source.id]!.processed / objectJob[source.id]!.total) * 100) }}%</span>
+          </div>
+          <div class="h-1.5 rounded bg-slate-800 light:bg-slate-200 overflow-hidden">
+            <div class="h-full bg-indigo-500 transition-all" :style="{ width: objectJob[source.id]!.total ? `${(objectJob[source.id]!.processed / objectJob[source.id]!.total) * 100}%` : '0%' }"></div>
+          </div>
         </div>
 
         <!-- Import documents: convert Pimcore pages into whoobe_pages (or stage them first) -->
@@ -162,12 +190,15 @@
         <div v-if="results[source.id]" class="text-xs pt-1">
           <span class="text-emerald-400 font-semibold">{{ results[source.id].succeeded }} succeeded</span>
           <span v-if="results[source.id].failed > 0" class="text-rose-400 font-semibold ml-2">{{ results[source.id].failed }} failed</span>
-          <ul v-if="results[source.id].failed > 0" class="mt-1 space-y-0.5 text-rose-300/80">
-            <li v-for="(err, i) in results[source.id].errors" :key="i">{{ err.item }}: {{ err.message }}</li>
-          </ul>
+          <div v-if="results[source.id].failed > 0" class="mt-1 space-y-1">
+            <!-- a textarea: hundreds of long messages in a list would stretch the page -->
+            <textarea readonly rows="6" wrap="off" class="field w-full font-mono text-[11px] text-rose-300/90 resize-y" data-testid="pimcore-import-errors" :value="errorsText(results[source.id])"></textarea>
+            <button type="button" class="btn btn-link" data-testid="pimcore-import-errors-download" @click="downloadErrors(source, results[source.id])">Download errors (.txt)</button>
+          </div>
         </div>
       </div>
 
+      <PimcoreClassMappingModal v-if="mappingSource" :source="mappingSource" :only-class="mappingOnlyClass" @close="mappingSource = null; mappingOnlyClass = undefined" @done="(r: MigrationRunResult) => { results[mappingSource!.id] = r }" />
       <button @click="openEditor(null)" type="button" class="btn btn-link">+ New source</button>
     </div>
 
@@ -209,11 +240,13 @@
 // already does the same for per-class workflows rather than living inside
 // the class editor itself).
 import { reactive, ref, computed } from 'vue'
+import PimcoreClassMappingModal from './PimcoreClassMappingModal.vue'
+import { unsupportedFields } from '../../utils/pimcore-field-mapping'
 import { useMigrationSourcesStore } from '../../stores/migrationSourcesStore'
 import { useDataClassesStore } from '../../stores/dataClassesStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useToastStore } from '../../stores/toastStore'
-import { importClassesFromPimcore, importObjectsFromPimcore, importDocumentsFromPimcore, promoteDocumentsFromStaging, extractComponentsFromClasses, type MigrationSource, type MigrationRunResult } from '../../utils/migration-sources-api'
+import { importClassesFromPimcore, startObjectImport, fetchImportJob, type ImportJob, importDocumentsFromPimcore, promoteDocumentsFromStaging, extractComponentsFromClasses, type MigrationSource, type MigrationRunResult } from '../../utils/migration-sources-api'
 
 const store = useMigrationSourcesStore()
 const dataClassesStore = useDataClassesStore()
@@ -245,6 +278,10 @@ const dryRunExtract = reactive<Record<string, boolean>>({})
 const classNameExtract = reactive<Record<string, string>>({})
 const clearExtract = reactive<Record<string, boolean>>({})
 const results = reactive<Record<string, MigrationRunResult>>({})
+const mappingSource = ref<MigrationSource | null>(null)
+const mappingOnlyClass = ref<string | undefined>(undefined)
+const compatWarning = reactive<Record<string, { className: string; fields: { name: string; fieldType: string }[] } | undefined>>({})
+const objectJob = reactive<Record<string, ImportJob | undefined>>({})
 const runningClasses = ref<string | null>(null)
 const runningObjects = ref<string | null>(null)
 const runningDocuments = ref<string | null>(null)
@@ -268,24 +305,74 @@ async function handleImportClasses(source: MigrationSource) {
   }
 }
 
+// Before importing: a class with field types Whoobe cannot edit gets a warning that suggests updating the mapping first
 async function handleImportObjects(source: MigrationSource) {
   const className = objectClassName[source.id]
   if (!className) return
+  const dataClass = dataClassesStore.classes.find((c) => c.name === className)
+  const bad = unsupportedFields(dataClass?.fields ?? [])
+  if (bad.length) {
+    compatWarning[source.id] = { className, fields: bad }
+    return
+  }
+  await runObjectImport(source, className)
+}
+
+function updateMapping(source: MigrationSource) {
+  mappingOnlyClass.value = compatWarning[source.id]?.className
+  delete compatWarning[source.id]
+  mappingSource.value = source
+}
+
+async function importObjectsAnyway(source: MigrationSource) {
+  const className = compatWarning[source.id]?.className
+  delete compatWarning[source.id]
+  if (className) await runObjectImport(source, className)
+}
+
+// The import runs on the server in the background; this follows it once a second and shows "processed / total"
+async function runObjectImport(source: MigrationSource, className: string) {
   runningObjects.value = source.id
   try {
-    const result = await importObjectsFromPimcore(authStore.config.coreApiUrl, source.id, {
+    const { jobId } = await startObjectImport(authStore.config.coreApiUrl, source.id, {
       className,
       dryRun: !!dryRunObjects[source.id],
       clear: !!clearObjects[source.id],
       limit: limitByClass[source.id],
     })
-    results[source.id] = result
-    toastStore.show(`${result.succeeded} object(s) imported, ${result.failed} failed`)
+    for (;;) {
+      const job = await fetchImportJob(authStore.config.coreApiUrl, jobId)
+      objectJob[source.id] = job
+      if (job.status === 'done' && job.result) {
+        results[source.id] = job.result
+        toastStore.show(`${job.result.succeeded} object(s) imported, ${job.result.failed} failed`)
+        break
+      }
+      if (job.status === 'failed') throw new Error(job.error || 'The import failed')
+      await new Promise((r) => setTimeout(r, 1000))
+    }
   } catch (e: any) {
     toastStore.show(e?.message || 'Failed to import objects')
   } finally {
     runningObjects.value = null
+    // leave the final "N / N" on screen for a moment, then clear it
+    setTimeout(() => { objectJob[source.id] = undefined }, 4000)
   }
+}
+
+function errorsText(r: MigrationRunResult): string {
+  return r.errors.map((e) => `${e.item}: ${e.message}`).join('\n')
+}
+
+// The failed records and their messages as a text file
+function downloadErrors(source: MigrationSource, r: MigrationRunResult) {
+  const head = `Import of "${source.label}" - ${new Date().toISOString()}\n${r.succeeded} succeeded, ${r.failed} failed\n\n`
+  const url = URL.createObjectURL(new Blob([head + errorsText(r) + '\n'], { type: 'text/plain;charset=utf-8' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `import-errors-${source.label.replace(/[^A-Za-z0-9_-]+/g, '-')}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 async function handleImportDocuments(source: MigrationSource) {

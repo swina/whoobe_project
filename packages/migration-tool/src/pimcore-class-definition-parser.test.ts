@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parsePimcoreClassDefinitionFile } from './pimcore-class-definition-parser.js';
+import { parsePimcoreClassDefinitionFile, parsePimcoreClassMeta } from './pimcore-class-definition-parser.js';
 
 // A hand-built but structurally faithful fixture - mirrors the exact
 // shapes confirmed against a real Pimcore install's own
@@ -111,6 +111,27 @@ return Pimcore\\Model\\DataObject\\ClassDefinition::__set_state(array(
 ));
 `;
 
+describe('parsePimcoreClassMeta', () => {
+  const head = (props: string) => `<?php\n\nreturn \\Pimcore\\Model\\DataObject\\ClassDefinition::__set_state(array(\n   'dao' => NULL,\n${props}\n   'layoutDefinitions' => \\Pimcore\\Model\\DataObject\\ClassDefinition\\Layout\\Panel::__set_state(array('name' => 'pimcore_root', 'id' => 'x')),\n));`;
+
+  it('reads a numeric id (older Pimcore)', () => {
+    expect(parsePimcoreClassMeta(head("   'id' => '12',\n   'name' => 'Product',"))).toEqual({ id: '12', name: 'Product' });
+  });
+
+  it('reads a string id (Pimcore 10/11)', () => {
+    expect(parsePimcoreClassMeta(head("   'id' => 'CAR',\n   'name' => 'Car',"))).toEqual({ id: 'CAR', name: 'Car' });
+  });
+
+  it('reads an id after properties that hold commas or arrays', () => {
+    const props = "   'description' => 'Cars, vans, and trucks',\n   'parentClass' => '',\n   'implementsInterfaces' => array (\n    0 => 'A',\n    1 => 'B',\n  ),\n   'listingParentClass' => '',\n   'id' => 'CAR',\n   'name' => 'Car',";
+    expect(parsePimcoreClassMeta(head(props))).toEqual({ id: 'CAR', name: 'Car' });
+  });
+
+  it('does not take a nested layout panel\'s id/name', () => {
+    expect(parsePimcoreClassMeta(head("   'title' => 'No id here',"))).toBeNull();
+  });
+});
+
 describe('parsePimcoreClassDefinitionFile (docs/plans/datamodel/advanced-data-modeling-plan.md §5.1, Phase 3)', () => {
   const fields = parsePimcoreClassDefinitionFile(FIXTURE);
 
@@ -145,5 +166,32 @@ describe('parsePimcoreClassDefinitionFile (docs/plans/datamodel/advanced-data-mo
     const flavour = variants?.blockFields?.find((f) => f.name === 'flavour');
     expect(format?.mandatory).toBe(true);
     expect(flavour?.relationTarget).toBe('Flavour');
+  });
+});
+
+describe('parsePimcoreClassDefinitionFile: doc-comment prefix', () => {
+  it('reads a Fields Summary whose lines start with " * " (as Pimcore writes them)', () => {
+    const source = `<?php
+
+/**
+ * Inheritance: no
+ *
+ * Fields Summary:
+ * - brand [manyToOneRelation]
+ * - name [input]
+ * - localizedfields [localizedfields]
+ * -- title [input]
+ * - variants [block]
+ * -- format [input]
+ */
+
+return \\Pimcore\\Model\\DataObject\\ClassDefinition::__set_state(array(
+   'id' => 'Car',
+   'name' => 'Car',
+));`;
+    const fields = parsePimcoreClassDefinitionFile(source);
+    expect(fields.map((f) => f.name)).toEqual(['brand', 'name', 'title', 'variants']);
+    expect(fields.find((f) => f.name === 'title')?.localized).toBe(true);
+    expect(fields.find((f) => f.name === 'variants')?.blockFields?.map((f) => f.name)).toEqual(['format']);
   });
 });

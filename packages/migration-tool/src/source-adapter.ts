@@ -53,14 +53,22 @@ export interface PimcoreAssetSummary {
   data: string;
 }
 
+/** A Pimcore class id: a number in old installs, a string (`'CAR'`) in Pimcore 10/11. It names the `object_*` tables, so it is never turned into a number. */
+export type PimcoreClassId = number | string;
+
+/** The id as the source database holds it: a number when it is all digits, else the text itself (never NaN). */
+export function pimcoreClassIdOf(pimcoreId: string): PimcoreClassId {
+  return /^\d+$/.test(pimcoreId) ? Number(pimcoreId) : pimcoreId;
+}
+
 export interface PimcoreObjectClassSummary {
-  id: number;
+  id: PimcoreClassId;
   name: string;
 }
 
 export interface PimcoreObjectSummary {
   id: number;
-  classId: number;
+  classId: PimcoreClassId;
   className: string;
   key: string;
   path: string;
@@ -151,8 +159,8 @@ export interface PimcoreSourceAdapter {
   readAssetFile?(asset: PimcoreAssetSummary): Promise<Buffer | null>;
 
   listObjectClasses?(): Promise<PimcoreObjectClassSummary[]>;
-  listObjects?(classId: number): Promise<PimcoreObjectSummary[]>;
-  getObjectAttributes?(classId: number, objectId: number): Promise<RawPimcoreObjectAttributes>;
+  listObjects?(classId: PimcoreClassId): Promise<PimcoreObjectSummary[]>;
+  getObjectAttributes?(classId: PimcoreClassId, objectId: number): Promise<RawPimcoreObjectAttributes>;
 }
 
 export type PimcoreSourceAdapterFactory = (config: Record<string, unknown>) => PimcoreSourceAdapter;

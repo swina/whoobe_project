@@ -12,16 +12,20 @@ export * from './areabrick-mappings/index.js';
 // admin-triggered import).
 export {
   runClassMigration,
+  previewClassMigration,
   runObjectMigration,
   runAssetMigration,
   runDocumentMigration,
   runPromoteDocuments,
   runPromoteDocument,
 } from './cli.js';
+export { createMigrationJobRegistry } from './import-jobs.js';
+export type { MigrationJob, MigrationJobResult } from './import-jobs.js';
 export { runExtractCollectionTypes } from './extract-collection-types-to-components.js';
 export type {
   MigrationRunResult,
   RunClassMigrationOptions,
+  ClassMigrationPreview,
   RunObjectMigrationOptions,
   RunAssetMigrationOptions,
   RunDocumentMigrationOptions,

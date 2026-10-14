@@ -3,6 +3,7 @@
 // Mirrors data-classes-api.ts's shape. `MigrationSource` never carries a
 // password field - the backend's own records layer strips it before a
 // response is ever built (migration-sources-records.ts's `toRecord`).
+import type { ClassFieldDefinition } from '@whoobe-cms/core'
 import { getDefaultCoreApiUrl } from './auth-api'
 
 export interface MigrationSource {
@@ -81,10 +82,30 @@ export async function deleteMigrationSource(baseUrl: string, id: string): Promis
   await parseJsonOrThrow(res)
 }
 
+/** A class of the source as the files describe it (what the field-mapping screen starts from). */
+export interface PimcoreClassPreview {
+  file: string
+  pimcoreId: string
+  name: string
+  fields: ClassFieldDefinition[]
+  error?: string
+}
+
+export async function previewPimcoreClasses(baseUrl: string, id: string): Promise<PimcoreClassPreview[]> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/migration-sources/${id}/preview-classes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.classes
+}
+
 export async function importClassesFromPimcore(
   baseUrl: string,
   id: string,
-  input: { dryRun?: boolean; className?: string }
+  input: { dryRun?: boolean; className?: string; overrides?: Record<string, ClassFieldDefinition[]> }
 ): Promise<MigrationRunResult> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/migration-sources/${id}/import-classes`, {
     method: 'POST',
@@ -94,6 +115,37 @@ export async function importClassesFromPimcore(
   })
   const body = await parseJsonOrThrow(res)
   return body.result
+}
+
+export interface ImportJob {
+  id: string
+  className: string
+  status: 'running' | 'done' | 'failed'
+  processed: number
+  total: number
+  result?: MigrationRunResult
+  error?: string
+}
+
+/** Starts the object import in the background on the server; follow it with fetchImportJob. */
+export async function startObjectImport(
+  baseUrl: string,
+  id: string,
+  input: { className: string; dryRun?: boolean; limit?: number; clear?: boolean }
+): Promise<{ jobId: string; alreadyRunning?: boolean }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/migration-sources/${id}/import-objects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...input, background: true }),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
+export async function fetchImportJob(baseUrl: string, jobId: string): Promise<ImportJob> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/migration-sources/import-jobs/${jobId}`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return body.job
 }
 
 export async function importObjectsFromPimcore(

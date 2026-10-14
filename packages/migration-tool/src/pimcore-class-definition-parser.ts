@@ -45,7 +45,8 @@ function parseFieldsSummaryLines(source: string): SummaryNode[] {
   const stack: SummaryNode[] = [];
 
   for (const rawLine of block.split('\n')) {
-    const match = rawLine.trim().match(lineRe);
+    // the real files prefix every comment line with ` * ` (the hand-built test fixture does not)
+    const match = rawLine.trim().replace(/^\*\s?/, '').match(lineRe);
     if (!match) continue;
     const depth = match[1].length;
     const node: SummaryNode = { name: match[2], fieldType: match[3], depth, children: [] };
@@ -167,7 +168,10 @@ export function parsePimcoreClassDefinitionFile(source: string): ClassFieldDefin
   return enrichWithFullDefinition(fields, source);
 }
 
-const CLASS_META_RE = /Pimcore\\Model\\DataObject\\ClassDefinition::__set_state\(array\(\s*(?:'[a-zA-Z]+'\s*=>[^,]*,\s*){0,10}?'id'\s*=>\s*'(\d+)',\s*'name'\s*=>\s*'([A-Za-z0-9_]+)'/;
+// The class's own `'id'` (a number in old Pimcore, a string such as 'CAR' in Pimcore 10/11) followed by its `'name'`, within the first
+// properties of the outer ClassDefinition (a bounded window, so a nested field's own id/name is never taken). Properties before the id can
+// have any value (a description with commas, a multi-line array), so the window is not limited to simple `'key' => value,` pairs.
+const CLASS_META_RE = /ClassDefinition::__set_state\(\s*array\s*\(\s*[\s\S]{0,600}?'id'\s*=>\s*(?:'([^']+)'|"([^"]+)"|(\d+))\s*,\s*'name'\s*=>\s*(?:'([A-Za-z0-9_]+)'|"([A-Za-z0-9_]+)")/;
 
 /** The class's own real Pimcore id/name - always near the very top of the
  * file (the outer `ClassDefinition::__set_state`, not a nested field's
@@ -176,7 +180,7 @@ const CLASS_META_RE = /Pimcore\\Model\\DataObject\\ClassDefinition::__set_state\
  * per-field enrichment above does. */
 export function parsePimcoreClassMeta(source: string): { id: string; name: string } | null {
   const match = CLASS_META_RE.exec(source);
-  return match ? { id: match[1], name: match[2] } : null;
+  return match ? { id: match[1] ?? match[2] ?? match[3], name: match[4] ?? match[5] } : null;
 }
 
 const ALLOWED_TYPES_RE = /'allowedTypes'\s*=>\s*\n?\s*array\s*\(([^)]*)\)/;

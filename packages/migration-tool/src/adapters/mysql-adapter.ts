@@ -5,6 +5,7 @@ import {
   registerPimcoreSourceAdapter,
   type PimcoreSourceAdapter,
   type PimcoreDocumentSummary,
+  type PimcoreClassId,
   type PimcoreObjectClassSummary,
   type PimcoreObjectSummary,
   type RawPimcoreObjectAttributes,
@@ -200,10 +201,10 @@ export function createMysqlPimcoreSourceAdapter(config: MysqlPimcoreSourceConfig
     async listObjectClasses(): Promise<PimcoreObjectClassSummary[]> {
       const conn = requireConnection();
       const [rows] = await conn.query('SELECT id, name FROM `classes`');
-      return (rows as { id: number; name: string }[]).map((row) => ({ id: row.id, name: row.name }));
+      return (rows as { id: PimcoreClassId; name: string }[]).map((row) => ({ id: row.id, name: row.name }));
     },
 
-    async listObjects(classId: number): Promise<PimcoreObjectSummary[]> {
+    async listObjects(classId: PimcoreClassId): Promise<PimcoreObjectSummary[]> {
       const conn = requireConnection();
       const [rows] = await conn.query(
         "SELECT o_id, o_classId, o_className, o_key, o_path, o_creationDate, o_modificationDate FROM `objects` WHERE o_classId = ? AND o_type = 'object'",
@@ -212,7 +213,7 @@ export function createMysqlPimcoreSourceAdapter(config: MysqlPimcoreSourceConfig
       return (
         rows as {
           o_id: number;
-          o_classId: number;
+          o_classId: PimcoreClassId;
           o_className: string;
           o_key: string;
           o_path: string;
@@ -230,7 +231,7 @@ export function createMysqlPimcoreSourceAdapter(config: MysqlPimcoreSourceConfig
       }));
     },
 
-    async getObjectAttributes(classId: number, objectId: number): Promise<RawPimcoreObjectAttributes> {
+    async getObjectAttributes(classId: PimcoreClassId, objectId: number): Promise<RawPimcoreObjectAttributes> {
       const conn = requireConnection();
 
       const [columnRows] = await conn.query(`SELECT * FROM \`object_${classId}\` WHERE oo_id = ? LIMIT 1`, [objectId]);
