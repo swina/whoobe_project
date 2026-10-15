@@ -24,6 +24,11 @@
           />
         </label>
         <div class="flex-1"></div>
+        <!-- Reload the record from the server (somebody else saved it, an import ran, a workflow step changed it) -->
+        <button type="button" class="btn btn-ghost" data-testid="object-refresh" :disabled="!!isSaving || isLoadingTranslations || !canRefresh"
+          :title="canRefresh ? 'Reload this record from the server' : 'Nothing to reload: this record has not been saved yet'" @click="refresh">
+          <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': isLoadingTranslations }" /> Refresh
+        </button>
         <button
           @click="save(false)"
           :disabled="!!isSaving || !key.trim()"
@@ -133,6 +138,7 @@
 // directly instead, the same way MasterPageTab.vue/WhoobeOneEmbed.vue
 // already do for their own real API clients.
 import { ref, computed, watch, onMounted } from 'vue'
+import { RefreshCw } from '@lucide/vue'
 import { isTransitionValid, type WorkflowTransitionDefinition } from '@whoobe-cms/core'
 import { useTabsStore, objectTabId } from '../../stores/tabsStore'
 import { useDataClassesStore } from '../../stores/dataClassesStore'
@@ -187,7 +193,8 @@ const isLoadingTranslations = ref(!isPlaceholderGroupId)
 const ALL_LOCALES = ['en', 'it']
 
 async function loadTranslations() {
-  if (isPlaceholderGroupId) return
+  // the placeholder id is replaced by the real one on the first save: from then on the record can be loaded
+  if (realTranslationGroupId.value.startsWith('new:')) return
   isLoadingTranslations.value = true
   try {
     translations.value = await fetchDataObjectTranslationsByGroup(authStore.config.coreApiUrl, realTranslationGroupId.value)
@@ -401,6 +408,26 @@ async function applyTransition(transitionName: string) {
   } finally {
     isTransitioning.value = false
   }
+}
+
+// Unsaved edits: the form differs from the row it was filled from.
+function stable(value: unknown): string {
+  return JSON.stringify(value, (_k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v))
+}
+const isDirty = computed(() => {
+  const row = currentRow.value
+  return !!row && (key.value !== row.key || stable(attributes.value) !== stable(row.attributes ?? {}))
+})
+const canRefresh = computed(() => !realTranslationGroupId.value.startsWith('new:'))
+
+async function refresh() {
+  if (!canRefresh.value || isSaving.value) return
+  if (isDirty.value && !confirm('Discard your unsaved changes and reload this record from the server?')) return
+  // the form is refilled by the watcher on currentRow, which sees the freshly loaded rows
+  await loadTranslations()
+  refreshTabLabel()
+  await Promise.all([loadPreviewLinks(), loadWorkflow()])
+  toastStore.show('Record reloaded')
 }
 
 onMounted(async () => {
