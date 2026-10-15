@@ -25,9 +25,24 @@ export function assetMaxCount(env: NodeJS.ProcessEnv = process.env): number | nu
   return positiveInt(env.ASSET_MAX_COUNT);
 }
 
-export function sandboxStatus(env: NodeJS.ProcessEnv = process.env): { resetAt: string | null; maxFileBytes: number; maxAssets: number | null } | null {
+export interface SandboxStatus {
+  resetAt: string | null;
+  maxFileBytes: number;
+  maxAssets: number | null;
+  /** The shared demo account, shown in the banner. PUBLIC by design: only set it for an account everyone may use. */
+  demo: { email: string; password: string } | null;
+}
+
+export function sandboxStatus(env: NodeJS.ProcessEnv = process.env): SandboxStatus | null {
   if (!isSandbox(env)) return null;
-  return { resetAt: env.SANDBOX_RESET_AT || null, maxFileBytes: assetMaxFileBytes(env), maxAssets: assetMaxCount(env) };
+  const email = env.SANDBOX_DEMO_EMAIL?.trim();
+  const password = env.SANDBOX_DEMO_PASSWORD;
+  return {
+    resetAt: env.SANDBOX_RESET_AT || null,
+    maxFileBytes: assetMaxFileBytes(env),
+    maxAssets: assetMaxCount(env),
+    demo: email && password ? { email, password } : null,
+  };
 }
 
 export const SANDBOX_DISABLED_MESSAGE = 'This feature is disabled in the public sandbox';

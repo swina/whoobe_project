@@ -1,3 +1,13 @@
+## Sandbox: demo login in the banner, HTTPS kept across resets — 2026-10-15
+- Branch: `fix/sandbox-demo-banner-tls-reset`
+- `packages/core/src/sandbox.ts` (+ test): `sandboxStatus()` returns `demo: { email, password } | null` from `SANDBOX_DEMO_EMAIL` / `SANDBOX_DEMO_PASSWORD` (both needed); it reaches `GET /health` under `sandbox`. The account is public by design.
+- `apps/admin-dashboard/src/components/SandboxBanner.vue`: shows "Demo login: email / password" next to the reset time.
+- `scripts/sandbox/reset.sh`: passes the demo account to the workspace (`--set`), and after a successful reset restores the HTTPS vhosts.
+- `scripts/enable-tls.sh`: new `--reuse-cert` (render the redirect and HTTPS vhosts with the certificate already in `deploy/certbot/conf`, no certbot run, no e-mail). Found on the Oracle host with nginx on the host: a reset deleted `sandbox-ssl.conf` and rendered only the HTTP vhost, which would have left the sandbox without HTTPS and a dangling `sites-enabled` link that makes `nginx -t` fail for every site.
+- `scripts/enable-tls.sh`: the last line was `$STAGING && echo ...`, so a successful run exited 1 (and `reset.sh` took it for a failure); and the prompt said "(staging)" for every run because `STAGING=false` is a non-empty string. Both fixed.
+- `scripts/sandbox/reset.sh`: the images are built (`docker compose build` on the current `.env.sandbox`) BEFORE the workspace is removed, so the 502 lasts the restart and not the build (measured on the Oracle host: 4-8 minutes of 502 per reset when the build context had changed). The provisioning's `up --build` then finds the cache.
+- `docs/release/operations/sandbox.md` (TLS step with host nginx, the reset window), `configuration-reference.md` (the two variables).
+
 ## Local clean-up: security test stack, ws-demo workspace and n8n test removed — 2026-10-14
 - Branch: `master`
 - Docker build cache cleared (about 179 GB), the `whoobe-sectest` stack (`scripts/security/stack.sh down`), the `ws-demo` workspace (`scripts/remove-workspace.sh ws-demo --yes`, which also deletes its rendered nginx files `deploy/nginx/ws-demo.conf` and `deploy/nginx/_locations-ws-demo.inc`, tracked in git until now) and the n8n test container were removed from the development machine. No product code changed.
