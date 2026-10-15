@@ -1,5 +1,5 @@
 <template>
-  <div class="rounded-lg border border-slate-800 light:border-slate-200 overflow-hidden">
+  <div class="rounded-lg border border-slate-800 light:border-slate-200 overflow-hidden" :class="{ 'flex flex-col': fill }">
     <div v-if="editor" class="flex items-center gap-1 p-1.5 border-b border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-slate-50 flex-wrap">
       <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('bold') }" title="Bold" @click="editor.chain().focus().toggleBold().run()"><Bold class="w-3.5 h-3.5" /></button>
       <button type="button" class="tt-btn" :class="{ 'tt-active': editor.isActive('italic') }" title="Italic" @click="editor.chain().focus().toggleItalic().run()"><Italic class="w-3.5 h-3.5" /></button>
@@ -27,11 +27,13 @@
       <span class="w-px h-4 bg-slate-800 light:bg-slate-200 mx-0.5"></span>
       <button type="button" class="tt-btn" :class="{ 'tt-active': showHtmlSource }" title="Edit HTML source" @click="toggleHtmlSource"><Braces class="w-3.5 h-3.5" /></button>
     </div>
-    <editor-content v-if="!showHtmlSource" :editor="editor" class="tt-content px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 max-h-96 overflow-y-auto" />
+    <editor-content v-if="!showHtmlSource" :editor="editor" class="tt-content px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 overflow-y-auto"
+      :class="fill ? 'tt-fill flex-1 min-h-0' : 'max-h-96'" />
     <textarea
       v-else
       v-model="htmlSource"
-      class="w-full px-3 py-2 text-xs font-mono bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 max-h-96 min-h-24 overflow-y-auto resize-y outline-none border-0"
+      class="w-full px-3 py-2 text-xs font-mono bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 overflow-y-auto resize-y outline-none border-0"
+      :class="fill ? 'flex-1 min-h-0' : 'max-h-96 min-h-24'"
       spellcheck="false"
     ></textarea>
   </div>
@@ -62,7 +64,8 @@ function headingIcon(level: 1 | 2 | 3 | 4): Component {
   return HEADING_ICONS[level]
 }
 
-const props = defineProps<{ modelValue: string }>()
+// fill: the field has a height of its own (custom classes, h-[600px] ...): the editing area takes all of it instead of max-h-96
+const props = defineProps<{ modelValue: string; fill?: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', value: string): void }>()
 
 // shallowRef, not ref - Tiptap already manages its own (ProseMirror)
@@ -159,6 +162,7 @@ function setImage() {
   background: rgb(224 231 255); /* bg-indigo-100 */
   color: rgb(67 56 202); /* text-indigo-700 */
 }
+.tt-fill :deep(.ProseMirror) { min-height: 100%; }
 .tt-content :deep(.ProseMirror) {
   outline: none;
   min-height: 6rem;

@@ -79,6 +79,25 @@
           <button @click="addSection" type="button" class="btn btn-link shrink-0 ml-3">+ Add section</button>
         </div>
 
+        <!-- Input styles: the classes of each control type on the object edit form, already filled with the built-in values. A field's own
+             "custom classes" (Fields tab) are merged over these, so a single field can still differ. -->
+        <div class="rounded-lg border border-slate-800/60 light:border-slate-200/60 p-2 space-y-2" data-testid="class-input-styles">
+          <div class="flex items-start justify-between gap-3">
+            <p class="text-[11px] text-slate-500">
+              <span class="font-semibold text-slate-400 light:text-slate-600">Input styles</span> - Tailwind classes of each control type on the object edit form.
+              The built-in values are filled in; edit them to restyle every field of that type in this class. A field's own custom classes
+              (Fields tab) are merged over them.
+            </p>
+            <button v-if="inputStylesChanged" type="button" class="btn btn-link btn-compact shrink-0" @click="resetInputStyles">Reset all</button>
+          </div>
+          <div v-for="item in INPUT_KINDS" :key="item.kind" class="grid grid-cols-[6rem_1fr_auto] items-center gap-2">
+            <div class="text-xs text-slate-300 light:text-slate-700" :title="item.applies">{{ item.label }}</div>
+            <input v-model="inputStyles[item.kind]" type="text" class="field font-mono" :placeholder="DEFAULT_INPUT_CLASSES[item.kind]" :aria-label="`${item.label} classes`" />
+            <button type="button" class="btn btn-link-muted btn-compact" :disabled="inputStyles[item.kind].trim() === DEFAULT_INPUT_CLASSES[item.kind]"
+              @click="inputStyles[item.kind] = DEFAULT_INPUT_CLASSES[item.kind]">Reset</button>
+          </div>
+        </div>
+
         <p v-if="namedFields.length === 0" class="text-xs text-slate-600 light:text-slate-400 italic">Add fields on the Fields tab first.</p>
 
         <div v-else class="space-y-1.5">
@@ -323,6 +342,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { useToastStore } from '../../stores/toastStore'
 import { fetchDataObjects } from '../../utils/data-objects-api'
 import { SYSTEM_LIST_COLUMNS, listColumnIcon } from '../../utils/list-columns'
+import { DEFAULT_INPUT_CLASSES, INPUT_KINDS, type InputKind } from '../../utils/field-control-classes'
 import FieldListEditor from './FieldListEditor.vue'
 import { FieldTypeChangeError, confirmFieldTypeChange } from '../../utils/field-type-change'
 
@@ -362,6 +382,14 @@ const viewConfig = ref<{ detailSections: { title: string; fields: string[]; cont
 const listColumns = ref<{ name: string; title?: string }[]>([])
 // viewConfig.defaultListView: the Objects listing of this class opens as a table instead of the compact list.
 const tableViewDefault = ref(false)
+// viewConfig.inputClasses: the classes per control type, always shown in full (the built-in string until the admin edits it);
+// only values that differ from the built-in one are stored.
+const inputStyles = ref<Record<InputKind, string>>({ ...DEFAULT_INPUT_CLASSES })
+const inputStylesChanged = computed(() => INPUT_KINDS.some((k) => inputStyles.value[k.kind].trim() !== DEFAULT_INPUT_CLASSES[k.kind]))
+function loadInputStyles(saved: Partial<Record<InputKind, string>> | undefined): void {
+  inputStyles.value = { ...DEFAULT_INPUT_CLASSES, ...Object.fromEntries(Object.entries(saved ?? {}).filter(([, v]) => typeof v === 'string' && v.trim())) }
+}
+function resetInputStyles(): void { inputStyles.value = { ...DEFAULT_INPUT_CLASSES } }
 // Fields hidden from the object edit form (viewConfig.hiddenFields).
 const hiddenFields = ref<string[]>([])
 const pendingColumnName = ref('')
@@ -382,6 +410,7 @@ watch(
     listColumns.value = (dataClass.viewConfig?.listColumns ?? []).map((c) => ({ name: c.name, ...(c.title ? { title: c.title } : {}) }))
     hiddenFields.value = [...(dataClass.viewConfig?.hiddenFields ?? [])]
     tableViewDefault.value = dataClass.viewConfig?.defaultListView === 'table'
+    loadInputStyles(dataClass.viewConfig?.inputClasses)
     hydrated.value = true
     fetchDataObjects(authStore.config.coreApiUrl, dataClass.id)
       .then((objects) => (objectCount.value = objects.length))
@@ -563,13 +592,23 @@ function buildViewConfigPayload(): ClassViewConfig | null {
     .map((c) => (c.title?.trim() ? { name: c.name, title: c.title.trim() } : { name: c.name }))
     .filter((c) => validNames.has(c.name) || systemColumnTitles.has(c.name))
   const validHidden = hiddenFields.value.filter((n) => namedFields.value.some((f) => f.name === n && !f.mandatory))
-  if (detailSections.length === 0 && validListColumns.length === 0 && validHidden.length === 0 && !tableViewDefault.value) return null
+  if (detailSections.length === 0 && validListColumns.length === 0 && validHidden.length === 0 && !tableViewDefault.value && !inputStylesChanged.value) return null
   return {
     ...(detailSections.length > 0 ? { detailSections } : {}),
     ...(validHidden.length > 0 ? { hiddenFields: validHidden } : {}),
     ...(validListColumns.length > 0 ? { listColumns: validListColumns } : {}),
     ...(tableViewDefault.value ? { defaultListView: 'table' as const } : {}),
+    ...(inputStylesChanged.value ? { inputClasses: changedInputStyles() } : {}),
   }
+}
+
+function changedInputStyles(): Partial<Record<InputKind, string>> {
+  const out: Partial<Record<InputKind, string>> = {}
+  for (const { kind } of INPUT_KINDS) {
+    const value = inputStyles.value[kind].trim()
+    if (value && value !== DEFAULT_INPUT_CLASSES[kind]) out[kind] = value
+  }
+  return out
 }
 
 function refreshTabLabel() {
@@ -618,6 +657,7 @@ async function handleSave() {
         listColumns.value = (updated.viewConfig?.listColumns ?? []).map((c) => ({ name: c.name, ...(c.title ? { title: c.title } : {}) }))
         hiddenFields.value = [...(updated.viewConfig?.hiddenFields ?? [])]
         tableViewDefault.value = updated.viewConfig?.defaultListView === 'table'
+        loadInputStyles(updated.viewConfig?.inputClasses)
         hydrated.value = true
       }
     }

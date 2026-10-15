@@ -20,6 +20,7 @@
         :key="field.name"
         :field="field"
         :model-value="modelValue[field.name]"
+        :input-classes="viewConfig?.inputClasses"
         @update:model-value="(value) => updateField(field.name, value)"
       />
     </div>
@@ -31,6 +32,7 @@
       :key="field.name"
       :field="field"
       :model-value="modelValue[field.name]"
+        :input-classes="viewConfig?.inputClasses"
       @update:model-value="(value) => updateField(field.name, value)"
     />
   </div>

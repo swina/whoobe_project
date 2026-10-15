@@ -1,5 +1,5 @@
 <template>
-  <div class="rounded-lg border border-slate-800 light:border-slate-200 overflow-hidden">
+  <div class="rounded-lg border border-slate-800 light:border-slate-200 overflow-hidden" :class="{ 'flex flex-col': fill }">
     <div class="flex items-center gap-1 p-1.5 border-b border-slate-800 light:border-slate-200 bg-slate-950/40 light:bg-slate-50">
       <button
         type="button"
@@ -24,7 +24,8 @@
       @input="$emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
       rows="8"
       placeholder="Markdown source…"
-      class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 max-h-96 min-h-24 overflow-y-auto resize-y outline-none border-0"
+      class="w-full px-3 py-2 text-sm font-mono bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 overflow-y-auto resize-y outline-none border-0"
+      :class="fill ? 'flex-1 min-h-0' : 'max-h-96 min-h-24'"
       spellcheck="false"
     ></textarea>
     <!-- Preview: the markdown source converted to HTML, same trust level as
@@ -32,7 +33,8 @@
          user-generated. -->
     <div
       v-else
-      class="md-preview px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 max-h-96 min-h-24 overflow-y-auto"
+      class="md-preview px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 overflow-y-auto"
+      :class="fill ? 'flex-1 min-h-0' : 'max-h-96 min-h-24'"
       v-html="previewHtml"
     ></div>
   </div>
@@ -49,7 +51,9 @@ import { computed, ref } from 'vue'
 import { marked } from 'marked'
 import { Eye, Pencil } from '@lucide/vue'
 
-const props = defineProps<{ modelValue: string }>()
+// fill: the field has a height of its own (Class > Fields > custom classes, h-[600px] ...): the writing area takes all of it instead of
+// the default 8 rows capped at max-h-96
+const props = defineProps<{ modelValue: string; fill?: boolean }>()
 defineEmits<{ (e: 'update:modelValue', value: string): void }>()
 
 const showPreview = ref(false)

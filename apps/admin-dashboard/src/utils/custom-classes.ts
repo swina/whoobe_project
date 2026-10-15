@@ -102,3 +102,14 @@ export function resolveCustomClasses(raw: string | undefined): ResolvedCustomCla
 
   return { class: classTokens.join(' '), style };
 }
+
+// Grid / flex placement utilities (col-span-2, row-start-1, order-last, self-end ...) only mean something on the element that is an
+// item of the section's layout: the field's outer wrapper. Everything else a field's custom classes say is about the control itself.
+const PLACEMENT_PATTERN = /^(?:[a-z0-9-]+:)*(?:-?col|-?row|-?order|self|justify-self|place-self)(?:-|$)/;
+
+export function splitPlacementClasses(raw: string | undefined): { placement: string; rest: string } {
+  const placement: string[] = [];
+  const rest: string[] = [];
+  for (const token of (raw ?? '').split(/\s+/).filter(Boolean)) (PLACEMENT_PATTERN.test(token) ? placement : rest).push(token);
+  return { placement: placement.join(' '), rest: rest.join(' ') };
+}

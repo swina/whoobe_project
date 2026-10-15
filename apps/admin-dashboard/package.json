@@ -24,6 +24,7 @@
     "marked": "^14.1.4",
     "mermaid": "11.17.2",
     "pinia": "^3.0.1",
+    "tailwind-merge": "3.7.0",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0",
     "xlsx": "^0.18.5"

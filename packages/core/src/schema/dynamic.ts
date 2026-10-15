@@ -111,6 +111,9 @@ export interface ClassViewConfig {
   // How the object listing opens for this class: the spreadsheet-like table instead of the compact list. A choice the user made in
   // the listing's own List / Table switch (kept per class in the browser) wins. Absent = the list.
   defaultListView?: 'table';
+  // Classes of the form controls of the object edit form, per control type (Class > View Layout > Input styles). Each string REPLACES the
+  // built-in classes of that type (admin-dashboard utils/field-control-classes.ts); a field's own `className` is merged over it.
+  inputClasses?: { text?: string; textarea?: string; select?: string; checkbox?: string };
   // Field names left off the object edit form (DataObjectForm.vue) - the
   // stored values are untouched, the field just isn't shown. A `mandatory`
   // field is never hidden (it would make the form impossible to save).

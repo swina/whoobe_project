@@ -1,26 +1,19 @@
 <template>
-  <div class="space-y-1" :class="(field.fieldType != 'image' && field.fieldType != 'video' && field.fieldType != 'asset') ? fieldLayout.class : ''">
+  <div class="space-y-1" :class="split.placement">
     <label class="block text-xs font-semibold text-slate-400 light:text-slate-600">
       {{ field.title }}<span v-if="field.mandatory" class="text-rose-400"> *</span>
     </label>
 
-    <!-- field.className (docs/plans/UI/editing-object-class.md) is applied
-         to the actual control in every branch below - never to the outer
-         label+control wrapper above, which only exists for that vertical
-         stacking. Real consequence, stated rather than glossed over: a
-         grid-placement utility like col-span-2 needs to sit on a real
-         grid *item* to do anything - since that's this wrapper, not the
-         control inside it, col-span-2 typed into a field's className has
-         no effect once applied here. Custom classes/styles - background,
-         padding, borders, sizing - visibly landing on the control itself
-         is what was actually asked for; grid placement for a field within
-         a section's own grid layout doesn't have a supported mechanism
-         right now (a real, separate gap, not silently pretended away). -->
+    <!-- field.className (Class > Fields > the field) is split in two. Placement utilities (col-span-2, row-start-1, order-last, self-end ...)
+         go on this wrapper, which is the item of the section's grid. Everything else goes on the control, merged OVER the built-in
+         classes of its type (and over the class's own "Input styles" from View Layout) with tailwind-merge, so `py-1` really replaces the
+         built-in `py-2`. See utils/field-control-classes.ts. -->
 
     <!-- Rich text - docs/plans/datamodel/wysiwyg-field-editor-plan.md -->
     <WysiwygEditor
       v-if="field.fieldType === 'wysiwyg'"
       :model-value="(modelValue as string) ?? ''"
+      :fill="hasOwnHeight"
       :class="fieldLayout.class"
       :style="fieldLayout.style"
       @update:model-value="emitUpdate"
@@ -30,6 +23,7 @@
     <MarkdownEditor
       v-else-if="field.fieldType === 'markdown'"
       :model-value="(modelValue as string) ?? ''"
+      :fill="hasOwnHeight"
       :class="fieldLayout.class"
       :style="fieldLayout.style"
       @update:model-value="emitUpdate"
@@ -40,8 +34,8 @@
       :value="(modelValue as string) ?? ''"
       @input="emitUpdate(($event.target as HTMLTextAreaElement).value)"
       rows="4"
-      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
-      :style="fieldLayout.style"
+      :class="controls.textarea.class"
+      :style="controls.textarea.style"
     />
     <!-- urlSlug: a trailing "Generate" button slugifies whatever's already
          typed here into a friendly URL slug - docs/plans/UI/editing-
@@ -54,7 +48,8 @@
         :value="(modelValue as string) ?? ''"
         @input="emitUpdate(($event.target as HTMLInputElement).value)"
         type="text"
-        class="field flex-1 min-w-0"
+        :class="[controls.text.class, 'flex-1 min-w-0']"
+        :style="controls.text.style"
       />
       <button
         type="button"
@@ -74,7 +69,8 @@
         @input="onArrayInput(($event.target as HTMLInputElement).value)"
         type="text"
         placeholder="item 1; item 2; item 3"
-        class="field w-full"
+        :class="controls.text.class"
+        :style="controls.text.style"
       />
       <p class="text-[10px] text-slate-500">Separate items with ";" - {{ arrayCount }} item(s)</p>
     </div>
@@ -87,7 +83,8 @@
         rows="8"
         spellcheck="false"
         placeholder='{ "key": "value" }'
-        :class="['w-full px-3 py-2 text-xs font-mono bg-slate-950 light:bg-slate-50 border rounded-lg text-slate-200 light:text-slate-800 focus:outline-none', jsonError ? 'border-rose-500 focus:border-rose-500' : 'border-slate-800 light:border-slate-400 focus:border-indigo-500']"
+        :class="jsonClass"
+        :style="controls.textarea.style"
       />
       <p v-if="jsonError" class="text-[11px] text-rose-400">{{ jsonError }} - not applied until it parses; the last valid value is kept.</p>
       <p v-else-if="jsonText.trim()" class="text-[11px] text-emerald-500">Valid JSON</p>
@@ -97,32 +94,32 @@
       :value="(modelValue as string) ?? ''"
       @input="emitUpdate(($event.target as HTMLInputElement).value)"
       type="text"
-      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
-      :style="fieldLayout.style"
+      :class="controls.text.class"
+      :style="controls.text.style"
     />
     <input
       v-else-if="field.fieldType === 'numeric'"
       :value="(modelValue as number) ?? ''"
       @input="emitUpdate(($event.target as HTMLInputElement).value === '' ? null : Number(($event.target as HTMLInputElement).value))"
       type="number"
-      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
-      :style="fieldLayout.style"
+      :class="controls.text.class"
+      :style="controls.text.style"
     />
     <input
       v-else-if="field.fieldType === 'checkbox'"
       :checked="!!modelValue"
       @change="emitUpdate(($event.target as HTMLInputElement).checked)"
       type="checkbox"
-      :class="['w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600', fieldLayout.class]"
-      :style="fieldLayout.style"
+      :class="controls.checkbox.class"
+      :style="controls.checkbox.style"
     />
     <input
       v-else-if="field.fieldType === 'date'"
       :value="dateInputValue"
       @input="emitUpdate(($event.target as HTMLInputElement).value ? new Date(($event.target as HTMLInputElement).value) : null)"
       type="date"
-      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
-      :style="fieldLayout.style"
+      :class="controls.text.class"
+      :style="controls.text.style"
     />
 
     <!-- select: relation-flavored (relationTarget) vs plain fixed options -->
@@ -130,8 +127,8 @@
       v-else-if="field.fieldType === 'select' && field.relationTarget"
       :value="relationSelectedId"
       @change="emitUpdate(relationValueFromId(($event.target as HTMLSelectElement).value))"
-      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
-      :style="fieldLayout.style"
+      :class="controls.select.class"
+      :style="controls.select.style"
     >
       <option value="">—</option>
       <option v-for="opt in relationOptions" :key="opt.id" :value="opt.id">{{ relationOptionLabel(opt) }}</option>
@@ -140,8 +137,8 @@
       v-else-if="field.fieldType === 'select'"
       :value="(modelValue as string) ?? ''"
       @change="emitUpdate(($event.target as HTMLSelectElement).value)"
-      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
-      :style="fieldLayout.style"
+      :class="controls.select.class"
+      :style="controls.select.style"
     >
       <option value="">—</option>
       <option v-for="opt in field.options ?? []" :key="opt" :value="opt">{{ opt }}</option>
@@ -154,8 +151,8 @@
       @input="emitUpdate(($event.target as HTMLInputElement).value.split(',').map((s) => s.trim()).filter(Boolean))"
       type="text"
       placeholder="comma, separated, values"
-      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-200 light:text-slate-800 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
-      :style="fieldLayout.style"
+      :class="controls.text.class"
+      :style="controls.text.style"
     />
 
     <!-- manyToOneRelation: object relation (relationTarget) vs an asset reference -->
@@ -163,8 +160,8 @@
       v-else-if="field.fieldType === 'manyToOneRelation' && field.relationTarget"
       :value="relationSelectedId"
       @change="emitUpdate(relationValueFromId(($event.target as HTMLSelectElement).value))"
-      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
-      :style="fieldLayout.style"
+      :class="controls.select.class"
+      :style="controls.select.style"
     >
       <option value="">—</option>
       <option v-for="opt in relationOptions" :key="opt.id" :value="opt.id">{{ relationOptionLabel(opt) }}</option>
@@ -184,8 +181,8 @@
       multiple
       :value="multiRelationIds"
       @change="emitUpdate(Array.from(($event.target as HTMLSelectElement).selectedOptions).map((o) => ({ id: o.value })))"
-      :class="['w-full px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-400 rounded-lg text-slate-300 light:text-slate-700 focus:outline-none focus:border-indigo-500', fieldLayout.class]"
-      :style="fieldLayout.style"
+      :class="controls.select.class"
+      :style="controls.select.style"
       size="4"
     >
       <option v-for="opt in relationOptions" :key="opt.id" :value="opt.id">{{ relationOptionLabel(opt) }}</option>
@@ -200,21 +197,24 @@
         @input="emitUpdate({ ...linkValue, path: ($event.target as HTMLInputElement).value || null })"
         type="text"
         placeholder="Path/URL"
-        class="field"
+        :class="controls.text.class"
+        :style="controls.text.style"
       />
       <input
         :value="linkValue.text ?? ''"
         @input="emitUpdate({ ...linkValue, text: ($event.target as HTMLInputElement).value || null })"
         type="text"
         placeholder="Text"
-        class="field"
+        :class="controls.text.class"
+        :style="controls.text.style"
       />
       <input
         :value="linkValue.target ?? ''"
         @input="emitUpdate({ ...linkValue, target: ($event.target as HTMLInputElement).value || null })"
         type="text"
         placeholder="Target (_self, _blank...)"
-        class="field"
+        :class="controls.text.class"
+        :style="controls.text.style"
       />
     </div>
 
@@ -228,7 +228,7 @@
         >
           Remove
         </button>
-        <DataObjectForm :fields="field.blockFields ?? []" :model-value="row" @update:model-value="(v) => updateBlockRow(index, v)" />
+        <DataObjectForm :fields="field.blockFields ?? []" :model-value="row" :view-config="nestedViewConfig" @update:model-value="(v) => updateBlockRow(index, v)" />
       </div>
       <button @click="addBlockRow" type="button" class="btn btn-link">+ Add row</button>
     </div>
@@ -256,6 +256,7 @@
         <DataObjectForm
           :fields="collectionTypeFields(item.collectionType)"
           :model-value="item"
+          :view-config="nestedViewConfig"
           @update:model-value="(v) => updateCollectionItem(index, v)"
         />
       </div>
@@ -263,7 +264,8 @@
         <select
           :value="''"
           @change="addCollectionItem(($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
-          class="field w-full"
+          :class="controls.select.class"
+          :style="controls.select.style"
         >
           <option value="" disabled>+ Add block…</option>
           <option v-for="type in field.collectionTypes" :key="type.name" :value="type.name">{{ type.label }}</option>
@@ -293,9 +295,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { Wand2 } from '@lucide/vue'
-import type { ClassFieldDefinition } from '@whoobe-cms/core'
+import type { ClassFieldDefinition, ClassViewConfig } from '@whoobe-cms/core'
 import { useRelationOptions } from '../../composables/useRelationOptions'
-import { resolveCustomClasses } from '../../utils/custom-classes'
+import { resolveCustomClasses, splitPlacementClasses } from '../../utils/custom-classes'
+import { resolveControlLayout, mergeClasses, type InputClassesConfig } from '../../utils/field-control-classes'
 import { slugify } from '../../utils/slugify'
 import type { AssetCategoryFilter } from '../../utils/asset-category'
 import DataObjectForm from './DataObjectForm.vue'
@@ -306,6 +309,8 @@ import AssetFieldPicker from './AssetFieldPicker.vue'
 const props = defineProps<{
   field: ClassFieldDefinition
   modelValue: unknown
+  // The class's own look per control type (viewConfig.inputClasses); absent = the built-in classes.
+  inputClasses?: InputClassesConfig
 }>()
 
 // field.className (docs/plans/UI/editing-object-class.md) - appended
@@ -315,7 +320,24 @@ const props = defineProps<{
 // label-above-control structure isn't something a grid-placement class
 // like col-span-2 should ever remove). Same arbitrary-bracket-value
 // handling as containerClass - see that util's own comment.
-const fieldLayout = computed(() => resolveCustomClasses(props.field.className))
+const split = computed(() => splitPlacementClasses(props.field.className))
+// containers (link, block, array ...): the field's non-placement classes as they are
+const fieldLayout = computed(() => resolveCustomClasses(split.value.rest))
+// inputs, textareas, selects, checkboxes: built-in or class-wide classes, with the field's own merged over them
+const controls = computed(() => ({
+  text: resolveControlLayout('text', props.inputClasses, split.value.rest),
+  textarea: resolveControlLayout('textarea', props.inputClasses, split.value.rest),
+  select: resolveControlLayout('select', props.inputClasses, split.value.rest),
+  checkbox: resolveControlLayout('checkbox', props.inputClasses, split.value.rest),
+}))
+// a block / field collection edits its rows with a nested form: it gets the same input styles
+// A field whose classes set a height (h-96, min-h-[500px], max-h-... or the inline style they become) sizes its editor: the rich-text
+// and Markdown editors then fill it instead of keeping their own 8 rows / max-h-96.
+const hasOwnHeight = computed(() =>
+  /(^|\s)(?:[a-z0-9-]+:)*(?:h|min-h|max-h)-/.test(split.value.rest) || ['height', 'minHeight', 'maxHeight'].some((k) => k in fieldLayout.value.style))
+const nestedViewConfig = computed<ClassViewConfig | null>(() => (props.inputClasses ? { inputClasses: props.inputClasses } : null))
+// the JSON editor: the textarea control, in monospace and smaller, with a red border while the text does not parse
+const jsonClass = computed(() => mergeClasses(controls.value.textarea.class, 'font-mono text-xs', jsonError.value ? 'border-rose-500 focus:border-rose-500' : ''))
 
 const emit = defineEmits<{
   'update:modelValue': [value: unknown]

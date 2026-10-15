@@ -35,8 +35,15 @@ among the options.
 *Settings > Classes* lists the classes and opens an editor for one:
 
 - **Fields**, added, ordered and configured one by one; relations name their target class and the field to display.
-- **View layout**: how the edit form is arranged into sections and groups, and the Tailwind classes of a section or control.
-- **List layout**: which columns the object list shows.
+- **View layout**: how the edit form is arranged into sections and groups, and the Tailwind classes of a section or control. Three layers
+  set the look of a control (text-like inputs - input, e-mail, number, date, URL slug, array, link - textarea and JSON, select, checkbox; rich text, Markdown and the image / video / asset pickers are components of their own and are not covered), the last one winning: the built-in classes of its type; the class's own
+  **Input styles** (View layout, one string per type, shown already filled with the built-in value: editing it replaces that value for
+  every field of the type in this class); and the **custom classes** of the single field (Fields tab), merged over the result, so a
+  field's `py-1` really replaces the `py-2` of its type. Placement classes of a field (`col-span-2`, `row-start-1`, `order-last`,
+  `self-end` ...) go on the field's wrapper, the item of the section's grid. Arbitrary values (`w-[640px]`) become inline style for
+  the common properties (width, height, padding, margin, gap, background, radius, opacity, text and border colour or size). These
+  classes only style the edit form in the dashboard; published sites and the API do not use them.
+- **List layout**: which columns the object list shows, and whether the list opens as the table by default ([Objects list](../content/objects-list.md)).
 
 Changing a class is a normal operation (no deployment). Changing the **type** of an existing field is checked: the change is refused until you confirm it, because stored values may no
 longer fit the new type (they are not rewritten). Deleting a class is blocked while objects still belong to it.
