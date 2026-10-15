@@ -99,6 +99,19 @@
           </div>
         </div>
 
+        <!-- View: compact list or spreadsheet-like table -->
+        <div class="inline-flex rounded-lg border border-slate-800 light:border-slate-200 overflow-hidden" role="group" aria-label="View mode" data-testid="objects-view-mode">
+          <button type="button" @click="setViewMode('list')" title="List view" aria-label="List view" :aria-pressed="!isTable"
+            class="px-2.5 py-2 text-sm inline-flex items-center transition"
+            :class="!isTable ? 'bg-indigo-600 text-white' : 'bg-slate-950 light:bg-slate-50 text-slate-400 light:text-slate-600 hover:text-slate-200'">
+            <LayoutList class="w-4 h-4" />
+          </button>
+          <button type="button" @click="setViewMode('table')" title="Table view" aria-label="Table view" :aria-pressed="isTable"
+            class="px-2.5 py-2 text-sm inline-flex items-center transition border-l border-slate-800 light:border-slate-200"
+            :class="isTable ? 'bg-indigo-600 text-white' : 'bg-slate-950 light:bg-slate-50 text-slate-400 light:text-slate-600 hover:text-slate-200'">
+            <Table2 class="w-4 h-4" />
+          </button>
+        </div>
         <button v-if="selectedDataClass" @click="showFilterModal = true"
           class="px-3 py-2 text-sm bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 rounded-lg text-slate-300 light:text-slate-700 hover:border-indigo-500 transition inline-flex items-center gap-1.5"
           :class="queryFilters.length > 0 ? 'border-indigo-500 text-indigo-400' : ''">
@@ -160,76 +173,133 @@
     <div v-else
       class="flex flex-col flex-1 min-h-0 rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 overflow-hidden">
 
-      <!-- Sticky Table Header -->
-      <div
-        class="sticky top-0 z-10 grid text-xs uppercase bg-slate-950/70 light:bg-white/70 text-slate-400 light:text-slate-600 border-b border-slate-800 light:border-slate-200"
-        :style="{ gridTemplateColumns: gridTemplateCols }">
-        <div class="px-3 py-3 w-10 shrink-0">
-          <input type="checkbox" :checked="allPageSelected()" @change="toggleSelectAll"
-            class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
+      <!-- One scroll container for header and rows: the table view can be wider than the screen and both scroll together -->
+      <div class="flex-1 min-h-0 overflow-auto" data-testid="objects-grid" :data-view="viewMode">
+        <div :style="{ minWidth: gridMinWidth }">
+
+          <!-- Sticky header -->
+          <div
+            class="sticky top-0 z-10 grid text-xs uppercase text-slate-400 light:text-slate-600 border-b border-slate-800 light:border-slate-200"
+            :class="isTable ? 'bg-slate-900 light:bg-slate-100' : 'bg-slate-950/70 light:bg-white/70'"
+            :style="{ gridTemplateColumns: gridTemplateCols }">
+            <div v-if="isTable" class="px-2 py-1.5 text-center border-r border-slate-800 light:border-slate-200">#</div>
+            <div class="flex items-center" :class="isTable ? 'px-2 py-1.5 justify-center border-r border-slate-800 light:border-slate-200' : 'px-3 py-2 w-10 shrink-0'">
+              <input type="checkbox" :checked="allPageSelected()" @change="toggleSelectAll"
+                class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
+            </div>
+            <div v-for="col in visibleColumns" :key="col.name" @click="toggleSort(col.name)"
+              class="relative font-semibold cursor-pointer hover:text-slate-200 select-none whitespace-nowrap truncate"
+              :class="isTable ? 'px-2 py-1.5 border-r border-slate-800 light:border-slate-200' : 'px-4 py-2'">
+              {{ col.title }}
+              <span v-if="sortField === col.name" class="ml-1">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
+              <!-- drag to resize, double click to reset (table view) -->
+              <span v-if="isTable" class="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-indigo-500/60 touch-none"
+                title="Drag to resize, double click to reset" @click.stop @pointerdown.stop.prevent="startResize($event, col.name)" @dblclick.stop="resetColWidth(col.name)"></span>
+            </div>
+          </div>
+
+          <!-- Rows -->
+          <div :class="isTable ? '' : 'divide-y divide-slate-800/60 light:divide-slate-200/60'">
+            <div v-for="(record, rowIdx) in pagedRecords" :key="record.translationGroupId"
+              class="grid hover:bg-slate-800/40 transition text-slate-300 light:text-slate-700"
+              :class="isTable
+                ? 'text-xs border-b border-slate-800 light:border-slate-200 odd:bg-slate-900/30 light:odd:bg-white light:even:bg-slate-50 light:hover:bg-indigo-50'
+                : 'text-sm light:bg-slate-100/40'"
+              :style="{ gridTemplateColumns: gridTemplateCols }"
+              @contextmenu.prevent="openContextMenu($event, record)">
+              <div v-if="isTable" class="px-2 py-0.5 flex items-center justify-center text-[11px] tabular-nums text-slate-500 bg-slate-900/60 light:bg-slate-100 border-r border-slate-800 light:border-slate-200 select-none"
+                title="Right click: Edit / Delete">{{ rowNumberOffset + rowIdx + 1 }}</div>
+              <div class="flex items-center"
+                :class="isTable ? 'px-2 py-0.5 justify-center border-r border-slate-800 light:border-slate-200' : 'px-3 py-1 w-10 shrink-0'" @click.stop>
+                <input type="checkbox" :checked="selectedGroupIds.has(record.translationGroupId)"
+                  @change="toggleSelectGroup(record.translationGroupId)"
+                  class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
+              </div>
+              <div v-for="col in visibleColumns" :key="col.name" @dblclick="startEdit(record, col.name)"
+                class="flex items-center overflow-hidden"
+                :class="[
+                  isTable ? 'px-2 py-0.5 border-r border-slate-800 light:border-slate-200' : 'px-4 py-1',
+                  col.name === 'key' ? 'font-medium text-slate-200 light:text-slate-800' : 'text-slate-400 light:text-slate-600',
+                  cellErrors.has(`${record.primary.id}:${col.name}`) ? 'ring-1 ring-inset ring-rose-500/70 bg-rose-500/10' : isCellDirty(record, col.name) ? 'ring-1 ring-inset ring-amber-500/50 bg-amber-500/10' : ''
+                ]"
+                :title="cellErrors.get(`${record.primary.id}:${col.name}`)">
+                <!-- table view: a cell being edited -->
+                <template v-if="editing && editing.rowId === record.primary.id && editing.col === col.name">
+                  <select v-if="editKind(col.name) === 'select'" data-cell-editor v-model="editText" @change="commitEdit(record, col.name)" @blur="commitEdit(record, col.name)" @keydown.esc="cancelEdit"
+                    class="w-full bg-slate-950 light:bg-white border border-indigo-500 rounded px-1 py-0 text-xs text-slate-200 light:text-slate-800">
+                    <option value="">—</option>
+                    <option v-for="opt in classFieldByName(col.name)?.options ?? []" :key="opt" :value="opt">{{ opt }}</option>
+                  </select>
+                  <input v-else data-cell-editor v-model="editText"
+                    :type="editKind(col.name) === 'number' ? 'number' : editKind(col.name) === 'date' ? 'date' : 'text'"
+                    @keydown.enter.prevent="commitEdit(record, col.name)" @keydown.esc="cancelEdit" @blur="commitEdit(record, col.name)"
+                    class="w-full bg-slate-950 light:bg-white border border-indigo-500 rounded px-1 py-0 text-xs text-slate-200 light:text-slate-800" />
+                </template>
+                <input v-else-if="editKind(col.name) === 'checkbox'" type="checkbox" :checked="!!cellValue(record, col.name)"
+                  @change="setDraft(record, col.name, ($event.target as HTMLInputElement).checked)"
+                  class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
+                <template v-else-if="isTable && editKind(col.name) && col.name !== 'key'">
+                  <span class="truncate" :title="String(cellValue(record, col.name) ?? '')">{{ cellValue(record, col.name) ?? '' }}</span>
+                </template>
+                <template v-else>
+                <template v-if="col.name === 'key'">
+                  <!-- one line: the path follows the key (in the table only as a tooltip, the key column stays short) -->
+                  <div class="flex items-baseline gap-2 min-w-0 w-full" :title="record.primary.path">
+                    <span class="truncate shrink-0 max-w-[70%]">{{ cellValue(record, 'key') }}</span>
+                    <span v-if="!isTable" class="text-xs text-slate-500 font-mono truncate">{{ record.primary.path }}</span>
+                  </div>
+                </template>
+                <template v-else-if="col.name === 'locales'">
+                  <div class="flex gap-1 overflow-hidden">
+                    <span v-for="row in record.rows" :key="row.locale"
+                      class="px-2 text-[10px] font-bold rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 uppercase">{{ row.locale }}</span>
+                  </div>
+                </template>
+                <template v-else-if="col.name === 'class'">
+                  <span
+                    class="truncate px-2 text-xs bg-slate-800 light:bg-slate-100 rounded font-mono text-indigo-300">{{ classLabel(record.primary.classId) }}</span>
+                </template>
+                <template v-else-if="col.name === 'status'">
+                  <span :class="[
+                    'truncate px-2 text-[10px] font-bold rounded-full border uppercase',
+                    record.primary.published ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  ]">{{ record.primary.published ? 'published' : (record.primary.workflowState || 'draft') }}</span>
+                </template>
+                <template v-else-if="col.name === 'updatedAt'">
+                  <span class="truncate">{{ new Date(record.primary.updatedAt).toLocaleString() }}</span>
+                </template>
+                <template v-else>
+                  <img
+                    v-if="classFieldByName(col.name) && isAssetField(classFieldByName(col.name)!) && recordAssetUrl(record, col.name)"
+                    :src="recordAssetUrl(record, col.name)!"
+                    class="rounded object-cover border border-slate-700/50 bg-slate-800 shrink-0"
+                    :class="isTable ? 'w-5 h-5' : 'w-7 h-7'"
+                    :title="col.title"
+                    @error="($event.target as HTMLImageElement).style.display = 'none'"
+                  />
+                  <span v-else class="truncate" :title="isTable ? listCellValue(record, col.name) : undefined">{{ listCellValue(record, col.name) }}</span>
+                </template>
+                </template>
+              </div>
+            </div>
+          </div>
         </div>
-        <div v-for="col in visibleColumns" :key="col.name" @click="toggleSort(col.name)"
-          class="px-4 py-3 font-semibold cursor-pointer hover:text-slate-200 select-none whitespace-nowrap truncate">
-          {{ col.title }}
-          <span v-if="sortField === col.name" class="ml-1">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
-        </div>
-        <div class="px-4 py-3 font-semibold text-right shrink-0">Actions</div>
       </div>
 
-      <!-- Scrollable Table Body -->
-      <div class="flex-1 overflow-y-auto min-h-0 divide-y divide-slate-800/60 light:divide-slate-200/60">
-        <div v-for="record in pagedRecords" :key="record.translationGroupId"
-          class="grid hover:bg-slate-800/40 light:bg-slate-100/40 transition cursor-pointer text-sm text-slate-300 light:text-slate-700"
-          :style="{ gridTemplateColumns: gridTemplateCols }">
-          <div class="px-3 py-3.5 w-10 shrink-0 flex items-center" @click.stop>
-            <input type="checkbox" :checked="selectedGroupIds.has(record.translationGroupId)"
-              @change="toggleSelectGroup(record.translationGroupId)"
-              class="w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
-          </div>
-          <div v-for="col in visibleColumns" :key="col.name" @click="openRecord(record)"
-            class="px-4 py-3.5 flex items-center overflow-hidden"
-            :class="col.name === 'key' ? 'font-medium text-slate-200 light:text-slate-800' : 'text-slate-400 light:text-slate-600'">
-            <template v-if="col.name === 'key'">
-              <div class="truncate min-w-0">
-                <div class="truncate">{{ record.primary.key }}</div>
-                <div class="text-xs text-slate-500 font-mono truncate">{{ record.primary.path }}</div>
-              </div>
-            </template>
-            <template v-else-if="col.name === 'locales'">
-              <div class="flex flex-wrap gap-1">
-                <span v-for="row in record.rows" :key="row.locale"
-                  class="px-2 py-0.5 text-[10px] font-bold rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 uppercase">{{ row.locale }}</span>
-              </div>
-            </template>
-            <template v-else-if="col.name === 'class'">
-              <span
-                class="truncate px-2 py-0.5 text-xs bg-slate-800 light:bg-slate-100 rounded font-mono text-indigo-300">{{ classLabel(record.primary.classId) }}</span>
-            </template>
-            <template v-else-if="col.name === 'status'">
-              <span :class="[
-                'truncate px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase',
-                record.primary.published ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-              ]">{{ record.primary.published ? 'published' : (record.primary.workflowState || 'draft') }}</span>
-            </template>
-            <template v-else-if="col.name === 'updatedAt'">
-              <span class="truncate">{{ new Date(record.primary.updatedAt).toLocaleString() }}</span>
-            </template>
-            <template v-else>
-              <img
-                v-if="classFieldByName(col.name) && isAssetField(classFieldByName(col.name)!) && recordAssetUrl(record, col.name)"
-                :src="recordAssetUrl(record, col.name)!"
-                class="w-10 h-10 rounded object-cover border border-slate-700/50 bg-slate-800 shrink-0"
-                :title="col.title"
-                @error="($event.target as HTMLImageElement).style.display = 'none'"
-              />
-              <span v-else class="truncate">{{ listCellValue(record, col.name) }}</span>
-            </template>
-          </div>
-          <div class="px-4 py-3.5 text-right shrink-0 flex items-center justify-end gap-3" @click.stop>
-            <button @click="openRecord(record)"
-              class="btn btn-link">Edit</button>
-            <button @click="handleDelete(record)"
-              class="btn btn-link-danger">Delete</button>
+      <!-- Unsaved cell edits (table view): saved only when asked -->
+      <div v-if="drafts.size > 0"
+        class="shrink-0 flex items-center gap-3 px-4 py-2 border-t border-amber-500/40 bg-amber-500/10 text-xs text-amber-200 light:text-amber-800" data-testid="objects-save-bar">
+        <span>{{ drafts.size }} row{{ drafts.size === 1 ? '' : 's' }} with unsaved changes</span>
+        <button type="button" class="btn btn-link-muted btn-compact" :disabled="isSaving" @click="discardDrafts">Discard</button>
+        <div class="relative ml-auto">
+          <button type="button" class="btn btn-primary btn-compact" :disabled="isSaving" data-testid="objects-save-menu"
+            @click.stop="isSaveMenuOpen = !isSaveMenuOpen">{{ isSaving ? 'Saving…' : 'Save changes ▾' }}</button>
+          <div v-if="isSaveMenuOpen" @click.stop
+            class="absolute right-0 bottom-full mb-1 w-44 rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-xl z-20 overflow-hidden">
+            <button type="button" data-testid="objects-save" @click="saveDrafts(false)"
+              class="block w-full text-left px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-slate-800 light:hover:bg-slate-100">Save</button>
+            <button type="button" data-testid="objects-save-publish" @click="saveDrafts(true)"
+              class="block w-full text-left px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-slate-800 light:hover:bg-slate-100">Save &amp; Publish</button>
           </div>
         </div>
       </div>
@@ -341,20 +411,28 @@
 
       </div>
     </BaseModal>
+    <!-- Context menu of a row -->
+    <div v-if="ctxMenu" class="fixed z-50 w-40 rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-xl overflow-hidden"
+      :style="{ left: ctxMenu.x + 'px', top: ctxMenu.y + 'px' }" role="menu" data-testid="objects-context-menu" @click.stop @contextmenu.prevent>
+      <button type="button" role="menuitem" @click="ctxEdit"
+        class="block w-full text-left px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-slate-800 light:hover:bg-slate-100">Edit</button>
+      <button type="button" role="menuitem" @click="ctxDelete"
+        class="block w-full text-left px-3 py-2 text-xs text-rose-400 hover:bg-slate-800 light:hover:bg-slate-100">Delete</button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import BaseModal from '../components/ui/BaseModal.vue'
-import { ref, reactive, computed, watch } from 'vue'
-import { ChevronUp, ChevronDown, Filter, Plus, RefreshCw, Trash2, X } from '@lucide/vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ChevronUp, ChevronDown, Filter, LayoutList, Plus, RefreshCw, Table2, Trash2, X } from '@lucide/vue'
 import { useDataClassesStore } from '../stores/dataClassesStore'
 import { useDamStore } from '../stores/damStore'
 import { useTabsStore } from '../stores/tabsStore'
 import { useToastStore } from '../stores/toastStore'
 import { useAuthStore } from '../stores/authStore'
 import type { DataObject } from '../utils/data-objects-api'
-import { fetchDataObjects, deleteDataObject as apiDeleteDataObject, batchActionDataObjects, batchResolveAssets } from '../utils/data-objects-api'
+import { fetchDataObjects, deleteDataObject as apiDeleteDataObject, updateDataObject as apiUpdateDataObject, batchActionDataObjects, batchResolveAssets } from '../utils/data-objects-api'
 import type { DataObjectQueryFilter } from '../utils/data-objects-api'
 import EmptyClassModal from '../components/objects/EmptyClassModal.vue'
 import { exportRowsAsCsv, exportRowsAsJson, exportRowsAsXlsx } from '../utils/data-export'
@@ -411,9 +489,207 @@ const visibleColumns = computed<ColumnOption[]>(() => {
     .filter((c): c is ColumnOption => !!c)
 })
 
+// List: the compact rows of the dashboard. Table: a spreadsheet look (cell borders, row numbers, one line per row, resizable columns
+// that never get narrower than MIN_COL_PX, the whole grid scrolls sideways when they do not fit, cells can be edited in place).
+// The choice is remembered per class and browser; without one, the class's own default applies (Class > List Layout > "Set Table view
+// as default", viewConfig.defaultListView).
+type ViewMode = 'list' | 'table'
+const VIEW_MODE_KEY = 'whoobe.objects.viewMode'
+const COL_WIDTHS_KEY = 'whoobe.objects.colWidths'
+const TABLE_MIN_COL = '9rem'
+const MIN_COL_PX = 64
+function readStored(key: string): string | null {
+  try { return localStorage.getItem(key) } catch { return null }
+}
+function writeStored(key: string, value: string | null): void {
+  try { value === null ? localStorage.removeItem(key) : localStorage.setItem(key, value) } catch { /* private window: just not remembered */ }
+}
+const savedViewMode = ref<ViewMode | null>(null)
+const colWidths = ref<Record<string, number>>({})
+watch(selectedClassId, (classId) => {
+  const saved = classId ? readStored(`${VIEW_MODE_KEY}.${classId}`) : null
+  savedViewMode.value = saved === 'table' || saved === 'list' ? saved : null
+  let widths: Record<string, number> = {}
+  try { widths = classId ? JSON.parse(readStored(`${COL_WIDTHS_KEY}.${classId}`) ?? '{}') : {} } catch { widths = {} }
+  colWidths.value = widths && typeof widths === 'object' ? widths : {}
+}, { immediate: true })
+const viewMode = computed<ViewMode>(() => savedViewMode.value ?? (selectedDataClass.value?.viewConfig?.defaultListView === 'table' ? 'table' : 'list'))
+const isTable = computed(() => viewMode.value === 'table')
+function setViewMode(mode: ViewMode): void {
+  savedViewMode.value = mode
+  if (selectedClassId.value) writeStored(`${VIEW_MODE_KEY}.${selectedClassId.value}`, mode)
+  if (mode === 'list') { editing.value = null; closeContextMenu() }
+}
+
+// Column resizing (table view): a handle on the right edge of every header cell; double click resets that column.
+function colTrack(name: string): string {
+  const w = colWidths.value[name]
+  return w ? `${w}px` : `minmax(${TABLE_MIN_COL}, 1fr)`
+}
+function startResize(event: PointerEvent, name: string): void {
+  const handle = event.currentTarget as HTMLElement
+  const startX = event.clientX
+  const startW = colWidths.value[name] ?? handle.parentElement!.getBoundingClientRect().width
+  handle.setPointerCapture(event.pointerId)
+  const move = (e: PointerEvent) => { colWidths.value = { ...colWidths.value, [name]: Math.max(MIN_COL_PX, Math.round(startW + e.clientX - startX)) } }
+  const up = () => {
+    handle.removeEventListener('pointermove', move)
+    handle.removeEventListener('pointerup', up)
+    if (selectedClassId.value) writeStored(`${COL_WIDTHS_KEY}.${selectedClassId.value}`, JSON.stringify(colWidths.value))
+  }
+  handle.addEventListener('pointermove', move)
+  handle.addEventListener('pointerup', up)
+}
+function resetColWidth(name: string): void {
+  const { [name]: _gone, ...rest } = colWidths.value
+  colWidths.value = rest
+  if (selectedClassId.value) writeStored(`${COL_WIDTHS_KEY}.${selectedClassId.value}`, JSON.stringify(rest))
+}
+
 const gridTemplateCols = computed(() => {
-  return `40px repeat(${visibleColumns.value.length}, minmax(0, 1fr)) auto`
+  const cols = visibleColumns.value
+  return isTable.value
+    ? `3rem 2.25rem ${cols.map((c) => colTrack(c.name)).join(' ')}`
+    : `40px repeat(${cols.length}, minmax(0, 1fr))`
 })
+// the table scrolls sideways instead of squeezing the columns: the grid is never narrower than its tracks
+const gridMinWidth = computed(() => {
+  if (!isTable.value) return undefined
+  const fixed = visibleColumns.value.reduce((sum, c) => sum + (colWidths.value[c.name] ?? 0), 0)
+  const flexible = visibleColumns.value.filter((c) => !colWidths.value[c.name]).length
+  return `calc(3rem + 2.25rem + ${fixed}px + ${flexible} * ${TABLE_MIN_COL})`
+})
+const rowNumberOffset = computed(() => (currentPage.value - 1) * effectivePageSize.value)
+
+// Context menu (right click on a row; a long press on touch screens that send contextmenu): the way to open or delete a record.
+const ctxMenu = ref<{ x: number; y: number; record: ObjectRecord } | null>(null)
+function openContextMenu(event: MouseEvent, record: ObjectRecord): void {
+  ctxMenu.value = { x: Math.min(event.clientX, window.innerWidth - 176), y: Math.min(event.clientY, window.innerHeight - 96), record }
+}
+function closeContextMenu(): void { ctxMenu.value = null; isSaveMenuOpen.value = false }
+function ctxEdit(): void { const r = ctxMenu.value?.record; closeContextMenu(); if (r) openRecord(r) }
+function ctxDelete(): void { const r = ctxMenu.value?.record; closeContextMenu(); if (r) void handleDelete(r) }
+function onWindowKey(e: KeyboardEvent): void { if (e.key === 'Escape') closeContextMenu() }
+function warnUnsaved(e: BeforeUnloadEvent): void { if (drafts.size > 0) { e.preventDefault(); e.returnValue = '' } }
+onMounted(() => {
+  window.addEventListener('click', closeContextMenu)
+  window.addEventListener('keydown', onWindowKey)
+  window.addEventListener('beforeunload', warnUnsaved)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('click', closeContextMenu)
+  window.removeEventListener('keydown', onWindowKey)
+  window.removeEventListener('beforeunload', warnUnsaved)
+})
+
+// Editing in the cells (table view). Nothing is saved while typing: an edit is a draft per row (drafts, keyed by the id of the shown
+// row), shown on a tinted cell; the bar under the table saves them all ("Save") or saves and publishes ("Save & Publish"). The
+// server replaces the whole attributes object, so a save sends the stored attributes with the drafts laid over them. Only plain
+// field types are editable here (text, number, date, checkbox, select with options); relations, assets, rich text, arrays and
+// objects are edited in the record. Only the shown (first) locale row of a record is edited.
+interface RowDraft { key?: string; attributes: Record<string, unknown> }
+type EditKind = 'text' | 'number' | 'date' | 'checkbox' | 'select'
+const drafts = reactive(new Map<string, RowDraft>())
+const cellErrors = reactive(new Map<string, string>())
+const editing = ref<{ rowId: string; col: string } | null>(null)
+const editText = ref('')
+const isSaving = ref(false)
+const isSaveMenuOpen = ref(false)
+
+function editKind(colName: string): EditKind | null {
+  if (!isTable.value) return null
+  if (colName === 'key') return 'text'
+  const f = classFieldByName(colName)
+  if (!f || f.relationTarget) return null
+  if (['input', 'textarea', 'email', 'urlSlug'].includes(f.fieldType)) return 'text'
+  if (f.fieldType === 'numeric') return 'number'
+  if (f.fieldType === 'date') return 'date'
+  if (f.fieldType === 'checkbox') return 'checkbox'
+  if (f.fieldType === 'select' && f.options && f.options.length > 0) return 'select'
+  return null
+}
+function cellValue(record: ObjectRecord, col: string): unknown {
+  const d = drafts.get(record.primary.id)
+  if (col === 'key') return d?.key ?? record.primary.key
+  if (d && col in d.attributes) return d.attributes[col]
+  return record.primary.attributes?.[col]
+}
+function isCellDirty(record: ObjectRecord, col: string): boolean {
+  const d = drafts.get(record.primary.id)
+  return !!d && (col === 'key' ? d.key !== undefined : col in d.attributes)
+}
+function sameValue(a: unknown, b: unknown): boolean {
+  const norm = (v: unknown) => (v === null || v === undefined || v === '' ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v))
+  return norm(a) === norm(b)
+}
+function setDraft(record: ObjectRecord, col: string, value: unknown): void {
+  const id = record.primary.id
+  const d: RowDraft = drafts.get(id) ?? { attributes: {} }
+  const original = col === 'key' ? record.primary.key : record.primary.attributes?.[col]
+  if (sameValue(value, original)) {
+    if (col === 'key') delete d.key
+    else delete d.attributes[col]
+  } else if (col === 'key') d.key = String(value ?? '')
+  else d.attributes[col] = value
+  cellErrors.delete(`${id}:${col}`)
+  if (d.key === undefined && Object.keys(d.attributes).length === 0) drafts.delete(id)
+  else drafts.set(id, d)
+}
+function startEdit(record: ObjectRecord, col: string): void {
+  const kind = editKind(col)
+  if (!kind || kind === 'checkbox') return
+  if (editing.value?.rowId === record.primary.id && editing.value.col === col) return
+  editing.value = { rowId: record.primary.id, col }
+  const v = cellValue(record, col)
+  editText.value = v === null || v === undefined ? '' : String(v)
+  void nextTick(() => document.querySelector<HTMLElement>('[data-cell-editor]')?.focus())
+}
+function commitEdit(record: ObjectRecord, col: string): void {
+  if (!editing.value || editing.value.rowId !== record.primary.id || editing.value.col !== col) return
+  const kind = editKind(col)
+  let value: unknown = editText.value
+  if (kind === 'number') {
+    if (editText.value.trim() === '') value = null
+    else {
+      value = Number(editText.value)
+      if (!Number.isFinite(value as number)) { toastStore.show('That is not a number'); return }
+    }
+  }
+  editing.value = null
+  setDraft(record, col, value)
+}
+function cancelEdit(): void { editing.value = null }
+function discardDrafts(): void { drafts.clear(); cellErrors.clear(); editing.value = null; isSaveMenuOpen.value = false }
+
+async function saveDrafts(publish: boolean): Promise<void> {
+  if (isSaving.value || drafts.size === 0) return
+  isSaving.value = true
+  isSaveMenuOpen.value = false
+  cellErrors.clear()
+  let saved = 0
+  let failed = 0
+  for (const [rowId, d] of [...drafts.entries()]) {
+    const current = objects.value.find((o) => o.id === rowId)
+    if (!current) { drafts.delete(rowId); continue }
+    try {
+      const updated = await apiUpdateDataObject(authStore.config.coreApiUrl, rowId, {
+        ...(d.key !== undefined ? { key: d.key } : {}),
+        attributes: { ...(current.attributes ?? {}), ...d.attributes },
+        ...(publish ? { published: true } : {}),
+      })
+      objects.value = objects.value.map((o) => (o.id === rowId ? updated : o))
+      drafts.delete(rowId)
+      saved++
+    } catch (e: any) {
+      failed++
+      const message = e?.message || 'Save failed'
+      for (const col of [...(d.key !== undefined ? ['key'] : []), ...Object.keys(d.attributes)]) cellErrors.set(`${rowId}:${col}`, message)
+    }
+  }
+  isSaving.value = false
+  const what = publish ? 'saved and published' : 'saved'
+  toastStore.show(failed === 0 ? `${saved} row(s) ${what}` : `${saved} ${what}, ${failed} failed - see the marked cells`)
+}
 
 // Order used in the View dropdown: selected columns first (in active order),
 // then unselected columns (in their natural order).
@@ -907,6 +1183,7 @@ async function fetchObjects() {
 }
 
 function handleClassChange() {
+  if (drafts.size > 0) { toastStore.show(`${drafts.size} row(s) with unsaved edits were discarded`); discardDrafts() }
   queryFilters.value = []
   currentPage.value = 1
   isColumnsMenuOpen.value = false

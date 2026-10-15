@@ -37,6 +37,8 @@
   .btn-warning   { --btn-bg: #f59e0b; --btn-fg: #0f172a; --btn-bg-hover: #d97706; --btn-fg-hover: #0f172a; --btn-ring: #b45309; }
   .btn-secondary { --btn-bg: #334155; --btn-fg: #f1f5f9; --btn-bg-hover: #475569; }
   .btn-ghost     { --btn-bg: transparent; --btn-fg: #cbd5e1; --btn-bg-hover: #1e293b; --btn-fg-hover: #f1f5f9; --btn-border: #475569; }
+  /* the same buttons for dense rows (list and table views of the objects): less padding, so the row sets its own height */
+  .btn-compact   { padding: .125rem .5rem; }
   /* text-only actions (Edit, Delete, Preview ... next to a row): a colour and an underline on hover, no box */
   .btn-link, .btn-link-danger, .btn-link-success, .btn-link-info, .btn-link-warning, .btn-link-muted { --btn-bg: transparent; --btn-bg-hover: transparent; padding-left: .25rem; padding-right: .25rem; }
   .btn-link:hover:not(:disabled), .btn-link-danger:hover:not(:disabled), .btn-link-success:hover:not(:disabled), .btn-link-info:hover:not(:disabled), .btn-link-warning:hover:not(:disabled), .btn-link-muted:hover:not(:disabled) { text-decoration: underline; }

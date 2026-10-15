@@ -108,6 +108,9 @@ export interface ClassViewConfig {
   // overrides the header label. Absent/empty = existing "all columns"
   // behavior. Saved views/presets (user-side, per device) override it.
   listColumns?: { name: string; title?: string }[];
+  // How the object listing opens for this class: the spreadsheet-like table instead of the compact list. A choice the user made in
+  // the listing's own List / Table switch (kept per class in the browser) wins. Absent = the list.
+  defaultListView?: 'table';
   // Field names left off the object edit form (DataObjectForm.vue) - the
   // stored values are untouched, the field just isn't shown. A `mandatory`
   // field is never hidden (it would make the form impossible to save).

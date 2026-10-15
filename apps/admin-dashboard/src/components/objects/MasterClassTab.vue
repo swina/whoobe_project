@@ -234,6 +234,15 @@
           >Clear all</button>
         </div>
 
+        <label class="flex items-start gap-2 text-xs text-slate-300 light:text-slate-700 cursor-pointer" data-testid="class-table-view-default">
+          <input type="checkbox" v-model="tableViewDefault"
+            class="mt-0.5 w-4 h-4 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600" />
+          <span>
+            <span class="font-semibold">Set Table view as default</span>
+            <span class="block text-[11px] text-slate-500">The object listing of this class opens as a spreadsheet-like table (resizable columns, cells editable in place) instead of the compact list. A choice made in the listing's own List / Table switch overrides it on that browser.</span>
+          </span>
+        </label>
+
         <p v-if="namedFields.length === 0" class="text-xs text-slate-600 light:text-slate-400 italic">Add fields on the Fields tab first.</p>
 
         <template v-else>
@@ -351,6 +360,8 @@ const viewConfig = ref<{ detailSections: { title: string; fields: string[]; cont
   detailSections: [],
 })
 const listColumns = ref<{ name: string; title?: string }[]>([])
+// viewConfig.defaultListView: the Objects listing of this class opens as a table instead of the compact list.
+const tableViewDefault = ref(false)
 // Fields hidden from the object edit form (viewConfig.hiddenFields).
 const hiddenFields = ref<string[]>([])
 const pendingColumnName = ref('')
@@ -370,6 +381,7 @@ watch(
     }
     listColumns.value = (dataClass.viewConfig?.listColumns ?? []).map((c) => ({ name: c.name, ...(c.title ? { title: c.title } : {}) }))
     hiddenFields.value = [...(dataClass.viewConfig?.hiddenFields ?? [])]
+    tableViewDefault.value = dataClass.viewConfig?.defaultListView === 'table'
     hydrated.value = true
     fetchDataObjects(authStore.config.coreApiUrl, dataClass.id)
       .then((objects) => (objectCount.value = objects.length))
@@ -551,11 +563,12 @@ function buildViewConfigPayload(): ClassViewConfig | null {
     .map((c) => (c.title?.trim() ? { name: c.name, title: c.title.trim() } : { name: c.name }))
     .filter((c) => validNames.has(c.name) || systemColumnTitles.has(c.name))
   const validHidden = hiddenFields.value.filter((n) => namedFields.value.some((f) => f.name === n && !f.mandatory))
-  if (detailSections.length === 0 && validListColumns.length === 0 && validHidden.length === 0) return null
+  if (detailSections.length === 0 && validListColumns.length === 0 && validHidden.length === 0 && !tableViewDefault.value) return null
   return {
     ...(detailSections.length > 0 ? { detailSections } : {}),
     ...(validHidden.length > 0 ? { hiddenFields: validHidden } : {}),
     ...(validListColumns.length > 0 ? { listColumns: validListColumns } : {}),
+    ...(tableViewDefault.value ? { defaultListView: 'table' as const } : {}),
   }
 }
 
@@ -604,6 +617,7 @@ async function handleSave() {
         }
         listColumns.value = (updated.viewConfig?.listColumns ?? []).map((c) => ({ name: c.name, ...(c.title ? { title: c.title } : {}) }))
         hiddenFields.value = [...(updated.viewConfig?.hiddenFields ?? [])]
+        tableViewDefault.value = updated.viewConfig?.defaultListView === 'table'
         hydrated.value = true
       }
     }

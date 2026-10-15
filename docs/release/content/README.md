@@ -14,6 +14,7 @@ ways to publish them. Pages are a tree of elements that the editor, the preview 
 | [Dynamic website paths](dynamic-website-paths.md) | A list page linking each record to its own detail page |
 | [Nested bindings](nested-bindings.md) | A list inside the item of another list (categories > products > variants), from an API or from a block / field collection |
 | [Linked bindings](linked-bindings.md) | A click in one list (categories) shows the related records of another (products) on the same page |
+| [Objects list](objects-list.md) | The list and the spreadsheet-like table view of a class's records: context menu, resizable columns, editing in the cell with Save / Save & Publish |
 | [Documentation sites](documentation-sites.md) | A folder of Markdown becomes a searchable site, live or static |
 | [Forms and automations](../communication/README.md) | Forms, file uploads, mail and flows (Communication pillar) |
 | [AI assistance](../ai/README.md) | Generate pages, snippets, images, translations |
