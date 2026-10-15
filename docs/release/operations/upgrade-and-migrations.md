@@ -45,6 +45,20 @@ Before: read the release notes of every version you skip ("Behaviour changes to 
 2. **Rehearse** on a scratch workspace restored from that backup (see [backup](backup-restore-and-dr.md) section 5) with
    the new tag; log in and click through. Mandatory for a minor release while the version starts with `0.`.
 3. **Fetch the release**: `git fetch --tags && git checkout vX.Y.Z`.
+   On a host without a `.git` directory (code copied with `git archive`), do **not** unpack the new tag over the old
+   tree with `tar -x`: files removed in the new release stay behind and can break the build (a leftover source file
+   that imports a dependency no longer declared failed the `admin-dashboard` / `whoobe-one-spike` build when 0.1.0 was
+   deployed over a pre-release tree). Unpack the tag into an empty directory and mirror it, keeping the files that
+   exist only on the host:
+   ```bash
+   git archive vX.Y.Z | tar -x -C /tmp/release-vX.Y.Z      # on the machine that has the repository, then copy it over
+   rsync -rt --delete --exclude='/.env*' --exclude='/deploy/certbot' \
+     --exclude='/deploy/nginx/_locations-*.inc*' --exclude='/deploy/nginx/*.conf' \
+     --exclude=node_modules --exclude=dist --exclude=.svelte-kit \
+     /tmp/release-vX.Y.Z/ <host>:/opt/whoobe/whoobe_cms/
+   ```
+   Run it once with `-n --itemize-changes` first and read the `*deleting` lines. If the host keeps other files of its
+   own inside the tree, add an `--exclude` for them.
 4. **Configuration**: compare `.env.example` with the workspace's env file for new variables
    (`diff <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' .env.example | tr -d '# ' | sort -u) <(grep -oE '^[A-Z][A-Z0-9_]+=' .env.<slug> | sort -u)`),
    add what the release notes require (for 0.1.0: `MAIL_SETTINGS_ENCRYPTION_KEY`, `UPLOAD_TOKEN_SECRET`,

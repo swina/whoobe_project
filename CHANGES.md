@@ -1,3 +1,7 @@
+## Upgrade guide: hosts without .git must mirror the release, not unpack it over the old tree — 2026-10-15
+- Branch: `master`
+- `docs/release/operations/upgrade-and-migrations.md` (step 3): for a host that received the code with `git archive`, unpack the tag into an empty directory and mirror it with `rsync --delete` (keeping `.env*`, certbot and the rendered nginx files). Found deploying 0.1.0 on the Oracle host: `tar -x` over the pre-release tree left `apps/whoobe-one-spike/src/scripts/gsap-actions.ts` (removed in the release), whose `gsap` import broke the `pnpm build` of the SPA images. Production kept running (compose recreates containers only after a successful build). No product code changed.
+
 ## Local clean-up: security test stack, ws-demo workspace and n8n test removed — 2026-10-14
 - Branch: `master`
 - Docker build cache cleared (about 179 GB), the `whoobe-sectest` stack (`scripts/security/stack.sh down`), the `ws-demo` workspace (`scripts/remove-workspace.sh ws-demo --yes`, which also deletes its rendered nginx files `deploy/nginx/ws-demo.conf` and `deploy/nginx/_locations-ws-demo.inc`, tracked in git until now) and the n8n test container were removed from the development machine. No product code changed.
