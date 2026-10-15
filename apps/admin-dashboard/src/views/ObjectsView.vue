@@ -1273,10 +1273,12 @@ const sortedRecords = computed(() => {
   })
 })
 
+// Always a finite number: the <select> gives the size as a STRING ("10"), and "10" + 10 is "1010" - page 2 used to show every
+// remaining record - while Infinity made the first slice NaN. "All" is the number of records (at least 1).
 const effectivePageSize = computed(() => {
-  if (pageSize.value === 'all') return Infinity
-  if (pageSize.value === 'custom') return customPageSize.value
-  return pageSize.value
+  if (pageSize.value === 'all') return Math.max(1, sortedRecords.value.length)
+  const n = Math.floor(Number(pageSize.value === 'custom' ? customPageSize.value : pageSize.value))
+  return Number.isFinite(n) && n > 0 ? n : 25
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(sortedRecords.value.length / effectivePageSize.value)))
