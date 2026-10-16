@@ -1,3 +1,7 @@
+## Object events: plan for a "Connect a flow" wizard — 2026-10-16
+- Branch: `master`
+- New plan `docs/plans/automations/object-events-connect-wizard.md` (documentation only, nothing implemented): one dialog in *Object events* that takes the class and event preset, the pasted webhook URL (Activepieces / n8n / generic, test and live routes created together with a switch), optional write back (scoped API client, key shown once, loop guard filled in, ready-to-paste HTTP step) and a test that explains the result in words. Built from the existing APIs in the dashboard with rollback, no new route or permission; steps, tests and five open decisions with proposed defaults.
+
 ## API clients list: write scopes shown as write — 2026-10-16
 - Branch: `master`
 - `apps/admin-dashboard/src/views/ApiClientsView.vue`: every `data:` scope was drawn as `GET data /<class>`, so a `data:write:Contact` looked like a second read of Contact and the write permission could not be told from the read. Now a write scope shows `POST/PATCH data /<class>` (in red, like the write checkbox of the form); read scopes are unchanged. Display only: the scopes saved and enforced are the same.
