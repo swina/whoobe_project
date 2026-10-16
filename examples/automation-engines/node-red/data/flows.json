@@ -27,7 +27,9 @@
         "type": "function",
         "z": "wb-tab",
         "name": "check the call",
+        "func": "// Output 1: the answer to Whoobe (it keeps msg.res, which the \"answer\" node needs). Output 2: the event to process, only a real, fresh, authentic one.\nconst h = msg.req.headers;\nconst ts = Number(h['x-whoobe-timestamp'] || 0);\nconst ev = msg.payload || {};\nconst reply = (code, body) => { msg.statusCode = code; msg.payload = body; return [msg, null]; };\nif (!ev.id || !ev.type) return reply(400, { ok: false, error: 'not an object event' });\nif (Math.abs(Date.now() / 1000 - ts) > 300) return reply(400, { ok: false, error: 'timestamp too old' });\nconst secret = env.get('WHOOBE_SIGNING_SECRET');\nif (secret) {\n  // the body as Node-RED parsed it, written back the way Whoobe wrote it (compact JSON, same key order)\n  const want = 'sha256=' + crypto.createHmac('sha256', secret).update(ts + '.' + JSON.stringify(ev)).digest('hex');\n  if (h['x-whoobe-signature'] !== want) return reply(401, { ok: false, error: 'bad signature' });\n}\nif (ev.test || !ev.object) return reply(200, { ok: true });\nmsg.statusCode = 200; msg.payload = { ok: true };\nreturn [msg, { event: ev, payload: ev }];",
         "outputs": 2,
+        "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
@@ -37,7 +39,6 @@
                 "module": "crypto"
             }
         ],
-        "func": "// Output 1: the answer to Whoobe (it keeps msg.res, which the \"answer\" node needs). Output 2: the event to process, only a real, fresh, authentic one.\nconst h = msg.req.headers;\nconst ts = Number(h['x-whoobe-timestamp'] || 0);\nconst ev = msg.payload || {};\nconst reply = (code, body) => { msg.statusCode = code; msg.payload = body; return [msg, null]; };\nif (!ev.id || !ev.type) return reply(400, { ok: false, error: 'not an object event' });\nif (Math.abs(Date.now() / 1000 - ts) > 300) return reply(400, { ok: false, error: 'timestamp too old' });\nconst secret = env.get('WHOOBE_SIGNING_SECRET');\nif (secret) {\n  // the body as Node-RED parsed it, written back the way Whoobe wrote it (compact JSON, same key order)\n  const want = 'sha256=' + crypto.createHmac('sha256', secret).update(ts + '.' + JSON.stringify(ev)).digest('hex');\n  if (h['x-whoobe-signature'] !== want) return reply(401, { ok: false, error: 'bad signature' });\n}\nif (ev.test || !ev.object) return reply(200, { ok: true });\nmsg.statusCode = 200; msg.payload = { ok: true };\nreturn [msg, { event: ev, payload: ev }];",
         "x": 360,
         "y": 80,
         "wires": [
@@ -65,12 +66,13 @@
         "type": "function",
         "z": "wb-tab",
         "name": "build the PATCH",
+        "func": "// \"build the PATCH\": a function node. It updates ONE field of the record that started the flow.\n// msg.payload is the Whoobe event: ev.object.id, ev.class.name, ev.changed (names only), ev.type.\nconst ev = msg.payload;\nif (ev.test || !ev.object) return null;   // the \"test event\" of Whoobe has no record\nmsg.method = 'PATCH';\nmsg.url = env.get('WHOOBE_CLIENT_URL').replace(/\\/+$/, '') + '/data/' + encodeURIComponent(ev.class.name) + '/' + ev.object.id;\nmsg.headers = { 'Authorization': 'Bearer ' + env.get('WHOOBE_KEY'), 'Content-Type': 'application/json' };\nmsg.payload = { attributes: { 'notes': 'Node-Red update this field' } };   // <- the field to update and its value\nreturn msg;",
         "outputs": 1,
+        "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "func": "// Write a note on the record. Idempotent on the event id: the same event twice writes the same text.\nconst ev = msg.event;\nconst n = (flow.get('seen') || {});\nif (n[ev.id]) return null;          // already handled (Whoobe delivers at least once)\nn[ev.id] = Date.now();\nflow.set('seen', n);\nmsg.method = 'PATCH';\nmsg.url = env.get('WHOOBE_CLIENT_URL').replace(/\\/+$/, '') + '/data/' + encodeURIComponent(ev.class.name) + '/' + ev.object.id;\nmsg.headers = { 'Authorization': 'Bearer ' + env.get('WHOOBE_KEY'), 'Content-Type': 'application/json' };\nmsg.payload = { attributes: { notes: 'processed by Node-RED (' + ev.type + ', event ' + ev.id.slice(0, 8) + ')' } };\nreturn msg;",
         "x": 560,
         "y": 120,
         "wires": [

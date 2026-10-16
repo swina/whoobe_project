@@ -28,7 +28,7 @@ and applied with `docker compose -f docker-compose.prod.yml restart node-red`. N
    `docker compose -f docker-compose.dev.yml --env-file .env up -d`. The editor is on <http://127.0.0.1:1880>.
 3. In Whoobe: **Object events > Connect a flow**, URL `http://localhost:1880/whoobe-events` (as the Gateway sees it), tick *the flow writes back*. To sign the
    events set `OBJECT_EVENTS_SECRET_<NAME>` on the Gateway and the same value in `WHOOBE_SIGNING_SECRET`, then name it in the subscription (*Advanced*).
-4. Create a record of that class (a draft): it gets the note *processed by Node-RED (...)*. Change the flow in the editor, *Deploy*, try again.
+4. Create a record of that class (a draft): its `notes` field becomes *Node-Red update this field* (the field and the text are set in the "build the PATCH" node). Change the flow in the editor, *Deploy*, try again.
 5. `git diff data/flows.json`, commit. (`data/` keeps the editor's own files out of git: see `.gitignore`.)
 
 ## Production

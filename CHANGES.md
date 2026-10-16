@@ -1,3 +1,7 @@
+## Node-RED example flow: the one tried on a real instance — 2026-10-16
+- Branch: `master`
+- `examples/automation-engines/node-red/data/flows.json` is now the flow the owner edited and tested in the Node-RED dev container: "check the call" answers Whoobe at once and passes on only a real, fresh (and, with `WHOOBE_SIGNING_SECRET`, signed) event; "build the PATCH" is the node the wizard's script targets, with the field and value in one visible line (`notes` = *Node-Red update this field*). The earlier per-event-id idempotency was dropped by that edit (a repeated delivery just writes the same text). README step 4 updated to match.
+
 ## Release check: image scan, stale npm lockfile removed — 2026-10-16
 - Branch: `fix/dependency-advisories` (worktree `../whoobe_cms-deps`)
 - `pnpm security:images` (Trivy on the built images): `whoobe-sectest-core-api`, `-gateway` and `-asset-processor` failed with 3 fixable HIGH findings each (`@vue/server-renderer` 3.5.40, `nanoid` 3.3.16, `source-map-js` 1.2.1). The packages actually installed in the images were already the fixed versions (3.5.43, 3.3.19, 1.2.2, from `pnpm-lock.yaml`): Trivy was reading `apps/admin-dashboard/package-lock.json`, an **npm lockfile tracked since the first commit (2026-08-01), never updated, in a monorepo that builds with pnpm**, and copied into the images with the rest of `/app`.
