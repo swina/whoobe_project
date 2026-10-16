@@ -1,6 +1,7 @@
 // Object events: the pure part (no database). Builds the envelope that goes to the outbox and works out WHICH events a write produced.
 // See docs/plans/datamodel/data-objects-automations.md (sections 4 and 6) and object-events-phase0.md (step 1).
 // The envelope never carries attribute values: only names (`changed`) and ids; a subscription's field allow-list is a later phase.
+import { createHmac } from 'node:crypto';
 import type { DataObjectRecord } from './data-objects-records.js';
 
 export type ObjectEventType =
@@ -156,4 +157,19 @@ export function buildBulkEvent(input: {
     bulk: { kind: input.kind, count: input.count, firstIds: input.ids.slice(0, MAX_FIRST_IDS) },
     actor: input.actor ?? { type: 'system' },
   };
+}
+
+// ---- delivery rules that need no database ----
+
+/** Waits after the 1st, 2nd, ... failed attempt; a delivery that fails once more after the last wait is `dead` (6 attempts in all). */
+export const BACKOFF_MS = [60_000, 5 * 60_000, 30 * 60_000, 2 * 3_600_000, 12 * 3_600_000];
+
+export function nextAttemptPlan(failedAttempts: number, now: Date): { status: 'retrying'; nextAttemptAt: Date } | { status: 'dead' } {
+  const wait = BACKOFF_MS[failedAttempts - 1];
+  return wait === undefined ? { status: 'dead' } : { status: 'retrying', nextAttemptAt: new Date(now.getTime() + wait) };
+}
+
+/** `sha256=<hex>` over `timestamp + "." + body` (the exact string that is sent), so a consumer can refuse a call that is not from this instance. */
+export function signBody(secret: string, timestamp: string, body: string): string {
+  return 'sha256=' + createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
 }

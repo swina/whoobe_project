@@ -4,6 +4,7 @@ import { corsPolicy, securityHeaders, parseTrustProxy } from '@whoobe-cms/core/s
 import { createRouter } from './router.js';
 import { GATEWAY_PORT } from './config.js';
 import { logger } from './log-error.js';
+import { startObjectEventWorker } from './object-event-worker.js';
 
 const app: Express = express();
 const port = GATEWAY_PORT;
@@ -33,6 +34,7 @@ app.use('/', createRouter());
 
 app.listen(port, () => {
   logger.info({ port, coreApiUrl: process.env.GATEWAY_CORE_API_URL, assetProcessorUrl: process.env.GATEWAY_ASSET_PROCESSOR_URL }, 'API Gateway started');
+  startObjectEventWorker();
 });
 
 export default app;

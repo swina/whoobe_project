@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildBulkEvent, buildEvent, changedFields, classifyUpdate, type EventActor } from './object-events.js';
+import { BACKOFF_MS, buildBulkEvent, buildEvent, changedFields, classifyUpdate, nextAttemptPlan, signBody, type EventActor } from './object-events.js';
 import type { DataObjectRecord } from './data-objects-records.js';
 
 function rec(overrides: Partial<DataObjectRecord> = {}): DataObjectRecord {
@@ -129,5 +129,33 @@ describe('buildBulkEvent', () => {
     expect(e).toMatchObject({ id: 'evt-b', type: 'object.bulk', class: { id: 'class-1' }, bulk: { kind: 'import', count: 3000 }, actor: { type: 'import' } });
     expect(e.bulk!.firstIds).toHaveLength(10);
     expect(e.bulk!.firstIds[0]).toBe('id-0');
+  });
+});
+
+describe('nextAttemptPlan', () => {
+  const now = new Date('2026-10-16T09:00:00Z');
+  it('waits 1 min, 5 min, 30 min, 2 h, 12 h after the 1st to the 5th failure, then the delivery is dead', () => {
+    const waits = [1, 2, 3, 4, 5].map((n) => {
+      const plan = nextAttemptPlan(n, now);
+      return plan.status === 'retrying' ? plan.nextAttemptAt.getTime() - now.getTime() : -1;
+    });
+    expect(waits).toEqual([60_000, 300_000, 1_800_000, 7_200_000, 43_200_000]);
+    expect(waits).toEqual(BACKOFF_MS);
+    expect(nextAttemptPlan(6, now)).toEqual({ status: 'dead' });
+  });
+});
+
+describe('signBody', () => {
+  it('is sha256= HMAC of "timestamp.body", stable and dependent on every part', () => {
+    const sig = signBody('secret', '1760000000', '{"a":1}');
+    expect(sig).toMatch(/^sha256=[0-9a-f]{64}$/);
+    expect(signBody('secret', '1760000000', '{"a":1}')).toBe(sig);
+    expect(signBody('other', '1760000000', '{"a":1}')).not.toBe(sig);
+    expect(signBody('secret', '1760000001', '{"a":1}')).not.toBe(sig);
+    expect(signBody('secret', '1760000000', '{"a":2}')).not.toBe(sig);
+  });
+  it('matches an independent computation (what a consumer would do)', async () => {
+    const { createHmac } = await import('node:crypto');
+    expect(signBody('k', '5', 'body')).toBe('sha256=' + createHmac('sha256', 'k').update('5.body').digest('hex'));
   });
 });

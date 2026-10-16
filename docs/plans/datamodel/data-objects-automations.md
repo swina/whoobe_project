@@ -203,7 +203,7 @@ network, not over the internet, so no traffic needs to leave the machine in eith
 
 - **Whoobe to engine**: the Gateway calls the engine's webhook on the internal address. The outbound guard blocks loopback and private
   ranges unless allowed: use `OUTBOUND_ALLOW_HOSTS=<engine host name>` (exempts that one host) rather than `OUTBOUND_ALLOW_PRIVATE`, which
-  opens every private address. (From the documentation in `automations-architecture.md`; to be checked against `safeFetch` in phase 0.)
+  opens every private address. (Checked against `safeFetch` in phase 0 step 5, with a real receiver: in production a loopback target is refused (`OUTBOUND_ALLOW_LOOPBACK` is false there) and `OUTBOUND_ALLOW_HOSTS=<host>` lets exactly that host through. Note that `OUTBOUND_ALLOW_PRIVATE` defaults to **true**, so private ranges are open unless it is set to false; only loopback is closed in production by default.)
 - **Network**: the sample compose file is a separate project with its port bound to `127.0.0.1` of the host, which the workspace
   containers cannot reach through their own loopback. Either attach the engine to the workspace network (or a shared external network)
   and use the service name, or use `host.docker.internal`.

@@ -1,8 +1,8 @@
-import { and, eq, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { objectEvents, objectEventDeliveries, objectEventSubscriptions } from './object-events-schema.js';
 import { getDataClass } from './data-classes-records.js';
-import { buildBulkEvent, objectEventsEnabled, type BulkObjectEvent, type EventActor, type ObjectEvent } from './object-events.js';
+import { buildBulkEvent, nextAttemptPlan, objectEventsEnabled, type BulkObjectEvent, type EventActor, type ObjectEvent } from './object-events.js';
 
 type Db = ReturnType<typeof getDb>;
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -63,4 +63,88 @@ export async function emitBulkSummary(input: {
   if (input.count <= 0) return 0;
   const classDef = await getDataClass(input.classId);
   return insertEvent(getDb(), buildBulkEvent({ ...input, className: classDef?.name }));
+}
+
+// ---- the delivery queue (used by the worker in the gateway) ----
+
+/** One delivery taken by a worker, with what it needs to send it. */
+export interface ClaimedDelivery {
+  deliveryId: string;
+  attempts: number;
+  event: { id: string; type: string; payload: Record<string, unknown> };
+  subscription: { id: string; name: string; endpointId: string | null; routeId: string | null; signingSecretRef: string | null; payloadMode: string };
+}
+
+/** Longest a worker may keep a delivery before another worker may take it again (a crashed worker's deliveries come back after this). */
+export const DELIVERY_LEASE_MS = 2 * 60_000;
+
+/**
+ * Takes up to `limit` due deliveries (`pending` or `retrying`, oldest first). Rows are locked with `FOR UPDATE SKIP LOCKED` so two workers never take the
+ * same one, and each taken row is leased (its `next_attempt_at` moves forward) instead of holding a transaction open during the HTTP call.
+ */
+export async function claimDueDeliveries(limit: number, now: Date = new Date()): Promise<ClaimedDelivery[]> {
+  const db = getDb();
+  return db.transaction(async (tx) => {
+    const due = await tx
+      .select({ id: objectEventDeliveries.id })
+      .from(objectEventDeliveries)
+      .where(and(inArray(objectEventDeliveries.status, ['pending', 'retrying']), lte(objectEventDeliveries.nextAttemptAt, now)))
+      .orderBy(objectEventDeliveries.nextAttemptAt)
+      .limit(limit)
+      .for('update', { skipLocked: true });
+    if (!due.length) return [];
+    const ids = due.map((d) => d.id);
+    await tx.update(objectEventDeliveries).set({ nextAttemptAt: new Date(now.getTime() + DELIVERY_LEASE_MS) }).where(inArray(objectEventDeliveries.id, ids));
+    const rows = await tx
+      .select({
+        deliveryId: objectEventDeliveries.id,
+        attempts: objectEventDeliveries.attempts,
+        eventId: objectEvents.id,
+        eventType: objectEvents.type,
+        payload: objectEvents.payload,
+        subId: objectEventSubscriptions.id,
+        subName: objectEventSubscriptions.name,
+        endpointId: objectEventSubscriptions.endpointId,
+        routeId: objectEventSubscriptions.routeId,
+        signingSecretRef: objectEventSubscriptions.signingSecretRef,
+        payloadMode: objectEventSubscriptions.payloadMode,
+      })
+      .from(objectEventDeliveries)
+      .innerJoin(objectEvents, eq(objectEvents.id, objectEventDeliveries.eventId))
+      .innerJoin(objectEventSubscriptions, eq(objectEventSubscriptions.id, objectEventDeliveries.subscriptionId))
+      .where(inArray(objectEventDeliveries.id, ids))
+      .orderBy(objectEvents.occurredAt);
+    return rows.map((r) => ({
+      deliveryId: r.deliveryId,
+      attempts: r.attempts,
+      event: { id: r.eventId, type: r.eventType, payload: r.payload },
+      subscription: { id: r.subId, name: r.subName, endpointId: r.endpointId, routeId: r.routeId, signingSecretRef: r.signingSecretRef, payloadMode: r.payloadMode },
+    }));
+  });
+}
+
+const ERROR_MAX = 300;
+const clip = (text: string) => text.replace(/\s+/g, ' ').slice(0, ERROR_MAX);
+
+export async function markDelivered(deliveryId: string, now: Date = new Date()): Promise<void> {
+  await getDb()
+    .update(objectEventDeliveries)
+    .set({ status: 'delivered', deliveredAt: now, lastError: null, attempts: sql`${objectEventDeliveries.attempts} + 1` })
+    .where(eq(objectEventDeliveries.id, deliveryId));
+}
+
+/** A failed attempt: counts it and either schedules the next one (backoff) or ends the delivery as `dead`. `permanent`: no retry can help. */
+export async function markFailed(deliveryId: string, attemptsBefore: number, error: string, opts: { permanent?: boolean; now?: Date } = {}): Promise<'retrying' | 'dead'> {
+  const now = opts.now ?? new Date();
+  const plan = opts.permanent ? { status: 'dead' as const } : nextAttemptPlan(attemptsBefore + 1, now);
+  await getDb()
+    .update(objectEventDeliveries)
+    .set({
+      status: plan.status,
+      attempts: attemptsBefore + 1,
+      lastError: clip(error),
+      ...('nextAttemptAt' in plan && plan.nextAttemptAt ? { nextAttemptAt: plan.nextAttemptAt } : {}),
+    })
+    .where(eq(objectEventDeliveries.id, deliveryId));
+  return plan.status;
 }
