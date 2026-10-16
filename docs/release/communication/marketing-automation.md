@@ -102,9 +102,9 @@ flow exists or is published in the engine, and a form inside a snippet used on s
 Re-read the licence of the version you install. Both were tried with a form of Whoobe (an e-mail through a fake SMTP server and the
 `outcome` reaching the page); nothing in Whoobe depends on the choice, since the contract is "a webhook in, an optional `outcome` out".
 
-To try one locally: [`docker-compose.automation.yml`](../../../docker-compose.automation.yml) runs Activepieces with PostgreSQL and
+Whoobe does not ship or support an engine. To try one locally, the repository has an **example, outside the distribution**: [`examples/automation-engines/docker-compose.activepieces.yml`](../../../examples/automation-engines/docker-compose.activepieces.yml) runs Activepieces with PostgreSQL and
 Redis (the three secrets it needs are read from the environment; keep the same values, the encryption key decrypts the stored
-connections), bound to `127.0.0.1`; [`scripts/automation-test.sh`](../../../scripts/automation-test.sh) starts or stops a single-container
+connections), bound to `127.0.0.1`; [`examples/automation-engines/automation-test.sh`](../../../examples/automation-engines/automation-test.sh) starts or stops a single-container
 Activepieces (or n8n with the argument `n8n`) next to a development stack. Step-by-step: [`docs/plans/automations/activepieces-local-experiment.md`](../../plans/automations/activepieces-local-experiment.md)
 and [`n8n-local-experiment.md`](../../plans/automations/n8n-local-experiment.md).
 

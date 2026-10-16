@@ -77,6 +77,6 @@ Until then the cost of the first option is a few hundred lines (webhook emitter,
 
 ## 6. Consequences for the plan
 
-- **Phases 4 and 5** (automation engine, visual editor) are replaced by: a documented integration (done: two guides), a sample compose file with Activepieces (`docker-compose.automation.yml`, MIT core; a convenience for trying things locally, **not** something Whoobe distributes or supports as part of the product) and, when wanted, a webhook **emitter** for non-form events.
+- **Phases 4 and 5** (automation engine, visual editor) are replaced by: a documented integration (done: two guides), a sample compose file with Activepieces (`examples/automation-engines/docker-compose.activepieces.yml`, MIT core; a convenience for trying things locally, **not** something Whoobe distributes or supports as part of the product) and, when wanted, a webhook **emitter** for non-form events.
 - **Phases 1 to 3** are unchanged: form outcomes (prototype done), signed entitlements, visibility rules. They are the parts no external engine can do.
 - Section 5 of the plan gains a decision: "Engine: plug in (this document) or build (Phases 4-5)".

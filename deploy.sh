@@ -34,6 +34,7 @@ EXCLUDES=(
   --exclude 'sites'
   --exclude '.release'
   --exclude '.opencode'
+  --exclude 'examples'
   --exclude 'scripts/security/reports'
   --exclude 'scripts/security/test-results'
   # --delete would remove, on the host, whatever exists only there. Protect what the host creates and the repository

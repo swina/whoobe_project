@@ -204,7 +204,7 @@ Three guards, all explicit:
 
 ### Engine on the same instance
 
-An engine (for example Activepieces from `docker-compose.automation.yml`) on the same host talks to Whoobe over the host or a Docker
+An engine (for example Activepieces from `examples/automation-engines/docker-compose.activepieces.yml`) on the same host talks to Whoobe over the host or a Docker
 network, not over the internet, so no traffic needs to leave the machine in either direction.
 
 - **Whoobe to engine**: the Gateway calls the engine's webhook on the internal address. The outbound guard blocks loopback and private

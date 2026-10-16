@@ -26,7 +26,7 @@ docker run -d --name whoobe-activepieces-test --restart unless-stopped \
 - `PGLITE` + `MEMORY` is a single-instance mode for trials; for real use follow Activepieces' PostgreSQL + Redis setup.
 - Bound to `127.0.0.1`. Open `http://localhost:8090` and create the first account.
 
-- Shortcut: `scripts/automation-test.sh` starts or stops it (toggle; `n8n` as argument does the same for n8n). It reads the two secrets from
+- Shortcut: `examples/automation-engines/automation-test.sh` starts or stops it (toggle; `n8n` as argument does the same for n8n). It reads the two secrets from
   `~/.config/whoobe/activepieces.env`.
 - The **SMTP piece** only offers the ports 25, 465, 587 and 2525 (a fixed list in `@activepieces/piece-smtp` 0.5.0). For a fake SMTP
   server on another port (Mailhog 1025) the script also runs `whoobe-smtp-forward`, which forwards 2525 to it: in the piece use host

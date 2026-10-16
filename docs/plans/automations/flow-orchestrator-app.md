@@ -196,7 +196,7 @@ a per-client cap protect the process; above them the app answers `202` immediate
 |---|---|
 | App | `apps/flows` (Node, same stack as the gateway), own `Dockerfile`, own migrations |
 | Shared outbound guard | extract from the gateway into a package (e.g. `packages/outbound-guard`), used by both |
-| Compose | profile `flows` in the workspace compose, off by default; the engine stays in `docker-compose.automation.yml` or the customer's own |
+| Compose | profile `flows` in the workspace compose, off by default; the engine stays in `examples/automation-engines/docker-compose.activepieces.yml` or the customer's own |
 | Dashboard | *Integrations > Flows*: definitions, run log, callbacks; shown only when the app is installed |
 | Docs | an administrators' page in `docs/release`, with a worked example (an Activepieces flow with a webhook trigger and a final HTTP step that calls `/complete`; "respond to webhook" is not needed) |
 | Core | none, except the object events outbox for direct inserts |

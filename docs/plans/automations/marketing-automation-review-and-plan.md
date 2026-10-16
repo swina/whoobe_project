@@ -206,7 +206,7 @@ Decided 2026-10-11, see [why-no-custom-automation-engine.md](why-no-custom-autom
 engine or a flow editor; the organisation plugs in Activepieces (MIT core) or n8n through the Gateway.
 
 - Done: the form -> Gateway -> webhook -> `outcome` contract, and two tried guides ([activepieces](activepieces-local-experiment.md), [n8n](n8n-local-experiment.md)).
-- Sample compose file with Activepieces (`docker-compose.automation.yml`, MIT core only).
+- Sample compose file with Activepieces (`examples/automation-engines/docker-compose.activepieces.yml`, MIT core only).
 - To do, when wanted: a webhook **emitter** for events other than form submission (asset downloaded, content published), with a signed payload and the same retry / rate rules as the Gateway; the engine's own run history is the run log.
 - *Acceptance*: a marketer builds "form submit -> Brevo contact -> branch on the outcome" in the engine's editor and the page shows the right block, with no change to Whoobe.
 

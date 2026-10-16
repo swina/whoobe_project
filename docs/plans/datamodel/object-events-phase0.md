@@ -102,7 +102,7 @@ permission `object_events:manage` (admin only), blocked under `SANDBOX_MODE` (40
 the permission, the sandbox block, and that a subscription cannot point outside the Gateway's endpoints.
 
 ### Step 7: end to end with Activepieces
-With the stack running (`docker-compose.automation.yml`, Activepieces attached to the workspace network, `OUTBOUND_ALLOW_HOSTS` set to its
+With the stack running (`examples/automation-engines/docker-compose.activepieces.yml`, Activepieces attached to the workspace network, `OUTBOUND_ALLOW_HOSTS` set to its
 host name): a subscription on a test class, a record inserted by an API client; an Activepieces flow with a webhook trigger receives the
 event, reads the record, and answers 200. Record the setup as a short recipe in `docs/plans/automations/` (the real documentation comes
 in phase 1). This is the hand-over point to `apps/flows`.

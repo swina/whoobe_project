@@ -1,3 +1,9 @@
+## Automation engine examples moved out of the distribution — 2026-10-16
+- Branch: `master`
+- `docker-compose.automation.yml` and `scripts/automation-test.sh` moved (git mv) to `examples/automation-engines/` as `docker-compose.activepieces.yml` and `automation-test.sh`, each with an "EXAMPLE ONLY - NOT PART OF THE WHOOBE DISTRIBUTION" header, plus a new `examples/automation-engines/README.md` (Whoobe ships and supports no engine; the engine is the operator's choice, each engine keeps its own runs).
+- `examples` is excluded from the deployment (`deploy.sh`) and from the Docker build context (`.dockerignore`).
+- Links updated in the administrators' guides (`communication/marketing-automation.md`, `communication/automations-architecture.md`, which now say "an engine of your choice" and call the compose file an example outside the distribution) and in the plans that cite the files. The docs gate passes. The running test container `whoobe-activepieces-test` is not affected by the move.
+
 ## Plans: no engine is distributed, the choice is the operator's — 2026-10-16
 - Branch: `master`
 - Position note added to `docs/plans/automations/why-no-custom-automation-engine.md`, `docs/plans/datamodel/data-objects-automations.md` and `docs/plans/automations/flow-orchestrator-app.md`: Whoobe distributes and prefers no engine; whoever wants automations or object events brings their own (any webhook engine); Activepieces was only a test convenience, the Gateway being a pass-through that keeps no state or runs. The sample `docker-compose.automation.yml` is described as a local convenience, not a supported part of the product; the "n8n excluded" phrase in the phase table of the object-events plan is reworded. The Flows app plan is unchanged: it stays as decided (the note only says that any engine keeps its own runs, and that a plain Node.js service would just receive, process and reply).

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
+# EXAMPLE ONLY - NOT PART OF THE WHOOBE DISTRIBUTION (see examples/automation-engines/README.md).
 # Toggle the local automation test containers: running -> stop, stopped or missing -> start (create).
-#   scripts/automation-test.sh [activepieces|n8n]      default: activepieces (+ its SMTP forward to Mailhog)
+#   examples/automation-engines/automation-test.sh [activepieces|n8n]      default: activepieces (+ its SMTP forward to Mailhog)
 # Data lives in Docker volumes, so stopping keeps flows and accounts. Guides: docs/plans/automations/.
 set -euo pipefail
 

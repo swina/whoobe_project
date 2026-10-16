@@ -135,7 +135,7 @@ Whoobe does not keep a record of a submission it forwards, so the guarantees com
 
 | Option | How | When |
 |---|---|---|
-| Same host, own Compose project | [`docker-compose.automation.yml`](../../../docker-compose.automation.yml) (Activepieces, PostgreSQL, Redis, `127.0.0.1` only) behind its own HTTPS | one organisation, small installation; the Gateway reaches it on a private address or `localhost` (see the outbound policy above) |
+| Same host, own Compose project | an engine of your choice, for example Activepieces as in the [example compose file](../../../examples/automation-engines/docker-compose.activepieces.yml) (not part of the Whoobe distribution; PostgreSQL, Redis, `127.0.0.1` only) behind its own HTTPS | one organisation, small installation; the Gateway reaches it on a private address or `localhost` (see the outbound policy above) |
 | Separate host | the engine on its own machine, reached over HTTPS | separation of duties, heavier flows |
 | Hosted by the engine vendor | the vendor's cloud | no engine to operate; credentials of third parties then live at the vendor |
 

@@ -1,7 +1,8 @@
-# Sample: Activepieces (automation engine, MIT core) next to a Whoobe instance. Not part of the product stack; see
+# EXAMPLE ONLY - NOT PART OF THE WHOOBE DISTRIBUTION. Whoobe ships and supports no automation engine; you choose, install and run your own.
+# This is how Activepieces (MIT core) was run next to a Whoobe instance for the tests. See examples/automation-engines/README.md and
 # docs/plans/automations/activepieces-local-experiment.md and why-no-custom-automation-engine.md.
 #   AP_JWT_SECRET=$(openssl rand -hex 32) AP_ENCRYPTION_KEY=$(openssl rand -hex 16) AP_POSTGRES_PASSWORD=$(openssl rand -hex 16) \
-#     docker compose -f docker-compose.automation.yml up -d
+#     docker compose -f examples/automation-engines/docker-compose.activepieces.yml up -d
 # KEEP the same three values (put them in a file with mode 600 and use --env-file): the encryption key decrypts the stored
 # connections, so a new value makes them unreadable. Bound to 127.0.0.1: put it behind HTTPS before exposing it, and give
 # every webhook a secret (Header Auth in the flow, an API-key endpoint in the Whoobe Gateway).

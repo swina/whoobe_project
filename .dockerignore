@@ -31,3 +31,4 @@ scripts/security/reports
 # Let's Encrypt state of a workspace (account and certificate PRIVATE KEYS, written by certbot as root, mode 700):
 # never part of an image, and an unreadable directory in the context stops the build ("permission denied")
 deploy/certbot
+examples
