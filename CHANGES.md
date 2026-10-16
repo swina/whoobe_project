@@ -1,3 +1,7 @@
+## Object events, phase 0: implementation plan — 2026-10-16
+- Branch: `feat/object-events` (worktree `../whoobe_cms-object-events`, from `master` at `fb60a8f`)
+- `docs/plans/datamodel/object-events-phase0.md` (new): the plan, nothing implemented. Inventory of the data-object write paths and their callers (core-api, gateway API clients, bundle import, migration tool); finding: the write functions take no actor yet, so phase 0 adds an optional `opts.actor`; tables and one migration after `0058`; seven steps (baseline, pure event module, tables, emit inside transactions, actor, gateway worker, subscriptions API, end-to-end with Activepieces); risks.
+
 ## Flow Orchestrator: proposal for an optional app for request / reply flows — 2026-10-16
 - Branch: `master`
 - `docs/plans/automations/flow-orchestrator-app.md` (new): a proposal, nothing implemented. A separate optional (enterprise) app, outside the core, that manages **runs** for flows such as "record inserted, processed, external API called, answer returned to the original caller": entry via the app or via object events, one step only (the engine's webhook), the engine calls back `/runs/:id/complete`, the result is written on the record as a workflow transition. The caller chooses per request **synchronous** (with a `202` fallback on timeout) or **asynchronous** (polling or signed callback). API draft, data of the app, idempotency, SSRF and allow-list rules, operations, phases, 10 open questions, risks. Complements `docs/plans/datamodel/data-objects-automations.md`.
