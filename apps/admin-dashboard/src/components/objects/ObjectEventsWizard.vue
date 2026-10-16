@@ -44,17 +44,27 @@
 
       <section class="space-y-3">
         <h3 class="font-semibold text-slate-200 light:text-slate-800">2. Where is the flow</h3>
-        <label class="block">
-          <span class="block mb-1 text-slate-400">Webhook URL (the one your engine shows for the flow's trigger)</span>
-          <input v-model="url" class="field w-full font-mono" placeholder="http://localhost:8090/api/v1/webhooks/..." spellcheck="false" />
-        </label>
+        <div class="grid grid-cols-[1fr_12rem] gap-3">
+          <label class="block">
+            <span class="block mb-1 text-slate-400">Webhook URL (the one your engine shows for the flow's trigger)</span>
+            <input v-model="url" class="field w-full font-mono" placeholder="http://localhost:8090/api/v1/webhooks/..." spellcheck="false" />
+          </label>
+          <label class="block">
+            <span class="block mb-1 text-slate-400">Engine</span>
+            <select v-model="engineChoice" class="field w-full">
+              <option value="auto">Detect from the URL</option>
+              <option value="nodered">Node-RED</option>
+              <option value="generic">Other</option>
+            </select>
+          </label>
+        </div>
         <p v-if="urlError" class="text-rose-300">{{ urlError }}</p>
         <div v-else-if="parsed" class="rounded-lg border border-slate-800 light:border-slate-200 p-3 space-y-1 text-slate-300 light:text-slate-700">
           <div>Recognised: <b>{{ ENGINE_LABEL[parsed.engine] }}</b> at <span class="font-mono">{{ parsed.baseUrl }}</span></div>
           <div v-for="r in routePreview" :key="r.path" class="font-mono text-[11px]">POST {{ r.path }} <span class="text-slate-500">({{ r.mode === 'single' ? 'one address' : r.mode === 'test' ? 'test: only while the editor listens' : 'live: the published flow' }})</span></div>
           <p v-if="hint" class="text-amber-300">{{ hint }}</p>
         </div>
-        <label v-if="parsed && parsed.engine === 'generic'" class="block">
+        <label v-if="parsed && (parsed.engine === 'generic')" class="block">
           <span class="block mb-1 text-slate-400">Optional: the test URL of the same server, if the engine has one</span>
           <input v-model="otherUrl" class="field w-full font-mono" spellcheck="false" />
           <span v-if="otherError" class="block mt-1 text-rose-300">{{ otherError }}</span>
@@ -111,7 +121,16 @@
           <div class="text-amber-300">Copy the key now: it is shown only this once.</div>
           <div class="flex items-center gap-2"><code class="font-mono break-all flex-1">{{ result.client.key }}</code><button type="button" class="btn btn-secondary" @click="copy(result.client.key!)">{{ copied === result.client.key ? 'Copied' : 'Copy' }}</button></div>
         </div>
-        <div v-if="snippet" class="rounded-lg border border-slate-800 light:border-slate-200 p-3 space-y-1">
+        <div v-if="nodeRed" class="rounded-lg border border-slate-800 light:border-slate-200 p-3 space-y-2">
+          <div class="font-semibold">Node-RED: the function node that updates the record</div>
+          <ol class="list-decimal ml-4 text-slate-400"><li v-for="st in nodeRed.steps" :key="st">{{ st }}</li></ol>
+          <pre class="font-mono bg-slate-950/50 rounded p-2 overflow-x-auto whitespace-pre">{{ nodeRed.code }}</pre>
+          <div><button type="button" class="btn btn-secondary" @click="copy(nodeRed.code)">{{ copied === nodeRed.code ? 'Copied' : 'Copy the code' }}</button></div>
+          <div class="font-semibold">Environment of the Node-RED container</div>
+          <pre class="font-mono bg-slate-950/50 rounded p-2 overflow-x-auto whitespace-pre">{{ nodeRed.env.map((e) => `${e.name}=${e.value}`).join('\n') }}</pre>
+          <ul class="list-disc ml-4 text-slate-400"><li v-for="n in nodeRed.notes" :key="n">{{ n }}</li></ul>
+        </div>
+        <div v-else-if="snippet" class="rounded-lg border border-slate-800 light:border-slate-200 p-3 space-y-1">
           <div><b>Method</b> <span class="font-mono">{{ snippet.method }}</span></div>
           <div><b>URL</b> <code class="font-mono break-all">{{ snippet.url }}</code></div>
           <div v-for="h in snippet.headers" :key="h.name"><b>Header</b> <code class="font-mono">{{ h.name }}</code>: <code class="font-mono break-all">{{ h.value }}</code></div>
@@ -150,7 +169,7 @@ import { createSubscription, deleteSubscription, listDeliveries, sendTestEvent, 
 import type { ObjectEventType } from '../../utils/object-events-api'
 import { EVENT_CHOICES } from '../../utils/object-events-ui'
 import {
-  ConnectionError, ENGINE_LABEL, PRESETS, describeDelivery, describeFailure, engineSnippet, eventsOfPresets, parseWebhookUrl, planConnection, reachabilityHint,
+  ConnectionError, ENGINE_LABEL, PRESETS, nodeRedSnippet, type EngineChoice, describeDelivery, describeFailure, engineSnippet, eventsOfPresets, parseWebhookUrl, planConnection, reachabilityHint,
   routesOf, runPlan, type ConnectionResult, type ParsedWebhook, type PresetKey, type WizardApi,
 } from '../../utils/object-events-wizard'
 
@@ -169,6 +188,7 @@ const nameTouched = ref(false)
 const presets = ref<PresetKey[]>(['created'])
 const extra = ref<ObjectEventType[]>([])
 const url = ref('')
+const engineChoice = ref<EngineChoice>('auto')
 const otherUrl = ref('')
 const startMode = ref<'test' | 'live'>('test')
 const writeBack = ref(false)
@@ -183,14 +203,15 @@ function suggestName() {
   if (!classId.value) writeBack.value = false
 }
 
-const parsedResult = computed(() => (url.value.trim() ? parseWebhookUrl(url.value) : null))
+const parsedResult = computed(() => (url.value.trim() ? parseWebhookUrl(url.value, engineChoice.value) : null))
 const parsed = computed<ParsedWebhook | null>(() => (parsedResult.value?.ok ? parsedResult.value.value : null))
 const urlError = computed(() => (parsedResult.value && !parsedResult.value.ok ? parsedResult.value.error : ''))
-const otherResult = computed(() => (otherUrl.value.trim() ? parseWebhookUrl(otherUrl.value) : null))
+const otherResult = computed(() => (otherUrl.value.trim() ? parseWebhookUrl(otherUrl.value, engineChoice.value) : null))
 const otherParsed = computed<ParsedWebhook | null>(() => (otherResult.value?.ok ? otherResult.value.value : null))
 const otherError = computed(() => (otherResult.value && !otherResult.value.ok ? otherResult.value.error : parsed.value && otherParsed.value && otherParsed.value.baseUrl !== parsed.value.baseUrl ? 'This is another server: use one connection for each.' : ''))
 const routePreview = computed(() => (parsed.value ? routesOf(parsed.value, otherError.value ? null : otherParsed.value) : []))
 const hint = computed(() => (parsed.value ? reachabilityHint(parsed.value) : ''))
+const isNodeRed = computed(() => parsed.value?.engine === 'nodered')
 
 // ---- connecting ----
 const result = ref<(ConnectionResult & { name: string; routes: { id: string; mode: 'live' | 'test' | 'single' }[] }) | null>(null)
@@ -285,8 +306,10 @@ async function switchTo(r: { id: string; mode: 'live' | 'test' | 'single' }) {
   }
 }
 
+const nodeRed = computed(() =>
+  result.value?.client && isNodeRed.value ? nodeRedSnippet({ clientBase: clientApiBaseUrl(), key: result.value.client.key }) : null)
 const snippet = computed(() =>
-  result.value?.client && classOf()
+  result.value?.client && classOf() && !isNodeRed.value
     ? engineSnippet({ engine: parsed.value?.engine ?? 'generic', clientBase: clientApiBaseUrl(), className: classOf()!.name, key: result.value.client.key })
     : null)
 

@@ -18,7 +18,7 @@ including its [limits](#5-limits-and-known-gaps). For credential protection in d
 | Send what a visitor typed in a form to another system (create a contact, open a ticket) | set the form's target to a route (a `POST`, `PUT` or `PATCH`) |
 | Start a flow in an automation engine and react to its answer | form to a webhook route, see [marketing automation](marketing-automation.md) |
 | Push an email campaign draft to Brevo from a page or snippet | built-in preset, see [Brevo integration](brevo-integration.md) |
-| Use a vendor API quickly | start from a **preset** (Brevo, Cloudinary, HubSpot, Mailchimp, Shopify, Stripe, a demo shop) |
+| Use a vendor API quickly | start from a **preset** (Brevo, Cloudinary, HubSpot, Mailchimp, Node-RED on this machine, Shopify, Stripe, a demo shop) |
 | Use a documented API quickly | **import its OpenAPI / Swagger** file: the routes are created for you |
 
 What makes it different from calling an API from the page:
@@ -81,6 +81,7 @@ A preset fills the *Add Endpoint* form for a known service. The credentials are 
 | Shopify | `https://{shop}.myshopify.com/admin/api/2024-10` | API key | products, orders |
 | Stripe | `https://api.stripe.com` | Bearer | customers, charges (read) |
 | Cloudinary | `https://api.cloudinary.com/v1_1/{cloud_name}` | none (unsigned upload preset) | upload |
+| Node-RED (this machine only) | `http://localhost:1880` | none | `POST whoobe-events`, the entry of the example flow; works only for a Node-RED on the same machine as the Gateway, see [Node-RED](node-red.md) |
 | Fake Products | `https://dummyjson.com` | none | a demo shop, for trying the feature |
 
 A `{placeholder}` in a base URL (`{shop}`, `{cloud_name}`) is yours to replace. Presets are plain JSON files in

@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   ConnectionError, PRESETS, clientNameFor, describeDelivery, describeFailure, endpointNameFor, engineSnippet, eventsOfPresets, parseWebhookUrl, planConnection, reachabilityHint,
-  modeSwitch, routesOf, runPlan, type ParsedWebhook, type WizardAnswers, type WizardApi,
+  modeSwitch, nodeRedSnippet, routesOf, runPlan, type ParsedWebhook, type WizardAnswers, type WizardApi,
 } from '../../../apps/admin-dashboard/src/utils/object-events-wizard'
 import { OBJECT_EVENT_TYPES } from '../../../packages/core/src/db/object-events'
 
@@ -287,5 +287,55 @@ describe('modeSwitch', () => {
   it('has no switch without a pair, or when the other route cannot receive an event', () => {
     expect(modeSwitch({ path: '/lonely' }, routes)).toBeNull()
     expect(modeSwitch({ path: '/g1' }, routes)).toBeNull()
+  })
+})
+
+describe('Node-RED', () => {
+  it('is chosen by the person, or guessed from its default port; "Other" keeps it a plain URL', () => {
+    expect(parse('http://localhost:1880/whoobe-events')).toMatchObject({ engine: 'nodered', baseUrl: 'http://localhost:1880', path: '/whoobe-events', mode: 'single', otherPath: null })
+    const chosen = parseWebhookUrl('http://localhost:3000/hooks/x', 'nodered')
+    expect(chosen.ok && chosen.value.engine).toBe('nodered')
+    const other = parseWebhookUrl('http://localhost:1880/whoobe-events', 'generic')
+    expect(other.ok && other.value.engine).toBe('generic')
+    expect(parse('http://localhost:3000/hooks/x').engine).toBe('generic')
+  })
+  it('one route, no test / live switch', () => {
+    expect(routesOf(parse('http://localhost:1880/whoobe-events'))).toEqual([{ mode: 'single', path: '/whoobe-events' }])
+  })
+  it('reuses the route a preset made, with or without the leading slash', () => {
+    const a = answers({ webhook: parse('http://localhost:1880/whoobe-events') })
+    for (const stored of ['whoobe-events', '/whoobe-events']) {
+      const r = planConnection(a, [{ id: 'ep', name: 'Node-RED (this machine only)', baseUrl: 'http://localhost:1880' }], () => [{ id: 'r1', method: 'POST', path: stored }])
+      expect(r.ok && r.plan.routes).toEqual([{ mode: 'single', path: '/whoobe-events', reuseId: 'r1' }])
+      expect(r.ok && r.plan.endpoint).toEqual({ reuseId: 'ep' })
+    }
+  })
+  it('its hint says this machine is the right place, and warns about any other address', () => {
+    expect(reachabilityHint({ host: 'localhost', engine: 'nodered' })).toMatch(/same machine/)
+    expect(reachabilityHint({ host: 'localhost', engine: 'nodered' })).not.toMatch(/OUTBOUND/)
+    expect(reachabilityHint({ host: 'nr.example.com', engine: 'nodered' })).toMatch(/not be exposed/)
+  })
+  it('a 404 points at the path of the "http in" node', () => {
+    expect(describeDelivery({ status: 'retrying', lastError: 'the consumer answered HTTP 404' }, 'single', 'nodered').text).toMatch(/http in.*letter by letter/)
+  })
+  it('the script keeps the key and the address in the environment and leaves the field to the person', () => {
+    const s = nodeRedSnippet({ clientBase: 'http://172.17.0.1:3001/client/v1/', key: 'wbk_abc' })
+    expect(s.code).toContain("'<FIELD>'")
+    expect(s.code).toContain("'<NEW VALUE>'")
+    expect(s.code).toContain("env.get('WHOOBE_KEY')")
+    expect(s.code).not.toContain('wbk_abc')
+    expect(s.code).not.toContain('172.17.0.1')
+    expect(s.env).toEqual([{ name: 'WHOOBE_CLIENT_URL', value: 'http://172.17.0.1:3001/client/v1' }, { name: 'WHOOBE_KEY', value: 'wbk_abc' }])
+    expect(() => new Function('msg', 'env', 'flow', s.code.replace(/\nreturn msg;$/, '\nreturn msg;'))).not.toThrow()
+  })
+  it('the script runs: it builds the PATCH of the event\'s record and skips a test event', () => {
+    const s = nodeRedSnippet({ clientBase: 'http://gw/client/v1', key: null })
+    const run = (msg: any) => new Function('msg', 'env', s.code)(msg, { get: (n: string) => ({ WHOOBE_CLIENT_URL: 'http://gw/client/v1/', WHOOBE_KEY: 'k1' } as any)[n] })
+    const out = run({ payload: { type: 'object.created', class: { name: 'Contact' }, object: { id: 'abc' } } })
+    expect(out.method).toBe('PATCH')
+    expect(out.url).toBe('http://gw/client/v1/data/Contact/abc')
+    expect(out.headers.Authorization).toBe('Bearer k1')
+    expect(out.payload).toEqual({ attributes: { '<FIELD>': '<NEW VALUE>' } })
+    expect(run({ payload: { test: true } })).toBeNull()
   })
 })

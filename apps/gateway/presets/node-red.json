@@ -1,0 +1,11 @@
+{
+  "id": "node-red",
+  "label": "Node-RED (this machine only)",
+  "description": "Flows in Node-RED running on the same machine as the Gateway, not exposed to the network (http://localhost:1880). It does not work for a Node-RED on another host.",
+  "baseUrl": "http://localhost:1880",
+  "authType": "none",
+  "authConfigFields": [],
+  "starterRoutes": [
+    { "method": "POST", "path": "whoobe-events", "description": "Receives Whoobe object events (the entry of the example flow)" }
+  ]
+}

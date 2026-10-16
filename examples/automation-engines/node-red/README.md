@@ -1,6 +1,6 @@
 # Node-RED: receive an object event and write back, developed locally and run unexposed
 
-**Example only, not part of the Whoobe distribution** (see [../README.md](../README.md)). Node-RED is Apache 2.0; installing, running and securing it is your responsibility.
+**Example only, not part of the Whoobe distribution** (see [../README.md](../README.md)). The guide is [Node-RED with Whoobe](../../../docs/release/communication/node-red.md). Node-RED is Apache 2.0; installing, running and securing it is your responsibility.
 
 The flow in `data/flows.json`: *POST /whoobe-events* receives the event, checks it (a fresh timestamp and, if you set a secret, the `X-Whoobe-Signature`),
 answers `200` at once, then writes a note on the record through an API client (`PATCH .../client/v1/data/<Class>/<id>`). It handles the same event once

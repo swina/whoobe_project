@@ -4,7 +4,9 @@ import type { ObjectEventType } from './object-events-api'
 
 // ---- 1. the webhook URL the engine shows ----
 
-export type Engine = 'activepieces' | 'n8n' | 'generic'
+export type Engine = 'activepieces' | 'n8n' | 'nodered' | 'generic'
+/** What the person picks in the dialog: let the URL decide, or name the engine. */
+export type EngineChoice = 'auto' | Engine
 /** `test`: the engine listens only while its editor waits for a sample; `live`: the published flow; `single`: no second mode exists. */
 export type WebhookMode = 'live' | 'test' | 'single'
 
@@ -24,7 +26,7 @@ export interface ParsedWebhook {
 export type Parsed = { ok: true; value: ParsedWebhook } | { ok: false; error: string }
 
 /** What the engine shows (a URL to POST to) as the pieces Integrations needs. Query and fragment are dropped; a URL with a password is refused. */
-export function parseWebhookUrl(input: string): Parsed {
+export function parseWebhookUrl(input: string, choice: EngineChoice = 'auto'): Parsed {
   const text = (input ?? '').trim()
   if (!text) return { ok: false, error: 'Paste the webhook URL of the flow' }
   let u: URL
@@ -53,10 +55,12 @@ export function parseWebhookUrl(input: string): Parsed {
       ? { ok: true, value: { engine: 'n8n', baseUrl, path: `/webhook-test/${rest}`, mode: 'test', otherPath: `/webhook/${rest}`, ...common } }
       : { ok: true, value: { engine: 'n8n', baseUrl, path: `/webhook/${rest}`, mode: 'live', otherPath: `/webhook-test/${rest}`, ...common } }
   }
-  return { ok: true, value: { engine: 'generic', baseUrl: origin, path, mode: 'single', otherPath: null, ...common } }
+  // Node-RED has no fixed URL shape (the path is whatever the flow's "http in" node says): it is chosen by the person, or guessed from its default port
+  const generic: ParsedWebhook = { engine: 'generic', baseUrl: origin, path, mode: 'single', otherPath: null, ...common }
+  return { ok: true, value: choice === 'nodered' || (choice === 'auto' && u.port === '1880') ? { ...generic, engine: 'nodered' } : generic }
 }
 
-export const ENGINE_LABEL: Record<Engine, string> = { activepieces: 'Activepieces', n8n: 'n8n', generic: 'a webhook' }
+export const ENGINE_LABEL: Record<Engine, string> = { activepieces: 'Activepieces', n8n: 'n8n', nodered: 'Node-RED', generic: 'a webhook' }
 
 /** The route paths to create, in a fixed order (the one the person pasted first), and which mode each one is. */
 export function routesOf(w: ParsedWebhook, other?: ParsedWebhook | null): { mode: 'live' | 'test' | 'single'; path: string }[] {
@@ -67,9 +71,15 @@ export function routesOf(w: ParsedWebhook, other?: ParsedWebhook | null): { mode
   return [{ mode: 'single', path: w.path }]
 }
 
-/** The address of the engine seen from a container is not the one seen from the host: a hint for when the pasted host is the machine itself. */
-export function reachabilityHint(w: Pick<ParsedWebhook, 'host'>): string {
+/** The address of the engine seen from a container is not the one seen from the host: a hint for when the pasted host is the machine itself.
+ * Node-RED is meant to run on the same machine as the Gateway and not be exposed, so for it the machine itself is the right answer and anything else is the warning. */
+export function reachabilityHint(w: Pick<ParsedWebhook, 'host'> & { engine?: Engine }): string {
   const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(w.host)
+  if (w.engine === 'nodered') {
+    return local
+      ? 'Node-RED here is meant to run on the same machine as the Gateway and not be reachable from the network. If the Gateway runs in Docker, use the address of the host or the container\'s network name instead of localhost.'
+      : 'Node-RED is meant to run on the same machine as the Gateway (or on the same private Docker network) and not be exposed. Check that this address is not reachable from outside.'
+  }
   return local
     ? 'This address points at the machine itself. It works if the Gateway runs on the same machine, outside Docker. If the Gateway runs in a container, use an address it can reach (the host\'s Docker address or the engine\'s network name); in production the Gateway also needs OUTBOUND_ALLOW_HOSTS for this host.'
     : ''
@@ -114,6 +124,7 @@ export interface ConnectionPlan {
   subscription: { name: string; classId: string | null; events: ObjectEventType[]; startRoute: 'live' | 'test' | 'single' }
 }
 
+const slash = (p: string) => '/' + p.replace(/^\/+/, '')
 const trimUrl = (u: string) => u.trim().replace(/\/+$/, '').toLowerCase()
 
 /** A free endpoint name that carries no ":" (it would be refused in a client's scopes): the engine, then the host with its port, then a number. */
@@ -149,7 +160,7 @@ export function planConnection(a: WizardAnswers, endpoints: ExistingEndpoint[], 
     : { create: { name: endpointNameFor(a.webhook, endpoints.map((e) => e.name)), baseUrl: a.webhook.baseUrl, authType: 'none' } }
   const known = existing ? routesOfEndpoint(existing.id) : []
   const routes = routesOf(a.webhook, a.otherWebhook).map((r) => ({
-    ...r, reuseId: known.find((k) => k.method.toUpperCase() === 'POST' && k.path === r.path)?.id ?? null,
+    ...r, reuseId: known.find((k) => k.method.toUpperCase() === 'POST' && slash(k.path) === slash(r.path))?.id ?? null,
   }))
   const startRoute = routes.find((r) => r.mode === a.startMode)?.mode ?? routes[0].mode
   return {
@@ -266,6 +277,9 @@ export function describeDelivery(d: DeliveryFacts | null, mode: 'live' | 'test' 
   const http = err.match(/HTTP (\d{3})/)
   if (http) {
     const code = Number(http[1])
+    if (code === 404 && engine === 'nodered') {
+      return { tone: 'problem', text: 'Node-RED answered 404: no "http in" node listens on that path. Compare the route\'s path with the one in the flow, letter by letter.' }
+    }
     if (code === 404) {
       return mode === 'test'
         ? { tone: 'problem', text: `The engine is not listening on the test address.${engine === 'activepieces' ? ' In Activepieces click "Test trigger"' : engine === 'n8n' ? ' In n8n click "Listen for test event"' : ' Put the flow in its test mode'}, then send the test again.` }
@@ -323,5 +337,48 @@ export function engineSnippet(input: { engine: Engine; clientBase: string; class
     body: JSON.stringify({ attributes: { '<field>': '<new value>' } }, null, 2),
     idToken,
     notes,
+  }
+}
+
+// ---- 7. Node-RED: the function node that writes back ----
+
+export interface NodeRedSnippet {
+  /** The body of a Node-RED *function* node: builds the PATCH that the following *http request* node sends. */
+  code: string
+  env: { name: string; value: string }[]
+  steps: string[]
+  notes: string[]
+}
+
+/** The script to paste into Node-RED to update one field of the record that started the flow. `<FIELD>` and `<NEW VALUE>` are the person's to fill in.
+ * The key and the Gateway address are read from the container's environment, never written into the flow (the flow file goes to git). */
+export function nodeRedSnippet(input: { clientBase: string; key: string | null }): NodeRedSnippet {
+  const code = [
+    '// "build the PATCH": a function node. It updates ONE field of the record that started the flow.',
+    '// msg.payload is the Whoobe event: ev.object.id, ev.class.name, ev.changed (names only), ev.type.',
+    'const ev = msg.payload;',
+    'if (ev.test || !ev.object) return null;   // the "test event" of Whoobe has no record',
+    "msg.method = 'PATCH';",
+    "msg.url = env.get('WHOOBE_CLIENT_URL').replace(/\\/+$/, '') + '/data/' + encodeURIComponent(ev.class.name) + '/' + ev.object.id;",
+    "msg.headers = { 'Authorization': 'Bearer ' + env.get('WHOOBE_KEY'), 'Content-Type': 'application/json' };",
+    "msg.payload = { attributes: { '<FIELD>': '<NEW VALUE>' } };   // <- the field to update and its value",
+    'return msg;',
+  ].join('\n')
+  return {
+    code,
+    env: [
+      { name: 'WHOOBE_CLIENT_URL', value: input.clientBase.replace(/\/+$/, '') },
+      { name: 'WHOOBE_KEY', value: input.key ?? '<the key of the API client>' },
+    ],
+    steps: [
+      'In Node-RED, after the node that receives the event (http in, then a response), add a function node with this code, then an http request node set to "use msg.method" and "Return: a parsed JSON object".',
+      'Replace <FIELD> with the name of the field of the class and <NEW VALUE> with the value.',
+      'Give the Node-RED container the two variables below (the example compose files read them from an env file), then restart it.',
+    ],
+    notes: [
+      'The API changes drafts only: on a published record it answers 409. Test on a draft.',
+      'The event carries no field values: to use the record\'s own data, add an http request (GET the same URL) before this node.',
+      'The key stays in the environment, not in the flow file.',
+    ],
   }
 }

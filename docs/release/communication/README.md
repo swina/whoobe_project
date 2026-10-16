@@ -18,6 +18,7 @@ the **Client Hub** (your applications call Whoobe), and mail. The common rule is
 |---|---|
 | [Marketing automation](marketing-automation.md) | A form hands its submission to Activepieces, n8n or any webhook; the page reacts to the answer |
 | [Automations architecture](automations-architecture.md) | What Whoobe does, what the engine does, what travels between them |
+| [Node-RED](node-red.md) | The flow editor on the same machine as Whoobe and not exposed: the preset, the wizard, the function node that writes back, developing and deploying a flow |
 | [Object events](object-events.md) | Tell a service when a Data Object is created, changed, published or deleted: subscriptions, payload, delivery log, signature, loops |
 | [Forms with file upload](form-uploads.md) | Files from visitors: checks, private storage, limits |
 | [Why no engine of our own](../architecture/design-decisions/no-automation-engine-of-our-own.md) | The decision and its costs |

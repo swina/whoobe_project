@@ -20,6 +20,7 @@ describe('presets', () => {
     const all = ids(loadPresets(dir))
     expect(all).toContain('brevo')
     expect(all).toContain('mailchimp')
+    expect(all).toContain('node-red')
     expect(all).toContain('acme')
   })
 
