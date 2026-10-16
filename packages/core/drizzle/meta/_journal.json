@@ -414,6 +414,13 @@
       "when": 1789890000000,
       "tag": "0058_api_clients_jwt",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1789900000000,
+      "tag": "0059_object_events",
+      "breakpoints": true
     }
   ]
 }
