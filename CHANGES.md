@@ -1,3 +1,8 @@
+## Release check: static scans pass; trivy skips the publisher's generated output — 2026-10-16
+- Branch: `master`
+- `pnpm security:static` (audit, gitleaks tree and history, semgrep, shellcheck, trivy config, hadolint, v-html inventory) passes after one change: `scripts/security/static/run-trivy.sh` now skips `apps/publisher/published`. That folder is the output of the dashboard's publish feature: ignored by git, never in a clean checkout (so CI never saw it), but on a machine that has published sites it held nine Trivy findings (generated `Dockerfile` without HEALTHCHECK, and `Dockerfile.static` flagged as running as root although its base image is `nginx-unprivileged`). The scan is meant to cover tracked files, as its label says.
+- Note for whoever reads the report: those findings describe the generated site images, not Whoobe's own images; a generated `Dockerfile.static` has no explicit `USER` line (the base image is unprivileged), which would silence the scanner if someone wants it quiet.
+
 ## Release check: two stale security tests fixed — 2026-10-16
 - Branch: `master`
 - Ran the API and browser security suites on a disposable stack (`scripts/security/stack.sh up`, `pnpm security:api`, `pnpm security:browser`): API 1,963 passed, 2 skipped, 1 file failed; browser 29 passed, 1 failed. Both failures were tests that no longer matched the code, not product defects, and both predate the object events work:
