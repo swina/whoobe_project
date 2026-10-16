@@ -124,7 +124,8 @@ The proposal's defaults are in bold.
 
 1. **Scope of write back**: the API scope is per class, not per field, so the field choice would be only a note. **v1 gives the class scope and says so.**
 2. **Where the Test / Live switch lives**: **on the subscription row** (a small toggle), not inside the editor, because it is the thing changed most.
-3. **Other engines** (n8n, Make, any webhook): **v1 parses Activepieces and n8n and treats the rest as a generic URL.**
+3. **Other engines** (n8n, Make, any webhook): **v1 parses Activepieces and n8n and treats the rest as a generic URL.** Settled by the owner (2026-10-16): Whoobe
+   excludes no engine; the engine is the user's choice and responsibility and is not part of Whoobe. The wizard's texts must not recommend one.
 4. **Editing a connection created by the wizard**: **the normal editor and the Integrations / API clients screens stay fully usable**; the wizard
    keeps no private state, it only recognises its own naming (`<name> (flow)`, endpoint by base URL).
 5. **Signed events** (`signingSecretRef`): **left to *Advanced* in the editor** in v1: the secret lives in the instance's environment, so the wizard

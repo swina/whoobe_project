@@ -112,6 +112,9 @@ to this subscription. Two more safety nets: pause the subscription, or set `OBJE
   (default 5) is how many calls are made at once.
 - **Transactions**: the event is stored in the same database transaction as the change. If the change is rolled back there is no event; if the event
   cannot be stored the change is not saved.
+- **Any engine, your choice.** Whoobe sends an HTTP call and nothing more, so it does not prefer or exclude any automation engine (Activepieces,
+  n8n, Make, a script of yours). The engine is **not part of Whoobe**: choosing it, installing it, making it reachable from the Gateway and
+  respecting its licence are the operator's own responsibility. The examples use Activepieces only because it is what the documentation was tried with.
 - **No code runs inside Whoobe**: a subscription chooses what is sent and where, nothing else. Anything that must run your own code belongs in your own
   service, which receives the event and calls Whoobe back with an API client.
 
