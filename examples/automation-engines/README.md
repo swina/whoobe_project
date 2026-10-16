@@ -9,7 +9,7 @@ This folder holds what the project used to **try** the integration on a developm
 | File | What it is |
 |---|---|
 | `docker-compose.activepieces.yml` | Activepieces (MIT core) with PostgreSQL and Redis, bound to `127.0.0.1` |
-| `node-red/` | a Node-RED flow that receives an object event, checks it, answers and writes back; with a README |
+| `node-red/` | a Node-RED flow that receives an object event, checks it, answers and writes back, with a development compose (editor on your machine) and a production one (unexposed, no editor, read-only); README |
 | `windmill/docker-compose.yml` | a reduced Windmill (Community Edition) for a development machine, with the way to connect it in its README |
 | `automation-test.sh` | starts or stops a single-container Activepieces (or n8n) next to a development stack |
 

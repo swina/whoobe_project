@@ -1,0 +1,4 @@
+# the editor and the runtime write these next to the flow; only flows.json and settings.js are the example
+data/*
+!data/flows.json
+!data/settings.js

@@ -1,0 +1,30 @@
+# EXAMPLE ONLY - NOT PART OF THE WHOOBE DISTRIBUTION. Node-RED on the host that runs Whoobe, NOT exposed: no published port, no editor, no admin API.
+# It only runs the flow in ./data/flows.json, which you developed and tested on your machine (docker-compose.dev.yml) and copied here.
+# Whoobe's Gateway reaches it over the Docker network by service name: Integrations endpoint base URL http://node-red:1880, route POST /whoobe-events.
+#   docker compose -f docker-compose.prod.yml --env-file prod.env up -d     (prod.env: mode 600, never in git)
+# To change a flow: change and test it in development, copy the new flows.json here, `docker compose ... restart node-red`.
+name: whoobe-node-red
+services:
+  node-red:
+    image: nodered/node-red:4.1       # pin the version you tested
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    # NO `ports:` on purpose. The network is the one Whoobe's services are on (name it in WHOOBE_NETWORK, see `docker network ls`).
+    networks: [whoobe]
+    environment:
+      WHOOBE_CLIENT_URL: ${WHOOBE_CLIENT_URL:?set WHOOBE_CLIENT_URL (e.g. http://gateway:3001/client/v1)}
+      WHOOBE_KEY: ${WHOOBE_KEY:?set WHOOBE_KEY}
+      WHOOBE_SIGNING_SECRET: ${WHOOBE_SIGNING_SECRET:?set the same value as the subscription's OBJECT_EVENTS_SECRET_...}
+    volumes:
+      - node_red_data:/data             # Node-RED's own working files (backups, installed modules); the two files below are read-only on top of it
+      - ./data/flows.json:/data/flows.json:ro
+      - ./data/settings.js:/data/settings.js:ro
+networks:
+  whoobe:
+    name: ${WHOOBE_NETWORK:?set WHOOBE_NETWORK (the Docker network of the Whoobe stack)}
+    external: true
+volumes:
+  node_red_data:

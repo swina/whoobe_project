@@ -1,0 +1,19 @@
+# EXAMPLE ONLY - NOT PART OF THE WHOOBE DISTRIBUTION. Node-RED for DEVELOPING and TESTING a flow on your own machine.
+# The editor is on http://127.0.0.1:1880 (this machine only) and saves into ./data/flows.json: commit that file, then deploy it (docker-compose.prod.yml).
+#   cp .env.example .env   # fill in WHOOBE_CLIENT_URL and WHOOBE_KEY of a TEST API client, never a production key
+#   docker compose -f docker-compose.dev.yml --env-file .env up -d
+name: whoobe-node-red-dev
+services:
+  node-red:
+    image: nodered/node-red:4.1
+    restart: unless-stopped
+    user: "${NODE_RED_UID:-1000}:${NODE_RED_GID:-1000}"
+    ports:
+      - "127.0.0.1:${NODE_RED_PORT:-1880}:1880"
+    environment:
+      NODE_RED_EDITOR: "1"
+      WHOOBE_CLIENT_URL: ${WHOOBE_CLIENT_URL:?set WHOOBE_CLIENT_URL (the Gateway client API as this container sees it)}
+      WHOOBE_KEY: ${WHOOBE_KEY:?set WHOOBE_KEY (key of a test API client)}
+      WHOOBE_SIGNING_SECRET: ${WHOOBE_SIGNING_SECRET:-}
+    volumes:
+      - ./data:/data
