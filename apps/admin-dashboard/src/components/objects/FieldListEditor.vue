@@ -140,6 +140,16 @@
             />
             unique
           </label>
+          <label class="flex items-center gap-1.5 text-sm text-slate-400 light:text-slate-600" title="The value of this field names the object's tab in the dashboard (only one field per class). Without one, the tab takes title / name / label, then the first text field.">
+            <input
+              type="checkbox"
+              :checked="selectedField.tabTitle === true"
+              @change="setTabTitle(selectedField, ($event.target as HTMLInputElement).checked)"
+              class="w-3.5 h-3.5 rounded border-slate-700 light:border-slate-300 bg-slate-950 light:bg-slate-50 text-indigo-600"
+              data-testid="field-tab-title"
+            />
+            tab title
+          </label>
         </div>
 
         <input
@@ -280,6 +290,12 @@ const ALL_FIELD_TYPES = [
   { value: 'video', label: 'Video' },
   { value: 'fieldcollections', label: 'Components (repeatable)' },
 ]
+
+// One field names the tab: ticking it clears the mark on the others
+function setTabTitle(field: ClassFieldDefinition, on: boolean): void {
+  for (const f of props.modelValue) f.tabTitle = undefined
+  field.tabTitle = on || undefined
+}
 
 const fieldTypes = props.allowFieldCollections ? ALL_FIELD_TYPES : ALL_FIELD_TYPES.filter((ft) => ft.value !== 'fieldcollections')
 

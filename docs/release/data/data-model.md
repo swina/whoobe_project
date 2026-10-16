@@ -56,6 +56,8 @@ on several records at once (publish, unpublish, delete), and create a record fro
 - **Languages.** Each language of a record is a full row with the same translation group, so a record can be published in some languages and a
   draft in others. A translation can be created by hand or drafted with the AI translation function (a human reviews it).
 - **Keys and paths.** A record has a key (unique within its class and language) and a folder-style path.
+- **Tab name.** An open record's tab is named after the record, not its key: the field marked **tab title** in the class editor, else
+  `title` / `name` / `label`, else the first text field that has a value (the key only when none has).
 - **Search.** Published objects are indexed for the built-in search.
 
 ## 5. Publishing and workflows

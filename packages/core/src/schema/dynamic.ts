@@ -28,6 +28,9 @@ export interface ClassFieldDefinition {
   // created or changed (createDataObject / updateDataObject / bulk import); a localized field is compared within the same language, and
   // the language rows of one object never clash with each other. Data migrated from Pimcore is not checked.
   unique?: boolean;
+  // The value of this field names the object's tab in the dashboard (instead of the key). At most one field of a class has it; without
+  // one, the tab takes `title` / `name` / `label`, then the first text field that has a value (apps/admin-dashboard utils/object-title.ts).
+  tabTitle?: boolean;
   relationTarget?: string;
   // For relation-flavored fields (relationTarget set): the name of a field
   // on the related class whose value is shown for this relation wherever a

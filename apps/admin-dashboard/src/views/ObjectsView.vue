@@ -416,6 +416,8 @@
       :style="{ left: ctxMenu.x + 'px', top: ctxMenu.y + 'px' }" role="menu" data-testid="objects-context-menu" @click.stop @contextmenu.prevent>
       <button type="button" role="menuitem" @click="ctxEdit"
         class="block w-full text-left px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-slate-800 light:hover:bg-slate-100">Edit</button>
+      <button type="button" role="menuitem" data-testid="objects-ctx-copy-id" @click="ctxCopyId" title="The id to use in /client/v1/data/&lt;Class&gt;/&lt;id&gt;"
+        class="block w-full text-left px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-slate-800 light:hover:bg-slate-100">Copy id</button>
       <button type="button" role="menuitem" @click="ctxDelete"
         class="block w-full text-left px-3 py-2 text-xs text-rose-400 hover:bg-slate-800 light:hover:bg-slate-100">Delete</button>
     </div>
@@ -564,10 +566,24 @@ const rowNumberOffset = computed(() => (currentPage.value - 1) * effectivePageSi
 // Context menu (right click on a row; a long press on touch screens that send contextmenu): the way to open or delete a record.
 const ctxMenu = ref<{ x: number; y: number; record: ObjectRecord } | null>(null)
 function openContextMenu(event: MouseEvent, record: ObjectRecord): void {
-  ctxMenu.value = { x: Math.min(event.clientX, window.innerWidth - 176), y: Math.min(event.clientY, window.innerHeight - 96), record }
+  ctxMenu.value = { x: Math.min(event.clientX, window.innerWidth - 176), y: Math.min(event.clientY, window.innerHeight - 130), record }
 }
 function closeContextMenu(): void { ctxMenu.value = null; isSaveMenuOpen.value = false }
 function ctxEdit(): void { const r = ctxMenu.value?.record; closeContextMenu(); if (r) openRecord(r) }
+// The record's id, as an API client writes it in /client/v1/data/<Class>/<id>
+async function ctxCopyId(): Promise<void> {
+  const r = ctxMenu.value?.record
+  closeContextMenu()
+  if (!r) return
+  const id = r.primary.id
+  try {
+    await navigator.clipboard.writeText(id)
+    toastStore.show(`Id copied: ${id}`)
+  } catch {
+    // not a secure context (plain http on a non-localhost address): show it so it can be selected by hand
+    toastStore.show(`Id: ${id}`)
+  }
+}
 function ctxDelete(): void { const r = ctxMenu.value?.record; closeContextMenu(); if (r) void handleDelete(r) }
 function onWindowKey(e: KeyboardEvent): void { if (e.key === 'Escape') closeContextMenu() }
 function warnUnsaved(e: BeforeUnloadEvent): void { if (drafts.size > 0) { e.preventDefault(); e.returnValue = '' } }

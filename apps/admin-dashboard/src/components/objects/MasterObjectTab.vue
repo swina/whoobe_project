@@ -160,6 +160,7 @@ import { fetchWorkflowDefinition, type WorkflowDefinition } from '../../utils/da
 import DataObjectForm from './DataObjectForm.vue'
 import PreviewLinksModal from './PreviewLinksModal.vue'
 import { randomUUID } from '../../utils/random-id'
+import { objectTitle } from '../../utils/object-title'
 
 const props = defineProps<{
   translationGroupId: string
@@ -224,10 +225,8 @@ const attributes = ref<Record<string, unknown>>({})
 // falling back to the key for a saved object and "New <class>" before the
 // first save.
 const displayTitle = computed(() => {
-  for (const name of ['title', 'name', 'label']) {
-    const v = attributes.value[name]
-    if (typeof v === 'string' && v.trim()) return v.trim()
-  }
+  const named = objectTitle(dataClass.value?.fields, attributes.value)
+  if (named) return named
   return currentRow.value ? key.value : `New ${dataClass.value?.label ?? ''}`.trim()
 })
 const isSaving = ref<'draft' | 'published' | null>(null)

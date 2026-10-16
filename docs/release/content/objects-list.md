@@ -6,7 +6,8 @@ applies (below).
 
 ## Opening, editing and deleting a record
 
-A click on a row does nothing. **Right click** a row for the menu *Edit* / *Delete* (a long press on a touch screen that sends the
+A click on a row does nothing. **Right click** a row for the menu *Edit* / *Copy id* / *Delete* (*Copy id* puts the record's id on the
+clipboard: it is the `<id>` of `/client/v1/data/<class>/<id>` for an API client; a long press on a touch screen that sends the
 context-menu event; Safari on iOS does not).
 
 ## Table view

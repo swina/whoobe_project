@@ -275,7 +275,7 @@ curl -H "Authorization: Bearer $KEY" -o cover.png "$BASE/assets/74046bf3-.../con
 
 ### 6.3c Writing: `POST /client/v1/data/<class>`, `PATCH /client/v1/data/<class>/<id>`
 
-Scope `data:write:<Class>`. A client creates **drafts** and changes drafts; the API has no way to publish, and a published object cannot be
+Scope `data:write:<Class>`. The `<id>` is the record's id: in the dashboard, right click the row in Objects > *Copy id*. A client creates **drafts** and changes drafts; the API has no way to publish, and a published object cannot be
 changed through it. An editor reviews the draft in the dashboard (Objects) and publishes it. The new object is invisible to every
 `GET` (they return published objects only).
 

@@ -1,3 +1,10 @@
+## Objects: Copy id, and the tab takes a readable name — 2026-10-17
+- Branch: `feat/objects-copy-id` (worktree `../whoobe_cms-copy-id`)
+- Objects list, right click: new **Copy id** (clipboard, with a toast; the toast shows the id when the clipboard is not available). The dashboard had no way to get the id an API client needs in `/client/v1/data/<Class>/<id>`.
+- The tab of an open record is named by `objectTitle` (`utils/object-title.ts`): the field marked **tab title** in the class editor (new checkbox next to *unique*; one per class, `ClassFieldDefinition.tabTitle`), else `title` / `name` / `label`, else the first text field (`input`, `textarea`, `email`, `urlSlug`) with a value; the key only when none has. It used to look only at `title` / `name` / `label`, so classes like Contact showed the key.
+- Tests: `scripts/security/unit/object-title.test.ts` (6), `scripts/security/browser/objects-copy-id.spec.ts` (2, on the disposable stack: clipboard holds the id; marked field and first-text-field fallback name the tabs, keys do not appear in the tab strip). `vue-tsc` clean.
+- Docs: `content/objects-list.md`, `data/data-model.md`, `communication/api-clients.md`.
+
 ## Node-RED example flow: the one tried on a real instance — 2026-10-16
 - Branch: `master`
 - `examples/automation-engines/node-red/data/flows.json` is now the flow the owner edited and tested in the Node-RED dev container: "check the call" answers Whoobe at once and passes on only a real, fresh (and, with `WHOOBE_SIGNING_SECRET`, signed) event; "build the PATCH" is the node the wizard's script targets, with the field and value in one visible line (`notes` = *Node-Red update this field*). The earlier per-event-id idempotency was dropped by that edit (a repeated delivery just writes the same text). README step 4 updated to match.
