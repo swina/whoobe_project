@@ -6,7 +6,8 @@
 > **Position of 2026-10-16 (owner), which replaces any "first engine" or "n8n excluded" wording below.** Whoobe distributes **no engine** and prefers none.
 > Anyone who wants automations or object events needs an engine of their own choice (Activepieces, n8n, Make, a script: anything that takes a
 > webhook); installing it, reaching it from the Gateway and respecting its licence are that person's responsibility. Activepieces was used in the tests
-> only for convenience, to avoid building another gateway; the Gateway is a pass-through that keeps no state and no runs.
+> only for convenience, to avoid building another gateway. The Gateway is a pass-through that keeps no state and no runs; whatever engine is used looks
+> after its **own runs** (as Activepieces and n8n do), and a plain Node.js service would simply receive, process and reply.
 
 ## 1. The decision
 
