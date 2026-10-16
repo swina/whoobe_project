@@ -1,3 +1,8 @@
+## Object events wizard, step 1: the logic — 2026-10-16
+- Branch: `feat/object-events-wizard` (worktree `../whoobe_cms-events-wizard`)
+- New `apps/admin-dashboard/src/utils/object-events-wizard.ts` (pure, no Vue): `parseWebhookUrl` (Activepieces live / test / sync, n8n webhook / webhook-test, any other URL; drops query and fragment; refuses passwords and `{parameters}`), `routesOf` (live and test routes derived or paired), event presets, `endpointNameFor` (free name, never a ":"), `planConnection` (reuses an endpoint with the same base URL and a POST route with the same path; API client only with read and write on the chosen class), `runPlan` (endpoint, routes, client, subscription, with the client in `ignoreActors`; on a failure it removes only what the run created, in reverse order, and reports what it could not remove), `describeDelivery` (a sentence per outcome of the test event), `engineSnippet` (the block for the engine's HTTP step), `reachabilityHint`.
+- `scripts/security/unit/object-events-wizard.test.ts`: 35 tests; with the existing 11 of `object-events-ui` all pass; `vue-tsc` passes. No dialog yet (step 2).
+
 ## Automation engine examples moved out of the distribution — 2026-10-16
 - Branch: `master`
 - `docker-compose.automation.yml` and `scripts/automation-test.sh` moved (git mv) to `examples/automation-engines/` as `docker-compose.activepieces.yml` and `automation-test.sh`, each with an "EXAMPLE ONLY - NOT PART OF THE WHOOBE DISTRIBUTION" header, plus a new `examples/automation-engines/README.md` (Whoobe ships and supports no engine; the engine is the operator's choice, each engine keeps its own runs).
