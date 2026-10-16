@@ -123,6 +123,10 @@ If the automation writes back into Whoobe (for example it sets a field to `synce
 Give the automation its own [API client](api-clients.md) and list that client's id under **Ignore changes made by**: changes made by an actor in that list are not sent
 to this subscription. Two more safety nets: pause the subscription, or set `OBJECT_EVENTS_ENABLED=0` for the whole instance.
 
+**Two automations on the same class can start each other.** Each one ignores only its own client, so the write of the first is a change for the second, whose
+write is a change for the first, and so on. This was seen in practice with two connections on one class. List the API clients of **every** automation that
+writes to that class in each subscription's *Ignore changes made by*, or keep each class to one writer.
+
 ## 6. Good to know
 
 - **At least once, not exactly once.** Make the service idempotent on `X-Whoobe-Event-Id`. For a payment-like step use a service built for it.

@@ -1,0 +1,79 @@
+# EXAMPLE ONLY - NOT PART OF THE WHOOBE DISTRIBUTION. Whoobe ships and supports no automation engine; see ../README.md.
+# A reduced Windmill (Community Edition, AGPLv3) for trying object events on a development machine: database, server, one worker, one native worker.
+# The full file, with the language server, the indexer and more workers, is in Windmill's own repository. Read Windmill's licence before using it.
+#   WM_DB_PASSWORD=$(openssl rand -hex 16) docker compose -f examples/automation-engines/windmill/docker-compose.yml up -d
+# Then open http://127.0.0.1:8100 (the first sign-in is admin@windmill.dev / changeme: change it at once). Bound to 127.0.0.1: put it behind HTTPS
+# before exposing it. Pin the image tag to the version you tested. This reduced file does NOT enable the PID isolation of the full file
+# (it needs a privileged worker): do not run code you do not trust in it.
+name: whoobe-windmill-example
+
+x-image: &wm-image ghcr.io/windmill-labs/windmill:1.837.0
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    shm_size: 512m
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: ${WM_DB_PASSWORD:?set WM_DB_PASSWORD (openssl rand -hex 16)}
+      POSTGRES_DB: windmill
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  windmill_server:
+    image: *wm-image
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WM_PORT:-8100}:8000"
+    environment:
+      DATABASE_URL: postgres://postgres:${WM_DB_PASSWORD}@db/windmill?sslmode=disable
+      MODE: server
+    depends_on:
+      db: { condition: service_healthy }
+    volumes:
+      - worker_logs:/tmp/windmill/logs
+
+  windmill_worker:
+    image: *wm-image
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+    environment:
+      DATABASE_URL: postgres://postgres:${WM_DB_PASSWORD}@db/windmill?sslmode=disable
+      MODE: worker
+      WORKER_GROUP: default
+    depends_on:
+      db: { condition: service_healthy }
+    volumes:
+      - worker_dependency_cache:/tmp/windmill/cache
+      - worker_logs:/tmp/windmill/logs
+
+  windmill_worker_native:
+    image: *wm-image
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+    environment:
+      DATABASE_URL: postgres://postgres:${WM_DB_PASSWORD}@db/windmill?sslmode=disable
+      MODE: worker
+      WORKER_GROUP: native
+      NATIVE_MODE: "true"
+      SLEEP_QUEUE: "200"
+    depends_on:
+      db: { condition: service_healthy }
+    volumes:
+      - worker_logs:/tmp/windmill/logs
+
+volumes:
+  db_data:
+  worker_dependency_cache:
+  worker_logs:

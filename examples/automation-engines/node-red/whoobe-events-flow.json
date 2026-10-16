@@ -1,0 +1,123 @@
+[
+  {
+    "id": "wb-tab",
+    "type": "tab",
+    "label": "Whoobe object events",
+    "info": "EXAMPLE ONLY - NOT PART OF THE WHOOBE DISTRIBUTION.\nReceives an object event from Whoobe (POST /whoobe-events), answers 200 at once, then writes a note back on the record through an API client. Needs the environment variables WHOOBE_CLIENT_URL (the Gateway's client API as this container sees it, e.g. http://172.17.0.1:3001/client/v1) and WHOOBE_KEY (the API client's key). Optional: WHOOBE_SIGNING_SECRET to check X-Whoobe-Signature."
+  },
+  {
+    "id": "wb-in",
+    "type": "http in",
+    "z": "wb-tab",
+    "name": "POST /whoobe-events",
+    "url": "/whoobe-events",
+    "method": "post",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 150,
+    "y": 80,
+    "wires": [
+      [
+        "wb-check"
+      ]
+    ]
+  },
+  {
+    "id": "wb-check",
+    "type": "function",
+    "z": "wb-tab",
+    "name": "check the call",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [
+      {
+        "var": "crypto",
+        "module": "crypto"
+      }
+    ],
+    "func": "// Output 1: the answer to Whoobe (it keeps msg.res, which the \"answer\" node needs). Output 2: the event to process, only a real, fresh, authentic one.\nconst h = msg.req.headers;\nconst ts = Number(h['x-whoobe-timestamp'] || 0);\nconst ev = msg.payload || {};\nconst reply = (code, body) => { msg.statusCode = code; msg.payload = body; return [msg, null]; };\nif (!ev.id || !ev.type) return reply(400, { ok: false, error: 'not an object event' });\nif (Math.abs(Date.now() / 1000 - ts) > 300) return reply(400, { ok: false, error: 'timestamp too old' });\nconst secret = env.get('WHOOBE_SIGNING_SECRET');\nif (secret) {\n  // the body as Node-RED parsed it, written back the way Whoobe wrote it (compact JSON, same key order)\n  const want = 'sha256=' + crypto.createHmac('sha256', secret).update(ts + '.' + JSON.stringify(ev)).digest('hex');\n  if (h['x-whoobe-signature'] !== want) return reply(401, { ok: false, error: 'bad signature' });\n}\nif (ev.test || !ev.object) return reply(200, { ok: true });\nmsg.statusCode = 200; msg.payload = { ok: true };\nreturn [msg, { event: ev, payload: ev }];",
+    "x": 360,
+    "y": 80,
+    "wires": [
+      [
+        "wb-res"
+      ],
+      [
+        "wb-build"
+      ]
+    ]
+  },
+  {
+    "id": "wb-res",
+    "type": "http response",
+    "z": "wb-tab",
+    "name": "answer",
+    "statusCode": "",
+    "headers": {},
+    "x": 560,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "id": "wb-build",
+    "type": "function",
+    "z": "wb-tab",
+    "name": "build the PATCH",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "func": "// Write a note on the record. Idempotent on the event id: the same event twice writes the same text.\nconst ev = msg.event;\nconst n = (flow.get('seen') || {});\nif (n[ev.id]) return null;          // already handled (Whoobe delivers at least once)\nn[ev.id] = Date.now();\nflow.set('seen', n);\nmsg.method = 'PATCH';\nmsg.url = env.get('WHOOBE_CLIENT_URL').replace(/\\/+$/, '') + '/data/' + encodeURIComponent(ev.class.name) + '/' + ev.object.id;\nmsg.headers = { 'Authorization': 'Bearer ' + env.get('WHOOBE_KEY'), 'Content-Type': 'application/json' };\nmsg.payload = { attributes: { notes: 'processed by Node-RED (' + ev.type + ', event ' + ev.id.slice(0, 8) + ')' } };\nreturn msg;",
+    "x": 560,
+    "y": 120,
+    "wires": [
+      [
+        "wb-http"
+      ]
+    ]
+  },
+  {
+    "id": "wb-http",
+    "type": "http request",
+    "z": "wb-tab",
+    "name": "PATCH the record",
+    "method": "use",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 780,
+    "y": 120,
+    "wires": [
+      [
+        "wb-debug"
+      ]
+    ]
+  },
+  {
+    "id": "wb-debug",
+    "type": "debug",
+    "z": "wb-tab",
+    "name": "result",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": true,
+    "complete": "statusCode",
+    "targetType": "msg",
+    "statusVal": "statusCode",
+    "statusType": "auto",
+    "x": 960,
+    "y": 120,
+    "wires": []
+  }
+]
