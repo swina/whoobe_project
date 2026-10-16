@@ -1,3 +1,7 @@
+## Plans: no engine is distributed, the choice is the operator's — 2026-10-16
+- Branch: `master`
+- Position note added to `docs/plans/automations/why-no-custom-automation-engine.md`, `docs/plans/datamodel/data-objects-automations.md` and `docs/plans/automations/flow-orchestrator-app.md`: Whoobe distributes and prefers no engine; whoever wants automations or object events brings their own (any webhook engine); Activepieces was only a test convenience, the Gateway being a pass-through that keeps no state or runs. The sample `docker-compose.automation.yml` is described as a local convenience, not a supported part of the product; the "n8n excluded" phrase in the phase table of the object-events plan is reworded. The Flows app plan gets a note that it is the only part that keeps state, and that whether Whoobe ships it is a question to settle.
+
 ## Object events: the engine is the operator's choice — 2026-10-16
 - Branch: `master`
 - Owner's position written down: Whoobe excludes no automation engine; the engine (Activepieces, n8n, anything that takes a webhook) is not part of Whoobe, and choosing, running and licensing it is the operator's responsibility. Added to the administrators' guide (`docs/release/communication/object-events.md`, section 6) and to the wizard plan (decision 3).

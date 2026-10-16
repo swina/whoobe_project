@@ -4,6 +4,14 @@
 [data-objects-automations.md](../datamodel/data-objects-automations.md) (object events) and respects
 [why-no-custom-automation-engine.md](why-no-custom-automation-engine.md) (no engine inside Whoobe).*
 
+> **Position of 2026-10-16 (owner), which replaces any "first engine" or "n8n excluded" wording below.** Whoobe distributes **no engine** and prefers none.
+> Anyone who wants automations or object events needs an engine of their own choice (Activepieces, n8n, Make, a script: anything that takes a
+> webhook); installing it, reaching it from the Gateway and respecting its licence are that person's responsibility. Activepieces was used in the tests
+> only for convenience, to avoid building another gateway; the Gateway is a pass-through that keeps no state and no runs.
+> **Consequence to settle before building this app:** it is the only part of the proposal that **keeps state** (runs, correlation, callbacks, replies). If Whoobe
+> stays a pass-through, the app is what an operator would otherwise add next to their engine; the open point is whether Whoobe ships it at all
+> (as an optional app, as proposed) or documents the pattern for the engine to implement. Section 12 stays as recorded; this is a question for the owner.
+
 ## 0. The need
 
 A typical enterprise flow:

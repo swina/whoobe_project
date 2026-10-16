@@ -4,6 +4,11 @@
 [why-no-custom-automation-engine.md](../automations/why-no-custom-automation-engine.md) and reuses what
 [marketing-automation-plan.md](../automations/marketing-automation-plan.md) already built for forms.*
 
+> **Position of 2026-10-16 (owner), which replaces any "first engine" or "n8n excluded" wording below.** Whoobe distributes **no engine** and prefers none.
+> Anyone who wants automations or object events needs an engine of their own choice (Activepieces, n8n, Make, a script: anything that takes a
+> webhook); installing it, reaching it from the Gateway and respecting its licence are that person's responsibility. Activepieces was used in the tests
+> only for convenience, to avoid building another gateway; the Gateway is a pass-through that keeps no state and no runs.
+
 ## 0. The question
 
 > When a data object is created or updated, it should be possible to start some sort of automation. We do not want to build an
@@ -241,7 +246,7 @@ A webhook cannot stop a save or change a value before it is written. If that is 
 
 | Phase | Content | Size (a guess, to be revised after the spike) |
 |---|---|---|
-| 0 Spike | outbox tables, emit from create / update / delete, worker with retry, subscriptions via the API only, one real engine (Activepieces; n8n is excluded by its licence) | S to M |
+| 0 Spike | outbox tables, emit from create / update / delete, worker with retry, subscriptions via the API only, one real engine for the test (Activepieces, chosen only for convenience; any webhook engine works and the choice is the operator's) | S to M |
 | 1 | UI (list, editor, delivery log, test event, retry), permission, sandbox block, docs | M |
 | 2 | publish / transition events, bulk summary, field allow-list, coalescing, loop guard, circuit breaker, health | M |
 | 3 | optional: previous values, per-class defaults, validation webhook (section 11) | decided later |

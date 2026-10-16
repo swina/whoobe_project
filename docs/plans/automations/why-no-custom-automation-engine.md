@@ -3,6 +3,11 @@
 *Date: 2026-10-11. Status: **decided by the owner, 2026-10-11**. Context: [marketing-automation-review-and-plan.md](marketing-automation-review-and-plan.md)
 (Phases 4 and 5 propose a custom engine and visual editor; this document argues for replacing them).*
 
+> **Position of 2026-10-16 (owner), which replaces any "first engine" or "n8n excluded" wording below.** Whoobe distributes **no engine** and prefers none.
+> Anyone who wants automations or object events needs an engine of their own choice (Activepieces, n8n, Make, a script: anything that takes a
+> webhook); installing it, reaching it from the Gateway and respecting its licence are that person's responsibility. Activepieces was used in the tests
+> only for convenience, to avoid building another gateway; the Gateway is a pass-through that keeps no state and no runs.
+
 ## 1. The decision
 
 Whoobe does **not** build a workflow / automation engine (triggers, steps, branches, waits, retries, run log, visual editor).
@@ -71,6 +76,6 @@ Until then the cost of the first option is a few hundred lines (webhook emitter,
 
 ## 6. Consequences for the plan
 
-- **Phases 4 and 5** (automation engine, visual editor) are replaced by: a documented integration (done: two guides), a sample compose file with Activepieces (`docker-compose.automation.yml`, MIT core) and, when wanted, a webhook **emitter** for non-form events.
+- **Phases 4 and 5** (automation engine, visual editor) are replaced by: a documented integration (done: two guides), a sample compose file with Activepieces (`docker-compose.automation.yml`, MIT core; a convenience for trying things locally, **not** something Whoobe distributes or supports as part of the product) and, when wanted, a webhook **emitter** for non-form events.
 - **Phases 1 to 3** are unchanged: form outcomes (prototype done), signed entitlements, visibility rules. They are the parts no external engine can do.
 - Section 5 of the plan gains a decision: "Engine: plug in (this document) or build (Phases 4-5)".
