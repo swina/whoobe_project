@@ -82,10 +82,21 @@
         <label class="flex items-start gap-2">
           <input v-model="writeBack" type="checkbox" class="mt-0.5" :disabled="!classId" />
           <span>
-            Yes, create an API client for it. <span class="text-slate-500">It can read and write <b>drafts of this class only</b>; its changes are ignored by this connection, so the flow does not start itself again. The key is shown once.</span>
+            Yes, the flow changes the record. <span class="text-slate-500">It does so with an API client that can write <b>drafts of this class only</b>; that client's changes are ignored by this connection, so the flow does not start itself again.</span>
             <span v-if="!classId" class="block text-slate-500">Choose a class first.</span>
           </span>
         </label>
+        <div v-if="writeBack" class="ml-6 space-y-1">
+          <label class="flex items-center gap-2"><input v-model="clientMode" type="radio" value="new" /> Create a new API client <span class="text-slate-500">(its key is shown once)</span></label>
+          <label class="flex items-center gap-2" :class="usable.length ? '' : 'opacity-50'">
+            <input v-model="clientMode" type="radio" value="existing" :disabled="!usable.length" /> Use an existing one
+            <select v-model="existingClientId" class="field" :disabled="clientMode !== 'existing' || !usable.length">
+              <option value="" disabled>{{ usable.length ? 'Choose...' : 'No client can write this class' }}</option>
+              <option v-for="c in usable" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+          </label>
+          <p v-if="clientMode === 'existing'" class="text-slate-500">Nothing new is created and no key is shown: the flow already has that client's key.</p>
+        </div>
       </section>
 
       <p v-if="!canGateway" class="rounded-lg bg-amber-950/40 border border-amber-800 p-2 text-amber-300">
@@ -117,6 +128,7 @@
 
       <section v-if="result.client" class="space-y-2">
         <h3 class="font-semibold text-slate-200 light:text-slate-800">The flow writes back: the HTTP step</h3>
+        <p v-if="result.client.reused" class="rounded-lg border border-slate-700 p-2 text-slate-300">Uses the existing API client <b>{{ reusedName || result.client.id }}</b>: no new key. The flow must already have that client's key.</p>
         <div v-if="result.client.key" class="rounded-lg border border-amber-800 bg-amber-950/30 p-3 space-y-1">
           <div class="text-amber-300">Copy the key now: it is shown only this once.</div>
           <div class="flex items-center gap-2"><code class="font-mono break-all flex-1">{{ result.client.key }}</code><button type="button" class="btn btn-secondary" @click="copy(result.client.key!)">{{ copied === result.client.key ? 'Copied' : 'Copy' }}</button></div>
@@ -169,7 +181,7 @@ import { createSubscription, deleteSubscription, listDeliveries, sendTestEvent, 
 import type { ObjectEventType } from '../../utils/object-events-api'
 import { EVENT_CHOICES } from '../../utils/object-events-ui'
 import {
-  ConnectionError, ENGINE_LABEL, PRESETS, nodeRedSnippet, type EngineChoice, describeDelivery, describeFailure, engineSnippet, eventsOfPresets, parseWebhookUrl, planConnection, reachabilityHint,
+  ConnectionError, ENGINE_LABEL, PRESETS, nodeRedSnippet, usableClients, type EngineChoice, type ExistingClient, describeDelivery, describeFailure, engineSnippet, eventsOfPresets, parseWebhookUrl, planConnection, reachabilityHint,
   routesOf, runPlan, type ConnectionResult, type ParsedWebhook, type PresetKey, type WizardApi,
 } from '../../utils/object-events-wizard'
 
@@ -192,6 +204,10 @@ const engineChoice = ref<EngineChoice>('auto')
 const otherUrl = ref('')
 const startMode = ref<'test' | 'live'>('test')
 const writeBack = ref(false)
+const clientMode = ref<'new' | 'existing'>('new')
+const existingClientId = ref('')
+const allClients = ref<ExistingClient[]>([])
+const usable = computed(() => usableClients(allClients.value, classOf()?.name ?? ''))
 const problem = ref('')
 const running = ref(false)
 
@@ -239,14 +255,15 @@ async function connect() {
   const answers = {
     name: name.value, classId: classId.value || null, className: c?.name ?? '', events: eventsOfPresets(presets.value, extra.value),
     webhook: parsed.value, otherWebhook: otherParsed.value, startMode: startMode.value, writeBack: writeBack.value,
+    existingClientId: writeBack.value && clientMode.value === 'existing' ? existingClientId.value || null : null,
   }
   running.value = true
   try {
     await gatewayStore.refreshEndpoints()
     const routesByEndpoint: Record<string, { id: string; method: string; path: string }[]> = {}
     for (const e of gatewayStore.endpoints) routesByEndpoint[e.id] = await listRoutes(e.id).catch(() => [])
-    const clientNames = writeBack.value ? (await listApiClients()).map((x) => x.name) : []
-    const planned = planConnection(answers, gatewayStore.endpoints, (id) => routesByEndpoint[id] ?? [], clientNames)
+    const clients = writeBack.value ? await listApiClients().catch(() => allClients.value) : []
+    const planned = planConnection(answers, gatewayStore.endpoints, (id) => routesByEndpoint[id] ?? [], clients)
     if (!planned.ok) { problem.value = planned.error; return }
     const done = await runPlan(planned.plan, api())
     currentMode.value = planned.plan.subscription.startRoute
@@ -307,15 +324,20 @@ async function switchTo(r: { id: string; mode: 'live' | 'test' | 'single' }) {
 }
 
 const nodeRed = computed(() =>
-  result.value?.client && isNodeRed.value ? nodeRedSnippet({ clientBase: clientApiBaseUrl(), key: result.value.client.key }) : null)
+  result.value?.client && isNodeRed.value ? nodeRedSnippet({ clientBase: clientApiBaseUrl(), key: result.value.client.key, keyOf: reusedName.value }) : null)
 const snippet = computed(() =>
   result.value?.client && classOf() && !isNodeRed.value
-    ? engineSnippet({ engine: parsed.value?.engine ?? 'generic', clientBase: clientApiBaseUrl(), className: classOf()!.name, key: result.value.client.key })
+    ? engineSnippet({ engine: parsed.value?.engine ?? 'generic', clientBase: clientApiBaseUrl(), className: classOf()!.name, key: result.value.client.key, keyOf: reusedName.value })
     : null)
 
 async function copy(text: string) {
   try { await navigator.clipboard.writeText(text); copied.value = text; setTimeout(() => { if (copied.value === text) copied.value = '' }, 2000) } catch { /* the text is on screen */ }
 }
 
-onMounted(() => { void classesStore.refreshDataClasses().catch(() => undefined) })
+onMounted(() => {
+  void classesStore.refreshDataClasses().catch(() => undefined)
+  void listApiClients().then((l) => { allClients.value = l }).catch(() => undefined)
+})
+
+const reusedName = computed(() => (result.value?.client?.reused ? allClients.value.find((c) => c.id === result.value!.client!.id)?.name : undefined))
 </script>

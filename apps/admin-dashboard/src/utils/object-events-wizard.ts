@@ -104,6 +104,17 @@ export function eventsOfPresets(keys: PresetKey[], extra: ObjectEventType[] = []
 
 export interface ExistingEndpoint { id: string; name: string; baseUrl: string }
 export interface ExistingRoute { id: string; method: string; path: string }
+export interface ExistingClient { id: string; name: string; scopes: string[]; status?: string; authMode?: string }
+
+/** Whether an API client's scopes let it write the drafts of a class (`data:write:<Class>` or `data:write:*`). */
+export function clientCanWrite(scopes: string[], className: string): boolean {
+  return scopes.includes('data:write:*') || (!!className && scopes.includes(`data:write:${className}`))
+}
+
+/** The clients a person can pick for "write back": a key client that is active and may write this class. */
+export function usableClients(clients: ExistingClient[], className: string): ExistingClient[] {
+  return clients.filter((c) => (c.authMode ?? 'key') === 'key' && (c.status ?? 'active') === 'active' && clientCanWrite(c.scopes, className))
+}
 
 export interface WizardAnswers {
   name: string
@@ -115,12 +126,16 @@ export interface WizardAnswers {
   otherWebhook?: ParsedWebhook | null
   startMode: 'test' | 'live'
   writeBack: boolean
+  /** With `writeBack`: use this API client instead of creating one (its key is the one the flow already has). */
+  existingClientId?: string | null
 }
 
 export interface ConnectionPlan {
   endpoint: { reuseId: string } | { create: { name: string; baseUrl: string; authType: 'none' } }
   routes: { mode: 'live' | 'test' | 'single'; path: string; reuseId: string | null }[]
   client: { name: string; scopes: string[] } | null
+  /** An API client that already exists and is only put in the subscription's "ignore changes made by" list. */
+  useClient: { id: string; name: string } | null
   subscription: { name: string; classId: string | null; events: ObjectEventType[]; startRoute: 'live' | 'test' | 'single' }
 }
 
@@ -146,13 +161,22 @@ export function clientNameFor(base: string, taken: string[]): string {
   for (let i = 2; ; i++) if (!used.has(`${base} ${i}`.toLowerCase())) return `${base} ${i}`
 }
 
-export function planConnection(a: WizardAnswers, endpoints: ExistingEndpoint[], routesOfEndpoint: (endpointId: string) => ExistingRoute[], existingClientNames: string[] = []): PlanResult {
+export function planConnection(a: WizardAnswers, endpoints: ExistingEndpoint[], routesOfEndpoint: (endpointId: string) => ExistingRoute[], clients: ExistingClient[] = []): PlanResult {
   const name = a.name.trim()
   if (!name) return { ok: false, error: 'Give the connection a name' }
   if (!a.events.length) return { ok: false, error: 'Choose at least one thing that triggers the flow' }
   if (a.writeBack && (!a.classId || !a.className)) return { ok: false, error: 'To let the flow write back, choose one class' }
   if (a.writeBack && a.className.includes(':')) return { ok: false, error: 'The class name contains ":": rename it before an API client can be given access to it' }
   if (a.otherWebhook && a.otherWebhook.baseUrl !== a.webhook.baseUrl) return { ok: false, error: 'The two URLs belong to different servers: use one connection for each' }
+
+  let useClient: ConnectionPlan['useClient'] = null
+  if (a.writeBack && a.existingClientId) {
+    const c = clients.find((x) => x.id === a.existingClientId)
+    if (!c) return { ok: false, error: 'The API client you chose no longer exists' }
+    if ((c.authMode ?? 'key') !== 'key' || (c.status ?? 'active') !== 'active') return { ok: false, error: `"${c.name}" is not an active key client` }
+    if (!clientCanWrite(c.scopes, a.className)) return { ok: false, error: `"${c.name}" cannot write ${a.className}: give it the scope data:write:${a.className} in API clients, or let the wizard create a client` }
+    useClient = { id: c.id, name: c.name }
+  }
 
   const existing = endpoints.find((e) => trimUrl(e.baseUrl) === trimUrl(a.webhook.baseUrl))
   const endpoint: ConnectionPlan['endpoint'] = existing
@@ -167,7 +191,8 @@ export function planConnection(a: WizardAnswers, endpoints: ExistingEndpoint[], 
     ok: true,
     plan: {
       endpoint, routes,
-      client: a.writeBack ? { name: clientNameFor(`${name} (flow)`, existingClientNames), scopes: [`data:read:${a.className}`, `data:write:${a.className}`] } : null,
+      client: a.writeBack && !useClient ? { name: clientNameFor(`${name} (flow)`, clients.map((c) => c.name)), scopes: [`data:read:${a.className}`, `data:write:${a.className}`] } : null,
+      useClient,
       subscription: { name, classId: a.classId, events: a.events, startRoute },
     },
   }
@@ -207,7 +232,8 @@ export interface WizardApi {
 export interface ConnectionResult {
   endpointId: string
   routeIds: { mode: 'live' | 'test' | 'single'; id: string }[]
-  client: { id: string; key: string | null } | null
+  /** `reused`: an API client that already existed (no key to show: the flow has it). */
+  client: { id: string; key: string | null; reused?: boolean } | null
   subscriptionId: string
 }
 
@@ -235,7 +261,9 @@ export async function runPlan(plan: ConnectionPlan, api: WizardApi): Promise<Con
       undo.push({ label: `route ${r.path}`, run: () => api.deleteRoute(created.id) })
     }
     let client: ConnectionResult['client'] = null
-    if (plan.client) {
+    if (plan.useClient) {
+      client = { id: plan.useClient.id, key: null, reused: true }
+    } else if (plan.client) {
       const c = await api.createClient(plan.client)
       client = { id: c.id, key: c.key }
       undo.push({ label: 'API client', run: () => api.deleteClient(c.id) })
@@ -317,7 +345,7 @@ export function idTokenFor(engine: Engine): string {
 }
 
 /** `clientBase` is Whoobe's client API (the Gateway's `/client/v1`). `key` is shown only when it is known (right after creating the client). */
-export function engineSnippet(input: { engine: Engine; clientBase: string; className: string; key: string | null; engineInDocker?: boolean }): Snippet {
+export function engineSnippet(input: { engine: Engine; clientBase: string; className: string; key: string | null; keyOf?: string; engineInDocker?: boolean }): Snippet {
   const idToken = idTokenFor(input.engine)
   const base = input.clientBase.replace(/\/+$/, '')
   const notes = [
@@ -331,7 +359,7 @@ export function engineSnippet(input: { engine: Engine; clientBase: string; class
     method: 'PATCH',
     url: `${base}/data/${encodeURIComponent(input.className)}/${idToken}`,
     headers: [
-      { name: 'Authorization', value: `Bearer ${input.key ?? '<the key of the API client>'}` },
+      { name: 'Authorization', value: `Bearer ${input.key ?? (input.keyOf ? `<the key of "${input.keyOf}">` : '<the key of the API client>')}` },
       { name: 'Content-Type', value: 'application/json' },
     ],
     body: JSON.stringify({ attributes: { '<field>': '<new value>' } }, null, 2),
@@ -352,7 +380,7 @@ export interface NodeRedSnippet {
 
 /** The script to paste into Node-RED to update one field of the record that started the flow. `<FIELD>` and `<NEW VALUE>` are the person's to fill in.
  * The key and the Gateway address are read from the container's environment, never written into the flow (the flow file goes to git). */
-export function nodeRedSnippet(input: { clientBase: string; key: string | null }): NodeRedSnippet {
+export function nodeRedSnippet(input: { clientBase: string; key: string | null; keyOf?: string }): NodeRedSnippet {
   const code = [
     '// "build the PATCH": a function node. It updates ONE field of the record that started the flow.',
     '// msg.payload is the Whoobe event: ev.object.id, ev.class.name, ev.changed (names only), ev.type.',
@@ -368,7 +396,7 @@ export function nodeRedSnippet(input: { clientBase: string; key: string | null }
     code,
     env: [
       { name: 'WHOOBE_CLIENT_URL', value: input.clientBase.replace(/\/+$/, '') },
-      { name: 'WHOOBE_KEY', value: input.key ?? '<the key of the API client>' },
+      { name: 'WHOOBE_KEY', value: input.key ?? (input.keyOf ? `<the key of "${input.keyOf}", already in the container if it is the one the flow uses>` : '<the key of the API client>') },
     ],
     steps: [
       'In Node-RED, after the node that receives the event (http in, then a response), add a function node with this code, then an http request node set to "use msg.method" and "Return: a parsed JSON object".',

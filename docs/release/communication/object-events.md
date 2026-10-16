@@ -64,9 +64,11 @@ When a language is added to a record, the other languages' shared (non-localized
    Integrations endpoint (or reuses the one with the same address) and the **POST** routes, and, for those two engines, both the *live* and the *test*
    address (the test address answers only while the engine's editor is waiting for a sample). Choose which one the subscription uses; it can be switched
    later from the list (a **TEST / LIVE** badge and a "switch" button). For any other engine paste its URL; a second URL for its test mode is optional.
-3. **Does the flow write back to the record?** If yes, Whoobe creates an API client that can read and write **drafts of that class only**, puts it in the
-   subscription's *ignore changes made by* list (so the flow does not start itself again) and shows its **key once**, with the block to paste into the
-   engine's HTTP step (method `PATCH`, the URL with the record id, the headers and a body example).
+3. **Does the flow write back to the record?** If yes, choose **a new API client** (Whoobe creates one that can read and write **drafts of that class only** and
+   shows its **key once**) or **an existing one** (the list offers the active key clients that may write that class; nothing is created and no key is shown, the
+   flow must already have it: useful when one engine runs several flows with one key). Either way the client goes in the subscription's *ignore changes made by*
+   list, so the flow does not start itself again, and you get the block to paste into the engine's HTTP step (method `PATCH`, the URL with the record id, the
+   headers and a body example).
 4. **Test**: *Send a test event* waits a few seconds and says in words what came back (received; the engine is not listening; the flow is not published;
    the host cannot be found; and so on). The engine's answer itself is never stored.
 

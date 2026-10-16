@@ -22,7 +22,7 @@ machine as the Gateway. For a Node-RED on another host, add a normal endpoint (a
 2. **In Whoobe**: *Object events > Connect a flow*, class and what starts the flow, URL `http://localhost:1880/whoobe-events` and, if the flow changes the
    record, tick *the flow writes back*. A URL on port `1880` is recognised as Node-RED; on any other port pick **Node-RED** in the *Engine* list.
    The wizard reuses the endpoint of the *Node-RED (this machine only)* preset if you added it, or creates one for the address.
-3. **If the flow writes back**, the wizard creates an API client limited to that class and shows its key **once**, together with:
+3. **If the flow writes back**, the wizard either creates an API client limited to that class and shows its key **once**, or, if you choose *Use an existing one*, uses a client you already have (the list shows the active key clients that may write that class) and shows no key: the Node-RED container must already have it. With several flows in one Node-RED the simplest is one client, with its key in `WHOOBE_KEY` and its id in every subscription's *Ignore changes made by*. The wizard shows:
    - the **code of a Node-RED *function* node** that updates one field of the record that started the flow. `<FIELD>` and `<NEW VALUE>` are yours to replace;
    - the two **environment variables** the code reads, `WHOOBE_CLIENT_URL` (the Gateway's client API as the Node-RED container sees it) and `WHOOBE_KEY`.
    The key and the address live in the environment, never in the flow file, because the flow file goes to git.

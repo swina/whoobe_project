@@ -1,7 +1,7 @@
 // Pure logic of the "Connect a flow" wizard (apps/admin-dashboard/src/utils/object-events-wizard.ts).
 import { describe, it, expect } from 'vitest'
 import {
-  ConnectionError, PRESETS, clientNameFor, describeDelivery, describeFailure, endpointNameFor, engineSnippet, eventsOfPresets, parseWebhookUrl, planConnection, reachabilityHint,
+  ConnectionError, PRESETS, clientCanWrite, clientNameFor, usableClients, describeDelivery, describeFailure, endpointNameFor, engineSnippet, eventsOfPresets, parseWebhookUrl, planConnection, reachabilityHint,
   modeSwitch, nodeRedSnippet, routesOf, runPlan, type ParsedWebhook, type WizardAnswers, type WizardApi,
 } from '../../../apps/admin-dashboard/src/utils/object-events-wizard'
 import { OBJECT_EVENT_TYPES } from '../../../packages/core/src/db/object-events'
@@ -98,6 +98,7 @@ describe('planConnection', () => {
         endpoint: { create: { name: 'activepieces', baseUrl: 'http://localhost:8090/api/v1/webhooks', authType: 'none' } },
         routes: [{ mode: 'live', path: '/f1', reuseId: null }, { mode: 'test', path: '/f1/test', reuseId: null }],
         client: null,
+        useClient: null,
         subscription: { name: 'New contacts', classId: 'class-1', events: ['object.created'], startRoute: 'test' },
       },
     })
@@ -122,7 +123,7 @@ describe('planConnection', () => {
     expect(clientNameFor('A (flow)', [])).toBe('A (flow)')
     expect(clientNameFor('A (flow)', ['a (flow)'])).toBe('A (flow) 2')
     expect(clientNameFor('A (flow)', ['A (flow)', 'A (flow) 2'])).toBe('A (flow) 3')
-    const r = planConnection(answers({ writeBack: true }), [], () => [], ['New contacts (flow)'])
+    const r = planConnection(answers({ writeBack: true }), [], () => [], [{ id: 'c0', name: 'New contacts (flow)', scopes: [] }])
     expect(r.ok && r.plan.client?.name).toBe('New contacts (flow) 2')
   })
   it('says what is missing', () => {
@@ -337,5 +338,62 @@ describe('Node-RED', () => {
     expect(out.headers.Authorization).toBe('Bearer k1')
     expect(out.payload).toEqual({ attributes: { '<FIELD>': '<NEW VALUE>' } })
     expect(run({ payload: { test: true } })).toBeNull()
+  })
+})
+
+describe('an API client that already exists', () => {
+  const clients = [
+    { id: 'c-ok', name: 'Flow client', scopes: ['data:read:Contact', 'data:write:Contact'], status: 'active', authMode: 'key' },
+    { id: 'c-all', name: 'Wide client', scopes: ['data:write:*'] },
+    { id: 'c-read', name: 'Read only', scopes: ['data:read:Contact'] },
+    { id: 'c-blog', name: 'Blog writer', scopes: ['data:write:Blog'] },
+    { id: 'c-off', name: 'Suspended', scopes: ['data:write:Contact'], status: 'suspended' },
+    { id: 'c-jwt', name: 'Token client', scopes: ['data:write:Contact'], authMode: 'jwt' },
+  ]
+  it('can write a class with its own scope or the wide one, nothing else', () => {
+    expect(clientCanWrite(['data:write:Contact'], 'Contact')).toBe(true)
+    expect(clientCanWrite(['data:write:*'], 'Contact')).toBe(true)
+    expect(clientCanWrite(['data:read:Contact'], 'Contact')).toBe(false)
+    expect(clientCanWrite(['data:write:Blog'], 'Contact')).toBe(false)
+    expect(clientCanWrite(['data:write:*'], '')).toBe(true)
+  })
+  it('the list offers only active key clients that may write the class', () => {
+    expect(usableClients(clients, 'Contact').map((c) => c.id)).toEqual(['c-ok', 'c-all'])
+    expect(usableClients(clients, 'Blog').map((c) => c.id)).toEqual(['c-all', 'c-blog'])
+  })
+  it('plans no new client and no key: it only names the existing one', () => {
+    const r = planConnection(answers({ writeBack: true, existingClientId: 'c-ok' }), [], () => [], clients)
+    expect(r.ok && r.plan.client).toBeNull()
+    expect(r.ok && r.plan.useClient).toEqual({ id: 'c-ok', name: 'Flow client' })
+  })
+  it('refuses a client that is gone, suspended, a token client or cannot write the class, saying why', () => {
+    const msg = (id: string) => { const r = planConnection(answers({ writeBack: true, existingClientId: id }), [], () => [], clients); return r.ok ? '' : r.error }
+    expect(msg('nope')).toMatch(/no longer exists/)
+    expect(msg('c-off')).toMatch(/not an active key client/)
+    expect(msg('c-jwt')).toMatch(/not an active key client/)
+    expect(msg('c-read')).toMatch(/cannot write Contact.*data:write:Contact/)
+    expect(msg('c-blog')).toMatch(/cannot write Contact/)
+  })
+  it('ignores the choice when the flow does not write back', () => {
+    const r = planConnection(answers({ writeBack: false, existingClientId: 'c-ok' }), [], () => [], clients)
+    expect(r.ok && r.plan.useClient).toBeNull()
+    expect(r.ok && r.plan.client).toBeNull()
+  })
+  it('runPlan creates no client, puts the existing one in ignoreActors and never deletes it, even when a later call fails', async () => {
+    const { api, log } = fakeApi()
+    const r = planConnection(answers({ writeBack: true, existingClientId: 'c-ok' }), [], () => [], clients)
+    if (!r.ok) throw new Error(r.error)
+    let sent: any
+    const res = await runPlan(r.plan, { ...api, createSubscription: async (i) => { sent = i; return { id: 's' } } })
+    expect(log).not.toContain('+client')
+    expect(res.client).toEqual({ id: 'c-ok', key: null, reused: true })
+    expect(sent.ignoreActors).toEqual(['c-ok'])
+    const failing = fakeApi('createSubscription')
+    await runPlan(r.plan, failing.api).catch(() => {})
+    expect(failing.log.filter((l) => l.startsWith('-client'))).toEqual([])
+  })
+  it('the snippets name whose key to use instead of inventing one', () => {
+    expect(nodeRedSnippet({ clientBase: 'http://gw/client/v1', key: null, keyOf: 'Flow client' }).env[1].value).toMatch(/the key of "Flow client"/)
+    expect(engineSnippet({ engine: 'generic', clientBase: 'http://gw/client/v1', className: 'A', key: null, keyOf: 'Flow client' }).headers[0].value).toBe('Bearer <the key of "Flow client">')
   })
 })
