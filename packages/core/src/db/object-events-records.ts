@@ -1,7 +1,8 @@
 import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { objectEvents, objectEventDeliveries, objectEventSubscriptions } from './object-events-schema.js';
-import { objectEventsEnabled, type BulkObjectEvent, type ObjectEvent } from './object-events.js';
+import { getDataClass } from './data-classes-records.js';
+import { buildBulkEvent, objectEventsEnabled, type BulkObjectEvent, type EventActor, type ObjectEvent } from './object-events.js';
 
 type Db = ReturnType<typeof getDb>;
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -49,4 +50,17 @@ export async function insertEvent(runner: Db | Tx, event: ObjectEvent | BulkObje
     .onConflictDoNothing()
     .returning({ id: objectEventDeliveries.id });
   return queued.length;
+}
+
+/** ONE `object.bulk` summary for a run that wrote with `silent: true` (bundle import, Pimcore migration). Does nothing when `count` is 0. */
+export async function emitBulkSummary(input: {
+  classId: string;
+  kind: BulkObjectEvent['bulk']['kind'];
+  count: number;
+  ids: string[];
+  actor?: EventActor;
+}): Promise<number> {
+  if (input.count <= 0) return 0;
+  const classDef = await getDataClass(input.classId);
+  return insertEvent(getDb(), buildBulkEvent({ ...input, className: classDef?.name }));
 }

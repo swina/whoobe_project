@@ -19,6 +19,7 @@ import {
   upsertAssetRecord,
   createFolderRecord,
   loadRootEnv,
+  emitBulkSummary,
 } from '@whoobe-cms/core/server';
 import { PimcorePageConverter } from './pimcore-page-converter.js';
 import { PimcoreRawDocument, PimcoreEditableElement } from './pimcore-document-converter.js';
@@ -390,7 +391,7 @@ export async function runObjectMigration(options: RunObjectMigrationOptions): Pr
 
   if (clear && !dryRun) {
     console.log(`[ETL] Clearing existing objects for class "${className}"...`);
-    await deleteDataObjectsByClassId(dataClass.id);
+    await deleteDataObjectsByClassId(dataClass.id, { actor: { type: 'import' } });
   }
 
   console.log(`[ETL] Source adapter: "${source}"${dryRun ? ' (dry run - no writes)' : ''}`);
@@ -431,6 +432,7 @@ export async function runObjectMigration(options: RunObjectMigrationOptions): Pr
       return fallback ? fallback.id : null;
     };
 
+    const migratedIds: string[] = [];
     let succeeded = 0;
     const errors: { item: string; message: string }[] = [];
 
@@ -499,6 +501,7 @@ export async function runObjectMigration(options: RunObjectMigrationOptions): Pr
             // own group id (the schema column's own defaultRandom()) -
             // reuse that same one for this object's remaining locales.
             translationGroupId = created.translationGroupId;
+            migratedIds.push(created.id);
           }
         }
         if (!dryRun) console.log(`[ETL] Migrated object ${obj.id} -> ${obj.key} (${converted.length} locale row(s))`);
@@ -510,6 +513,8 @@ export async function runObjectMigration(options: RunObjectMigrationOptions): Pr
       options.onProgress?.(++processed, toProcess.length);
     }
 
+    // The upserts send no event of their own: one summary for the whole run.
+    if (!dryRun) await emitBulkSummary({ classId: dataClass.id, kind: 'migration', count: migratedIds.length, ids: migratedIds, actor: { type: 'import' } });
     console.log(`[ETL] Done. ${succeeded} succeeded, ${errors.length} failed.`);
     return { succeeded, failed: errors.length, errors };
   } finally {

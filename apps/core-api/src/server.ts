@@ -264,6 +264,7 @@ import {
   websiteUploadBytesToday,
   markFormUploadRejected,
 } from '@whoobe-cms/core/server';
+import type { EventActor } from '@whoobe-cms/core/server';
 // Root package entry, not '/server' - compileDynamicSchema lives in
 // schema/dynamic.ts, exported from index.ts and kept out of the Node-only
 // './server' barrel on purpose (no DB/crypto dependency, so it's also
@@ -302,6 +303,12 @@ const logger = await createLogger('core-api', {
   file: true,
   damUpload: true,
 });
+
+/** Who made a write, for the object events: the signed-in user (a request without one, which no guarded route allows, is `system`). */
+function eventActorOf(req: Request): EventActor {
+  const id = (req as any).user?.id;
+  return id ? { type: 'user', id: String(id) } : { type: 'system' };
+}
 
 function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
@@ -4068,7 +4075,7 @@ app.post('/data-classes/:id/empty', requireAnyPermission(PERMISSIONS.DATA_OBJECT
       res.status(400).json({ error: `Send the class name ("${dataClass.name}") as "confirm" to empty it` });
       return;
     }
-    const deleted = await deleteDataObjectsByClassId(dataClass.id);
+    const deleted = await deleteDataObjectsByClassId(dataClass.id, { actor: eventActorOf(req) });
     logger.warn({ classId: dataClass.id, className: dataClass.name, deleted, userId: (req as any).user?.id }, 'Data class emptied');
     res.json({ deleted });
   } catch (error: any) {
@@ -4554,7 +4561,7 @@ app.post(
                 errors.push({ id, message: PUBLISH_DENIED.error });
                 continue;
               }
-              await updateDataObject(id, { published });
+              await updateDataObject(id, { published }, { actor: eventActorOf(req) });
               succeeded++;
             } catch (e: any) {
               errors.push({ id, message: e.message });
@@ -4568,7 +4575,7 @@ app.post(
           const errors: { id: string; message: string }[] = [];
           for (const id of ids) {
             try {
-              await deleteDataObject(id);
+              await deleteDataObject(id, { actor: eventActorOf(req) });
               succeeded++;
             } catch (e: any) {
               errors.push({ id, message: e.message });
@@ -4698,7 +4705,7 @@ app.post('/data-objects', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_CREATE, 
       locale: typeof locale === 'string' ? locale : undefined,
       attributes,
       pimcoreId: typeof pimcoreId === 'string' ? pimcoreId : null,
-    });
+    }, { actor: eventActorOf(req) });
     res.status(201).json({ object: dataObject });
   } catch (error: any) {
     if (error?.code === 'UNIQUE_VIOLATION') {
@@ -4736,7 +4743,7 @@ app.post('/data-objects/bulk', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_CRE
       res.status(400).json({ error: "onConflict must be 'skip' or 'update'" });
       return;
     }
-    const result = await bulkImportDataObjects(classId, rows, { onConflict: onConflict ?? 'skip', locale: typeof locale === 'string' ? locale : undefined });
+    const result = await bulkImportDataObjects(classId, rows, { onConflict: onConflict ?? 'skip', locale: typeof locale === 'string' ? locale : undefined, actor: eventActorOf(req) });
     res.status(201).json(result);
   } catch (error: any) {
     if (error?.message === 'Class not found') {
@@ -4767,7 +4774,7 @@ app.patch('/data-objects/:id', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_EDI
       published: typeof published === 'boolean' ? published : undefined,
       workflowState: workflowState === null || typeof workflowState === 'string' ? workflowState : undefined,
       attributes: attributes !== undefined ? attributes : undefined,
-    });
+    }, { actor: eventActorOf(req) });
     if (!dataObject) {
       res.status(404).json({ error: 'Object not found' });
       return;
@@ -4789,7 +4796,7 @@ app.patch('/data-objects/:id', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_EDI
 
 app.delete('/data-objects/:id', requireAnyPermission(PERMISSIONS.DATA_OBJECTS_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    await deleteDataObject(req.params.id);
+    await deleteDataObject(req.params.id, { actor: eventActorOf(req) });
     res.json({ success: true });
   } catch (error: any) {
     logger.error({ err: error }, 'Delete data object error');
@@ -5076,7 +5083,7 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
       classId: dataClass.id,
       key: `sub-${randomUUID()}`,
       attributes: parsed,
-    });
+    }, { actor: { type: 'system', id: 'form-submission' } });
 
     // Own try/catch, separate from the main handler's - a misconfigured or
     // failing mailer must never turn a successful Data Object write into a
@@ -6236,7 +6243,7 @@ app.post(
       const updated = await updateDataObject(object.id, {
         workflowState: transition.to,
         ...(transition.setPublished !== undefined ? { published: transition.setPublished } : {}),
-      });
+      }, { actor: eventActorOf(req) });
       await logWorkflowTransition({
         objectId: object.id,
         fromPlace: currentPlace,

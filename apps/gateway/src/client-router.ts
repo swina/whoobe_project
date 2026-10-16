@@ -350,7 +350,7 @@ export function createClientRouter(): Router {
       if (!(await assetsAllowed(core, req, checked.write.attributes))) { res.status(400).json({ error: 'A linked asset does not exist or is not available to this client' }); return; }
       const obj = await core.createDataObject({
         classId: cls.id, key: checked.write.key ?? `api-${randomUUID()}`, locale: checked.write.locale, attributes: checked.write.attributes,
-      });
+      }, { actor: { type: 'api-client', id: req.apiClient!.id } });
       logger.info({ clientId: req.apiClient!.id, client: req.apiClient!.name, sub: req.subject, class: cls.name, id: obj.id }, '[gateway] client data created (draft)');
       res.status(201).json({ draft: true, object: core.projectClientObject(obj, fields) });
     } catch (err: any) {
@@ -383,7 +383,7 @@ export function createClientRouter(): Router {
         res.status(412).json({ error: 'The object was changed since you read it' });
         return;
       }
-      const updated = await core.updateDataObject(id, { attributes: { ...(obj.attributes ?? {}), ...checked.write.attributes } });
+      const updated = await core.updateDataObject(id, { attributes: { ...(obj.attributes ?? {}), ...checked.write.attributes } }, { actor: { type: 'api-client', id: req.apiClient!.id } });
       if (!updated) { dataNotFound(req, res, 'vanished'); return; }
       logger.info({ clientId: req.apiClient!.id, client: req.apiClient!.name, sub: req.subject, class: cls.name, id, fields: Object.keys(checked.write.attributes) }, '[gateway] client data updated (draft)');
       res.json({ draft: true, object: core.projectClientObject(updated, fields) });

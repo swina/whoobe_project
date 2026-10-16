@@ -161,6 +161,20 @@ describe.skipIf(!url)('data objects: object events are written with the change, 
     expect(await events()).toHaveLength(0);
   });
 
+  it('silent writes emit nothing; emitBulkSummary sends ONE summary (and nothing for zero)', async () => {
+    await listen();
+    const a = await rec.createDataObject({ classId, key: 'a', attributes: { title: 'One' } }, { silent: true });
+    await rec.updateDataObject(a.id, { published: true, attributes: { title: 'Two' } }, { silent: true });
+    await rec.deleteDataObject(a.id, { silent: true });
+    expect(await events()).toHaveLength(0);
+    const ev = await import('./object-events-records.js');
+    expect(await ev.emitBulkSummary({ classId, kind: 'migration', count: 0, ids: [] })).toBe(0);
+    expect(await ev.emitBulkSummary({ classId, kind: 'migration', count: 120, ids: ['x', 'y'], actor: { type: 'import' } })).toBe(1);
+    const [e] = await events();
+    expect(e).toMatchObject({ type: 'object.bulk', actorType: 'import' });
+    expect((e.payload as any).bulk).toMatchObject({ kind: 'migration', count: 120, firstIds: ['x', 'y'] });
+  });
+
   it('OBJECT_EVENTS_ENABLED=0 writes the data and no event', async () => {
     await listen();
     process.env.OBJECT_EVENTS_ENABLED = '0';

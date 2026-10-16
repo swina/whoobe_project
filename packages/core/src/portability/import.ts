@@ -4,6 +4,7 @@ import { documentationFolderOf } from './export.js';
 import { createDataClass, deleteDataClass, getDataClassByName } from '../db/data-classes-records.js';
 import { createDataComponent, deleteDataComponent, getDataComponentByName } from '../db/data-components-records.js';
 import { createDataObject, deleteDataObject, listDataObjects, updateDataObject } from '../db/data-objects-records.js';
+import { emitBulkSummary } from '../db/object-events-records.js';
 import { createTheme, deleteTheme } from '../db/themes-records.js';
 import { createWebsite, deleteWebsite, getWebsiteByRootPath } from '../db/websites-records.js';
 import { createWebsitePath, deleteWebsitePath } from '../db/website-paths-records.js';
@@ -245,6 +246,7 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
     undo.push(() => deleteWebsite(website.id));
     report.website.id = website.id;
 
+    const importedObjects: { classId: string; id: string }[] = [];
     for (const o of bundle.dataObjects) {
       if (objectHere.has(o.id)) continue;
       const created = await createDataObject({
@@ -255,8 +257,9 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
         translationGroupId: group(o.translationGroupId),
         locale: o.locale,
         attributes: fix(o.attributes),
-      });
-      undo.push(() => deleteDataObject(created.id));
+      }, { silent: true });
+      undo.push(() => deleteDataObject(created.id, { silent: true }));
+      importedObjects.push({ classId: created.classId, id: created.id });
     }
     // parents and publication state once every object exists
     for (const o of bundle.dataObjects) {
@@ -265,7 +268,7 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
       if (o.parentId && idMap.has(o.parentId)) patch.parentId = idMap.get(o.parentId)!;
       if (restorePublication && o.published) patch.published = true;
       if (restorePublication && o.workflowState) patch.workflowState = o.workflowState;
-      if (Object.keys(patch).length) await updateDataObject(objectIds.get(o)!, patch);
+      if (Object.keys(patch).length) await updateDataObject(objectIds.get(o)!, patch, { silent: true });
     }
 
     for (const s of bundle.snippets) {
@@ -313,6 +316,11 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
       const created = await createWebsitePath({ websiteId: website.id, name: m.name, items: fix(m.items) as any });
       undo.push(() => deleteWebsitePath(created.id));
     }
+
+    // A bundle is bulk by nature: one summary per class, sent only when the whole import succeeded (a failed one is undone and sends nothing).
+    const byClass = new Map<string, string[]>();
+    for (const o of importedObjects) byClass.set(o.classId, [...(byClass.get(o.classId) ?? []), o.id]);
+    for (const [classId, ids] of byClass) await emitBulkSummary({ classId, kind: 'import', count: ids.length, ids, actor: { type: 'import' } });
 
     return report;
   } catch (error) {

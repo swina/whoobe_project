@@ -339,7 +339,11 @@ async function syncNonLocalizedAttributes(
 }
 
 /** Who made a write, for the object events (the loop guard of a subscription ignores some actors). A caller that says nothing is `system`. */
-export interface WriteOptions { actor?: EventActor }
+export interface WriteOptions {
+  actor?: EventActor;
+  /** Emit no event for this write: for a caller that is bulk by nature (a bundle import, the migration) and sends ONE summary itself (`emitBulkSummary`). */
+  silent?: boolean;
+}
 
 /** The events of one update: its own (updated / transitioned / published) and one `object.updated` per language sibling the non-localized sync touched. */
 async function emitUpdateEvents(
@@ -443,8 +447,10 @@ export async function createDataObject(input: {
     // MasterObjectTab.vue's own job client-side, so the admin sees the
     // shared value immediately rather than only after this first save).
     const touched = await syncNonLocalizedAttributes(row, tx, classDef);
-    await insertEvent(tx, buildEvent({ type: 'object.created', changed: changedFields(null, row) }, { after: row, actor: opts.actor, className: classDef?.name }));
-    for (const t of touched) await emitUpdateEvents(tx, t.before, t.after, [], { type: 'system' }, classDef?.name);
+    if (!opts.silent) {
+      await insertEvent(tx, buildEvent({ type: 'object.created', changed: changedFields(null, row) }, { after: row, actor: opts.actor, className: classDef?.name }));
+      for (const t of touched) await emitUpdateEvents(tx, t.before, t.after, [], { type: 'system' }, classDef?.name);
+    }
     return row;
   });
   if (classDef) await indexObject(row, classDef);
@@ -491,7 +497,7 @@ export async function updateDataObject(
 
     const [row] = await tx.update(dataObjects).set(values).where(eq(dataObjects.id, id)).returning();
     const touched = row && input.attributes !== undefined ? await syncNonLocalizedAttributes(row, tx, classDef) : [];
-    if (row) await emitUpdateEvents(tx, before, row, touched, opts.actor, classDef?.name);
+    if (row && !opts.silent) await emitUpdateEvents(tx, before, row, touched, opts.actor, classDef?.name);
     return row ? { row, classDef } : null;
   });
   if (!done) return null;
@@ -506,7 +512,7 @@ export async function deleteDataObjectsByClassId(classId: string, opts: WriteOpt
   const classDef = await getDataClass(classId);
   const deleted = await db.transaction(async (tx) => {
     const rows = await tx.delete(dataObjects).where(eq(dataObjects.classId, classId)).returning({ id: dataObjects.id });
-    if (rows.length) {
+    if (rows.length && !opts.silent) {
       await insertEvent(tx, buildBulkEvent({ classId, className: classDef?.name, kind: 'delete', count: rows.length, ids: rows.map((r) => r.id), actor: opts.actor }));
     }
     return rows;
@@ -528,6 +534,7 @@ export async function deleteDataObject(id: string, opts: WriteOptions = {}): Pro
     const [before] = await tx.select().from(dataObjects).where(eq(dataObjects.id, id)).for('update');
     if (!before) return;
     await tx.delete(dataObjects).where(eq(dataObjects.id, id));
+    if (opts.silent) return;
     const classDef = await getDataClass(before.classId);
     await insertEvent(tx, buildEvent({ type: 'object.deleted', changed: [] }, { after: before, actor: opts.actor, className: classDef?.name }));
   });
@@ -645,7 +652,7 @@ export function planBulkImport(
 export async function bulkImportDataObjects(
   classId: string,
   rows: BulkImportRow[],
-  options: { onConflict?: 'skip' | 'update'; locale?: string; actor?: EventActor } = {},
+  options: { onConflict?: 'skip' | 'update'; locale?: string; actor?: EventActor; silent?: boolean } = {},
 ): Promise<{ created: number; updated: number; skipped: number; rejected: { key: string; message: string }[] }> {
   const classDef = await getDataClass(classId);
   if (!classDef) throw new Error('Class not found');
@@ -701,7 +708,7 @@ export async function bulkImportDataObjects(
       if (row) saved.push(row);
     }
     // One summary for the whole chunk, in the same transaction (never one event per row).
-    if (saved.length) {
+    if (saved.length && !options.silent) {
       await insertEvent(tx, buildBulkEvent({ classId, className: classDef.name, kind: 'import', count: saved.length, ids: saved.map((r) => r.id), actor: options.actor }));
     }
   });

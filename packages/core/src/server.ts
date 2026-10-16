@@ -29,6 +29,8 @@ export * from './db/data-components-schema.js';
 export * from './db/data-components-records.js';
 export * from './db/data-objects-schema.js';
 export * from './db/data-objects-records.js';
+export * from './db/object-events.js';
+export { emitBulkSummary } from './db/object-events-records.js';
 export * from './db/data-object-preview-tokens-records.js';
 export * from './db/websites-schema.js';
 export * from './db/websites-records.js';
