@@ -128,7 +128,14 @@ export function endpointNameFor(w: ParsedWebhook, taken: string[]): string {
 
 export type PlanResult = { ok: true; plan: ConnectionPlan } | { ok: false; error: string }
 
-export function planConnection(a: WizardAnswers, endpoints: ExistingEndpoint[], routesOfEndpoint: (endpointId: string) => ExistingRoute[]): PlanResult {
+/** An API client name nobody has yet ("Orders (flow)", then "Orders (flow) 2"...): client names are unique. */
+export function clientNameFor(base: string, taken: string[]): string {
+  const used = new Set(taken.map((t) => t.toLowerCase()))
+  if (!used.has(base.toLowerCase())) return base
+  for (let i = 2; ; i++) if (!used.has(`${base} ${i}`.toLowerCase())) return `${base} ${i}`
+}
+
+export function planConnection(a: WizardAnswers, endpoints: ExistingEndpoint[], routesOfEndpoint: (endpointId: string) => ExistingRoute[], existingClientNames: string[] = []): PlanResult {
   const name = a.name.trim()
   if (!name) return { ok: false, error: 'Give the connection a name' }
   if (!a.events.length) return { ok: false, error: 'Choose at least one thing that triggers the flow' }
@@ -149,10 +156,28 @@ export function planConnection(a: WizardAnswers, endpoints: ExistingEndpoint[], 
     ok: true,
     plan: {
       endpoint, routes,
-      client: a.writeBack ? { name: `${name} (flow)`, scopes: [`data:read:${a.className}`, `data:write:${a.className}`] } : null,
+      client: a.writeBack ? { name: clientNameFor(`${name} (flow)`, existingClientNames), scopes: [`data:read:${a.className}`, `data:write:${a.className}`] } : null,
       subscription: { name, classId: a.classId, events: a.events, startRoute },
     },
   }
+}
+
+// ---- 3b. the Test / Live switch of a subscription ----
+
+/** For a subscription's route and the routes of its endpoint: whether it is the test or the live one of a pair (Activepieces `/id` and `/id/test`, n8n
+ * `/webhook/x` and `/webhook-test/x`) and the other route of the pair when it exists. A route with no pair has no switch. */
+export function modeSwitch(current: { path: string }, siblings: { id: string; method: string; path: string }[]): { mode: 'live' | 'test'; other: { id: string; path: string } } | null {
+  const candidates: { mode: 'live' | 'test'; other: string }[] = []
+  let m: RegExpMatchArray | null
+  if ((m = current.path.match(/^\/webhook-test\/(.+)$/))) candidates.push({ mode: 'test', other: `/webhook/${m[1]}` })
+  else if ((m = current.path.match(/^\/webhook\/(.+)$/))) candidates.push({ mode: 'live', other: `/webhook-test/${m[1]}` })
+  if ((m = current.path.match(/^(\/.+)\/test$/))) candidates.push({ mode: 'test', other: m[1] })
+  else candidates.push({ mode: 'live', other: `${current.path}/test` })
+  for (const c of candidates) {
+    const found = siblings.find((r) => r.path === c.other && ['POST', 'PUT', 'PATCH'].includes(r.method.toUpperCase()))
+    if (found) return { mode: c.mode, other: { id: found.id, path: found.path } }
+  }
+  return null
 }
 
 // ---- 4. running the plan, with a rollback ----

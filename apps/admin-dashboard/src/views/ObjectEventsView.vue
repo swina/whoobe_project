@@ -17,7 +17,10 @@
         <button type="button" class="btn btn-secondary flex items-center gap-1.5" :disabled="loading" @click="refresh">
           <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': loading }" /> Refresh
         </button>
-        <button type="button" class="btn btn-primary flex items-center gap-1.5" @click="openEditor()">
+        <button type="button" class="btn btn-primary flex items-center gap-1.5" @click="wizardOpen = true">
+          <Plug class="w-3.5 h-3.5" /> Connect a flow
+        </button>
+        <button type="button" class="btn btn-secondary flex items-center gap-1.5" @click="openEditor()">
           <Plus class="w-3.5 h-3.5" /> New subscription
         </button>
       </div>
@@ -27,7 +30,7 @@
     <p v-if="notice" class="shrink-0 rounded-xl bg-emerald-950/40 border border-emerald-800 p-3 text-xs text-emerald-300">{{ notice }}</p>
     <div v-if="loading && !subs.length" class="shrink-0 p-12 text-center text-xs text-slate-500">Loading...</div>
     <div v-else-if="!subs.length && !error" class="shrink-0 rounded-2xl bg-slate-900/40 light:bg-white/40 border border-slate-800/80 light:border-slate-200/80 p-12 text-center text-xs text-slate-500">
-      No subscription yet. Create one to start an automation when a Data Object changes.
+      No subscription yet. Use <b>Connect a flow</b> to start an automation when a Data Object changes.
     </div>
 
     <div v-else-if="subs.length" class="flex-1 min-h-0 overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200">
@@ -55,7 +58,13 @@
             <td class="py-2.5 px-4">
               <span v-for="e in s.events" :key="e" class="inline-block mr-1 mb-1 px-1.5 py-0.5 rounded bg-slate-800 light:bg-slate-200 font-mono text-[10px]">{{ e.replace('object.', '') }}</span>
             </td>
-            <td class="py-2.5 px-4 font-mono break-all">{{ target(s) }}</td>
+            <td class="py-2.5 px-4 font-mono break-all">
+              {{ target(s) }}
+              <template v-if="switchOf(s)">
+                <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] uppercase font-sans" :class="switchOf(s)!.mode === 'test' ? 'bg-amber-900/60 text-amber-300' : 'bg-emerald-900/60 text-emerald-300'">{{ switchOf(s)!.mode }}</span>
+                <button type="button" class="ml-1 btn btn-link text-[10px] font-sans" :title="`Send to the ${switchOf(s)!.mode === 'test' ? 'live' : 'test'} address instead`" @click="switchMode(s)">switch to {{ switchOf(s)!.mode === 'test' ? 'live' : 'test' }}</button>
+              </template>
+            </td>
             <td class="py-2.5 px-4">
               <div class="flex items-center gap-1">
                 <button type="button" class="btn btn-link" title="Delivery log" @click="openLog(s)"><ListChecks class="w-3.5 h-3.5" /></button>
@@ -71,6 +80,8 @@
         </tbody>
       </table>
     </div>
+
+    <ObjectEventsWizard v-if="wizardOpen" @close="wizardOpen = false" @done="wizardOpen = false; refresh()" />
 
     <!-- The editor -->
     <BaseModal v-if="form" :open="true" size="lg" persistent @close="form = null">
@@ -198,8 +209,9 @@
 // Admin only (`object_events:manage`): the server refuses everyone else and says so here. The call itself is made by the Integrations
 // gateway, so the editor picks an existing endpoint and route instead of asking for a URL.
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { ListChecks, Pause, Pencil, Play, Plus, Radio, RefreshCw, Send, Trash2 } from '@lucide/vue'
+import { ListChecks, Pause, Pencil, Play, Plug, Plus, Radio, RefreshCw, Send, Trash2 } from '@lucide/vue'
 import BaseModal from '../components/ui/BaseModal.vue'
+import ObjectEventsWizard from '../components/objects/ObjectEventsWizard.vue'
 import { useAuthStore } from '../stores/authStore'
 import { useDataClassesStore } from '../stores/dataClassesStore'
 import { useGatewayStore } from '../stores/gatewayStore'
@@ -208,6 +220,7 @@ import {
   createSubscription, deleteSubscription, listDeliveries, listSubscriptions, retryDelivery, sendTestEvent, updateSubscription,
   type DeliveryStatus, type ObjectEventDelivery, type ObjectEventSubscription,
 } from '../utils/object-events-api'
+import { modeSwitch } from '../utils/object-events-wizard'
 import {
   EVENT_CHOICES, SECRET_PREFIX, STATUS_TEXT, emptyForm, formFromSubscription, formProblem, nextAttemptText, relativeTime, statusTone, toInput, usableRoute,
   type SubscriptionForm,
@@ -228,6 +241,9 @@ const editingId = ref('')
 const formError = ref('')
 const saving = ref(false)
 const routes = ref<GatewayRoute[]>([])
+const wizardOpen = ref(false)
+// the routes of each endpoint a subscription uses, to offer the Test / Live switch of a pair of addresses
+const endpointRoutes = ref<Record<string, GatewayRoute[]>>({})
 
 const logFor = ref<ObjectEventSubscription | null>(null)
 const logRows = ref<ObjectEventDelivery[]>([])
@@ -241,6 +257,17 @@ function target(s: ObjectEventSubscription): string {
   const e = gatewayStore.endpoints.find((x) => x.id === s.endpointId)
   return e ? e.name : '-'
 }
+function switchOf(s: ObjectEventSubscription) {
+  if (!s.endpointId || !s.routeId) return null
+  const list = endpointRoutes.value[s.endpointId] ?? []
+  const cur = list.find((r) => r.id === s.routeId)
+  return cur ? modeSwitch(cur, list) : null
+}
+async function switchMode(s: ObjectEventSubscription) {
+  const sw = switchOf(s)
+  if (!sw) return
+  try { await updateSubscription(coreUrl(), s.id, { routeId: sw.other.id }); await refresh(); flash(`"${s.name}" now sends to the ${sw.mode === 'test' ? 'live' : 'test'} address.`) } catch (e: any) { error.value = e?.message || 'Could not switch' }
+}
 function flash(text: string) { notice.value = text; setTimeout(() => { if (notice.value === text) notice.value = '' }, 4000) }
 
 async function refresh() {
@@ -249,6 +276,10 @@ async function refresh() {
   try {
     const [list] = await Promise.all([listSubscriptions(coreUrl()), gatewayStore.refreshEndpoints().catch(() => undefined), classesStore.refreshDataClasses()])
     subs.value = list
+    const ids = [...new Set(list.map((x) => x.endpointId).filter((x): x is string => !!x))]
+    const loaded: Record<string, GatewayRoute[]> = {}
+    await Promise.all(ids.map(async (id) => { loaded[id] = await listRoutes(id).catch(() => []) }))
+    endpointRoutes.value = loaded
   } catch (e: any) {
     error.value = e?.message || 'Could not load the subscriptions'
   } finally {

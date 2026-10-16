@@ -1,8 +1,8 @@
 // Pure logic of the "Connect a flow" wizard (apps/admin-dashboard/src/utils/object-events-wizard.ts).
 import { describe, it, expect } from 'vitest'
 import {
-  ConnectionError, PRESETS, describeDelivery, describeFailure, endpointNameFor, engineSnippet, eventsOfPresets, parseWebhookUrl, planConnection, reachabilityHint,
-  routesOf, runPlan, type ParsedWebhook, type WizardAnswers, type WizardApi,
+  ConnectionError, PRESETS, clientNameFor, describeDelivery, describeFailure, endpointNameFor, engineSnippet, eventsOfPresets, parseWebhookUrl, planConnection, reachabilityHint,
+  modeSwitch, routesOf, runPlan, type ParsedWebhook, type WizardAnswers, type WizardApi,
 } from '../../../apps/admin-dashboard/src/utils/object-events-wizard'
 import { OBJECT_EVENT_TYPES } from '../../../packages/core/src/db/object-events'
 
@@ -117,6 +117,13 @@ describe('planConnection', () => {
   it('write back: an API client with read and write on that class only', () => {
     const r = planConnection(answers({ writeBack: true }), [], () => [])
     expect(r.ok && r.plan.client).toEqual({ name: 'New contacts (flow)', scopes: ['data:read:Contact', 'data:write:Contact'] })
+  })
+  it('gives the API client a name nobody has yet, so a second run does not fail', () => {
+    expect(clientNameFor('A (flow)', [])).toBe('A (flow)')
+    expect(clientNameFor('A (flow)', ['a (flow)'])).toBe('A (flow) 2')
+    expect(clientNameFor('A (flow)', ['A (flow)', 'A (flow) 2'])).toBe('A (flow) 3')
+    const r = planConnection(answers({ writeBack: true }), [], () => [], ['New contacts (flow)'])
+    expect(r.ok && r.plan.client?.name).toBe('New contacts (flow) 2')
   })
   it('says what is missing', () => {
     const msg = (a: WizardAnswers) => { const r = planConnection(a, [], () => []); return r.ok ? '' : r.error }
@@ -261,5 +268,24 @@ describe('reachabilityHint', () => {
     expect(reachabilityHint({ host: 'localhost' })).toMatch(/OUTBOUND_ALLOW_HOSTS/)
     expect(reachabilityHint({ host: '127.0.0.1' })).not.toBe('')
     expect(reachabilityHint({ host: 'ap.example.com' })).toBe('')
+  })
+})
+
+describe('modeSwitch', () => {
+  const routes = [
+    { id: 'a', method: 'POST', path: '/f1' }, { id: 'b', method: 'POST', path: '/f1/test' }, { id: 'c', method: 'GET', path: '/g1/test' },
+    { id: 'd', method: 'POST', path: '/webhook/x' }, { id: 'e', method: 'POST', path: '/webhook-test/x' }, { id: 'f', method: 'POST', path: '/lonely' },
+  ]
+  it('finds the pair of an Activepieces route in both directions', () => {
+    expect(modeSwitch({ path: '/f1' }, routes)).toEqual({ mode: 'live', other: { id: 'b', path: '/f1/test' } })
+    expect(modeSwitch({ path: '/f1/test' }, routes)).toEqual({ mode: 'test', other: { id: 'a', path: '/f1' } })
+  })
+  it('finds the pair of an n8n route in both directions', () => {
+    expect(modeSwitch({ path: '/webhook/x' }, routes)).toEqual({ mode: 'live', other: { id: 'e', path: '/webhook-test/x' } })
+    expect(modeSwitch({ path: '/webhook-test/x' }, routes)).toEqual({ mode: 'test', other: { id: 'd', path: '/webhook/x' } })
+  })
+  it('has no switch without a pair, or when the other route cannot receive an event', () => {
+    expect(modeSwitch({ path: '/lonely' }, routes)).toBeNull()
+    expect(modeSwitch({ path: '/g1' }, routes)).toBeNull()
   })
 })
