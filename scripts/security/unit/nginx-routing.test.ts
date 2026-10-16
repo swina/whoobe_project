@@ -9,7 +9,8 @@ import { ROOT_DIR } from '../lib/config'
 const routes = Object.keys(JSON.parse(readFileSync(join(ROOT_DIR, 'scripts/security/routes.expected.json'), 'utf8')).routes as Record<string, unknown>)
 const corePrefixes = [...new Set(routes.map((r) => /^\w+ \/whoobe-one\/([^/:]+)/.exec(r)?.[1]).filter((p): p is string => !!p))]
 
-for (const file of ['deploy/nginx/_locations.conf.template', 'deploy/nginx/_locations-ws-demo.inc']) {
+// the template is the source; the rendered file of a workspace (`_locations-<slug>.inc`) is generated on the host and is not in the repository
+for (const file of ['deploy/nginx/_locations.conf.template']) {
   describe(file, () => {
     const text = readFileSync(join(ROOT_DIR, file), 'utf8')
     const routed = new Set((/location ~ \^\/whoobe-one\/\(([^)]*)\)/.exec(text)?.[1] ?? '').split('|'))

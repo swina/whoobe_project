@@ -1,3 +1,10 @@
+## Release check: two stale security tests fixed — 2026-10-16
+- Branch: `master`
+- Ran the API and browser security suites on a disposable stack (`scripts/security/stack.sh up`, `pnpm security:api`, `pnpm security:browser`): API 1,963 passed, 2 skipped, 1 file failed; browser 29 passed, 1 failed. Both failures were tests that no longer matched the code, not product defects, and both predate the object events work:
+  - `scripts/security/unit/nginx-routing.test.ts` read `deploy/nginx/_locations-ws-demo.inc`, the rendered file of a workspace removed in `2da8697`: it now checks the template only (a rendered `_locations-<slug>.inc` is generated on the host).
+  - `scripts/security/browser/xss-sinks.spec.ts` (data object fields) opened a record by clicking its row; since the Objects list redesign of 2026-10-15 a row opens from its context menu (right click, Edit), so the spec waited for a Preview button that never appeared (90 s timeout). It now right-clicks and chooses Edit. All 8 tests of the file pass.
+- Worth a look by the owner: clicking a row in the Objects list no longer opens the record (right click > Edit, or the table view's cell editing); if that was not intended it is a behaviour change of the redesign, not of this fix.
+
 ## Release check: third-party notices refreshed — 2026-10-16
 - Branch: `master`
 - `./scripts/release.sh check` failed the licence gate: `THIRD_PARTY_NOTICES.md` was out of date (a dependency, `tailwind-merge` 3.7.0, MIT, had entered the lockfile without the notices being regenerated). Regenerated with `python3 scripts/release/third-party-notices.py`: 617 packages, 15 licence identifiers, every licence allowed (the check passes). Other gates run the same day: documentation passes; the git and CI gates fail only because this branch has unpushed commits and the working tree holds a local edit of the Node-RED example flow (not committed on purpose).

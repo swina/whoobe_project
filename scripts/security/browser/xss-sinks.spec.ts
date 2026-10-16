@@ -134,7 +134,9 @@ test.describe('data object fields', () => {
       const p = await authed.newPage(); canary.attach(p)
       await p.goto(`${ADMIN_URL}/`); await p.waitForTimeout(2000)
       await p.locator('aside').getByText(`FldCls${tag}`, { exact: true }).first().click(); await p.waitForTimeout(2000)
-      await p.getByText(`fldobj-${tag}`).first().click(); await p.waitForTimeout(2500)
+      // since the list redesign (2026-10-15) a row opens from its context menu (right click > Edit), not from a click
+      await p.getByText(`fldobj-${tag}`).first().click({ button: 'right' }); await p.waitForTimeout(500)
+      await p.getByRole('menuitem', { name: /Edit/ }).first().click(); await p.waitForTimeout(2500)
       await p.getByRole('button', { name: 'Preview', exact: true }).first().click(); await p.waitForTimeout(1500)
       expect(await p.locator('body').innerText(), 'the markdown preview rendered').toContain('Title ctlmd')
       await clickJavascriptLinks(p)
