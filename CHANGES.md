@@ -1,3 +1,7 @@
+## Release check: third-party notices refreshed — 2026-10-16
+- Branch: `master`
+- `./scripts/release.sh check` failed the licence gate: `THIRD_PARTY_NOTICES.md` was out of date (a dependency, `tailwind-merge` 3.7.0, MIT, had entered the lockfile without the notices being regenerated). Regenerated with `python3 scripts/release/third-party-notices.py`: 617 packages, 15 licence identifiers, every licence allowed (the check passes). Other gates run the same day: documentation passes; the git and CI gates fail only because this branch has unpushed commits and the working tree holds a local edit of the Node-RED example flow (not committed on purpose).
+
 ## Wizard: use an existing API client for the write back — 2026-10-16
 - Branch: `feat/wizard-existing-client` (worktree `../whoobe_cms-wizard-client`)
 - Step 3 of *Connect a flow* offers **Create a new API client** (as before) or **Use an existing one**. The list has only the active key clients that may write the chosen class (`data:write:<Class>` or `data:write:*`; `usableClients`, `clientCanWrite`); with none, the option is disabled and says so. With an existing client nothing is created and no key is shown (the flow already has it); the client goes in the subscription's *ignore changes made by* and is never deleted, even if a later call fails. The result names whose key to use instead of inventing one (the HTTP-step block and the Node-RED environment). `planConnection` refuses a client that is gone, suspended, a token client, or cannot write the class, saying why.

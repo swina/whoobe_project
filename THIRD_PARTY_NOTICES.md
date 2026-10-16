@@ -4,13 +4,13 @@ Whoobe is released under the MIT licence ([LICENSE.md](LICENSE.md)). It includes
 licence. This file is **generated** from the production dependencies of every workspace by `scripts/release/third-party-notices.py`; do not edit it by hand.
 The human-readable thanks are in [docs/release/credits.md](docs/release/credits.md).
 
-**616 packages** under 15 licence identifiers.
+**617 packages** under 15 licence identifiers.
 
 ## Summary by licence
 
 | Licence | Packages |
 |---|---|
-| MIT | 474 |
+| MIT | 475 |
 | ISC | 56 |
 | Apache-2.0 | 51 |
 | BSD-3-Clause | 12 |
@@ -602,6 +602,7 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | sucrase | 3.35.1 | MIT | Copyright (c) 2012-2018 various contributors (see AUTHORS) |
 | superjson | 2.2.6 | MIT | Copyright (c) 2020 Simon Knott and superjson contributors |
 | supports-preserve-symlinks-flag | 1.0.0 | MIT | Copyright (c) 2022 Inspect JS |
+| tailwind-merge | 3.7.0 | MIT | Copyright (c) 2021 Dany Castillo |
 | tailwindcss | 3.3.2 | MIT | Copyright (c) Tailwind Labs, Inc. |
 | thenify | 3.3.1 | MIT | Copyright (c) 2014-2016 Jonathan Ong me@jongleberry.com and contributors |
 | thenify-all | 1.6.0 | MIT | Copyright (c) 2014 Jonathan Ong me@jongleberry.com |
