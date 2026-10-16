@@ -1,6 +1,6 @@
 # Object events: a wizard to connect a flow
 
-*Date: 2026-10-16. Status: **plan, nothing implemented**. Follows [object-events-activepieces.md](object-events-activepieces.md) (the recipe) and the
+*Date: 2026-10-16. Status: **steps 1 and 2 implemented on `feat/object-events-wizard` (logic with 39 tests, the dialog, the Test / Live switch in the list; tried in a browser), step 3 (documentation) in progress**. Follows [object-events-activepieces.md](object-events-activepieces.md) (the recipe) and the
 administrators' guide `docs/release/communication/object-events.md`. Branch for the work: a new one from `master` (worktree, see the note in section 7).*
 
 ## 1. Why

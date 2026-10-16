@@ -1,3 +1,7 @@
+## Object events wizard, step 3: documentation — 2026-10-16
+- Branch: `feat/object-events-wizard`
+- `docs/release/communication/object-events.md` section 2 gets "The quick way: Connect a flow" (the four questions, what is created, the Test / Live switch, the write-back client and its key, the test sentences, the permissions, rollback); the step-by-step way is kept under "The normal way". The Activepieces recipe points to it; the wizard plan's status is updated.
+
 ## Object events wizard, step 2: the dialog — 2026-10-16
 - Branch: `feat/object-events-wizard` (worktree `../whoobe_cms-events-wizard`)
 - New `apps/admin-dashboard/src/components/objects/ObjectEventsWizard.vue` and a **Connect a flow** button in `views/ObjectEventsView.vue` (the "New subscription" editor stays). One dialog: class and a preset of events, the pasted webhook URL (what was recognised and which routes will be created, a hint when the address is the machine itself, test / live choice), optional write back, then **Connect**. The result view has *Send a test event* (waits up to 12 s and says in words what came back), a live / test address switch, the key of the new API client shown once with a Copy button and the block for the engine's HTTP step. Without `gateway:manage` the dialog says so and does not run.

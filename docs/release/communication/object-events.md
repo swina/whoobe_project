@@ -54,6 +54,28 @@ When a language is added to a record, the other languages' shared (non-localized
 
 ## 2. Create a subscription
 
+### The quick way: *Connect a flow*
+
+*Object events > Connect a flow* asks four things and does the rest:
+
+1. **What happens in Whoobe**: the class, and *created*, *changed* and/or *published or taken down* (more events under *More events*). "Changed"
+   means a field changed: saving without a change, or only publishing, is not a change.
+2. **Where is the flow**: paste the **webhook URL** your engine shows for the flow's trigger. Whoobe recognises Activepieces and n8n URLs, creates the
+   Integrations endpoint (or reuses the one with the same address) and the **POST** routes, and, for those two engines, both the *live* and the *test*
+   address (the test address answers only while the engine's editor is waiting for a sample). Choose which one the subscription uses; it can be switched
+   later from the list (a **TEST / LIVE** badge and a "switch" button). For any other engine paste its URL; a second URL for its test mode is optional.
+3. **Does the flow write back to the record?** If yes, Whoobe creates an API client that can read and write **drafts of that class only**, puts it in the
+   subscription's *ignore changes made by* list (so the flow does not start itself again) and shows its **key once**, with the block to paste into the
+   engine's HTTP step (method `PATCH`, the URL with the record id, the headers and a body example).
+4. **Test**: *Send a test event* waits a few seconds and says in words what came back (received; the engine is not listening; the flow is not published;
+   the host cannot be found; and so on). The engine's answer itself is never stored.
+
+If a step fails, what the attempt had created is removed again and the dialog says what could not be. The wizard needs the permissions
+`object_events:manage` and `gateway:manage`; without the second one use the normal way below. Everything it creates is an ordinary endpoint, route,
+subscription and API client, editable in their own screens. Whoobe does not prefer an engine and does not ship one: the wizard only knows two URL shapes.
+
+### The normal way, step by step
+
 1. In **Integrations**, create an *endpoint* for the service (its base URL and credentials) and, under it, a *route* that is **POST, PUT or PATCH** with a
    **fixed path** (no `{parameters}`), for example `/api/v1/webhooks/<flow id>` on Activepieces. The call uses the endpoint's credentials and the
    Gateway's address checks (see [Integrations](integrations.md)).

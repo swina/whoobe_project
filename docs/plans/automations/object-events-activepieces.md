@@ -7,6 +7,8 @@
 What this does: when a data object of a class is created, updated or deleted, Whoobe sends a small signed-or-plain JSON event to a flow
 of Activepieces (or any webhook). The event carries ids and the **names** of the changed fields, never their values.
 
+> The dashboard now does sections 1 and 2 for you: *Object events > Connect a flow* (see the administrators' guide, section 2). What follows is the manual way and the details.
+
 ## 1. In Activepieces
 
 1. New flow, trigger **Catch Webhook**; action **Return Response**, status `200`. Publish it.
