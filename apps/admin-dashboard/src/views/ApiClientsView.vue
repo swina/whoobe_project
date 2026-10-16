@@ -57,9 +57,9 @@
             </td>
             <td class="py-2.5 px-4">
               <button v-for="s in c.scopes.slice(0, 6)" :key="s" type="button" class="block text-left font-mono text-[11px] hover:text-indigo-300"
-                :class="isWide(s) || s === 'data:read:*' ? 'text-amber-400' : ''" :title="`${callUrl(s)}\nClick to copy this address`" @click="copy(callUrl(s))">
+                :class="isWide(s) || s === 'data:read:*' ? 'text-amber-400' : s === 'data:write:*' || isDataWrite(s) ? 'text-rose-400' : ''" :title="`${callUrl(s)}\nClick to copy this address`" @click="copy(callUrl(s))">
                 <template v-if="isAutomation(s)"><span class="font-bold">RUN</span> automations<span class="text-slate-500"> /</span>{{ automationOf(s) }}</template>
-                <template v-else-if="isData(s)"><span class="font-bold">GET</span> data<span class="text-slate-500"> /</span>{{ dataClassOf(s) === '*' ? '* (every class)' : dataClassOf(s) }}</template>
+                <template v-else-if="isData(s)"><span class="font-bold">{{ isDataWrite(s) ? 'POST/PATCH' : 'GET' }}</span> data<span class="text-slate-500"> /</span>{{ dataClassOf(s) === '*' ? '* (every class)' : dataClassOf(s) }}</template>
                 <template v-else><span class="font-bold">{{ method(s) }}</span> {{ endpointOf(s) }}<span class="text-slate-500"> /</span>{{ routeOf(s) }}</template>
               </button>
               <div v-if="c.scopes.length > 6" class="text-slate-500">+ {{ c.scopes.length - 6 }} more</div>
@@ -139,6 +139,7 @@ const revealed = ref<{ name: string; key: string } | null>(null)
 const copied = ref(false)
 
 const isData = (s: string) => s.startsWith('data:')
+const isDataWrite = (s: string) => s.startsWith('data:write:')
 const isAutomation = (s: string) => s.startsWith('automation:')
 // automation:run:<endpoint>:<route> -> <endpoint>/<route>
 const automationOf = (s: string) => { const [, , endpoint = '', ...route] = s.split(':'); return `${endpoint}/${route.join(':')}` }

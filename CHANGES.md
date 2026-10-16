@@ -1,3 +1,7 @@
+## API clients list: write scopes shown as write — 2026-10-16
+- Branch: `master`
+- `apps/admin-dashboard/src/views/ApiClientsView.vue`: every `data:` scope was drawn as `GET data /<class>`, so a `data:write:Contact` looked like a second read of Contact and the write permission could not be told from the read. Now a write scope shows `POST/PATCH data /<class>` (in red, like the write checkbox of the form); read scopes are unchanged. Display only: the scopes saved and enforced are the same.
+
 ## Object events: documentation gaps closed, merged into master — 2026-10-16
 - Branch: `master` (the branch `feat/object-events` was fast-forwarded into it: 10 commits)
 - `scripts/release/check-docs.py` (the release documentation gate) failed after the merge: the eight routes were missing from the generated API reference and OpenAPI file, and two variables from the configuration reference. Fixed: the routes are in `docs/release/api/gen-api-docs.py` (a new section; `api-reference.md` and `openapi.yaml` regenerated, the hand-written table is gone), `OBJECT_EVENTS_ENABLED`, `OBJECT_EVENTS_CONCURRENCY` and `OBJECT_EVENTS_SECRET_<NAME>` in `docs/release/operations/configuration-reference.md` (section 6) and, commented, in `.env.example`.
