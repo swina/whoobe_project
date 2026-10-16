@@ -106,6 +106,9 @@ cannot be lost** - see [secrets and keys](secrets-and-keys.md).
 | `GATEWAY_PROXY_TIMEOUT_MS` | 30000 | upstream timeout |
 | `GATEWAY_PRESETS_PATH` | unset | extra vendor presets (`*.json`), read per request |
 | `GATEWAY_PLUGINS_PATH` | unset | gateway plugins (code), loaded at start |
+| `OBJECT_EVENTS_ENABLED` | on | `0` stops the object events of the instance: no event is written and the delivery worker in the gateway does not start. Read by core-api and the gateway, so keep it in the shared env file. See [Object events](../communication/object-events.md) |
+| `OBJECT_EVENTS_CONCURRENCY` | 5 | how many event deliveries the gateway makes at once (1-50) |
+| `OBJECT_EVENTS_SECRET_<NAME>` | unset | the HMAC key of a subscription that names it (*Signing key name* in the dashboard). Only names with this prefix are ever read. Set it in the env file of the gateway; never in the dashboard |
 | `VITE_GATEWAY_*` | | build-time defaults of the gateway screens in the dashboard |
 
 ## 7. Mail, AI and integrations

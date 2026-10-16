@@ -23,7 +23,7 @@ upgrade from, and the automated upgrade test is still listed as missing in the r
 - Since the mail-provider work (migration 0050) the rule is **expand only** inside a release: new tables, new columns
   that are nullable or have a default, `CREATE … IF NOT EXISTS`. A column that stops being used stays until a later
   release has been through the backfill, then a separate migration drops it. Examples: 0050 (mail providers), 0051
-  (`locked` on snippets), 0052 (`form_uploads`).
+  (`locked` on snippets), 0052 (`form_uploads`), 0059 (`object_events`, `object_event_subscriptions`, `object_event_deliveries`: three new tables, nothing existing changes; the first start after the upgrade creates them and gives `object_events:manage` to `admin`).
 - Earlier migrations (0000-0044) are the development history of 0.1.0 and include destructive steps: 0035 drops and
   recreates `ai_settings` (per user), 0017 renames `menus` to `website_paths`, 0044 adds a unique page slug per website
   (it **fails if duplicate slugs exist** in a database that predates it). They matter only for installations that ran a

@@ -3494,6 +3494,171 @@ paths:
             application/json:
               schema:
                 type: object
+  /object-event-subscriptions:
+    get:
+      tags: ["core-api: Object events: subscriptions and delivery log (permission `object_events:manage`)"]
+      summary: "List the subscriptions that send object events to a service."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Object events: subscriptions and delivery log (permission `object_events:manage`)"]
+      summary: "Create one: `{ name, events[], endpointId, routeId, classId?, enabled?, ignoreActors?, signingSecretRef? }`. The route must be POST, PUT or PATCH with a fixed path; `signingSecretRef` is an environment variable name starting `OBJECT_EVENTS_SECRET_`."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /object-event-subscriptions/{id}:
+    get:
+      tags: ["core-api: Object events: subscriptions and delivery log (permission `object_events:manage`)"]
+      summary: "Get one subscription."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Object events: subscriptions and delivery log (permission `object_events:manage`)"]
+      summary: "Change some of its fields."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Object events: subscriptions and delivery log (permission `object_events:manage`)"]
+      summary: "Delete it and its delivery log."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /object-event-subscriptions/{id}/test:
+    post:
+      tags: ["core-api: Object events: subscriptions and delivery log (permission `object_events:manage`)"]
+      summary: "Queue a synthetic `object.updated` marked `\"test\": true` for this subscription only (202)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /object-event-subscriptions/{id}/deliveries:
+    get:
+      tags: ["core-api: Object events: subscriptions and delivery log (permission `object_events:manage`)"]
+      summary: "The delivery log, newest first (`?status=pending`, `delivered`, `retrying` or `dead`, and `limit`): status, attempts, next try, last problem. Never the event content or the service's answer."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /object-event-deliveries/{id}/retry:
+    post:
+      tags: ["core-api: Object events: subscriptions and delivery log (permission `object_events:manage`)"]
+      summary: "Retry a delivery that gave up (`dead`); 409 for any other status."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /docs-sites/{websiteId}/tree:
     get:
       tags: ["core-api: Documentation sites (Markdown)"]

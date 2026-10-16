@@ -102,6 +102,7 @@ The other routes stay on the broad keys, on purpose: they are workspace-level or
 | `assets:view` / `assets:list` | 4 / 1 (documentation-site reads) |
 | `objects:publish` | 2 (and the publish state of pages and objects, F-035; website import, F-052) |
 | `workflows:manage` | 2 |
+| `object_events:manage` | 8 (subscriptions that send object events to a service, their delivery log; `admin` only, refused in the sandbox) |
 
 asset-processor additionally checks `assets:upload` and `assets:delete`, and the gateway admin routes `gateway:manage`.
 

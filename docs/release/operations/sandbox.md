@@ -36,7 +36,7 @@ services, no capabilities, memory/CPU/process limits) is in `docker-compose.sand
 
 ### Features that are off (answer 403 "disabled in the public sandbox")
 
-AI (`/ai/*`), mail (`/mail-*`, and sending itself), the Figma import, the migration sources, the CDN mirror settings,
+AI (`/ai/*`), mail (`/mail-*`, and sending itself), object events (`/object-event-*`: they call outside the stack), the Figma import, the migration sources, the CDN mirror settings,
 PWA generation, regenerating a website's gateway key. Outbound HTTP through `safeFetch` is refused for every host that is not
 in `SANDBOX_ALLOW_HOSTS`, checked before any DNS lookup and on every redirect hop; a listed host still goes through the
 normal SSRF checks (no private or loopback addresses). So a visitor can create gateway endpoints and routes, but only towards

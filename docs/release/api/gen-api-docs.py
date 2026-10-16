@@ -214,6 +214,16 @@ CORE_API_SECTIONS = [
   ("POST", "/public/forms/:classId/submit", "Submit a public form, creating an unpublished Data Object of the given class. A `notify` block in the body only sends mail if it is the one an author saved in a form of a page for that class (F-053); recipients must be one plain address, 3 mails an hour per address."),
   ("GET", "/preview/objects/:token", "Resolve a preview-link token to its (possibly unpublished) object."),
 ]),
+("Object events: subscriptions and delivery log (permission `object_events:manage`)", [
+  ("GET", "/object-event-subscriptions", "List the subscriptions that send object events to a service."),
+  ("POST", "/object-event-subscriptions", "Create one: `{ name, events[], endpointId, routeId, classId?, enabled?, ignoreActors?, signingSecretRef? }`. The route must be POST, PUT or PATCH with a fixed path; `signingSecretRef` is an environment variable name starting `OBJECT_EVENTS_SECRET_`."),
+  ("GET", "/object-event-subscriptions/:id", "Get one subscription."),
+  ("PATCH", "/object-event-subscriptions/:id", "Change some of its fields."),
+  ("DELETE", "/object-event-subscriptions/:id", "Delete it and its delivery log."),
+  ("POST", "/object-event-subscriptions/:id/test", "Queue a synthetic `object.updated` marked `\"test\": true` for this subscription only (202)."),
+  ("GET", "/object-event-subscriptions/:id/deliveries", "The delivery log, newest first (`?status=pending`, `delivered`, `retrying` or `dead`, and `limit`): status, attempts, next try, last problem. Never the event content or the service's answer."),
+  ("POST", "/object-event-deliveries/:id/retry", "Retry a delivery that gave up (`dead`); 409 for any other status."),
+]),
 ("Documentation sites (Markdown)", [
   ("GET", "/docs-sites/:websiteId/tree", "A documentation website (settings `kind: docs`, source DAM folder): its documents with titles, addresses and visibility, the index (automatic from the tree of files, or `_nav.yml`), the other files and the warnings (broken links, entries pointing nowhere)."),
   ("GET", "/docs-sites/:websiteId/preview/*", "A rendered page of a documentation website by its address (empty = home), private documents included: `{ site, nav, page }` with the HTML, the headings, breadcrumbs, previous/next and the warnings."),
