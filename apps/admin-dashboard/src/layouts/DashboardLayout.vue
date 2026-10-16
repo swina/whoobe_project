@@ -571,6 +571,7 @@ import {
   ScrollText,
   BookOpen,
   Zap,
+  Radio,
   Rocket,
   Link2,
   KeyRound,
@@ -612,6 +613,7 @@ import ThemesView from '../components/themes/ThemesView.vue'
 import GatewayEndpointsView from '../views/GatewayEndpointsView.vue'
 import GatewayPluginsView from '../views/GatewayPluginsView.vue'
 import AutomationsView from '../views/AutomationsView.vue'
+import ObjectEventsView from '../views/ObjectEventsView.vue'
 import DataBindingsView from '../views/DataBindingsView.vue'
 import ApiClientsView from '../views/ApiClientsView.vue'
 import { usePagesStore } from '../stores/pagesStore'
@@ -890,7 +892,7 @@ function isSettingsSubSectionActive(key: SettingsSubSection): boolean {
 // sectionLabels/sectionIcons below still carry an 'overview' entry since
 // SectionKind still includes it and that fallback rendering reuses
 // sectionComponents.overview.
-const navItems: { name: string; section: SectionKind; icon: any }[] = [
+const allNavItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Websites', section: 'websites', icon: Globe },
   { name: 'Pages', section: 'pages', icon: FileStack },
   { name: 'Snippets', section: 'snippets', icon: Puzzle },
@@ -903,12 +905,16 @@ const navItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'API clients', section: 'api-clients', icon: KeyRound },
   { name: 'Data bindings', section: 'data-bindings', icon: Link2 },
   { name: 'Automations', section: 'automations', icon: Zap },
+  { name: 'Object events', section: 'object-events', icon: Radio },
   { name: 'Outgoing Mail', section: 'mail', icon: Mail },
   { name: 'Documents', section: 'documents', icon: FileText },
   { name: 'AI', section: 'ai', icon: Sparkles },
   { name: 'Settings', section: 'settings', icon: Settings },
   { name: 'System Logs', section: 'system-logs', icon: ScrollText }
 ]
+
+// Object events are managed by administrators only (`object_events:manage`): the entry is not offered to anyone else.
+const navItems = computed(() => allNavItems.filter((item) => item.section !== 'object-events' || authStore.can('object_events:manage')))
 
 // Grouped-view categories for the sidebar toggle above. Assets stays its
 // own group (rather than folded into Content) since it already carries
@@ -937,6 +943,7 @@ const sectionGroup: Partial<Record<SectionKind, NavGroupId>> = {
   'api-clients': 'data',
   'data-bindings': 'data',
   automations: 'data',
+  'object-events': 'data',
   'system-logs': 'system',
   ai: 'system',
   settings: 'system'
@@ -944,7 +951,7 @@ const sectionGroup: Partial<Record<SectionKind, NavGroupId>> = {
 
 type NavRow =
   | { kind: 'header'; id: NavGroupId; label: string }
-  | { kind: 'item'; item: (typeof navItems)[number] }
+  | { kind: 'item'; item: (typeof allNavItems)[number] }
 
 // Sidebar renders this single list, not navItems directly, so the flat and
 // grouped layouts share one row of markup instead of two duplicated blocks.
@@ -952,11 +959,11 @@ type NavRow =
 // icon-only mode.
 const navRows = computed<NavRow[]>(() => {
   if (!isNavGrouped.value || isSidebarCollapsed.value) {
-    return navItems.map((item) => ({ kind: 'item', item }))
+    return navItems.value.map((item) => ({ kind: 'item', item }))
   }
   const rows: NavRow[] = []
   for (const groupId of navGroupOrder) {
-    const items = navItems.filter((item) => sectionGroup[item.section] === groupId)
+    const items = navItems.value.filter((item) => sectionGroup[item.section] === groupId)
     if (items.length === 0) continue
     rows.push({ kind: 'header', id: groupId, label: navGroupLabels[groupId] })
     if (!collapsedNavGroups.value.has(groupId)) {
@@ -985,6 +992,7 @@ const sectionComponents: Record<SectionKind, any> = {
   'api-clients': ApiClientsView,
   'data-bindings': DataBindingsView,
   automations: AutomationsView,
+  'object-events': ObjectEventsView,
   'system-logs': SystemLogsView,
 }
 
@@ -1005,6 +1013,7 @@ const sectionLabels: Record<SectionKind, string> = {
   'api-clients': 'API clients',
   'data-bindings': 'Data bindings',
   automations: 'Automations',
+  'object-events': 'Object events',
   'system-logs': 'System Logs',
   ai: 'AI',
   settings: 'Settings'
@@ -1027,6 +1036,7 @@ const sectionIcons: Record<SectionKind, any> = {
   'api-clients': KeyRound,
   'data-bindings': Link2,
   automations: Zap,
+  'object-events': Radio,
   'system-logs': ScrollText,
   ai: Sparkles,
   settings: Settings

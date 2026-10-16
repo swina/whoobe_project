@@ -261,6 +261,19 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `GET /data-objects/:id/transitions` | Workflow transitions available for the object in its class's workflow. |
 | `POST /data-objects/:id/transition` | Run a workflow transition; each transition declares the permissions it needs. |
 
+### Object events: subscriptions and delivery log (permission `object_events:manage`)
+
+| Method & path | Description |
+| --- | --- |
+| `GET /object-event-subscriptions` | List the subscriptions. |
+| `POST /object-event-subscriptions` | Create one: `{ name, events[], endpointId, routeId, classId?, enabled?, ignoreActors?, signingSecretRef? }`. The route must be POST, PUT or PATCH with a fixed path; `signingSecretRef` is an environment variable name starting `OBJECT_EVENTS_SECRET_`. |
+| `GET /object-event-subscriptions/:id` | Get one. |
+| `PATCH /object-event-subscriptions/:id` | Change some of its fields. |
+| `DELETE /object-event-subscriptions/:id` | Delete it and its delivery log. |
+| `POST /object-event-subscriptions/:id/test` | Queue a synthetic `object.updated` marked `"test": true` for this subscription (202). |
+| `GET /object-event-subscriptions/:id/deliveries` | The delivery log, newest first (`?status=pending\|delivered\|retrying\|dead&limit=`): status, attempts, next try, last problem; never the event content. |
+| `POST /object-event-deliveries/:id/retry` | Retry a `dead` delivery (409 for any other). |
+
 ### Public Data Objects & Forms (no auth, published only)
 
 | Method & path | Description |
