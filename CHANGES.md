@@ -1,6 +1,6 @@
 ## Object events: plan for a "Connect a flow" wizard — 2026-10-16
 - Branch: `master`
-- New plan `docs/plans/automations/object-events-connect-wizard.md` (documentation only, nothing implemented): one dialog in *Object events* that takes the class and event preset, the pasted webhook URL (Activepieces / n8n / generic, test and live routes created together with a switch), optional write back (scoped API client, key shown once, loop guard filled in, ready-to-paste HTTP step) and a test that explains the result in words. Built from the existing APIs in the dashboard with rollback, no new route or permission; steps, tests and five open decisions with proposed defaults.
+- New plan `docs/plans/automations/object-events-connect-wizard.md` (documentation only, nothing implemented): one dialog in *Object events* that takes the class and event preset, the pasted webhook URL (Activepieces / n8n / generic, test and live routes created together with a switch), optional write back (scoped API client, key shown once, loop guard filled in, ready-to-paste HTTP step) and a test that explains the result in words. Built from the existing APIs in the dashboard with rollback, no new route or permission; steps, tests and five open decisions with proposed defaults. Note added: Activepieces' Catch Webhook was seen accepting a PATCH route (the wizard still creates POST).
 
 ## API clients list: write scopes shown as write — 2026-10-16
 - Branch: `master`

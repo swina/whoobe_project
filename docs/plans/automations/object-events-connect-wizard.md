@@ -135,5 +135,6 @@ The proposal's defaults are in bold.
 - The dev stack runs from the working tree: use a `git worktree` for the branch, and keep the main checkout on `master`.
 - A listing fix made on the same day is related: the API clients list showed write scopes as `GET` (fixed, commit `f62238a`); the wizard's summary
   of the created client should use the same wording (`POST/PATCH data /<Class>`).
-- Unknown, to be checked in step 2 and not assumed: whether Activepieces' webhook accepts methods other than POST. The wizard never offers them, so
-  the question matters only for subscriptions made by hand.
+- Observed by the owner (2026-10-16): the Activepieces *Catch Webhook* accepted a **PATCH** call without an error, so a hand-made PATCH route works
+  with that engine. The wizard still creates **POST** routes (the method every engine accepts), and the subscription editor keeps allowing POST, PUT
+  and PATCH. Other engines are not checked.
