@@ -1,8 +1,8 @@
-import { and, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { objectEvents, objectEventDeliveries, objectEventSubscriptions } from './object-events-schema.js';
 import { getDataClass } from './data-classes-records.js';
-import { buildBulkEvent, nextAttemptPlan, objectEventsEnabled, type BulkObjectEvent, type EventActor, type ObjectEvent } from './object-events.js';
+import { buildBulkEvent, nextAttemptPlan, objectEventsEnabled, type SubscriptionInput, type BulkObjectEvent, type EventActor, type ObjectEvent } from './object-events.js';
 
 type Db = ReturnType<typeof getDb>;
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -147,4 +147,124 @@ export async function markFailed(deliveryId: string, attemptsBefore: number, err
     })
     .where(eq(objectEventDeliveries.id, deliveryId));
   return plan.status;
+}
+
+// ---- subscriptions and the delivery log (managed from the dashboard) ----
+
+export type ObjectEventSubscriptionRecord = typeof objectEventSubscriptions.$inferSelect;
+
+export async function listObjectEventSubscriptions(): Promise<ObjectEventSubscriptionRecord[]> {
+  return getDb().select().from(objectEventSubscriptions).orderBy(objectEventSubscriptions.name);
+}
+
+export async function getObjectEventSubscription(id: string): Promise<ObjectEventSubscriptionRecord | undefined> {
+  const [row] = await getDb().select().from(objectEventSubscriptions).where(eq(objectEventSubscriptions.id, id)).limit(1);
+  return row;
+}
+
+export async function createObjectEventSubscription(input: SubscriptionInput): Promise<ObjectEventSubscriptionRecord> {
+  const [row] = await getDb()
+    .insert(objectEventSubscriptions)
+    .values({ ...input, enabled: input.enabled ?? true })
+    .returning();
+  return row;
+}
+
+export async function updateObjectEventSubscription(id: string, input: Partial<SubscriptionInput>): Promise<ObjectEventSubscriptionRecord | undefined> {
+  const [row] = await getDb()
+    .update(objectEventSubscriptions)
+    .set({ ...input, updatedAt: new Date() })
+    .where(eq(objectEventSubscriptions.id, id))
+    .returning();
+  return row;
+}
+
+/** Deleting a subscription deletes its deliveries (cascade). */
+export async function deleteObjectEventSubscription(id: string): Promise<boolean> {
+  const rows = await getDb().delete(objectEventSubscriptions).where(eq(objectEventSubscriptions.id, id)).returning({ id: objectEventSubscriptions.id });
+  return rows.length > 0;
+}
+
+const NIL_UUID = '00000000-0000-0000-0000-000000000000';
+
+/**
+ * Queues a synthetic `object.updated` marked `"test": true` for ONE subscription (whatever its filters say), so an administrator can see the
+ * consumer receive something. Not an event of a real object: its object id is the nil UUID.
+ */
+export async function sendTestObjectEvent(subscriptionId: string, actor: EventActor, now: Date = new Date()): Promise<{ eventId: string; deliveryId: string } | null> {
+  const sub = await getObjectEventSubscription(subscriptionId);
+  if (!sub) return null;
+  const id = crypto.randomUUID();
+  const classId = sub.classId ?? NIL_UUID;
+  const payload = {
+    id,
+    type: 'object.updated',
+    test: true,
+    occurredAt: now.toISOString(),
+    class: { id: classId },
+    object: { id: NIL_UUID, translationGroupId: NIL_UUID, locale: 'en', key: 'test-event', published: false, workflowState: null, updatedAt: now.toISOString() },
+    changed: [],
+    actor,
+  };
+  return getDb().transaction(async (tx) => {
+    await tx.insert(objectEvents).values({
+      id, type: 'object.updated', occurredAt: now, classId, objectId: null, translationGroupId: null, locale: null,
+      actorType: actor.type, actorId: actor.id ?? null, payload,
+    });
+    const [d] = await tx.insert(objectEventDeliveries).values({ eventId: id, subscriptionId, nextAttemptAt: now }).returning({ id: objectEventDeliveries.id });
+    return { eventId: id, deliveryId: d.id };
+  });
+}
+
+export interface DeliveryLogRow {
+  id: string;
+  status: string;
+  attempts: number;
+  nextAttemptAt: Date;
+  lastError: string | null;
+  deliveredAt: Date | null;
+  createdAt: Date;
+  event: { id: string; type: string; occurredAt: Date; objectId: string | null; test: boolean };
+}
+
+/** Newest first. The log shows what happened to a delivery, never the content of the event or the consumer's answer. */
+export async function listDeliveries(subscriptionId: string, opts: { status?: string; limit?: number } = {}): Promise<DeliveryLogRow[]> {
+  const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
+  const rows = await getDb()
+    .select({
+      id: objectEventDeliveries.id,
+      status: objectEventDeliveries.status,
+      attempts: objectEventDeliveries.attempts,
+      nextAttemptAt: objectEventDeliveries.nextAttemptAt,
+      lastError: objectEventDeliveries.lastError,
+      deliveredAt: objectEventDeliveries.deliveredAt,
+      createdAt: objectEventDeliveries.createdAt,
+      eventId: objectEvents.id,
+      eventType: objectEvents.type,
+      occurredAt: objectEvents.occurredAt,
+      objectId: objectEvents.objectId,
+      test: sql<boolean>`coalesce((${objectEvents.payload}->>'test')::boolean, false)`,
+    })
+    .from(objectEventDeliveries)
+    .innerJoin(objectEvents, eq(objectEvents.id, objectEventDeliveries.eventId))
+    .where(and(eq(objectEventDeliveries.subscriptionId, subscriptionId), opts.status ? eq(objectEventDeliveries.status, opts.status) : undefined))
+    .orderBy(desc(objectEventDeliveries.createdAt))
+    .limit(limit);
+  return rows.map((r) => ({
+    id: r.id, status: r.status, attempts: r.attempts, nextAttemptAt: r.nextAttemptAt, lastError: r.lastError, deliveredAt: r.deliveredAt, createdAt: r.createdAt,
+    event: { id: r.eventId, type: r.eventType, occurredAt: r.occurredAt, objectId: r.objectId, test: r.test },
+  }));
+}
+
+/** Gives a `dead` delivery a fresh start (due now, attempts back to 0). Only a dead one: a delivery still being retried is left alone. */
+export async function retryDeadDelivery(deliveryId: string, now: Date = new Date()): Promise<'queued' | 'not-dead' | 'not-found'> {
+  const db = getDb();
+  const rows = await db
+    .update(objectEventDeliveries)
+    .set({ status: 'pending', attempts: 0, nextAttemptAt: now, lastError: null })
+    .where(and(eq(objectEventDeliveries.id, deliveryId), eq(objectEventDeliveries.status, 'dead')))
+    .returning({ id: objectEventDeliveries.id });
+  if (rows.length) return 'queued';
+  const [exists] = await db.select({ id: objectEventDeliveries.id }).from(objectEventDeliveries).where(eq(objectEventDeliveries.id, deliveryId)).limit(1);
+  return exists ? 'not-dead' : 'not-found';
 }

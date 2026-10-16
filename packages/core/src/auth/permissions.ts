@@ -50,6 +50,9 @@ export const PERMISSIONS = {
 
   // Gateway management
   GATEWAY_MANAGE: 'gateway:manage',
+
+  // Subscriptions to object events (docs/plans/datamodel/data-objects-automations.md): where changes of data objects are sent. Admin only.
+  OBJECT_EVENTS_MANAGE: 'object_events:manage',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

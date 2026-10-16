@@ -265,6 +265,19 @@ import {
   markFormUploadRejected,
 } from '@whoobe-cms/core/server';
 import type { EventActor } from '@whoobe-cms/core/server';
+import {
+  listObjectEventSubscriptions,
+  getObjectEventSubscription,
+  createObjectEventSubscription,
+  updateObjectEventSubscription,
+  deleteObjectEventSubscription,
+  sendTestObjectEvent,
+  listDeliveries,
+  retryDeadDelivery,
+  validateSubscriptionInput,
+  getGatewayEndpoint,
+  getGatewayRoute,
+} from '@whoobe-cms/core/server';
 // Root package entry, not '/server' - compileDynamicSchema lives in
 // schema/dynamic.ts, exported from index.ts and kept out of the Node-only
 // './server' barrel on purpose (no DB/crypto dependency, so it's also
@@ -5362,6 +5375,145 @@ app.post('/mail-log/delete', requirePermission(PERMISSIONS.SETTINGS_MANAGE), asy
 // bodies referenced by Form notify configs (and future triggers). The list
 // returns metadata only; the full Element tree / text body is fetched per
 // template (GET /mail-templates/:id) for editing and rendering.
+// ---- Object events: subscriptions and their delivery log (docs/plans/datamodel/data-objects-automations.md) ----
+// Admin only (`object_events:manage`); refused in the public sandbox by path (sandbox.ts). The subscription points at a Gateway endpoint and route:
+// credentials, SSRF checks and the outbound allow-list stay in the Gateway, which also delivers (apps/gateway/src/object-event-worker.ts).
+const OBJECT_EVENT_ROUTE_METHODS = ['POST', 'PUT', 'PATCH'];
+
+async function objectEventTargetProblem(endpointId: string, routeId: string): Promise<string | null> {
+  const endpoint = await getGatewayEndpoint(endpointId);
+  if (!endpoint) return 'The Gateway endpoint does not exist';
+  const route = await getGatewayRoute(routeId);
+  if (!route || route.endpointId !== endpoint.id) return 'The route does not exist on this endpoint';
+  if (!OBJECT_EVENT_ROUTE_METHODS.includes(route.method.toUpperCase())) return 'The route must be POST, PUT or PATCH';
+  if (route.path.includes('{')) return 'The route must have a fixed path (no {parameters})';
+  return null;
+}
+
+app.get('/object-event-subscriptions', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    res.json({ subscriptions: await listObjectEventSubscriptions() });
+  } catch (error: any) {
+    logger.error({ err: error }, 'List object event subscriptions error');
+    res.status(500).json({ error: 'Failed to list the subscriptions' });
+  }
+});
+
+app.post('/object-event-subscriptions', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const checked = validateSubscriptionInput(req.body, false);
+    if (!checked.ok) { res.status(400).json({ error: checked.error }); return; }
+    const v = checked.value as Required<Pick<typeof checked.value, 'name' | 'events' | 'endpointId' | 'routeId'>> & typeof checked.value;
+    if (v.classId && !(await getDataClass(v.classId))) { res.status(400).json({ error: 'The class does not exist' }); return; }
+    const problem = await objectEventTargetProblem(v.endpointId, v.routeId);
+    if (problem) { res.status(400).json({ error: problem }); return; }
+    const subscription = await createObjectEventSubscription({
+      name: v.name,
+      enabled: v.enabled ?? true,
+      classId: v.classId ?? null,
+      events: v.events,
+      endpointId: v.endpointId,
+      routeId: v.routeId,
+      payloadMode: 'minimal',
+      ignoreActors: v.ignoreActors ?? [],
+      signingSecretRef: v.signingSecretRef ?? null,
+    });
+    logger.info({ subscriptionId: subscription.id, name: subscription.name, userId: (req as any).user?.id }, 'Object event subscription created');
+    res.status(201).json({ subscription });
+  } catch (error: any) {
+    if ((error?.code ?? error?.cause?.code) === '23505') { res.status(409).json({ error: 'A subscription with this name already exists' }); return; }
+    logger.error({ err: error }, 'Create object event subscription error');
+    res.status(500).json({ error: 'Failed to create the subscription' });
+  }
+});
+
+app.get('/object-event-subscriptions/:id', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const subscription = await getObjectEventSubscription(req.params.id);
+    if (!subscription) { res.status(404).json({ error: 'Subscription not found' }); return; }
+    res.json({ subscription });
+  } catch (error: any) {
+    if (error?.code === '22P02') { res.status(404).json({ error: 'Subscription not found' }); return; }
+    logger.error({ err: error }, 'Get object event subscription error');
+    res.status(500).json({ error: 'Failed to read the subscription' });
+  }
+});
+
+app.patch('/object-event-subscriptions/:id', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const existing = await getObjectEventSubscription(req.params.id);
+    if (!existing) { res.status(404).json({ error: 'Subscription not found' }); return; }
+    const checked = validateSubscriptionInput(req.body, true);
+    if (!checked.ok) { res.status(400).json({ error: checked.error }); return; }
+    const v = checked.value;
+    if (v.classId && !(await getDataClass(v.classId))) { res.status(400).json({ error: 'The class does not exist' }); return; }
+    if (v.endpointId !== undefined || v.routeId !== undefined) {
+      const problem = await objectEventTargetProblem(v.endpointId ?? existing.endpointId ?? '', v.routeId ?? existing.routeId ?? '');
+      if (problem) { res.status(400).json({ error: problem }); return; }
+    }
+    const subscription = await updateObjectEventSubscription(req.params.id, v);
+    logger.info({ subscriptionId: req.params.id, fields: Object.keys(v), userId: (req as any).user?.id }, 'Object event subscription updated');
+    res.json({ subscription });
+  } catch (error: any) {
+    if (error?.code === '22P02') { res.status(404).json({ error: 'Subscription not found' }); return; }
+    if ((error?.code ?? error?.cause?.code) === '23505') { res.status(409).json({ error: 'A subscription with this name already exists' }); return; }
+    logger.error({ err: error }, 'Update object event subscription error');
+    res.status(500).json({ error: 'Failed to update the subscription' });
+  }
+});
+
+app.delete('/object-event-subscriptions/:id', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!(await deleteObjectEventSubscription(req.params.id))) { res.status(404).json({ error: 'Subscription not found' }); return; }
+    logger.info({ subscriptionId: req.params.id, userId: (req as any).user?.id }, 'Object event subscription deleted');
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error?.code === '22P02') { res.status(404).json({ error: 'Subscription not found' }); return; }
+    logger.error({ err: error }, 'Delete object event subscription error');
+    res.status(500).json({ error: 'Failed to delete the subscription' });
+  }
+});
+
+app.post('/object-event-subscriptions/:id/test', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const queued = await sendTestObjectEvent(req.params.id, eventActorOf(req));
+    if (!queued) { res.status(404).json({ error: 'Subscription not found' }); return; }
+    res.status(202).json({ queued: true, ...queued });
+  } catch (error: any) {
+    if (error?.code === '22P02') { res.status(404).json({ error: 'Subscription not found' }); return; }
+    logger.error({ err: error }, 'Test object event error');
+    res.status(500).json({ error: 'Failed to queue the test event' });
+  }
+});
+
+app.get('/object-event-subscriptions/:id/deliveries', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    if (status && !['pending', 'delivered', 'retrying', 'dead'].includes(status)) { res.status(400).json({ error: 'status must be pending, delivered, retrying or dead' }); return; }
+    if (!(await getObjectEventSubscription(req.params.id))) { res.status(404).json({ error: 'Subscription not found' }); return; }
+    const limit = Number.parseInt(String(req.query.limit ?? ''), 10);
+    res.json({ deliveries: await listDeliveries(req.params.id, { status, limit: Number.isFinite(limit) ? limit : undefined }) });
+  } catch (error: any) {
+    if (error?.code === '22P02') { res.status(404).json({ error: 'Subscription not found' }); return; }
+    logger.error({ err: error }, 'List object event deliveries error');
+    res.status(500).json({ error: 'Failed to list the deliveries' });
+  }
+});
+
+app.post('/object-event-deliveries/:id/retry', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await retryDeadDelivery(req.params.id);
+    if (result === 'not-found') { res.status(404).json({ error: 'Delivery not found' }); return; }
+    if (result === 'not-dead') { res.status(409).json({ error: 'Only a dead delivery can be retried' }); return; }
+    logger.info({ deliveryId: req.params.id, userId: (req as any).user?.id }, 'Object event delivery retried');
+    res.status(202).json({ queued: true });
+  } catch (error: any) {
+    if (error?.code === '22P02') { res.status(404).json({ error: 'Delivery not found' }); return; }
+    logger.error({ err: error }, 'Retry object event delivery error');
+    res.status(500).json({ error: 'Failed to retry the delivery' });
+  }
+});
+
 app.get('/mail-templates', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
   try {
     const templates = await listMailTemplates();

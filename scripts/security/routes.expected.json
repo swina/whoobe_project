@@ -1445,6 +1445,54 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any"
+    },
+    "GET /object-event-subscriptions": {
+      "access": "permission",
+      "permissions": [
+        "OBJECT_EVENTS_MANAGE"
+      ]
+    },
+    "POST /object-event-subscriptions": {
+      "access": "permission",
+      "permissions": [
+        "OBJECT_EVENTS_MANAGE"
+      ]
+    },
+    "GET /object-event-subscriptions/:id": {
+      "access": "permission",
+      "permissions": [
+        "OBJECT_EVENTS_MANAGE"
+      ]
+    },
+    "PATCH /object-event-subscriptions/:id": {
+      "access": "permission",
+      "permissions": [
+        "OBJECT_EVENTS_MANAGE"
+      ]
+    },
+    "DELETE /object-event-subscriptions/:id": {
+      "access": "permission",
+      "permissions": [
+        "OBJECT_EVENTS_MANAGE"
+      ]
+    },
+    "POST /object-event-subscriptions/:id/test": {
+      "access": "permission",
+      "permissions": [
+        "OBJECT_EVENTS_MANAGE"
+      ]
+    },
+    "GET /object-event-subscriptions/:id/deliveries": {
+      "access": "permission",
+      "permissions": [
+        "OBJECT_EVENTS_MANAGE"
+      ]
+    },
+    "POST /object-event-deliveries/:id/retry": {
+      "access": "permission",
+      "permissions": [
+        "OBJECT_EVENTS_MANAGE"
+      ]
     }
   }
 }

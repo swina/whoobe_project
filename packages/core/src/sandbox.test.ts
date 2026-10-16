@@ -19,7 +19,7 @@ describe('sandbox mode', () => {
   });
   it('blocks outbound/build features and nothing else', () => {
     for (const p of ['/ai/generate', '/mail-settings/test', '/mail-log', '/figma/import', '/migration-sources/x/import-objects',
-      '/whoobe-one/websites/abc/generate-pwa', '/whoobe-one/websites/abc/gateway-api-key/regenerate']) expect(isSandboxBlockedPath(p)).toBe(true);
+      '/object-event-subscriptions', '/object-event-subscriptions/abc/test', '/object-event-subscriptions/abc/deliveries', '/object-event-deliveries/abc/retry', '/whoobe-one/websites/abc/generate-pwa', '/whoobe-one/websites/abc/gateway-api-key/regenerate']) expect(isSandboxBlockedPath(p)).toBe(true);
     for (const p of ['/health', '/auth/login', '/whoobe-one/websites', '/objects', '/whoobe-one/websites/abc/export']) expect(isSandboxBlockedPath(p)).toBe(false);
   });
   it('lets the demo account read users and roles but not change them', () => {

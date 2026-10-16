@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BACKOFF_MS, buildBulkEvent, buildEvent, changedFields, classifyUpdate, nextAttemptPlan, signBody, type EventActor } from './object-events.js';
+import { BACKOFF_MS, buildBulkEvent, buildEvent, changedFields, classifyUpdate, nextAttemptPlan, signBody, validateSubscriptionInput, type EventActor } from './object-events.js';
 import type { DataObjectRecord } from './data-objects-records.js';
 
 function rec(overrides: Partial<DataObjectRecord> = {}): DataObjectRecord {
@@ -157,5 +157,33 @@ describe('signBody', () => {
   it('matches an independent computation (what a consumer would do)', async () => {
     const { createHmac } = await import('node:crypto');
     expect(signBody('k', '5', 'body')).toBe('sha256=' + createHmac('sha256', 'k').update('5.body').digest('hex'));
+  });
+});
+
+describe('validateSubscriptionInput', () => {
+  const ok = { name: ' Orders ', events: ['object.created', 'object.created', 'object.bulk'], endpointId: '11111111-1111-4111-8111-111111111111', routeId: '22222222-2222-4222-8222-222222222222' };
+  it('accepts a create, trims the name and removes duplicates', () => {
+    const r = validateSubscriptionInput(ok);
+    expect(r).toEqual({ ok: true, value: { name: 'Orders', events: ['object.created', 'object.bulk'], endpointId: ok.endpointId, routeId: ok.routeId } });
+  });
+  it('refuses what is missing or wrong on a create', () => {
+    for (const bad of [null, [], 'x', { ...ok, name: '  ' }, { ...ok, name: 'x'.repeat(121) }, { ...ok, events: [] }, { ...ok, events: ['object.exploded'] },
+      { ...ok, endpointId: 'nope' }, { ...ok, routeId: undefined }, { ...ok, classId: 'nope' }, { ...ok, enabled: 'yes' }, { ...ok, payloadMode: 'fields' },
+      { ...ok, ignoreActors: 'engine' }, { ...ok, ignoreActors: Array(21).fill('a') }, { ...ok, ignoreActors: [''] }]) {
+      expect(validateSubscriptionInput(bad).ok, JSON.stringify(bad)).toBe(false);
+    }
+  });
+  it('a patch takes only what is given', () => {
+    expect(validateSubscriptionInput({ enabled: false }, true)).toEqual({ ok: true, value: { enabled: false } });
+    expect(validateSubscriptionInput({}, true)).toEqual({ ok: true, value: {} });
+    expect(validateSubscriptionInput({ name: '' }, true).ok).toBe(false);
+    expect(validateSubscriptionInput({ classId: null }, true)).toEqual({ ok: true, value: { classId: null } });
+  });
+  it('the signing secret must be an OBJECT_EVENTS_SECRET_ variable name, never another secret of the instance', () => {
+    expect(validateSubscriptionInput({ ...ok, signingSecretRef: 'OBJECT_EVENTS_SECRET_ENGINE' }).ok).toBe(true);
+    expect(validateSubscriptionInput({ ...ok, signingSecretRef: null }).ok).toBe(true);
+    for (const bad of ['DATABASE_URL', 'POSTGRES_PASSWORD', 'object_events_secret_x', 'OBJECT_EVENTS_SECRET_', 'OBJECT_EVENTS_SECRET_a b', 5]) {
+      expect(validateSubscriptionInput({ ...ok, signingSecretRef: bad }).ok, String(bad)).toBe(false);
+    }
   });
 });

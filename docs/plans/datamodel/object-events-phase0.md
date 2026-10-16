@@ -98,7 +98,7 @@ Tests: retry schedule, dead after the last attempt, the SSRF refusal of a privat
 
 ### Step 6: subscriptions API
 core-api routes `/object-event-subscriptions` (list, create, update, delete, **send test event**, deliveries list, retry a dead one),
-permission `object-events:manage` (admin only), blocked under `SANDBOX_MODE` (403). New routes added to `routes.expected.json`; tests for
+permission `object_events:manage` (admin only), blocked under `SANDBOX_MODE` (403). New routes added to `routes.expected.json`; tests for
 the permission, the sandbox block, and that a subscription cannot point outside the Gateway's endpoints.
 
 ### Step 7: end to end with Activepieces

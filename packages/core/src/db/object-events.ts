@@ -173,3 +173,80 @@ export function nextAttemptPlan(failedAttempts: number, now: Date): { status: 'r
 export function signBody(secret: string, timestamp: string, body: string): string {
   return 'sha256=' + createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
 }
+
+// ---- subscriptions: validation of what an administrator submits ----
+
+export const OBJECT_EVENT_TYPES: readonly ObjectEventType[] = [
+  'object.created', 'object.updated', 'object.published', 'object.unpublished', 'object.deleted', 'object.transitioned', 'object.bulk',
+];
+
+/** The signing key lives in an environment variable of the instance; the name must carry this prefix so a subscription can never read another secret (the database password, a session key) by naming it. */
+export const SIGNING_SECRET_PREFIX = 'OBJECT_EVENTS_SECRET_';
+
+export interface SubscriptionInput {
+  name: string;
+  enabled: boolean;
+  classId: string | null;
+  events: ObjectEventType[];
+  endpointId: string;
+  routeId: string;
+  payloadMode: 'minimal';
+  ignoreActors: string[];
+  signingSecretRef: string | null;
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Checks a create (`partial: false`, every required field present) or a patch (`partial: true`, only what is given). Unknown keys are ignored. */
+export function validateSubscriptionInput(
+  body: unknown,
+  partial = false,
+): { ok: true; value: Partial<SubscriptionInput> } | { ok: false; error: string } {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return { ok: false, error: 'a JSON object is required' };
+  const b = body as Record<string, unknown>;
+  const out: Partial<SubscriptionInput> = {};
+  const has = (k: string) => b[k] !== undefined;
+
+  if (!partial || has('name')) {
+    if (typeof b.name !== 'string' || !b.name.trim() || b.name.trim().length > 120) return { ok: false, error: 'name is required (at most 120 characters)' };
+    out.name = b.name.trim();
+  }
+  if (has('enabled')) {
+    if (typeof b.enabled !== 'boolean') return { ok: false, error: 'enabled must be true or false' };
+    out.enabled = b.enabled;
+  }
+  if (has('classId')) {
+    if (b.classId !== null && (typeof b.classId !== 'string' || !UUID.test(b.classId))) return { ok: false, error: 'classId must be a class id or null (every class)' };
+    out.classId = b.classId as string | null;
+  }
+  if (!partial || has('events')) {
+    if (!Array.isArray(b.events) || !b.events.length) return { ok: false, error: 'events is required: a list of event types' };
+    const bad = b.events.find((e) => typeof e !== 'string' || !OBJECT_EVENT_TYPES.includes(e as ObjectEventType));
+    if (bad !== undefined) return { ok: false, error: `unknown event type: ${String(bad).slice(0, 40)}` };
+    out.events = [...new Set(b.events as ObjectEventType[])];
+  }
+  for (const k of ['endpointId', 'routeId'] as const) {
+    if (!partial || has(k)) {
+      if (typeof b[k] !== 'string' || !UUID.test(b[k] as string)) return { ok: false, error: `${k} is required (a Gateway ${k === 'endpointId' ? 'endpoint' : 'route'} id)` };
+      out[k] = b[k] as string;
+    }
+  }
+  if (has('payloadMode')) {
+    if (b.payloadMode !== 'minimal') return { ok: false, error: 'payloadMode must be "minimal" (a field allow-list is not available yet)' };
+    out.payloadMode = 'minimal';
+  }
+  if (has('ignoreActors')) {
+    if (!Array.isArray(b.ignoreActors) || b.ignoreActors.length > 20 || b.ignoreActors.some((a) => typeof a !== 'string' || !a || a.length > 128)) {
+      return { ok: false, error: 'ignoreActors must be a list of at most 20 actor ids' };
+    }
+    out.ignoreActors = [...new Set(b.ignoreActors as string[])];
+  }
+  if (has('signingSecretRef')) {
+    const ref = b.signingSecretRef;
+    if (ref !== null && (typeof ref !== 'string' || !new RegExp(`^${SIGNING_SECRET_PREFIX}[A-Z0-9_]{1,48}$`).test(ref))) {
+      return { ok: false, error: `signingSecretRef must be null or the name of an environment variable like ${SIGNING_SECRET_PREFIX}ENGINE` };
+    }
+    out.signingSecretRef = ref as string | null;
+  }
+  return { ok: true, value: out };
+}

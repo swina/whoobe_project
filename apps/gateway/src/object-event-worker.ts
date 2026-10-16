@@ -3,6 +3,7 @@ import {
   deliverClaim,
   getGatewayEndpoint,
   getGatewayRoute,
+  SIGNING_SECRET_PREFIX,
   type ClaimedDelivery,
   type DeliveryDeps,
   type TargetResult,
@@ -45,7 +46,8 @@ export const objectEventDeps: DeliveryDeps = {
     const result = await proxyFetch(target.url, target.method, target.headers, JSON.parse(body), target.timeoutMs);
     return { status: result.status };
   },
-  getSecret: (ref) => process.env[ref],
+  // only names with the prefix: a subscription can never read another secret of the instance
+  getSecret: (ref) => (ref.startsWith(SIGNING_SECRET_PREFIX) ? process.env[ref] : undefined),
   instance: process.env.WHOOBE_HOSTNAME || undefined,
 };
 

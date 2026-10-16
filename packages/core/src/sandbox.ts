@@ -36,6 +36,7 @@ export const SANDBOX_DISABLED_MESSAGE = 'This feature is disabled in the public 
 const BLOCKED_PREFIXES = [
   '/publish/', '/ai/', '/mail-settings', '/mail-templates', '/mail-log', '/figma/', '/migration-sources',
   '/whoobe-one/settings/cdn-mirror', '/public/dam/assets/mirror-status',
+  '/object-event-subscriptions', '/object-event-deliveries',
 ];
 const BLOCKED_PATTERNS = [
   /^\/whoobe-one\/websites\/[^/]+\/generate-pwa$/,

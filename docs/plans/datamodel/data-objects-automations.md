@@ -99,7 +99,7 @@ One row per subscription (`object_event_subscriptions`):
 | `ignoreActors[]` | e.g. the API client that the engine itself uses to write back (loop guard, see 8) |
 | `signingSecret` | optional HMAC key: header `X-Whoobe-Signature: sha256=…` over `timestamp + "." + body`, `X-Whoobe-Timestamp` |
 
-Configured under *Integrations* next to endpoints and presets, by users with a new permission `object-events:manage` (granted to `admin`
+Configured under *Integrations* next to endpoints and presets, by users with a new permission `object_events:manage` (granted to `admin`
 only). Never configurable in the public sandbox (see 9).
 
 ## 6. Delivery: transactional outbox, at-least-once
@@ -187,7 +187,7 @@ Three guards, all explicit:
 - **Data minimisation**: minimal payload by default, explicit field allow-list otherwise. The class's *hidden fields* only hide a field
   from the edit form, they say nothing about confidentiality, so they do not protect it here: see open question 9 (a per-field
   "never leaves Whoobe" flag).
-- **Authorisation**: creating or changing a subscription needs `object-events:manage`; the delivery log can show attribute values
+- **Authorisation**: creating or changing a subscription needs `object_events:manage`; the delivery log can show attribute values
   only to users who may read that class.
 - **No code, no templates**: the payload shape is fixed, so there is no expression language to inject into.
 - **Public sandbox**: disabled like AI and mail (`SANDBOX_MODE`), answers 403.
@@ -219,7 +219,7 @@ network, not over the internet, so no traffic needs to leave the machine in eith
 | Tables, migration | `packages/core/src/db/` (object events, deliveries, subscriptions), a numbered migration |
 | Emit | the data-object write functions in `packages/core/src/db/data-objects-records.ts`, which already call `indexObject` after each write; `createDataObject`, `updateDataObject`, `deleteDataObject`, the bulk and Pimcore upsert paths, the workflow transition route and the batch action route of core-api |
 | Payload and diff | a pure module (`object-events.ts`) next to them: builds the payload, computes `changed`, picks the allow-listed fields |
-| Subscriptions API | core-api routes `/object-event-subscriptions` (CRUD, test event, retry), permission `object-events:manage` |
+| Subscriptions API | core-api routes `/object-event-subscriptions` (CRUD, test event, retry), permission `object_events:manage` |
 | Worker | `apps/gateway/src/object-event-worker.ts`, calls the existing route-execution code with the endpoint's credentials |
 | UI | *Integrations > Object events*: list, editor, delivery log; the **Automations** panel gains a section for subscriptions next to the forms |
 | Docs | `communication/` page for administrators; this page moves to `docs/release` when implemented |
