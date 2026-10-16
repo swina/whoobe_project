@@ -134,6 +134,9 @@ to this subscription. Two more safety nets: pause the subscription, or set `OBJE
   (default 5) is how many calls are made at once.
 - **Transactions**: the event is stored in the same database transaction as the change. If the change is rolled back there is no event; if the event
   cannot be stored the change is not saved.
+- **Keep secrets out of the route path.** A route's path and an endpoint's base URL are stored as plain text and are visible to everyone who can manage
+  the Gateway (and are in database backups); an endpoint's *credentials* are stored encrypted. If an engine's webhook needs a secret, prefer an
+  authentication the endpoint can hold (key or bearer token); if the engine puts the secret in the URL, treat that route as sensitive.
 - **Any engine, your choice.** Whoobe sends an HTTP call and nothing more, so it does not prefer or exclude any automation engine (Activepieces,
   n8n, Make, a script of yours). The engine is **not part of Whoobe**: choosing it, installing it, making it reachable from the Gateway and
   respecting its licence are the operator's own responsibility. The examples use Activepieces only because it is what the documentation was tried with.

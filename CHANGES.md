@@ -1,3 +1,7 @@
+## Object events guide: secrets and route paths — 2026-10-16
+- Branch: `master`
+- One bullet in `docs/release/communication/object-events.md` (section 6): a route path and an endpoint base URL are plain text visible to Gateway managers, credentials are encrypted, so a secret that an engine puts in its URL makes that route sensitive. No code change: a way to keep such a secret in the environment was considered and declined by the owner (whoever needs it can implement it).
+
 ## Object events wizard, step 3: documentation — 2026-10-16
 - Branch: `feat/object-events-wizard`
 - `docs/release/communication/object-events.md` section 2 gets "The quick way: Connect a flow" (the four questions, what is created, the Test / Live switch, the write-back client and its key, the test sentences, the permissions, rollback); the step-by-step way is kept under "The normal way". The Activepieces recipe points to it; the wizard plan's status is updated.
