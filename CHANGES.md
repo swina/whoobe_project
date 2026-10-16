@@ -1,6 +1,7 @@
 ## Object events, phase 0: implementation plan — 2026-10-16
 - Branch: `feat/object-events` (worktree `../whoobe_cms-object-events`, from `master` at `fb60a8f`)
 - `docs/plans/datamodel/object-events-phase0.md` (new): the plan, nothing implemented. Inventory of the data-object write paths and their callers (core-api, gateway API clients, bundle import, migration tool); finding: the write functions take no actor yet, so phase 0 adds an optional `opts.actor`; tables and one migration after `0058`; seven steps (baseline, pure event module, tables, emit inside transactions, actor, gateway worker, subscriptions API, end-to-end with Activepieces); risks.
+- Step 0 (baseline): `packages/core` suite on a disposable Postgres 16: 340 tests passed, 30 files (the `@whoobe-cms/schema` package must be built first in a fresh worktree). `packages/core/src/db/data-objects-records.integration.test.ts` (new, 10 tests, skipped without `PORTABILITY_TEST_DATABASE_URL`): characterises create / update / delete / delete by class / bulk import / Pimcore upsert (drafts, unique clashes, locale group and non-localized sync, `publishedAt` set once, state kept by the upsert) so the coming transactions and events can be checked against it.
 
 ## Flow Orchestrator: proposal for an optional app for request / reply flows — 2026-10-16
 - Branch: `master`
