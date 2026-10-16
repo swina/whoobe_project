@@ -58,7 +58,7 @@ describe.skipIf(!url)('object events outbox: one delivery per matching subscript
     expect(d.nextAttemptAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
   });
 
-  it('queues nothing for a disabled subscription, another class, another event type or an ignored actor, but still stores the event', async () => {
+  it('queues and stores nothing for a disabled subscription, another class, another event type or an ignored actor', async () => {
     await sub({ enabled: false });
     await sub({ classId: classB });
     await sub({ events: ['object.deleted'] });
@@ -66,7 +66,7 @@ describe.skipIf(!url)('object events outbox: one delivery per matching subscript
     const e = created({ type: 'api-client', id: 'engine-client' });
     expect(await ev.insertEvent(db.getDb(), e)).toBe(0);
     expect(await deliveries()).toHaveLength(0);
-    expect(await db.getDb().select().from(schema.objectEvents)).toHaveLength(1);
+    expect(await db.getDb().select().from(schema.objectEvents)).toHaveLength(0);
   });
 
   it('matches a subscription for all classes and one for exactly this class; an actor that is not ignored still matches', async () => {
@@ -84,10 +84,22 @@ describe.skipIf(!url)('object events outbox: one delivery per matching subscript
     expect(await deliveries()).toHaveLength(1);
   });
 
-  it('a subscription created afterwards does not receive an old event', async () => {
-    await ev.insertEvent(db.getDb(), created());
+  it('a subscription created afterwards does not receive an old event; with none, nothing is stored', async () => {
+    expect(await ev.insertEvent(db.getDb(), created())).toBe(0);
+    expect(await db.getDb().select().from(schema.objectEvents)).toHaveLength(0);
     await sub();
     expect(await deliveries()).toHaveLength(0);
+  });
+
+  it('OBJECT_EVENTS_ENABLED=0 stops emitting', async () => {
+    await sub();
+    process.env.OBJECT_EVENTS_ENABLED = '0';
+    try {
+      expect(await ev.insertEvent(db.getDb(), created())).toBe(0);
+    } finally {
+      delete process.env.OBJECT_EVENTS_ENABLED;
+    }
+    expect(await db.getDb().select().from(schema.objectEvents)).toHaveLength(0);
   });
 
   it('a bulk summary has no object and matches by class', async () => {
@@ -113,6 +125,7 @@ describe.skipIf(!url)('object events outbox: one delivery per matching subscript
   it('deleting a subscription removes its deliveries; deleting a class keeps the event (no foreign key)', async () => {
     const s = await sub();
     await ev.insertEvent(db.getDb(), created());
+    expect(await db.getDb().select().from(schema.objectEvents)).toHaveLength(1);
     await classes.deleteDataClass(classA);
     expect(await db.getDb().select().from(schema.objectEvents)).toHaveLength(1);
     await db.getDb().delete(schema.objectEventSubscriptions).where((await import('drizzle-orm')).eq(schema.objectEventSubscriptions.id, s.id));

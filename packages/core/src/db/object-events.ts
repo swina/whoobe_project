@@ -51,6 +51,11 @@ export interface BulkObjectEvent {
   actor: EventActor;
 }
 
+/** `OBJECT_EVENTS_ENABLED=0` stops emitting for the instance (the kill switch of the proposal, section 7). */
+export function objectEventsEnabled(): boolean {
+  return process.env.OBJECT_EVENTS_ENABLED !== '0';
+}
+
 const MAX_FIRST_IDS = 10;
 const STRUCTURAL = ['key', 'parentId', 'path'] as const;
 

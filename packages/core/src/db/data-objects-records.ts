@@ -3,6 +3,8 @@ import { getDb } from './client.js';
 import { dataObjects } from './data-objects-schema.js';
 import { getDataClass, type DataClassRecord } from './data-classes-records.js';
 import { indexObject, deleteIndexedByDocument, deleteIndexedByClass } from '../search/indexer.js';
+import { insertEvent } from './object-events-records.js';
+import { buildBulkEvent, buildEvent, changedFields, classifyUpdate, type EventActor } from './object-events.js';
 
 export interface DataObjectRecord {
   id: string;
@@ -302,18 +304,22 @@ export async function getDataObjectByPimcoreId(pimcoreId: string): Promise<DataO
  * through the migration converter, not of what "non-localized" should
  * mean for ongoing admin edits through this system - scoped accordingly.
  */
-async function syncNonLocalizedAttributes(row: DataObjectRecord): Promise<void> {
-  const dataClass = await getDataClass(row.classId);
-  if (!dataClass) return;
+async function syncNonLocalizedAttributes(
+  row: DataObjectRecord,
+  runner: Db | Tx = getDb(),
+  knownClass?: DataClassRecord | null,
+): Promise<{ before: DataObjectRecord; after: DataObjectRecord }[]> {
+  const dataClass = knownClass === undefined ? await getDataClass(row.classId) : knownClass;
+  if (!dataClass) return [];
   const nonLocalizedNames = dataClass.fields.filter((f) => !f.localized).map((f) => f.name);
-  if (nonLocalizedNames.length === 0) return;
+  if (nonLocalizedNames.length === 0) return [];
 
-  const db = getDb();
-  const siblings = await db
+  const siblings = await runner
     .select()
     .from(dataObjects)
     .where(eq(dataObjects.translationGroupId, row.translationGroupId));
 
+  const touched: { before: DataObjectRecord; after: DataObjectRecord }[] = [];
   for (const sibling of siblings) {
     if (sibling.id === row.id) continue;
     const nextAttributes: Record<string, unknown> = { ...sibling.attributes };
@@ -325,8 +331,28 @@ async function syncNonLocalizedAttributes(row: DataObjectRecord): Promise<void> 
       }
     }
     if (changed) {
-      await db.update(dataObjects).set({ attributes: nextAttributes, updatedAt: new Date() }).where(eq(dataObjects.id, sibling.id));
+      const [after] = await runner.update(dataObjects).set({ attributes: nextAttributes, updatedAt: new Date() }).where(eq(dataObjects.id, sibling.id)).returning();
+      if (after) touched.push({ before: sibling, after });
     }
+  }
+  return touched;
+}
+
+/** Who made a write, for the object events (the loop guard of a subscription ignores some actors). A caller that says nothing is `system`. */
+export interface WriteOptions { actor?: EventActor }
+
+/** The events of one update: its own (updated / transitioned / published) and one `object.updated` per language sibling the non-localized sync touched. */
+async function emitUpdateEvents(
+  tx: Tx,
+  before: DataObjectRecord,
+  after: DataObjectRecord,
+  touched: { before: DataObjectRecord; after: DataObjectRecord }[],
+  actor: EventActor | undefined,
+  className: string | undefined,
+): Promise<void> {
+  for (const draft of classifyUpdate(before, after)) await insertEvent(tx, buildEvent(draft, { after, actor, className }));
+  for (const t of touched) {
+    for (const draft of classifyUpdate(t.before, t.after)) await insertEvent(tx, buildEvent(draft, { after: t.after, actor: { type: 'system' }, className }));
   }
 }
 
@@ -388,34 +414,39 @@ export async function createDataObject(input: {
   locale?: string;
   attributes: Record<string, unknown>;
   pimcoreId?: string | null;
-}): Promise<DataObjectRecord> {
+}, opts: WriteOptions = {}): Promise<DataObjectRecord> {
   const db = getDb();
-  const classForUnique = await getDataClass(input.classId);
-  if (classForUnique) await assertUniqueValues(db, classForUnique, input.attributes, { locale: input.locale ?? 'en', exceptGroupId: input.translationGroupId });
-  const [row] = await db
-    .insert(dataObjects)
-    .values({
-      ...(input.id ? { id: input.id } : {}),
-      classId: input.classId,
-      key: input.key,
-      path: input.path ?? '/',
-      parentId: input.parentId ?? null,
-      // Omitted entirely (not passed as undefined) when the caller has no
-      // existing group to join - lets the column's own defaultRandom()
-      // generate a fresh id, same convention createWhoobePage uses.
-      ...(input.translationGroupId ? { translationGroupId: input.translationGroupId } : {}),
-      locale: input.locale ?? 'en',
-      attributes: input.attributes,
-      pimcoreId: input.pimcoreId ?? null,
-    })
-    .returning();
-  // A brand-new locale row for an object that already has sibling locale
-  // rows - push this row's own non-localized values out to them too (the
-  // reverse direction, pre-filling this new row from a sibling, is
-  // MasterObjectTab.vue's own job client-side, so the admin sees the
-  // shared value immediately rather than only after this first save).
-  await syncNonLocalizedAttributes(row);
-  const classDef = await getDataClass(row.classId);
+  const classDef = await getDataClass(input.classId);
+  // The row, the sync of its language siblings and the events commit together; the search index is updated after the commit.
+  const row = await db.transaction(async (tx) => {
+    if (classDef) await assertUniqueValues(tx, classDef, input.attributes, { locale: input.locale ?? 'en', exceptGroupId: input.translationGroupId });
+    const [row] = await tx
+      .insert(dataObjects)
+      .values({
+        ...(input.id ? { id: input.id } : {}),
+        classId: input.classId,
+        key: input.key,
+        path: input.path ?? '/',
+        parentId: input.parentId ?? null,
+        // Omitted entirely (not passed as undefined) when the caller has no
+        // existing group to join - lets the column's own defaultRandom()
+        // generate a fresh id, same convention createWhoobePage uses.
+        ...(input.translationGroupId ? { translationGroupId: input.translationGroupId } : {}),
+        locale: input.locale ?? 'en',
+        attributes: input.attributes,
+        pimcoreId: input.pimcoreId ?? null,
+      })
+      .returning();
+    // A brand-new locale row for an object that already has sibling locale
+    // rows - push this row's own non-localized values out to them too (the
+    // reverse direction, pre-filling this new row from a sibling, is
+    // MasterObjectTab.vue's own job client-side, so the admin sees the
+    // shared value immediately rather than only after this first save).
+    const touched = await syncNonLocalizedAttributes(row, tx, classDef);
+    await insertEvent(tx, buildEvent({ type: 'object.created', changed: changedFields(null, row) }, { after: row, actor: opts.actor, className: classDef?.name }));
+    for (const t of touched) await emitUpdateEvents(tx, t.before, t.after, [], { type: 'system' }, classDef?.name);
+    return row;
+  });
   if (classDef) await indexObject(row, classDef);
   return row;
 }
@@ -429,50 +460,57 @@ export async function updateDataObject(
     published?: boolean;
     workflowState?: string | null;
     attributes?: Record<string, unknown>;
-  }
+  },
+  opts: WriteOptions = {},
 ): Promise<DataObjectRecord | null> {
   const db = getDb();
+  const done = await db.transaction(async (tx) => {
+    // The row is locked while it is read, so the events describe exactly the change this call made.
+    const [before] = await tx.select().from(dataObjects).where(eq(dataObjects.id, id)).for('update');
+    if (!before) return null;
+    const classDef = await getDataClass(before.classId);
 
-  if (input.attributes !== undefined) {
-    const current = await getDataObject(id);
-    const classDef = current ? await getDataClass(current.classId) : null;
-    if (current && classDef) await assertUniqueValues(db, classDef, input.attributes, { locale: current.locale, exceptId: current.id, exceptGroupId: current.translationGroupId });
-  }
-
-  const values: Record<string, unknown> = { updatedAt: new Date() };
-  if (input.key !== undefined) values.key = input.key;
-  if (input.path !== undefined) values.path = input.path;
-  if (input.parentId !== undefined) values.parentId = input.parentId;
-  if (input.workflowState !== undefined) values.workflowState = input.workflowState;
-  if (input.attributes !== undefined) values.attributes = input.attributes;
-
-  if (input.published !== undefined) {
-    values.published = input.published;
-    // First transition into published gets a real publishedAt timestamp;
-    // re-saving an already-published object never overwrites it - same
-    // rule updateWhoobePage already applies.
-    if (input.published) {
-      const current = await getDataObject(id);
-      if (current && !current.publishedAt) values.publishedAt = new Date();
+    if (input.attributes !== undefined && classDef) {
+      await assertUniqueValues(tx, classDef, input.attributes, { locale: before.locale, exceptId: before.id, exceptGroupId: before.translationGroupId });
     }
-  }
 
-  const [row] = await db.update(dataObjects).set(values).where(eq(dataObjects.id, id)).returning();
-  if (row && input.attributes !== undefined) {
-    await syncNonLocalizedAttributes(row);
-  }
-  if (row) {
-    const classDef = await getDataClass(row.classId);
-    if (classDef) await indexObject(row, classDef);
-  }
-  return row ?? null;
+    const values: Record<string, unknown> = { updatedAt: new Date() };
+    if (input.key !== undefined) values.key = input.key;
+    if (input.path !== undefined) values.path = input.path;
+    if (input.parentId !== undefined) values.parentId = input.parentId;
+    if (input.workflowState !== undefined) values.workflowState = input.workflowState;
+    if (input.attributes !== undefined) values.attributes = input.attributes;
+
+    if (input.published !== undefined) {
+      values.published = input.published;
+      // First transition into published gets a real publishedAt timestamp;
+      // re-saving an already-published object never overwrites it - same
+      // rule updateWhoobePage already applies.
+      if (input.published && !before.publishedAt) values.publishedAt = new Date();
+    }
+
+    const [row] = await tx.update(dataObjects).set(values).where(eq(dataObjects.id, id)).returning();
+    const touched = row && input.attributes !== undefined ? await syncNonLocalizedAttributes(row, tx, classDef) : [];
+    if (row) await emitUpdateEvents(tx, before, row, touched, opts.actor, classDef?.name);
+    return row ? { row, classDef } : null;
+  });
+  if (!done) return null;
+  if (done.classDef) await indexObject(done.row, done.classDef);
+  return done.row;
 }
 
 /** Delete all data objects belonging to a class - used by the migration
  * clear-before-import option to reset a class's objects before retrying. */
-export async function deleteDataObjectsByClassId(classId: string): Promise<number> {
+export async function deleteDataObjectsByClassId(classId: string, opts: WriteOptions = {}): Promise<number> {
   const db = getDb();
-  const deleted = await db.delete(dataObjects).where(eq(dataObjects.classId, classId)).returning({ id: dataObjects.id });
+  const classDef = await getDataClass(classId);
+  const deleted = await db.transaction(async (tx) => {
+    const rows = await tx.delete(dataObjects).where(eq(dataObjects.classId, classId)).returning({ id: dataObjects.id });
+    if (rows.length) {
+      await insertEvent(tx, buildBulkEvent({ classId, className: classDef?.name, kind: 'delete', count: rows.length, ids: rows.map((r) => r.id), actor: opts.actor }));
+    }
+    return rows;
+  });
   await deleteIndexedByClass(classId);
   return deleted.length;
 }
@@ -484,9 +522,15 @@ export async function countDataObjectsByClassId(classId: string): Promise<number
   return row?.n ?? 0;
 }
 
-export async function deleteDataObject(id: string): Promise<void> {
+export async function deleteDataObject(id: string, opts: WriteOptions = {}): Promise<void> {
   const db = getDb();
-  await db.delete(dataObjects).where(eq(dataObjects.id, id));
+  await db.transaction(async (tx) => {
+    const [before] = await tx.select().from(dataObjects).where(eq(dataObjects.id, id)).for('update');
+    if (!before) return;
+    await tx.delete(dataObjects).where(eq(dataObjects.id, id));
+    const classDef = await getDataClass(before.classId);
+    await insertEvent(tx, buildEvent({ type: 'object.deleted', changed: [] }, { after: before, actor: opts.actor, className: classDef?.name }));
+  });
   await deleteIndexedByDocument('object', id);
 }
 
@@ -601,7 +645,7 @@ export function planBulkImport(
 export async function bulkImportDataObjects(
   classId: string,
   rows: BulkImportRow[],
-  options: { onConflict?: 'skip' | 'update'; locale?: string } = {},
+  options: { onConflict?: 'skip' | 'update'; locale?: string; actor?: EventActor } = {},
 ): Promise<{ created: number; updated: number; skipped: number; rejected: { key: string; message: string }[] }> {
   const classDef = await getDataClass(classId);
   if (!classDef) throw new Error('Class not found');
@@ -655,6 +699,10 @@ export async function bulkImportDataObjects(
     for (const u of plan.updates) {
       const [row] = await tx.update(dataObjects).set({ attributes: u.attributes, updatedAt: new Date() }).where(eq(dataObjects.id, u.id)).returning();
       if (row) saved.push(row);
+    }
+    // One summary for the whole chunk, in the same transaction (never one event per row).
+    if (saved.length) {
+      await insertEvent(tx, buildBulkEvent({ classId, className: classDef.name, kind: 'import', count: saved.length, ids: saved.map((r) => r.id), actor: options.actor }));
     }
   });
   for (const row of saved) {

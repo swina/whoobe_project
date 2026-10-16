@@ -1,17 +1,32 @@
 import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { objectEvents, objectEventDeliveries, objectEventSubscriptions } from './object-events-schema.js';
-import type { BulkObjectEvent, ObjectEvent } from './object-events.js';
+import { objectEventsEnabled, type BulkObjectEvent, type ObjectEvent } from './object-events.js';
 
 type Db = ReturnType<typeof getDb>;
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 /**
  * Writes an event and one delivery per matching subscription, using the caller's runner so that it commits (or rolls back) together with
- * the data change. A subscription matches when it is enabled, is for this class (or all), lists the event type and does not ignore the actor.
+ * the data change (the event is stored only when at least one subscription matches). A subscription matches when it is enabled, is for this class (or all), lists the event type and does not ignore the actor.
  * Returns how many deliveries were queued. Idempotent per event id (a repeated call changes nothing).
  */
 export async function insertEvent(runner: Db | Tx, event: ObjectEvent | BulkObjectEvent): Promise<number> {
+  if (!objectEventsEnabled()) return 0;
+  const actorId = event.actor.id ?? '';
+  const matching = await runner
+    .select({ id: objectEventSubscriptions.id })
+    .from(objectEventSubscriptions)
+    .where(
+      and(
+        eq(objectEventSubscriptions.enabled, true),
+        or(isNull(objectEventSubscriptions.classId), eq(objectEventSubscriptions.classId, event.class.id)),
+        sql`${event.type} = ANY(${objectEventSubscriptions.events})`,
+        sql`NOT (${actorId} <> '' AND ${actorId} = ANY(${objectEventSubscriptions.ignoreActors}))`,
+      ),
+    );
+  // An event nobody listens to is not stored: a subscription created later never receives old events anyway.
+  if (!matching.length) return 0;
   const object = 'object' in event ? event.object : null;
   await runner
     .insert(objectEvents)
@@ -28,20 +43,6 @@ export async function insertEvent(runner: Db | Tx, event: ObjectEvent | BulkObje
       payload: event as unknown as Record<string, unknown>,
     })
     .onConflictDoNothing();
-
-  const actorId = event.actor.id ?? '';
-  const matching = await runner
-    .select({ id: objectEventSubscriptions.id })
-    .from(objectEventSubscriptions)
-    .where(
-      and(
-        eq(objectEventSubscriptions.enabled, true),
-        or(isNull(objectEventSubscriptions.classId), eq(objectEventSubscriptions.classId, event.class.id)),
-        sql`${event.type} = ANY(${objectEventSubscriptions.events})`,
-        sql`NOT (${actorId} <> '' AND ${actorId} = ANY(${objectEventSubscriptions.ignoreActors}))`,
-      ),
-    );
-  if (!matching.length) return 0;
   const queued = await runner
     .insert(objectEventDeliveries)
     .values(matching.map((s) => ({ eventId: event.id, subscriptionId: s.id })))
