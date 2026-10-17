@@ -112,7 +112,7 @@ Properties that matter for the design (taken from `apps/gateway/src/submit-handl
 | Visitor → Gateway | public route; limits (10 per 15 minutes per address, 300 per 15 minutes per website), optional per-website site key, decoy field, field allow-list, size and shape checks of the attributes ([API Gateway security](api-gateway-security.md)) |
 | Gateway → engine | outbound HTTPS through `safeFetch` (SSRF guard: link-local and metadata always blocked; loopback and private ranges according to `OUTBOUND_ALLOW_LOOPBACK` / `OUTBOUND_ALLOW_PRIVATE`; `OUTBOUND_ALLOW_HOSTS` exempts a named internal host). An engine on the same host or a private address needs the matching setting (see [configuration reference](../operations/configuration-reference.md)); redirects are re-checked and credentials are not forwarded across origins |
 | Engine → Whoobe's visitors | the reply is reduced to a validated key; the check is made in the Gateway and again in the browser. Hidden blocks are still in the page's HTML: this is experience, not access control |
-| Engine → Whoobe (the other direction) | there is **no machine credential** in Whoobe ([authentication](../architecture/authentication-and-authorization.md), section 1): a flow that needs to read or write Whoobe uses the **public surface** (published content, public form submit) or a dedicated user account with a minimal role (a session). Do not give a flow an administrator account |
+| Engine → Whoobe (the other direction) | a flow that needs to read or write Whoobe uses an **[API client](api-clients.md)** (a key, with only the scopes it needs: for example drafts of one class), or the **public surface** (published content, public form submit). The administration API has no machine credential: do not give a flow an administrator account |
 | Engine → third parties | the engine's own credentials; they never pass through Whoobe |
 | Editor → engine | the engine's own login. Whoobe only links to its address (the *Service* link, `http(s)` only) |
 
@@ -158,8 +158,8 @@ key**):
 
 ## 10. Not provided
 
-- Other triggers (asset downloaded, page published, a schedule inside Whoobe). A flow can poll the public API; Whoobe does not emit events.
+- Other triggers (asset downloaded, page published, a schedule inside Whoobe). A change to a data record is covered by [object events](object-events.md); for the rest a flow can poll the public API.
 - Run history, status or retries inside Whoobe.
 - Access to private content decided by an answer, or a verified e-mail address: the page only reacts to a word.
 - A shared queue between the Gateway and the engine ([overview](../architecture/architecture-overview.md), section 4: there is no message queue).
-- A Whoobe-side machine credential for flows.
+- A machine credential for the *administration* API (a flow uses an [API client](api-clients.md) for data).

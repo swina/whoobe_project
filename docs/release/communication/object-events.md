@@ -1,5 +1,7 @@
 # Object events: tell another system when a record changes
 
+> **Not in the v0.1.0 tag.** This is on `master` and will be in the next release; an installation of v0.1.0 does not have it.
+
 A **subscription** makes Whoobe send a small message (an *event*) to an external service whenever a Data Object of a class is created, changed,
 published, unpublished, moved in its workflow or deleted. The service can be an automation engine (Activepieces, n8n), a back-end of yours or
 anything that accepts an HTTPS `POST`. Whoobe does not run the automation: it tells the service that something happened, and the service

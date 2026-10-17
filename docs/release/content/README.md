@@ -1,8 +1,8 @@
 # Content
 
 Everything an author does to build and publish what visitors see: websites, pages, snippets, kits, templates, themes, languages, and the
-ways to publish them. Pages are a tree of elements that the editor, the preview and every output render with the same renderer
-([one renderer, many outputs](../architecture/design-decisions/one-renderer-many-outputs.md)).
+ways to publish them. Pages are a tree of elements that every output (generated sites, the app, the SDK adapters) renders with the same renderer and that the editor
+draws with its own components ([one renderer, many outputs](../architecture/design-decisions/one-renderer-many-outputs.md)).
 
 ## Author
 

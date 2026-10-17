@@ -15,7 +15,7 @@ It is licensed MIT, serves **one organisation per installation**, and keeps cred
 
 | Pillar | What you get | Start here |
 |---|---|---|
-| **Content** | Visual page, snippet, kit and template editor with a live preview that is the real renderer; themes; multi-language; documentation sites; publishing to Next.js, Nuxt, static sites, a Capacitor mobile app or a headless API | [Content](../content/README.md) |
+| **Content** | Visual page, snippet, kit and template editor with a live preview that follows the published output; themes; multi-language; documentation sites; publishing to Next.js, Nuxt, static sites, a Capacitor mobile app or a headless API | [Content](../content/README.md) |
 | **Data** (PIM / MDM) | Data Classes and Objects defined at runtime (products, events, people...), relations, reusable components, languages, draft/published workflow, import from Pimcore, bind any element to your data | [Data](../data/README.md) |
 | **Communication** | **Integrations** (describe an API once, bind it visually, credentials stay on the server), **Automations** (forms start a flow in Activepieces or n8n), **Client Hub** (your apps and servers use the same integrations and data with a key or your identity provider's token), mail | [Communication](../communication/README.md) |
 | **DAM** | Media library on S3-compatible storage, folders with visibility rules, image transforms, thumbnails, versions, optional CDN mirror | [DAM](../dam/README.md) |
@@ -51,7 +51,7 @@ are listed ([threat model](../security/threat-model.md)), and open findings are 
   cache service, no search engine to run. A Valkey service is optional for shared rate-limit counters.
 - Everything goes through one reverse proxy; databases and storage are never exposed.
 - One installation is one **workspace** for **one organisation**: isolation is a separate stack, not a column.
-- Public content is **published-only**, by one shared query rule; the editor and the published site use the same renderer.
+- Public content is **published-only**, by one shared query rule; every generated site, the app and the SDK adapters use the same renderer.
 - Detail: [architecture overview](../architecture/architecture-overview.md) and the [reasons behind the main choices](../architecture/design-decisions/README.md).
 
 ## 5. Who it is for, and who it is not for

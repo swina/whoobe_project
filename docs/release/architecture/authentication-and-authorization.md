@@ -11,12 +11,14 @@ Who and what can act on the system, how each identity proves itself, and what ea
 | **User** (administrator, editor, viewer or a custom role) | e-mail + password, optional TOTP second factor; the result is a session cookie | `users`, `sessions` | the dashboard and the editor |
 | **Visitor** (anonymous) | nothing | - | the public read API, public forms, asset delivery of public files |
 | **Published site** | per-website *site key* (`X-Whoobe-Site-Id` + `X-Whoobe-Site-Key`) | `websites.settings` (hash, pepper `SITE_API_KEY_PEPPER`) | the gateway: resolving bindings, submitting gateway forms. Held by the site's server, never the browser (the SDK offers a same-origin proxy path for that) |
+| **API client** (an application outside Whoobe) | a key (`Authorization: Bearer wbk_...` or `X-Whoobe-Key`), or a token of your identity provider validated by its signature | `api_clients` | the client surface `/client/v1`: published data, drafts of the classes it may write, Integrations routes, automations; only the scopes it was given ([API clients](../communication/api-clients.md)) |
 | **Service** | bearer `DAM_SERVICE_TOKEN` (shared secret in the environment) | environment | core-api and the logger calling asset-processor; the only service-to-service credential |
 | **Preview link** | random token in the URL | `data_object_preview_tokens` | showing an unpublished data object to a person without an account, until it expires |
 | **Form-upload ticket** | HMAC-signed, 10-minute token from `POST /public/uploads/intent` (`UPLOAD_TOKEN_SECRET`) | in the URL only | sending the bytes of one approved file |
 
-There is no SSO, SAML, OIDC, LDAP or API-token mechanism for users. Automation that needs an identity uses a user
-account (and therefore a session) or, for content delivery, a site key.
+There is no SSO, SAML, OIDC or LDAP login for users. An application or a flow that needs to read or write data uses an **API
+client**; the administration API (users, roles, settings, websites, pages) has no machine credential, so a script that
+administers Whoobe uses a user account (and therefore a session).
 
 ## 2. Users and passwords
 

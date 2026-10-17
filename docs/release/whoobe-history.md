@@ -74,7 +74,7 @@ The idea turned into specific choices, each with its reasons and costs written d
 | The conviction | The choice |
 |---|---|
 | Content and data are one thing | A data model you change at runtime, with the same publishing, languages and API as pages ([the data model is data](architecture/design-decisions/the-data-model-is-data.md)) |
-| Design and live data should meet | Elements bound to data and to external APIs in the visual editor, rendered by the same renderer as the published site ([one renderer, many outputs](architecture/design-decisions/one-renderer-many-outputs.md)) |
+| Design and live data should meet | Elements bound to data and to external APIs in the visual editor, rendered by the renderer of every published output ([one renderer, many outputs](architecture/design-decisions/one-renderer-many-outputs.md)) |
 | Builders must not leak keys | Credentials stay on the server; the editor, the browser and apps never hold the third party's secret ([credentials stay on the server](architecture/design-decisions/credentials-stay-on-the-server.md)) |
 | One platform, many surfaces | A website, a generated site, a mobile app and an API from the same content ([content](content/README.md)) |
 | Sovereignty | Self-hosted, MIT, one workspace per organisation ([self-hosted and MIT](architecture/design-decisions/self-hosted-and-mit.md), [one workspace per organisation](architecture/design-decisions/one-workspace-per-organisation.md)) |

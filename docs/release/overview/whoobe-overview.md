@@ -80,7 +80,7 @@ Only what exists in release 0.1.0. Items marked *(beta)* work but have had less 
 
 ### 3.1 Authoring
 
-- **Visual page editor.** Drag-and-drop blocks, Tailwind-based styling, a live preview that is the same renderer as the published output,
+- **Visual page editor.** Drag-and-drop blocks, Tailwind-based styling, a live preview that follows the published output (check a page in a generated site before you announce it),
   a phone-frame mode (App Mode) for mobile layouts, responsive classes, version history of every page and snippet with restore.
 - **Snippets, kits and templates.** Reusable blocks, packaged kits, website templates with header, aside and footer slots; dynamic
   website paths and menus.
@@ -158,7 +158,7 @@ it does not, we say that too.
 | **Mandatory two-factor authentication** | TOTP is available per user but cannot be enforced for everyone. No password policy beyond a minimum length. |
 | **Per-website permissions** | Roles describe a **function** (editor, publisher, administrator), not a **division**. Anyone who may edit pages may edit the pages of every website in the workspace. If one division must not touch another division's sites, that fence does not exist inside one workspace; use separate workspaces. |
 | **An audit log of administrative actions** | Creating a user, changing a role, deleting a website: none of it is recorded as an auditable event. Page and snippet version history exists, and failed logins are logged, but if you need evidence of "who changed the permissions on what date", the product cannot give it. |
-| **Machine credentials for Whoobe's own API** | There are no API tokens for scripts or flows. Automation that must act on Whoobe uses a dedicated user account (a session) or the public read surface. |
+| **Machine credentials for the administration API** | Applications and flows can call Whoobe with an [API client](../communication/api-clients.md) (a key, or a token of your identity provider) that sees only the scopes you give it: published data, drafts of the classes it may write, Integrations routes. The administration API itself (users, roles, settings, websites, pages) has no machine credential: a script that administers Whoobe uses a user account. |
 
 ### 4.2 Scale and availability
 
@@ -180,7 +180,7 @@ it does not, we say that too.
 
 | Not provided | What it means for you |
 |---|---|
-| **An automation or workflow engine** | Whoobe starts a flow in Activepieces, n8n or a similar tool; it does not run flows, keep run histories or retry steps. You operate that engine as a second system. A form submission is the **only** trigger: other events (an asset downloaded, a page published) do not start anything. |
+| **An automation or workflow engine** | Whoobe starts a flow in Activepieces, n8n or a similar tool; it does not run flows, keep run histories or retry steps. You operate that engine as a second system. Two things start a flow: a form submission, and [object events](../communication/object-events.md) (a record created, changed, published, unpublished, deleted, moved in its workflow, or a bulk import, sent as a signed call with a delivery log). Other events (an asset downloaded, a page published) do not start anything. |
 | **Visitor personalisation and segmentation** | The same page is served to every visitor. Content cannot be shown or hidden by lead status, segment or company. A block hidden by the page's own script is still in the HTML, so it is not a way to protect content. |
 | **Access to private content as a result of filling in a form** | Not provided, and not safe to improvise: the visitor's e-mail address is not verified. |
 | **Web analytics, A/B testing, heat maps** | None are built in. Use your own tool; Whoobe sets no cookie for visitors. |

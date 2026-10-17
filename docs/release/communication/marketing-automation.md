@@ -126,7 +126,7 @@ The SMTP piece of Activepieces only offers the ports 25, 465, 587 and 2525; for 
 
 ## 6. Limits
 
-- A form submission is the only trigger. Other events (an asset downloaded, a page published) do not start a flow.
+- A form starts a flow through this guide; a change to a record starts one through [object events](object-events.md). Other events (an asset downloaded, a page published) do not start a flow.
 - Whoobe shows no run history: use the engine's own executions list.
 - A failed submission always reports `{ ok: false, outcome: null }`; the engine cannot choose the error message.
 - The offline queue of a generated PWA replays form data without a page, so the outcome is not used there.

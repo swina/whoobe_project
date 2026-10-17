@@ -11,7 +11,7 @@ short on purpose; the long design history stays in [`docs/plans`](https://github
 | [Client access without user accounts](client-access-without-user-accounts.md) | Applications use Whoobe with a server key or your identity provider's token; Whoobe creates no end users |
 | [The data model is data](the-data-model-is-data.md) | Content types are defined at runtime and stored as data, Pimcore-style, without a deployment |
 | [Draft is never public](draft-is-never-public.md) | One shared rule decides what the public surface may return |
-| [One renderer, many outputs](one-renderer-many-outputs.md) | The editor preview, the published site and the app come from the same content tree and renderer |
+| [One renderer, many outputs](one-renderer-many-outputs.md) | The published site, the app and the SDK adapters come from the same content tree and renderer; the editor draws the same tree with its own components |
 | [No automation engine of our own](no-automation-engine-of-our-own.md) | Forms and the gateway plug into Activepieces, n8n or any webhook |
 | [Self-hosted and MIT](self-hosted-and-mit.md) | You run it, you own the data, no usage-based fee |
 
