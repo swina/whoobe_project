@@ -120,6 +120,4 @@ New or changed variables are documented in `.env.example`; the full list of what
 - The Postgres image carries upstream advisories that cannot be patched here. `xlsx` has two accepted advisories (write-only use), reviewed until 2027-01-31.
 - A website import does not copy users and roles, gateway endpoints and keys, mail and AI settings, domains or the
   version history of pages.
-- The test instance on Oracle must be rebuilt with newly generated secrets (findings F-001 and F-009) before it is used
-  as a reference installation.
 - Plugins of the gateway are code and are loaded at startup (a restart is needed for them, not for presets).

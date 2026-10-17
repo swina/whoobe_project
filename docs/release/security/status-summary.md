@@ -45,8 +45,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 
 | Item | Why it is open | Needs |
 |---|---|---|
-| **F-001** secrets of the old `.env.aura`: purged from the new repository's history (2026-10-06); they still exist in the old repository, its backups and any copy of the public mirror that was deleted on 2026-10-02, so they must be rotated | rotation depends on rebuilding the Oracle test instance | owner: rebuild Oracle with newly generated secrets (section 4) |
-| **F-009** old env files already copied to Oracle by earlier deploys | `deploy.sh` is fixed, existing copies remain on the host | owner: remove `.env.*` copies on the host (done by the rebuild) |
+| **F-001** secrets of an old env file of a test site: purged from the new repository's history (2026-10-06); the old values still exist in the old repository and its backups, but no running instance uses them (the test instance was reinstalled with newly generated secrets on 2026-10-07) | nothing to rotate on a running system | none |
 | **F-003** `xlsx` (2 high advisories, write-only use, no npm fix) and `@tiptap/core` (major upgrade) | accepted / deferred, baselined until 2027-01-31 | decision: move to the SheetJS tarball or replace; plan the tiptap 3 upgrade |
 | **F-008** residual `v-html` sinks (editor tables, form-result messages, Studio, generated sites) | sanitised in code but not covered by a browser test | extend `browser/xss-sinks.spec.ts`; run the generated sites through a build and the same payloads |
 | **F-014** full CSP for the admin/editor SPAs (nginx) | postponed on purpose (clickjacking and baseline headers are done, F-047): more valuable the more people of different trust levels use the editor (not the supported model: one organisation per instance); a too strict policy breaks the editor | design with a report-only phase if the editor is opened to less trusted users |
@@ -75,8 +74,8 @@ The DAST scan and the manual checklist have **not** been repeated for these feat
 
 ## 4. Actions that are yours (cannot be done from here)
 
-1. **Rebuild the Oracle instance with fresh secrets** and rebuild its images (images built before F-020
-   contain `.env.*` and host logs). Generate with `openssl rand -hex 32`: DB and S3 passwords,
+1. **Fresh secrets for every deployment** (the workspace scripts generate them; images built before F-020
+   contain `.env.*` and host logs and should be rebuilt). Generate with `openssl rand -hex 32`: DB and S3 passwords,
    `MIGRATION_SOURCE_ENCRYPTION_KEY` (rotate even if you think it was never used: the example file held
    `my_secret_key_…`), `GATEWAY_AUTH_ENCRYPTION_KEY`, `DAM_SERVICE_TOKEN`, `SITE_API_KEY_PEPPER` (changing it
    invalidates all site keys: regenerate them), **new** `TOTP_ENCRYPTION_KEY` (keep it: losing it forces MFA

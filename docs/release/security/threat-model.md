@@ -130,7 +130,7 @@ Severity is the residual risk after the controls, for a correctly installed work
 |---|---|---|---|
 | Vulnerable or malicious dependency | lockfile, `pnpm install --frozen-lockfile`, `pnpm audit` baseline with review dates, Dependabot, gitleaks, semgrep | `security:static` | two accepted advisories (`xlsx`, `braces`); no SBOM is published and releases are not signed - see [supply chain](supply-chain.md) |
 | Poisoned base image | images pinned by digest; trivy scan of every service image in CI | `security:images` | digests lag behind Debian fixes (patched by explicit `apt-get`/`apk upgrade` lines) |
-| Secrets in the repository | gitleaks in CI; `.env.*` ignored; images exclude env files and logs (F-020) | static scan | F-001: secrets of the old `.env.aura` must be rotated |
+| Secrets in the repository | gitleaks in CI; `.env.*` ignored; images exclude env files and logs (F-020) | static scan | F-001: the secrets of an old env file were purged from the history; no running instance uses them |
 
 ## 6. Top residual risks (what we would tell a risk committee)
 

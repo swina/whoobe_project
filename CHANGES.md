@@ -1,3 +1,10 @@
+## Documentation: contact, no more references to the old env file — 2026-10-17
+- Branch: `master`
+- `whoobe-overview.md`: the closing line now gives a contact (the owner's e-mail and the GitHub repository) instead of the literal `[Contact details.]`.
+- Every mention of the old test site's env file and of the site's own name was removed from `docs/release` (findings F-001, F-004, F-009, F-020, status summary, threat model, website publishing guide): the entries say "an env file of a local test site" / "a per-site env file". F-001 keeps its history (tracked in git, purged from the new history on 2026-10-06, old values only in the old repository and backups, no running instance uses them).
+- Items that described a rebuild of the Oracle instance as still to do (rows F-001 and F-009 of the open list in `status-summary.md`, step 1 of its section 4, the first open item of the manual checklist, a bullet of the release notes) were already done on 2026-10-07 (see F-001 in the register): the open rows are removed, step 1 became "Fresh secrets for every deployment", the checklist keeps the item about images built before F-020. The test counts that disagree between documents (1171 / 1359 API tests, 269 / 276 unit) are to be aligned later, by the owner's decision.
+- `check-docs.py` passes.
+
 ## Second check of the documentation site before publishing — 2026-10-17
 - Branch: `master`
 - **Strict generation passes**: after the owner removed the `history/README.md` placeholder and its index entry, `whoobe-publish --kind docs --strict` gives 96 pages and no broken link. The index now has a section "The story of Whoobe" with no landing page and one entry of the same name (cosmetic; `- doc: whoobe-history.md` alone would be cleaner).

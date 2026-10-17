@@ -418,7 +418,7 @@ changes to check before installing over a development setup.
 If you tell us what you need that chapter 4 says is missing, we will tell you plainly whether it is planned, whether it is hard, and whether it
 is something we would advise you to solve outside Whoobe.
 
-*Antonio Nardone, IT architect and consultant, author of Whoobe. [Contact details.]*
+*Antonio Nardone, IT architect and consultant, author of Whoobe. Contact: swina.allen@gmail.com, or open an issue on [GitHub](https://github.com/swina/whoobe_project).*
 
 ---
 
