@@ -3,6 +3,7 @@
 - Home variant B (`169b8a97-...`, `/home-b`) has a new "Architecture" section after "The problem": four slabs stacked in isometric view (Data, Services, Apps, Channels, each with its components as chips) beside a plain-text legend that says what each layer does. Built from ordinary containers with Tailwind classes (`rotateX(58deg) rotateZ(-42deg)`, `preserve-3d`, `translateZ` per layer), no SVG and no new element; scaled down below `lg` so it is also shown on phones.
 - Not the editor's "Isometric" element: that one is a canvas of boxes placed at fixed pixel positions joined by lines (the current home uses it), with a fixed height and hidden under `lg`.
 - Checked in headless Chromium at 1280 and 390 px wide with the same Tailwind browser build (4.3.3) the editor loads, on a static copy of the section, not in the Whoobe editor itself. The first version hid the chips under the slab above; the chips now sit on the visible edge of each slab and the layers are 120 px apart.
+- Re-applied (15:40): the home B page was open in the dashboard and its save overwrote the first insert (the section and the `/object-events` link of the "How object events work" button were lost). Both are back, on top of the version the editor saved. A page edited by script while it is open in the editor is overwritten by the editor's next save.
 
 ## Whoobe website: an Object events page — 2026-10-17
 - Branch: `master` (data only, no code change)
