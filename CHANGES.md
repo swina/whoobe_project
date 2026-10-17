@@ -1,3 +1,9 @@
+## Whoobe website: an Object events page — 2026-10-17
+- Branch: `master` (data only, no code change)
+- New page in the "whoobe website" website: id `541a2c62-7975-4549-bd91-1aa73277dc93`, slug `/object-events`, title "Object Events", `en`, **unpublished** (indexable once published). Content from `docs/release/communication/object-events.md`: what it is and typical uses, the five steps, what the service receives (headers and JSON body), event types, setup (wizard and step by step), delivery statuses, retries and the log, signature, the three layers against loops, good to know. Built with the same one-off script as the home variant B, same look.
+- Home variant B: the "How object events work" button now links to `/object-events`.
+- Not done: no menu entry points to the page yet (the website menus are edited in the dashboard); the page is not published.
+
 ## Whoobe website: a new home page (variant B) for an A/B comparison — 2026-10-17
 - Branch: `master` (data only, no code change)
 - New page row in the "whoobe website" website (`3ad244f0-e74f-49b5-a429-368370febe95`): id `169b8a97-24a6-47af-a969-3051e06a3b6e`, slug `/home-b`, title "Home (variant B)", locale `en` only, **unpublished**, `noindex`, left out of the sitemap, same theme as the current home (`/`, `b2703fb9-...`, untouched). English only by the owner's choice (a technical, explanatory site, not a selling one).
