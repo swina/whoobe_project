@@ -1,3 +1,10 @@
+## Whoobe website: a new home page (variant B) for an A/B comparison — 2026-10-17
+- Branch: `master` (data only, no code change)
+- New page row in the "whoobe website" website (`3ad244f0-e74f-49b5-a429-368370febe95`): id `169b8a97-24a6-47af-a969-3051e06a3b6e`, slug `/home-b`, title "Home (variant B)", locale `en` only, **unpublished**, `noindex`, left out of the sitemap, same theme as the current home (`/`, `b2703fb9-...`, untouched). English only by the owner's choice (a technical, explanatory site, not a selling one).
+- Structure: hero (what it is, three links: live demo, docs, GitHub), the problem (five separate products), eight areas, the events flow in five steps (engine-neutral), one content many surfaces, where it fits and where not, architecture in brief, try it (public sandbox login and local install), open and inspectable. Texts follow `docs/release/overview/what-is-whoobe.md`; no figures that the docs do not state.
+- Same Tailwind look as the current home (dark, violet/cyan, `#12151B` cards). Built by a one-off script (scratch only, not committed) that gives every node the full default shape (see the 2026-09-29 note on the `css` crash). Not opened in the editor yet.
+- Not decided: how the A/B is run (two URLs, or swapping the slug `/` between the two pages).
+
 ## Object events docs: a diagram of the flow — 2026-10-17
 - Branch: `master`
 - `docs/release/communication/object-events.md`: new section "How the flow works" with two Mermaid diagrams: the path of an event (write, transaction, subscription filters, ignore list, `X-Whoobe-Flow: stop`, loop guard, worker, retries, statuses) and the sequence of a flow that writes back to the record. Docs only. Also "Who does what": a components diagram (dashboard, Core API, PostgreSQL, Gateway worker and Integrations, API client, the user's service) and a table of each one's role.
