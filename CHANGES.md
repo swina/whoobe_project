@@ -1,3 +1,7 @@
+## Whoobe website: automations and object events in the architecture of home B — 2026-10-17
+- Branch: `master` (data only)
+- The "Architecture" section of `/home-b` did not show object events or automations. The Services band now has the chips *Object events* and *Forms + Automations* and says that the Core API produces the events and the Gateway delivers them and the form automations; a dashed fifth band, **Your systems** (n8n, Activepieces, Node-RED, a back-end of the user, CRM / ERP), sits outside the four layers and says that Whoobe tells them and they decide, and that their credentials stay on the Whoobe server. Not checked in the editor (static copy in headless Chromium). The page was not open in the dashboard at update time (last save before this update: 15:40, mine).
+
 ## Whoobe website: the architecture section of home B is flat — 2026-10-17
 - Branch: `master` (data only, no code change)
 - The isometric slabs were hard to read, so the "Architecture" section of `/home-b` (`169b8a97-...`) now is four flat full-width bands, top to bottom Channels, Apps, Services, Data, joined by "publishes" and "runs on" lines. Each band has its name, a sentence on what the layer does and its components as chips; the separate legend is gone (the text is in the bands). On phones the bands stack with the chips under the text.
