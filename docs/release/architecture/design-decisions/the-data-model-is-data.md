@@ -27,4 +27,4 @@ When a class needs to hold very large volumes with ad-hoc querying: the likely a
 
 ## Where it shows in the product
 [Data pillar](../../data/README.md), [data model](../../data/data-model.md), [data and storage](../data-and-storage.md); plans
-[`advanced-data-modeling-plan.md`](../../../plans/datamodel/advanced-data-modeling-plan.md).
+[`advanced-data-modeling-plan.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/datamodel/advanced-data-modeling-plan.md).

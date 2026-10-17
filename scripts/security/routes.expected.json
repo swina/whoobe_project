@@ -1488,6 +1488,12 @@
         "OBJECT_EVENTS_MANAGE"
       ]
     },
+    "DELETE /object-event-subscriptions/:id/deliveries": {
+      "access": "permission",
+      "permissions": [
+        "OBJECT_EVENTS_MANAGE"
+      ]
+    },
     "POST /object-event-deliveries/:id/retry": {
       "access": "permission",
       "permissions": [

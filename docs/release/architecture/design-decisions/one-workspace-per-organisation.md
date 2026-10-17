@@ -31,4 +31,4 @@ tenancy, tenant-scoped keys, per-tenant limits), not a configuration switch.
 
 ## Where it shows in the product
 [Architecture overview, section 7](../architecture-overview.md); the provisioning, backup and removal scripts in
-[operations](../../operations/creating-workspaces.md); the plan [`workspaces-plan.md`](../../../plans/system/workspaces-plan.md).
+[operations](../../operations/creating-workspaces.md); the plan [`workspaces-plan.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/system/workspaces-plan.md).

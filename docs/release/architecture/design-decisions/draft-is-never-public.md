@@ -23,4 +23,4 @@ When scheduled publishing or per-audience visibility is required.
 
 ## Where it shows in the product
 [Data model](../../data/data-model.md), [API clients guide](../../communication/api-clients.md) (section 6.2), plan
-[`object-publish-workflow-plan.md`](../../../plans/backend/object-publish-workflow-plan.md).
+[`object-publish-workflow-plan.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/backend/object-publish-workflow-plan.md).

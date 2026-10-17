@@ -5,7 +5,7 @@ Whoobe through the public surface **`/client/v1`**. It sees only what you allow,
 third-party services stay inside Whoobe. No user account is created in Whoobe for it.
 
 This guide is the complete reference. The [Integrations guide](integrations.md) (section 4) is the short version; the
-design and the decisions are in [`docs/plans/api-gateway/client-access-hub.md`](../../plans/api-gateway/client-access-hub.md).
+design and the decisions are in [`docs/plans/api-gateway/client-access-hub.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/api-gateway/client-access-hub.md).
 
 **Contents**
 

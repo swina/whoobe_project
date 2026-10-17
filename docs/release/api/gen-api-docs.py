@@ -221,7 +221,8 @@ CORE_API_SECTIONS = [
   ("PATCH", "/object-event-subscriptions/:id", "Change some of its fields."),
   ("DELETE", "/object-event-subscriptions/:id", "Delete it and its delivery log."),
   ("POST", "/object-event-subscriptions/:id/test", "Queue a synthetic `object.updated` marked `\"test\": true` for this subscription only (202)."),
-  ("GET", "/object-event-subscriptions/:id/deliveries", "The delivery log, newest first (`?status=pending`, `delivered`, `retrying` or `dead`, and `limit`): status, attempts, next try, last problem. Never the event content or the service's answer."),
+  ("GET", "/object-event-subscriptions/:id/deliveries", "The delivery log, newest first (`?status=pending`, `delivered`, `retrying`, `dead` or `stopped`, `?type=object.updated` and so on, and `limit` up to 200): status, attempts, next try, last problem. Never the event content or the service's answer."),
+  ("DELETE", "/object-event-subscriptions/:id/deliveries", "Clear finished deliveries from the log: body `{ ids: [...] }` (up to 500) or `{ status: 'delivered' | 'dead' | 'stopped' }`; returns `{ removed }`. A delivery still pending or retrying is never removed; the events and the loop guard counts are not touched."),
   ("POST", "/object-event-deliveries/:id/retry", "Retry a delivery that gave up (`dead`); 409 for any other status."),
 ]),
 ("Documentation sites (Markdown)", [

@@ -26,4 +26,4 @@ When an external secrets manager (Vault, a cloud KMS) is wanted as the store ins
 
 ## Where it shows in the product
 [Integrations guide](../../communication/integrations.md), [API Gateway security](../../communication/api-gateway-security.md),
-[encryption](../../operations/encryption.md), plan [`gateway-auth-authz.md`](../../../plans/api-gateway/gateway-auth-authz.md).
+[encryption](../../operations/encryption.md), plan [`gateway-auth-authz.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/api-gateway/gateway-auth-authz.md).

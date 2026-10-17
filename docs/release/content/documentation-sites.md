@@ -160,6 +160,6 @@ and the final call takes the same folder as `docsFolder`, after the files have b
 | Index | `_nav.yml` in the folder, or the tree of files |
 | Settings | the **Settings** tab: title, source folder, home document |
 | API | [`/docs-sites/...` and `/public/docs/...`](../api/api-reference.md) |
-| Plan and phases | [`docs/plans/docs-sites/docs-site-plan.md`](../../plans/docs-sites/docs-site-plan.md) |
+| Plan and phases | [`docs/plans/docs-sites/docs-site-plan.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/docs-sites/docs-site-plan.md) |
 
 Not yet (planned): several languages and versions, the layout as a template of an ordinary website, search results with the matching words highlighted.

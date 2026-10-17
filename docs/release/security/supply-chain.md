@@ -57,7 +57,7 @@ licence texts. It is **generated** by `scripts/release/third-party-notices.py` f
 the check fails when the file is out of date, or when a dependency has a licence that is neither on the permissive allow-list (MIT, ISC, Apache-2.0, BSD,
 and similar) nor reviewed with a written reason in the script. Today (617 packages) one is reviewed: the **libvips** binaries of `sharp` (LGPL-3.0-or-later, a separate library, not modified). The editor's animation library, GSAP
 (a proprietary licence with a restriction on visual animation builders), was **removed on 2026-10-13**: element animations now run on the browser's Web Animations
-API ([plan](../../plans/cms/replace-gsap.md)), and the gate would fail if it came back. Packages whose metadata lacks a licence (two) are set to MIT by hand after reading their licence files. Operating-system packages in the images are not covered
+API ([plan](https://github.com/swina/whoobe_project/blob/master/docs/plans/cms/replace-gsap.md)), and the gate would fail if it came back. Packages whose metadata lacks a licence (two) are set to MIT by hand after reading their licence files. Operating-system packages in the images are not covered
 (the image SBOMs carry them). A legal review of the inventory has not been done.
 
 Fonts loaded from Google Fonts by the editor, dashboard and generated sites are third-party content under their own

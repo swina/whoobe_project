@@ -3,7 +3,7 @@
 Whoobe stands on the work of many open-source projects, and it works with several others. This page thanks the main ones, by the role they play.
 It is a selection, not an inventory.
 
-- **The complete list of third-party software, with versions, licences and copyright notices, is [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md)**
+- **The complete list of third-party software, with versions, licences and copyright notices, is [THIRD_PARTY_NOTICES.md](https://github.com/swina/whoobe_project/blob/master/THIRD_PARTY_NOTICES.md)**
   (generated; every release checks it, see [supply chain](security/supply-chain.md)). That is the legal record; this page is the thank-you.
 - Where this page says "used", the project is a dependency of Whoobe or part of the delivered stack. Where it says "works with", Whoobe connects to it
   but does not ship it.
@@ -70,4 +70,4 @@ its own SDK adapters for React, Vue and Svelte. These frameworks are not depende
 ## Thank you
 
 To every maintainer and contributor of these projects, and of the thousands of smaller packages below them.
-If you maintain one and want your credit changed, or think one is missing, [open an issue](../../CONTRIBUTING.md).
+If you maintain one and want your credit changed, or think one is missing, [open an issue](https://github.com/swina/whoobe_project/blob/master/CONTRIBUTING.md).

@@ -102,11 +102,11 @@ flow exists or is published in the engine, and a form inside a snippet used on s
 Re-read the licence of the version you install. Both were tried with a form of Whoobe (an e-mail through a fake SMTP server and the
 `outcome` reaching the page); nothing in Whoobe depends on the choice, since the contract is "a webhook in, an optional `outcome` out".
 
-Whoobe does not ship or support an engine. To try one locally, the repository has an **example, outside the distribution**: [`examples/automation-engines/docker-compose.activepieces.yml`](../../../examples/automation-engines/docker-compose.activepieces.yml) runs Activepieces with PostgreSQL and
+Whoobe does not ship or support an engine. To try one locally, the repository has an **example, outside the distribution**: [`examples/automation-engines/docker-compose.activepieces.yml`](https://github.com/swina/whoobe_project/blob/master/examples/automation-engines/docker-compose.activepieces.yml) runs Activepieces with PostgreSQL and
 Redis (the three secrets it needs are read from the environment; keep the same values, the encryption key decrypts the stored
-connections), bound to `127.0.0.1`; [`examples/automation-engines/automation-test.sh`](../../../examples/automation-engines/automation-test.sh) starts or stops a single-container
-Activepieces (or n8n with the argument `n8n`) next to a development stack. Step-by-step: [`docs/plans/automations/activepieces-local-experiment.md`](../../plans/automations/activepieces-local-experiment.md)
-and [`n8n-local-experiment.md`](../../plans/automations/n8n-local-experiment.md).
+connections), bound to `127.0.0.1`; [`examples/automation-engines/automation-test.sh`](https://github.com/swina/whoobe_project/blob/master/examples/automation-engines/automation-test.sh) starts or stops a single-container
+Activepieces (or n8n with the argument `n8n`) next to a development stack. Step-by-step: [`docs/plans/automations/activepieces-local-experiment.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/automations/activepieces-local-experiment.md)
+and [`n8n-local-experiment.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/automations/n8n-local-experiment.md).
 
 The SMTP piece of Activepieces only offers the ports 25, 465, 587 and 2525; for a test server on another port (Mailhog 1025) forward one of them to it.
 
@@ -133,7 +133,7 @@ The SMTP piece of Activepieces only offers the ports 25, 465, 587 and 2525; for 
 - A **verified** e-mail address, access to private content after a form, and showing content by visitor are not provided: the page only reacts to a word, and anything hidden is still in the HTML.
 - A form that sends to an endpoint does not take file uploads ([`form-uploads.md`](form-uploads.md)).
 
-Why Whoobe does not build its own engine: [`docs/plans/automations/why-no-custom-automation-engine.md`](../../plans/automations/why-no-custom-automation-engine.md).
+Why Whoobe does not build its own engine: [`docs/plans/automations/why-no-custom-automation-engine.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/automations/why-no-custom-automation-engine.md).
 
 ## Testing a form from the editor's Preview
 
@@ -141,9 +141,9 @@ The Preview sends a Gateway form with your **admin session** (`/api/v1/gateway/p
 
 ## Reading the outcome in the children (AlpineJS)
 
-The state (`x-data` and `@whoobe-form-result`) sits on the form or on a container around it; every element **inside** it reads `outcome`, `ok` and `done` by name, with no listener of its own: `x-text` = `outcome` shows the key, `x-show` = `outcome === 'qualified'` shows a block for one outcome, `:class` = `outcome === 'qualified' ? 'text-green-600' : 'text-red-600'` changes classes. For a different message for each outcome, put the texts in the parent's state (`messages: { qualified: 'Thanks', not_qualified: 'We will get back to you' }`) and use `x-text` = `messages[outcome] ?? ''` on a child. An element can also listen by itself with `@whoobe-form-result.window`. The full table is in [form result, section 4.1](../../plans/automations/form-result-event.md).
+The state (`x-data` and `@whoobe-form-result`) sits on the form or on a container around it; every element **inside** it reads `outcome`, `ok` and `done` by name, with no listener of its own: `x-text` = `outcome` shows the key, `x-show` = `outcome === 'qualified'` shows a block for one outcome, `:class` = `outcome === 'qualified' ? 'text-green-600' : 'text-red-600'` changes classes. For a different message for each outcome, put the texts in the parent's state (`messages: { qualified: 'Thanks', not_qualified: 'We will get back to you' }`) and use `x-text` = `messages[outcome] ?? ''` on a child. An element can also listen by itself with `@whoobe-form-result.window`. The full table is in [form result, section 4.1](https://github.com/swina/whoobe_project/blob/master/docs/plans/automations/form-result-event.md).
 
 ## Showing the automation's answer
 
-A form does not "bind" to the route it posts to: the route is a POST (a write) and a data binding only reads GET routes. What the page can use from the answer is the **outcome** key (`{ "outcome": "qualified" }`), see [form result](../../plans/automations/form-result-event.md): the page reacts with the Alpine directives of its blocks. Text or markup from the automation's reply is deliberately not put in the page.
+A form does not "bind" to the route it posts to: the route is a POST (a write) and a data binding only reads GET routes. What the page can use from the answer is the **outcome** key (`{ "outcome": "qualified" }`), see [form result](https://github.com/swina/whoobe_project/blob/master/docs/plans/automations/form-result-event.md): the page reacts with the Alpine directives of its blocks. Text or markup from the automation's reply is deliberately not put in the page.
 

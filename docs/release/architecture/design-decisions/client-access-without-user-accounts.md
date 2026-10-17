@@ -33,5 +33,5 @@ When token revocation (introspection) is needed, or when Whoobe-issued short-liv
 (optional phase 6 of the plan).
 
 ## Where it shows in the product
-[API clients guide](../../communication/api-clients.md); the plan [`client-access-hub.md`](../../../plans/api-gateway/client-access-hub.md) (sections 11 to 14
+[API clients guide](../../communication/api-clients.md); the plan [`client-access-hub.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/api-gateway/client-access-hub.md) (sections 11 to 14
 record the decisions and their order).

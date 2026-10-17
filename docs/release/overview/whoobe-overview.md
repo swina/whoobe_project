@@ -125,7 +125,7 @@ Only what exists in release 0.1.0. Items marked *(beta)* work but have had less 
 - A list of every form connected this way, across all pages and snippets, in the dashboard (Data & Communication > Automations) and in
   the editor.
 - **Outgoing mail** per website through SMTP or an HTTP mail provider; an email **campaign draft** can be pushed to Brevo from a page or snippet.
-- We do **not** build the automation engine ourselves. [Why](../../plans/automations/why-no-custom-automation-engine.md), and
+- We do **not** build the automation engine ourselves. [Why](https://github.com/swina/whoobe_project/blob/master/docs/plans/automations/why-no-custom-automation-engine.md), and
   [how the pieces fit](../communication/automations-architecture.md).
 
 ### 3.6 Publishing

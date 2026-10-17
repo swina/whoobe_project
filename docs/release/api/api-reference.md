@@ -2,7 +2,7 @@
 
 Overview of the HTTP APIs exposed by this monorepo's backend services, grouped by service and resource. Every endpoint returns/accepts JSON unless noted otherwise. Endpoints under `/public/*` and `/preview/*` (and `/health`, `/dam-asset/*`) require no authentication; everything else requires a valid `wcms_session` cookie (see [Auth](#auth)) and, in most cases, a specific permission. `gateway`'s own `/api/v1/gateway/resolve`/`/submit` are a third case: a published site (not an admin session) authenticates with a resolved `gatewayBindingId` and, optionally, a per-site API key — see [`docs/release/communication/api-gateway-security.md`](../communication/api-gateway-security.md).
 
-For exact request/response shapes, see the route handlers in each service's `src/server.ts` (or, for `gateway`, `src/router.ts` + `src/admin-routes.ts`/`src/resolve-handler.ts`/`src/submit-handler.ts`). A machine-readable companion spec covering every route on this page lives at [`docs/release/api/openapi.yaml`](openapi.yaml) — see its own section below for what it does and doesn't model.
+For exact request/response shapes, see the route handlers in each service's `src/server.ts` (or, for `gateway`, `src/router.ts` + `src/admin-routes.ts`/`src/resolve-handler.ts`/`src/submit-handler.ts`). A machine-readable companion spec covering every route on this page lives at [`docs/release/api/openapi.yaml`](https://github.com/swina/whoobe_project/blob/master/docs/release/api/openapi.yaml) — see its own section below for what it does and doesn't model.
 
 ## Services
 
@@ -283,7 +283,8 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `PATCH /object-event-subscriptions/:id` | Change some of its fields. |
 | `DELETE /object-event-subscriptions/:id` | Delete it and its delivery log. |
 | `POST /object-event-subscriptions/:id/test` | Queue a synthetic `object.updated` marked `"test": true` for this subscription only (202). |
-| `GET /object-event-subscriptions/:id/deliveries` | The delivery log, newest first (`?status=pending`, `delivered`, `retrying` or `dead`, and `limit`): status, attempts, next try, last problem. Never the event content or the service's answer. |
+| `GET /object-event-subscriptions/:id/deliveries` | The delivery log, newest first (`?status=pending`, `delivered`, `retrying`, `dead` or `stopped`, `?type=object.updated` and so on, and `limit` up to 200): status, attempts, next try, last problem. Never the event content or the service's answer. |
+| `DELETE /object-event-subscriptions/:id/deliveries` | Clear finished deliveries from the log: body `{ ids: [...] }` (up to 500) or `{ status: 'delivered' | 'dead' | 'stopped' }`; returns `{ removed }`. A delivery still pending or retrying is never removed; the events and the loop guard counts are not touched. |
 | `POST /object-event-deliveries/:id/retry` | Retry a delivery that gave up (`dead`); 409 for any other status. |
 
 ### Documentation sites (Markdown)
@@ -515,6 +516,6 @@ pnpm --filter @whoobe-cms/migration-tool cli -- help
 
 ## OpenAPI spec
 
-[`docs/release/api/openapi.yaml`](openapi.yaml) is a generated, machine-readable OpenAPI 3.0 companion to this page — importable into Swagger UI, Postman, Insomnia, or any OpenAPI-driven client generator. It's generated from the exact same route table as this page (see [`docs/release/api/gen-api-docs.py`](gen-api-docs.py)), so the two can't silently drift apart — **when a route changes, edit that script's table and re-run it (`python3 docs/release/api/gen-api-docs.py` from `docs/api/`), not the YAML or this page's tables directly.**
+[`docs/release/api/openapi.yaml`](https://github.com/swina/whoobe_project/blob/master/docs/release/api/openapi.yaml) is a generated, machine-readable OpenAPI 3.0 companion to this page — importable into Swagger UI, Postman, Insomnia, or any OpenAPI-driven client generator. It's generated from the exact same route table as this page (see [`docs/release/api/gen-api-docs.py`](https://github.com/swina/whoobe_project/blob/master/docs/release/api/gen-api-docs.py)), so the two can't silently drift apart — **when a route changes, edit that script's table and re-run it (`python3 docs/release/api/gen-api-docs.py` from `docs/api/`), not the YAML or this page's tables directly.**
 
 Scope, by design: every one of the ~226 routes documented above gets a real path, method, tag, auth requirement, and path parameters — that part is exhaustive. Request/response **bodies** are intentionally generic (`type: object`, no field-by-field modeling) for most routes, since hand-modeling every payload shape across three services would be a much larger, separate effort and would need to be re-verified against the handlers constantly to stay honest. A handful of flagship endpoints (`POST /auth/login`, `GET /auth/me`, `POST /api/v1/gateway/resolve`, `POST /api/v1/gateway/submit`, and the Whoobe One Pages CRUD) get real, hand-written schemas instead, as a quality anchor and a template for extending the rest incrementally.

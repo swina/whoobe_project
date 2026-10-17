@@ -3617,7 +3617,25 @@ paths:
   /object-event-subscriptions/{id}/deliveries:
     get:
       tags: ["core-api: Object events: subscriptions and delivery log (permission `object_events:manage`)"]
-      summary: "The delivery log, newest first (`?status=pending`, `delivered`, `retrying` or `dead`, and `limit`): status, attempts, next try, last problem. Never the event content or the service's answer."
+      summary: "The delivery log, newest first (`?status=pending`, `delivered`, `retrying`, `dead` or `stopped`, `?type=object.updated` and so on, and `limit` up to 200): status, attempts, next try, last problem. Never the event content or the service's answer."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Object events: subscriptions and delivery log (permission `object_events:manage`)"]
+      summary: "Clear finished deliveries from the log: body `{ ids: [...] }` (up to 500) or `{ status: 'delivered' | 'dead' | 'stopped' }`; returns `{ removed }`. A delivery still pending or retrying is never removed; the events and the loop guard counts are not touched."
       parameters:
         - name: id
           in: path

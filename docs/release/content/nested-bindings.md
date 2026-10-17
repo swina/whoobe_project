@@ -2,7 +2,7 @@
 
 Real data is rarely flat. A catalogue API answers with **categories**, each category has its own list of **products**, each product its **variants**. A nested binding lets a container inside a repeated item repeat over the list that is **part of that item**, and the elements inside read the fields of their own item.
 
-Plan and decisions: [`docs/plans/cms/nested-bindings.md`](../../plans/cms/nested-bindings.md).
+Plan and decisions: [`docs/plans/cms/nested-bindings.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/cms/nested-bindings.md).
 
 ## Integrations (an API)
 

@@ -18,7 +18,7 @@ the caller) acts on it. The engine (Activepieces, n8n, or anything that answers 
 - **Two products to learn and two places to look for a failure** (the gateway log and the engine's run history).
 - **A second service to run, update and back up.**
 - **The page learns one word.** Richer answers need a different mechanism.
-- **Whoobe cannot see inside a flow,** and triggers other than "form submitted" need Whoobe to emit a webhook (not built yet).
+- **Whoobe cannot see inside a flow.** It sends the event and reads the outcome; what happens in between, and why a step failed, is in the engine's own run history. A record change reaches an engine through [object events](../../communication/object-events.md), a signed webhook with a delivery log and a form submission starts a flow the same way. Other triggers (a schedule, an outside event) are the engine's own.
 
 ## When to revisit
 When customers must run automations with no second service, or a trigger needs the CMS's internal state in a transactional way, or an embeddable
@@ -27,4 +27,4 @@ engine with a compatible licence appears.
 ## Where it shows in the product
 [Marketing automation](../../communication/marketing-automation.md), [automations architecture](../../communication/automations-architecture.md),
 automations as API client scopes in the [API clients guide](../../communication/api-clients.md); full reasoning in
-[`why-no-custom-automation-engine.md`](../../../plans/automations/why-no-custom-automation-engine.md).
+[`why-no-custom-automation-engine.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/automations/why-no-custom-automation-engine.md).

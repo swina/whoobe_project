@@ -2,7 +2,7 @@
 
 The documentation in this folder describes the product **as it is delivered and operated**. Everything here has been
 checked against the code at the time of the last reorganisation (see [Status](#status)); the design history of the
-project stays in [`../plans`](../plans) and is deliberately not part of a release.
+project stays in [`../plans`](https://github.com/swina/whoobe_project/tree/master/docs/plans) and is deliberately not part of a release.
 
 **Aligned to release:** v0.1.0 (2026-10-14) - see [`release-process.md`](release-process.md)
 
@@ -41,12 +41,12 @@ The detailed documentation is organised by what Whoobe does. Each pillar has an 
 
 | Section | What is in it |
 |---|---|
-| [`overview/`](overview) | [What Whoobe is](overview/what-is-whoobe.md), the [full overview](overview/whoobe-overview.md) (what it does and does not do, costs, fit, by role), the dated [executive summary](overview/executive-summary.md) |
-| [`architecture/`](architecture) | [Architecture overview](architecture/architecture-overview.md), [data and storage](architecture/data-and-storage.md), [authentication and authorization](architecture/authentication-and-authorization.md), and the [design decisions](architecture/design-decisions/README.md) |
-| [`by-role/`](by-role) | Reading paths for CEO, IT manager, operators, security and compliance, marketing, data owners, developers |
-| [`api/`](api) | [API reference](api/api-reference.md) and [`openapi.yaml`](api/openapi.yaml), both generated from one route table by [`gen-api-docs.py`](api/gen-api-docs.py) |
+| [`overview/`](https://github.com/swina/whoobe_project/tree/master/docs/release/overview) | [What Whoobe is](overview/what-is-whoobe.md), the [full overview](overview/whoobe-overview.md) (what it does and does not do, costs, fit, by role), the dated [executive summary](overview/executive-summary.md) |
+| [`architecture/`](https://github.com/swina/whoobe_project/tree/master/docs/release/architecture) | [Architecture overview](architecture/architecture-overview.md), [data and storage](architecture/data-and-storage.md), [authentication and authorization](architecture/authentication-and-authorization.md), and the [design decisions](architecture/design-decisions/README.md) |
+| [`by-role/`](by-role/README.md) | Reading paths for CEO, IT manager, operators, security and compliance, marketing, data owners, developers |
+| [`api/`](https://github.com/swina/whoobe_project/tree/master/docs/release/api) | [API reference](api/api-reference.md) and [`openapi.yaml`](https://github.com/swina/whoobe_project/blob/master/docs/release/api/openapi.yaml), both generated from one route table by [`gen-api-docs.py`](https://github.com/swina/whoobe_project/blob/master/docs/release/api/gen-api-docs.py) |
 | [`whoobe-history.md`](whoobe-history.md) | The story of Whoobe |
-| [`credits.md`](credits.md) | Thanks to the open-source projects Whoobe is built with and works with; the legal record is [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md) |
+| [`credits.md`](credits.md) | Thanks to the open-source projects Whoobe is built with and works with; the legal record is [`THIRD_PARTY_NOTICES.md`](https://github.com/swina/whoobe_project/blob/master/THIRD_PARTY_NOTICES.md) |
 | [`community/`](community/why-sponsor-and-contribute.md) | Why sponsor and why contribute to open-source projects, and how to help Whoobe |
 | [`release-process.md`](release-process.md) | How a release is made: versions, support policy, release gates, procedure |
 | [`release-notes-0.1.0.md`](release-notes-0.1.0.md) | What 0.1.0 contains, behaviour changes to check before installing over a development setup, known limits |

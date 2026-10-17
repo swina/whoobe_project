@@ -2,7 +2,7 @@
 
 On one page (or snippet) a first list shows, for example, **categories**; when the visitor clicks a category, a second list shows the **products of that category**. The two lists can come from different sources: a Data Class and another Data Class, a Data Class and an [Integrations](../communication/integrations.md) list, or two Integrations lists.
 
-Plan and decisions: [`docs/plans/cms/linked-bindings.md`](../../plans/cms/linked-bindings.md).
+Plan and decisions: [`docs/plans/cms/linked-bindings.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/cms/linked-bindings.md).
 
 ## How to build it
 

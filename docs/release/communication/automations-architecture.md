@@ -15,7 +15,7 @@ limit of the design.
 that shows something depending on the answer), and it keeps a *register* of which form is connected to which service. The
 *engine* (Activepieces, n8n or anything that answers an HTTP webhook) runs the steps, holds the credentials of the services it calls and
 keeps the run history. The reasons (cost of building durable execution and connectors, licence fit, security surface) are in
-[`docs/plans/automations/why-no-custom-automation-engine.md`](../../plans/automations/why-no-custom-automation-engine.md).
+[`docs/plans/automations/why-no-custom-automation-engine.md`](https://github.com/swina/whoobe_project/blob/master/docs/plans/automations/why-no-custom-automation-engine.md).
 
 ## 2. Context
 
@@ -135,7 +135,7 @@ Whoobe does not keep a record of a submission it forwards, so the guarantees com
 
 | Option | How | When |
 |---|---|---|
-| Same host, own Compose project | an engine of your choice, for example Activepieces as in the [example compose file](../../../examples/automation-engines/docker-compose.activepieces.yml) (not part of the Whoobe distribution; PostgreSQL, Redis, `127.0.0.1` only) behind its own HTTPS | one organisation, small installation; the Gateway reaches it on a private address or `localhost` (see the outbound policy above) |
+| Same host, own Compose project | an engine of your choice, for example Activepieces as in the [example compose file](https://github.com/swina/whoobe_project/blob/master/examples/automation-engines/docker-compose.activepieces.yml) (not part of the Whoobe distribution; PostgreSQL, Redis, `127.0.0.1` only) behind its own HTTPS | one organisation, small installation; the Gateway reaches it on a private address or `localhost` (see the outbound policy above) |
 | Separate host | the engine on its own machine, reached over HTTPS | separation of duties, heavier flows |
 | Hosted by the engine vendor | the vendor's cloud | no engine to operate; credentials of third parties then live at the vendor |
 

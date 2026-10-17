@@ -3,7 +3,7 @@
 Every environment variable the services, scripts and compose files read, by area. The file that holds them is one
 env file per stack: `.env` in development, `.env.<slug>` for a workspace (written by `scripts/provision-workspace.sh`,
 mode 600). Docker Compose passes it to the containers (`env_file`); shell-exported variables win over the file. The
-commented template with explanations is [`.env.example`](../../../.env.example).
+commented template with explanations is [`.env.example`](https://github.com/swina/whoobe_project/blob/master/.env.example).
 
 Conventions: **Secret** = never log, never commit, back up with the database ([secrets and keys](secrets-and-keys.md));
 **Restart** = needs the service restarted (all of them are read at start unless a row says "read per request");

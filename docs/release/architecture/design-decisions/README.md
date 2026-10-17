@@ -1,7 +1,7 @@
 # Design decisions
 
 Why Whoobe is built the way it is. Each page states the decision, the reasons, **what it costs you**, and when it would be revisited. They are
-short on purpose; the long design history stays in [`docs/plans`](../../../plans), and the pages say which plan to read for it.
+short on purpose; the long design history stays in [`docs/plans`](https://github.com/swina/whoobe_project/tree/master/docs/plans), and the pages say which plan to read for it.
 
 | Decision | In one line |
 |---|---|

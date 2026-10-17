@@ -59,7 +59,7 @@ The documentation says plainly what has not been tested. Each of these is a real
 | **Data** | Import from CSV, JSON and XLSX (a placeholder today); tests on larger catalogues ([data model](../data/data-model.md)) |
 | **Documentation** | Reviews by someone other than the author, the unwritten chapters of the user manual, translations (English only today) |
 | **Field testing** | Run a pilot, report what was hard: [overview, chapter 10](../overview/whoobe-overview.md) |
-| **Code** | Issues and pull requests on the repository; how, in the [contributing guide](../../../CONTRIBUTING.md) (every change is logged in `CHANGES.md`, tested, and documented) |
+| **Code** | Issues and pull requests on the repository; how, in the [contributing guide](https://github.com/swina/whoobe_project/blob/master/CONTRIBUTING.md) (every change is logged in `CHANGES.md`, tested, and documented) |
 
 ### 3.2 Ways to sponsor
 
@@ -77,5 +77,5 @@ agreed case by case, not published here.
 
 **Before you sponsor:** is this component in production, or will it be? Would an abandoned version hurt you? Is the licence the one you need?
 
-**Before you contribute:** read the [contributing guide](../../../CONTRIBUTING.md) and the [code of conduct](../../../CODE_OF_CONDUCT.md); report security problems as described in [SECURITY.md](../../../SECURITY.md). Then read [what Whoobe is](../overview/what-is-whoobe.md) and the [design decisions](../architecture/design-decisions/README.md)
+**Before you contribute:** read the [contributing guide](https://github.com/swina/whoobe_project/blob/master/CONTRIBUTING.md) and the [code of conduct](https://github.com/swina/whoobe_project/blob/master/CODE_OF_CONDUCT.md); report security problems as described in [SECURITY.md](https://github.com/swina/whoobe_project/blob/master/SECURITY.md). Then read [what Whoobe is](../overview/what-is-whoobe.md) and the [design decisions](../architecture/design-decisions/README.md)
 (they explain why things are the way they are, and what the trade-offs were), then pick one thing from the table above.
