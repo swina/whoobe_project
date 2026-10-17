@@ -4,6 +4,25 @@
 not are marked **(not verified)**. Source of the list of limits: `docs/release/overview/whoobe-overview.md`, chapter 4. This plan does not decide the
 scope of the release: section 8 lists what the owner has to decide.*
 
+## 0. Name and objective of the release
+
+**Name: "Conduct".** One word, three senses that are the three verbs: to conduct an orchestra (**orchestrate**), to conduct a test or an inspection
+(**validate**), and to conduct the affairs of an organisation, its code of conduct (**govern**). Whoobe conducts the calls and the data of one
+organisation; it does not play the instruments (the automation engine of the operator's choice does).
+
+**Objective.** After this release each verb has a **proof a reviewer can check**, not only a sentence on a web page:
+
+| Verb | What it must mean in the product | Proof (from the blocks below) |
+|---|---|---|
+| **Validate** | Everything that enters, leaves or is released is checked against a contract that a test can fail. | A1: the upgrade test, the restore rehearsal, the load figures. C2 step 1: the editor and the renderer compared on the same trees. B3 step 2: the route contract per module. The contracts of the data (Zod) and of the integrations (OpenAPI) already exist and stay. |
+| **Govern** | Who changes what, who publishes, who calls, and what is left behind, can be shown. | A2: the audit log of administrative actions, OIDC login, mandatory 2FA, data subject tooling, readiness and metrics. B3: the "no Content" profile (run only what you need). A3 if asked: permissions per class. |
+| **Orchestrate** (the calls, not the flows) | Whoobe tells an engine that something happened, reliably, and a flow can answer without starting itself. | A2 "more events"; D2: the wizard exports a working Node-RED flow and the conventions are one page. The delivery log, retries, signature and loop guard already exist. |
+
+A sentence is allowed on the site for a verb only when its proof is in the release. Today "govern" is the weakest (no audit log, no SSO, no mandatory
+2FA): the release is not called *Conduct* until A2 is in.
+
+The **name is not the version number**: the number (0.1.1, 0.2.0) is still decision 1 of section 8.
+
 ## 1. Where we are (facts)
 
 - `master` is **65 commits ahead of the tag v0.1.0** (2026-10-14). The release documentation describes some of them: object events and their delivery
@@ -163,19 +182,19 @@ per engine). So no language now; two small things first, and a limited recipe on
 A general flow language; round-trip between the Node-RED editor and a description; the same for n8n or Activepieces (their own editors and export
 formats stay the way to work with them).
 
-## 7. Order of work
+## 7. Order of work (each step says which verb it serves)
 
 1. Corrections of the documentation and the alignment note (done 2026-10-17).
-2. A1 (maturity), because it needs no product decision and removes the heaviest rows of chapter 4.6.
-3. C2 step 1 (the comparison), which is small and finds the size of block C.
-4. A2: OIDC, audit log and mandatory 2FA first; then data subject tooling, readiness and metrics, more events.
-5. B3 steps 1 and 2 (the "no Content" profile).
-6. D2 steps 1 and 2 (the wizard exports the flow; the conventions page): small, and they end the hand-made example flow.
+2. A1 (maturity) *[validate]*, because it needs no product decision and removes the heaviest rows of chapter 4.6.
+3. C2 step 1 (the comparison) *[validate]*, which is small and finds the size of block C.
+4. A2 *[govern]*: audit log, OIDC and mandatory 2FA first; then data subject tooling, readiness and metrics; more events *[orchestrate]*.
+5. B3 steps 1 and 2 (the "no Content" profile) *[govern]*.
+6. D2 steps 1 and 2 (the wizard exports the flow; the conventions page) *[orchestrate]*: small, and they end the hand-made example flow.
 7. A3 and the rest of block C as demand and time allow.
 
 ## 8. Decisions for the owner
 
-- **The name of the next release:** 0.1.1 (fixes and the features already on `master`) followed by 0.2.0 for this plan, or one 0.2.0. The features on
+- **The number of the next release** (the name is *Conduct*, section 0): 0.1.1 (fixes and the features already on `master`) followed by 0.2.0 for this plan, or one 0.2.0. The features on
   `master` are not in the tag: until a release exists, the documentation says "not in the v0.1.0 tag" next to them.
 - **How to publish documentation of two versions:** one site that follows `master` (today, with notes), or a site per release. Proposal: one site, a
   note per feature not yet released, until there are users on two versions.
