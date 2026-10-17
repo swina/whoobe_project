@@ -71,7 +71,7 @@ protection, supply chain, encryption. More in [documentation by role](by-role/RE
    in these files must exist in the repository. The API reference and OpenAPI file are generated:
    edit the route table in `api/gen-api-docs.py` and run `python3 docs/release/api/gen-api-docs.py`. A route added to
    core-api without an entry there leaves the API documentation behind; compare with
-   `scripts/security/routes.expected.json` (all 214 core-api routes are documented, checked by `scripts/release/check-docs.py`). The same
+   `scripts/security/routes.expected.json` (all 228 core-api routes are documented, checked by `scripts/release/check-docs.py`). The same
    script fails when an environment variable read by the services or listed in `.env.example` is missing from the
    [configuration reference](operations/configuration-reference.md).
 3. **Changes are logged** in the root `CHANGES.md`, as for any other file.

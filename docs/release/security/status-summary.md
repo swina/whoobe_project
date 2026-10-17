@@ -25,7 +25,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | Plan | Area | State |
 |---|---|---|
 | 3.1 | Authentication, sessions, lockout, password reset, MFA | done (`auth`, `mfa` suites) |
-| 3.2 | Authorization: 196 routes x 5 identities, route contract/drift, publish permission | done (`authz-matrix`, `route-drift`, `limits-and-publish`) |
+| 3.2 | Authorization: the route contract (228 routes) x 5 identities, route contract/drift, publish permission | done (`authz-matrix`, `route-drift`, `limits-and-publish`) |
 | 3.3 | Input validation / injection | public query, malformed ids/JSON, prototype keys covered; public filters run in JS, not SQL; **no SQL fuzzing of the remaining endpoints** |
 | 3.4 | Public surface, drafts, preview tokens, forms | done (`public-surface`) |
 | 3.5 | CORS, CSRF, security headers | done for the three services and the two nginx SPAs (clickjacking, baseline headers; ZAP baseline); **no full CSP on the SPAs** (postponed: see F-014) |

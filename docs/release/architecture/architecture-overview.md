@@ -118,7 +118,7 @@ inside the services (for example the clean-up of unused form uploads in asset-pr
 | proxy → services | HTTP on loopback | `TRUST_PROXY=1` so that client addresses used by limiters come from `X-Forwarded-For` |
 | services → PostgreSQL / S3 | private Compose network; ports published on `127.0.0.1` only (`WS_DATA_BIND_ADDRESS`) | credentials required by Compose (it refuses to start without them) |
 | anonymous → public surface | `/public/*`, `/preview/*`, `/dam-asset/*`, `/health` | read-only data, rate limits per address, only published content, only public assets, CORS without credentials |
-| authenticated → admin surface | everything else | session cookie, permission per route (214 core-api routes are in a contract file checked by tests, see [auth](authentication-and-authorization.md)) |
+| authenticated → admin surface | everything else | session cookie, permission per route (228 core-api routes are in a contract file checked by tests, see [auth](authentication-and-authorization.md)) |
 | operator URLs → outbound | gateway upstreams, OpenAPI import, AI endpoints, mail providers | `safeFetch` SSRF guard |
 | uploaded content → storage / browsers | DAM uploads, form uploads, documents | extension and content checks, image re-encoding, `Content-Security-Policy: sandbox`, `attachment` for active types, private by default |
 | author content → visitors | rich text, SVG, Markdown | server-side allow-list sanitizer in `packages/sdk/schema/src/sanitize.ts`, applied when content is served |

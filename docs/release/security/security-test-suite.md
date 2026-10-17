@@ -128,7 +128,7 @@ anonymous call to a protected route returns 401; every identity can log in; a us
 `extract-routes.ts` statically parses every `app.<verb>(path, ...)` registration in
 `apps/core-api/src/server.ts` and derives its access level from the middleware chain (`requirePermission(...)`
 -> *permission*, `requireAuth` -> *auth*, none -> *public*). The result is compared with the checked-in contract
-`scripts/security/routes.expected.json` (196 routes today: 160 permission-gated, 8 authenticated, 28 public,
+`scripts/security/routes.expected.json` (228 routes today: 186 permission-gated, 8 authenticated, 34 public,
 each public route with a justification note).
 
 | Test | Fails when |
