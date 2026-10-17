@@ -247,7 +247,7 @@ describe('engineSnippet', () => {
     const s = engineSnippet({ engine: 'activepieces', clientBase: 'http://172.17.0.1:3001/client/v1/', className: 'Contact', key: 'wbk_abc' })
     expect(s.method).toBe('PATCH')
     expect(s.url).toBe("http://172.17.0.1:3001/client/v1/data/Contact/{{trigger['body']['object']['id']}}")
-    expect(s.headers).toEqual([{ name: 'Authorization', value: 'Bearer wbk_abc' }, { name: 'Content-Type', value: 'application/json' }])
+    expect(s.headers).toEqual([{ name: 'Authorization', value: 'Bearer wbk_abc' }, { name: 'Content-Type', value: 'application/json' }, { name: 'X-Whoobe-Flow', value: 'stop' }])
     expect(JSON.parse(s.body)).toEqual({ attributes: { '<field>': '<new value>' } })
     expect(s.notes.join(' ')).toMatch(/409/)
   })
@@ -395,5 +395,19 @@ describe('an API client that already exists', () => {
   it('the snippets name whose key to use instead of inventing one', () => {
     expect(nodeRedSnippet({ clientBase: 'http://gw/client/v1', key: null, keyOf: 'Flow client' }).env[1].value).toMatch(/the key of "Flow client"/)
     expect(engineSnippet({ engine: 'generic', clientBase: 'http://gw/client/v1', className: 'A', key: null, keyOf: 'Flow client' }).headers[0].value).toBe('Bearer <the key of "Flow client">')
+  })
+})
+
+describe('end of flow header in the snippets', () => {
+  it('the HTTP-step block and the Node-RED code send X-Whoobe-Flow: stop, so a flow cannot start itself', () => {
+    const s = engineSnippet({ engine: 'auto' as any, clientBase: 'http://gw/client/v1', className: 'Contact', key: 'k' })
+    expect(s.headers).toContainEqual({ name: 'X-Whoobe-Flow', value: 'stop' })
+    expect(s.notes.join(' ')).toMatch(/X-Whoobe-Flow: stop/)
+    expect(nodeRedSnippet({ clientBase: 'http://gw/client/v1', key: null }).code).toContain("'X-Whoobe-Flow': 'stop'")
+  })
+  it('a stopped delivery is explained, not shown as a failure to retry', () => {
+    const d = describeDelivery({ status: 'stopped', lastError: 'loop guard: more than 5 events by this API client on this record within 60 s' }, 'live')
+    expect(d.tone).toBe('problem')
+    expect(d.text).toMatch(/did not send it: loop guard/)
   })
 })

@@ -108,6 +108,9 @@ cannot be lost** - see [secrets and keys](secrets-and-keys.md).
 | `GATEWAY_PLUGINS_PATH` | unset | gateway plugins (code), loaded at start |
 | `OBJECT_EVENTS_ENABLED` | on | `0` stops the object events of the instance: no event is written and the delivery worker in the gateway does not start. Read by core-api and the gateway, so keep it in the shared env file. See [Object events](../communication/object-events.md) |
 | `OBJECT_EVENTS_CONCURRENCY` | 5 | how many event deliveries the gateway makes at once (1-50) |
+| `OBJECT_EVENTS_LOOP_MAX` | 5 | the loop guard: events by one API client on one record within the window before the next delivery is stopped (`0` = off). Read by core-api and the gateway. See [Stop a loop](../communication/object-events.md) |
+| `OBJECT_EVENTS_LOOP_SUB_MAX` | 12 | the same per subscription and record, counting every API client (catches two flows answering each other; `0` = off) |
+| `OBJECT_EVENTS_LOOP_WINDOW_SECONDS` | 60 | the length of that window |
 | `OBJECT_EVENTS_SECRET_<NAME>` | unset | the HMAC key of a subscription that names it (*Signing key name* in the dashboard). Only names with this prefix are ever read. Set it in the env file of the gateway; never in the dashboard |
 | `VITE_GATEWAY_*` | | build-time defaults of the gateway screens in the dashboard |
 

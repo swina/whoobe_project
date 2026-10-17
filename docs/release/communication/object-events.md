@@ -102,6 +102,7 @@ Open it with the checklist button. Each row is one event for this subscription:
 | *delivered* | the service answered with a `2xx` status |
 | *retrying* | the last try failed (network error, timeout of 10 seconds, or a non-`2xx` answer); the next try is shown |
 | *gave up* | six tries failed. Use **Retry** to start again from zero |
+| *stopped* | Whoobe **chose not to send it**, and says why in the last column: the write carried `X-Whoobe-Flow: stop`, or the loop guard fired (section 5). It is never sent and has no Retry |
 
 The waits between tries are **1 minute, 5 minutes, 30 minutes, 2 hours, 12 hours**. The log shows the last problem as a short text (for example
 `the consumer answered HTTP 503`). **It never shows the content of the event or the service's answer**: the answer is read and discarded.
@@ -121,8 +122,22 @@ and refuses a timestamp older than 5 minutes.
 
 ## 5. Stop a loop
 
+**The first line of defence: send `X-Whoobe-Flow: stop` on the flow's write.** An [API client](api-clients.md) that writes a record (`POST` or `PATCH /client/v1/data/...`)
+can add the header `X-Whoobe-Flow: stop`. It means *this write is the result of a flow*: Whoobe keeps the change and the event in its audit trail (marked
+`endOfFlow`), but **starts no subscription because of it**. So a flow that receives an event, calls an external service, waits for the answer and writes the
+answer into the record cannot start itself, whatever the subscriptions say. The wizard's Node-RED script and HTTP-step block already include it. Any other value, or no header, is an
+ordinary write.
+
+**The second: the loop guard** (a safety net for flows that do not send it). Whoobe counts the events written by one **API client** on one **record**: from the
+6th within 60 seconds on, the delivery is not sent; it is listed in the delivery log as *stopped* with the reason, the subscription shows a violet **loop guard**
+badge for a day, and one line goes to the log. A second counter per subscription and record (more than 12 events by API clients in 60 seconds) catches two flows that
+answer each other. People are never counted, nor the system or imports: several people, or a person and a flow, editing one record together are not stopped, and
+different clients are counted separately. The numbers can be changed in the environment: `OBJECT_EVENTS_LOOP_MAX` (5; `0` switches this counter off),
+`OBJECT_EVENTS_LOOP_SUB_MAX` (12; `0` off) and `OBJECT_EVENTS_LOOP_WINDOW_SECONDS` (60). A write that carries `X-Whoobe-Flow: stop` is not counted.
+
+**The third: the ignore list.**
 If the automation writes back into Whoobe (for example it sets a field to `synced`), that write is itself a change and would start the automation again.
-Give the automation its own [API client](api-clients.md) and list that client's id under **Ignore changes made by**: changes made by an actor in that list are not sent
+Give the automation its own API client and list that client's id under **Ignore changes made by**: changes made by an actor in that list are not sent
 to this subscription. Two more safety nets: pause the subscription, or set `OBJECT_EVENTS_ENABLED=0` for the whole instance.
 
 **Two automations on the same class can start each other.** Each one ignores only its own client, so the write of the first is a change for the second, whose

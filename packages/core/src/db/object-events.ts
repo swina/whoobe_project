@@ -41,6 +41,8 @@ export interface ObjectEvent {
   changed: string[];
   transition?: { from: string | null; to: string | null };
   actor: EventActor;
+  /** The write carried `X-Whoobe-Flow: stop`: it is the result of a flow, so it starts no subscription (docs/plans/automations/object-events-loop-guard.md). */
+  endOfFlow?: true;
 }
 
 export interface BulkObjectEvent {
@@ -113,6 +115,8 @@ export interface BuildContext {
   className?: string;
   now?: Date;
   newId?: () => string;
+  /** The write said it ends a flow: the event is kept, no flow is started by it. */
+  endOfFlow?: boolean;
 }
 
 export function buildEvent(draft: ObjectEventDraft, ctx: BuildContext): ObjectEvent {
@@ -135,6 +139,7 @@ export function buildEvent(draft: ObjectEventDraft, ctx: BuildContext): ObjectEv
     changed: draft.changed,
     ...(draft.transition ? { transition: draft.transition } : {}),
     actor: ctx.actor ?? { type: 'system' },
+    ...(ctx.endOfFlow ? { endOfFlow: true as const } : {}),
   };
 }
 
@@ -250,3 +255,59 @@ export function validateSubscriptionInput(
   }
   return { ok: true, value: out };
 }
+
+// ---- loop guard (docs/plans/automations/object-events-loop-guard.md, layers A and B) ----
+
+/** The header an API client sends on a write to say "this is the result of a flow, start nothing because of it". */
+export const END_OF_FLOW_HEADER = 'x-whoobe-flow';
+
+/** True when the value of the `X-Whoobe-Flow` header means "stop" (any other value, or none, is an ordinary write). */
+export function isEndOfFlow(headerValue: unknown): boolean {
+  const v = Array.isArray(headerValue) ? headerValue[0] : headerValue;
+  return typeof v === 'string' && v.trim().toLowerCase() === 'stop';
+}
+
+export interface LoopLimits {
+  /** Events by one API client on one record within the window before the next one is stopped (0 = guard off). */
+  perActor: number;
+  /** Events by API clients on one record, delivered to one subscription, within the window (0 = off): catches two flows answering each other. */
+  perSubscription: number;
+  windowSeconds: number;
+}
+
+const DEFAULT_LIMITS: LoopLimits = { perActor: 5, perSubscription: 12, windowSeconds: 60 };
+
+function envInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === '') return fallback;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 ? n : fallback;
+}
+
+/** `OBJECT_EVENTS_LOOP_MAX`, `OBJECT_EVENTS_LOOP_SUB_MAX`, `OBJECT_EVENTS_LOOP_WINDOW_SECONDS`; `OBJECT_EVENTS_LOOP_MAX=0` and `..._SUB_MAX=0` switch a counter off. */
+export function loopLimits(): LoopLimits {
+  const windowSeconds = envInt('OBJECT_EVENTS_LOOP_WINDOW_SECONDS', DEFAULT_LIMITS.windowSeconds);
+  return {
+    perActor: envInt('OBJECT_EVENTS_LOOP_MAX', DEFAULT_LIMITS.perActor),
+    perSubscription: envInt('OBJECT_EVENTS_LOOP_SUB_MAX', DEFAULT_LIMITS.perSubscription),
+    windowSeconds: windowSeconds > 0 ? windowSeconds : DEFAULT_LIMITS.windowSeconds,
+  };
+}
+
+/** Only an API client can loop: people editing together, the system and imports are never counted. */
+export function countsForLoopGuard(actor: EventActor): boolean {
+  return actor.type === 'api-client' && !!actor.id;
+}
+
+/** Why a delivery must not be sent, or null. `byActor` / `bySubscription`: events already stored in the window (not counting this one). */
+export function loopVerdict(counts: { byActor: number; bySubscription: number }, limits: LoopLimits): string | null {
+  if (limits.perActor > 0 && counts.byActor >= limits.perActor) {
+    return `loop guard: more than ${limits.perActor} events by this API client on this record within ${limits.windowSeconds} s`;
+  }
+  if (limits.perSubscription > 0 && counts.bySubscription >= limits.perSubscription) {
+    return `loop guard: more than ${limits.perSubscription} events by API clients on this record for this subscription within ${limits.windowSeconds} s`;
+  }
+  return null;
+}
+
+export const END_OF_FLOW_REASON = 'end of flow: the write carried X-Whoobe-Flow: stop';

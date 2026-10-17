@@ -294,13 +294,14 @@ export function describeFailure(e: ConnectionError): string {
 
 // ---- 5. the test: what the delivery says, in words ----
 
-export interface DeliveryFacts { status: 'pending' | 'delivered' | 'retrying' | 'dead'; lastError: string | null }
+export interface DeliveryFacts { status: 'pending' | 'delivered' | 'retrying' | 'dead' | 'stopped'; lastError: string | null }
 
 /** One sentence for a test delivery. `mode` tells which kind of route it went to. The engine's answer body is never stored, so this uses only the status and the problem text. */
 export function describeDelivery(d: DeliveryFacts | null, mode: 'live' | 'test' | 'single', engine: Engine = 'generic'): { tone: 'ok' | 'wait' | 'problem'; text: string } {
   if (!d) return { tone: 'wait', text: 'The test event is queued; the delivery log will show it in a few seconds.' }
   if (d.status === 'delivered') return { tone: 'ok', text: 'The flow received the test event.' }
   if (d.status === 'pending') return { tone: 'wait', text: 'The test event is waiting to be sent.' }
+  if (d.status === 'stopped') return { tone: 'problem', text: 'Whoobe did not send it: ' + (d.lastError ?? 'stopped by the loop guard') + '.' }
   const err = d.lastError ?? ''
   const http = err.match(/HTTP (\d{3})/)
   if (http) {
@@ -350,6 +351,7 @@ export function engineSnippet(input: { engine: Engine; clientBase: string; class
   const base = input.clientBase.replace(/\/+$/, '')
   const notes = [
     'The API changes drafts only: on a published record it answers 409. Test on a draft.',
+    'The header X-Whoobe-Flow: stop says this write is the result of the flow: Whoobe keeps it in the audit trail but starts no flow because of it, so the flow cannot start itself. Keep it.',
     'Put the key in one place only: the "Authorization" header, or the engine\'s Bearer token field (then without the word Bearer).',
   ]
   if (/\/\/(localhost|127\.0\.0\.1)[:/]/.test(base)) {
@@ -361,6 +363,7 @@ export function engineSnippet(input: { engine: Engine; clientBase: string; class
     headers: [
       { name: 'Authorization', value: `Bearer ${input.key ?? (input.keyOf ? `<the key of "${input.keyOf}">` : '<the key of the API client>')}` },
       { name: 'Content-Type', value: 'application/json' },
+      { name: 'X-Whoobe-Flow', value: 'stop' },
     ],
     body: JSON.stringify({ attributes: { '<field>': '<new value>' } }, null, 2),
     idToken,
@@ -388,7 +391,7 @@ export function nodeRedSnippet(input: { clientBase: string; key: string | null; 
     'if (ev.test || !ev.object) return null;   // the "test event" of Whoobe has no record',
     "msg.method = 'PATCH';",
     "msg.url = env.get('WHOOBE_CLIENT_URL').replace(/\\/+$/, '') + '/data/' + encodeURIComponent(ev.class.name) + '/' + ev.object.id;",
-    "msg.headers = { 'Authorization': 'Bearer ' + env.get('WHOOBE_KEY'), 'Content-Type': 'application/json' };",
+    "msg.headers = { 'Authorization': 'Bearer ' + env.get('WHOOBE_KEY'), 'Content-Type': 'application/json', 'X-Whoobe-Flow': 'stop' };   // stop: this write is the result of the flow, it must not start the flow again",
     "msg.payload = { attributes: { '<FIELD>': '<NEW VALUE>' } };   // <- the field to update and its value",
     'return msg;',
   ].join('\n')

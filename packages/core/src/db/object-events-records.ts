@@ -1,8 +1,8 @@
-import { and, desc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { objectEvents, objectEventDeliveries, objectEventSubscriptions } from './object-events-schema.js';
 import { getDataClass } from './data-classes-records.js';
-import { buildBulkEvent, nextAttemptPlan, objectEventsEnabled, type SubscriptionInput, type BulkObjectEvent, type EventActor, type ObjectEvent } from './object-events.js';
+import { buildBulkEvent, countsForLoopGuard, END_OF_FLOW_REASON, loopLimits, loopVerdict, nextAttemptPlan, objectEventsEnabled, type SubscriptionInput, type BulkObjectEvent, type EventActor, type ObjectEvent } from './object-events.js';
 
 type Db = ReturnType<typeof getDb>;
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -29,6 +29,31 @@ export async function insertEvent(runner: Db | Tx, event: ObjectEvent | BulkObje
   // An event nobody listens to is not stored: a subscription created later never receives old events anyway.
   if (!matching.length) return 0;
   const object = 'object' in event ? event.object : null;
+  const endOfFlow = 'endOfFlow' in event && event.endOfFlow === true;
+  // Loop guard (docs/plans/automations/object-events-loop-guard.md): what this actor and the subscriptions saw on this record lately. Only an API
+  // client can loop (people, the system and imports are never counted); a write that ends a flow starts nothing, so it is not counted either.
+  const limits = loopLimits();
+  const since = new Date(new Date(event.occurredAt).getTime() - limits.windowSeconds * 1000);
+  const counted = !!object && countsForLoopGuard(event.actor) && !endOfFlow;
+  const notEnd = sql`NOT (${objectEvents.payload} ? 'endOfFlow')`;
+  let byActor = 0;
+  if (counted && limits.perActor > 0) {
+    const [r] = await runner
+      .select({ n: sql<number>`count(*)::int` })
+      .from(objectEvents)
+      .where(and(eq(objectEvents.objectId, object!.id), eq(objectEvents.actorType, 'api-client'), eq(objectEvents.actorId, actorId), gt(objectEvents.occurredAt, since), notEnd));
+    byActor = r?.n ?? 0;
+  }
+  const bySub = new Map<string, number>();
+  if (counted && limits.perSubscription > 0) {
+    const rows = await runner
+      .select({ sub: objectEventDeliveries.subscriptionId, n: sql<number>`count(*)::int` })
+      .from(objectEventDeliveries)
+      .innerJoin(objectEvents, eq(objectEvents.id, objectEventDeliveries.eventId))
+      .where(and(inArray(objectEventDeliveries.subscriptionId, matching.map((m) => m.id)), eq(objectEvents.objectId, object!.id), eq(objectEvents.actorType, 'api-client'), gt(objectEvents.occurredAt, since), notEnd))
+      .groupBy(objectEventDeliveries.subscriptionId);
+    for (const r of rows) bySub.set(r.sub, r.n);
+  }
   await runner
     .insert(objectEvents)
     .values({
@@ -44,12 +69,26 @@ export async function insertEvent(runner: Db | Tx, event: ObjectEvent | BulkObje
       payload: event as unknown as Record<string, unknown>,
     })
     .onConflictDoNothing();
-  const queued = await runner
-    .insert(objectEventDeliveries)
-    .values(matching.map((s) => ({ eventId: event.id, subscriptionId: s.id })))
-    .onConflictDoNothing()
-    .returning({ id: objectEventDeliveries.id });
-  return queued.length;
+  // One delivery per subscription. A stopped one is written too (status `stopped`, with the reason) so that the Delivery Log shows what
+  // was not sent and why; the worker only takes `pending` and `retrying`.
+  const rows = matching.map((s) => {
+    const why = endOfFlow ? END_OF_FLOW_REASON : counted ? loopVerdict({ byActor, bySubscription: bySub.get(s.id) ?? 0 }, limits) : null;
+    if (why && !endOfFlow) warnLoopGuard(`${actorId}:${object!.id}:${s.id}`, why, event);
+    return { eventId: event.id, subscriptionId: s.id, ...(why ? { status: 'stopped', lastError: why } : {}) };
+  });
+  const queued = await runner.insert(objectEventDeliveries).values(rows).onConflictDoNothing().returning({ id: objectEventDeliveries.id, status: objectEventDeliveries.status });
+  return queued.filter((d) => d.status !== 'stopped').length;
+}
+
+const warned = new Map<string, number>();
+/** One warning per actor, record and subscription per window, not one per stopped event. */
+function warnLoopGuard(key: string, why: string, event: ObjectEvent | BulkObjectEvent): void {
+  const now = Date.now();
+  const last = warned.get(key);
+  if (last !== undefined && now - last < loopLimits().windowSeconds * 1000) return;
+  if (warned.size > 500) warned.clear();
+  warned.set(key, now);
+  console.warn(JSON.stringify({ level: 'warn', msg: '[object-events] loop guard stopped a delivery', why, eventId: event.id, type: event.type, actor: event.actor, object: 'object' in event ? event.object.id : null }));
 }
 
 /** ONE `object.bulk` summary for a run that wrote with `silent: true` (bundle import, Pimcore migration). Does nothing when `count` is 0. */
@@ -177,6 +216,17 @@ export async function updateObjectEventSubscription(id: string, input: Partial<S
     .where(eq(objectEventSubscriptions.id, id))
     .returning();
   return row;
+}
+
+/** When the loop guard last stopped a delivery, per subscription, within the last 24 hours (for the badge in the list). */
+export async function loopGuardFiredBySubscription(now: Date = new Date()): Promise<Map<string, Date>> {
+  const since = new Date(now.getTime() - 24 * 3_600_000);
+  const rows = await getDb()
+    .select({ sub: objectEventDeliveries.subscriptionId, at: sql<Date>`max(${objectEventDeliveries.createdAt})` })
+    .from(objectEventDeliveries)
+    .where(and(eq(objectEventDeliveries.status, 'stopped'), sql`${objectEventDeliveries.lastError} LIKE 'loop guard:%'`, gt(objectEventDeliveries.createdAt, since)))
+    .groupBy(objectEventDeliveries.subscriptionId);
+  return new Map(rows.map((r) => [r.sub, new Date(r.at)]));
 }
 
 /** Deleting a subscription deletes its deliveries (cascade). */

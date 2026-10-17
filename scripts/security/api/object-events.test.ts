@@ -169,3 +169,59 @@ describe('events and the delivery log', () => {
     expect((await admin.get(`/object-event-subscriptions/${id}/deliveries`)).status).toBe(404)
   })
 })
+
+describe('loop guard: X-Whoobe-Flow: stop and the circuit breaker (docs/plans/automations/object-events-loop-guard.md)', () => {
+  let key = ''
+  let loopSub = ''
+  let objectId = ''
+  const gw = new Client(GATEWAY_TARGET, 'key-client')
+  const patch = (value: string, headers: Record<string, string> = {}) =>
+    gw.request('PATCH', `/client/v1/data/Events${tag}/${objectId}`, { body: { attributes: { title: value } }, headers: { authorization: `Bearer ${key}`, ...headers } })
+  const log = async (status?: string) => (await admin.get(`/object-event-subscriptions/${loopSub}/deliveries?limit=100${status ? `&status=${status}` : ''}`)).json.deliveries as any[]
+
+  beforeAll(async () => {
+    const c = await gwAdmin.post('/api/v1/gateway/clients', { name: `sec-flow-${tag}`, scopes: [`data:write:Events${tag}`], rateLimitRps: 100 })
+    expect(c.status, c.text.slice(0, 200)).toBe(201)
+    key = c.json.plaintext
+    cleanup.push(() => gwAdmin.delete(`/api/v1/gateway/clients/${c.json.client.id}`))
+    const s = await admin.post('/object-event-subscriptions', { name: `loop-${tag}`, events: ['object.updated'], endpointId, routeId, classId })
+    expect(s.status, s.text.slice(0, 200)).toBe(201)
+    loopSub = s.json.subscription.id
+    cleanup.push(() => admin.delete(`/object-event-subscriptions/${loopSub}`))
+    const created = await gw.request('POST', `/client/v1/data/Events${tag}`, { body: { key: `loop-${tag}`, attributes: { title: 'start' } }, headers: { authorization: `Bearer ${key}` } })
+    expect(created.status, created.text.slice(0, 200)).toBe(201)
+    objectId = created.json.object.id
+    cleanup.push(() => admin.delete(`/data-objects/${objectId}`))
+  })
+
+  it('a PATCH with X-Whoobe-Flow: stop is logged as stopped, with the reason, and a plain one is queued', async () => {
+    expect((await patch('one', { 'x-whoobe-flow': 'stop' })).status).toBe(200)
+    expect((await patch('two')).status).toBe(200)
+    const rows = await until(async () => { const r = await log(); return r.length >= 2 ? r : undefined })
+    const stopped = rows.filter((d) => d.status === 'stopped')
+    expect(stopped).toHaveLength(1)
+    expect(stopped[0].lastError).toMatch(/X-Whoobe-Flow: stop/)
+    expect(stopped[0].attempts).toBe(0)
+    expect(rows.filter((d) => d.status !== 'stopped')).toHaveLength(1)
+  })
+
+  it('any other value of the header is an ordinary write', async () => {
+    expect((await patch('three', { 'x-whoobe-flow': 'go' })).status).toBe(200)
+    const rows = await until(async () => { const r = await log(); return r.length >= 3 ? r : undefined })
+    expect(rows.filter((d) => d.status === 'stopped')).toHaveLength(1)
+  })
+
+  it('a client that keeps writing the same record without the header is cut after 5 events, and the subscription shows it', async () => {
+    for (let i = 0; i < 8; i++) expect((await patch(`burst-${i}`)).status).toBe(200)
+    const stopped = await until(async () => { const r = await log('stopped'); return r.filter((d) => /^loop guard:/.test(d.lastError ?? '')).length >= 3 ? r : undefined })
+    expect(stopped.some((d) => /more than 5 events by this API client/.test(d.lastError ?? ''))).toBe(true)
+    const list = await admin.get('/object-event-subscriptions')
+    expect(list.json.subscriptions.find((s: any) => s.id === loopSub).loopGuardFiredAt).toBeTruthy()
+  })
+
+  it('the stopped deliveries are never sent: no attempt, and retry refuses them', async () => {
+    const stopped = await log('stopped')
+    expect(stopped.every((d) => d.attempts === 0)).toBe(true)
+    expect((await admin.post(`/object-event-deliveries/${stopped[0].id}/retry`, {})).status).toBe(409)
+  })
+})

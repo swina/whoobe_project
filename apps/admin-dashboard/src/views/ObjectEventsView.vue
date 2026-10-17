@@ -51,6 +51,7 @@
               <div class="mt-0.5 flex flex-wrap gap-1">
                 <span v-if="!s.enabled" class="px-1.5 py-0.5 rounded bg-slate-700 text-slate-300 text-[10px] uppercase">paused</span>
                 <span v-if="s.signingSecretRef" class="px-1.5 py-0.5 rounded bg-sky-900/60 text-sky-300 text-[10px] uppercase" :title="`Signed with the key in ${s.signingSecretRef}`">signed</span>
+                <span v-if="s.loopGuardFiredAt" class="px-1.5 py-0.5 rounded bg-violet-900/60 text-violet-300 text-[10px] uppercase" :title="`The loop guard stopped deliveries of this subscription ${relativeTime(s.loopGuardFiredAt)}: a flow is probably writing the records that start it. See the delivery log (status stopped).`">loop guard</span>
                 <span v-if="!s.endpointId || !s.routeId" class="px-1.5 py-0.5 rounded bg-rose-900/60 text-rose-300 text-[10px] uppercase" title="The endpoint or route was deleted: choose another">no target</span>
               </div>
             </td>
