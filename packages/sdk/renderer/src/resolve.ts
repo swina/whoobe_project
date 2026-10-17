@@ -3,7 +3,8 @@
 // the public API, formats bound values with the shared transform engine, and
 // mirrors the editor's escaping rules.
 
-import { applyTransform, escapeHtml, splitUp, type DataBindingFilter, type ElementDataBinding, type FieldTransform, type TransformResult } from '@whoobe-cms/schema'
+import { marked } from 'marked'
+import { applyTransform, escapeHtml, sanitizeRichText, splitUp, type DataBindingFilter, type ElementDataBinding, type FieldTransform, type TransformResult } from '@whoobe-cms/schema'
 import type { RenderApi, GatewaySiteAuth } from './api-client.js'
 import type { WalkContext } from './walk.js'
 
@@ -241,7 +242,28 @@ export function resolveFieldFromRecord(record: Record<string, unknown> | null | 
   return undefined
 }
 
-export function formatBoundContent(value: unknown, transform: FieldTransform | null | undefined): FormattedContent {
+/** A `markdown` field's source as HTML, the same conversion the editor preview makes (`marked`, GitHub flavour). Never throws: a parse error
+ *  gives the escaped source. The caller sanitises the result. */
+export function markdownToHtml(value: unknown): string {
+  const source = typeof value === 'string' ? value : String(value)
+  try {
+    return marked.parse(source, { async: false }) as string
+  } catch {
+    return escapeHtml(source)
+  }
+}
+
+/**
+ * The content of an element bound to a field. With no transform a `markdown` field is converted to HTML and a `wysiwyg` field (already HTML)
+ * is kept as markup, both through the rich-text sanitiser, exactly as in the editor preview; every other field is escaped text. A configured
+ * transform always wins. `fieldType` is the binding's own (`ElementDataBinding.fieldType`); a gateway value has none and stays escaped.
+ */
+export function formatBoundContent(value: unknown, transform: FieldTransform | null | undefined, fieldType?: string | null): FormattedContent {
+  const untransformed = !transform || transform.type === 'none'
+  if (untransformed && value != null && value !== '') {
+    if (fieldType === 'markdown') return { content: sanitizeRichText(markdownToHtml(value)) }
+    if (fieldType === 'wysiwyg') return { content: sanitizeRichText(String(value)) }
+  }
   const result: TransformResult = applyTransform(value, transform)
   if (result.kind === 'link') {
     const targetAttr = result.target ? ` target="${result.target}" rel="noopener noreferrer"` : ''

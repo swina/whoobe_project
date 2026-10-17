@@ -182,6 +182,27 @@ describe('walkTree', () => {
     expect(out.children[0].content).toBe('Antonio')
   })
 
+  it('turns a bound markdown field into HTML and a bound wysiwyg field into markup, like the editor preview', async () => {
+    const api = makeApi({
+      queryObjects: async () => [{ id: 'r1', attributes: { slug: 'a', body: '## Hello\n\nSome **bold** text.', abstract: '<p>Short <em>intro</em></p>', title: '<b>t</b>' } }],
+    })
+    const bind = (field: string, fieldType: string) => ({ className: 'Blog', target: 'content', resolveMode: 'parent', field, fieldType })
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      dataBinding: { className: 'Blog', target: 'object', resolveMode: 'first', filters: [{ field: 'slug', operator: 'eq', value: '{slug}' }] },
+      blocks: [
+        { id: 'b', type: 'element', tag: 'element', element: 'div', dataBinding: bind('body', 'markdown') },
+        { id: 'a', type: 'element', tag: 'element', element: 'div', dataBinding: bind('abstract', 'wysiwyg') },
+        { id: 't', type: 'element', tag: 'element', element: 'div', dataBinding: bind('title', 'input') },
+      ],
+    }
+    const out = await walkTree(tree, { urlParams: { slug: 'a' } }, { api })
+    expect(out.children[0].content).toContain('<h2>Hello</h2>')
+    expect(out.children[0].content).toContain('<strong>bold</strong>')
+    expect(out.children[1].content).toBe('<p>Short <em>intro</em></p>')
+    expect(out.children[2].content).toBe('&lt;b&gt;t&lt;/b&gt;')
+  })
+
   it('leaves a {param} filter literal when urlParams has no matching key', async () => {
     const api = makeApi({
       queryObjects: async (params) => {

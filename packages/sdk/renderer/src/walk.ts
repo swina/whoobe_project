@@ -302,7 +302,7 @@ export async function walkNode(node: WhoobeElementNode, ctx: WalkContext, option
 
   if (node.dataBinding?.field) {
     const value = await resolveFieldValue(node.dataBinding, scope)
-    const formatted = formatBoundContent(value, node.dataBinding.transform)
+    const formatted = formatBoundContent(value, node.dataBinding.transform, node.dataBinding.fieldType)
     content = formatted.content
     contentIsHtml = true
     transformClassName = formatted.className

@@ -695,6 +695,9 @@ importers:
       '@whoobe-cms/schema':
         specifier: workspace:*
         version: link:../schema
+      marked:
+        specifier: ^14.1.4
+        version: 14.1.4
     devDependencies:
       typescript:
         specifier: ^5.4.0

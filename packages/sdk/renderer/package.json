@@ -19,7 +19,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@whoobe-cms/schema": "workspace:*"
+    "@whoobe-cms/schema": "workspace:*",
+    "marked": "^14.1.4"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

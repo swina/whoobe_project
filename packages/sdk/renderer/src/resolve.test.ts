@@ -22,6 +22,42 @@ describe('formatBoundContent', () => {
   it('handles empty/missing values', () => {
     expect(formatBoundContent(null, null).content).toBe('')
     expect(formatBoundContent(undefined, null).content).toBe('')
+    expect(formatBoundContent('', null, 'markdown').content).toBe('')
+  })
+
+  describe('by field type', () => {
+    it('converts a markdown field to HTML when no transform is set', () => {
+      const c = formatBoundContent('## Title\n\nSome **bold** text.\n\n- one\n- two', null, 'markdown').content
+      expect(c).toContain('<h2>Title</h2>')
+      expect(c).toContain('<strong>bold</strong>')
+      expect(c).toContain('<li>one</li>')
+      expect(formatBoundContent('**x**', { type: 'none' }, 'markdown').content).toContain('<strong>x</strong>')
+    })
+
+    it('renders GitHub tables and fenced code', () => {
+      const c = formatBoundContent('| a | b |\n|---|---|\n| 1 | 2 |\n\n```js\nconst x = 1\n```', null, 'markdown').content
+      expect(c).toContain('<table>')
+      expect(c).toContain('<td>1</td>')
+      expect(c).toContain('<pre>')
+    })
+
+    it('sanitises what a markdown field carries: scripts, handlers and javascript: links are removed', () => {
+      const c = formatBoundContent('<script>alert(1)</script>\n\n[x](javascript:alert(1))\n\n<img src=x onerror=alert(1)>', null, 'markdown').content
+      expect(c).not.toContain('<script')
+      expect(c).not.toContain('javascript:')
+      expect(c).not.toContain('onerror')
+    })
+
+    it('keeps a wysiwyg field as markup, sanitised', () => {
+      const c = formatBoundContent('<p>Hello <b>you</b></p><script>alert(1)</script>', null, 'wysiwyg').content
+      expect(c).toBe('<p>Hello <b>you</b></p>')
+    })
+
+    it('lets a configured transform win, and keeps other field types as escaped text', () => {
+      expect(formatBoundContent('# Not converted', { type: 'truncate', options: { maxLength: 5, suffix: '' } } as never, 'markdown').content).not.toContain('<h1>')
+      expect(formatBoundContent('<b>hi</b>', null, 'input').content).toBe('&lt;b&gt;hi&lt;/b&gt;')
+      expect(formatBoundContent('<b>hi</b>', null, undefined).content).toBe('&lt;b&gt;hi&lt;/b&gt;')
+    })
   })
 })
 
