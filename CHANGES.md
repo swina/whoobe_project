@@ -1,3 +1,7 @@
+## Plan: stopping a flow that feeds itself (object events) — 2026-10-17
+- Branch: `docs/events-loop-guard-plan` (worktree `../whoobe_cms-loop-plan`)
+- New `docs/plans/automations/object-events-loop-guard.md`: what happened on the Node-RED test (the ignore list was empty, 3 events 2 s apart, stopped only because the written value converged) and the owner's realistic case (edit, call an external service, wait, write the answer back). Three layers: **A** a circuit breaker per client and record that records but does not deliver (needs nothing from the flow), **B** an explicit "end of flow" mark on a write (header or client setting), **C** correlation (`X-Whoobe-Cause`, depth limit, chain view). Steps, open decisions and what the wizard can do meanwhile (a warning when the ignore list is empty). Nothing built.
+
 ## Objects: Copy id, and the tab takes a readable name — 2026-10-17
 - Branch: `feat/objects-copy-id` (worktree `../whoobe_cms-copy-id`)
 - Objects list, right click: new **Copy id** (clipboard, with a toast; the toast shows the id when the clipboard is not available). The dashboard had no way to get the id an API client needs in `/client/v1/data/<Class>/<id>`.
