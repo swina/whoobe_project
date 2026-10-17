@@ -1,3 +1,8 @@
+## unifythestack.dev: navigation bar fixed and redeployed — 2026-10-17
+- Branch: `master` (data and server; nothing in the repository but this note)
+- The logo/title container of the navigation snippet ("Unify the stack - Navigation", `88c0ed95-...`) carried a link (my first version put `link: '/'` on it); it rendered an `<a>` around the logo and the title, and the title wrapped to a second line. The owner removed the link in the snippet (saved 20:21); the site was regenerated and copied to `/var/www/unifythestack.dev`.
+- Checked locally and live (https://unifythestack.dev, desktop and 390 px): no anchor around the logo, the title is one line (32 px) inside the 64 px bar, no horizontal scroll, no failed request. The earlier remark on the bar being taller than its content is closed by this.
+
 ## unifythestack.dev: landing published — 2026-10-17
 - Branch: `master` (data in the local database; the generated site and the server are outside the repository)
 - Owner's go: the landing page was closed, the owner had only changed the navigation snippet (logo and title). Links retargeted by script on the page (4), the navigation snippet (1) and the footer snippet (2 retargeted, 2 removed), keeping the owner's navigation edit: Docs and "Read the documentation" -> `https://docs.whoobe.dev/`; "How object events work" -> `https://docs.whoobe.dev/communication/object-events/`; "Compare with alternatives" -> `https://docs.whoobe.dev/overview/whoobe-overview/`; footer Security -> `https://docs.whoobe.dev/security/`; the footer Blog and whoobe.dev links removed until www.whoobe.dev is live. The previous trees are not versioned (scratch copies only).
