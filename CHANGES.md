@@ -1,3 +1,11 @@
+## docs.whoobe.dev published — 2026-10-17
+- Branch: `master` (the repository pushed to origin: `660947e..a5911c0` and `a5911c0..414a655`; gitleaks over the 57 commits found nothing)
+- The documentation site "whoobe docs release" (96 pages, 107 files, 7.3 MB; site title "Whoobe Docs") is served at **https://docs.whoobe.dev**. The DAM copy was byte-identical to `docs/release` (96 of 96 files) when generated with `--strict` (no broken link).
+- On the Oracle host (read-only look first: sites-enabled, listeners, certificates; `nginx -t` ok; the sandbox reset service was idle): `/var/www/docs.whoobe.dev` (owner ubuntu, files `a+rX`), vhost `/etc/nginx/sites-available/docs-whoobe-dev` linked in sites-enabled (HTTP only first, then HTTPS), certificate `docs.whoobe.dev` by host certbot with the webroot `/var/www/certbot` (expires 2027-01-15; the host `certbot.timer` renews it). Port 80 redirects to HTTPS; HSTS, nosniff, referrer policy and `X-Frame-Options: SAMEORIGIN`; gzip; `/assets/` cached 7 days; the site's own 404 page. A first try of the HTTPS vhost failed `nginx -t` (`http2 on;` does not exist in nginx 1.18): nothing was reloaded, the HTTP version was restored, then corrected to `listen 443 ssl http2`.
+- Checked from outside: HTTP 301 to HTTPS, valid Let's Encrypt certificate, 200 on the pages tried, sitemap, robots and the search index; in a browser the object events page draws its 3 diagrams, search finds "loop guard", a phone width has no horizontal scroll, no failed request. `www`, `sandbox`, `dashboard`, `aura.devophub.space` and `whoobe.dev` answer as before.
+- To update the site: regenerate with `--strict` and `rsync -az --delete sites/whoobe-docs/ oracle:/var/www/docs.whoobe.dev/`.
+- Not done: `unifythestack.dev` (landing built locally, no vhost or certificate yet) and `www.whoobe.dev` (the interim vhost is still in place).
+
 ## Documentation: contact, no more references to the old env file — 2026-10-17
 - Branch: `master`
 - `whoobe-overview.md`: the closing line now gives a contact (the owner's e-mail and the GitHub repository) instead of the literal `[Contact details.]`; corrected the same day to the project alias `whoobe@whoobe.dev` (the first version, with a personal address, was already pushed in a5911c0 and stays in the public history).
