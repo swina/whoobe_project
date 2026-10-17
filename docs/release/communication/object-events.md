@@ -11,6 +11,82 @@ fulfilment flow, a deleted record is removed from a search index.
 **In the dashboard:** *Data & Communication > Object events*. Only users with the permission **`object_events:manage`** (the `admin` role by default)
 see the entry and can use it. It is switched off in the public sandbox.
 
+## How the flow works
+
+Whoobe stores the event in the same transaction as the change, decides for each subscription whether to send it, and a worker delivers it through the
+Integrations gateway. What the service does with it is up to the service.
+
+```mermaid
+flowchart TD
+    W["A write on a record<br/>dashboard, API client, import, form"] --> T["Same database transaction:<br/>the change + the event"]
+    T --> M{"For each subscription:<br/>active? same class?<br/>event type ticked?"}
+    M -- no --> X1["Nothing is queued"]
+    M -- yes --> I{"Written by an actor<br/>in 'Ignore changes made by'?"}
+    I -- yes --> X1
+    I -- no --> F{"Write sent with<br/>X-Whoobe-Flow: stop?"}
+    F -- yes --> S["Delivery logged as STOPPED<br/>nothing is sent"]
+    F -- no --> L{"Loop guard:<br/>too many writes by the same API client<br/>on the same record in 60 s?"}
+    L -- yes --> S
+    L -- no --> Q["Delivery logged as WAITING"]
+    Q --> K["Worker (Gateway) calls the<br/>Integrations route: POST, signed if a key is set"]
+    K --> R{"Answer?"}
+    R -- "2xx" --> D["DELIVERED"]
+    R -- "error or timeout" --> Y["RETRYING<br/>waits 1 min, 5 min, 30 min, 2 h, 12 h"]
+    Y --> K
+    Y -- "6 tries failed" --> G["GAVE UP<br/>Retry in the log starts again from zero"]
+    D --> SV["Your service<br/>(n8n, Activepieces, Node-RED, your back-end)"]
+```
+
+A flow that writes the answer back into the record closes the circle. This is where the loop protections of section 5 apply:
+
+```mermaid
+sequenceDiagram
+    participant U as Person or system
+    participant WH as Whoobe
+    participant FL as Your flow / service
+    participant API as Whoobe API (own API client)
+    U->>WH: saves a record
+    WH->>WH: stores change + event, applies the filters
+    WH->>FL: POST event (ids and changed field names, no values)
+    FL-->>WH: 200 (answered at once)
+    FL->>FL: does its work (call another service, wait...)
+    FL->>API: PATCH the record + header X-Whoobe-Flow: stop
+    API->>WH: change kept, event recorded as end of flow
+    Note over WH,FL: No subscription starts from that write, so the flow cannot start itself
+```
+
+### Who does what
+
+```mermaid
+flowchart LR
+    subgraph Whoobe
+        DASH["Admin dashboard<br/>subscriptions, wizard,<br/>delivery log"]
+        CORE["Core API<br/>writes records, stores events,<br/>applies the filters and the loop guard"]
+        DB[("PostgreSQL<br/>objects, events,<br/>subscriptions, deliveries")]
+        GW["Gateway<br/>delivery worker + Integrations<br/>(endpoints, routes, credentials, address checks)"]
+    end
+    PEOPLE["People<br/>(dashboard, forms)"] --> DASH
+    DASH -- "saves a record,<br/>manages subscriptions" --> CORE
+    CLIENT["API client<br/>(the flow's own key)"] -- "/client/v1/data<br/>via the Gateway" --> GW
+    GW -- "forwards the write" --> CORE
+    CORE <--> DB
+    GW -- "reads due deliveries,<br/>writes the result" --> DB
+    GW -- "HTTPS POST (signed)" --> SVC["Your service<br/>n8n, Activepieces, Node-RED, back-end"]
+    SVC -- "reads / writes the record<br/>with its API client" --> CLIENT
+```
+
+| Component | Role in the flow |
+|---|---|
+| **Admin dashboard** | Where people edit records, create subscriptions (wizard or form) and read the delivery log. It never sends events itself. |
+| **Core API** (`apps/core-api`, `packages/core`) | Applies every write to a record and, in the same transaction, stores the event and one delivery per matching subscription (class, event type, ignore list, `X-Whoobe-Flow: stop`, loop guard). Also serves the subscription and delivery-log endpoints. |
+| **PostgreSQL** | Holds the records, the events, the subscriptions and the deliveries with their status, tries and next attempt. The queue is a table: no separate broker. |
+| **Gateway** (`apps/gateway`) | Runs the **delivery worker**: picks the deliveries that are due, builds the call from the subscription's Integrations endpoint and route (credentials, address checks, signature), sends it, and records the outcome and the next try. It is also the entry for the flow's API client (`/client/v1/...`). |
+| **Integrations** (endpoints and routes) | Say *where* the call goes. Created by hand or by the wizard; edited in their own screens. |
+| **API client** | The flow's own identity and key for reading and writing records. Its id goes in the ignore list, and its writes should carry `X-Whoobe-Flow: stop`. |
+| **Your service** | Not part of Whoobe. Receives the event, does its work, may call back. Whoobe does not choose or ship it. |
+
+The log of each subscription (section 3) shows every step above as a status. The event never carries field values; the service reads them from the API.
+
 ## 1. What the service receives
 
 An HTTPS `POST` with a JSON body and these headers:
@@ -94,7 +170,7 @@ A subscription only receives events from the moment it exists. Changes made befo
 
 ## 3. The delivery log
 
-Open it with the checklist button. Each row is one event for this subscription:
+Open it with the checklist button: it opens in its own tab, titled with the subscription's name. Each row is one event for this subscription, with its date and time:
 
 | Status | Meaning |
 |---|---|
@@ -109,6 +185,10 @@ The waits between tries are **1 minute, 5 minutes, 30 minutes, 2 hours, 12 hours
 
 If a service is down for a long time, deliveries pile up as *retrying* and become *gave up* one by one; nothing is lost silently, and each can be
 retried. Deleting the subscription deletes its log and cancels what was waiting.
+
+To keep the log short, filter it (status, event, record id, how many rows) and delete rows: tick the finished ones (*delivered*, *gave up*, *stopped*)
+and choose **Delete selected**, or filter on one of those statuses and choose **Clear all**. A row still *waiting* or *retrying* cannot be deleted. Deleting
+log rows does not touch the events themselves or the loop guard's counts.
 
 ## 4. Signature (optional)
 

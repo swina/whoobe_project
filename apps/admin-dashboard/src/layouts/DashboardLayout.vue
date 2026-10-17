@@ -486,6 +486,7 @@
             <MasterWebsiteTab v-else-if="tab.type === 'item' && tab.itemKind === 'website' && tab.itemId" :website-id="tab.itemId" />
             <MasterIntegrationImportTab v-else-if="tab.type === 'item' && tab.itemKind === 'integrationImport'" />
             <MasterApiClientTab v-else-if="tab.type === 'item' && tab.itemKind === 'apiClient' && tab.itemId" :client-id="tab.itemId" :tab-id="tab.id" />
+            <MasterObjectEventLogTab v-else-if="tab.type === 'item' && tab.itemKind === 'objectEventLog' && tab.itemId" :subscription-id="tab.itemId" :tab-id="tab.id" />
             <MasterDocsSiteTab v-else-if="tab.type === 'item' && tab.itemKind === 'docsSite' && tab.itemId" :website-id="tab.itemId" />
             <MasterDocsDocTab v-else-if="tab.type === 'item' && tab.itemKind === 'docsDoc' && tab.itemId && tab.docsPath" :website-id="tab.itemId" :path="tab.docsPath" />
           </div>
@@ -575,6 +576,7 @@ import {
   Rocket,
   Link2,
   KeyRound,
+  ListChecks,
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
@@ -594,6 +596,7 @@ import MasterClassTab from '../components/objects/MasterClassTab.vue'
 import MasterIntegrationImportTab from '../components/objects/MasterIntegrationImportTab.vue'
 import MasterWebsiteTab from '../components/websites/MasterWebsiteTab.vue'
 import MasterApiClientTab from '../components/api-clients/MasterApiClientTab.vue'
+import MasterObjectEventLogTab from '../components/objects/MasterObjectEventLogTab.vue'
 import MasterDocsSiteTab from '../components/websites/MasterDocsSiteTab.vue'
 import MasterDocsDocTab from '../components/websites/MasterDocsDocTab.vue'
 import OverviewView from '../views/OverviewView.vue'
@@ -1108,6 +1111,9 @@ function tabLabel(tab: MainTab): string {
   if (tab.type === 'item' && tab.itemKind === 'apiClient') {
     return `${tab.dirty ? '● ' : ''}${tab.label || 'New API client'}`
   }
+  if (tab.type === 'item' && tab.itemKind === 'objectEventLog') {
+    return tab.label || 'Delivery log'
+  }
   if (tab.type === 'item' && tab.itemKind === 'docsSite' && tab.itemId) {
     const website = websitesStore.websites.find((w) => w.id === tab.itemId)
     return `${website?.name || 'Docs'} ‣ docs`
@@ -1149,6 +1155,9 @@ function tabIcon(tab: MainTab) {
   }
   if (tab.type === 'item' && tab.itemKind === 'apiClient') {
     return KeyRound
+  }
+  if (tab.type === 'item' && tab.itemKind === 'objectEventLog') {
+    return ListChecks
   }
   if (tab.type === 'item' && tab.itemKind === 'docsSite') {
     return BookOpen

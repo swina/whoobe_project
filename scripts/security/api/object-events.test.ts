@@ -57,7 +57,7 @@ afterAll(async () => { for (const f of cleanup.reverse()) { try { await f() } ca
 describe('access', () => {
   it('needs object_events:manage: anonymous 401, an editor role 403, the administrator passes', async () => {
     const write = await clientFor('write')
-    const calls: [string, string][] = [['GET', '/object-event-subscriptions'], ['POST', '/object-event-subscriptions'], ['GET', `/object-event-subscriptions/${NIL}/deliveries`], ['POST', `/object-event-deliveries/${NIL}/retry`]]
+    const calls: [string, string][] = [['GET', '/object-event-subscriptions'], ['POST', '/object-event-subscriptions'], ['GET', `/object-event-subscriptions/${NIL}/deliveries`], ['DELETE', `/object-event-subscriptions/${NIL}/deliveries`], ['POST', `/object-event-deliveries/${NIL}/retry`]]
     for (const [m, p] of calls) {
       expect((await anon.request(m, p, m === 'GET' ? {} : { body: {} })).status, `${m} ${p} anon`).toBe(401)
       expect((await write.request(m, p, m === 'GET' ? {} : { body: {} })).status, `${m} ${p} write`).toBe(403)
@@ -106,7 +106,23 @@ describe('subscriptions', () => {
       expect((await admin.post(`/object-event-subscriptions/${id}/test`, {})).status, id).toBe(404)
       expect((await admin.get(`/object-event-subscriptions/${id}/deliveries`)).status, id).toBe(404)
       expect((await admin.post(`/object-event-deliveries/${id}/retry`, {})).status, id).toBe(404)
+      expect((await admin.request('DELETE', `/object-event-subscriptions/${id}/deliveries`, { body: { status: 'dead' } })).status, id).toBe(404)
     }
+  })
+
+  it('clearing the log: needs ids or a finished status, never touches a delivery still waiting, filters by event', async () => {
+    const del = (body: unknown) => admin.request('DELETE', `/object-event-subscriptions/${subId}/deliveries`, { body })
+    expect((await del({})).status).toBe(400)
+    expect((await del({ status: 'retrying' })).status).toBe(400)
+    expect((await del({ status: 'pending' })).status).toBe(400)
+    expect((await del({ ids: 'x' })).status).toBe(400)
+    expect((await admin.get(`/object-event-subscriptions/${subId}/deliveries?type=object.deleted`)).status).toBe(200)
+    const waiting = (await admin.get(`/object-event-subscriptions/${subId}/deliveries`)).json.deliveries.filter((x: any) => x.status === 'retrying' || x.status === 'pending')
+    const r = await del({ ids: waiting.map((x: any) => x.id) })
+    expect(r.status).toBe(200)
+    expect(r.json.removed).toBe(0)
+    const after = (await admin.get(`/object-event-subscriptions/${subId}/deliveries`)).json.deliveries
+    for (const w of waiting) expect(after.some((x: any) => x.id === w.id)).toBe(true)
   })
 })
 

@@ -13,7 +13,7 @@ import { ref } from 'vue'
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
 export type SectionKind = 'overview' | 'ai' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'components' | 'mail' | 'themes' | 'settings' | 'gateway' | 'gateway-plugins' | 'api-clients' | 'data-bindings' | 'automations' | 'object-events' | 'system-logs' | 'publish'
-export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'classList' | 'website' | 'docsSite' | 'docsDoc' | 'apiClient' | 'integrationImport'
+export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'classList' | 'website' | 'docsSite' | 'docsDoc' | 'apiClient' | 'objectEventLog' | 'integrationImport'
 // The AI section of the navigation (its own sidebar entry, no longer part of Settings): one card per kind of AI provider.
 export type AiSubSection = 'text' | 'image' | 'translate'
 export type DocsSiteSubTab = 'documents' | 'index' | 'publish' | 'settings'
@@ -332,6 +332,13 @@ export const useTabsStore = defineStore('tabs', () => {
     activeTabId.value = id
   }
 
+  // The delivery log of one object-event subscription (one tab per subscription).
+  function openObjectEventLog(subscriptionId: string, name?: string) {
+    const id = `item:objectEventLog:${subscriptionId}`
+    if (findIndex(id) === -1) tabs.value.push({ id, type: 'item', itemKind: 'objectEventLog', itemId: subscriptionId, label: name ? `${name} ‣ log` : undefined })
+    activeTabId.value = id
+  }
+
   function openDocsSite(websiteId: string, subTab: DocsSiteSubTab = 'documents') {
     const id = docsSiteTabId(websiteId)
     const existing = tabs.value.find((t) => t.id === id)
@@ -444,6 +451,7 @@ export const useTabsStore = defineStore('tabs', () => {
     openClassList,
     closeClassListTab,
     openApiClient, apiClientsRevision,
+    openObjectEventLog,
     openIntegrationImport,
     openWebsite,
     setWebsiteSubTab,

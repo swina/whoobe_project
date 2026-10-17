@@ -68,7 +68,7 @@
             </td>
             <td class="py-2.5 px-4">
               <div class="flex items-center gap-1">
-                <button type="button" class="btn btn-link" title="Delivery log" @click="openLog(s)"><ListChecks class="w-3.5 h-3.5" /></button>
+                <button type="button" class="btn btn-link" title="Delivery log" @click="tabsStore.openObjectEventLog(s.id, s.name)"><ListChecks class="w-3.5 h-3.5" /></button>
                 <button type="button" class="btn btn-link" title="Send a test event now" :disabled="!s.endpointId || !s.routeId" @click="test(s)"><Send class="w-3.5 h-3.5" /></button>
                 <button type="button" class="btn btn-link" title="Edit" @click="openEditor(s)"><Pencil class="w-3.5 h-3.5" /></button>
                 <button type="button" class="btn btn-link" :title="s.enabled ? 'Pause: no event is queued while paused' : 'Resume'" @click="toggle(s)">
@@ -161,47 +161,6 @@
         <button type="button" class="btn btn-primary" :disabled="saving" @click="save">{{ saving ? 'Saving...' : 'Save' }}</button>
       </template>
     </BaseModal>
-
-    <!-- The delivery log -->
-    <BaseModal v-if="logFor" :open="true" size="xl" @close="closeLog">
-      <template #header>
-        <h2 class="ui-modal-title flex items-center gap-2"><ListChecks class="w-4 h-4" /> Delivery log - {{ logFor.name }}</h2>
-      </template>
-      <div class="space-y-3 text-xs">
-        <div class="flex items-center gap-3">
-          <select v-model="logStatus" class="field" @change="loadLog">
-            <option value="">All</option>
-            <option v-for="(t, k) in STATUS_TEXT" :key="k" :value="k">{{ t }}</option>
-          </select>
-          <button type="button" class="btn btn-secondary flex items-center gap-1.5" :disabled="logLoading" @click="loadLog">
-            <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': logLoading }" /> Refresh
-          </button>
-          <button type="button" class="btn btn-secondary flex items-center gap-1.5" :disabled="!logFor.endpointId || !logFor.routeId" @click="test(logFor)">
-            <Send class="w-3.5 h-3.5" /> Send a test event
-          </button>
-          <span class="text-slate-500">The log shows what happened to each delivery, not the content of the event or the answer. It refreshes every 5 seconds.</span>
-        </div>
-        <p v-if="logError" class="rounded-lg bg-rose-950/40 border border-rose-800 p-2 text-rose-300">{{ logError }}</p>
-        <p v-else-if="!logRows.length && !logLoading" class="p-8 text-center text-slate-500">Nothing yet.</p>
-        <table v-else class="w-full text-left text-slate-300 light:text-slate-700">
-          <thead class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-            <tr><th class="py-2 pr-3">Status</th><th class="py-2 pr-3">Event</th><th class="py-2 pr-3">Record</th><th class="py-2 pr-3">When</th><th class="py-2 pr-3">Tries</th><th class="py-2 pr-3">Next try</th><th class="py-2 pr-3">Last problem</th><th class="py-2"></th></tr>
-          </thead>
-          <tbody class="divide-y divide-slate-800/60 light:divide-slate-200/60">
-            <tr v-for="d in logRows" :key="d.id" class="align-top">
-              <td class="py-2 pr-3"><span class="px-1.5 py-0.5 rounded text-[10px] uppercase" :class="statusTone(d.status)">{{ STATUS_TEXT[d.status] }}</span></td>
-              <td class="py-2 pr-3 font-mono">{{ d.event.type.replace('object.', '') }}<span v-if="d.event.test" class="ml-1 px-1 rounded bg-indigo-900/60 text-indigo-300 text-[10px] uppercase font-sans">test</span></td>
-              <td class="py-2 pr-3 font-mono text-[11px]">{{ d.event.objectId ? d.event.objectId.slice(0, 8) : '-' }}</td>
-              <td class="py-2 pr-3 whitespace-nowrap" :title="new Date(d.event.occurredAt).toLocaleString()">{{ relativeTime(d.event.occurredAt) }}</td>
-              <td class="py-2 pr-3">{{ d.attempts }}</td>
-              <td class="py-2 pr-3 whitespace-nowrap">{{ nextAttemptText(d) || '-' }}</td>
-              <td class="py-2 pr-3 break-words max-w-[22rem] text-slate-400">{{ d.lastError || '' }}</td>
-              <td class="py-2"><button v-if="d.status === 'dead'" type="button" class="btn btn-primary" @click="retry(d)">Retry</button></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </BaseModal>
   </div>
 </template>
 
@@ -209,27 +168,29 @@
 // Subscriptions to object events and their delivery log (docs/plans/datamodel/data-objects-automations.md, object-events-phase0.md).
 // Admin only (`object_events:manage`): the server refuses everyone else and says so here. The call itself is made by the Integrations
 // gateway, so the editor picks an existing endpoint and route instead of asking for a URL.
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { ListChecks, Pause, Pencil, Play, Plug, Plus, Radio, RefreshCw, Send, Trash2 } from '@lucide/vue'
 import BaseModal from '../components/ui/BaseModal.vue'
 import ObjectEventsWizard from '../components/objects/ObjectEventsWizard.vue'
 import { useAuthStore } from '../stores/authStore'
 import { useDataClassesStore } from '../stores/dataClassesStore'
 import { useGatewayStore } from '../stores/gatewayStore'
+import { useTabsStore } from '../stores/tabsStore'
 import { listRoutes, type GatewayRoute } from '../utils/gateway-api'
 import {
-  createSubscription, deleteSubscription, listDeliveries, listSubscriptions, retryDelivery, sendTestEvent, updateSubscription,
-  type DeliveryStatus, type ObjectEventDelivery, type ObjectEventSubscription,
+  createSubscription, deleteSubscription, listSubscriptions, sendTestEvent, updateSubscription,
+  type ObjectEventSubscription,
 } from '../utils/object-events-api'
 import { modeSwitch } from '../utils/object-events-wizard'
 import {
-  EVENT_CHOICES, SECRET_PREFIX, STATUS_TEXT, emptyForm, formFromSubscription, formProblem, nextAttemptText, relativeTime, statusTone, toInput, usableRoute,
+  EVENT_CHOICES, SECRET_PREFIX, emptyForm, formFromSubscription, formProblem, relativeTime, toInput, usableRoute,
   type SubscriptionForm,
 } from '../utils/object-events-ui'
 
 const authStore = useAuthStore()
 const classesStore = useDataClassesStore()
 const gatewayStore = useGatewayStore()
+const tabsStore = useTabsStore()
 const coreUrl = () => authStore.config.coreApiUrl
 
 const subs = ref<ObjectEventSubscription[]>([])
@@ -245,13 +206,6 @@ const routes = ref<GatewayRoute[]>([])
 const wizardOpen = ref(false)
 // the routes of each endpoint a subscription uses, to offer the Test / Live switch of a pair of addresses
 const endpointRoutes = ref<Record<string, GatewayRoute[]>>({})
-
-const logFor = ref<ObjectEventSubscription | null>(null)
-const logRows = ref<ObjectEventDelivery[]>([])
-const logStatus = ref<'' | DeliveryStatus>('')
-const logLoading = ref(false)
-const logError = ref('')
-let logTimer: ReturnType<typeof setInterval> | undefined
 
 const className = (id: string | null) => (id ? (classesStore.classes.find((c) => c.id === id)?.label || classesStore.classes.find((c) => c.id === id)?.name || 'unknown class') : 'Every class')
 function target(s: ObjectEventSubscription): string {
@@ -333,33 +287,8 @@ async function test(s: ObjectEventSubscription) {
   try {
     await sendTestEvent(coreUrl(), s.id)
     flash(`A test event was queued for "${s.name}". It is sent within a few seconds.`)
-    if (logFor.value?.id === s.id) setTimeout(loadLog, 1500)
   } catch (e: any) { error.value = e?.message || 'Could not queue the test' }
 }
 
-async function loadLog() {
-  if (!logFor.value) return
-  logLoading.value = true
-  try {
-    logRows.value = await listDeliveries(coreUrl(), logFor.value.id, logStatus.value || undefined)
-    logError.value = ''
-  } catch (e: any) { logError.value = e?.message || 'Could not read the log' } finally { logLoading.value = false }
-}
-function openLog(s: ObjectEventSubscription) {
-  logFor.value = s
-  logStatus.value = ''
-  logRows.value = []
-  void loadLog()
-  logTimer = setInterval(loadLog, 5000)
-}
-function closeLog() {
-  logFor.value = null
-  if (logTimer) clearInterval(logTimer)
-}
-async function retry(d: ObjectEventDelivery) {
-  try { await retryDelivery(coreUrl(), d.id); await loadLog() } catch (e: any) { logError.value = e?.message || 'Could not retry' }
-}
-
 onMounted(refresh)
-onBeforeUnmount(() => { if (logTimer) clearInterval(logTimer) })
 </script>

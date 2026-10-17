@@ -274,6 +274,7 @@ import {
   deleteObjectEventSubscription,
   sendTestObjectEvent,
   listDeliveries,
+  deleteDeliveries,
   retryDeadDelivery,
   validateSubscriptionInput,
   getGatewayEndpoint,
@@ -5494,11 +5495,31 @@ app.get('/object-event-subscriptions/:id/deliveries', requirePermission(PERMISSI
     if (status && !['pending', 'delivered', 'retrying', 'dead', 'stopped'].includes(status)) { res.status(400).json({ error: 'status must be pending, delivered, retrying, dead or stopped' }); return; }
     if (!(await getObjectEventSubscription(req.params.id))) { res.status(404).json({ error: 'Subscription not found' }); return; }
     const limit = Number.parseInt(String(req.query.limit ?? ''), 10);
-    res.json({ deliveries: await listDeliveries(req.params.id, { status, limit: Number.isFinite(limit) ? limit : undefined }) });
+    const type = typeof req.query.type === 'string' && req.query.type ? req.query.type : undefined;
+    res.json({ deliveries: await listDeliveries(req.params.id, { status, type, limit: Number.isFinite(limit) ? limit : undefined }) });
   } catch (error: any) {
     if (error?.code === '22P02') { res.status(404).json({ error: 'Subscription not found' }); return; }
     logger.error({ err: error }, 'List object event deliveries error');
     res.status(500).json({ error: 'Failed to list the deliveries' });
+  }
+});
+
+// Clears finished deliveries (delivered, dead, stopped) from a subscription's log: the ids in the body, or every one with `status`.
+app.delete('/object-event-subscriptions/:id/deliveries', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { ids, status } = (req.body ?? {}) as { ids?: unknown; status?: unknown };
+    const idList = Array.isArray(ids) && ids.every((x) => typeof x === 'string') ? (ids as string[]).slice(0, 500) : undefined;
+    if (ids !== undefined && !idList) { res.status(400).json({ error: 'ids must be a list of delivery ids' }); return; }
+    if (status !== undefined && !['delivered', 'dead', 'stopped'].includes(String(status))) { res.status(400).json({ error: 'Only delivered, dead or stopped deliveries can be cleared' }); return; }
+    if (!idList && status === undefined) { res.status(400).json({ error: 'Say which deliveries: ids, or a status' }); return; }
+    if (!(await getObjectEventSubscription(req.params.id))) { res.status(404).json({ error: 'Subscription not found' }); return; }
+    const removed = await deleteDeliveries(req.params.id, { ids: idList, status: status === undefined ? undefined : String(status) });
+    logger.info({ subscriptionId: req.params.id, removed, userId: (req as any).user?.id }, 'Object event deliveries cleared');
+    res.json({ removed });
+  } catch (error: any) {
+    if (error?.code === '22P02') { res.status(404).json({ error: 'Subscription or delivery not found' }); return; }
+    logger.error({ err: error }, 'Clear object event deliveries error');
+    res.status(500).json({ error: 'Failed to clear the deliveries' });
   }
 });
 

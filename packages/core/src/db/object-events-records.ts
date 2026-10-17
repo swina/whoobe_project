@@ -278,7 +278,7 @@ export interface DeliveryLogRow {
 }
 
 /** Newest first. The log shows what happened to a delivery, never the content of the event or the consumer's answer. */
-export async function listDeliveries(subscriptionId: string, opts: { status?: string; limit?: number } = {}): Promise<DeliveryLogRow[]> {
+export async function listDeliveries(subscriptionId: string, opts: { status?: string; type?: string; limit?: number } = {}): Promise<DeliveryLogRow[]> {
   const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
   const rows = await getDb()
     .select({
@@ -297,7 +297,7 @@ export async function listDeliveries(subscriptionId: string, opts: { status?: st
     })
     .from(objectEventDeliveries)
     .innerJoin(objectEvents, eq(objectEvents.id, objectEventDeliveries.eventId))
-    .where(and(eq(objectEventDeliveries.subscriptionId, subscriptionId), opts.status ? eq(objectEventDeliveries.status, opts.status) : undefined))
+    .where(and(eq(objectEventDeliveries.subscriptionId, subscriptionId), opts.status ? eq(objectEventDeliveries.status, opts.status) : undefined, opts.type ? eq(objectEvents.type, opts.type) : undefined))
     .orderBy(desc(objectEventDeliveries.createdAt))
     .limit(limit);
   return rows.map((r) => ({
@@ -317,4 +317,26 @@ export async function retryDeadDelivery(deliveryId: string, now: Date = new Date
   if (rows.length) return 'queued';
   const [exists] = await db.select({ id: objectEventDeliveries.id }).from(objectEventDeliveries).where(eq(objectEventDeliveries.id, deliveryId)).limit(1);
   return exists ? 'not-dead' : 'not-found';
+}
+
+/** The statuses that are over: a delivery still pending or retrying is waiting to be sent, so it cannot be deleted from the log. */
+export const FINISHED_DELIVERY_STATUSES = ['delivered', 'dead', 'stopped'] as const;
+
+/**
+ * Removes finished deliveries of a subscription from its log: the ones named in `ids`, or every one with `status`.
+ * Returns how many were removed. The event itself stays (other subscriptions may still have a delivery of it) and so does the loop guard's count.
+ */
+export async function deleteDeliveries(subscriptionId: string, sel: { ids?: string[]; status?: string }): Promise<number> {
+  const finished = sel.status ? [sel.status] : [...FINISHED_DELIVERY_STATUSES];
+  const allowed = finished.filter((x) => (FINISHED_DELIVERY_STATUSES as readonly string[]).includes(x));
+  if (!allowed.length || (sel.ids && !sel.ids.length)) return 0;
+  const rows = await getDb()
+    .delete(objectEventDeliveries)
+    .where(and(
+      eq(objectEventDeliveries.subscriptionId, subscriptionId),
+      inArray(objectEventDeliveries.status, allowed),
+      sel.ids ? inArray(objectEventDeliveries.id, sel.ids) : undefined,
+    ))
+    .returning({ id: objectEventDeliveries.id });
+  return rows.length;
 }

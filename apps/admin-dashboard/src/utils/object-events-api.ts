@@ -81,11 +81,16 @@ export async function sendTestEvent(baseUrl: string, id: string): Promise<void> 
   await parse(await fetch(`${base(baseUrl)}/object-event-subscriptions/${id}/test`, { method: 'POST', credentials: 'include', headers: json, body: '{}' }))
 }
 
-export async function listDeliveries(baseUrl: string, id: string, status?: DeliveryStatus, limit = 50): Promise<ObjectEventDelivery[]> {
-  const q = new URLSearchParams({ limit: String(limit), ...(status ? { status } : {}) })
+export async function listDeliveries(baseUrl: string, id: string, status?: DeliveryStatus, limit = 50, type?: ObjectEventType): Promise<ObjectEventDelivery[]> {
+  const q = new URLSearchParams({ limit: String(limit), ...(status ? { status } : {}), ...(type ? { type } : {}) })
   return (await parse(await fetch(`${base(baseUrl)}/object-event-subscriptions/${id}/deliveries?${q}`, { credentials: 'include' }))).deliveries
 }
 
 export async function retryDelivery(baseUrl: string, id: string): Promise<void> {
   await parse(await fetch(`${base(baseUrl)}/object-event-deliveries/${id}/retry`, { method: 'POST', credentials: 'include', headers: json, body: '{}' }))
+}
+
+/** Clears finished deliveries from the log: the given ids, or all with one status. Pending and retrying ones are never removed. Returns how many. */
+export async function clearDeliveries(baseUrl: string, id: string, sel: { ids: string[] } | { status: 'delivered' | 'dead' | 'stopped' }): Promise<number> {
+  return (await parse(await fetch(`${base(baseUrl)}/object-event-subscriptions/${id}/deliveries`, { method: 'DELETE', credentials: 'include', headers: json, body: JSON.stringify(sel) }))).removed
 }
