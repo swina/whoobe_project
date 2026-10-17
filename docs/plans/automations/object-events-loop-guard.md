@@ -32,13 +32,17 @@ Whoobe counts the events **caused by one actor on one record** in a sliding wind
 - the event is still **recorded** (the audit trail stays complete) but **not delivered**: its delivery is marked `stopped` with the reason *loop guard: 6th event by this client on this record within 60 s*;
 - the Delivery Log shows it in its own colour, and the subscription gets a visible badge *loop guard fired* (with the time) until an administrator clears it;
 - a line in the Gateway/core log at `warn`, once per record and window, not per event.
-Works with any engine and any flow, including ones that never heard of this plan. It is a safety net, not a design tool: a legitimate burst (an import by one client) has to be excluded: a client with the scope used for imports, or a per-client switch *exempt from the loop guard*.
+Works with any engine and any flow, including ones that never heard of this plan. It is a safety net, not a design tool.
 
-### B. "End of flow": the write says it is the last one (the owner's request)
-An API client may mark a write as **the result of a flow**, in one of two equivalent ways (to decide which in section 6):
-- header `X-Whoobe-Flow: end` on the `POST` / `PATCH`;
-- or a **per-client setting** *Writes of this client do not start flows* (what the ignore list does, but once, on the client, so it cannot be forgotten on a new subscription).
-Effect: the change is recorded in the audit trail with the actor and the flag `endOfFlow: true`, and **no subscription is started by it**. Other consumers that are not flows (the audit view, a future search index) still see it. Needs a scope or a client flag so that a browser-side token cannot silence the events of others: only the clients that already have `data:write:<Class>` may send it, and the flag is logged with the actor.
+**Not to be confused with people editing together.** The counter looks only at **non-human actors** (API clients, the system), never at users: several people, or a person and a flow, changing the same record within seconds are normal and are never stopped. Two different origins writing the same record are counted **separately** (per actor), so one client's burst does not penalise another. The ping-pong case (flow A writes, flow B reacts and writes back, each below the limit on its own) is caught by a second counter per *subscription and record*, with a higher limit (starting point: 12 deliveries in 60 s). A legitimate burst (an import by one client) is excluded by a per-client switch *exempt from the loop guard*, which an administrator sets knowingly.
+
+### B. "End of flow": the header `X-Whoobe-Flow: stop` (decided by the owner, 2026-10-17)
+A write through the client API (`POST` / `PATCH /client/v1/data/...`) that carries the header **`X-Whoobe-Flow: stop`** is the *result* of a flow: it is recorded in the audit trail with the actor and `endOfFlow: true`, and **no subscription is started by it**. Other consumers that are not flows (the audit view, a future search index) still see it.
+- A conventional header, the same for every engine: one line in the HTTP step of any of them. The wizard's Node-RED snippet and the HTTP-step block it prints include it by default, so a flow made with the wizard cannot forget it.
+- Without the header nothing changes: the write is an ordinary one and starts the subscriptions that do not ignore its client. So *the header or the ignore list* stops a loop; leaving both out is what lets one start, and layer A is there for that case.
+- Only a key client with `data:write:<Class>` can send it, it silences only that write's own events, and the flag is in the audit record: nobody can hide a change from the audit trail, only from the flows.
+- Any other value (`X-Whoobe-Flow: start`, empty) is ignored; unknown values are logged once at `info`.
+(The per-client setting "writes of this client do not start flows" stays a possible later addition for flows that cannot set headers; not needed now.)
 
 ### C. Correlation: the flow echoes the event id (needs the flow's help)
 The delivery already carries an event `id`. The flow may send it back in `X-Whoobe-Cause: <event id>` on its writes. Whoobe stores `cause` and `depth` (= depth of the cause + 1) in the new event and the payload shows them. Then:
@@ -54,12 +58,12 @@ Optional: it is a convention the engine's authors have to follow; the example fl
 
 ## 5. Steps (each one a commit; tests before the code)
 1. **Layer A**: pure function `loopVerdict(recentEvents, now, limits)` in `packages/core/src/db/object-events.ts` with tests (burst, slow trickle, two clients, two records, exempt client); the check at planning time of the deliveries (`planDeliveries`); new delivery status `stopped` + `reason`; Delivery Log and badge; environment variables documented; `docs/release/communication/object-events.md`.
-2. **Layer B**: the client flag (and/or the header), its scope, audit field, documentation in `api-clients.md`, wizard step 3 option *This write ends the flow*.
+2. **Layer B**: read the header in `POST` / `PATCH /client/v1/data/...` (and the dashboard API for key clients), pass `endOfFlow` to the event planner so no delivery is created, audit field, tests (with / without header, wrong value, token client), documentation in `api-clients.md` and `object-events.md`; the wizard's Node-RED snippet and HTTP-step block send it by default.
 3. **Layer C**: `cause` / `depth` columns, header, maximum depth on the subscription, chain view in the Delivery Log, snippets updated.
 4. Release notes / threat model: a runaway flow is now bounded; what an API client holding `data:write` can do with the flag (silence events of its own writes only).
 
 ## 6. Decisions to make
-- **B**: header per write, client setting, or both? (The setting is harder to forget; the header lets one flow do both kinds of write.)
+- ~~**B**: header, setting or both~~ -> decided: the header `X-Whoobe-Flow: stop`; the setting only later, if a flow cannot send headers.
 - **A**: the numbers (5 per 60 s?) and whether the counter is per actor + record or per subscription + record. Per subscription + record catches a loop made of two clients (flow A writes, flow B reacts and writes back).
 - Does `stopped` count as a failure for the retry rules? Proposal: no, never retried.
 - Should a human edit count? Proposal: only API clients and the system are counted; a person cannot loop.
