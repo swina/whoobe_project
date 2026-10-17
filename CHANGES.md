@@ -1,3 +1,7 @@
+## Release 0.2 plan: block D, flows for Node-RED — 2026-10-17
+- Branch: `master`
+- `docs/plans/system/release-0.2-plan.md`: new block **D** (sections renumbered: order of work 7, decisions 8, not in this plan 9). The answer to "describe a Node-RED flow in YAML": no language now. Step 1, the Connect-a-flow wizard exports a complete importable Node-RED flow for the one pattern (receive, answer at once, work, write back with `X-Whoobe-Flow: stop`, with the signature check and idempotency on the event id), done when an imported flow runs against the disposable Node-RED; step 2, the conventions on one page in the Node-RED guide plus an instruction for an agent, done when an agent given only that page produces a flow that passes step 1's test; step 3, a small YAML recipe for that single pattern only on demand, outside the core. Reasons recorded: no way back from the Node-RED editor, a language is an API to maintain, neutrality between engines. Nothing built.
+
 ## Documentation: statements that were no longer true, and the release 0.2 plan — 2026-10-17
 - Branch: `master`
 - **Machine credentials.** `overview/whoobe-overview.md` (chapter 4.1), `architecture/authentication-and-authorization.md` (identities table gets the API client; the sentence about "no API-token mechanism") and `communication/automations-architecture.md` (two places) said there is no machine credential. API clients exist (key or identity-provider token, scopes); what has none is the administration API (users, roles, settings, websites, pages).

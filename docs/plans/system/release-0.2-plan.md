@@ -2,14 +2,14 @@
 
 *Date: 2026-10-17. Status: **proposal, nothing built.** Statements about the code were checked in the repository on this date; the ones that were
 not are marked **(not verified)**. Source of the list of limits: `docs/release/overview/whoobe-overview.md`, chapter 4. This plan does not decide the
-scope of the release: section 7 lists what the owner has to decide.*
+scope of the release: section 8 lists what the owner has to decide.*
 
 ## 1. Where we are (facts)
 
 - `master` is **65 commits ahead of the tag v0.1.0** (2026-10-14). The release documentation describes some of them: object events and their delivery
   log, the Node-RED guide, the Objects list changes, the conversion of Markdown / rich-text fields in generated sites. The README says so and the
   object events and Node-RED guides carry a note "not in the v0.1.0 tag". The first question of the release is therefore *what the next version is
-  called* (0.1.1 or 0.2.0, section 7).
+  called* (0.1.1 or 0.2.0, section 8).
 - While the version starts with 0, a minor release may change behaviour (release notes). Object events add a migration (`0059`) and a worker in the
   Gateway: that is more than a patch.
 - core-api has **228 routes in one file** (`apps/core-api/src/server.ts`, 6,824 lines). About 90 to 100 of them belong to the Content area (websites,
@@ -131,16 +131,49 @@ hand. The Markdown case (a bound field converted in one and not in the other) is
 Step 1: the comparison runs in CI with a list of known differences that only shrinks. Step 2: a page opens in the published view from the editor.
 The documentation can say again that the preview is the renderer, for the parts that converged.
 
-## 6. Order of work
+## 6. Block D: flows for Node-RED without a new language
+
+*Added 2026-10-17 after the question "describe a Node-RED flow in YAML?".*
+
+### D1. The question and the answer
+
+A YAML description of a flow is attractive for people who keep flows in the repository: `flows.json` has coordinates and ids, so every edit in the
+editor gives a large, unreadable diff (the example flow's diff on the owner's machine is +183 / -8 lines). The costs of a **product** feature are real:
+the generated flow cannot be read back into the YAML once it is edited in the Node-RED editor; a description language has versions, documentation and
+tests, and its scope grows by itself; and a YAML for one engine goes against the position that Whoobe prefers none (a neutral one would need a compiler
+per engine). So no language now; two small things first, and a limited recipe only on demand.
+
+### D2. Steps
+
+1. **The Connect-a-flow wizard exports a complete, importable Node-RED flow** for the one pattern that matters: receive the event, answer at once, do the
+   work, write back with `X-Whoobe-Flow: stop`. The wizard already knows the class, the events, the endpoint and the API client; today it emits only
+   the script of the function node, and the example flow (`examples/automation-engines/node-red/data/flows.json`) is written by hand. The flow includes
+   the signature check when a signing key is set and the idempotency on `X-Whoobe-Event-Id`.
+   *Done when:* a flow made by the wizard is imported into the disposable Node-RED, receives a test event, writes the field back and ends (no second
+   delivery, a `stopped`-free log), in a browser or API test next to `object-events-loop-guard.integration.test.ts`.
+2. **The conventions on one page** in `communication/node-red.md`: the mandatory steps, the headers, what to do with the event id, and a short
+   instruction to give an agent ("write a Node-RED flow that follows these rules"). *Done when:* an agent given only that page produces a flow that
+   passes the test of step 1 (checked once, the result noted in the page).
+3. **On demand only:** a small YAML recipe for the same single pattern (trigger, steps, final write), compiled to the flow JSON by a tool in `examples/` or
+   a separate package, never in the core. Fixed scope, stated in its README: no branches, no loops. *Promote it when* several people ask to keep and
+   review flows in the repository.
+
+### D3. Not in this block
+
+A general flow language; round-trip between the Node-RED editor and a description; the same for n8n or Activepieces (their own editors and export
+formats stay the way to work with them).
+
+## 7. Order of work
 
 1. Corrections of the documentation and the alignment note (done 2026-10-17).
 2. A1 (maturity), because it needs no product decision and removes the heaviest rows of chapter 4.6.
 3. C2 step 1 (the comparison), which is small and finds the size of block C.
 4. A2: OIDC, audit log and mandatory 2FA first; then data subject tooling, readiness and metrics, more events.
 5. B3 steps 1 and 2 (the "no Content" profile).
-6. A3 and the rest of block C as demand and time allow.
+6. D2 steps 1 and 2 (the wizard exports the flow; the conventions page): small, and they end the hand-made example flow.
+7. A3 and the rest of block C as demand and time allow.
 
-## 7. Decisions for the owner
+## 8. Decisions for the owner
 
 - **The name of the next release:** 0.1.1 (fixes and the features already on `master`) followed by 0.2.0 for this plan, or one 0.2.0. The features on
   `master` are not in the tag: until a release exists, the documentation says "not in the v0.1.0 tag" next to them.
@@ -150,6 +183,6 @@ The documentation can say again that the preview is the renderer, for the parts 
 - **OIDC first or audit log first** if only one fits in the first month. Proposal: the audit log (smaller, no new login flow), then OIDC.
 - **Whether per-class permissions are worth a release of their own.**
 
-## 8. Not in this plan
+## 9. Not in this plan
 
 Changing the data model of classes; a connector catalogue; a flow runner; a hosted service; translating the documentation.
