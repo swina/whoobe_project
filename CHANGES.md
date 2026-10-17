@@ -1,3 +1,8 @@
+## Whoobe website: the architecture section of home B is flat — 2026-10-17
+- Branch: `master` (data only, no code change)
+- The isometric slabs were hard to read, so the "Architecture" section of `/home-b` (`169b8a97-...`) now is four flat full-width bands, top to bottom Channels, Apps, Services, Data, joined by "publishes" and "runs on" lines. Each band has its name, a sentence on what the layer does and its components as chips; the separate legend is gone (the text is in the bands). On phones the bands stack with the chips under the text.
+- Checked in headless Chromium at 1280 and 390 px on a static copy with the Tailwind browser build 4.3.3, not in the editor. The page was not open in the dashboard when it was updated (last save 15:38, unchanged by this update).
+
 ## Whoobe website: isometric architecture diagram in home variant B — 2026-10-17
 - Branch: `master` (data only, no code change)
 - Home variant B (`169b8a97-...`, `/home-b`) has a new "Architecture" section after "The problem": four slabs stacked in isometric view (Data, Services, Apps, Channels, each with its components as chips) beside a plain-text legend that says what each layer does. Built from ordinary containers with Tailwind classes (`rotateX(58deg) rotateZ(-42deg)`, `preserve-3d`, `translateZ` per layer), no SVG and no new element; scaled down below `lg` so it is also shown on phones.
