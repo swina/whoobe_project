@@ -18,6 +18,8 @@ export interface ObjectEventSubscription {
   signingSecretRef: string | null
   createdAt: string
   updatedAt: string
+  /** When the loop guard last stopped a delivery of this subscription (last 24 h), else null. */
+  loopGuardFiredAt?: string | null
 }
 
 export interface ObjectEventSubscriptionInput {
@@ -31,7 +33,7 @@ export interface ObjectEventSubscriptionInput {
   signingSecretRef: string | null
 }
 
-export type DeliveryStatus = 'pending' | 'delivered' | 'retrying' | 'dead'
+export type DeliveryStatus = 'pending' | 'delivered' | 'retrying' | 'dead' | 'stopped'
 
 export interface ObjectEventDelivery {
   id: string

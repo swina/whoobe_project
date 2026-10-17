@@ -267,6 +267,7 @@ import {
 import type { EventActor } from '@whoobe-cms/core/server';
 import {
   listObjectEventSubscriptions,
+  loopGuardFiredBySubscription,
   getObjectEventSubscription,
   createObjectEventSubscription,
   updateObjectEventSubscription,
@@ -5392,7 +5393,8 @@ async function objectEventTargetProblem(endpointId: string, routeId: string): Pr
 
 app.get('/object-event-subscriptions', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
   try {
-    res.json({ subscriptions: await listObjectEventSubscriptions() });
+    const [subscriptions, fired] = await Promise.all([listObjectEventSubscriptions(), loopGuardFiredBySubscription()]);
+    res.json({ subscriptions: subscriptions.map((s) => ({ ...s, loopGuardFiredAt: fired.get(s.id)?.toISOString() ?? null })) });
   } catch (error: any) {
     logger.error({ err: error }, 'List object event subscriptions error');
     res.status(500).json({ error: 'Failed to list the subscriptions' });
@@ -5489,7 +5491,7 @@ app.post('/object-event-subscriptions/:id/test', requirePermission(PERMISSIONS.O
 app.get('/object-event-subscriptions/:id/deliveries', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (req: Request, res: Response): Promise<void> => {
   try {
     const status = typeof req.query.status === 'string' ? req.query.status : undefined;
-    if (status && !['pending', 'delivered', 'retrying', 'dead'].includes(status)) { res.status(400).json({ error: 'status must be pending, delivered, retrying or dead' }); return; }
+    if (status && !['pending', 'delivered', 'retrying', 'dead', 'stopped'].includes(status)) { res.status(400).json({ error: 'status must be pending, delivered, retrying, dead or stopped' }); return; }
     if (!(await getObjectEventSubscription(req.params.id))) { res.status(404).json({ error: 'Subscription not found' }); return; }
     const limit = Number.parseInt(String(req.query.limit ?? ''), 10);
     res.json({ deliveries: await listDeliveries(req.params.id, { status, limit: Number.isFinite(limit) ? limit : undefined }) });

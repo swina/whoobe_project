@@ -1,6 +1,6 @@
 # Object events: stopping a flow that feeds itself ("end of flow")
 
-*Date: 2026-10-17. Status: **plan, nothing built**. Follows [object-events-phase0.md](../datamodel/object-events-phase0.md), the guide `docs/release/communication/object-events.md` (section 5, "two flows on one class") and [object-events-connect-wizard.md](object-events-connect-wizard.md). Engine-neutral on purpose: Whoobe knows nothing about Node-RED, Activepieces or any other engine (the engine is the operator's choice, not part of Whoobe).*
+*Date: 2026-10-17. Status: **layers A and B built** on `feat/events-loop-guard` (the per-actor and per-subscription counters, `stopped` deliveries, the `X-Whoobe-Flow: stop` header, the badge, the wizard snippets; the per-client "exempt" switch was left out: a burst on ONE record by one client is suspicious in itself, imports are already silent); **layer C (correlation and depth) not built**. Follows [object-events-phase0.md](../datamodel/object-events-phase0.md), the guide `docs/release/communication/object-events.md` (section 5, "two flows on one class") and [object-events-connect-wizard.md](object-events-connect-wizard.md). Engine-neutral on purpose: Whoobe knows nothing about Node-RED, Activepieces or any other engine (the engine is the operator's choice, not part of Whoobe).*
 
 ## 1. What happened (2026-10-16, Node-RED)
 

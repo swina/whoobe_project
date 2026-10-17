@@ -64,11 +64,11 @@ export function usableRoute(r: { method: string; path: string }): boolean {
 }
 
 export const STATUS_TEXT: Record<DeliveryStatus, string> = {
-  pending: 'waiting', delivered: 'delivered', retrying: 'retrying', dead: 'gave up',
+  pending: 'waiting', delivered: 'delivered', retrying: 'retrying', dead: 'gave up', stopped: 'stopped',
 }
 
 export function statusTone(s: DeliveryStatus): string {
-  return s === 'delivered' ? 'bg-emerald-900/60 text-emerald-300' : s === 'dead' ? 'bg-rose-900/60 text-rose-300' : s === 'retrying' ? 'bg-amber-900/60 text-amber-300' : 'bg-slate-700 text-slate-300'
+  return s === 'delivered' ? 'bg-emerald-900/60 text-emerald-300' : s === 'dead' ? 'bg-rose-900/60 text-rose-300' : s === 'retrying' ? 'bg-amber-900/60 text-amber-300' : s === 'stopped' ? 'bg-violet-900/60 text-violet-300' : 'bg-slate-700 text-slate-300'
 }
 
 /** "in 5 min", "due now", "2 h ago": how far a time is from now. */

@@ -343,6 +343,8 @@ export interface WriteOptions {
   actor?: EventActor;
   /** Emit no event for this write: for a caller that is bulk by nature (a bundle import, the migration) and sends ONE summary itself (`emitBulkSummary`). */
   silent?: boolean;
+  /** The write carried `X-Whoobe-Flow: stop`: its events are kept (audit) but start no flow. */
+  endOfFlow?: boolean;
 }
 
 /** The events of one update: its own (updated / transitioned / published) and one `object.updated` per language sibling the non-localized sync touched. */
@@ -353,10 +355,11 @@ async function emitUpdateEvents(
   touched: { before: DataObjectRecord; after: DataObjectRecord }[],
   actor: EventActor | undefined,
   className: string | undefined,
+  endOfFlow?: boolean,
 ): Promise<void> {
-  for (const draft of classifyUpdate(before, after)) await insertEvent(tx, buildEvent(draft, { after, actor, className }));
+  for (const draft of classifyUpdate(before, after)) await insertEvent(tx, buildEvent(draft, { after, actor, className, endOfFlow }));
   for (const t of touched) {
-    for (const draft of classifyUpdate(t.before, t.after)) await insertEvent(tx, buildEvent(draft, { after: t.after, actor: { type: 'system' }, className }));
+    for (const draft of classifyUpdate(t.before, t.after)) await insertEvent(tx, buildEvent(draft, { after: t.after, actor: { type: 'system' }, className, endOfFlow }));
   }
 }
 
@@ -448,8 +451,8 @@ export async function createDataObject(input: {
     // shared value immediately rather than only after this first save).
     const touched = await syncNonLocalizedAttributes(row, tx, classDef);
     if (!opts.silent) {
-      await insertEvent(tx, buildEvent({ type: 'object.created', changed: changedFields(null, row) }, { after: row, actor: opts.actor, className: classDef?.name }));
-      for (const t of touched) await emitUpdateEvents(tx, t.before, t.after, [], { type: 'system' }, classDef?.name);
+      await insertEvent(tx, buildEvent({ type: 'object.created', changed: changedFields(null, row) }, { after: row, actor: opts.actor, className: classDef?.name, endOfFlow: opts.endOfFlow }));
+      for (const t of touched) await emitUpdateEvents(tx, t.before, t.after, [], { type: 'system' }, classDef?.name, opts.endOfFlow);
     }
     return row;
   });
@@ -497,7 +500,7 @@ export async function updateDataObject(
 
     const [row] = await tx.update(dataObjects).set(values).where(eq(dataObjects.id, id)).returning();
     const touched = row && input.attributes !== undefined ? await syncNonLocalizedAttributes(row, tx, classDef) : [];
-    if (row && !opts.silent) await emitUpdateEvents(tx, before, row, touched, opts.actor, classDef?.name);
+    if (row && !opts.silent) await emitUpdateEvents(tx, before, row, touched, opts.actor, classDef?.name, opts.endOfFlow);
     return row ? { row, classDef } : null;
   });
   if (!done) return null;
@@ -536,7 +539,7 @@ export async function deleteDataObject(id: string, opts: WriteOptions = {}): Pro
     await tx.delete(dataObjects).where(eq(dataObjects.id, id));
     if (opts.silent) return;
     const classDef = await getDataClass(before.classId);
-    await insertEvent(tx, buildEvent({ type: 'object.deleted', changed: [] }, { after: before, actor: opts.actor, className: classDef?.name }));
+    await insertEvent(tx, buildEvent({ type: 'object.deleted', changed: [] }, { after: before, actor: opts.actor, className: classDef?.name, endOfFlow: opts.endOfFlow }));
   });
   await deleteIndexedByDocument('object', id);
 }
