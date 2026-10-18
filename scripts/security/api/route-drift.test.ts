@@ -64,12 +64,20 @@ describe('route table drift (core-api)', () => {
     const src = readFileSync(resolve(ROOT_DIR, 'apps/core-api/src/audit-specs.ts'), 'utf8')
     const block = src.slice(src.indexOf('export const AUDIT'))
     const defined = [...block.matchAll(/^  (\w+):/gm)].map((m) => m[1])
-    const used = new Set(actual.map((r) => r.audit).filter(Boolean) as string[])
+    const publishSrc = readFileSync(resolve(ROOT_DIR, 'apps/core-api/src/publish-jobs.ts'), 'utf8')
+    const used = new Set([...actual.map((r) => r.audit).filter(Boolean) as string[], ...[...publishSrc.matchAll(/audited\(AUDIT\.(\w+)\)/g)].map((m) => m[1])])
     expect(defined.filter((n) => !used.has(n)), 'a spec nobody uses').toEqual([])
     expect([...used].filter((n) => !defined.includes(n)), 'a route names a spec that is not defined').toEqual([])
   })
 
   it('has no audit decision left to do ("todo:") - none may ship', () => {
     expect(Object.entries(expected).filter(([, v]) => v.audit?.startsWith('todo:')).map(([k]) => k)).toEqual([])
+  })
+
+  // publish-jobs.ts has its own router (not in the table above): its two routes that a person triggers must be audited
+  it('audits the two publication routes a person triggers (publish-jobs.ts)', () => {
+    const src = readFileSync(resolve(ROOT_DIR, 'apps/core-api/src/publish-jobs.ts'), 'utf8')
+    expect(src).toMatch(/r\.post\('\/publish\/jobs', canPublish, audited\(AUDIT\.publishQueue\)/)
+    expect(src).toMatch(/r\.post\('\/publish\/jobs\/:id\/cancel', canPublish, audited\(AUDIT\.publishCancel\)/)
   })
 })

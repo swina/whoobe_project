@@ -32,6 +32,8 @@ export interface AuditSpec<E = Record<string, unknown>> {
   targetLabel?: (entity: E | null | undefined) => string | undefined;
   /** Fields of the request body to record for an `event` (an action with no entity of its own). Allow-list. */
   eventFields?: readonly string[];
+  /** For an `event`: what to record, built from the request and the answer. Only fields the author has argued are safe. */
+  describe?: (req: Request, body: any, entity: E | null | undefined) => Record<string, unknown> | null;
 }
 
 export function actorOf(req: Request): AuditActor {
@@ -53,8 +55,9 @@ export function createAudit(logger: { error: (o: object, m: string) => void }) {
       const json = res.json.bind(res);
       res.json = ((body: unknown) => { answered = body; return json(body); }) as typeof res.json;
 
+      // an error inside the recording itself must not vanish as an unhandled rejection: it is a lost audit row
       res.on('finish', () => {
-        void record();
+        record().catch((err) => logger.error({ err, action: spec.action }, 'audit: the row could not be built'));
       });
 
       const record = async (): Promise<void> => {
@@ -84,8 +87,9 @@ export function createAudit(logger: { error: (o: object, m: string) => void }) {
           }
           before = diff.before;
           after = diff.after;
-        } else if (spec.kind === 'event' && spec.eventFields) {
-          after = pickAllowed(req.body ?? {}, spec.eventFields);
+        } else if (spec.kind === 'event') {
+          if (spec.describe) after = spec.describe(req, answered, entity);
+          else if (spec.eventFields) after = pickAllowed(req.body ?? {}, spec.eventFields);
         }
 
         const rid = req.headers['x-request-id'];

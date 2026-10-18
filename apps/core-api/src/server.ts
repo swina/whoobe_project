@@ -6708,7 +6708,7 @@ app.get('/api/v1/system/logs/download', requireAuth, async (req: Request, res: R
 })
 
 // Publishing from the dashboard (docs/plans/website/publish-from-dashboard.md): jobs for an external runner.
-app.use(publishJobsRouter(process.env.PUBLISH_RUNNER_TOKEN ?? '', logger));
+app.use(publishJobsRouter(process.env.PUBLISH_RUNNER_TOKEN ?? '', logger, audited));
 
 // Documentation sites (docs/plans/docs-sites/docs-site-plan.md): a website of kind "docs" is built from the Markdown assets of a
 // DAM folder. The routes below only read; documents are written with the ordinary DAM upload.

@@ -107,6 +107,19 @@ export const AUDIT: Readonly<Record<string, AuditSpec<any>>> = {
   // the key itself is in the answer of "regenerate": never read here
   websiteKeyRegenerate: { action: 'website.api_key_regenerate', kind: 'event', targetType: 'website', loadBefore: loadWebsite, targetLabel: websiteLabel } satisfies AuditSpec<WebsiteRecord>,
   websiteKeyClear: { action: 'website.api_key_clear', kind: 'event', targetType: 'website', loadBefore: loadWebsite, targetLabel: websiteLabel } satisfies AuditSpec<WebsiteRecord>,
+  // Publication (publish-jobs.ts): who asked for a site to be generated, with which public settings. The site key in the request body is never read.
+  publishQueue: {
+    action: 'website.publish', kind: 'event', targetType: 'website',
+    targetId: (r: P) => (typeof r.body?.websiteId === 'string' ? r.body.websiteId : undefined),
+    loadBefore: (r: P) => (typeof r.body?.websiteId === 'string' ? getWebsite(r.body.websiteId) : Promise.resolve(null)),
+    targetLabel: websiteLabel,
+    describe: (r, b) => ({ jobId: b?.id ?? null, ...pickAllowed(r.body?.options ?? {}, ['framework', 'slug', 'domain', 'revalidate']), withSiteKey: !!r.body?.siteApiKey }),
+  } satisfies AuditSpec<WebsiteRecord>,
+  publishCancel: {
+    action: 'website.publish_cancel', kind: 'event', targetType: 'publish_job', targetId: (r: P) => r.params.id,
+    describe: (_r, b) => ({ result: b?.result ?? null }),
+  } satisfies AuditSpec<Record<string, unknown>>,
+
   websitePathCreate: { action: 'website_path.create', kind: 'create', targetType: 'website_path', snapshot: (p: any) => ({ websiteId: p.websiteId, name: p.name, items: Array.isArray(p.items) ? p.items.length : 0 }), fromResponse: (b) => b?.path, targetLabel: (p: any) => p?.name } satisfies AuditSpec<any>,
   websitePathUpdate: { action: 'website_path.update', kind: 'update', targetType: 'website_path', snapshot: (p: any) => ({ name: p.name, items: fp(p.items) }), loadBefore: (r: P) => getWebsitePath(r.params.id), fromResponse: (b) => b?.path, targetLabel: (p: any) => p?.name } satisfies AuditSpec<any>,
   websitePathDelete: { action: 'website_path.delete', kind: 'delete', targetType: 'website_path', snapshot: (p: any) => ({ websiteId: p.websiteId, name: p.name }), loadBefore: (r: P) => getWebsitePath(r.params.id), targetLabel: (p: any) => p?.name } satisfies AuditSpec<any>,
