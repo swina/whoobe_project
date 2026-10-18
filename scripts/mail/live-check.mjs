@@ -2,7 +2,9 @@
 // Sends ONE real e-mail through an HTTP mail provider (packages/core/mail-providers/*.json) with credentials read from
 // a local file - for trying a provider against the real service before relying on it. Not part of any test run.
 //
-//   node scripts/mail/live-check.mjs --provider onesignal --to you@example.com [--env ~/.config/whoobe/onesignal.env] [--dry-run]
+//   node scripts/mail/live-check.mjs --provider onesignal --to you@example.com [--env ~/.config/whoobe/onesignal.env] [--providers DIR] [--dry-run]
+//
+// --providers DIR  also read provider files from DIR (default: MAIL_PROVIDERS_PATH), for a recipe such as examples/mail-providers/resend.json
 //
 // The env file holds one line per config field of the provider, named PROVIDER_FIELD in upper case with underscores
 // (OneSignal: ONESIGNAL_APP_ID, ONESIGNAL_API_KEY, optionally ONESIGNAL_SENDER_DOMAIN), plus the optional
@@ -18,13 +20,14 @@ const providerId = opt('provider') ?? 'onesignal';
 const to = opt('to');
 const dryRun = args.includes('--dry-run');
 const envPath = (opt('env') ?? `~/.config/whoobe/${providerId}.env`).replace(/^~/, homedir());
-if (!to && !dryRun) { console.error('Usage: node scripts/mail/live-check.mjs --provider onesignal --to you@example.com [--env FILE] [--dry-run]'); process.exit(2); }
+if (!to && !dryRun) { console.error('Usage: node scripts/mail/live-check.mjs --provider onesignal --to you@example.com [--env FILE] [--providers DIR] [--dry-run]'); process.exit(2); }
 
 const { loadMailProviders } = await import('../../packages/core/dist/mail/providers.js');
 const { buildProviderRequest, sendViaHttpProvider } = await import('../../packages/core/dist/mail/http-transport.js');
 
-const def = loadMailProviders().find((p) => p.id === providerId);
-if (!def) { console.error(`No provider "${providerId}". Installed: ${loadMailProviders().map((p) => p.id).join(', ')}`); process.exit(2); }
+const extraDir = opt('providers') ?? process.env.MAIL_PROVIDERS_PATH;
+const def = loadMailProviders(extraDir).find((p) => p.id === providerId);
+if (!def) { console.error(`No provider "${providerId}". Installed: ${loadMailProviders(extraDir).map((p) => p.id).join(', ')}`); process.exit(2); }
 
 let text;
 try {

@@ -90,6 +90,14 @@ longer text becomes text. Values are put into the structure, never pasted into t
 cannot change the request. The call goes through the same outbound guard as the gateway (no private or loopback
 addresses unless allowed), and an error never contains a secret.
 
+### Recipes
+
+Ready-made files for services that are not built in are in
+[`examples/mail-providers/`](https://github.com/swina/whoobe_project/tree/master/examples/mail-providers) in the repository (not part of the
+images; copy one into your `MAIL_PROVIDERS_PATH` folder). The first is **Resend**. A file can only describe one HTTPS request with a JSON
+body and headers written as fixed text: no multipart or form-encoded body (Mailgun's API), no request signing (Amazon SES), no computed
+`Authorization` such as Basic with base64, no attachments. For those use SMTP, which these services also offer.
+
 ## Trying a provider with the real service
 
 ```bash
@@ -99,7 +107,8 @@ node scripts/mail/live-check.mjs --provider onesignal --to you@example.com --dry
 node scripts/mail/live-check.mjs --provider onesignal --to you@example.com             # sends one message
 ```
 
-It prints the result and the provider's message id, never the key. Needs `packages/core` built.
+It prints the result and the provider's message id, never the key. Needs `packages/core` built. `--providers DIR` (or `MAIL_PROVIDERS_PATH`) adds a
+folder of provider files, for a recipe that is not built in.
 
 ## For several recipients (newsletters, campaigns)
 

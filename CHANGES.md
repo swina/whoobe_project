@@ -1,3 +1,11 @@
+## Mail provider recipe: Resend — 2026-10-18
+- Branch: `feat/mail-resend`
+- `examples/mail-providers/resend.json` (new, outside the distribution) and `examples/mail-providers/README.md`: a mail provider for Resend in the existing JSON format (`MAIL_PROVIDERS_PATH`, read without a restart, shown in Settings > Outgoing Mail, the API key stored encrypted). Request and answer taken from Resend's API reference (read 2026-10-18): `POST https://api.resend.com/emails`, `Authorization: Bearer`, `Idempotency-Key` = the message id, `from` as `Name <address>`, `to`, `cc`, `bcc`, `reply_to`, `subject`, `html`, `text`; answer `{ "id": ... }`; errors read from `message` / `name` (the reference lists the error names and status codes but not the JSON shape of an error body: not verified against a real answer yet). No attachments (the format cannot carry them). Retries on 429 and 503, twice.
+- `scripts/security/unit/mail-provider-examples.test.ts` (new, 5 tests): the file is valid, builds the documented request, carries cc / bcc / reply-to / text, refuses a missing key and never puts the key in an error, reads the message id. Nothing is sent.
+- `scripts/mail/live-check.mjs`: `--providers DIR` (default `MAIL_PROVIDERS_PATH`) so a recipe outside the built-in folder can be tried. Dry run checked with a fake key: the request is as expected, the key masked.
+- Docs: `communication/mail-providers.md` (a "Recipes" section with what the format cannot do, the new option).
+- Not done: a real send through Resend (the owner has an account, a verified domain and a key; the key goes in `~/.config/whoobe/resend.env`, mode 600, never in the chat); a screen check in the dashboard.
+
 ## docs.whoobe.dev updated to 0.1.1 and the new name — 2026-10-18
 - Branch: `master`
 - The owner re-uploaded `docs/release` into the DAM folder of the site "whoobe docs release". Generated with `whoobe-publish --kind docs --strict` against the development instance: 97 pages, no broken link. Checked in headless Chromium (served locally): 97 pages, no console error, no failed request, no dead internal link, the 3 diagrams of the object events page drawn, no horizontal scroll at 390 px. The old name remains only in the title of the 0.1.0 notes (menu of every page) and in the sentence of the 0.1.1 notes that explains the change.
