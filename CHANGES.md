@@ -1,3 +1,9 @@
+## Release workflow — 2026-10-18
+- Branch: `feat/release-0.2`
+- `.github/workflows/release.yml` (new), on a tag `vX.Y.Z`: stops if the tag differs from `package.json`; builds `core-api`, `asset-processor`, `gateway` and `publisher` for amd64 and arm64, pushes `ghcr.io/<owner>/whoobe-<service>:X.Y.Z` and `:X.Y`, signs each by digest with cosign (keyless); then creates a **draft** GitHub Release with `docs/release/release-notes-X.Y.Z.md`, the digests, `openapi.yaml` and the source SBOM (`scripts/release/sbom.sh`).
+- The two SPA images are not published (VITE_* URLs are baked at build time); said in the workflow and in `release-process.md` steps 6 and 7.
+- Written, YAML parsed, **not run**: the first tag is its test. Action versions follow the major tags of the existing workflows or the current majors of the docker/sigstore actions (not pinned by SHA).
+
 ## Upgrade test in CI — 2026-10-18
 - Branch: `feat/release-0.2`
 - `.github/workflows/upgrade.yml` (new): runs `scripts/upgrade/upgrade-test.sh` on a `v*` tag (N-1 = the previous tag) and by hand with an optional `from`. Not on every push (about 5 minutes of Docker builds), in line with the minutes policy of `ci/save-minutes`; `security.yml` untouched.
