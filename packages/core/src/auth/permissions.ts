@@ -53,6 +53,9 @@ export const PERMISSIONS = {
 
   // Subscriptions to object events (docs/plans/datamodel/data-objects-automations.md): where changes of data objects are sent. Admin only.
   OBJECT_EVENTS_MANAGE: 'object_events:manage',
+
+  // Reading the audit log of administrative actions (docs/plans/system/audit-log-plan.md). Read only: there is no write permission. Admin only.
+  AUDIT_READ: 'audit:read',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
