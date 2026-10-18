@@ -6,6 +6,14 @@
         "info": "EXAMPLE ONLY - NOT PART OF THE WHOOBE DISTRIBUTION.\nReceives an object event from Whoobe (POST /whoobe-events), answers 200 at once, then writes a note back on the record through an API client. Needs the environment variables WHOOBE_CLIENT_URL (the Gateway's client API as this container sees it, e.g. http://172.17.0.1:3001/client/v1) and WHOOBE_KEY (the API client's key). Optional: WHOOBE_SIGNING_SECRET to check X-Whoobe-Signature."
     },
     {
+        "id": "1d48f1ac185b9f28",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
         "id": "wb-in",
         "type": "http in",
         "z": "wb-tab",
@@ -46,7 +54,7 @@
                 "wb-res"
             ],
             [
-                "wb-build"
+                "b7ae7e4905f88be2"
             ]
         ]
     },
@@ -66,15 +74,15 @@
         "type": "function",
         "z": "wb-tab",
         "name": "build the PATCH",
-        "func": "// \"build the PATCH\": a function node. It updates ONE field of the record that started the flow.\n// msg.payload is the Whoobe event: ev.object.id, ev.class.name, ev.changed (names only), ev.type.\nconst ev = msg.payload;\nif (ev.test || !ev.object) return null;   // the \"test event\" of Whoobe has no record\nmsg.method = 'PATCH';\nmsg.url = env.get('WHOOBE_CLIENT_URL').replace(/\\/+$/, '') + '/data/' + encodeURIComponent(ev.class.name) + '/' + ev.object.id;\nmsg.headers = { 'Authorization': 'Bearer ' + env.get('WHOOBE_KEY'), 'Content-Type': 'application/json' };\nmsg.payload = { attributes: { 'notes': 'Node-Red update this field' } };   // <- the field to update and its value\nreturn msg;",
+        "func": "// \"build the PATCH\": a function node. It updates ONE field of the record that started the flow.\n// msg.payload is the Whoobe event: ev.object.id, ev.class.name, ev.changed (names only), ev.type.\nconst ev = msg.payload;\nif (ev.test || !ev.object) return null;   // the \"test event\" of Whoobe has no record\nmsg.method = 'PATCH';\nmsg.url = env.get('WHOOBE_CLIENT_URL').replace(/\\/+$/, '') + '/data/' + encodeURIComponent(ev.class.name) + '/' + ev.object.id;\nmsg.headers = { 'Authorization': 'Bearer ' + env.get('WHOOBE_KEY'), 'Content-Type': 'application/json', 'X-Whoobe-Flow': 'stop' };\nconst field = msg.payload.changed[0]\nmsg.payload = { attributes: { 'notes': `--${field}-- updated` } };   // <- the field to update and its value\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 560,
-        "y": 120,
+        "x": 600,
+        "y": 100,
         "wires": [
             [
                 "wb-http"
@@ -97,8 +105,8 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 780,
-        "y": 120,
+        "x": 790,
+        "y": 100,
         "wires": [
             [
                 "wb-debug"
@@ -118,8 +126,175 @@
         "targetType": "msg",
         "statusVal": "statusCode",
         "statusType": "auto",
-        "x": 960,
-        "y": 120,
+        "x": 970,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "8fc33995c9da5978",
+        "type": "debug",
+        "z": "wb-tab",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 660,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "b7ae7e4905f88be2",
+        "type": "switch",
+        "z": "wb-tab",
+        "name": "",
+        "property": "payload.class.name",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Contact",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "Pillar",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 470,
+        "y": 180,
+        "wires": [
+            [
+                "wb-build",
+                "8fc33995c9da5978"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "9e1377e7056c9ed8",
+        "type": "http in",
+        "z": "1d48f1ac185b9f28",
+        "name": "POST /whoobe-contacts",
+        "url": "/whoobe-contacts",
+        "method": "post",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 130,
+        "y": 100,
+        "wires": [
+            [
+                "1f6ad751ae111fc5"
+            ]
+        ]
+    },
+    {
+        "id": "1f6ad751ae111fc5",
+        "type": "function",
+        "z": "1d48f1ac185b9f28",
+        "name": "check the call",
+        "func": "// Output 1: the answer to Whoobe (it keeps msg.res, which the \"answer\" node needs). Output 2: the event to process, only a real, fresh, authentic one.\nconst h = msg.req.headers;\nconst ts = Number(h['x-whoobe-timestamp'] || 0);\nconst ev = msg.payload || {};\nconst reply = (code, body) => { msg.statusCode = code; msg.payload = body; return [msg, null]; };\nif (!ev.id || !ev.type) return reply(400, { ok: false, error: 'not an object event' });\nif (Math.abs(Date.now() / 1000 - ts) > 300) return reply(400, { ok: false, error: 'timestamp too old' });\nconst secret = env.get('WHOOBE_SIGNING_SECRET');\nif (secret) {\n  // the body as Node-RED parsed it, written back the way Whoobe wrote it (compact JSON, same key order)\n  const want = 'sha256=' + crypto.createHmac('sha256', secret).update(ts + '.' + JSON.stringify(ev)).digest('hex');\n  if (h['x-whoobe-signature'] !== want) return reply(401, { ok: false, error: 'bad signature' });\n}\nif (ev.test || !ev.object) return reply(200, { ok: true });\nmsg.statusCode = 200; msg.payload = { ok: true };\nreturn [msg, { event: ev, payload: ev }];",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "crypto",
+                "module": "crypto"
+            }
+        ],
+        "x": 370,
+        "y": 100,
+        "wires": [
+            [
+                "9689bec6beea988f"
+            ],
+            [
+                "d4d2ec67d1118e81"
+            ]
+        ]
+    },
+    {
+        "id": "9689bec6beea988f",
+        "type": "http response",
+        "z": "1d48f1ac185b9f28",
+        "name": "answer",
+        "statusCode": "",
+        "headers": {},
+        "x": 570,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "d4d2ec67d1118e81",
+        "type": "function",
+        "z": "1d48f1ac185b9f28",
+        "name": "build the PATCH",
+        "func": "// \"build the PATCH\": a function node. It updates ONE field of the record that started the flow.\n// msg.payload is the Whoobe event: ev.object.id, ev.class.name, ev.changed (names only), ev.type.\nconst ev = msg.payload;\nif (ev.test || !ev.object) return null;   // the \"test event\" of Whoobe has no record\nmsg.method = 'PATCH';\nmsg.url = env.get('WHOOBE_CLIENT_URL').replace(/\\/+$/, '') + '/data/' + encodeURIComponent(ev.class.name) + '/' + ev.object.id;\nmsg.headers = { 'Authorization': 'Bearer ' + env.get('WHOOBE_KEY'), 'Content-Type': 'application/json', 'X-Whoobe-Flow': 'stop' };\nmsg.payload = { attributes: { 'notes': 'Node-Red update this field' } };   // <- the field to update and its value\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 140,
+        "wires": [
+            [
+                "134bc36d05d61663"
+            ]
+        ]
+    },
+    {
+        "id": "134bc36d05d61663",
+        "type": "http request",
+        "z": "1d48f1ac185b9f28",
+        "name": "PATCH the record",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 790,
+        "y": 140,
+        "wires": [
+            [
+                "befcd61c701496de"
+            ]
+        ]
+    },
+    {
+        "id": "befcd61c701496de",
+        "type": "debug",
+        "z": "1d48f1ac185b9f28",
+        "name": "result",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "statusCode",
+        "targetType": "msg",
+        "statusVal": "statusCode",
+        "statusType": "auto",
+        "x": 970,
+        "y": 140,
         "wires": []
     }
 ]

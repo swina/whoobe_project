@@ -1,3 +1,8 @@
+## Node-RED example flows and article — 2026-10-18
+- Branch: `master`
+- `examples/automation-engines/node-red/data/flows.json`: class switch on the incoming event, a second tab with a `/whoobe-contacts` flow that checks the call, and the PATCH sends `X-Whoobe-Flow: stop` and names the changed field in the note.
+- `docs/WhooBe _ en _ Whoobe - The Software Architecture Paradigm Shift.md`: article added to the repository, unchanged.
+
 ## Release name: "Conduct" — 2026-10-17
 - Branch: `master`
 - `docs/plans/system/release-0.2-plan.md`: new section 0, **Name and objective**. The next release is called **Conduct**: one word whose three senses are the three verbs (conduct an orchestra: orchestrate; conduct a test: validate; conduct the affairs, a code of conduct: govern). The three verbs become the objective: after the release each has a proof a reviewer can check, mapped to the plan items (validate: A1, C2 step 1, B3 step 2; govern: A2, B3, A3 if asked; orchestrate: more events, D2). A sentence on the site for a verb only when its proof is in the release; "govern" is the weakest today and the release is not called Conduct until the audit log, OIDC and mandatory 2FA (A2) are in. The order of work says which verb each step serves. The name is not the version number: that stays decision 1 (0.1.1 or 0.2.0). Nothing built.
