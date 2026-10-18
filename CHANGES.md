@@ -1,3 +1,8 @@
+## Shellcheck on the upgrade test — 2026-10-18
+- Branch: `fix/shellcheck-upgrade`
+- `scripts/upgrade/upgrade-test.sh`: the loop that lists the tables of the new migrations used an unquoted command substitution (SC2013, SC2046) and failed the static scan of the `security` workflow on the merge of `feat/release-0.2`. Rewritten as `while read` over `git show`; the three new scripts of today (`upgrade-test.sh`, `restore/rehearse.sh`, `backup-workspace-bucket.sh`) now pass shellcheck. Same behaviour.
+- Not related to this change: the nightly `stack-tests` job of `security` failed on 2026-10-18 at the trivy image step (the same job succeeded on earlier nights); not investigated yet.
+
 ## Restore rehearsal and bucket backup — 2026-10-18
 - Branch: `feat/restore-rehearsal`
 - `scripts/backup-workspace-bucket.sh` (new): copies a workspace's bucket to `DIR/<slug>-bucket` with rclone (pinned image `rclone/rclone:1.68.2`, S3 key from `.env.<slug>`, secrets in the container environment) or back into it with `--restore`; `BACKUP_S3_ENDPOINT` for an external S3. Not encrypted (documented).

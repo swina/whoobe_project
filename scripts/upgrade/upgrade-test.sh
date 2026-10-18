@@ -67,9 +67,12 @@ wait_health "$ROOT" "working tree"
 # 4. checks
 [ "$(sql 'select count(*) from drizzle.__drizzle_migrations' "$ROOT")" = "$NEW_MIGS" ] || fail "expected $NEW_MIGS migrations after the upgrade"
 ok "$NEW_MIGS migrations applied"
-for t in $(grep -ohE 'CREATE TABLE( IF NOT EXISTS)? "?[a-z_]+"?' $(git -C "$ROOT" diff --name-only --diff-filter=A "$FROM" HEAD -- 'packages/core/drizzle/*.sql' | sed "s#^#$ROOT/#") 2>/dev/null | sed -E 's/.*TABLE( IF NOT EXISTS)? //; s/"//g' | sort -u); do
+# tables created by the migration files added since $FROM
+while read -r t; do
   [ "$(sql "select to_regclass('public.$t') is not null" "$ROOT")" = t ] || fail "table $t from a new migration is missing"
-done
+done < <(git -C "$ROOT" diff --name-only --diff-filter=A "$FROM" HEAD -- 'packages/core/drizzle/*.sql' \
+  | while read -r f; do git -C "$ROOT" show "HEAD:$f"; done \
+  | grep -oE 'CREATE TABLE( IF NOT EXISTS)? "?[a-z_]+"?' | sed -E 's/.*TABLE( IF NOT EXISTS)? //; s/"//g' | sort -u)
 ok "tables of the new migrations exist"
 [ "$(sql 'select count(*) from users' "$ROOT")" = "$USERS_BEFORE" ] || fail "user count changed"
 login || fail "login as the seeded administrator failed after the upgrade"
