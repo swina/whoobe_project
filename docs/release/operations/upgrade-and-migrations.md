@@ -89,7 +89,7 @@ supported without a restore.
 
 ## 6. What is missing
 
-- The upgrade test runs by hand (`scripts/upgrade/upgrade-test.sh`, about 4 minutes, needs Docker); it is not yet a CI job.
+- The upgrade test runs by hand (`scripts/upgrade/upgrade-test.sh`, about 4 minutes, needs Docker); `.github/workflows/upgrade.yml` runs it on a `v*` tag (the previous tag is N-1) and by hand (Actions > upgrade), not on every push. The workflow itself has not run on GitHub yet.
 - A migration lock and a way to run migrations as a one-off job before the application starts.
 - A compatibility statement for the API (the API reference is generated per release; there is no versioned URL or
   deprecation policy while the version starts with `0.`).

@@ -1,0 +1,39 @@
+# Upgrade test: the previous release is installed on a disposable stack, data is written, the tree of this run is started
+# on the same volumes (scripts/upgrade/upgrade-test.sh). Not run on every push (about 5 minutes of Docker builds):
+# on a tag vX.Y.Z (the release candidate, N-1 = the previous tag) and by hand.
+name: upgrade
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      from:
+        description: 'Release to upgrade from (git tag or ref); empty = the latest tag before this commit'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade:
+    name: ${{ inputs.from || 'previous tag' }} to this tree
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # the tags
+      - name: Release to upgrade from
+        id: from
+        run: |
+          from='${{ inputs.from }}'
+          [ -n "$from" ] || from="$(git describe --tags --abbrev=0 --match 'v*' HEAD^ 2>/dev/null || git describe --tags --abbrev=0 --match 'v*')"
+          echo "from=$from" >> "$GITHUB_OUTPUT"
+          echo "Upgrading from $from"
+      - name: Upgrade test
+        run: scripts/upgrade/upgrade-test.sh --from '${{ steps.from.outputs.from }}'
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose -p whoobe-upgrade logs --tail 200 || true

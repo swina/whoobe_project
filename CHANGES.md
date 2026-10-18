@@ -1,3 +1,8 @@
+## Upgrade test in CI — 2026-10-18
+- Branch: `feat/release-0.2`
+- `.github/workflows/upgrade.yml` (new): runs `scripts/upgrade/upgrade-test.sh` on a `v*` tag (N-1 = the previous tag) and by hand with an optional `from`. Not on every push (about 5 minutes of Docker builds), in line with the minutes policy of `ci/save-minutes`; `security.yml` untouched.
+- Documentation (upgrade page, release process, overview 4.6, plan A1) says it is written and has not run on GitHub yet.
+
 ## Upgrade test v0.1.0 -> working tree — 2026-10-18
 - Branch: `feat/release-0.2`
 - `scripts/upgrade/upgrade-test.sh` (new): starts postgres, garage and core-api of an earlier release (`--from`, default `v0.1.0`, taken with `git archive`) in a throwaway project `whoobe-upgrade` (ports dev +400), writes a class and an object, then starts the working tree on the same volumes and checks: all migrations applied (59 -> 60), the tables created by the new migrations exist, the user count and the object are unchanged, the administrator can log in. `--keep` leaves the stack for inspection. First run passed (about 4 minutes).

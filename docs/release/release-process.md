@@ -92,6 +92,6 @@ feature (point it at `docs/release`); not automated.
 ## 8. Not done yet
 
 - `release.yml` (images on ghcr.io, GitHub Release, attachments, SBOM) - steps 6 and 7 above.
-- Running the upgrade test (`scripts/upgrade/upgrade-test.sh`) automatically on every release candidate: today it is run by hand.
+- Confirming that the `upgrade` workflow (`.github/workflows/upgrade.yml`, runs `scripts/upgrade/upgrade-test.sh` on a `v*` tag or by hand) passes on GitHub: written, not yet run there.
 - Pinning the base images' freshness: the pinned digests lag behind Debian's security updates (see `CHANGES.md`,
   2026-10-05), which today costs a patch release or a manual `apt-get` upgrade line in the `Dockerfile`.
