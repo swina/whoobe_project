@@ -1088,7 +1088,7 @@ app.post('/auth/roles', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUD
     const role = await createRole({ name: name.trim(), description, permissionKeys: Array.isArray(permissionKeys) ? permissionKeys : [] });
     res.status(201).json({ role });
   } catch (error: any) {
-    if (error?.code === '23505') {
+    if ((error?.code ?? error?.cause?.code) === '23505') {
       res.status(409).json({ error: 'A role with this name already exists' });
       return;
     }

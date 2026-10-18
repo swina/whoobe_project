@@ -1,3 +1,11 @@
+## Audit log, steps 3 to 5: guard, routes, read API, dashboard view, docs — 2026-10-18
+- Branch: `feat/audit-log`
+- Step 3: the `audited()` guard (`apps/core-api/src/audit.ts`) goes in a route's middleware list and writes one row after a successful answer (status < 400, dry runs skipped), with the state before and after taken from the specs in `apps/core-api/src/audit-specs.ts`; secrets are recorded as "changed". User and role routes audited. `GET /audit-log` (permission `audit:read`) with filters and CSV export. The route contract now gives every changing route a decision (audited, exempt or deferred) and the drift test checks it against the specs.
+- Step 4: specs for websites, settings, integrations and publication (`publishQueue`, `publishCancel`); every changing route has a decision, no `todo` left.
+- Step 5: dashboard view (filters, before / after, CSV); docs: guide, configuration reference rows, API reference for `GET /audit-log`.
+- Fix: `POST /auth/roles` with a name that already exists answered 500; the database error arrives wrapped, so the code is read from `error.cause.code` as well, and the answer is 409 again.
+- Tests: `api/audit-log.test.ts` finds the mail and Figma rows by `x-request-id` instead of taking the newest one, because `mail-settings` and `form-notify` change the same single row in parallel. Security API suite: 76 files, 2033 passed, 2 skipped. The `whoobe-sectest` core-api image was rebuilt for this run (`SEC_SERVICES=core-api stack.sh up`); the gateway limiter keeps state in memory, so a second full run in a row needs `docker restart whoobe-sectest-gateway-1`.
+
 ## Audit log, step 2: table, helpers, permission — 2026-10-18
 - Branch: `feat/audit-log`
 - Migration `0060_audit_log` (expand only): table `audit_log` (actor type / id / label, ip, action, target type / id / label, `before` / `after` jsonb, request id) with four indexes, and a trigger `audit_log_guard` that makes it **append only**: UPDATE and TRUNCATE are refused, DELETE only inside a transaction that set `whoobe.audit_purge = 'on'` (`set_config(..., true)`, local to the transaction). Journal entry 60.

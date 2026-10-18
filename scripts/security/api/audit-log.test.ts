@@ -131,9 +131,12 @@ describe('websites, settings, integrations', () => {
   })
 
   it('secrets in mail, Figma and migration-source settings are "changed", never the value', async () => {
-    const mail = await admin.put('/mail-settings', { provider: 'smtp', smtp: { host: 'smtp.sectest.local', port: 2525, secure: false, user: 'u', password: SMTP_PW }, fromAddress: 'noreply@sectest.local' })
+    // other files change the same single mail and Figma rows in parallel: the request id tells our rows apart
+    const mailRid = `aud-mail-${tag}`
+    const figRid = `aud-fig-${tag}`
+    const mail = await admin.request('PUT', '/mail-settings', { headers: { 'x-request-id': mailRid }, body: { provider: 'smtp', smtp: { host: 'smtp.sectest.local', port: 2525, secure: false, user: 'u', password: SMTP_PW }, fromAddress: 'noreply@sectest.local' } })
     expect(mail.status, mail.text.slice(0, 160)).toBe(200)
-    const fig = await admin.put('/figma/settings', { accessToken: FIGMA_TOKEN, teamId: `team-${tag}` })
+    const fig = await admin.request('PUT', '/figma/settings', { headers: { 'x-request-id': figRid }, body: { accessToken: FIGMA_TOKEN, teamId: `team-${tag}` } })
     expect(fig.status).toBe(200)
     const src = await admin.post('/migration-sources', { label: `src-${tag}`, dbHost: 'db.sectest.local', dbUser: 'root', dbPassword: SOURCE_PW, dbName: 'x', classesPath: '/tmp/classes' })
     expect(src.status, src.text.slice(0, 160)).toBe(201)
@@ -141,10 +144,10 @@ describe('websites, settings, integrations', () => {
     cleanup.push(() => admin.delete(`/migration-sources/${srcId}`))
     expect((await admin.patch(`/migration-sources/${srcId}`, { label: `src2-${tag}`, dbPassword: `${SOURCE_PW}-new` })).status).toBe(200)
 
-    const mailRow = (await entries({ action: 'setting.mail_update' }))[0]
+    const mailRow = (await entries({ action: 'setting.mail_update' })).find((e) => e.requestId === mailRid)
     expect(mailRow.after['smtp.password']).toBe('changed')
     expect(mailRow.after.smtp?.host ?? mailRow.after.smtp).toBeTruthy() // the non-secret fields are still visible
-    const figRow = (await entries({ action: 'setting.figma_update' }))[0]
+    const figRow = (await entries({ action: 'setting.figma_update' })).find((e) => e.requestId === figRid)
     expect(figRow.after).toMatchObject({ accessToken: 'changed' })
     const srcUpdate = (await forTarget(srcId, 'migration_source.update'))[0]
     expect(srcUpdate.before).toEqual({ label: `src-${tag}` })
