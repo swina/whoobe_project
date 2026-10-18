@@ -36,7 +36,7 @@ Three of these entries expand into a tree when you click the small chevron next 
 
 Click the arrow at the top of the sidebar to collapse it to icons-only — useful on a smaller screen or when you want more room for the content area. Hovering an icon while collapsed still shows its name as a tooltip.
 
-At the bottom of the sidebar, a small "System Online" indicator confirms the dashboard can reach its backend. It isn't a full health dashboard — see the **System Logs** chapter for that — but it's the first thing worth checking if something looks broken.
+At the bottom of the sidebar, a small indicator shows the version of the dashboard and whether it can reach its backend ("System Online" or "System Offline", checked every 30 seconds). It isn't a full health dashboard — see the **System Logs** chapter for that — but it's the first thing worth checking if something looks broken.
 
 ### The top bar
 
@@ -45,7 +45,7 @@ Across the top of the main content area:
 - **Page title** — the name of whatever tab is currently active.
 - **Search** — a global search box. Type at least two characters to search across Data Objects, Pages, Assets, and Classes at once; results appear in a dropdown, filterable by type using the badges above the results list. Press Enter to jump straight to the first result, or click any result to open it in its own tab. Unlike the site's own public search, this one includes unpublished drafts, since it's meant for finding things to work on, not for testing what a visitor would see. A "Rebuild index" link at the bottom of the results is there for the rare case where something you know exists isn't showing up.
 - **Theme toggle** — switches the dashboard itself between dark and light mode. This is purely a dashboard preference; it has no effect on how your published website looks to visitors.
-- **Notification bell** — surfaces dashboard notifications.
+- **Audit log shield** — opens the *Audit log* (only for people with the `audit:read` permission).
 - **User menu** — your name and email, and a logout button.
 
 ### The tab strip

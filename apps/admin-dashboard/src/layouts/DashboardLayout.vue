@@ -245,17 +245,18 @@
       <div class="p-3 border-t border-slate-800 light:border-slate-200">
         <div
           :class="[
-            'flex items-center p-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-xs font-medium',
+            'flex items-center p-2.5 rounded-xl border text-xs font-medium',
+            apiOnline === false ? 'border-red-500/20 bg-red-500/5 text-red-400' : 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400',
             isSidebarCollapsed ? 'justify-center' : 'space-x-3'
           ]"
         >
           <span class="relative flex h-2.5 w-2.5 shrink-0">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            <span v-if="apiOnline" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span :class="['relative inline-flex rounded-full h-2.5 w-2.5', apiOnline === null ? 'bg-slate-500' : apiOnline ? 'bg-emerald-500' : 'bg-red-500']"></span>
           </span>
           <div v-if="!isSidebarCollapsed" class="flex-1 truncate">
-            <div class="font-semibold text-emerald-300">System Online</div>
-            <div class="text-[10px] text-slate-400 light:text-slate-600 truncate">v1.0.0 • Connected</div>
+            <div :class="['font-semibold', apiOnline === false ? 'text-red-300' : 'text-emerald-300']">{{ apiOnline === null ? 'Checking…' : apiOnline ? 'System Online' : 'System Offline' }}</div>
+            <div class="text-[10px] text-slate-400 light:text-slate-600 truncate">v{{ appVersion }} • {{ apiOnline === null ? 'Connecting' : apiOnline ? 'Connected' : 'Unreachable' }}</div>
           </div>
         </div>
       </div>
@@ -371,10 +372,17 @@
             <Moon v-else class="w-5 h-5" />
           </button>
 
-          <!-- Notification Bell -->
-          <button class="relative p-2 rounded-lg text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/60 light:bg-slate-100/60 transition">
-            <Bell class="w-5 h-5" />
-            <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-slate-900 light:ring-white"></span>
+          <!-- Audit log shortcut (needs audit:read); no unread dot, a log has nothing to be marked as read -->
+          <button
+            v-if="authStore.can('audit:read')"
+            type="button"
+            title="Audit log"
+            aria-label="Audit log"
+            data-testid="header-audit-log"
+            class="p-2 rounded-lg text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/60 light:bg-slate-100/60 transition"
+            @click="tabsStore.openSection('audit-log')"
+          >
+            <ShieldCheck class="w-5 h-5" />
           </button>
 
           <div class="h-6 w-px bg-slate-800 light:bg-slate-100"></div>
@@ -546,7 +554,6 @@ import {
   ChevronDown,
   Folder,
   Search,
-  Bell,
   Check,
   LogOut,
   Sliders,
@@ -586,6 +593,7 @@ import { useThemeStore } from '../stores/themeStore'
 import { useTabsStore, sectionTabId, SectionKind, MainTab, SettingsSubSection, AiSubSection } from '../stores/tabsStore'
 import { useToastStore } from '../stores/toastStore'
 import { useAuthStore } from '../stores/authStore'
+import { getDefaultCoreApiUrl } from '../utils/auth-api'
 import { getIconForFileType } from '../utils/asset-file-icons'
 import SidebarFolderNode from '../components/dam/SidebarFolderNode.vue'
 import MasterAssetTab from '../components/dam/MasterAssetTab.vue'
@@ -1289,12 +1297,28 @@ function onWindowMessage(event: MessageEvent) {
   }
 }
 
+// Status badge at the bottom of the sidebar: the core-api's /health, asked every 30 s (null until the first answer)
+const appVersion = __APP_VERSION__
+const apiOnline = ref<boolean | null>(null)
+let healthTimer: ReturnType<typeof setInterval> | undefined
+async function checkHealth() {
+  try {
+    const res = await fetch(`${getDefaultCoreApiUrl()}/health`, { cache: 'no-store', signal: AbortSignal.timeout(5000) })
+    apiOnline.value = res.ok
+  } catch {
+    apiOnline.value = false
+  }
+}
+
 onMounted(() => {
   websitesStore.refreshWebsites()
   window.addEventListener('message', onWindowMessage)
+  checkHealth()
+  healthTimer = setInterval(checkHealth, 30_000)
 })
 
 onUnmounted(() => {
   window.removeEventListener('message', onWindowMessage)
+  clearInterval(healthTimer)
 })
 </script>

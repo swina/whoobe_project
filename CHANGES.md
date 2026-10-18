@@ -1,3 +1,9 @@
+## Dashboard: real status badge, audit log shortcut instead of the bell — 2026-10-18
+- Branch: `master`
+- Sidebar footer: "System Online / v1.0.0 / Connected" was fixed text. It now asks `GET /health` of the core-api every 30 s (grey while checking, red "System Offline / Unreachable" when it fails) and shows the version of the build (`__APP_VERSION__` from `apps/admin-dashboard/package.json`, set in `vite.config.ts`).
+- Header: the bell did nothing and its dot was always on. Replaced by a shield button that opens the *Audit log*, shown only with `audit:read`, no dot.
+- `docs/release/guides/user-manual/03-dashboard-tour.md` describes both.
+
 ## Production dashboard updated to v0.1.1, nginx include re-rendered — 2026-10-18
 - Branch: `master` (documentation only; no code changed)
 - dashboard.whoobe.dev (workspace `dashboard`) rebuilt from the tag `v0.1.1` after a `pg_dump` (`~/backups/pre-0.1.1-2026-10-18/` on the host); rsync with `--delete`, keeping the sandbox's own `scripts/sandbox/reset.sh`, `scripts/enable-tls.sh` and `packages/core/src/sandbox.ts` (branch `fix/sandbox-demo-banner-tls-reset`, not in the tag). The audit log (migration 0060) is not part of 0.1.1 and was not deployed.

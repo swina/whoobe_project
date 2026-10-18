@@ -18,6 +18,8 @@ interface ImportMeta {
 
 import type { BrowserLogger } from '@whoobe-cms/logger/browser'
 declare global {
+  // Version of this build, from package.json (vite.config.ts `define`)
+  const __APP_VERSION__: string
   interface Window {
     __logger: BrowserLogger
   }

@@ -3,6 +3,9 @@ import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
+
+const appVersion: string = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
 
 // Dev server only: silence the "externalized for browser compatibility" warnings caused by postcss (pulled in by
 // sanitize-html, see src/node-builtin-stub.ts). Production builds are untouched.
@@ -18,6 +21,7 @@ export default defineConfig(({ command }) => ({
   // ${VAR} references (dotenv-expand) and shell-exported vars win, which
   // is how ./dev-cms.sh --hostname overrides WHOOBE_HOSTNAME per run.
   envDir: '../../',
+  define: { __APP_VERSION__: JSON.stringify(appVersion) },
   plugins: [
     vue(),
     tailwindcss()
