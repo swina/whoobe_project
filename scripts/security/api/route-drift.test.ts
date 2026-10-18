@@ -62,7 +62,8 @@ describe('route table drift (core-api)', () => {
 
   it('every spec in audit-specs.ts is used by a route, and every route names a spec that exists', () => {
     const src = readFileSync(resolve(ROOT_DIR, 'apps/core-api/src/audit-specs.ts'), 'utf8')
-    const defined = [...src.matchAll(/^  (\w+): \{ action:/gm)].map((m) => m[1])
+    const block = src.slice(src.indexOf('export const AUDIT'))
+    const defined = [...block.matchAll(/^  (\w+):/gm)].map((m) => m[1])
     const used = new Set(actual.map((r) => r.audit).filter(Boolean) as string[])
     expect(defined.filter((n) => !used.has(n)), 'a spec nobody uses').toEqual([])
     expect([...used].filter((n) => !defined.includes(n)), 'a route names a spec that is not defined').toEqual([])

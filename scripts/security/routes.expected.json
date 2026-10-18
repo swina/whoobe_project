@@ -516,7 +516,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websiteCreate"
     },
     "POST /whoobe-one/websites/:id/gateway-api-key/regenerate": {
       "access": "permission",
@@ -525,7 +525,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websiteKeyRegenerate"
     },
     "DELETE /whoobe-one/websites/:id/gateway-api-key": {
       "access": "permission",
@@ -534,7 +534,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websiteKeyClear"
     },
     "GET /whoobe-one/settings/default-placeholder-image": {
       "access": "permission",
@@ -547,7 +547,7 @@
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4"
+      "audit": "settingPlaceholder"
     },
     "GET /whoobe-one/settings/strip-html-comments": {
       "access": "public",
@@ -559,7 +559,7 @@
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4"
+      "audit": "settingStripHtml"
     },
     "GET /whoobe-one/settings/logging": {
       "access": "public",
@@ -571,7 +571,7 @@
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4"
+      "audit": "settingLogging"
     },
     "GET /whoobe-one/settings/autosave": {
       "access": "permission",
@@ -584,7 +584,7 @@
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4"
+      "audit": "settingAutosave"
     },
     "GET /whoobe-one/settings/alpine-presets": {
       "access": "permission",
@@ -597,7 +597,7 @@
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4"
+      "audit": "settingAlpinePresets"
     },
     "GET /whoobe-one/settings/cdn-mirror": {
       "access": "permission",
@@ -610,7 +610,7 @@
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4"
+      "audit": "settingCdnMirror"
     },
     "GET /whoobe-one/websites/:id": {
       "access": "permission",
@@ -627,7 +627,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websiteUpdate"
     },
     "DELETE /whoobe-one/websites/:id": {
       "access": "permission",
@@ -636,7 +636,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websiteDelete"
     },
     "GET /whoobe-one/websites/:id/themes": {
       "access": "permission",
@@ -653,7 +653,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websiteThemeCreate"
     },
     "PUT /whoobe-one/websites/:id/themes/:themeId": {
       "access": "permission",
@@ -662,7 +662,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websiteThemeUpdate"
     },
     "DELETE /whoobe-one/websites/:id/themes/:themeId": {
       "access": "permission",
@@ -671,7 +671,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websiteThemeDelete"
     },
     "GET /whoobe-one/themes/all": {
       "access": "permission",
@@ -696,7 +696,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websiteTheme"
     },
     "GET /whoobe-one/themes": {
       "access": "permission",
@@ -789,7 +789,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websitePathCreate"
     },
     "GET /whoobe-one/website-paths/:id": {
       "access": "permission",
@@ -806,7 +806,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websitePathUpdate"
     },
     "DELETE /whoobe-one/website-paths/:id": {
       "access": "permission",
@@ -815,7 +815,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websitePathDelete"
     },
     "GET /public/pages/:locale/*": {
       "access": "public",
@@ -883,7 +883,7 @@
       "permissions": [
         "SETTINGS_MANAGE"
       ],
-      "audit": "todo: step 4"
+      "audit": "websitePwa"
     },
     "GET /public/search": {
       "access": "public",
@@ -988,56 +988,56 @@
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4"
+      "audit": "migrationSourceCreate"
     },
     "PATCH /migration-sources/:id": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4"
+      "audit": "migrationSourceUpdate"
     },
     "DELETE /migration-sources/:id": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4"
+      "audit": "migrationSourceDelete"
     },
     "POST /migration-sources/:id/import-classes": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4 (an import action: audited as an event on the source)"
+      "audit": "migrationImportClasses"
     },
     "POST /migration-sources/:id/import-objects": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4 (an import action: audited as an event on the source)"
+      "audit": "migrationImportObjects"
     },
     "POST /migration-sources/:id/import-documents": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4 (an import action: audited as an event on the source)"
+      "audit": "migrationImportDocuments"
     },
     "POST /migration-sources/:id/promote-documents": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4 (an import action: audited as an event on the source)"
+      "audit": "migrationPromoteDocuments"
     },
     "POST /migration-sources/:id/extract-components": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "audit": "todo: step 4 (an import action: audited as an event on the source)"
+      "audit": "migrationExtractComponents"
     },
     "GET /data-objects": {
       "access": "permission",
@@ -1160,7 +1160,7 @@
       "permissions": [
         "SETTINGS_MANAGE"
       ],
-      "audit": "todo: step 4"
+      "audit": "mailSettingsUpdate"
     },
     "DELETE /mail-settings": {
       "access": "permission",
@@ -1168,7 +1168,7 @@
         "SETTINGS_MANAGE"
       ],
       "note": "removes a website's own mail configuration (it falls back to the default)",
-      "audit": "todo: step 4"
+      "audit": "mailSettingsDelete"
     },
     "POST /mail-settings/test": {
       "access": "permission",
@@ -1254,7 +1254,7 @@
       "permissions": [
         "SETTINGS_MANAGE"
       ],
-      "audit": "todo: step 4"
+      "audit": "exempt: personal setting, stored per signed-in user (the user's own AI provider and key), not a setting of the installation"
     },
     "POST /ai/generate": {
       "access": "permission",
@@ -1283,7 +1283,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websiteFromAi"
     },
     "GET /whoobe-one/websites/:id/export": {
       "access": "permission",
@@ -1300,7 +1300,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "audit": "todo: step 4"
+      "audit": "websiteImport"
     },
     "GET /ai/image-settings": {
       "access": "permission",
@@ -1313,7 +1313,7 @@
       "permissions": [
         "SETTINGS_MANAGE"
       ],
-      "audit": "todo: step 4"
+      "audit": "exempt: personal setting, stored per signed-in user (the user's own AI provider and key), not a setting of the installation"
     },
     "GET /ai/translate-settings": {
       "access": "permission",
@@ -1326,7 +1326,7 @@
       "permissions": [
         "SETTINGS_MANAGE"
       ],
-      "audit": "todo: step 4"
+      "audit": "exempt: personal setting, stored per signed-in user (the user's own AI provider and key), not a setting of the installation"
     },
     "POST /ai/generate-image": {
       "access": "permission",
@@ -1425,7 +1425,7 @@
       "permissions": [
         "SETTINGS_MANAGE"
       ],
-      "audit": "todo: step 4"
+      "audit": "figmaSettings"
     },
     "POST /figma/import": {
       "access": "permission",
@@ -1522,7 +1522,7 @@
         "SETTINGS_MANAGE"
       ],
       "note": "writes the upload limits of a website; validated, extensions that cannot be verified or are active content are refused",
-      "audit": "todo: step 4"
+      "audit": "websiteUploadSettings"
     },
     "POST /public/uploads/intent": {
       "access": "public",
@@ -1554,7 +1554,7 @@
         "OBJECTS_WRITE"
       ],
       "mode": "all",
-      "audit": "todo: step 4 (an import action: audited as an event on the source)"
+      "audit": "exempt: reads the source database and shows what an import would do, changes nothing"
     },
     "GET /migration-sources/import-jobs/:jobId": {
       "access": "permission",
@@ -1583,7 +1583,7 @@
       "permissions": [
         "OBJECT_EVENTS_MANAGE"
       ],
-      "audit": "todo: step 4"
+      "audit": "subscriptionCreate"
     },
     "GET /object-event-subscriptions/:id": {
       "access": "permission",
@@ -1596,14 +1596,14 @@
       "permissions": [
         "OBJECT_EVENTS_MANAGE"
       ],
-      "audit": "todo: step 4"
+      "audit": "subscriptionUpdate"
     },
     "DELETE /object-event-subscriptions/:id": {
       "access": "permission",
       "permissions": [
         "OBJECT_EVENTS_MANAGE"
       ],
-      "audit": "todo: step 4"
+      "audit": "subscriptionDelete"
     },
     "POST /object-event-subscriptions/:id/test": {
       "access": "permission",

@@ -23,6 +23,10 @@ export interface AuditSpec<E = Record<string, unknown>> {
   loadBefore?: (req: Request) => Promise<E | null | undefined>;
   /** The entity in the handler's JSON answer (create, update). */
   fromResponse?: (body: any) => E | null | undefined;
+  /** The entity as it is after the handler ran, read again (for a handler that does not answer with it). Wins over `fromResponse`. */
+  loadAfter?: (req: Request, body: any) => Promise<E | null | undefined>;
+  /** True = this call changed nothing (a dry run): no row. */
+  skip?: (req: Request, body: any) => boolean;
   /** Default: `req.params.id`, or the id of the entity found in the answer. */
   targetId?: (req: Request, entity: E | null | undefined) => string | undefined;
   targetLabel?: (entity: E | null | undefined) => string | undefined;
@@ -50,11 +54,21 @@ export function createAudit(logger: { error: (o: object, m: string) => void }) {
       res.json = ((body: unknown) => { answered = body; return json(body); }) as typeof res.json;
 
       res.on('finish', () => {
+        void record();
+      });
+
+      const record = async (): Promise<void> => {
         if (res.statusCode >= 400) return;
+        if (spec.skip?.(req, answered)) return;
         // a delete or an update of something that was not there changed nothing
         if ((spec.kind === 'delete' || spec.kind === 'update') && spec.loadBefore && !beforeEntity) return;
         let afterEntity: E | null | undefined;
-        try { afterEntity = spec.fromResponse ? spec.fromResponse(answered) : undefined; } catch { afterEntity = undefined; }
+        try {
+          afterEntity = spec.loadAfter ? await spec.loadAfter(req, answered) : spec.fromResponse ? spec.fromResponse(answered) : undefined;
+        } catch (err) {
+          logger.error({ err, action: spec.action }, 'audit: could not read the state after the change');
+          afterEntity = undefined;
+        }
         const entity = afterEntity ?? beforeEntity;
 
         let before: Record<string, unknown> | null = null;
@@ -86,8 +100,8 @@ export function createAudit(logger: { error: (o: object, m: string) => void }) {
           after,
           requestId: typeof rid === 'string' ? rid : null,
         };
-        void insertAuditSafe(entry, (err, e) => logger.error({ err, action: e.action, targetType: e.targetType, targetId: e.targetId, actor: e.actor.id }, 'audit: the row could not be written'));
-      });
+        await insertAuditSafe(entry, (err, e) => logger.error({ err, action: e.action, targetType: e.targetType, targetId: e.targetId, actor: e.actor.id }, 'audit: the row could not be written'));
+      };
       next();
     };
   }
