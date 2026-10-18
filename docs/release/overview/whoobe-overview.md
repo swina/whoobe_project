@@ -166,7 +166,7 @@ it does not, we say that too.
 |---|---|
 | **High availability / more than one replica per service** | Some state (login throttling, second-factor challenges, rate limits) is held in process memory. Two replicas behave differently from one, and a second-factor login can fail across replicas. The path to HA is written down ([capacity and scaling](../operations/capacity-and-scaling.md)); it has not been built or tested. |
 | **Kubernetes manifests, a Helm chart, a managed-database variant** | The supported deployment is Docker Compose on a host. Pointing at a managed PostgreSQL is possible through configuration; it is not a packaged option. |
-| **Load testing** | **No performance test has been run.** The sizing figures in the documentation come from the code and a small reference machine, not from measured throughput. Measure with your own traffic before you commit. |
+| **Load testing** | **One small load test, on a development machine** (2026-10-18): about 690 public pages, 330 public queries and 120 API-client reads per second under the smallest container limits, a login takes about two seconds. Uploads, AI, publishing and mixed traffic were not measured, and the reference arm64 VM is slower. See [capacity and scaling](../operations/capacity-and-scaling.md); measure with your own traffic before you commit. |
 | **Metrics, tracing, alert rules** | There is no metrics endpoint. The health route does not check the database. You monitor with what your platform gives you (container health, logs, an external uptime check). |
 
 ### 4.3 Multi-tenancy and organisation
@@ -357,7 +357,7 @@ answer. It touches the editor, the gateway, the engine and the page, and it take
 - Automated suites: about 1,170 API tests, 270 unit tests, 14 isolation tests on two stacks, 30 browser tests, static analysis and
   dependency, secret and container scans, and an OWASP ZAP active scan, run on a disposable stack. This is **our** evidence. Nobody
   outside the team has audited it.
-- Not covered: no load test; no SQL fuzzing of every endpoint; the generated Next/Nuxt sites are generated and parsed but not built in the tests;
+- Not covered: load tested only for four endpoints on a development machine; no SQL fuzzing of every endpoint; the generated Next/Nuxt sites are generated and parsed but not built in the tests;
   TLS has been tested on the rendered template, not yet on a live public hostname; the dynamic scan and manual checklist need to be repeated on the release commit.
 
 **Known gaps for your risk assessment** (all in chapter 4): no SSO, no mandatory second factor, no audit log of administrative
@@ -383,7 +383,8 @@ data retention; keep the engine of any automation behind HTTPS with a secret on 
 | Security review | 59 findings recorded; High all fixed; remaining items listed |
 | Dynamic scan (OWASP ZAP) | Active scan of 154 routes with an admin session found nothing above informational, before the last features; to be repeated |
 | Upgrade (database step), restore (throwaway workspace) | Tested by script, small data (2026-10-18) |
-| Rollback, multi-replica, load, restore on a real host | **Not tested** |
+| Load (four endpoints, development machine) | Measured once, 2026-10-18 |
+| Rollback, multi-replica, restore on a real host, uploads under load | **Not tested** |
 | External audit or certification | **None** |
 | Documentation | Technical set (architecture, operations, security) written from the code; user manual partial; checked automatically for broken links, non-existent paths and undocumented settings |
 

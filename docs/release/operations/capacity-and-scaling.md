@@ -1,9 +1,9 @@
 # Capacity, scaling and availability
 
 What one workspace can be expected to do, which parts of the services keep state in process memory (and therefore
-limit you to one instance), where the bottlenecks are, and what has to change to run more than one replica. **No load
-test has been run** (by design of the security plan, and not yet as a performance exercise): the figures here are
-derived from the code and the reference installation, not measured throughput.
+limit you to one instance), where the bottlenecks are, and what has to change to run more than one replica. One load test has been
+run (section 2.1, a development machine, four endpoints, small data); the other figures are derived from the code and
+the reference installation, not measured throughput.
 
 ## 1. Reference installation
 
@@ -39,6 +39,33 @@ traffic, large images or the page generators needs more; plan from the table bel
 
 Starting point for a production workspace (to be confirmed by your own test): 2 vCPU / 4 GB for the three backends and
 PostgreSQL together, plus disk for the assets; scale memory first (asset-processor), then CPU.
+
+### 2.1 Measured, 2026-10-18 (`scripts/load/run.sh`)
+
+A throwaway stack (postgres, garage, core-api, asset-processor, gateway) with the container limits of the sandbox profile
+(core-api 768 MB / 1 CPU, gateway 384 MB / 0.5, postgres 512 MB / 1, garage 512 MB / 1), 500 published objects, one page of
+40 blocks, one API client. k6 drives one endpoint at a time for 30 s with 20 virtual users (5 for the login):
+
+| Scenario | Requests/s | Median | p95 | p99 | Failed |
+|---|---|---|---|---|---|
+| Public page (`GET /public/page/<slug>`) | 694 | 26 ms | 51 ms | 79 ms | 0 % |
+| Public data query (`POST /public/data-objects/query`, 20 of 500 objects) | 335 | 56 ms | 92 ms | 117 ms | 0 % |
+| API client read (`GET /client/v1/data/<class>?limit=20` through the gateway) | 121 | 174 ms | 273 ms | 329 ms | 0 % |
+| Login (`POST /auth/login`, 5 users at once) | 2.6 | 1.95 s | 2.3 s | 2.6 s | 0 % |
+
+Peak CPU while each ran (100 % = one CPU): core-api 100 % (its limit) with about 250 MB of memory, gateway 50 % (its limit of half a CPU) with
+about 150 MB, postgres 61 %, garage 2 %.
+
+What it says: **the services, not the database, are the first limit**: core-api uses its whole CPU on public pages and queries, and the
+gateway uses its whole half-CPU on client reads, so those are the two to give more CPU first. A login takes about two seconds of CPU
+(password hashing), so a few people logging in at the same moment queue; it is not a throughput concern for editors.
+
+What it does **not** say: it ran on an x86-64 development machine (20 CPUs, WSL2) with the load generator on the same machine; the
+reference arm64 VM has slower cores, so expect fewer requests per second there. The per-address request limits of core-api were switched
+off for the run (a single address would hit them at once), and the API client had the highest limit allowed (1000 requests/s). Not
+measured: image upload and transforms, form uploads, AI, publishing, a mix of endpoints, runs longer than a minute, more than one replica,
+a larger database. Run `scripts/load/run.sh --vus 50 --duration 60s` (or `--limits none`) on your own machine, and the same k6 script
+(`scripts/load/load.js`) against your real configuration.
 
 ## 3. State that lives in process memory
 
@@ -105,4 +132,4 @@ Not supported today; the work, in order of importance:
 Expected visitors per day and whether the sites are static, server-rendered or API-driven; number of editors working at
 the same time; total asset volume and the largest images; whether form uploads and AI are on; the required RPO/RTO
 ([backup](backup-restore-and-dr.md)); whether a managed PostgreSQL is available. A load test against the real
-configuration (public API, login, image upload, form upload) is the recommended gate before a launch.
+configuration (public API, login, image upload, form upload) is the recommended gate before a launch: the script covers the first two, not the uploads.

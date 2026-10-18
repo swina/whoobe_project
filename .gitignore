@@ -39,3 +39,4 @@ deploy/nginx/_locations-sandbox.inc
 
 # Output of the publisher service (apps/publisher)
 published
+scripts/load/reports/

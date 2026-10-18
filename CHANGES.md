@@ -1,3 +1,10 @@
+## Load test — 2026-10-18
+- Branch: `feat/load-test`
+- `scripts/load/run.sh` (new): throwaway stack (project `whoobe-load`, ports dev +600, per-address public limits off), container limits of the sandbox profile by default (`--limits none` to drop them), 500 published objects, one 40-block page, one API client (limit 1000 rps, the maximum); then `scripts/load/load.js` (k6 0.55.0 in Docker, pinned) runs public page, public data query, API-client read and login one after the other (`--vus`, `--duration`). `scripts/load/summarize.py` prints the table (requests/s computed over the scenario's duration, since k6's own rate divides by the whole test) and peak CPU/memory per container. Reports in `scripts/load/reports/` (git-ignored, added to `.gitignore`).
+- First run (20 CPUs x86-64 under WSL2, sandbox limits): 694 page req/s, 335 query req/s, 121 client read req/s, login 2.6/s (median 1.95 s), 0 failures. core-api and the gateway hit their CPU limits first; the database did not.
+- Documentation: `capacity-and-scaling.md` new section 2.1 with the table and what it does not say; overview (limits row, 'not covered', status table); plan A1.
+- Not done: the same on the reference arm64 VM; uploads, AI, publish, mixed traffic; no CI job.
+
 ## libexpat in the two SPA images — 2026-10-18
 - Branch: `fix/libexpat-spa-images`
 - `Dockerfile`, stages `admin-dashboard` and `whoobe-one-spike`: `apk upgrade --no-cache pcre2 tiff libexpat`. The nightly `security` run of 2026-10-18 failed at `trivy image` on both images: HIGH CVE-2026-77214, libexpat 2.8.5-r0 in the pinned nginx-unprivileged Alpine, fixed in 2.9.0-r0. Checked on the pinned base: the upgrade installs libexpat 2.9.0-r0. Same pattern as the earlier pcre2 and tiff lines; drop when the pinned digest catches up (Dependabot).
