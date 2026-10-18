@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { redactForAudit, REDACTED } from '@whoobe-cms/core/server';
 import {
   getFigmaSettings, getMailSettingsFor, getMigrationSource, getObjectEventSubscription, getRole, getUserWithRoles, getWebsite, getWebsitePath,
   listWebsites, pickAllowed, publicMailSettings,
@@ -12,6 +13,8 @@ import type { AuditSpec } from './audit.js';
 // listed; when one can change, the spec names it in `secrets` and the row says "changed".
 
 type P = { params: Record<string, string>; body?: any; query?: any };
+// a key the safety net of the audit log would hide is a credential here too
+const looksSecret = (k: string): boolean => (redactForAudit({ [k]: 'x' }) as Record<string, unknown>)[k] === REDACTED;
 const fp = (v: unknown): string => `sha:${createHash('sha256').update(JSON.stringify(v ?? null)).digest('hex').slice(0, 12)}`;
 
 // ── users and roles ────────────────────────────────────────────────────────
@@ -131,7 +134,12 @@ export const AUDIT: Readonly<Record<string, AuditSpec<any>>> = {
   // presets hold directive code: their names are shown, the code is a fingerprint
   settingAlpinePresets: settingChange('setting.update', 'alpinePresets', (v) => ({ names: Array.isArray(v) ? v.map((p: any) => p?.name ?? null) : [], content: fp(v) })),
   settingCdnMirror: settingChange('setting.update', 'cdnMirror'),
-  mailSettingsUpdate: { action: 'setting.mail_update', kind: 'update', targetType: 'setting', snapshot: mailSnapshot, loadBefore: loadMail, loadAfter: loadMail, targetId: (r: P) => `mail:${mailScopeId(r) ?? 'default'}`, targetLabel: () => 'Outgoing mail', secrets: ['password', 'smtp', 'providerConfig'] } satisfies AuditSpec<MailEntity>,
+  mailSettingsUpdate: { action: 'setting.mail_update', kind: 'update', targetType: 'setting', snapshot: mailSnapshot, loadBefore: loadMail, loadAfter: loadMail, targetId: (r: P) => `mail:${mailScopeId(r) ?? 'default'}`, targetLabel: () => 'Outgoing mail',
+    // the snapshot says only whether a secret is set; a request that carries one is a change the snapshot cannot show
+    secretsFromBody: (b) => [
+      ...(b?.smtp?.password || b?.password ? ['smtp.password'] : []),
+      ...Object.entries(b?.providerConfig ?? {}).filter(([k, v]) => v && looksSecret(k)).map(([k]) => `providerConfig.${k}`),
+    ] } satisfies AuditSpec<MailEntity>,
   mailSettingsDelete: { action: 'setting.mail_remove', kind: 'delete', targetType: 'setting', snapshot: mailSnapshot, loadBefore: loadMail, targetId: (r: P) => `mail:${mailScopeId(r) ?? 'default'}`, targetLabel: () => 'Outgoing mail' } satisfies AuditSpec<MailEntity>,
   figmaSettings: { action: 'setting.figma_update', kind: 'update', targetType: 'setting', snapshot: (f: FigmaEntity) => ({ teamId: f.teamId, hasToken: f.hasToken }), loadBefore: loadFigma, loadAfter: loadFigma, targetId: () => 'figma', targetLabel: () => 'Figma', secrets: ['accessToken'] } satisfies AuditSpec<FigmaEntity>,
 

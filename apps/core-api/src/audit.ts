@@ -19,6 +19,8 @@ export interface AuditSpec<E = Record<string, unknown>> {
   snapshot?: (entity: E) => Record<string, unknown>;
   /** Fields of the request that are credentials: recorded as "changed" (see changedOnly). */
   secrets?: readonly string[];
+  /** Credentials found in a nested request body (a dotted name such as `smtp.password`): recorded as "changed" when the request carries one. */
+  secretsFromBody?: (body: any) => string[];
   /** The entity as it is before the handler runs (update, delete, event on an existing target). null = it does not exist. */
   loadBefore?: (req: Request) => Promise<E | null | undefined>;
   /** The entity in the handler's JSON answer (create, update). */
@@ -85,6 +87,7 @@ export function createAudit(logger: { error: (o: object, m: string) => void }) {
             const v = (req.body ?? {})[s];
             if (v !== undefined && v !== null && v !== '') diff.after[s] = 'changed';
           }
+          for (const name of spec.secretsFromBody?.(req.body ?? {}) ?? []) diff.after[name] = 'changed';
           before = diff.before;
           after = diff.after;
         } else if (spec.kind === 'event') {
