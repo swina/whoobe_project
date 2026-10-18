@@ -14,11 +14,10 @@ data are entered (secrets are stored encrypted).
 
 1. In Resend: verify your sending domain (DNS) and create an API key (sending access is enough).
 2. Copy `resend.json` to your `MAIL_PROVIDERS_PATH` folder.
-3. In Whoobe: Outgoing Mail > *Send with* **Resend**, paste the API key, set the sender address on the verified domain **and a
-   sender name** (the recipe sends `Name <address>`; with an empty name the address would be sent with a stray space).
+3. In Whoobe: Outgoing Mail > *Send with* **Resend**, paste the API key and set the sender address on the verified domain.
 4. Save, then use **Email Test**.
 
-What to know: no attachments (the recipe format cannot carry them), a retry cannot send the same message twice (the message id is
+What to know: the sender goes out as the **address only**, without the display name. A recipe cannot say "name if there is one" (there are no conditions in the format), and `Name <address>` with an empty name is refused by Resend (`HTTP 422 Invalid from field`), which is what happens when the test mail is sent with a plain address in its *From* field. No attachments (the recipe format cannot carry them), a retry cannot send the same message twice (the message id is
 the `Idempotency-Key`, which Resend keeps for 24 hours), `429` is retried twice (Resend limits requests per second; a daily or monthly
 quota error is retried too and fails again, with Resend's text in the Mail Log).
 

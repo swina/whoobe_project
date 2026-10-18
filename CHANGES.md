@@ -1,3 +1,9 @@
+## Resend recipe: the sender goes out as the address only — 2026-10-18
+- Branch: `feat/mail-resend`
+- Found by the owner in the dashboard (Email Test): `Resend: HTTP 422 - Invalid from field`. The recipe sent `{{fromName}} <{{from}}>`; when the mail has no display name (the test dialog's *From* field filled with a plain address, which `mailer.ts` turns into an address without name) the value was ` <address>` with a leading space, refused by Resend. The format has no conditions, so the recipe cannot write "name if there is one".
+- `examples/mail-providers/resend.json`: `"from": "{{from}}"` (the address only; valid in every case). Cost: recipients see the address, not "Whoobe <...>". Test added for an empty, a missing and a given name; README says so and drops the "sender name required" step.
+- Possible later (core, needs a release): a placeholder that renders `Name <address>` or just the address, so a recipe can keep the display name. Not done.
+
 ## Mail provider recipe: Resend — 2026-10-18
 - Branch: `feat/mail-resend`
 - `examples/mail-providers/resend.json` (new, outside the distribution) and `examples/mail-providers/README.md`: a mail provider for Resend in the existing JSON format (`MAIL_PROVIDERS_PATH`, read without a restart, shown in Settings > Outgoing Mail, the API key stored encrypted). Request and answer taken from Resend's API reference (read 2026-10-18): `POST https://api.resend.com/emails`, `Authorization: Bearer`, `Idempotency-Key` = the message id, `from` as `Name <address>`, `to`, `cc`, `bcc`, `reply_to`, `subject`, `html`, `text`; answer `{ "id": ... }`; errors read from `message` / `name` (the reference lists the error names and status codes but not the JSON shape of an error body: not verified against a real answer yet). No attachments (the format cannot carry them). Retries on 429 and 503, twice.

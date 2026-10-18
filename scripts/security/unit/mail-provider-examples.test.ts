@@ -27,7 +27,13 @@ describe('examples/mail-providers/resend.json', () => {
     expect(r.url).toBe('https://api.resend.com/emails')
     expect(r.headers.Authorization).toBe('Bearer re_test_supersecretkey')
     expect(r.headers['Idempotency-Key']).toBe('9b2c0a54-0000-4000-8000-000000000001')
-    expect(JSON.parse(r.body!)).toEqual({ from: 'Example <noreply@mail.example.com>', to: ['visitor@example.org'], subject: 'Hello', html: '<p>Hi</p>' })
+    expect(JSON.parse(r.body!)).toEqual({ from: 'noreply@mail.example.com', to: ['visitor@example.org'], subject: 'Hello', html: '<p>Hi</p>' })
+  })
+
+  it('sends the address only, so a message without a display name is never refused for its sender', () => {
+    for (const fromName of ['', undefined, 'Example']) {
+      expect(JSON.parse(buildProviderRequest(def, config, msg({ fromName })).body!).from).toBe('noreply@mail.example.com')
+    }
   })
 
   it('carries copies, blind copies, reply-to and a text part when the message has them', () => {

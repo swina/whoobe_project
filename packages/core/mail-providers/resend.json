@@ -1,0 +1,38 @@
+{
+  "id": "resend",
+  "label": "Resend",
+  "description": "Sends through Resend's email API. The sender domain must be verified in Resend. HTML with an optional plain-text part, copies and blind copies; no attachments.",
+  "docsUrl": "https://resend.com/docs/api-reference/emails/send-email",
+  "configFields": [
+    { "name": "apiKey", "label": "API key", "required": true, "secret": true, "help": "Resend dashboard > API Keys (a key with the 'Sending access' permission is enough); it is stored encrypted and never shown again" }
+  ],
+  "request": {
+    "method": "POST",
+    "url": "https://api.resend.com/emails",
+    "headers": {
+      "Authorization": "Bearer {{config.apiKey}}",
+      "Content-Type": "application/json",
+      "Idempotency-Key": "{{messageId}}"
+    },
+    "body": {
+      "from": "{{fromName}} <{{from}}>",
+      "to": ["{{to}}"],
+      "cc": "{{cc}}",
+      "bcc": "{{bcc}}",
+      "reply_to": "{{replyTo}}",
+      "subject": "{{subject}}",
+      "html": "{{html}}",
+      "text": "{{text}}"
+    }
+  },
+  "success": {
+    "status": [200],
+    "failWhen": [
+      { "path": "id", "equals": "" }
+    ],
+    "reference": "id",
+    "errorFrom": ["message", "name"]
+  },
+  "retry": { "on": [429, 503], "max": 2, "maxWaitSeconds": 10 },
+  "capabilities": { "html": true, "text": true, "attachments": false, "cc": true }
+}

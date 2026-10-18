@@ -1,7 +1,7 @@
 {
   "id": "resend",
   "label": "Resend",
-  "description": "Sends through Resend's email API. The sender domain must be verified in Resend. HTML with an optional plain-text part, copies and blind copies; no attachments.",
+  "description": "Sends through Resend's email API. The sender domain must be verified in Resend. HTML with an optional plain-text part, copies and blind copies; no attachments. The sender is sent as the address only (no display name).",
   "docsUrl": "https://resend.com/docs/api-reference/emails/send-email",
   "configFields": [
     { "name": "apiKey", "label": "API key", "required": true, "secret": true, "help": "Resend dashboard > API Keys (a key with the 'Sending access' permission is enough); it is stored encrypted and never shown again" }
@@ -15,7 +15,7 @@
       "Idempotency-Key": "{{messageId}}"
     },
     "body": {
-      "from": "{{fromName}} <{{from}}>",
+      "from": "{{from}}",
       "to": ["{{to}}"],
       "cc": "{{cc}}",
       "bcc": "{{bcc}}",
