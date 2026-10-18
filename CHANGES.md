@@ -1,3 +1,7 @@
+## Next release is 0.1.1 — 2026-10-18
+- Branch: `feat/release-0.2`
+- `docs/plans/system/release-0.2-plan.md`, section 8: decision 1 recorded. The next release is **0.1.1** (fixes and the features already on `master`); 0.2.0 *Conduct* follows with this plan. Nothing built.
+
 ## Node-RED example flows and article — 2026-10-18
 - Branch: `master`
 - `examples/automation-engines/node-red/data/flows.json`: class switch on the incoming event, a second tab with a `/whoobe-contacts` flow that checks the call, and the PATCH sends `X-Whoobe-Flow: stop` and names the changed field in the note.

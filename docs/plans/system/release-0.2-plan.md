@@ -194,7 +194,7 @@ formats stay the way to work with them).
 
 ## 8. Decisions for the owner
 
-- **The number of the next release** (the name is *Conduct*, section 0): 0.1.1 (fixes and the features already on `master`) followed by 0.2.0 for this plan, or one 0.2.0. The features on
+- **The number of the next release** — **decided 2026-10-18: 0.1.1** (the fixes and the features already on `master`), then 0.2.0 *Conduct* for this plan. (The name is *Conduct*, section 0.) Options were: 0.1.1 (fixes and the features already on `master`) followed by 0.2.0 for this plan, or one 0.2.0. The features on
   `master` are not in the tag: until a release exists, the documentation says "not in the v0.1.0 tag" next to them.
 - **How to publish documentation of two versions:** one site that follows `master` (today, with notes), or a site per release. Proposal: one site, a
   note per feature not yet released, until there are users on two versions.
