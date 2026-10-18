@@ -1,3 +1,8 @@
+## libexpat in the two SPA images — 2026-10-18
+- Branch: `fix/libexpat-spa-images`
+- `Dockerfile`, stages `admin-dashboard` and `whoobe-one-spike`: `apk upgrade --no-cache pcre2 tiff libexpat`. The nightly `security` run of 2026-10-18 failed at `trivy image` on both images: HIGH CVE-2026-77214, libexpat 2.8.5-r0 in the pinned nginx-unprivileged Alpine, fixed in 2.9.0-r0. Checked on the pinned base: the upgrade installs libexpat 2.9.0-r0. Same pattern as the earlier pcre2 and tiff lines; drop when the pinned digest catches up (Dependabot).
+- Not done: a full build of the two images and a trivy run; the next nightly run is the check. The `postgres:16-alpine` image has 25 fixable HIGH/CRITICAL in its Go stdlib, advisory only in the job, not touched.
+
 ## Shellcheck on the upgrade test — 2026-10-18
 - Branch: `fix/shellcheck-upgrade`
 - `scripts/upgrade/upgrade-test.sh`: the loop that lists the tables of the new migrations used an unquoted command substitution (SC2013, SC2046) and failed the static scan of the `security` workflow on the merge of `feat/release-0.2`. Rewritten as `while read` over `git show`; the three new scripts of today (`upgrade-test.sh`, `restore/rehearse.sh`, `backup-workspace-bucket.sh`) now pass shellcheck. Same behaviour.
