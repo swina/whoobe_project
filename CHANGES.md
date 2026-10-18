@@ -1,3 +1,9 @@
+## Upgrade test v0.1.0 -> working tree — 2026-10-18
+- Branch: `feat/release-0.2`
+- `scripts/upgrade/upgrade-test.sh` (new): starts postgres, garage and core-api of an earlier release (`--from`, default `v0.1.0`, taken with `git archive`) in a throwaway project `whoobe-upgrade` (ports dev +400), writes a class and an object, then starts the working tree on the same volumes and checks: all migrations applied (59 -> 60), the tables created by the new migrations exist, the user count and the object are unchanged, the administrator can log in. `--keep` leaves the stack for inspection. First run passed (about 4 minutes).
+- Documentation updated to say the database step of the upgrade is tested by script, by hand and not yet in CI: `docs/release/operations/upgrade-and-migrations.md`, `docs/release/release-process.md`, `docs/release/overview/whoobe-overview.md` (chapter 4.6 row), plan 0.2 block A1. The "0.1.0 -> 0.2.0" wording in the upgrade page replaced.
+- Not done: the CI job; the image rebuild on a real host, nginx and the manual checks stay untested.
+
 ## Next release is 0.1.1 — 2026-10-18
 - Branch: `feat/release-0.2`
 - `docs/plans/system/release-0.2-plan.md`, section 8: decision 1 recorded. The next release is **0.1.1** (fixes and the features already on `master`); 0.2.0 *Conduct* follows with this plan. Nothing built.

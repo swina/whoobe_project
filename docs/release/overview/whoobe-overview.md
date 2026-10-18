@@ -205,7 +205,7 @@ it does not, we say that too.
 | Fact | What it means for you |
 |---|---|
 | **First release (0.1.0)** | Installed from scratch on one reference machine (an arm64 virtual machine). That install found and fixed real defects. Expect more in the first months. While the version starts with 0, a minor release may change behaviour; the release notes tell you what. |
-| **Upgrades are untested** | There is no earlier release to upgrade from. The upgrade and rollback procedures are written, not rehearsed. The first upgrade test belongs to the next release. |
+| **Upgrades are untested** | A script (`scripts/upgrade/upgrade-test.sh`) upgrades a stack from v0.1.0 to the current tree and checks the migrations, the data and a login; it is run by hand, not in CI. The rest of the upgrade and rollback procedures (images on a real host, nginx) is written, not rehearsed. |
 | **Restore has not been rehearsed** | The database backup is scripted and encrypted; the asset bucket is not (you use your storage provider's tools). Run a restore once, on a spare machine, before you rely on it. |
 | **Images are built and published by hand** | Not yet by an automated pipeline; no signatures or provenance attestations. A software bill of materials can be generated. |
 | **Some checks must be repeated on the release commit** | The dynamic security scan and the manual security checklist were last run before the final features were added. The release process requires a new run. |

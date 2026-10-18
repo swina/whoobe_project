@@ -1,10 +1,7 @@
 # Upgrading and migrations
 
 How a workspace is moved from one release to the next, what happens to the database, and how to go back. Release
-numbering and support policy: [release process](../release-process.md). **Status: the upgrade path is written from the
-code and has not been tested end to end** - release 0.1.0 is the first release, so there is no earlier version to
-upgrade from, and the automated upgrade test is still listed as missing in the release process. The first real upgrade
-(0.1.0 → 0.2.0) is the test; follow this page with a fresh backup and a scratch copy first.
+numbering and support policy: [release process](../release-process.md). **Status: the database step of the upgrade is tested** by `scripts/upgrade/upgrade-test.sh` (install the previous release, write data, upgrade the same volumes to the working tree, check the migrations, the new tables, the data and a login); first run 2026-10-18, v0.1.0 → the tree before 0.1.1, 59 → 60 migrations. What the script does not cover (image rebuild on a real host, nginx, the manual checks of step 7) is still written, not rehearsed: follow this page with a fresh backup and a scratch copy first.
 
 ## 1. What changes between releases
 
@@ -92,8 +89,7 @@ supported without a restore.
 
 ## 6. What is missing
 
-- The automated upgrade test (install N-1, load data, upgrade, check migrations and a login) - the most valuable gate
-  not yet built.
+- The upgrade test runs by hand (`scripts/upgrade/upgrade-test.sh`, about 4 minutes, needs Docker); it is not yet a CI job.
 - A migration lock and a way to run migrations as a one-off job before the application starts.
 - A compatibility statement for the API (the API reference is generated per release; there is no versioned URL or
   deprecation policy while the version starts with `0.`).
