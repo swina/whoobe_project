@@ -1,3 +1,9 @@
+## Release notes 0.1.1 and security summary — 2026-10-18
+- Branch: `master`
+- `docs/release/release-notes-0.1.1.md` (new): what is in 80 commits since v0.1.0 (object events, loop guard, Objects list and edit form, renderer markdown, upgrade/restore/load tooling, release workflow, libexpat), the behaviour changes to check (migration 0059, `object_events:manage` for `admin`, the gateway worker, new optional variables, markdown in generated sites, the click on a row), and the known limits.
+- `docs/release/security/status-summary.md`: dated 2026-10-18; DAST passed on the release candidate (GitHub run, commit `5af9e3f`: static, stack tests with 33 browser tests, isolation, TLS, ZAP all green); new section on the surface added since 2026-10-09; the manual checklist is said not to have been repeated.
+- The DAST has to be run again on the commit that holds these two files (the gate asks for the exact commit; docs-only pushes do not start the workflow by themselves).
+
 ## Load test — 2026-10-18
 - Branch: `feat/load-test`
 - `scripts/load/run.sh` (new): throwaway stack (project `whoobe-load`, ports dev +600, per-address public limits off), container limits of the sandbox profile by default (`--limits none` to drop them), 500 published objects, one 40-block page, one API client (limit 1000 rps, the maximum); then `scripts/load/load.js` (k6 0.55.0 in Docker, pinned) runs public page, public data query, API-client read and login one after the other (`--vus`, `--duration`). `scripts/load/summarize.py` prints the table (requests/s computed over the scenario's duration, since k6's own rate divides by the whole test) and peak CPU/memory per container. Reports in `scripts/load/reports/` (git-ignored, added to `.gitignore`).

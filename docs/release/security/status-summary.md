@@ -1,6 +1,6 @@
 # Security status - single summary
 
-State at **2026-10-14** (see `git log` for the exact commit). Source of detail:
+State at **2026-10-18** (see `git log` for the exact commit). Source of detail:
 `findings.md` (register F-001 ... F-059), `security-testing-plan.md` (plan), `manual-test-checklist.md`
 (browser/terminal checks), `../../security/security-test-suite.md` (description of the automated suites, written
 for reviewers), `scripts/security/README.md` (how to run).
@@ -12,7 +12,7 @@ for reviewers), `scripts/security/README.md` (how to run).
 | Findings recorded | **59** (F-001 ... F-059) |
 | By current severity | 30 Medium, 15 Low, 11 High, 3 Info (F-055 to F-059 were found on 2026-10-09 by the documentation review: clear-text third-party credentials (fixed), the push key served by a public route (High, fixed), sessions never purged / stored unhashed (fixed), a default DB password in code (fixed), function permissions not enforced (fixed: 90 content routes accept them); F-049 TLS and F-050 images added 2026-10-03/04, F-051 public settings 2026-10-06 and F-052 website import vs. `objects:publish` and F-053 public form notification as a mail relay, both 2026-10-07, and F-054 SMTP password in clear text, 2026-10-08, all fixed the day they were found) |
 | Fixed in code | all 9 High; all but a few Medium (see section 3) |
-| Automated checks | `pnpm security:api` **1171 tests / 22 files** (counted 2026-10-09 with `vitest run api`), `unit` **269 tests / 21 files**, `pnpm security:isolation` **14 tests** (two stacks) and `pnpm security:browser` **30 Playwright tests** (Chromium) green on a disposable stack, plus **DAST with OWASP ZAP** (last run before the 2026-10-08/09 features; the release gate requires a new run on the release commit) (`scripts/security/dast/run-zap.sh`: active API scan of 154 routes of core-api, gateway and asset-processor with an admin session: 0 findings above Info; passive baseline of the admin and editor SPAs); `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 179 (+4 database round-trip tests of the website bundle, run against a disposable database) |
+| Automated checks | `pnpm security:api` **1171 tests / 22 files** (counted 2026-10-09 with `vitest run api`), `unit` **269 tests / 21 files**, `pnpm security:isolation` **14 tests** (two stacks) and `pnpm security:browser` **33 Playwright tests** (30 at 0.1.0) (Chromium) green on a disposable stack, plus **DAST with OWASP ZAP** (**PASS on the 0.1.1 release candidate, 2026-10-18**: GitHub run of the `security` workflow with the DAST job, commit `5af9e3f`; the release gate requires a run on the exact release commit) (`scripts/security/dast/run-zap.sh`: active API scan of 154 routes of core-api, gateway and asset-processor with an admin session: 0 findings above Info; passive baseline of the admin and editor SPAs); `pnpm security:static` **PASS** (audit, gitleaks, semgrep, shellcheck, trivy config, hadolint, against a baseline with review dates); `core` unit tests 179 (+4 database round-trip tests of the website bundle, run against a disposable database) |
 | Runs leave evidence | `scripts/security/reports/<date>/api-*.txt/.json`, `static-*.txt/.json` (git-ignored) |
 
 The High findings (all fixed; nine): F-002 token embedded in git remotes, F-011 credentialed CORS reflection, F-020
@@ -71,6 +71,18 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | **UI consistency, editor sidebar, collapsed-nav menu** | front-end only | `unit/ui-contrast`, browser specs |
 
 The DAST scan and the manual checklist have **not** been repeated for these features.
+
+### New surface since 2026-10-09 (0.1.1, reviewed 2026-10-18)
+
+| Feature | Security-relevant behaviour | Evidence |
+|---|---|---|
+| **Object events** (a service is told when a Data Object changes) | managed with the permission `object_events:manage` (given to `admin` only); a delivery is signed with an HMAC when the subscription names a key, and the key lives in an environment variable named `OBJECT_EVENTS_SECRET_<NAME>` (the dashboard stores only the name); the target is an Integration route, so the outbound guard (loopback and metadata addresses refused) applies; the event carries the changed field **names**, not values; refused in the public sandbox. Caveat: a secret written in a route path is stored in plain text (the guide says so) | `api/object-events` (14 tests, real key client through the Gateway), `unit/object-events-*`, the route contract (eight routes, drift test) |
+| **End of flow and loop guard** | `X-Whoobe-Flow: stop` on a client write records the event as `stopped`, nothing is sent; a circuit breaker stops deliveries when an API client rewrites the same record repeatedly (people and system writes are never cut); a stopped delivery cannot be retried | `object-events-loop-guard` unit (8) and integration (7) tests, API tests, browser spec |
+| **Renderer: markdown and rich-text fields** | converted with `marked` and sanitised with the same filter as the editor (scripts, handlers, `javascript:` removed) | 7 new renderer tests |
+| **Images of the SPAs** | `libexpat` upgraded (CVE-2026-77214); all five product images 0 fixable HIGH/CRITICAL | `pnpm security:images` in the `security` workflow |
+| **Release and upgrade workflows** | `release.yml`: `packages: write` and `id-token: write` only on the image jobs, `contents: write` only on the release job; cosign keyless; the tag must equal `package.json`. `upgrade.yml`: read-only | `.github/workflows/`; `release.yml` has not run yet |
+
+The manual checklist has **not** been repeated for these features.
 
 ## 4. Actions that are yours (cannot be done from here)
 
