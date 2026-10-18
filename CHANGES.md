@@ -4,7 +4,8 @@
 - `scripts/security/unit/mail-provider-examples.test.ts` (new, 5 tests): the file is valid, builds the documented request, carries cc / bcc / reply-to / text, refuses a missing key and never puts the key in an error, reads the message id. Nothing is sent.
 - `scripts/mail/live-check.mjs`: `--providers DIR` (default `MAIL_PROVIDERS_PATH`) so a recipe outside the built-in folder can be tried. Dry run checked with a fake key: the request is as expected, the key masked.
 - Docs: `communication/mail-providers.md` (a "Recipes" section with what the format cannot do, the new option).
-- Not done: a real send through Resend (the owner has an account, a verified domain and a key; the key goes in `~/.config/whoobe/resend.env`, mode 600, never in the chat); a screen check in the dashboard.
+- **Real send, 2026-10-18** (`live-check`, key in `~/.config/whoobe/resend.env`, mode 600, never printed): Resend accepted one message from the verified domain and returned its id (`01a15021-...`). A second call with a sender on an unverified domain was refused by Resend and came back as `Failed: Resend: HTTP 403 - This API key is not authorized to send emails from <domain>`: the error text is read from `message` as in the recipe, nothing was sent.
+- Not done: confirmation that the message reached the inbox (asked of the owner); a screen check in the dashboard (Settings > Outgoing Mail with `MAIL_PROVIDERS_PATH`); the error `name` field was not seen in a real answer.
 
 ## docs.whoobe.dev updated to 0.1.1 and the new name — 2026-10-18
 - Branch: `master`
