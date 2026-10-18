@@ -5,7 +5,7 @@ How a Whoobe release is made. Decisions taken on 2026-10-05: one aligned product
 
 Status of the automation: the gates and the preparation step (`scripts/release.sh`) exist and are described below.
 Publishing the container images and the draft GitHub Release from a tag is written (`.github/workflows/release.yml`) and
-**has not run on GitHub yet**; the first tag is its test, so keep steps 5 to 7 by hand as the fallback.
+**ran for v0.1.1** (2026-10-18). If a package already exists on ghcr.io (made by hand or by another account), the repository must be added under the package's *Package settings > Manage Actions access* with the role **Write**, or the push fails with `permission_denied: write_package`; that is what happened at the first attempt. Steps 5 to 7 by hand remain the fallback.
 
 ## 1. Versions
 
@@ -94,6 +94,6 @@ feature (point it at `docs/release`); not automated.
 
 ## 8. Not done yet
 
-- A first run of `release.yml` on GitHub (the package visibility on ghcr.io, the cosign signature, the draft). Image SBOMs and the CI security reports are still attached by hand.
+- Image SBOMs and the CI security reports are still attached to the draft release by hand; the cosign signature has not been verified by a consumer yet (the signing step succeeded).
 - Pinning the base images' freshness: the pinned digests lag behind Debian's security updates (see `CHANGES.md`,
   2026-10-05), which today costs a patch release or a manual `apt-get` upgrade line in the `Dockerfile`.

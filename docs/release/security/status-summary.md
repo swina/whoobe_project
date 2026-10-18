@@ -80,7 +80,7 @@ The DAST scan and the manual checklist have **not** been repeated for these feat
 | **End of flow and loop guard** | `X-Whoobe-Flow: stop` on a client write records the event as `stopped`, nothing is sent; a circuit breaker stops deliveries when an API client rewrites the same record repeatedly (people and system writes are never cut); a stopped delivery cannot be retried | `object-events-loop-guard` unit (8) and integration (7) tests, API tests, browser spec |
 | **Renderer: markdown and rich-text fields** | converted with `marked` and sanitised with the same filter as the editor (scripts, handlers, `javascript:` removed) | 7 new renderer tests |
 | **Images of the SPAs** | `libexpat` upgraded (CVE-2026-77214); all five product images 0 fixable HIGH/CRITICAL | `pnpm security:images` in the `security` workflow |
-| **Release and upgrade workflows** | `release.yml`: `packages: write` and `id-token: write` only on the image jobs, `contents: write` only on the release job; cosign keyless; the tag must equal `package.json`. `upgrade.yml`: read-only | `.github/workflows/`; `release.yml` has not run yet |
+| **Release and upgrade workflows** | `release.yml`: `packages: write` and `id-token: write` only on the image jobs, `contents: write` only on the release job; cosign keyless; the tag must equal `package.json`. `upgrade.yml`: read-only | `.github/workflows/`; `release.yml` ran for v0.1.1 on 2026-10-18 |
 
 The manual checklist has **not** been repeated for these features.
 
