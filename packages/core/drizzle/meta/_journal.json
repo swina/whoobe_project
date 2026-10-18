@@ -421,6 +421,13 @@
       "when": 1789900000000,
       "tag": "0059_object_events",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1790000000000,
+      "tag": "0060_audit_log",
+      "breakpoints": true
     }
   ]
 }

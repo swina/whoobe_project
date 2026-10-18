@@ -7,6 +7,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 import { DocsConfigError, checkNavText, createContentReader, docsSearchIndex, renderDraft, describeDocsSite, docsConfigOf, findDocByRoute, loadDocsSite, renderDocPage } from './docs-site.js';
 import { publishJobsRouter } from './publish-jobs.js';
+import { createAudit } from './audit.js';
+import { AUDIT } from './audit-specs.js';
 import { createAuthoredNotifyCache, createRecipientThrottle, isSingleEmail, notifyKey } from './form-notify.js';
 import {
   findUserByEmail,
@@ -263,6 +265,11 @@ import {
   getFormUpload,
   websiteUploadBytesToday,
   markFormUploadRejected,
+  listAudit,
+  purgeAudit,
+  csvCell,
+  auditStats,
+  auditRetentionDays,
 } from '@whoobe-cms/core/server';
 import type { EventActor } from '@whoobe-cms/core/server';
 import {
@@ -318,6 +325,8 @@ const logger = await createLogger('core-api', {
   file: true,
   damUpload: true,
 });
+// Audit log of administrative actions (docs/plans/system/audit-log-plan.md): `audited(AUDIT.<name>)` in a route's middleware list.
+const { audited } = createAudit(logger);
 
 /** Who made a write, for the object events: the signed-in user (a request without one, which no guarded route allows, is `system`). */
 function eventActorOf(req: Request): EventActor {
@@ -476,7 +485,7 @@ app.get('/site-root', async (req: Request, res: Response): Promise<void> => {
 });
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'core-api', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString(), ...(isSandbox() ? { sandbox: sandboxStatus() } : {}) });
+  res.json({ status: 'ok', service: 'core-api', audit: auditStats.lost === 0 ? 'ok' : 'degraded', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString(), ...(isSandbox() ? { sandbox: sandboxStatus() } : {}) });
 });
 
 // --- Simple in-memory brute-force guard for /auth/login ---
@@ -986,7 +995,7 @@ app.get('/auth/users', requirePermission(PERMISSIONS.USERS_MANAGE), async (_req:
   }
 });
 
-app.post('/auth/users', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.post('/auth/users', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.userCreate), async (req: Request, res: Response): Promise<void> => {
   const { email, password, displayName, roleIds } = req.body ?? {};
   if (typeof email !== 'string' || typeof password !== 'string' || password.length < 8 || typeof displayName !== 'string') {
     res.status(400).json({ error: 'email, password (min 8 chars), and displayName are required' });
@@ -1020,7 +1029,7 @@ app.get('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (r
   }
 });
 
-app.patch('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.userUpdate), async (req: Request, res: Response): Promise<void> => {
   const { email, displayName, isActive, roleIds } = req.body ?? {};
   try {
     const user = await updateUser(req.params.id, {
@@ -1037,7 +1046,7 @@ app.patch('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async 
   }
 });
 
-app.delete('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.userDelete), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteUserRecord(req.params.id);
     res.json({ success: true });
@@ -1047,7 +1056,7 @@ app.delete('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async
   }
 });
 
-app.post('/auth/users/:id/reset-password', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.post('/auth/users/:id/reset-password', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.userResetPassword), async (req: Request, res: Response): Promise<void> => {
   try {
     const token = await adminResetPassword(req.params.id);
     const resetUrl = buildResetUrl(token);
@@ -1069,7 +1078,7 @@ app.get('/auth/roles', requirePermission(PERMISSIONS.USERS_MANAGE), async (_req:
   }
 });
 
-app.post('/auth/roles', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.post('/auth/roles', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.roleCreate), async (req: Request, res: Response): Promise<void> => {
   const { name, description, permissionKeys } = req.body ?? {};
   if (typeof name !== 'string' || !name.trim()) {
     res.status(400).json({ error: 'name is required' });
@@ -1079,7 +1088,7 @@ app.post('/auth/roles', requirePermission(PERMISSIONS.USERS_MANAGE), async (req:
     const role = await createRole({ name: name.trim(), description, permissionKeys: Array.isArray(permissionKeys) ? permissionKeys : [] });
     res.status(201).json({ role });
   } catch (error: any) {
-    if (error?.code === '23505') {
+    if ((error?.code ?? error?.cause?.code) === '23505') {
       res.status(409).json({ error: 'A role with this name already exists' });
       return;
     }
@@ -1099,7 +1108,7 @@ app.get('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (r
   }
 });
 
-app.patch('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.roleUpdate), async (req: Request, res: Response): Promise<void> => {
   const { name, description, permissionKeys } = req.body ?? {};
   try {
     const role = await updateRole(req.params.id, {
@@ -1115,7 +1124,7 @@ app.patch('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async 
   }
 });
 
-app.delete('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.roleDelete), async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await deleteRoleRecord(req.params.id);
     if (result.blocked) {
@@ -1126,6 +1135,37 @@ app.delete('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async
   } catch (error: any) {
     logger.error({ err: error }, 'Delete role error');
     res.status(500).json({ error: error.message || 'Failed to delete role' });
+  }
+});
+
+// --- Audit log (read only; docs/plans/system/audit-log-plan.md) ---
+// Filters: action (exact, or a prefix ending in "."), actor (user id), targetType, targetId, from, to (ISO dates), limit (default 100, at most
+// 5000), offset. Newest first. ?format=csv returns the same rows as a file. There is no route that writes or deletes: the log is changed only
+// by the application's own audited actions and by the retention job.
+app.get('/audit-log', requirePermission(PERMISSIONS.AUDIT_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const q = req.query;
+    const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+    const date = (v: unknown): Date | undefined => { const d = str(v) ? new Date(String(v)) : undefined; return d && !Number.isNaN(d.getTime()) ? d : undefined; };
+    if ((str(q.from) && !date(q.from)) || (str(q.to) && !date(q.to))) { res.status(400).json({ error: 'from and to must be dates (ISO 8601)' }); return; }
+    const num = (v: unknown): number | undefined => { const n = Number(str(v)); return Number.isFinite(n) ? n : undefined; };
+    const csv = q.format === 'csv';
+    const { rows, total } = await listAudit({
+      action: str(q.action), actor: str(q.actor), targetType: str(q.targetType), targetId: str(q.targetId),
+      from: date(q.from), to: date(q.to), limit: num(q.limit) ?? (csv ? 5000 : 100), offset: num(q.offset),
+    });
+    if (csv) {
+      const head = ['at', 'actor_type', 'actor_id', 'actor_label', 'ip', 'action', 'target_type', 'target_id', 'target_label', 'before', 'after', 'request_id'];
+      const lines = rows.map((r) => [r.at.toISOString(), r.actorType, r.actorId, r.actorLabel, r.ip, r.action, r.targetType, r.targetId, r.targetLabel, r.before, r.after, r.requestId].map(csvCell).join(','));
+      res.setHeader('content-type', 'text/csv; charset=utf-8');
+      res.setHeader('content-disposition', 'attachment; filename="audit-log.csv"');
+      res.send([head.join(','), ...lines].join('\r\n') + '\r\n');
+      return;
+    }
+    res.json({ entries: rows, total });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Audit log list error');
+    res.status(500).json({ error: 'Failed to read the audit log' });
   }
 });
 
@@ -2185,7 +2225,7 @@ app.get('/whoobe-one/websites', requireAnyPermission(PERMISSIONS.WEBSITES_LIST, 
   }
 });
 
-app.post('/whoobe-one/websites', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/websites', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteCreate), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, rootPath, domains, defaultLocale, supportedLocales, settings, themeId } = req.body ?? {};
     if (!name || typeof name !== 'string') {
@@ -2227,7 +2267,7 @@ app.post('/whoobe-one/websites', requireAnyPermission(PERMISSIONS.WEBSITES_CREAT
 // returned exactly once and never stored (only its hash is) - see docs/
 // plans/api-gateway/gateway-auth-authz.md. Overwrites any previous key,
 // immediately invalidating it for any already-deployed site still using it.
-app.post('/whoobe-one/websites/:id/gateway-api-key/regenerate', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/websites/:id/gateway-api-key/regenerate', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteKeyRegenerate), async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await setWebsiteGatewayApiKey(req.params.id);
     if (!result) {
@@ -2241,7 +2281,7 @@ app.post('/whoobe-one/websites/:id/gateway-api-key/regenerate', requireAnyPermis
   }
 });
 
-app.delete('/whoobe-one/websites/:id/gateway-api-key', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/websites/:id/gateway-api-key', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteKeyClear), async (req: Request, res: Response): Promise<void> => {
   try {
     await clearWebsiteGatewayApiKey(req.params.id);
     res.json({ success: true });
@@ -2267,7 +2307,7 @@ app.get('/whoobe-one/settings/default-placeholder-image', requirePermission(PERM
   }
 });
 
-app.put('/whoobe-one/settings/default-placeholder-image', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/settings/default-placeholder-image', requirePermission(PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.settingPlaceholder), async (req: Request, res: Response): Promise<void> => {
   try {
     const { pimcorePath } = req.body ?? {};
     const all = await listWebsites();
@@ -2299,7 +2339,7 @@ app.get('/whoobe-one/settings/strip-html-comments', async (_req: Request, res: R
   }
 });
 
-app.put('/whoobe-one/settings/strip-html-comments', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/settings/strip-html-comments', requirePermission(PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.settingStripHtml), async (req: Request, res: Response): Promise<void> => {
   try {
     const { enabled } = req.body ?? {};
     const all = await listWebsites();
@@ -2325,7 +2365,7 @@ app.get('/whoobe-one/settings/logging', async (_req: Request, res: Response): Pr
   }
 });
 
-app.put('/whoobe-one/settings/logging', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/settings/logging', requirePermission(PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.settingLogging), async (req: Request, res: Response): Promise<void> => {
   try {
     const { enabled } = req.body ?? {};
     const all = await listWebsites();
@@ -2356,7 +2396,7 @@ app.get('/whoobe-one/settings/autosave', requirePermission(PERMISSIONS.OBJECTS_R
   }
 });
 
-app.put('/whoobe-one/settings/autosave', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/settings/autosave', requirePermission(PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.settingAutosave), async (req: Request, res: Response): Promise<void> => {
   try {
     const { enabled, interval } = req.body ?? {};
     const all = await listWebsites();
@@ -2388,7 +2428,7 @@ app.get('/whoobe-one/settings/alpine-presets', requirePermission(PERMISSIONS.OBJ
   }
 });
 
-app.put('/whoobe-one/settings/alpine-presets', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/settings/alpine-presets', requirePermission(PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.settingAlpinePresets), async (req: Request, res: Response): Promise<void> => {
   try {
     const parsed = normalizeAlpinePresets(req.body?.presets);
     if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
@@ -2425,7 +2465,7 @@ app.get('/whoobe-one/settings/cdn-mirror', requirePermission(PERMISSIONS.OBJECTS
   }
 });
 
-app.put('/whoobe-one/settings/cdn-mirror', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/settings/cdn-mirror', requirePermission(PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.settingCdnMirror), async (req: Request, res: Response): Promise<void> => {
   try {
     const { gatewayRouteId, uploadPreset, provider } = req.body ?? {};
     const all = await listWebsites();
@@ -2458,7 +2498,7 @@ app.get('/whoobe-one/websites/:id', requireAnyPermission(PERMISSIONS.WEBSITES_VI
   }
 });
 
-app.patch('/whoobe-one/websites/:id', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/whoobe-one/websites/:id', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteUpdate), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, rootPath, domains, defaultLocale, supportedLocales, settings, themeId, pwaEnabled, pwaConfig } = req.body ?? {};
     if (rootPath !== undefined) {
@@ -2499,7 +2539,7 @@ app.patch('/whoobe-one/websites/:id', requireAnyPermission(PERMISSIONS.WEBSITES_
   }
 });
 
-app.delete('/whoobe-one/websites/:id', requireAnyPermission(PERMISSIONS.WEBSITES_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/websites/:id', requireAnyPermission(PERMISSIONS.WEBSITES_DELETE, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteDelete), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteWebsite(req.params.id);
     siteRootCache.clear();
@@ -2550,7 +2590,7 @@ app.get('/whoobe-one/websites/:id/upload-settings', requirePermission(PERMISSION
   }
 });
 
-app.put('/whoobe-one/websites/:id/upload-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/websites/:id/upload-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), audited(AUDIT.websiteUploadSettings), async (req: Request, res: Response): Promise<void> => {
   try {
     const body = req.body;
     if (!body || typeof body !== 'object' || Array.isArray(body)) { res.status(400).json({ error: 'A settings object is required' }); return; }
@@ -2585,7 +2625,7 @@ app.get('/whoobe-one/websites/:id/themes', requireAnyPermission(PERMISSIONS.WEBS
   }
 });
 
-app.post('/whoobe-one/websites/:id/themes', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/websites/:id/themes', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteThemeCreate), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, colors, fonts, styles, tailwindClasses } = req.body ?? {};
     const website = await getWebsite(req.params.id);
@@ -2609,7 +2649,7 @@ app.post('/whoobe-one/websites/:id/themes', requireAnyPermission(PERMISSIONS.WEB
   }
 });
 
-app.put('/whoobe-one/websites/:id/themes/:themeId', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/websites/:id/themes/:themeId', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteThemeUpdate), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, colors, fonts, styles, tailwindClasses, isDefault } = req.body ?? {};
     const website = await getWebsite(req.params.id);
@@ -2632,7 +2672,7 @@ app.put('/whoobe-one/websites/:id/themes/:themeId', requireAnyPermission(PERMISS
   }
 });
 
-app.delete('/whoobe-one/websites/:id/themes/:themeId', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/websites/:id/themes/:themeId', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteThemeDelete), async (req: Request, res: Response): Promise<void> => {
   try {
     const website = await getWebsite(req.params.id);
     if (!website) { res.status(404).json({ error: 'Website not found' }); return; }
@@ -2686,7 +2726,7 @@ app.get('/whoobe-one/websites/:id/theme', requireAnyPermission(PERMISSIONS.WEBSI
   }
 });
 
-app.put('/whoobe-one/websites/:id/theme', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/websites/:id/theme', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteTheme), async (req: Request, res: Response): Promise<void> => {
   try {
     const { colors, fonts } = req.body ?? {};
     const parsed = {
@@ -2894,7 +2934,7 @@ app.get('/whoobe-one/website-paths', requireAnyPermission(PERMISSIONS.WEBSITES_L
   }
 });
 
-app.post('/whoobe-one/website-paths', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/website-paths', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websitePathCreate), async (req: Request, res: Response): Promise<void> => {
   try {
     const { websiteId, name, items } = req.body ?? {};
     if (!websiteId || typeof websiteId !== 'string') {
@@ -2931,7 +2971,7 @@ app.get('/whoobe-one/website-paths/:id', requireAnyPermission(PERMISSIONS.WEBSIT
   }
 });
 
-app.patch('/whoobe-one/website-paths/:id', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/whoobe-one/website-paths/:id', requireAnyPermission(PERMISSIONS.WEBSITES_EDIT, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websitePathUpdate), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, items } = req.body ?? {};
     const path = await updateWebsitePath(req.params.id, {
@@ -2949,7 +2989,7 @@ app.patch('/whoobe-one/website-paths/:id', requireAnyPermission(PERMISSIONS.WEBS
   }
 });
 
-app.delete('/whoobe-one/website-paths/:id', requireAnyPermission(PERMISSIONS.WEBSITES_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/whoobe-one/website-paths/:id', requireAnyPermission(PERMISSIONS.WEBSITES_DELETE, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websitePathDelete), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteWebsitePath(req.params.id);
     res.json({ success: true });
@@ -3738,7 +3778,7 @@ app.post('/pwa/send', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: 
 // preview. Runs the publish generator inside the monorepo's sites/ directory
 // so workshop: workspace:* dependencies resolve correctly. Cleanup happens
 // after 5 minutes.
-app.post('/whoobe-one/websites/:id/generate-pwa', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/websites/:id/generate-pwa', requirePermission(PERMISSIONS.SETTINGS_MANAGE), audited(AUDIT.websitePwa), async (req: Request, res: Response): Promise<void> => {
   try {
     const { join } = await import('node:path');
     const { mkdir, readdir, readFile, rm } = await import('node:fs/promises');
@@ -4271,7 +4311,7 @@ app.get('/migration-sources', requirePermission(PERMISSIONS.OBJECTS_WRITE), asyn
   }
 });
 
-app.post('/migration-sources', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/migration-sources', requirePermission(PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.migrationSourceCreate), async (req: Request, res: Response): Promise<void> => {
   try {
     const { label, dbHost, dbPort, dbUser, dbPassword, dbName, classesPath } = req.body ?? {};
     if (
@@ -4301,7 +4341,7 @@ app.post('/migration-sources', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
   }
 });
 
-app.patch('/migration-sources/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/migration-sources/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.migrationSourceUpdate), async (req: Request, res: Response): Promise<void> => {
   try {
     const { label, dbHost, dbPort, dbUser, dbPassword, dbName, classesPath } = req.body ?? {};
     const source = await updateMigrationSource(req.params.id, {
@@ -4326,7 +4366,7 @@ app.patch('/migration-sources/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE)
   }
 });
 
-app.delete('/migration-sources/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/migration-sources/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.migrationSourceDelete), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteMigrationSource(req.params.id);
     res.json({ success: true });
@@ -4344,6 +4384,7 @@ app.delete('/migration-sources/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE
 app.post(
   '/migration-sources/:id/import-classes',
   requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  audited(AUDIT.migrationImportClasses),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const source = await getMigrationSource(req.params.id);
@@ -4405,6 +4446,7 @@ app.get(
 app.post(
   '/migration-sources/:id/import-objects',
   requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  audited(AUDIT.migrationImportObjects),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { className, dryRun, limit, clear, background } = req.body ?? {};
@@ -4471,6 +4513,7 @@ app.post(
 app.post(
   '/migration-sources/:id/import-documents',
   requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  audited(AUDIT.migrationImportDocuments),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { dryRun, limit, staging } = req.body ?? {};
@@ -4497,6 +4540,7 @@ app.post(
 app.post(
   '/migration-sources/:id/promote-documents',
   requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  audited(AUDIT.migrationPromoteDocuments),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { dryRun, clear } = req.body ?? {};
@@ -4520,6 +4564,7 @@ app.post(
 app.post(
   '/migration-sources/:id/extract-components',
   requirePermission(PERMISSIONS.OBJECTS_WRITE),
+  audited(AUDIT.migrationExtractComponents),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { dryRun, className, clear } = req.body ?? {};
@@ -5225,7 +5270,7 @@ app.get('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async 
   }
 });
 
-app.put('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.put('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), audited(AUDIT.mailSettingsUpdate), async (req: Request, res: Response): Promise<void> => {
   try {
     const sc = await mailScope(req, res, 'body');
     if (!sc) return;
@@ -5285,7 +5330,7 @@ app.put('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async 
 });
 
 // A website stops having its own configuration and sends with the default again. The default itself cannot be removed.
-app.delete('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/mail-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), audited(AUDIT.mailSettingsDelete), async (req: Request, res: Response): Promise<void> => {
   try {
     const sc = await mailScope(req, res, 'query');
     if (!sc) return;
@@ -5402,7 +5447,7 @@ app.get('/object-event-subscriptions', requirePermission(PERMISSIONS.OBJECT_EVEN
   }
 });
 
-app.post('/object-event-subscriptions', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.post('/object-event-subscriptions', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), audited(AUDIT.subscriptionCreate), async (req: Request, res: Response): Promise<void> => {
   try {
     const checked = validateSubscriptionInput(req.body, false);
     if (!checked.ok) { res.status(400).json({ error: checked.error }); return; }
@@ -5442,7 +5487,7 @@ app.get('/object-event-subscriptions/:id', requirePermission(PERMISSIONS.OBJECT_
   }
 });
 
-app.patch('/object-event-subscriptions/:id', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/object-event-subscriptions/:id', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), audited(AUDIT.subscriptionUpdate), async (req: Request, res: Response): Promise<void> => {
   try {
     const existing = await getObjectEventSubscription(req.params.id);
     if (!existing) { res.status(404).json({ error: 'Subscription not found' }); return; }
@@ -5465,7 +5510,7 @@ app.patch('/object-event-subscriptions/:id', requirePermission(PERMISSIONS.OBJEC
   }
 });
 
-app.delete('/object-event-subscriptions/:id', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/object-event-subscriptions/:id', requirePermission(PERMISSIONS.OBJECT_EVENTS_MANAGE), audited(AUDIT.subscriptionDelete), async (req: Request, res: Response): Promise<void> => {
   try {
     if (!(await deleteObjectEventSubscription(req.params.id))) { res.status(404).json({ error: 'Subscription not found' }); return; }
     logger.info({ subscriptionId: req.params.id, userId: (req as any).user?.id }, 'Object event subscription deleted');
@@ -5939,7 +5984,7 @@ const settings = await getAiSettings(req.user!.id);
 
 // Creates a website from the AI-generated structure — creates the website,
 // all its pages, and all its snippets in one orchestrated call.
-app.post('/whoobe-one/websites/from-ai', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+app.post('/whoobe-one/websites/from-ai', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteFromAi), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const { structure } = req.body ?? {};
   if (!structure || typeof structure.website !== 'object' || !Array.isArray(structure.pages) || !Array.isArray(structure.snippets)) {
     res.status(400).json({ error: 'structure with website, pages, and snippets is required' });
@@ -6003,7 +6048,7 @@ app.get('/whoobe-one/websites/:id/export', requireAnyPermission(PERMISSIONS.WEBS
 // Accepts a version 1 or 2 export. `?dryRun=1` writes nothing and reports what would happen, including the plan for
 // the assets (upload / reuse / conflict). The body is the bundle, plus `assetMap` ({ oldAssetId: { id, pimcorePath } })
 // for the assets the client has stored.
-app.post('/whoobe-one/websites/import', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+app.post('/whoobe-one/websites/import', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteImport), async (req: Request, res: Response): Promise<void> => {
   try {
     const parsed = parseWebsiteBundle(req.body);
     if ('error' in parsed) {
@@ -6503,7 +6548,7 @@ app.get('/figma/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async
   }
 });
 
-app.put('/figma/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.put('/figma/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), audited(AUDIT.figmaSettings), async (req: Request, res: Response): Promise<void> => {
   try {
     const { accessToken, teamId } = req.body ?? {};
     const existing = await getFigmaSettings();
@@ -6663,7 +6708,7 @@ app.get('/api/v1/system/logs/download', requireAuth, async (req: Request, res: R
 })
 
 // Publishing from the dashboard (docs/plans/website/publish-from-dashboard.md): jobs for an external runner.
-app.use(publishJobsRouter(process.env.PUBLISH_RUNNER_TOKEN ?? '', logger));
+app.use(publishJobsRouter(process.env.PUBLISH_RUNNER_TOKEN ?? '', logger, audited));
 
 // Documentation sites (docs/plans/docs-sites/docs-site-plan.md): a website of kind "docs" is built from the Markdown assets of a
 // DAM folder. The routes below only read; documents are written with the ordinary DAM upload.
@@ -6814,6 +6859,13 @@ bootstrapDatabase()
   .then(() => {
     void purgeSessions();
     setInterval(purgeSessions, 6 * 60 * 60 * 1000).unref();
+    // audit log retention (AUDIT_RETENTION_DAYS, default 365, 0 = keep forever): at start and then daily
+    const purgeAuditLog = (): void => {
+      purgeAudit().then((n) => { if (n > 0) logger.info({ removed: n, days: auditRetentionDays() }, 'audit log: old rows removed'); })
+        .catch((err) => logger.error({ err }, 'audit log: retention job failed'));
+    };
+    purgeAuditLog();
+    setInterval(purgeAuditLog, 24 * 60 * 60 * 1000).unref();
     app.listen(port, () => {
       logger.info({ port }, 'Core API started');
     });

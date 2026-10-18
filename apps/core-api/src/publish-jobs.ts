@@ -2,6 +2,9 @@
 // serves their state; it never runs the generator. A runner (apps/publisher) pulls jobs with PUBLISH_RUNNER_TOKEN, runs
 // `whoobe-publish` with an argument array and reports the log and the outcome back here.
 import { timingSafeEqual } from 'node:crypto';
+import type { RequestHandler } from 'express';
+import { AUDIT } from './audit-specs.js';
+import type { AuditSpec } from './audit.js';
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { validateGenerateOptions } from '@whoobe-cms/publish';
 import {
@@ -58,7 +61,7 @@ export function requireRunner(token: string) {
   };
 }
 
-export function publishJobsRouter(runnerToken: string, log: { info: (o: object, m: string) => void; error: (o: object, m: string) => void }): Router {
+export function publishJobsRouter(runnerToken: string, log: { info: (o: object, m: string) => void; error: (o: object, m: string) => void }, audited: (spec: AuditSpec<any>) => RequestHandler): Router {
   const r = Router();
   const canPublish = requirePermission(PERMISSIONS.WEBSITES_PUBLISH);
   const idOk = (req: Request, res: Response): string | null => {
@@ -67,7 +70,7 @@ export function publishJobsRouter(runnerToken: string, log: { info: (o: object, 
   };
 
   // --- the dashboard ---
-  r.post('/publish/jobs', canPublish, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  r.post('/publish/jobs', canPublish, audited(AUDIT.publishQueue), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const websiteId = typeof req.body?.websiteId === 'string' ? req.body.websiteId : '';
       if (!UUID_RE.test(websiteId)) { res.status(400).json({ error: 'websiteId must be a UUID' }); return; }
@@ -104,7 +107,7 @@ export function publishJobsRouter(runnerToken: string, log: { info: (o: object, 
     res.json({ ...rest, log: full.slice(from), logSize: full.length });
   });
 
-  r.post('/publish/jobs/:id/cancel', canPublish, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  r.post('/publish/jobs/:id/cancel', canPublish, audited(AUDIT.publishCancel), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const id = idOk(req, res); if (!id) return;
     const result = await cancelPublishJob(id);
     if (!result) { res.status(409).json({ error: 'The job is not queued or running' }); return; }

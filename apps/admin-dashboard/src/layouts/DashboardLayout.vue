@@ -570,6 +570,7 @@ import {
   X,
   Network,
   ScrollText,
+  ShieldCheck,
   BookOpen,
   Zap,
   Radio,
@@ -617,6 +618,7 @@ import GatewayEndpointsView from '../views/GatewayEndpointsView.vue'
 import GatewayPluginsView from '../views/GatewayPluginsView.vue'
 import AutomationsView from '../views/AutomationsView.vue'
 import ObjectEventsView from '../views/ObjectEventsView.vue'
+import AuditLogView from '../views/AuditLogView.vue'
 import DataBindingsView from '../views/DataBindingsView.vue'
 import ApiClientsView from '../views/ApiClientsView.vue'
 import { usePagesStore } from '../stores/pagesStore'
@@ -913,11 +915,15 @@ const allNavItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Documents', section: 'documents', icon: FileText },
   { name: 'AI', section: 'ai', icon: Sparkles },
   { name: 'Settings', section: 'settings', icon: Settings },
-  { name: 'System Logs', section: 'system-logs', icon: ScrollText }
+  { name: 'System Logs', section: 'system-logs', icon: ScrollText },
+  { name: 'Audit log', section: 'audit-log', icon: ShieldCheck }
 ]
 
 // Object events are managed by administrators only (`object_events:manage`): the entry is not offered to anyone else.
-const navItems = computed(() => allNavItems.filter((item) => item.section !== 'object-events' || authStore.can('object_events:manage')))
+// The audit log is read with its own permission (`audit:read`), which `users:manage` does not carry.
+const navItems = computed(() => allNavItems.filter((item) =>
+  (item.section !== 'object-events' || authStore.can('object_events:manage')) &&
+  (item.section !== 'audit-log' || authStore.can('audit:read'))))
 
 // Grouped-view categories for the sidebar toggle above. Assets stays its
 // own group (rather than folded into Content) since it already carries
@@ -948,6 +954,7 @@ const sectionGroup: Partial<Record<SectionKind, NavGroupId>> = {
   automations: 'data',
   'object-events': 'data',
   'system-logs': 'system',
+  'audit-log': 'system',
   ai: 'system',
   settings: 'system'
 }
@@ -997,6 +1004,7 @@ const sectionComponents: Record<SectionKind, any> = {
   automations: AutomationsView,
   'object-events': ObjectEventsView,
   'system-logs': SystemLogsView,
+  'audit-log': AuditLogView,
 }
 
 const sectionLabels: Record<SectionKind, string> = {
@@ -1018,6 +1026,7 @@ const sectionLabels: Record<SectionKind, string> = {
   automations: 'Automations',
   'object-events': 'Object events',
   'system-logs': 'System Logs',
+  'audit-log': 'Audit log',
   ai: 'AI',
   settings: 'Settings'
 }
@@ -1041,6 +1050,7 @@ const sectionIcons: Record<SectionKind, any> = {
   automations: Zap,
   'object-events': Radio,
   'system-logs': ScrollText,
+  'audit-log': ShieldCheck,
   ai: Sparkles,
   settings: Settings
 }

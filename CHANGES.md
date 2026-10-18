@@ -1,3 +1,24 @@
+## Audit log, steps 3 to 5: guard, routes, read API, dashboard view, docs — 2026-10-18
+- Branch: `feat/audit-log`
+- Step 3: the `audited()` guard (`apps/core-api/src/audit.ts`) goes in a route's middleware list and writes one row after a successful answer (status < 400, dry runs skipped), with the state before and after taken from the specs in `apps/core-api/src/audit-specs.ts`; secrets are recorded as "changed". User and role routes audited. `GET /audit-log` (permission `audit:read`) with filters and CSV export. The route contract now gives every changing route a decision (audited, exempt or deferred) and the drift test checks it against the specs.
+- Step 4: specs for websites, settings, integrations and publication (`publishQueue`, `publishCancel`); every changing route has a decision, no `todo` left.
+- Step 5: dashboard view (filters, before / after, CSV); docs: guide, configuration reference rows, API reference for `GET /audit-log`.
+- Fix: `POST /auth/roles` with a name that already exists answered 500; the database error arrives wrapped, so the code is read from `error.cause.code` as well, and the answer is 409 again.
+- Tests: `api/audit-log.test.ts` finds the mail and Figma rows by `x-request-id` instead of taking the newest one, because `mail-settings` and `form-notify` change the same single row in parallel. Security API suite: 76 files, 2033 passed, 2 skipped. The `whoobe-sectest` core-api image was rebuilt for this run (`SEC_SERVICES=core-api stack.sh up`); the gateway limiter keeps state in memory, so a second full run in a row needs `docker restart whoobe-sectest-gateway-1`.
+
+## Audit log, step 2: table, helpers, permission — 2026-10-18
+- Branch: `feat/audit-log`
+- Migration `0060_audit_log` (expand only): table `audit_log` (actor type / id / label, ip, action, target type / id / label, `before` / `after` jsonb, request id) with four indexes, and a trigger `audit_log_guard` that makes it **append only**: UPDATE and TRUNCATE are refused, DELETE only inside a transaction that set `whoobe.audit_purge = 'on'` (`set_config(..., true)`, local to the transaction). Journal entry 60.
+- `packages/core/src/db/audit-log-schema.ts`, `audit-log.ts` (pure: `redactForAudit` hides any value whose key looks like a credential, cuts long strings, deep and wide objects; `pickAllowed`; `changedOnly` with secrets recorded as "changed"; `auditRetentionDays`, `AUDIT_RETENTION_DAYS` default 365, 0 = forever; `csvCell` neutralises formulas), `audit-log-records.ts` (`insertAudit`, `insertAuditSafe` counting lost writes in `auditStats`, `listAudit` with filters and a prefix match that escapes `%` and `_`, `purgeAudit` in batches that writes an `audit.purge` row). Exported from `@whoobe-cms/core/server`.
+- Permission `audit:read` (`PERMISSIONS.AUDIT_READ`), given to `admin` with the other keys at the next start.
+- Tests: `audit-log.test.ts` (11) and `audit-log-records.integration.test.ts` (9, disposable database: row content, secrets never stored, UPDATE / DELETE / TRUNCATE refused by the database, the unlock does not outlive its transaction, filters and paging, purge by age and batch, retention 0, a failed write is counted not thrown). Core suite: see the run in the commit.
+- Nothing is written yet: the `audited()` guard, the route decisions and `GET /audit-log` are the next steps of `docs/plans/system/audit-log-plan.md`.
+
+## Plan: audit log of administrative actions — 2026-10-18
+- Branch: `feat/audit-log`
+- `docs/plans/system/audit-log-plan.md` (new): what is recorded (actor, ip, action, target, before / after on allow-lists, no secrets), how (an `audited(spec)` guard per route, after the permission guard; the insert on the response `finish`; a failed insert is logged and counted in `/health`, the request is not failed), what is audited in version 1 (users, roles, websites, settings, publication, integrations) and what is exempt with a reason, storage (`audit_log`, migration 0060, append only by a database trigger, retention `AUDIT_RETENTION_DAYS` default 365), reading (`GET /audit-log`, new permission `audit:read`, CSV), the test that finds an omission (a decision per changing route in `routes.expected.json`), what is not in version 1 (failed attempts, gateway administration, tamper evidence), order of work. Nothing built. Defaults taken until the owner decides: 365 days, separate `audit:read`, successful actions only.
+- Release 0.2 plan block A2 unchanged; this is its first item.
+
 ## Resend recipe: received from the dashboard — 2026-10-18
 - Branch: `master` (merged from `feat/mail-resend`)
 - Confirmed by the owner: the `live-check` message arrived in the inbox, and after the sender fix the Email Test from Settings > Outgoing Mail (recipe copied into the `MAIL_PROVIDERS_PATH` folder of the development instance, no restart) arrived too. The recipe is checked end to end: file in the folder, provider in the dashboard, key stored encrypted, send, Resend's id.
