@@ -7,6 +7,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 import { DocsConfigError, checkNavText, createContentReader, docsSearchIndex, renderDraft, describeDocsSite, docsConfigOf, findDocByRoute, loadDocsSite, renderDocPage } from './docs-site.js';
 import { publishJobsRouter } from './publish-jobs.js';
+import { createAudit } from './audit.js';
+import { AUDIT } from './audit-specs.js';
 import { createAuthoredNotifyCache, createRecipientThrottle, isSingleEmail, notifyKey } from './form-notify.js';
 import {
   findUserByEmail,
@@ -263,6 +265,11 @@ import {
   getFormUpload,
   websiteUploadBytesToday,
   markFormUploadRejected,
+  listAudit,
+  purgeAudit,
+  csvCell,
+  auditStats,
+  auditRetentionDays,
 } from '@whoobe-cms/core/server';
 import type { EventActor } from '@whoobe-cms/core/server';
 import {
@@ -318,6 +325,8 @@ const logger = await createLogger('core-api', {
   file: true,
   damUpload: true,
 });
+// Audit log of administrative actions (docs/plans/system/audit-log-plan.md): `audited(AUDIT.<name>)` in a route's middleware list.
+const { audited } = createAudit(logger);
 
 /** Who made a write, for the object events: the signed-in user (a request without one, which no guarded route allows, is `system`). */
 function eventActorOf(req: Request): EventActor {
@@ -476,7 +485,7 @@ app.get('/site-root', async (req: Request, res: Response): Promise<void> => {
 });
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'core-api', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString(), ...(isSandbox() ? { sandbox: sandboxStatus() } : {}) });
+  res.json({ status: 'ok', service: 'core-api', audit: auditStats.lost === 0 ? 'ok' : 'degraded', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString(), ...(isSandbox() ? { sandbox: sandboxStatus() } : {}) });
 });
 
 // --- Simple in-memory brute-force guard for /auth/login ---
@@ -986,7 +995,7 @@ app.get('/auth/users', requirePermission(PERMISSIONS.USERS_MANAGE), async (_req:
   }
 });
 
-app.post('/auth/users', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.post('/auth/users', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.userCreate), async (req: Request, res: Response): Promise<void> => {
   const { email, password, displayName, roleIds } = req.body ?? {};
   if (typeof email !== 'string' || typeof password !== 'string' || password.length < 8 || typeof displayName !== 'string') {
     res.status(400).json({ error: 'email, password (min 8 chars), and displayName are required' });
@@ -1020,7 +1029,7 @@ app.get('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (r
   }
 });
 
-app.patch('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.userUpdate), async (req: Request, res: Response): Promise<void> => {
   const { email, displayName, isActive, roleIds } = req.body ?? {};
   try {
     const user = await updateUser(req.params.id, {
@@ -1037,7 +1046,7 @@ app.patch('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async 
   }
 });
 
-app.delete('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.userDelete), async (req: Request, res: Response): Promise<void> => {
   try {
     await deleteUserRecord(req.params.id);
     res.json({ success: true });
@@ -1047,7 +1056,7 @@ app.delete('/auth/users/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async
   }
 });
 
-app.post('/auth/users/:id/reset-password', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.post('/auth/users/:id/reset-password', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.userResetPassword), async (req: Request, res: Response): Promise<void> => {
   try {
     const token = await adminResetPassword(req.params.id);
     const resetUrl = buildResetUrl(token);
@@ -1069,7 +1078,7 @@ app.get('/auth/roles', requirePermission(PERMISSIONS.USERS_MANAGE), async (_req:
   }
 });
 
-app.post('/auth/roles', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.post('/auth/roles', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.roleCreate), async (req: Request, res: Response): Promise<void> => {
   const { name, description, permissionKeys } = req.body ?? {};
   if (typeof name !== 'string' || !name.trim()) {
     res.status(400).json({ error: 'name is required' });
@@ -1099,7 +1108,7 @@ app.get('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (r
   }
 });
 
-app.patch('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.patch('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.roleUpdate), async (req: Request, res: Response): Promise<void> => {
   const { name, description, permissionKeys } = req.body ?? {};
   try {
     const role = await updateRole(req.params.id, {
@@ -1115,7 +1124,7 @@ app.patch('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async 
   }
 });
 
-app.delete('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.roleDelete), async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await deleteRoleRecord(req.params.id);
     if (result.blocked) {
@@ -1126,6 +1135,37 @@ app.delete('/auth/roles/:id', requirePermission(PERMISSIONS.USERS_MANAGE), async
   } catch (error: any) {
     logger.error({ err: error }, 'Delete role error');
     res.status(500).json({ error: error.message || 'Failed to delete role' });
+  }
+});
+
+// --- Audit log (read only; docs/plans/system/audit-log-plan.md) ---
+// Filters: action (exact, or a prefix ending in "."), actor (user id), targetType, targetId, from, to (ISO dates), limit (default 100, at most
+// 5000), offset. Newest first. ?format=csv returns the same rows as a file. There is no route that writes or deletes: the log is changed only
+// by the application's own audited actions and by the retention job.
+app.get('/audit-log', requirePermission(PERMISSIONS.AUDIT_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const q = req.query;
+    const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+    const date = (v: unknown): Date | undefined => { const d = str(v) ? new Date(String(v)) : undefined; return d && !Number.isNaN(d.getTime()) ? d : undefined; };
+    if ((str(q.from) && !date(q.from)) || (str(q.to) && !date(q.to))) { res.status(400).json({ error: 'from and to must be dates (ISO 8601)' }); return; }
+    const num = (v: unknown): number | undefined => { const n = Number(str(v)); return Number.isFinite(n) ? n : undefined; };
+    const csv = q.format === 'csv';
+    const { rows, total } = await listAudit({
+      action: str(q.action), actor: str(q.actor), targetType: str(q.targetType), targetId: str(q.targetId),
+      from: date(q.from), to: date(q.to), limit: num(q.limit) ?? (csv ? 5000 : 100), offset: num(q.offset),
+    });
+    if (csv) {
+      const head = ['at', 'actor_type', 'actor_id', 'actor_label', 'ip', 'action', 'target_type', 'target_id', 'target_label', 'before', 'after', 'request_id'];
+      const lines = rows.map((r) => [r.at.toISOString(), r.actorType, r.actorId, r.actorLabel, r.ip, r.action, r.targetType, r.targetId, r.targetLabel, r.before, r.after, r.requestId].map(csvCell).join(','));
+      res.setHeader('content-type', 'text/csv; charset=utf-8');
+      res.setHeader('content-disposition', 'attachment; filename="audit-log.csv"');
+      res.send([head.join(','), ...lines].join('\r\n') + '\r\n');
+      return;
+    }
+    res.json({ entries: rows, total });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Audit log list error');
+    res.status(500).json({ error: 'Failed to read the audit log' });
   }
 });
 
@@ -6814,6 +6854,13 @@ bootstrapDatabase()
   .then(() => {
     void purgeSessions();
     setInterval(purgeSessions, 6 * 60 * 60 * 1000).unref();
+    // audit log retention (AUDIT_RETENTION_DAYS, default 365, 0 = keep forever): at start and then daily
+    const purgeAuditLog = (): void => {
+      purgeAudit().then((n) => { if (n > 0) logger.info({ removed: n, days: auditRetentionDays() }, 'audit log: old rows removed'); })
+        .catch((err) => logger.error({ err }, 'audit log: retention job failed'));
+    };
+    purgeAuditLog();
+    setInterval(purgeAuditLog, 24 * 60 * 60 * 1000).unref();
     app.listen(port, () => {
       logger.info({ port }, 'Core API started');
     });

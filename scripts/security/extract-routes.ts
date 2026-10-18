@@ -15,6 +15,8 @@ export interface RouteInfo {
   permissions: string[]
   /** `any`: one of the listed keys is enough (a granular key or the broad key that always covered it); default: all */
   mode: 'all' | 'any'
+  /** the name in `audited(AUDIT.<name>)` found in the middleware list, or null */
+  audit: string | null
   line: number
 }
 
@@ -35,8 +37,9 @@ export function extractRoutes(file = resolve(ROOT_DIR, 'apps/core-api/src/server
     const permissions = anyKeys.length ? anyKeys : single
     const mode: 'all' | 'any' = anyKeys.length ? 'any' : 'all'
     const access: Access = permissions.length ? 'permission' : /\brequireAuth\b/.test(mw) ? 'auth' : 'public'
+    const audit = /\baudited\(\s*AUDIT\.(\w+)\s*\)/.exec(mw)?.[1] ?? null
     const method = m[1].toUpperCase()
-    routes.push({ key: `${method} ${m[3]}`, method, path: m[3], access, permissions, mode, line: src.slice(0, m.index).split('\n').length })
+    routes.push({ key: `${method} ${m[3]}`, method, path: m[3], access, permissions, mode, audit, line: src.slice(0, m.index).split('\n').length })
   }
   return routes
 }

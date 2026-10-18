@@ -14,12 +14,14 @@
     "POST /auth/login": {
       "access": "public",
       "permissions": [],
-      "note": "pre-auth by design (lockout, see 3.1)"
+      "note": "pre-auth by design (lockout, see 3.1)",
+      "audit": "exempt: personal sign-in action, belongs to a login log (audit-log-plan.md section 7)"
     },
     "POST /auth/mfa/challenge": {
       "access": "public",
       "permissions": [],
-      "note": "pre-auth by design (second factor, see 3.1)"
+      "note": "pre-auth by design (second factor, see 3.1)",
+      "audit": "exempt: personal sign-in action, belongs to a login log (audit-log-plan.md section 7)"
     },
     "GET /auth/mfa/status": {
       "access": "auth",
@@ -27,20 +29,24 @@
     },
     "POST /auth/mfa/setup": {
       "access": "auth",
-      "permissions": []
+      "permissions": [],
+      "audit": "exempt: personal sign-in action, belongs to a login log (audit-log-plan.md section 7)"
     },
     "POST /auth/mfa/verify-setup": {
       "access": "auth",
-      "permissions": []
+      "permissions": [],
+      "audit": "exempt: personal sign-in action, belongs to a login log (audit-log-plan.md section 7)"
     },
     "POST /auth/mfa/disable": {
       "access": "auth",
-      "permissions": []
+      "permissions": [],
+      "audit": "exempt: personal sign-in action, belongs to a login log (audit-log-plan.md section 7)"
     },
     "POST /auth/logout": {
       "access": "public",
       "permissions": [],
-      "note": "idempotent, no session needed"
+      "note": "idempotent, no session needed",
+      "audit": "exempt: personal sign-in action, belongs to a login log (audit-log-plan.md section 7)"
     },
     "GET /auth/me": {
       "access": "auth",
@@ -49,12 +55,14 @@
     "POST /auth/forgot-password": {
       "access": "public",
       "permissions": [],
-      "note": "pre-auth by design (see 3.1)"
+      "note": "pre-auth by design (see 3.1)",
+      "audit": "exempt: personal sign-in action, belongs to a login log (audit-log-plan.md section 7)"
     },
     "POST /auth/reset-password": {
       "access": "public",
       "permissions": [],
-      "note": "pre-auth by design (token, see 3.1)"
+      "note": "pre-auth by design (token, see 3.1)",
+      "audit": "exempt: personal sign-in action, belongs to a login log (audit-log-plan.md section 7)"
     },
     "GET /auth/users": {
       "access": "permission",
@@ -66,7 +74,8 @@
       "access": "permission",
       "permissions": [
         "USERS_MANAGE"
-      ]
+      ],
+      "audit": "userCreate"
     },
     "GET /auth/users/:id": {
       "access": "permission",
@@ -78,19 +87,22 @@
       "access": "permission",
       "permissions": [
         "USERS_MANAGE"
-      ]
+      ],
+      "audit": "userUpdate"
     },
     "DELETE /auth/users/:id": {
       "access": "permission",
       "permissions": [
         "USERS_MANAGE"
-      ]
+      ],
+      "audit": "userDelete"
     },
     "POST /auth/users/:id/reset-password": {
       "access": "permission",
       "permissions": [
         "USERS_MANAGE"
-      ]
+      ],
+      "audit": "userResetPassword"
     },
     "GET /auth/roles": {
       "access": "permission",
@@ -102,7 +114,8 @@
       "access": "permission",
       "permissions": [
         "USERS_MANAGE"
-      ]
+      ],
+      "audit": "roleCreate"
     },
     "GET /auth/roles/:id": {
       "access": "permission",
@@ -114,13 +127,22 @@
       "access": "permission",
       "permissions": [
         "USERS_MANAGE"
-      ]
+      ],
+      "audit": "roleUpdate"
     },
     "DELETE /auth/roles/:id": {
       "access": "permission",
       "permissions": [
         "USERS_MANAGE"
-      ]
+      ],
+      "audit": "roleDelete"
+    },
+    "GET /audit-log": {
+      "access": "permission",
+      "permissions": [
+        "AUDIT_READ"
+      ],
+      "note": "read only; the log is written by the audited actions and the retention job, there is no write route"
     },
     "GET /auth/permissions": {
       "access": "permission",
@@ -150,7 +172,8 @@
         "DATA_OBJECTS_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /snippets": {
       "access": "permission",
@@ -166,7 +189,8 @@
         "SNIPPETS_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "DELETE /snippets/:id": {
       "access": "permission",
@@ -174,7 +198,8 @@
         "SNIPPETS_DELETE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /whoobe-one/snippets": {
       "access": "permission",
@@ -190,7 +215,8 @@
         "SNIPPETS_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /whoobe-one/snippets/:id": {
       "access": "permission",
@@ -222,7 +248,8 @@
         "SNIPPETS_VIEW",
         "OBJECTS_READ"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "PATCH /whoobe-one/snippets/:id": {
       "access": "permission",
@@ -230,7 +257,8 @@
         "SNIPPETS_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "DELETE /whoobe-one/snippets/:id": {
       "access": "permission",
@@ -238,7 +266,8 @@
         "SNIPPETS_DELETE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /whoobe-one/templates": {
       "access": "permission",
@@ -262,7 +291,8 @@
         "PAGES_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "PATCH /whoobe-one/templates/:id": {
       "access": "permission",
@@ -270,7 +300,8 @@
         "PAGES_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "DELETE /whoobe-one/templates/:id": {
       "access": "permission",
@@ -278,7 +309,8 @@
         "PAGES_DELETE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /whoobe-one/kits": {
       "access": "permission",
@@ -302,7 +334,8 @@
         "SNIPPETS_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "POST /whoobe-one/kits/:id/templates": {
       "access": "permission",
@@ -310,7 +343,8 @@
         "SNIPPETS_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "DELETE /whoobe-one/kits/:id": {
       "access": "permission",
@@ -318,7 +352,8 @@
         "SNIPPETS_DELETE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /whoobe-one/pages": {
       "access": "permission",
@@ -342,7 +377,8 @@
         "PAGES_DELETE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "POST /whoobe-one/pages/staged/promote": {
       "access": "permission",
@@ -350,7 +386,8 @@
         "PAGES_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "POST /whoobe-one/pages/staged/:id/promote": {
       "access": "permission",
@@ -358,7 +395,8 @@
         "PAGES_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /whoobe-one/pages/:id": {
       "access": "permission",
@@ -398,7 +436,8 @@
         "PAGES_VIEW",
         "OBJECTS_READ"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /whoobe-one/pages/:id/translations": {
       "access": "permission",
@@ -414,7 +453,8 @@
         "PAGES_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "POST /whoobe-one/pages": {
       "access": "permission",
@@ -422,7 +462,8 @@
         "PAGES_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "PATCH /whoobe-one/pages/:id": {
       "access": "permission",
@@ -430,7 +471,8 @@
         "PAGES_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "PUT /whoobe-one/snippets/:id/thumbnail": {
       "access": "permission",
@@ -438,7 +480,8 @@
         "SNIPPETS_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "PUT /whoobe-one/pages/:id/thumbnail": {
       "access": "permission",
@@ -446,7 +489,8 @@
         "PAGES_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "DELETE /whoobe-one/pages/:id": {
       "access": "permission",
@@ -454,7 +498,8 @@
         "PAGES_DELETE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /whoobe-one/websites": {
       "access": "permission",
@@ -470,7 +515,8 @@
         "WEBSITES_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "POST /whoobe-one/websites/:id/gateway-api-key/regenerate": {
       "access": "permission",
@@ -478,7 +524,8 @@
         "WEBSITES_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "DELETE /whoobe-one/websites/:id/gateway-api-key": {
       "access": "permission",
@@ -486,7 +533,8 @@
         "WEBSITES_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "GET /whoobe-one/settings/default-placeholder-image": {
       "access": "permission",
@@ -498,7 +546,8 @@
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "GET /whoobe-one/settings/strip-html-comments": {
       "access": "public",
@@ -509,7 +558,8 @@
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "GET /whoobe-one/settings/logging": {
       "access": "public",
@@ -520,7 +570,8 @@
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "GET /whoobe-one/settings/autosave": {
       "access": "permission",
@@ -532,7 +583,8 @@
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "GET /whoobe-one/settings/alpine-presets": {
       "access": "permission",
@@ -544,7 +596,8 @@
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "GET /whoobe-one/settings/cdn-mirror": {
       "access": "permission",
@@ -556,7 +609,8 @@
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "GET /whoobe-one/websites/:id": {
       "access": "permission",
@@ -572,7 +626,8 @@
         "WEBSITES_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "DELETE /whoobe-one/websites/:id": {
       "access": "permission",
@@ -580,7 +635,8 @@
         "WEBSITES_DELETE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "GET /whoobe-one/websites/:id/themes": {
       "access": "permission",
@@ -596,7 +652,8 @@
         "WEBSITES_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "PUT /whoobe-one/websites/:id/themes/:themeId": {
       "access": "permission",
@@ -604,7 +661,8 @@
         "WEBSITES_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "DELETE /whoobe-one/websites/:id/themes/:themeId": {
       "access": "permission",
@@ -612,7 +670,8 @@
         "WEBSITES_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "GET /whoobe-one/themes/all": {
       "access": "permission",
@@ -636,7 +695,8 @@
         "WEBSITES_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "GET /whoobe-one/themes": {
       "access": "permission",
@@ -652,7 +712,8 @@
         "THEMES_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /whoobe-one/themes/:id": {
       "access": "permission",
@@ -668,7 +729,8 @@
         "THEMES_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "DELETE /whoobe-one/themes/:id": {
       "access": "permission",
@@ -676,7 +738,8 @@
         "THEMES_DELETE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /whoobe-one/websites/:websiteId/templates": {
       "access": "permission",
@@ -688,7 +751,8 @@
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /whoobe-one/websites/:websiteId/templates/:id": {
       "access": "permission",
@@ -700,13 +764,15 @@
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "DELETE /whoobe-one/websites/:websiteId/templates/:id": {
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /whoobe-one/website-paths": {
       "access": "permission",
@@ -722,7 +788,8 @@
         "WEBSITES_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "GET /whoobe-one/website-paths/:id": {
       "access": "permission",
@@ -738,7 +805,8 @@
         "WEBSITES_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "DELETE /whoobe-one/website-paths/:id": {
       "access": "permission",
@@ -746,7 +814,8 @@
         "WEBSITES_DELETE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "GET /public/pages/:locale/*": {
       "access": "public",
@@ -799,19 +868,22 @@
     "POST /pwa/subscribe": {
       "access": "public",
       "permissions": [],
-      "note": "REVIEW: unauthenticated write outside /public (plan 3.4)"
+      "note": "REVIEW: unauthenticated write outside /public (plan 3.4)",
+      "audit": "exempt: public visitor action, not an administrative one"
     },
     "POST /pwa/send": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "exempt: sends a notification, changes no configuration"
     },
     "POST /whoobe-one/websites/:id/generate-pwa": {
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "GET /public/search": {
       "access": "public",
@@ -837,19 +909,22 @@
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "PATCH /data-classes/:id": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "DELETE /data-classes/:id": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "GET /data-components": {
       "access": "permission",
@@ -881,7 +956,8 @@
         "COMPONENTS_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "PATCH /data-components/:id": {
       "access": "permission",
@@ -889,7 +965,8 @@
         "COMPONENTS_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "DELETE /data-components/:id": {
       "access": "permission",
@@ -897,7 +974,8 @@
         "COMPONENTS_DELETE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "GET /migration-sources": {
       "access": "permission",
@@ -909,49 +987,57 @@
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "PATCH /migration-sources/:id": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "DELETE /migration-sources/:id": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "POST /migration-sources/:id/import-classes": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4 (an import action: audited as an event on the source)"
     },
     "POST /migration-sources/:id/import-objects": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4 (an import action: audited as an event on the source)"
     },
     "POST /migration-sources/:id/import-documents": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4 (an import action: audited as an event on the source)"
     },
     "POST /migration-sources/:id/promote-documents": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4 (an import action: audited as an event on the source)"
     },
     "POST /migration-sources/:id/extract-components": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "todo: step 4 (an import action: audited as an event on the source)"
     },
     "GET /data-objects": {
       "access": "permission",
@@ -967,7 +1053,8 @@
         "DATA_OBJECTS_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "GET /data-objects/batch": {
       "access": "permission",
@@ -1007,7 +1094,8 @@
         "DATA_OBJECTS_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "PATCH /data-objects/:id": {
       "access": "permission",
@@ -1015,7 +1103,8 @@
         "DATA_OBJECTS_EDIT",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "DELETE /data-objects/:id": {
       "access": "permission",
@@ -1023,7 +1112,8 @@
         "DATA_OBJECTS_DELETE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "GET /public/data-objects": {
       "access": "public",
@@ -1039,15 +1129,18 @@
         "DATA_OBJECTS_LIST",
         "OBJECTS_READ"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "POST /public/data-objects/query": {
       "access": "public",
-      "permissions": []
+      "permissions": [],
+      "audit": "exempt: public visitor action, not an administrative one"
     },
     "POST /public/forms/:classId/submit": {
       "access": "public",
-      "permissions": []
+      "permissions": [],
+      "audit": "exempt: public visitor action, not an administrative one"
     },
     "GET /mail-settings": {
       "access": "permission",
@@ -1066,20 +1159,23 @@
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "DELETE /mail-settings": {
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
       ],
-      "note": "removes a website's own mail configuration (it falls back to the default)"
+      "note": "removes a website's own mail configuration (it falls back to the default)",
+      "audit": "todo: step 4"
     },
     "POST /mail-settings/test": {
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: sends a test mail, changes no configuration"
     },
     "GET /mail-log": {
       "access": "permission",
@@ -1091,7 +1187,8 @@
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: acts on the mail log, not on the configuration"
     },
     "GET /mail-templates": {
       "access": "permission",
@@ -1103,7 +1200,8 @@
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /mail-templates/:id": {
       "access": "permission",
@@ -1115,19 +1213,22 @@
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "DELETE /mail-templates/:id": {
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "POST /mail-templates/:id/render": {
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /mail-log/:id": {
       "access": "permission",
@@ -1139,7 +1240,8 @@
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: acts on the mail log, not on the configuration"
     },
     "GET /ai/settings": {
       "access": "permission",
@@ -1151,13 +1253,15 @@
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "POST /ai/generate": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "exempt: AI generation call, changes no configuration"
     },
     "GET /ai/generated": {
       "access": "permission",
@@ -1169,7 +1273,8 @@
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "exempt: AI generation call, changes no configuration"
     },
     "POST /whoobe-one/websites/from-ai": {
       "access": "permission",
@@ -1177,7 +1282,8 @@
         "WEBSITES_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "GET /whoobe-one/websites/:id/export": {
       "access": "permission",
@@ -1193,7 +1299,8 @@
         "WEBSITES_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "todo: step 4"
     },
     "GET /ai/image-settings": {
       "access": "permission",
@@ -1205,7 +1312,8 @@
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "GET /ai/translate-settings": {
       "access": "permission",
@@ -1217,13 +1325,15 @@
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "POST /ai/generate-image": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "exempt: AI generation call, changes no configuration"
     },
     "GET /public/data-objects/:id": {
       "access": "public",
@@ -1233,7 +1343,8 @@
       "access": "permission",
       "permissions": [
         "OBJECTS_PUBLISH"
-      ]
+      ],
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "GET /data-objects/:id/preview-links": {
       "access": "permission",
@@ -1247,7 +1358,8 @@
       "access": "permission",
       "permissions": [
         "OBJECTS_PUBLISH"
-      ]
+      ],
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "GET /preview/objects/:token": {
       "access": "public",
@@ -1266,17 +1378,20 @@
       "access": "permission",
       "permissions": [
         "WORKFLOWS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "DELETE /data-classes/:id/workflow": {
       "access": "permission",
       "permissions": [
         "WORKFLOWS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "POST /data-objects/:id/transition": {
       "access": "auth",
-      "permissions": []
+      "permissions": [],
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "GET /data-objects/:id/transitions": {
       "access": "permission",
@@ -1296,7 +1411,8 @@
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "exempt: rebuilds the search index from published content, changes no configuration"
     },
     "GET /figma/settings": {
       "access": "permission",
@@ -1308,13 +1424,15 @@
       "access": "permission",
       "permissions": [
         "SETTINGS_MANAGE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "POST /figma/import": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
-      ]
+      ],
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /api/v1/system/logs": {
       "access": "auth",
@@ -1353,14 +1471,16 @@
       "permissions": [
         "ASSETS_VIEW"
       ],
-      "note": "documentation site: live preview of unsaved Markdown"
+      "note": "documentation site: live preview of unsaved Markdown",
+      "audit": "exempt: renders or checks a documentation site, changes nothing"
     },
     "POST /docs-sites/:websiteId/nav/check": {
       "access": "permission",
       "permissions": [
         "ASSETS_VIEW"
       ],
-      "note": "documentation site: checks the text of the index file without saving it"
+      "note": "documentation site: checks the text of the index file without saving it",
+      "audit": "exempt: renders or checks a documentation site, changes nothing"
     },
     "GET /public/docs-site/:segment": {
       "access": "public",
@@ -1386,7 +1506,8 @@
         "OBJECTS_WRITE"
       ],
       "note": "locks or unlocks a snippet: a locked snippet is not saved automatically",
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
     "GET /whoobe-one/websites/:id/upload-settings": {
       "access": "permission",
@@ -1400,12 +1521,14 @@
       "permissions": [
         "SETTINGS_MANAGE"
       ],
-      "note": "writes the upload limits of a website; validated, extensions that cannot be verified or are active content are refused"
+      "note": "writes the upload limits of a website; validated, extensions that cannot be verified or are active content are refused",
+      "audit": "todo: step 4"
     },
     "POST /public/uploads/intent": {
       "access": "public",
       "permissions": [],
-      "note": "approves one file for a form Upload field (limits of the website; rate limited) and returns the signed ticket and the address to send the bytes to"
+      "note": "approves one file for a form Upload field (limits of the website; rate limited) and returns the signed ticket and the address to send the bytes to",
+      "audit": "exempt: public visitor action, not an administrative one"
     },
     "GET /data-classes/:id/object-count": {
       "access": "permission",
@@ -1422,14 +1545,16 @@
         "OBJECTS_WRITE"
       ],
       "mode": "any",
-      "note": "empties a class; the body must carry the class name as confirmation"
+      "note": "empties a class; the body must carry the class name as confirmation",
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "POST /migration-sources/:id/preview-classes": {
       "access": "permission",
       "permissions": [
         "OBJECTS_WRITE"
       ],
-      "mode": "all"
+      "mode": "all",
+      "audit": "todo: step 4 (an import action: audited as an event on the source)"
     },
     "GET /migration-sources/import-jobs/:jobId": {
       "access": "permission",
@@ -1444,7 +1569,8 @@
         "DATA_OBJECTS_CREATE",
         "OBJECTS_WRITE"
       ],
-      "mode": "any"
+      "mode": "any",
+      "audit": "exempt: data, covered by object events and the record's own history (audit-log-plan.md section 4)"
     },
     "GET /object-event-subscriptions": {
       "access": "permission",
@@ -1456,7 +1582,8 @@
       "access": "permission",
       "permissions": [
         "OBJECT_EVENTS_MANAGE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "GET /object-event-subscriptions/:id": {
       "access": "permission",
@@ -1468,19 +1595,22 @@
       "access": "permission",
       "permissions": [
         "OBJECT_EVENTS_MANAGE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "DELETE /object-event-subscriptions/:id": {
       "access": "permission",
       "permissions": [
         "OBJECT_EVENTS_MANAGE"
-      ]
+      ],
+      "audit": "todo: step 4"
     },
     "POST /object-event-subscriptions/:id/test": {
       "access": "permission",
       "permissions": [
         "OBJECT_EVENTS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: operates on the delivery log, not on the configuration"
     },
     "GET /object-event-subscriptions/:id/deliveries": {
       "access": "permission",
@@ -1492,13 +1622,15 @@
       "access": "permission",
       "permissions": [
         "OBJECT_EVENTS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: operates on the delivery log, not on the configuration"
     },
     "POST /object-event-deliveries/:id/retry": {
       "access": "permission",
       "permissions": [
         "OBJECT_EVENTS_MANAGE"
-      ]
+      ],
+      "audit": "exempt: retries a delivery, not a configuration change"
     }
   }
 }
