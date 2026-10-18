@@ -1,3 +1,9 @@
+## docs.whoobe.dev updated to 0.1.1 and the new name — 2026-10-18
+- Branch: `master`
+- The owner re-uploaded `docs/release` into the DAM folder of the site "whoobe docs release". Generated with `whoobe-publish --kind docs --strict` against the development instance: 97 pages, no broken link. Checked in headless Chromium (served locally): 97 pages, no console error, no failed request, no dead internal link, the 3 diagrams of the object events page drawn, no horizontal scroll at 390 px. The old name remains only in the title of the 0.1.0 notes (menu of every page) and in the sentence of the 0.1.1 notes that explains the change.
+- Published: `rsync -az --delete` to `oracle:/var/www/docs.whoobe.dev/` after a dry run (107 files updated, 1 new page `release-notes-0.1.1`, nothing deleted; nginx, certificates and the other sites untouched). From outside: 200 on the home, the new page, the object events page, sitemap and robots, 404 page for an unknown path, HTTP redirects to HTTPS, certificate valid to 2027-01-15; `dashboard`, `sandbox`, `unifythestack.dev` and `www.whoobe.dev` still answer 200.
+- Not done: the 0.1.1 GitHub Release is still a draft; the landing `unifythestack.dev` and the Whoobe website were not regenerated (they may still say "Whoobe CMS").
+
 ## Release notes 0.1.1: link to the plan — 2026-10-18
 - Branch: `master`
 - `docs/release/release-notes-0.1.1.md`: the link to the 0.2 plan was a relative path outside `docs/release`; the documentation site generator (`--strict`) refused it as a broken link. Now a GitHub link, like the other references to `docs/plans`. The tag v0.1.1 holds the earlier text; documentation only.
