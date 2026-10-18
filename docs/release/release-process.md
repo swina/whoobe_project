@@ -71,7 +71,7 @@ The non-automatic gates are printed as a reminder every time; they are the relea
    arm64, pushed to `ghcr.io/<owner>/whoobe-<service>:X.Y.Z` (plus `X.Y`), signed by digest with cosign (keyless), and the
    digests are written into the release notes. `admin-dashboard` and `whoobe-one-spike` are **not** published: they bake
    `VITE_*` URLs at build time, so every installation builds them. The job stops if the tag differs from `package.json`.
-7. **Publish the release**: `release.yml` creates a **draft** GitHub Release with `docs/release/release-notes-X.Y.Z.md` (or a
+7. **Publish the release**: `release.yml` creates a **draft** GitHub Release with the release notes file of the version (`release-notes-<version>.md` in `docs/release/`, or a
    one-line note if the file is missing), the image digests, `openapi.yaml` and the source SBOM. Add the image SBOMs
    (step 5) and the CI security reports by hand, then publish the draft after review.
 
