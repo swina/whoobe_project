@@ -1,3 +1,9 @@
+## Production dashboard updated to v0.1.1, nginx include re-rendered — 2026-10-18
+- Branch: `master` (documentation only; no code changed)
+- dashboard.whoobe.dev (workspace `dashboard`) rebuilt from the tag `v0.1.1` after a `pg_dump` (`~/backups/pre-0.1.1-2026-10-18/` on the host); rsync with `--delete`, keeping the sandbox's own `scripts/sandbox/reset.sh`, `scripts/enable-tls.sh` and `packages/core/src/sandbox.ts` (branch `fix/sandbox-demo-banner-tls-reset`, not in the tag). The audit log (migration 0060) is not part of 0.1.1 and was not deployed.
+- The *Object events* screens answered with the dashboard page: the 0.1.1 nginx template lacked some core-api prefixes. The template from `master` was copied to the host and `render-workspace-nginx.sh dashboard` re-rendered the include and reloaded nginx; the prefixes now answer from core-api.
+- `docs/release/release-notes-0.1.1.md`: the known-problem line says the remedy was applied on the public dashboard.
+
 ## Audit log, steps 3 to 5: guard, routes, read API, dashboard view, docs — 2026-10-18
 - Branch: `feat/audit-log`
 - Step 3: the `audited()` guard (`apps/core-api/src/audit.ts`) goes in a route's middleware list and writes one row after a successful answer (status < 400, dry runs skipped), with the state before and after taken from the specs in `apps/core-api/src/audit-specs.ts`; secrets are recorded as "changed". User and role routes audited. `GET /audit-log` (permission `audit:read`) with filters and CSV export. The route contract now gives every changing route a decision (audited, exempt or deferred) and the drift test checks it against the specs.
