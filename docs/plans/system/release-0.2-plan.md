@@ -54,7 +54,7 @@ The **name is not the version number**: the number (0.1.1, 0.2.0) is still decis
 
 | Item | Done when |
 |---|---|
-| **Upgrade test.** A script installs the previous release, loads data, upgrades to the current tree, runs the migrations and logs in. | Runs in CI on every release candidate; fails when a migration breaks existing data. Needs v0.1.0 as the "N-1". |
+| **Upgrade test.** A script installs the previous release, loads data, upgrades to the current tree, runs the migrations and logs in. | Runs in CI on every release candidate; fails when a migration breaks existing data. Needs v0.1.0 as the "N-1". **Script written and passing 2026-10-18** (`scripts/upgrade/upgrade-test.sh`); `.github/workflows/upgrade.yml` runs it on a `v*` tag and by hand; **done when** it has passed once on GitHub. |
 | **Restore rehearsal.** Restore a backup (database and bucket) on a spare machine; record the date and what was missing. | The runbook in `operations/backup-restore-and-dr.md` carries a dated "rehearsed" line; the bucket backup is covered by a script or a documented tool. |
 | **Release pipeline.** `release.yml` builds the images for amd64 and arm64, attaches an SBOM, signs with cosign and publishes the GitHub Release from a tag. | A tag produces the images, the SBOM and the notes without a manual step; `release-process.md` loses the "not built yet" paragraph. |
 | **Load test.** A k6 (or equivalent) script for public pages, the public query API, a client call and a login, on the reference machine. | The figures and the machine are in `capacity-and-scaling.md`; the "no load test" row of chapter 4.2 is rewritten with numbers or narrowed. |
@@ -194,7 +194,7 @@ formats stay the way to work with them).
 
 ## 8. Decisions for the owner
 
-- **The number of the next release** (the name is *Conduct*, section 0): 0.1.1 (fixes and the features already on `master`) followed by 0.2.0 for this plan, or one 0.2.0. The features on
+- **The number of the next release** — **decided 2026-10-18: 0.1.1** (the fixes and the features already on `master`), then 0.2.0 *Conduct* for this plan. (The name is *Conduct*, section 0.) Options were: 0.1.1 (fixes and the features already on `master`) followed by 0.2.0 for this plan, or one 0.2.0. The features on
   `master` are not in the tag: until a release exists, the documentation says "not in the v0.1.0 tag" next to them.
 - **How to publish documentation of two versions:** one site that follows `master` (today, with notes), or a site per release. Proposal: one site, a
   note per feature not yet released, until there are users on two versions.

@@ -4,8 +4,8 @@ How a Whoobe CMS release is made. Decisions taken on 2026-10-05: one aligned pro
 **0.1.0**, container images published on **ghcr.io**, security fixes for the **latest two minor versions**.
 
 Status of the automation: the gates and the preparation step (`scripts/release.sh`) exist and are described below.
-Publishing the container images and the GitHub Release from a tag (`release.yml`) is the next step and is **not built
-yet**; until then, steps 5 to 7 are manual.
+Publishing the container images and the draft GitHub Release from a tag is written (`.github/workflows/release.yml`) and
+**has not run on GitHub yet**; the first tag is its test, so keep steps 5 to 7 by hand as the fallback.
 
 ## 1. Versions
 
@@ -67,10 +67,13 @@ The non-automatic gates are printed as a reminder every time; they are the relea
 4. **Commit and tag**, by hand, as the script prints:
    `git commit -m "Release vX.Y.Z"`, `git tag -a vX.Y.Z -m "Whoobe CMS vX.Y.Z"`, `git push origin <branch> --follow-tags`.
 5. **SBOM**: `scripts/release/sbom.sh --images` (CycloneDX for the source tree and the service images, written to `.release/sbom/`); attach to the GitHub Release.
-6. **Publish images** *(to automate in `release.yml`)*: build each service image from the tag and push it to
-   `ghcr.io/<owner>/whoobe-<service>:X.Y.Z` (plus `X.Y`), record the digests in the release notes.
-7. **Publish the release** *(partly manual until `release.yml`)*: create the GitHub Release from the tag, with the
-   notes, `openapi.yaml`, the SBOMs and the CI security reports; publish it after review.
+6. **Publish images** (`release.yml`, on the tag): `core-api`, `asset-processor`, `gateway` and `publisher` are built for amd64 and
+   arm64, pushed to `ghcr.io/<owner>/whoobe-<service>:X.Y.Z` (plus `X.Y`), signed by digest with cosign (keyless), and the
+   digests are written into the release notes. `admin-dashboard` and `whoobe-one-spike` are **not** published: they bake
+   `VITE_*` URLs at build time, so every installation builds them. The job stops if the tag differs from `package.json`.
+7. **Publish the release**: `release.yml` creates a **draft** GitHub Release with the release notes file of the version (`release-notes-<version>.md` in `docs/release/`, or a
+   one-line note if the file is missing), the image digests, `openapi.yaml` and the source SBOM. Add the image SBOMs
+   (step 5) and the CI security reports by hand, then publish the draft after review.
 
 ## 6. Patches and security updates
 
@@ -91,7 +94,7 @@ feature (point it at `docs/release`); not automated.
 
 ## 8. Not done yet
 
-- `release.yml` (images on ghcr.io, GitHub Release, attachments, SBOM) - steps 6 and 7 above.
-- The automated upgrade test.
+- A first run of `release.yml` on GitHub (the package visibility on ghcr.io, the cosign signature, the draft). Image SBOMs and the CI security reports are still attached by hand.
+- Confirming that the `upgrade` workflow (`.github/workflows/upgrade.yml`, runs `scripts/upgrade/upgrade-test.sh` on a `v*` tag or by hand) passes on GitHub: written, not yet run there.
 - Pinning the base images' freshness: the pinned digests lag behind Debian's security updates (see `CHANGES.md`,
   2026-10-05), which today costs a patch release or a manual `apt-get` upgrade line in the `Dockerfile`.

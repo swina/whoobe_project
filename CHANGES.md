@@ -1,3 +1,24 @@
+## Release workflow — 2026-10-18
+- Branch: `feat/release-0.2`
+- `.github/workflows/release.yml` (new), on a tag `vX.Y.Z`: stops if the tag differs from `package.json`; builds `core-api`, `asset-processor`, `gateway` and `publisher` for amd64 and arm64, pushes `ghcr.io/<owner>/whoobe-<service>:X.Y.Z` and `:X.Y`, signs each by digest with cosign (keyless); then creates a **draft** GitHub Release with `docs/release/release-notes-X.Y.Z.md`, the digests, `openapi.yaml` and the source SBOM (`scripts/release/sbom.sh`).
+- The two SPA images are not published (VITE_* URLs are baked at build time); said in the workflow and in `release-process.md` steps 6 and 7.
+- Written, YAML parsed, **not run**: the first tag is its test. Action versions follow the major tags of the existing workflows or the current majors of the docker/sigstore actions (not pinned by SHA).
+
+## Upgrade test in CI — 2026-10-18
+- Branch: `feat/release-0.2`
+- `.github/workflows/upgrade.yml` (new): runs `scripts/upgrade/upgrade-test.sh` on a `v*` tag (N-1 = the previous tag) and by hand with an optional `from`. Not on every push (about 5 minutes of Docker builds), in line with the minutes policy of `ci/save-minutes`; `security.yml` untouched.
+- Documentation (upgrade page, release process, overview 4.6, plan A1) says it is written and has not run on GitHub yet.
+
+## Upgrade test v0.1.0 -> working tree — 2026-10-18
+- Branch: `feat/release-0.2`
+- `scripts/upgrade/upgrade-test.sh` (new): starts postgres, garage and core-api of an earlier release (`--from`, default `v0.1.0`, taken with `git archive`) in a throwaway project `whoobe-upgrade` (ports dev +400), writes a class and an object, then starts the working tree on the same volumes and checks: all migrations applied (59 -> 60), the tables created by the new migrations exist, the user count and the object are unchanged, the administrator can log in. `--keep` leaves the stack for inspection. First run passed (about 4 minutes).
+- Documentation updated to say the database step of the upgrade is tested by script, by hand and not yet in CI: `docs/release/operations/upgrade-and-migrations.md`, `docs/release/release-process.md`, `docs/release/overview/whoobe-overview.md` (chapter 4.6 row), plan 0.2 block A1. The "0.1.0 -> 0.2.0" wording in the upgrade page replaced.
+- Not done: the CI job; the image rebuild on a real host, nginx and the manual checks stay untested.
+
+## Next release is 0.1.1 — 2026-10-18
+- Branch: `feat/release-0.2`
+- `docs/plans/system/release-0.2-plan.md`, section 8: decision 1 recorded. The next release is **0.1.1** (fixes and the features already on `master`); 0.2.0 *Conduct* follows with this plan. Nothing built.
+
 ## Node-RED example flows and article — 2026-10-18
 - Branch: `master`
 - `examples/automation-engines/node-red/data/flows.json`: class switch on the incoming event, a second tab with a `/whoobe-contacts` flow that checks the call, and the PATCH sends `X-Whoobe-Flow: stop` and names the changed field in the note.
