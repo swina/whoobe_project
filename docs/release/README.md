@@ -4,7 +4,7 @@ The documentation in this folder describes the product **as it is delivered and 
 checked against the code at the time of the last reorganisation (see [Status](#status)); the design history of the
 project stays in [`../plans`](https://github.com/swina/whoobe_project/tree/master/docs/plans) and is deliberately not part of a release.
 
-**Aligned to release:** v0.1.0 (2026-10-14) - see [`release-process.md`](release-process.md) - **plus the changes made on `master` after the tag.**
+**Aligned to release:** v0.1.1 (2026-10-18) - see [`release-process.md`](release-process.md)
 These are in the documents but **not in the v0.1.0 tag**; they will be in the next release: [object events](communication/object-events.md)
 (subscriptions, delivery log, loop guard, the *Connect a flow* wizard), the [Node-RED guide](communication/node-red.md), the Objects list changes
 (*Copy id*, record tab names), and the conversion of Markdown and rich-text fields bound to an element in generated sites.

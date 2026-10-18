@@ -1,3 +1,8 @@
+# Release v0.1.1 — 2026-10-18
+
+## [Release v0.1.1] — 2026-10-18
+- Branch: `master`. Version 0.1.1 set in 21 package.json files (one product version, see docs/release/release-process.md); `docs/release/README.md` aligned to this release.
+
 ## The product is called "Whoobe", not "Whoobe CMS" — 2026-10-18
 - Branch: `master`
 - Text only, 38 files: "Whoobe CMS" became "Whoobe" in the documentation of the release (`docs/release`, except the 0.1.0 notes, which keep the name of that release), README, `.env.example`, compose and deploy file headers, the dashboard (browser title, login page, three descriptions, the suggested mail sender name), the TOTP issuer shown by authenticator apps for a new enrolment (`packages/core/src/auth/mfa.ts`; existing enrolments are not affected), the help and banners of the publish and mobile CLIs and scripts, the migration tool banner, the live mail check, `release.yml` (title of the draft release), `release.sh` (title and tag message), the OpenAPI title (`gen-api-docs.py` and `openapi.yaml`). Two ASCII boxes and two script banners were re-padded.
