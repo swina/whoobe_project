@@ -11,7 +11,7 @@ program
     '(docs/plans/assets/assets-cdn.md), so a published site can serve them from the CDN ' +
     'instead of this install\'s own DAM proxy. Run before/alongside publishing a production site.',
   )
-  .requiredOption('--api-url <url>', 'Base URL of the Whoobe CMS public API / core-api (e.g. https://cms.example.com, or http://localhost:3003 in local dev)')
+  .requiredOption('--api-url <url>', 'Base URL of the Whoobe public API / core-api (e.g. https://cms.example.com, or http://localhost:3003 in local dev)')
   .requiredOption('--website-id <id>', 'UUID of the website to sync')
   .option('--gateway-route-id <id>', 'Gateway route id for the CDN provider\'s upload route (preconfigured via the admin dashboard). Falls back to Settings → DAM → CDN Mirror\'s saved value if omitted (needs the service account to have the "objects:read" permission for that lookup) - required, one way or the other.')
   .option('--asset-processor-url <url>', 'Base URL of asset-processor, which actually performs the mirror. Defaults to --api-url (correct once behind nginx, which routes /api/v1/* to asset-processor under the same hostname as core-api) - set this explicitly in local dev, where asset-processor is on a different port (e.g. http://localhost:3002) than core-api.')

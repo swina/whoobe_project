@@ -103,7 +103,7 @@
 
         <label class="flex flex-col gap-1 text-xs text-slate-400">
           From name (optional)
-          <input v-model="form.fromName" type="text" placeholder="Whoobe CMS" :class="inputCls" />
+          <input v-model="form.fromName" type="text" placeholder="Whoobe" :class="inputCls" />
         </label>
 
         <label class="col-span-2 flex items-center gap-2 text-xs text-slate-400">

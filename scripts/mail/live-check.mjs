@@ -41,10 +41,10 @@ const mask = (s) => secrets.reduce((t, v) => t.split(v).join('***'), s);
 
 const msg = {
   to: to ?? 'recipient@example.com',
-  subject: `Whoobe CMS - ${def.label} live check`,
-  html: `<h2>It works</h2><p>This message was sent by <b>Whoobe CMS</b> through <b>${def.label}</b> to check the connection.</p><p>${new Date().toISOString()}</p>`,
+  subject: `Whoobe - ${def.label} live check`,
+  html: `<h2>It works</h2><p>This message was sent by <b>Whoobe</b> through <b>${def.label}</b> to check the connection.</p><p>${new Date().toISOString()}</p>`,
   from: values[`${P}_FROM`] || undefined,
-  fromName: values[`${P}_FROM_NAME`] || 'Whoobe CMS',
+  fromName: values[`${P}_FROM_NAME`] || 'Whoobe',
   messageId: randomUUID(),
 };
 

@@ -1,8 +1,8 @@
-# Whoobe CMS - Asset Management Guide (DAM)
+# Whoobe - Asset Management Guide (DAM)
 
 ## 1. Executive Summary
 
-Whoobe CMS includes a high-performance Digital Asset Management (DAM) system built as a modern, decoupled replacement for legacy Pimcore asset structures. It provides S3-compatible storage integration (Garage by default for local and LAN installs, any cloud or enterprise S3 by configuration), fine-grained public/private folder security policies, client-side WebP thumbnail generation, interactive sidebar folder trees, multi-column search/filtering, column sorting, pagination, and bulk operations (ZIP download and deletion).
+Whoobe includes a high-performance Digital Asset Management (DAM) system built as a modern, decoupled replacement for legacy Pimcore asset structures. It provides S3-compatible storage integration (Garage by default for local and LAN installs, any cloud or enterprise S3 by configuration), fine-grained public/private folder security policies, client-side WebP thumbnail generation, interactive sidebar folder trees, multi-column search/filtering, column sorting, pagination, and bulk operations (ZIP download and deletion).
 
 ---
 

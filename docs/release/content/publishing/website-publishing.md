@@ -1,12 +1,12 @@
 # Website Publishing Guide
 
-This guide covers how to publish a Whoobe CMS website as a standalone, deployable frontend site. `whoobe-publish` generates either a **Next.js** or a **Nuxt 3** application that renders pages server-side with full SEO metadata, build-time Tailwind CSS, resolved data bindings, and ISR/revalidate caching. It also generates the config needed to reach the CMS's **API Gateway** (Brevo forms, other gateway-backed data bindings) and to prefer **CDN-mirrored** images over the CMS's own asset proxy — both required for the site to actually work once deployed outside the CMS's own network, not just to generate.
+This guide covers how to publish a Whoobe website as a standalone, deployable frontend site. `whoobe-publish` generates either a **Next.js** or a **Nuxt 3** application that renders pages server-side with full SEO metadata, build-time Tailwind CSS, resolved data bindings, and ISR/revalidate caching. It also generates the config needed to reach the CMS's **API Gateway** (Brevo forms, other gateway-backed data bindings) and to prefer **CDN-mirrored** images over the CMS's own asset proxy — both required for the site to actually work once deployed outside the CMS's own network, not just to generate.
 
 ## Architecture Overview
 
 ```
 ┌──────────────────────┐     ┌───────────────────────────────┐
-│  Whoobe CMS          │     │  Published Site (Next or Nuxt)│
+│  Whoobe              │     │  Published Site (Next or Nuxt)│
 │  (production)        │     │                               │
 │  core-api            │◄────│  getPageData() → walkTree     │
 │  ├─ /public/pages    │     │  ├─ server-side rendering     │
@@ -75,7 +75,7 @@ Nuxt output (equivalent shape, same `vendor/`/`Dockerfile`/`nginx.conf`/`deploy.
 
 ## Prerequisites
 
-- A running Whoobe CMS instance with **public API and Gateway accessible** from the build server (and, for the Gateway, from wherever the published site actually runs in production)
+- A running Whoobe instance with **public API and Gateway accessible** from the build server (and, for the Gateway, from wherever the published site actually runs in production)
 - A **website** created in the CMS with at least one published page
 - The website's **UUID** (admin dashboard → Websites → Edit → URL)
 - Node.js 20+ and pnpm 9+

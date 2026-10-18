@@ -1,6 +1,6 @@
 # Automated security test suite - summary
 
-One-page summary for readers who do not need the detail. Whoobe CMS 0.1.0, counts taken on **2026-10-09**. The full
+One-page summary for readers who do not need the detail. Whoobe 0.1.0, counts taken on **2026-10-09**. The full
 description of every suite is in [`security-test-suite.md`](security-test-suite.md); how to run them is in
 `scripts/security/README.md`; the state of the findings is in [`status-summary.md`](status-summary.md).
 

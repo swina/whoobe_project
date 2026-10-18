@@ -1,4 +1,4 @@
-# Whoobe CMS — Deployment Miniguide
+# Whoobe — Deployment Miniguide
 
 > **Status of this page (2026-10-09).** The "Production" column describes native services under PM2; for a production
 > installation use the container workspaces of [`creating-workspaces.md`](creating-workspaces.md). The evaluation and local

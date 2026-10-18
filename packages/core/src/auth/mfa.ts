@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import { hashPassword, verifyPassword } from './password.js';
 import type { MfaRecoveryCode } from '../db/auth-schema.js';
 
-const ISSUER = 'Whoobe CMS';
+const ISSUER = 'Whoobe';
 
 export function generateTotpSecret(): string {
   return authenticator.generateSecret();

@@ -6,7 +6,7 @@
           <Layers class="w-6 h-6" />
         </div>
         <div>
-          <h1 class="font-bold text-xl text-slate-100 light:text-slate-900">Whoobe CMS</h1>
+          <h1 class="font-bold text-xl text-slate-100 light:text-slate-900">Whoobe</h1>
           <p class="text-xs text-slate-500">Sign in to continue</p>
         </div>
       </div>

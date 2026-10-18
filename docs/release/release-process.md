@@ -1,6 +1,6 @@
 # Release process
 
-How a Whoobe CMS release is made. Decisions taken on 2026-10-05: one aligned product version, first release
+How a Whoobe release is made. Decisions taken on 2026-10-05: one aligned product version, first release
 **0.1.0**, container images published on **ghcr.io**, security fixes for the **latest two minor versions**.
 
 Status of the automation: the gates and the preparation step (`scripts/release.sh`) exist and are described below.
@@ -65,7 +65,7 @@ The non-automatic gates are printed as a reminder every time; they are the relea
 
    `--dry-run` shows the plan without writing. The script does not commit, tag or push.
 4. **Commit and tag**, by hand, as the script prints:
-   `git commit -m "Release vX.Y.Z"`, `git tag -a vX.Y.Z -m "Whoobe CMS vX.Y.Z"`, `git push origin <branch> --follow-tags`.
+   `git commit -m "Release vX.Y.Z"`, `git tag -a vX.Y.Z -m "Whoobe vX.Y.Z"`, `git push origin <branch> --follow-tags`.
 5. **SBOM**: `scripts/release/sbom.sh --images` (CycloneDX for the source tree and the service images, written to `.release/sbom/`); attach to the GitHub Release.
 6. **Publish images** (`release.yml`, on the tag): `core-api`, `asset-processor`, `gateway` and `publisher` are built for amd64 and
    arm64, pushed to `ghcr.io/<owner>/whoobe-<service>:X.Y.Z` (plus `X.Y`), signed by digest with cosign (keyless), and the

@@ -96,5 +96,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Whoobe CMS $GITHUB_REF_NAME" \
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Whoobe $GITHUB_REF_NAME" \
             --notes-file notes.md docs/release/api/openapi.yaml .release/sbom/*.cdx.json

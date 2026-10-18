@@ -3,7 +3,7 @@
     <!--<div class="shrink-0 flex items-center justify-between">
       <div>
         <h2 class="text-xl font-bold text-slate-100 light:text-slate-900">Data Objects</h2>
-        <p class="text-xs text-slate-400 light:text-slate-600">Whoobe CMS data objects, backed by admin-defined classes. Migrated from Pimcore or authored directly.</p>
+        <p class="text-xs text-slate-400 light:text-slate-600">Whoobe data objects, backed by admin-defined classes. Migrated from Pimcore or authored directly.</p>
       </div>
       <button
         v-if="selectedClassId"

@@ -1,6 +1,6 @@
 # Threat model
 
-Written for security officers and architects who have to judge whether Whoobe CMS can be run in their environment.
+Written for security officers and architects who have to judge whether Whoobe can be run in their environment.
 It lists what is protected, who may attack, where the trust boundaries are, what the realistic threats are, which
 controls answer them and **which risks remain**. It is a model of the product as released, not a penetration-test
 report: evidence is pointed to (finding ids in [`findings.md`](findings.md), suites in [`security-test-suite.md`](security-test-suite.md)),

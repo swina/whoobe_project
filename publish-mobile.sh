@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate a native mobile app (Capacitor) from a Whoobe CMS website.
+# Generate a native mobile app (Capacitor) from a Whoobe website.
 # Usage: ./publish-mobile.sh
 #
 # This script prompts interactively for all required information,
@@ -7,7 +7,7 @@
 #
 # Prerequisites:
 #   - Node.js 20+ and pnpm 9+
-#   - A running Whoobe CMS with public API access (default: localhost:3003)
+#   - A running Whoobe with public API access (default: localhost:3003)
 #
 # For iOS: macOS + Xcode
 # For Android: Android Studio
@@ -32,7 +32,7 @@ NC='\033[0m' # No Color
 
 echo ""
 echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${CYAN}║     Whoobe CMS — Publish Mobile App        ║${NC}"
+echo -e "${BOLD}${CYAN}║     Whoobe — Publish Mobile App            ║${NC}"
 echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════╝${NC}"
 echo ""
 

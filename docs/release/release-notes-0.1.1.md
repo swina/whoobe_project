@@ -1,4 +1,4 @@
-# Whoobe CMS 0.1.1 - release notes
+# Whoobe 0.1.1 - release notes
 
 The first release after 0.1.0 (2026-10-14): the work done on `master` since then, 80 commits. One version number for the whole
 product. Written from `CHANGES.md` on **2026-10-18**; the procedure that turns this into a release is in
@@ -61,6 +61,7 @@ events) that touches the database and the gateway, so read "Behaviour changes" b
 | Markdown / rich-text fields bound to an element are converted in generated sites | pages that showed raw markdown now show formatted text | regenerate and republish the sites |
 | Objects list: a click on a row no longer opens the record | editors who relied on it | right click > Edit |
 | Images of the two SPAs are rebuilt with a newer `libexpat` | none | `docker compose up -d --build` |
+| **The product is called "Whoobe"** (it was "Whoobe CMS"): login page, browser title, the issuer shown by an authenticator app for a **new** 2FA enrolment (existing enrolments keep working), the sender name suggested for mail, the CLI help | text only; package names (`@whoobe-cms/*`), image names and the repository are unchanged | nothing |
 
 ## Known limits
 

@@ -9,7 +9,7 @@
 > [configuration reference](configuration-reference.md)) and starts services outside Compose, where a missing `DB_PASSWORD` now stops the service at start (F-057). Use it only if Docker is not an option, and set every
 > variable of the configuration reference explicitly.
 
-Deploy Whoobe CMS on an **Oracle Cloud Infrastructure (OCI) Always Free Tier** VM. This guide covers a single-VM deployment running all services behind nginx with Let's Encrypt SSL.
+Deploy Whoobe on an **Oracle Cloud Infrastructure (OCI) Always Free Tier** VM. This guide covers a single-VM deployment running all services behind nginx with Let's Encrypt SSL.
 
 ## Oracle Free Tier Resources
 
@@ -172,7 +172,7 @@ Nothing to run on the VM; durability and backups are the provider's.
 2. Create an OCI Customer Secret Key and use it as `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`.
 3. Set `S3_ENDPOINT` to `https://<namespace>.compat.objectstorage.<region>.oraclecloud.com`, `S3_REGION` to your region and `S3_FORCE_PATH_STYLE=true`.
 
-## 5. Clone & Build Whoobe CMS
+## 5. Clone & Build Whoobe
 
 ```bash
 mkdir -p /opt/whoobe

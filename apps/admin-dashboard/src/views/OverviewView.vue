@@ -12,7 +12,7 @@
       <div class="absolute -right-10 -bottom-10 w-60 h-60 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
       <div class="relative z-10 space-y-1">
         <h2 class="text-2xl font-bold text-white light:text-black tracking-tight">Welcome back, Administrator 👋</h2>
-        <p class="text-slate-400 light:text-slate-600 text-sm">System performance and repository status across Whoobe CMS modules.</p>
+        <p class="text-slate-400 light:text-slate-600 text-sm">System performance and repository status across Whoobe modules.</p>
       </div>
       <div class="mt-4 md:mt-0 flex items-center space-x-3 relative z-10">
         <button class="btn btn-secondary">
@@ -54,7 +54,7 @@
         <div class="flex items-center justify-between pb-4 border-b border-slate-800 light:border-slate-400">
           <div>
             <h3 class="font-semibold text-slate-100 light:text-slate-900">Recent Data Objects</h3>
-            <p class="text-xs text-slate-400 light:text-slate-600">Latest modified Whoobe CMS objects and entities</p>
+            <p class="text-xs text-slate-400 light:text-slate-600">Latest modified Whoobe objects and entities</p>
           </div>
           <button @click="tabsStore.openSection('objects')" class="btn btn-link">
             View All →

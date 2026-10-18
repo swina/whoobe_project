@@ -174,7 +174,7 @@ s = open('CHANGES.md', encoding='utf-8').read()
 parts = re.split(r'^# Release v.*$', s, flags=re.M)
 body = parts[1] if len(parts) > 1 else s
 titles = re.findall(r'^## \[(.+?)\] — (\d{4}-\d{2}-\d{2})', body, flags=re.M)
-print(f"# Whoobe CMS v{version}\n")
+print(f"# Whoobe v{version}\n")
 print(f"Released {today}. DRAFT: written from CHANGES.md headings; edit before publishing.\n")
 print("## Highlights\n\n_(write 3-6 lines for operators and buyers)_\n")
 print("## Behaviour changes to check when upgrading\n\n_(new or changed environment variables, new defaults, anything that stops working until configured)_\n")
@@ -189,7 +189,7 @@ EOF
   echo "Done. Review: git diff --stat; edit .release/notes-v$version.md"
   echo "Then, yourself:"
   echo "  git add -A && git commit -m \"Release v$version\""
-  echo "  git tag -a v$version -m \"Whoobe CMS v$version\""
+  echo "  git tag -a v$version -m \"Whoobe v$version\""
   echo "  git push origin $branch --follow-tags"
 }
 

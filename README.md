@@ -192,7 +192,7 @@ VITE_FONT_FAMILIES=Alfa+Slab+One|Asap+Condensed|Abel|Alice|Alegreya|Amethysta|Ar
 
 ### Docker
 
-The quickest way to test Whoobe CMS is to run the `docker-compose.yml`
+The quickest way to test Whoobe is to run the `docker-compose.yml`
 
 ```
 $ git clone https://github.com/swina/whoobe_project
@@ -313,6 +313,6 @@ See `docs/release/content/publishing/website-publishing.md` for the full guide.
 
 ## License
 
-Whoobe CMS is released under the [MIT License](LICENSE.md). Copyright (c) 2026 Antonio Nardone.
+Whoobe is released under the [MIT License](LICENSE.md). Copyright (c) 2026 Antonio Nardone.
 
 The license covers this repository's own code and documentation; the third-party packages it depends on keep their own licenses.

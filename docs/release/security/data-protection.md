@@ -3,7 +3,7 @@
 For data-protection officers, security officers and customers who have to fill in a record of processing, a DPIA or a
 vendor questionnaire. It states **what personal data the product processes, where it is, which third parties can receive
 it, how long it is kept and how it can be exported or deleted**. It is a technical description, not legal advice, and
-Whoobe CMS is software you operate: **the operator is the controller** (or processor for its own customers); the
+Whoobe is software you operate: **the operator is the controller** (or processor for its own customers); the
 product has no telemetry and sends nothing to the project's authors.
 
 ## 1. Roles

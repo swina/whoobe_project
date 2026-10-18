@@ -841,7 +841,7 @@ async function promoteStaging(flags: CliFlags): Promise<void> {
 
 export function runMigrationCli(args: string[] = process.argv.slice(2)): void {
   console.log('----------------------------------------------------');
-  console.log('PIMCORE TO WHOOBE CMS MIGRATION SUITE');
+  console.log('PIMCORE TO WHOOBE MIGRATION SUITE');
   console.log('----------------------------------------------------');
 
   const command = args[0] || 'help';

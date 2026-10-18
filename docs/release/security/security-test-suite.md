@@ -1,6 +1,6 @@
-# Whoobe CMS - Automated Security Test Suite
+# Whoobe - Automated Security Test Suite
 
-**Audience:** enterprise security, risk and compliance teams evaluating Whoobe CMS.
+**Audience:** enterprise security, risk and compliance teams evaluating Whoobe.
 **Scope of this document:** what the two automated security commands shipped in this repository actually do,
 what they assert, how results are judged, and what they do *not* cover.
 

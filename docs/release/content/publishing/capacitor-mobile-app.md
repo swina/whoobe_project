@@ -5,7 +5,7 @@ Generate a **native iOS/Android mobile app** from your Whoobe website using Capa
 ## Prerequisites
 
 - Node.js 20+ and pnpm 9+
-- A running Whoobe CMS with public API access
+- A running Whoobe with public API access
 - A website with at least one page of **kind "app"** (set in the page editor's settings)
 - For iOS: macOS with Xcode
 - For Android: Android Studio
@@ -131,7 +131,7 @@ User opens app ─────→│ WebView loads     │
                      └──────────────────┘
                             │ HTTPS
                      ┌──────┴──────┐
-                     │  Whoobe CMS │
+                     │   Whoobe    │
                      │ (core-api)  │
                      └─────────────┘
 ```

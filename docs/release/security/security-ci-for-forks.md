@@ -1,9 +1,9 @@
-# Security CI - what you get when you fork or clone Whoobe CMS
+# Security CI - what you get when you fork or clone Whoobe
 
 **Audience:** teams and companies that fork or clone this repository to run, extend or resell it, and the buyers,
 security reviewers and compliance teams who evaluate them.
 
-Whoobe CMS ships with a security verification pipeline as part of the source. It is not a separate product or a
+Whoobe ships with a security verification pipeline as part of the source. It is not a separate product or a
 paid add-on: it is the `security` workflow, the test suites under `scripts/security/` and the Dependabot
 configuration, and they come with every fork. This page explains what that gives you in business terms and in
 technical terms, and where its limits are.

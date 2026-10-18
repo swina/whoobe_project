@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Whoobe CMS API
+  title: Whoobe API
   description: >
     HTTP APIs exposed by this monorepo's backend services (core-api, gateway,
     asset-processor). Companion machine-readable spec for

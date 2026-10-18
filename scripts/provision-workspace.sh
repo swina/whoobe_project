@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Provision a new, fully isolated Whoobe CMS workspace stack.
+# Provision a new, fully isolated Whoobe workspace stack.
 #
 # Usage: ./scripts/provision-workspace.sh <slug> <hostname> <index> [--seed-email EMAIL] [--seed-password PASS] [--scheme http|https]
 #                                         [--profile NAME] [--set KEY=VALUE ...]

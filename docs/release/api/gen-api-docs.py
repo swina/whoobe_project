@@ -563,7 +563,7 @@ def openapi_for(all_services):
     lines = []
     lines.append("openapi: 3.0.3")
     lines.append("info:")
-    lines.append("  title: Whoobe CMS API")
+    lines.append("  title: Whoobe API")
     lines.append('  description: >')
     lines.append("    HTTP APIs exposed by this monorepo's backend services (core-api, gateway,")
     lines.append("    asset-processor). Companion machine-readable spec for")

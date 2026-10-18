@@ -1,3 +1,9 @@
+## The product is called "Whoobe", not "Whoobe CMS" — 2026-10-18
+- Branch: `master`
+- Text only, 38 files: "Whoobe CMS" became "Whoobe" in the documentation of the release (`docs/release`, except the 0.1.0 notes, which keep the name of that release), README, `.env.example`, compose and deploy file headers, the dashboard (browser title, login page, three descriptions, the suggested mail sender name), the TOTP issuer shown by authenticator apps for a new enrolment (`packages/core/src/auth/mfa.ts`; existing enrolments are not affected), the help and banners of the publish and mobile CLIs and scripts, the migration tool banner, the live mail check, `release.yml` (title of the draft release), `release.sh` (title and tag message), the OpenAPI title (`gen-api-docs.py` and `openapi.yaml`). Two ASCII boxes and two script banners were re-padded.
+- Not changed on purpose: the package scope `@whoobe-cms/*`, image and container names, the repository name; `docs/plans/` and older `CHANGES.md` entries (history); the Figma converter test and its fixture (sample text of a Figma file, not the product name).
+- Checked: `check-docs.py` passes, core tests (352) pass, `vue-tsc` clean. The security unit suite and the DAST run again in CI on this commit.
+
 ## Release notes 0.1.1 and security summary — 2026-10-18
 - Branch: `master`
 - `docs/release/release-notes-0.1.1.md` (new): what is in 80 commits since v0.1.0 (object events, loop guard, Objects list and edit form, renderer markdown, upgrade/restore/load tooling, release workflow, libexpat), the behaviour changes to check (migration 0059, `object_events:manage` for `admin`, the gateway worker, new optional variables, markdown in generated sites, the click on a row), and the known limits.

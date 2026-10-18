@@ -1,6 +1,6 @@
 # Creating a Workspace
 
-A **workspace** is a fully independent Whoobe CMS install for one client: its own Postgres database, its own S3 store and bucket, its own core-api/asset-processor/gateway/admin-dashboard/whoobe-one-spike containers, its own users/roles/logins, and its own hostname. Nothing is shared between workspaces — see `docs/plans/system/workspaces-plan.md` for why this isolation model was chosen over a shared-database, `workspaceId`-scoped alternative.
+A **workspace** is a fully independent Whoobe install for one client: its own Postgres database, its own S3 store and bucket, its own core-api/asset-processor/gateway/admin-dashboard/whoobe-one-spike containers, its own users/roles/logins, and its own hostname. Nothing is shared between workspaces — see `docs/plans/system/workspaces-plan.md` for why this isolation model was chosen over a shared-database, `workspaceId`-scoped alternative.
 
 This guide covers the day-to-day operation: provisioning a new workspace, verifying it, enabling HTTPS, and managing/removing one later. It assumes a host with Docker and Docker Compose. **nginx on the host is optional**: without it the scripts run one shared containerized reverse proxy (`whoobe-proxy`) for every workspace. Base host setup: `docs/release/operations/deployment.md`.
 

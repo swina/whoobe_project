@@ -6,8 +6,8 @@ const program = new Command()
 
 program
   .name('whoobe-publish')
-  .description('Generate a deployable website from Whoobe CMS')
-  .requiredOption('--api-url <url>', 'Base URL of the Whoobe CMS public API (e.g. https://cms.example.com)')
+  .description('Generate a deployable website from Whoobe')
+  .requiredOption('--api-url <url>', 'Base URL of the Whoobe public API (e.g. https://cms.example.com)')
   .requiredOption('--website-id <id>', 'UUID of the website to publish')
   .requiredOption('--out-dir <path>', 'Output directory for the generated project')
   .option('--kind <kind>', 'What to generate: site (a website, with --framework) or docs (a documentation website as static HTML)', 'site')

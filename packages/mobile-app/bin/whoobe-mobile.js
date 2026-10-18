@@ -6,8 +6,8 @@ const program = new Command()
 
 program
   .name('whoobe-mobile')
-  .description('Generate a Capacitor mobile app from Whoobe CMS')
-  .requiredOption('--api-url <url>', 'Base URL of the Whoobe CMS public API (e.g. https://cms.example.com)')
+  .description('Generate a Capacitor mobile app from Whoobe')
+  .requiredOption('--api-url <url>', 'Base URL of the Whoobe public API (e.g. https://cms.example.com)')
   .requiredOption('--website-id <id>', 'UUID of the website to publish')
   .requiredOption('--out-dir <path>', 'Output directory for the generated mobile app')
   .option('--domain <domain>', 'Custom domain for the API (defaults to api-url host)')

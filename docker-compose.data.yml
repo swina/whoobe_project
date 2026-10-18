@@ -1,4 +1,4 @@
-# Whoobe CMS — full local-development stack.
+# Whoobe — full local-development stack.
 #   docker compose up -d --build
 #
 # The Vite frontends (admin-dashboard port 3000, whoobe-one-spike port 3006)

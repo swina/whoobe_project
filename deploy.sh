@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy Whoobe CMS to production server.
+# Deploy Whoobe to production server.
 # Usage: ./deploy.sh [--dry-run]
 #   --dry-run  Show what would be synced without transferring anything.
 #

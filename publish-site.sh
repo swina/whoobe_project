@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate a standalone published website from a Whoobe CMS website.
+# Generate a standalone published website from a Whoobe website.
 #
 # Interactive:      ./publish-site.sh
 # Non-interactive:  ./publish-site.sh --yes --api-url https://cms.example.com --website <uuid> --framework next --gateway-url https://gw.example.com
@@ -20,7 +20,7 @@
 #
 # Prerequisites:
 #   - Node.js 20+ and pnpm 9+
-#   - A running Whoobe CMS with public API access
+#   - A running Whoobe with public API access
 
 set -euo pipefail
 
@@ -93,7 +93,7 @@ die() { echo -e "${BOLD}${RED}Error:${NC} $*" >&2; exit 1; }
 
 echo ""
 echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${CYAN}║     Whoobe CMS — Publish Website             ║${NC}"
+echo -e "${BOLD}${CYAN}║     Whoobe — Publish Website                 ║${NC}"
 echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════╝${NC}"
 echo ""
 
