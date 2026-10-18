@@ -95,6 +95,5 @@ feature (point it at `docs/release`); not automated.
 ## 8. Not done yet
 
 - A first run of `release.yml` on GitHub (the package visibility on ghcr.io, the cosign signature, the draft). Image SBOMs and the CI security reports are still attached by hand.
-- Confirming that the `upgrade` workflow (`.github/workflows/upgrade.yml`, runs `scripts/upgrade/upgrade-test.sh` on a `v*` tag or by hand) passes on GitHub: written, not yet run there.
 - Pinning the base images' freshness: the pinned digests lag behind Debian's security updates (see `CHANGES.md`,
   2026-10-05), which today costs a patch release or a manual `apt-get` upgrade line in the `Dockerfile`.

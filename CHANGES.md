@@ -1,3 +1,7 @@
+## Upgrade workflow passed on GitHub — 2026-10-18
+- Branch: `docs/upgrade-ci-passed` (after the merge of `feat/release-0.2` into `master`)
+- `upgrade` workflow dispatched by hand on `master`: v0.1.0 to master, 59 -> 60 migrations, data and login intact, 5 minutes. The statements "written, not run" for it removed from `release-process.md`, the upgrade page, overview 4.6 and plan A1. `release.yml` is still not run.
+
 ## Release workflow — 2026-10-18
 - Branch: `feat/release-0.2`
 - `.github/workflows/release.yml` (new), on a tag `vX.Y.Z`: stops if the tag differs from `package.json`; builds `core-api`, `asset-processor`, `gateway` and `publisher` for amd64 and arm64, pushes `ghcr.io/<owner>/whoobe-<service>:X.Y.Z` and `:X.Y`, signs each by digest with cosign (keyless); then creates a **draft** GitHub Release with `docs/release/release-notes-X.Y.Z.md`, the digests, `openapi.yaml` and the source SBOM (`scripts/release/sbom.sh`).
