@@ -26,5 +26,30 @@ for (const file of ['deploy/nginx/_locations.conf.template']) {
       expect(corePrefixes.length).toBeGreaterThan(5)
       expect(corePrefixes.filter((p) => !routed.has(p))).toEqual([])
     })
+
+    // The same failure for every other prefix: a route that core-api answers but the template does not send there falls to the dashboard
+    // SPA and answers with HTML ("Unexpected token '<'"). It happened with /object-event-subscriptions, /docs-sites, /mail-providers and
+    // /publish/jobs, which the dashboard calls and which the template did not list.
+    it('routes every top-level prefix of core-api to core-api', () => {
+      const topRegex = /location ~ \^\/\(([^)]*)\)\(\/\.\*\)\?\$ \{\n\s+proxy_pass http:\/\/127\.0\.0\.1:__CORE_API_PORT__;/.exec(text)?.[1] ?? ''
+      const top = new Set(topRegex.split('|'))
+      // prefixes with a location of their own (and why)
+      const own: Record<string, string> = {
+        'whoobe-one': 'its own locations (checked above)',
+        'site-root': 'the internal auth_request location /_whoobe_site_root',
+        'api': '/api/v1/system/ has its own location below; the rest of /api/ belongs to the gateway and the asset service',
+      }
+      const prefixes = [...new Set(routes.map((r) => /^\w+ \/([^/:]+)/.exec(r)?.[1]).filter((p): p is string => !!p))]
+      expect(prefixes.length).toBeGreaterThan(15)
+      expect(prefixes.filter((p) => !top.has(p) && !own[p])).toEqual([])
+    })
+
+    it('routes the dashboard\'s publication routes and the system log viewer to core-api, and not the publisher\'s own', () => {
+      const m = /location ~ \^\/\(([^)]*)\)\(\/\.\*\)\?\$ \{\n\s+proxy_pass http:\/\/127\.0\.0\.1:__CORE_API_PORT__;/g
+      const regexes = [...text.matchAll(m)].map((x) => x[1])
+      expect(regexes.some((r) => r.split('|').includes('publish/jobs'))).toBe(true)
+      expect(regexes.some((r) => r.includes('publish/runner'))).toBe(false)
+      expect(regexes.some((r) => r.split('|').includes('api/v1/system'))).toBe(true)
+    })
   })
 }
