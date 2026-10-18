@@ -8,7 +8,7 @@ data are entered (secrets are stored encrypted).
 
 | File | Service | Checked |
 |---|---|---|
-| [`resend.json`](resend.json) | [Resend](https://resend.com/docs/api-reference/emails/send-email) | request and answer read against the Resend API reference on 2026-10-18; unit test; **one real message accepted by Resend on 2026-10-18** (`live-check`, verified domain), and a rejected sender read back as `HTTP 403 - <Resend's text>` |
+| [`resend.json`](resend.json) | [Resend](https://resend.com/docs/api-reference/emails/send-email) | request and answer read against the Resend API reference on 2026-10-18; unit test; **one real message accepted by Resend and received on 2026-10-18** (`live-check`, verified domain), **and one sent from the dashboard (Email Test) and received**; a rejected sender is read back as `HTTP 403 - <Resend's text>` |
 
 ## Resend
 

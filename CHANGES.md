@@ -1,3 +1,8 @@
+## Resend recipe: received from the dashboard — 2026-10-18
+- Branch: `master` (merged from `feat/mail-resend`)
+- Confirmed by the owner: the `live-check` message arrived in the inbox, and after the sender fix the Email Test from Settings > Outgoing Mail (recipe copied into the `MAIL_PROVIDERS_PATH` folder of the development instance, no restart) arrived too. The recipe is checked end to end: file in the folder, provider in the dashboard, key stored encrypted, send, Resend's id.
+- Merged into `master`: `examples/mail-providers/` (not in the images, no release effect), the unit test, `live-check --providers`, the "Recipes" section of the mail providers guide.
+
 ## Resend recipe: the sender goes out as the address only — 2026-10-18
 - Branch: `feat/mail-resend`
 - Found by the owner in the dashboard (Email Test): `Resend: HTTP 422 - Invalid from field`. The recipe sent `{{fromName}} <{{from}}>`; when the mail has no display name (the test dialog's *From* field filled with a plain address, which `mailer.ts` turns into an address without name) the value was ` <address>` with a leading space, refused by Resend. The format has no conditions, so the recipe cannot write "name if there is one".
