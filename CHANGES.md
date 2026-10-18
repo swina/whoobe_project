@@ -1,3 +1,8 @@
+## Plan: audit log of administrative actions — 2026-10-18
+- Branch: `feat/audit-log`
+- `docs/plans/system/audit-log-plan.md` (new): what is recorded (actor, ip, action, target, before / after on allow-lists, no secrets), how (an `audited(spec)` guard per route, after the permission guard; the insert on the response `finish`; a failed insert is logged and counted in `/health`, the request is not failed), what is audited in version 1 (users, roles, websites, settings, publication, integrations) and what is exempt with a reason, storage (`audit_log`, migration 0060, append only by a database trigger, retention `AUDIT_RETENTION_DAYS` default 365), reading (`GET /audit-log`, new permission `audit:read`, CSV), the test that finds an omission (a decision per changing route in `routes.expected.json`), what is not in version 1 (failed attempts, gateway administration, tamper evidence), order of work. Nothing built. Defaults taken until the owner decides: 365 days, separate `audit:read`, successful actions only.
+- Release 0.2 plan block A2 unchanged; this is its first item.
+
 ## Resend recipe: received from the dashboard — 2026-10-18
 - Branch: `master` (merged from `feat/mail-resend`)
 - Confirmed by the owner: the `live-check` message arrived in the inbox, and after the sender fix the Email Test from Settings > Outgoing Mail (recipe copied into the `MAIL_PROVIDERS_PATH` folder of the development instance, no restart) arrived too. The recipe is checked end to end: file in the folder, provider in the dashboard, key stored encrypted, send, Resend's id.
