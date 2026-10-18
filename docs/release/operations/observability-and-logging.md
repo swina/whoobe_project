@@ -34,10 +34,11 @@ set a size limit on the driver, and mount `LOG_DIR` if you rely on the local fil
 | Every outgoing mail | table `mail_log` | - |
 | Sessions: created, last seen, IP, user agent | table `sessions` (id stored as a hash; rows deleted a week after expiry or revocation) | - |
 
-**There is no audit log of administrative actions**: creating or deleting users, changing roles or permissions,
-changing settings, deleting content, exporting or importing a website, regenerating a site key, enabling uploads. Whoever
-needs that evidence must derive it from the nginx access log (method, path, status, address, but not the session user)
-and the application log. This is a known gap for regulated environments.
+**Administrative actions have an [audit log](audit-log.md)** (table `audit_log`, read with the permission `audit:read`): users and roles, websites,
+settings, publication, migration sources and object event subscriptions, with the actor, the address and the fields before and after, and no
+secrets. It records successful actions only; refused and failed attempts, the editing of content (version history) and the administration of the
+Gateway are not in it. Evidence for those still comes from the nginx access log (method, path, status, address, but not the session user)
+and the application log.
 
 ## 3. Health and readiness
 
@@ -75,6 +76,6 @@ the real cause is in the log line written by the handler (`logger.error({ err },
 
 ## 6. Gaps
 
-No audit trail of admin actions, no metrics or tracing, a health route that does not check dependencies, no log retention
+The audit log covers successful administrative actions only (no failed attempts, no Gateway administration, no tamper evidence beyond the database rule); no metrics or tracing, a health route that does not check dependencies, no log retention
 policy, no tamper protection of logs, no per-request correlation id. Each is an item for the roadmap of a regulated
 deployment; the workarounds above cover the common questions.

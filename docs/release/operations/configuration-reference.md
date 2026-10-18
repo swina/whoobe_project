@@ -137,6 +137,7 @@ cannot be lost** - see [secrets and keys](secrets-and-keys.md).
 |---|---|---|
 | `LOG_LEVEL` | `info` | `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace`; can also be switched at run time (log toggle) |
 | `LOG_DIR` | `./logs` | where rotated files are written before upload to the DAM log folder |
+| `AUDIT_RETENTION_DAYS` | `365` | core-api: days to keep rows of the [audit log](audit-log.md); older rows are deleted at start and then daily; `0` keeps everything |
 
 ## 9. Browser builds (Vite, baked at image build time)
 

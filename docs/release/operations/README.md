@@ -22,6 +22,7 @@ Running Whoobe: installing a workspace, configuring it, securing it, backing it 
 | [Secrets and keys](secrets-and-keys.md) | Inventory of secrets, lost or leaked, how to rotate |
 | [Encryption](encryption.md) | At rest, in transit, backups, answers for a questionnaire |
 | [Backup, restore and DR](backup-restore-and-dr.md) | What to recover and a runbook |
+| [Audit log](audit-log.md) | Who changed what: what is recorded, how to read it, retention |
 | [Upgrade and migrations](upgrade-and-migrations.md) | Moving to the next release, going back |
 | [Capacity and scaling](capacity-and-scaling.md) | What one workspace can do; what limits replicas |
 | [Observability and logging](observability-and-logging.md) | What is recorded, what can be monitored, what is not available |

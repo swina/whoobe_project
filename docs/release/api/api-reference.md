@@ -287,6 +287,12 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `DELETE /object-event-subscriptions/:id/deliveries` | Clear finished deliveries from the log: body `{ ids: [...] }` (up to 500) or `{ status: 'delivered' | 'dead' | 'stopped' }`; returns `{ removed }`. A delivery still pending or retrying is never removed; the events and the loop guard counts are not touched. |
 | `POST /object-event-deliveries/:id/retry` | Retry a delivery that gave up (`dead`); 409 for any other status. |
 
+### Audit log of administrative actions (permission `audit:read`, read only)
+
+| Method & path | Description |
+| --- | --- |
+| `GET /audit-log` | The audit log, newest first: who (user, address), what (`action`), on which target, and the fields before and after (never a secret). Filters: `action` (exact, or a prefix ending in `.`, such as `user.`), `actor` (user id), `targetType`, `targetId`, `from`, `to` (ISO dates), `limit` (default 100, at most 5000), `offset`. Returns `{ entries, total }`; `?format=csv` returns the same rows as a file. There is no route that writes or deletes a row. |
+
 ### Documentation sites (Markdown)
 
 | Method & path | Description |

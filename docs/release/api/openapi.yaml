@@ -3677,6 +3677,19 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /audit-log:
+    get:
+      tags: ["core-api: Audit log of administrative actions (permission `audit:read`, read only)"]
+      summary: "The audit log, newest first: who (user, address), what (`action`), on which target, and the fields before and after (never a secret). Filters: `action` (exact, or a prefix ending in `.`, such as `user.`), `actor` (user id), `targetType`, `targetId`, `from`, `to` (ISO dates), `limit` (default 100, at most 5000), `offset`. Returns `{ entries, total }`; `?format=csv` returns the same rows as a file. There is no route that writes or deletes a row."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /docs-sites/{websiteId}/tree:
     get:
       tags: ["core-api: Documentation sites (Markdown)"]
