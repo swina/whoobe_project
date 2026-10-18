@@ -206,7 +206,7 @@ it does not, we say that too.
 |---|---|
 | **First release (0.1.0)** | Installed from scratch on one reference machine (an arm64 virtual machine). That install found and fixed real defects. Expect more in the first months. While the version starts with 0, a minor release may change behaviour; the release notes tell you what. |
 | **Upgrades are untested** | A script (`scripts/upgrade/upgrade-test.sh`) upgrades a stack from v0.1.0 to the current tree and checks the migrations, the data and a login; a workflow runs it on a release tag or by hand (passed on GitHub on 2026-10-18). The rest of the upgrade and rollback procedures (images on a real host, nginx) is written, not rehearsed. |
-| **Restore has not been rehearsed** | The database backup is scripted and encrypted; the asset bucket is not (you use your storage provider's tools). Run a restore once, on a spare machine, before you rely on it. |
+| **Restore has not been rehearsed** | The database and bucket backups are scripted (the database dump encrypted, the bucket copy not) and `scripts/restore/rehearse.sh` restores a throwaway workspace from them (passed 2026-10-18, small data, one machine). A restore of your own data on a spare machine is still yours to run before you rely on it. |
 | **Images are built and published by hand** | Not yet by an automated pipeline; no signatures or provenance attestations. A software bill of materials can be generated. |
 | **Some checks must be repeated on the release commit** | The dynamic security scan and the manual security checklist were last run before the final features were added. The release process requires a new run. |
 | **Documentation is English only,** and the user manual is partial (several chapters are listed but not written). | Training material for editors in other languages is yours to produce. |
@@ -303,7 +303,7 @@ database with encryption, restore it, and remove the workspace. Security scannin
 |---|---|
 | Single sign-on | Not available; local accounts. |
 | Monitoring and alerting | Your platform's; the services expose container health and logs only. |
-| Backup of the asset bucket | Your storage provider's versioning or a sync job. Not scripted. |
+| Encrypted backup of the asset bucket | `backup-workspace-bucket.sh` copies it; the copy is not encrypted by the script. |
 | High availability | One instance per service; restore from backup is the recovery path. |
 | Retention and erasure jobs | Yours to write ([data protection](../security/data-protection.md) lists where the data is). |
 | An automation engine, if you want one | A second system, outside the workspace, with its own database and secrets ([how](../communication/automations-architecture.md)). |
@@ -382,7 +382,8 @@ data retention; keep the engine of any automation behind HTTPS with a secret on 
 | Automated tests | API about 1,170, unit about 270, isolation 14, browser 30, run in CI; plus the tests of the packages |
 | Security review | 59 findings recorded; High all fixed; remaining items listed |
 | Dynamic scan (OWASP ZAP) | Active scan of 154 routes with an admin session found nothing above informational, before the last features; to be repeated |
-| Upgrade, rollback, restore, multi-replica, load | **Not tested** |
+| Upgrade (database step), restore (throwaway workspace) | Tested by script, small data (2026-10-18) |
+| Rollback, multi-replica, load, restore on a real host | **Not tested** |
 | External audit or certification | **None** |
 | Documentation | Technical set (architecture, operations, security) written from the code; user manual partial; checked automatically for broken links, non-existent paths and undocumented settings |
 

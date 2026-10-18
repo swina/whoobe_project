@@ -1,3 +1,10 @@
+## Restore rehearsal and bucket backup — 2026-10-18
+- Branch: `feat/restore-rehearsal`
+- `scripts/backup-workspace-bucket.sh` (new): copies a workspace's bucket to `DIR/<slug>-bucket` with rclone (pinned image `rclone/rclone:1.68.2`, S3 key from `.env.<slug>`, secrets in the container environment) or back into it with `--restore`; `BACKUP_S3_ENDPOINT` for an external S3. Not encrypted (documented).
+- `scripts/restore/rehearse.sh` (new): on a throwaway workspace `restoretest` (ports dev +500): data in the database and the bucket, backup with the real scripts (temporary GPG key), delete workspace and volumes, restore from the files, check migrations, users, object, file checksum and login. Passed, 3.5 minutes. Cleans up after itself (`--keep` to inspect).
+- Documentation: `backup-restore-and-dr.md` (tools table, plan, runbook step 4, new "Rehearsed" section with what it does and does not prove), overview 4.6 and limits table, plan A1.
+- Not done: a rehearsal on a spare host with real data, `age` (GPG used), nginx files and certificates; no CI job (not asked for).
+
 ## Upgrade workflow passed on GitHub — 2026-10-18
 - Branch: `docs/upgrade-ci-passed` (after the merge of `feat/release-0.2` into `master`)
 - `upgrade` workflow dispatched by hand on `master`: v0.1.0 to master, 59 -> 60 migrations, data and login intact, 5 minutes. The statements "written, not run" for it removed from `release-process.md`, the upgrade page, overview 4.6 and plan A1. `release.yml` is still not run.

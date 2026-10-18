@@ -10,7 +10,7 @@ how often you run the steps below.
 | Part | Where | Recreated from | Backed up by |
 |---|---|---|---|
 | Database | PostgreSQL volume `pgdata` | nothing: it is the system of record | `scripts/backup-workspace.sh` (`pg_dump \| gzip \| age`) |
-| Assets and logs | the S3 bucket (Garage volume `garagedata`, or an external bucket) | nothing | **not scripted**: provider versioning/replication, or `rclone`/`mc`/`aws s3 sync` into encrypted storage |
+| Assets and logs | the S3 bucket (Garage volume `garagedata`, or an external bucket) | nothing `scripts/backup-workspace-bucket.sh <slug>` (rclone copy to a directory, **not encrypted**: put it on encrypted storage); or provider versioning/replication |
 | Secrets and keys | `.env.<slug>` | nothing (without it encrypted values are unreadable) | `backup-workspace.sh` (`.env.<slug>.age`, unless `--no-env`) |
 | Application | the git tag and the images | `git checkout vX.Y.Z`, `docker compose up -d --build` | the repository; keep the tag/digests of what ran |
 | Edge configuration | `deploy/nginx/_locations-<slug>.inc`, the vhost files, certificates | `provision-workspace.sh`, `render-workspace-nginx.sh`, `enable-tls.sh` | rebuilt by the scripts; keep any local edits and `/etc/letsencrypt` |
@@ -24,7 +24,8 @@ rest. Form uploads waiting in `private/_uploads/` are disposable (they expire af
 
 | Tool | Does | Does not |
 |---|---|---|
-| `scripts/backup-workspace.sh <slug>` | encrypted dump of the database and of `.env.<slug>`, `--keep N` pruning, refuses to run without a recipient | back up the bucket, the nginx files, certificates or logs; run itself (use cron/systemd timer) |
+| `scripts/backup-workspace.sh <slug>` | encrypted dump of the database and of `.env.<slug>`, `--keep N` pruning, refuses to run without a recipient | back up the bucket (that is the next row), the nginx files or certificates; run itself (use cron/systemd timer) |
+| `scripts/backup-workspace-bucket.sh <slug> [--out-dir DIR] [--restore]` | copy the bucket (assets, logs) to `DIR/<slug>-bucket` with rclone in a pinned Docker image, or copy it back into the bucket (adds and overwrites, deletes nothing); works with the bundled Garage and, with `BACKUP_S3_ENDPOINT`, an external S3 | encrypt the copy; run itself |
 | `scripts/restore-workspace-db.sh --check <file>` | decrypts and test-reads a backup without touching a workspace or Docker | |
 | `scripts/restore-workspace-db.sh <slug> <file>` | drops and recreates the workspace database from the dump after you type the slug | restore the bucket or the env file; run while the apps are up (stop them first) |
 | Page/snippet history (`content_versions`, the editor's *History*) | undo of editing mistakes inside the application | protect against deletion of the whole object or table |
@@ -32,21 +33,22 @@ rest. Form uploads waiting in `private/_uploads/` are disposable (they expire af
 | `docker compose down` / `scripts/remove-workspace.sh` | remove a workspace (with `-v` the volumes): **destructive**, asks for the slug | |
 
 Not provided: point-in-time recovery (WAL archiving, `pg_basebackup`), replication or a standby, backup monitoring or
-alerting, an automated restore test, scripted bucket backup.
+alerting, a scripted backup of the nginx files and certificates, a restore of a real, large workspace.
 
 ## 3. A backup plan that covers everything
 
 Per workspace, daily unless the business needs better:
 
 1. `BACKUP_AGE_RECIPIENT=age1… ./scripts/backup-workspace.sh <slug> --out-dir /var/backups/whoobe --keep 14` (cron, 03:00).
-2. Bucket: versioning + cross-region replication (cloud S3), or `rclone sync` of the bucket to an encrypted location
-   (Garage). Run it **right after** step 1 so the two are as close as possible.
+2. Bucket: `scripts/backup-workspace-bucket.sh <slug> --out-dir <encrypted location>` (Garage or any S3), or versioning +
+   cross-region replication (cloud S3). Run it **right after** step 1 so the two are as close as possible.
 3. Copy everything off the host (object storage with versioning or object lock, a second site). The files are encrypted,
    so the copy can be on infrastructure you do not fully trust.
 4. Keep the backup **private key off the host** and with a second person.
 5. For a database larger than a few GB or an RPO below a day: use your database platform's own PITR (managed PostgreSQL,
    WAL archiving) and point `DB_HOST`/`DB_SSL` at it.
 6. Once a month, restore into a scratch workspace (section 5) and log in: a backup nobody restored is unverified.
+   `scripts/restore/rehearse.sh` does the whole cycle on a throwaway workspace (see "Rehearsed" below).
 
 Rough sizing: the dump is small (JSON content, a few MB to some hundreds of MB); the bucket is large (assets).
 
@@ -65,14 +67,14 @@ Nothing is measured by the product; these are consequences of the plan, to be co
 Prerequisites: Docker + Compose, the repository at the tag that ran, `age` and the private key, the encrypted files.
 
 1. `git checkout vX.Y.Z` (the version recorded for the workspace). Restoring into an **older** version than the dump's
-   schema is not supported; into a newer one is the normal upgrade path (migrations run at start) but has **not yet been
-   tested end to end** ([upgrade](upgrade-and-migrations.md)).
+   schema is not supported; into a newer one is the normal upgrade path (migrations run at start) and the database step is tested by
+   script ([upgrade](upgrade-and-migrations.md)).
 2. Decrypt the env file: `age -d -i key.txt <slug>-….env.age > .env.<slug>`; `chmod 600 .env.<slug>`. Check
    `WHOOBE_HOSTNAME`, `ADMIN_PUBLIC_URL` and the ports for the new host. Do **not** generate new keys: the restored
    data needs the old ones.
 3. Create the stack without the application: `docker compose -p ws-<slug> --env-file .env.<slug> up -d postgres garage`
    (or only `postgres` with an external bucket). Garage creates the bucket and key named in the env file.
-4. Restore the bucket contents into it (your sync tool, with the workspace's S3 key).
+4. Restore the bucket contents into it: `./scripts/backup-workspace-bucket.sh <slug> --out-dir <where the copy is> --restore` (or your own sync tool, with the workspace's S3 key).
 5. `AGE_IDENTITY=key.txt ./scripts/restore-workspace-db.sh --check <dump>`, then
    `./scripts/restore-workspace-db.sh <slug> <dump>`.
 6. Start everything: `docker compose -p ws-<slug> --env-file .env.<slug> up -d --build`. core-api applies any newer migrations.
@@ -81,6 +83,19 @@ Prerequisites: Docker + Compose, the repository at the tag that ran, `age` and t
 8. Verify: log in, open a page in the editor, open a public page, load an image, submit a test form, check
    `docker compose … ps` shows `healthy`, check the core-api log for migration errors.
 9. Revoke old sessions if the old host may be compromised (see [secrets and keys](secrets-and-keys.md)).
+
+### Rehearsed
+
+`scripts/restore/rehearse.sh` (about 3.5 minutes, Docker and gpg) runs the cycle on a throwaway workspace `restoretest`: start it, write a
+class, an object and a file in the bucket, back up with the scripts above (database and env file encrypted with a temporary GPG key,
+bucket copied), **delete the workspace and its volumes**, recreate it from the decrypted env file, restore the bucket and the database,
+start core-api. It then checks the migrations, the users, the object, the file (checksum) and a login.
+
+- **2026-10-18: passed**, on a development machine (WSL2), one local Garage, a few rows and one file. It proves the tools and the order of
+  the runbook; it does **not** prove timings for a real database or bucket, a restore on another physical host, the nginx files, the
+  certificates, or `age` (the script uses GPG because it is the tool present on the machine; `age` goes through the same code path).
+- What the rehearsal found missing and was added: the bucket had no script; the other steps worked as written.
+- Still to do for the "Rehearsed" claim on a production setup: the same on your spare host, with your data size, and the time it took.
 
 ## 6. Scenarios
 
