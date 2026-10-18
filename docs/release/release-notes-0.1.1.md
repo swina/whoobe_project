@@ -68,7 +68,7 @@ events) that touches the database and the gateway, so read "Behaviour changes" b
 - Everything listed as a limit in the [0.1.0 notes](release-notes-0.1.0.md) and in chapter 4 of the [overview](overview/whoobe-overview.md) still applies,
   except that upgrading from 0.1.0 is now tested by script (database step only: image rebuild on a real host, nginx and the manual checks of step 7
   are written, not rehearsed) and a restore of a throwaway workspace is rehearsed.
-- No audit log of administrative actions, no OIDC login for staff, no mandatory 2FA: planned for 0.2 ([plan](../plans/system/release-0.2-plan.md)).
+- No audit log of administrative actions, no OIDC login for staff, no mandatory 2FA: planned for 0.2 ([plan](https://github.com/swina/whoobe_project/blob/master/docs/plans/system/release-0.2-plan.md)).
 - The load figures come from one development machine and four endpoints; uploads, AI, publishing and mixed traffic were not measured.
 - `release.yml` has not run before this release: if it fails, the images are built by hand as in 0.1.0 (release process, steps 5 to 7).
 - The manual security checklist was not repeated for the features added after 2026-10-09 (object events included).

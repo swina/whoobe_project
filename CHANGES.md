@@ -1,3 +1,7 @@
+## Release notes 0.1.1: link to the plan — 2026-10-18
+- Branch: `master`
+- `docs/release/release-notes-0.1.1.md`: the link to the 0.2 plan was a relative path outside `docs/release`; the documentation site generator (`--strict`) refused it as a broken link. Now a GitHub link, like the other references to `docs/plans`. The tag v0.1.1 holds the earlier text; documentation only.
+
 ## Release v0.1.1 published as a draft — 2026-10-18
 - Branch: `master`
 - Tag `v0.1.1` (`604e621`) pushed. `upgrade` workflow passed on the tag. `release` workflow: the first attempt failed on all four images with `permission_denied: write_package` (the four packages existed on ghcr.io from 0.1.0, created by hand); after the repository was added under each package's *Manage Actions access* with the role Write, the failed jobs were re-run and passed: `whoobe-core-api`, `whoobe-asset-processor`, `whoobe-gateway`, `whoobe-publisher` at `0.1.1` (amd64 and arm64, signed by digest), and a **draft** GitHub Release `Whoobe v0.1.1` with `openapi.yaml`, the source SBOM and the digests. Not published yet: the draft is for review.
