@@ -1,3 +1,7 @@
+## feat/mandatory-2fa merged into master, worktrees removed — 2026-10-19
+- Branch: `master`
+- `feat/mandatory-2fa` merged without conflicts (mandatory second factor per role, forced enrolment, password policy, migration 0061). Worktrees `../whoobe_cms-mfa` and `../whoobe_cms-sandbox` and their merged local branches removed. The `whoobe-sectest` core-api and admin-dashboard images were built from the branch, which equals master now.
+
 ## Mandatory 2FA and password policy, steps 4 and 5: dashboard and docs — 2026-10-19
 - Branch: `feat/mandatory-2fa`
 - Login screen: two new steps after the password, *enrolment* (QR code and manual key, code to confirm, "Confirm and sign in") and *recovery codes* (shown once). The session is open after the code but the app only takes over when the codes are acknowledged (`authStore.finishEnrolment()`). Known edge: a page reload on the recovery-codes step goes straight into the app (the session exists) and the codes are not shown again; the break-glass is the way back for a user who then needs them.
