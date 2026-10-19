@@ -1,3 +1,7 @@
+## Images: libx11 upgraded in the dashboard and editor images (CVE-2026-88806) — 2026-10-19
+- Branch: `master`
+- The CI image scan of the 0.2.0 candidate failed on `admin-dashboard` and `whoobe-one-spike` (the pinned nginx alpine ships libx11 1.8.13, HIGH CVE-2026-88806, fixed in 1.8.14-r0), as it did for libexpat at 0.1.1. `Dockerfile`: `apk upgrade ... libx11` next to pcre2, tiff and libexpat; rebuilt, trivy on the dashboard image: 0 fixable HIGH/CRITICAL. The Browser suite, the API suites, DAST, static scans, TLS and isolation of the same run passed.
+
 ## Release 0.2.0 candidate: browser specs fixed after the navigation change, security docs — 2026-10-19
 - Branch: `master`
 - The full CI run with DAST on the candidate commit (2026-10-19): **DAST pass, static scans pass, the 83 API and unit files pass**; the browser suite had **4 failures, all caused by the new navigation** (the submenus start closed and Roles/Users moved to Security): `objects-copy-id` (2), `xss-sinks` (2). The specs now open Data Objects before they click a class in the sidebar tree, look for the visible copy of a row (the Data Objects tab stays mounted, hidden), and reach *Roles/Users/Workspaces* through Security.
