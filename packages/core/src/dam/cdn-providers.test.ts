@@ -122,3 +122,19 @@ describe('mirroring to Cloudflare Images', () => {
     expect(await testCloudflareImages(ACCOUNT, 'tok', down)).toMatchObject({ ok: false, error: expect.stringContaining('ECONNREFUSED') });
   });
 });
+
+describe('which mirror a website is served', () => {
+  it('prefers the provider of the website, and takes the first one when it has none there', async () => {
+    const { pickCdnMirrorUrl } = await import('./resolve-content-image-refs.js');
+    const m = {
+      cloudinary: { provider: 'cloudinary', url: 'https://res.cloudinary.com/x/a.png', mirroredAt: '', bytesSent: 1 },
+      'cloudflare-images': { provider: 'cloudflare-images', url: 'https://imagedelivery.net/h/a/public', mirroredAt: '', bytesSent: 1 },
+    };
+    expect(pickCdnMirrorUrl(m, 'cloudflare-images')).toBe('https://imagedelivery.net/h/a/public');
+    expect(pickCdnMirrorUrl(m, 'cloudinary')).toBe('https://res.cloudinary.com/x/a.png');
+    expect(pickCdnMirrorUrl(m, 'other')).toBe('https://res.cloudinary.com/x/a.png');
+    expect(pickCdnMirrorUrl(m)).toBe('https://res.cloudinary.com/x/a.png');
+    expect(pickCdnMirrorUrl({ cloudflare: m['cloudflare-images'] } as any, 'cloudinary')).toBe('https://imagedelivery.net/h/a/public');
+    expect(pickCdnMirrorUrl(undefined, 'cloudinary')).toBeNull();
+  });
+});

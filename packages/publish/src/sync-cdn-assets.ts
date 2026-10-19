@@ -18,11 +18,8 @@ export interface SyncCdnOptions {
    *  leak via `ps`/shell history); read from env in the bin entrypoint. */
   email: string
   password: string
-  /** Gateway route id for the CDN provider's upload route (e.g. Cloudinary's
-   *  "image/upload"), preconfigured via the admin dashboard - this script
-   *  never creates one. Falls back to Settings → DAM → CDN Mirror's saved
-   *  value (GET /whoobe-one/settings/cdn-mirror) when omitted - an explicit
-   *  value here always wins over whatever's saved there. */
+  /** The OLD way: a Gateway route id for Cloudinary's upload route (and `uploadPreset`). When omitted - the normal case - the server's settings for the
+   *  website apply (its own CDN, else the installation's default: Cloudinary or Cloudflare Images). An explicit value here wins over them. */
   gatewayRouteId?: string
   uploadPreset?: string
   provider?: string
@@ -74,20 +71,18 @@ async function login(apiUrl: string, email: string, password: string): Promise<s
 }
 
 interface SavedCdnMirrorSettings {
-  gatewayRouteId: string | null
-  uploadPreset: string | null
   provider: string
+  /** the provider's settings are complete: an upload can be tried */
+  configured: boolean
+  scope: 'website' | 'default' | 'none'
+  missing?: string[]
 }
 
-/** Reads the same Settings → DAM → CDN Mirror card the admin dashboard
- *  writes to (CdnMirrorSettingsCard.vue), so gatewayRouteId/uploadPreset
- *  don't have to be re-typed on every run once saved there. Requires the
- *  service account to have PERMISSIONS.OBJECTS_READ - returns null (not a
- *  thrown error) on any failure, including a 403, since this is only ever
- *  a fallback for values that can also be passed explicitly. */
-async function fetchSavedCdnMirrorSettings(apiUrl: string, cookie: string): Promise<SavedCdnMirrorSettings | null> {
+/** The CDN settings that apply to the website (its own, else the installation's default), the same ones the dashboard shows
+ *  (docs/plans/assets/cdn-providers-plan.md). Needs the service account to have the objects:read permission; null (not a thrown error) on any failure. */
+async function fetchSavedCdnMirrorSettings(apiUrl: string, cookie: string, websiteId: string): Promise<SavedCdnMirrorSettings | null> {
   try {
-    const res = await fetch(`${apiUrl}/whoobe-one/settings/cdn-mirror`, { headers: { Cookie: cookie } })
+    const res = await fetch(`${apiUrl}/whoobe-one/settings/cdn-mirror?websiteId=${encodeURIComponent(websiteId)}`, { headers: { Cookie: cookie } })
     if (!res.ok) return null
     return (await res.json()) as SavedCdnMirrorSettings
   } catch {
@@ -98,9 +93,12 @@ async function fetchSavedCdnMirrorSettings(apiUrl: string, cookie: string): Prom
 async function fetchMirrorStatus(
   apiUrl: string,
   refs: string[],
+  provider?: string,
 ): Promise<Record<string, { mirrored: boolean; assetId: string | null }>> {
   if (refs.length === 0) return {}
   const qs = new URLSearchParams({ paths: refs.join(',') })
+  // only a mirror at THIS provider counts: two websites may use two CDNs for one shared asset
+  if (provider) qs.set('provider', provider)
   const res = await fetch(`${apiUrl}/public/dam/assets/mirror-status?${qs.toString()}`)
   if (!res.ok) throw new Error(`mirror-status lookup failed: ${res.status}`)
   const body = (await res.json()) as { status: Record<string, { mirrored: boolean; assetId: string | null }> }
@@ -115,22 +113,21 @@ export async function syncCdnAssets(options: SyncCdnOptions): Promise<void> {
   console.log('Logging in...')
   const cookie = await login(apiUrl, options.email, options.password)
 
-  let gatewayRouteId = options.gatewayRouteId
-  let uploadPreset = options.uploadPreset
+  // The provider and its settings come from the server, for THIS website (its own, else the installation's default). An explicit --gateway-route-id is the
+  // old way (Cloudinary through that Gateway route) and still wins.
+  const explicit = !!options.gatewayRouteId
   let provider = options.provider
-  if (!gatewayRouteId || !uploadPreset) {
-    const saved = await fetchSavedCdnMirrorSettings(apiUrl, cookie)
-    if (saved) {
-      gatewayRouteId = gatewayRouteId ?? saved.gatewayRouteId ?? undefined
-      uploadPreset = uploadPreset ?? saved.uploadPreset ?? undefined
-      provider = provider ?? saved.provider
-      if (saved.gatewayRouteId || saved.uploadPreset) console.log('Using saved CDN Mirror settings for any value not passed explicitly.')
+  if (!explicit) {
+    const saved = await fetchSavedCdnMirrorSettings(apiUrl, cookie, options.websiteId)
+    if (!saved || !saved.configured) {
+      throw new Error(
+        saved && saved.scope !== 'none'
+          ? `The CDN set for this website is incomplete (missing: ${(saved.missing ?? []).join(', ')}) - complete it in the website's settings or in Settings → DAM → CDN Mirroring.`
+          : 'No CDN is set up for this website - set one in the website\'s settings or the installation\'s default under Settings → DAM → CDN Mirroring (or pass --gateway-route-id for Cloudinary).',
+      )
     }
-  }
-  if (!gatewayRouteId) {
-    throw new Error(
-      'No --gateway-route-id given and none saved in Settings → DAM → CDN Mirror - set one there, or pass --gateway-route-id explicitly.',
-    )
+    provider = saved.provider
+    console.log(`Using the ${saved.scope === 'website' ? "website's own" : "installation's default"} CDN settings (${saved.provider}).`)
   }
 
   console.log('Listing published pages...')
@@ -142,7 +139,7 @@ export async function syncCdnAssets(options: SyncCdnOptions): Promise<void> {
   }
   console.log(`Found ${refs.size} unique image reference(s) across ${pages.length} page(s).`)
 
-  const status = await fetchMirrorStatus(apiUrl, [...refs])
+  const status = await fetchMirrorStatus(apiUrl, [...refs], explicit ? (provider ?? 'cloudinary') : provider)
   const toMirror = [...refs].filter((ref) => status[ref]?.assetId && !status[ref].mirrored)
   const alreadyMirrored = [...refs].filter((ref) => status[ref]?.mirrored).length
   const unresolvable = [...refs].filter((ref) => !status[ref]?.assetId).length
@@ -157,7 +154,7 @@ export async function syncCdnAssets(options: SyncCdnOptions): Promise<void> {
       const res = await fetch(`${assetProcessorUrl}/api/v1/dam/assets/${assetId}/mirror-cdn`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: cookie },
-        body: JSON.stringify({ gatewayRouteId, uploadPreset, provider }),
+        body: JSON.stringify(explicit ? { gatewayRouteId: options.gatewayRouteId, uploadPreset: options.uploadPreset, provider } : { websiteId: options.websiteId }),
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}) as any)

@@ -1,6 +1,7 @@
 // CDN mirroring settings and the mirror call (docs/plans/assets/cdn-providers-plan.md): per website with the installation's default as the fallback,
 // Cloudinary and Cloudflare Images as providers, the token stored encrypted and never shown, the upload to a mock Cloudflare Images with the real
 // asset service.
+import { execFileSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Client, clientFor } from '../lib/client'
@@ -8,6 +9,8 @@ import { ASSET_TARGET } from '../lib/config'
 import { startMockCloudflare } from '../lib/mock-cloudflare'
 
 const tag = randomBytes(3).toString('hex')
+const POSTGRES = process.env.SEC_POSTGRES_CONTAINER ?? 'whoobe-sectest-postgres-1'
+const psql = (sql: string) => execFileSync('docker', ['exec', POSTGRES, 'psql', '-U', process.env.SEC_DB_USER ?? 'sectest', '-d', process.env.SEC_DB_NAME ?? 'whoobe_sec_test', '-tAc', sql], { encoding: 'utf8' }).trim()
 const TOKEN = `cf-token-${randomBytes(6).toString('hex')}`
 const ACCOUNT = randomBytes(16).toString('hex')
 const ROUTE = '11111111-1111-4111-8111-111111111111'
@@ -198,5 +201,34 @@ describe('the mirror call', () => {
     expect(r.json.asset.cdnMirrors['cloudflare-images'].url).toContain(id)
     const noSite = await adminAsset.post(`/api/v1/dam/assets/${id}/mirror-cdn`, {})
     expect(noSite.status).toBe(200)
+  })
+})
+
+describe('the page of a website is served with the mirror of ITS provider', () => {
+  it('an asset mirrored at two CDNs: website A (Cloudflare) gets Cloudflare\'s URL, website B (the default, Cloudinary) gets Cloudinary\'s', async () => {
+    await admin.put('/whoobe-one/settings/cdn-mirror', { websiteId: siteA, ...cfSettings() })
+    await admin.put('/whoobe-one/settings/cdn-mirror', { provider: 'cloudinary', config: { gatewayRouteId: ROUTE } })   // the default
+    const id = await upload('shared.png', 'image/png', PNG)
+    const path = `/cdn-${tag}/shared.png`
+    const mirrored = await adminAsset.post(`/api/v1/dam/assets/${id}/mirror-cdn`, { websiteId: siteA })
+    expect(mirrored.status, mirrored.text.slice(0, 200)).toBe(200)
+    // a Cloudinary mirror of the same asset (what the sync of the other website would have written)
+    psql(`UPDATE assets SET cdn_mirrors = cdn_mirrors || '{"cloudinary": {"provider": "cloudinary", "url": "https://res.cloudinary.com/demo/shared.png", "mirroredAt": "2026-10-19T00:00:00Z", "bytesSent": 1}}'::jsonb WHERE id = '${id}'`)
+
+    const content = { id: 'root', tag: 'document', type: 'container', element: 'div', css: { css: '', container: '' }, blocks: [
+      { id: 'img1', tag: 'img', type: 'element', element: 'img', css: { css: '', container: '' }, blocks: [], image: { url: path } },
+    ] }
+    const slugOf = new Map<string, string>()
+    for (const [name, siteId] of [['a', siteA], ['b', siteB]] as const) {
+      const page = await admin.post('/whoobe-one/pages', { slug: `cdn-${name}-${tag}`, title: `Cdn ${name}`, websiteId: siteId, published: true, content })
+      expect(page.status, page.text.slice(0, 200)).toBe(201)
+      expect((await admin.patch(`/whoobe-one/pages/${page.json.page.id}`, { published: true })).status).toBe(200)
+      slugOf.set(name, `cdn-${name}-${tag}`)
+    }
+    const cdnOf = async (name: string, siteId: string) => (await new Client().get(`/public/page/${slugOf.get(name)}?websiteId=${siteId}`)).json
+    const a = await cdnOf('a', siteA)
+    const b = await cdnOf('b', siteB)
+    expect(a.cdnMirrors?.[path], JSON.stringify(a).slice(0, 300)).toBe(`https://imagedelivery.example/HASH/${id}/public`)
+    expect(b.cdnMirrors?.[path]).toBe('https://res.cloudinary.com/demo/shared.png')
   })
 })

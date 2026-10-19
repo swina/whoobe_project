@@ -28,12 +28,12 @@ export function damPathToProxyUrl(pimcorePath: string): string {
   return `${publicBaseUrl}/${formatS3ObjectKey(pimcorePath, keyPrefix)}`;
 }
 
-/** Picks a mirror to use when an asset has more than one provider mirrored
- *  - no per-provider preference exists yet (realistically only one
- *  provider is configured at a time today), so this just takes whichever
- *  entry comes first. Revisit once a second provider is actually in use. */
-export function pickCdnMirrorUrl(mirrors: Record<string, CdnMirrorRecord> | null | undefined): string | null {
+/** Picks a mirror to use when an asset has more than one provider mirrored. Websites may use different CDNs for one shared asset
+ *  (docs/plans/assets/cdn-providers-plan.md), so the provider of the website being served wins (`prefer`); without one, or when the asset has no
+ *  mirror there, whichever entry comes first. */
+export function pickCdnMirrorUrl(mirrors: Record<string, CdnMirrorRecord> | null | undefined, prefer?: string | null): string | null {
   if (!mirrors) return null;
+  if (prefer && mirrors[prefer]?.url) return mirrors[prefer].url;
   const first = Object.values(mirrors)[0];
   return first?.url ?? null;
 }
@@ -46,9 +46,9 @@ export interface ResolvedImageRef {
   isCdnMirror: boolean;
 }
 
-export async function resolveImageRef(ref: string): Promise<ResolvedImageRef | null> {
+export async function resolveImageRef(ref: string, preferProvider?: string | null): Promise<ResolvedImageRef | null> {
   const record = UUID_RE.test(ref) ? await getAssetById(ref) : await getAssetByPath(ref);
-  const cdnUrl = pickCdnMirrorUrl(record?.cdnMirrors);
+  const cdnUrl = pickCdnMirrorUrl(record?.cdnMirrors, preferProvider);
   if (cdnUrl) return { url: cdnUrl, isCdnMirror: true };
 
   const path = UUID_RE.test(ref) ? record?.pimcorePath ?? null : ref;
@@ -78,13 +78,13 @@ export function collectImageRefs(content: unknown): Set<string> {
  *  map (packages/sdk/renderer's resolveImageUrl) already know how to fall
  *  back to the proxy URL themselves given an assetBaseUrl, so this only
  *  needs to carry the subset that overrides that default. */
-export async function resolveContentCdnMirrors(content: unknown): Promise<Record<string, string>> {
+export async function resolveContentCdnMirrors(content: unknown, preferProvider?: string | null): Promise<Record<string, string>> {
   const refs = collectImageRefs(content);
   const map: Record<string, string> = {};
   await Promise.all(
     [...refs].map(async (ref) => {
       try {
-        const resolved = await resolveImageRef(ref);
+        const resolved = await resolveImageRef(ref, preferProvider);
         if (resolved?.isCdnMirror) map[ref] = resolved.url;
       } catch {
         // Leave unresolved - caller falls back to its own default resolution.

@@ -2969,6 +2969,16 @@ app.put('/whoobe-one/settings/alpine-presets', requirePermission(PERMISSIONS.OBJ
 // fallback; the provider decides which fields exist (Cloudinary: a Gateway route and a preset; Cloudflare Images: an account id and an API token, which is
 // stored encrypted and never returned). Reading is for anybody who can read objects (the Assets action needs to know whether mirroring is set up);
 // changing it, which can hold a credential, needs settings:manage.
+/** The CDN provider that applies to a website (its own settings, else the default), so a page is served with the mirror of THAT provider when an asset has several. */
+async function cdnProviderOf(websiteId: string | null | undefined): Promise<string | null> {
+  try {
+    const r = await resolveCdnMirror(websiteId);
+    return r.scope === 'none' ? null : r.provider;
+  } catch {
+    return null;
+  }
+}
+
 const cdnScope = (req: Request): string | null => {
   const v = req.body?.websiteId ?? req.query.websiteId;
   return typeof v === 'string' && v && v !== 'default' ? v : null;
@@ -3801,7 +3811,7 @@ const snippetIds = new Set<string>();
       }
     }
 
-    const cdnMirrors = await resolveContentCdnMirrors(page.content);
+    const cdnMirrors = await resolveContentCdnMirrors(page.content, await cdnProviderOf(page.websiteId));
     const body: Record<string, unknown> = { page, params };
     if (layout) body.layout = layout;
     if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;
@@ -3976,7 +3986,7 @@ const snippetIds = new Set<string>();
       }
     }
 
-    const cdnMirrors = await resolveContentCdnMirrors(page.content);
+    const cdnMirrors = await resolveContentCdnMirrors(page.content, await cdnProviderOf(page.websiteId));
     const body: Record<string, unknown> = { page, params };
     if (layout) body.layout = layout;
     if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;

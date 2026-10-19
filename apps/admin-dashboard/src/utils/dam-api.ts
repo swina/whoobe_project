@@ -299,12 +299,12 @@ export async function moveAssetApi(
 }
 
 // Mirrors an asset to the configured CDN (docs/plans/assets/assets-cdn.md)
-// via the Gateway route picked in Settings > DAM - AssetsView.vue's
-// "Publish to CDN" bulk action calls this once per selected asset.
+// with the provider configured for the website (or the installation's default) - AssetsView.vue's "Publish to CDN" bulk action calls this once per
+// selected asset. The server resolves the settings; the old body (gatewayRouteId, uploadPreset) still works for Cloudinary.
 export async function mirrorAssetToCdnApi(
   baseUrl: string,
   assetId: string,
-  options: { gatewayRouteId: string; uploadPreset?: string | null; provider?: string }
+  options: { websiteId?: string | null } = {}
 ): Promise<DamAssetRecord> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v1/dam/assets/${assetId}/mirror-cdn`, {
     method: 'POST',

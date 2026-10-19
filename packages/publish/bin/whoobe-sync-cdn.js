@@ -13,10 +13,10 @@ program
   )
   .requiredOption('--api-url <url>', 'Base URL of the Whoobe public API / core-api (e.g. https://cms.example.com, or http://localhost:3003 in local dev)')
   .requiredOption('--website-id <id>', 'UUID of the website to sync')
-  .option('--gateway-route-id <id>', 'Gateway route id for the CDN provider\'s upload route (preconfigured via the admin dashboard). Falls back to Settings → DAM → CDN Mirror\'s saved value if omitted (needs the service account to have the "objects:read" permission for that lookup) - required, one way or the other.')
+  .option('--gateway-route-id <id>', 'OLD WAY, Cloudinary only: a Gateway route id for its upload route. Leave it out: the CDN set for the website (its own, else the installation\'s default; Cloudinary or Cloudflare Images) is used, asked from the server (the service account needs the "objects:read" permission).')
   .option('--asset-processor-url <url>', 'Base URL of asset-processor, which actually performs the mirror. Defaults to --api-url (correct once behind nginx, which routes /api/v1/* to asset-processor under the same hostname as core-api) - set this explicitly in local dev, where asset-processor is on a different port (e.g. http://localhost:3002) than core-api.')
-  .option('--upload-preset <name>', 'CDN provider upload preset (e.g. Cloudinary unsigned upload preset name). Also falls back to the saved CDN Mirror settings if omitted.')
-  .option('--provider <name>', 'CDN provider id (defaults to whatever the Gateway route\'s preset implies, or the saved CDN Mirror settings)')
+  .option('--upload-preset <name>', 'Cloudinary unsigned upload preset, only together with --gateway-route-id (the old way). Otherwise the preset is part of the website\'s CDN settings.')
+  .option('--provider <name>', 'Label stored with the mirror when --gateway-route-id is used (default cloudinary); otherwise the provider of the website\'s CDN settings is used')
 
 program.parse()
 
