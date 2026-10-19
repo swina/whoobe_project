@@ -148,6 +148,23 @@ import {
   disableTotp,
   updateMfaRecoveryCodes,
   getSecuritySettings,
+  getOidcSettings,
+  oidcConfigured,
+  oidcPublicConfig,
+  publicOidcSettings,
+  parseOidcSettingsInput,
+  updateOidcSettings,
+  discoverOidc,
+  buildAuthorizationUrl,
+  exchangeCode,
+  verifyIdToken,
+  OidcProtocolError,
+  resolveOidcUser,
+  randomUrlToken,
+  sha256Hex,
+  oidcLandingUrl,
+  OIDC_ERRORS,
+  insertAuditSafe,
   pingDatabase,
   publishJobCounts,
   eventDeliveryCounts,
@@ -734,7 +751,8 @@ function recordMfaEnrolmentFailure(token: string): void {
   if (entry.attempts >= MFA_ENROL_MAX_ATTEMPTS) pendingMfaEnrolments.delete(token);
 }
 
-async function completeLogin(res: Response, userId: string, req: Request, extra: Record<string, unknown> = {}): Promise<void> {
+/** Opens the session (cookie included) and returns what the sign-in answers with. */
+async function startSession(res: Response, userId: string, req: Request): Promise<Record<string, unknown>> {
   const { token, expiresAt } = await createSession(userId, {
     ip: req.ip,
     userAgent: req.headers['user-agent'],
@@ -744,7 +762,11 @@ async function completeLogin(res: Response, userId: string, req: Request, extra:
 
   const user = await findUserById(userId);
   const permissions = await getEffectivePermissions(userId);
-  res.json({ id: userId, email: user?.email, displayName: user?.displayName, permissions, ...extra });
+  return { id: userId, email: user?.email, displayName: user?.displayName, permissions };
+}
+
+async function completeLogin(res: Response, userId: string, req: Request, extra: Record<string, unknown> = {}): Promise<void> {
+  res.json({ ...(await startSession(res, userId, req)), ...extra });
 }
 
 app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
@@ -786,6 +808,12 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
     }
 
     clearFailedAttempts(rateLimitKey, req.ip);
+
+    // With single sign-on set to "administrators only", the password form is the break-glass of those who can manage users.
+    if ((await getOidcSettings()).localLogin === 'admins' && !(await getEffectivePermissions(user.id)).includes(PERMISSIONS.USERS_MANAGE)) {
+      res.status(403).json({ error: 'Sign in with single sign-on' });
+      return;
+    }
 
     if (user.totpEnabledAt) {
       const mfaToken = createMfaChallenge(user.id);
@@ -1180,6 +1208,147 @@ app.put('/security-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), au
   } catch (error: any) {
     logger.error({ err: error }, 'Update security settings error');
     res.status(500).json({ error: 'Failed to save the security settings' });
+  }
+});
+
+// --- Single sign-on for staff (docs/plans/system/oidc-login-plan.md) ---
+// /auth/oidc/login -> the provider -> /auth/oidc/callback. The sign-in in progress (state, nonce, PKCE verifier) is kept in memory for ten
+// minutes, like the MFA challenges (one process); a cookie holds a random binder whose hash is kept with it, so a callback that this
+// browser did not start (login CSRF, a code planted by someone else) is refused.
+const OIDC_PENDING_TTL_MS = 10 * 60 * 1000;
+const OIDC_PENDING_MAX = 2000;
+const OIDC_COOKIE = 'wcms_oidc';
+const pendingOidc = new Map<string, { verifier: string; nonce: string; binderHash: string; expiresAt: number }>();
+// per client address; OIDC_START_RATE_LIMIT_PER_MINUTE, 0 = off
+const OIDC_START_LIMIT = envLimit('OIDC_START_RATE_LIMIT_PER_MINUTE', 30);
+const oidcStartLimiter = OIDC_START_LIMIT > 0 ? createFixedWindowLimiter({ max: OIDC_START_LIMIT, windowMs: 60_000 }) : null;
+
+app.get('/auth/oidc/config', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    res.json(oidcPublicConfig(await getOidcSettings()));
+  } catch (error: any) {
+    logger.error({ err: error }, 'OIDC config error');
+    res.status(500).json({ error: 'Failed to read the single sign-on settings' });
+  }
+});
+
+app.get('/auth/oidc/login', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const settings = await getOidcSettings();
+    if (!settings.enabled || !oidcConfigured(settings)) {
+      res.status(404).json({ error: 'Single sign-on is not set up' });
+      return;
+    }
+    if (oidcStartLimiter?.hit(req.ip ?? 'unknown')) {
+      res.setHeader('Retry-After', '60');
+      res.status(429).json({ error: 'Too many attempts. Try again in a minute.' });
+      return;
+    }
+    const endpoints = await discoverOidc(settings.issuer!);
+    const now = Date.now();
+    for (const [k, v] of pendingOidc) if (v.expiresAt <= now) pendingOidc.delete(k);
+    while (pendingOidc.size >= OIDC_PENDING_MAX) pendingOidc.delete(pendingOidc.keys().next().value as string);
+    const state = randomUrlToken(24);
+    const binder = randomUrlToken(24);
+    const verifier = randomUrlToken(48);
+    const nonce = randomUrlToken(24);
+    pendingOidc.set(state, { verifier, nonce, binderHash: sha256Hex(binder), expiresAt: now + OIDC_PENDING_TTL_MS });
+    res.cookie(OIDC_COOKIE, binder, { httpOnly: true, secure: cookieShouldBeSecure(req), sameSite: 'lax', maxAge: OIDC_PENDING_TTL_MS, path: '/auth/oidc' });
+    res.redirect(302, buildAuthorizationUrl(endpoints, settings, { state, nonce, verifier }));
+  } catch (error: any) {
+    logger.error({ err: error }, 'OIDC login start error');
+    const settings = await getOidcSettings().catch(() => null);
+    if (settings?.redirectBaseUrl) res.redirect(302, oidcLandingUrl(settings.redirectBaseUrl, 'provider_error'));
+    else res.status(502).json({ error: 'The single sign-on provider could not be reached' });
+  }
+});
+
+app.get('/auth/oidc/callback', async (req: Request, res: Response): Promise<void> => {
+  const settings = await getOidcSettings().catch(() => null);
+  if (!settings || !settings.enabled || !oidcConfigured(settings)) {
+    res.status(404).json({ error: 'Single sign-on is not set up' });
+    return;
+  }
+  const back = (code: keyof typeof OIDC_ERRORS, detail?: string): void => {
+    if (detail) logger.warn(`OIDC sign-in refused (${code}): ${detail}`);
+    res.clearCookie(OIDC_COOKIE, { path: '/auth/oidc' });
+    res.redirect(302, oidcLandingUrl(settings.redirectBaseUrl!, code));
+  };
+  try {
+    const { code, state, error } = req.query as Record<string, unknown>;
+    const pending = typeof state === 'string' ? pendingOidc.get(state) : undefined;
+    if (typeof state === 'string') pendingOidc.delete(state);   // single use, whatever happens next
+    const binder = (req.headers.cookie ?? '').split(';').map((c) => c.trim()).find((c) => c.startsWith(`${OIDC_COOKIE}=`))?.slice(OIDC_COOKIE.length + 1);
+    if (!pending || pending.expiresAt < Date.now() || !binder || sha256Hex(decodeURIComponent(binder)) !== pending.binderHash) {
+      back('invalid_state', 'state unknown, expired or not started by this browser');
+      return;
+    }
+    if (typeof error === 'string') { back('provider_error', `the provider answered error=${error.slice(0, 80)}`); return; }
+    if (typeof code !== 'string' || !code || code.length > 2000) { back('invalid_state', 'no code'); return; }
+
+    const endpoints = await discoverOidc(settings.issuer!);
+    const idToken = await exchangeCode(endpoints, settings, code, pending.verifier);
+    const claims = await verifyIdToken(idToken, settings, pending.nonce);
+
+    const resolution = await resolveOidcUser({
+      issuer: settings.issuer!,
+      subject: String(claims.sub),
+      email: typeof claims.email === 'string' ? claims.email : undefined,
+      emailVerified: claims.email_verified === true,
+      name: typeof claims.name === 'string' ? claims.name : undefined,
+      claims,
+    }, settings);
+    if (!resolution.ok) { back(resolution.code, `no session for subject ${String(claims.sub).slice(0, 60)}`); return; }
+
+    const actor = { type: 'system' as const, id: 'oidc', label: 'Single sign-on' };
+    const target = { targetType: 'user', targetId: resolution.userId, targetLabel: resolution.email, ip: req.ip };
+    if (resolution.created) void insertAuditSafe({ actor, action: 'user.sso_provision', ...target, after: { email: resolution.email, roleIds: resolution.rolesAdded } }, (err) => logger.error({ err }, 'audit: sso provision row lost'));
+    if (resolution.linked) void insertAuditSafe({ actor, action: 'user.sso_link', ...target, after: { issuer: settings.issuer } }, (err) => logger.error({ err }, 'audit: sso link row lost'));
+    if (!resolution.created && (resolution.rolesAdded.length || resolution.rolesRemoved.length)) {
+      void insertAuditSafe({ actor, action: 'user.sso_roles', ...target, before: { removedRoleIds: resolution.rolesRemoved }, after: { addedRoleIds: resolution.rolesAdded } }, (err) => logger.error({ err }, 'audit: sso roles row lost'));
+    }
+
+    await startSession(res, resolution.userId, req);
+    res.clearCookie(OIDC_COOKIE, { path: '/auth/oidc' });
+    res.redirect(302, oidcLandingUrl(settings.redirectBaseUrl!));
+  } catch (error: any) {
+    if (error instanceof OidcProtocolError) back(error.code, error.message);
+    else { logger.error({ err: error }, 'OIDC callback error'); back('provider_error', 'unexpected error'); }
+  }
+});
+
+// --- Single sign-on settings (settings:manage) ---
+
+app.get('/oidc-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const roles = (await listRoles()).map((r) => ({ id: r.id, name: r.name }));
+    res.json({ ...publicOidcSettings(await getOidcSettings()), roles });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Get OIDC settings error');
+    res.status(500).json({ error: 'Failed to read the single sign-on settings' });
+  }
+});
+
+app.put('/oidc-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), audited(AUDIT.oidcSettings), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const parsed = await parseOidcSettingsInput(req.body ?? {}, await getOidcSettings());
+    if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
+    res.json(publicOidcSettings(await updateOidcSettings(parsed.value)));
+  } catch (error: any) {
+    logger.error({ err: error }, 'Update OIDC settings error');
+    res.status(500).json({ error: 'Failed to save the single sign-on settings' });
+  }
+});
+
+// Reads the provider's discovery document with the saved issuer: the administrator learns at once whether the address is right.
+app.post('/oidc-settings/test', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
+  const settings = await getOidcSettings();
+  if (!settings.issuer) { res.status(400).json({ ok: false, error: 'Save the issuer first' }); return; }
+  try {
+    const endpoints = await discoverOidc(settings.issuer, true);
+    res.json({ ok: true, ...endpoints });
+  } catch (error: any) {
+    res.json({ ok: false, error: error instanceof OidcProtocolError ? error.message : 'The provider could not be reached' });
   }
 });
 

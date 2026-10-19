@@ -10,7 +10,7 @@ import { loadExpectedRoutes, concretePath } from '../lib/routes'
 
 const routes = loadExpectedRoutes()
 // Session-affecting or MFA routes are exercised in auth.test.ts, not swept.
-const SKIP = /^\/auth\/(login|logout|mfa\/)/
+const SKIP = /^\/auth\/(login|logout|mfa\/|oidc\/)/
 // /health and /site-root are questions the infrastructure asks (a probe, the reverse proxy: /site-root answers 403 on purpose
 // for "not a website"), not resources: they are in the route contract (route-drift) but not in this sweep
 const sweep = routes.filter((r) => !SKIP.test(r.path) && r.path !== '/health' && r.path !== '/health/live' && r.path !== '/metrics' && r.path !== '/site-root')

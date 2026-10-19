@@ -435,6 +435,13 @@
       "when": 1790000100000,
       "tag": "0061_security_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1790000200000,
+      "tag": "0062_oidc_login",
+      "breakpoints": true
     }
   ]
 }

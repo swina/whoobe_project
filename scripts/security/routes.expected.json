@@ -45,6 +45,23 @@
       "note": "pre-auth by design: proves the second factor, then opens the session (mandatory-2fa-plan.md)",
       "audit": "exempt: personal sign-in action, belongs to a login log (audit-log-plan.md section 7)"
     },
+    "GET /auth/oidc/config": {
+      "access": "public",
+      "permissions": [],
+      "note": "whether to show the single sign-on button, and its text"
+    },
+    "GET /auth/oidc/login": {
+      "access": "public",
+      "permissions": [],
+      "note": "pre-auth by design: starts the authorization-code flow (state, nonce, PKCE, binder cookie)",
+      "audit": "exempt: personal sign-in action, belongs to a login log (audit-log-plan.md section 7)"
+    },
+    "GET /auth/oidc/callback": {
+      "access": "public",
+      "permissions": [],
+      "note": "pre-auth by design: the provider's redirect; state and binder checked, ID token verified",
+      "audit": "exempt: a sign-in; the changes it makes (provisioning, link, role changes) are written as events user.sso_provision / user.sso_link / user.sso_roles"
+    },
     "GET /auth/mfa/status": {
       "access": "auth",
       "permissions": []
@@ -1182,6 +1199,27 @@
         "SETTINGS_MANAGE"
       ],
       "audit": "securitySettings"
+    },
+    "GET /oidc-settings": {
+      "access": "permission",
+      "permissions": [
+        "SETTINGS_MANAGE"
+      ]
+    },
+    "PUT /oidc-settings": {
+      "access": "permission",
+      "permissions": [
+        "SETTINGS_MANAGE"
+      ],
+      "audit": "oidcSettings"
+    },
+    "POST /oidc-settings/test": {
+      "access": "permission",
+      "permissions": [
+        "SETTINGS_MANAGE"
+      ],
+      "note": "reads the provider's discovery document; changes nothing",
+      "audit": "exempt: a read of the provider's public discovery document, nothing is written"
     },
     "GET /auth/password-policy": {
       "access": "public",

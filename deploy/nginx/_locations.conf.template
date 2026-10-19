@@ -115,7 +115,7 @@ location ^~ /public/upload-data/ {
 }
 
 # core-api routes
-location ~ ^/(auth|documents|snippets|data-classes|data-components|data-objects|mail-settings|mail-providers|mail-log|mail-templates|migration-sources|health|search|themes|public|ai|figma|preview|sites|pages|settings|workflows|users|roles|docs-sites|object-event-subscriptions|object-event-deliveries|audit-log|security-settings|pwa)(/.*)?$ {
+location ~ ^/(auth|documents|snippets|data-classes|data-components|data-objects|mail-settings|mail-providers|mail-log|mail-templates|migration-sources|health|search|themes|public|ai|figma|preview|sites|pages|settings|workflows|users|roles|docs-sites|object-event-subscriptions|object-event-deliveries|audit-log|security-settings|oidc-settings|pwa)(/.*)?$ {
     proxy_pass http://127.0.0.1:__CORE_API_PORT__;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
