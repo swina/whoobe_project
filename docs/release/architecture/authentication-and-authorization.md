@@ -22,8 +22,10 @@ administers Whoobe uses a user account (and therefore a session).
 
 ## 2. Users and passwords
 
-- Password hashing: **argon2id** (`argon2` package defaults). Minimum length 8 characters at reset and at user creation;
-  there is no complexity, breach-list or rotation rule.
+- Password hashing: **argon2id** (`argon2` package defaults). A **password policy** applies where a password is set (user creation, reset), never to a login and never to
+  existing passwords: minimum length (default 8, up to 128, Settings > Security), optionally at least three of lowercase,
+  uppercase, digit and symbol, and never the e-mail address or its local part. `GET /auth/password-policy` (public, no
+  secret) says what it is. There is no breach-list or rotation rule.
 - First administrator: created at the first start from `SEED_ADMIN_EMAIL`; with no `SEED_ADMIN_PASSWORD` a random
   password is generated and printed once in the core-api log (never a default one). Change it at first login.
 - **Login throttling** (in memory): after 5 failures from the same client address + e-mail the pair is locked for 15
@@ -49,14 +51,23 @@ administers Whoobe uses a user account (and therefore a session).
 
 ## 4. Second factor (TOTP)
 
-- Optional per user, enrolled in the dashboard: TOTP secret + QR code, then a code to confirm; ten one-time recovery
-  codes are shown once and stored hashed.
+- Optional per user, enrolled in the dashboard: TOTP secret + QR code, then a code to confirm; eight one-time recovery
+  codes are shown once and stored hashed. An administrator can make it **mandatory for chosen roles** (below).
 - The secret is stored AES-256-GCM encrypted (`TOTP_ENCRYPTION_KEY`; if unset a warning is logged and secrets stay in clear
   text; **losing the key forces re-enrolment of everyone**).
 - A login with MFA returns a short-lived `mfaToken` instead of a session; five wrong codes spend the token; ten failures per
   account lock further attempts for 15 minutes; a code already used is rejected for two minutes (replay); disabling MFA
   needs the password again (five failures lock for 15 minutes).
-- MFA cannot be made mandatory for a role or for the installation.
+- **Mandatory for roles** (Settings > Security > Sign-in requirements, `GET` / `PUT /security-settings`, permission
+  `settings:manage`, audited). Empty by default: an upgrade changes nothing. A user holding one of the chosen roles who has
+  no second factor signs in with the password and gets `{ mfaEnrolmentRequired, enrolToken }` **instead of a session**; the
+  dashboard shows the QR code, `POST /auth/mfa/enrol/verify` proves the code, enables the factor, returns the recovery codes
+  once and only then opens the session. The token is in memory, lasts ten minutes, is spent by five wrong codes, and the
+  per-account code lock and the used-code memory apply. A session with reduced rights was deliberately not built.
+- A user of a required role cannot turn MFA off (`409`). Sessions that are already open when the setting is switched on
+  keep working until they end or the user signs in again. API clients (keys, JWT) are not users and are not affected.
+- If a required user loses the phone and the recovery codes, the break-glass below clears the factor and the next sign-in
+  is a new enrolment.
 - Break-glass for an administrator who lost both factors: the operator can clear MFA for a user by running the core
   reset script with `RESET_USER_EMAIL`, `RESET_USER_PASSWORD` and `RESET_USER_CLEAR_MFA` (in `packages/core/src/db/scripts/`).
 
@@ -178,7 +189,7 @@ An application that is not a person calls the gateway at `/client/v1` with an **
 
 ## 9. Known gaps (for a risk assessment)
 
-No SSO/OIDC; no mandatory MFA; no per-website roles; no password policy beyond length; no session list or remote
+No SSO/OIDC; MFA is mandatory only for the roles an administrator chooses (no installation-wide switch, no per-user exception); no per-website roles; the password policy is a minimum length, an optional three-of-four character classes rule and "not the e-mail" (no breached-password list); no session list or remote
 sign-out for the user; no CSRF token; no full CSP on the SPAs (F-014);
 third-party credentials are in clear text on installations without `INTEGRATION_SECRETS_ENCRYPTION_KEY` (F-055); login and MFA throttling is in process memory
 (per replica, lost at restart).
