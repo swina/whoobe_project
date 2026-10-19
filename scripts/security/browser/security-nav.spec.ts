@@ -45,6 +45,20 @@ test('the administrator finds seven pages under one Security item, and the old p
   await expect(p.locator('aside').getByRole('button', { name: 'Security', exact: true })).toHaveCount(1)  // only the main item
 })
 
+test('every submenu starts closed, and showing a section opens its own', async ({ authed }) => {
+  const p = await authed.newPage()
+  await p.goto(`${ADMIN_URL}/`)
+  await expect(p.getByTestId('nav-item-security')).toBeVisible({ timeout: 15_000 })
+  await expect(p.getByTestId('nav-security-two-factor')).toHaveCount(0)
+  await expect(p.getByTestId('nav-ai-text')).toHaveCount(0)
+  await expect(p.getByRole('button', { name: 'General settings', exact: true })).toHaveCount(0)
+  await p.getByTestId('nav-item-security').click()
+  await expect(p.getByTestId('nav-security-two-factor')).toBeVisible()
+  await expect(p.getByTestId('nav-ai-text')).toHaveCount(0)   // the others stay closed
+  await p.getByTestId('nav-item-ai').click()
+  await expect(p.getByTestId('nav-ai-text')).toBeVisible()
+})
+
 test('the header shield opens the audit log', async ({ authed }) => {
   const p = await authed.newPage()
   await p.goto(`${ADMIN_URL}/`)

@@ -850,11 +850,12 @@ async function handleReindex() {
 }
 
 const isSidebarCollapsed = ref(false)
-const isObjectsTreeExpanded = ref(true)
-const isAssetsTreeExpanded = ref(true)
-const isSettingsMenuExpanded = ref(true)
-const isSecurityMenuExpanded = ref(true)
-const isAiMenuExpanded = ref(true)
+// Every submenu of the main navigation starts closed; opening a section (a click on its item, the shield in the top bar ...) opens its submenu.
+const isObjectsTreeExpanded = ref(false)
+const isAssetsTreeExpanded = ref(false)
+const isSettingsMenuExpanded = ref(false)
+const isSecurityMenuExpanded = ref(false)
+const isAiMenuExpanded = ref(false)
 
 // Flat vs grouped-by-category sidebar layout. Per-browser preference, not a
 // server setting - defaults to grouped (the requested improvement) but
@@ -1299,6 +1300,15 @@ onUnmounted(() => window.removeEventListener('keydown', onNavPopoverKey))
 
 // leaving the collapsed state (or the page) must not leave a menu behind
 watch(isSidebarCollapsed, (v) => { if (!v) closeNavPopover() })
+
+// Showing a section that has a submenu opens it (the submenus start closed): the click on the item, the shield of the top bar, a tab chosen in the strip.
+watch(() => tabsStore.activeTabId, (id) => {
+  if (id === sectionTabId('objects')) isObjectsTreeExpanded.value = true
+  else if (id === sectionTabId('assets')) isAssetsTreeExpanded.value = true
+  else if (id === sectionTabId('settings')) isSettingsMenuExpanded.value = true
+  else if (id === sectionTabId('security')) isSecurityMenuExpanded.value = true
+  else if (id === sectionTabId('ai')) isAiMenuExpanded.value = true
+})
 
 function handleSelectSidebarClass(classId: string) {
   const dataClass = dataClassesStore.classes.find((c) => c.id === classId)

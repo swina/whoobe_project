@@ -1,3 +1,8 @@
+## Navigation: every submenu starts closed — 2026-10-19
+- Branch: `master`
+- The submenus of the main navigation (Data Objects classes, Assets folders, AI, Settings, Security) start **closed** instead of open; showing a section opens its own submenu (a click on the item, the shield of the top bar, a tab chosen in the strip) and the others stay closed. `DashboardLayout.vue` only. `browser/security-nav.spec.ts` has a test for it (4 tests); the browser specs that go through a submenu still pass (13).
+- Left alone: `OverviewView.vue`, which the owner changed by hand (cosmetic).
+
 ## feat/more-events and feat/security-navigation merged into master, worktrees removed — 2026-10-19
 - Branch: `master`
 - Both merged without conflicts (the first merge of `feat/more-events` had already gone through when the command was interrupted for the navigation change; the second attempt said "Already up to date"). Development stack: `pnpm install --offline`, `packages/core` rebuilt, migration 0065 applied at the restart of core-api (`object_events.class_id` nullable, `subject_type` present), `/health` 200; `scripts/release/check-docs.py` passes (246 routes, 100 documents, 0 undocumented variables); the dashboard type-checks.
