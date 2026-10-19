@@ -4,6 +4,15 @@ import { folders, assets } from './dam-schema.js';
 import type { ExtractedAssetMetadata } from '../dam/metadata-extractor.js';
 import type { CdnMirrorRecord } from '../dam/cdn-mirror.js';
 import { indexAsset, deleteIndexedByDocument } from '../search/indexer.js';
+import { insertEvent } from './object-events-records.js';
+import { buildAssetBulkEvent, buildAssetEvent, summariseAsset, type EventActor } from './object-events.js';
+
+/** Who did it and whether the write ends a flow, for the event the write produces; `silent` writes none (the migration tool, a move done in two steps). */
+export interface AssetWriteOptions { actor?: EventActor; endOfFlow?: boolean; silent?: boolean }
+const ctxOf = (o: AssetWriteOptions) => ({ actor: o.actor, endOfFlow: o.endOfFlow });
+
+/** Up to this many files deleted with a folder get an `asset.deleted` each; more give ONE `asset.bulk` summary (never an event per file for a big folder). */
+export const ASSET_FOLDER_EVENT_LIMIT = 10;
 
 export interface FolderRecord {
   id: string;
@@ -101,19 +110,24 @@ export async function createFolderRecord(input: {
  * pimcorePaths of deleted assets so the caller can also remove the
  * matching S3 objects - this module only owns the DB rows, not storage.
  */
-export async function deleteFolderRecord(path: string): Promise<{ deletedAssetPaths: string[] }> {
+export async function deleteFolderRecord(path: string, opts: AssetWriteOptions = {}): Promise<{ deletedAssetPaths: string[] }> {
   const db = getDb();
-  const matchingAssets = await db
-    .select({ pimcorePath: assets.pimcorePath })
-    .from(assets)
-    .where(pathOrDescendant(assets.folderPath, path));
+  return db.transaction(async (tx) => {
+    const matchingAssets = await tx.select().from(assets).where(pathOrDescendant(assets.folderPath, path));
+    const deletedAssetPaths = matchingAssets.map((a) => a.pimcorePath);
 
-  const deletedAssetPaths = matchingAssets.map((a) => a.pimcorePath);
+    await tx.delete(assets).where(pathOrDescendant(assets.folderPath, path));
+    await tx.delete(folders).where(pathOrDescendant(folders.path, path));
 
-  await db.delete(assets).where(pathOrDescendant(assets.folderPath, path));
-  await db.delete(folders).where(pathOrDescendant(folders.path, path));
-
-  return { deletedAssetPaths };
+    if (!opts.silent && matchingAssets.length) {
+      if (matchingAssets.length <= ASSET_FOLDER_EVENT_LIMIT) {
+        for (const a of matchingAssets) await insertEvent(tx, buildAssetEvent('asset.deleted', summariseAsset(a), ctxOf(opts)));
+      } else {
+        await insertEvent(tx, buildAssetBulkEvent(matchingAssets.map((a) => a.id), ctxOf(opts)));
+      }
+    }
+    return { deletedAssetPaths };
+  });
 }
 
 export async function countAssets(): Promise<number> {
@@ -187,12 +201,7 @@ export async function updateAssetCdnMirror(id: string, mirror: CdnMirrorRecord):
   return row;
 }
 
-/**
- * Insert-or-update by pimcorePath: a re-upload to the same path is treated
- * as a new version (incrementing `version`, keeping the original
- * `uploadedAt`), matching the existing versioning behavior in damStore.ts.
- */
-export async function upsertAssetRecord(input: {
+export interface AssetRecordInput {
   pimcorePath: string;
   filename: string;
   folderPath: string;
@@ -204,15 +213,19 @@ export async function upsertAssetRecord(input: {
   // undefined = leave whatever metadata already exists untouched (e.g. a
   // new-version upload that doesn't re-extract EXIF); null/value = set it.
   metadata?: ExtractedAssetMetadata | null;
-}): Promise<AssetRecord> {
-  const db = getDb();
-  const existing = await getAssetByPath(input.pimcorePath);
+}
+
+type Tx = Parameters<Parameters<ReturnType<typeof getDb>['transaction']>[0]>[0];
+
+/** The insert-or-update itself, on the caller's transaction. `created` is false for a new version of an existing path. */
+async function upsertInTx(tx: Tx, input: AssetRecordInput): Promise<{ row: AssetRecord; created: boolean }> {
+  const [existing] = await tx.select().from(assets).where(eq(assets.pimcorePath, input.pimcorePath)).limit(1);
   const version = existing ? existing.version + 1 : 1;
   const uploadedAt = existing ? existing.uploadedAt : new Date();
   const metadata = input.metadata !== undefined ? input.metadata : (existing?.metadata ?? null);
   const now = new Date();
 
-  const [row] = await db
+  const [row] = await tx
     .insert(assets)
     .values({
       pimcorePath: input.pimcorePath,
@@ -244,15 +257,51 @@ export async function upsertAssetRecord(input: {
       },
     })
     .returning();
+  return { row, created: !existing };
+}
+
+/**
+ * Insert-or-update by pimcorePath: a re-upload to the same path is treated
+ * as a new version (incrementing `version`, keeping the original
+ * `uploadedAt`), matching the existing versioning behavior in damStore.ts.
+ * Writes `asset.created` (a new path) or `asset.updated` (a new version) to the event outbox in the same transaction, unless `silent`.
+ */
+export async function upsertAssetRecord(input: AssetRecordInput, opts: AssetWriteOptions = {}): Promise<AssetRecord> {
+  const { row, created } = await getDb().transaction(async (tx) => {
+    const r = await upsertInTx(tx, input);
+    if (!opts.silent) await insertEvent(tx, buildAssetEvent(r.created ? 'asset.created' : 'asset.updated', summariseAsset(r.row), ctxOf(opts)));
+    return r;
+  });
+  void created;
   await ensureFolderChain(input.folderPath);
   await indexAsset(row);
   return row;
 }
 
-export async function deleteAssetRecord(pimcorePath: string): Promise<void> {
+/** A move: the record at the new path, the one at the old path gone, ONE `asset.moved` (with `from`) in the same transaction. */
+export async function moveAssetRecord(oldPimcorePath: string, input: AssetRecordInput, opts: AssetWriteOptions = {}): Promise<AssetRecord> {
   const db = getDb();
-  const existing = await getAssetByPath(pimcorePath);
-  await db.delete(assets).where(eq(assets.pimcorePath, pimcorePath));
+  const [old] = await db.select().from(assets).where(eq(assets.pimcorePath, oldPimcorePath)).limit(1);
+  const row = await db.transaction(async (tx) => {
+    const { row: moved } = await upsertInTx(tx, input);
+    await tx.delete(assets).where(eq(assets.pimcorePath, oldPimcorePath));
+    if (!opts.silent) await insertEvent(tx, buildAssetEvent('asset.moved', summariseAsset(moved), { ...ctxOf(opts), from: oldPimcorePath }));
+    return moved;
+  });
+  await ensureFolderChain(input.folderPath);
+  await indexAsset(row);
+  if (old) await deleteIndexedByDocument('asset', old.id);
+  return row;
+}
+
+export async function deleteAssetRecord(pimcorePath: string, opts: AssetWriteOptions = {}): Promise<void> {
+  const db = getDb();
+  const existing = await db.transaction(async (tx) => {
+    const [found] = await tx.select().from(assets).where(eq(assets.pimcorePath, pimcorePath)).limit(1);
+    await tx.delete(assets).where(eq(assets.pimcorePath, pimcorePath));
+    if (found && !opts.silent) await insertEvent(tx, buildAssetEvent('asset.deleted', summariseAsset(found), ctxOf(opts)));
+    return found;
+  });
   if (existing) await deleteIndexedByDocument('asset', existing.id);
 }
 

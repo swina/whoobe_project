@@ -11,7 +11,9 @@ export const objectEvents = pgTable('object_events', {
   type: text('type').notNull(),
   occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
   /** No foreign keys to the class or the object: the event outlives both (an `object.deleted` is about a row that is gone). */
-  classId: uuid('class_id').notNull(),
+  classId: uuid('class_id'),
+  /** 'object' | 'asset' | 'page': what `object_id` is the id of (an asset or a page has no class: `class_id` is then null) */
+  subjectType: text('subject_type').notNull().default('object'),
   objectId: uuid('object_id'),
   translationGroupId: uuid('translation_group_id'),
   locale: text('locale'),

@@ -302,7 +302,7 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
         themeId: p.themeId ? idMap.get(p.themeId) ?? null : null,
       });
       undo.push(() => deleteWhoobePage(created.id));
-      if (restorePublication && (p.published || p.workflowState)) await updateWhoobePage(created.id, { published: p.published, workflowState: p.workflowState });
+      if (restorePublication && (p.published || p.workflowState)) await updateWhoobePage(created.id, { published: p.published, workflowState: p.workflowState }, { silent: true });
     }
 
     for (const t of bundle.websiteTemplates) {

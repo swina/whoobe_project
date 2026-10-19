@@ -3,6 +3,11 @@ import { getDb } from './client.js';
 import { whoobePages, type PageSeo, type PageSitemapSettings, type PageSearchSettings } from './whoobe-pages-schema.js';
 import { indexPage, deleteIndexedByDocument } from '../search/indexer.js';
 import { snapshotContentVersion } from './content-versions-records.js';
+import { insertEvent } from './object-events-records.js';
+import { buildPageEvent, type EventActor } from './object-events.js';
+
+/** Who did it and whether the write ends a flow, for the `page.published` / `page.unpublished` event a change of the flag produces. */
+export interface PageWriteOptions { actor?: EventActor; endOfFlow?: boolean; silent?: boolean }
 
 export interface WhoobePageRecord {
   id: string;
@@ -118,7 +123,8 @@ export async function updateWhoobePage(
     seo?: PageSeo | null;
     sitemap?: PageSitemapSettings | null;
     search?: PageSearchSettings | null;
-  }
+  },
+  opts: PageWriteOptions = {}
 ): Promise<WhoobePageRecord | null> {
   const db = getDb();
 
@@ -160,7 +166,16 @@ export async function updateWhoobePage(
     }
   }
 
-  const [row] = await db.update(whoobePages).set(values).where(eq(whoobePages.id, id)).returning();
+  // The flag and its event in one transaction: no event for a change that did not happen, no change without its event. Only a CHANGE of the flag
+  // counts (saving an already-published page again is not a publication).
+  const row = await db.transaction(async (tx) => {
+    const [before] = input.published !== undefined && !opts.silent ? await tx.select({ published: whoobePages.published }).from(whoobePages).where(eq(whoobePages.id, id)).for('update') : [];
+    const [updated] = await tx.update(whoobePages).set(values).where(eq(whoobePages.id, id)).returning();
+    if (updated && before && before.published !== updated.published) {
+      await insertEvent(tx, buildPageEvent(updated.published ? 'page.published' : 'page.unpublished', updated, { actor: opts.actor, endOfFlow: opts.endOfFlow }));
+    }
+    return updated;
+  });
   if (row) await indexPage(row);
   return row ?? null;
 }

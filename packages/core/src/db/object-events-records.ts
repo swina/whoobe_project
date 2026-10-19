@@ -2,7 +2,7 @@ import { and, desc, eq, gt, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { objectEvents, objectEventDeliveries, objectEventSubscriptions } from './object-events-schema.js';
 import { getDataClass } from './data-classes-records.js';
-import { buildBulkEvent, countsForLoopGuard, END_OF_FLOW_REASON, loopLimits, loopVerdict, nextAttemptPlan, objectEventsEnabled, type SubscriptionInput, type BulkObjectEvent, type EventActor, type ObjectEvent } from './object-events.js';
+import { buildBulkEvent, countsForLoopGuard, eventSubject, END_OF_FLOW_REASON, loopLimits, loopVerdict, nextAttemptPlan, objectEventsEnabled, type SubscriptionInput, type AnyEvent, type BulkObjectEvent, type EventActor } from './object-events.js';
 
 type Db = ReturnType<typeof getDb>;
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -12,23 +12,25 @@ type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
  * the data change (the event is stored only when at least one subscription matches). A subscription matches when it is enabled, is for this class (or all), lists the event type and does not ignore the actor.
  * Returns how many deliveries were queued. Idempotent per event id (a repeated call changes nothing).
  */
-export async function insertEvent(runner: Db | Tx, event: ObjectEvent | BulkObjectEvent): Promise<number> {
+export async function insertEvent(runner: Db | Tx, event: AnyEvent): Promise<number> {
   if (!objectEventsEnabled()) return 0;
   const actorId = event.actor.id ?? '';
+  // an asset or a page has no class: only the subscriptions that are for every class can match it (docs/plans/system/more-events-plan.md)
+  const classId = 'class' in event ? event.class.id : null;
   const matching = await runner
     .select({ id: objectEventSubscriptions.id })
     .from(objectEventSubscriptions)
     .where(
       and(
         eq(objectEventSubscriptions.enabled, true),
-        or(isNull(objectEventSubscriptions.classId), eq(objectEventSubscriptions.classId, event.class.id)),
+        classId ? or(isNull(objectEventSubscriptions.classId), eq(objectEventSubscriptions.classId, classId)) : isNull(objectEventSubscriptions.classId),
         sql`${event.type} = ANY(${objectEventSubscriptions.events})`,
         sql`NOT (${actorId} <> '' AND ${actorId} = ANY(${objectEventSubscriptions.ignoreActors}))`,
       ),
     );
   // An event nobody listens to is not stored: a subscription created later never receives old events anyway.
   if (!matching.length) return 0;
-  const object = 'object' in event ? event.object : null;
+  const object = eventSubject(event);
   const endOfFlow = 'endOfFlow' in event && event.endOfFlow === true;
   // Loop guard (docs/plans/automations/object-events-loop-guard.md): what this actor and the subscriptions saw on this record lately. Only an API
   // client can loop (people, the system and imports are never counted); a write that ends a flow starts nothing, so it is not counted either.
@@ -60,7 +62,8 @@ export async function insertEvent(runner: Db | Tx, event: ObjectEvent | BulkObje
       id: event.id,
       type: event.type,
       occurredAt: new Date(event.occurredAt),
-      classId: event.class.id,
+      classId,
+      subjectType: object?.type ?? 'object',
       objectId: object?.id ?? null,
       translationGroupId: object?.translationGroupId ?? null,
       locale: object?.locale ?? null,
@@ -82,13 +85,13 @@ export async function insertEvent(runner: Db | Tx, event: ObjectEvent | BulkObje
 
 const warned = new Map<string, number>();
 /** One warning per actor, record and subscription per window, not one per stopped event. */
-function warnLoopGuard(key: string, why: string, event: ObjectEvent | BulkObjectEvent): void {
+function warnLoopGuard(key: string, why: string, event: AnyEvent): void {
   const now = Date.now();
   const last = warned.get(key);
   if (last !== undefined && now - last < loopLimits().windowSeconds * 1000) return;
   if (warned.size > 500) warned.clear();
   warned.set(key, now);
-  console.warn(JSON.stringify({ level: 'warn', msg: '[object-events] loop guard stopped a delivery', why, eventId: event.id, type: event.type, actor: event.actor, object: 'object' in event ? event.object.id : null }));
+  console.warn(JSON.stringify({ level: 'warn', msg: '[object-events] loop guard stopped a delivery', why, eventId: event.id, type: event.type, actor: event.actor, object: eventSubject(event)?.id ?? null }));
 }
 
 /** ONE `object.bulk` summary for a run that wrote with `silent: true` (bundle import, Pimcore migration). Does nothing when `count` is 0. */

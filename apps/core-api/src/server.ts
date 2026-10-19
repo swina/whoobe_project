@@ -2664,7 +2664,7 @@ app.patch('/whoobe-one/pages/:id', requireAnyPermission(PERMISSIONS.PAGES_EDIT, 
       seo: seo !== undefined ? seo : undefined,
       sitemap: sitemap !== undefined ? sitemap : undefined,
       search: search !== undefined ? search : undefined,
-    });
+    }, { actor: eventActorOf(req) });
     if (!page) {
       res.status(404).json({ error: 'Page not found' });
       return;
