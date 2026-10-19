@@ -32,7 +32,7 @@ Three of these entries expand into a tree when you click the small chevron next 
 
 - **Assets** expands into your DAM folder structure, so you can jump straight into a specific folder instead of opening the Assets list and navigating there.
 - **Data Objects** expands into your list of Data Classes, so you can jump straight into one class's records.
-- **Settings** expands into its own sub-sections (General, DAM configuration, Data Object classes, Roles/Users/Workspaces, Security, Workflows, AI agent, AI image gen, Figma, Mobile App) rather than landing on a generic settings page.
+- **Settings** expands into its own sub-sections (General, DAM configuration, Data Object classes, Roles/Users/Workspaces, Security (your own two-factor authentication and, for administrators, which roles must use it and the minimum password length), Workflows, AI agent, AI image gen, Figma, Mobile App) rather than landing on a generic settings page.
 
 Click the arrow at the top of the sidebar to collapse it to icons-only — useful on a smaller screen or when you want more room for the content area. Hovering an icon while collapsed still shows its name as a tooltip.
 

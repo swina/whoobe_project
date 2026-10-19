@@ -5,14 +5,22 @@ import {
   logout as apiLogout,
   fetchCurrentUser,
   mfaChallenge as apiMfaChallenge,
+  startMfaEnrolment as apiStartMfaEnrolment,
+  verifyMfaEnrolment as apiVerifyMfaEnrolment,
   getDefaultCoreApiUrl,
   type AuthenticatedUser,
   type MfaRequired,
+  type MfaEnrolmentRequired,
+  type MfaSetupResponse,
 } from '../utils/auth-api'
 import { isStaleLocalhostUrl } from '../utils/stale-localhost'
 
-function isMfaRequired(result: AuthenticatedUser | MfaRequired): result is MfaRequired {
+function isMfaRequired(result: AuthenticatedUser | MfaRequired | MfaEnrolmentRequired): result is MfaRequired {
   return (result as MfaRequired).mfaRequired === true
+}
+
+function isEnrolmentRequired(result: AuthenticatedUser | MfaRequired | MfaEnrolmentRequired): result is MfaEnrolmentRequired {
+  return (result as MfaEnrolmentRequired).mfaEnrolmentRequired === true
 }
 
 const CONFIG_STORAGE_KEY = 'whoobe_custom_auth_config'
@@ -52,6 +60,12 @@ export const useAuthStore = defineStore('auth', () => {
   // your code" step while this is non-null, and verifyMfa() below is what
   // actually completes the login.
   const mfaToken = ref<string | null>(null)
+  // Set when login() gets `mfaEnrolmentRequired`: the settings require a second factor and the account has none. No session
+  // exists until enrolment is proven; the user it opens is held in `enrolledUser` until the recovery codes were shown, so the
+  // app does not replace the screen that carries them.
+  const enrolToken = ref<string | null>(null)
+  const enrolledUser = ref<AuthenticatedUser | null>(null)
+  const recoveryCodes = ref<string[]>([])
 
   const permissions = computed(() => new Set(currentUser.value?.permissions ?? []))
 
@@ -71,18 +85,21 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Returns true if MFA is now required (LoginView.vue should show its code
-  // step next) - false means login is already fully complete.
-  async function login(email: string, password: string): Promise<boolean> {
+  // 'mfa' = the code step is next, 'enrol' = the forced enrolment step is next, 'done' = login is already complete.
+  async function login(email: string, password: string): Promise<'mfa' | 'enrol' | 'done'> {
     errorMessage.value = ''
     try {
       const result = await apiLogin(config.value.coreApiUrl, email, password)
       if (isMfaRequired(result)) {
         mfaToken.value = result.mfaToken
-        return true
+        return 'mfa'
+      }
+      if (isEnrolmentRequired(result)) {
+        enrolToken.value = result.enrolToken
+        return 'enrol'
       }
       currentUser.value = result
-      return false
+      return 'done'
     } catch (e: any) {
       errorMessage.value = e?.message || 'Login failed'
       throw e
@@ -112,6 +129,49 @@ export const useAuthStore = defineStore('auth', () => {
     errorMessage.value = ''
   }
 
+  async function startEnrolment(): Promise<MfaSetupResponse> {
+    errorMessage.value = ''
+    if (!enrolToken.value) {
+      errorMessage.value = 'Enrolment expired - please log in again'
+      throw new Error(errorMessage.value)
+    }
+    try {
+      return await apiStartMfaEnrolment(config.value.coreApiUrl, enrolToken.value)
+    } catch (e: any) {
+      errorMessage.value = e?.message || 'Failed to start MFA setup'
+      throw e
+    }
+  }
+
+  // The session is open after this, but the app only takes over in finishEnrolment(): the recovery codes are shown once.
+  async function verifyEnrolment(code: string): Promise<void> {
+    errorMessage.value = ''
+    if (!enrolToken.value) {
+      errorMessage.value = 'Enrolment expired - please log in again'
+      throw new Error(errorMessage.value)
+    }
+    try {
+      const { recoveryCodes: codes, ...user } = await apiVerifyMfaEnrolment(config.value.coreApiUrl, enrolToken.value, code)
+      enrolledUser.value = user
+      recoveryCodes.value = codes
+      enrolToken.value = null
+    } catch (e: any) {
+      errorMessage.value = e?.message || 'Invalid code'
+      throw e
+    }
+  }
+
+  function finishEnrolment(): void {
+    currentUser.value = enrolledUser.value
+    enrolledUser.value = null
+    recoveryCodes.value = []
+  }
+
+  function cancelEnrolment(): void {
+    enrolToken.value = null
+    errorMessage.value = ''
+  }
+
   async function logout(): Promise<void> {
     try {
       await apiLogout(config.value.coreApiUrl)
@@ -128,12 +188,18 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading,
     errorMessage,
     mfaToken,
+    enrolToken,
+    recoveryCodes,
     permissions,
     can,
     fetchMe,
     login,
     verifyMfa,
     cancelMfa,
+    startEnrolment,
+    verifyEnrolment,
+    finishEnrolment,
+    cancelEnrolment,
     logout,
   }
 })

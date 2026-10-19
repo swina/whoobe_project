@@ -23,6 +23,18 @@
       "note": "pre-auth by design (second factor, see 3.1)",
       "audit": "exempt: personal sign-in action, belongs to a login log (audit-log-plan.md section 7)"
     },
+    "POST /auth/mfa/enrol/setup": {
+      "access": "public",
+      "permissions": [],
+      "note": "pre-auth by design: the enrolment token from /auth/login stands in for the session (mandatory-2fa-plan.md)",
+      "audit": "exempt: personal sign-in action, belongs to a login log (audit-log-plan.md section 7)"
+    },
+    "POST /auth/mfa/enrol/verify": {
+      "access": "public",
+      "permissions": [],
+      "note": "pre-auth by design: proves the second factor, then opens the session (mandatory-2fa-plan.md)",
+      "audit": "exempt: personal sign-in action, belongs to a login log (audit-log-plan.md section 7)"
+    },
     "GET /auth/mfa/status": {
       "access": "auth",
       "permissions": []
@@ -1147,6 +1159,24 @@
       "permissions": [
         "SETTINGS_MANAGE"
       ]
+    },
+    "GET /security-settings": {
+      "access": "permission",
+      "permissions": [
+        "SETTINGS_MANAGE"
+      ]
+    },
+    "PUT /security-settings": {
+      "access": "permission",
+      "permissions": [
+        "SETTINGS_MANAGE"
+      ],
+      "audit": "securitySettings"
+    },
+    "GET /auth/password-policy": {
+      "access": "public",
+      "permissions": [],
+      "note": "the minimum a new password must satisfy; no secret in it"
     },
     "GET /mail-providers": {
       "access": "permission",

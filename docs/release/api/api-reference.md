@@ -23,12 +23,15 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 
 | Method & path | Description |
 | --- | --- |
-| `POST /auth/login` | Log in with email/password. Sets the session cookie, or returns `{ mfaRequired: true, mfaToken }` if 2FA is enabled. |
+| `POST /auth/login` | Log in with email/password. Sets the session cookie, or returns `{ mfaRequired: true, mfaToken }` if 2FA is enabled, or `{ mfaEnrolmentRequired: true, enrolToken }` (no session) if the user's role requires 2FA and none is set up yet. |
+| `POST /auth/mfa/enrol/setup` | Forced enrolment, step 1: with the `enrolToken` of the login, returns a TOTP secret + QR code. Public (the token stands in for the session). |
+| `POST /auth/mfa/enrol/verify` | Forced enrolment, step 2: a TOTP code with the `enrolToken` enables the factor, returns the recovery codes once and opens the session. Five wrong codes spend the token. |
+| `GET /auth/password-policy` | The minimum a new password must satisfy: `{ minLength, requireClasses }`. Public, no secret. |
 | `POST /auth/mfa/challenge` | Step 2 of a 2FA login: verify a TOTP code (or a recovery code) against a pending mfaToken and complete the session. |
 | `GET /auth/mfa/status` | Whether the current user has 2FA enabled. |
 | `POST /auth/mfa/setup` | Start 2FA enrollment; returns a TOTP secret + QR code. |
 | `POST /auth/mfa/verify-setup` | Confirm a TOTP code to finish enrollment; returns one-time recovery codes. |
-| `POST /auth/mfa/disable` | Disable 2FA (requires re-entering the password). |
+| `POST /auth/mfa/disable` | Disable 2FA (requires re-entering the password). `409` for a user whose role requires 2FA. |
 | `POST /auth/logout` | Revoke the current session and clear the cookie. |
 | `GET /auth/me` | Current user's id, email, display name, and effective permissions. |
 | `POST /auth/forgot-password` | Request a password-reset email. |
@@ -286,6 +289,13 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `GET /object-event-subscriptions/:id/deliveries` | The delivery log, newest first (`?status=pending`, `delivered`, `retrying`, `dead` or `stopped`, `?type=object.updated` and so on, and `limit` up to 200): status, attempts, next try, last problem. Never the event content or the service's answer. |
 | `DELETE /object-event-subscriptions/:id/deliveries` | Clear finished deliveries from the log: body `{ ids: [...] }` (up to 500) or `{ status: 'delivered' | 'dead' | 'stopped' }`; returns `{ removed }`. A delivery still pending or retrying is never removed; the events and the loop guard counts are not touched. |
 | `POST /object-event-deliveries/:id/retry` | Retry a delivery that gave up (`dead`); 409 for any other status. |
+
+### Security settings (permission `settings:manage`)
+
+| Method & path | Description |
+| --- | --- |
+| `GET /security-settings` | `{ requireMfaRoleIds, passwordPolicy: { minLength, requireClasses }, updatedAt, roles }`; `roles` lists every role for a picker. Defaults when never saved: no role required, length 8, no classes rule. |
+| `PUT /security-settings` | Change any of `requireMfaRoleIds` (role ids that must use 2FA), `passwordMinLength` (8 to 128), `passwordRequireClasses`; only the keys sent change. Audited as `setting.security_update`. |
 
 ### Audit log of administrative actions (permission `audit:read`, read only)
 

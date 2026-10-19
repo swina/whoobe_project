@@ -66,7 +66,7 @@ Severity is the residual risk after the controls, for a correctly installed work
 
 | Threat | Controls | Evidence | Residual |
 |---|---|---|---|
-| Password guessing, credential stuffing | argon2id; 5 failures per address+e-mail and 25 per e-mail lock for 15 minutes; generic error text | `auth` suite | in-memory lockout is per replica and reset by restart; password policy is length 8 only - **Medium** for internet-facing admin; mitigate with MFA and proxy/IP rules |
+| Password guessing, credential stuffing | argon2id; 5 failures per address+e-mail and 25 per e-mail lock for 15 minutes; generic error text | `auth` suite | in-memory lockout is per replica and reset by restart; the password policy is a configurable minimum length (default 8), an optional character-classes rule and "not the e-mail"; no breached-password list - **Medium** for internet-facing admin; mitigate with mandatory MFA for the administrative roles (Settings > Security) and proxy/IP rules |
 | Stolen password | optional TOTP; code replay blocked; recovery codes hashed; password reset revokes sessions | `mfa` suite | MFA is optional and cannot be enforced - **Medium** |
 | Session theft (XSS, network, database read) | `HttpOnly`, `SameSite=Lax`, `Secure` over HTTPS; HSTS; 7-day fixed lifetime | `auth`, TLS scan | session ids are stored as hashes and expired sessions are purged (F-056) - **Low** |
 | Account recovery abuse | reset token hashed, one hour, single use, rate limited | `auth` | depends on the security of the mailbox |
@@ -137,7 +137,7 @@ Severity is the residual risk after the controls, for a correctly installed work
 1. **Third-party credentials**: encrypted at rest only when `INTEGRATION_SECRETS_ENCRYPTION_KEY` is set (F-055, fixed; an installation that never sets it keeps clear text and a log warning). The push provider key used to be served by an unauthenticated route (F-059, fixed): after upgrading, rotate any push key that was saved on an internet-reachable installation.
 2. **Authorization model is functional, not per site** - roles limit what a person can do (pages, snippets, themes ...), workspace-wide;
    they do not fence one division's websites from another's. Use separate workspaces (export/import moves a site) for that.
-3. **No MFA enforcement and no SSO**; password policy is length only.
+3. **No SSO**; MFA is enforced only for the roles an administrator chooses and only at the next sign-in (open sessions are not cut); password policy has no breached-password list.
 4. **No full CSP on the admin and editor applications**; CSRF relies on SameSite/CORS alone.
 5. **Files from visitors are not scanned for malware** (planned as an optional step).
 6. **Single instance, in-memory throttling, no load test** - a determined volumetric attack is a proxy/CDN problem.

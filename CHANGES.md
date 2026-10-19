@@ -1,3 +1,28 @@
+## Mandatory 2FA and password policy, steps 4 and 5: dashboard and docs — 2026-10-19
+- Branch: `feat/mandatory-2fa`
+- Login screen: two new steps after the password, *enrolment* (QR code and manual key, code to confirm, "Confirm and sign in") and *recovery codes* (shown once). The session is open after the code but the app only takes over when the codes are acknowledged (`authStore.finishEnrolment()`). Known edge: a page reload on the recovery-codes step goes straight into the app (the session exists) and the codes are not shown again; the break-glass is the way back for a user who then needs them.
+- Settings > Security: new card *Sign-in requirements* (`SecuritySettingsCard.vue`, only with `settings:manage`): roles that must use 2FA, minimum password length (the form stops values outside 8..128), the three-of-four classes rule. `GET /security-settings` now also returns `roles` (id, name) for the picker, because `GET /auth/roles` needs `users:manage`.
+- Browser test `browser/mfa-enrolment.spec.ts` (2): the enrolment step stands between password and dashboard (wrong code refused, recovery codes, then in); the administrator sets the requirement from the card.
+- Docs: `authentication-and-authorization.md` (sections 2, 4 and the known gaps; the recovery codes are eight, not ten as the page said), `api-reference.md` (login answer, the two enrolment routes, `/auth/password-policy`, `/security-settings`, `409` on disable), threat model and status summary rows, release plan 0.2 row marked done, plan status. The break-glass already existed (`RESET_USER_CLEAR_MFA`); the plan said "a new option", corrected.
+- Not built, on purpose: revoking open sessions when the requirement is switched on; per-user exceptions; WebAuthn.
+
+## Mandatory 2FA and password policy, steps 2 and 3: login, enrolment, settings routes — 2026-10-19
+- Branch: `feat/mandatory-2fa`
+- `POST /auth/login`: when the password is right, the user has no second factor and one of their roles is in `requireMfaRoleIds`, the answer is `{ mfaEnrolmentRequired, enrolToken }` and **no session**. `POST /auth/mfa/enrol/setup` and `/enrol/verify` take that token (in memory, 10 minutes, five wrong codes burn it, the per-account code lock and the used-code memory of the challenge apply); `/enrol/verify` enables TOTP, returns the recovery codes once and opens the session. A session with half the rights was not built: every guard would have had to know about it.
+- `POST /auth/mfa/disable` answers 409 for a user whose roles require a second factor (after the password check).
+- Password policy applied where a password is set: `POST /auth/users` and `POST /auth/reset-password` (the error names the broken rule). A login is never checked, existing passwords are not re-checked. `GET /auth/password-policy` (public, no secret) lets a form say the rule before the person types.
+- `GET` / `PUT /security-settings` (`settings:manage`), audited as `setting.security_update` (route contract entries added). The snapshot calls its fields `policyMinLength` / `policyRequireClasses`: a key named `password...` is hidden by the audit log's safety net (found by the test, the row said `[redacted]`).
+- nginx template: `security-settings` added to the core-api prefixes (the lesson of the object-events screens: a new top-level route needs its prefix there).
+- Tests: `api/mfa-required.test.ts` (11: settings for settings managers only, validation, audit row, enrolment without session, wrong code, token spent, five-failure burn, other role not asked, setting switched off, policy on create and on reset, a login unaffected). Security API suite: 1478 tests, one file (`publish.test.ts`) not loadable only because the worktree has no `@whoobe-cms/renderer` build; the audit mail-row test failed once and passed on re-run (it shares the single mail row with other files, known). The `whoobe-sectest` core-api image now runs the code of this branch: rebuild it from `master` before the next run there.
+- Not yet: dashboard (enrolment step, settings screen), docs, break-glass option in `reset-user-password.ts`.
+
+## Mandatory 2FA and password policy, step 1: table, helpers, settings records — 2026-10-19
+- Branch: `feat/mandatory-2fa` (worktree `../whoobe_cms-mfa`)
+- `docs/plans/system/mandatory-2fa-plan.md` (new): decisions (setting in a table, enforcement at login with an enrolment token and no half-session, disable refused for required roles, break-glass from the shell) and the five steps.
+- Migration `0061_security_settings` (expand only): single-row table `security_settings` (`require_mfa_role_ids uuid[]`, `password_min_length` 8..128, `password_require_classes`), a CHECK keeps one row and the length range. No row = defaults (nobody required, 8 characters), so an upgrade changes nothing.
+- `auth/password-policy.ts` (pure): `checkPasswordPolicy` (minimum length, three of four character classes when asked, not the e-mail or its local part, at most 128) and `userMustUseMfa`; `db/security-settings-records.ts`: `getSecuritySettings`, `parseSecuritySettingsInput`, `updateSecuritySettings`, `getUserRoleIds`, `userMustUseMfaNow`. Exported from `@whoobe-cms/core/server`.
+- Tests: `password-policy.test.ts` (6), `security-settings-records.integration.test.ts` (4, disposable database). Nothing uses them yet: routes are step 2 and 3.
+
 ## Sandbox branch merged into master — 2026-10-19
 - Branch: `master`
 - `fix/sandbox-demo-banner-tls-reset` (one commit, 2026-10-15) merged: the public sandbox no longer runs code that is outside the tag/master, so a deploy with `rsync --delete` cannot drop it. Only `CHANGES.md` conflicted (both sides prepend); both entries kept.
