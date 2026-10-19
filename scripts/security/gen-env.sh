@@ -85,6 +85,9 @@ AI_RATE_LIMIT_PER_MINUTE=5
 # MFA secrets encrypted at rest (test value)
 TOTP_ENCRYPTION_KEY=sectest-$(hex 16)
 
+# /metrics answers only with this bearer token (404 without one configured)
+METRICS_TOKEN=sectest-metrics-$(hex 16)
+
 # outgoing-mail credentials encrypted at rest (test value)
 MAIL_SETTINGS_ENCRYPTION_KEY=sectest-$(hex 16)
 UPLOAD_TOKEN_SECRET=sectest-upload-$(hex 24)

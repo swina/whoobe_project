@@ -45,5 +45,6 @@ export function assertSafeTarget(): void {
 
 export const ADMIN_EMAIL = env.SEED_ADMIN_EMAIL ?? 'admin@sectest.local'
 export const ADMIN_PASSWORD = env.SEED_ADMIN_PASSWORD ?? ''
+export const METRICS_TOKEN = env.METRICS_TOKEN ?? ''
 // Deterministic password for the seeded role users (derived, so no extra secret to manage).
 export const ROLE_USER_PASSWORD = `Sec-${ADMIN_PASSWORD}-1!`

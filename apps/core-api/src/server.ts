@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import { DocsConfigError, checkNavText, createContentReader, docsSearchIndex, renderDraft, describeDocsSite, docsConfigOf, findDocByRoute, loadDocsSite, renderDocPage } from './docs-site.js';
 import { publishJobsRouter } from './publish-jobs.js';
 import { createAudit } from './audit.js';
+import { createHttpMetrics, memoAsync, metricsTokenOk } from './metrics.js';
 import { AUDIT } from './audit-specs.js';
 import { createAuthoredNotifyCache, createRecipientThrottle, isSingleEmail, notifyKey } from './form-notify.js';
 import {
@@ -147,6 +148,9 @@ import {
   disableTotp,
   updateMfaRecoveryCodes,
   getSecuritySettings,
+  pingDatabase,
+  publishJobCounts,
+  eventDeliveryCounts,
   parseSecuritySettingsInput,
   updateSecuritySettings,
   userMustUseMfaNow,
@@ -406,6 +410,9 @@ app.disable('x-powered-by');
 // or 'loopback' / a CIDR list) so it is the client's address; leave it unset when the API is reachable
 // directly, otherwise any client could pick its own address through X-Forwarded-For.
 app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
+// Request counts and times for /metrics: first in the chain, so a request refused further down (429, 403) is counted too.
+const httpMetrics = createHttpMetrics();
+app.use(httpMetrics.middleware);
 app.use(securityHeaders());
 app.use(corsPolicy({ publicPathPrefixes: ['/public/', '/preview/', '/health', '/pwa/subscribe'] }));
 app.use(sanitizeServerErrors());
@@ -489,8 +496,45 @@ app.get('/site-root', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'core-api', audit: auditStats.lost === 0 ? 'ok' : 'degraded', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString(), ...(isSandbox() ? { sandbox: sandboxStatus() } : {}) });
+// Two probes. /health is READINESS: it answers 503 when the database does not answer (the answer is kept for 2 s, so an anonymous
+// caller cannot make a query per request). /health/live is LIVENESS: the process is up, nothing else is asked (the Docker
+// HEALTHCHECK uses it, so a database outage does not make the container look dead). Neither shows more than it did before.
+const databaseUp = memoAsync(() => pingDatabase(2000), 2000);
+const healthBody = () => ({ service: 'core-api', audit: auditStats.lost === 0 ? 'ok' : 'degraded', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString(), ...(isSandbox() ? { sandbox: sandboxStatus() } : {}) });
+app.get('/health', async (_req: Request, res: Response) => {
+  const up = await databaseUp();
+  res.status(up ? 200 : 503).json({ status: up ? 'ok' : 'unavailable', database: up ? 'ok' : 'down', ...healthBody() });
+});
+app.get('/health/live', (_req: Request, res: Response) => {
+  res.json({ status: 'ok', ...healthBody() });
+});
+
+// Prometheus metrics. OFF unless METRICS_TOKEN is set (404 without it); with it, `Authorization: Bearer <token>`. The nginx template does
+// not route /metrics, so it is reachable on the service network (and on the published port), not from the internet.
+const METRICS_VERSION = (() => { try { return JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version as string; } catch { return 'unknown'; } })();
+app.get('/metrics', async (req: Request, res: Response) => {
+  if (!process.env.METRICS_TOKEN) { res.status(404).json({ error: 'Not found' }); return; }
+  if (!metricsTokenOk(req.headers.authorization, process.env.METRICS_TOKEN)) {
+    res.setHeader('WWW-Authenticate', 'Bearer');
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  const up = await databaseUp();
+  const [jobs, deliveries] = up ? await Promise.all([publishJobCounts().catch(() => ({})), eventDeliveryCounts().catch(() => ({}))]) : [{}, {}];
+  const mem = process.memoryUsage();
+  const byStatus = (name: string, help: string, counts: Record<string, number>) => ({ name, help, samples: Object.entries(counts).map(([status, value]) => ({ labels: { status }, value })) });
+  res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+  res.send(httpMetrics.render([
+    { name: 'whoobe_build_info', help: 'Version of this build.', samples: [{ labels: { service: 'core-api', version: METRICS_VERSION }, value: 1 }] },
+    { name: 'whoobe_database_up', help: '1 when the database answered, 0 when not.', samples: [{ value: up ? 1 : 0 }] },
+    byStatus('whoobe_publish_jobs', 'Publish jobs by status.', jobs as Record<string, number>),
+    byStatus('whoobe_object_event_deliveries', 'Object event deliveries by status (pending and retrying are the queue).', deliveries as Record<string, number>),
+    { name: 'whoobe_audit_rows_written', help: 'Audit rows written since this process started.', samples: [{ value: auditStats.written }] },
+    { name: 'whoobe_audit_rows_lost', help: 'Audit rows that could not be written since this process started.', samples: [{ value: auditStats.lost }] },
+    { name: 'whoobe_process_uptime_seconds', help: 'Seconds since this process started.', samples: [{ value: Math.round(process.uptime()) }] },
+    { name: 'whoobe_process_resident_memory_bytes', help: 'Resident set size.', samples: [{ value: mem.rss }] },
+    { name: 'whoobe_process_heap_used_bytes', help: 'V8 heap in use.', samples: [{ value: mem.heapUsed }] },
+  ]));
 });
 
 // --- Simple in-memory brute-force guard for /auth/login ---

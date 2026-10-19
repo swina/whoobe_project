@@ -38,6 +38,7 @@ export * from './db/audit-log-schema.js';
 export * from './db/audit-log-records.js';
 export * from './db/security-settings-schema.js';
 export * from './db/security-settings-records.js';
+export * from './db/ops-stats.js';
 export * from './db/data-object-preview-tokens-records.js';
 export * from './db/websites-schema.js';
 export * from './db/websites-records.js';

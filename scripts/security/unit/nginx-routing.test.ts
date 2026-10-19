@@ -37,11 +37,18 @@ for (const file of ['deploy/nginx/_locations.conf.template']) {
       const own: Record<string, string> = {
         'whoobe-one': 'its own locations (checked above)',
         'site-root': 'the internal auth_request location /_whoobe_site_root',
+        'metrics': 'deliberately NOT routed: Prometheus scrapes it on the service network (and it needs METRICS_TOKEN)',
         'api': '/api/v1/system/ has its own location below; the rest of /api/ belongs to the gateway and the asset service',
       }
       const prefixes = [...new Set(routes.map((r) => /^\w+ \/([^/:]+)/.exec(r)?.[1]).filter((p): p is string => !!p))]
       expect(prefixes.length).toBeGreaterThan(15)
       expect(prefixes.filter((p) => !top.has(p) && !own[p])).toEqual([])
+    })
+
+    it('does not send /metrics to core-api: it is for the service network only', () => {
+      const top = [...text.matchAll(/location ~ \^\/\(([^)]*)\)\(\/\.\*\)\?\$ \{/g)].flatMap((x) => x[1].split('|'))
+      expect(top).not.toContain('metrics')
+      expect(text).not.toMatch(/location[^\n]*\/metrics/)
     })
 
     it('routes the dashboard\'s publication routes and the system log viewer to core-api, and not the publisher\'s own', () => {

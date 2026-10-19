@@ -4,7 +4,17 @@
     "GET /health": {
       "access": "public",
       "permissions": [],
-      "note": "liveness probe"
+      "note": "readiness probe: 503 when the database does not answer (kept 2 s)"
+    },
+    "GET /health/live": {
+      "access": "public",
+      "permissions": [],
+      "note": "liveness probe: the process is up, nothing else is asked (Docker HEALTHCHECK)"
+    },
+    "GET /metrics": {
+      "access": "public",
+      "permissions": [],
+      "note": "Prometheus; 404 unless METRICS_TOKEN is set, then a bearer token; not routed by nginx"
     },
     "GET /site-root": {
       "access": "public",
