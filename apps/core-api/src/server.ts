@@ -1258,7 +1258,7 @@ app.get('/auth/oidc/login', async (req: Request, res: Response): Promise<void> =
   } catch (error: any) {
     logger.error({ err: error }, 'OIDC login start error');
     const settings = await getOidcSettings().catch(() => null);
-    if (settings?.redirectBaseUrl) res.redirect(302, oidcLandingUrl(settings.redirectBaseUrl, 'provider_error'));
+    if (settings?.redirectBaseUrl) res.redirect(302, oidcLandingUrl(settings.dashboardUrl ?? settings.redirectBaseUrl, 'provider_error'));
     else res.status(502).json({ error: 'The single sign-on provider could not be reached' });
   }
 });
@@ -1272,7 +1272,7 @@ app.get('/auth/oidc/callback', async (req: Request, res: Response): Promise<void
   const back = (code: keyof typeof OIDC_ERRORS, detail?: string): void => {
     if (detail) logger.warn(`OIDC sign-in refused (${code}): ${detail}`);
     res.clearCookie(OIDC_COOKIE, { path: '/auth/oidc' });
-    res.redirect(302, oidcLandingUrl(settings.redirectBaseUrl!, code));
+    res.redirect(302, oidcLandingUrl(settings.dashboardUrl ?? settings.redirectBaseUrl!, code));
   };
   try {
     const { code, state, error } = req.query as Record<string, unknown>;
@@ -1310,7 +1310,7 @@ app.get('/auth/oidc/callback', async (req: Request, res: Response): Promise<void
 
     await startSession(res, resolution.userId, req);
     res.clearCookie(OIDC_COOKIE, { path: '/auth/oidc' });
-    res.redirect(302, oidcLandingUrl(settings.redirectBaseUrl!));
+    res.redirect(302, oidcLandingUrl(settings.dashboardUrl ?? settings.redirectBaseUrl!));
   } catch (error: any) {
     if (error instanceof OidcProtocolError) back(error.code, error.message);
     else { logger.error({ err: error }, 'OIDC callback error'); back('provider_error', 'unexpected error'); }

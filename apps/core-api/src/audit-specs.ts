@@ -64,7 +64,7 @@ const securitySnapshot = (s: SecuritySettings) => ({
 // ── single sign-on settings (the client secret is never in a row: "changed") ──
 const oidcSnapshot = (s: ReturnType<typeof publicOidcSettings>) => ({
   enabled: s.enabled, label: s.label, issuer: s.issuer, clientId: s.clientId, confidential: s.hasClientSecret,   // not "hasClientSecret": a key with "secret" in it is hidden by the audit log's safety net
-  redirectBaseUrl: s.redirectBaseUrl,
+  redirectBaseUrl: s.redirectBaseUrl, dashboardUrl: s.dashboardUrl,
   scopes: s.scopes, roleClaim: s.roleClaim, roleMapping: s.roleMapping, defaultRoleIds: s.defaultRoleIds, autoProvision: s.autoProvision,
   linkByEmail: s.linkByEmail, localLogin: s.localLogin,
 });

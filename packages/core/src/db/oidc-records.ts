@@ -13,6 +13,8 @@ export interface OidcSettings {
   /** decrypted: for the server only, never sent to a browser (publicOidcSettings is the view for that) */
   clientSecret: string | null;
   redirectBaseUrl: string | null;
+  /** where people land after signing in; null = the redirect base */
+  dashboardUrl: string | null;
   scopes: string;
   roleClaim: string | null;
   roleMapping: OidcRoleMapping[];
@@ -24,7 +26,7 @@ export interface OidcSettings {
 }
 
 export const DEFAULT_OIDC_SETTINGS: OidcSettings = {
-  enabled: false, label: 'Single sign-on', issuer: null, clientId: null, clientSecret: null, redirectBaseUrl: null,
+  enabled: false, label: 'Single sign-on', issuer: null, clientId: null, clientSecret: null, redirectBaseUrl: null, dashboardUrl: null,
   scopes: 'openid email profile', roleClaim: null, roleMapping: [], defaultRoleIds: [], autoProvision: false, linkByEmail: true,
   localLogin: 'all', updatedAt: null,
 };
@@ -34,7 +36,7 @@ export async function getOidcSettings(): Promise<OidcSettings> {
   if (!row) return DEFAULT_OIDC_SETTINGS;
   return {
     enabled: row.enabled, label: row.label, issuer: row.issuer, clientId: row.clientId,
-    clientSecret: decryptIntegrationSecret(row.clientSecretEncrypted), redirectBaseUrl: row.redirectBaseUrl, scopes: row.scopes,
+    clientSecret: decryptIntegrationSecret(row.clientSecretEncrypted), redirectBaseUrl: row.redirectBaseUrl, dashboardUrl: row.dashboardUrl, scopes: row.scopes,
     roleClaim: row.roleClaim, roleMapping: row.roleMapping, defaultRoleIds: row.defaultRoleIds, autoProvision: row.autoProvision,
     linkByEmail: row.linkByEmail, localLogin: row.localLogin === 'admins' ? 'admins' : 'all', updatedAt: row.updatedAt,
   };
@@ -56,7 +58,7 @@ export function oidcPublicConfig(s: OidcSettings): { enabled: boolean; label: st
 
 export interface OidcSettingsPatch {
   enabled?: boolean; label?: string; issuer?: string | null; clientId?: string | null; clientSecret?: string; clearClientSecret?: boolean;
-  redirectBaseUrl?: string | null; scopes?: string; roleClaim?: string | null; roleMapping?: OidcRoleMapping[]; defaultRoleIds?: string[];
+  redirectBaseUrl?: string | null; dashboardUrl?: string | null; scopes?: string; roleClaim?: string | null; roleMapping?: OidcRoleMapping[]; defaultRoleIds?: string[];
   autoProvision?: boolean; linkByEmail?: boolean; localLogin?: 'all' | 'admins';
 }
 
@@ -85,7 +87,7 @@ export async function parseOidcSettingsInput(
     if (typeof body.label !== 'string' || !body.label.trim() || body.label.length > 60) return fail('label must be 1 to 60 characters');
     out.label = body.label.trim();
   }
-  for (const [k, what] of [['issuer', 'issuer'], ['redirectBaseUrl', 'redirectBaseUrl']] as const) {
+  for (const [k, what] of [['issuer', 'issuer'], ['redirectBaseUrl', 'redirectBaseUrl'], ['dashboardUrl', 'dashboardUrl']] as const) {
     const v = body[k];
     if (v === undefined) continue;
     if (v === null || v === '') { out[k] = null; continue; }

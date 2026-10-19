@@ -3,7 +3,7 @@
 import { createServer, type Server } from 'node:http'
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { generateKeyPair, exportJWK, SignJWT, type KeyLike } from '../../../apps/gateway/node_modules/jose'
+import { generateKeyPair, exportJWK, SignJWT, type KeyLike } from 'jose'
 
 export type Tamper = 'bad-signature' | 'wrong-audience' | 'wrong-issuer' | 'expired' | 'wrong-nonce' | 'none-alg' | 'no-id-token' | 'wrong-azp' | 'hs256'
 

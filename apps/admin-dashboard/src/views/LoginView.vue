@@ -52,6 +52,16 @@
         </p>
       </form>
 
+      <!-- Single sign-on, when an administrator has set it up (Settings > Security). A full page navigation: the provider answers with a redirect. -->
+      <div v-if="step === 'credentials' && sso?.enabled" class="space-y-2">
+        <div v-if="ssoError" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs" data-testid="sso-error">{{ ssoError }}</div>
+        <a :href="oidcLoginUrl(authStore.config.coreApiUrl)" class="btn btn-secondary w-full flex items-center justify-center gap-2" data-testid="sso-button">
+          <span>Sign in with {{ sso.label }}</span>
+        </a>
+        <p v-if="sso.localLogin === 'admins'" class="text-center text-xs text-slate-500">The password form is for administrators.</p>
+      </div>
+      <div v-else-if="step === 'credentials' && ssoError" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs" data-testid="sso-error">{{ ssoError }}</div>
+
       <!-- Step 2: password already verified (that's what mfaToken proves) -
            only the authenticator code, or a one-time recovery code, is
            still needed. -->
@@ -146,10 +156,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Layers } from '@lucide/vue'
 import { useAuthStore } from '../stores/authStore'
 import type { MfaSetupResponse } from '../utils/auth-api'
+import { fetchOidcPublicConfig, oidcLoginUrl, OIDC_ERROR_TEXT, type OidcPublicConfig } from '../utils/oidc-settings-api'
 
 const authStore = useAuthStore()
 const email = ref('')
@@ -158,6 +169,19 @@ const code = ref('')
 const useRecoveryCode = ref(false)
 const step = ref<'credentials' | 'mfa' | 'enrol' | 'recovery'>('credentials')
 const enrolSetup = ref<MfaSetupResponse | null>(null)
+
+// Single sign-on: the button appears when it is set up; a failed sign-in lands back here with ?sso_error=<code>.
+const sso = ref<OidcPublicConfig | null>(null)
+const ssoError = ref('')
+onMounted(async () => {
+  const code = new URLSearchParams(window.location.search).get('sso_error')
+  if (code) {
+    ssoError.value = OIDC_ERROR_TEXT[code] ?? 'The sign-in did not complete.'
+    // the code has been read: take it out of the address bar so a reload does not show it again
+    window.history.replaceState(null, '', window.location.pathname)
+  }
+  try { sso.value = await fetchOidcPublicConfig(authStore.config.coreApiUrl) } catch { /* no button: the password form still works */ }
+})
 const isSubmitting = ref(false)
 
 async function submitCredentials() {

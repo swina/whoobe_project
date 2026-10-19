@@ -13,6 +13,8 @@ export const oidcSettings = pgTable('oidc_settings', {
   /** encrypted with INTEGRATION_SECRETS_ENCRYPTION_KEY; null = a public client (PKCE alone) */
   clientSecretEncrypted: text('client_secret_encrypted'),
   redirectBaseUrl: text('redirect_base_url'),
+  /** where people land after signing in (the dashboard); null = the redirect base */
+  dashboardUrl: text('dashboard_url'),
   scopes: text('scopes').notNull().default('openid email profile'),
   roleClaim: text('role_claim'),
   roleMapping: jsonb('role_mapping').$type<OidcRoleMapping[]>().notNull().default([]),

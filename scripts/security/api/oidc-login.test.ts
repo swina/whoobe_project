@@ -15,7 +15,7 @@ let idp: Awaited<ReturnType<typeof startMockOidc>>
 let roleRead = ''
 let roleWrite = ''
 const userIds: string[] = []
-const OFF = { enabled: false, localLogin: 'all', autoProvision: false, linkByEmail: true, roleMapping: [], defaultRoleIds: [], roleClaim: null }
+const OFF = { clearClientSecret: true, enabled: false, localLogin: 'all', autoProvision: false, linkByEmail: true, roleMapping: [], defaultRoleIds: [], roleClaim: null }
 
 const sub = () => `sub-${randomBytes(4).toString('hex')}`
 const mail = () => `sso-${randomBytes(4).toString('hex')}@idp.test`
@@ -336,6 +336,16 @@ describe('the flow itself', () => {
     expect(new URL(start.headers.get('location')!).origin).toBe(idp.issuer)
     const r = await signIn({ sub: sub(), email: mail(), email_verified: true, groups: ['whoobe-readers'] })
     expect(r.location).toBe(`${TARGET}/`)
+  })
+
+  it('lands on the dashboard address when it is not the one the provider calls back (development), for a success and for a failure', async () => {
+    await configure({ dashboardUrl: 'http://localhost:3000' })
+    const ok = await signIn({ sub: sub(), email: mail(), email_verified: true, groups: ['whoobe-readers'] })
+    expect(ok.location).toBe('http://localhost:3000/')
+    const bad = await signIn({ sub: sub(), email: mail(), email_verified: true, groups: ['nobody'] })
+    expect(bad.location).toBe('http://localhost:3000/?sso_error=no_access')
+    await configure({ dashboardUrl: '' })
+    expect((await admin.get('/oidc-settings')).json.dashboardUrl).toBeNull()
   })
 })
 
