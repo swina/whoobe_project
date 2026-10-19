@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildMultipart, CdnMirrorError, cloudflareDeliveryUrl, cloudflareRefusal, getCdnProvider, missingCdnFields, mirrorToCloudflareImages, testCloudflareImages, validateCdnSettings,
+  buildMultipart, CdnMirrorError, checkOriginCdn, cleanOriginCdnBase, cloudflareDeliveryUrl, cloudflareRefusal, getCdnProvider, missingCdnFields, mirrorToCloudflareImages,
+  mirrorViaOriginCdn, originCdnUrl, testCloudflareImages, testOriginCdn, validateCdnSettings, withOriginCdnVersion,
 } from './cdn-providers.js';
 
 const ACCOUNT = 'a'.repeat(32);
 const ROUTE = '11111111-1111-4111-8111-111111111111';
 
 describe('settings of a provider', () => {
-  it('knows the two providers and which fields are secret', () => {
+  it('knows the providers and which fields are secret', () => {
+    expect(getCdnProvider('cdn-origin')?.fields.map((f) => f.name)).toEqual(['baseUrl']);
+    expect(getCdnProvider('cdn-origin')?.fields.some((f) => f.secret)).toBe(false);
     expect(getCdnProvider('cloudinary')?.fields.map((f) => f.name)).toEqual(['gatewayRouteId', 'uploadPreset']);
     expect(getCdnProvider('cloudflare-images')?.fields.filter((f) => f.secret).map((f) => f.name)).toEqual(['apiToken']);
     expect(getCdnProvider('imgix')).toBeUndefined();
@@ -136,5 +139,55 @@ describe('which mirror a website is served', () => {
     expect(pickCdnMirrorUrl(m)).toBe('https://res.cloudinary.com/x/a.png');
     expect(pickCdnMirrorUrl({ cloudflare: m['cloudflare-images'] } as any, 'cloudinary')).toBe('https://imagedelivery.net/h/a/public');
     expect(pickCdnMirrorUrl(undefined, 'cloudinary')).toBeNull();
+  });
+});
+
+describe('a CDN in front of this installation', () => {
+  const asset = { s3Key: 'public/logos/my logo.png', version: 3, mimeType: 'image/png', isPublic: true };
+  const probe = (status: number, contentType: string | null = 'image/png') => ({ head: async () => ({ status, contentType }) });
+
+  it('takes an https address, without credentials, query or trailing slash; http only when the server allows it', () => {
+    expect(validateCdnSettings({ provider: 'cdn-origin', config: { baseUrl: ' https://cdn.example.com/ ' } })).toEqual({ ok: true, provider: 'cdn-origin', config: { baseUrl: 'https://cdn.example.com' }, secrets: {} });
+    expect(cleanOriginCdnBase('https://example.com/media/')).toBe('https://example.com/media');
+    for (const bad of ['http://cdn.example.com', 'ftp://x', 'https://u:p@x.com', 'https://x.com/?a=1', 'https://x.com/#f', 'nope']) expect(cleanOriginCdnBase(bad, {}), bad).toBeNull();
+    expect(cleanOriginCdnBase('http://localhost:8080', { CDN_ALLOW_HTTP: 'true' })).toBe('http://localhost:8080');
+    expect(validateCdnSettings({ provider: 'cdn-origin', config: { baseUrl: 'http://x.com' } })).toMatchObject({ ok: false });
+    expect(missingCdnFields('cdn-origin', {}, {})).toEqual(['baseUrl']);
+    expect(missingCdnFields('cdn-origin', { baseUrl: 'https://cdn.example.com' }, {})).toEqual([]);
+  });
+  it('builds the URL with the path the origin serves public files under, each segment encoded, and the version', () => {
+    expect(originCdnUrl('https://cdn.example.com', asset.s3Key, 3)).toBe('https://cdn.example.com/dam-asset/public/logos/my%20logo.png?v=3');
+    expect(originCdnUrl('https://cdn.example.com/', 'a/b#c?d.png', 1)).toBe('https://cdn.example.com/dam-asset/a/b%23c%3Fd.png?v=1');
+  });
+  it('gives a re-uploaded file its own URL: only v= changes', () => {
+    expect(withOriginCdnVersion('https://c.example.com/dam-asset/a.png?v=3', 4)).toBe('https://c.example.com/dam-asset/a.png?v=4');
+    expect(withOriginCdnVersion('https://c.example.com/dam-asset/a.png', 2)).toBe('https://c.example.com/dam-asset/a.png?v=2');
+  });
+  it('mirrors a public file: nothing is sent, the CDN is asked once and the URL comes back', async () => {
+    let asked = '';
+    const r = await mirrorViaOriginCdn('https://cdn.example.com', asset, { head: async (u) => { asked = u; return { status: 200, contentType: 'image/png; charset=binary' }; } });
+    expect(r).toEqual({ url: 'https://cdn.example.com/dam-asset/public/logos/my%20logo.png?v=3' });
+    expect(asked).toBe(r.url);
+  });
+  it('refuses a private file before it asks anything', async () => {
+    let asked = false;
+    await expect(mirrorViaOriginCdn('https://cdn.example.com', { ...asset, isPublic: false }, { head: async () => { asked = true; return { status: 200, contentType: 'image/png' }; } }))
+      .rejects.toMatchObject({ status: 400, message: expect.stringContaining('private') });
+    expect(asked).toBe(false);
+  });
+  it('says what is wrong when the CDN does not serve the file', async () => {
+    const url = 'https://cdn.example.com/dam-asset/x.png?v=1';
+    expect(await checkOriginCdn(url, asset, probe(200))).toBeNull();
+    expect(await checkOriginCdn(url, asset, probe(404))).toContain('404');
+    expect(await checkOriginCdn(url, asset, probe(200, 'text/html; charset=utf-8'))).toContain('web page');
+    expect(await checkOriginCdn(url, { ...asset, mimeType: 'text/html' }, probe(200, 'text/html'))).toBeNull();
+    expect(await checkOriginCdn(url, asset, probe(503))).toContain('503');
+    expect(await checkOriginCdn(url, asset, { head: async () => { throw new Error('ENOTFOUND'); } })).toContain('ENOTFOUND');
+    await expect(mirrorViaOriginCdn('https://cdn.example.com', asset, probe(404))).rejects.toBeInstanceOf(CdnMirrorError);
+  });
+  it('tests the settings with a public file as the sample', async () => {
+    expect(await testOriginCdn('https://cdn.example.com', asset, probe(200))).toEqual({ ok: true });
+    expect(await testOriginCdn('https://cdn.example.com', asset, probe(404))).toMatchObject({ ok: false });
+    expect(await testOriginCdn('https://cdn.example.com', null, probe(200))).toMatchObject({ ok: false, error: expect.stringContaining('public file') });
   });
 });

@@ -23,3 +23,14 @@ Follow-up of `assets-cdn.md`. Two problems found when asked "what if the CDN is 
 3. core-api: the settings routes, audit, route contract.
 4. Dashboard, the sync script, docs.
 5. API tests with a mock Cloudflare, browser test.
+
+## Third provider: a CDN in front of this installation (`cdn-origin`)
+
+The two providers above receive the bytes. The classic CDN is the other way round: it sits in front of an origin and fetches the files itself (Cloudflare proxy on a hostname, CloudFront, Bunny pull zone, Fastly). Nothing to upload, no token to keep.
+
+- **Setting:** one field, `baseUrl` (https; http only with `CDN_ALLOW_HTTP`; no credentials, query or fragment; the trailing slash is dropped). No secret.
+- **"Mirror" = build the URL and check it.** `<baseUrl>/dam-asset/<s3 key, each segment encoded>?v=<asset version>`. The origin already serves public files under `/dam-asset/` with `public, max-age=31536000, immutable` and refuses private ones to anyone without a session, which is what a CDN needs. Before it records the mirror, Whoobe sends one `HEAD` to that URL through the outbound guard and refuses it with a reason when the CDN answers 404 (does not forward `/dam-asset/` here), a web page (forwards to the dashboard, which answers every path with the app) or an error. `bytesSent` is 0.
+- **Why `?v=`:** the origin's answer is immutable for a year; a replaced file at the same path would be served stale. `asset.version` already increments on a re-upload, and `upsertInTx` now rewrites the `v=` of an existing `cdn-origin` mirror in the same statement, so no new mirror call and no purge is needed. A CDN that ignores the query string in its cache key defeats this; the guide says so.
+- **Private files are refused** (400) before the CDN is asked. A file moved into a private folder afterwards keeps its mirror record (the origin answers 404, the CDN's cached copy lasts until it expires): not handled, documented.
+- **Test button:** asks for the most recently changed public file through the CDN (`getSamplePublicAsset`); with no public file it says to upload one.
+- **Not built:** purging the CDN (each CDN has its own API: a later adapter), deleting a mirror when an asset is deleted or made private, and a hostname for thumbnails (they go through the same `/dam-asset/` path and work, but no mirror is recorded for them).

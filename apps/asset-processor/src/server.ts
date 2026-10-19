@@ -49,6 +49,7 @@ import {
   cdnMirrorConfigured,
   missingCdnFields,
   mirrorToCloudflareImages,
+  mirrorViaOriginCdn,
   cloudflareRefusal,
   CdnMirrorError,
   safeFetch,
@@ -996,6 +997,7 @@ app.patch('/api/v1/dam/assets/metadata', requirePermission(PERMISSIONS.ASSETS_UP
 // can't reach this install's own DAM (a local/VPN-only deployment, an ESP building an email campaign) get a stable, public URL instead of a local-only
 // one or an embedded base64 copy. The provider comes from the settings of the website asked for (its own, else the installation's default):
 //   cloudinary         - through a Gateway route (a JSON body: the file as a public URL or a data: URI, plus the unsigned preset)
+//   cdn-origin         - a CDN that fetches public files from this installation (a pull CDN): nothing is uploaded, the CDN URL is built and checked
 //   cloudflare-images  - straight to Cloudflare with the stored API token, as multipart/form-data with the bytes (the Gateway's route executor sends a JSON body only)
 // The body may still carry `gatewayRouteId` / `uploadPreset` / `provider`: that is the old call (scripts, older dashboards) and means Cloudinary with those values.
 app.post('/api/v1/dam/assets/:id/mirror-cdn', requirePermission(PERMISSIONS.ASSETS_UPLOAD), async (req: Request, res: Response): Promise<void> => {
@@ -1027,7 +1029,16 @@ app.post('/api/v1/dam/assets/:id/mirror-cdn', requirePermission(PERMISSIONS.ASSE
 
     let result: MirrorResult;
     let bytesSent = asset.sizeBytes;
-    if (provider === 'cloudflare-images') {
+    if (provider === 'cdn-origin') {
+      // Nothing is uploaded: the CDN fetches the public file from this installation by itself. The URL is built and the CDN is asked once.
+      result = await mirrorViaOriginCdn(config.baseUrl, { s3Key: asset.s3Key, version: asset.version, mimeType: asset.mimeType, isPublic: asset.isPublic }, {
+        head: async (url) => {
+          const r = await safeFetch(url, { method: 'HEAD' }, { maxBytes: 64 * 1024, timeoutMs: 15_000 });
+          return { status: r.status, contentType: r.headers.get('content-type') };
+        },
+      });
+      bytesSent = 0;
+    } else if (provider === 'cloudflare-images') {
       const refusal = cloudflareRefusal(asset.mimeType, asset.sizeBytes);
       if (refusal) { res.status(415).json({ error: refusal }); return; }
       const object = await s3ClientForProxy.send(new GetObjectCommand({ Bucket: damBaseConfig.bucket, Key: asset.s3Key }));

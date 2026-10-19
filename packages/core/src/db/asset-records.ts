@@ -1,8 +1,9 @@
-import { eq, or, like, sql, inArray, asc } from 'drizzle-orm';
+import { eq, or, like, sql, inArray, asc, desc } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { folders, assets } from './dam-schema.js';
 import type { ExtractedAssetMetadata } from '../dam/metadata-extractor.js';
 import type { CdnMirrorRecord } from '../dam/cdn-mirror.js';
+import { withOriginCdnVersion } from '../dam/cdn-providers.js';
 import { indexAsset, deleteIndexedByDocument } from '../search/indexer.js';
 import { insertEvent } from './object-events-records.js';
 import { buildAssetBulkEvent, buildAssetEvent, summariseAsset, type EventActor } from './object-events.js';
@@ -180,6 +181,13 @@ export async function getAssetById(id: string): Promise<AssetRecord | null> {
   return row ?? null;
 }
 
+/** The most recently changed public file, for the test of a CDN that fetches from this installation; null when there is none. */
+export async function getSamplePublicAsset(): Promise<AssetRecord | null> {
+  const db = getDb();
+  const [row] = await db.select().from(assets).where(eq(assets.isPublic, true)).orderBy(desc(assets.updatedAt)).limit(1);
+  return row ?? null;
+}
+
 /** Records (or replaces) one provider's CDN mirror for an asset -
  *  docs/plans/assets/assets-cdn.md. Merges into the existing `cdnMirrors`
  *  map keyed by `mirror.provider` rather than replacing the whole map, so
@@ -224,6 +232,9 @@ async function upsertInTx(tx: Tx, input: AssetRecordInput): Promise<{ row: Asset
   const uploadedAt = existing ? existing.uploadedAt : new Date();
   const metadata = input.metadata !== undefined ? input.metadata : (existing?.metadata ?? null);
   const now = new Date();
+  // a CDN that fetches from this installation keeps the old bytes under the old `?v=`: the new version gets its own URL
+  const origin = existing?.cdnMirrors?.['cdn-origin'];
+  const cdnMirrors = origin ? { ...existing.cdnMirrors, 'cdn-origin': { ...origin, url: withOriginCdnVersion(origin.url, version), mirroredAt: now.toISOString() } } : undefined;
 
   const [row] = await tx
     .insert(assets)
@@ -253,6 +264,7 @@ async function upsertInTx(tx: Tx, input: AssetRecordInput): Promise<{ row: Asset
         s3Key: input.s3Key,
         isPublic: input.isPublic,
         metadata,
+        ...(cdnMirrors ? { cdnMirrors } : {}),
         updatedAt: now,
       },
     })

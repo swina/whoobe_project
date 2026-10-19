@@ -63,10 +63,10 @@ describe('who may read and change the settings', () => {
       expect((await write.request(m, p, { body: {} })).status, `${m} ${p}`).toBe(403)
     }
   })
-  it('lists the two providers with their fields, and marks the token as secret', async () => {
+  it('lists the providers with their fields, and marks the token as secret', async () => {
     const r = await admin.get('/whoobe-one/settings/cdn-providers')
     const byId = Object.fromEntries((r.json.providers as any[]).map((p) => [p.id, p]))
-    expect(Object.keys(byId).sort()).toEqual(['cloudflare-images', 'cloudinary'])
+    expect(Object.keys(byId).sort()).toEqual(['cdn-origin', 'cloudflare-images', 'cloudinary'])
     expect(byId['cloudinary'].fields.map((f: any) => f.name)).toEqual(['gatewayRouteId', 'uploadPreset'])
     expect(byId['cloudflare-images'].fields.find((f: any) => f.name === 'apiToken').secret).toBe(true)
   })
