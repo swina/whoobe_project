@@ -117,7 +117,7 @@ AGE_IDENTITY=backup-key.txt ./scripts/restore-workspace-db.sh client-a client-a-
 ```
 
 **Test a restore on a scratch workspace before you need it** (a backup nobody has restored is a hope, not a backup), and
-schedule it: `0 3 * * * cd /opt/whoobe/whoobe_cms && BACKUP_AGE_RECIPIENT=age1... ./scripts/backup-workspace.sh client-a --out-dir /var/backups/whoobe --keep 14` in cron.
+schedule it ([scheduling backups](scheduling-backups.md) has the timer, the copy kept elsewhere and a check for a missed night); in cron: `0 3 * * * cd /opt/whoobe/whoobe_cms && BACKUP_AGE_RECIPIENT=age1... ./scripts/backup-workspace.sh client-a --out-dir /var/backups/whoobe --keep 14` in cron.
 Copy the files off the host (object storage with versioning/object lock, another site): they are safe to store there
 because they are encrypted. Retention and offsite copy are yours to set.
 

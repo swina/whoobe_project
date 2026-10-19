@@ -48,14 +48,14 @@ docker run --rm --network host -v "$WORK/seed:/seed:ro" \
   rclone/rclone:1.68.2 copyto /seed/probe.txt "S3:$(envv S3_BUCKET)/rehearsal/probe.txt" >/dev/null
 ok "workspace up: $MIGS migrations, $USERS user(s), one object, one file in the bucket"
 
-echo "== 2. backup (the commands of the runbook)"
+echo "== 2. backup (scripts/backup/nightly.sh, the one a timer runs)"
 mkdir -m 700 "$GNUPGHOME"
 gpg --batch --quiet --passphrase '' --quick-generate-key rehearsal@whoobe.local default default never
 export BACKUP_GPG_RECIPIENT=rehearsal@whoobe.local
 OUT="$WORK/backups"
-scripts/backup-workspace.sh "$SLUG" --out-dir "$OUT" >/dev/null
-scripts/backup-workspace-bucket.sh "$SLUG" --out-dir "$OUT" >/dev/null
-DUMP=$(ls "$OUT"/*.sql.gz.gpg); ENVBK=$(ls "$OUT"/*.env.gpg)
+BACKUP_ENV_FILE=/nonexistent BACKUP_DIR="$OUT" scripts/backup/nightly.sh "$SLUG" >/dev/null
+scripts/backup/check.sh "$OUT" "$SLUG" 1 >/dev/null && ok "the freshness check passes right after the backup"
+DUMP=$(ls "$OUT"/db/*.sql.gz.gpg); ENVBK=$(ls "$OUT"/db/*.env.gpg)
 scripts/restore-workspace-db.sh --check "$DUMP" >/dev/null && ok "the dump is readable ($(basename "$DUMP"))"
 cp "$ENVF" "$WORK/env.original"
 
@@ -70,7 +70,7 @@ cmp -s "$ENVF" "$WORK/env.original" || fail "the decrypted env file differs from
 ok "env file decrypted, identical to the original"
 dc up -d postgres garage >/dev/null
 wait_garage
-scripts/backup-workspace-bucket.sh "$SLUG" --out-dir "$OUT" --restore >/dev/null
+scripts/backup-workspace-bucket.sh "$SLUG" --out-dir "$OUT/bucket" --restore >/dev/null
 for _ in $(seq 1 30); do sql 'select 1' >/dev/null 2>&1 && break; sleep 2; done
 scripts/restore-workspace-db.sh "$SLUG" "$DUMP" --yes >/dev/null
 dc up -d --build core-api >/dev/null

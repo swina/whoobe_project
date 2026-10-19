@@ -1,0 +1,14 @@
+# Nightly backup of workspace %i. Install: copy to /etc/systemd/system/, adjust User and the paths, then
+#   systemctl daemon-reload && systemctl enable --now whoobe-backup@<slug>.timer
+[Unit]
+Description=Whoobe backup of workspace %i
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/opt/whoobe/whoobe_cms
+EnvironmentFile=-/etc/whoobe/backup.env
+ExecStart=/opt/whoobe/whoobe_cms/scripts/backup/nightly.sh %i
+# a failure shows in: systemctl status whoobe-backup@<slug>.service / journalctl -u whoobe-backup@<slug>.service

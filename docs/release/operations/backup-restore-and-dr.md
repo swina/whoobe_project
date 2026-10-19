@@ -26,6 +26,7 @@ rest. Form uploads waiting in `private/_uploads/` are disposable (they expire af
 |---|---|---|
 | `scripts/backup-workspace.sh <slug>` | encrypted dump of the database and of `.env.<slug>`, `--keep N` pruning, refuses to run without a recipient | back up the bucket (that is the next row), the nginx files or certificates; run itself (use cron/systemd timer) |
 | `scripts/backup-workspace-bucket.sh <slug> [--out-dir DIR] [--restore]` | copy the bucket (assets, logs) to `DIR/<slug>-bucket` with rclone in a pinned Docker image, or copy it back into the bucket (adds and overwrites, deletes nothing); works with the bundled Garage and, with `BACKUP_S3_ENDPOINT`, an external S3 | encrypt the copy; run itself |
+| `scripts/backup/nightly.sh <slug>`, `check.sh`, `pull.sh` | the nightly run (dump, env file, bucket copy, marker), the freshness check, and a pull of the copies by another machine; systemd examples | install the timer for you ([scheduling backups](scheduling-backups.md)) |
 | `scripts/restore-workspace-db.sh --check <file>` | decrypts and test-reads a backup without touching a workspace or Docker | |
 | `scripts/restore-workspace-db.sh <slug> <file>` | drops and recreates the workspace database from the dump after you type the slug | restore the bucket or the env file; run while the apps are up (stop them first) |
 | Page/snippet history (`content_versions`, the editor's *History*) | undo of editing mistakes inside the application | protect against deletion of the whole object or table |
@@ -37,7 +38,7 @@ alerting, a scripted backup of the nginx files and certificates, a restore of a 
 
 ## 3. A backup plan that covers everything
 
-Per workspace, daily unless the business needs better:
+Per workspace, daily unless the business needs better. [Scheduling backups](scheduling-backups.md) does steps 1 to 3 with scripts, a systemd timer and a copy pulled by another machine; the steps are:
 
 1. `BACKUP_AGE_RECIPIENT=age1… ./scripts/backup-workspace.sh <slug> --out-dir /var/backups/whoobe --keep 14` (cron, 03:00).
 2. Bucket: `scripts/backup-workspace-bucket.sh <slug> --out-dir <encrypted location>` (Garage or any S3), or versioning +
@@ -115,6 +116,6 @@ start core-api. It then checks the migrations, the users, the object, the file (
 
 ## 7. Monitoring the backups
 
-Nothing in the product alerts on a failed backup. At minimum: have the cron job mail on non-zero exit, alert when the
+Nothing in the product alerts on a failed backup; `scripts/backup/check.sh` (see [scheduling backups](scheduling-backups.md#4-know-when-a-night-is-missed)) exits non-zero when the newest one is too old. At minimum: have the cron job mail on non-zero exit, alert when the
 newest file in the backup folder is older than 26 hours, and keep the monthly restore test in a calendar. The script prints the file
 names it wrote and prunes only with `--keep`.
