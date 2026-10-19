@@ -20,10 +20,6 @@
 
         <DamConfigManager v-if="activeSubSection === 'dam'" />
 
-        <MfaSettingsCard v-if="activeSubSection === 'security'" />
-        <SecuritySettingsCard v-if="activeSubSection === 'security' && authStore.can('settings:manage')" />
-        <OidcSettingsCard v-if="activeSubSection === 'security' && authStore.can('settings:manage')" />
-        <DataSubjectCard v-if="activeSubSection === 'security' && authStore.can('data_subject:manage')" />
 
         <template v-if="activeSubSection === 'classes'">
           <!-- Inner tabs for Classes section -->
@@ -48,23 +44,6 @@
             </p>
             <button type="button" class="btn btn-secondary" data-testid="open-integration-import" @click="tabsStore.openIntegrationImport()">Open Integration Import</button>
           </div>
-        </template>
-
-        <template v-if="activeSubSection === 'roles'">
-          <!-- Inner tabs for Roles section -->
-          <div class="flex items-center gap-2 pb-1 border-b border-slate-800 light:border-slate-200">
-            <button
-              v-for="tab in rolesSubTabs" :key="tab.key"
-              @click="setRolesSubTab(tab.key)"
-              :class="['px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5', rolesActiveTab === tab.key ? 'bg-slate-800 light:bg-slate-200 text-slate-100 light:text-slate-900' : 'text-slate-500 light:text-slate-600 hover:text-slate-300 light:hover:text-slate-700']"
-            >
-              <component :is="tab.icon" class="w-3.5 h-3.5" />
-              <span>{{ tab.name }}</span>
-            </button>
-          </div>
-
-          <UsersView v-if="rolesActiveTab === 'users'" />
-          <RolesView v-else-if="rolesActiveTab === 'roles'" />
         </template>
 
         <WorkflowSettingsCard v-if="activeSubSection === 'workflows'" />
@@ -154,18 +133,12 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import DamConfigManager from '../components/dam/DamConfigManager.vue'
-import MfaSettingsCard from '../components/auth/MfaSettingsCard.vue'
-import SecuritySettingsCard from '../components/settings/SecuritySettingsCard.vue'
-import OidcSettingsCard from '../components/settings/OidcSettingsCard.vue'
-import DataSubjectCard from '../components/settings/DataSubjectCard.vue'
 import ClassSettingsCard from '../components/objects/ClassSettingsCard.vue'
 import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue'
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'
 import FigmaSettingsCard from '../components/settings/FigmaSettingsCard.vue'
 import PwaSettingsCard from '../components/settings/PwaSettingsCard.vue'
 import UploadSettingsCard from '../components/settings/UploadSettingsCard.vue'
-import UsersView from './UsersView.vue'
-import RolesView from './RolesView.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
 import { useAuthStore } from '../stores/authStore'
 import { fetchDefaultPlaceholderImage, saveDefaultPlaceholderImage, fetchAutosaveSettings, saveAutosaveSettings, fetchStripHtmlCommentsSetting, saveStripHtmlCommentsSetting, fetchLoggingEnabled, saveLoggingEnabled } from '../utils/websites-api'
@@ -176,8 +149,6 @@ import {
   Sliders,
   HardDrive,
   Database,
-  Users,
-  Shield,
   Workflow,
   Upload,
   Plug,
@@ -185,8 +156,6 @@ import {
   Image,
   Palette,
   Smartphone,
-  UserRound,
-  KeyRound,
 } from '@lucide/vue'
 
 const tabsStore = useTabsStore()
@@ -294,8 +263,6 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'general', name: 'General', icon: Sliders },
   { key: 'dam', name: 'DAM', icon: HardDrive },
   { key: 'classes', name: 'Classes', icon: Database },
-  { key: 'roles', name: 'Roles', icon: Users },
-  { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'figma', name: 'Figma', icon: Palette },
   { key: 'pwa', name: 'PWA', icon: Smartphone },
@@ -324,24 +291,6 @@ function setClassesSubTab(key: ClassesSubTab) {
   try { localStorage.setItem(CLASSES_SUB_KEY, key) } catch { /* ignore */ }
 }
 
-const ROLES_SUB_KEY = 'whoobe:settings-roles-subtab'
-type RolesSubTab = 'users' | 'roles'
-const rolesActiveTab = ref<RolesSubTab>('users')
-try {
-  const saved = localStorage.getItem(ROLES_SUB_KEY) as RolesSubTab | null
-  if (saved) rolesActiveTab.value = saved
-} catch { /* ignore */ }
-
-const rolesSubTabs: { key: RolesSubTab; name: string; icon: any }[] = [
-  { key: 'users', name: 'Users', icon: UserRound },
-  { key: 'roles', name: 'Roles', icon: KeyRound },
-]
-
-function setRolesSubTab(key: RolesSubTab) {
-  rolesActiveTab.value = key
-  try { localStorage.setItem(ROLES_SUB_KEY, key) } catch { /* ignore */ }
-}
-
 const activeSubSection = computed<SettingsSubSection>(() => {
   const tab = tabsStore.tabs.find((t) => t.id === sectionTabId('settings'))
   return tab?.settingsSubSection ?? 'general'
@@ -355,8 +304,6 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   general: { title: 'General Settings', description: 'Sync and logging options for the admin dashboard.' },
   dam: { title: 'DAM Configuration', description: 'Configure DAM S3 storage, folder visibility rules, and sync options.' },
   classes: { title: 'Data Object Classes', description: 'Define classes and fields, and import them on demand from Pimcore or structured files.' },
-  roles: { title: 'Roles / Users / Workspaces', description: 'Manage who can access this dashboard and what they can do.' },
-  security: { title: 'Security', description: 'Two-factor authentication and account security.' },
   workflows: { title: 'Workflows', description: 'Author publish/review workflows for Data Object classes.' },
   figma: { title: 'Figma Integration', description: 'Figma Personal Access Token configuration for importing designs into the Whoobe One editor.' },
   //pwa: { title: 'Mobile App', description: 'Configure Progressive Web App settings, push notification providers, and manifest options per website.' },

@@ -26,13 +26,14 @@ Once signed in, the dashboard has four regions that stay on screen no matter wha
 
 ### The sidebar
 
-The left-hand sidebar is the main navigation. Each entry corresponds to one content type or admin area: Websites, Pages, Snippets, Components, Assets, Data Objects, Documents, Outgoing Mail, Themes, Integrations, System Logs, and Settings. Clicking one opens (or switches to) its tab. See the terminology table in the manual's introduction (`docs/release/guides/user-manual/README.md`) if any of these names aren't self-explanatory yet — a few of them mean something more specific in Whoobe than the label alone suggests.
+The left-hand sidebar is the main navigation. Each entry corresponds to one content type or admin area: Websites, Pages, Snippets, Components, Assets, Data Objects, Documents, Outgoing Mail, Themes, Integrations, Settings and Security. Clicking one opens (or switches to) its tab. See the terminology table in the manual's introduction (`docs/release/guides/user-manual/README.md`) if any of these names aren't self-explanatory yet — a few of them mean something more specific in Whoobe than the label alone suggests.
 
-Three of these entries expand into a tree when you click the small chevron next to their icon, rather than only opening a flat list:
+Some of these entries expand into a tree when you click the small chevron next to their icon, rather than only opening a flat list:
 
 - **Assets** expands into your DAM folder structure, so you can jump straight into a specific folder instead of opening the Assets list and navigating there.
 - **Data Objects** expands into your list of Data Classes, so you can jump straight into one class's records.
-- **Settings** expands into its own sub-sections (General, DAM configuration, Data Object classes, Roles/Users/Workspaces, Security (your own two-factor authentication and, for administrators, which roles must use it, the minimum password length and single sign-on with your identity provider), Workflows, AI agent, AI image gen, Figma, Mobile App) rather than landing on a generic settings page.
+- **Settings** expands into its own sub-sections (General, DAM configuration, Data Object classes, Workflows, Figma, Mobile App, Form uploads) rather than landing on a generic settings page.
+- **Security** expands into the pages about who may sign in and do what, what is held about people, and what happened. Everybody has *Two-Factor Authentication* (your own) and *System Logs*; the others are shown by permission: *Roles/Users/Workspaces* (`users:manage`), *Sign-in Requirements* (which roles must use two-factor authentication and the minimum password length) and *SSO* (single sign-on with your identity provider) (`settings:manage`), *Data Subject Requests* (find, export or erase everything held about one person, and the retention periods) (`data_subject:manage`) and *Audit Logs* (`audit:read`). The shield in the top bar opens the audit logs.
 
 Click the arrow at the top of the sidebar to collapse it to icons-only — useful on a smaller screen or when you want more room for the content area. Hovering an icon while collapsed still shows its name as a tooltip.
 
@@ -45,7 +46,7 @@ Across the top of the main content area:
 - **Page title** — the name of whatever tab is currently active.
 - **Search** — a global search box. Type at least two characters to search across Data Objects, Pages, Assets, and Classes at once; results appear in a dropdown, filterable by type using the badges above the results list. Press Enter to jump straight to the first result, or click any result to open it in its own tab. Unlike the site's own public search, this one includes unpublished drafts, since it's meant for finding things to work on, not for testing what a visitor would see. A "Rebuild index" link at the bottom of the results is there for the rare case where something you know exists isn't showing up.
 - **Theme toggle** — switches the dashboard itself between dark and light mode. This is purely a dashboard preference; it has no effect on how your published website looks to visitors.
-- **Audit log shield** — opens the *Audit log* (only for people with the `audit:read` permission).
+- **Audit log shield** — opens *Security ‣ Audit Logs* (only for people with the `audit:read` permission).
 - **User menu** — your name and email, and a logout button.
 
 ### The tab strip

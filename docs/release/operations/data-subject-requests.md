@@ -4,7 +4,7 @@ How to answer a person who asks what you hold about them, or asks you to delete 
 operator (the controller): the product finds, exports and erases; **deciding** whether a request is valid and who the person is stays with you.
 What personal data exists and where: [data protection](../security/data-protection.md). The design: `docs/plans/system/data-subject-plan.md`.
 
-Permission `data_subject:manage` (administrators only). Settings > Security > *Data subject requests*, or the API ([reference](../api/api-reference.md)).
+Permission `data_subject:manage` (administrators only). Security > *Data Subject Requests*, or the API ([reference](../api/api-reference.md)).
 
 ## 1. What is found
 
@@ -24,7 +24,7 @@ the counts, never the identifier), **push subscriptions** (an endpoint is not an
 ## 2. The procedure
 
 1. **Check who is asking**, by your own process. The product cannot tell.
-2. **Search.** Settings > Security > Data subject requests: type the address, *Search*. You see how many objects, files and mails, and the staff accounts that share the address. Leave *also look inside the text of mails* on unless you know the address is only ever a recipient.
+2. **Search.** Security > Data Subject Requests: type the address, *Search*. You see how many objects, files and mails, and the staff accounts that share the address. Leave *also look inside the text of mails* on unless you know the address is only ever a recipient.
 3. **Export** (right of access / portability): *Download everything as JSON*. The file is named after a fingerprint (`data-subject-<12 hex>.json`), contains the records and the list of files with their library path, and is not stored anywhere. Download the files from the library and send both through your secure channel.
 4. **Erase** (right to erasure): *Erase...*, tick whether the mail log is included, **type the address again** and confirm. Files are deleted first; an object whose file could not be deleted stays and the answer says why (the store was down...): run it again, it finishes the job. The screen shows what was deleted.
 5. **Check**: search again, it must say 0. Answer the person within your legal deadline; the audit log (`data_subject.*`, filter by the action) is your evidence that it was done, by whom and when, without keeping the data.

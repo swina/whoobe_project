@@ -2,7 +2,7 @@
   <div class="flex flex-col h-full gap-4">
     <div class="shrink-0 flex items-start justify-between gap-4">
       <div>
-        <h2 class="text-xl font-bold text-slate-100 light:text-slate-900">Audit log</h2>
+        <h2 class="text-xl font-bold text-slate-100 light:text-slate-900">Audit Logs</h2>
         <p class="text-xs text-slate-400 light:text-slate-600">
           Who changed a user, a role, a website, a setting or an integration, when, and what it was before. Successful administrative actions only;
           secrets are never written (a changed credential shows as <i>changed</i>). Rows cannot be edited or deleted here: the log is kept for
