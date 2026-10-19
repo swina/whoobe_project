@@ -1,3 +1,9 @@
+## feat/oidc-login merged into master, worktree removed — 2026-10-19
+- Branch: `master`
+- Merged without conflicts. Development stack: `pnpm install --offline` (core now depends on `jose`), `packages/core` rebuilt, migrations 0062 and 0063 applied at the restart of core-api (`oidc_settings` with `dashboard_url` present), `/health` 200, `/auth/oidc/config` answers `enabled: false`. Single sign-on is off until an administrator sets it up in Settings > Security.
+- Worktree `../whoobe_cms-oidc` and the local branch removed.
+- Public sandbox (outside the repository): the banner had lost the demo login because the 0.1.1 deploy overwrote `SandboxBanner.vue`; the file from master was copied to the host and a reset run, the owner confirmed the login is visible again.
+
 ## OIDC login for staff, steps 5 to 7: dashboard, real Keycloak, docs — 2026-10-19
 - Branch: `feat/oidc-login`
 - Dashboard: the sign-in screen shows *Sign in with <label>* when single sign-on is on (a full page navigation), and the message of a failed sign-in from `?sso_error=<code>` (taken out of the address bar afterwards); the password form stays. Settings > Security > *Single sign-on* card (`OidcSettingsCard.vue`): issuer, client id and secret (write-only), the redirect address to register, the dashboard address, scopes, role claim and mapping rows, default roles, provisioning, linking, the password form `all` / `admins`, *Test the saved address*.
