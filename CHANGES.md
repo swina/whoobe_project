@@ -1,3 +1,8 @@
+## feat/cdn-providers merged into master, worktree removed — 2026-10-19
+- Branch: `master`
+- Merged without conflicts. Development stack: `packages/core` rebuilt, migration 0066 applied at the restart of core-api; the backfill found the development setting and copied it as the default row (1 row in `cdn_mirror_settings`); `/health` 200; `scripts/release/check-docs.py` passes (249 routes). Cloudflare Images was only tried against the test mock: a real account is the next check.
+- Worktree `../whoobe_cms-cdn` and the local branch removed.
+
 ## CDN mirroring: Cloudinary and Cloudflare Images, per website — 2026-10-19
 - Branch: `feat/cdn-providers` (worktree `../whoobe_cms-cdn`). `docs/plans/assets/cdn-providers-plan.md`.
 - Found when asked "what if the CDN is not Cloudinary": the mirror code was **hard-wired to Cloudinary's API** (it sent `{ file, upload_preset }` and needed `secure_url` / `public_id`; `provider` was only a label) and the setting was **one per installation**, kept in the `settings` of the *first website*. Now: providers are adapters (`packages/core/src/dam/cdn-providers.ts`) - **Cloudinary** as before (through a Gateway route and an unsigned preset) and **Cloudflare Images**, called **directly** (it takes `multipart/form-data` with the file, which the Gateway's route executor, a JSON-only proxy, cannot send) with an API token stored **encrypted** (`INTEGRATION_SECRETS_ENCRYPTION_KEY`) and never returned. The preset is a Cloudinary field, no longer part of the generic setting.
