@@ -428,6 +428,13 @@
       "when": 1790000000000,
       "tag": "0060_audit_log",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1790000100000,
+      "tag": "0061_security_settings",
+      "breakpoints": true
     }
   ]
 }

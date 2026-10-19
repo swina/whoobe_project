@@ -1,3 +1,10 @@
+## Mandatory 2FA and password policy, step 1: table, helpers, settings records — 2026-10-19
+- Branch: `feat/mandatory-2fa` (worktree `../whoobe_cms-mfa`)
+- `docs/plans/system/mandatory-2fa-plan.md` (new): decisions (setting in a table, enforcement at login with an enrolment token and no half-session, disable refused for required roles, break-glass from the shell) and the five steps.
+- Migration `0061_security_settings` (expand only): single-row table `security_settings` (`require_mfa_role_ids uuid[]`, `password_min_length` 8..128, `password_require_classes`), a CHECK keeps one row and the length range. No row = defaults (nobody required, 8 characters), so an upgrade changes nothing.
+- `auth/password-policy.ts` (pure): `checkPasswordPolicy` (minimum length, three of four character classes when asked, not the e-mail or its local part, at most 128) and `userMustUseMfa`; `db/security-settings-records.ts`: `getSecuritySettings`, `parseSecuritySettingsInput`, `updateSecuritySettings`, `getUserRoleIds`, `userMustUseMfaNow`. Exported from `@whoobe-cms/core/server`.
+- Tests: `password-policy.test.ts` (6), `security-settings-records.integration.test.ts` (4, disposable database). Nothing uses them yet: routes are step 2 and 3.
+
 ## Sandbox branch merged into master — 2026-10-19
 - Branch: `master`
 - `fix/sandbox-demo-banner-tls-reset` (one commit, 2026-10-15) merged: the public sandbox no longer runs code that is outside the tag/master, so a deploy with `rsync --delete` cannot drop it. Only `CHANGES.md` conflicted (both sides prepend); both entries kept.
