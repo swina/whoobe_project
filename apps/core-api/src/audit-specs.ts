@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { redactForAudit, REDACTED } from '@whoobe-cms/core/server';
 import {
-  getFigmaSettings, getMailSettingsFor, getMigrationSource, getObjectEventSubscription, getRole, getUserWithRoles, getWebsite, getWebsitePath,
+  getFigmaSettings, getSecuritySettings, getMailSettingsFor, getMigrationSource, getObjectEventSubscription, getRole, getUserWithRoles, getWebsite, getWebsitePath,
   listWebsites, pickAllowed, publicMailSettings,
-  type RoleWithPermissions, type UserWithRoles, type WebsiteRecord,
+  type RoleWithPermissions, type SecuritySettings, type UserWithRoles, type WebsiteRecord,
 } from '@whoobe-cms/core/server';
 import type { AuditSpec } from './audit.js';
 
@@ -54,6 +54,11 @@ const settingEntity = (key: string) => async (): Promise<SettingEntity | null> =
 const settingChange = (action: string, key: string, show: (v: unknown) => unknown = (v) => v): AuditSpec<SettingEntity> => ({
   action, kind: 'update', targetType: 'setting', snapshot: (e) => ({ [e.key]: show(e.value) }),
   loadBefore: settingEntity(key), loadAfter: settingEntity(key), targetId: () => key, targetLabel: () => key,
+});
+
+// ── security settings (mandatory second factor, password policy) ──────────
+const securitySnapshot = (s: SecuritySettings) => ({
+  requireMfaRoleIds: s.requireMfaRoleIds, policyMinLength: s.passwordPolicy.minLength, policyRequireClasses: s.passwordPolicy.requireClasses,
 });
 
 // ── mail, figma, migration sources, object event subscriptions ────────────
@@ -141,6 +146,7 @@ export const AUDIT: Readonly<Record<string, AuditSpec<any>>> = {
       ...Object.entries(b?.providerConfig ?? {}).filter(([k, v]) => v && looksSecret(k)).map(([k]) => `providerConfig.${k}`),
     ] } satisfies AuditSpec<MailEntity>,
   mailSettingsDelete: { action: 'setting.mail_remove', kind: 'delete', targetType: 'setting', snapshot: mailSnapshot, loadBefore: loadMail, targetId: (r: P) => `mail:${mailScopeId(r) ?? 'default'}`, targetLabel: () => 'Outgoing mail' } satisfies AuditSpec<MailEntity>,
+  securitySettings: { action: 'setting.security_update', kind: 'update', targetType: 'setting', snapshot: securitySnapshot, loadBefore: () => getSecuritySettings(), loadAfter: () => getSecuritySettings(), targetId: () => 'security', targetLabel: () => 'Security' } satisfies AuditSpec<SecuritySettings>,
   figmaSettings: { action: 'setting.figma_update', kind: 'update', targetType: 'setting', snapshot: (f: FigmaEntity) => ({ teamId: f.teamId, hasToken: f.hasToken }), loadBefore: loadFigma, loadAfter: loadFigma, targetId: () => 'figma', targetLabel: () => 'Figma', secrets: ['accessToken'] } satisfies AuditSpec<FigmaEntity>,
 
   migrationSourceCreate: { action: 'migration_source.create', kind: 'create', targetType: 'migration_source', snapshot: (s: any) => pickAllowed(s, migrationFields), fromResponse: (b) => b?.source, targetLabel: (s: any) => s?.label } satisfies AuditSpec<any>,

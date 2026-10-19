@@ -146,6 +146,11 @@ import {
   enableTotp,
   disableTotp,
   updateMfaRecoveryCodes,
+  getSecuritySettings,
+  parseSecuritySettingsInput,
+  updateSecuritySettings,
+  userMustUseMfaNow,
+  checkPasswordPolicy,
   getMailSettingsFor,
   resolveMailSettings,
   upsertMailSettings,
@@ -656,7 +661,36 @@ function resolveMfaChallenge(token: string): void {
   pendingMfaChallenges.delete(token);
 }
 
-async function completeLogin(res: Response, userId: string, req: Request): Promise<void> {
+// --- Pending MFA enrolments: the password was verified, the settings require a second factor and the user has none. Same
+// kind of in-memory token as a challenge (it grants nothing on its own, it is not a session): /auth/mfa/enrol/* take it instead
+// of a cookie, and the session is only opened when the factor is proven (docs/plans/system/mandatory-2fa-plan.md).
+const MFA_ENROL_TTL_MS = 10 * 60 * 1000;
+const MFA_ENROL_MAX_ATTEMPTS = 5;
+const pendingMfaEnrolments = new Map<string, { userId: string; expiresAt: number; attempts: number }>();
+
+function createMfaEnrolment(userId: string): string {
+  const token = randomBytes(24).toString('hex');
+  pendingMfaEnrolments.set(token, { userId, expiresAt: Date.now() + MFA_ENROL_TTL_MS, attempts: 0 });
+  return token;
+}
+
+function peekMfaEnrolment(token: string): string | null {
+  const entry = pendingMfaEnrolments.get(token);
+  if (!entry || entry.expiresAt < Date.now()) {
+    pendingMfaEnrolments.delete(token);
+    return null;
+  }
+  return entry.userId;
+}
+
+function recordMfaEnrolmentFailure(token: string): void {
+  const entry = pendingMfaEnrolments.get(token);
+  if (!entry) return;
+  entry.attempts += 1;
+  if (entry.attempts >= MFA_ENROL_MAX_ATTEMPTS) pendingMfaEnrolments.delete(token);
+}
+
+async function completeLogin(res: Response, userId: string, req: Request, extra: Record<string, unknown> = {}): Promise<void> {
   const { token, expiresAt } = await createSession(userId, {
     ip: req.ip,
     userAgent: req.headers['user-agent'],
@@ -666,7 +700,7 @@ async function completeLogin(res: Response, userId: string, req: Request): Promi
 
   const user = await findUserById(userId);
   const permissions = await getEffectivePermissions(userId);
-  res.json({ id: userId, email: user?.email, displayName: user?.displayName, permissions });
+  res.json({ id: userId, email: user?.email, displayName: user?.displayName, permissions, ...extra });
 }
 
 app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
@@ -712,6 +746,11 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
     if (user.totpEnabledAt) {
       const mfaToken = createMfaChallenge(user.id);
       res.json({ mfaRequired: true, mfaToken });
+      return;
+    }
+
+    if (await userMustUseMfaNow(user.id)) {
+      res.json({ mfaEnrolmentRequired: true, enrolToken: createMfaEnrolment(user.id) });
       return;
     }
 
@@ -775,6 +814,76 @@ app.post('/auth/mfa/challenge', async (req: Request, res: Response): Promise<voi
   } catch (error: any) {
     logger.error({ err: error }, 'MFA challenge error');
     res.status(500).json({ error: 'MFA verification failed' });
+  }
+});
+
+// Forced enrolment (the settings require a second factor of this user): the token from /auth/login stands in for the session.
+// Step 1 gives the secret and the QR code like /auth/mfa/setup.
+app.post('/auth/mfa/enrol/setup', async (req: Request, res: Response): Promise<void> => {
+  const { enrolToken } = req.body ?? {};
+  const userId = typeof enrolToken === 'string' ? peekMfaEnrolment(enrolToken) : null;
+  if (!userId) {
+    res.status(401).json({ error: 'Enrolment expired - sign in again' });
+    return;
+  }
+  try {
+    const user = await findUserById(userId);
+    if (!user || !user.isActive || user.totpEnabledAt) {
+      pendingMfaEnrolments.delete(enrolToken);
+      res.status(401).json({ error: 'Enrolment expired - sign in again' });
+      return;
+    }
+    const secret = generateTotpSecret();
+    await setPendingTotpSecret(user.id, secret);
+    const otpauthUrl = totpKeyUri(user.email, secret);
+    res.json({ secret, otpauthUrl, qrCodeDataUrl: await totpQrCodeDataUrl(otpauthUrl) });
+  } catch (error: any) {
+    logger.error({ err: error }, 'MFA enrol setup error');
+    res.status(500).json({ error: 'Failed to start MFA setup' });
+  }
+});
+
+// Step 2: the code proves the app works; the factor is enabled, the recovery codes are returned once, and the session opens.
+app.post('/auth/mfa/enrol/verify', async (req: Request, res: Response): Promise<void> => {
+  const { enrolToken, code } = req.body ?? {};
+  const userId = typeof enrolToken === 'string' ? peekMfaEnrolment(enrolToken) : null;
+  if (!userId) {
+    res.status(401).json({ error: 'Enrolment expired - sign in again' });
+    return;
+  }
+  if (typeof code !== 'string') {
+    res.status(400).json({ error: 'code is required' });
+    return;
+  }
+  try {
+    if (mfaCodeLock.isLocked(userId)) {
+      res.status(429).json({ error: 'Too many failed attempts. Try again later.' });
+      return;
+    }
+    const user = await findUserById(userId);
+    if (!user || !user.isActive || user.totpEnabledAt) {
+      pendingMfaEnrolments.delete(enrolToken);
+      res.status(401).json({ error: 'Enrolment expired - sign in again' });
+      return;
+    }
+    if (!user.totpSecret) {
+      res.status(400).json({ error: 'No MFA setup in progress - call /auth/mfa/enrol/setup first' });
+      return;
+    }
+    if (!verifyTotpToken(user.totpSecret, code) || !consumeTotpCode(user.id, code)) {
+      mfaCodeLock.fail(user.id);
+      recordMfaEnrolmentFailure(enrolToken);
+      res.status(401).json({ error: 'Invalid code' });
+      return;
+    }
+    const recoveryCodes = generateRecoveryCodes();
+    await enableTotp(user.id, await hashRecoveryCodes(recoveryCodes));
+    pendingMfaEnrolments.delete(enrolToken);
+    mfaCodeLock.clear(user.id);
+    await completeLogin(res, user.id, req, { recoveryCodes });
+  } catch (error: any) {
+    logger.error({ err: error }, 'MFA enrol verify error');
+    res.status(500).json({ error: 'Failed to verify MFA setup' });
   }
 });
 
@@ -849,6 +958,10 @@ app.post('/auth/mfa/disable', requireAuth, async (req: AuthenticatedRequest, res
       return;
     }
     mfaDisableLock.clear(user.id);
+    if (await userMustUseMfaNow(user.id)) {
+      res.status(409).json({ error: 'A second factor is required for your role and cannot be turned off' });
+      return;
+    }
     await disableTotp(user.id);
     res.json({ success: true });
   } catch (error: any) {
@@ -954,8 +1067,8 @@ app.post('/auth/forgot-password', async (req: Request, res: Response): Promise<v
 
 app.post('/auth/reset-password', async (req: Request, res: Response): Promise<void> => {
   const { token, password } = req.body ?? {};
-  if (typeof token !== 'string' || typeof password !== 'string' || password.length < 8) {
-    res.status(400).json({ error: 'token and password (min 8 characters) are required' });
+  if (typeof token !== 'string' || typeof password !== 'string') {
+    res.status(400).json({ error: 'token and password are required' });
     return;
   }
 
@@ -974,12 +1087,53 @@ app.post('/auth/reset-password', async (req: Request, res: Response): Promise<vo
       return;
     }
 
+    const broken = checkPasswordPolicy(password, (await getSecuritySettings()).passwordPolicy, { email: fullUser.email });
+    if (broken) {
+      res.status(400).json({ error: broken });
+      return;
+    }
+
     await updatePassword(user.id, password);
     await clearResetToken(user.id);
     res.json({ success: true });
   } catch (error: any) {
     logger.error({ err: error }, 'Reset-password error');
     res.status(500).json({ error: 'Password reset failed' });
+  }
+});
+
+// What a new password must satisfy: public, so the reset page can say it before the person types (no secret in it).
+app.get('/auth/password-policy', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    res.json((await getSecuritySettings()).passwordPolicy);
+  } catch (error: any) {
+    logger.error({ err: error }, 'Password policy error');
+    res.status(500).json({ error: 'Failed to read the password policy' });
+  }
+});
+
+// --- Security settings: who must use a second factor, the password policy (settings:manage) ---
+
+app.get('/security-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    res.json(await getSecuritySettings());
+  } catch (error: any) {
+    logger.error({ err: error }, 'Get security settings error');
+    res.status(500).json({ error: 'Failed to read the security settings' });
+  }
+});
+
+app.put('/security-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), audited(AUDIT.securitySettings), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const parsed = await parseSecuritySettingsInput(req.body ?? {});
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+    res.json(await updateSecuritySettings(parsed.value));
+  } catch (error: any) {
+    logger.error({ err: error }, 'Update security settings error');
+    res.status(500).json({ error: 'Failed to save the security settings' });
   }
 });
 
@@ -997,8 +1151,13 @@ app.get('/auth/users', requirePermission(PERMISSIONS.USERS_MANAGE), async (_req:
 
 app.post('/auth/users', requirePermission(PERMISSIONS.USERS_MANAGE), audited(AUDIT.userCreate), async (req: Request, res: Response): Promise<void> => {
   const { email, password, displayName, roleIds } = req.body ?? {};
-  if (typeof email !== 'string' || typeof password !== 'string' || password.length < 8 || typeof displayName !== 'string') {
-    res.status(400).json({ error: 'email, password (min 8 chars), and displayName are required' });
+  if (typeof email !== 'string' || typeof password !== 'string' || typeof displayName !== 'string') {
+    res.status(400).json({ error: 'email, password, and displayName are required' });
+    return;
+  }
+  const broken = checkPasswordPolicy(password, (await getSecuritySettings()).passwordPolicy, { email });
+  if (broken) {
+    res.status(400).json({ error: broken });
     return;
   }
   if (!Array.isArray(roleIds) || roleIds.length === 0) {

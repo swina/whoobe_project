@@ -1,3 +1,13 @@
+## Mandatory 2FA and password policy, steps 2 and 3: login, enrolment, settings routes — 2026-10-19
+- Branch: `feat/mandatory-2fa`
+- `POST /auth/login`: when the password is right, the user has no second factor and one of their roles is in `requireMfaRoleIds`, the answer is `{ mfaEnrolmentRequired, enrolToken }` and **no session**. `POST /auth/mfa/enrol/setup` and `/enrol/verify` take that token (in memory, 10 minutes, five wrong codes burn it, the per-account code lock and the used-code memory of the challenge apply); `/enrol/verify` enables TOTP, returns the recovery codes once and opens the session. A session with half the rights was not built: every guard would have had to know about it.
+- `POST /auth/mfa/disable` answers 409 for a user whose roles require a second factor (after the password check).
+- Password policy applied where a password is set: `POST /auth/users` and `POST /auth/reset-password` (the error names the broken rule). A login is never checked, existing passwords are not re-checked. `GET /auth/password-policy` (public, no secret) lets a form say the rule before the person types.
+- `GET` / `PUT /security-settings` (`settings:manage`), audited as `setting.security_update` (route contract entries added). The snapshot calls its fields `policyMinLength` / `policyRequireClasses`: a key named `password...` is hidden by the audit log's safety net (found by the test, the row said `[redacted]`).
+- nginx template: `security-settings` added to the core-api prefixes (the lesson of the object-events screens: a new top-level route needs its prefix there).
+- Tests: `api/mfa-required.test.ts` (11: settings for settings managers only, validation, audit row, enrolment without session, wrong code, token spent, five-failure burn, other role not asked, setting switched off, policy on create and on reset, a login unaffected). Security API suite: 1478 tests, one file (`publish.test.ts`) not loadable only because the worktree has no `@whoobe-cms/renderer` build; the audit mail-row test failed once and passed on re-run (it shares the single mail row with other files, known). The `whoobe-sectest` core-api image now runs the code of this branch: rebuild it from `master` before the next run there.
+- Not yet: dashboard (enrolment step, settings screen), docs, break-glass option in `reset-user-password.ts`.
+
 ## Mandatory 2FA and password policy, step 1: table, helpers, settings records — 2026-10-19
 - Branch: `feat/mandatory-2fa` (worktree `../whoobe_cms-mfa`)
 - `docs/plans/system/mandatory-2fa-plan.md` (new): decisions (setting in a table, enforcement at login with an enrolment token and no half-session, disable refused for required roles, break-glass from the shell) and the five steps.
