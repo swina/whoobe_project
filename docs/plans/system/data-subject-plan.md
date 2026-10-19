@@ -1,0 +1,26 @@
+# Data subject requests and retention
+
+Release 0.2, block A2. The plan row: *export and erase by a field value (an e-mail) across form submissions and objects; a retention job configured per class; files of a deleted submission removed. Done when: a documented, tested procedure removes a person from the demo data; chapter 4.5 is rewritten.*
+
+## What exists, and the gap
+
+Personal data of visitors is in: `data_objects` (a form submission is a draft row of the target class, `key` = `sub-<uuid>`, the values in `attributes`), the files they uploaded (`form_uploads` rows, the bytes in the DAM, private), `mail_log` (recipient, subject, full body of every mail sent, for example the notification a form sends), the search index of the object. The object events carry ids and names, never attribute values. Staff are in `users` / `sessions` (a separate matter: delete or deactivate the user). Today nothing finds a person across these, deleting a data object leaves the uploaded file in the DAM, and nothing is deleted by age.
+
+## Decisions
+
+- **The identifier** is one text value, normally an e-mail address. It is matched **whole and case-insensitive**, never as a substring of a field (a search for `ann@x.org` must not take `joann@x.org`). Where: any string value anywhere in a data object's `attributes` (nested too, optionally limited to some classes); `mail_log` by recipient (`to`, `cc`) and, by default, by the identifier occurring in subject or body (the notification a form sent to staff quotes the visitor's address; this one is a *contains* match and can be switched off); `form_uploads` through the matched objects (`submission_id`).
+- **Not touched:** staff accounts (reported by e-mail in the search so the operator sees them, erased with Users), the audit log (it is the accountability record: it holds the e-mail of *staff* actors, never a visitor's; the erasure itself is written to it **without the identifier**, only a fingerprint and counts), push subscriptions (an endpoint is not an e-mail: the data-protection page says how to delete them), backups (the backup page says what a restore brings back).
+- **Permission** `data-subject:manage` (new, given to `admin` only). Three routes: `POST /data-subject/search` (what exists: metadata only, no values), `POST /data-subject/export` (everything found, as one JSON file to download; files are listed with their asset id and path and are downloaded from the library), `POST /data-subject/erase`.
+- **Erase is two steps.** `dryRun` is true unless the request says `dryRun: false`; a real erasure also needs `confirm` equal to the identifier (typed again). The answer says what was deleted per category and what **failed**.
+- **Files first.** For every matched object the uploaded files are deleted from the library first (asset-processor, with the service token: `DELETE /api/v1/dam/asset` now accepts it); only when they are gone is the object (and its `form_uploads` rows and search entry) deleted. A file that cannot be deleted leaves its object in place and is reported, so a retry finishes the job and no orphan file is left behind. The `object.deleted` event is sent as for any deletion (the consumers learn the row is gone; it carries no personal value).
+- **Audit:** `data_subject.search`, `data_subject.export`, `data_subject.erase` with the acting user, a fingerprint of the identifier (first 12 hex of its SHA-256) and the counts; `retention.purge` for the job.
+- **Retention per class:** `data_classes.retention_days` (migration 0064, null = keep forever). A job (at start and daily, like the audit purge) deletes, class by class, the objects older than that many days since creation, **whatever their status**, by the same file-first path as the erasure, in batches; the dashboard's class settings says so in the field's help. `mail_log` has its own number in the security settings (`mail_log_retention_days`, null = keep). Defaults: nothing changes on upgrade.
+- **Not built:** rectification tooling (edit the object), per-person consent records, a request register with deadlines, restriction of processing, erasure from backups, matching by phone or name (a different identifier is the same request with another value; fuzzy matching is not offered on purpose).
+
+## Steps
+
+1. Migration 0064, the permission, core: identifier handling, search, export, erase (with an injected "delete file" function), retention queries; unit and integration tests.
+2. asset-processor: the service token for `DELETE /api/v1/dam/asset`; core-api routes, the file-deleting function, the retention job and its schedule, audit rows, route contract, nginx prefix.
+3. API tests (a person removed from the demo data: object, file in the library, mail rows; the other person untouched; case and substring rules; dry run; confirmation; a file that cannot be deleted keeps its object; retention by class).
+4. Dashboard: Settings > Security > *Data subject requests* (search, export, erase with the typed confirmation, the result per category), the retention fields (class settings, mail log).
+5. Docs: a procedure page, the data-protection page (sections 2, 5, 6, 8) and the overview chapter 4.5 rewritten, configuration, API reference, CHANGES.

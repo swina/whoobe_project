@@ -449,6 +449,13 @@
       "when": 1790000300000,
       "tag": "0063_oidc_dashboard_url",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1790000400000,
+      "tag": "0064_data_subject_retention",
+      "breakpoints": true
     }
   ]
 }

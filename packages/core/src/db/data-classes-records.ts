@@ -11,6 +11,8 @@ export interface DataClassRecord {
   fields: ClassFieldDefinition[];
   viewConfig: ClassViewConfig | null;
   pimcoreId: string | null;
+  /** days after which the retention job deletes an object of this class; null = keep forever */
+  retentionDays: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,7 +62,7 @@ export async function createDataClass(input: {
 
 export async function updateDataClass(
   id: string,
-  input: { name?: string; label?: string; fields?: ClassFieldDefinition[]; viewConfig?: ClassViewConfig | null }
+  input: { name?: string; label?: string; fields?: ClassFieldDefinition[]; viewConfig?: ClassViewConfig | null; retentionDays?: number | null }
 ): Promise<DataClassRecord | null> {
   const db = getDb();
 
@@ -69,6 +71,7 @@ export async function updateDataClass(
   if (input.label !== undefined) values.label = input.label;
   if (input.fields !== undefined) values.fields = input.fields;
   if (input.viewConfig !== undefined) values.viewConfig = input.viewConfig;
+  if (input.retentionDays !== undefined) values.retentionDays = input.retentionDays;
 
   const [row] = await db.update(dataClasses).set(values).where(eq(dataClasses.id, id)).returning();
   if (row) await indexClass(row);
