@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { redactForAudit, REDACTED } from '@whoobe-cms/core/server';
 import {
-  getFigmaSettings, getSecuritySettings, getMailSettingsFor, getMigrationSource, getObjectEventSubscription, getRole, getUserWithRoles, getWebsite, getWebsitePath,
+  getFigmaSettings, getSecuritySettings, getOidcSettings, publicOidcSettings, getMailSettingsFor, getMigrationSource, getObjectEventSubscription, getRole, getUserWithRoles, getWebsite, getWebsitePath,
   listWebsites, pickAllowed, publicMailSettings,
   type RoleWithPermissions, type SecuritySettings, type UserWithRoles, type WebsiteRecord,
 } from '@whoobe-cms/core/server';
@@ -60,6 +60,15 @@ const settingChange = (action: string, key: string, show: (v: unknown) => unknow
 const securitySnapshot = (s: SecuritySettings) => ({
   requireMfaRoleIds: s.requireMfaRoleIds, policyMinLength: s.passwordPolicy.minLength, policyRequireClasses: s.passwordPolicy.requireClasses,
 });
+
+// ── single sign-on settings (the client secret is never in a row: "changed") ──
+const oidcSnapshot = (s: ReturnType<typeof publicOidcSettings>) => ({
+  enabled: s.enabled, label: s.label, issuer: s.issuer, clientId: s.clientId, confidential: s.hasClientSecret,   // not "hasClientSecret": a key with "secret" in it is hidden by the audit log's safety net
+  redirectBaseUrl: s.redirectBaseUrl, dashboardUrl: s.dashboardUrl,
+  scopes: s.scopes, roleClaim: s.roleClaim, roleMapping: s.roleMapping, defaultRoleIds: s.defaultRoleIds, autoProvision: s.autoProvision,
+  linkByEmail: s.linkByEmail, localLogin: s.localLogin,
+});
+const loadOidc = async () => publicOidcSettings(await getOidcSettings());
 
 // ── mail, figma, migration sources, object event subscriptions ────────────
 type MailEntity = Record<string, unknown>;
@@ -147,6 +156,7 @@ export const AUDIT: Readonly<Record<string, AuditSpec<any>>> = {
     ] } satisfies AuditSpec<MailEntity>,
   mailSettingsDelete: { action: 'setting.mail_remove', kind: 'delete', targetType: 'setting', snapshot: mailSnapshot, loadBefore: loadMail, targetId: (r: P) => `mail:${mailScopeId(r) ?? 'default'}`, targetLabel: () => 'Outgoing mail' } satisfies AuditSpec<MailEntity>,
   securitySettings: { action: 'setting.security_update', kind: 'update', targetType: 'setting', snapshot: securitySnapshot, loadBefore: () => getSecuritySettings(), loadAfter: () => getSecuritySettings(), targetId: () => 'security', targetLabel: () => 'Security' } satisfies AuditSpec<SecuritySettings>,
+  oidcSettings: { action: 'setting.oidc_update', kind: 'update', targetType: 'setting', snapshot: oidcSnapshot, loadBefore: loadOidc, loadAfter: loadOidc, targetId: () => 'oidc', targetLabel: () => 'Single sign-on', secrets: ['clientSecret'] } satisfies AuditSpec<ReturnType<typeof publicOidcSettings>>,
   figmaSettings: { action: 'setting.figma_update', kind: 'update', targetType: 'setting', snapshot: (f: FigmaEntity) => ({ teamId: f.teamId, hasToken: f.hasToken }), loadBefore: loadFigma, loadAfter: loadFigma, targetId: () => 'figma', targetLabel: () => 'Figma', secrets: ['accessToken'] } satisfies AuditSpec<FigmaEntity>,
 
   migrationSourceCreate: { action: 'migration_source.create', kind: 'create', targetType: 'migration_source', snapshot: (s: any) => pickAllowed(s, migrationFields), fromResponse: (b) => b?.source, targetLabel: (s: any) => s?.label } satisfies AuditSpec<any>,

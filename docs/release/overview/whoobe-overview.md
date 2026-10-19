@@ -154,10 +154,10 @@ it does not, we say that too.
 
 | Not provided | What it means for you |
 |---|---|
-| **Single sign-on (SAML, OIDC, LDAP)** | Users have local accounts (e-mail and password). No central deprovisioning: when someone leaves, an administrator deactivates the account by hand. |
+| **SAML and LDAP login, several providers, single logout** | Staff can sign in with **one OpenID Connect provider** (Keycloak, Microsoft Entra, Okta, Google ...), with roles taken from a claim at every sign-in; local accounts stay as the break-glass. SAML and LDAP are not built: put a broker such as Keycloak in front. There is no single logout and no push of deprovisioning: a person removed at the provider cannot start a new session, but a session already open runs to its end (up to 7 days) until an administrator deactivates the account. See [single sign-on](../operations/single-sign-on.md). |
 | **Mandatory two-factor authentication** | TOTP is available per user but cannot be enforced for everyone. No password policy beyond a minimum length. |
 | **Per-website permissions** | Roles describe a **function** (editor, publisher, administrator), not a **division**. Anyone who may edit pages may edit the pages of every website in the workspace. If one division must not touch another division's sites, that fence does not exist inside one workspace; use separate workspaces. |
-| **An audit log of administrative actions** | Creating a user, changing a role, deleting a website: none of it is recorded as an auditable event. Page and snippet version history exists, and failed logins are logged, but if you need evidence of "who changed the permissions on what date", the product cannot give it. |
+| **A complete audit log** | Successful administrative actions (users, roles, websites, settings, publication, integrations, single sign-on provisioning) are recorded in an append-only table that administrators read in the dashboard (see [audit log](../operations/audit-log.md)). Failed attempts, Gateway administration and tamper evidence beyond the database rule are not covered. |
 | **Machine credentials for the administration API** | Applications and flows can call Whoobe with an [API client](../communication/api-clients.md) (a key, or a token of your identity provider) that sees only the scopes you give it: published data, drafts of the classes it may write, Integrations routes. The administration API itself (users, roles, settings, websites, pages) has no machine credential: a script that administers Whoobe uses a user account. |
 
 ### 4.2 Scale and availability
@@ -281,7 +281,7 @@ licence fees and lock-in over the comfort of a vendor SLA and certificates. It i
 1. *Young product.* First release; defects will be found by use. Mitigation: a pilot (chapter 10), version pinning, the published test evidence.
 2. *Operations.* Self-hosting means your team patches, backs up and monitors. If it does not, the risk is yours, not ours.
 3. *Compliance.* No outside certificate; your auditors will review the documentation and the code themselves, and some controls they
-   expect (single sign-on, audit log) are missing (4.1).
+   expect (SAML or LDAP login, a complete audit log) are missing (4.1).
 4. *Vendor risk.* Whoobe is a young project. *[Team size, funding, roadmap commitments and support terms: to be stated by us.]*
    Mitigation: the code is MIT and the data is in standard stores.
 
@@ -360,8 +360,8 @@ answer. It touches the editor, the gateway, the engine and the page, and it take
 - Not covered: load tested only for four endpoints on a development machine; no SQL fuzzing of every endpoint; the generated Next/Nuxt sites are generated and parsed but not built in the tests;
   TLS has been tested on the rendered template, not yet on a live public hostname; the dynamic scan and manual checklist need to be repeated on the release commit.
 
-**Known gaps for your risk assessment** (all in chapter 4): no SSO, no mandatory second factor, no audit log of administrative
-actions, no per-website roles, no full Content-Security-Policy on the admin applications, no malware scanning, no automated retention or
+**Known gaps for your risk assessment** (all in chapter 4): SSO with one OpenID Connect provider only (no SAML or LDAP, no single
+logout), a second factor that is mandatory only for the roles an administrator chooses, an audit log of successful actions only, no per-website roles, no full Content-Security-Policy on the admin applications, no malware scanning, no automated retention or
 data-subject tooling, no third-party certification, in-memory throttling per process.
 
 **Deployment advice.** One organisation per workspace. HTTPS only, behind the proxy; database and object store bound to the loopback

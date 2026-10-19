@@ -406,6 +406,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.3(@types/pg@8.20.3)(mysql2@3.23.2(@types/node@20.19.43))(pg@8.22.0)
+      jose:
+        specifier: '5'
+        version: 5.10.0
       js-yaml:
         specifier: ^5.4.2
         version: 5.4.2
@@ -798,6 +801,9 @@ importers:
       '@vue/server-renderer':
         specifier: ^3.5.42
         version: 3.5.43
+      jose:
+        specifier: '5'
+        version: 5.10.0
       js-yaml:
         specifier: ^4
         version: 4.3.2

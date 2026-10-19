@@ -85,6 +85,10 @@ AI_RATE_LIMIT_PER_MINUTE=5
 # MFA secrets encrypted at rest (test value)
 TOTP_ENCRYPTION_KEY=sectest-$(hex 16)
 
+# the staff OIDC login may talk to a provider over http (the tests' mock provider; a real one uses https)
+OIDC_ALLOW_HTTP=true
+OIDC_START_RATE_LIMIT_PER_MINUTE=1000
+
 # /metrics answers only with this bearer token (404 without one configured)
 METRICS_TOKEN=sectest-metrics-$(hex 16)
 

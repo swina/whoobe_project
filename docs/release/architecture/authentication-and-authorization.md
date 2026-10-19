@@ -8,7 +8,7 @@ Who and what can act on the system, how each identity proves itself, and what ea
 
 | Identity | Proves itself with | Lives in | Used for |
 |---|---|---|---|
-| **User** (administrator, editor, viewer or a custom role) | e-mail + password, optional TOTP second factor; the result is a session cookie | `users`, `sessions` | the dashboard and the editor |
+| **User** (administrator, editor, viewer or a custom role) | e-mail + password with an optional or mandatory TOTP second factor, **or** the organisation's OpenID Connect provider; the result is a session cookie | `users`, `sessions`, `user_identities` | the dashboard and the editor |
 | **Visitor** (anonymous) | nothing | - | the public read API, public forms, asset delivery of public files |
 | **Published site** | per-website *site key* (`X-Whoobe-Site-Id` + `X-Whoobe-Site-Key`) | `websites.settings` (hash, pepper `SITE_API_KEY_PEPPER`) | the gateway: resolving bindings, submitting gateway forms. Held by the site's server, never the browser (the SDK offers a same-origin proxy path for that) |
 | **API client** (an application outside Whoobe) | a key (`Authorization: Bearer wbk_...` or `X-Whoobe-Key`), or a token of your identity provider validated by its signature | `api_clients` | the client surface `/client/v1`: published data, drafts of the classes it may write, Integrations routes, automations; only the scopes it was given ([API clients](../communication/api-clients.md)) |
@@ -16,7 +16,7 @@ Who and what can act on the system, how each identity proves itself, and what ea
 | **Preview link** | random token in the URL | `data_object_preview_tokens` | showing an unpublished data object to a person without an account, until it expires |
 | **Form-upload ticket** | HMAC-signed, 10-minute token from `POST /public/uploads/intent` (`UPLOAD_TOKEN_SECRET`) | in the URL only | sending the bytes of one approved file |
 
-There is no SSO, SAML, OIDC or LDAP login for users. An application or a flow that needs to read or write data uses an **API
+Staff can sign in with one OpenID Connect provider (section 4b); SAML and LDAP are not built (a broker such as Keycloak covers them). An application or a flow that needs to read or write data uses an **API
 client**; the administration API (users, roles, settings, websites, pages) has no machine credential, so a script that
 administers Whoobe uses a user account (and therefore a session).
 
@@ -70,6 +70,29 @@ administers Whoobe uses a user account (and therefore a session).
   is a new enrolment.
 - Break-glass for an administrator who lost both factors: the operator can clear MFA for a user by running the core
   reset script with `RESET_USER_EMAIL`, `RESET_USER_PASSWORD` and `RESET_USER_CLEAR_MFA` (in `packages/core/src/db/scripts/`).
+
+## 4b. Single sign-on (OpenID Connect)
+
+Settings > Security > Single sign-on, `GET` / `PUT /oidc-settings` (`settings:manage`, audited). One provider per installation. How to set it up for
+Keycloak, Entra, Okta and Google: [single sign-on](../operations/single-sign-on.md). The design and its decisions: `docs/plans/system/oidc-login-plan.md`.
+
+- **Flow:** authorization code with PKCE (S256). `GET /auth/oidc/login` keeps `state`, `nonce` and the verifier in memory for ten minutes and
+  sets a `wcms_oidc` cookie with a random binder whose hash is kept with them; `GET /auth/oidc/callback` refuses a state that is unknown, expired,
+  already used or whose binder is not in this browser's cookie (login CSRF), exchanges the code (client secret by HTTP Basic when there is one),
+  and verifies the **ID token**: signature from the provider's JWKS (algorithm allow-list: no `none`, no HS256), `iss` exactly the configured
+  issuer, `aud` the client id, `exp`, `azp`, `nonce`. Only the ID token is kept for the length of the request; the access and refresh tokens are discarded.
+- **Where the browser goes** is always the configured dashboard address; a failure goes to `/?sso_error=<code>` with a short code and the cause in the log. Nothing in the request chooses the destination.
+- **Who the person is:** `(issuer, sub)` in `user_identities`. A first sign-in with an unknown pair links to the local account of the same e-mail **only if
+  the provider says `email_verified`** (switch `linkByEmail`), else creates an account if `autoProvision` is on, else is refused. An unverified e-mail never links or creates.
+- **Roles:** a claim (`groups`, `roles`, `realm_access.roles`) and a mapping value -> role. At every sign-in the roles in the mapping follow the claim (granted
+  or taken away); roles given by hand are left alone; a new person matching nothing gets the default roles; a person who would have no role is refused (and not created).
+- **Deprovisioning:** a person deactivated at the provider cannot authenticate there, so cannot start a new session; a user deactivated here is refused at the callback.
+  A session already open is not cut (there is no back-channel logout): the same 7 days as for a local account.
+- **Second factor:** the mandatory-2FA setting applies to the password form. A person who signs in through the provider uses the provider's factor; Whoobe does not ask again.
+- **Local accounts stay.** `localLogin` is `all` or `admins` (the password form works only for users who can manage users); there is no "none" on purpose, so a provider outage cannot lock everyone out.
+- **Outbound:** discovery, JWKS and token requests go through the outbound guard (`safeFetch`); addresses must be https, or http outside production or with `OIDC_ALLOW_HTTP=true`.
+- **Audit:** `setting.oidc_update` (client secret: "changed") and the events `user.sso_provision`, `user.sso_link`, `user.sso_roles` with the actor "Single sign-on".
+- **Not built:** SAML, LDAP, several providers, single logout / back-channel logout, SCIM, refresh of the provider session.
 
 ## 5. Authorization
 
@@ -189,7 +212,7 @@ An application that is not a person calls the gateway at `/client/v1` with an **
 
 ## 9. Known gaps (for a risk assessment)
 
-No SSO/OIDC; MFA is mandatory only for the roles an administrator chooses (no installation-wide switch, no per-user exception); no per-website roles; the password policy is a minimum length, an optional three-of-four character classes rule and "not the e-mail" (no breached-password list); no session list or remote
+SSO with a single OpenID Connect provider (no SAML or LDAP, no single logout); MFA is mandatory only for the roles an administrator chooses (no installation-wide switch, no per-user exception); no per-website roles; the password policy is a minimum length, an optional three-of-four character classes rule and "not the e-mail" (no breached-password list); no session list or remote
 sign-out for the user; no CSRF token; no full CSP on the SPAs (F-014);
 third-party credentials are in clear text on installations without `INTEGRATION_SECRETS_ENCRYPTION_KEY` (F-055); login and MFA throttling is in process memory
 (per replica, lost at restart).

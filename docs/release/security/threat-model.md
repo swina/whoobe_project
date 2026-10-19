@@ -137,7 +137,7 @@ Severity is the residual risk after the controls, for a correctly installed work
 1. **Third-party credentials**: encrypted at rest only when `INTEGRATION_SECRETS_ENCRYPTION_KEY` is set (F-055, fixed; an installation that never sets it keeps clear text and a log warning). The push provider key used to be served by an unauthenticated route (F-059, fixed): after upgrading, rotate any push key that was saved on an internet-reachable installation.
 2. **Authorization model is functional, not per site** - roles limit what a person can do (pages, snippets, themes ...), workspace-wide;
    they do not fence one division's websites from another's. Use separate workspaces (export/import moves a site) for that.
-3. **No SSO**; MFA is enforced only for the roles an administrator chooses and only at the next sign-in (open sessions are not cut); password policy has no breached-password list.
+3. **SSO with one OpenID Connect provider only** (no SAML or LDAP, no single logout: an open session outlives the person's removal at the provider); MFA is enforced only for the roles an administrator chooses and only at the next sign-in (open sessions are not cut); password policy has no breached-password list.
 4. **No full CSP on the admin and editor applications**; CSRF relies on SameSite/CORS alone.
 5. **Files from visitors are not scanned for malware** (planned as an optional step).
 6. **Single instance, in-memory throttling, no load test** - a determined volumetric attack is a proxy/CDN problem.
