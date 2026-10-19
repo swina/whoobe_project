@@ -97,11 +97,11 @@ route documented, no broken link or quoted repository path, every environment va
 | Findings found by the review: F-055 to F-058 | recorded in [`security/findings.md`](security/findings.md), **open** | fix before or accept explicitly in the release notes |
 | Security status summary, DAST, manual security checklist | summary updated 2026-10-09; **DAST and the manual checklist not repeated** for the features of 2026-10-08/09 | run on the release commit (release gate) |
 | SBOM | `scripts/release/sbom.sh` works (CycloneDX, 669 components in the source tree); not attached automatically | attach to the GitHub Release; automate in `release.yml` |
-| Image digests, signatures, provenance | not available (images are published by hand) | `release.yml` ([release process](release-process.md) section 7) |
+| Image digests, signatures, provenance | published by `release.yml` on a tag: amd64 and arm64 images on ghcr.io, signed by digest, with a source SBOM on the draft GitHub Release (v0.1.1, v0.2.0) | [release process](release-process.md) section 7 |
 | Bare-metal guides (`operations/deployment.md`, `miniguide-deployment.md`) | flagged as not re-verified; the container workspace is the tested path | rewrite or retire |
 | [User manual](guides/user-manual/README.md) | partial by design: chapters listed in its table of contents are not written; no App Mode, thumbnail capture, documentation-site, form-upload chapters (the guides cover them) | write after the release |
 | [`content/headless-sdk.md`](content/headless-sdk.md), [`content/dynamic-website-paths.md`](content/dynamic-website-paths.md), publishing guides | names checked, not read line by line | review |
 | [Executive summary](overview/executive-summary.md) | positioning text dated 2026-09-18; not a technical reference | refresh before external use |
-| Runbooks never rehearsed: restore on a new host, upgrade, workspace removal and re-creation | written, not run end to end | rehearse once and note the date here |
-| Generated documentation sites | the product can publish this folder as a documentation site (Markdown, index, search); not set up for the release | optional: publish `docs/release` with the product's own *documentation site* feature |
+| Runbooks: restore, upgrade, workspace removal and re-creation | restore of a destroyed workspace and the upgrade from the previous release are run by scripts (`rehearse.sh`, `upgrade-test.sh`); the public host was upgraded by hand 2026-10-19; not run on a customer's host and data | the operator rehearses once and notes the date |
+| Generated documentation sites | the product can publish this folder as a documentation site (Markdown, index, search); published at https://docs.whoobe.dev from the site "whoobe docs release" (re-upload the folder to the DAM, generate with `whoobe-publish --kind docs --strict`, copy to the host) | regenerate after each release |
 | Languages | English only | |
