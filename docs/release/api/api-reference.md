@@ -376,7 +376,9 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | --- | --- |
 | `GET /api/v1/system/logs` | Tail recent application log lines. |
 | `GET /api/v1/system/logs/download` | Download the full current log file. |
-| `GET /health` | Liveness/uptime check. |
+| `GET /health` | Readiness: `200` with `database: "ok"`, or `503` with `database: "down"` when the database does not answer. |
+| `GET /health/live` | Liveness: the process is up. |
+| `GET /metrics` | Prometheus metrics. `404` unless `METRICS_TOKEN` is set on the server, then `Authorization: Bearer <token>`. Not routed by the nginx template. See [observability](../operations/observability-and-logging.md). |
 | `GET /site-root` | Asked by the reverse proxy for requests it cannot route by name: 204 if the first path segment is a website's root path (the proxy then sends the request to the editor, which renders the page), 403 otherwise (dashboard). Answers from a 5 s cache; reads the URI from `X-Original-URI`. |
 <!-- GENERATED:CORE_API:END -->
 

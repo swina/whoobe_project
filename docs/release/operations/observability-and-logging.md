@@ -44,19 +44,37 @@ and the application log.
 
 | Endpoint | Meaning |
 |---|---|
-| `GET /health` on core-api (3003), asset-processor (3002), gateway (3001) | **liveness only**: `200 {status:'ok', uptimeSeconds}`; it does **not** test the database or the object store, so a service with a dead database still reports healthy |
-| Docker `HEALTHCHECK` (30 s interval, 5 s timeout, 20 s start period, 3 retries) | calls `/health` on the three backends; Compose `depends_on: service_healthy` makes asset-processor and gateway wait for core-api (which runs the migrations) |
+| `GET /health` on core-api (3003) | **readiness**: `200 {status:'ok', database:'ok', uptimeSeconds, ...}`, or `503 {status:'unavailable', database:'down'}` when the database does not answer `select 1` within 2 s (the answer is kept for 2 s, so an anonymous caller cannot make a query per request) |
+| `GET /health/live` on core-api | **liveness**: the process is up, nothing else is asked |
+| `GET /health` on asset-processor (3002) and gateway (3001) | liveness only, as before: they do not test the database or the object store |
+| Docker `HEALTHCHECK` (30 s interval, 5 s timeout, 20 s start period, 3 retries) | calls `/health/live` on core-api and `/health` on the other two (a database outage does not make the core-api container look dead); Compose `depends_on: service_healthy` makes asset-processor and gateway wait for core-api (which runs the migrations) |
 | the two SPAs | nginx on 8080; no health route (probe `/`) |
 | PostgreSQL | `pg_isready` health check in the compose file |
 | Garage | its own health check |
 
-For real readiness, probe a public read route end to end (for example `GET /public/pages/…` for a known page, or
-`GET /auth/me` expecting 401), which exercises the database.
+Point a load balancer or an uptime probe at core-api's `GET /health` (it takes the instance out when the database is gone) and the Docker
+health check at `/health/live`. For the asset store and the gateway, probe a public read route end to end (for example `GET /public/pages/…`).
 
 ## 4. Metrics, tracing, alerting
 
-Not provided: no `/metrics` endpoint, no Prometheus or OpenTelemetry instrumentation, no request tracing, no built-in
-alert rules, no uptime page. Use what the platform gives you:
+**`GET /metrics` on core-api** (Prometheus text format). It is **off** unless `METRICS_TOKEN` is set (`404` without it); with it, a scrape sends
+`Authorization: Bearer <token>`. The nginx template does not route `/metrics`, so it is reachable on the service network and on the published
+port of core-api, not from the internet. Prometheus: `authorization: { credentials: <token> }` in the scrape job.
+
+| Metric | Meaning |
+|---|---|
+| `whoobe_http_requests_total{method,route,status}` | requests by method, **matched route pattern** (`/auth/users/:id`, never the URL; a request with no route is `unmatched`) and status class (`2xx`...) |
+| `whoobe_http_request_duration_seconds` (histogram, `route`) | time to answer |
+| `whoobe_database_up` | 1 / 0, the same check as `/health` |
+| `whoobe_publish_jobs{status}` | publish jobs by status (`queued` is the queue) |
+| `whoobe_object_event_deliveries{status}` | event deliveries by status (`pending` and `retrying` are the queue, `dead` needs a look) |
+| `whoobe_audit_rows_written`, `whoobe_audit_rows_lost` | audit rows since the process started; an alert on `lost > 0` |
+| `whoobe_build_info{service,version}`, `whoobe_process_uptime_seconds`, `whoobe_process_resident_memory_bytes`, `whoobe_process_heap_used_bytes` | the build and the process |
+
+At most 500 routes are labelled, the rest are `other`. Counters are per process and restart at zero (a Prometheus `rate()` handles that).
+Asset-processor and gateway have no `/metrics` yet.
+
+Not provided: OpenTelemetry instrumentation, request tracing, built-in alert rules, no uptime page. Use what the platform gives you:
 
 | Signal | How |
 |---|---|
@@ -76,6 +94,6 @@ the real cause is in the log line written by the handler (`logger.error({ err },
 
 ## 6. Gaps
 
-The audit log covers successful administrative actions only (no failed attempts, no Gateway administration, no tamper evidence beyond the database rule); no metrics or tracing, a health route that does not check dependencies, no log retention
+The audit log covers successful administrative actions only (no failed attempts, no Gateway administration, no tamper evidence beyond the database rule); no tracing, no metrics for asset-processor and gateway, readiness only for core-api (and only the database, not the object store), no log retention
 policy, no tamper protection of logs, no per-request correlation id. Each is an item for the roadmap of a regulated
 deployment; the workarounds above cover the common questions.

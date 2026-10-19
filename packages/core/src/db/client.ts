@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { Pool } from 'pg';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { sql } from 'drizzle-orm';
 import * as authSchema from './auth-schema.js';
 import * as damSchema from './dam-schema.js';
 
@@ -89,6 +90,9 @@ let db: Database | undefined;
 export function getDb(): Database {
   if (!db) {
     pool = new Pool(getConnectionConfig());
+    // An idle client whose connection the server drops (database restart, network) emits 'error' on the pool; with no listener Node
+    // throws it and the process dies instead of answering 503 on /health. The pool replaces the client on its own.
+    pool.on('error', (err) => console.error(`Database pool: idle client error: ${err.message}`));
     db = drizzle(pool, { schema });
   }
   return db;
@@ -99,5 +103,19 @@ export async function closeDb(): Promise<void> {
     await pool.end();
     pool = undefined;
     db = undefined;
+  }
+}
+
+/** True when the database answers `select 1` within `timeoutMs`; never throws (readiness probe, docs/plans/system/release-0.2-plan.md A2). */
+export async function pingDatabase(timeoutMs = 2000): Promise<boolean> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    const query = getDb().execute(sql`select 1`).then(() => true);
+    const timeout = new Promise<boolean>((resolve) => { timer = setTimeout(() => resolve(false), timeoutMs); });
+    return await Promise.race([query, timeout.then(() => false)]).catch(() => false);
+  } catch {
+    return false;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
