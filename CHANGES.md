@@ -1,5 +1,10 @@
 # Release v0.2.0 — 2026-10-19
 
+## Public host `dashboard.whoobe.dev` upgraded to v0.2.0 — 2026-10-19
+- Branch: `master` (tag `v0.2.0`). No file of the repository changed; this records the release test on the Oracle host.
+- Steps (run by the owner): `git archive v0.2.0` to the host, backup `~/backups/pre-0.2.0-2026-10-19/` (dump + `.env.dashboard`), `rsync --delete` excluding `.env*`, certbot and the rendered nginx files, `docker compose -p ws-dashboard up -d --build`, `render-workspace-nginx.sh dashboard` (host nginx reloaded).
+- Checked from outside: `/health` 200 with `database` and `audit` ok, `/health/live` 200, `/auth/oidc/config` `{"enabled":false}`, `/security-settings`, `/oidc-settings`, `/audit-log`, `POST /data-subject/*` answer 401 JSON (before the include was re-rendered they returned the SPA page), `/metrics` stays the SPA page (not routed), the dashboard bundle contains the Security entries. Still to confirm by the owner: login, Security pages, 67 migrations.
+
 ## [Release v0.2.0] — 2026-10-19
 - Branch: `master`. Version 0.2.0 set in 21 package.json files (one product version, see docs/release/release-process.md); `docs/release/README.md` aligned to this release.
 
