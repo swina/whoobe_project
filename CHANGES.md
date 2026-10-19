@@ -1,3 +1,8 @@
+## feat/readiness-metrics merged into master and tried on the development stack — 2026-10-19
+- Branch: `master`
+- Merged without conflicts; `packages/core` rebuilt for the development stack. Tried by hand against the development database with a second core-api on port 3013 (`METRICS_TOKEN` set; the running one on 3003 untouched): `/metrics` 404 without a token on 3003, 401 without or with a wrong one, 200 with it and real figures (24 publish jobs succeeded, 156 event deliveries delivered); `docker stop whoobe_postgres`: `/health` 503 `database: down` on both instances, `/health/live` 200, `whoobe_database_up 0`, neither process died (the pool's idle-client error was logged twice, the fix of the branch), `/health` back to 200 about 3 s after the start. The temporary instance was stopped. Not looked at: the dashboard's status badge while the database is down.
+- Worktree `../whoobe_cms-metrics` and the local branch removed.
+
 ## Readiness and metrics for core-api — 2026-10-19
 - Branch: `feat/readiness-metrics` (worktree `../whoobe_cms-metrics`)
 - `GET /health` is now **readiness**: `503 { status: 'unavailable', database: 'down' }` when `select 1` does not answer within 2 s (`pingDatabase` in `packages/core/src/db/client.ts`; the answer is memoised for 2 s so an anonymous caller cannot cause a query per request), `200` with `database: 'ok'` otherwise. New `GET /health/live`: the process is up, nothing more. The Dockerfile `HEALTHCHECK` of core-api uses `/health/live` (a database outage must not make the container look dead; `depends_on: service_healthy` keeps working). Asset-processor and gateway keep their liveness `/health`.
