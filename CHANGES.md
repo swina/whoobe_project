@@ -5,7 +5,7 @@
 - Copies are kept in `/home/antonio/ssd1tb/data/whoobe-backup` (mode 700; 543 GB free). Scripts in `~/whoobe-backup-scripts/`, settings in `~/.config/whoobe/pull.env` (mode 600), cron `30 4 * * *` for the user `antonio` (output in `~/whoobe-backup-pull.log`). A cron job rather than a systemd timer: no `sudo` needed; a night when the machine is off is skipped.
 - A dedicated ed25519 key created on `develop` (`~/.ssh/whoobe_backup`); on the Oracle host its public half is in `authorized_keys` as `restrict,command="rrsync -ro /home/ubuntu/backups/nightly"`. Checked: a write attempt is refused by `rrsync` ("sending to read-only server is not allowed", exit 12) and a command (`id`) does not run.
 - First pull: the encrypted dump and env file, the marker and the bucket copy (20 files) arrived; `check.sh` ok. Not done: S3/Garage copy (the owner chose the disk for now), a check of the first scheduled runs.
-- Left in place, owner to decide: the old sandbox containers on `develop` (`ws-sandbox-*`, 8 containers, volumes `ws-sandbox_pgdata` and `ws-sandbox_garagedata`, up for 13 days).
+- Removed on the owner's decision (2026-10-20): the old sandbox on `develop` (8 `ws-sandbox-*` containers up for 13 days, volumes `ws-sandbox_pgdata` and `ws-sandbox_garagedata`, network `ws-sandbox_default`, the images of its five built services); 0 containers left. The `whoobe-garage` image is kept. The line with a third-party API key in clear text was removed from the crontab of `develop` (commented out; the owner was told to rotate it).
 
 ## Scheduled backups installed on the public host — 2026-10-20
 - Branch: `master`. No repository file changed; this records the installation on `dashboard.whoobe.dev` (run by the owner).
