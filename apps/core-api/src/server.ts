@@ -1116,7 +1116,9 @@ app.get('/auth/password-policy', async (_req: Request, res: Response): Promise<v
 
 app.get('/security-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (_req: Request, res: Response): Promise<void> => {
   try {
-    res.json(await getSecuritySettings());
+    // `roles` is for the screen's role picker: a settings manager does not necessarily hold users:manage, which GET /auth/roles needs
+    const roles = (await listRoles()).map((r) => ({ id: r.id, name: r.name }));
+    res.json({ ...(await getSecuritySettings()), roles });
   } catch (error: any) {
     logger.error({ err: error }, 'Get security settings error');
     res.status(500).json({ error: 'Failed to read the security settings' });

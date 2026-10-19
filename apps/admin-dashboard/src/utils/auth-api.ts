@@ -21,6 +21,13 @@ export interface MfaRequired {
   mfaToken: string
 }
 
+// The other shape: the password was correct, no second factor exists yet and the settings require one. No session either: the
+// token stands in for it on /auth/mfa/enrol/* (docs/plans/system/mandatory-2fa-plan.md).
+export interface MfaEnrolmentRequired {
+  mfaEnrolmentRequired: true
+  enrolToken: string
+}
+
 export interface MfaSetupResponse {
   secret: string
   otpauthUrl: string
@@ -71,7 +78,7 @@ async function parseJsonOrThrow(res: Response): Promise<any> {
   return res.json()
 }
 
-export async function login(baseUrl: string, email: string, password: string): Promise<AuthenticatedUser | MfaRequired> {
+export async function login(baseUrl: string, email: string, password: string): Promise<AuthenticatedUser | MfaRequired | MfaEnrolmentRequired> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -93,6 +100,28 @@ export async function mfaChallenge(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mfaToken, ...credentials }),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
+// Forced enrolment: the same two steps as the personal setup below, with the token from login() instead of a cookie; the second
+// step opens the session and returns the recovery codes (shown once).
+export async function startMfaEnrolment(baseUrl: string, enrolToken: string): Promise<MfaSetupResponse> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/mfa/enrol/setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enrolToken }),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
+}
+
+export async function verifyMfaEnrolment(baseUrl: string, enrolToken: string, code: string): Promise<AuthenticatedUser & { recoveryCodes: string[] }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/auth/mfa/enrol/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enrolToken, code }),
     credentials: 'include',
   })
   return parseJsonOrThrow(res)
