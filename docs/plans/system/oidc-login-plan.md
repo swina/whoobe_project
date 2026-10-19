@@ -22,6 +22,8 @@ Local accounts (e-mail, password, optional TOTP), sessions in the database (`wcm
 
 ## Steps
 
+All seven steps done 2026-10-19 (steps below). The redirect and the landing address became two settings (`dashboardUrl`, migration 0063), see CHANGES.
+
 1. Move the token verifier to core. **Done.**
 2. Migration 0062 (`oidc_settings`, `user_identities`), schema, records, secret encryption; pure helpers (claim path, role mapping, return URL, PKCE); unit and integration tests.
 3. The protocol module (discovery, authorization URL, code exchange, ID token check) and the routes (`/auth/oidc/config`, `/login`, `/callback`; `GET`/`PUT /oidc-settings`, `POST /oidc-settings/test`); route contract, audit specs, nginx prefix; `localLogin` on `/auth/login`.

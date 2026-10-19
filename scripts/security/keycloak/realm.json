@@ -1,0 +1,30 @@
+{
+  "realm": "whoobe-test",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "groups": [{ "name": "whoobe-editors" }, { "name": "whoobe-readers" }],
+  "users": [
+    { "username": "alice", "email": "alice@kc.test", "emailVerified": true, "enabled": true, "firstName": "Alice", "lastName": "Editor",
+      "credentials": [{ "type": "password", "value": "alice-pass", "temporary": false }], "groups": ["/whoobe-editors"] },
+    { "username": "bob", "email": "bob@kc.test", "emailVerified": true, "enabled": true, "firstName": "Bob", "lastName": "Reader",
+      "credentials": [{ "type": "password", "value": "bob-pass", "temporary": false }], "groups": ["/whoobe-readers"] },
+    { "username": "carol", "email": "carol@kc.test", "emailVerified": true, "enabled": true, "firstName": "Carol", "lastName": "Nogroup",
+      "credentials": [{ "type": "password", "value": "carol-pass", "temporary": false }] },
+    { "username": "dave", "email": "dave@kc.test", "emailVerified": false, "enabled": true, "firstName": "Dave", "lastName": "Unverified",
+      "credentials": [{ "type": "password", "value": "dave-pass", "temporary": false }], "groups": ["/whoobe-readers"] }
+  ],
+  "clients": [
+    {
+      "clientId": "whoobe", "enabled": true, "publicClient": false, "secret": "kc-test-secret",
+      "standardFlowEnabled": true, "directAccessGrantsEnabled": false, "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:3103/auth/oidc/callback", "http://localhost:3203/auth/oidc/callback"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "defaultClientScopes": ["profile", "email", "roles"],
+      "protocolMappers": [
+        { "name": "groups", "protocol": "openid-connect", "protocolMapper": "oidc-group-membership-mapper",
+          "config": { "claim.name": "groups", "full.path": "false", "id.token.claim": "true", "access.token.claim": "false", "userinfo.token.claim": "false" } }
+      ]
+    }
+  ]
+}

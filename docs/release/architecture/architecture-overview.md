@@ -177,7 +177,6 @@ CSP and rate limits per tenant), not a configuration.
 
 ## 9. What is deliberately not in the architecture
 
-No SSO/SAML/OIDC (local accounts with optional TOTP), no per-website RBAC, no audit-log service (see
-[observability](../operations/observability-and-logging.md) for what is recorded), no WAF or CDN (a CDN mirror for
+No SAML or LDAP login (local accounts with optional or mandatory TOTP, and one OpenID Connect provider: see [single sign-on](../operations/single-sign-on.md)), no per-website RBAC, no separate audit-log service (the [audit log](../operations/audit-log.md) is a table in the database), no WAF or CDN (a CDN mirror for
 assets is optional), no horizontal scaling story (section 4 of [capacity and scaling](../operations/capacity-and-scaling.md)),
 no data-residency controls beyond where you host the stack.

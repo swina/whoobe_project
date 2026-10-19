@@ -26,6 +26,9 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `POST /auth/login` | Log in with email/password. Sets the session cookie, or returns `{ mfaRequired: true, mfaToken }` if 2FA is enabled, or `{ mfaEnrolmentRequired: true, enrolToken }` (no session) if the user's role requires 2FA and none is set up yet. |
 | `POST /auth/mfa/enrol/setup` | Forced enrolment, step 1: with the `enrolToken` of the login, returns a TOTP secret + QR code. Public (the token stands in for the session). |
 | `POST /auth/mfa/enrol/verify` | Forced enrolment, step 2: a TOTP code with the `enrolToken` enables the factor, returns the recovery codes once and opens the session. Five wrong codes spend the token. |
+| `GET /auth/oidc/config` | Whether single sign-on is on and the button text: `{ enabled, label, localLogin }`. Public; nothing else about the provider. |
+| `GET /auth/oidc/login` | Starts the OpenID Connect sign-in: redirects to the provider (authorization code, PKCE S256, state, nonce) and sets a short `wcms_oidc` cookie. `404` when it is off. |
+| `GET /auth/oidc/callback` | The provider's redirect back. Checks state and the browser's cookie, exchanges the code, verifies the ID token, opens the session and redirects to the dashboard, or to `/?sso_error=<code>`. |
 | `GET /auth/password-policy` | The minimum a new password must satisfy: `{ minLength, requireClasses }`. Public, no secret. |
 | `POST /auth/mfa/challenge` | Step 2 of a 2FA login: verify a TOTP code (or a recovery code) against a pending mfaToken and complete the session. |
 | `GET /auth/mfa/status` | Whether the current user has 2FA enabled. |
@@ -289,6 +292,14 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `GET /object-event-subscriptions/:id/deliveries` | The delivery log, newest first (`?status=pending`, `delivered`, `retrying`, `dead` or `stopped`, `?type=object.updated` and so on, and `limit` up to 200): status, attempts, next try, last problem. Never the event content or the service's answer. |
 | `DELETE /object-event-subscriptions/:id/deliveries` | Clear finished deliveries from the log: body `{ ids: [...] }` (up to 500) or `{ status: 'delivered' | 'dead' | 'stopped' }`; returns `{ removed }`. A delivery still pending or retrying is never removed; the events and the loop guard counts are not touched. |
 | `POST /object-event-deliveries/:id/retry` | Retry a delivery that gave up (`dead`); 409 for any other status. |
+
+### Single sign-on settings (permission `settings:manage`)
+
+| Method & path | Description |
+| --- | --- |
+| `GET /oidc-settings` | The provider settings (issuer, client id, redirect and dashboard addresses, scopes, role claim and mapping, default roles, provisioning, linking, `localLogin`), `hasClientSecret` (the secret is never returned) and `roles` for the pickers. |
+| `PUT /oidc-settings` | Change any of them; only the keys sent change; a blank `clientSecret` keeps the stored one, `clearClientSecret: true` removes it. Switching on needs issuer, client id and redirect address. Audited as `setting.oidc_update`. |
+| `POST /oidc-settings/test` | Reads the saved issuer's discovery document: `{ ok: true, authorizationEndpoint, tokenEndpoint }` or `{ ok: false, error }`. |
 
 ### Security settings (permission `settings:manage`)
 
