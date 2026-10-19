@@ -158,6 +158,7 @@ Changing these needs the **images rebuilt**, not just a restart.
 | `SANDBOX_MODE` | `1` turns AI, mail, imports, CDN mirror, PWA generation and outbound HTTP off |
 | `SANDBOX_RESET_AT` | time shown in the reset banner |
 | `SANDBOX_ALLOW_HOSTS` | host names outbound HTTP may still reach |
+| `SANDBOX_DEMO_EMAIL`, `SANDBOX_DEMO_PASSWORD` | the shared demo account, shown in the banner and returned by `GET /health` (`sandbox.demo`) when both are set. **Public by design**: never set them to a real account |
 
 Set by `provision-workspace.sh --profile sandbox` ([sandbox](sandbox.md)).
 

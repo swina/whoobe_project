@@ -15,7 +15,14 @@ describe('sandbox mode', () => {
     expect(assetMaxCount({})).toBeNull();
     expect(assetMaxCount({ ASSET_MAX_COUNT: '50' })).toBe(50);
     expect(sandboxStatus({ SANDBOX_MODE: '1', ASSET_MAX_COUNT: '50', SANDBOX_RESET_AT: '2026-10-06T15:00:00Z' }))
-      .toEqual({ resetAt: '2026-10-06T15:00:00Z', maxFileBytes: 50 * 1024 * 1024, maxAssets: 50 });
+      .toEqual({ resetAt: '2026-10-06T15:00:00Z', maxFileBytes: 50 * 1024 * 1024, maxAssets: 50, demo: null });
+  });
+  it('shows the demo account only when both its e-mail and password are set', () => {
+    const base = { SANDBOX_MODE: '1' };
+    expect(sandboxStatus({ ...base, SANDBOX_DEMO_EMAIL: 'demo@x.test' })?.demo).toBeNull();
+    expect(sandboxStatus({ ...base, SANDBOX_DEMO_PASSWORD: 'pw' })?.demo).toBeNull();
+    expect(sandboxStatus({ ...base, SANDBOX_DEMO_EMAIL: 'demo@x.test', SANDBOX_DEMO_PASSWORD: 'pw' })?.demo).toEqual({ email: 'demo@x.test', password: 'pw' });
+    expect(sandboxStatus({ SANDBOX_DEMO_EMAIL: 'demo@x.test', SANDBOX_DEMO_PASSWORD: 'pw' })).toBeNull();
   });
   it('blocks outbound/build features and nothing else', () => {
     for (const p of ['/ai/generate', '/mail-settings/test', '/mail-log', '/figma/import', '/migration-sources/x/import-objects',

@@ -2,6 +2,7 @@
   <div v-if="status" class="w-full bg-amber-500 text-slate-950 text-sm px-4 py-1.5 text-center" role="status">
     <strong>Public sandbox</strong>
     <span> - everything is deleted {{ resetText }}. Files up to {{ maxMb }} MB{{ status.maxAssets ? `, at most ${status.maxAssets} assets` : '' }}; AI, mail and publishing are off.</span>
+    <span v-if="status.demo"> Demo login: <code class="font-mono font-semibold select-all">{{ status.demo.email }}</code> / <code class="font-mono font-semibold select-all">{{ status.demo.password }}</code></span>
   </div>
 </template>
 
@@ -9,7 +10,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { getDefaultCoreApiUrl } from '../utils/auth-api'
 
-interface SandboxStatus { resetAt: string | null; maxFileBytes: number; maxAssets: number | null }
+interface SandboxStatus { resetAt: string | null; maxFileBytes: number; maxAssets: number | null; demo: { email: string; password: string } | null }
 
 const status = ref<SandboxStatus | null>(null)
 const now = ref(Date.now())

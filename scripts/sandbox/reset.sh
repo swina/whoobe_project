@@ -54,6 +54,7 @@ trap 'kill_descendants $$; exit 143' TERM INT HUP
 
 RESET_AT="$(date -u -d "+${HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)"
 SETS=(--set "SANDBOX_RESET_AT=$RESET_AT")
+SETS+=(--set "SANDBOX_DEMO_EMAIL=$DEMO_EMAIL" --set "SANDBOX_DEMO_PASSWORD=$DEMO_PASSWORD")   # shown in the banner: the account is public
 for k in SANDBOX_NO_NEW_PRIVILEGES SANDBOX_ALLOW_HOSTS ASSET_MAX_FILE_BYTES ASSET_MAX_COUNT ASSET_MAX_INPUT_PIXELS; do
   [ -n "${!k+x}" ] && SETS+=(--set "$k=${!k}")
 done
@@ -63,7 +64,13 @@ echo ">>> $(date -u +%FT%TZ) sandbox reset (next one at $RESET_AT)"
 # while `wait` is interrupted by the signal at once (so the trap above can stop the children).
 run() { "$@" & wait $!; }
 
+# Build the images FIRST, while the running sandbox still serves: the build is the slow part (minutes), the rest is seconds.
+# `up --build` in the provisioning below then finds every layer in the cache. The build args (host name, scheme, ports) do not
+# change between two resets of the same sandbox; if they did, the provisioning rebuilds just what differs. A failure here is not
+# fatal: the provisioning builds again and reports the real error (and the sandbox stays off, as before).
 if [ -f ".env.${SLUG}" ]; then
+  echo ">>> building the images while the current sandbox is still up ..."
+  run docker compose -p "ws-${SLUG}" --env-file ".env.${SLUG}" build || echo ">>> (build failed here: the provisioning below tries again)"
   run ./scripts/remove-workspace.sh "$SLUG" --yes
 fi
 
@@ -77,7 +84,16 @@ fi
 # core-api answers /health with the sandbox block only when SANDBOX_MODE reached the container
 PORT="$(grep -E '^WS_CORE_API_PORT=' ".env.${SLUG}" | cut -d= -f2-)"
 for _ in $(seq 1 30); do
-  if curl -fsS "http://127.0.0.1:${PORT}/health" | grep -q '"sandbox"'; then echo ">>> sandbox is up (reset at $RESET_AT)"; exit 0; fi
+  if curl -fsS "http://127.0.0.1:${PORT}/health" | grep -q '"sandbox"'; then
+    # Provisioning rendered the HTTP-only vhost again (and remove-workspace.sh deleted the HTTPS one): put the HTTPS vhosts back,
+    # with the certificate that is already there. The first time there is none yet (enable-tls.sh as in the procedure).
+    if [ "$SCHEME" = https ]; then
+      ./scripts/enable-tls.sh "$SLUG" --reuse-cert --yes >/dev/null 2>&1 \
+        && echo ">>> HTTPS vhosts restored with the existing certificate" \
+        || echo ">>> no certificate yet for $HOST: run scripts/enable-tls.sh $SLUG --email <you> once (sandbox.md, step 3)"
+    fi
+    echo ">>> sandbox is up (reset at $RESET_AT)"; exit 0
+  fi
   sleep 2
 done
 echo "!!! sandbox mode not active after provisioning: removing the stack" >&2

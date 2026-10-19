@@ -10,7 +10,7 @@ This is an internal tool, not a supported feature for third parties: whoever wan
 
 ## What visitors get
 
-- One shared demo account (e-mail and password are public: put them on the page that links to the sandbox).
+- One shared demo account. Its e-mail and password are public and the banner on every screen shows them (`Demo login: ...`), so a visitor who lands on the login page knows what to type; put them on the page that links to the sandbox too.
 - The editor, the DAM, websites, pages, snippets, themes, the API Gateway towards the allowed hosts.
 - A banner on every screen with the time of the next reset.
 
@@ -57,8 +57,17 @@ Needs a host with Docker Compose 2.24 or newer, a DNS name pointing to it, and n
    Options, all environment variables: `SANDBOX_SCHEME` (`http` on a LAN, default `https`), `SANDBOX_INDEX` (ports are derived from it: check they are free with `ss -ltn`),
    `SANDBOX_DEMO_EMAIL`, `SANDBOX_DEMO_PASSWORD`, `SANDBOX_INTERVAL_HOURS`, and the overrides `SANDBOX_NO_NEW_PRIVILEGES`,
    `SANDBOX_ALLOW_HOSTS`, `ASSET_MAX_FILE_BYTES`, `ASSET_MAX_COUNT`, `ASSET_MAX_INPUT_PIXELS`.
-3. **TLS** on a public host: `scripts/enable-tls.sh` as for any workspace. The proxy then also serves port 443: if another
-   service owns it on that host, use a dedicated host for the sandbox.
+3. **TLS** on a public host: `scripts/enable-tls.sh sandbox --email <you>` as for any workspace, once. The proxy then also
+   serves port 443: if another service owns it on that host, use a dedicated host for the sandbox.
+   **With nginx on the host** (the host-nginx path of [creating-workspaces.md](creating-workspaces.md)) link the vhosts once:
+   `sudo ln -sf $PWD/deploy/nginx/00-sandbox-zones.conf /etc/nginx/sites-enabled/00-sandbox-zones` (the rate-limit zones belong
+   to the `http` context), then `sandbox` and `sandbox-ssl` the same way, and `sudo nginx -t && sudo systemctl reload nginx`.
+   Every reset removes the workspace, which deletes its two vhost files, and provisions it again, which renders the HTTP one;
+   `reset.sh` then calls `enable-tls.sh --reuse-cert` (no request to Let's Encrypt, the certificate stays in
+   `deploy/certbot/conf`) so the HTTPS vhosts are back at the same paths and the symlinks keep pointing at them. Between the
+   removal and the end of the build the symlinks point at missing files: do not reload or restart the host nginx by hand in
+   that window (a dangling link in `sites-enabled` makes `nginx -t` fail for every site), and renew the certificate with the
+   weekly job, not during a reset.
 4. **Check it from outside**: `scripts/sandbox/verify.sh https://<host> <demo e-mail> <demo password>` (limits, disabled
    features, read-only users, public settings; it deletes the test assets it uploads).
 5. **Reset every 3 hours**: copy `scripts/sandbox/whoobe-sandbox.env.example` to `/etc/whoobe-sandbox.env` (mode 600) and
@@ -83,10 +92,13 @@ To stop it: `./scripts/remove-workspace.sh sandbox --yes` (deletes the data, as 
 
 ## How the reset works
 
-`scripts/sandbox/reset.sh` removes the workspace with all its volumes (database and object store), provisions it again with new
+`scripts/sandbox/reset.sh` first builds the images with the running sandbox's env file (the slow part, minutes when the code
+or the build context changed, seconds when everything is cached; the sandbox keeps serving meanwhile), then removes the workspace
+with all its volumes (database and object store), provisions it again with new
 random secrets and the demo account, and waits until `/health` reports the sandbox block. If anything fails the stack is
-removed and the script exits non-zero: the sandbox stays off, it never keeps serving the previous cycle. Expect about a minute
-of downtime (longer when the images must be rebuilt); the banner shows the next reset time.
+removed and the script exits non-zero: the sandbox stays off, it never keeps serving the previous cycle. Expect
+under a minute of downtime (stop, start, migrations), whatever the build costs; the very first start, and a reset after a profile
+change that alters a build argument, still build inside the provisioning. The banner shows the next reset time.
 
 ## Known limits of this design
 

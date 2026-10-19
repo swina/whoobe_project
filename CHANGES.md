@@ -1,3 +1,7 @@
+## Sandbox branch merged into master — 2026-10-19
+- Branch: `master`
+- `fix/sandbox-demo-banner-tls-reset` (one commit, 2026-10-15) merged: the public sandbox no longer runs code that is outside the tag/master, so a deploy with `rsync --delete` cannot drop it. Only `CHANGES.md` conflicted (both sides prepend); both entries kept.
+
 ## Dashboard: real status badge, audit log shortcut instead of the bell — 2026-10-18
 - Branch: `master`
 - Sidebar footer: "System Online / v1.0.0 / Connected" was fixed text. It now asks `GET /health` of the core-api every 30 s (grey while checking, red "System Offline / Unreachable" when it fails) and shows the version of the build (`__APP_VERSION__` from `apps/admin-dashboard/package.json`, set in `vite.config.ts`).
@@ -483,6 +487,16 @@
 ## Upgrade guide: hosts without .git must mirror the release, not unpack it over the old tree — 2026-10-15
 - Branch: `master`
 - `docs/release/operations/upgrade-and-migrations.md` (step 3): for a host that received the code with `git archive`, unpack the tag into an empty directory and mirror it with `rsync --delete` (keeping `.env*`, certbot and the rendered nginx files). Found deploying 0.1.0 on the Oracle host: `tar -x` over the pre-release tree left `apps/whoobe-one-spike/src/scripts/gsap-actions.ts` (removed in the release), whose `gsap` import broke the `pnpm build` of the SPA images. Production kept running (compose recreates containers only after a successful build). No product code changed.
+
+## Sandbox: demo login in the banner, HTTPS kept across resets — 2026-10-15
+- Branch: `fix/sandbox-demo-banner-tls-reset`
+- `packages/core/src/sandbox.ts` (+ test): `sandboxStatus()` returns `demo: { email, password } | null` from `SANDBOX_DEMO_EMAIL` / `SANDBOX_DEMO_PASSWORD` (both needed); it reaches `GET /health` under `sandbox`. The account is public by design.
+- `apps/admin-dashboard/src/components/SandboxBanner.vue`: shows "Demo login: email / password" next to the reset time.
+- `scripts/sandbox/reset.sh`: passes the demo account to the workspace (`--set`), and after a successful reset restores the HTTPS vhosts.
+- `scripts/enable-tls.sh`: new `--reuse-cert` (render the redirect and HTTPS vhosts with the certificate already in `deploy/certbot/conf`, no certbot run, no e-mail). Found on the Oracle host with nginx on the host: a reset deleted `sandbox-ssl.conf` and rendered only the HTTP vhost, which would have left the sandbox without HTTPS and a dangling `sites-enabled` link that makes `nginx -t` fail for every site.
+- `scripts/enable-tls.sh`: the last line was `$STAGING && echo ...`, so a successful run exited 1 (and `reset.sh` took it for a failure); and the prompt said "(staging)" for every run because `STAGING=false` is a non-empty string. Both fixed.
+- `scripts/sandbox/reset.sh`: the images are built (`docker compose build` on the current `.env.sandbox`) BEFORE the workspace is removed, so the 502 lasts the restart and not the build (measured on the Oracle host: 4-8 minutes of 502 per reset when the build context had changed). The provisioning's `up --build` then finds the cache.
+- `docs/release/operations/sandbox.md` (TLS step with host nginx, the reset window), `configuration-reference.md` (the two variables).
 
 ## Local clean-up: security test stack, ws-demo workspace and n8n test removed — 2026-10-14
 - Branch: `master`

@@ -16,7 +16,7 @@
 #     loopback IPs are refused up front (use mkcert for local TLS instead
 #     - Let's Encrypt cannot issue certificates for those).
 #
-# Usage: ./scripts/enable-tls.sh <slug> --email EMAIL [--yes] [--staging] [--force]
+# Usage: ./scripts/enable-tls.sh <slug> --email EMAIL [--yes] [--staging] [--force] [--reuse-cert]
 #   --email EMAIL   Required. Let's Encrypt account email (expiry/
 #                     problem notices only - not shown publicly).
 #   --yes           Skip the confirmation prompt.
@@ -24,6 +24,9 @@
 #                     but no rate limits) - use this first to check the
 #                     whole flow works before spending a real attempt.
 #   --force         Skip the public-hostname reachability guard.
+#   --reuse-cert    Do not ask Let's Encrypt: render the HTTP-redirect and HTTPS vhosts again with the certificate already in
+#                   deploy/certbot/conf (no --email needed). For a workspace that is removed and provisioned again with the same
+#                   host name (the public sandbox, scripts/sandbox/reset.sh).
 #
 # What it does once the certificate is issued: renders
 # deploy/nginx/<slug>.conf from workspace-redirect.conf.template (HTTP
@@ -45,7 +48,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
 usage() {
-  echo "Usage: $0 <slug> --email EMAIL [--yes] [--staging] [--force]" >&2
+  echo "Usage: $0 <slug> --email EMAIL [--yes] [--staging] [--force] [--reuse-cert]" >&2
   exit 1
 }
 
@@ -57,12 +60,14 @@ EMAIL=""
 AUTO_YES=false
 STAGING=false
 FORCE=false
+REUSE_CERT=false
 while [ $# -gt 0 ]; do
   case "$1" in
     --email) EMAIL="$2"; shift 2 ;;
     --yes) AUTO_YES=true; shift ;;
     --staging) STAGING=true; shift ;;
     --force) FORCE=true; shift ;;
+    --reuse-cert) REUSE_CERT=true; shift ;;
     -h|--help) usage ;;
     *) echo "Unknown argument: $1" >&2; usage ;;
   esac
@@ -77,10 +82,10 @@ HOSTNAME_VAL="$(grep -oP '^WHOOBE_HOSTNAME=\K.*' "$ENV_FILE" 2>/dev/null || true
 [ -n "$HOSTNAME_VAL" ] || { echo "Errore: WHOOBE_HOSTNAME non trovato in $ENV_FILE." >&2; exit 1; }
 [[ "$HOSTNAME_VAL" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] || { echo "Errore: WHOOBE_HOSTNAME in $ENV_FILE non e' un nome host valido: $HOSTNAME_VAL" >&2; exit 1; }
 
-if [ -z "$EMAIL" ]; then
+if [ -z "$EMAIL" ] && ! $REUSE_CERT; then
   read -rp "Email per l'account Let's Encrypt (avvisi di scadenza/problemi): " EMAIL
 fi
-[ -n "$EMAIL" ] || { echo "Errore: email richiesta." >&2; exit 1; }
+$REUSE_CERT || [ -n "$EMAIL" ] || { echo "Errore: email richiesta." >&2; exit 1; }
 
 hostname_looks_public() {
   local host="$1" ip
@@ -108,7 +113,7 @@ EOF
 fi
 
 echo
-echo ">>> Sto per richiedere un certificato Let's Encrypt${STAGING:+ (staging)} per '${HOSTNAME_VAL}' (workspace '${SLUG}')."
+echo ">>> Sto per richiedere un certificato Let's Encrypt$($STAGING && echo " (staging)") per '${HOSTNAME_VAL}' (workspace '${SLUG}')."
 echo "    Richiede che la porta 80 di questo host sia raggiungibile da internet su quell'hostname proprio ora."
 if ! $AUTO_YES; then
   read -rp "Continuare? [y/N] " CONFIRM
@@ -127,11 +132,15 @@ chmod 700 deploy/certbot/conf
 CERTBOT_ARGS=(certonly --webroot -w /var/www/certbot -d "$HOSTNAME_VAL" --email "$EMAIL" --agree-tos --non-interactive)
 $STAGING && CERTBOT_ARGS+=(--staging)
 
-echo ">>> Eseguo certbot ..."
-docker run --rm \
-  -v "$ROOT_DIR/deploy/certbot/conf:/etc/letsencrypt" \
-  -v "$ROOT_DIR/deploy/certbot/webroot:/var/www/certbot" \
-  certbot/certbot "${CERTBOT_ARGS[@]}"
+if $REUSE_CERT; then
+  echo ">>> --reuse-cert: nessuna richiesta a Let's Encrypt, uso il certificato gia' presente."
+else
+  echo ">>> Eseguo certbot ..."
+  docker run --rm \
+    -v "$ROOT_DIR/deploy/certbot/conf:/etc/letsencrypt" \
+    -v "$ROOT_DIR/deploy/certbot/webroot:/var/www/certbot" \
+    certbot/certbot "${CERTBOT_ARGS[@]}"
+fi
 
 # certbot (root, in its container) wrote live/ as root, mode 700: the check has to be made from inside the container
 docker run --rm -v "$ROOT_DIR/deploy/certbot/conf:/etc/letsencrypt" --entrypoint test certbot/certbot -f "/etc/letsencrypt/live/${HOSTNAME_VAL}/fullchain.pem" || {
@@ -180,4 +189,4 @@ fi
 
 echo
 echo ">>> HTTPS abilitato per '${HOSTNAME_VAL}': https://${HOSTNAME_VAL}"
-$STAGING && echo "    (certificato di STAGING - non fidato dai browser, solo per verificare il flusso; rilancia senza --staging per uno reale.)"
+if $STAGING; then echo "    (certificato di STAGING - non fidato dai browser, solo per verificare il flusso; rilancia senza --staging per uno reale.)"; fi
