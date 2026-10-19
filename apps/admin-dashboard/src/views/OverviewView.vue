@@ -1,5 +1,5 @@
 <template>
-  <div class="from-gray-700 via-gray-700 to-gray-500 bg-gradient-to-tr -mt-4 z-[1000]">
+  <div class="from-slate-900 via-slate-700 to-slate-900 bg-gradient-to-tr -mt-4 z-[1000]">
     <div class="flex items-center justify-center h-[100vh] flex flex-col gap-1">
       <div class="flex items-center justify-center w-20 h-20 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-bold shadow-lg shadow-indigo-500/20 shrink-0">
         <Layers class="w-15 h-15" />
