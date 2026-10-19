@@ -14,6 +14,7 @@ only public listener. One installation is one **workspace** for **one organisati
 | How do our applications use it? | [API clients](../communication/api-clients.md): server keys or tokens of your identity provider (Keycloak, Entra ID...), scopes, limits |
 | How do we connect our ERP, CRM, mail? | [Integrations](../communication/integrations.md); credentials stay on the server |
 | How does it scale, and how available is it? | [Capacity and scaling](../operations/capacity-and-scaling.md): vertical first, one instance per service, restore from backup is the recovery path |
+| Which skills does it take to run and maintain, and how much work? | [Skills and effort](../operations/skills-and-effort.md) |
 | What do I have to add around it? | Monitoring, SSO if needed, backup of the bucket, retention jobs: [overview 7.2](../overview/whoobe-overview.md) |
 | What are the data model and its limits? | [Data model](../data/data-model.md) |
 | Which licences and dependencies? | [Supply chain](../security/supply-chain.md) (SBOM) |

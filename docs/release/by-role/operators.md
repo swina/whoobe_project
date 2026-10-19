@@ -3,6 +3,7 @@
 ## Your questions
 | Question | Answer and where |
 |---|---|
+| Who do I need, and how much work is it? | [Skills and effort](../operations/skills-and-effort.md) |
 | How do I install it? | [Creating workspaces](../operations/creating-workspaces.md): `scripts/provision-workspace.sh`, TLS, first administrator |
 | What is the order of things? | [Operations: start here](../operations/README.md) |
 | What does each variable do? | [Configuration reference](../operations/configuration-reference.md) |

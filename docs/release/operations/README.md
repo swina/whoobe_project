@@ -17,6 +17,7 @@ Running Whoobe: installing a workspace, configuring it, securing it, backing it 
 
 | Document | Purpose |
 |---|---|
+| [Skills and effort](skills-and-effort.md) | Who can run and maintain Whoobe: the profiles, the regular work and its estimated effort, what not to leave to one person |
 | [Creating workspaces](creating-workspaces.md) | Create, secure, back up, restore and remove a workspace |
 | [Configuration reference](configuration-reference.md) | Every environment variable, by area |
 | [Secrets and keys](secrets-and-keys.md) | Inventory of secrets, lost or leaked, how to rotate |

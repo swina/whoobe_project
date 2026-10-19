@@ -1,5 +1,10 @@
 # Release v0.2.0 — 2026-10-19
 
+## Docs: skills and effort to run and maintain Whoobe — 2026-10-20
+- Branch: `master`
+- New `docs/release/operations/skills-and-effort.md`: the five profiles (operator/DevOps, developer for integrations and sites, platform developer, data owner/editor, security contact) with the skills that matter, the regular work by frequency (nightly, weekly, monthly, each release, quarterly, new workspace, incident) with **estimated** effort (from running it ourselves, not measured; the page says so), what to be careful about (single person risk, keys, upgrades, monitoring) and what to do without an operator or without a developer. Linked from `operations/README.md`, `by-role/operators.md` and `by-role/it-manager.md`. `check-docs.py` passes.
+- Noticed, not changed: `by-role/operators.md` and `by-role/it-manager.md` still say "no metrics endpoint", "no load test", "no single sign-on for staff", written before 0.2.0.
+
 ## CDN in front of this installation: a pull-CDN provider (`cdn-origin`) — 2026-10-20
 - Branch: `feat/cdn-origin-provider`
 - Third CDN provider next to Cloudinary and Cloudflare Images, for the classic CDN that sits in front of an origin and fetches the files itself (a proxied Cloudflare hostname, CloudFront, Bunny pull zone, Fastly). **Nothing is uploaded and there is no secret**: one setting, `baseUrl` (https; http only with `CDN_ALLOW_HTTP`; no credentials, query or fragment; trailing slash dropped).
