@@ -1,0 +1,10 @@
+# On the machine that keeps the copies (not on the workspace host). Settings in /etc/whoobe/pull.env.
+[Unit]
+Description=Pull the Whoobe backups from the workspace host
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=CHANGE-ME
+ExecStart=/path/to/whoobe_cms/scripts/backup/pull.sh
