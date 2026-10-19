@@ -1,5 +1,10 @@
 # Release v0.2.0 — 2026-10-19
 
+## docs.whoobe.dev regenerated for 0.2.0 — 2026-10-20
+- Branch: `master`. No repository file changed. After the owner re-uploaded `docs/release` into the DAM (and removed the `history/README.md` placeholder), `whoobe-publish --kind docs --strict --site-url https://docs.whoobe.dev` against the development instance: **101 pages, no broken link**, 112 files (output in the scratchpad, not in git).
+- Checked in headless Chromium at 390 px (served locally): 101 pages crawled, 0 console errors, 0 failed requests, 0 HTTP errors on internal links, 0 pages wider than the screen; the Mermaid diagrams of `communication/object-events` (3) are drawn. New pages present: `release-notes-0.2.0`, `operations/audit-log`, `single-sign-on`, `data-subject-requests`.
+- Not done yet: the rsync to `oracle:/var/www/docs.whoobe.dev/` (owner, after a dry run).
+
 ## Public host `dashboard.whoobe.dev` upgraded to v0.2.0 — 2026-10-19
 - Branch: `master` (tag `v0.2.0`). No file of the repository changed; this records the release test on the Oracle host.
 - Steps (run by the owner): `git archive v0.2.0` to the host, backup `~/backups/pre-0.2.0-2026-10-19/` (dump + `.env.dashboard`), `rsync --delete` excluding `.env*`, certbot and the rendered nginx files, `docker compose -p ws-dashboard up -d --build`, `render-workspace-nginx.sh dashboard` (host nginx reloaded).
