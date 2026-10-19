@@ -1,3 +1,8 @@
+## feat/data-subject-tooling merged into master, worktree removed — 2026-10-19
+- Branch: `master`
+- Merged without conflicts. Development stack: `packages/core` rebuilt, migration 0064 applied at the restart of core-api (`data_classes.retention_days` and `security_settings.mail_log_retention_days` present), `/health` 200. `scripts/release/check-docs.py` passes on master (246 routes documented, 100 documents, 0 undocumented variables). Retention stays off until a number is set; the new permission `data_subject:manage` reaches the `admin` role at the next start.
+- Worktree `../whoobe_cms-dsr` and the local branch removed.
+
 ## Data subject requests and retention — 2026-10-19
 - Branch: `feat/data-subject-tooling` (worktree `../whoobe_cms-dsr`)
 - `docs/plans/system/data-subject-plan.md` (new) and `docs/release/operations/data-subject-requests.md` (the procedure). Release 0.2 block A2 item "Data subject tooling".
