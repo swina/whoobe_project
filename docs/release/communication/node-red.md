@@ -1,6 +1,6 @@
 # Node-RED with Whoobe
 
-> **Not in the v0.1.0 tag.** This is on `master` and will be in the next release; an installation of v0.1.0 does not have it.
+> **Since v0.1.1.** An installation of v0.1.0 does not have it.
 
 Node-RED is a flow editor for wiring services together. Whoobe works with it through **object events** (a record is created, changed or published, and Node-RED is
 told) and, if the flow should change the record, through an **API client**. Whoobe does not ship Node-RED, does not run it and does not support it: you install

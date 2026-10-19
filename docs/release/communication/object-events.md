@@ -1,6 +1,6 @@
 # Object events: tell another system when a record changes
 
-> **Not in the v0.1.0 tag.** This is on `master` and will be in the next release; an installation of v0.1.0 does not have it.
+> **Since v0.1.1** (object events); the events of **files and pages** (`asset.*`, `page.*`) are **new in 0.2.0**. An installation of v0.1.0 has none of it.
 
 A **subscription** makes Whoobe send a small message (an *event*) to an external service whenever a Data Object of a class is created, changed,
 published, unpublished, moved in its workflow or deleted. The same subscriptions also tell it when a **file in the library** is uploaded, replaced,

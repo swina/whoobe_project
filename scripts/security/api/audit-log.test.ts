@@ -134,7 +134,7 @@ describe('websites, settings, integrations', () => {
     // other files change the same single mail and Figma rows in parallel: the request id tells our rows apart
     const mailRid = `aud-mail-${tag}`
     const figRid = `aud-fig-${tag}`
-    const mail = await admin.request('PUT', '/mail-settings', { headers: { 'x-request-id': mailRid }, body: { provider: 'smtp', smtp: { host: 'smtp.sectest.local', port: 2525, secure: false, user: 'u', password: SMTP_PW }, fromAddress: 'noreply@sectest.local' } })
+    const mail = await admin.request('PUT', '/mail-settings', { headers: { 'x-request-id': mailRid }, body: { provider: 'smtp', smtp: { host: `smtp-${tag}.sectest.local`, port: 2525, secure: false, user: 'u', password: SMTP_PW }, fromAddress: 'noreply@sectest.local' } })
     expect(mail.status, mail.text.slice(0, 160)).toBe(200)
     const fig = await admin.request('PUT', '/figma/settings', { headers: { 'x-request-id': figRid }, body: { accessToken: FIGMA_TOKEN, teamId: `team-${tag}` } })
     expect(fig.status).toBe(200)
@@ -146,7 +146,9 @@ describe('websites, settings, integrations', () => {
 
     const mailRow = (await entries({ action: 'setting.mail_update' })).find((e) => e.requestId === mailRid)
     expect(mailRow.after['smtp.password']).toBe('changed')
-    expect(mailRow.after.smtp?.host ?? mailRow.after.smtp).toBeTruthy() // the non-secret fields are still visible
+    // the non-secret fields are still visible. The host is new in every run: a row records what CHANGED, and a host equal to the one other files left in
+    // the single mail row would not be in it (this assertion failed now and then, in CI too, for that reason)
+    expect(mailRow.after.smtp?.host ?? mailRow.after['smtp.host']).toBe(`smtp-${tag}.sectest.local`)
     const figRow = (await entries({ action: 'setting.figma_update' })).find((e) => e.requestId === figRid)
     expect(figRow.after).toMatchObject({ accessToken: 'changed' })
     const srcUpdate = (await forTarget(srcId, 'migration_source.update'))[0]

@@ -1,3 +1,9 @@
+## Release 0.2.0 preparation: release notes, a flaky audit test, documentation banners — 2026-10-19
+- Branch: `master`
+- `docs/release/release-notes-0.2.0.md` (new): what is in 0.2.0 *Conduct*, the behaviour changes (migrations 0060 to 0066, the permissions, the CDN settings permission, `/health` 503 and `/health/live`, the nginx include to re-render, the dashboard navigation, the variables), what does not change on upgrade, known limits, what was and was not tried (Entra, Okta, Google, a real Cloudflare account).
+- `api/audit-log.test.ts`: the test "secrets in mail, Figma and migration-source settings" failed now and then, **in CI too** (the scheduled run of 2026-10-19 08:51), and would have blocked the release gate: a row records what CHANGED, and a host equal to the one other files left in the single mail row was not in it. The test now uses a host that is new in every run.
+- `docs/release/README.md`: the paragraph of what is new now names 0.2.0; the "Not in the v0.1.0 tag" banners of the object events and Node-RED guides say "Since v0.1.1".
+
 ## feat/cdn-providers merged into master, worktree removed — 2026-10-19
 - Branch: `master`
 - Merged without conflicts. Development stack: `packages/core` rebuilt, migration 0066 applied at the restart of core-api; the backfill found the development setting and copied it as the default row (1 row in `cdn_mirror_settings`); `/health` 200; `scripts/release/check-docs.py` passes (249 routes). Cloudflare Images was only tried against the test mock: a real account is the next check.

@@ -5,9 +5,11 @@ checked against the code at the time of the last reorganisation (see [Status](#s
 project stays in [`../plans`](https://github.com/swina/whoobe_project/tree/master/docs/plans) and is deliberately not part of a release.
 
 **Aligned to release:** v0.1.1 (2026-10-18) - see [`release-process.md`](release-process.md)
-These are in the documents but **not in the v0.1.0 tag**; they will be in the next release: [object events](communication/object-events.md)
-(subscriptions, delivery log, loop guard, the *Connect a flow* wizard), the [Node-RED guide](communication/node-red.md), the Objects list changes
-(*Copy id*, record tab names), and the conversion of Markdown and rich-text fields bound to an element in generated sites.
+New in **0.2.0** (not in v0.1.1; see the [release notes](release-notes-0.2.0.md)): the [audit log](operations/audit-log.md), mandatory two-factor
+authentication and the password policy ([authentication](architecture/authentication-and-authorization.md)), [single sign-on](operations/single-sign-on.md),
+[data subject requests and retention](operations/data-subject-requests.md), readiness and [metrics](operations/observability-and-logging.md), the events of
+files and pages ([object events](communication/object-events.md)), CDN mirroring per website with Cloudflare Images
+([publishing](content/publishing/website-publishing.md)), and the **Security** entry of the dashboard.
 
 **Deployment model.** One workspace per organisation. Divisions of the same entity share a workspace and are told apart with
 roles; different companies or legal entities get separate workspaces. Whoobe is not a shared multi-tenant platform
