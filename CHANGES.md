@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Docs: "young software" line brought up to date — 2026-10-20
+- Branch: `master`. `architecture/design-decisions/self-hosted-and-mit.md`: the line said the first release is 0.1.0; it now says the first was 0.1.0 (October 2026), the current is 0.2.0 and that a `0.` minor release may change behaviour.
+
 ## Docs: skills and effort to run and maintain Whoobe — 2026-10-20
 - Branch: `master`
 - New `docs/release/operations/skills-and-effort.md`: the five profiles (operator/DevOps, developer for integrations and sites, platform developer, data owner/editor, security contact) with the skills that matter, the regular work by frequency (nightly, weekly, monthly, each release, quarterly, new workspace, incident) with **estimated** effort (from running it ourselves, not measured; the page says so), what to be careful about (single person risk, keys, upgrades, monitoring) and what to do without an operator or without a developer. Linked from `operations/README.md`, `by-role/operators.md` and `by-role/it-manager.md`. `check-docs.py` passes.
