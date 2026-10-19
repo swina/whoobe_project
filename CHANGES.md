@@ -1,3 +1,9 @@
+## Release 0.2.0 candidate: browser specs fixed after the navigation change, security docs — 2026-10-19
+- Branch: `master`
+- The full CI run with DAST on the candidate commit (2026-10-19): **DAST pass, static scans pass, the 83 API and unit files pass**; the browser suite had **4 failures, all caused by the new navigation** (the submenus start closed and Roles/Users moved to Security): `objects-copy-id` (2), `xss-sinks` (2). The specs now open Data Objects before they click a class in the sidebar tree, look for the visible copy of a row (the Data Objects tab stays mounted, hidden), and reach *Roles/Users/Workspaces* through Security.
+- Upgrade test v0.1.1 -> this tree passed (60 migrations, then 67; the tables of the new migrations, the login and the data written by v0.1.1).
+- Docs: `security/security-test-suite.md` gets sections 2.5.19 to 2.5.25 for the suites of 0.2; `security/findings.md` F-060 (pool without an error listener), F-061 (CDN settings with `objects:write`), F-062 (rollback of a form upload by asset id); `status-summary.md` counts and state.
+
 ## Release 0.2.0 preparation: release notes, a flaky audit test, documentation banners — 2026-10-19
 - Branch: `master`
 - `docs/release/release-notes-0.2.0.md` (new): what is in 0.2.0 *Conduct*, the behaviour changes (migrations 0060 to 0066, the permissions, the CDN settings permission, `/health` 503 and `/health/live`, the nginx include to re-render, the dashboard navigation, the variables), what does not change on upgrade, known limits, what was and was not tried (Entra, Okta, Google, a real Cloudflare account).

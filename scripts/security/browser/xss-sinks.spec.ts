@@ -104,6 +104,7 @@ test.describe('admin lists and previews render hostile names as text', () => {
 
       const p = await authed.newPage(); canary.attach(p)
       await p.goto(`${ADMIN_URL}/`); await p.waitForTimeout(2000)
+      await p.getByTestId('nav-item-objects').click(); await p.waitForTimeout(500)   // the submenus start closed: the class tree opens with Data Objects
       const open = async (name: string | RegExp) => {
         await p.locator('aside').getByText(name, { exact: typeof name === 'string' }).first().click({ timeout: 5000 })
         await p.waitForTimeout(1800)
@@ -114,7 +115,10 @@ test.describe('admin lists and previews render hostile names as text', () => {
       expect(await open('Snippets'), 'snippet name').toContain('snippet <img src=x')
       expect(await open('Websites'), 'website name').toContain('site <img src=x')
       expect(await open(new RegExp(`^class <img src=x onerror="console\\.log\\('__XSS__:${id}-class'\\)`)), 'class entry (sidebar) and its objects table').toContain('value <img src=x')
-      for (const other of ['Themes', 'Components', 'Assets', 'Documents', 'Outgoing Mail', 'Roles/Users/Workspaces']) await open(other)
+      for (const other of ['Themes', 'Components', 'Assets', 'Documents', 'Outgoing Mail']) await open(other)
+      // Roles/Users/Workspaces is a page of Security now
+      await p.getByTestId('nav-item-security').click()
+      await p.getByTestId('nav-security-access').click(); await p.waitForTimeout(1800)
       await p.waitForTimeout(1000)
 
       expect(canary.fired).toEqual([])
@@ -133,9 +137,10 @@ test.describe('data object fields', () => {
     try {
       const p = await authed.newPage(); canary.attach(p)
       await p.goto(`${ADMIN_URL}/`); await p.waitForTimeout(2000)
+      await p.getByTestId('nav-item-objects').click(); await p.waitForTimeout(500)   // the class tree opens with Data Objects
       await p.locator('aside').getByText(`FldCls${tag}`, { exact: true }).first().click(); await p.waitForTimeout(2000)
       // since the list redesign (2026-10-15) a row opens from its context menu (right click > Edit), not from a click
-      await p.getByText(`fldobj-${tag}`).first().click({ button: 'right' }); await p.waitForTimeout(500)
+      await p.getByText(`fldobj-${tag}`).locator('visible=true').first().click({ button: 'right' }); await p.waitForTimeout(500)   // the Data Objects tab stays mounted, hidden
       await p.getByRole('menuitem', { name: /Edit/ }).first().click(); await p.waitForTimeout(2500)
       await p.getByRole('button', { name: 'Preview', exact: true }).first().click(); await p.waitForTimeout(1500)
       expect(await p.locator('body').innerText(), 'the markdown preview rendered').toContain('Title ctlmd')

@@ -314,6 +314,56 @@ Two throwaway stacks stand for two workspaces of one host: A (`.env.sectest`) an
 - **gateway**: both answer from their own state, different peppers, a foreign site key is refused.
 It deliberately does **not** cover the shared pieces of a real host (the reverse proxy and the host itself) nor a compromised container.
 
+#### 2.5.19 Audit log - `api/audit-log.test.ts`, `unit/audit-guard.test.ts`, `api/route-drift.test.ts` (plan 3.1, release 0.2)
+
+Every route that changes something is in the route contract with a decision: audited, exempt (with a reason) or deferred; the drift test fails for a new
+route without one and for a spec that does not match. The log is append-only **in the database** (UPDATE and TRUNCATE are refused, DELETE only in the
+retention transaction); a row has the actor, the address, the target and the fields before and after, secrets as "changed" (the suite greps the whole log
+for every secret it saved). Only successful actions are written, a dry run is not, and a failed write is counted (`/health` shows `audit: degraded`).
+
+#### 2.5.20 Mandatory second factor and password policy - `api/mfa-required.test.ts`, `unit/...password-policy`, `browser/mfa-enrolment.spec.ts` (plan 3.1, release 0.2)
+
+The settings are for settings managers only. A user of a required role gets an enrolment token **instead of a session**: a wrong code leaves no session, five
+wrong codes burn the token, the token is spent after use, the next sign-in is the ordinary challenge, and the user cannot disable the factor. A user of
+another role is not asked; switching the setting off lets the user in. The policy is applied on user creation and on reset (the broken rule is named) and
+never on a sign-in. The browser test walks the enrolment screen to the recovery codes.
+
+#### 2.5.21 Single sign-on - `api/oidc-login.test.ts`, `browser/oidc-login.spec.ts`, `browser/oidc-keycloak.spec.ts` (plans 3.1, 3.8, release 0.2)
+
+A **mock OpenID Connect provider** (`lib/mock-oidc.ts`) signs real RS256 tokens and forges them nine ways: bad signature, wrong audience, wrong issuer,
+expired, wrong nonce, `alg: none`, HS256 with the public key as the secret, wrong `azp`, no `id_token`; each leaves no session and no account. Also checked:
+the authorization address (S256 challenge, state, nonce, the verifier never leaves the server), a state that is replayed, unknown or **started in another
+browser** (login CSRF), a callback that cannot choose where the browser goes, linking only on a **verified** e-mail, provisioning off, roles that follow the
+claim in both directions and the ones given by hand left alone, a person with no role refused and not created, a deactivated user, and the secret never
+shown and "changed" in the audit row. The Keycloak spec (opt-in, `KEYCLOAK_ISSUER`, `scripts/security/keycloak/run.sh`) repeats the main cases against a **real
+Keycloak 26**, including a group removed and a person disabled at the provider.
+
+#### 2.5.22 Data subject requests and retention - `api/data-subject.test.ts`, `core/db/data-subject.*.test.ts`, `browser/data-subject.spec.ts` (release 0.2)
+
+Real form submissions, a real file in the library and real mail rows: the person is found by the whole value in any case (a neighbour whose address ends
+like hers is not), exported, erased with the **file first** (an object whose file cannot be deleted stays, a retry finishes), a dry run changes nothing and a
+real run needs the value typed again, a library picture is never deleted, staff accounts are reported and kept, and the audit log holds a fingerprint,
+never the address (the suite greps it in both cases). Retention by class and for the mail log, with rows backdated in the database.
+
+#### 2.5.23 Readiness and metrics - `api/readiness-metrics.test.ts`, `unit/metrics.test.ts` (plan 3.15, release 0.2)
+
+`/metrics` is off without a token, 401 with a wrong one or a session, and shows request counts by **matched route** (no URL, no id as a label), queue depth
+and the database state. The suite **stops the test database**: `/health` answers 503, `/health/live` 200, `whoobe_database_up` is 0, the service survives
+and recovers (F-060). The nginx test keeps `/metrics` out of the template.
+
+#### 2.5.24 Events of files and pages - `api/more-events.test.ts`, `core/db/more-events.*.test.ts`, `browser/more-events.spec.ts` (release 0.2)
+
+The same outbox, delivery and loop guard as object events: one event per upload, replacement, move, delete (a folder over 10 files is one summary), page
+publish and unpublish only on a change of the flag; the stored payload has ids and metadata and **none of the bytes**; a subscription for one class
+receives none; the **loop guard counts an API client on a file** like on an object; the event is written in the transaction of the write.
+
+#### 2.5.25 CDN mirroring - `api/cdn-mirror.test.ts`, `core/dam/cdn-providers.test.ts`, `browser/cdn-mirror.spec.ts` (plans 3.7, 3.8, release 0.2)
+
+A mock Cloudflare Images (`lib/mock-cloudflare.ts`) and the real asset service: changing the settings needs `settings:manage` (F-061), the API token is
+encrypted, never returned and "changed" in the audit row, the upload carries the token and the exact bytes, a second mirror deletes and re-sends, what
+Cloudflare cannot take is refused before sending, a refusal is reported with Cloudflare's words, a website uses its own settings and another the default,
+and **two CDNs for one asset: each website's page gets its own provider's URL**.
+
 ### 2.6 Known-finding convention
 
 `lib/known.ts` provides `known('F-0xx', name, fn)`: a test that asserts the secure behaviour but is *expected* to

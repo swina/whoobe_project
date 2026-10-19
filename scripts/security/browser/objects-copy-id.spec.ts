@@ -9,8 +9,9 @@ test('Objects list: right click > Copy id puts the record id on the clipboard', 
     await authed.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: ADMIN_URL })
     const p = await authed.newPage()
     await p.goto(`${ADMIN_URL}/`); await p.waitForTimeout(2000)
+    await p.getByTestId('nav-item-objects').click(); await p.waitForTimeout(500)   // the submenus start closed: showing Data Objects opens the class tree
     await p.locator('aside').getByText(`CopyId${tag}`, { exact: true }).first().click(); await p.waitForTimeout(2000)
-    await p.getByText(`cid-${tag}`).first().click({ button: 'right' }); await p.waitForTimeout(500)
+    await p.getByText(`cid-${tag}`).locator('visible=true').first().click({ button: 'right' }); await p.waitForTimeout(500)
     await p.getByRole('menuitem', { name: 'Copy id' }).click(); await p.waitForTimeout(500)
     expect(await p.evaluate(() => navigator.clipboard.readText())).toBe(obj.json.object.id)
     expect(await p.locator('body').innerText()).toContain(obj.json.object.id)   // the toast names it too
@@ -30,9 +31,10 @@ test('Object tab is named by the field marked "tab title", else by the first tex
     expect((await api.get(`/data-classes/${cls.json.class.id}`)).json.class.fields.find((x: any) => x.name === 'company').tabTitle, 'the flag is stored').toBe(true)
     const p = await authed.newPage()
     await p.goto(`${ADMIN_URL}/`); await p.waitForTimeout(2000)
+    await p.getByTestId('nav-item-objects').click(); await p.waitForTimeout(500)   // the submenus start closed: showing Data Objects opens the class tree
     await p.locator('aside').getByText(`TabT${tag}`, { exact: true }).first().click(); await p.waitForTimeout(2000)
     for (const key of [`tk-a-${tag}`, `tk-b-${tag}`]) {
-      await p.getByText(key).first().click({ button: 'right' }); await p.waitForTimeout(400)
+      await p.getByText(key).locator('visible=true').first().click({ button: 'right' }); await p.waitForTimeout(400)
       await p.getByRole('menuitem', { name: /Edit/ }).first().click(); await p.waitForTimeout(1500)
       await p.locator('aside').getByText(`TabT${tag}`, { exact: true }).first().click(); await p.waitForTimeout(800)
     }
