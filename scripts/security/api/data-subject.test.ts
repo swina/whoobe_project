@@ -34,7 +34,12 @@ const input = (id: string, name: string, extra: object = {}) => ({
 const psql = (sql: string) => execFileSync('docker', ['exec', POSTGRES, 'psql', '-U', DB_USER, '-d', DB_NAME, '-tAc', sql], { encoding: 'utf8' }).trim()
 
 async function stage(bytes: Uint8Array): Promise<string> {
-  const i = await anon.post('/public/uploads/intent', { fieldId: FCV, filename: 'cv.pdf', size: bytes.length })
+  // core-api reads the pages again for an unknown field at most every 2 seconds: a page published a moment ago may need a second try
+  let i = await anon.post('/public/uploads/intent', { fieldId: FCV, filename: 'cv.pdf', size: bytes.length })
+  for (let n = 0; n < 3 && i.status === 404; n++) {
+    await new Promise((r) => setTimeout(r, 2300))
+    i = await anon.post('/public/uploads/intent', { fieldId: FCV, filename: 'cv.pdf', size: bytes.length })
+  }
   expect(i.status, i.text).toBe(201)
   const put = await fetch(ASSET_TARGET + new URL(i.json.uploadUrl).pathname, { method: 'PUT', headers: { 'content-type': 'application/octet-stream' }, body: bytes })
   expect(put.status, await put.text()).toBe(201)
