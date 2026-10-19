@@ -1,3 +1,8 @@
+# Release v0.2.0 — 2026-10-19
+
+## [Release v0.2.0] — 2026-10-19
+- Branch: `master`. Version 0.2.0 set in 21 package.json files (one product version, see docs/release/release-process.md); `docs/release/README.md` aligned to this release.
+
 ## Images: libx11 upgraded in the dashboard and editor images (CVE-2026-88806) — 2026-10-19
 - Branch: `master`
 - The CI image scan of the 0.2.0 candidate failed on `admin-dashboard` and `whoobe-one-spike` (the pinned nginx alpine ships libx11 1.8.13, HIGH CVE-2026-88806, fixed in 1.8.14-r0), as it did for libexpat at 0.1.1. `Dockerfile`: `apk upgrade ... libx11` next to pcre2, tiff and libexpat; rebuilt, trivy on the dashboard image: 0 fixable HIGH/CRITICAL. The Browser suite, the API suites, DAST, static scans, TLS and isolation of the same run passed.

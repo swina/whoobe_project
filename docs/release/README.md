@@ -4,7 +4,7 @@ The documentation in this folder describes the product **as it is delivered and 
 checked against the code at the time of the last reorganisation (see [Status](#status)); the design history of the
 project stays in [`../plans`](https://github.com/swina/whoobe_project/tree/master/docs/plans) and is deliberately not part of a release.
 
-**Aligned to release:** v0.1.1 (2026-10-18) - see [`release-process.md`](release-process.md)
+**Aligned to release:** v0.2.0 (2026-10-19) - see [`release-process.md`](release-process.md)
 New in **0.2.0** (not in v0.1.1; see the [release notes](release-notes-0.2.0.md)): the [audit log](operations/audit-log.md), mandatory two-factor
 authentication and the password policy ([authentication](architecture/authentication-and-authorization.md)), [single sign-on](operations/single-sign-on.md),
 [data subject requests and retention](operations/data-subject-requests.md), readiness and [metrics](operations/observability-and-logging.md), the events of
