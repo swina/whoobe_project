@@ -1,5 +1,11 @@
 # Release v0.2.0 — 2026-10-19
 
+## Scheduled backups installed on the public host — 2026-10-20
+- Branch: `master`. No repository file changed; this records the installation on `dashboard.whoobe.dev` (run by the owner).
+- `scripts/backup/` copied to `/opt/whoobe/whoobe_cms/scripts/backup/`; `age` 1.0.0 installed from the Ubuntu repository (arm64; `needrestart` listed services to restart, none was restarted; a kernel upgrade is pending on the host, unrelated); `/etc/whoobe/backup.env` (`root:ubuntu`, 640: public age key, `BACKUP_DIR=/home/ubuntu/backups/nightly`, `BACKUP_KEEP=14`); units `whoobe-backup@.service` and `.timer` in `/etc/systemd/system/`, `whoobe-backup@dashboard.timer` enabled (first scheduled run 2026-10-20 03:03 UTC).
+- First manual run: dump (3.5 MB) and env file encrypted, bucket copy 20 files / 2.9 MiB, `check.sh` ok. Read back **on the owner's machine with the private key**: `restore-workspace-db.sh --check` -> a valid dump with 54 tables.
+- Not done yet: the copy on another machine (`pull.sh`, ssh key, Garage on the development server), a check of the first scheduled run, mail or alert on a missed night.
+
 ## Scheduled backups: nightly job, pull from another machine, freshness check — 2026-10-20
 - Branch: `feat/scheduled-backups`
 - Audit of the public host: the only cron job on `dashboard.whoobe.dev` was the weekly certificate renewal; the only backups were the manual ones taken before each upgrade, on the same disk. The product had the tools (`backup-workspace.sh`, `backup-workspace-bucket.sh`, `restore-workspace-db.sh`) but nothing that runs them, and no check for a missed night.
