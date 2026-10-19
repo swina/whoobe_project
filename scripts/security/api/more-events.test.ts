@@ -1,11 +1,14 @@
 // Events of files in the library and of pages (docs/plans/system/more-events-plan.md): the same subscriptions, outbox, delivery log and loop guard as
 // object events. The log shows the type and the id of the subject (never the content); the worker is not needed to see that an event was queued.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { execFileSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { Client, clientFor } from '../lib/client'
 import { ASSET_TARGET, GATEWAY_TARGET } from '../lib/config'
 
 const tag = randomBytes(3).toString('hex')
+const POSTGRES = process.env.SEC_POSTGRES_CONTAINER ?? 'whoobe-sectest-postgres-1'
+const psql = (sql: string) => execFileSync('docker', ['exec', POSTGRES, 'psql', '-U', process.env.SEC_DB_USER ?? 'sectest', '-d', process.env.SEC_DB_NAME ?? 'whoobe_sec_test', '-tAc', sql], { encoding: 'utf8' }).trim()
 const dir = `/ev-${tag}`
 let admin: Client
 let adminAsset: Client
@@ -119,6 +122,23 @@ describe('files', () => {
     const r = await none.forBase(ASSET_TARGET).request('DELETE', '/api/v1/dam/asset', { body: { pimcorePath: `${dir}/a.txt` } })
     expect([401, 403]).toContain(r.status)
     expect(await assetId(`${dir}/a.txt`)).toBeTruthy()
+  })
+})
+
+describe('what the event carries', () => {
+  it('the id, the path, the type and the size of a file - not its bytes - and the person who uploaded it', async () => {
+    const up = await put('shape.txt', 'SECRET-BYTES-OF-THE-FILE')
+    const id = up.json.asset.id
+    const payload = JSON.parse(psql(`SELECT payload FROM object_events WHERE type = 'asset.created' AND object_id = '${id}'`))
+    expect(payload).toMatchObject({
+      type: 'asset.created', actor: { type: 'user' },
+      asset: { id, path: `${dir}/shape.txt`, filename: 'shape.txt', mimeType: 'text/plain', fileType: 'TXT', isPublic: false, version: 1 },
+    })
+    expect(payload.asset.sizeBytes).toBe(24)
+    expect(payload.actor.id).toMatch(/^[0-9a-f-]{36}$/)
+    expect(payload.class).toBeUndefined()
+    expect(JSON.stringify(payload)).not.toContain('SECRET-BYTES')
+    expect(psql(`SELECT class_id IS NULL AND subject_type = 'asset' FROM object_events WHERE object_id = '${id}' AND type = 'asset.created'`)).toBe('t')
   })
 })
 

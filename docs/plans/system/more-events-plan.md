@@ -11,7 +11,7 @@ Object events (`docs/release/communication/object-events.md`): a write to a data
 - **Same machinery, not a second one.** The same `object_events` / `object_event_subscriptions` / `object_event_deliveries` tables, worker, signature headers, retries, kill switch (`OBJECT_EVENTS_ENABLED=0`), delivery log, subscription screens and permission (`object_events:manage`). An administrator who has connected an engine to objects adds asset or page types to a subscription.
 - **Event types:**
   - `asset.created` - a file was uploaded to a path that had none (the library, a form upload attached to a submission, an AI image).
-  - `asset.updated` - a new version was uploaded to an existing path, or its metadata was edited.
+  - `asset.updated` - a new version was uploaded to an existing path. (A metadata edit is not an event: the extracted metadata is written automatically after each upload and would double every one.)
   - `asset.moved` - the file went to another folder or name (one event, with the old path in `from`, not a delete and a create).
   - `asset.deleted` - one file was deleted.
   - `asset.bulk` - a whole folder was deleted: ONE summary with the count and the first ids, never one event per file (the same rule as `object.bulk`).
@@ -23,7 +23,8 @@ Object events (`docs/release/communication/object-events.md`): a write to a data
 - **Storage.** `object_events.class_id` becomes nullable (an asset or a page has no class) and a column `subject_type` ('object' default, 'asset', 'page') says what `object_id` holds, so the existing index, the loop guard counters and the delivery log work unchanged on the subject's id. Migration 0065, expand only.
 - **Who matches.** A subscription for one class receives object events of that class only; a subscription for every class (`classId` null) receives any type it lists. An event without a class (asset, page) is therefore matched only by subscriptions with no class, and the validation refuses a subscription that names a class and lists an asset or page type (it could never fire).
 - **Atomic with the write, like objects.** The event is stored in the same transaction as the asset row or the page row, so there is no event for a write that did not happen and no write without its event.
-- **Loop guard applies unchanged.** Only an API client can loop (people, the system and imports are never counted); the counters are per actor and subject id within the window; `X-Whoobe-Flow: stop` on the write ends a flow. The asset service and core-api read the header on the routes that write.
+- **Loop guard applies unchanged**, by construction: only an API client can loop (people, the system and imports are never counted); the counters are per actor and subject id within the window; an event carrying `endOfFlow` starts nothing. Today only staff sessions and the service token write files and pages (API clients write data objects), so the asset service and core-api do not read `X-Whoobe-Flow`; if a client surface for files is added, it passes the header into the same options.
+- **A folder** of up to 10 files gives one `asset.deleted` each, a bigger one ONE `asset.bulk`. A log file the service uploads (service token, no person) is a silent write.
 - **Not emitted:** thumbnails and variants, a CDN mirror update, a page's own edits, the Pimcore migration tool's assets (it runs silent), the staging bytes of a form upload before it is attached. The delivery of a form upload is `asset.created` with actor `system` and the id `form-upload`.
 - **Dashboard:** the subscription wizard and the editor list the new types in groups (Files, Pages); the class picker is disabled when only those are chosen.
 

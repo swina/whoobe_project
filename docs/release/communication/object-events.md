@@ -3,11 +3,12 @@
 > **Not in the v0.1.0 tag.** This is on `master` and will be in the next release; an installation of v0.1.0 does not have it.
 
 A **subscription** makes Whoobe send a small message (an *event*) to an external service whenever a Data Object of a class is created, changed,
-published, unpublished, moved in its workflow or deleted. The service can be an automation engine (Activepieces, n8n), a back-end of yours or
+published, unpublished, moved in its workflow or deleted. The same subscriptions also tell it when a **file in the library** is uploaded, replaced,
+moved or deleted and when a **page** is published or unpublished (section 1). The service can be an automation engine (Activepieces, n8n), a back-end of yours or
 anything that accepts an HTTPS `POST`. Whoobe does not run the automation: it tells the service that something happened, and the service
 decides what to do. For the reasoning see [Why no engine of our own](../architecture/design-decisions/no-automation-engine-of-our-own.md).
 
-Typical uses: a new Contact goes to the CRM flow, a published Blog post triggers a rebuild or a chat message, an order record starts a
+Typical uses: a new Contact goes to the CRM flow, a CV a visitor uploaded starts a screening flow, a published Blog post triggers a rebuild or a chat message, an order record starts a
 fulfilment flow, a deleted record is removed from a search index.
 
 **In the dashboard:** *Data & Communication > Object events*. Only users with the permission **`object_events:manage`** (the `admin` role by default)
@@ -114,6 +115,8 @@ An HTTPS `POST` with a JSON body and these headers:
 that needs the values reads the record through the API with its own [API client](api-clients.md). This keeps personal data from leaving Whoobe
 by mistake and keeps the message small. Files travel as references, never as bytes.
 
+The events of files and pages (below) have no `class` and no `object` part: they carry an `asset` or a `page` part with ids and metadata, and nothing of the content.
+
 | Event type | When | Extra |
 |---|---|---|
 | `object.created` | a record is inserted | one event per language row (a record in two languages gives two events with the same `translationGroupId`) |
@@ -122,6 +125,29 @@ by mistake and keeps the message small. Files travel as references, never as byt
 | `object.transitioned` | its workflow state changed | `transition: { "from": …, "to": … }` |
 | `object.deleted` | a record was deleted | the object part describes the row as it was |
 | `object.bulk` | an import, "Empty data" or a migration | **one** summary: `bulk: { kind, count, firstIds }` (up to 10 ids), never one event per row |
+
+**Files in the library** (`asset.*`) and **pages** (`page.*`) use the same subscriptions, the same delivery, signature, retries, delivery log, loop guard
+and kill switch. They have no data class, so a subscription for **one class** never receives them (the screen and the API refuse to save a class together
+with these types); a subscription for **every class** receives whatever types it lists.
+
+| Event type | When | Extra |
+|---|---|---|
+| `asset.created` | a file is added at a path that had none: an upload in the library, an AI image, **a file a visitor sent through a form** (actor `system`, id `form-upload`) | `asset: { id, path, folder, filename, mimeType, fileType, sizeBytes, isPublic, version }` |
+| `asset.updated` | a new version is uploaded to an existing path (also an image transform that overwrites) | the same `asset`, with the next `version` |
+| `asset.moved` | the file went to another folder or name | ONE event, `asset` is where it is now and `from: { "path": … }` where it was |
+| `asset.deleted` | one file was deleted (also by a data subject request or the retention job) | `asset` describes the file as it was |
+| `asset.bulk` | a **folder of more than 10 files** was deleted | **one** summary `bulk: { kind: "delete", count, firstIds }` (up to 10 ids); a folder of up to 10 files gives one `asset.deleted` each |
+| `page.published` / `page.unpublished` | the page's *published* flag changed | `page: { id, websiteId, slug, locale, translationGroupId, published, publishedAt }`; saving an already published page again is not a publication; creating, editing and deleting a page are not events yet |
+
+```json
+{ "id": "…", "type": "asset.created", "occurredAt": "2026-10-19T10:50:12.000Z",
+  "asset": { "id": "…", "path": "/private/forms/9c1e….pdf", "folder": "/private/forms", "filename": "9c1e….pdf", "mimeType": "application/pdf", "fileType": "PDF", "sizeBytes": 18211, "isPublic": false, "version": 1 },
+  "actor": { "type": "system", "id": "form-upload" } }
+```
+
+Never in these events: the bytes or the extracted metadata (EXIF, GPS) of a file, and the content, title or SEO fields of a page. Not sent: thumbnails and variants,
+CDN mirror updates, log files the service uploads, the files of a Pimcore migration, a page's own edits. The subject's id is what the delivery log shows
+(`objectId` of the log row is the asset's or the page's id).
 
 One save can produce several events (for example an update that also publishes): they are sent separately. A save that changes nothing sends nothing.
 When a language is added to a record, the other languages' shared (non-localized) fields are brought in line and each of those rows sends its own
@@ -259,5 +285,5 @@ The same steps can be done through the API (section 8).
 ## 8. For developers: the API
 
 All routes need `object_events:manage`. See the [API reference](../api/api-reference.md) for the list;
-a subscription is `{ name, enabled, classId | null, events[], endpointId, routeId, ignoreActors[], signingSecretRef | null }` and the payload mode is
+a subscription is `{ name, enabled, classId | null, events[], endpointId, routeId, ignoreActors[], signingSecretRef | null }` (`events` may list any type above; a `classId` only with `object.*` types) and the payload mode is
 `minimal` (no attribute values).

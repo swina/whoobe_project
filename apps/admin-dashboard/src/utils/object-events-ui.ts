@@ -1,15 +1,32 @@
 // Pure helpers of the Object events view (no Vue, no network), so they are unit-tested in scripts/security/unit.
 import type { DeliveryStatus, ObjectEventSubscription, ObjectEventSubscriptionInput, ObjectEventType } from './object-events-api'
 
-export const EVENT_CHOICES: { type: ObjectEventType; label: string; hint: string }[] = [
-  { type: 'object.created', label: 'Created', hint: 'a record is inserted (one event per language row)' },
-  { type: 'object.updated', label: 'Updated', hint: 'its fields, key, path or parent changed' },
-  { type: 'object.published', label: 'Published', hint: 'it went from draft to published' },
-  { type: 'object.unpublished', label: 'Unpublished', hint: 'it went from published to draft' },
-  { type: 'object.transitioned', label: 'Workflow step', hint: 'its workflow state changed (the event says from and to)' },
-  { type: 'object.deleted', label: 'Deleted', hint: 'a record is deleted' },
-  { type: 'object.bulk', label: 'Bulk summary', hint: 'ONE event for an import, "Empty data" or a migration, never one per row' },
+export type EventGroup = 'object' | 'asset' | 'page'
+export const EVENT_GROUPS: { group: EventGroup; label: string }[] = [
+  { group: 'object', label: 'A data record is' },
+  { group: 'asset', label: 'A file in the library is' },
+  { group: 'page', label: 'A page is' },
 ]
+
+export const EVENT_CHOICES: { type: ObjectEventType; group: EventGroup; label: string; hint: string }[] = [
+  { type: 'object.created', group: 'object', label: 'Created', hint: 'a record is inserted (one event per language row)' },
+  { type: 'object.updated', group: 'object', label: 'Updated', hint: 'its fields, key, path or parent changed' },
+  { type: 'object.published', group: 'object', label: 'Published', hint: 'it went from draft to published' },
+  { type: 'object.unpublished', group: 'object', label: 'Unpublished', hint: 'it went from published to draft' },
+  { type: 'object.transitioned', group: 'object', label: 'Workflow step', hint: 'its workflow state changed (the event says from and to)' },
+  { type: 'object.deleted', group: 'object', label: 'Deleted', hint: 'a record is deleted' },
+  { type: 'object.bulk', group: 'object', label: 'Bulk summary', hint: 'ONE event for an import, "Empty data" or a migration, never one per row' },
+  { type: 'asset.created', group: 'asset', label: 'Uploaded', hint: 'a file was added at a new path (also a file a visitor sent through a form)' },
+  { type: 'asset.updated', group: 'asset', label: 'Replaced', hint: 'a new version was uploaded to an existing path' },
+  { type: 'asset.moved', group: 'asset', label: 'Moved', hint: 'it went to another folder or name (one event, with the old path)' },
+  { type: 'asset.deleted', group: 'asset', label: 'Deleted', hint: 'one file was deleted' },
+  { type: 'asset.bulk', group: 'asset', label: 'Folder deleted', hint: 'ONE summary when a folder of more than 10 files is deleted' },
+  { type: 'page.published', group: 'page', label: 'Published', hint: 'its published flag was turned on' },
+  { type: 'page.unpublished', group: 'page', label: 'Unpublished', hint: 'its published flag was turned off' },
+]
+
+/** Files and pages have no data class: a class cannot be chosen together with them. */
+export const isClasslessEvent = (type: ObjectEventType): boolean => type.startsWith('asset.') || type.startsWith('page.')
 
 export const SECRET_PREFIX = 'OBJECT_EVENTS_SECRET_'
 
@@ -44,6 +61,7 @@ export function parseActors(text: string): string[] {
 export function formProblem(f: SubscriptionForm): string {
   if (!f.name.trim()) return 'Give the subscription a name'
   if (!f.events.length) return 'Tick at least one event'
+  if (f.classId && f.events.some(isClasslessEvent)) return 'A class applies to data records only: choose "Every class", or untick the file and page events'
   if (!f.endpointId) return 'Choose the Integrations endpoint the events are sent to'
   if (!f.routeId) return 'Choose the route of that endpoint'
   const ref = f.signingSecretRef.trim()
