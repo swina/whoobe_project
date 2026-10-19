@@ -196,7 +196,7 @@ it does not, we say that too.
 | **A third-party audit or certification** (SOC 2, ISO 27001, an external penetration test) | None. Our security work is internal and automated (chapter 8). Self-hosting puts your compliance posture in your hands, and the documentation is written so a reviewer can check it, but nobody outside the team has signed it off. |
 | **A full Content-Security-Policy on the admin and editor applications** | Baseline headers and clickjacking protection are in; a strict CSP is postponed because the supported model is one organisation, with trusted editors. If you give the editor to people you do not trust, this matters more. |
 | **Malware scanning of uploads** | Uploads are checked by type and content, images are re-encoded, active content is served as a download or in a sandbox, but files are not scanned for viruses. |
-| **Automatic data retention and data-subject tooling** | Nothing is deleted automatically, and there is no one-click export or erasure of a person's data. The documentation lists where personal data lives and the procedure; **you** define and run the retention routine. Files uploaded through a form are not removed when the submission is deleted. |
+| **A request register, consent records, erasure from backups** | An administrator can find, export and erase everything held about one person (form submissions, the files they sent, the mail log) by one identifier, and set a retention period per data class and for the mail log: see [data subject requests](../operations/data-subject-requests.md). Retention is **off until you set it**. There is no register of requests with deadlines, no consent records, matching is by the whole value only, and a backup taken before an erasure still holds the person. |
 | **Tamper-proof logs or log retention** | Logs go to standard output and files; their retention and protection are yours. |
 | **AI prompt-injection hardening** | AI-generated content is a draft for an editor to review. The effect of hostile input on the AI features has not been tested. |
 
@@ -305,7 +305,7 @@ database with encryption, restore it, and remove the workspace. Security scannin
 | Monitoring and alerting | Your platform's; the services expose container health and logs only. |
 | Encrypted backup of the asset bucket | `backup-workspace-bucket.sh` copies it; the copy is not encrypted by the script. |
 | High availability | One instance per service; restore from backup is the recovery path. |
-| Retention and erasure jobs | Yours to write ([data protection](../security/data-protection.md) lists where the data is). |
+| Retention and erasure jobs | Provided, off until you set a number ([data subject requests](../operations/data-subject-requests.md)); the decision of how long is yours. |
 | An automation engine, if you want one | A second system, outside the workspace, with its own database and secrets ([how](../communication/automations-architecture.md)). |
 
 **Things to do before production.** Rehearse a restore on a spare host; test an upgrade between two versions when the second one exists;
@@ -361,8 +361,7 @@ answer. It touches the editor, the gateway, the engine and the page, and it take
   TLS has been tested on the rendered template, not yet on a live public hostname; the dynamic scan and manual checklist need to be repeated on the release commit.
 
 **Known gaps for your risk assessment** (all in chapter 4): SSO with one OpenID Connect provider only (no SAML or LDAP, no single
-logout), a second factor that is mandatory only for the roles an administrator chooses, an audit log of successful actions only, no per-website roles, no full Content-Security-Policy on the admin applications, no malware scanning, no automated retention or
-data-subject tooling, no third-party certification, in-memory throttling per process.
+logout), a second factor that is mandatory only for the roles an administrator chooses, an audit log of successful actions only, no per-website roles, no full Content-Security-Policy on the admin applications, no malware scanning, no register of data-subject requests (the erasure itself is provided), no third-party certification, in-memory throttling per process.
 
 **Deployment advice.** One organisation per workspace. HTTPS only, behind the proxy; database and object store bound to the loopback
 interface (the scripts do this); set every encryption key (the workspace scripts generate them; losing one makes the encrypted values

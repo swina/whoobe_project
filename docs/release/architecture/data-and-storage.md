@@ -84,16 +84,16 @@ enforces the visibility rules. With an external S3, check that the bucket itself
 | Data | Kept | Removed by |
 |---|---|---|
 | Sessions | 7 days from login (fixed, not extended by activity); revoked on logout and on password change or reset | expired and revoked rows are deleted a week later (core-api, at start and every six hours) |
-| `mail_log` | forever | an administrator, from Settings > Mail > Log (by filter) |
+| `mail_log` | forever unless a number is set in Settings > Security (`mailLogRetentionDays`) | the retention job (daily), or an administrator from Settings > Mail > Log (by filter), or a data subject request |
 | `workflow_transition_log`, `content_versions` | forever | with the object or page |
-| Form submissions | as data objects (unpublished drafts) until an editor deletes them | an editor |
-| Form-upload rows | `form_uploads` rows stay (status `attached`, `rejected`, `expired`) | nothing (no purge) |
+| Form submissions | as data objects (unpublished drafts) until deleted; **per class** `retentionDays` can be set | an editor; the retention job (daily); a data subject request. The files the visitor sent are deleted from the library with the object |
+| Form-upload rows | `form_uploads` rows stay (status `attached`, `rejected`, `expired`) | the row of an attached file goes with its object (erasure, retention); the others have no purge |
 | Form-upload staging bytes | until the form is submitted, at most about 2 hours | asset-processor timer every 30 minutes |
 | Application log files | rotated daily or at 10 MB (`pino-roll`) | not removed; uploaded to the DAM log folder; no retention limit is enforced |
 | Page and snippet history | `content_versions`, no purge job | not removed automatically |
 | Deleted website | pages must be deleted first (F-044: deleting a website that has pages can answer 500) | |
 
-Retention is the operator's decision today; see [data protection](../security/data-protection.md) for what that means.
+Retention is the operator's decision: the jobs exist and are **off until a number is set** ([data subject requests](../operations/data-subject-requests.md)); see [data protection](../security/data-protection.md) for what each store holds.
 
 ## 6. Size drivers
 

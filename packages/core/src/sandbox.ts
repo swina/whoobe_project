@@ -52,6 +52,8 @@ const BLOCKED_PREFIXES = [
   '/publish/', '/ai/', '/mail-settings', '/mail-templates', '/mail-log', '/figma/', '/migration-sources',
   '/whoobe-one/settings/cdn-mirror', '/public/dam/assets/mirror-status',
   '/object-event-subscriptions', '/object-event-deliveries',
+  // the demo account must not switch on mandatory 2FA or a sign-in provider for everybody, nor read or erase what a visitor left
+  '/security-settings', '/oidc-settings', '/data-subject',
 ];
 const BLOCKED_PATTERNS = [
   /^\/whoobe-one\/websites\/[^/]+\/generate-pwa$/,

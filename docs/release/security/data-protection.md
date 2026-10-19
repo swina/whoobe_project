@@ -20,6 +20,7 @@ product has no telemetry and sends nothing to the project's authors.
 | Category | Data subjects | Fields | Where | Purpose |
 |---|---|---|---|---|
 | Staff accounts | administrators, editors, viewers | name, e-mail, password hash (argon2id), role, active flag, MFA secret (encrypted) and hashed recovery codes | `users`, `user_roles` | access to the CMS |
+| Single sign-on identities | staff who sign in with the identity provider | the provider's issuer and subject id, the e-mail at the last sign-in | `user_identities` (removed with the user) | recognise the person at the next sign-in |
 | Sessions | staff | session id, IP address, user agent, created/last seen/expiry | `sessions` | authentication; deleted a week after they expire or are revoked (every six hours); the id is stored as a hash |
 | Staff activity | staff | which user saved which page version, workflow transitions with the acting user | `content_versions`, `workflow_transition_log` | editing history, review workflow |
 | **Form submissions** | visitors | whatever the author puts in the form: typically name, e-mail, phone, message, any other field; uploaded files | `data_objects` (draft rows of the target class), asset store | collecting enquiries, registrations |
@@ -66,12 +67,12 @@ There is no analytics, error-reporting or licence-check service in the product.
 
 | Request | How | Gap |
 |---|---|---|
-| **Access / portability** (visitor) | query the submissions of the data class in the dashboard (Objects), export; files are assets in the private folder | no per-person search across classes, mail log and sessions; the operator searches by e-mail in each |
+| **Access / portability** (visitor) | Settings > Security > *Data subject requests*: search by e-mail across the objects, the files they sent and the mail log, then *Download everything as JSON* ([procedure](../operations/data-subject-requests.md)); the files are listed with their library path | matching is by the whole value (not inside a longer text of a field); sessions and logs are not searched; a person with two addresses needs two requests |
 | **Rectification** | edit the data object | |
-| **Erasure** (visitor) | delete the data object (and its uploaded asset in the DAM); delete matching rows of the mail log (Settings > Mail > Log, by filter); push subscription rows by database statement | the file uploaded through a form is **not deleted when its submission is deleted**: delete the asset separately; backups keep the data until they expire; logs keep addresses |
+| **Erasure** (visitor) | the same card: *Erase...* deletes the matched objects, **the files they uploaded (from the library, first)** and the mail log rows, after the address is typed again; the request is audited with a fingerprint, never the address. Push subscription rows: by database statement (an endpoint is not an address) | backups keep the data until they expire and bring it back on restore; logs on disk keep addresses and user ids; deleting a data object by hand (not through a request) still leaves the file the visitor uploaded in the library |
 | **Erasure** (staff user) | delete or deactivate the user; sessions of the user can be removed by SQL | page versions and workflow log keep the user id |
 | **Restriction / objection** | unpublish, or delete | |
-| Retention | no automatic deletion anywhere: sessions, mail log, submissions, form-upload rows, rotated logs and content versions stay until the operator removes them ([data and storage](../architecture/data-and-storage.md) section 5) | the operator must define and run a retention routine; a data-subject export/erase tool is not provided |
+| Retention | **per data class** (`retentionDays`) and for the **mail log**, deleted daily with the files visitors sent; **off until a number is set**; sessions go a week after they expire; the audit log after `AUDIT_RETENTION_DAYS` (365). Rotated logs and content versions are not removed ([data and storage](../architecture/data-and-storage.md) section 5) | the operator decides the periods; the retention of a class applies to published objects too; there is no register of requests or consent records |
 
 ## 6. Security measures (Art. 32 summary)
 
@@ -79,7 +80,7 @@ Pseudonymisation is not applied. Measures: access control with role permissions 
 selective encryption at rest; private-by-default storage of uploaded files with content checks; rate limiting and
 lockout; secure-by-default configuration and secrets generation; vulnerability management (static, dynamic and image
 scans on every release, [supply chain](supply-chain.md)); backup with encryption; separation per workspace. Not
-provided: audit log of administrative actions, SSO, DLP, malware scanning of uploads, automated retention.
+provided: SAML or LDAP login, DLP, malware scanning of uploads, a register of data-subject requests, erasure from backups.
 
 ## 7. Breach handling
 
@@ -94,6 +95,6 @@ on installations without `INTEGRATION_SECRETS_ENCRYPTION_KEY`, **clear-text AI/F
 2. Decide whether Google Fonts, embeds and the mail/AI providers are acceptable; document the transfer tools.
 3. Switch on form uploads only where needed, keep the folder private, define who opens the files.
 4. Configure disk or database encryption and the encrypted backup with offsite copy.
-5. Define the retention job (sessions, mail log, submissions, uploads, logs) and the erase procedure.
-6. Decide whether MFA is required for staff (it cannot be enforced by the product; do it by policy).
+5. Set the retention periods (a number per class that collects submissions, and for the mail log; logs on disk are yours) and adopt the [data subject request procedure](../operations/data-subject-requests.md).
+6. Decide whether MFA is required for staff: it can be made mandatory for chosen roles (Settings > Security), or enforced at your identity provider with [single sign-on](../operations/single-sign-on.md).
 7. Keep this document and [`findings.md`](findings.md) with the DPIA: open item F-058 is relevant.

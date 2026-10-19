@@ -56,6 +56,9 @@ export const PERMISSIONS = {
 
   // Reading the audit log of administrative actions (docs/plans/system/audit-log-plan.md). Read only: there is no write permission. Admin only.
   AUDIT_READ: 'audit:read',
+
+  // Finding, exporting and erasing everything held about one person (docs/plans/system/data-subject-plan.md). Admin only.
+  DATA_SUBJECT_MANAGE: 'data_subject:manage',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

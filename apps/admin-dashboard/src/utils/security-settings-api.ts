@@ -12,6 +12,8 @@ export interface SecuritySettings {
   /** users with one of these roles must enrol a second factor at their next sign-in */
   requireMfaRoleIds: string[]
   passwordPolicy: PasswordPolicy
+  /** days after which a row of the mail log is deleted; null = keep */
+  mailLogRetentionDays: number | null
   updatedAt: string | null
   /** every role, for the picker (a settings manager may not be allowed to list roles) */
   roles?: { id: string; name: string }[]
@@ -21,6 +23,7 @@ export interface SecuritySettingsInput {
   requireMfaRoleIds?: string[]
   passwordMinLength?: number
   passwordRequireClasses?: boolean
+  mailLogRetentionDays?: number | null
 }
 
 function normalizeBaseUrl(baseUrl: string): string {

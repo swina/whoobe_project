@@ -23,6 +23,7 @@
         <MfaSettingsCard v-if="activeSubSection === 'security'" />
         <SecuritySettingsCard v-if="activeSubSection === 'security' && authStore.can('settings:manage')" />
         <OidcSettingsCard v-if="activeSubSection === 'security' && authStore.can('settings:manage')" />
+        <DataSubjectCard v-if="activeSubSection === 'security' && authStore.can('data_subject:manage')" />
 
         <template v-if="activeSubSection === 'classes'">
           <!-- Inner tabs for Classes section -->
@@ -156,6 +157,7 @@ import DamConfigManager from '../components/dam/DamConfigManager.vue'
 import MfaSettingsCard from '../components/auth/MfaSettingsCard.vue'
 import SecuritySettingsCard from '../components/settings/SecuritySettingsCard.vue'
 import OidcSettingsCard from '../components/settings/OidcSettingsCard.vue'
+import DataSubjectCard from '../components/settings/DataSubjectCard.vue'
 import ClassSettingsCard from '../components/objects/ClassSettingsCard.vue'
 import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue'
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'

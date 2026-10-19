@@ -1,4 +1,4 @@
-import { pgTable, text, jsonb, uuid, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, jsonb, uuid, timestamp, integer, uniqueIndex } from 'drizzle-orm/pg-core';
 import type { ClassFieldDefinition, ClassViewConfig } from '../schema/dynamic.js';
 
 /**
@@ -27,6 +27,8 @@ export const dataClasses = pgTable(
     // this CMS has none. Natural key a re-run of that importer upserts
     // against, same role whoobe_pages.pimcoreId already plays.
     pimcoreId: text('pimcore_id'),
+    // Days after which the retention job deletes an object of this class (docs/plans/system/data-subject-plan.md); null = keep forever.
+    retentionDays: integer('retention_days'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

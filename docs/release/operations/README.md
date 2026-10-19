@@ -23,6 +23,7 @@ Running Whoobe: installing a workspace, configuring it, securing it, backing it 
 | [Encryption](encryption.md) | At rest, in transit, backups, answers for a questionnaire |
 | [Backup, restore and DR](backup-restore-and-dr.md) | What to recover and a runbook |
 | [Audit log](audit-log.md) | Who changed what: what is recorded, how to read it, retention |
+| [Data subject requests and retention](data-subject-requests.md) | Find, export and erase everything held about one person; delete by age |
 | [Single sign-on](single-sign-on.md) | Staff sign in with Keycloak, Entra, Okta or Google (OpenID Connect): set-up, roles, deprovisioning |
 | [Upgrade and migrations](upgrade-and-migrations.md) | Moving to the next release, going back |
 | [Capacity and scaling](capacity-and-scaling.md) | What one workspace can do; what limits replicas |

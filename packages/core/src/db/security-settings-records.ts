@@ -8,12 +8,15 @@ export interface SecuritySettings {
   /** users with one of these roles must have a second factor; empty = nobody */
   requireMfaRoleIds: string[];
   passwordPolicy: PasswordPolicy;
+  /** days after which a row of the mail log is deleted; null = keep */
+  mailLogRetentionDays: number | null;
   updatedAt: Date | null;
 }
 
 export const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {
   requireMfaRoleIds: [],
   passwordPolicy: DEFAULT_PASSWORD_POLICY,
+  mailLogRetentionDays: null,
   updatedAt: null,
 };
 
@@ -24,21 +27,25 @@ export async function getSecuritySettings(): Promise<SecuritySettings> {
   return {
     requireMfaRoleIds: row.requireMfaRoleIds,
     passwordPolicy: { minLength: row.passwordMinLength, requireClasses: row.passwordRequireClasses },
+    mailLogRetentionDays: row.mailLogRetentionDays,
     updatedAt: row.updatedAt,
   };
 }
+
+export type SecuritySettingsPatch = Partial<{ requireMfaRoleIds: string[]; passwordMinLength: number; passwordRequireClasses: boolean; mailLogRetentionDays: number | null }>;
 
 export type SecuritySettingsInput = {
   requireMfaRoleIds?: unknown;
   passwordMinLength?: unknown;
   passwordRequireClasses?: unknown;
+  mailLogRetentionDays?: unknown;
 };
 
 /** Validates a PUT body (only the keys present are changed). `error` names the first bad field. */
 export async function parseSecuritySettingsInput(
   body: SecuritySettingsInput
-): Promise<{ ok: true; value: Partial<{ requireMfaRoleIds: string[]; passwordMinLength: number; passwordRequireClasses: boolean }> } | { ok: false; error: string }> {
-  const value: Partial<{ requireMfaRoleIds: string[]; passwordMinLength: number; passwordRequireClasses: boolean }> = {};
+): Promise<{ ok: true; value: SecuritySettingsPatch } | { ok: false; error: string }> {
+  const value: SecuritySettingsPatch = {};
   if (body.requireMfaRoleIds !== undefined) {
     const ids = body.requireMfaRoleIds;
     if (!Array.isArray(ids) || ids.some((id) => typeof id !== 'string')) return { ok: false, error: 'requireMfaRoleIds must be an array of role ids' };
@@ -61,11 +68,17 @@ export async function parseSecuritySettingsInput(
     if (typeof body.passwordRequireClasses !== 'boolean') return { ok: false, error: 'passwordRequireClasses must be true or false' };
     value.passwordRequireClasses = body.passwordRequireClasses;
   }
+  if (body.mailLogRetentionDays !== undefined) {
+    const n = body.mailLogRetentionDays;
+    if (n === null) value.mailLogRetentionDays = null;
+    else if (typeof n !== 'number' || !Number.isInteger(n) || n < 1 || n > 36500) return { ok: false, error: 'mailLogRetentionDays must be a whole number of days from 1 to 36500, or null to keep the log' };
+    else value.mailLogRetentionDays = n;
+  }
   return { ok: true, value };
 }
 
 export async function updateSecuritySettings(
-  patch: Partial<{ requireMfaRoleIds: string[]; passwordMinLength: number; passwordRequireClasses: boolean }>
+  patch: SecuritySettingsPatch
 ): Promise<SecuritySettings> {
   const set = { ...patch, updatedAt: new Date() };
   await getDb().insert(securitySettings).values({ id: 1, ...set }).onConflictDoUpdate({ target: securitySettings.id, set });

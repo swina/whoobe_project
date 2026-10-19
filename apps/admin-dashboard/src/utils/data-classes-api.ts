@@ -13,6 +13,8 @@ export interface DataClass {
   fields: ClassFieldDefinition[]
   viewConfig: ClassViewConfig | null
   pimcoreId: string | null
+  /** days after which the retention job deletes an object of this class; null = keep forever */
+  retentionDays?: number | null
   createdAt: string
   updatedAt: string
 }
@@ -71,7 +73,7 @@ export async function createDataClass(
 export async function updateDataClass(
   baseUrl: string,
   id: string,
-  input: { name?: string; label?: string; fields?: ClassFieldDefinition[]; viewConfig?: ClassViewConfig | null; confirmTypeChange?: boolean }
+  input: { name?: string; label?: string; fields?: ClassFieldDefinition[]; viewConfig?: ClassViewConfig | null; confirmTypeChange?: boolean; retentionDays?: number | null }
 ): Promise<DataClass> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/data-classes/${id}`, {
     method: 'PATCH',

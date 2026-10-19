@@ -23,18 +23,18 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 
 | Method & path | Description |
 | --- | --- |
-| `POST /auth/login` | Log in with email/password. Sets the session cookie, or returns `{ mfaRequired: true, mfaToken }` if 2FA is enabled, or `{ mfaEnrolmentRequired: true, enrolToken }` (no session) if the user's role requires 2FA and none is set up yet. |
-| `POST /auth/mfa/enrol/setup` | Forced enrolment, step 1: with the `enrolToken` of the login, returns a TOTP secret + QR code. Public (the token stands in for the session). |
-| `POST /auth/mfa/enrol/verify` | Forced enrolment, step 2: a TOTP code with the `enrolToken` enables the factor, returns the recovery codes once and opens the session. Five wrong codes spend the token. |
-| `GET /auth/oidc/config` | Whether single sign-on is on and the button text: `{ enabled, label, localLogin }`. Public; nothing else about the provider. |
-| `GET /auth/oidc/login` | Starts the OpenID Connect sign-in: redirects to the provider (authorization code, PKCE S256, state, nonce) and sets a short `wcms_oidc` cookie. `404` when it is off. |
-| `GET /auth/oidc/callback` | The provider's redirect back. Checks state and the browser's cookie, exchanges the code, verifies the ID token, opens the session and redirects to the dashboard, or to `/?sso_error=<code>`. |
-| `GET /auth/password-policy` | The minimum a new password must satisfy: `{ minLength, requireClasses }`. Public, no secret. |
+| `POST /auth/login` | Log in with email/password. Sets the session cookie, or returns `{ mfaRequired: true, mfaToken }` if 2FA is enabled, or `{ mfaEnrolmentRequired: true, enrolToken }` (no session) if the user's role requires 2FA and none is set up yet. With single sign-on set to "administrators only" it answers 403 to everybody else. |
 | `POST /auth/mfa/challenge` | Step 2 of a 2FA login: verify a TOTP code (or a recovery code) against a pending mfaToken and complete the session. |
+| `POST /auth/mfa/enrol/setup` | Forced enrolment, step 1: with the `enrolToken` of the login, returns a TOTP secret + QR code. Public (the token stands in for the session; ten minutes, five wrong codes spend it). |
+| `POST /auth/mfa/enrol/verify` | Forced enrolment, step 2: a TOTP code with the `enrolToken` enables the factor, returns the recovery codes once and opens the session. |
 | `GET /auth/mfa/status` | Whether the current user has 2FA enabled. |
 | `POST /auth/mfa/setup` | Start 2FA enrollment; returns a TOTP secret + QR code. |
 | `POST /auth/mfa/verify-setup` | Confirm a TOTP code to finish enrollment; returns one-time recovery codes. |
 | `POST /auth/mfa/disable` | Disable 2FA (requires re-entering the password). `409` for a user whose role requires 2FA. |
+| `GET /auth/password-policy` | The minimum a new password must satisfy: `{ minLength, requireClasses }`. Public, no secret. |
+| `GET /auth/oidc/config` | Whether single sign-on is on and the button text: `{ enabled, label, localLogin }`. Public; nothing else about the provider. |
+| `GET /auth/oidc/login` | Starts the OpenID Connect sign-in: redirects to the provider (authorization code, PKCE S256, state, nonce) and sets a short `wcms_oidc` cookie. `404` when it is off. |
+| `GET /auth/oidc/callback` | The provider's redirect back. Checks the state and the browser's cookie, exchanges the code, verifies the ID token, opens the session and redirects to the dashboard, or to `/?sso_error=<code>`. |
 | `POST /auth/logout` | Revoke the current session and clear the cookie. |
 | `GET /auth/me` | Current user's id, email, display name, and effective permissions. |
 | `POST /auth/forgot-password` | Request a password-reset email. |
@@ -293,26 +293,30 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `DELETE /object-event-subscriptions/:id/deliveries` | Clear finished deliveries from the log: body `{ ids: [...] }` (up to 500) or `{ status: 'delivered' | 'dead' | 'stopped' }`; returns `{ removed }`. A delivery still pending or retrying is never removed; the events and the loop guard counts are not touched. |
 | `POST /object-event-deliveries/:id/retry` | Retry a delivery that gave up (`dead`); 409 for any other status. |
 
-### Single sign-on settings (permission `settings:manage`)
-
-| Method & path | Description |
-| --- | --- |
-| `GET /oidc-settings` | The provider settings (issuer, client id, redirect and dashboard addresses, scopes, role claim and mapping, default roles, provisioning, linking, `localLogin`), `hasClientSecret` (the secret is never returned) and `roles` for the pickers. |
-| `PUT /oidc-settings` | Change any of them; only the keys sent change; a blank `clientSecret` keeps the stored one, `clearClientSecret: true` removes it. Switching on needs issuer, client id and redirect address. Audited as `setting.oidc_update`. |
-| `POST /oidc-settings/test` | Reads the saved issuer's discovery document: `{ ok: true, authorizationEndpoint, tokenEndpoint }` or `{ ok: false, error }`. |
-
-### Security settings (permission `settings:manage`)
-
-| Method & path | Description |
-| --- | --- |
-| `GET /security-settings` | `{ requireMfaRoleIds, passwordPolicy: { minLength, requireClasses }, updatedAt, roles }`; `roles` lists every role for a picker. Defaults when never saved: no role required, length 8, no classes rule. |
-| `PUT /security-settings` | Change any of `requireMfaRoleIds` (role ids that must use 2FA), `passwordMinLength` (8 to 128), `passwordRequireClasses`; only the keys sent change. Audited as `setting.security_update`. |
-
 ### Audit log of administrative actions (permission `audit:read`, read only)
 
 | Method & path | Description |
 | --- | --- |
 | `GET /audit-log` | The audit log, newest first: who (user, address), what (`action`), on which target, and the fields before and after (never a secret). Filters: `action` (exact, or a prefix ending in `.`, such as `user.`), `actor` (user id), `targetType`, `targetId`, `from`, `to` (ISO dates), `limit` (default 100, at most 5000), `offset`. Returns `{ entries, total }`; `?format=csv` returns the same rows as a file. There is no route that writes or deletes a row. |
+
+### Security settings and single sign-on (permission `settings:manage`)
+
+| Method & path | Description |
+| --- | --- |
+| `GET /security-settings` | `{ requireMfaRoleIds, passwordPolicy: { minLength, requireClasses }, mailLogRetentionDays, updatedAt, roles }`; `roles` lists every role for a picker. Defaults when never saved: no role required, length 8, no classes rule, the mail log kept. |
+| `PUT /security-settings` | Change any of `requireMfaRoleIds` (role ids that must use 2FA), `passwordMinLength` (8 to 128), `passwordRequireClasses`, `mailLogRetentionDays` (1 to 36500 or `null`); only the keys sent change. Audited as `setting.security_update`. |
+| `GET /oidc-settings` | The single sign-on provider settings (issuer, client id, redirect and dashboard addresses, scopes, role claim and mapping, default roles, provisioning, linking, `localLogin`), `hasClientSecret` (the secret is never returned) and `roles` for the pickers. See docs/release/operations/single-sign-on.md. |
+| `PUT /oidc-settings` | Change any of them; only the keys sent change; a blank `clientSecret` keeps the stored one, `clearClientSecret: true` removes it. Switching on needs issuer, client id and redirect address. Audited as `setting.oidc_update`. |
+| `POST /oidc-settings/test` | Reads the saved issuer's discovery document: `{ ok: true, authorizationEndpoint, tokenEndpoint }` or `{ ok: false, error }`. |
+
+### Data subject requests and retention (permission `data_subject:manage`; see docs/release/operations/data-subject-requests.md)
+
+| Method & path | Description |
+| --- | --- |
+| `POST /data-subject/search` | `{ identifier, classIds?, includeMailBodies? }`: what exists for one person (the identifier is matched whole and in any case): objects (class, key, date, the fields that hold it), files, mails and the staff accounts of the address. No values. |
+| `POST /data-subject/export` | The same selection with the records, as one JSON file (`Content-Disposition: attachment`, named after a fingerprint of the identifier); files are listed with their library path. |
+| `POST /data-subject/erase` | A **dry run** unless `dryRun: false`; a real run needs `confirm` equal to `identifier`. Deletes the files first, then the objects and the mails (`include: { objects, mail }` narrows it); answers the counts and `failures` (an object whose file could not be deleted stays). Staff accounts are never deleted. |
+| `POST /data-subject/retention/run` | Runs the retention job now: `{ classes: [{ classId, className, days, deleted, failed }], mailDeleted }`. The same job runs daily; `PATCH /data-classes/:id` with `retentionDays` (needs this permission) sets the days per class. |
 
 ### Documentation sites (Markdown)
 
@@ -387,9 +391,9 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | --- | --- |
 | `GET /api/v1/system/logs` | Tail recent application log lines. |
 | `GET /api/v1/system/logs/download` | Download the full current log file. |
-| `GET /health` | Readiness: `200` with `database: "ok"`, or `503` with `database: "down"` when the database does not answer. |
-| `GET /health/live` | Liveness: the process is up. |
-| `GET /metrics` | Prometheus metrics. `404` unless `METRICS_TOKEN` is set on the server, then `Authorization: Bearer <token>`. Not routed by the nginx template. See [observability](../operations/observability-and-logging.md). |
+| `GET /health` | Readiness: `200` with `database: "ok"`, or `503` with `database: "down"` when the database does not answer within 2 seconds. |
+| `GET /health/live` | Liveness: the process is up, nothing else is asked (the Docker health check). |
+| `GET /metrics` | Prometheus metrics. `404` unless `METRICS_TOKEN` is set on the server, then `Authorization: Bearer <token>`. Not routed by the nginx template. See docs/release/operations/observability-and-logging.md. |
 | `GET /site-root` | Asked by the reverse proxy for requests it cannot route by name: 204 if the first path segment is a website's root path (the proxy then sends the request to the editor, which renders the page), 403 otherwise (dashboard). Answers from a 5 s cache; reads the URI from `X-Original-URI`. |
 <!-- GENERATED:CORE_API:END -->
 
