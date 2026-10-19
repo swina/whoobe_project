@@ -290,7 +290,7 @@
           <button
             @click="publishSelectedToCdn"
             :disabled="!cdnMirrorConfigured || isPublishingToCdn"
-            :title="cdnMirrorConfigured ? '' : 'Configure a CDN mirror endpoint under Settings > DAM first'"
+            :title="cdnMirrorConfigured ? '' : 'Configure CDN mirroring under Settings > DAM first'"
             class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:bg-slate-200 text-emerald-300 light:text-stone-500 hover:text-emerald-200 transition flex items-center gap-1.5 shadow-md border border-slate-700 light:border-slate-300 disabled:opacity-40"
           >
             <CloudUpload class="w-3.5 h-3.5" />
@@ -1499,22 +1499,18 @@ onMounted(async () => {
   }
 })
 
-const cdnMirrorConfigured = computed(() => !!cdnMirrorSettings.value?.gatewayRouteId)
+const cdnMirrorConfigured = computed(() => !!cdnMirrorSettings.value?.configured)
 
 async function publishSelectedToCdn() {
   const ids = [...selectedAssetIds.value]
-  if (ids.length === 0 || !cdnMirrorSettings.value?.gatewayRouteId) return
-  const settings = cdnMirrorSettings.value
+  if (ids.length === 0 || !cdnMirrorSettings.value?.configured) return
   isPublishingToCdn.value = true
   let succeeded = 0
   let failed = 0
   for (const id of ids) {
     try {
-      await damStore.mirrorAssetToCdn(id, {
-        gatewayRouteId: settings.gatewayRouteId!,
-        uploadPreset: settings.uploadPreset,
-        provider: settings.provider,
-      })
+      // the installation's default: the library is shared by every website
+      await damStore.mirrorAssetToCdn(id)
       succeeded++
     } catch {
       failed++

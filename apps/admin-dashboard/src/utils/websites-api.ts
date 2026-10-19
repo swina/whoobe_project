@@ -320,31 +320,73 @@ export async function saveLoggingEnabled(baseUrl: string, enabled: boolean): Pro
   })
 }
 
-// CDN mirror endpoint/route to use for "Publish to CDN" (docs/plans/assets/
-// assets-cdn.md) - configured once here, reused by every mirror action.
+// CDN mirroring settings (docs/plans/assets/assets-cdn.md, docs/plans/assets/cdn-providers-plan.md): per website, with the installation's default as the
+// fallback. The provider decides which fields exist; a credential is write-only (`secretsSet` says which ones are stored).
+export interface CdnProviderField { name: string; label: string; required?: boolean; secret?: boolean; help?: string; placeholder?: string }
+export interface CdnProviderInfo { id: string; label: string; description: string; fields: CdnProviderField[] }
+
 export interface CdnMirrorSettings {
-  gatewayRouteId: string | null
-  uploadPreset: string | null
+  /** where the effective settings come from: the website's own, the installation's default, or nothing is set */
+  scope: 'website' | 'default' | 'none'
+  websiteId: string | null
   provider: string
+  config: Record<string, string>
+  secretsSet: Record<string, boolean>
+  /** what is still missing for the provider to be usable */
+  missing: string[]
+  configured: boolean
+  /** this website has settings of its own (false: it uses the default) */
+  own: boolean
+  // the Cloudinary values the sync script has always read
+  gatewayRouteId?: string | null
+  uploadPreset?: string | null
 }
 
-export async function fetchCdnMirrorSettings(baseUrl: string): Promise<CdnMirrorSettings> {
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/cdn-mirror`, { credentials: 'include' })
-  const body = await parseJsonOrThrow(res)
-  return {
-    gatewayRouteId: typeof body.gatewayRouteId === 'string' ? body.gatewayRouteId : null,
-    uploadPreset: typeof body.uploadPreset === 'string' ? body.uploadPreset : null,
-    provider: typeof body.provider === 'string' ? body.provider : 'cloudinary',
-  }
+export interface CdnMirrorInput {
+  websiteId?: string | null
+  provider: string
+  config: Record<string, string>
+  /** a credential left out keeps the stored one */
+  secrets?: Record<string, string>
 }
 
-export async function saveCdnMirrorSettings(baseUrl: string, settings: CdnMirrorSettings): Promise<void> {
-  await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/cdn-mirror`, {
+const cdnQuery = (websiteId?: string | null) => (websiteId ? `?websiteId=${encodeURIComponent(websiteId)}` : '')
+
+export async function fetchCdnProviders(baseUrl: string): Promise<CdnProviderInfo[]> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/cdn-providers`, { credentials: 'include' })
+  return (await parseJsonOrThrow(res)).providers
+}
+
+/** The settings that apply to a website (its own, else the default); without a website, the default. */
+export async function fetchCdnMirrorSettings(baseUrl: string, websiteId?: string | null): Promise<CdnMirrorSettings> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/cdn-mirror${cdnQuery(websiteId)}`, { credentials: 'include' })
+  return parseJsonOrThrow(res)
+}
+
+export async function saveCdnMirrorSettings(baseUrl: string, input: CdnMirrorInput): Promise<CdnMirrorSettings> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/cdn-mirror`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(settings),
+    body: JSON.stringify(input),
     credentials: 'include',
   })
+  return parseJsonOrThrow(res)
+}
+
+/** A website's own settings go (it uses the default again); without a website, the default itself goes. */
+export async function removeCdnMirrorSettings(baseUrl: string, websiteId?: string | null): Promise<void> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/cdn-mirror${cdnQuery(websiteId)}`, { method: 'DELETE', credentials: 'include' })
+  await parseJsonOrThrow(res)
+}
+
+export async function testCdnMirrorSettings(baseUrl: string, websiteId?: string | null): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/settings/cdn-mirror/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ websiteId: websiteId ?? undefined }),
+    credentials: 'include',
+  })
+  return parseJsonOrThrow(res)
 }
 
 // --- Gateway API key (docs/plans/api-gateway/gateway-auth-authz.md) ---

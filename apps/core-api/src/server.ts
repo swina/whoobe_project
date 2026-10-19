@@ -148,6 +148,17 @@ import {
   disableTotp,
   updateMfaRecoveryCodes,
   getSecuritySettings,
+  CDN_PROVIDERS,
+  safeFetch,
+  validateCdnSettings,
+  missingCdnFields,
+  resolveCdnMirror,
+  getOwnCdnMirror,
+  saveCdnMirror,
+  deleteCdnMirror,
+  publicCdnMirror,
+  cdnMirrorConfigured,
+  testCloudflareImages,
   findDataSubject,
   exportDataSubject,
   eraseDataSubject,
@@ -2954,44 +2965,100 @@ app.put('/whoobe-one/settings/alpine-presets', requirePermission(PERMISSIONS.OBJ
   }
 });
 
-// CDN mirror endpoint/route to use for "Publish to CDN" (docs/plans/assets/
-// assets-cdn.md) - configured once (Settings > DAM), same "configure once,
-// reuse everywhere" pattern as the mail settings and the toggles above,
-// rather than asking for it on every mirror action.
-app.get('/whoobe-one/settings/cdn-mirror', requirePermission(PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
+// CDN mirroring settings (docs/plans/assets/assets-cdn.md, docs/plans/assets/cdn-providers-plan.md): per website, with the installation's default as the
+// fallback; the provider decides which fields exist (Cloudinary: a Gateway route and a preset; Cloudflare Images: an account id and an API token, which is
+// stored encrypted and never returned). Reading is for anybody who can read objects (the Assets action needs to know whether mirroring is set up);
+// changing it, which can hold a credential, needs settings:manage.
+/** The CDN provider that applies to a website (its own settings, else the default), so a page is served with the mirror of THAT provider when an asset has several. */
+async function cdnProviderOf(websiteId: string | null | undefined): Promise<string | null> {
   try {
-    const all = await listWebsites();
-    const first = all[0];
-    const raw = first?.settings && typeof first.settings === 'object' && !Array.isArray(first.settings)
-      ? (first.settings as Record<string, unknown>).cdnMirror
-      : null;
-    const cdnMirror = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+    const r = await resolveCdnMirror(websiteId);
+    return r.scope === 'none' ? null : r.provider;
+  } catch {
+    return null;
+  }
+}
+
+const cdnScope = (req: Request): string | null => {
+  const v = req.body?.websiteId ?? req.query.websiteId;
+  return typeof v === 'string' && v && v !== 'default' ? v : null;
+};
+
+app.get('/whoobe-one/settings/cdn-providers', requirePermission(PERMISSIONS.OBJECTS_READ), (_req: Request, res: Response): void => {
+  res.json({ providers: CDN_PROVIDERS });
+});
+
+app.get('/whoobe-one/settings/cdn-mirror', requirePermission(PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const websiteId = cdnScope(req);
+    const resolved = await resolveCdnMirror(websiteId);
+    const view = publicCdnMirror(resolved);
+    const own = websiteId ? !!(await getOwnCdnMirror(websiteId)) : resolved.scope === 'default';
     res.json({
-      gatewayRouteId: typeof cdnMirror.gatewayRouteId === 'string' ? cdnMirror.gatewayRouteId : null,
-      uploadPreset: typeof cdnMirror.uploadPreset === 'string' ? cdnMirror.uploadPreset : null,
-      provider: typeof cdnMirror.provider === 'string' ? cdnMirror.provider : 'cloudinary',
+      ...view,
+      /** this website has settings of its own (false: it uses the default, or nothing is set) */
+      own,
+      // the keys the publish sync script has always read (Cloudinary values; null for another provider)
+      gatewayRouteId: resolved.provider === 'cloudinary' ? resolved.config.gatewayRouteId ?? null : null,
+      uploadPreset: resolved.provider === 'cloudinary' ? resolved.config.uploadPreset ?? null : null,
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to read CDN mirror settings' });
+    logger.error({ err: error }, 'Read CDN mirror settings error');
+    res.status(500).json({ error: 'Failed to read CDN mirror settings' });
   }
 });
 
-app.put('/whoobe-one/settings/cdn-mirror', requirePermission(PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.settingCdnMirror), async (req: Request, res: Response): Promise<void> => {
+app.put('/whoobe-one/settings/cdn-mirror', requirePermission(PERMISSIONS.SETTINGS_MANAGE), audited(AUDIT.cdnMirrorUpdate), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { gatewayRouteId, uploadPreset, provider } = req.body ?? {};
-    const all = await listWebsites();
-    if (!all.length) { res.status(404).json({ error: 'No website found' }); return; }
-    const first = all[0];
-    const nextCdnMirror = {
-      gatewayRouteId: typeof gatewayRouteId === 'string' && gatewayRouteId ? gatewayRouteId : null,
-      uploadPreset: typeof uploadPreset === 'string' && uploadPreset ? uploadPreset : null,
-      provider: typeof provider === 'string' && provider ? provider : 'cloudinary',
-    };
-    const settings = { ...(first.settings as Record<string, unknown> ?? {}), cdnMirror: nextCdnMirror };
-    await updateWebsite(first.id, { settings });
-    res.json(nextCdnMirror);
+    const websiteId = cdnScope(req);
+    if (websiteId && !(await getWebsite(websiteId))) { res.status(404).json({ error: 'Website not found' }); return; }
+    // the old body (gatewayRouteId, uploadPreset, provider) is Cloudinary's, for the default
+    const body = req.body ?? {};
+    const input = typeof body.config === 'object' && body.config !== null ? body : { provider: 'cloudinary', config: { gatewayRouteId: body.gatewayRouteId ?? '', uploadPreset: body.uploadPreset ?? '' } };
+    const valid = validateCdnSettings(input);
+    if (!valid.ok) { res.status(400).json({ error: valid.error }); return; }
+    const saved = await saveCdnMirror(websiteId, valid);
+    res.json({ ...publicCdnMirror(saved), own: true, gatewayRouteId: saved.provider === 'cloudinary' ? saved.config.gatewayRouteId ?? null : null, uploadPreset: saved.provider === 'cloudinary' ? saved.config.uploadPreset ?? null : null });
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to save CDN mirror settings' });
+    logger.error({ err: error }, 'Save CDN mirror settings error');
+    res.status(500).json({ error: 'Failed to save CDN mirror settings' });
+  }
+});
+
+// A website's own settings go: it uses the default again. Without a website, the default itself goes.
+app.delete('/whoobe-one/settings/cdn-mirror', requirePermission(PERMISSIONS.SETTINGS_MANAGE), audited(AUDIT.cdnMirrorRemove), async (req: Request, res: Response): Promise<void> => {
+  try {
+    res.json({ removed: await deleteCdnMirror(cdnScope(req)) });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Remove CDN mirror settings error');
+    res.status(500).json({ error: 'Failed to remove CDN mirror settings' });
+  }
+});
+
+// Checks the settings that apply to a website: Cloudflare Images with a read call (the account and the token), Cloudinary that its Gateway route exists.
+// Uploads nothing.
+app.post('/whoobe-one/settings/cdn-mirror/test', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const resolved = await resolveCdnMirror(cdnScope(req));
+    if (!cdnMirrorConfigured(resolved)) {
+      res.json({ ok: false, error: resolved.scope === 'none' ? 'Nothing is set up yet' : `Missing: ${missingCdnFields(resolved.provider, resolved.config, resolved.secretsSet).join(', ')}` });
+      return;
+    }
+    if (resolved.provider === 'cloudflare-images') {
+      res.json(await testCloudflareImages(resolved.config.accountId, resolved.secrets.apiToken, {
+        apiBase: resolved.config.apiBase || undefined,
+        fetch: async (url, init) => {
+          const r = await safeFetch(url, { method: init.method, headers: init.headers, body: init.body }, { maxBytes: 256 * 1024, timeoutMs: 15_000 });
+          return { status: r.status, json: () => r.json() };
+        },
+      }));
+      return;
+    }
+    const route = await getGatewayRoute(resolved.config.gatewayRouteId);
+    res.json(route ? { ok: true } : { ok: false, error: 'The Gateway route is not there any more: choose another one' });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Test CDN mirror settings error');
+    res.status(500).json({ error: 'The test failed' });
   }
 });
 
@@ -3744,7 +3811,7 @@ const snippetIds = new Set<string>();
       }
     }
 
-    const cdnMirrors = await resolveContentCdnMirrors(page.content);
+    const cdnMirrors = await resolveContentCdnMirrors(page.content, await cdnProviderOf(page.websiteId));
     const body: Record<string, unknown> = { page, params };
     if (layout) body.layout = layout;
     if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;
@@ -3919,7 +3986,7 @@ const snippetIds = new Set<string>();
       }
     }
 
-    const cdnMirrors = await resolveContentCdnMirrors(page.content);
+    const cdnMirrors = await resolveContentCdnMirrors(page.content, await cdnProviderOf(page.websiteId));
     const body: Record<string, unknown> = { page, params };
     if (layout) body.layout = layout;
     if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;
@@ -4155,12 +4222,14 @@ app.get('/public/dam/assets/mirror-status', async (req: Request, res: Response):
   try {
     const raw = typeof req.query.paths === 'string' ? req.query.paths : '';
     const refs = raw.split(',').map((r) => r.trim()).filter(Boolean);
+    // with ?provider= only a mirror at THAT provider counts (two websites may use two CDNs for one shared asset)
+    const provider = typeof req.query.provider === 'string' && req.query.provider ? req.query.provider : null;
     const status: Record<string, { mirrored: boolean; assetId: string | null }> = {};
     await Promise.all(
       refs.map(async (ref) => {
         try {
           const asset = MIRROR_STATUS_UUID_RE.test(ref) ? await getAssetById(ref) : await getAssetByPath(ref);
-          status[ref] = { mirrored: !!asset && Object.keys(asset.cdnMirrors ?? {}).length > 0, assetId: asset?.id ?? null };
+          status[ref] = { mirrored: !!asset && (provider ? !!asset.cdnMirrors?.[provider] : Object.keys(asset.cdnMirrors ?? {}).length > 0), assetId: asset?.id ?? null };
         } catch {
           status[ref] = { mirrored: false, assetId: null };
         }

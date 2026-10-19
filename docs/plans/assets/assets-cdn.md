@@ -1,5 +1,7 @@
 # Asset CDN Mirroring — Implementation Plan
 
+> **Update 2026-10-19:** the settings are now **per website** (with the installation's default as the fallback) and the provider is an adapter: Cloudinary (through the Gateway, as described here) and Cloudflare Images (called directly, because it takes `multipart/form-data`, which the Gateway's route executor does not send). See [cdn-providers-plan.md](cdn-providers-plan.md). Where this plan says "the Gateway preset" or "Cloudinary's `secure_url`", read it as the Cloudinary adapter.
+
 ## Overview
 
 Whoobe's DAM stores the authoritative master of every asset in a private S3/MinIO bucket, resolved on demand through asset-processor's `/dam-asset/*` proxy (see `packages/core/src/mail/mail-image-urls.ts`'s own header comment). That's correct for an install that's reachable from wherever the asset is consumed — but Whoobe can also run entirely inside a locked-down internal network (VPN-only, zero public exposure), used purely as an authoring/design tool. In that mode, nothing outside the network — a recipient's mail client, an ESP's servers, a public CDN edge — can ever resolve a `/dam-asset/*` URL.

@@ -131,23 +131,23 @@
           </label>
           <p class="text-xs text-slate-500">Mirrors every image referenced by the published pages to the CDN before generating the site - idempotent, already-mirrored assets are skipped automatically.</p>
           <div v-if="includeCdn" class="space-y-3">
-            <div v-if="cdnSettingsLoading" class="text-xs text-slate-500">Loading saved settings…</div>
-            <div v-else-if="!cdnGatewayRouteId" class="text-xs px-3 py-2 rounded-lg bg-amber-900/30 border border-amber-700/40 text-amber-300">
-              No CDN route saved in Settings → DAM → CDN Mirror - fill in the fields below by hand.
+            <div v-if="cdnSettingsLoading" class="text-xs text-slate-500">Loading the website's CDN settings…</div>
+            <div
+              v-else-if="!cdnSettings?.configured"
+              class="text-xs px-3 py-2 rounded-lg bg-amber-900/30 border border-amber-700/40 text-amber-300"
+              data-testid="publish-cdn-missing"
+            >
+              No CDN is set up for this website{{ cdnSettings?.scope === 'none' ? '' : ' (incomplete: ' + cdnSettings?.missing.join(', ') + ')' }}.
+              Set one in the website's settings (<em>Websites &rsaquo; {{ website?.name }} &rsaquo; Settings</em>) or the installation's default (<em>Settings &rsaquo; DAM</em>); the script stops with that message otherwise.
             </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Gateway Route ID</label>
-                <input v-model="cdnGatewayRouteId" type="text" class="field w-full font-mono" />
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Upload Preset</label>
-                <input v-model="cdnUploadPreset" type="text" class="field w-full font-mono" />
-              </div>
-              <div class="col-span-2">
-                <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Asset Processor URL <span class="text-slate-500 font-normal">(leave empty if same as API URL - only needed in local dev, where it runs on a different port)</span></label>
-                <input v-model="assetProcessorUrl" type="text" placeholder="e.g. http://localhost:3002" class="field w-full font-mono" />
-              </div>
+            <div v-else class="text-xs px-3 py-2 rounded-lg bg-slate-950 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-slate-300 light:text-slate-700" data-testid="publish-cdn-summary">
+              Mirrors to <strong>{{ cdnProviderLabel }}</strong>, using the
+              <strong>{{ cdnSettings?.scope === 'website' ? "website's own settings" : "installation's default settings" }}</strong>.
+              <button type="button" class="btn btn-link" data-testid="publish-cdn-edit" @click="tabsStore.openWebsite(website!.id, 'settings')">Change for this website</button>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">Asset Processor URL <span class="text-slate-500 font-normal">(leave empty if same as API URL - only needed in local dev, where it runs on a different port)</span></label>
+              <input v-model="assetProcessorUrl" type="text" placeholder="e.g. http://localhost:3002" class="field w-full font-mono" />
             </div>
             <p class="text-xs text-slate-500">The script reads the <code class="font-mono">WHOOBE_SYNC_EMAIL</code>/<code class="font-mono">WHOOBE_SYNC_PASSWORD</code> environment variables - a dedicated service account, <strong>without MFA enabled</strong>. <code class="font-mono">export</code> them in the terminal before running the script and it stops with a message if they are missing - credentials are never auto-filled or held in this form.</p>
           </div>
@@ -236,7 +236,7 @@ import { useTabsStore } from '../stores/tabsStore'
 import { useAuthStore } from '../stores/authStore'
 import { startPublishJob, getPublishJob, listPublishJobs, cancelPublishJob, isActive, type PublishJobView } from '../utils/publish-jobs-api'
 import { getDefaultCoreApiUrl } from '../utils/auth-api'
-import { fetchCdnMirrorSettings, regenerateWebsiteGatewayApiKey, clearWebsiteGatewayApiKey } from '../utils/websites-api'
+import { fetchCdnMirrorSettings, fetchCdnProviders, regenerateWebsiteGatewayApiKey, clearWebsiteGatewayApiKey, type CdnMirrorSettings } from '../utils/websites-api'
 import { fetchGatewayUsage, probeGateway, checkBindings, type GatewayProbe, type BindingCheck } from '../utils/publish-check'
 
 const websitesStore = useWebsitesStore()
@@ -276,8 +276,10 @@ const siteKeyLoading = ref(false)
 
 const includeCdn = ref(true)
 const cdnSettingsLoading = ref(false)
-const cdnGatewayRouteId = ref('')
-const cdnUploadPreset = ref('')
+// what the server will use for THIS website (its own settings, else the default); the script resolves it itself, nothing is typed here
+const cdnSettings = ref<CdnMirrorSettings | null>(null)
+const cdnProviderLabels = ref<Record<string, string>>({})
+const cdnProviderLabel = computed(() => cdnProviderLabels.value[cdnSettings.value?.provider ?? ''] ?? cdnSettings.value?.provider ?? '')
 const assetProcessorUrl = ref('')
 
 // off until a host is typed in: with the placeholders the step would try to rsync to a host that does not exist
@@ -351,11 +353,13 @@ watch(website, async (w) => {
 
   cdnSettingsLoading.value = true
   try {
-    const saved = await fetchCdnMirrorSettings(apiUrl.value)
-    cdnGatewayRouteId.value = saved.gatewayRouteId ?? ''
-    cdnUploadPreset.value = saved.uploadPreset ?? ''
+    cdnSettings.value = await fetchCdnMirrorSettings(apiUrl.value, w.id)
+    if (!Object.keys(cdnProviderLabels.value).length) {
+      cdnProviderLabels.value = Object.fromEntries((await fetchCdnProviders(apiUrl.value)).map((p) => [p.id, p.label]))
+    }
   } catch {
-    // No saved settings (or not permitted) - leave blank for manual entry.
+    // Not readable (or not permitted): the page says nothing is set up, the script says what it finds.
+    cdnSettings.value = null
   } finally {
     cdnSettingsLoading.value = false
   }
@@ -407,13 +411,12 @@ const script = computed(() => {
       `# ${step}. CDN Mirroring - mirror the referenced images before publishing (idempotent).`,
       '#    Dedicated service account, WITHOUT MFA enabled. Export the two variables in your shell first',
       '#    (export WHOOBE_SYNC_EMAIL=... WHOOBE_SYNC_PASSWORD=...); they are not written here on purpose.',
+      '#    The CDN is the one set for this website (or the installation\'s default); the script asks the server for it.',
       ': "${WHOOBE_SYNC_EMAIL:?export WHOOBE_SYNC_EMAIL (service account, no MFA) before running this script}"',
       ': "${WHOOBE_SYNC_PASSWORD:?export WHOOBE_SYNC_PASSWORD before running this script}"',
       'pnpm publish:sync-cdn \\',
       `  --api-url "${apiUrl.value}" \\`,
-      `  --website-id "${id}" \\`,
-      `  --gateway-route-id "${cdnGatewayRouteId.value || '<gateway-route-id>'}" \\`,
-      `  --upload-preset "${cdnUploadPreset.value || '<upload-preset>'}"${assetProcessorUrl.value ? ' \\' : ''}`,
+      `  --website-id "${id}"${assetProcessorUrl.value ? ' \\' : ''}`,
     )
     if (assetProcessorUrl.value) lines.push(`  --asset-processor-url "${assetProcessorUrl.value}"`)
     lines.push('')

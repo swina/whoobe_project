@@ -138,6 +138,8 @@ cannot be lost** - see [secrets and keys](secrets-and-keys.md).
 | `LOG_LEVEL` | `info` | `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace`; can also be switched at run time (log toggle) |
 | `LOG_DIR` | `./logs` | where rotated files are written before upload to the DAM log folder |
 | `DATA_SUBJECT_RATE_LIMIT_PER_MINUTE` | `20` | core-api: data subject searches, exports and erasures per administrator per minute (each scans the objects); `0` = off. See [data subject requests](data-subject-requests.md) |
+| `CDN_ALLOW_HTTP` | `false` | core-api, asset-processor: accept an `http://` API address in the settings of the Cloudflare Images adapter (a Cloudflare-compatible endpoint on a network you trust, or a test); the address is `https` only otherwise. See [website publishing](../content/publishing/website-publishing.md) step 1b |
+| `CDN_CLOUDFLARE_API_BASE` | `https://api.cloudflare.com/client/v4` | core-api, asset-processor: the Cloudflare API address when a website's settings give none |
 | `OIDC_ALLOW_HTTP` | `false` | core-api: accept an `http://` address for the single sign-on provider in production (a provider on a network you trust); outside production http is always accepted. See [single sign-on](single-sign-on.md) |
 | `OIDC_START_RATE_LIMIT_PER_MINUTE` | `30` | core-api: how many times one client address may start a single sign-on per minute; `0` = off |
 | `METRICS_TOKEN` | unset | core-api: bearer token for `GET /metrics`; unset = the endpoint answers 404 (off). See [observability](observability-and-logging.md) |

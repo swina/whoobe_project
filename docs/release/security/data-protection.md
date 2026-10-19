@@ -58,7 +58,7 @@ The services set **one cookie, the staff session cookie `wcms_session`** (strict
 | Figma | file ids and tokens when importing designs | staff action | |
 | Push providers (self-hosted VAPID or OneSignal) | subscription endpoints and notification text | when a site sends a push | |
 | Gateway upstream APIs | the data an author binds or forwards (form fields, query values) | when a page with a binding or gateway form is used | defined by the author per endpoint |
-| CDN mirror (optional, Cloudinary preset) | copies of selected assets | when mirroring is switched on | |
+| CDN mirror (optional: Cloudinary through the Gateway, or Cloudflare Images with an API token) | copies of the images of the assets that are mirrored, and the Cloudflare account id | when mirroring is switched on, per website | the token is stored encrypted and never shown ([website publishing](../content/publishing/website-publishing.md), step 1b) |
 | YouTube / Vimeo embeds | the visitor's IP etc. | when the page with the embed loads | author's choice |
 
 There is no analytics, error-reporting or licence-check service in the product.

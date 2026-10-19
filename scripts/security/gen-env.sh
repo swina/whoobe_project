@@ -87,6 +87,8 @@ TOTP_ENCRYPTION_KEY=sectest-$(hex 16)
 
 # the staff OIDC login may talk to a provider over http (the tests' mock provider; a real one uses https)
 OIDC_ALLOW_HTTP=true
+# the CDN mirror may talk to a Cloudflare-compatible address over http (the tests' mock Cloudflare Images)
+CDN_ALLOW_HTTP=true
 OIDC_START_RATE_LIMIT_PER_MINUTE=1000
 DATA_SUBJECT_RATE_LIMIT_PER_MINUTE=1000
 

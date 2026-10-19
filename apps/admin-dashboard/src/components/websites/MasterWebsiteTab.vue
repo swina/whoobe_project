@@ -60,6 +60,11 @@
             <button type="submit" :disabled="saving" class="btn btn-primary">{{ saving ? 'Saving…' : 'Save' }}</button>
           </div>
         </form>
+
+        <!-- The CDN this website's images are mirrored to (its own, or the installation's default) -->
+        <div class="mt-8 max-w-3xl">
+          <CdnMirrorSettingsCard :key="websiteId" :website-id="websiteId" />
+        </div>
       </div>
       <div v-show="activeSubTab === 'paths'" class="h-full overflow-y-auto rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-4">
         <div v-if="pathsLoading && websitePaths.length === 0" class="text-xs text-slate-500 text-center py-4">Loading paths…</div>
@@ -149,6 +154,7 @@ import { fetchPages, type WhoobeOnePage } from '../../utils/pages-api'
 import { fetchWebsiteTemplates, type WebsiteTemplate } from '../../utils/website-templates-api'
 import { fetchThemes, type ThemeRecord } from '../../utils/themes-api'
 import MenuItemRow from '../settings/MenuItemRow.vue'
+import CdnMirrorSettingsCard from '../dam/CdnMirrorSettingsCard.vue'
 import PagePickerDrawer from './PagePickerDrawer.vue'
 import WebsiteTemplatesManager from './WebsiteTemplatesManager.vue'
 

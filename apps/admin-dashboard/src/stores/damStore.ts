@@ -589,7 +589,7 @@ async function uploadMultipleAssets(files: File[], folderPath?: string, isPublic
   // s3Key/url, so there's nothing else worth re-fetching.
   async function mirrorAssetToCdn(
     assetId: string,
-    options: { gatewayRouteId: string; uploadPreset?: string | null; provider?: string }
+    options: { websiteId?: string | null } = {}
   ): Promise<void> {
     const target = assets.value.find((a) => a.id === assetId)
     if (!target) throw new Error('Asset not found')
