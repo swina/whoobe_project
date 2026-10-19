@@ -19,6 +19,8 @@ Personal data of visitors is in: `data_objects` (a form submission is a draft ro
 
 ## Steps
 
+All five steps done 2026-10-19. The link between an object and the visitor's files is the object's own reference to the library asset (`{assetId}` in an upload field), not `form_uploads.submission_id`, which the real flow leaves empty; the first API run found it.
+
 1. Migration 0064, the permission, core: identifier handling, search, export, erase (with an injected "delete file" function), retention queries; unit and integration tests.
 2. asset-processor: the service token for `DELETE /api/v1/dam/asset`; core-api routes, the file-deleting function, the retention job and its schedule, audit rows, route contract, nginx prefix.
 3. API tests (a person removed from the demo data: object, file in the library, mail rows; the other person untouched; case and substring rules; dry run; confirmation; a file that cannot be deleted keeps its object; retention by class).

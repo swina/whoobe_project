@@ -94,7 +94,7 @@ paths:
   /auth/login:
     post:
       tags: ["core-api: Auth"]
-      summary: "Log in with email/password. Sets the session cookie, or returns `{ mfaRequired: true, mfaToken }` if 2FA is enabled."
+      summary: "Log in with email/password. Sets the session cookie, or returns `{ mfaRequired: true, mfaToken }` if 2FA is enabled, or `{ mfaEnrolmentRequired: true, enrolToken }` (no session) if the user's role requires 2FA and none is set up yet. With single sign-on set to \"administrators only\" it answers 403 to everybody else."
       requestBody:
         required: true
         content:
@@ -125,6 +125,46 @@ paths:
     post:
       tags: ["core-api: Auth"]
       summary: "Step 2 of a 2FA login: verify a TOTP code (or a recovery code) against a pending mfaToken and complete the session."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/mfa/enrol/setup:
+    post:
+      tags: ["core-api: Auth"]
+      summary: "Forced enrolment, step 1: with the `enrolToken` of the login, returns a TOTP secret + QR code. Public (the token stands in for the session; ten minutes, five wrong codes spend it)."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/mfa/enrol/verify:
+    post:
+      tags: ["core-api: Auth"]
+      summary: "Forced enrolment, step 2: a TOTP code with the `enrolToken` enables the factor, returns the recovery codes once and opens the session."
       requestBody:
         required: false
         content:
@@ -197,7 +237,7 @@ paths:
   /auth/mfa/disable:
     post:
       tags: ["core-api: Auth"]
-      summary: "Disable 2FA (requires re-entering the password)."
+      summary: "Disable 2FA (requires re-entering the password). `409` for a user whose role requires 2FA."
       requestBody:
         required: false
         content:
@@ -205,6 +245,58 @@ paths:
             schema:
               type: object
               description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/password-policy:
+    get:
+      tags: ["core-api: Auth"]
+      summary: "The minimum a new password must satisfy: `{ minLength, requireClasses }`. Public, no secret."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/oidc/config:
+    get:
+      tags: ["core-api: Auth"]
+      summary: "Whether single sign-on is on and the button text: `{ enabled, label, localLogin }`. Public; nothing else about the provider."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/oidc/login:
+    get:
+      tags: ["core-api: Auth"]
+      summary: "Starts the OpenID Connect sign-in: redirects to the provider (authorization code, PKCE S256, state, nonce) and sets a short `wcms_oidc` cookie. `404` when it is off."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /auth/oidc/callback:
+    get:
+      tags: ["core-api: Auth"]
+      summary: "The provider's redirect back. Checks the state and the browser's cookie, exchanges the code, verifies the ID token, opens the session and redirects to the dashboard, or to `/?sso_error=<code>`."
       responses:
         "200":
           description: OK
@@ -3690,6 +3782,170 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /security-settings:
+    get:
+      tags: ["core-api: Security settings and single sign-on (permission `settings:manage`)"]
+      summary: "`{ requireMfaRoleIds, passwordPolicy: { minLength, requireClasses }, mailLogRetentionDays, updatedAt, roles }`; `roles` lists every role for a picker. Defaults when never saved: no role required, length 8, no classes rule, the mail log kept."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: Security settings and single sign-on (permission `settings:manage`)"]
+      summary: "Change any of `requireMfaRoleIds` (role ids that must use 2FA), `passwordMinLength` (8 to 128), `passwordRequireClasses`, `mailLogRetentionDays` (1 to 36500 or `null`); only the keys sent change. Audited as `setting.security_update`."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /oidc-settings:
+    get:
+      tags: ["core-api: Security settings and single sign-on (permission `settings:manage`)"]
+      summary: "The single sign-on provider settings (issuer, client id, redirect and dashboard addresses, scopes, role claim and mapping, default roles, provisioning, linking, `localLogin`), `hasClientSecret` (the secret is never returned) and `roles` for the pickers. See docs/release/operations/single-sign-on.md."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: ["core-api: Security settings and single sign-on (permission `settings:manage`)"]
+      summary: "Change any of them; only the keys sent change; a blank `clientSecret` keeps the stored one, `clearClientSecret: true` removes it. Switching on needs issuer, client id and redirect address. Audited as `setting.oidc_update`."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /oidc-settings/test:
+    post:
+      tags: ["core-api: Security settings and single sign-on (permission `settings:manage`)"]
+      summary: "Reads the saved issuer's discovery document: `{ ok: true, authorizationEndpoint, tokenEndpoint }` or `{ ok: false, error }`."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-subject/search:
+    post:
+      tags: ["core-api: Data subject requests and retention (permission `data_subject:manage`; see docs/release/operations/data-subject-requests.md)"]
+      summary: "`{ identifier, classIds?, includeMailBodies? }`: what exists for one person (the identifier is matched whole and in any case): objects (class, key, date, the fields that hold it), files, mails and the staff accounts of the address. No values."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-subject/export:
+    post:
+      tags: ["core-api: Data subject requests and retention (permission `data_subject:manage`; see docs/release/operations/data-subject-requests.md)"]
+      summary: "The same selection with the records, as one JSON file (`Content-Disposition: attachment`, named after a fingerprint of the identifier); files are listed with their library path."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-subject/erase:
+    post:
+      tags: ["core-api: Data subject requests and retention (permission `data_subject:manage`; see docs/release/operations/data-subject-requests.md)"]
+      summary: "A **dry run** unless `dryRun: false`; a real run needs `confirm` equal to `identifier`. Deletes the files first, then the objects and the mails (`include: { objects, mail }` narrows it); answers the counts and `failures` (an object whose file could not be deleted stays). Staff accounts are never deleted."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /data-subject/retention/run:
+    post:
+      tags: ["core-api: Data subject requests and retention (permission `data_subject:manage`; see docs/release/operations/data-subject-requests.md)"]
+      summary: "Runs the retention job now: `{ classes: [{ classId, className, days, deleted, failed }], mailDeleted }`. The same job runs daily; `PATCH /data-classes/:id` with `retentionDays` (needs this permission) sets the days per class."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /docs-sites/{websiteId}/tree:
     get:
       tags: ["core-api: Documentation sites (Markdown)"]
@@ -4507,6 +4763,31 @@ paths:
             application/json:
               schema:
                 type: object
+  /health/live:
+    get:
+      tags: ["core-api: System"]
+      summary: "Liveness: the process is up, nothing else is asked (the Docker health check)."
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /metrics:
+    get:
+      tags: ["core-api: System"]
+      summary: "Prometheus metrics. `404` unless `METRICS_TOKEN` is set on the server, then `Authorization: Bearer <token>`. Not routed by the nginx template. See docs/release/operations/observability-and-logging.md."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /site-root:
     get:
       tags: ["core-api: System"]

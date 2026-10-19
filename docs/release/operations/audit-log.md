@@ -28,7 +28,9 @@ changed nothing (deleting something that is not there, a dry run of an import) l
 | Users | `user.create`, `user.update` (name, e-mail, active, roles), `user.delete`, `user.reset_password` |
 | Roles | `role.create`, `role.update` (name, description, permission keys), `role.delete` |
 | Websites | `website.create`, `website.update`, `website.delete`, `website.import`, `website.create_from_ai`, `website.theme_create`, `website.theme_update`, `website.theme_delete`, `website.theme_set`, `website.upload_settings`, `website.pwa_generate`, `website.api_key_regenerate`, `website.api_key_clear`, `website_path.create`, `website_path.update`, `website_path.delete` |
-| Settings | `setting.update` (autosave, logging, HTML comment stripping, placeholder image, Alpine presets, CDN mirror; the key is the target), `setting.mail_update`, `setting.mail_remove`, `setting.figma_update` |
+| Settings | `setting.update` (autosave, logging, HTML comment stripping, placeholder image, Alpine presets, CDN mirror; the key is the target), `setting.mail_update`, `setting.mail_remove`, `setting.figma_update`, `setting.security_update` (mandatory 2FA, password policy, mail log retention), `setting.oidc_update` (single sign-on; the client secret is "changed") |
+| Single sign-on | `user.sso_provision`, `user.sso_link`, `user.sso_roles` (actor "Single sign-on") |
+| Personal data | `data_subject.search`, `data_subject.export`, `data_subject.erase` (a fingerprint of the identifier and the counts, **never the identifier**), `data_class.retention_update`, `retention.purge` (the classes and the counts) |
 | Publication | `website.publish` (a site generation was queued: framework, slug, domain; whether a site key was given, never the key), `website.publish_cancel` |
 | Integrations | `migration_source.create`, `.update`, `.delete`, `.import_classes`, `.import_objects`, `.import_documents`, `.promote_documents`, `.extract_components`; `object_event_subscription.create`, `.update`, `.delete` |
 | The log itself | `audit.purge` (written by the retention job with the number of rows removed) |
