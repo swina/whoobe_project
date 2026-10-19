@@ -37,6 +37,7 @@ export const CDN_PROVIDERS: CdnProviderInfo[] = [
       { name: 'accountId', label: 'Account ID', required: true, placeholder: '32 hexadecimal characters', help: 'Cloudflare dashboard > Images, or the account overview' },
       { name: 'apiToken', label: 'API token', required: true, secret: true, help: 'A token with the permission "Cloudflare Images: Edit"; stored encrypted, never shown again' },
       { name: 'variant', label: 'Delivery variant', placeholder: 'public', help: 'The variant of Cloudflare Images the URL points to (default "public")' },
+      { name: 'apiBase', label: 'API address (advanced)', placeholder: 'https://api.cloudflare.com/client/v4', help: 'Leave empty for Cloudflare. Only for a Cloudflare-compatible endpoint; the token is sent to it' },
     ],
   },
 ];
@@ -59,7 +60,7 @@ export type CdnSettingsValidation =
   | { ok: false; error: string };
 
 /** Checks what the form sends: the provider is known, each field is of its kind. A blank secret means "keep the stored one" (returned as absent). */
-export function validateCdnSettings(input: CdnSettingsInput): CdnSettingsValidation {
+export function validateCdnSettings(input: CdnSettingsInput, env: NodeJS.ProcessEnv = process.env): CdnSettingsValidation {
   const info = typeof input.provider === 'string' ? getCdnProvider(input.provider) : undefined;
   if (!info) return { ok: false, error: `provider must be one of: ${cdnProviderIds().join(', ')}` };
   const rawConfig = input.config && typeof input.config === 'object' && !Array.isArray(input.config) ? (input.config as Record<string, unknown>) : {};
@@ -80,6 +81,12 @@ export function validateCdnSettings(input: CdnSettingsInput): CdnSettingsValidat
   if (info.id === 'cloudflare-images') {
     if (config.accountId && !HEX32.test(config.accountId)) return { ok: false, error: 'accountId must be 32 hexadecimal characters (the Cloudflare account id)' };
     if (config.variant && !VARIANT.test(config.variant)) return { ok: false, error: 'variant may contain letters, digits, - and _ (up to 99 characters)' };
+    if (config.apiBase) {
+      let u: URL | null = null;
+      try { u = new URL(config.apiBase); } catch { /* refused below */ }
+      const okScheme = u && (u.protocol === 'https:' || (u.protocol === 'http:' && env.CDN_ALLOW_HTTP === 'true'));
+      if (!u || !okScheme || u.username || u.password || u.hash || u.search) return { ok: false, error: `apiBase must be an https address without credentials, query or fragment${env.CDN_ALLOW_HTTP === 'true' ? '' : ' (http needs CDN_ALLOW_HTTP=true on the server)'}` };
+    }
   }
   return { ok: true, provider: info.id, config, secrets };
 }

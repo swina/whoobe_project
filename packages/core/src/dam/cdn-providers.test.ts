@@ -25,6 +25,11 @@ describe('settings of a provider', () => {
     // a token sent as config is not taken: it is not a config field
     expect(validateCdnSettings({ provider: 'cloudflare-images', config: { accountId: ACCOUNT, apiToken: 'leak' } })).toMatchObject({ ok: true, config: { accountId: ACCOUNT }, secrets: {} });
     expect(validateCdnSettings({ provider: 'x' })).toMatchObject({ ok: false });
+    // an API address: https only, no credentials; http only when the server allows it
+    const base = (apiBase: string, env: NodeJS.ProcessEnv = {}) => validateCdnSettings({ provider: 'cloudflare-images', config: { accountId: ACCOUNT, apiBase } }, env).ok;
+    expect(base('https://cf.example.com/client/v4')).toBe(true);
+    for (const bad of ['http://cf.example.com', 'ftp://x', 'https://u:p@x.com', 'https://x.com/?a=1', 'nope']) expect(base(bad), bad).toBe(false);
+    expect(base('http://10.0.0.5:8080/client/v4', { CDN_ALLOW_HTTP: 'true' })).toBe(true);
     expect(validateCdnSettings({ provider: 'cloudflare-images', config: { accountId: 5 } })).toMatchObject({ ok: false });
   });
   it('says what is still missing', () => {

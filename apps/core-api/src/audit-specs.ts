@@ -80,6 +80,8 @@ const loadCdn = async (req: P): Promise<CdnEntity | null> => {
   const own = await getOwnCdnMirror(cdnScopeId(req));
   return own ? (publicCdnMirror(own) as unknown as CdnEntity) : null;
 };
+// the FIRST save of a website's settings is an update of "nothing": an empty before, or the guard would drop the row (an update of what was not there changes nothing)
+const loadCdnBefore = async (req: P): Promise<CdnEntity | null> => (await loadCdn(req)) ?? { provider: null, config: {}, secretsSet: {} };
 // "secretsSet" lists the NAMES of the stored credentials with true / false, never a value
 const cdnSnapshot = (c: CdnEntity) => pickAllowed(c, ['provider', 'config', 'secretsSet']);
 
@@ -160,7 +162,7 @@ export const AUDIT: Readonly<Record<string, AuditSpec<any>>> = {
   settingAutosave: settingChange('setting.update', 'autosave'),
   // presets hold directive code: their names are shown, the code is a fingerprint
   settingAlpinePresets: settingChange('setting.update', 'alpinePresets', (v) => ({ names: Array.isArray(v) ? v.map((p: any) => p?.name ?? null) : [], content: fp(v) })),
-  cdnMirrorUpdate: { action: 'setting.cdn_mirror_update', kind: 'update', targetType: 'setting', snapshot: cdnSnapshot, loadBefore: loadCdn, loadAfter: loadCdn, targetId: (r: P) => `cdn_mirror:${cdnScopeId(r) ?? 'default'}`, targetLabel: () => 'CDN mirroring',
+  cdnMirrorUpdate: { action: 'setting.cdn_mirror_update', kind: 'update', targetType: 'setting', snapshot: cdnSnapshot, loadBefore: loadCdnBefore, loadAfter: loadCdn, targetId: (r: P) => `cdn_mirror:${cdnScopeId(r) ?? 'default'}`, targetLabel: () => 'CDN mirroring',
     // a token in the request is a change the snapshot (which says only whether one is set) cannot show
     secretsFromBody: (b: any) => (b?.secrets?.apiToken ? ['secrets.apiToken'] : []) } satisfies AuditSpec<CdnEntity>,
   cdnMirrorRemove: { action: 'setting.cdn_mirror_remove', kind: 'delete', targetType: 'setting', snapshot: cdnSnapshot, loadBefore: loadCdn, targetId: (r: P) => `cdn_mirror:${cdnScopeId(r) ?? 'default'}`, targetLabel: () => 'CDN mirroring' } satisfies AuditSpec<CdnEntity>,

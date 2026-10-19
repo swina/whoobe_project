@@ -3036,6 +3036,7 @@ app.post('/whoobe-one/settings/cdn-mirror/test', requirePermission(PERMISSIONS.S
     }
     if (resolved.provider === 'cloudflare-images') {
       res.json(await testCloudflareImages(resolved.config.accountId, resolved.secrets.apiToken, {
+        apiBase: resolved.config.apiBase || undefined,
         fetch: async (url, init) => {
           const r = await safeFetch(url, { method: init.method, headers: init.headers, body: init.body }, { maxBytes: 256 * 1024, timeoutMs: 15_000 });
           return { status: r.status, json: () => r.json() };

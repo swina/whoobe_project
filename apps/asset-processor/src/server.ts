@@ -1037,6 +1037,7 @@ app.post('/api/v1/dam/assets/:id/mirror-cdn', requirePermission(PERMISSIONS.ASSE
       result = await mirrorToCloudflareImages(
         { accountId: config.accountId, apiToken: secrets.apiToken, variant: config.variant, assetId: asset.id, filename: asset.filename, mimeType: asset.mimeType, bytes },
         {
+          apiBase: config.apiBase || undefined,
           fetch: async (url, init) => {
             const r = await safeFetch(url, { method: init.method, headers: init.headers, body: init.body }, { maxBytes: 256 * 1024, timeoutMs: 60_000 });
             return { status: r.status, json: () => r.json() };
@@ -1096,7 +1097,9 @@ app.post('/api/v1/dam/assets/:id/mirror-cdn', requirePermission(PERMISSIONS.ASSE
   } catch (error: any) {
     if (error instanceof CdnMirrorError) {
       logger.warn({ err: error.message, status: error.status }, 'CDN mirror refused');
-      res.status(error.status).json({ error: error.message, detail: error.detail });
+      // a 5xx has its `error` text replaced in production (sanitizeServerErrors): the provider's own words travel in `detail`, as for Cloudinary
+      if (error.status >= 500) res.status(error.status).json({ error: 'CDN mirror upload failed', detail: error.message });
+      else res.status(error.status).json({ error: error.message, detail: error.detail });
       return;
     }
     logger.error({ err: error }, 'CDN mirror error');
