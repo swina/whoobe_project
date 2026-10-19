@@ -9,8 +9,6 @@ Where to change what, in the dashboard. Each card is protected by the permission
 | **General** | The default placeholder image for new image elements (a library asset); the default autosave interval of the editor (people can override it for their own session); whether HTML comments are stripped in the page preview; **system logging** on or off for the three backends (takes effect within about 30 seconds, no restart) |
 | **DAM** | The media-library backend as the services see it (processor address, bucket, endpoint, key prefix, public base URL or CDN; the bucket credentials are server-side only) and the **folder visibility rules** (which folders are public and which private); see [asset management](../dam/asset-management.md) |
 | **Classes** | *Classes*: define Data Classes and their fields, view and list layouts ([data model](../data/data-model.md)); *Pimcore*: sources for importing classes, objects and documents from a Pimcore installation (credentials stored encrypted); *File*: placeholder for CSV, JSON and XLSX import, not implemented |
-| **Roles** | *Users*: create, edit, deactivate, reset the password of an account; *Roles*: create roles and choose their permissions. Four roles exist by default (`admin`, `editor`, `viewer`, `publisher`) |
-| **Security** | Your own **two-factor authentication** (TOTP), with recovery codes |
 | **Workflows** | The workflow of a Data Class: places, transitions, who may trigger them, whether a transition publishes ([data model](../data/data-model.md), section 5) |
 | **Figma** | The Figma access token used by the Figma import *(beta)*; the token is stored encrypted |
 | **PWA** | Per website: the app settings, the **push notification provider** (self-hosted with automatically generated VAPID keys, or a provider such as OneSignal) and a **preview of the generated mobile app** |
@@ -39,7 +37,7 @@ Configured in their own entries, not under *Settings*: *Integrations* (endpoints
 
 ## 6. System logs
 
-*System Logs* shows the logs of the services and keeps files in the media store; the logging switch is in *Settings > General*
+*Security > System Logs* shows the logs of the services and keeps files in the media store; the logging switch is in *Settings > General*
 ([observability](../operations/observability-and-logging.md)).
 
 ## 7. What is not a dashboard setting
@@ -65,3 +63,17 @@ workspaces get their own generated `.env` file ([creating workspaces](../operati
 
 Permissions are checked per route on the server; the dashboard hides what a person cannot use, but hiding is not the control
 ([authentication and authorization](../architecture/authentication-and-authorization.md)).
+
+## 8. Security (sidebar entry)
+
+The pages about who may sign in and what they may do moved out of Settings into their own entry, **Security**. Each page is shown by permission.
+
+| Page | What it is | Permission |
+|---|---|---|
+| **Roles/Users/Workspaces** | *Users*: create, edit, deactivate, reset the password of an account; *Roles*: create roles and choose their permissions. Four roles exist by default (`admin`, `editor`, `viewer`, `publisher`) | `users:manage` |
+| **Two-Factor Authentication** | Your own two-factor authentication (TOTP), with recovery codes | everybody |
+| **Sign-in Requirements** | Which roles must use two-factor authentication, and the minimum password length and rules ([authentication](../architecture/authentication-and-authorization.md)) | `settings:manage` |
+| **SSO** | Sign in with your identity provider ([single sign-on](../operations/single-sign-on.md)) | `settings:manage` |
+| **Data Subject Requests** | Find, export or erase everything held about one person, and the retention periods ([procedure](../operations/data-subject-requests.md)) | `data_subject:manage` |
+| **System Logs** | The logs of the services | everybody |
+| **Audit Logs** | Who changed what, and when ([audit log](../operations/audit-log.md)); also the shield in the top bar | `audit:read` |

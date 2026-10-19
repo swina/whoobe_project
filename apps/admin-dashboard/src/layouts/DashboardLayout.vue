@@ -137,6 +137,17 @@
                 <ChevronRight v-else class="w-4 h-4 text-slate-500" />
               </button>
 
+              <!-- Expand/Collapse Security Submenu Toggle -->
+              <button
+                v-if="row.item.section === 'security' && !isSidebarCollapsed"
+                @click.stop="isSecurityMenuExpanded = !isSecurityMenuExpanded"
+                class="p-1 rounded text-slate-400 light:text-slate-600 hover:text-white hover:bg-slate-700/60 light:bg-slate-200/60 transition ml-1 shrink-0"
+                title="Toggle Security Menu"
+              >
+                <ChevronDown v-if="isSecurityMenuExpanded" class="w-4 h-4 text-indigo-400" />
+                <ChevronRight v-else class="w-4 h-4 text-slate-500" />
+              </button>
+
               <!-- Tooltip on collapsed state -->
               <div
                 v-if="isSidebarCollapsed && !hasNavChildren(row.item.section)"
@@ -208,6 +219,27 @@
                 :class="[
                   'w-full flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none text-left',
                   isSettingsSubSectionActive(sub.key)
+                    ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
+                    : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
+                ]"
+              >
+                <component :is="sub.icon" class="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                <span class="truncate flex-1">{{ sub.name }}</span>
+              </button>
+            </div>
+
+            <!-- Security Submenu: who may sign in and do what, what is held about people, what happened -->
+            <div
+              v-if="row.item.section === 'security' && isSecurityMenuExpanded && !isSidebarCollapsed"
+              class="ml-3 pl-2.5 border-l border-slate-800/80 light:border-slate-200/80 space-y-1 py-1"
+            >
+              <button
+                v-for="sub in securitySubItems" :key="sub.key"
+                @click="tabsStore.openSecuritySubSection(sub.key)"
+                :data-testid="`nav-security-${sub.key}`"
+                :class="[
+                  'w-full flex items-center px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition select-none text-left',
+                  isSecuritySubSectionActive(sub.key)
                     ? 'bg-indigo-600/30 text-indigo-200 light:text-indigo-700 border border-indigo-500/40 font-bold shadow-sm'
                     : 'text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/40 light:bg-slate-100/40'
                 ]"
@@ -380,7 +412,7 @@
             aria-label="Audit log"
             data-testid="header-audit-log"
             class="p-2 rounded-lg text-slate-400 light:text-slate-600 hover:text-slate-200 light:text-slate-800 hover:bg-slate-800/60 light:bg-slate-100/60 transition"
-            @click="tabsStore.openSection('audit-log')"
+            @click="tabsStore.openSecuritySubSection('audit-log')"
           >
             <ShieldCheck class="w-5 h-5" />
           </button>
@@ -590,7 +622,8 @@ import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
 import { useDataClassesStore } from '../stores/dataClassesStore'
 import { useThemeStore } from '../stores/themeStore'
-import { useTabsStore, sectionTabId, SectionKind, MainTab, SettingsSubSection, AiSubSection } from '../stores/tabsStore'
+import { useTabsStore, sectionTabId, SectionKind, MainTab, SettingsSubSection, SecuritySubSection, AiSubSection } from '../stores/tabsStore'
+import { securityNavItem, visibleSecurityNav } from '../utils/security-nav'
 import { useToastStore } from '../stores/toastStore'
 import { useAuthStore } from '../stores/authStore'
 import { getDefaultCoreApiUrl } from '../utils/auth-api'
@@ -620,13 +653,12 @@ import ComponentsView from '../views/ComponentsView.vue'
 import MailSettingsView from '../views/MailSettingsView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import AiView from '../views/AiView.vue'
-import SystemLogsView from '../views/SystemLogsView.vue'
+import SecurityView from '../views/SecurityView.vue'
 import ThemesView from '../components/themes/ThemesView.vue'
 import GatewayEndpointsView from '../views/GatewayEndpointsView.vue'
 import GatewayPluginsView from '../views/GatewayPluginsView.vue'
 import AutomationsView from '../views/AutomationsView.vue'
 import ObjectEventsView from '../views/ObjectEventsView.vue'
-import AuditLogView from '../views/AuditLogView.vue'
 import DataBindingsView from '../views/DataBindingsView.vue'
 import ApiClientsView from '../views/ApiClientsView.vue'
 import { usePagesStore } from '../stores/pagesStore'
@@ -821,6 +853,7 @@ const isSidebarCollapsed = ref(false)
 const isObjectsTreeExpanded = ref(true)
 const isAssetsTreeExpanded = ref(true)
 const isSettingsMenuExpanded = ref(true)
+const isSecurityMenuExpanded = ref(true)
 const isAiMenuExpanded = ref(true)
 
 // Flat vs grouped-by-category sidebar layout. Per-browser preference, not a
@@ -863,8 +896,6 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'general', name: 'General settings', icon: Sliders },
   { key: 'dam', name: 'DAM configuration', icon: HardDrive },
   { key: 'classes', name: 'Data Object classes', icon: Database },
-  { key: 'roles', name: 'Roles/Users/Workspaces', icon: Users },
-  { key: 'security', name: 'Security', icon: Shield },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'figma', name: 'Figma', icon: Palette },
   { key: 'pwa', name: 'Mobile App', icon: Smartphone },
@@ -875,8 +906,6 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   general: 'General settings',
   dam: 'DAM configuration',
   classes: 'Data Object classes',
-  roles: 'Roles/Users/Workspaces',
-  security: 'Security',
   workflows: 'Workflows',
   figma: 'Figma',
   pwa: 'Mobile App',
@@ -892,6 +921,12 @@ const aiSubItems: { key: AiSubSection; name: string; icon: any }[] = [
 function isAiSubSectionActive(key: AiSubSection): boolean {
   const tab = tabsStore.tabs.find((t) => t.id === sectionTabId('ai'))
   return isSectionActive('ai') && (tab?.aiSubSection ?? 'text') === key
+}
+
+const securitySubItems = computed(() => visibleSecurityNav((p) => authStore.can(p)))
+function isSecuritySubSectionActive(key: SecuritySubSection): boolean {
+  const tab = tabsStore.tabs.find((t) => t.id === sectionTabId('security'))
+  return isSectionActive('security') && (tab?.securitySubSection ?? 'two-factor') === key
 }
 
 function isSettingsSubSectionActive(key: SettingsSubSection): boolean {
@@ -923,15 +958,13 @@ const allNavItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Documents', section: 'documents', icon: FileText },
   { name: 'AI', section: 'ai', icon: Sparkles },
   { name: 'Settings', section: 'settings', icon: Settings },
-  { name: 'System Logs', section: 'system-logs', icon: ScrollText },
-  { name: 'Audit log', section: 'audit-log', icon: ShieldCheck }
+  { name: 'Security', section: 'security', icon: Shield }
 ]
 
 // Object events are managed by administrators only (`object_events:manage`): the entry is not offered to anyone else.
-// The audit log is read with its own permission (`audit:read`), which `users:manage` does not carry.
+// Security is open to everybody (two-factor authentication is personal); each of its pages is shown by its own permission (utils/security-nav.ts).
 const navItems = computed(() => allNavItems.filter((item) =>
-  (item.section !== 'object-events' || authStore.can('object_events:manage')) &&
-  (item.section !== 'audit-log' || authStore.can('audit:read'))))
+  item.section !== 'object-events' || authStore.can('object_events:manage')))
 
 // Grouped-view categories for the sidebar toggle above. Assets stays its
 // own group (rather than folded into Content) since it already carries
@@ -961,10 +994,9 @@ const sectionGroup: Partial<Record<SectionKind, NavGroupId>> = {
   'data-bindings': 'data',
   automations: 'data',
   'object-events': 'data',
-  'system-logs': 'system',
-  'audit-log': 'system',
   ai: 'system',
-  settings: 'system'
+  settings: 'system',
+  security: 'system'
 }
 
 type NavRow =
@@ -1011,8 +1043,7 @@ const sectionComponents: Record<SectionKind, any> = {
   'data-bindings': DataBindingsView,
   automations: AutomationsView,
   'object-events': ObjectEventsView,
-  'system-logs': SystemLogsView,
-  'audit-log': AuditLogView,
+  security: SecurityView,
 }
 
 const sectionLabels: Record<SectionKind, string> = {
@@ -1033,9 +1064,8 @@ const sectionLabels: Record<SectionKind, string> = {
   'data-bindings': 'Data bindings',
   automations: 'Automations',
   'object-events': 'Object events',
-  'system-logs': 'System Logs',
-  'audit-log': 'Audit log',
   ai: 'AI',
+  security: 'Security',
   settings: 'Settings'
 }
 
@@ -1057,8 +1087,7 @@ const sectionIcons: Record<SectionKind, any> = {
   'data-bindings': Link2,
   automations: Zap,
   'object-events': Radio,
-  'system-logs': ScrollText,
-  'audit-log': ShieldCheck,
+  security: Shield,
   ai: Sparkles,
   settings: Settings
 }
@@ -1083,6 +1112,9 @@ function tabLabel(tab: MainTab): string {
     }
     if (tab.section === 'settings' && tab.settingsSubSection) {
       return `Settings ‣ ${settingsSubLabels[tab.settingsSubSection]}`
+    }
+    if (tab.section === 'security' && tab.securitySubSection) {
+      return `Security ‣ ${securityNavItem(tab.securitySubSection)?.name ?? ''}`
     }
     return sectionLabels[tab.section]
   }
@@ -1216,6 +1248,9 @@ function navChildren(section: SectionKind): NavChild[] | null {
   }
   if (section === 'settings') {
     return settingsSubItems.map((i) => ({ key: `settings-${i.key}`, label: i.name, icon: i.icon, depth: 0, active: isSettingsSubSectionActive(i.key), run: () => tabsStore.openSettingsSubSection(i.key) }))
+  }
+  if (section === 'security') {
+    return securitySubItems.value.map((i) => ({ key: `security-${i.key}`, label: i.name, icon: i.icon, depth: 0, active: isSecuritySubSectionActive(i.key), run: () => tabsStore.openSecuritySubSection(i.key) }))
   }
   if (section === 'ai') {
     return aiSubItems.map((i) => ({ key: `ai-${i.key}`, label: i.name, icon: i.icon, depth: 0, active: isAiSubSectionActive(i.key), run: () => tabsStore.openAiSubSection(i.key) }))

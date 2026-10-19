@@ -54,7 +54,7 @@ A safety net hides, whatever the caller passes, any value whose key looks like a
 ## 2. Reading it
 
 Permission **`audit:read`**, given to the `admin` role. It is separate from `users:manage` on purpose: an auditor can read the log without
-being able to change users or roles. Add it to a custom role in *Settings > Roles*.
+being able to change users or roles. Add it to a custom role in *Security > Roles/Users/Workspaces*.
 
 ```bash
 # the latest entries, then everything a person did, then one object's history, then a file for a spreadsheet

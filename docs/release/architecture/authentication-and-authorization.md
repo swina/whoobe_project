@@ -23,7 +23,7 @@ administers Whoobe uses a user account (and therefore a session).
 ## 2. Users and passwords
 
 - Password hashing: **argon2id** (`argon2` package defaults). A **password policy** applies where a password is set (user creation, reset), never to a login and never to
-  existing passwords: minimum length (default 8, up to 128, Settings > Security), optionally at least three of lowercase,
+  existing passwords: minimum length (default 8, up to 128, Security > Sign-in Requirements), optionally at least three of lowercase,
   uppercase, digit and symbol, and never the e-mail address or its local part. `GET /auth/password-policy` (public, no
   secret) says what it is. There is no breach-list or rotation rule.
 - First administrator: created at the first start from `SEED_ADMIN_EMAIL`; with no `SEED_ADMIN_PASSWORD` a random
@@ -58,7 +58,7 @@ administers Whoobe uses a user account (and therefore a session).
 - A login with MFA returns a short-lived `mfaToken` instead of a session; five wrong codes spend the token; ten failures per
   account lock further attempts for 15 minutes; a code already used is rejected for two minutes (replay); disabling MFA
   needs the password again (five failures lock for 15 minutes).
-- **Mandatory for roles** (Settings > Security > Sign-in requirements, `GET` / `PUT /security-settings`, permission
+- **Mandatory for roles** (Security > Sign-in Requirements, `GET` / `PUT /security-settings`, permission
   `settings:manage`, audited). Empty by default: an upgrade changes nothing. A user holding one of the chosen roles who has
   no second factor signs in with the password and gets `{ mfaEnrolmentRequired, enrolToken }` **instead of a session**; the
   dashboard shows the QR code, `POST /auth/mfa/enrol/verify` proves the code, enables the factor, returns the recovery codes
@@ -73,7 +73,7 @@ administers Whoobe uses a user account (and therefore a session).
 
 ## 4b. Single sign-on (OpenID Connect)
 
-Settings > Security > Single sign-on, `GET` / `PUT /oidc-settings` (`settings:manage`, audited). One provider per installation. How to set it up for
+Security > SSO, `GET` / `PUT /oidc-settings` (`settings:manage`, audited). One provider per installation. How to set it up for
 Keycloak, Entra, Okta and Google: [single sign-on](../operations/single-sign-on.md). The design and its decisions: `docs/plans/system/oidc-login-plan.md`.
 
 - **Flow:** authorization code with PKCE (S256). `GET /auth/oidc/login` keeps `state`, `nonce` and the verifier in memory for ten minutes and

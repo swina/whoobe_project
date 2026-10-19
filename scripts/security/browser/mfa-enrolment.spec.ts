@@ -1,6 +1,6 @@
 // Forced second factor (docs/plans/system/mandatory-2fa-plan.md): a user of a required role signs in with the password, is led to
 // enrolment (QR code and key), gets no dashboard until the code is right, sees the recovery codes once, and then is in.
-// Settings > Security > Sign-in requirements is where an administrator turns it on.
+// Security > Sign-in requirements is where an administrator turns it on.
 import { randomBytes } from 'node:crypto'
 import { test, expect, ADMIN_URL } from './fixtures'
 import { ROLE_USER_PASSWORD } from '../lib/config'
@@ -50,15 +50,15 @@ test('the enrolment step stands between the password and the dashboard', async (
   }
 })
 
-test('an administrator sets the requirement and the password policy from Settings > Security', async ({ api, authed, tag }) => {
+test('an administrator sets the requirement and the password policy from Security', async ({ api, authed, tag }) => {
   const role = await api.post('/auth/roles', { name: `ui-mfa-set-${tag}`, permissionKeys: [] })
   expect(role.status).toBe(201)
   try {
     const p = await authed.newPage()
     await p.goto(`${ADMIN_URL}/`)
-    await p.getByTestId('nav-item-settings').click()
-    await p.getByRole('button', { name: 'Security', exact: true }).first().click()
-    await expect(p.getByText('Sign-in requirements')).toBeVisible({ timeout: 15_000 })
+    await p.getByTestId('nav-item-security').click()
+    await p.getByTestId('nav-security-sign-in').click()
+    await expect(p.getByTestId('security-view').locator('h3', { hasText: 'Sign-in requirements' })).toBeVisible({ timeout: 15_000 })
     await p.getByLabel(`ui-mfa-set-${tag}`).check()
     await p.locator('input[type=number]').fill('14')
     await p.getByRole('button', { name: 'Save' }).click()

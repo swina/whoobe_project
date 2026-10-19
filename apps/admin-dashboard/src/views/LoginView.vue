@@ -52,7 +52,7 @@
         </p>
       </form>
 
-      <!-- Single sign-on, when an administrator has set it up (Settings > Security). A full page navigation: the provider answers with a redirect. -->
+      <!-- Single sign-on, when an administrator has set it up (Security > SSO). A full page navigation: the provider answers with a redirect. -->
       <div v-if="step === 'credentials' && sso?.enabled" class="space-y-2">
         <div v-if="ssoError" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs" data-testid="sso-error">{{ ssoError }}</div>
         <a :href="oidcLoginUrl(authStore.config.coreApiUrl)" class="btn btn-secondary w-full flex items-center justify-center gap-2" data-testid="sso-button">

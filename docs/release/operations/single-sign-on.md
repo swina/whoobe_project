@@ -18,7 +18,7 @@ Take the **client ID** and, if the provider issued one, the **client secret**.
 
 ## 2. Settings in the dashboard
 
-Settings > Security > *Single sign-on* (permission `settings:manage`; the change is in the [audit log](audit-log.md)).
+Security > *SSO* (permission `settings:manage`; the change is in the [audit log](audit-log.md)).
 
 1. Issuer address, client ID, client secret (stored encrypted with `INTEGRATION_SECRETS_ENCRYPTION_KEY`; it is never shown again, only "set").
 2. *Address the provider calls back*: the public address of core-api. Behind the standard nginx this is the dashboard's address; the redirect URI shown below the field is what you register at the provider.

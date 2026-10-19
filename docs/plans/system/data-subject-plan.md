@@ -24,5 +24,5 @@ All five steps done 2026-10-19. The link between an object and the visitor's fil
 1. Migration 0064, the permission, core: identifier handling, search, export, erase (with an injected "delete file" function), retention queries; unit and integration tests.
 2. asset-processor: the service token for `DELETE /api/v1/dam/asset`; core-api routes, the file-deleting function, the retention job and its schedule, audit rows, route contract, nginx prefix.
 3. API tests (a person removed from the demo data: object, file in the library, mail rows; the other person untouched; case and substring rules; dry run; confirmation; a file that cannot be deleted keeps its object; retention by class).
-4. Dashboard: Settings > Security > *Data subject requests* (search, export, erase with the typed confirmation, the result per category), the retention fields (class settings, mail log).
+4. Dashboard: Security > *Data Subject Requests* (search, export, erase with the typed confirmation, the result per category), the retention fields (class settings, mail log).
 5. Docs: a procedure page, the data-protection page (sections 2, 5, 6, 8) and the overview chapter 4.5 rewritten, configuration, API reference, CHANGES.

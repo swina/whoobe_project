@@ -84,7 +84,7 @@ enforces the visibility rules. With an external S3, check that the bucket itself
 | Data | Kept | Removed by |
 |---|---|---|
 | Sessions | 7 days from login (fixed, not extended by activity); revoked on logout and on password change or reset | expired and revoked rows are deleted a week later (core-api, at start and every six hours) |
-| `mail_log` | forever unless a number is set in Settings > Security (`mailLogRetentionDays`) | the retention job (daily), or an administrator from Settings > Mail > Log (by filter), or a data subject request |
+| `mail_log` | forever unless a number is set in Security > Data Subject Requests (`mailLogRetentionDays`) | the retention job (daily), or an administrator from Settings > Mail > Log (by filter), or a data subject request |
 | `workflow_transition_log`, `content_versions` | forever | with the object or page |
 | Form submissions | as data objects (unpublished drafts) until deleted; **per class** `retentionDays` can be set | an editor; the retention job (daily); a data subject request. The files the visitor sent are deleted from the library with the object |
 | Form-upload rows | `form_uploads` rows stay (status `attached`, `rejected`, `expired`) | the row of an attached file goes with its object (erasure, retention); the others have no purge |

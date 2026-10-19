@@ -17,8 +17,8 @@ test('an administrator searches, exports, erases a person and sets a retention',
 
     const p = await authed.newPage()
     await p.goto(`${ADMIN_URL}/`)
-    await p.getByTestId('nav-item-settings').click()
-    await p.getByRole('button', { name: 'Security', exact: true }).first().click()
+    await p.getByTestId('nav-item-security').click()
+    await p.getByTestId('nav-security-data-subject').click()
     const card = p.getByTestId('dsr-card')
     await expect(card).toBeVisible({ timeout: 15_000 })
 

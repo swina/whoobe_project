@@ -67,7 +67,7 @@ There is no analytics, error-reporting or licence-check service in the product.
 
 | Request | How | Gap |
 |---|---|---|
-| **Access / portability** (visitor) | Settings > Security > *Data subject requests*: search by e-mail across the objects, the files they sent and the mail log, then *Download everything as JSON* ([procedure](../operations/data-subject-requests.md)); the files are listed with their library path | matching is by the whole value (not inside a longer text of a field); sessions and logs are not searched; a person with two addresses needs two requests |
+| **Access / portability** (visitor) | Security > *Data Subject Requests*: search by e-mail across the objects, the files they sent and the mail log, then *Download everything as JSON* ([procedure](../operations/data-subject-requests.md)); the files are listed with their library path | matching is by the whole value (not inside a longer text of a field); sessions and logs are not searched; a person with two addresses needs two requests |
 | **Rectification** | edit the data object | |
 | **Erasure** (visitor) | the same card: *Erase...* deletes the matched objects, **the files they uploaded (from the library, first)** and the mail log rows, after the address is typed again; the request is audited with a fingerprint, never the address. Push subscription rows: by database statement (an endpoint is not an address) | backups keep the data until they expire and bring it back on restore; logs on disk keep addresses and user ids; deleting a data object by hand (not through a request) still leaves the file the visitor uploaded in the library |
 | **Erasure** (staff user) | delete or deactivate the user; sessions of the user can be removed by SQL | page versions and workflow log keep the user id |
@@ -96,5 +96,5 @@ on installations without `INTEGRATION_SECRETS_ENCRYPTION_KEY`, **clear-text AI/F
 3. Switch on form uploads only where needed, keep the folder private, define who opens the files.
 4. Configure disk or database encryption and the encrypted backup with offsite copy.
 5. Set the retention periods (a number per class that collects submissions, and for the mail log; logs on disk are yours) and adopt the [data subject request procedure](../operations/data-subject-requests.md).
-6. Decide whether MFA is required for staff: it can be made mandatory for chosen roles (Settings > Security), or enforced at your identity provider with [single sign-on](../operations/single-sign-on.md).
+6. Decide whether MFA is required for staff: it can be made mandatory for chosen roles (Security > Sign-in Requirements), or enforced at your identity provider with [single sign-on](../operations/single-sign-on.md).
 7. Keep this document and [`findings.md`](findings.md) with the DPIA: open item F-058 is relevant.

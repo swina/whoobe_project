@@ -73,11 +73,11 @@ test('there is no button while single sign-on is off', async ({ browser }) => {
   await ctx.close()
 })
 
-test('an administrator sets it up from Settings > Security and tests the address', async ({ api, authed }) => {
+test('an administrator sets it up from Security and tests the address', async ({ api, authed }) => {
   const p = await authed.newPage()
   await p.goto(`${ADMIN_URL}/`)
-  await p.getByTestId('nav-item-settings').click()
-  await p.getByRole('button', { name: 'Security', exact: true }).first().click()
+  await p.getByTestId('nav-item-security').click()
+  await p.getByTestId('nav-security-sso').click()
   const card = p.getByTestId('oidc-card')
   await expect(card).toBeVisible({ timeout: 15_000 })
   await card.getByTestId('oidc-issuer').fill(idp.issuer)
