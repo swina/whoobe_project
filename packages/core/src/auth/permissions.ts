@@ -58,7 +58,7 @@ export const PERMISSIONS = {
   AUDIT_READ: 'audit:read',
 
   // Finding, exporting and erasing everything held about one person (docs/plans/system/data-subject-plan.md). Admin only.
-  DATA_SUBJECT_MANAGE: 'data-subject:manage',
+  DATA_SUBJECT_MANAGE: 'data_subject:manage',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

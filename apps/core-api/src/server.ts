@@ -1357,7 +1357,7 @@ app.post('/oidc-settings/test', requirePermission(PERMISSIONS.SETTINGS_MANAGE), 
   }
 });
 
-// --- Data subject requests (data-subject:manage; docs/plans/system/data-subject-plan.md) ---
+// --- Data subject requests (data_subject:manage; docs/plans/system/data-subject-plan.md) ---
 // One identifier (normally an e-mail address) is looked for whole, in any case, in the values of data objects, in the mail log and in the files
 // of the matched objects. Search shows what exists (no values), export hands over the records, erase deletes (files first). Staff accounts are
 // reported and never deleted here. Each call is written to the audit log with a fingerprint of the identifier, never the identifier.
