@@ -463,6 +463,13 @@
       "when": 1790000500000,
       "tag": "0065_more_events",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1790000600000,
+      "tag": "0066_cdn_mirror_settings",
+      "breakpoints": true
     }
   ]
 }
