@@ -32,6 +32,7 @@
       </div>
       <div class="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition cursor-pointer">
         <a v-if="previewUrl" :href="previewUrl" target="_blank" rel="noopener noreferrer" title="Preview this path" class="text-[16px] text-emerald-400 hover:text-emerald-300 px-0.5 no-underline">👁</a>
+        <button v-if="item.pageId" @click.stop="editLinkedPage" class="btn btn-link" title="Edit the linked page" aria-label="Edit the linked page" data-testid="path-edit-page">✎</button>
         <button @click="openLinkPage" class="btn btn-link" title="Link a page">🔗</button>
         <button @click="moveUp" :disabled="index === 0" class="btn btn-link-muted">▲</button>
         <button @click="moveDown" :disabled="index === items.length - 1" class="btn btn-link-muted">▼</button>
@@ -101,6 +102,7 @@
 import { ref, computed, watch } from 'vue'
 import { usePagesStore } from '../../stores/pagesStore'
 import { useWebsitesStore } from '../../stores/websitesStore'
+import { useTabsStore } from '../../stores/tabsStore'
 import type { MenuItem } from '../../utils/menus-api'
 import { getSitePreviewBaseUrl } from '../../utils/editor-urls'
 
@@ -130,6 +132,12 @@ const emit = defineEmits<{
 
 const pagesStore = usePagesStore()
 const websitesStore = useWebsitesStore()
+const tabsStore = useTabsStore()
+
+/** Opens the linked page in its own tab, on the editor. */
+function editLinkedPage() {
+  if (props.item.pageId) tabsStore.openPage(props.item.pageId, 'editor')
+}
 const editing = ref(false)
 const editItem = ref<MenuItem>({ ...props.item, path: props.item.path ?? '', children: [...(props.item.children || [])] })
 const isDragOver = ref(false)

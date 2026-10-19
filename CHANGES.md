@@ -1,3 +1,8 @@
+## Websites > Paths: an edit button on a path linked to a page — 2026-10-19
+- Branch: `master`
+- A path (menu item) that is linked to a page now has a pencil button (✎, "Edit the linked page") next to the preview eye: it opens that page in its own tab on the editor (`tabsStore.openPage(pageId, 'editor')`; an already open tab is only focused). A path with no page has none. `components/settings/MenuItemRow.vue` only.
+- Test: `browser/path-edit-page.spec.ts` (a website with a linked and an unlinked path: the pencil is only on the linked one and opens the page, named in the header).
+
 ## Navigation: the four groups start closed too — 2026-10-19
 - Branch: `master`
 - The sidebar opens as a list of four closed group headers (Content, Data & Communication, Assets, System), as the owner meant by "main items"; the submenus inside stay closed too (previous entry). A group opens with a click on its header; **showing a section opens its own group** (the shield of the top bar, a tab chosen in the strip) so the item that is shown is never hidden. `DashboardLayout.vue`: `collapsedNavGroups` starts with the four groups and a watch on the active tab removes the group of the section shown.
