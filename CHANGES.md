@@ -1,3 +1,7 @@
+## Overview: cosmetic fix by the owner — 2026-10-19
+- Branch: `master`
+- `apps/admin-dashboard/src/views/OverviewView.vue`: a cosmetic change to a class, made by hand by the owner; committed as it was.
+
 ## Websites > Paths: an edit button on a path linked to a page — 2026-10-19
 - Branch: `master`
 - A path (menu item) that is linked to a page now has a pencil button (✎, "Edit the linked page") next to the preview eye: it opens that page in its own tab on the editor (`tabsStore.openPage(pageId, 'editor')`; an already open tab is only focused). A path with no page has none. `components/settings/MenuItemRow.vue` only.
