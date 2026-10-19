@@ -45,6 +45,14 @@ import {
   type EventActor,
   updateAssetMetadata,
   updateAssetCdnMirror,
+  resolveCdnMirror,
+  cdnMirrorConfigured,
+  missingCdnFields,
+  mirrorToCloudflareImages,
+  cloudflareRefusal,
+  CdnMirrorError,
+  safeFetch,
+  type MirrorResult,
   loadRootEnv,
   isLoggingEnabled,
   corsPolicy,
@@ -984,17 +992,12 @@ app.patch('/api/v1/dam/assets/metadata', requirePermission(PERMISSIONS.ASSETS_UP
   }
 });
 
-// CDN mirroring (docs/plans/assets/assets-cdn.md, Phase 1): pushes an
-// asset to an external image CDN (Cloudinary first, others via the same
-// Gateway preset mechanism) so consumers that can't reach this install's
-// own DAM (a local/VPN-only deployment, an ESP building an email campaign)
-// get a stable, public URL instead of a local-only one or an embedded
-// base64 copy. This endpoint only orchestrates: it builds the upload
-// payload and hands it to the already-generic, already-authenticated
-// Gateway route executor - no Cloudinary-specific request/response
-// handling belongs here beyond reading back `secure_url`/`public_id`,
-// which are Cloudinary's own field names (a second provider added later
-// may need a small per-provider mapping here, but never new Gateway code).
+// CDN mirroring (docs/plans/assets/assets-cdn.md, docs/plans/assets/cdn-providers-plan.md): pushes an asset to an external image CDN so consumers that
+// can't reach this install's own DAM (a local/VPN-only deployment, an ESP building an email campaign) get a stable, public URL instead of a local-only
+// one or an embedded base64 copy. The provider comes from the settings of the website asked for (its own, else the installation's default):
+//   cloudinary         - through a Gateway route (a JSON body: the file as a public URL or a data: URI, plus the unsigned preset)
+//   cloudflare-images  - straight to Cloudflare with the stored API token, as multipart/form-data with the bytes (the Gateway's route executor sends a JSON body only)
+// The body may still carry `gatewayRouteId` / `uploadPreset` / `provider`: that is the old call (scripts, older dashboards) and means Cloudinary with those values.
 app.post('/api/v1/dam/assets/:id/mirror-cdn', requirePermission(PERMISSIONS.ASSETS_UPLOAD), async (req: Request, res: Response): Promise<void> => {
   try {
     const asset = await getAssetById(req.params.id);
@@ -1003,91 +1006,99 @@ app.post('/api/v1/dam/assets/:id/mirror-cdn', requirePermission(PERMISSIONS.ASSE
       return;
     }
 
-    const { gatewayRouteId, uploadPreset, provider } = req.body as {
-      gatewayRouteId?: string;
-      uploadPreset?: string;
-      provider?: string;
-    };
-    if (!gatewayRouteId) {
-      res.status(400).json({ error: 'gatewayRouteId is required' });
-      return;
-    }
-
-    // Cloudinary's upload API accepts `file` as a URL it fetches itself, or
-    // as a base64 data: URI - the same fork resolveMailImageUrls() vs
-    // resolveMailImageDataUris() already makes for email, for the same
-    // reason: a public URL only works if the *destination* (here,
-    // Cloudinary's servers) can actually reach it.
-    //
-    // Deliberately NOT re-encoded/resized either way, unlike the email
-    // base64 path (reencodeImage() with its email-tuned caps - see
-    // mail-image-urls.ts): a CDN mirror's whole point is to be the
-    // quality source of truth Cloudinary itself can transform on the fly
-    // for whoever needs it later - shrinking it before it even arrives
-    // would defeat that, and would mean re-mirroring the same asset with
-    // different caps for different consumers instead of one mirror
-    // everyone shares (an email that ends up using the CDN URL - Phase 2 -
-    // gets the real original, not a second, separately-capped copy).
-    const publicBaseUrl = process.env.S3_PUBLIC_BASE_URL;
-    let file: string;
-    let bytesSent: number;
-    if (publicBaseUrl && isPubliclyReachableUrl(publicBaseUrl)) {
-      file = `${publicBaseUrl.replace(/\/+$/, '')}/${asset.s3Key}`;
-      bytesSent = asset.sizeBytes;
+    const body = (req.body ?? {}) as { websiteId?: unknown; gatewayRouteId?: unknown; uploadPreset?: unknown; provider?: unknown };
+    let provider: string;
+    let config: Record<string, string>;
+    let secrets: Record<string, string> = {};
+    if (typeof body.gatewayRouteId === 'string' && body.gatewayRouteId) {
+      provider = 'cloudinary';
+      config = { gatewayRouteId: body.gatewayRouteId, ...(typeof body.uploadPreset === 'string' && body.uploadPreset ? { uploadPreset: body.uploadPreset } : {}) };
     } else {
-      const command = new GetObjectCommand({ Bucket: damBaseConfig.bucket, Key: asset.s3Key });
-      const object = await s3ClientForProxy.send(command);
-      if (!object.Body) {
-        res.status(502).json({ error: 'Could not read asset bytes from storage' });
+      const resolved = await resolveCdnMirror(typeof body.websiteId === 'string' && body.websiteId ? body.websiteId : null);
+      if (!cdnMirrorConfigured(resolved)) {
+        const missing = resolved.scope === 'none' ? 'nothing is set up' : `missing: ${missingCdnFields(resolved.provider, resolved.config, resolved.secretsSet).join(', ')}`;
+        res.status(400).json({ error: `CDN mirroring is not set up for this website (${missing}). Configure it under Settings > DAM > CDN Mirroring or in the website's settings.` });
         return;
       }
-      const chunks: Uint8Array[] = [];
-      for await (const chunk of object.Body as any) {
-        chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk));
+      provider = resolved.provider;
+      config = resolved.config;
+      secrets = resolved.secrets;
+    }
+
+    let result: MirrorResult;
+    let bytesSent = asset.sizeBytes;
+    if (provider === 'cloudflare-images') {
+      const refusal = cloudflareRefusal(asset.mimeType, asset.sizeBytes);
+      if (refusal) { res.status(415).json({ error: refusal }); return; }
+      const object = await s3ClientForProxy.send(new GetObjectCommand({ Bucket: damBaseConfig.bucket, Key: asset.s3Key }));
+      if (!object.Body) { res.status(502).json({ error: 'Could not read asset bytes from storage' }); return; }
+      const bytes = Buffer.from(await (object.Body as { transformToByteArray(): Promise<Uint8Array> }).transformToByteArray());
+      bytesSent = bytes.byteLength;
+      result = await mirrorToCloudflareImages(
+        { accountId: config.accountId, apiToken: secrets.apiToken, variant: config.variant, assetId: asset.id, filename: asset.filename, mimeType: asset.mimeType, bytes },
+        {
+          fetch: async (url, init) => {
+            const r = await safeFetch(url, { method: init.method, headers: init.headers, body: init.body }, { maxBytes: 256 * 1024, timeoutMs: 60_000 });
+            return { status: r.status, json: () => r.json() };
+          },
+        },
+      );
+    } else {
+      // Cloudinary's upload API accepts `file` as a URL it fetches itself, or as a base64 data: URI - the same fork resolveMailImageUrls() vs
+      // resolveMailImageDataUris() already makes for email, for the same reason: a public URL only works if the *destination* can reach it.
+      // Deliberately NOT re-encoded/resized: a CDN mirror is the quality source of truth the CDN can transform on the fly for whoever needs it later.
+      const publicBaseUrl = process.env.S3_PUBLIC_BASE_URL;
+      let file: string;
+      if (publicBaseUrl && isPubliclyReachableUrl(publicBaseUrl)) {
+        file = `${publicBaseUrl.replace(/\/+$/, '')}/${asset.s3Key}`;
+      } else {
+        const object = await s3ClientForProxy.send(new GetObjectCommand({ Bucket: damBaseConfig.bucket, Key: asset.s3Key }));
+        if (!object.Body) { res.status(502).json({ error: 'Could not read asset bytes from storage' }); return; }
+        const chunks: Uint8Array[] = [];
+        for await (const chunk of object.Body as any) chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk));
+        const rawBuffer = Buffer.concat(chunks);
+        file = `data:${asset.mimeType};base64,${rawBuffer.toString('base64')}`;
+        bytesSent = rawBuffer.byteLength;
       }
-      const rawBuffer = Buffer.concat(chunks);
-      file = `data:${asset.mimeType};base64,${rawBuffer.toString('base64')}`;
-      bytesSent = rawBuffer.byteLength;
-    }
+      const requestBody: Record<string, unknown> = { file };
+      if (config.uploadPreset) requestBody.upload_preset = config.uploadPreset;
 
-    const requestBody: Record<string, unknown> = { file };
-    if (uploadPreset) requestBody.upload_preset = uploadPreset;
-
-    // Server-to-server call to the Gateway's own generic route executor -
-    // forwards this same request's session cookie (this action only ever
-    // runs synchronously inside an authenticated admin request, so there's
-    // always one to forward) rather than a separate service token, since
-    // the Gateway endpoint being called is the ordinary, already-existing
-    // POST /routes/:id/execute (requirePermission(GATEWAY_MANAGE)), not a
-    // dedicated internal-only route.
-    const gatewayUrl = (process.env.GATEWAY_URL ?? 'http://localhost:3001').replace(/\/+$/, '');
-    const execRes = await fetch(`${gatewayUrl}/api/v1/gateway/routes/${gatewayRouteId}/execute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: req.headers.cookie ?? '' },
-      body: JSON.stringify({ requestBody }),
-    });
-    const execBody = (await execRes.json()) as { error?: boolean; upstreamStatus?: number; body?: unknown };
-    if (!execRes.ok || execBody.error || (execBody.upstreamStatus ?? 0) < 200 || (execBody.upstreamStatus ?? 0) >= 300) {
-      res.status(502).json({ error: 'CDN mirror upload failed', detail: execBody });
-      return;
-    }
-
-    const uploadResult = execBody.body as { secure_url?: string; public_id?: string };
-    if (!uploadResult?.secure_url) {
-      res.status(502).json({ error: 'CDN provider did not return a URL', detail: uploadResult });
-      return;
+      // Server-to-server call to the Gateway's own generic route executor, forwarding this request's session cookie (this action only ever runs
+      // synchronously inside an authenticated admin request) rather than a separate service token.
+      const gatewayUrl = (process.env.GATEWAY_URL ?? 'http://localhost:3001').replace(/\/+$/, '');
+      const execRes = await fetch(`${gatewayUrl}/api/v1/gateway/routes/${config.gatewayRouteId}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: req.headers.cookie ?? '' },
+        body: JSON.stringify({ requestBody }),
+      });
+      const execBody = (await execRes.json()) as { error?: boolean; upstreamStatus?: number; body?: unknown };
+      if (!execRes.ok || execBody.error || (execBody.upstreamStatus ?? 0) < 200 || (execBody.upstreamStatus ?? 0) >= 300) {
+        res.status(502).json({ error: 'CDN mirror upload failed', detail: execBody });
+        return;
+      }
+      const uploadResult = execBody.body as { secure_url?: string; public_id?: string };
+      if (!uploadResult?.secure_url) {
+        res.status(502).json({ error: 'CDN provider did not return a URL', detail: uploadResult });
+        return;
+      }
+      result = { url: uploadResult.secure_url, providerAssetId: uploadResult.public_id };
     }
 
     const updated = await updateAssetCdnMirror(asset.id, {
-      provider: provider || 'cloudinary',
-      url: uploadResult.secure_url,
-      providerAssetId: uploadResult.public_id,
+      provider,
+      url: result.url,
+      providerAssetId: result.providerAssetId,
       mirroredAt: new Date().toISOString(),
       bytesSent,
     });
 
     res.json({ asset: updated });
   } catch (error: any) {
+    if (error instanceof CdnMirrorError) {
+      logger.warn({ err: error.message, status: error.status }, 'CDN mirror refused');
+      res.status(error.status).json({ error: error.message, detail: error.detail });
+      return;
+    }
     logger.error({ err: error }, 'CDN mirror error');
     res.status(500).json({ error: error.message || 'CDN mirror failed' });
   }

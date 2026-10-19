@@ -644,12 +644,36 @@
         "OBJECTS_READ"
       ]
     },
+    "GET /whoobe-one/settings/cdn-providers": {
+      "access": "permission",
+      "permissions": [
+        "OBJECTS_READ"
+      ],
+      "note": "the providers and the fields of their settings (no secret)"
+    },
     "PUT /whoobe-one/settings/cdn-mirror": {
       "access": "permission",
       "permissions": [
-        "OBJECTS_WRITE"
+        "SETTINGS_MANAGE"
       ],
-      "audit": "settingCdnMirror"
+      "note": "holds a credential for some providers: settings:manage, not objects:write",
+      "audit": "cdnMirrorUpdate"
+    },
+    "DELETE /whoobe-one/settings/cdn-mirror": {
+      "access": "permission",
+      "permissions": [
+        "SETTINGS_MANAGE"
+      ],
+      "note": "a website's own settings go, it uses the default",
+      "audit": "cdnMirrorRemove"
+    },
+    "POST /whoobe-one/settings/cdn-mirror/test": {
+      "access": "permission",
+      "permissions": [
+        "SETTINGS_MANAGE"
+      ],
+      "note": "reads the account at the provider or the Gateway route; uploads nothing",
+      "audit": "exempt: a read call, nothing is written"
     },
     "GET /whoobe-one/websites/:id": {
       "access": "permission",

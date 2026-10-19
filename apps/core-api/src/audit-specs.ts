@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { redactForAudit, REDACTED } from '@whoobe-cms/core/server';
 import {
-  getFigmaSettings, getSecuritySettings, getOidcSettings, publicOidcSettings, getMailSettingsFor, getMigrationSource, getObjectEventSubscription, getRole, getUserWithRoles, getWebsite, getWebsitePath,
+  getFigmaSettings, getSecuritySettings, getOwnCdnMirror, publicCdnMirror, getOidcSettings, publicOidcSettings, getMailSettingsFor, getMigrationSource, getObjectEventSubscription, getRole, getUserWithRoles, getWebsite, getWebsitePath,
   listWebsites, pickAllowed, publicMailSettings,
   type RoleWithPermissions, type SecuritySettings, type UserWithRoles, type WebsiteRecord,
 } from '@whoobe-cms/core/server';
@@ -69,6 +69,19 @@ const oidcSnapshot = (s: ReturnType<typeof publicOidcSettings>) => ({
   linkByEmail: s.linkByEmail, localLogin: s.localLogin,
 });
 const loadOidc = async () => publicOidcSettings(await getOidcSettings());
+
+// ── CDN mirroring settings (per website; a token is never in a row: "changed") ──
+type CdnEntity = Record<string, unknown>;
+const cdnScopeId = (req: P): string | null => {
+  const v = req.body?.websiteId ?? req.query?.websiteId;
+  return typeof v === 'string' && v && v !== 'default' ? v : null;
+};
+const loadCdn = async (req: P): Promise<CdnEntity | null> => {
+  const own = await getOwnCdnMirror(cdnScopeId(req));
+  return own ? (publicCdnMirror(own) as unknown as CdnEntity) : null;
+};
+// "secretsSet" lists the NAMES of the stored credentials with true / false, never a value
+const cdnSnapshot = (c: CdnEntity) => pickAllowed(c, ['provider', 'config', 'secretsSet']);
 
 // ── mail, figma, migration sources, object event subscriptions ────────────
 type MailEntity = Record<string, unknown>;
@@ -147,7 +160,10 @@ export const AUDIT: Readonly<Record<string, AuditSpec<any>>> = {
   settingAutosave: settingChange('setting.update', 'autosave'),
   // presets hold directive code: their names are shown, the code is a fingerprint
   settingAlpinePresets: settingChange('setting.update', 'alpinePresets', (v) => ({ names: Array.isArray(v) ? v.map((p: any) => p?.name ?? null) : [], content: fp(v) })),
-  settingCdnMirror: settingChange('setting.update', 'cdnMirror'),
+  cdnMirrorUpdate: { action: 'setting.cdn_mirror_update', kind: 'update', targetType: 'setting', snapshot: cdnSnapshot, loadBefore: loadCdn, loadAfter: loadCdn, targetId: (r: P) => `cdn_mirror:${cdnScopeId(r) ?? 'default'}`, targetLabel: () => 'CDN mirroring',
+    // a token in the request is a change the snapshot (which says only whether one is set) cannot show
+    secretsFromBody: (b: any) => (b?.secrets?.apiToken ? ['secrets.apiToken'] : []) } satisfies AuditSpec<CdnEntity>,
+  cdnMirrorRemove: { action: 'setting.cdn_mirror_remove', kind: 'delete', targetType: 'setting', snapshot: cdnSnapshot, loadBefore: loadCdn, targetId: (r: P) => `cdn_mirror:${cdnScopeId(r) ?? 'default'}`, targetLabel: () => 'CDN mirroring' } satisfies AuditSpec<CdnEntity>,
   mailSettingsUpdate: { action: 'setting.mail_update', kind: 'update', targetType: 'setting', snapshot: mailSnapshot, loadBefore: loadMail, loadAfter: loadMail, targetId: (r: P) => `mail:${mailScopeId(r) ?? 'default'}`, targetLabel: () => 'Outgoing mail',
     // the snapshot says only whether a secret is set; a request that carries one is a change the snapshot cannot show
     secretsFromBody: (b) => [
