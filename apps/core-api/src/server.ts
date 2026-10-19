@@ -1424,6 +1424,7 @@ app.post('/data-subject/export', requirePermission(PERMISSIONS.DATA_SUBJECT_MANA
     auditSubject(req, 'data_subject.export', p.fingerprint, { objects: data.objects.length, mail: data.mail.length, files: data.files.length });
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Content-Disposition', `attachment; filename="data-subject-${p.fingerprint}.json"`);
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');   // the dashboard (another origin in development) reads the file name
     res.json(data);
   } catch (error: any) {
     logger.error({ err: error }, 'Data subject export error');
