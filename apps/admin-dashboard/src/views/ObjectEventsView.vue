@@ -107,9 +107,9 @@
           </label>
         </div>
 
-        <fieldset>
-          <legend class="mb-1 text-slate-400">Send an event when a record is</legend>
-          <label v-for="c in EVENT_CHOICES" :key="c.type" class="flex items-start gap-2 py-0.5">
+        <fieldset v-for="g in EVENT_GROUPS" :key="g.group" :data-testid="`events-${g.group}`">
+          <legend class="mb-1 mt-2 text-slate-400">Send an event when {{ g.label.charAt(0).toLowerCase() + g.label.slice(1) }}</legend>
+          <label v-for="c in EVENT_CHOICES.filter((x) => x.group === g.group)" :key="c.type" class="flex items-start gap-2 py-0.5">
             <input v-model="form.events" type="checkbox" :value="c.type" class="mt-0.5" />
             <span><b>{{ c.label }}</b> <span class="text-slate-500">- {{ c.hint }}</span></span>
           </label>
@@ -183,7 +183,7 @@ import {
 } from '../utils/object-events-api'
 import { modeSwitch } from '../utils/object-events-wizard'
 import {
-  EVENT_CHOICES, SECRET_PREFIX, emptyForm, formFromSubscription, formProblem, relativeTime, toInput, usableRoute,
+  EVENT_CHOICES, EVENT_GROUPS, SECRET_PREFIX, emptyForm, formFromSubscription, formProblem, relativeTime, toInput, usableRoute,
   type SubscriptionForm,
 } from '../utils/object-events-ui'
 

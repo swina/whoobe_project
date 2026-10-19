@@ -3,13 +3,23 @@ import { describe, it, expect } from 'vitest'
 import {
   EVENT_CHOICES, emptyForm, formFromSubscription, formProblem, nextAttemptText, parseActors, relativeTime, statusTone, toInput, usableRoute,
 } from '../../../apps/admin-dashboard/src/utils/object-events-ui'
-import { OBJECT_EVENT_TYPES } from '../../../packages/core/src/db/object-events'
+import { ALL_EVENT_TYPES, CLASSLESS_EVENT_TYPES } from '../../../packages/core/src/db/object-events'
 
 const ok = { ...emptyForm(), name: ' Orders ', endpointId: 'e', routeId: 'r' }
 
 describe('event choices', () => {
   it('offer exactly the event types the server knows, once each', () => {
-    expect(EVENT_CHOICES.map((c) => c.type).sort()).toEqual([...OBJECT_EVENT_TYPES].sort())
+    expect(EVENT_CHOICES.map((c) => c.type).sort()).toEqual([...ALL_EVENT_TYPES].sort())
+  })
+  it('group them as the server does: data records, files, pages', () => {
+    expect(EVENT_CHOICES.filter((c) => c.group !== 'object').map((c) => c.type).sort()).toEqual([...CLASSLESS_EVENT_TYPES].sort())
+    expect(EVENT_CHOICES.filter((c) => c.group === 'asset').every((c) => c.type.startsWith('asset.'))).toBe(true)
+    expect(EVENT_CHOICES.filter((c) => c.group === 'page').every((c) => c.type.startsWith('page.'))).toBe(true)
+  })
+  it('refuse a class together with a file or page event, like the server', () => {
+    expect(formProblem({ ...ok, classId: 'c1', events: ['object.created'] })).toBe('')
+    expect(formProblem({ ...ok, classId: 'c1', events: ['object.created', 'asset.created'] })).toMatch(/class applies to data records/)
+    expect(formProblem({ ...ok, classId: '', events: ['page.published'] })).toBe('')
   })
 })
 

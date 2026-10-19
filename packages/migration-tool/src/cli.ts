@@ -672,7 +672,7 @@ export async function runAssetMigration(options: RunAssetMigrationOptions): Prom
           fileType,
           s3Key: upload.s3Key,
           isPublic,
-        });
+        }, { silent: true });   // a migration run is not an event per file
         console.log(`[ETL] Migrated asset ${path} -> ${upload.s3Key}`);
         succeeded++;
       } catch (err: any) {

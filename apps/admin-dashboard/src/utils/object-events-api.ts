@@ -2,8 +2,11 @@
 // (docs/plans/datamodel/data-objects-automations.md). Admin only (`object_events:manage`).
 import { getDefaultCoreApiUrl } from './auth-api'
 
+// Data objects, files in the library and pages share the same subscriptions, outbox and delivery log (docs/plans/system/more-events-plan.md).
 export type ObjectEventType =
   | 'object.created' | 'object.updated' | 'object.published' | 'object.unpublished' | 'object.deleted' | 'object.transitioned' | 'object.bulk'
+  | 'asset.created' | 'asset.updated' | 'asset.moved' | 'asset.deleted' | 'asset.bulk'
+  | 'page.published' | 'page.unpublished'
 
 export interface ObjectEventSubscription {
   id: string

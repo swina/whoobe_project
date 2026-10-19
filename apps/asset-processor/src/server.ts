@@ -40,6 +40,9 @@ import {
   getAssetById,
   upsertAssetRecord,
   deleteAssetRecord,
+  moveAssetRecord,
+  type AssetWriteOptions,
+  type EventActor,
   updateAssetMetadata,
   updateAssetCdnMirror,
   loadRootEnv,
@@ -171,9 +174,16 @@ const FORMAT_MIME: Record<string, string> = {
   gif: 'image/gif',
 };
 
+/** Who did it, for the asset events (docs/plans/system/more-events-plan.md): the signed-in person, else the system (a service call; `id` names which). */
+function assetEventActor(req: Request, systemId?: string): EventActor {
+  const id = (req as unknown as { user?: { id?: unknown } }).user?.id;
+  return id ? { type: 'user', id: String(id) } : { type: 'system', ...(systemId ? { id: systemId } : {}) };
+}
+
 // Shared by /upload and /transform: writes the object to S3 (with
 // thumbnails) and upserts the Postgres record, returning the same response
-// shape both endpoints send back to the browser.
+// shape both endpoints send back to the browser. The record write also
+// stores asset.created / asset.updated for the subscriptions that want it.
 async function finalizeAssetUpload(
   provider: S3AssetStorageProvider,
   input: {
@@ -186,7 +196,8 @@ async function finalizeAssetUpload(
     fileType: string;
     metadata?: any;
   },
-  origin: string
+  origin: string,
+  events: AssetWriteOptions = {}
 ) {
   const result = await provider.uploadAsset(input.pimcorePath, input.buffer, input.mimeType, {
     isPublic: input.isPublic,
@@ -202,7 +213,7 @@ async function finalizeAssetUpload(
     s3Key: result.s3Key,
     isPublic: input.isPublic,
     metadata: input.metadata,
-  });
+  }, events);
 
   const k = result.s3Key;
   const thumbKey = provider.getThumbnailS3Key(input.pimcorePath, 'thumb');
@@ -509,7 +520,11 @@ app.post('/api/v1/dam/upload', serviceTokenAuth, upload.single('file'), async (r
       folderPath: deriveFolderPath(pimcorePath),
       fileType,
       metadata,
-    }, forwardOrigin(req));
+    }, forwardOrigin(req), {
+      actor: assetEventActor(req),
+      // a service call (the log files core-api uploads) is not an event worth sending; a person's upload is
+      silent: !(req as unknown as { user?: unknown }).user,
+    });
 
     res.json(response);
   } catch (error: any) {
@@ -624,11 +639,11 @@ app.post('/api/v1/dam/form-uploads/attach', serviceTokenAuth, async (req: Reques
     const response = await finalizeAssetUpload(provider, {
       pimcorePath, buffer, mimeType, isPublic, filename, folderPath: deriveFolderPath(pimcorePath), fileType,
       metadata: { formUpload: { uploadId: row.id, originalName: row.originalName, websiteId: row.websiteId, formRef: row.formRef } },
-    }, forwardOrigin(req));
+    }, forwardOrigin(req), { actor: assetEventActor(req, 'form-upload') });
 
     if (!(await markFormUploadAttached(row.id, { websiteId, formRef, s3Key: response.s3Key, assetId: response.asset.id }))) {
       // lost a race with another submission: take the copy back
-      await deleteAssetRecord(response.asset.id).catch(() => {});
+      await deleteAssetRecord(pimcorePath, { actor: assetEventActor(req, 'form-upload') }).catch(() => {});
       await s3ClientForProxy.send(new DeleteObjectCommand({ Bucket: damBaseConfig.bucket, Key: response.s3Key })).catch(() => {});
       res.status(409).json({ error: 'The upload was already used' });
       return;
@@ -727,7 +742,7 @@ app.post('/api/v1/dam/transform', requirePermission(PERMISSIONS.ASSETS_UPLOAD), 
       folderPath: sourceRecord.folderPath,
       fileType,
       metadata: transformedMetadata,
-    }, forwardOrigin(req));
+    }, forwardOrigin(req), { actor: assetEventActor(req) });
 
     res.json(response);
   } catch (error: any) {
@@ -747,7 +762,7 @@ app.delete('/api/v1/dam/asset', serviceTokenOrDelete, async (req: Request, res: 
     }
     const provider = createDamProvider(parseFolderRules(req.body?.folderRules));
     await provider.deleteAsset(pimcorePath);
-    await deleteAssetRecord(pimcorePath);
+    await deleteAssetRecord(pimcorePath, { actor: assetEventActor(req, 'service') });
     res.json({ success: true });
   } catch (error: any) {
     logger.error({ err: error }, 'DAM delete error');
@@ -790,7 +805,8 @@ app.post('/api/v1/dam/assets/move', requirePermission(PERMISSIONS.ASSETS_UPLOAD)
     const newIsPublic = provider.visibilityManager.isPathPublic(newPimcorePath);
     const { s3Key } = await provider.moveAsset(pimcorePath, newPimcorePath, newIsPublic);
 
-    const assetRecord = await upsertAssetRecord({
+    // one record write with ONE asset.moved event (with `from`), not a created and a deleted
+    const assetRecord = await moveAssetRecord(pimcorePath, {
       pimcorePath: newPimcorePath,
       filename: existing.filename,
       folderPath: cleanTarget,
@@ -800,8 +816,7 @@ app.post('/api/v1/dam/assets/move', requirePermission(PERMISSIONS.ASSETS_UPLOAD)
       s3Key,
       isPublic: newIsPublic,
       metadata: existing.metadata,
-    });
-    await deleteAssetRecord(pimcorePath);
+    }, { actor: assetEventActor(req) });
 
     const origin = forwardOrigin(req);
     const thumbKey = provider.getThumbnailS3Key(newPimcorePath, 'thumb');
@@ -860,7 +875,7 @@ app.delete('/api/v1/dam/folders', requirePermission(PERMISSIONS.ASSETS_DELETE), 
       return;
     }
     const provider = createDamProvider(parseFolderRules(req.body?.folderRules));
-    const { deletedAssetPaths } = await deleteFolderRecord(path);
+    const { deletedAssetPaths } = await deleteFolderRecord(path, { actor: assetEventActor(req) });
 
     for (const assetPath of deletedAssetPaths) {
       try {

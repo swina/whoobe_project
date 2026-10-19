@@ -3,6 +3,8 @@
 // The envelope never carries attribute values: only names (`changed`) and ids; a subscription's field allow-list is a later phase.
 import { createHmac } from 'node:crypto';
 import type { DataObjectRecord } from './data-objects-records.js';
+import type { AssetRecord } from './asset-records.js';
+import type { WhoobePageRecord } from './whoobe-pages-records.js';
 
 export type ObjectEventType =
   | 'object.created'
@@ -12,6 +14,11 @@ export type ObjectEventType =
   | 'object.deleted'
   | 'object.transitioned'
   | 'object.bulk';
+
+/** Events of files in the library and of pages (docs/plans/system/more-events-plan.md). Same outbox, same delivery, same loop guard. */
+export type AssetEventType = 'asset.created' | 'asset.updated' | 'asset.moved' | 'asset.deleted' | 'asset.bulk';
+export type PageEventType = 'page.published' | 'page.unpublished';
+export type SubjectType = 'object' | 'asset' | 'page';
 
 export interface EventActor {
   type: 'user' | 'api-client' | 'system' | 'import';
@@ -52,6 +59,89 @@ export interface BulkObjectEvent {
   class: { id: string; name?: string };
   bulk: { kind: 'import' | 'delete' | 'migration'; count: number; firstIds: string[] };
   actor: EventActor;
+}
+
+/** What an event says about a file: where it is and what it is, never its bytes or its extracted metadata. */
+export interface AssetSummary {
+  id: string;
+  path: string;
+  folder: string;
+  filename: string;
+  mimeType: string;
+  fileType: string;
+  sizeBytes: number;
+  isPublic: boolean;
+  version: number;
+}
+
+export interface AssetEvent {
+  id: string;
+  type: Exclude<AssetEventType, 'asset.bulk'>;
+  occurredAt: string;
+  asset: AssetSummary;
+  /** Only `asset.moved`: where the file was. */
+  from?: { path: string };
+  actor: EventActor;
+  endOfFlow?: true;
+}
+
+export interface AssetBulkEvent {
+  id: string;
+  type: 'asset.bulk';
+  occurredAt: string;
+  bulk: { kind: 'delete'; count: number; firstIds: string[] };
+  actor: EventActor;
+  endOfFlow?: true;
+}
+
+export interface PageEvent {
+  id: string;
+  type: PageEventType;
+  occurredAt: string;
+  page: { id: string; websiteId: string | null; slug: string; locale: string; translationGroupId: string; published: boolean; publishedAt: string | null };
+  actor: EventActor;
+  endOfFlow?: true;
+}
+
+/** Anything the outbox stores. An asset or a page event has no `class`. */
+export type AnyEvent = ObjectEvent | BulkObjectEvent | AssetEvent | AssetBulkEvent | PageEvent;
+
+export function eventSubject(event: AnyEvent): { type: SubjectType; id: string; translationGroupId: string | null; locale: string | null } | null {
+  if ('object' in event) return { type: 'object', id: event.object.id, translationGroupId: event.object.translationGroupId, locale: event.object.locale };
+  if ('asset' in event) return { type: 'asset', id: event.asset.id, translationGroupId: null, locale: null };
+  if ('page' in event) return { type: 'page', id: event.page.id, translationGroupId: event.page.translationGroupId, locale: event.page.locale };
+  return null;
+}
+
+export function summariseAsset(a: Pick<AssetRecord, 'id' | 'pimcorePath' | 'folderPath' | 'filename' | 'mimeType' | 'fileType' | 'sizeBytes' | 'isPublic' | 'version'>): AssetSummary {
+  return { id: a.id, path: a.pimcorePath, folder: a.folderPath, filename: a.filename, mimeType: a.mimeType, fileType: a.fileType, sizeBytes: a.sizeBytes, isPublic: a.isPublic, version: a.version };
+}
+
+interface SubjectContext { actor?: EventActor; endOfFlow?: boolean; now?: Date; newId?: () => string }
+const envelope = (ctx: SubjectContext) => ({
+  id: (ctx.newId ?? (() => crypto.randomUUID()))(),
+  occurredAt: (ctx.now ?? new Date()).toISOString(),
+  actor: ctx.actor ?? ({ type: 'system' } as EventActor),
+  ...(ctx.endOfFlow ? { endOfFlow: true as const } : {}),
+});
+
+export function buildAssetEvent(type: AssetEvent['type'], asset: AssetSummary, ctx: SubjectContext & { from?: string } = {}): AssetEvent {
+  const { id, occurredAt, actor, endOfFlow } = envelope(ctx);
+  return { id, type, occurredAt, asset, ...(ctx.from ? { from: { path: ctx.from } } : {}), actor, ...(endOfFlow ? { endOfFlow } : {}) };
+}
+
+export function buildAssetBulkEvent(ids: string[], ctx: SubjectContext = {}): AssetBulkEvent {
+  const { id, occurredAt, actor, endOfFlow } = envelope(ctx);
+  return { id, type: 'asset.bulk', occurredAt, bulk: { kind: 'delete', count: ids.length, firstIds: ids.slice(0, MAX_FIRST_IDS) }, actor, ...(endOfFlow ? { endOfFlow } : {}) };
+}
+
+export function buildPageEvent(type: PageEventType, page: Pick<WhoobePageRecord, 'id' | 'websiteId' | 'slug' | 'locale' | 'translationGroupId' | 'published' | 'publishedAt'>, ctx: SubjectContext = {}): PageEvent {
+  const { id, occurredAt, actor, endOfFlow } = envelope(ctx);
+  return {
+    id, type, occurredAt,
+    page: { id: page.id, websiteId: page.websiteId ?? null, slug: page.slug, locale: page.locale, translationGroupId: page.translationGroupId, published: page.published, publishedAt: page.publishedAt ? page.publishedAt.toISOString() : null },
+    actor, ...(endOfFlow ? { endOfFlow } : {}),
+  };
 }
 
 /** `OBJECT_EVENTS_ENABLED=0` stops emitting for the instance (the kill switch of the proposal, section 7). */
@@ -184,6 +274,12 @@ export function signBody(secret: string, timestamp: string, body: string): strin
 export const OBJECT_EVENT_TYPES: readonly ObjectEventType[] = [
   'object.created', 'object.updated', 'object.published', 'object.unpublished', 'object.deleted', 'object.transitioned', 'object.bulk',
 ];
+export const ASSET_EVENT_TYPES: readonly AssetEventType[] = ['asset.created', 'asset.updated', 'asset.moved', 'asset.deleted', 'asset.bulk'];
+export const PAGE_EVENT_TYPES: readonly PageEventType[] = ['page.published', 'page.unpublished'];
+/** Every type a subscription may list. */
+export const ALL_EVENT_TYPES: readonly string[] = [...OBJECT_EVENT_TYPES, ...ASSET_EVENT_TYPES, ...PAGE_EVENT_TYPES];
+/** Types that have no data class: a subscription pinned to a class would never receive them. */
+export const CLASSLESS_EVENT_TYPES: readonly string[] = [...ASSET_EVENT_TYPES, ...PAGE_EVENT_TYPES];
 
 /** The signing key lives in an environment variable of the instance; the name must carry this prefix so a subscription can never read another secret (the database password, a session key) by naming it. */
 export const SIGNING_SECRET_PREFIX = 'OBJECT_EVENTS_SECRET_';
@@ -192,7 +288,7 @@ export interface SubscriptionInput {
   name: string;
   enabled: boolean;
   classId: string | null;
-  events: ObjectEventType[];
+  events: (ObjectEventType | AssetEventType | PageEventType)[];
   endpointId: string;
   routeId: string;
   payloadMode: 'minimal';
@@ -226,9 +322,9 @@ export function validateSubscriptionInput(
   }
   if (!partial || has('events')) {
     if (!Array.isArray(b.events) || !b.events.length) return { ok: false, error: 'events is required: a list of event types' };
-    const bad = b.events.find((e) => typeof e !== 'string' || !OBJECT_EVENT_TYPES.includes(e as ObjectEventType));
+    const bad = b.events.find((e) => typeof e !== 'string' || !ALL_EVENT_TYPES.includes(e));
     if (bad !== undefined) return { ok: false, error: `unknown event type: ${String(bad).slice(0, 40)}` };
-    out.events = [...new Set(b.events as ObjectEventType[])];
+    out.events = [...new Set(b.events as SubscriptionInput['events'])];
   }
   for (const k of ['endpointId', 'routeId'] as const) {
     if (!partial || has(k)) {
@@ -252,6 +348,10 @@ export function validateSubscriptionInput(
       return { ok: false, error: `signingSecretRef must be null or the name of an environment variable like ${SIGNING_SECRET_PREFIX}ENGINE` };
     }
     out.signingSecretRef = ref as string | null;
+  }
+  // A class applies to data objects only: a subscription for one class that lists a file or page type would never receive it
+  if (out.classId && out.events?.some((e) => CLASSLESS_EVENT_TYPES.includes(e))) {
+    return { ok: false, error: 'a class applies to object events only: remove the class, or list only object events' };
   }
   return { ok: true, value: out };
 }
