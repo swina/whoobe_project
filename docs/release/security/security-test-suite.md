@@ -364,6 +364,12 @@ encrypted, never returned and "changed" in the audit row, the upload carries the
 Cloudflare cannot take is refused before sending, a refusal is reported with Cloudflare's words, a website uses its own settings and another the default,
 and **two CDNs for one asset: each website's page gets its own provider's URL**.
 
+`api/cdn-origin.test.ts`, `browser/cdn-origin.spec.ts` and the origin part of `cdn-providers.test.ts` cover the provider **CDN in front of this installation**
+(a mock CDN, `lib/mock-cdn.ts`, that serves `/dam-asset/` or answers like a CDN pointing at the wrong place): the address is cleaned and refused with
+credentials or a query, the URL has the encoded key and the file's version, the CDN is asked once with a `HEAD` and nothing is sent, **a private file is
+refused before the CDN is asked**, a CDN answering 404, a web page or an error is reported with the reason and nothing is recorded, a re-uploaded file gets
+the next `?v=` with no new call, and the Test button checks a public file through the CDN.
+
 ### 2.6 Known-finding convention
 
 `lib/known.ts` provides `known('F-0xx', name, fn)`: a test that asserts the secure behaviour but is *expected* to

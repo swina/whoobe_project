@@ -159,6 +159,8 @@ import {
   publicCdnMirror,
   cdnMirrorConfigured,
   testCloudflareImages,
+  testOriginCdn,
+  getSamplePublicAsset,
   findDataSubject,
   exportDataSubject,
   eraseDataSubject,
@@ -3035,8 +3037,8 @@ app.delete('/whoobe-one/settings/cdn-mirror', requirePermission(PERMISSIONS.SETT
   }
 });
 
-// Checks the settings that apply to a website: Cloudflare Images with a read call (the account and the token), Cloudinary that its Gateway route exists.
-// Uploads nothing.
+// Checks the settings that apply to a website: Cloudflare Images with a read call (the account and the token), the CDN in front of this installation with a request
+// for a public file through it, Cloudinary that its Gateway route exists. Uploads nothing.
 app.post('/whoobe-one/settings/cdn-mirror/test', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (req: Request, res: Response): Promise<void> => {
   try {
     const resolved = await resolveCdnMirror(cdnScope(req));
@@ -3050,6 +3052,16 @@ app.post('/whoobe-one/settings/cdn-mirror/test', requirePermission(PERMISSIONS.S
         fetch: async (url, init) => {
           const r = await safeFetch(url, { method: init.method, headers: init.headers, body: init.body }, { maxBytes: 256 * 1024, timeoutMs: 15_000 });
           return { status: r.status, json: () => r.json() };
+        },
+      }));
+      return;
+    }
+    if (resolved.provider === 'cdn-origin') {
+      const sample = await getSamplePublicAsset();
+      res.json(await testOriginCdn(resolved.config.baseUrl, sample && { s3Key: sample.s3Key, version: sample.version, mimeType: sample.mimeType, isPublic: sample.isPublic }, {
+        head: async (url) => {
+          const r = await safeFetch(url, { method: 'HEAD' }, { maxBytes: 64 * 1024, timeoutMs: 15_000 });
+          return { status: r.status, contentType: r.headers.get('content-type') };
         },
       }));
       return;

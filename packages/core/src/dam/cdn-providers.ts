@@ -40,6 +40,14 @@ export const CDN_PROVIDERS: CdnProviderInfo[] = [
       { name: 'apiBase', label: 'API address (advanced)', placeholder: 'https://api.cloudflare.com/client/v4', help: 'Leave empty for Cloudflare. Only for a Cloudflare-compatible endpoint; the token is sent to it' },
     ],
   },
+  {
+    id: 'cdn-origin',
+    label: 'CDN in front of this installation',
+    description: 'Nothing is uploaded. Your CDN (a proxied Cloudflare hostname, CloudFront, Bunny ...) fetches the public files from this installation when it needs them and keeps them; Whoobe only writes the CDN address of each file, with the file\'s version so a replaced file is fetched again. Private files are not served.',
+    fields: [
+      { name: 'baseUrl', label: 'CDN address', required: true, placeholder: 'https://cdn.example.com', help: 'The hostname of the CDN. It must forward to the address of this installation, which serves the files under /dam-asset/' },
+    ],
+  },
 ];
 
 export const cdnProviderIds = (): string[] => CDN_PROVIDERS.map((p) => p.id);
@@ -87,6 +95,11 @@ export function validateCdnSettings(input: CdnSettingsInput, env: NodeJS.Process
       const okScheme = u && (u.protocol === 'https:' || (u.protocol === 'http:' && env.CDN_ALLOW_HTTP === 'true'));
       if (!u || !okScheme || u.username || u.password || u.hash || u.search) return { ok: false, error: `apiBase must be an https address without credentials, query or fragment${env.CDN_ALLOW_HTTP === 'true' ? '' : ' (http needs CDN_ALLOW_HTTP=true on the server)'}` };
     }
+  }
+  if (info.id === 'cdn-origin' && config.baseUrl) {
+    const clean = cleanOriginCdnBase(config.baseUrl, env);
+    if (!clean) return { ok: false, error: `baseUrl must be the https address of the CDN, without credentials, query or fragment${env.CDN_ALLOW_HTTP === 'true' ? '' : ' (http needs CDN_ALLOW_HTTP=true on the server)'}` };
+    config.baseUrl = clean;
   }
   return { ok: true, provider: info.id, config, secrets };
 }
@@ -204,6 +217,64 @@ export async function testCloudflareImages(accountId: string, apiToken: string, 
   } catch (e) {
     return { ok: false, error: `Cloudflare could not be reached: ${(e as Error).message}` };
   }
+}
+
+// ── CDN in front of this installation (pull CDN) ─────────────────────────────
+
+/** The CDN address as it is stored: https (http only with CDN_ALLOW_HTTP), no credentials, query or fragment, no trailing slash; null when it is not acceptable. */
+export function cleanOriginCdnBase(value: string, env: NodeJS.ProcessEnv = process.env): string | null {
+  let u: URL;
+  try { u = new URL(value); } catch { return null; }
+  const okScheme = u.protocol === 'https:' || (u.protocol === 'http:' && env.CDN_ALLOW_HTTP === 'true');
+  if (!okScheme || u.username || u.password || u.hash || u.search) return null;
+  return `${u.origin}${u.pathname}`.replace(/\/+$/, '');
+}
+
+/** The URL of a stored file through the CDN: the path the installation serves public files under, plus the file's version (the origin sends them as immutable for a year, so a new version needs a new URL). */
+export function originCdnUrl(baseUrl: string, s3Key: string, version: number): string {
+  const path = s3Key.split('/').map(encodeURIComponent).join('/');
+  return `${baseUrl.replace(/\/+$/, '')}/dam-asset/${path}?v=${version}`;
+}
+
+/** The same CDN URL for a newer version of the file (a re-upload): only `v=` changes. The origin sends files as immutable for a year, so without this a replaced file would be served stale. */
+export function withOriginCdnVersion(url: string, version: number): string {
+  return /([?&])v=\d+/.test(url) ? url.replace(/([?&])v=\d+/, `$1v=${version}`) : `${url}${url.includes('?') ? '&' : '?'}v=${version}`;
+}
+
+export interface OriginCdnProbe {
+  /** A HEAD request through the outbound guard. */
+  head: (url: string) => Promise<{ status: number; contentType: string | null }>;
+}
+
+export interface OriginCdnAsset { s3Key: string; version: number; mimeType: string; isPublic: boolean }
+
+const baseType = (v: string | null): string => (v ?? '').split(';')[0].trim().toLowerCase();
+
+/** Asks the CDN for the file and says what is wrong when the answer is not the file: not found (the hostname does not forward to this installation),
+ *  a web page instead of the file (it forwards to the dashboard, which answers every unknown path with the app), or an error. null = fine. */
+export async function checkOriginCdn(url: string, asset: OriginCdnAsset, probe: OriginCdnProbe): Promise<string | null> {
+  let answer: { status: number; contentType: string | null };
+  try { answer = await probe.head(url); } catch (e) { return `The CDN could not be reached: ${(e as Error).message}`; }
+  if (answer.status === 404) return 'The CDN answered 404 for this file: the hostname does not forward /dam-asset/ to this installation, or it points to another origin';
+  if (answer.status < 200 || answer.status >= 300) return `The CDN answered HTTP ${answer.status} for this file`;
+  if (baseType(answer.contentType) === 'text/html' && baseType(asset.mimeType) !== 'text/html') return 'The CDN returned a web page instead of the file: the hostname forwards to the dashboard, not to the asset service (route /dam-asset/ to this installation)';
+  return null;
+}
+
+/** "Mirrors" a public file at a CDN that fetches from this installation: nothing is sent, the URL is built and the CDN is asked once to confirm it serves the file. */
+export async function mirrorViaOriginCdn(baseUrl: string, asset: OriginCdnAsset, probe: OriginCdnProbe): Promise<MirrorResult> {
+  if (!asset.isPublic) throw new CdnMirrorError('This file is private: a CDN in front of this installation can only serve public files (move it to a public folder first)', 400);
+  const url = originCdnUrl(baseUrl, asset.s3Key, asset.version);
+  const problem = await checkOriginCdn(url, asset, probe);
+  if (problem) throw new CdnMirrorError(problem, 502);
+  return { url };
+}
+
+/** The settings test of this provider: with a public file as the sample, the same check as a mirror; without one, only that the hostname answers. */
+export async function testOriginCdn(baseUrl: string, sample: OriginCdnAsset | null, probe: OriginCdnProbe): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!sample) return { ok: false, error: 'There is no public file to test with: upload one into a public folder, then test again' };
+  const problem = await checkOriginCdn(originCdnUrl(baseUrl, sample.s3Key, sample.version), sample, probe);
+  return problem ? { ok: false, error: problem } : { ok: true };
 }
 
 export class CdnMirrorError extends Error {
