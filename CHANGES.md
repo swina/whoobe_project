@@ -1,3 +1,8 @@
+## Navigation: the four groups start closed too — 2026-10-19
+- Branch: `master`
+- The sidebar opens as a list of four closed group headers (Content, Data & Communication, Assets, System), as the owner meant by "main items"; the submenus inside stay closed too (previous entry). A group opens with a click on its header; **showing a section opens its own group** (the shield of the top bar, a tab chosen in the strip) so the item that is shown is never hidden. `DashboardLayout.vue`: `collapsedNavGroups` starts with the four groups and a watch on the active tab removes the group of the section shown.
+- Tests: `browser/security-nav.spec.ts` (5): the grouped list as a first-time visitor sees it (four headers, no item), one group opens and only that one, the shield opens System and the Security submenu by itself. The `authed` fixture of the browser specs stores the flat list in the browser (`whoobe-admin-sidebar-nav-mode`) so that the other specs reach their items directly; 15 related browser specs pass.
+
 ## Navigation: every submenu starts closed — 2026-10-19
 - Branch: `master`
 - The submenus of the main navigation (Data Objects classes, Assets folders, AI, Settings, Security) start **closed** instead of open; showing a section opens its own submenu (a click on the item, the shield of the top bar, a tab chosen in the strip) and the others stay closed. `DashboardLayout.vue` only. `browser/security-nav.spec.ts` has a test for it (4 tests); the browser specs that go through a submenu still pass (13).

@@ -45,6 +45,8 @@ export const test = base.extend<{ api: Client; authed: BrowserContext; canary: C
   authed: async ({ browser, api }, use) => {
     const ctx = await browser.newContext()
     await ctx.addCookies([{ name: 'wcms_session', value: api.cookieHeader.split('=').slice(1).join('='), domain: 'localhost', path: '/' }])
+    // the sidebar opens as four closed groups; the specs reach their items directly, so they use the flat list (security-nav.spec.ts covers the groups)
+    await ctx.addInitScript(() => { try { localStorage.setItem('whoobe-admin-sidebar-nav-mode', 'flat') } catch { /* no storage */ } })
     await use(ctx)
     await ctx.close()
   },

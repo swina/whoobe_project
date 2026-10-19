@@ -882,7 +882,8 @@ function setNavGrouped(grouped: boolean) {
 // Which group headers are collapsed, grouped-view only. Session-only (not
 // persisted), same as the existing objects/assets/settings tree toggles
 // above.
-const collapsedNavGroups = ref<Set<NavGroupId>>(new Set())
+// All the groups start closed (the sidebar opens as a list of four headers); showing a section opens its group (watch below).
+const collapsedNavGroups = ref<Set<NavGroupId>>(new Set<NavGroupId>(['content', 'data', 'assets', 'system']))
 function toggleNavGroup(groupId: NavGroupId) {
   const next = new Set(collapsedNavGroups.value)
   if (next.has(groupId)) {
@@ -1300,6 +1301,18 @@ onUnmounted(() => window.removeEventListener('keydown', onNavPopoverKey))
 
 // leaving the collapsed state (or the page) must not leave a menu behind
 watch(isSidebarCollapsed, (v) => { if (!v) closeNavPopover() })
+
+// Showing a section opens the group it is listed under (a click on a group's item cannot happen while the group is closed, but the shield of the top
+// bar, a tab chosen in the strip or a link from another page can).
+watch(() => tabsStore.activeTabId, (id) => {
+  const tab = tabsStore.tabs.find((t) => t.id === id)
+  const group = tab?.type === 'section' && tab.section ? sectionGroup[tab.section] : undefined
+  if (group && collapsedNavGroups.value.has(group)) {
+    const next = new Set(collapsedNavGroups.value)
+    next.delete(group)
+    collapsedNavGroups.value = next
+  }
+})
 
 // Showing a section that has a submenu opens it (the submenus start closed): the click on the item, the shield of the top bar, a tab chosen in the strip.
 watch(() => tabsStore.activeTabId, (id) => {

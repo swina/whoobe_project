@@ -59,6 +59,32 @@ test('every submenu starts closed, and showing a section opens its own', async (
   await expect(p.getByTestId('nav-ai-text')).toBeVisible()
 })
 
+test('the sidebar opens as four closed groups; showing a section opens its own group', async ({ api, browser }) => {
+  const ctx = await browser.newContext()   // no stored choice: the grouped list, as a person sees it the first time
+  await ctx.addCookies([{ name: 'wcms_session', value: api.cookieHeader.split('=').slice(1).join('='), domain: 'localhost', path: '/' }])
+  const p = await ctx.newPage()
+  await p.goto(`${ADMIN_URL}/`)
+  const headers = ['Content', 'Data & Communication', 'Assets', 'System']
+  for (const h of headers) await expect(p.getByTitle(`Expand ${h}`, { exact: true }), h).toBeVisible({ timeout: 15_000 })
+  for (const key of ['websites', 'pages', 'objects', 'assets', 'settings', 'security']) await expect(p.getByTestId(`nav-item-${key}`), key).toHaveCount(0)
+
+  // a group opens with a click on its header, and only that group
+  await p.getByTitle('Expand System', { exact: true }).click()
+  await expect(p.getByTestId('nav-item-security')).toBeVisible()
+  await expect(p.getByTestId('nav-item-websites')).toHaveCount(0)
+  // the submenus inside are closed as well
+  await expect(p.getByTestId('nav-security-two-factor')).toHaveCount(0)
+  await p.getByTitle('Collapse System', { exact: true }).click()
+  await expect(p.getByTestId('nav-item-security')).toHaveCount(0)
+
+  // the shield of the top bar shows Security > Audit Logs: its group and its submenu open by themselves
+  await p.getByTestId('header-audit-log').click()
+  await expect(p.getByTestId('nav-item-security')).toBeVisible()
+  await expect(p.getByTestId('nav-security-audit-log')).toBeVisible()
+  await expect(p.getByTestId('nav-item-websites')).toHaveCount(0)
+  await ctx.close()
+})
+
 test('the header shield opens the audit log', async ({ authed }) => {
   const p = await authed.newPage()
   await p.goto(`${ADMIN_URL}/`)
@@ -72,6 +98,7 @@ test('a person with few permissions sees only what their role allows: their own 
   try {
     const session = await loginAs(user)
     const ctx = await browser.newContext()
+    await ctx.addInitScript(() => { try { localStorage.setItem('whoobe-admin-sidebar-nav-mode', 'flat') } catch { /* no storage */ } })
     await ctx.addCookies([{ name: 'wcms_session', value: session.cookieHeader.split('=').slice(1).join('='), domain: 'localhost', path: '/' }])
     const p = await ctx.newPage()
     await p.goto(`${ADMIN_URL}/`)
