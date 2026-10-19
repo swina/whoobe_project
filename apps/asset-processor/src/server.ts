@@ -440,17 +440,23 @@ function safeEqual(a: string, b: string): boolean {
   return ab.length === bb.length && timingSafeEqual(ab, bb);
 }
 
-function serviceTokenAuth(req: Request, res: Response, next: any): void {
-  const token = process.env.DAM_SERVICE_TOKEN;
-  if (token) {
-    const authHeader = req.headers.authorization;
-    if (typeof authHeader === 'string' && safeEqual(authHeader, `Bearer ${token}`)) {
-      next();
-      return;
+function serviceTokenOr(permission: (typeof PERMISSIONS)[keyof typeof PERMISSIONS]) {
+  return (req: Request, res: Response, next: any): void => {
+    const token = process.env.DAM_SERVICE_TOKEN;
+    if (token) {
+      const authHeader = req.headers.authorization;
+      if (typeof authHeader === 'string' && safeEqual(authHeader, `Bearer ${token}`)) {
+        next();
+        return;
+      }
     }
-  }
-  requirePermission(PERMISSIONS.ASSETS_UPLOAD)(req, res, next);
+    requirePermission(permission)(req, res, next);
+  };
 }
+// (declarations, not constants: routes registered earlier in the file use them)
+function serviceTokenAuth(req: Request, res: Response, next: any): void { serviceTokenOr(PERMISSIONS.ASSETS_UPLOAD)(req, res, next); }
+// core-api deletes the files of a person it erases (data subject request, retention) with the service token
+function serviceTokenOrDelete(req: Request, res: Response, next: any): void { serviceTokenOr(PERMISSIONS.ASSETS_DELETE)(req, res, next); }
 
 // Upload an asset to S3. Credentials never leave this process.
 app.post('/api/v1/dam/upload', serviceTokenAuth, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
@@ -732,7 +738,7 @@ app.post('/api/v1/dam/transform', requirePermission(PERMISSIONS.ASSETS_UPLOAD), 
 });
 
 // Delete an asset (and its thumbnail variants) from S3, plus its DB record.
-app.delete('/api/v1/dam/asset', requirePermission(PERMISSIONS.ASSETS_DELETE), async (req: Request, res: Response): Promise<void> => {
+app.delete('/api/v1/dam/asset', serviceTokenOrDelete, async (req: Request, res: Response): Promise<void> => {
   try {
     const pimcorePath = req.body?.pimcorePath as string | undefined;
     if (!pimcorePath) {

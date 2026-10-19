@@ -1221,6 +1221,38 @@
       "note": "reads the provider's discovery document; changes nothing",
       "audit": "exempt: a read of the provider's public discovery document, nothing is written"
     },
+    "POST /data-subject/search": {
+      "access": "permission",
+      "permissions": [
+        "DATA_SUBJECT_MANAGE"
+      ],
+      "note": "what exists, no values",
+      "audit": "exempt: written as the events data_subject.search / .export / .erase with a fingerprint of the identifier, never the identifier (data-subject-plan.md)"
+    },
+    "POST /data-subject/export": {
+      "access": "permission",
+      "permissions": [
+        "DATA_SUBJECT_MANAGE"
+      ],
+      "note": "the records as one JSON file",
+      "audit": "exempt: written as the events data_subject.search / .export / .erase with a fingerprint of the identifier, never the identifier (data-subject-plan.md)"
+    },
+    "POST /data-subject/erase": {
+      "access": "permission",
+      "permissions": [
+        "DATA_SUBJECT_MANAGE"
+      ],
+      "note": "dry run unless dryRun:false and confirm; files first",
+      "audit": "exempt: written as the events data_subject.search / .export / .erase with a fingerprint of the identifier, never the identifier (data-subject-plan.md)"
+    },
+    "POST /data-subject/retention/run": {
+      "access": "permission",
+      "permissions": [
+        "DATA_SUBJECT_MANAGE"
+      ],
+      "note": "runs the retention job now",
+      "audit": "exempt: the run is written as the event retention.purge (the classes and counts) when it removed anything"
+    },
     "GET /auth/password-policy": {
       "access": "public",
       "permissions": [],

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { and, eq, inArray, lt, isNotNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, lt, isNotNull, or, sql } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { dataObjects } from './data-objects-schema.js';
 import { dataClasses } from './data-classes-schema.js';
@@ -52,6 +52,35 @@ export interface StaffMatch { id: string; email: string; displayName: string; is
 export interface SubjectMatches { objects: ObjectMatch[]; mail: MailMatch[]; uploads: UploadMatch[]; staff: StaffMatch[] }
 
 const MAX_ROWS = 2000;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Every text in a JSON value that looks like an id (`{assetId}`, a list of asset ids, a nested relation). */
+export function idsIn(value: unknown, out: Set<string> = new Set(), depth = 0): Set<string> {
+  if (depth > 8) return out;
+  if (typeof value === 'string') { if (UUID.test(value)) out.add(value.toLowerCase()); }
+  else if (Array.isArray(value)) value.forEach((v) => idsIn(v, out, depth + 1));
+  else if (value && typeof value === 'object') Object.values(value as Record<string, unknown>).forEach((v) => idsIn(v, out, depth + 1));
+  return out;
+}
+
+/** The files a visitor sent through a form that belong to these objects: the upload rows whose library asset the object refers to (or that name the
+ *  object as their submission). Only form uploads count: a picture an editor chose from the library is not the visitor's and is never deleted. */
+async function uploadsOfObjects(objectIds: string[]): Promise<(typeof formUploads.$inferSelect & { objectId: string })[]> {
+  if (!objectIds.length) return [];
+  const db = getDb();
+  const rows = await db.select({ id: dataObjects.id, attributes: dataObjects.attributes }).from(dataObjects).where(inArray(dataObjects.id, objectIds));
+  const idsByObject = new Map(rows.map((r) => [r.id, idsIn(r.attributes)]));
+  const all = new Set<string>();
+  idsByObject.forEach((ids) => ids.forEach((i) => all.add(i)));
+  const found = await db.select().from(formUploads).where(or(inArray(formUploads.submissionId, objectIds), all.size ? inArray(formUploads.assetId, [...all]) : undefined));
+  const out: (typeof formUploads.$inferSelect & { objectId: string })[] = [];
+  for (const u of found) {
+    const owner = (u.submissionId && idsByObject.has(u.submissionId) ? u.submissionId : undefined)
+      ?? objectIds.find((id) => u.assetId && idsByObject.get(id)?.has(u.assetId.toLowerCase()));
+    if (owner) out.push({ ...u, objectId: owner });
+  }
+  return out;
+}
 
 /** Every string anywhere in `attributes` equal to the identifier, per top-level field: the names of the fields that hold it. */
 export async function findDataSubject(identifier: string, opts: SubjectOptions = {}): Promise<SubjectMatches> {
@@ -86,11 +115,9 @@ export async function findDataSubject(identifier: string, opts: SubjectOptions =
     ORDER BY sent_at DESC LIMIT ${limit}`);
   const mail: MailMatch[] = (mailRows.rows as any[]).map((r) => ({ id: r.id, to: r.to, subject: r.subject, status: r.status, sentAt: new Date(r.sent_at), matchedIn: r.matched_in }));
 
-  const uploads: UploadMatch[] = objects.length
-    ? (await db.select().from(formUploads).where(inArray(formUploads.submissionId, objects.map((o) => o.id)))).map((u) => ({
-        id: u.id, submissionId: u.submissionId!, assetId: u.assetId, originalName: u.originalName, size: u.size, status: u.status,
-      }))
-    : [];
+  const uploads: UploadMatch[] = (await uploadsOfObjects(objects.map((o) => o.id))).map((u) => ({
+    id: u.id, submissionId: u.objectId, assetId: u.assetId, originalName: u.originalName, size: u.size, status: u.status,
+  }));
 
   const staff = (await db.select({ id: users.id, email: users.email, displayName: users.displayName, isActive: users.isActive }).from(users).where(eq(users.email, identifier)));
   return { objects, mail, uploads, staff };
@@ -143,7 +170,7 @@ export async function eraseObjectsWithFiles(objectIds: string[], deps: EraseDeps
   const db = getDb();
   const result: EraseResult = { objectsDeleted: 0, filesDeleted: 0, uploadRowsDeleted: 0, failures: [] };
   for (const id of objectIds) {
-    const uploads = await db.select().from(formUploads).where(eq(formUploads.submissionId, id));
+    const uploads = (await uploadsOfObjects([id]));
     let failed: string | null = null;
     let filesHere = 0;
     for (const u of uploads) {
@@ -151,7 +178,7 @@ export async function eraseObjectsWithFiles(objectIds: string[], deps: EraseDeps
       try { await deps.deleteAsset(u.assetId); filesHere += 1; } catch (e) { failed = `the file "${u.originalName}" could not be deleted: ${(e as Error).message}`; break; }
     }
     if (failed) { result.failures.push({ objectId: id, reason: failed }); continue; }
-    if (uploads.length) result.uploadRowsDeleted += (await db.delete(formUploads).where(eq(formUploads.submissionId, id)).returning({ id: formUploads.id })).length;
+    if (uploads.length) result.uploadRowsDeleted += (await db.delete(formUploads).where(inArray(formUploads.id, uploads.map((u) => u.id))).returning({ id: formUploads.id })).length;
     await deleteDataObject(id, deps.write ?? {});
     result.objectsDeleted += 1;
     result.filesDeleted += filesHere;

@@ -148,6 +148,11 @@ import {
   disableTotp,
   updateMfaRecoveryCodes,
   getSecuritySettings,
+  findDataSubject,
+  exportDataSubject,
+  eraseDataSubject,
+  normalizeIdentifier,
+  purgeExpiredData,
   getOidcSettings,
   oidcConfigured,
   oidcPublicConfig,
@@ -1349,6 +1354,137 @@ app.post('/oidc-settings/test', requirePermission(PERMISSIONS.SETTINGS_MANAGE), 
     res.json({ ok: true, ...endpoints });
   } catch (error: any) {
     res.json({ ok: false, error: error instanceof OidcProtocolError ? error.message : 'The provider could not be reached' });
+  }
+});
+
+// --- Data subject requests (data-subject:manage; docs/plans/system/data-subject-plan.md) ---
+// One identifier (normally an e-mail address) is looked for whole, in any case, in the values of data objects, in the mail log and in the files
+// of the matched objects. Search shows what exists (no values), export hands over the records, erase deletes (files first). Staff accounts are
+// reported and never deleted here. Each call is written to the audit log with a fingerprint of the identifier, never the identifier.
+
+/** Deletes one file of the library through the asset service. Gone already = done; any other failure throws, so the object stays. */
+async function deleteLibraryAsset(assetId: string): Promise<void> {
+  const asset = await getAssetById(assetId);
+  if (!asset) return;
+  if (!DAM_SERVICE_TOKEN) throw new Error('DAM_SERVICE_TOKEN is not set: core-api cannot ask the asset service to delete files');
+  const res = await fetch(`${ASSET_PROCESSOR_URL}/api/v1/dam/asset`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DAM_SERVICE_TOKEN}` },
+    body: JSON.stringify({ pimcorePath: asset.pimcorePath }),
+  });
+  if (!res.ok) throw new Error(`the asset service answered ${res.status}`);
+}
+
+// each call scans the objects: bound it per administrator (DATA_SUBJECT_RATE_LIMIT_PER_MINUTE, default 20, 0 = off)
+const DATA_SUBJECT_LIMIT = envLimit('DATA_SUBJECT_RATE_LIMIT_PER_MINUTE', 20);
+const dataSubjectLimiter = DATA_SUBJECT_LIMIT > 0 ? createFixedWindowLimiter({ max: DATA_SUBJECT_LIMIT, windowMs: 60_000 }) : null;
+
+function parseSubjectRequest(req: Request, res: Response): { identifier: string; fingerprint: string; classIds?: string[]; includeMailBodies?: boolean } | null {
+  const user = (req as AuthenticatedRequest).user!;
+  if (dataSubjectLimiter?.hit(user.id)) { res.setHeader('Retry-After', '60'); res.status(429).json({ error: 'Too many requests. Try again in a minute.' }); return null; }
+  const id = normalizeIdentifier(req.body?.identifier);
+  if (!id.ok) { res.status(400).json({ error: id.error }); return null; }
+  const { classIds, includeMailBodies } = req.body ?? {};
+  if (classIds !== undefined && (!Array.isArray(classIds) || classIds.length > 100 || classIds.some((c: unknown) => typeof c !== 'string' || !/^[0-9a-f-]{36}$/i.test(c)))) {
+    res.status(400).json({ error: 'classIds must be a list of class ids' });
+    return null;
+  }
+  if (includeMailBodies !== undefined && typeof includeMailBodies !== 'boolean') { res.status(400).json({ error: 'includeMailBodies must be true or false' }); return null; }
+  return { identifier: id.value, fingerprint: id.fingerprint, classIds, includeMailBodies };
+}
+
+function auditSubject(req: Request, action: string, fingerprint: string, counts: Record<string, unknown>): void {
+  const u = (req as AuthenticatedRequest).user!;
+  void insertAuditSafe({ actor: { type: 'user', id: u.id, label: u.email }, ip: req.ip, action, targetType: 'data_subject', targetId: fingerprint, targetLabel: `request ${fingerprint}`, after: counts },
+    (err) => logger.error({ err, action }, 'audit: data subject row lost'));
+}
+
+app.post('/data-subject/search', requirePermission(PERMISSIONS.DATA_SUBJECT_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  const p = parseSubjectRequest(req, res);
+  if (!p) return;
+  try {
+    const found = await findDataSubject(p.identifier, p);
+    auditSubject(req, 'data_subject.search', p.fingerprint, { objects: found.objects.length, mail: found.mail.length, files: found.uploads.length, staff: found.staff.length });
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+      counts: { objects: found.objects.length, mail: found.mail.length, files: found.uploads.filter((u) => u.assetId).length, staff: found.staff.length },
+      objects: found.objects, mail: found.mail, files: found.uploads, staff: found.staff,
+    });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Data subject search error');
+    res.status(500).json({ error: 'The search failed' });
+  }
+});
+
+app.post('/data-subject/export', requirePermission(PERMISSIONS.DATA_SUBJECT_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  const p = parseSubjectRequest(req, res);
+  if (!p) return;
+  try {
+    const data = await exportDataSubject(p.identifier, p);
+    auditSubject(req, 'data_subject.export', p.fingerprint, { objects: data.objects.length, mail: data.mail.length, files: data.files.length });
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Content-Disposition', `attachment; filename="data-subject-${p.fingerprint}.json"`);
+    res.json(data);
+  } catch (error: any) {
+    logger.error({ err: error }, 'Data subject export error');
+    res.status(500).json({ error: 'The export failed' });
+  }
+});
+
+app.post('/data-subject/erase', requirePermission(PERMISSIONS.DATA_SUBJECT_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  const p = parseSubjectRequest(req, res);
+  if (!p) return;
+  const dryRun = req.body?.dryRun !== false;   // a dry run unless the request says otherwise
+  const include = req.body?.include;
+  if (include !== undefined && (typeof include !== 'object' || include === null || ['objects', 'mail'].some((k) => include[k] !== undefined && typeof include[k] !== 'boolean'))) {
+    res.status(400).json({ error: 'include must be { objects?: boolean, mail?: boolean }' });
+    return;
+  }
+  if (!dryRun) {
+    const confirm = normalizeIdentifier(req.body?.confirm);
+    if (!confirm.ok || confirm.value !== p.identifier) {
+      res.status(400).json({ error: 'To erase, send "confirm" with the same identifier again' });
+      return;
+    }
+  }
+  try {
+    const u = (req as AuthenticatedRequest).user!;
+    const result = await eraseDataSubject(p.identifier, { ...p, dryRun, include }, {
+      deleteAsset: deleteLibraryAsset,
+      write: { actor: { type: 'user', id: u.id } },
+    });
+    if (!dryRun) {
+      auditSubject(req, 'data_subject.erase', p.fingerprint, {
+        objectsDeleted: result.objectsDeleted, filesDeleted: result.filesDeleted, mailDeleted: result.mailDeleted, failures: result.failures.length, matched: result.matched,
+      });
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(result);
+  } catch (error: any) {
+    logger.error({ err: error }, 'Data subject erase error');
+    res.status(500).json({ error: 'The erasure failed' });
+  }
+});
+
+/** One run of the retention job (also the daily one): what it removed is logged and, when anything was, written to the audit log. */
+async function runRetentionNow(by?: { id: string; label: string }): Promise<Awaited<ReturnType<typeof purgeExpiredData>>> {
+  const r = await purgeExpiredData({ deleteAsset: deleteLibraryAsset, write: { actor: { type: by ? 'user' : 'system', id: by?.id ?? 'retention' } } });
+  if (r.classes.length || r.mailDeleted) {
+    logger.info({ classes: r.classes, mailDeleted: r.mailDeleted }, 'retention: old data removed');
+    void insertAuditSafe({ actor: { type: by ? 'user' : 'system', id: by?.id ?? 'retention', label: by?.label ?? 'Retention job' }, action: 'retention.purge', targetType: 'retention', after: { classes: r.classes, mailDeleted: r.mailDeleted } },
+      (err) => logger.error({ err }, 'audit: retention row lost'));
+  }
+  return r;
+}
+
+// Runs the retention job now instead of waiting for the daily run.
+app.post('/data-subject/retention/run', requirePermission(PERMISSIONS.DATA_SUBJECT_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const u = (req as AuthenticatedRequest).user!;
+    res.json(await runRetentionNow({ id: u.id, label: u.email }));
+  } catch (error: any) {
+    logger.error({ err: error }, 'Retention run error');
+    res.status(500).json({ error: 'The retention run failed' });
   }
 });
 
@@ -4398,7 +4534,21 @@ app.post('/data-classes', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (r
 
 app.patch('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, label, fields, viewConfig, confirmTypeChange } = req.body ?? {};
+    const { name, label, fields, viewConfig, confirmTypeChange, retentionDays } = req.body ?? {};
+
+    // Retention deletes data by itself, so it is not an editor's setting: it needs the data subject permission (admin).
+    let retentionBefore: number | null | undefined;
+    if (retentionDays !== undefined) {
+      if (retentionDays !== null && (typeof retentionDays !== 'number' || !Number.isInteger(retentionDays) || retentionDays < 1 || retentionDays > 36500)) {
+        res.status(400).json({ error: 'retentionDays must be a whole number of days from 1 to 36500, or null to keep the objects' });
+        return;
+      }
+      if (!(await getEffectivePermissions((req as AuthenticatedRequest).user!.id)).includes(PERMISSIONS.DATA_SUBJECT_MANAGE)) {
+        res.status(403).json({ error: 'Setting a retention period needs the data-subject permission' });
+        return;
+      }
+      retentionBefore = (await getDataClass(req.params.id))?.retentionDays;
+    }
 
     // Guardrail (docs/plans/datamodel/native-class-authoring-plan.md §3.1):
     // once a class has real objects, a field's `name` disappearing or its
@@ -4446,10 +4596,15 @@ app.patch('/data-classes/:id', requirePermission(PERMISSIONS.OBJECTS_WRITE), asy
       label: typeof label === 'string' ? label : undefined,
       fields: Array.isArray(fields) ? fields : undefined,
       viewConfig: viewConfig !== undefined ? viewConfig : undefined,
+      retentionDays: retentionDays !== undefined ? retentionDays : undefined,
     });
     if (!dataClass) {
       res.status(404).json({ error: 'Class not found' });
       return;
+    }
+    if (retentionDays !== undefined && retentionBefore !== dataClass.retentionDays) {
+      const u = (req as AuthenticatedRequest).user!;
+      void insertAuditSafe({ actor: { type: 'user', id: u.id, label: u.email }, ip: req.ip, action: 'data_class.retention_update', targetType: 'data_class', targetId: dataClass.id, targetLabel: dataClass.name, before: { retentionDays: retentionBefore ?? null }, after: { retentionDays: dataClass.retentionDays } }, (err) => logger.error({ err }, 'audit: retention row lost'));
     }
     res.json({ class: dataClass });
   } catch (error: any) {
@@ -7240,6 +7395,11 @@ bootstrapDatabase()
     };
     purgeAuditLog();
     setInterval(purgeAuditLog, 24 * 60 * 60 * 1000).unref();
+    // retention of data (docs/plans/system/data-subject-plan.md): objects older than their class's retention_days, mail log rows older than the setting;
+    // nothing is configured by default. At start, then daily; the files of a deleted object go first.
+    const scheduledRetention = (): void => { runRetentionNow().catch((err) => logger.error({ err }, 'retention: job failed')); };
+    setTimeout(scheduledRetention, 60_000).unref();   // not in the middle of the start
+    setInterval(scheduledRetention, 24 * 60 * 60 * 1000).unref();
     app.listen(port, () => {
       logger.info({ port }, 'Core API started');
     });

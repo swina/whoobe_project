@@ -127,6 +127,18 @@ describe.skipIf(!url)('data subject: find, export, erase, retention', () => {
     expect([again.objects.length, again.mail.length, again.uploads.length]).toEqual([0, 0, 0]);
   });
 
+  it('finds the visitor\'s file through the object\'s own reference, and never deletes a library picture an editor chose', async () => {
+    const CV = '55555555-5555-4555-8555-555555555555';       // sent through the form: a form_uploads row, no submission id (the real flow)
+    const PICTURE = '66666666-6666-4666-8666-666666666666';  // picked from the library: no form_uploads row
+    const id = await obj({ email: 'ann@x.org', cv: { assetId: CV }, photo: { assetId: PICTURE }, more: [CV] });
+    await db.getDb().insert(uploads.formUploads).values({ websiteId: '11111111-1111-4111-8111-111111111111', formRef: 'f', status: 'attached', extension: 'pdf', originalName: 'cv.pdf', declaredSize: 10, size: 10, assetId: CV });
+    const found = await ds.findDataSubject('ann@x.org');
+    expect(found.uploads).toMatchObject([{ assetId: CV, submissionId: id }]);
+    const r = await ds.eraseDataSubject('ann@x.org', { dryRun: false }, deps());
+    expect(r).toMatchObject({ objectsDeleted: 1, filesDeleted: 1, uploadRowsDeleted: 1 });
+    expect(deleted).toEqual([CV]);
+  });
+
   it('keeps an object whose file cannot be deleted, reports it, and a retry finishes the job', async () => {
     const A = '22222222-2222-4222-8222-222222222222';
     const id = await obj({ email: 'ann@x.org' });
