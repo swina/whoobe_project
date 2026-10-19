@@ -80,7 +80,7 @@ Nuxt output (equivalent shape, same `vendor/`/`Dockerfile`/`nginx.conf`/`deploy.
 - The website's **UUID** (admin dashboard → Websites → Edit → URL)
 - Node.js 20+ and pnpm 9+
 - If publishing forms/data-bindings backed by the Gateway: the Gateway's own public base URL
-- If mirroring images to a CDN: a CDN provider (e.g. Cloudinary) already configured as a Gateway endpoint/route in the admin dashboard, and a service account (email/password, **no MFA**) for `whoobe-sync-cdn`. **The CMS instance you run this against does not need to be public** - `mirror-cdn` (`apps/asset-processor/src/server.ts`) reads the asset's bytes directly from its own S3/MinIO (private is fine) and sends them to the CDN as base64 whenever `S3_PUBLIC_BASE_URL` isn't a genuinely public origin (`isPubliclyReachableUrl()` rejects `localhost`/private IPs/bare hostnames) - only outbound internet access to reach the Gateway → CDN provider is required, never inbound. This is by design (`docs/plans/assets/assets-cdn.md`): the feature exists specifically for a locked-down/VPN-only/local Whoobe instance. See "Option C: Fully static deployment" under [Step 3](#step-3-deploy) below for the scenario this enables end-to-end.
+- If mirroring images to a CDN: a CDN set up for the website or as the installation's default (Cloudinary through a Gateway endpoint and route, or Cloudflare Images with an API token: step 1b), and a service account (email/password, **no MFA**) for `whoobe-sync-cdn`. **The CMS instance you run this against does not need to be public** - `mirror-cdn` (`apps/asset-processor/src/server.ts`) reads the asset's bytes directly from its own S3/MinIO (private is fine) and sends them to the CDN as base64 whenever `S3_PUBLIC_BASE_URL` isn't a genuinely public origin (`isPubliclyReachableUrl()` rejects `localhost`/private IPs/bare hostnames) - only outbound internet access to reach the Gateway → CDN provider is required, never inbound. This is by design (`docs/plans/assets/assets-cdn.md`): the feature exists specifically for a locked-down/VPN-only/local Whoobe instance. See "Option C: Fully static deployment" under [Step 3](#step-3-deploy) below for the scenario this enables end-to-end.
 
 ---
 
@@ -132,7 +132,27 @@ Or run `./publish-site.sh` for an interactive prompt instead of passing flags di
 
 ## Step 1b: Mirror images to a CDN (optional but recommended)
 
-A published site's images resolve to the CMS's own `/dam-asset/` proxy by default - fine when the CMS itself has a genuinely public origin, but every request round-trips through it. Mirroring an asset to a CDN (Cloudinary, via a Gateway route already configured in the admin dashboard) gives it a stable, permanent, directly-CDN-served URL instead, and the published site **automatically prefers it** once mirrored (`cdnMirrors` in the `/public/pages/...` response, checked first by `resolveImageUrl()`).
+A published site's images resolve to the CMS's own `/dam-asset/` proxy by default - fine when the CMS itself has a genuinely public origin, but every request round-trips through it. Mirroring an asset to a CDN gives it a stable, permanent, directly-CDN-served URL instead, and the published site **automatically prefers it** once mirrored (`cdnMirrors` in the page API response, read fresh at request time).
+
+### Which CDN: per website, with a default
+
+Each website can have **its own CDN** (sites on different domains usually do), and the installation has a **default** for the websites that have none:
+
+- **Default:** *Settings > DAM configuration > CDN Mirroring*. The *Publish to CDN* action of the Assets list also uses it (the library is shared by every website).
+- **A website's own:** *Websites > (the website) > Settings*, the card *CDN Mirroring*: "Use the installation's default" or "This website has its own CDN". The **Publish** tab shows which one applies to the website you chose and has a *Change for this website* button; it no longer asks for a route or a preset.
+
+Two providers are available; each has its own fields:
+
+| Provider | Settings | How it uploads |
+|---|---|---|
+| **Cloudinary** | the Gateway upload route (an endpoint of Integrations made from the Cloudinary preset) and an *unsigned upload preset* created in Cloudinary | through the Gateway: the file as a public URL, or as a data URI when the library has no public address |
+| **Cloudflare Images** | the **account id** and an **API token** with the permission *Cloudflare Images: Edit*; optionally the delivery variant (default `public`) | straight to Cloudflare with the token: the image bytes, with the asset id as the image id, so the delivery URL is stable (`https://imagedelivery.net/<hash>/<asset id>/<variant>`) |
+
+The Cloudflare token is **stored encrypted** (with `INTEGRATION_SECRETS_ENCRYPTION_KEY`; without it, in clear text, as the AI and Figma keys), is never returned by the API and is shown only as "set"; leave the field blank to keep it. The **Test** button reads the account's statistics with the token (Cloudflare) or checks that the Gateway route exists (Cloudinary); it uploads nothing. Cloudflare Images takes PNG, JPEG, GIF, WebP, SVG and AVIF up to 10 MB: another file is refused before anything is sent, and Cloudflare's own error text is shown when it refuses. Re-mirroring an asset deletes the old image and uploads again (the URL stays). The setting is audited (`setting.cdn_mirror_update`), the token as "changed".
+
+When an asset is mirrored at more than one CDN (two websites, two providers), a page is served with the mirror of **its own website's provider**.
+
+### Run it
 
 Mirroring itself doesn't happen automatically on publish - run it as a separate step, before or after generating the site (it doesn't need the generated project, only the CMS API):
 
@@ -141,13 +161,12 @@ WHOOBE_SYNC_EMAIL=service-account@example.com \
 WHOOBE_SYNC_PASSWORD=... \
 pnpm publish:sync-cdn \
   --api-url https://cms.example.com \
-  --website-id <uuid> \
-  --gateway-route-id <cloudinary-upload-route-id>
+  --website-id <uuid>
 ```
 
-- The service account **must not have MFA enabled** - the script logs in with plain email/password and exits with an explicit error if the account requires a TOTP challenge. Use a dedicated account for this, not a real admin's own login.
-- `--gateway-route-id` is the Gateway route id for the CDN provider's upload route (e.g. Cloudinary's `image/upload`), already configured under Settings → DAM / the Gateway admin UI - the script never creates one itself.
-- It walks every published page's image references, checks `GET /public/dam/assets/mirror-status` for each, and calls the existing `POST /api/v1/dam/assets/:id/mirror-cdn` (the same endpoint the Asset Manager's own "Publish to CDN" button uses) for whichever aren't mirrored yet.
+- The service account **must not have MFA enabled** - the script logs in with plain email/password and exits with an explicit error if the account requires a TOTP challenge. Use a dedicated account for this, not a real admin's own login. It needs the `objects:read` and `assets:upload` permissions.
+- The script asks the server which CDN applies to the website (its own, else the default) and stops with a clear message when none is set up or the setting is incomplete. `--gateway-route-id` (and `--upload-preset`) are the **old way**, Cloudinary only, and still work.
+- It walks every published page's image references, checks `GET /public/dam/assets/mirror-status?provider=...` for each (only a mirror at that provider counts), and calls `POST /api/v1/dam/assets/:id/mirror-cdn` (the endpoint the Asset Manager's own "Publish to CDN" button uses) for whichever aren't mirrored yet.
 - Re-running it is safe/idempotent - already-mirrored assets are skipped.
 - If a site was already generated (Step 1) before running this, its `cdnMirrors` are read fresh from the API at **request time** (both Next revalidate and Nuxt runtime), not baked into the generated project - no need to re-run `publish:site` afterwards.
 

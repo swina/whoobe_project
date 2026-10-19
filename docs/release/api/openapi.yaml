@@ -1714,10 +1714,23 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/settings/cdn-providers:
+    get:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "The CDN providers (Cloudinary, Cloudflare Images) and the fields of their settings; no secret."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /whoobe-one/settings/cdn-mirror:
     get:
       tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
-      summary: "Get the default CDN-mirroring settings for DAM assets."
+      summary: "The CDN-mirroring settings that apply to a website (`?websiteId=`: its own, else the installation's default; without it, the default): `{ scope, provider, config, secretsSet, missing, configured, own }`. A credential is never returned, only whether it is set; `gatewayRouteId` / `uploadPreset` are the Cloudinary values the sync script reads."
       responses:
         "200":
           description: OK
@@ -1729,7 +1742,39 @@ paths:
           $ref: '#/components/responses/Unauthorized'
     put:
       tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
-      summary: "Set the default CDN-mirroring settings."
+      summary: "Set the CDN settings of a website (`websiteId`) or the default: `{ websiteId?, provider, config, secrets }`; a secret that is not sent keeps the stored one. Needs `settings:manage`. The old body (`gatewayRouteId`, `uploadPreset`) means Cloudinary for the default. Audited as `setting.cdn_mirror_update`."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Remove a website's own CDN settings (`?websiteId=`: it uses the default again); without a website, the default goes. Needs `settings:manage`."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/settings/cdn-mirror/test:
+    post:
+      tags: ["core-api: Whoobe One: Websites, Settings, PWA"]
+      summary: "Check the settings that apply (`{ websiteId? }`): Cloudflare Images with a read call, Cloudinary that its Gateway route exists. Uploads nothing."
       requestBody:
         required: false
         content:
@@ -2506,7 +2551,7 @@ paths:
   /public/dam/assets/mirror-status:
     get:
       tags: ["core-api: Public site endpoints (no auth)"]
-      summary: "Whether CDN-mirrored copies exist for a batch of asset paths."
+      summary: "Whether CDN-mirrored copies exist for a batch of asset paths (`?provider=` counts only a mirror at that provider)."
       security: []
       responses:
         "200":
@@ -6280,7 +6325,7 @@ paths:
   /api/v1/dam/assets/{id}/mirror-cdn:
     post:
       tags: ["asset-processor: DAM assets (S3-backed, Postgres-tracked)"]
-      summary: "Push a copy of this asset to the configured CDN mirror target."
+      summary: "Push a copy of this asset to the CDN configured for `websiteId` (its own settings, else the default): Cloudinary through the Gateway, Cloudflare Images directly. The old body (`gatewayRouteId`, `uploadPreset`) still means Cloudinary. A refusal of the provider is in `detail`."
       parameters:
         - name: id
           in: path
