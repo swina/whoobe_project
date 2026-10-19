@@ -1,5 +1,12 @@
 # Release v0.2.0 — 2026-10-19
 
+## Backups pulled by the development server — 2026-10-20
+- Branch: `master`. No repository file changed; this records the installation on `develop` (192.168.1.102, run by the owner).
+- Copies are kept in `/home/antonio/ssd1tb/data/whoobe-backup` (mode 700; 543 GB free). Scripts in `~/whoobe-backup-scripts/`, settings in `~/.config/whoobe/pull.env` (mode 600), cron `30 4 * * *` for the user `antonio` (output in `~/whoobe-backup-pull.log`). A cron job rather than a systemd timer: no `sudo` needed; a night when the machine is off is skipped.
+- A dedicated ed25519 key created on `develop` (`~/.ssh/whoobe_backup`); on the Oracle host its public half is in `authorized_keys` as `restrict,command="rrsync -ro /home/ubuntu/backups/nightly"`. Checked: a write attempt is refused by `rrsync` ("sending to read-only server is not allowed", exit 12) and a command (`id`) does not run.
+- First pull: the encrypted dump and env file, the marker and the bucket copy (20 files) arrived; `check.sh` ok. Not done: S3/Garage copy (the owner chose the disk for now), a check of the first scheduled runs.
+- Left in place, owner to decide: the old sandbox containers on `develop` (`ws-sandbox-*`, 8 containers, volumes `ws-sandbox_pgdata` and `ws-sandbox_garagedata`, up for 13 days).
+
 ## Scheduled backups installed on the public host — 2026-10-20
 - Branch: `master`. No repository file changed; this records the installation on `dashboard.whoobe.dev` (run by the owner).
 - `scripts/backup/` copied to `/opt/whoobe/whoobe_cms/scripts/backup/`; `age` 1.0.0 installed from the Ubuntu repository (arm64; `needrestart` listed services to restart, none was restarted; a kernel upgrade is pending on the host, unrelated); `/etc/whoobe/backup.env` (`root:ubuntu`, 640: public age key, `BACKUP_DIR=/home/ubuntu/backups/nightly`, `BACKUP_KEEP=14`); units `whoobe-backup@.service` and `.timer` in `/etc/systemd/system/`, `whoobe-backup@dashboard.timer` enabled (first scheduled run 2026-10-20 03:03 UTC).
