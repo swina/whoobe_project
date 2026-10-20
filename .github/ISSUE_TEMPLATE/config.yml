@@ -1,0 +1,12 @@
+# Questions and ideas go to GitHub Discussions (one public place); an issue is for a confirmed bug or an accepted piece of work.
+blank_issues_enabled: true
+contact_links:
+  - name: Ask a question
+    url: https://github.com/swina/whoobe_project/discussions/categories/q-a
+    about: How do I do this, why does it behave like that, is this supported. Answered in public.
+  - name: Suggest an idea
+    url: https://github.com/swina/whoobe_project/discussions/categories/ideas
+    about: A feature, a change, a direction. Discuss it first; an issue follows when it is accepted.
+  - name: Report a vulnerability (private)
+    url: https://github.com/swina/whoobe_project/blob/master/SECURITY.md
+    about: Never in a public issue or discussion. The policy says how to write privately.
