@@ -799,7 +799,8 @@ export async function duplicateKit(id: string): Promise<string> {
  *  and Save writes back into that kit only (saveKitTemplate()). The caller opens a user's kit; a shipped kit is duplicated first. */
 export async function loadKitTemplateForEdit(editor: EditorStore, kitId: string, templateId: string): Promise<boolean> {
   const kit = await apiGetKit(kitId)
-  const template = kit.templates.find((t) => t.id === templateId)
+  // ids of the old kits can be numbers (0, 1...) and the one from the address bar is a string
+  const template = kit.templates.find((t) => String(t.id) === String(templateId))
   if (!template) return false
   const root = JSON.parse(JSON.stringify(template.json?.blocks ?? createEmptyDocumentRoot())) as WhoobeElement
   const page = new Block()

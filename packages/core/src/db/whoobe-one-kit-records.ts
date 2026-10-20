@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { eq, desc } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { whoobeOneKits, type KitOrigin } from './whoobe-one-kit-schema.js';
@@ -14,6 +15,21 @@ export interface WhoobeOneKitRecord {
   forkedFrom: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** A kit template is found, edited and removed by its id, so inside one kit every id is a string and unique. The kits of the old editor
+ *  (and any import) can carry numbers or the same id many times: those get a new id, the others are kept as they are. */
+export function normaliseKitTemplateIds<T>(templates: T[]): T[] {
+  const seen = new Set<string>();
+  return templates.map((t) => {
+    const template = (t ?? {}) as Record<string, unknown>;
+    let id = typeof template.id === 'string' ? template.id : '';
+    if (!id || seen.has(id)) {
+      do id = `tpl-${randomUUID().slice(0, 8)}`; while (seen.has(id));
+    }
+    seen.add(id);
+    return template.id === id ? t : ({ ...template, id } as T);
+  });
 }
 
 export async function listWhoobeOneKits(): Promise<WhoobeOneKitRecord[]> {
@@ -54,7 +70,7 @@ export async function createWhoobeOneKit(input: {
       name: input.name,
       description: input.description ?? null,
       category: input.category,
-      templates: input.templates,
+      templates: normaliseKitTemplateIds(input.templates),
       origin: input.origin ?? 'user',
       version: input.version ?? '1',
       slug: input.slug ?? null,
@@ -75,7 +91,7 @@ export async function addTemplateToWhoobeOneKit(kitId: string, template: any): P
 
   const [row] = await db
     .update(whoobeOneKits)
-    .set({ templates: [...kit.templates, template], updatedAt: new Date() })
+    .set({ templates: normaliseKitTemplateIds([...kit.templates, template]), updatedAt: new Date() })
     .where(eq(whoobeOneKits.id, kitId))
     .returning();
   return row ?? null;
@@ -93,7 +109,7 @@ export async function updateWhoobeOneKitContent(
   input: { name: string; description: string | null; category: string; templates: any[]; version: string }
 ): Promise<void> {
   const db = getDb();
-  await db.update(whoobeOneKits).set({ ...input, updatedAt: new Date() }).where(eq(whoobeOneKits.id, id));
+  await db.update(whoobeOneKits).set({ ...input, templates: normaliseKitTemplateIds(input.templates), updatedAt: new Date() }).where(eq(whoobeOneKits.id, id));
 }
 
 /** A user copy of any kit: the templates are deep-copied (the kit is a self-contained bundle), the origin is always 'user'. */
@@ -106,9 +122,9 @@ export async function updateWhoobeOneKitTemplate(
 ): Promise<WhoobeOneKitRecord | null> {
   const db = getDb();
   const kit = await getWhoobeOneKit(kitId);
-  if (!kit || !kit.templates.some((t) => t?.id === templateId)) return null;
+  if (!kit || !kit.templates.some((t) => String(t?.id) === templateId)) return null;
   const templates = kit.templates.map((t) => {
-    if (t?.id !== templateId) return t;
+    if (String(t?.id) !== templateId) return t;
     const next = { ...t };
     if (input.name !== undefined) next.name = input.name;
     if (input.category !== undefined) next.category = input.category;
@@ -124,10 +140,10 @@ export async function updateWhoobeOneKitTemplate(
 export async function removeTemplateFromWhoobeOneKit(kitId: string, templateId: string): Promise<WhoobeOneKitRecord | null> {
   const db = getDb();
   const kit = await getWhoobeOneKit(kitId);
-  if (!kit || !kit.templates.some((t) => t?.id === templateId)) return null;
+  if (!kit || !kit.templates.some((t) => String(t?.id) === templateId)) return null;
   const [row] = await db
     .update(whoobeOneKits)
-    .set({ templates: kit.templates.filter((t) => t?.id !== templateId), updatedAt: new Date() })
+    .set({ templates: kit.templates.filter((t) => String(t?.id) !== templateId), updatedAt: new Date() })
     .where(eq(whoobeOneKits.id, kitId))
     .returning();
   return row ?? null;

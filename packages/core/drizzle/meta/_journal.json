@@ -477,6 +477,13 @@
       "when": 1790000700000,
       "tag": "0067_kit_origin",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1790000800000,
+      "tag": "0068_kit_template_ids",
+      "breakpoints": true
     }
   ]
 }
