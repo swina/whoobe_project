@@ -10,8 +10,10 @@ Type=oneshot
 WorkingDirectory=/opt/whoobe_project
 EnvironmentFile=/etc/whoobe-sandbox.env
 ExecStart=/opt/whoobe_project/scripts/sandbox/reset.sh
-# a build normally takes a few minutes; one that stalls (a dependency download that never ends) is killed and tried again
-TimeoutStartSec=15min
+# a build with warm caches takes seconds; the first one after new code takes a few minutes on a quiet host and more than 15 on a busy
+# 4-CPU arm64 one (it ran out of time two seconds from the end on 2026-10-20, and the sandbox stayed off until the retry); one that stalls
+# (a dependency download that never ends) is killed after this and tried again
+TimeoutStartSec=40min
 Restart=on-failure
 RestartSec=60
 # Host-specific values (user, repository path) go in a drop-in: see override.conf.example
