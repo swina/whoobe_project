@@ -1,0 +1,430 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "website": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[^<>]*$"
+        },
+        "rootPath": {
+          "description": "derived from the name when absent",
+          "type": "string",
+          "pattern": "^\\/[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "defaultLocale": {
+          "type": "string",
+          "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+        },
+        "supportedLocales": {
+          "description": "one or two locales, the default one included",
+          "minItems": 1,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+          }
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 400,
+          "pattern": "^[^<>]*$"
+        }
+      },
+      "required": [
+        "name",
+        "defaultLocale",
+        "supportedLocales"
+      ],
+      "additionalProperties": false
+    },
+    "theme": {
+      "type": "object",
+      "properties": {
+        "use": {
+          "description": "the name of a theme that already exists here; then nothing else is given",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "colors": {
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "hex": {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              }
+            },
+            "required": [
+              "name",
+              "hex"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "fonts": {
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "snippets": {
+      "maxItems": 30,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,39}$"
+          },
+          "use": {
+            "description": "the name of a snippet that already exists here; then nothing else is given",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "category": {
+            "description": "for example hero, navigation, footer, content",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "node": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "layout": {
+      "description": "keys of snippets placed around every page",
+      "type": "object",
+      "properties": {
+        "header": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,39}$"
+        },
+        "footer": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,39}$"
+        },
+        "aside": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,39}$"
+        },
+        "notFound404": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,39}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "pages": {
+      "minItems": 1,
+      "maxItems": 30,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "maxLength": 120,
+            "pattern": "^\\/$|^\\/[a-z0-9]+(-[a-z0-9]+)*(\\/[a-z0-9]+(-[a-z0-9]+)*)*$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[^<>]*$"
+          },
+          "locale": {
+            "description": "one of website.supportedLocales; the default locale when absent",
+            "type": "string",
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "description": {
+            "description": "the page description for search engines",
+            "type": "string",
+            "maxLength": 400,
+            "pattern": "^[^<>]*$"
+          },
+          "sections": {
+            "minItems": 1,
+            "maxItems": 40,
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "sections"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "version",
+    "website",
+    "pages"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "container"
+            },
+            "direction": {
+              "description": "row or col; the default is a plain block",
+              "type": "string",
+              "enum": [
+                "row",
+                "col"
+              ]
+            },
+            "semantic": {
+              "type": "string",
+              "enum": [
+                "section",
+                "header",
+                "footer",
+                "nav",
+                "main",
+                "aside",
+                "article"
+              ]
+            },
+            "css": {
+              "description": "Tailwind classes of the container",
+              "type": "string",
+              "maxLength": 600,
+              "pattern": "^[^\"'`<\\\\{};]*$"
+            },
+            "anchor": {
+              "description": "an id that \"#anchor\" links can point to",
+              "type": "string",
+              "pattern": "^[\\w-]{1,60}$"
+            },
+            "children": {
+              "maxItems": 60,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema0"
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "children"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "heading"
+            },
+            "level": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "const": 1
+                },
+                {
+                  "type": "number",
+                  "const": 2
+                },
+                {
+                  "type": "number",
+                  "const": 3
+                },
+                {
+                  "type": "number",
+                  "const": 4
+                },
+                {
+                  "type": "number",
+                  "const": 5
+                },
+                {
+                  "type": "number",
+                  "const": 6
+                }
+              ]
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "pattern": "^[^<>]*$"
+            },
+            "css": {
+              "type": "string",
+              "maxLength": 600,
+              "pattern": "^[^\"'`<\\\\{};]*$"
+            }
+          },
+          "required": [
+            "kind",
+            "level",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "text"
+            },
+            "html": {
+              "description": "a paragraph; inline formatting only (strong, em, a, code, br), cleaned on import",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000
+            },
+            "css": {
+              "type": "string",
+              "maxLength": 600,
+              "pattern": "^[^\"'`<\\\\{};]*$"
+            }
+          },
+          "required": [
+            "kind",
+            "html"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "link"
+            },
+            "text": {
+              "description": "the visible text; a link without text is refused",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^[^<>]*$"
+            },
+            "href": {
+              "type": "string",
+              "maxLength": 2000,
+              "pattern": "^(\\/(?!\\/)[^\\s\"'<>\\\\]*|#[\\w-]+|https?:\\/\\/[^\\s\"'<>\\\\]+|mailto:[^\\s\"'<>\\\\]+|tel:[+\\d\\s().-]+)$"
+            },
+            "css": {
+              "type": "string",
+              "maxLength": 600,
+              "pattern": "^[^\"'`<\\\\{};]*$"
+            }
+          },
+          "required": [
+            "kind",
+            "text",
+            "href"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "image"
+            },
+            "alt": {
+              "description": "what the image shows; the picture itself is a placeholder until a person chooses one",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "pattern": "^[^<>]*$"
+            },
+            "css": {
+              "type": "string",
+              "maxLength": 600,
+              "pattern": "^[^\"'`<\\\\{};]*$"
+            }
+          },
+          "required": [
+            "kind",
+            "alt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "snippet"
+            },
+            "use": {
+              "description": "the key of an entry of \"snippets\"",
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,39}$"
+            }
+          },
+          "required": [
+            "kind",
+            "use"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
