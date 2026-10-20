@@ -18,10 +18,19 @@
           data-type="template"
           :data-template="item.name"
           :title="item.name"
-          class="flex flex-col items-center justify-center gap-1 h-14 rounded-md bg-white border border-slate-300 text-[9px] text-gray-500 text-center px-1 cursor-grab select-none hover:border-indigo-400 hover:text-indigo-600 font-normal"
+          class="group/chip relative flex flex-col items-center justify-center gap-1 h-14 rounded-md bg-white border border-slate-300 text-[9px] text-gray-500 text-center px-1 cursor-grab select-none hover:border-indigo-400 hover:text-indigo-600 font-normal"
         >
           <component :is="elementIcon(item.name)" class="w-5 h-5" />
           <span class="truncate w-full">{{ item.name }}</span>
+          <button
+            type="button"
+            title="Insert into the current element"
+            class="absolute -bottom-1.5 -right-1.5 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center opacity-0 group-hover/chip:opacity-100"
+            @mousedown.stop
+            @click.stop="insertElement(item.name)"
+          >
+            <Import class="w-2.5 h-2.5" />
+          </button>
         </div>
       </div>
     </template>
@@ -36,8 +45,8 @@
 // with the real category structure (containers/text/media/form) the
 // source itself defines in ElementsClass.js's Groups() method.
 //
-// Still drag-only, not click-to-add (see BlockEditor.vue's own comment on
-// why click-to-add-to-selected was replaced) - every element chip carries
+// Drag, or the hover "Insert" button (see BlockEditor.vue's own comment on
+// why click-on-the-chip-to-add was replaced) - every element chip carries
 // the same data-type="template"/data-template attributes the existing
 // palette row used, so BlockEditor.vue's single shared dragula instance
 // and drop handler need no changes at all to pick these up.
@@ -77,6 +86,7 @@ import {
   Hash,
   Heading,
   Image,
+  Import,
   LayoutGrid,
   Mail,
   Menu,
@@ -96,6 +106,8 @@ import {
   Video,
 } from '@lucide/vue'
 import { useEditorStore } from '../store/editor'
+import { insertTemplateElement } from '../scripts/editor-actions'
+import { editorBus } from '../bus'
 
 // Real per-element-type icons, keyed by the exact `name` strings
 // ElementsClass.js's own Groups() uses (its own `icon` field per entry -
@@ -150,6 +162,13 @@ function elementIcon(name: string): Component {
 
 const editor = useEditorStore()
 const openGroup = ref<string | null>('containers')
+
+// "Insert" button (chip hover): same result as dragging the chip onto the canvas, but into the currently selected
+// element (or after it, or at the document root - see insertTemplateElement()); for a structure too deep to drop on.
+function insertElement(name: string) {
+  if (insertTemplateElement(editor, name)) editorBus.emit('editorMessage', `Added ${name}`)
+  else editorBus.emit('editorMessage', 'Open a page or snippet first')
+}
 
 const groupLabels = computed(() => (editor.elements ?? []).map((g) => g.label))
 
