@@ -1,6 +1,6 @@
 # GitHub Discussions as the one channel for questions
 
-Status: **decided by the owner on 2026-10-20**; the repository setup is done in this branch; the dashboard link is planned for the next release.
+Status: **decided by the owner on 2026-10-20**; the repository setup is done (`docs/github-discussions`); the dashboard Help entry is **implemented** (branch `feat/dashboard-help-link`, for the next release).
 
 ## Decision
 
@@ -37,6 +37,11 @@ A **Help** entry in the dashboard that opens, in a new tab, the Discussions page
 - The address is a setting of the installation (`COMMUNITY_URL`, empty hides the entry), because an organisation that runs Whoobe inside its own
   network may not want a link to the public internet in its administrators' menu; documented with the other environment variables.
 - Consistent with "no call home": the link is followed by the person, never by the server.
+
+As built: the setting is read by core-api and returned in the `community` field of the public `/health` answer (the dashboard already asks `/health` every 30 seconds
+for the status badge); the sidebar footer shows **Help and questions** (the discussions) and **Docs** (`https://docs.whoobe.dev`), both with `target="_blank"` and
+`rel="noopener noreferrer"`, only when the field is present. Unset: the project's Discussions; empty: no entry; a value that is not an http(s) URL: no entry.
+Tests: `packages/core/src/community.test.ts` (unit) and `scripts/security/browser/help-link.spec.ts` (the link, its target, hidden when empty).
 
 Out of scope: embedding the discussions in the dashboard, single sign-on with GitHub, a private support desk.
 

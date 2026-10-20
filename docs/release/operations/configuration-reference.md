@@ -91,6 +91,7 @@ cannot be lost** - see [secrets and keys](secrets-and-keys.md).
 | `OUTBOUND_ALLOW_HOSTS` | `safeFetch` | unset | host names exempt from every outbound check |
 | `WS_APP_BIND_ADDRESS` | Compose | `0.0.0.0` (the workspace scripts set `127.0.0.1`) | interface of the application ports |
 | `WS_ADMIN_DASHBOARD_PORT`, `WS_GATEWAY_PORT`, `WS_ASSET_PROCESSOR_PORT`, `WS_CORE_API_PORT`, `WS_WHOOBE_ONE_SPIKE_PORT` | Compose, nginx rendering | 3000, 3001, 3002, 3003, 3006 | host side of each port |
+| `COMMUNITY_URL` | core-api (read by the dashboard through `/health`) | the project's GitHub Discussions | the address of the **Help and questions** entry in the dashboard's sidebar, opened by the person in a new tab (a link only: nothing about the installation or the user is sent). **Set it empty to hide the entry** (and the Docs link beside it), or to your own forum; anything that is not an http(s) URL also hides it |
 | `WS_MAX_BODY` | nginx rendering | `100M` | request body cap for the whole server |
 | `WS_EDGE_LIMITS` | nginx rendering | empty | extra server-level nginx directives (the public sandbox sets rate limits here) |
 

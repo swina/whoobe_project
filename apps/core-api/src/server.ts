@@ -357,6 +357,7 @@ import {
   seoAssetIds,
   resolveSeoTemplates,
   isSandbox,
+  communityUrl,
   isSandboxBlockedPath,
   isSandboxReadOnlyPath,
   SANDBOX_READ_ONLY_MESSAGE,
@@ -539,7 +540,7 @@ app.get('/site-root', async (req: Request, res: Response): Promise<void> => {
 // caller cannot make a query per request). /health/live is LIVENESS: the process is up, nothing else is asked (the Docker
 // HEALTHCHECK uses it, so a database outage does not make the container look dead). Neither shows more than it did before.
 const databaseUp = memoAsync(() => pingDatabase(2000), 2000);
-const healthBody = () => ({ service: 'core-api', audit: auditStats.lost === 0 ? 'ok' : 'degraded', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString(), ...(isSandbox() ? { sandbox: sandboxStatus() } : {}) });
+const healthBody = () => ({ service: 'core-api', audit: auditStats.lost === 0 ? 'ok' : 'degraded', uptimeSeconds: process.uptime(), timestamp: new Date().toISOString(), ...(isSandbox() ? { sandbox: sandboxStatus() } : {}), ...(communityUrl() ? { community: { url: communityUrl() } } : {}) });
 app.get('/health', async (_req: Request, res: Response) => {
   const up = await databaseUp();
   res.status(up ? 200 : 503).json({ status: up ? 'ok' : 'unavailable', database: up ? 'ok' : 'down', ...healthBody() });

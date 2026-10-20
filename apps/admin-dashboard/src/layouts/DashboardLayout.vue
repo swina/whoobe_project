@@ -275,6 +275,19 @@
 
       <!-- Sidebar Footer / System Health Indicator -->
       <div class="p-3 border-t border-slate-800 light:border-slate-200">
+        <!-- Help: a plain link that the person follows (a new tab); it sends nothing about this installation. Hidden when COMMUNITY_URL is empty. -->
+        <div v-if="communityUrl" :class="['mb-2 flex flex-wrap gap-1', isSidebarCollapsed ? 'flex-col items-center' : 'items-center']" data-testid="help-links">
+          <a :href="communityUrl" target="_blank" rel="noopener noreferrer" data-testid="help-community" title="Questions and ideas: the project's public discussions (opens in a new tab)"
+             class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 light:text-slate-600 hover:text-slate-200 light:hover:text-slate-800 hover:bg-slate-800/40 light:hover:bg-slate-100/60 transition">
+            <CircleHelp class="w-4 h-4 shrink-0" />
+            <span v-if="!isSidebarCollapsed">Help and questions</span>
+          </a>
+          <a href="https://docs.whoobe.dev" target="_blank" rel="noopener noreferrer" data-testid="help-docs" title="Documentation (opens in a new tab)"
+             class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-400 light:text-slate-600 hover:text-slate-200 light:hover:text-slate-800 hover:bg-slate-800/40 light:hover:bg-slate-100/60 transition">
+            <BookOpen class="w-4 h-4 shrink-0" />
+            <span v-if="!isSidebarCollapsed">Docs</span>
+          </a>
+        </div>
         <div
           :class="[
             'flex items-center p-2.5 rounded-xl border text-xs font-medium',
@@ -618,6 +631,7 @@ import {
   Link2,
   KeyRound,
   ListChecks,
+  CircleHelp,
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
@@ -1365,11 +1379,15 @@ function onWindowMessage(event: MessageEvent) {
 // Status badge at the bottom of the sidebar: the core-api's /health, asked every 30 s (null until the first answer)
 const appVersion = __APP_VERSION__
 const apiOnline = ref<boolean | null>(null)
+// The Help entry: the link of the installation's `community` setting (COMMUNITY_URL), taken from the same /health answer; none = no entry.
+const communityUrl = ref<string | null>(null)
 let healthTimer: ReturnType<typeof setInterval> | undefined
 async function checkHealth() {
   try {
     const res = await fetch(`${getDefaultCoreApiUrl()}/health`, { cache: 'no-store', signal: AbortSignal.timeout(5000) })
     apiOnline.value = res.ok
+    const url = (await res.json().catch(() => null))?.community?.url
+    communityUrl.value = typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null
   } catch {
     apiOnline.value = false
   }
