@@ -15,6 +15,7 @@ import type { WebsiteBundle } from './bundle.js';
 import { diffClassFields, planAssets, type AssetPlanItem } from './plan.js';
 import { bindPageGatewayContent } from '../gateway/bind-page-content.js';
 import { getGatewayEndpointByName } from '../db/gateway-records.js';
+import { isReservedRootPath } from '../routing/site-roots.js';
 import { collectGatewayEndpointNames, rewriteAssetPaths, rewriteIds } from './refs.js';
 
 export interface ImportOptions {
@@ -185,6 +186,7 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
   let rootPath: string;
   let name: string;
   if (options.keepNames) {
+    if (isReservedRootPath(basePath)) throw new ImportError(`The root path ${basePath} is a name the host answers to itself (dashboard, editor or API): choose another`, 400);
     if (await getWebsiteByRootPath(basePath)) throw new ImportError(`The root path ${basePath} is already used by another website: choose another name or root path`, 409);
     rootPath = basePath;
     name = bundle.website.name;

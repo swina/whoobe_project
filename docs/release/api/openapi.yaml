@@ -1074,6 +1074,31 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "Rename a kit or change its description or category. `409` for a kit that ships with the distribution (read-only: duplicate it, then edit the copy)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
     delete:
       tags: ["core-api: Whoobe One: Templates & Kits"]
       summary: "Delete a kit."
@@ -1109,6 +1134,86 @@ paths:
             schema:
               type: object
               description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/kits/{id}/duplicate:
+    post:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "Make an editable copy of a kit (also of one that ships with the distribution). `201` with the new kit."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/kits/{id}/templates/{templateId}:
+    put:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "Change a template of a kit: name, category, description or its document. `409` for a read-only kit; `404` when the template is not in this kit."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: Whoobe One: Templates & Kits"]
+      summary: "Remove a template from a kit. `409` for a read-only kit."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4546,6 +4651,39 @@ paths:
     post:
       tags: ["core-api: AI: text, images, translation, whole-website generation"]
       summary: "Create a real website + pages from a previously generated AI structure."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/site-spec/material:
+    get:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "The material for writing a site specification with any language model: the instructions (Markdown), the JSON Schema, the limits and the examples. Needs `websites:create` or `objects:write`; calls nothing outside."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/from-spec:
+    post:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Create a website from a site specification (one JSON file: theme, snippets, header/footer, pages in one or two languages). Body `{ spec, choices?, website? }`: `choices` (`themes`/`snippets`, name -> `existing` or `new`) decides what happens to a theme or snippet name that already exists here (default `new`, under a free name; an existing one is never changed), `website` (`name`, `rootPath`) changes the name or root path before the check. `?dryRun=1` writes nothing and returns the conflicts, a summary and the importer's report. Pages are created as drafts. `400` with `issues` (each with `path`, `where` in words and `message`) when the file is not valid or the root path is reserved; `409` when the root path is taken."
       requestBody:
         required: false
         content:

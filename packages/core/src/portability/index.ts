@@ -5,3 +5,4 @@ export * from './plan.js';
 export * from './export.js';
 export * from './import.js';
 export * from './site-spec.js';
+export * from './site-spec-import.js';

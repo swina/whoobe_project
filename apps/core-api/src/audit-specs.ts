@@ -129,6 +129,8 @@ export const AUDIT: Readonly<Record<string, AuditSpec<any>>> = {
   websiteDelete: { action: 'website.delete', kind: 'delete', targetType: 'website', snapshot: websiteSnapshot, loadBefore: loadWebsite, targetLabel: websiteLabel } satisfies AuditSpec<WebsiteRecord>,
   // a dry run writes nothing; a real import answers with the report of what was created
   websiteImport: { action: 'website.import', kind: 'event', targetType: 'website', skip: (_r, b) => !!b?.dryRun, targetId: (_r, _e) => undefined } satisfies AuditSpec<Record<string, unknown>>,
+  // a check writes nothing; an import answers with the website that was created
+  websiteFromSpec: { action: 'website.create_from_spec', kind: 'event', targetType: 'website', skip: (_r, b) => !!b?.dryRun || !b?.website, targetId: (_r, _e) => undefined, describe: (_r, b) => (b?.website ? { websiteId: b.website.id, name: b.website.name, rootPath: b.website.rootPath, pages: b.summary?.pages?.length ?? null } : null) } satisfies AuditSpec<Record<string, unknown>>,
   websiteFromAi: { action: 'website.create_from_ai', kind: 'create', targetType: 'website', snapshot: websiteSnapshot, fromResponse: (b) => b?.website, targetLabel: websiteLabel } satisfies AuditSpec<WebsiteRecord>,
   websiteThemeCreate: websiteChange('website.theme_create'),
   websiteThemeUpdate: websiteChange('website.theme_update'),

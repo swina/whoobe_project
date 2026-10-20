@@ -303,6 +303,8 @@ import {
   isReservedRootPath,
   substituteTokensPlain,
   importWebsiteBundle,
+  importSiteSpec,
+  SiteSpecError,
   parseWebsiteBundle,
   ImportError,
   signUploadTicket,
@@ -364,6 +366,7 @@ import {
   sandboxStatus,
   SANDBOX_DISABLED_MESSAGE,
 } from '@whoobe-cms/core';
+import { SITE_SPEC_VERSION, SITE_SPEC_LIMITS, SITE_SPEC_INSTRUCTIONS, SITE_SPEC_EXAMPLES, siteSpecJsonSchema } from '@whoobe-cms/schema';
 import { runClassMigration, previewClassMigration, runObjectMigration, runDocumentMigration, runPromoteDocuments, runPromoteDocument, runExtractCollectionTypes, createMigrationJobRegistry } from '@whoobe-cms/migration-tool';
 import { fetchAndConvert } from '@whoobe-cms/figma-converter';
 
@@ -6754,6 +6757,49 @@ app.post('/whoobe-one/websites/from-ai', requireAnyPermission(PERMISSIONS.WEBSIT
   } catch (error: any) {
     logger.error({ err: error }, 'Create website from AI error');
     res.status(500).json({ error: error.message || 'Failed to create website from AI structure' });
+  }
+});
+
+// --- Site specification (docs/plans/ai/ai-site-spec.md) ---
+// A whole site as one JSON file written by any language model (or by hand). The dashboard hands out the instructions and the schema, takes the
+// answer back, checks it (a dry run) and imports it as a draft. Nothing here calls a model or any outside service.
+
+app.get('/whoobe-one/site-spec/material', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), (_req: Request, res: Response): void => {
+  res.json({ version: SITE_SPEC_VERSION, limits: SITE_SPEC_LIMITS, instructions: SITE_SPEC_INSTRUCTIONS, schema: siteSpecJsonSchema(), examples: SITE_SPEC_EXAMPLES });
+});
+
+// Body: `{ spec, choices?, website? }`. `choices` says, for a theme or snippet name the file defines and that already exists here, `existing` (use it) or
+// `new` (create it under a free name; the default: an existing one is never changed). `website` ({ name?, rootPath? }) changes the name or root path
+// before the check. `?dryRun=1` writes nothing and answers with the conflicts, a summary and the importer's report. Pages come in as drafts.
+app.post('/whoobe-one/websites/from-spec', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteFromSpec), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const { spec, choices, website } = req.body ?? {};
+  if (spec === undefined || spec === null || typeof spec !== 'object' || Array.isArray(spec)) {
+    res.status(400).json({ error: 'spec (the site specification, a JSON object) is required' });
+    return;
+  }
+  const pick = (v: unknown): Record<string, 'existing' | 'new'> | undefined => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
+    return Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([, c]) => c === 'existing' || c === 'new')) as Record<string, 'existing' | 'new'>;
+  };
+  const text = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
+  try {
+    const outcome = await importSiteSpec(spec, {
+      dryRun: req.query.dryRun === '1' || req.query.dryRun === 'true',
+      choices: { themes: pick(choices?.themes), snippets: pick(choices?.snippets) },
+      website: website && typeof website === 'object' ? { name: text(website.name), rootPath: text(website.rootPath) } : undefined,
+    });
+    res.status(outcome.dryRun ? 200 : 201).json(outcome);
+  } catch (error: any) {
+    if (error instanceof SiteSpecError) {
+      res.status(400).json({ error: 'The specification is not valid', issues: error.issues });
+      return;
+    }
+    if (error instanceof ImportError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    logger.error({ err: error }, 'Website from specification error');
+    res.status(500).json({ error: 'Failed to create the website from the specification' });
   }
 });
 

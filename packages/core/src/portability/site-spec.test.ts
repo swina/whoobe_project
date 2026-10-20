@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { collectUuids, expandSiteSpec, parseWebsiteBundle, rewriteIds, SiteSpecError, type SiteSpecExisting } from './index.js';
+import { applySiteSpecChoices, collectUuids, expandSiteSpec, parseWebsiteBundle, rewriteIds, SiteSpecError, type SiteSpecExisting } from './index.js';
 
 const whoobeDev = JSON.parse(readFileSync(new URL('./fixtures/whoobe-dev.site-spec.json', import.meta.url), 'utf8'));
 const existing: SiteSpecExisting = {
@@ -155,5 +155,45 @@ describe('the specification of the site whoobe.dev', () => {
     expect(links).toContain('/whoobe-dev');
     expect(links).toContain('/whoobe-dev/platform');
     expect(links).toContain('/whoobe-dev/blog');
+  });
+});
+
+describe('applySiteSpecChoices (D10: the person decides, nothing existing is touched)', () => {
+  const clash = (): any => ({ ...small(), theme: { name: 'Whoobe Website', colors: [], fonts: [] }, snippets: [{ ...small().snippets[0], name: 'Whoobe Website - Benefits by role' }] });
+
+  it('creates new ones under a free name by default', () => {
+    const { spec, conflicts } = applySiteSpecChoices(clash(), existing);
+    expect(spec.theme).toMatchObject({ name: 'Whoobe Website (2)' });
+    expect(spec.snippets![0].name).toBe('Whoobe Website - Benefits by role (2)');
+    expect(conflicts).toEqual([
+      { kind: 'theme', name: 'Whoobe Website', choice: 'new', createdAs: 'Whoobe Website (2)' },
+      { kind: 'snippet', name: 'Whoobe Website - Benefits by role', choice: 'new', createdAs: 'Whoobe Website - Benefits by role (2)' },
+    ]);
+  });
+
+  it('uses the existing ones when the person says so, and the spec then points at them', () => {
+    const { spec, conflicts } = applySiteSpecChoices(clash(), existing, { themes: { 'Whoobe Website': 'existing' }, snippets: { 'Whoobe Website - Benefits by role': 'existing' } });
+    expect(spec.theme).toEqual({ use: 'Whoobe Website' });
+    expect(spec.snippets![0]).toEqual({ key: 'header', use: 'Whoobe Website - Benefits by role' });
+    expect(conflicts.map((c) => c.choice)).toEqual(['existing', 'existing']);
+    const { bundle } = expandSiteSpec(spec, { existing });
+    expect(bundle.themes).toHaveLength(0);
+    expect(bundle.snippets).toHaveLength(0);
+  });
+
+  it('skips a free name that is taken by another snippet of the file', () => {
+    const spec = clash();
+    spec.snippets.push({ key: 'footer', name: 'Whoobe Website - Benefits by role (2)', category: 'x', node: spec.snippets[0].node });
+    const { spec: out } = applySiteSpecChoices(spec, existing);
+    expect(out.snippets![0].name).toBe('Whoobe Website - Benefits by role (3)');
+  });
+
+  it('leaves a file without clashes as it is and does not change its input', () => {
+    const s = small();
+    const copy = JSON.stringify(s);
+    const { spec, conflicts } = applySiteSpecChoices(s, existing);
+    expect(conflicts).toEqual([]);
+    expect(JSON.stringify(spec)).toBe(copy);
+    expect(JSON.stringify(s)).toBe(copy);
   });
 });

@@ -120,4 +120,107 @@ describe.skipIf(!url)('site specification: expand, import on an installation, ex
     const done = await core.importWebsiteBundle(core.parseWebsiteBundle(JSON.parse(JSON.stringify(bundle))).bundle, {});
     expect(done.website.rootPath).toMatch(/^\/copy-[0-9a-f]{8}$/);
   });
+
+  describe('importSiteSpec: what the dashboard calls', () => {
+    const spec = (over: Record<string, unknown> = {}): any => ({
+      version: 1,
+      website: { name: 'Acme', defaultLocale: 'en', supportedLocales: ['en'] },
+      theme: { name: 'Acme', colors: [{ name: 'brand', hex: '#7C3AED' }], fonts: [] },
+      snippets: [{ key: 'header', name: 'Acme header', category: 'navigation', node: { kind: 'container', children: [{ kind: 'link', text: 'Home', href: '/' }, { kind: 'link', text: 'About', href: '/about' }] } }],
+      layout: { header: 'header' },
+      pages: [{ slug: '/', title: 'Home', sections: [{ kind: 'text', html: 'Hi' }] }, { slug: '/about', title: 'About', sections: [{ kind: 'text', html: 'About us' }] }],
+      ...over,
+    });
+
+    it('a check writes nothing and says what would happen, a refused file says where', async () => {
+      await wipe();
+      const dry = await core.importSiteSpec(spec(), { dryRun: true });
+      expect(dry.dryRun).toBe(true);
+      expect(dry.conflicts).toEqual([]);
+      expect(dry.summary).toMatchObject({ website: { name: 'Acme', rootPath: '/acme', rootPathTaken: false }, theme: { name: 'Acme', action: 'create' }, layout: ['header'] });
+      expect(dry.summary.pages.map((p: any) => p.slug)).toEqual(['/', '/about']);
+      expect(dry.report.counts).toMatchObject({ pages: 2, snippets: 1, themes: 1 });
+      expect(dry.website).toBeUndefined();
+      expect((await core.listWebsites()).length).toBe(0);
+      expect((await core.listThemes()).length).toBe(0);
+
+      const bad = spec(); bad.pages[0].sections = [{ kind: 'link', text: '', href: '/nowhere' }];
+      const err = await core.importSiteSpec(bad, { dryRun: false }).catch((e: any) => e);
+      expect(err).toBeInstanceOf(core.SiteSpecError);
+      expect(err.issues.map((i: any) => i.where)).toContain('page "Home", section 1, "text"');
+      expect((await core.listWebsites()).length).toBe(0);
+    });
+
+    it('imports as a draft and leaves existing themes and snippets alone: by default new ones under a free name', async () => {
+      await wipe();
+      const theme = await core.createTheme({ name: 'Acme', colors: [{ name: 'old', hex: '#000000' }] });
+      const snippet = await core.createWhoobeOneSnippet({ name: 'Acme header', category: 'old', node: { id: 'old', blocks: [] } });
+
+      const dry = await core.importSiteSpec(spec(), { dryRun: true });
+      expect(dry.conflicts).toEqual([
+        { kind: 'theme', name: 'Acme', choice: 'new', createdAs: 'Acme (2)' },
+        { kind: 'snippet', name: 'Acme header', choice: 'new', createdAs: 'Acme header (2)' },
+      ]);
+      const done = await core.importSiteSpec(spec(), {});
+      expect(done.dryRun).toBe(false);
+      expect(done.website).toMatchObject({ name: 'Acme', rootPath: '/acme' });
+
+      const themes = await core.listThemes();
+      expect(themes.map((t: any) => t.name).sort()).toEqual(['Acme', 'Acme (2)']);
+      expect(themes.find((t: any) => t.id === theme.id).colors).toEqual([{ name: 'old', hex: '#000000' }]);
+      const snippets = await core.listWhoobeOneSnippets();
+      expect(snippets.map((s: any) => s.name).sort()).toEqual(['Acme header', 'Acme header (2)']);
+      expect(snippets.find((s: any) => s.id === snippet.id).category).toBe('old');
+
+      const site = (await core.listWebsites())[0];
+      expect(site.themeId).toBe(themes.find((t: any) => t.name === 'Acme (2)').id);
+      const pages = await core.listWhoobePages(site.id);
+      expect(pages.length).toBe(2);
+      expect(pages.every((p: any) => p.published === false)).toBe(true);
+    });
+
+    it('uses the existing theme and snippet when the person chooses to', async () => {
+      await wipe();
+      const theme = await core.createTheme({ name: 'Acme', colors: [] });
+      const snippet = await core.createWhoobeOneSnippet({ name: 'Acme header', category: 'navigation', node: { id: 'hdr', type: 'container', blocks: [{ id: 'hdr-a', type: 'element', element: 'a', content: 'Home', link: '/', blocks: [] }] } });
+      const done = await core.importSiteSpec(spec(), { choices: { themes: { Acme: 'existing' }, snippets: { 'Acme header': 'existing' } } });
+      expect(done.conflicts.map((c: any) => c.choice)).toEqual(['existing', 'existing']);
+      expect((await core.listThemes()).length).toBe(1);
+      expect((await core.listWhoobeOneSnippets()).length).toBe(1);
+      const site = (await core.listWebsites())[0];
+      expect(site.themeId).toBe(theme.id);
+      const tpl = (await core.listWebsiteTemplates(site.id))[0];
+      expect((tpl.layout as any).header.snippetIds).toEqual([snippet.id]);
+    });
+
+    it('refuses a root path the host answers to itself, from the name too', async () => {
+      await wipe();
+      for (const website of [{ name: 'Acme', rootPath: '/api' }, { name: 'Settings' }]) {
+        const bad = spec(); bad.website = { ...bad.website, ...website };
+        await expect(core.importSiteSpec(bad, { dryRun: true })).rejects.toThrowError(/answers to itself/);
+      }
+      // the importer says no on its own as well
+      const { bundle } = core.expandSiteSpec({ ...spec(), website: { name: 'X', rootPath: '/editor', defaultLocale: 'en', supportedLocales: ['en'] } });
+      await expect(core.importWebsiteBundle(core.parseWebsiteBundle(JSON.parse(JSON.stringify(bundle))).bundle, { keepNames: true })).rejects.toMatchObject({ status: 400 });
+      expect((await core.listWebsites()).length).toBe(0);
+    });
+
+    it('a root path that is taken is reported in the check and refused on import; a new one is applied to the links too', async () => {
+      await wipe();
+      await core.importSiteSpec(spec(), {});
+      const dry = await core.importSiteSpec(spec(), { dryRun: true });
+      expect(dry.summary.website).toMatchObject({ rootPath: '/acme', rootPathTaken: true });
+      expect(dry.report).toBeUndefined();
+      await expect(core.importSiteSpec(spec(), {})).rejects.toMatchObject({ status: 409 });
+      expect((await core.listWebsites()).length).toBe(1);
+
+      const again = await core.importSiteSpec(spec(), { website: { name: 'Acme two', rootPath: '/acme-two' } });
+      expect(again.website).toMatchObject({ name: 'Acme two', rootPath: '/acme-two' });
+      const site = (await core.listWebsites()).find((w: any) => w.rootPath === '/acme-two');
+      const links = (await core.listWhoobePages(site.id)).flatMap((p: any) => nodes(p.content)).filter((n: any) => n.element === 'a');
+      expect(links.every((n: any) => n.link.startsWith('/acme-two'))).toBe(true);
+      // and a root path that is not valid is an error of the file, like any other
+      await expect(core.importSiteSpec(spec(), { dryRun: true, website: { rootPath: 'no slash' } })).rejects.toBeInstanceOf(core.SiteSpecError);
+    });
+  });
 });

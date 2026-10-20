@@ -30,6 +30,11 @@ function uuid(label: string): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 
+/** The root path a spec's website gets: the one it names, or one made from its name. */
+export function siteSpecRootPath(spec: { website: { name: string; rootPath?: string } }): string {
+  return spec.website.rootPath ?? `/${slugOf(spec.website.name)}`;
+}
+
 const slugOf = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'site';
 
 /** Placeholder picture, the same pattern the in-product generator uses (picsum, seeded by the node id); a person chooses the real one. */
@@ -111,7 +116,7 @@ export function expandSiteSpec(input: unknown, options: ExpandOptions = {}): Exp
   const existing = options.existing ?? { themes: {}, snippets: {} };
   const missing: SiteSpecIssue[] = [];
 
-  const rootPath = spec.website.rootPath ?? `/${slugOf(spec.website.name)}`;
+  const rootPath = siteSpecRootPath(spec);
   let counter = 0;
   const ctx: Ctx = { rootPath, next: () => `ss-${(++counter).toString(36).padStart(4, '0')}` };
 

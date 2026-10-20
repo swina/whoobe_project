@@ -91,6 +91,10 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `GET /whoobe-one/kits/:id` | Get one kit. |
 | `POST /whoobe-one/kits` | Create a kit. |
 | `POST /whoobe-one/kits/:id/templates` | Append a template to an existing kit. |
+| `PATCH /whoobe-one/kits/:id` | Rename a kit or change its description or category. `409` for a kit that ships with the distribution (read-only: duplicate it, then edit the copy). |
+| `POST /whoobe-one/kits/:id/duplicate` | Make an editable copy of a kit (also of one that ships with the distribution). `201` with the new kit. |
+| `PUT /whoobe-one/kits/:id/templates/:templateId` | Change a template of a kit: name, category, description or its document. `409` for a read-only kit; `404` when the template is not in this kit. |
+| `DELETE /whoobe-one/kits/:id/templates/:templateId` | Remove a template from a kit. `409` for a read-only kit. |
 | `DELETE /whoobe-one/kits/:id` | Delete a kit. |
 
 ### Whoobe One: Pages
@@ -365,6 +369,8 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `GET /ai/generated` | List past AI-generation results. |
 | `POST /ai/generate-website-structure` | Generate a full website's page/section structure from a text brief. |
 | `POST /whoobe-one/websites/from-ai` | Create a real website + pages from a previously generated AI structure. |
+| `GET /whoobe-one/site-spec/material` | The material for writing a site specification with any language model: the instructions (Markdown), the JSON Schema, the limits and the examples. Needs `websites:create` or `objects:write`; calls nothing outside. |
+| `POST /whoobe-one/websites/from-spec` | Create a website from a site specification (one JSON file: theme, snippets, header/footer, pages in one or two languages). Body `{ spec, choices?, website? }`: `choices` (`themes`/`snippets`, name -> `existing` or `new`) decides what happens to a theme or snippet name that already exists here (default `new`, under a free name; an existing one is never changed), `website` (`name`, `rootPath`) changes the name or root path before the check. `?dryRun=1` writes nothing and returns the conflicts, a summary and the importer's report. Pages are created as drafts. `400` with `issues` (each with `path`, `where` in words and `message`) when the file is not valid or the root path is reserved; `409` when the root path is taken. |
 | `GET /whoobe-one/websites/:id/export` | Export a website as a version 2 bundle (JSON manifest): pages, templates, menus, themes and everything they refer to - snippets, module pages, data classes/components/objects, asset records. `?dataObjects=referenced` leaves out the objects a data binding would list. The asset files are fetched by the client (admin dashboard zips them). |
 | `POST /whoobe-one/websites/import` | Import a version 1 or 2 bundle as a new website. `?dryRun=1` writes nothing and returns the report with the asset plan; `assetMap` in the body maps old asset ids to the records the client stored. Classes and objects that exist are reused, ids are rewritten, a failure removes what was created. |
 | `GET /ai/image-settings` | Get the configured AI image-generation provider/model/key. |

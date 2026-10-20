@@ -394,6 +394,42 @@
       "mode": "any",
       "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },
+    "PATCH /whoobe-one/kits/:id": {
+      "access": "permission",
+      "permissions": [
+        "SNIPPETS_EDIT",
+        "OBJECTS_WRITE"
+      ],
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
+    },
+    "POST /whoobe-one/kits/:id/duplicate": {
+      "access": "permission",
+      "permissions": [
+        "SNIPPETS_CREATE",
+        "OBJECTS_WRITE"
+      ],
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
+    },
+    "PUT /whoobe-one/kits/:id/templates/:templateId": {
+      "access": "permission",
+      "permissions": [
+        "SNIPPETS_EDIT",
+        "OBJECTS_WRITE"
+      ],
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
+    },
+    "DELETE /whoobe-one/kits/:id/templates/:templateId": {
+      "access": "permission",
+      "permissions": [
+        "SNIPPETS_EDIT",
+        "OBJECTS_WRITE"
+      ],
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
+    },
     "GET /whoobe-one/pages": {
       "access": "permission",
       "permissions": [
@@ -1418,6 +1454,24 @@
       ],
       "mode": "any",
       "audit": "websiteFromAi"
+    },
+    "GET /whoobe-one/site-spec/material": {
+      "access": "permission",
+      "permissions": [
+        "WEBSITES_CREATE",
+        "OBJECTS_WRITE"
+      ],
+      "mode": "any",
+      "note": "instructions, JSON Schema and examples for writing a site specification; static text, nothing is read from the database"
+    },
+    "POST /whoobe-one/websites/from-spec": {
+      "access": "permission",
+      "permissions": [
+        "WEBSITES_CREATE",
+        "OBJECTS_WRITE"
+      ],
+      "mode": "any",
+      "audit": "websiteFromSpec"
     },
     "GET /whoobe-one/websites/:id/export": {
       "access": "permission",
