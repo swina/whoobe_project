@@ -1,6 +1,10 @@
 # Plan: a site specification any LLM can write (`site-spec`)
 
 Status: **proposed** (2026-10-20). Nothing in this plan is implemented. It extends
+
+**Update 2026-10-20:** phases 1 and 2 are done (see below). Phase 3 (the wizard reading the instructions) is replaced by
+`template-wizard.md`: editors and designers do not write or paste JSON, so the guided wizard becomes the main way in, and this plan's engine
+(schema, expansion, check, import) and the specification window (kept under *Advanced*) stay as they are.
 `ai-website-generator.md` (the in-product wizard) and `ai-pages-snippets-generator.md`.
 
 ## 1. Why
