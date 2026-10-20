@@ -27,5 +27,6 @@ draws with its own components ([one renderer, many outputs](../architecture/desi
 | [Capacitor mobile app](publishing/capacitor-mobile-app.md) | Generate an installable iOS/Android app from the same content |
 | [Headless SDK](headless-sdk.md) | Render the page trees with your own React, Vue or Svelte components |
 | [Website export and import](website-bundle.md) | Move a whole website (pages, data, files) between installations: staging to production, templates, leaving |
+| [Create a site from a specification](site-from-specification.md) | Have any language model draft a whole site (pages, header and footer, theme, one or two languages) as one JSON file, check it in the dashboard and import it as a draft; the instructions and examples are in the [`ai-site-spec` folder](ai-site-spec/README.md) |
 
 **In the dashboard:** *Websites*, *Pages*, *Snippets*, *Themes*, *Publish*, *Documents*; the editor opens from a page or snippet.

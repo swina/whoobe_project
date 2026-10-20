@@ -13,6 +13,7 @@
         <button @click="createNewWebsite" class="btn btn-primary">+ New Website</button>
         <button data-testid="new-docs-site" @click="createNewDocsSite" class="btn btn-soft-primary">+ New Documentation</button>
         <button @click="triggerImport" :disabled="!!busy" class="btn btn-secondary">Import</button>
+        <button data-testid="site-spec-open" @click="showSpecModal = true" class="btn btn-secondary" title="Create a website from a specification written by a language model">Import from a spec</button>
         <input ref="importFileInput" type="file" accept=".zip,.json" class="hidden" @change="handleImportFile" />
       </div>
     </div>
@@ -56,6 +57,7 @@
     </div>
 
     <AiWebsiteWizardModal :is-open="showAiModal" @close="showAiModal = false" />
+    <SiteSpecImportModal :is-open="showSpecModal" @close="showSpecModal = false" />
   </div>
 </template>
 
@@ -76,10 +78,12 @@ import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
 import { docsPreviewUrl } from '../../utils/docs-sites-api'
 import AiWebsiteWizardModal from './AiWebsiteWizardModal.vue'
+import SiteSpecImportModal from './SiteSpecImportModal.vue'
 
 const websitesStore = useWebsitesStore()
 const tabsStore = useTabsStore()
 const showAiModal = ref(false)
+const showSpecModal = ref(false)
 const importFileInput = ref<HTMLInputElement | null>(null)
 
 const isDocsSite = (w: WebsiteRecord) => (w.settings as Record<string, unknown> | null)?.kind === 'docs'

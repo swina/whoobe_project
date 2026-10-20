@@ -45,7 +45,7 @@ a new `site-spec.ts` with its tests. The JSON Schema is generated from it at bui
 `packages/sdk/schema/json/` so it can be fetched without installing anything. A drift test fails if the
 committed file differs from the generated one.
 
-**D3. Instructions are files, not strings.** They live in `docs/ai-site-spec/` (rules + examples) and are
+**D3. Instructions are files, not strings.** They live in `docs/release/content/ai-site-spec/` (rules + examples) and are
 the single source: `prompts.ts` reads them (bundled at build time), and the docs site publishes them. A test
 checks that every example validates and that every rule file is referenced from the index.
 
@@ -82,7 +82,7 @@ spec points to that does not exist is an error shown with its place. The choices
 and the import follows them exactly, so the dry run and the import describe the same result.
 
 **D11. The instructions are published when phase 2 is finished,** not before: the docs site gets
-`docs/ai-site-spec/` once the phase 2 "done" criterion is met (examples tested, dashboard page working in the
+`docs/release/content/ai-site-spec/` once the phase 2 "done" criterion is met (examples tested, dashboard page working in the
 browser test). Until then the files are in the repository only.
 
 **D8. The dashboard is the only interface; the command line is deferred.** The people who build sites
@@ -154,7 +154,7 @@ Each phase is its own branch, with `CHANGES.md` and tests, and does not depend o
   integration ones skipped without `PORTABILITY_TEST_DATABASE_URL`. Mutation check: breaking the link text or the sanitiser makes tests fail.
 
 **Phase 2: instructions, route and dashboard.**
-- **The instructions come first, because the page hands them out.** `docs/ai-site-spec/` (the rules, at
+- **The instructions come first, because the page hands them out.** `docs/release/content/ai-site-spec/` (the rules, at
   least two complete examples taken from real sites, and a short "how to ask a model" page), written against
   the phase 1 schema. The dashboard serves them from the same files (bundled at build time), so the text a
   person copies is the text in the repository. A test validates every example and checks that each rule in
@@ -181,6 +181,28 @@ Each phase is its own branch, with `CHANGES.md` and tests, and does not depend o
   spec writes nothing; a valid one imports on an empty database in a test and the result passes the existing
   portability round-trip test.
 
+**Phase 2 delivered (2026-10-20, branch `feat/ai-site-spec`).** Instructions and two examples
+(`docs/release/content/ai-site-spec/`, moved under `docs/release` so that the documentation site carries them, D11), the routes
+`GET /whoobe-one/site-spec/material` and `POST /whoobe-one/websites/from-spec` (`importSiteSpec` in core), and the dashboard window
+(*Settings > Websites > Import from a spec*): material to copy or download, paste or choose a file, check, summary with the choices of D10, import
+as a draft. A browser test (`scripts/security/browser/site-spec-import.spec.ts`) goes through it all: a text that is not JSON, a fenced answer with three
+mistakes shown with their place, the corrected one, the import, then the same file again to meet a taken root path, an existing theme and
+existing snippets. What building it showed:
+- **The validator spoke library, and in two rounds.** "Too small: expected string to have >=1 characters" is not for an editor, and the
+  rules across the file did not run while the structure had an error, so a person fixed one wave of problems and met the next. Messages are now
+  in words (`a link needs visible text`), and the rules across the file run on what can be read, so the problems come together.
+- **A link inside a text** is plain HTML (no root path is added, the target is not checked): only outside addresses and paths from the root are
+  accepted there; the real whoobe.dev has such links.
+- **Reserved root paths** (`/api`, `/settings`, ...) are refused, from the name too, by the check and by the importer under `keepNames`.
+- **Copying on a LAN:** the Clipboard API exists only on https or localhost, so the window falls back to the old way and, failing that, shows the
+  text to select. Plain-http installations are the case this plan was written for.
+- **Found, not changed (maintainer to decide):** deleting a website leaves its templates behind, and turns its pages into pages of no website; a
+  second page `/` of no website breaks the unique index and the website delete answers 500. A template that still places a snippet then stops that
+  snippet from being deleted ("used by unknown site"). This is older than the feature, but a spec import makes it easy to meet.
+- **Layout is shared by the two languages** (the template has a `locale`, the spec does not): the instructions ask for a header and footer with no
+  words of one language. A layout per language is a later extension.
+- The command line stays out (D8). The sandbox keeps the feature on: it calls nothing outside and creates drafts.
+
 **Phase 3: the wizard.**
 - `prompts.ts` reads the instructions of phase 2 instead of its own string.
 - The wizard returns the larger site (layout snippets, links) instead of 3 pages and 3 snippets.
@@ -194,7 +216,7 @@ Bigger surface and the part where a wrong reference hurts most: it needs its own
 ## 6. Tests and checks
 
 - Unit: every rule, valid and invalid example, expansion determinism (same spec, same bundle shape).
-- Drift: committed JSON Schema equals the generated one; every `docs/ai-site-spec/` example validates.
+- Drift: committed JSON Schema equals the generated one; every `docs/release/content/ai-site-spec/` example validates.
 - Round trip: spec -> bundle -> import -> export gives a bundle that validates again.
 - Security (added to `scripts/security`): a spec with `javascript:` links, script tags, event attributes,
   remote image URLs and an oversize tree is rejected or sanitised; an unauthenticated or unprivileged call

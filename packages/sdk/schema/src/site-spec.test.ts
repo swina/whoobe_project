@@ -166,7 +166,39 @@ describe('site spec: each rule has a failing example', () => {
   })
 })
 
-describe('site spec: errors say where', () => {
+describe('site spec: errors say where, and say it in words', () => {
+  it('reports the structural problems and the problems across the file together', () => {
+    const bad = edit((x) => {
+      x.pages[0].sections[0].children[2].text = ''               // structure: a link with no text
+      x.pages[0].sections[0].children[1].onclick = 'x'           // structure: an unknown key
+      x.layout.footer = 'nope'                                    // across the file: no such snippet
+      x.pages[1].slug = '/'                                       // across the file: a slug twice
+      x.pages[1].sections[0].children[0].href = '/contact'        // structure again (a heading has no href)
+    })
+    const m = messages(bad).join('\n')
+    expect(m).toContain('a link needs visible text')
+    expect(m).toContain('unknown key "onclick"')
+    expect(m).toContain('no snippet has the key "nope"')
+    expect(m).toContain('used twice')
+  })
+
+  it('does not repeat a problem the structure already reported', () => {
+    const r = validateSiteSpec(edit((x) => { x.pages[0].sections[0].children[2].text = '' }))
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.issues.filter((i) => i.path.endsWith('children[2].text'))).toHaveLength(1)
+  })
+
+  it('puts the defaults of the validator library into plain words', () => {
+    const m = (fn: (x: any) => void) => messages(edit(fn)).join('\n')
+    expect(m((x) => { delete x.website.defaultLocale })).toContain('"defaultLocale" is missing')
+    expect(m((x) => { x.pages[0].sections[0].children[0].level = 9 })).toContain('not a valid element')
+    expect(m((x) => { x.pages = [] })).toContain('needs at least 1 item')
+    expect(m((x) => { x.pages[0].title = '' })).toContain('a page needs a title')
+    expect(m((x) => { x.pages[0].sections[0].children[3].alt = '' })).toContain('alt text')
+    expect(m((x) => { x.website.supportedLocales = 'en' })).toContain('wrong type')
+    expect(m((x) => { x.pages[0].sections = [{ kind: 'script' }] })).toContain('"kind" must be one of')
+  })
+
   it('names the page, the section and the element', () => {
     const input = edit((x) => { x.pages[0].sections[0].children[2].text = '' })
     const r = validateSiteSpec(input)

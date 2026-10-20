@@ -69,10 +69,10 @@ const containerNode: z.ZodType<SpecContainer> = z.strictObject({
 
 export const specNodeSchema: z.ZodType<SpecNode> = z.discriminatedUnion('kind', [
   containerNode as unknown as z.ZodObject<{ kind: z.ZodLiteral<'container'> }>,
-  z.strictObject({ kind: z.literal('heading'), level: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6)]), text: plain(300).min(1), css: classes.optional() }),
-  z.strictObject({ kind: z.literal('text'), html: z.string().min(1).max(SITE_SPEC_LIMITS.maxTextLength).describe('a paragraph; inline formatting only (strong, em, a, code, br), cleaned on import'), css: classes.optional() }),
-  z.strictObject({ kind: z.literal('link'), text: plain(200).min(1).describe('the visible text; a link without text is refused'), href, css: classes.optional() }),
-  z.strictObject({ kind: z.literal('image'), alt: plain(300).min(1).describe('what the image shows; the picture itself is a placeholder until a person chooses one'), css: classes.optional() }),
+  z.strictObject({ kind: z.literal('heading'), level: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6)]), text: plain(300).min(1, 'a heading needs its text'), css: classes.optional() }),
+  z.strictObject({ kind: z.literal('text'), html: z.string().min(1, 'a text needs its content').max(SITE_SPEC_LIMITS.maxTextLength).describe('a paragraph; inline formatting only (strong, em, a, code, br), cleaned on import'), css: classes.optional() }),
+  z.strictObject({ kind: z.literal('link'), text: plain(200).min(1, 'a link needs visible text').describe('the visible text; a link without text is refused'), href, css: classes.optional() }),
+  z.strictObject({ kind: z.literal('image'), alt: plain(300).min(1, 'an image needs an alt text that says what it shows').describe('what the image shows; the picture itself is a placeholder until a person chooses one'), css: classes.optional() }),
   z.strictObject({ kind: z.literal('snippet'), use: key.describe('the key of an entry of "snippets"') }),
 ]) as unknown as z.ZodType<SpecNode>
 
@@ -96,7 +96,7 @@ const snippetSchema = z.strictObject({
 
 const pageSchema = z.strictObject({
   slug,
-  title: plain(160).min(1),
+  title: plain(160).min(1, 'a page needs a title'),
   locale: locale.optional().describe('one of website.supportedLocales; the default locale when absent'),
   category: z.string().max(60).optional(),
   description: plain(400).optional().describe('the page description for search engines'),
@@ -106,7 +106,7 @@ const pageSchema = z.strictObject({
 export const siteSpecSchema = z.strictObject({
   version: z.literal(SITE_SPEC_VERSION),
   website: z.strictObject({
-    name: plain(80).min(1),
+    name: plain(80).min(1, 'the website needs a name'),
     rootPath: z.string().regex(/^\/[a-z0-9]+(-[a-z0-9]+)*$/, 'a single segment such as "/my-site"').optional().describe('derived from the name when absent'),
     defaultLocale: locale,
     supportedLocales: z.array(locale).min(1).max(SITE_SPEC_LIMITS.maxLocales).describe('one or two locales, the default one included'),
@@ -142,9 +142,9 @@ function* walk(node: SpecNode, path: Path, depth = 1): Generator<{ node: SpecNod
 }
 
 export function crossChecks(spec: SiteSpec, fail: (path: Path, message: string) => void): void {
-  const locales = spec.website.supportedLocales
+  const locales = Array.isArray(spec.website?.supportedLocales) ? spec.website.supportedLocales : []
   if (new Set(locales).size !== locales.length) fail(['website', 'supportedLocales'], 'the same locale is listed twice')
-  if (!locales.includes(spec.website.defaultLocale)) fail(['website', 'defaultLocale'], `the default locale "${spec.website.defaultLocale}" must be one of supportedLocales`)
+  if (locales.length && !locales.includes(spec.website.defaultLocale)) fail(['website', 'defaultLocale'], `the default locale "${spec.website.defaultLocale}" must be one of supportedLocales`)
 
   // themes and snippets: a definition or a reference to something that exists here, never both, never neither
   const t = spec.theme
@@ -153,9 +153,10 @@ export function crossChecks(spec: SiteSpec, fail: (path: Path, message: string) 
     if (t.use === undefined && t.name === undefined) fail(['theme'], 'a theme needs a "name" (a new one) or "use" (an existing one)')
   }
   const keys = new Map<string, number>()
-  ;(spec.snippets ?? []).forEach((s, i) => {
-    if (keys.has(s.key)) fail(['snippets', i, 'key'], `the key "${s.key}" is used twice (also by snippets[${keys.get(s.key)}])`)
-    keys.set(s.key, i)
+  ;(Array.isArray(spec.snippets) ? spec.snippets : []).forEach((s, i) => {
+    if (!s || typeof s !== 'object') return
+    if (s.key && keys.has(s.key)) fail(['snippets', i, 'key'], `the key "${s.key}" is used twice (also by snippets[${keys.get(s.key)}])`)
+    if (s.key) keys.set(s.key, i)
     if (s.use !== undefined) {
       if (s.name !== undefined || s.category !== undefined || s.node !== undefined) fail(['snippets', i], 'a snippet is either "use" (an existing one) or a definition (name, category, node), not both')
       return
@@ -182,8 +183,8 @@ export function crossChecks(spec: SiteSpec, fail: (path: Path, message: string) 
     const loc = p.locale ?? spec.website.defaultLocale
     if (!locales.includes(loc)) fail(['pages', i, 'locale'], `the locale "${loc}" is not one of supportedLocales (${locales.join(', ')})`)
     const id = `${loc} ${p.slug}`
-    if (seen.has(id)) fail(['pages', i, 'slug'], `the slug "${p.slug}" is used twice for "${loc}" (also by pages[${seen.get(id)}])`)
-    seen.set(id, i)
+    if (p.slug && seen.has(id)) fail(['pages', i, 'slug'], `the slug "${p.slug}" is used twice for "${loc}" (also by pages[${seen.get(id)}])`)
+    if (p.slug) seen.set(id, i)
   })
 
   spec.pages.forEach((p, i) => {
@@ -271,6 +272,65 @@ export function describePath(input: unknown, path: readonly PropertyKey[]): stri
   return words.join(', ') || 'the file'
 }
 
+/**
+ * A copy of a value that failed the schema, cut down to what the rules across the file can read: anything that is not of the right type becomes
+ * empty, and every position is kept, so the paths of the problems are the real ones. This lets a person see the reference problems together with
+ * the structural ones, instead of in a second round after the first are fixed.
+ */
+function prune(input: unknown): SiteSpec | null {
+  const obj = (v: unknown): Record<string, any> | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, any>) : null)
+  const str = (v: unknown): string => (typeof v === 'string' ? v : '')
+  const strs = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+  const node = (v: unknown): SpecNode => {
+    const o = obj(v)
+    if (!o) return { kind: 'text', html: '' }
+    if (o.kind === 'container') return { kind: 'container', children: Array.isArray(o.children) ? o.children.map(node) : [] }
+    if (o.kind === 'link') return { kind: 'link', text: str(o.text), href: str(o.href) }
+    if (o.kind === 'text') return { kind: 'text', html: str(o.html) }
+    if (o.kind === 'snippet') return { kind: 'snippet', use: str(o.use) }
+    if (o.kind === 'heading') return { kind: 'heading', level: 2, text: str(o.text) }
+    if (o.kind === 'image') return { kind: 'image', alt: str(o.alt) }
+    return { kind: 'text', html: '' }
+  }
+  const root = obj(input)
+  const website = obj(root?.website)
+  if (!root || !website) return null
+  const theme = obj(root.theme)
+  const layout = obj(root.layout)
+  return {
+    version: 1,
+    website: { name: str(website.name), defaultLocale: str(website.defaultLocale), supportedLocales: strs(website.supportedLocales), otherPaths: strs(website.otherPaths) },
+    ...(theme ? { theme: { ...(typeof theme.use === 'string' ? { use: theme.use } : {}), ...(typeof theme.name === 'string' ? { name: theme.name } : {}) } } : {}),
+    snippets: (Array.isArray(root.snippets) ? root.snippets : []).map((s: unknown) => {
+      const o = obj(s)
+      return { key: str(o?.key), ...(typeof o?.use === 'string' ? { use: o.use } : {}), ...(typeof o?.name === 'string' ? { name: o.name } : {}), ...(typeof o?.category === 'string' ? { category: o.category } : {}), ...(o?.node !== undefined ? { node: node(o.node) } : {}) }
+    }),
+    layout: layout ? Object.fromEntries(Object.entries(layout).filter(([, v]) => typeof v === 'string')) : undefined,
+    pages: (Array.isArray(root.pages) ? root.pages : []).map((p: unknown) => {
+      const o = obj(p)
+      return { slug: str(o?.slug), title: str(o?.title), ...(typeof o?.locale === 'string' ? { locale: o.locale } : {}), sections: Array.isArray(o?.sections) ? o.sections.map(node) : [] }
+    }),
+  }
+}
+
+/** Zod's own words, put into words a person who does not read JSON can act on. */
+function friendly(issue: { code: string; message: string; path: PropertyKey[] } & Record<string, any>): string {
+  const last = String(issue.path[issue.path.length - 1] ?? '')
+  // a message written in this file (a regex or a minimum with its own words) is already for a person; only Zod's defaults are rewritten
+  if (!/^(Too small|Too big|Invalid input|Invalid option|Invalid string|Unrecognized key)/.test(issue.message) && issue.code !== 'invalid_type' && issue.code !== 'unrecognized_keys') return issue.message
+  if (issue.code === 'unrecognized_keys') {
+    const keys = issue.keys as string[]
+    return `unknown ${keys.length > 1 ? 'keys' : 'key'} ${keys.map((k) => `"${k}"`).join(', ')}: not part of the specification`
+  }
+  if (issue.code === 'invalid_type') {
+    return /received undefined/.test(issue.message) ? `"${last}" is missing` : `"${last}" has the wrong type: expected ${issue.expected}`
+  }
+  if (issue.code === 'invalid_union') return 'not a valid element: "kind" must be one of container, heading, text, link, image, snippet'
+  if (issue.code === 'too_big') return issue.origin === 'array' ? `too many items (at most ${issue.maximum})` : `too long (at most ${issue.maximum} characters)`
+  if (issue.code === 'too_small') return issue.origin === 'array' ? `needs at least ${issue.minimum} ${Number(issue.minimum) === 1 ? 'item' : 'items'}` : issue.minimum === 1 ? `"${last}" must not be empty` : `too short (at least ${issue.minimum} characters)`
+  return issue.message
+}
+
 export type SiteSpecResult = { ok: true; spec: SiteSpec } | { ok: false; issues: SiteSpecIssue[] }
 
 /** Checks a value against the schema and the rules across the file. Never throws; every problem is reported with its place. */
@@ -279,16 +339,21 @@ export function validateSiteSpec(input: unknown): SiteSpecResult {
   if (parsed.success) return { ok: true, spec: parsed.data as SiteSpec }
   const seen = new Set<string>()
   const issues: SiteSpecIssue[] = []
-  for (const issue of parsed.error.issues) {
-    const path = [...issue.path]
-    // an unknown key is reported at the object; name the key, which Zod keeps in `keys`
-    const extra = issue.code === 'unrecognized_keys' ? (issue as { keys: string[] }).keys : null
-    const message = extra ? `unknown ${extra.length > 1 ? 'keys' : 'key'} ${extra.map((k) => `"${k}"`).join(', ')}: not part of the specification` : issue.message
+  const add = (path: readonly PropertyKey[], message: string) => {
     const p = formatPath(path)
     const id = `${p}|${message}`
-    if (seen.has(id)) continue
+    if (seen.has(id)) return
     seen.add(id)
     issues.push({ path: p || '(file)', where: describePath(input, path), message })
+  }
+  for (const issue of parsed.error.issues) add(issue.path, friendly(issue as any))
+  // the rules across the file do not run when the structure is wrong: run them on what can be read, so the problems come together
+  const loose = prune(input)
+  if (loose) {
+    const structural = new Set(issues.map((i) => i.path))
+    try {
+      crossChecks(loose, (path, message) => { if (!structural.has(formatPath(path))) add(path, message) })
+    } catch { /* a shape the pruning did not foresee: the structural problems are enough */ }
   }
   return { ok: false, issues }
 }

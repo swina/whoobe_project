@@ -7,6 +7,7 @@ terms of data and control.
 | Document | What it covers |
 |---|---|
 | [AI features](ai-features.md) | Generating pages, snippets and text, generating images, translating, the website wizard, Figma import; providers, configuration, permissions, limits, data protection, what AI does not do |
+| [Create a site from a specification](../content/site-from-specification.md) | The other way to get a first version of a site: any model you like writes a JSON specification, Whoobe checks and imports it as a draft; no AI is called by Whoobe |
 | [Data protection](../security/data-protection.md) | Which content reaches an AI provider (section 4) |
 | [Secrets and keys](../operations/secrets-and-keys.md) | How AI provider keys are stored |
 | [Sandbox](../operations/sandbox.md) | The public demo profile switches AI off |

@@ -6772,6 +6772,11 @@ app.get('/whoobe-one/site-spec/material', requireAnyPermission(PERMISSIONS.WEBSI
 // `new` (create it under a free name; the default: an existing one is never changed). `website` ({ name?, rootPath? }) changes the name or root path
 // before the check. `?dryRun=1` writes nothing and answers with the conflicts, a summary and the importer's report. Pages come in as drafts.
 app.post('/whoobe-one/websites/from-spec', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteFromSpec), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  // the limits of the schema (30 pages of 300 elements...) come to well under this; a body larger than that is not a specification
+  if (Number(req.headers['content-length'] ?? 0) > 4_000_000) {
+    res.status(413).json({ error: 'The specification is too large (4 MB at most)' });
+    return;
+  }
   const { spec, choices, website } = req.body ?? {};
   if (spec === undefined || spec === null || typeof spec !== 'object' || Array.isArray(spec)) {
     res.status(400).json({ error: 'spec (the site specification, a JSON object) is required' });

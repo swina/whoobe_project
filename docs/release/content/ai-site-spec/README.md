@@ -23,7 +23,7 @@ model for this; you take the instructions to the model you choose and bring the 
 | `instructions.md` | The text to paste in the model's chat: the format, the rules, what to ask and what not to invent. |
 | `examples/cafe.json` | A complete one-language site (header, footer, three pages). |
 | `examples/cafe-bilingual.json` | The same idea in two languages, one page written once per language. |
-| `../../packages/sdk/schema/json/site-spec.schema.json` | The JSON Schema, for models and tools that accept one. |
+| The JSON Schema | For models and tools that accept one: the dashboard offers it (*Copy the JSON Schema*) and the repository keeps it in `packages/sdk/schema/json/site-spec.schema.json`. |
 
 ## What to expect
 

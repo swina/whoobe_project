@@ -4683,7 +4683,7 @@ paths:
   /whoobe-one/websites/from-spec:
     post:
       tags: ["core-api: AI: text, images, translation, whole-website generation"]
-      summary: "Create a website from a site specification (one JSON file: theme, snippets, header/footer, pages in one or two languages). Body `{ spec, choices?, website? }`: `choices` (`themes`/`snippets`, name -> `existing` or `new`) decides what happens to a theme or snippet name that already exists here (default `new`, under a free name; an existing one is never changed), `website` (`name`, `rootPath`) changes the name or root path before the check. `?dryRun=1` writes nothing and returns the conflicts, a summary and the importer's report. Pages are created as drafts. `400` with `issues` (each with `path`, `where` in words and `message`) when the file is not valid or the root path is reserved; `409` when the root path is taken."
+      summary: "Create a website from a site specification (one JSON file: theme, snippets, header/footer, pages in one or two languages). Body `{ spec, choices?, website? }`: `choices` (`themes`/`snippets`, name -> `existing` or `new`) decides what happens to a theme or snippet name that already exists here (default `new`, under a free name; an existing one is never changed), `website` (`name`, `rootPath`) changes the name or root path before the check. `?dryRun=1` writes nothing and returns the conflicts, a summary and the importer's report. Pages are created as drafts. `400` with `issues` (each with `path`, `where` in words and `message`) when the file is not valid or the root path is reserved; `409` when the root path is taken; `413` above 4 MB."
       requestBody:
         required: false
         content:
