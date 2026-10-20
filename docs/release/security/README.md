@@ -28,6 +28,7 @@ What protects a Whoobe installation, what has been tested, and what is still ope
 | [Test suite summary](test-suite-summary.md) | One page: what the automated suites do and their counts |
 | [Automated test suite](security-test-suite.md) | Every suite, what it asserts and does not |
 | [Testing plan](security-testing-plan.md) | The phases of the security programme |
+| [Results of each release](results/README.md) | **The policy** (results are public, failures included, nothing is self-certified) and **one record per release**, starting with [v0.2.0](results/v0.2.0.md) |
 | [Manual checklist](manual-test-checklist.md) | Checks that need a browser or a human eye |
 | [Security CI for forks](security-ci-for-forks.md) | What you get when you fork, and how to keep it |
 

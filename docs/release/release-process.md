@@ -47,6 +47,7 @@ the other supported line and released as a patch of both.
 | Upgrade test | **no** | install the previous release, load data, upgrade to this commit, check the migrations and a login. Not automated yet - the most valuable test still missing |
 | Fresh install | **no** | follow `docs/release/operations/creating-workspaces.md` on an empty host |
 | Behaviour changes | **no** | operators are told about new or changed environment variables and defaults, in the release notes |
+| Results published | **no** | the record of the version (a file named after the version, in the `security/results` folder) is written and committed: the run on the release commit (id, commit, every job and its result), the runs that failed before the green one, what differs between the tested commit and the tag, and what the run did not cover ([policy](security/results/README.md)) |
 | Security summary | **no** | `docs/release/security/status-summary.md` is current and its open items are acknowledged; new findings of the documentation review (`security/findings.md`) are fixed or accepted in the release notes |
 | Documentation review | **no** | the table "What a documentation release still needs" in `docs/release/README.md` has no unowned row; the technical set (`architecture/`, `operations/`, `security/`) was read by someone other than its author since the last change of behaviour |
 
