@@ -116,7 +116,13 @@ Each phase is its own branch, with `CHANGES.md` and tests, and does not depend o
 - Done when: the examples validate; each rule has a failing example; the whoobe.dev site can be described in
   a spec (the content of `scripts/site/whoobe-dev/content.json` is the first real example).
 
-**Phase 2: route and dashboard.**
+**Phase 2: instructions, route and dashboard.**
+- **The instructions come first, because the page hands them out.** `docs/ai-site-spec/` (the rules, at
+  least two complete examples taken from real sites, and a short "how to ask a model" page), written against
+  the phase 1 schema. The dashboard serves them from the same files (bundled at build time), so the text a
+  person copies is the text in the repository. A test validates every example and checks that each rule in
+  the index has a file. The first version covers only what the schema of phase 1 covers: no instruction
+  describes a field the validator does not know.
 - `POST /whoobe-one/websites/from-spec` (`?dryRun=1` supported; validation errors returned as a list of
   `{ path, message }`); `from-ai` calls the same expansion. Routes added to the API documentation (the
   route-drift check must stay green).
@@ -132,16 +138,16 @@ Each phase is its own branch, with `CHANGES.md` and tests, and does not depend o
      with its own permission.
   The schema is the same Zod module, so the page can also validate in the browser while the person edits
   the text, with the server check as the authority.
-- Done when: a person with only a browser can go from a model's output to a draft website without a
+- Done when: the instructions and the examples exist and are tested; a person with only a browser can go from a model's output to a draft website without a
   terminal (a browser test covers it: paste, error shown with its place, fix, check, import); an invalid
   spec writes nothing; a valid one imports on an empty database in a test and the result passes the existing
   portability round-trip test.
 
-**Phase 3: instructions and the wizard.**
-- `docs/ai-site-spec/` (rules, examples, a short "how to ask a model" page); `prompts.ts` reads them.
+**Phase 3: the wizard.**
+- `prompts.ts` reads the instructions of phase 2 instead of its own string.
 - The wizard returns the larger site (layout snippets, links) instead of 3 pages and 3 snippets.
-- Done when: the examples are exercised in CI; the wizard's output passes the same validator; documentation
-  published on docs.whoobe.dev.
+- Done when: the wizard's output passes the same validator; the instructions are published on
+  docs.whoobe.dev (if question 3 is answered that way).
 
 **Phase 4 (only if the previous ones are used): data and bindings.**
 Classes, objects, a list bound to a class and a detail link (`dynamicLink`), assets from the library.
@@ -171,4 +177,4 @@ Bigger surface and the part where a wrong reference hurts most: it needs its own
 
 1. Should a spec be able to reference an existing theme/snippet by name, or always carry its own?
 2. Languages: one locale per spec, or several in one file?
-3. Do we publish the instructions under `docs/` (visible on docs.whoobe.dev) from phase 1, or only at phase 3?
+3. Do we publish the instructions under `docs/` (visible on docs.whoobe.dev) as soon as phase 2 is released, or later?
