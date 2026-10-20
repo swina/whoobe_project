@@ -63,6 +63,23 @@ if (tpl) {
   console.log(`template created: ${c.template.name}`);
 }
 
+// slots: a section of a page that holds a copy of a snippet of the library (fresh ids, `sourceSnippetId`, like dropping the snippet in the editor)
+const libSnippets = await listWhoobeOneSnippets();
+const freshId = () => `whoobe-${Math.random().toString(36).slice(2, 7)}`;
+const withFreshIds = (n: any): any => { if (Array.isArray(n)) return n.map(withFreshIds); if (n && typeof n === 'object') { const o: any = {}; for (const [k, v] of Object.entries(n)) o[k] = k === 'id' && typeof v === 'string' ? freshId() : withFreshIds(v); return o; } return n; };
+const findNode = (n: any, id: string): any => { if (!n || typeof n !== 'object') return null; if (n.id === id) return n; for (const k of n.blocks ?? []) { const f = findNode(k, id); if (f) return f; } return null; };
+for (const slot of c.slots ?? []) {
+  const page = c.pages.find((x: any) => x.slug === slot.pageSlug);
+  const lib = libSnippets.find((x) => x.name === slot.snippet);
+  const node = page && findNode(page.content, slot.nodeId);
+  if (!page || !node) throw new Error(`slot: page or node not found (${slot.pageSlug} ${slot.nodeId})`);
+  if (!lib) throw new Error(`slot: snippet "${slot.snippet}" not found in the library`);
+  const copy = withFreshIds(lib.node);
+  copy.sourceSnippetId = lib.id;
+  node.blocks = [copy];
+  console.log(`slot filled: ${slot.pageSlug} <- "${slot.snippet}"`);
+}
+
 // pages
 const pages = await listWhoobePages(site.id);
 for (const p of c.pages) {

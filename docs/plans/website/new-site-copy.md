@@ -61,6 +61,13 @@ deploy. Nobody on the content side asks a developer to move a button or to publi
 OpenID Connect, encrypted credentials, data subject tools and retention, metrics. We do not certify our own code: we say what we tested,
 publish the results, failures included, and list what is not covered. [Controls, tests and limits](/security)
 
+### Benefits by role
+
+The library snippet **"Whoobe Website - Benefits by role"** (seven roles: owner, IT manager and architect, operators, security and compliance,
+marketing and content, data owners, developers; each with what you gain and *what to keep in mind*) is placed here as a copy. The snippet stays the
+place where its text is kept; it was written for 0.1.0 and its texts were brought to 0.2.0 on 2026-10-20 (single sign-on with one provider, the
+audit log of successful actions, metrics, the adapters, "a 0.x series"). The last link goes to `docs.whoobe.dev/by-role/`.
+
 ### Open source means showing the work
 
 The code is MIT and public. So are the tests, the findings (open and closed), the results of every release, failures included, and the plans

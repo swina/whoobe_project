@@ -96,6 +96,11 @@ const homeHero = () => col('w-full px-6 pt-24 pb-20 bg-gradient-to-br from-[#0F1
 // `to` is [text, href]: a link element, so a link to a page of this site gets the rootPath prefix (an <a> inside a paragraph does not)
 const proof = (title, text, to) => col('flex-1 gap-3 rounded-xl glass-panel bg-[#1A1D24]/70 border border-white/10 p-6', [h(3, title, 'text-lg font-semibold text-white'), p(text, 'text-slate-400'), el('Link', { text: to[0], link: to[1], css: 'text-sm text-[#A78BFA] underline underline-offset-2 hover:text-white' })]);
 
+// An empty section that the seeder fills with a copy of a snippet of the library (scripts/site/whoobe-dev/seed.mts, `slots`): the snippet stays
+// the place where its text is kept up to date, the page holds a copy with fresh ids and `sourceSnippetId`.
+const slots = [];
+const snippetSlot = (pageSlug, snippet, css) => { const node = section([], css); slots.push({ pageSlug, nodeId: node.id, snippet }); return node; };
+
 const homeBody = () => [
   section([
     h(2, 'What it replaces', 'text-3xl font-bold text-white'),
@@ -110,6 +115,7 @@ const homeBody = () => [
       proof('Security controls, and the proof behind them', 'An append-only audit log, mandatory two-factor authentication by role, single sign-on with OpenID Connect, encrypted credentials, data subject tools and retention, metrics. We do not certify our own code: we say what we tested, publish the results, failures included, and list what is not covered.', ['Controls, tests and limits →', '/security']),
     ]),
   ], 'bg-[#12151B]'),
+  snippetSlot('/', 'Whoobe Website - Benefits by role', 'bg-[#0F1115]'),
   section([
     h(2, 'Open source means showing the work', 'text-3xl font-bold text-white'),
     p('The code is MIT and public. So are the tests, the findings (open and closed), the results of every release, failures included, and the plans that say how it is built, including the use of an AI assistant. We do not ask you to trust a claim: we put what backs it where you can open it.', 'text-slate-300 max-w-3xl'),
@@ -119,11 +125,11 @@ const homeBody = () => [
       el('Link', { text: 'Results of release 0.2.0 →', link: 'https://github.com/swina/whoobe_project/blob/master/docs/release/security/results/v0.2.0.md', css: 'text-sm text-[#A78BFA] underline underline-offset-2 hover:text-white' }),
       el('Link', { text: 'The plans →', link: 'https://github.com/swina/whoobe_project/tree/master/docs/plans', css: 'text-sm text-[#A78BFA] underline underline-offset-2 hover:text-white' }),
     ]),
-  ], 'bg-[#0F1115]'),
+  ], 'bg-[#12151B]'),
   section([
     h(2, 'Where it stands', 'text-3xl font-bold text-white'),
     p(`Version <strong>0.2.0</strong>, a <code>0.</code> series: behaviour can change between minor releases, and the ${a(`${DOCS}/release-notes-0.2.0/`, 'release notes')} say what. One OpenID Connect provider, no SAML or LDAP, no high availability yet. The limits are on ${a('/security#not-there', 'one page')}, not in the small print.`, 'text-slate-300 max-w-3xl'),
-  ], 'bg-[#12151B]'),
+  ], 'bg-[#0F1115]'),
   bandCta('Try it before you read more', 'The sandbox has a demo website, two kits and the editor. It is deleted and rebuilt every three hours.', [cta('Open the sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'Run the whole stack locally', link: 'https://github.com/swina/whoobe_project#try-it', css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
 ];
 
@@ -291,6 +297,7 @@ const content = {
     { title: 'Run it', slug: '/run', category: 'Site', kind: 'content', seo: seo('Run it: built to be run by a small team | Whoobe', 'What runs, how it is organised, upgrades, backups, observability and who Whoobe is for. Containers, PostgreSQL and an S3-compatible store.'), content: doc([pageHero('Run it', 'Built to be run by a small team.', 'Whoobe is containers, a PostgreSQL database and an S3-compatible object store. No licence server, no per-user fee, no call home.'), ...runBody()]) },
     { title: 'Developers', slug: '/developers', category: 'Site', kind: 'content', seo: seo('Developers | Whoobe', 'Headless adapters, a documented API, signed events, a gateway and the code: MIT-licensed and public.'), content: doc([pageHero('Developers', 'Build on it, or read it.', 'The platform is an API first and an interface second.'), ...developersBody()]) },
   ],
+  slots,
   copyFromWebsite: { name: 'whoobe website', slugs: ['/blog', '/blog/article/{slug}'] },
 };
 fs.writeFileSync(path.join(here, 'content.json'), JSON.stringify(content, null, 2) + '\n');
