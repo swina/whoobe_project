@@ -119,6 +119,14 @@ describe('wizardToSiteSpec: pages and blocks', () => {
     expect(nodes(b.pages[0].content).find((n) => n.element === 'h' && n.level === 1).content).toBe(COPY.tourism.hero.title);
   });
 
+  it('an inner page hero has its title and a plain line, and no buttons that lead back to the same page', () => {
+    const contact = nodes(expanded(base()).pages[1].content);
+    expect(contact.filter((n) => n.element === 'a' && n.css.css.includes('rounded-lg'))).toEqual([]);
+    expect(JSON.stringify(contact.map((n) => n.content))).not.toContain('Welcome to our hotel');
+    // the landing page keeps its two buttons
+    expect(nodes(expanded(base()).pages[0].content).filter((n) => n.element === 'a' && n.css.css.includes('rounded-lg')).length).toBeGreaterThanOrEqual(3);
+  });
+
   it('points the contact buttons at the first form, else at the last page, else at the home page', () => {
     const hrefs = (answers: WizardAnswersInput) => nodes(expanded(answers).pages[0].content).filter((n) => n.element === 'a').map((n) => n.link);
     expect(hrefs(base())).toContain('/seaview/contact#contact');

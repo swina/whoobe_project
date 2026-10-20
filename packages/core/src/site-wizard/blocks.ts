@@ -68,14 +68,20 @@ export const BLOCKS: Record<string, (ctx: BlockContext) => SpecNode> = {
     const title = ctx.landing
       ? ctx.t(`${ctx.at}.title`, 'Heading', fill(h.title, ctx.vars), 120)
       : ctx.t(`${ctx.at}.title`, 'Heading', ctx.pageTitle, 120);
-    const text = ctx.t(`${ctx.at}.lead`, 'Lead text', fill(h.lead, ctx.vars), 300);
-    const buttons: SpecNode[] = [button(ctx, ctx.t(`${ctx.at}.primary`, 'First button', fill(h.primary, ctx.vars), 40), ctx.contactHref)];
-    if (ctx.landing) buttons.push(button(ctx, ctx.t(`${ctx.at}.secondary`, 'Second button', fill(h.secondary, ctx.vars), 40), ctx.secondHref, 'outline'));
+    // the landing page opens with the welcome and two buttons; an inner page opens with its title and a plain line (its buttons would only lead to itself or back)
+    const text = ctx.landing
+      ? ctx.t(`${ctx.at}.lead`, 'Lead text', fill(h.lead, ctx.vars), 300)
+      : ctx.t(`${ctx.at}.lead`, 'Lead text', 'Find what you need on this page, or get in touch and we will be glad to help.', 300);
+    const buttons: SpecNode[] = [];
+    if (ctx.landing) {
+      buttons.push(button(ctx, ctx.t(`${ctx.at}.primary`, 'First button', fill(h.primary, ctx.vars), 40), ctx.contactHref));
+      buttons.push(button(ctx, ctx.t(`${ctx.at}.secondary`, 'Second button', fill(h.secondary, ctx.vars), 40), ctx.secondHref, 'outline'));
+    }
     const h1 = ctx.claimH1();
     return section(ctx, 'bg', [{
       kind: 'container', direction: 'col', css: 'gap-10 md:flex-row md:items-center',
       children: [
-        { kind: 'container', direction: 'col', css: 'flex-1 gap-5', children: [heading(ctx, h1 ? 1 : 2, title, 'text-4xl md:text-5xl'), lead(ctx, text), { kind: 'container', direction: 'row', css: 'flex-wrap gap-3 pt-2', children: buttons }] },
+        { kind: 'container', direction: 'col', css: 'flex-1 gap-5', children: [heading(ctx, h1 ? 1 : 2, title, 'text-4xl md:text-5xl'), lead(ctx, text), ...(buttons.length ? [{ kind: 'container' as const, direction: 'row' as const, css: 'flex-wrap gap-3 pt-2', children: buttons }] : [])] },
         { kind: 'container', direction: 'col', css: 'flex-1', children: [{ kind: 'image', alt: ctx.t(`${ctx.at}.imageAlt`, 'Picture description', h.imageAlt, 160), css: 'w-full h-auto rounded-2xl' }] },
       ],
     }], 'py-20');

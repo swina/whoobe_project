@@ -153,6 +153,12 @@ expansion and parsing, and three integration tests import wizard sites on a disp
   a mid-green background (`#66804D`) took white text that neither white nor near-black could make readable. Both fixed; the test now covers 2 600+
   combinations of background and accent.
 - **The text slots keep the structure fixed:** other words for the same keys change only text (tested by emptying every text field and comparing).
+- **Seen, not only tested:** three generated sites (tourism on navy, food on light colours with serif, IT on the company colour `#323932`) were imported on
+  the throwaway stack and looked at in the editor: header, hero, boxes, banner, CTA, form and footer read well in all three. Looking found what the tests did not:
+  the hero of an inner page repeated the welcome line of the home page and had a button leading back to the same page. An inner page hero now has its title and a
+  plain line, and no buttons (a test covers it).
+- **A limit to say out loud:** the placeholder copy is written per sector and the market context only changes a noun, so a "bakery" under Food reads like a
+  restaurant ("a table waiting for you"). That is what placeholder copy is; the AI texts (phase 3) are the answer, and the wizard says that the texts are to be replaced.
 - Not in this phase, as planned: the route, the dashboard tab, the choice of the source of the texts, the AI, a second language.
 
 **Phase 2: route and dashboard.**
