@@ -22,7 +22,7 @@
 import jp from 'jsonpath'
 import FileSaver from 'file-saver'
 import Block from './BlocksClass.js'
-import type Element from './ElementsClass.js'
+import Element from './ElementsClass.js'
 import type { useEditorStore } from '../store/editor'
 import { randomID, findParentAndIndex, clean, applyImagePlaceholder, normalizeGeneratedTree } from '../helpers'
 
@@ -170,6 +170,23 @@ export function insertSnippetNode(editor: EditorStore, snippet: { id: string; no
   if (!editor.document) return false
   const created = cloneWithFreshIds(snippet.node) as WhoobeElement
   ;(created as any).sourceSnippetId = snippet.id
+  placeNode(editor, created)
+  return true
+}
+
+/** Inserts a new built-in element (a palette chip's name: "Heading", "Grid"...) without dragging
+ *  (the Elements palette's "insert" button) - built exactly like the dragula drop in BlockEditor.vue
+ *  (Flexbox gets its column direction, the others no options) and placed like insertSnippetNode().
+ *  Returns false when there's no open document or the name is unknown. */
+export function insertTemplateElement(editor: EditorStore, templateName: string): boolean {
+  if (!editor.document) return false
+  const created =
+    templateName === 'Flexbox'
+      ? new Element().createElement(templateName, { direction: 'col' })
+      : new Element().createElement(templateName)
+  if (!created) return false
+  created.css.css = clean(created.css.css)
+  applyImagePlaceholder(created)
   placeNode(editor, created)
   return true
 }
