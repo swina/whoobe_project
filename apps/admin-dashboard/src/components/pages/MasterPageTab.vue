@@ -174,11 +174,14 @@ function onPageCreated(created: WhoobeOnePage) {
   const oldId = props.pageId
   const tab = tabsStore.tabs.find((t) => t.itemKind === 'page' && t.itemId === oldId)
   if (tab) {
+    const wasActive = tabsStore.activeTabId === tab.id
     tab.id = pageTabId(created.id)
     tab.itemId = created.id
     tab.pageSubTab = 'editor'
+    // the tab was renamed in place: the active id still pointed at the placeholder, leaving the main view empty
+    if (wasActive) tabsStore.activeTabId = tab.id
   }
-  
+
 }
 
 function closeTab() {

@@ -1,5 +1,10 @@
 # Release v0.2.0 — 2026-10-19
 
+## New page: website field, and the editor opens after creating — 2026-10-20
+- Branch: `fix/page-create-website-and-focus`.
+- `PageCreateForm.vue`: a **Website** select (websites list, "No website" by default) sent as `websiteId` (the API already accepted it).
+- `MasterPageTab.vue`: after creating, the placeholder tab (`new:…`) was renamed in place but `activeTabId` still held the old id, so the tab existed with nothing selected and the main view stayed empty until the tab was clicked. The active id now follows the rename, so the editor opens. `vue-tsc` passes; not yet tried in the browser.
+
 ## Docs: "young software" line brought up to date — 2026-10-20
 - Branch: `master`. `architecture/design-decisions/self-hosted-and-mit.md`: the line said the first release is 0.1.0; it now says the first was 0.1.0 (October 2026), the current is 0.2.0 and that a `0.` minor release may change behaviour.
 
