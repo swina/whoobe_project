@@ -24,6 +24,15 @@ async function render(descriptor: Awaited<ReturnType<typeof walkTree>>, registry
 }
 
 describe('WhoobeNode (SSR)', () => {
+  it('renders an `a` element that has its text in `content` and no child as a link with that text', async () => {
+    const tree = {
+      id: 'root', type: 'container', tag: 'document', element: 'div', css: { css: '', container: '' },
+      blocks: [{ id: 'l1', type: 'element', tag: 'element', element: 'a', content: 'Platform', link: '/platform', css: { css: 'text-sm', container: '' } }],
+    }
+    const html = await render(await walkTree(tree, {}, { api, assetBaseUrl: 'http://dam:3002/dam-asset' }))
+    expect(html).toMatch(/<a href="\/platform"[^>]*class="text-sm"[^>]*>Platform<\/a>/)
+  })
+
   it('renders an Audio element as a plain player with the source resolved like an image', async () => {
     const tree = {
       id: 'root', type: 'container', tag: 'document', element: 'div', css: { css: '', container: '' },

@@ -112,10 +112,13 @@ export const DefaultImage: NodeComponent = ({ descriptor }) => {
 /** Link: wraps children in the resolved href/target. */
 export const DefaultLink: NodeComponent = ({ descriptor, children }) => {
   const bp = baseProps(descriptor)
+  // a link that is a leaf (an `a` element with its text in `content`, no child) shows that text
+  const leaf = !(Array.isArray(children) ? children.length : children) && descriptor.content
+  const inner = leaf ? { dangerouslySetInnerHTML: { __html: sanitizeRichText(descriptor.content as string) } } : { children }
   if (descriptor.link) {
-    return <a href={descriptor.link.href} target={descriptor.link.target} {...bp}>{children}</a>
+    return <a href={descriptor.link.href} target={descriptor.link.target} {...bp} {...inner} />
   }
-  return <span {...bp}>{children}</span>
+  return <span {...bp} {...inner} />
 }
 
 // --- form fields ---

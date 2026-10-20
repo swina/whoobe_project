@@ -251,6 +251,7 @@ export async function generateNextSite(rawOptions: GenerateOptions): Promise<voi
     for (const page of pages) {
       collectClasses(page.content, classSet)
     }
+    await collectLayoutClasses(apiUrl, websiteId, pages as unknown as Array<{ locale: string; slug: string }>, classSet)
     for (const theme of themes) {
       if (theme.tailwindClasses) {
         for (const cls of theme.tailwindClasses.split(/\s+/)) {
@@ -340,6 +341,33 @@ export async function generateNextSite(rawOptions: GenerateOptions): Promise<voi
  *  default classes of the built-in slider and table components (packages/sdk/schema/src/class-fields.ts). */
 export function collectClasses(content: unknown, set: Set<string>): void {
   collectTreeClasses(content, set)
+}
+
+/** The layout of a page (the header, footer and body of the website's template, snippets included) is not in `page.content`: it comes with the
+ *  page from the public API. Its classes are part of the safelist too, or a class used only in the header or the footer (a button colour)
+ *  is not in the generated CSS. Pages that cannot be fetched (a detail pattern such as `/blog/article/{slug}`) are skipped: they use the
+ *  same template as the others. */
+export async function collectLayoutClasses(apiUrl: string, websiteId: string, pages: Array<{ locale: string; slug: string }>, set: Set<string>): Promise<void> {
+  const base = apiUrl.replace(/\/+$/, '')
+  const seen = new Set<string>()
+  for (const page of pages) {
+    try {
+      const res = await fetch(`${base}/public/pages/${encodeURIComponent(page.locale)}${page.slug.startsWith('/') ? page.slug : '/' + page.slug}?websiteId=${encodeURIComponent(websiteId)}`)
+      if (!res.ok) continue
+      const layout = ((await res.json()) as { layout?: Record<string, any> | null }).layout
+      if (!layout) continue
+      const key = JSON.stringify(layout.template ?? layout)
+      if (seen.has(key)) continue
+      seen.add(key)
+      for (const region of ['header', 'aside', 'main', 'footer', 'notFound404', 'body']) {
+        const r = layout[region]
+        if (!r) continue
+        for (const cls of String(r.className ?? '').split(/\s+/)) if (cls) set.add(cls)
+        // a region holds snippets, each `{ id, title, content }`: the element tree is in `content`
+        for (const snippet of Array.isArray(r.pages) ? r.pages : []) collectClasses(snippet?.content ?? snippet, set)
+      }
+    } catch { /* an unreachable page does not stop the generation */ }
+  }
 }
 
 // --- Theme CSS generation ---
@@ -1532,6 +1560,7 @@ export async function generateNuxtSite(rawOptions: GenerateOptions): Promise<voi
     for (const page of pages) {
       collectClasses(page.content, classSet)
     }
+    await collectLayoutClasses(apiUrl, websiteId, pages as unknown as Array<{ locale: string; slug: string }>, classSet)
     for (const theme of themes) {
       if (theme.tailwindClasses) {
         for (const cls of theme.tailwindClasses.split(/\s+/)) {
