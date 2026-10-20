@@ -1,0 +1,399 @@
+{
+  "version": 1,
+  "website": {
+    "name": "Harbour Coffee",
+    "defaultLocale": "en",
+    "supportedLocales": [
+      "en"
+    ],
+    "description": "A neighbourhood coffee bar by the harbour. This is an invented example."
+  },
+  "theme": {
+    "name": "Harbour",
+    "colors": [
+      {
+        "name": "espresso",
+        "hex": "#1C1917"
+      },
+      {
+        "name": "crema",
+        "hex": "#F59E0B"
+      },
+      {
+        "name": "paper",
+        "hex": "#FAFAF9"
+      }
+    ],
+    "fonts": [
+      "Inter"
+    ]
+  },
+  "snippets": [
+    {
+      "key": "header",
+      "name": "Harbour header",
+      "category": "navigation",
+      "node": {
+        "kind": "container",
+        "semantic": "header",
+        "direction": "row",
+        "css": "w-full flex-wrap items-center justify-between gap-4 px-6 py-4 bg-white border-b border-stone-200",
+        "children": [
+          {
+            "kind": "link",
+            "text": "Harbour Coffee",
+            "href": "/",
+            "css": "text-lg font-bold text-stone-900"
+          },
+          {
+            "kind": "container",
+            "direction": "row",
+            "css": "gap-5",
+            "children": [
+              {
+                "kind": "link",
+                "text": "Menu",
+                "href": "/menu",
+                "css": "text-sm text-stone-600 hover:text-stone-900"
+              },
+              {
+                "kind": "link",
+                "text": "Visit",
+                "href": "/visit",
+                "css": "text-sm text-stone-600 hover:text-stone-900"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "key": "footer",
+      "name": "Harbour footer",
+      "category": "footer",
+      "node": {
+        "kind": "container",
+        "semantic": "footer",
+        "direction": "col",
+        "css": "w-full gap-2 px-6 py-10 bg-stone-900 text-stone-300",
+        "children": [
+          {
+            "kind": "text",
+            "html": "<strong>Harbour Coffee</strong>",
+            "css": "text-white"
+          },
+          {
+            "kind": "text",
+            "html": "Coffee, pastries and a table by the window.",
+            "css": "text-sm"
+          },
+          {
+            "kind": "link",
+            "text": "Find us",
+            "href": "/visit",
+            "css": "text-sm underline underline-offset-4 hover:text-white"
+          }
+        ]
+      }
+    },
+    {
+      "key": "visit-cta",
+      "name": "Visit call to action",
+      "category": "call-to-action",
+      "node": {
+        "kind": "container",
+        "semantic": "section",
+        "css": "px-6 py-16 bg-amber-100",
+        "children": [
+          {
+            "kind": "container",
+            "css": "max-w-5xl mx-auto w-full",
+            "children": [
+              {
+                "kind": "heading",
+                "level": 2,
+                "text": "Come and sit down",
+                "css": "text-3xl font-bold text-stone-900"
+              },
+              {
+                "kind": "text",
+                "html": "The best way to know a coffee is to drink it. We are open every day.",
+                "css": "mt-3 text-stone-700"
+              },
+              {
+                "kind": "link",
+                "text": "How to find us",
+                "href": "/visit",
+                "css": "inline-block mt-6 px-6 py-3 rounded-lg bg-amber-500 text-stone-900 font-semibold hover:bg-amber-400"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "layout": {
+    "header": "header",
+    "footer": "footer"
+  },
+  "pages": [
+    {
+      "slug": "/",
+      "title": "Home",
+      "description": "Harbour Coffee: small-batch coffee and fresh pastries by the harbour.",
+      "sections": [
+        {
+          "kind": "container",
+          "semantic": "section",
+          "css": "px-6 py-24 bg-stone-900 text-white",
+          "children": [
+            {
+              "kind": "container",
+              "css": "max-w-5xl mx-auto w-full",
+              "children": [
+                {
+                  "kind": "heading",
+                  "level": 1,
+                  "text": "Coffee, slowly",
+                  "css": "text-4xl md:text-5xl font-bold leading-tight"
+                },
+                {
+                  "kind": "text",
+                  "html": "Roasted in small batches and served by people who like talking about it.",
+                  "css": "mt-4 text-lg text-stone-300 max-w-2xl"
+                },
+                {
+                  "kind": "link",
+                  "text": "See the menu",
+                  "href": "/menu",
+                  "css": "inline-block mt-6 px-6 py-3 rounded-lg bg-amber-500 text-stone-900 font-semibold hover:bg-amber-400"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "container",
+          "semantic": "section",
+          "css": "px-6 py-16 bg-stone-50",
+          "children": [
+            {
+              "kind": "container",
+              "css": "max-w-5xl mx-auto w-full",
+              "children": [
+                {
+                  "kind": "heading",
+                  "level": 2,
+                  "text": "Why people come back",
+                  "css": "text-3xl font-bold text-stone-900"
+                },
+                {
+                  "kind": "container",
+                  "direction": "col",
+                  "css": "gap-6 mt-8 md:flex-row",
+                  "children": [
+                    {
+                      "kind": "container",
+                      "direction": "col",
+                      "css": "gap-2 p-6 rounded-xl bg-white border border-stone-200",
+                      "children": [
+                        {
+                          "kind": "heading",
+                          "level": 3,
+                          "text": "Roasted nearby",
+                          "css": "text-lg font-semibold text-stone-900"
+                        },
+                        {
+                          "kind": "text",
+                          "html": "We roast in small batches every week, so the beans you drink are never old.",
+                          "css": "text-stone-600 leading-relaxed"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "container",
+                      "direction": "col",
+                      "css": "gap-2 p-6 rounded-xl bg-white border border-stone-200",
+                      "children": [
+                        {
+                          "kind": "heading",
+                          "level": 3,
+                          "text": "Baked every morning",
+                          "css": "text-lg font-semibold text-stone-900"
+                        },
+                        {
+                          "kind": "text",
+                          "html": "Pastries and bread come out of the oven before we open the door.",
+                          "css": "text-stone-600 leading-relaxed"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "container",
+                      "direction": "col",
+                      "css": "gap-2 p-6 rounded-xl bg-white border border-stone-200",
+                      "children": [
+                        {
+                          "kind": "heading",
+                          "level": 3,
+                          "text": "A table for you",
+                          "css": "text-lg font-semibold text-stone-900"
+                        },
+                        {
+                          "kind": "text",
+                          "html": "Bring a book, a laptop or a friend. Nobody will rush you.",
+                          "css": "text-stone-600 leading-relaxed"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "snippet",
+          "use": "visit-cta"
+        }
+      ]
+    },
+    {
+      "slug": "/menu",
+      "title": "Menu",
+      "description": "Coffee, tea and pastries at Harbour Coffee.",
+      "sections": [
+        {
+          "kind": "container",
+          "semantic": "section",
+          "css": "px-6 py-16 bg-stone-50",
+          "children": [
+            {
+              "kind": "container",
+              "css": "max-w-5xl mx-auto w-full",
+              "children": [
+                {
+                  "kind": "heading",
+                  "level": 1,
+                  "text": "Menu",
+                  "css": "text-4xl font-bold text-stone-900"
+                },
+                {
+                  "kind": "text",
+                  "html": "What we serve changes with the season. Ask what is fresh today.",
+                  "css": "mt-3 text-stone-600"
+                },
+                {
+                  "kind": "container",
+                  "direction": "col",
+                  "css": "gap-6 mt-8 md:flex-row",
+                  "children": [
+                    {
+                      "kind": "container",
+                      "direction": "col",
+                      "css": "gap-2 p-6 rounded-xl bg-white border border-stone-200",
+                      "children": [
+                        {
+                          "kind": "heading",
+                          "level": 3,
+                          "text": "Coffee",
+                          "css": "text-lg font-semibold text-stone-900"
+                        },
+                        {
+                          "kind": "text",
+                          "html": "Espresso, filter and milk drinks, made with the beans of the week.",
+                          "css": "text-stone-600 leading-relaxed"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "container",
+                      "direction": "col",
+                      "css": "gap-2 p-6 rounded-xl bg-white border border-stone-200",
+                      "children": [
+                        {
+                          "kind": "heading",
+                          "level": 3,
+                          "text": "Tea",
+                          "css": "text-lg font-semibold text-stone-900"
+                        },
+                        {
+                          "kind": "text",
+                          "html": "A short list of loose-leaf teas, brewed to the minute.",
+                          "css": "text-stone-600 leading-relaxed"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "container",
+                      "direction": "col",
+                      "css": "gap-2 p-6 rounded-xl bg-white border border-stone-200",
+                      "children": [
+                        {
+                          "kind": "heading",
+                          "level": 3,
+                          "text": "Pastries",
+                          "css": "text-lg font-semibold text-stone-900"
+                        },
+                        {
+                          "kind": "text",
+                          "html": "Croissants, cakes and savoury things, baked in the morning.",
+                          "css": "text-stone-600 leading-relaxed"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "snippet",
+          "use": "visit-cta"
+        }
+      ]
+    },
+    {
+      "slug": "/visit",
+      "title": "Visit",
+      "description": "Where to find Harbour Coffee and when it is open.",
+      "sections": [
+        {
+          "kind": "container",
+          "semantic": "section",
+          "css": "px-6 py-16 bg-stone-50",
+          "children": [
+            {
+              "kind": "container",
+              "css": "max-w-5xl mx-auto w-full",
+              "children": [
+                {
+                  "kind": "heading",
+                  "level": 1,
+                  "text": "Visit us",
+                  "css": "text-4xl font-bold text-stone-900"
+                },
+                {
+                  "kind": "text",
+                  "html": "Hours and address are to be confirmed: replace this text with the real ones.",
+                  "css": "mt-3 text-stone-600"
+                },
+                {
+                  "kind": "text",
+                  "html": "Write to us at <a href=\"mailto:hello@example.com\">hello@example.com</a>.",
+                  "css": "mt-4 text-stone-600"
+                },
+                {
+                  "kind": "image",
+                  "alt": "The front of the coffee bar on a sunny morning",
+                  "css": "mt-8 w-full h-auto rounded-xl"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

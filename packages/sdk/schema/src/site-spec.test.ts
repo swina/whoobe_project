@@ -1,8 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod/v4'
-import { SITE_SPEC_LIMITS, describePath, siteSpecSchema, validateSiteSpec, type SiteSpec } from './site-spec.js'
+import { SITE_SPEC_LIMITS, describePath, siteSpecJsonSchema, validateSiteSpec, type SiteSpec } from './site-spec.js'
 
 const base = (): SiteSpec => ({
   version: 1,
@@ -97,6 +96,16 @@ describe('site spec: each rule has a failing example', () => {
     }
   })
 
+  it('accepts in a text only an outside address or a path from the root', () => {
+    for (const bad of ['#top', 'pricing', 'javascript:alert(1)', '//evil.example', 'data:text/html,x']) {
+      expect(messages(edit((x) => { x.pages[0].sections[0].children[1].html = `See <a href="${bad}">x</a>` })).join('\n'), bad).toContain('a link inside a text')
+    }
+    expect(messages(edit((x) => { x.pages[0].sections[0].children[1].html = "<a href='javascript:alert(1)'>x</a>" })).length).toBeGreaterThan(0)
+    for (const good of ['https://example.com', 'mailto:a@b.co', 'tel:+39 333 1234567', '/pricing', '/security#plans']) {
+      expect(validateSiteSpec(edit((x) => { x.pages[0].sections[0].children[1].html = `See <a href="${good}">x</a>` })).ok, good).toBe(true)
+    }
+  })
+
   it('rejects a link to a page that is not in the file, keeps the anchor and query of a page that is', () => {
     expect(messages(edit((x) => { x.pages[0].sections[0].children[2].href = '/contact' })).join('\n')).toContain('"/contact", which is not a page')
     expect(validateSiteSpec(edit((x) => { x.pages[0].sections[0].children[2].href = '/pricing#plans' })).ok).toBe(true)
@@ -175,7 +184,7 @@ describe('site spec: errors say where', () => {
 
 describe('site spec: the committed JSON Schema', () => {
   const file = fileURLToPath(new URL('../json/site-spec.schema.json', import.meta.url))
-  const generated = `${JSON.stringify(z.toJSONSchema(siteSpecSchema as any, { unrepresentable: 'any' }), null, 2)}\n`
+  const generated = `${JSON.stringify(siteSpecJsonSchema(), null, 2)}\n`
 
   // run `UPDATE_SITE_SPEC_SCHEMA=1 pnpm test` to rewrite the file after a change of the schema
   if (process.env.UPDATE_SITE_SPEC_SCHEMA) writeFileSync(file, generated)

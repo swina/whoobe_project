@@ -1,0 +1,273 @@
+{
+  "version": 1,
+  "website": {
+    "name": "Harbour Coffee",
+    "defaultLocale": "en",
+    "supportedLocales": [
+      "en",
+      "it"
+    ],
+    "description": "An invented example in two languages."
+  },
+  "snippets": [
+    {
+      "key": "header",
+      "name": "Harbour header (neutral)",
+      "category": "navigation",
+      "node": {
+        "kind": "container",
+        "semantic": "header",
+        "direction": "row",
+        "css": "w-full items-center justify-between px-6 py-4 bg-white border-b border-stone-200",
+        "children": [
+          {
+            "kind": "link",
+            "text": "Harbour Coffee",
+            "href": "/",
+            "css": "text-lg font-bold text-stone-900"
+          }
+        ]
+      }
+    },
+    {
+      "key": "footer",
+      "name": "Harbour footer (neutral)",
+      "category": "footer",
+      "node": {
+        "kind": "container",
+        "semantic": "footer",
+        "direction": "col",
+        "css": "w-full px-6 py-8 bg-stone-900 text-stone-300",
+        "children": [
+          {
+            "kind": "text",
+            "html": "<strong>Harbour Coffee</strong>",
+            "css": "text-white"
+          }
+        ]
+      }
+    }
+  ],
+  "layout": {
+    "header": "header",
+    "footer": "footer"
+  },
+  "pages": [
+    {
+      "slug": "/",
+      "title": "Home",
+      "locale": "en",
+      "description": "Small-batch coffee by the harbour.",
+      "sections": [
+        {
+          "kind": "container",
+          "semantic": "section",
+          "css": "px-6 py-24 bg-stone-900 text-white",
+          "children": [
+            {
+              "kind": "container",
+              "css": "max-w-5xl mx-auto w-full",
+              "children": [
+                {
+                  "kind": "heading",
+                  "level": 1,
+                  "text": "Coffee, slowly",
+                  "css": "text-4xl md:text-5xl font-bold"
+                },
+                {
+                  "kind": "text",
+                  "html": "Roasted in small batches and served by people who like talking about it.",
+                  "css": "mt-4 text-lg text-stone-300"
+                },
+                {
+                  "kind": "link",
+                  "text": "See the menu",
+                  "href": "/menu",
+                  "css": "inline-block mt-6 px-6 py-3 rounded-lg bg-amber-500 text-stone-900 font-semibold hover:bg-amber-400"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "/",
+      "title": "Home",
+      "locale": "it",
+      "description": "Caffè tostato in piccole partite, davanti al porto.",
+      "sections": [
+        {
+          "kind": "container",
+          "semantic": "section",
+          "css": "px-6 py-24 bg-stone-900 text-white",
+          "children": [
+            {
+              "kind": "container",
+              "css": "max-w-5xl mx-auto w-full",
+              "children": [
+                {
+                  "kind": "heading",
+                  "level": 1,
+                  "text": "Il caffè, con calma",
+                  "css": "text-4xl md:text-5xl font-bold"
+                },
+                {
+                  "kind": "text",
+                  "html": "Tostato in piccole partite e servito da persone a cui piace parlarne.",
+                  "css": "mt-4 text-lg text-stone-300"
+                },
+                {
+                  "kind": "link",
+                  "text": "Guarda il menù",
+                  "href": "/menu",
+                  "css": "inline-block mt-6 px-6 py-3 rounded-lg bg-amber-500 text-stone-900 font-semibold hover:bg-amber-400"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "/menu",
+      "title": "Menu",
+      "locale": "en",
+      "description": "Coffee, tea and pastries.",
+      "sections": [
+        {
+          "kind": "container",
+          "semantic": "section",
+          "css": "px-6 py-16 bg-stone-50",
+          "children": [
+            {
+              "kind": "container",
+              "css": "max-w-5xl mx-auto w-full",
+              "children": [
+                {
+                  "kind": "heading",
+                  "level": 1,
+                  "text": "Menu",
+                  "css": "text-4xl font-bold text-stone-900"
+                },
+                {
+                  "kind": "container",
+                  "direction": "col",
+                  "css": "gap-6 mt-8 md:flex-row",
+                  "children": [
+                    {
+                      "kind": "container",
+                      "direction": "col",
+                      "css": "gap-2 p-6 rounded-xl bg-white border border-stone-200",
+                      "children": [
+                        {
+                          "kind": "heading",
+                          "level": 3,
+                          "text": "Coffee",
+                          "css": "text-lg font-semibold text-stone-900"
+                        },
+                        {
+                          "kind": "text",
+                          "html": "Espresso, filter and milk drinks.",
+                          "css": "text-stone-600 leading-relaxed"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "container",
+                      "direction": "col",
+                      "css": "gap-2 p-6 rounded-xl bg-white border border-stone-200",
+                      "children": [
+                        {
+                          "kind": "heading",
+                          "level": 3,
+                          "text": "Pastries",
+                          "css": "text-lg font-semibold text-stone-900"
+                        },
+                        {
+                          "kind": "text",
+                          "html": "Baked every morning.",
+                          "css": "text-stone-600 leading-relaxed"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "/menu",
+      "title": "Menù",
+      "locale": "it",
+      "description": "Caffè, tè e dolci.",
+      "sections": [
+        {
+          "kind": "container",
+          "semantic": "section",
+          "css": "px-6 py-16 bg-stone-50",
+          "children": [
+            {
+              "kind": "container",
+              "css": "max-w-5xl mx-auto w-full",
+              "children": [
+                {
+                  "kind": "heading",
+                  "level": 1,
+                  "text": "Menù",
+                  "css": "text-4xl font-bold text-stone-900"
+                },
+                {
+                  "kind": "container",
+                  "direction": "col",
+                  "css": "gap-6 mt-8 md:flex-row",
+                  "children": [
+                    {
+                      "kind": "container",
+                      "direction": "col",
+                      "css": "gap-2 p-6 rounded-xl bg-white border border-stone-200",
+                      "children": [
+                        {
+                          "kind": "heading",
+                          "level": 3,
+                          "text": "Caffè",
+                          "css": "text-lg font-semibold text-stone-900"
+                        },
+                        {
+                          "kind": "text",
+                          "html": "Espresso, filtro e bevande al latte.",
+                          "css": "text-stone-600 leading-relaxed"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "container",
+                      "direction": "col",
+                      "css": "gap-2 p-6 rounded-xl bg-white border border-stone-200",
+                      "children": [
+                        {
+                          "kind": "heading",
+                          "level": 3,
+                          "text": "Dolci",
+                          "css": "text-lg font-semibold text-stone-900"
+                        },
+                        {
+                          "kind": "text",
+                          "html": "Sfornati ogni mattina.",
+                          "css": "text-stone-600 leading-relaxed"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

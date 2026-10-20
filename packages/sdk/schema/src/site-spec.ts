@@ -203,12 +203,26 @@ export function crossChecks(spec: SiteSpec, fail: (path: Path, message: string) 
 }
 
 function checkNode(node: SpecNode, path: Path, spec: SiteSpec, fail: (path: Path, message: string) => void): void {
+  // a link inside a paragraph is plain HTML: it is not given the root path of the site, and the existence of its target is not checked, so
+  // only an outside address or a path from the root is accepted there (a "link" element is the way to point at a page of the file)
+  if (node.kind === 'text') {
+    for (const m of node.html.matchAll(/href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
+      const value = (m[1] ?? m[2] ?? m[3] ?? '').trim()
+      if (!/^(https?:\/\/|mailto:|tel:|\/(?!\/))/i.test(value)) fail([...path, 'html'], `a link inside a text must go to an outside address (https, mailto or tel) or a path from the root ("/pricing"), not "${value}"`)
+    }
+    return
+  }
   if (node.kind !== 'link') return
   if (!node.text.trim()) fail([...path, 'text'], 'a link needs visible text')
   if (node.href.startsWith('/') && !node.href.startsWith('//')) {
     const target = node.href.split(/[?#]/)[0] || '/'
     if (!spec.pages.some((p) => p.slug === target) && !(spec.website.otherPaths ?? []).includes(target)) fail([...path, 'href'], `the link goes to "${target}", which is not a page of this file (a page outside the file is listed in website.otherPaths)`)
   }
+}
+
+/** The JSON Schema of a site specification (what the committed json/site-spec.schema.json holds). The rules across the file are not in it. */
+export function siteSpecJsonSchema(): Record<string, unknown> {
+  return z.toJSONSchema(siteSpecSchema as any, { unrepresentable: 'any' }) as Record<string, unknown>
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
