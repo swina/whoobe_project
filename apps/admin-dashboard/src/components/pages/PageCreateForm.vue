@@ -28,6 +28,13 @@
         />
       </div>
       <div>
+        <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Website</label>
+        <select v-model="websiteId" class="field w-full">
+          <option value="">No website</option>
+          <option v-for="w in websitesStore.websites" :key="w.id" :value="w.id">{{ w.name }}</option>
+        </select>
+      </div>
+      <div>
         <label class="block text-xs font-semibold text-slate-400 light:text-slate-600 mb-1">Category</label>
         <input
           v-model="category"
@@ -70,9 +77,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { FileText, Smartphone } from '@lucide/vue'
 import { usePagesStore } from '../../stores/pagesStore'
+import { useWebsitesStore } from '../../stores/websitesStore'
 import type { WhoobeOnePage } from '../../utils/pages-api'
 import { slugify } from '../../utils/slugify'
 
@@ -82,7 +90,13 @@ const emit = defineEmits<{
 }>()
 
 const pagesStore = usePagesStore()
+const websitesStore = useWebsitesStore()
 
+onMounted(() => {
+  if (!websitesStore.websites.length) websitesStore.refreshWebsites()
+})
+
+const websiteId = ref('')
 const title = ref('')
 const slug = ref('')
 const category = ref('')
@@ -110,6 +124,7 @@ async function create() {
       slug: finalSlug,
       category: category.value.trim() || undefined,
       kind: kind.value,
+      websiteId: websiteId.value || null,
       content: { id: 'whoobe-' + Math.random().toString(36).substr(2, 5), tag: 'document', type: 'container', element: 'div', css: { css: '', container: '' }, blocks: [] },
     })
     emit('created', page)
