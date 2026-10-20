@@ -12,6 +12,7 @@ This is an internal tool, not a supported feature for third parties: whoever wan
 
 - One shared demo account. Its e-mail and password are public and the banner on every screen shows them (`Demo login: ...`), so a visitor who lands on the login page knows what to type; put them on the page that links to the sandbox too.
 - The editor, the DAM, websites, pages, snippets, themes, the API Gateway towards the allowed hosts.
+- **Demo content**, loaded again at every reset: a website "Northlight (demo)" with three pages (Home, Pricing, About), three snippets (navigation bar, announcement bar, footer) and the two kits that ship with the distribution ("Landing basics" and "Page sections", read-only: Duplicate or Edit a copy to change them). The kits are seeded by the core like on any installation; the website, pages and snippets by `scripts/sandbox/seed-demo.mjs` at the end of `reset.sh` (it runs with the Node of the core-api image, because the host's Node can be too old, and a failure only leaves the sandbox empty). The content is generated with the editor's own Element class by `scripts/sandbox/demo/generate.mjs` (outputs committed: `demo/content.json` and `packages/core/seed-data/kits/*.json`): change the generator, run `node scripts/sandbox/demo/generate.mjs`, commit the outputs.
 - A banner on every screen with the time of the next reset.
 
 ## The profile: every limit is a variable
@@ -42,7 +43,7 @@ in `SANDBOX_ALLOW_HOSTS`, checked before any DNS lookup and on every redirect ho
 normal SSRF checks (no private or loopback addresses). So a visitor can create gateway endpoints and routes, but only towards
 the allowed hosts: Cloudinary, Brevo and CDN mirroring stay off. The path list lives in `packages/core/src/sandbox.ts`.
 Users and roles are read-only for the demo account (it can list them, not create, change or delete them, reset passwords or
-change its own MFA), so visitors cannot lock each other out.
+change its own MFA, or enrol it in two-factor at sign-in), so visitors cannot lock each other out.
 
 ## Procedure
 

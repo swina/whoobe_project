@@ -1,0 +1,4371 @@
+{
+  "name": "Landing basics",
+  "slug": "landing-basics",
+  "version": "1",
+  "category": "Landing",
+  "description": "The sections of a product landing page: two heroes, features, pricing and a call to action.",
+  "templates": [
+    {
+      "id": "tpl-008",
+      "blocks_id": "cmp-009",
+      "name": "Hero centered",
+      "description": "A gradient hero with two buttons.",
+      "category": "Hero",
+      "tags": [],
+      "json": {
+        "build": {
+          "purgeCSS": null,
+          "images": null,
+          "fonts": null,
+          "plugins": null
+        },
+        "blocks": {
+          "id": "demo-00a",
+          "blocks": [
+            {
+              "id": "demo-007",
+              "blocks": [
+                {
+                  "id": "demo-001",
+                  "blocks": [],
+                  "css": {
+                    "css": "text-xs font-semibold tracking-widest text-indigo-200",
+                    "container": ""
+                  },
+                  "tailwind": {},
+                  "font": "",
+                  "style": "",
+                  "content": "NEW · VERSION 2.0 IS OUT",
+                  "description": "",
+                  "categories": [],
+                  "alpine": {},
+                  "events": {
+                    "display": null,
+                    "hide": null,
+                    "mouseenter": null,
+                    "mouseleave": null,
+                    "click": null,
+                    "focus": null,
+                    "blur": null,
+                    "keydown": null
+                  },
+                  "data": {},
+                  "gsap": {
+                    "animation": null,
+                    "ease": null,
+                    "duration": 0,
+                    "delay": 0
+                  },
+                  "link": "",
+                  "anchor": "",
+                  "image": {
+                    "url": null
+                  },
+                  "type": "element",
+                  "tag": "element",
+                  "editable": true,
+                  "icon": "subject",
+                  "helper": null,
+                  "dialog": null,
+                  "dataBinding": null,
+                  "name": "",
+                  "element": "p",
+                  "label": "Rich Text"
+                },
+                {
+                  "id": "demo-002",
+                  "blocks": [],
+                  "css": {
+                    "css": "text-5xl font-bold max-w-3xl",
+                    "container": ""
+                  },
+                  "tailwind": {},
+                  "font": "",
+                  "style": "",
+                  "content": "Plan less. Ship more.",
+                  "description": "",
+                  "categories": [],
+                  "alpine": {},
+                  "events": {
+                    "display": null,
+                    "hide": null,
+                    "mouseenter": null,
+                    "mouseleave": null,
+                    "click": null,
+                    "focus": null,
+                    "blur": null,
+                    "keydown": null
+                  },
+                  "data": {},
+                  "gsap": {
+                    "animation": null,
+                    "ease": null,
+                    "duration": 0,
+                    "delay": 0
+                  },
+                  "link": "",
+                  "anchor": "",
+                  "image": {
+                    "url": null
+                  },
+                  "type": "element",
+                  "tag": "element",
+                  "editable": true,
+                  "icon": "title",
+                  "helper": "blocks/helpers/Heading.vue",
+                  "dialog": "md:w-40",
+                  "dataBinding": null,
+                  "name": "",
+                  "level": 1,
+                  "element": "h"
+                },
+                {
+                  "id": "demo-003",
+                  "blocks": [],
+                  "css": {
+                    "css": "text-lg text-indigo-100 max-w-2xl",
+                    "container": ""
+                  },
+                  "tailwind": {},
+                  "font": "",
+                  "style": "",
+                  "content": "One calm place for your tasks, your notes and your team. Start in a minute, no card needed.",
+                  "description": "",
+                  "categories": [],
+                  "alpine": {},
+                  "events": {
+                    "display": null,
+                    "hide": null,
+                    "mouseenter": null,
+                    "mouseleave": null,
+                    "click": null,
+                    "focus": null,
+                    "blur": null,
+                    "keydown": null
+                  },
+                  "data": {},
+                  "gsap": {
+                    "animation": null,
+                    "ease": null,
+                    "duration": 0,
+                    "delay": 0
+                  },
+                  "link": "",
+                  "anchor": "",
+                  "image": {
+                    "url": null
+                  },
+                  "type": "element",
+                  "tag": "element",
+                  "editable": true,
+                  "icon": "subject",
+                  "helper": null,
+                  "dialog": null,
+                  "dataBinding": null,
+                  "name": "",
+                  "element": "p",
+                  "label": "Rich Text"
+                },
+                {
+                  "id": "demo-006",
+                  "blocks": [
+                    {
+                      "id": "demo-004",
+                      "blocks": [],
+                      "css": {
+                        "css": "px-6 py-3 rounded-lg font-semibold transition bg-white text-indigo-700 hover:bg-indigo-50",
+                        "container": ""
+                      },
+                      "tailwind": {},
+                      "font": "",
+                      "style": "",
+                      "content": "Start for free",
+                      "description": "",
+                      "categories": [],
+                      "alpine": {},
+                      "events": {
+                        "display": null,
+                        "hide": null,
+                        "mouseenter": null,
+                        "mouseleave": null,
+                        "click": null,
+                        "focus": null,
+                        "blur": null,
+                        "keydown": null
+                      },
+                      "data": {
+                        "attributes": {
+                          "type": "button"
+                        }
+                      },
+                      "gsap": {
+                        "animation": null,
+                        "ease": null,
+                        "duration": 0,
+                        "delay": 0
+                      },
+                      "link": "#pricing",
+                      "anchor": "",
+                      "image": {
+                        "url": null
+                      },
+                      "type": "button",
+                      "tag": "button",
+                      "editable": true,
+                      "icon": "highlight_alt",
+                      "helper": null,
+                      "dialog": null,
+                      "dataBinding": null,
+                      "name": "",
+                      "element": "button",
+                      "value": "button",
+                      "buttonIcon": "",
+                      "buttonIconPosition": "before",
+                      "buttonIconWidth": 16,
+                      "buttonIconHeight": 16
+                    },
+                    {
+                      "id": "demo-005",
+                      "blocks": [],
+                      "css": {
+                        "css": "px-6 py-3 rounded-lg font-semibold transition border border-white/60 text-white hover:bg-white/10",
+                        "container": ""
+                      },
+                      "tailwind": {},
+                      "font": "",
+                      "style": "",
+                      "content": "See how it works",
+                      "description": "",
+                      "categories": [],
+                      "alpine": {},
+                      "events": {
+                        "display": null,
+                        "hide": null,
+                        "mouseenter": null,
+                        "mouseleave": null,
+                        "click": null,
+                        "focus": null,
+                        "blur": null,
+                        "keydown": null
+                      },
+                      "data": {
+                        "attributes": {
+                          "type": "button"
+                        }
+                      },
+                      "gsap": {
+                        "animation": null,
+                        "ease": null,
+                        "duration": 0,
+                        "delay": 0
+                      },
+                      "link": "#features",
+                      "anchor": "",
+                      "image": {
+                        "url": null
+                      },
+                      "type": "button",
+                      "tag": "button",
+                      "editable": true,
+                      "icon": "highlight_alt",
+                      "helper": null,
+                      "dialog": null,
+                      "dataBinding": null,
+                      "name": "",
+                      "element": "button",
+                      "value": "button",
+                      "buttonIcon": "",
+                      "buttonIconPosition": "before",
+                      "buttonIconWidth": 16,
+                      "buttonIconHeight": 16
+                    }
+                  ],
+                  "css": {
+                    "css": "",
+                    "container": "flex flex-row gap-3 items-center justify-center flex-wrap"
+                  },
+                  "tailwind": {},
+                  "font": "",
+                  "style": "",
+                  "content": "",
+                  "description": "",
+                  "categories": [],
+                  "alpine": {},
+                  "events": {
+                    "display": null,
+                    "hide": null,
+                    "mouseenter": null,
+                    "mouseleave": null,
+                    "click": null,
+                    "focus": null,
+                    "blur": null,
+                    "keydown": null
+                  },
+                  "data": {},
+                  "gsap": {
+                    "animation": null,
+                    "ease": null,
+                    "duration": 0,
+                    "delay": 0
+                  },
+                  "link": "",
+                  "anchor": "",
+                  "image": {
+                    "url": null
+                  },
+                  "type": "container",
+                  "tag": "flex",
+                  "editable": false,
+                  "icon": "highlight_alt",
+                  "helper": null,
+                  "dialog": null,
+                  "dataBinding": null,
+                  "name": "",
+                  "element": "div"
+                }
+              ],
+              "css": {
+                "css": "",
+                "container": "flex flex-col w-full items-center text-center gap-6 px-6 py-24 bg-gradient-to-br from-indigo-600 to-violet-700 text-white"
+              },
+              "tailwind": {},
+              "font": "",
+              "style": "",
+              "content": "",
+              "description": "",
+              "categories": [],
+              "alpine": {},
+              "events": {
+                "display": null,
+                "hide": null,
+                "mouseenter": null,
+                "mouseleave": null,
+                "click": null,
+                "focus": null,
+                "blur": null,
+                "keydown": null
+              },
+              "data": {},
+              "gsap": {
+                "animation": null,
+                "ease": null,
+                "duration": 0,
+                "delay": 0
+              },
+              "link": "",
+              "anchor": "",
+              "image": {
+                "url": null
+              },
+              "type": "container",
+              "tag": "flex",
+              "editable": false,
+              "icon": "highlight_alt",
+              "helper": null,
+              "dialog": null,
+              "dataBinding": null,
+              "name": "",
+              "element": "div",
+              "semantic": "section"
+            }
+          ],
+          "css": {
+            "css": "",
+            "container": "flex flex-col"
+          },
+          "tailwind": {},
+          "font": "",
+          "style": "",
+          "content": "",
+          "description": "",
+          "categories": [],
+          "alpine": {},
+          "events": {
+            "display": null,
+            "hide": null,
+            "mouseenter": null,
+            "mouseleave": null,
+            "click": null,
+            "focus": null,
+            "blur": null,
+            "keydown": null
+          },
+          "data": {},
+          "gsap": {
+            "animation": null,
+            "ease": null,
+            "duration": 0,
+            "delay": 0
+          },
+          "link": "",
+          "anchor": "",
+          "image": {
+            "url": null
+          },
+          "type": "container",
+          "tag": "document",
+          "editable": false,
+          "icon": "dashboard",
+          "helper": null,
+          "dialog": null,
+          "dataBinding": null,
+          "name": "",
+          "element": "div"
+        }
+      },
+      "html": null,
+      "image": "",
+      "enabled": true,
+      "premium": false,
+      "stars": 0,
+      "favorite": false
+    },
+    {
+      "id": "tpl-00u",
+      "blocks_id": "cmp-00v",
+      "name": "Hero with a card",
+      "description": "Text on the left, a task card on the right.",
+      "category": "Hero",
+      "tags": [],
+      "json": {
+        "build": {
+          "purgeCSS": null,
+          "images": null,
+          "fonts": null,
+          "plugins": null
+        },
+        "blocks": {
+          "id": "demo-00w",
+          "blocks": [
+            {
+              "id": "demo-00t",
+              "blocks": [
+                {
+                  "id": "demo-00s",
+                  "blocks": [
+                    {
+                      "id": "demo-00h",
+                      "blocks": [
+                        {
+                          "id": "demo-00b",
+                          "blocks": [],
+                          "css": {
+                            "css": "text-xs font-semibold tracking-widest text-indigo-600",
+                            "container": ""
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "FOR SMALL TEAMS",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "element",
+                          "tag": "element",
+                          "editable": true,
+                          "icon": "subject",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "p",
+                          "label": "Rich Text"
+                        },
+                        {
+                          "id": "demo-00c",
+                          "blocks": [],
+                          "css": {
+                            "css": "text-4xl font-bold leading-tight",
+                            "container": ""
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "Everything your team needs, nothing it does not",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "element",
+                          "tag": "element",
+                          "editable": true,
+                          "icon": "title",
+                          "helper": "blocks/helpers/Heading.vue",
+                          "dialog": "md:w-40",
+                          "dataBinding": null,
+                          "name": "",
+                          "level": 1,
+                          "element": "h"
+                        },
+                        {
+                          "id": "demo-00d",
+                          "blocks": [],
+                          "css": {
+                            "css": "text-lg text-slate-600",
+                            "container": ""
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "Boards, docs and a shared calendar that stay out of the way. Set it up on Monday, forget the tool on Tuesday.",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "element",
+                          "tag": "element",
+                          "editable": true,
+                          "icon": "subject",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "p",
+                          "label": "Rich Text"
+                        },
+                        {
+                          "id": "demo-00g",
+                          "blocks": [
+                            {
+                              "id": "demo-00e",
+                              "blocks": [],
+                              "css": {
+                                "css": "px-6 py-3 rounded-lg font-semibold transition bg-indigo-600 text-white hover:bg-indigo-500",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Try it free",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {
+                                "attributes": {
+                                  "type": "button"
+                                }
+                              },
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "button",
+                              "tag": "button",
+                              "editable": true,
+                              "icon": "highlight_alt",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "button",
+                              "value": "button",
+                              "buttonIcon": "",
+                              "buttonIconPosition": "before",
+                              "buttonIconWidth": 16,
+                              "buttonIconHeight": 16
+                            },
+                            {
+                              "id": "demo-00f",
+                              "blocks": [],
+                              "css": {
+                                "css": "px-6 py-3 rounded-lg font-semibold transition border border-slate-300 text-slate-700 hover:bg-slate-50",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Talk to us",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {
+                                "attributes": {
+                                  "type": "button"
+                                }
+                              },
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "button",
+                              "tag": "button",
+                              "editable": true,
+                              "icon": "highlight_alt",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "button",
+                              "value": "button",
+                              "buttonIcon": "",
+                              "buttonIconPosition": "before",
+                              "buttonIconWidth": 16,
+                              "buttonIconHeight": 16
+                            }
+                          ],
+                          "css": {
+                            "css": "",
+                            "container": "flex flex-row gap-3 flex-wrap"
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "container",
+                          "tag": "flex",
+                          "editable": false,
+                          "icon": "highlight_alt",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "div"
+                        }
+                      ],
+                      "css": {
+                        "css": "",
+                        "container": "flex flex-col flex-1 gap-5"
+                      },
+                      "tailwind": {},
+                      "font": "",
+                      "style": "",
+                      "content": "",
+                      "description": "",
+                      "categories": [],
+                      "alpine": {},
+                      "events": {
+                        "display": null,
+                        "hide": null,
+                        "mouseenter": null,
+                        "mouseleave": null,
+                        "click": null,
+                        "focus": null,
+                        "blur": null,
+                        "keydown": null
+                      },
+                      "data": {},
+                      "gsap": {
+                        "animation": null,
+                        "ease": null,
+                        "duration": 0,
+                        "delay": 0
+                      },
+                      "link": "",
+                      "anchor": "",
+                      "image": {
+                        "url": null
+                      },
+                      "type": "container",
+                      "tag": "flex",
+                      "editable": false,
+                      "icon": "highlight_alt",
+                      "helper": null,
+                      "dialog": null,
+                      "dataBinding": null,
+                      "name": "",
+                      "element": "div"
+                    },
+                    {
+                      "id": "demo-00r",
+                      "blocks": [
+                        {
+                          "id": "demo-00k",
+                          "blocks": [
+                            {
+                              "id": "demo-00i",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-indigo-600",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "☑",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "subject",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "p",
+                              "label": "Rich Text"
+                            },
+                            {
+                              "id": "demo-00j",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-sm font-medium",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Write the launch plan",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "subject",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "p",
+                              "label": "Rich Text"
+                            }
+                          ],
+                          "css": {
+                            "css": "",
+                            "container": "flex flex-row items-center gap-3 bg-white rounded-lg p-3 shadow-sm"
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "container",
+                          "tag": "flex",
+                          "editable": false,
+                          "icon": "highlight_alt",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "div"
+                        },
+                        {
+                          "id": "demo-00n",
+                          "blocks": [
+                            {
+                              "id": "demo-00l",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-indigo-600",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "☑",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "subject",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "p",
+                              "label": "Rich Text"
+                            },
+                            {
+                              "id": "demo-00m",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-sm font-medium",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Review the pricing page",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "subject",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "p",
+                              "label": "Rich Text"
+                            }
+                          ],
+                          "css": {
+                            "css": "",
+                            "container": "flex flex-row items-center gap-3 bg-white rounded-lg p-3 shadow-sm"
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "container",
+                          "tag": "flex",
+                          "editable": false,
+                          "icon": "highlight_alt",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "div"
+                        },
+                        {
+                          "id": "demo-00q",
+                          "blocks": [
+                            {
+                              "id": "demo-00o",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-slate-400",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "☐",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "subject",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "p",
+                              "label": "Rich Text"
+                            },
+                            {
+                              "id": "demo-00p",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-sm font-medium",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Invite the first ten users",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "subject",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "p",
+                              "label": "Rich Text"
+                            }
+                          ],
+                          "css": {
+                            "css": "",
+                            "container": "flex flex-row items-center gap-3 bg-white rounded-lg p-3 shadow-sm"
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "container",
+                          "tag": "flex",
+                          "editable": false,
+                          "icon": "highlight_alt",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "div"
+                        }
+                      ],
+                      "css": {
+                        "css": "",
+                        "container": "flex flex-col flex-1 w-full rounded-2xl bg-gradient-to-br from-slate-100 to-indigo-100 p-8 gap-3 shadow-lg"
+                      },
+                      "tailwind": {},
+                      "font": "",
+                      "style": "",
+                      "content": "",
+                      "description": "",
+                      "categories": [],
+                      "alpine": {},
+                      "events": {
+                        "display": null,
+                        "hide": null,
+                        "mouseenter": null,
+                        "mouseleave": null,
+                        "click": null,
+                        "focus": null,
+                        "blur": null,
+                        "keydown": null
+                      },
+                      "data": {},
+                      "gsap": {
+                        "animation": null,
+                        "ease": null,
+                        "duration": 0,
+                        "delay": 0
+                      },
+                      "link": "",
+                      "anchor": "",
+                      "image": {
+                        "url": null
+                      },
+                      "type": "container",
+                      "tag": "flex",
+                      "editable": false,
+                      "icon": "highlight_alt",
+                      "helper": null,
+                      "dialog": null,
+                      "dataBinding": null,
+                      "name": "",
+                      "element": "div"
+                    }
+                  ],
+                  "css": {
+                    "css": "",
+                    "container": "flex flex-row max-w-6xl mx-auto w-full items-center gap-12 flex-col md:flex-row"
+                  },
+                  "tailwind": {},
+                  "font": "",
+                  "style": "",
+                  "content": "",
+                  "description": "",
+                  "categories": [],
+                  "alpine": {},
+                  "events": {
+                    "display": null,
+                    "hide": null,
+                    "mouseenter": null,
+                    "mouseleave": null,
+                    "click": null,
+                    "focus": null,
+                    "blur": null,
+                    "keydown": null
+                  },
+                  "data": {},
+                  "gsap": {
+                    "animation": null,
+                    "ease": null,
+                    "duration": 0,
+                    "delay": 0
+                  },
+                  "link": "",
+                  "anchor": "",
+                  "image": {
+                    "url": null
+                  },
+                  "type": "container",
+                  "tag": "flex",
+                  "editable": false,
+                  "icon": "highlight_alt",
+                  "helper": null,
+                  "dialog": null,
+                  "dataBinding": null,
+                  "name": "",
+                  "element": "div"
+                }
+              ],
+              "css": {
+                "css": "",
+                "container": "flex flex-col w-full px-6 py-20 bg-white text-slate-900"
+              },
+              "tailwind": {},
+              "font": "",
+              "style": "",
+              "content": "",
+              "description": "",
+              "categories": [],
+              "alpine": {},
+              "events": {
+                "display": null,
+                "hide": null,
+                "mouseenter": null,
+                "mouseleave": null,
+                "click": null,
+                "focus": null,
+                "blur": null,
+                "keydown": null
+              },
+              "data": {},
+              "gsap": {
+                "animation": null,
+                "ease": null,
+                "duration": 0,
+                "delay": 0
+              },
+              "link": "",
+              "anchor": "",
+              "image": {
+                "url": null
+              },
+              "type": "container",
+              "tag": "flex",
+              "editable": false,
+              "icon": "highlight_alt",
+              "helper": null,
+              "dialog": null,
+              "dataBinding": null,
+              "name": "",
+              "element": "div",
+              "semantic": "section"
+            }
+          ],
+          "css": {
+            "css": "",
+            "container": "flex flex-col"
+          },
+          "tailwind": {},
+          "font": "",
+          "style": "",
+          "content": "",
+          "description": "",
+          "categories": [],
+          "alpine": {},
+          "events": {
+            "display": null,
+            "hide": null,
+            "mouseenter": null,
+            "mouseleave": null,
+            "click": null,
+            "focus": null,
+            "blur": null,
+            "keydown": null
+          },
+          "data": {},
+          "gsap": {
+            "animation": null,
+            "ease": null,
+            "duration": 0,
+            "delay": 0
+          },
+          "link": "",
+          "anchor": "",
+          "image": {
+            "url": null
+          },
+          "type": "container",
+          "tag": "document",
+          "editable": false,
+          "icon": "dashboard",
+          "helper": null,
+          "dialog": null,
+          "dataBinding": null,
+          "name": "",
+          "element": "div"
+        }
+      },
+      "html": null,
+      "image": "",
+      "enabled": true,
+      "premium": false,
+      "stars": 0,
+      "favorite": false
+    },
+    {
+      "id": "tpl-01f",
+      "blocks_id": "cmp-01g",
+      "name": "Features, three columns",
+      "description": "Three cards under a title.",
+      "category": "Features",
+      "tags": [],
+      "json": {
+        "build": {
+          "purgeCSS": null,
+          "images": null,
+          "fonts": null,
+          "plugins": null
+        },
+        "blocks": {
+          "id": "demo-01h",
+          "blocks": [
+            {
+              "id": "demo-01e",
+              "blocks": [
+                {
+                  "id": "demo-01d",
+                  "blocks": [
+                    {
+                      "id": "demo-00z",
+                      "blocks": [
+                        {
+                          "id": "demo-00x",
+                          "blocks": [],
+                          "css": {
+                            "css": "text-3xl font-bold text-slate-900",
+                            "container": ""
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "Built for how teams really work",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "element",
+                          "tag": "element",
+                          "editable": true,
+                          "icon": "title",
+                          "helper": "blocks/helpers/Heading.vue",
+                          "dialog": "md:w-40",
+                          "dataBinding": null,
+                          "name": "",
+                          "level": 2,
+                          "element": "h"
+                        },
+                        {
+                          "id": "demo-00y",
+                          "blocks": [],
+                          "css": {
+                            "css": "text-slate-600",
+                            "container": ""
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "Three ideas, done well.",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "element",
+                          "tag": "element",
+                          "editable": true,
+                          "icon": "subject",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "p",
+                          "label": "Rich Text"
+                        }
+                      ],
+                      "css": {
+                        "css": "",
+                        "container": "flex flex-col items-center text-center gap-3"
+                      },
+                      "tailwind": {},
+                      "font": "",
+                      "style": "",
+                      "content": "",
+                      "description": "",
+                      "categories": [],
+                      "alpine": {},
+                      "events": {
+                        "display": null,
+                        "hide": null,
+                        "mouseenter": null,
+                        "mouseleave": null,
+                        "click": null,
+                        "focus": null,
+                        "blur": null,
+                        "keydown": null
+                      },
+                      "data": {},
+                      "gsap": {
+                        "animation": null,
+                        "ease": null,
+                        "duration": 0,
+                        "delay": 0
+                      },
+                      "link": "",
+                      "anchor": "",
+                      "image": {
+                        "url": null
+                      },
+                      "type": "container",
+                      "tag": "flex",
+                      "editable": false,
+                      "icon": "highlight_alt",
+                      "helper": null,
+                      "dialog": null,
+                      "dataBinding": null,
+                      "name": "",
+                      "element": "div"
+                    },
+                    {
+                      "id": "demo-01c",
+                      "blocks": [
+                        {
+                          "id": "demo-013",
+                          "blocks": [
+                            {
+                              "id": "demo-010",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-3xl",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "🗂️",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "subject",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "p",
+                              "label": "Rich Text"
+                            },
+                            {
+                              "id": "demo-011",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-xl font-semibold text-slate-900",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Boards that fit",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "title",
+                              "helper": "blocks/helpers/Heading.vue",
+                              "dialog": "md:w-40",
+                              "dataBinding": null,
+                              "name": "",
+                              "level": 3,
+                              "element": "h"
+                            },
+                            {
+                              "id": "demo-012",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-slate-600",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Columns, cards and filters you can set up in a minute and change whenever the work does.",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "subject",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "p",
+                              "label": "Rich Text"
+                            }
+                          ],
+                          "css": {
+                            "css": "",
+                            "container": "flex flex-col flex-1 gap-3 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "container",
+                          "tag": "flex",
+                          "editable": false,
+                          "icon": "highlight_alt",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "div"
+                        },
+                        {
+                          "id": "demo-017",
+                          "blocks": [
+                            {
+                              "id": "demo-014",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-3xl",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "📝",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "subject",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "p",
+                              "label": "Rich Text"
+                            },
+                            {
+                              "id": "demo-015",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-xl font-semibold text-slate-900",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Docs next to tasks",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "title",
+                              "helper": "blocks/helpers/Heading.vue",
+                              "dialog": "md:w-40",
+                              "dataBinding": null,
+                              "name": "",
+                              "level": 3,
+                              "element": "h"
+                            },
+                            {
+                              "id": "demo-016",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-slate-600",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Write the plan where the work happens. Link a page to a card and keep both in sync.",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "subject",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "p",
+                              "label": "Rich Text"
+                            }
+                          ],
+                          "css": {
+                            "css": "",
+                            "container": "flex flex-col flex-1 gap-3 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "container",
+                          "tag": "flex",
+                          "editable": false,
+                          "icon": "highlight_alt",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "div"
+                        },
+                        {
+                          "id": "demo-01b",
+                          "blocks": [
+                            {
+                              "id": "demo-018",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-3xl",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "📅",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "subject",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "p",
+                              "label": "Rich Text"
+                            },
+                            {
+                              "id": "demo-019",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-xl font-semibold text-slate-900",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "One shared calendar",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "title",
+                              "helper": "blocks/helpers/Heading.vue",
+                              "dialog": "md:w-40",
+                              "dataBinding": null,
+                              "name": "",
+                              "level": 3,
+                              "element": "h"
+                            },
+                            {
+                              "id": "demo-01a",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-slate-600",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Deadlines, launches and days off in a single view everybody can read.",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "subject",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "p",
+                              "label": "Rich Text"
+                            }
+                          ],
+                          "css": {
+                            "css": "",
+                            "container": "flex flex-col flex-1 gap-3 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "container",
+                          "tag": "flex",
+                          "editable": false,
+                          "icon": "highlight_alt",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "div"
+                        }
+                      ],
+                      "css": {
+                        "css": "",
+                        "container": "flex flex-row gap-6 flex-col md:flex-row"
+                      },
+                      "tailwind": {},
+                      "font": "",
+                      "style": "",
+                      "content": "",
+                      "description": "",
+                      "categories": [],
+                      "alpine": {},
+                      "events": {
+                        "display": null,
+                        "hide": null,
+                        "mouseenter": null,
+                        "mouseleave": null,
+                        "click": null,
+                        "focus": null,
+                        "blur": null,
+                        "keydown": null
+                      },
+                      "data": {},
+                      "gsap": {
+                        "animation": null,
+                        "ease": null,
+                        "duration": 0,
+                        "delay": 0
+                      },
+                      "link": "",
+                      "anchor": "",
+                      "image": {
+                        "url": null
+                      },
+                      "type": "container",
+                      "tag": "flex",
+                      "editable": false,
+                      "icon": "highlight_alt",
+                      "helper": null,
+                      "dialog": null,
+                      "dataBinding": null,
+                      "name": "",
+                      "element": "div"
+                    }
+                  ],
+                  "css": {
+                    "css": "",
+                    "container": "flex flex-col max-w-6xl mx-auto w-full gap-10"
+                  },
+                  "tailwind": {},
+                  "font": "",
+                  "style": "",
+                  "content": "",
+                  "description": "",
+                  "categories": [],
+                  "alpine": {},
+                  "events": {
+                    "display": null,
+                    "hide": null,
+                    "mouseenter": null,
+                    "mouseleave": null,
+                    "click": null,
+                    "focus": null,
+                    "blur": null,
+                    "keydown": null
+                  },
+                  "data": {},
+                  "gsap": {
+                    "animation": null,
+                    "ease": null,
+                    "duration": 0,
+                    "delay": 0
+                  },
+                  "link": "",
+                  "anchor": "",
+                  "image": {
+                    "url": null
+                  },
+                  "type": "container",
+                  "tag": "flex",
+                  "editable": false,
+                  "icon": "highlight_alt",
+                  "helper": null,
+                  "dialog": null,
+                  "dataBinding": null,
+                  "name": "",
+                  "element": "div"
+                }
+              ],
+              "css": {
+                "css": "",
+                "container": "flex flex-col w-full px-6 py-20 bg-slate-50"
+              },
+              "tailwind": {},
+              "font": "",
+              "style": "",
+              "content": "",
+              "description": "",
+              "categories": [],
+              "alpine": {},
+              "events": {
+                "display": null,
+                "hide": null,
+                "mouseenter": null,
+                "mouseleave": null,
+                "click": null,
+                "focus": null,
+                "blur": null,
+                "keydown": null
+              },
+              "data": {},
+              "gsap": {
+                "animation": null,
+                "ease": null,
+                "duration": 0,
+                "delay": 0
+              },
+              "link": "",
+              "anchor": "features",
+              "image": {
+                "url": null
+              },
+              "type": "container",
+              "tag": "flex",
+              "editable": false,
+              "icon": "highlight_alt",
+              "helper": null,
+              "dialog": null,
+              "dataBinding": null,
+              "name": "",
+              "element": "div",
+              "semantic": "section"
+            }
+          ],
+          "css": {
+            "css": "",
+            "container": "flex flex-col"
+          },
+          "tailwind": {},
+          "font": "",
+          "style": "",
+          "content": "",
+          "description": "",
+          "categories": [],
+          "alpine": {},
+          "events": {
+            "display": null,
+            "hide": null,
+            "mouseenter": null,
+            "mouseleave": null,
+            "click": null,
+            "focus": null,
+            "blur": null,
+            "keydown": null
+          },
+          "data": {},
+          "gsap": {
+            "animation": null,
+            "ease": null,
+            "duration": 0,
+            "delay": 0
+          },
+          "link": "",
+          "anchor": "",
+          "image": {
+            "url": null
+          },
+          "type": "container",
+          "tag": "document",
+          "editable": false,
+          "icon": "dashboard",
+          "helper": null,
+          "dialog": null,
+          "dataBinding": null,
+          "name": "",
+          "element": "div"
+        }
+      },
+      "html": null,
+      "image": "",
+      "enabled": true,
+      "premium": false,
+      "stars": 0,
+      "favorite": false
+    },
+    {
+      "id": "tpl-02i",
+      "blocks_id": "cmp-02j",
+      "name": "Pricing, three tiers",
+      "description": "Free, Team and Scale, the middle one highlighted.",
+      "category": "Pricing",
+      "tags": [],
+      "json": {
+        "build": {
+          "purgeCSS": null,
+          "images": null,
+          "fonts": null,
+          "plugins": null
+        },
+        "blocks": {
+          "id": "demo-02k",
+          "blocks": [
+            {
+              "id": "demo-02h",
+              "blocks": [
+                {
+                  "id": "demo-02g",
+                  "blocks": [
+                    {
+                      "id": "demo-01k",
+                      "blocks": [
+                        {
+                          "id": "demo-01i",
+                          "blocks": [],
+                          "css": {
+                            "css": "text-3xl font-bold text-slate-900",
+                            "container": ""
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "Simple pricing",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "element",
+                          "tag": "element",
+                          "editable": true,
+                          "icon": "title",
+                          "helper": "blocks/helpers/Heading.vue",
+                          "dialog": "md:w-40",
+                          "dataBinding": null,
+                          "name": "",
+                          "level": 2,
+                          "element": "h"
+                        },
+                        {
+                          "id": "demo-01j",
+                          "blocks": [],
+                          "css": {
+                            "css": "text-slate-600",
+                            "container": ""
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "Start free. Pay when the team grows.",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "element",
+                          "tag": "element",
+                          "editable": true,
+                          "icon": "subject",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "p",
+                          "label": "Rich Text"
+                        }
+                      ],
+                      "css": {
+                        "css": "",
+                        "container": "flex flex-col items-center text-center gap-3"
+                      },
+                      "tailwind": {},
+                      "font": "",
+                      "style": "",
+                      "content": "",
+                      "description": "",
+                      "categories": [],
+                      "alpine": {},
+                      "events": {
+                        "display": null,
+                        "hide": null,
+                        "mouseenter": null,
+                        "mouseleave": null,
+                        "click": null,
+                        "focus": null,
+                        "blur": null,
+                        "keydown": null
+                      },
+                      "data": {},
+                      "gsap": {
+                        "animation": null,
+                        "ease": null,
+                        "duration": 0,
+                        "delay": 0
+                      },
+                      "link": "",
+                      "anchor": "",
+                      "image": {
+                        "url": null
+                      },
+                      "type": "container",
+                      "tag": "flex",
+                      "editable": false,
+                      "icon": "highlight_alt",
+                      "helper": null,
+                      "dialog": null,
+                      "dataBinding": null,
+                      "name": "",
+                      "element": "div"
+                    },
+                    {
+                      "id": "demo-02f",
+                      "blocks": [
+                        {
+                          "id": "demo-01u",
+                          "blocks": [
+                            {
+                              "id": "demo-01l",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-lg font-semibold",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Free",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "title",
+                              "helper": "blocks/helpers/Heading.vue",
+                              "dialog": "md:w-40",
+                              "dataBinding": null,
+                              "name": "",
+                              "level": 3,
+                              "element": "h"
+                            },
+                            {
+                              "id": "demo-01o",
+                              "blocks": [
+                                {
+                                  "id": "demo-01m",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-4xl font-bold",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "$0",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                },
+                                {
+                                  "id": "demo-01n",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-sm text-slate-500",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "/ month",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                }
+                              ],
+                              "css": {
+                                "css": "",
+                                "container": "flex flex-row items-end gap-1"
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "container",
+                              "tag": "flex",
+                              "editable": false,
+                              "icon": "highlight_alt",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "div"
+                            },
+                            {
+                              "id": "demo-01s",
+                              "blocks": [
+                                {
+                                  "id": "demo-01p",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-sm text-slate-600",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "✓ Up to 3 members",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                },
+                                {
+                                  "id": "demo-01q",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-sm text-slate-600",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "✓ 2 boards",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                },
+                                {
+                                  "id": "demo-01r",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-sm text-slate-600",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "✓ Community support",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                }
+                              ],
+                              "css": {
+                                "css": "",
+                                "container": "flex flex-col gap-2"
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "container",
+                              "tag": "flex",
+                              "editable": false,
+                              "icon": "highlight_alt",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "div"
+                            },
+                            {
+                              "id": "demo-01t",
+                              "blocks": [],
+                              "css": {
+                                "css": "px-6 py-3 rounded-lg font-semibold transition bg-indigo-600 text-white hover:bg-indigo-500",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Choose Free",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {
+                                "attributes": {
+                                  "type": "button"
+                                }
+                              },
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "button",
+                              "tag": "button",
+                              "editable": true,
+                              "icon": "highlight_alt",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "button",
+                              "value": "button",
+                              "buttonIcon": "",
+                              "buttonIconPosition": "before",
+                              "buttonIconWidth": 16,
+                              "buttonIconHeight": 16
+                            }
+                          ],
+                          "css": {
+                            "css": "",
+                            "container": "flex flex-col flex-1 gap-4 rounded-2xl p-8 bg-white border border-slate-200 text-slate-900"
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "container",
+                          "tag": "flex",
+                          "editable": false,
+                          "icon": "highlight_alt",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "div"
+                        },
+                        {
+                          "id": "demo-024",
+                          "blocks": [
+                            {
+                              "id": "demo-01v",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-lg font-semibold",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Team",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "title",
+                              "helper": "blocks/helpers/Heading.vue",
+                              "dialog": "md:w-40",
+                              "dataBinding": null,
+                              "name": "",
+                              "level": 3,
+                              "element": "h"
+                            },
+                            {
+                              "id": "demo-01y",
+                              "blocks": [
+                                {
+                                  "id": "demo-01w",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-4xl font-bold",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "$12",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                },
+                                {
+                                  "id": "demo-01x",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-sm text-indigo-100",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "/ user / month",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                }
+                              ],
+                              "css": {
+                                "css": "",
+                                "container": "flex flex-row items-end gap-1"
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "container",
+                              "tag": "flex",
+                              "editable": false,
+                              "icon": "highlight_alt",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "div"
+                            },
+                            {
+                              "id": "demo-022",
+                              "blocks": [
+                                {
+                                  "id": "demo-01z",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-sm text-indigo-50",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "✓ Unlimited boards",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                },
+                                {
+                                  "id": "demo-020",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-sm text-indigo-50",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "✓ Docs and calendar",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                },
+                                {
+                                  "id": "demo-021",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-sm text-indigo-50",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "✓ Priority support",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                }
+                              ],
+                              "css": {
+                                "css": "",
+                                "container": "flex flex-col gap-2"
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "container",
+                              "tag": "flex",
+                              "editable": false,
+                              "icon": "highlight_alt",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "div"
+                            },
+                            {
+                              "id": "demo-023",
+                              "blocks": [],
+                              "css": {
+                                "css": "px-6 py-3 rounded-lg font-semibold transition bg-white text-indigo-700 hover:bg-indigo-50",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Choose Team",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {
+                                "attributes": {
+                                  "type": "button"
+                                }
+                              },
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "button",
+                              "tag": "button",
+                              "editable": true,
+                              "icon": "highlight_alt",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "button",
+                              "value": "button",
+                              "buttonIcon": "",
+                              "buttonIconPosition": "before",
+                              "buttonIconWidth": 16,
+                              "buttonIconHeight": 16
+                            }
+                          ],
+                          "css": {
+                            "css": "",
+                            "container": "flex flex-col flex-1 gap-4 rounded-2xl p-8 bg-indigo-600 text-white shadow-xl md:scale-105"
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "container",
+                          "tag": "flex",
+                          "editable": false,
+                          "icon": "highlight_alt",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "div"
+                        },
+                        {
+                          "id": "demo-02e",
+                          "blocks": [
+                            {
+                              "id": "demo-025",
+                              "blocks": [],
+                              "css": {
+                                "css": "text-lg font-semibold",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Scale",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "element",
+                              "tag": "element",
+                              "editable": true,
+                              "icon": "title",
+                              "helper": "blocks/helpers/Heading.vue",
+                              "dialog": "md:w-40",
+                              "dataBinding": null,
+                              "name": "",
+                              "level": 3,
+                              "element": "h"
+                            },
+                            {
+                              "id": "demo-028",
+                              "blocks": [
+                                {
+                                  "id": "demo-026",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-4xl font-bold",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "$29",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                },
+                                {
+                                  "id": "demo-027",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-sm text-slate-500",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "/ user / month",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                }
+                              ],
+                              "css": {
+                                "css": "",
+                                "container": "flex flex-row items-end gap-1"
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "container",
+                              "tag": "flex",
+                              "editable": false,
+                              "icon": "highlight_alt",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "div"
+                            },
+                            {
+                              "id": "demo-02c",
+                              "blocks": [
+                                {
+                                  "id": "demo-029",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-sm text-slate-600",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "✓ Single sign-on",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                },
+                                {
+                                  "id": "demo-02a",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-sm text-slate-600",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "✓ Audit log",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                },
+                                {
+                                  "id": "demo-02b",
+                                  "blocks": [],
+                                  "css": {
+                                    "css": "text-sm text-slate-600",
+                                    "container": ""
+                                  },
+                                  "tailwind": {},
+                                  "font": "",
+                                  "style": "",
+                                  "content": "✓ Dedicated contact",
+                                  "description": "",
+                                  "categories": [],
+                                  "alpine": {},
+                                  "events": {
+                                    "display": null,
+                                    "hide": null,
+                                    "mouseenter": null,
+                                    "mouseleave": null,
+                                    "click": null,
+                                    "focus": null,
+                                    "blur": null,
+                                    "keydown": null
+                                  },
+                                  "data": {},
+                                  "gsap": {
+                                    "animation": null,
+                                    "ease": null,
+                                    "duration": 0,
+                                    "delay": 0
+                                  },
+                                  "link": "",
+                                  "anchor": "",
+                                  "image": {
+                                    "url": null
+                                  },
+                                  "type": "element",
+                                  "tag": "element",
+                                  "editable": true,
+                                  "icon": "subject",
+                                  "helper": null,
+                                  "dialog": null,
+                                  "dataBinding": null,
+                                  "name": "",
+                                  "element": "p",
+                                  "label": "Rich Text"
+                                }
+                              ],
+                              "css": {
+                                "css": "",
+                                "container": "flex flex-col gap-2"
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {},
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "container",
+                              "tag": "flex",
+                              "editable": false,
+                              "icon": "highlight_alt",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "div"
+                            },
+                            {
+                              "id": "demo-02d",
+                              "blocks": [],
+                              "css": {
+                                "css": "px-6 py-3 rounded-lg font-semibold transition bg-indigo-600 text-white hover:bg-indigo-500",
+                                "container": ""
+                              },
+                              "tailwind": {},
+                              "font": "",
+                              "style": "",
+                              "content": "Choose Scale",
+                              "description": "",
+                              "categories": [],
+                              "alpine": {},
+                              "events": {
+                                "display": null,
+                                "hide": null,
+                                "mouseenter": null,
+                                "mouseleave": null,
+                                "click": null,
+                                "focus": null,
+                                "blur": null,
+                                "keydown": null
+                              },
+                              "data": {
+                                "attributes": {
+                                  "type": "button"
+                                }
+                              },
+                              "gsap": {
+                                "animation": null,
+                                "ease": null,
+                                "duration": 0,
+                                "delay": 0
+                              },
+                              "link": "",
+                              "anchor": "",
+                              "image": {
+                                "url": null
+                              },
+                              "type": "button",
+                              "tag": "button",
+                              "editable": true,
+                              "icon": "highlight_alt",
+                              "helper": null,
+                              "dialog": null,
+                              "dataBinding": null,
+                              "name": "",
+                              "element": "button",
+                              "value": "button",
+                              "buttonIcon": "",
+                              "buttonIconPosition": "before",
+                              "buttonIconWidth": 16,
+                              "buttonIconHeight": 16
+                            }
+                          ],
+                          "css": {
+                            "css": "",
+                            "container": "flex flex-col flex-1 gap-4 rounded-2xl p-8 bg-white border border-slate-200 text-slate-900"
+                          },
+                          "tailwind": {},
+                          "font": "",
+                          "style": "",
+                          "content": "",
+                          "description": "",
+                          "categories": [],
+                          "alpine": {},
+                          "events": {
+                            "display": null,
+                            "hide": null,
+                            "mouseenter": null,
+                            "mouseleave": null,
+                            "click": null,
+                            "focus": null,
+                            "blur": null,
+                            "keydown": null
+                          },
+                          "data": {},
+                          "gsap": {
+                            "animation": null,
+                            "ease": null,
+                            "duration": 0,
+                            "delay": 0
+                          },
+                          "link": "",
+                          "anchor": "",
+                          "image": {
+                            "url": null
+                          },
+                          "type": "container",
+                          "tag": "flex",
+                          "editable": false,
+                          "icon": "highlight_alt",
+                          "helper": null,
+                          "dialog": null,
+                          "dataBinding": null,
+                          "name": "",
+                          "element": "div"
+                        }
+                      ],
+                      "css": {
+                        "css": "",
+                        "container": "flex flex-row gap-6 flex-col md:flex-row md:items-center"
+                      },
+                      "tailwind": {},
+                      "font": "",
+                      "style": "",
+                      "content": "",
+                      "description": "",
+                      "categories": [],
+                      "alpine": {},
+                      "events": {
+                        "display": null,
+                        "hide": null,
+                        "mouseenter": null,
+                        "mouseleave": null,
+                        "click": null,
+                        "focus": null,
+                        "blur": null,
+                        "keydown": null
+                      },
+                      "data": {},
+                      "gsap": {
+                        "animation": null,
+                        "ease": null,
+                        "duration": 0,
+                        "delay": 0
+                      },
+                      "link": "",
+                      "anchor": "",
+                      "image": {
+                        "url": null
+                      },
+                      "type": "container",
+                      "tag": "flex",
+                      "editable": false,
+                      "icon": "highlight_alt",
+                      "helper": null,
+                      "dialog": null,
+                      "dataBinding": null,
+                      "name": "",
+                      "element": "div"
+                    }
+                  ],
+                  "css": {
+                    "css": "",
+                    "container": "flex flex-col max-w-5xl mx-auto w-full gap-10"
+                  },
+                  "tailwind": {},
+                  "font": "",
+                  "style": "",
+                  "content": "",
+                  "description": "",
+                  "categories": [],
+                  "alpine": {},
+                  "events": {
+                    "display": null,
+                    "hide": null,
+                    "mouseenter": null,
+                    "mouseleave": null,
+                    "click": null,
+                    "focus": null,
+                    "blur": null,
+                    "keydown": null
+                  },
+                  "data": {},
+                  "gsap": {
+                    "animation": null,
+                    "ease": null,
+                    "duration": 0,
+                    "delay": 0
+                  },
+                  "link": "",
+                  "anchor": "",
+                  "image": {
+                    "url": null
+                  },
+                  "type": "container",
+                  "tag": "flex",
+                  "editable": false,
+                  "icon": "highlight_alt",
+                  "helper": null,
+                  "dialog": null,
+                  "dataBinding": null,
+                  "name": "",
+                  "element": "div"
+                }
+              ],
+              "css": {
+                "css": "",
+                "container": "flex flex-col w-full px-6 py-20 bg-white"
+              },
+              "tailwind": {},
+              "font": "",
+              "style": "",
+              "content": "",
+              "description": "",
+              "categories": [],
+              "alpine": {},
+              "events": {
+                "display": null,
+                "hide": null,
+                "mouseenter": null,
+                "mouseleave": null,
+                "click": null,
+                "focus": null,
+                "blur": null,
+                "keydown": null
+              },
+              "data": {},
+              "gsap": {
+                "animation": null,
+                "ease": null,
+                "duration": 0,
+                "delay": 0
+              },
+              "link": "",
+              "anchor": "pricing",
+              "image": {
+                "url": null
+              },
+              "type": "container",
+              "tag": "flex",
+              "editable": false,
+              "icon": "highlight_alt",
+              "helper": null,
+              "dialog": null,
+              "dataBinding": null,
+              "name": "",
+              "element": "div",
+              "semantic": "section"
+            }
+          ],
+          "css": {
+            "css": "",
+            "container": "flex flex-col"
+          },
+          "tailwind": {},
+          "font": "",
+          "style": "",
+          "content": "",
+          "description": "",
+          "categories": [],
+          "alpine": {},
+          "events": {
+            "display": null,
+            "hide": null,
+            "mouseenter": null,
+            "mouseleave": null,
+            "click": null,
+            "focus": null,
+            "blur": null,
+            "keydown": null
+          },
+          "data": {},
+          "gsap": {
+            "animation": null,
+            "ease": null,
+            "duration": 0,
+            "delay": 0
+          },
+          "link": "",
+          "anchor": "",
+          "image": {
+            "url": null
+          },
+          "type": "container",
+          "tag": "document",
+          "editable": false,
+          "icon": "dashboard",
+          "helper": null,
+          "dialog": null,
+          "dataBinding": null,
+          "name": "",
+          "element": "div"
+        }
+      },
+      "html": null,
+      "image": "",
+      "enabled": true,
+      "premium": false,
+      "stars": 0,
+      "favorite": false
+    },
+    {
+      "id": "tpl-02p",
+      "blocks_id": "cmp-02q",
+      "name": "Call to action banner",
+      "description": "A dark band with one button.",
+      "category": "Call to action",
+      "tags": [],
+      "json": {
+        "build": {
+          "purgeCSS": null,
+          "images": null,
+          "fonts": null,
+          "plugins": null
+        },
+        "blocks": {
+          "id": "demo-02r",
+          "blocks": [
+            {
+              "id": "demo-02o",
+              "blocks": [
+                {
+                  "id": "demo-02l",
+                  "blocks": [],
+                  "css": {
+                    "css": "text-3xl font-bold",
+                    "container": ""
+                  },
+                  "tailwind": {},
+                  "font": "",
+                  "style": "",
+                  "content": "Ready when you are",
+                  "description": "",
+                  "categories": [],
+                  "alpine": {},
+                  "events": {
+                    "display": null,
+                    "hide": null,
+                    "mouseenter": null,
+                    "mouseleave": null,
+                    "click": null,
+                    "focus": null,
+                    "blur": null,
+                    "keydown": null
+                  },
+                  "data": {},
+                  "gsap": {
+                    "animation": null,
+                    "ease": null,
+                    "duration": 0,
+                    "delay": 0
+                  },
+                  "link": "",
+                  "anchor": "",
+                  "image": {
+                    "url": null
+                  },
+                  "type": "element",
+                  "tag": "element",
+                  "editable": true,
+                  "icon": "title",
+                  "helper": "blocks/helpers/Heading.vue",
+                  "dialog": "md:w-40",
+                  "dataBinding": null,
+                  "name": "",
+                  "level": 2,
+                  "element": "h"
+                },
+                {
+                  "id": "demo-02m",
+                  "blocks": [],
+                  "css": {
+                    "css": "text-slate-300 max-w-xl",
+                    "container": ""
+                  },
+                  "tailwind": {},
+                  "font": "",
+                  "style": "",
+                  "content": "Join the teams that stopped managing the tool and went back to the work.",
+                  "description": "",
+                  "categories": [],
+                  "alpine": {},
+                  "events": {
+                    "display": null,
+                    "hide": null,
+                    "mouseenter": null,
+                    "mouseleave": null,
+                    "click": null,
+                    "focus": null,
+                    "blur": null,
+                    "keydown": null
+                  },
+                  "data": {},
+                  "gsap": {
+                    "animation": null,
+                    "ease": null,
+                    "duration": 0,
+                    "delay": 0
+                  },
+                  "link": "",
+                  "anchor": "",
+                  "image": {
+                    "url": null
+                  },
+                  "type": "element",
+                  "tag": "element",
+                  "editable": true,
+                  "icon": "subject",
+                  "helper": null,
+                  "dialog": null,
+                  "dataBinding": null,
+                  "name": "",
+                  "element": "p",
+                  "label": "Rich Text"
+                },
+                {
+                  "id": "demo-02n",
+                  "blocks": [],
+                  "css": {
+                    "css": "px-6 py-3 rounded-lg font-semibold transition bg-indigo-500 text-white hover:bg-indigo-400",
+                    "container": ""
+                  },
+                  "tailwind": {},
+                  "font": "",
+                  "style": "",
+                  "content": "Create your workspace",
+                  "description": "",
+                  "categories": [],
+                  "alpine": {},
+                  "events": {
+                    "display": null,
+                    "hide": null,
+                    "mouseenter": null,
+                    "mouseleave": null,
+                    "click": null,
+                    "focus": null,
+                    "blur": null,
+                    "keydown": null
+                  },
+                  "data": {
+                    "attributes": {
+                      "type": "button"
+                    }
+                  },
+                  "gsap": {
+                    "animation": null,
+                    "ease": null,
+                    "duration": 0,
+                    "delay": 0
+                  },
+                  "link": "",
+                  "anchor": "",
+                  "image": {
+                    "url": null
+                  },
+                  "type": "button",
+                  "tag": "button",
+                  "editable": true,
+                  "icon": "highlight_alt",
+                  "helper": null,
+                  "dialog": null,
+                  "dataBinding": null,
+                  "name": "",
+                  "element": "button",
+                  "value": "button",
+                  "buttonIcon": "",
+                  "buttonIconPosition": "before",
+                  "buttonIconWidth": 16,
+                  "buttonIconHeight": 16
+                }
+              ],
+              "css": {
+                "css": "",
+                "container": "flex flex-col w-full items-center text-center gap-5 px-6 py-16 bg-slate-900 text-white"
+              },
+              "tailwind": {},
+              "font": "",
+              "style": "",
+              "content": "",
+              "description": "",
+              "categories": [],
+              "alpine": {},
+              "events": {
+                "display": null,
+                "hide": null,
+                "mouseenter": null,
+                "mouseleave": null,
+                "click": null,
+                "focus": null,
+                "blur": null,
+                "keydown": null
+              },
+              "data": {},
+              "gsap": {
+                "animation": null,
+                "ease": null,
+                "duration": 0,
+                "delay": 0
+              },
+              "link": "",
+              "anchor": "",
+              "image": {
+                "url": null
+              },
+              "type": "container",
+              "tag": "flex",
+              "editable": false,
+              "icon": "highlight_alt",
+              "helper": null,
+              "dialog": null,
+              "dataBinding": null,
+              "name": "",
+              "element": "div",
+              "semantic": "section"
+            }
+          ],
+          "css": {
+            "css": "",
+            "container": "flex flex-col"
+          },
+          "tailwind": {},
+          "font": "",
+          "style": "",
+          "content": "",
+          "description": "",
+          "categories": [],
+          "alpine": {},
+          "events": {
+            "display": null,
+            "hide": null,
+            "mouseenter": null,
+            "mouseleave": null,
+            "click": null,
+            "focus": null,
+            "blur": null,
+            "keydown": null
+          },
+          "data": {},
+          "gsap": {
+            "animation": null,
+            "ease": null,
+            "duration": 0,
+            "delay": 0
+          },
+          "link": "",
+          "anchor": "",
+          "image": {
+            "url": null
+          },
+          "type": "container",
+          "tag": "document",
+          "editable": false,
+          "icon": "dashboard",
+          "helper": null,
+          "dialog": null,
+          "dataBinding": null,
+          "name": "",
+          "element": "div"
+        }
+      },
+      "html": null,
+      "image": "",
+      "enabled": true,
+      "premium": false,
+      "stars": 0,
+      "favorite": false
+    }
+  ]
+}
