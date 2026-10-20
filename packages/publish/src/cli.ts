@@ -676,7 +676,10 @@ function scaffoldNginxConf(opts: ScaffoldOptions): string {
         root /var/www/certbot;
     }
 
-    location ${locationBlock(opts.basePath ?? '/')}
+    # the site is served over https only (the certificate is a prerequisite of this file: the https block below needs it)
+    location / {
+        return 301 https://$host$request_uri;
+    }
 }
 
 server {
