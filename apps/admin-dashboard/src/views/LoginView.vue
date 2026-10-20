@@ -53,19 +53,21 @@
       </form>
 
       <!-- Single sign-on, when an administrator has set it up (Security > SSO). A full page navigation: the provider answers with a redirect. -->
-      <div v-if="step === 'credentials' && sso?.enabled" class="space-y-2">
+      <template v-if="step === 'credentials'">
+      <div v-if="sso?.enabled" class="space-y-2">
         <div v-if="ssoError" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs" data-testid="sso-error">{{ ssoError }}</div>
         <a :href="oidcLoginUrl(authStore.config.coreApiUrl)" class="btn btn-secondary w-full flex items-center justify-center gap-2" data-testid="sso-button">
           <span>Sign in with {{ sso.label }}</span>
         </a>
         <p v-if="sso.localLogin === 'admins'" class="text-center text-xs text-slate-500">The password form is for administrators.</p>
       </div>
-      <div v-else-if="step === 'credentials' && ssoError" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs" data-testid="sso-error">{{ ssoError }}</div>
+      <div v-else-if="ssoError" class="px-3 py-2 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs" data-testid="sso-error">{{ ssoError }}</div>
+      </template>
 
       <!-- Step 2: password already verified (that's what mfaToken proves) -
            only the authenticator code, or a one-time recovery code, is
            still needed. -->
-      <form v-else-if="step === 'mfa'" @submit.prevent="submitMfa" class="space-y-4 p-6 rounded-2xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 shadow-xl">
+      <form v-if="step === 'mfa'" @submit.prevent="submitMfa" class="space-y-4 p-6 rounded-2xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 shadow-xl">
         <div>
           <label class="block text-xs font-medium text-slate-300 light:text-slate-700 mb-1">
             {{ useRecoveryCode ? 'Recovery code' : 'Authenticator code' }}
@@ -140,7 +142,7 @@
       </form>
 
       <!-- The factor is enabled and the session is open; the app takes over when the codes are acknowledged. -->
-      <div v-else class="space-y-4 p-6 rounded-2xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 shadow-xl">
+      <div v-else-if="step === 'recovery'" class="space-y-4 p-6 rounded-2xl bg-slate-900/80 light:bg-white/80 border border-slate-800 light:border-slate-200 shadow-xl" data-testid="recovery-codes">
         <p class="text-xs text-slate-400 light:text-slate-600">
           Save these recovery codes somewhere safe. Each one can be used once to sign in if you lose access to your authenticator app - they will not be shown again.
         </p>
