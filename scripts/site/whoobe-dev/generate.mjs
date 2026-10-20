@@ -32,35 +32,37 @@ const A = 'text-indigo-600 underline underline-offset-2 hover:text-indigo-500';
 const a = (href, text) => `<a href="${href}" class="${A}">${text}</a>`;
 const DOCS = 'https://docs.whoobe.dev';
 const h = (level, text, css) => el('Heading', { level, text, css });
-const p = (html, css = '') => el('Paragraph', { text: html, css: `text-base leading-relaxed ${css}` });
+const p = (html, css = '') => el('Paragraph', { text: html, css: `text-base leading-relaxed [&_a]:text-[#A78BFA] [&_a]:underline [&_a]:underline-offset-2 [&_a:hover]:text-white [&_strong]:text-white ${css}` });
 const col = (css, children, extra = {}) => el('Flexbox', { dir: 'col', css, children, ...extra });
 const row = (css, children, extra = {}) => el('Flexbox', { dir: 'row', css, children, ...extra });
 const cta = (text, href, kind) => el('Link', {
   text, link: href,
-  css: `inline-block px-6 py-3 rounded-lg font-semibold text-sm transition ${kind === 'primary' ? 'bg-indigo-600 text-white hover:bg-indigo-500' : kind === 'light' ? 'bg-white text-indigo-700 hover:bg-indigo-50' : 'border border-slate-300 text-slate-800 hover:bg-slate-50'}`,
+  css: `inline-block px-6 py-3 rounded-lg font-semibold text-sm transition ${kind === 'primary' ? 'bg-[#7C3AED] text-white hover:bg-[#6D28D9] glow-violet-sm' : kind === 'light' ? 'bg-white text-[#0F1115] hover:bg-slate-200' : 'border border-white/20 text-slate-200 hover:bg-white/5'}`,
 });
-const eyebrow = (text, css = 'text-indigo-600') => p(text, `text-xs font-semibold tracking-widest uppercase ${css}`);
-const section = (children, css = 'bg-white', extra = {}) => col(`w-full px-6 py-16 ${css}`, [col('max-w-6xl mx-auto w-full gap-8', children)], { semantic: 'section', ...extra });
-const doc = (sections) => { const d = new Element().Flexbox({ direction: 'col' }).setIcon('dashboard').setTag('document'); d.id = nextId(); d.blocks = sections; return d; };
+const eyebrow = (text, css = 'text-cyan-400') => p(text, `text-xs font-semibold tracking-widest uppercase ${css}`);
+const section = (children, css = 'bg-[#0F1115]', extra = {}) => col(`w-full px-6 py-16 ${css}`, [col('max-w-6xl mx-auto w-full gap-8', children)], { semantic: 'section', ...extra });
+// the root carries the colours of the theme too, so the page reads the same where the theme is not loaded (the editor's site preview)
+const doc = (sections) => { const d = new Element().Flexbox({ direction: 'col' }).setIcon('dashboard').setTag('document'); d.id = nextId(); d.css.container += ' bg-[#0F1115] text-slate-200'; d.blocks = sections; return d; };
 
-const pageHero = (kicker, title, lead) => col('w-full px-6 pt-20 pb-14 bg-gradient-to-b from-slate-50 to-white border-b border-slate-200', [
-  col('max-w-4xl mx-auto w-full gap-4', [eyebrow(kicker), h(1, title, 'text-4xl md:text-5xl font-bold leading-tight text-slate-900'), p(lead, 'text-lg text-slate-600')]),
+const pageHero = (kicker, title, lead) => col('w-full px-6 pt-20 pb-14 bg-[#12151B] border-b border-white/10', [
+  col('max-w-4xl mx-auto w-full gap-4', [eyebrow(kicker), h(1, title, 'text-4xl md:text-5xl font-bold leading-tight text-white'), p(lead, 'text-lg text-slate-400')]),
 ], { semantic: 'section' });
 
-const bandCta = (title, lead, buttons) => col('w-full px-6 py-16 bg-slate-900 text-white', [
+const bandCta = (title, lead, buttons) => col('w-full px-6 py-16 bg-gradient-to-br from-[#2E1065] via-[#12151B] to-[#0F1115] text-white border-y border-white/10', [
   col('max-w-3xl mx-auto w-full items-center text-center gap-5', [h(2, title, 'text-3xl font-bold'), p(lead, 'text-slate-300'), row('gap-3 flex-wrap justify-center', buttons)]),
 ], { semantic: 'section' });
 
 // ---------------- header and footer (snippets, placed by the default template) ----------------
-const navLink = (t, href) => el('Link', { text: t, link: href, css: 'text-sm text-slate-600 hover:text-slate-900' });
+const navLink = (t, href) => el('Link', { text: t, link: href, css: 'text-sm text-slate-400 hover:text-white' });
 // phone: the brand and the button on one row, the links on a second row that scrolls sideways; from md up, everything on one row
-const header = () => row('w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6 py-3 bg-white/95 backdrop-blur border-b border-slate-200', [
-  el('Link', { text: 'Whoobe', link: '/', css: 'order-1 text-xl font-bold text-slate-900' }),
-  el('Link', { text: 'Try the sandbox', link: 'https://sandbox.whoobe.dev', css: 'order-2 md:order-3 inline-block px-4 py-2 rounded-lg font-semibold text-sm bg-indigo-600 text-white hover:bg-indigo-500' }),
+// (a link element is rendered as <a><element class=...></a>: flex-item classes such as `order` go on a container around it)
+const header = () => row('w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6 py-3 bg-[#0F1115]/90 backdrop-blur border-b border-white/10', [
+  col('order-1', [el('Link', { text: 'Whoobe', link: '/', css: 'text-xl font-bold text-white font-heading' })]),
+  col('order-2 md:order-3', [el('Link', { text: 'Try the sandbox', link: 'https://sandbox.whoobe.dev', css: 'inline-block px-4 py-2 rounded-lg font-semibold text-sm bg-[#7C3AED] text-white hover:bg-[#6D28D9]' })]),
   row('order-3 md:order-2 w-full md:w-auto items-center gap-5 overflow-x-auto flex-nowrap whitespace-nowrap md:justify-end', [navLink('Platform', '/platform'), navLink('Security', '/security'), navLink('Run it', '/run'), navLink('Developers', '/developers'), navLink('Blog', '/blog'), navLink('Docs', DOCS), navLink('GitHub', 'https://github.com/swina/whoobe_project')]),
 ], { semantic: 'header' });
 const fcol = (title, links) => col('gap-2', [p(title, 'text-sm font-semibold text-white'), ...links.map(([t, href]) => el('Link', { text: t, link: href, css: 'text-sm text-slate-400 hover:text-white' }))]);
-const footer = () => col('w-full px-6 py-12 bg-slate-900', [
+const footer = () => col('w-full px-6 py-12 bg-[#0B0D11] border-t border-white/10', [
   col('max-w-6xl mx-auto w-full gap-10 md:flex-row justify-between', [
     col('gap-2 max-w-xs', [p('Whoobe', 'text-lg font-bold text-white'), p('A self-hosted platform instead of the glue between your CMS, your data and your systems.', 'text-sm text-slate-400')]),
     row('gap-12 flex-wrap', [
@@ -73,9 +75,9 @@ const footer = () => col('w-full px-6 py-12 bg-slate-900', [
 ], { semantic: 'footer' });
 
 // ---------------- Home ----------------
-const homeHero = () => col('w-full px-6 pt-24 pb-20 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white', [
+const homeHero = () => col('w-full px-6 pt-24 pb-20 bg-gradient-to-br from-[#0F1115] via-[#12151B] to-[#2E1065] text-white', [
   col('max-w-4xl mx-auto w-full gap-6', [
-    eyebrow('Unify your stack', 'text-indigo-300'),
+    eyebrow('Unify your stack', 'text-cyan-300'),
     h(1, 'A self-hosted platform instead of the glue between your CMS, your data and your systems.', 'text-4xl md:text-5xl font-bold leading-tight'),
     p('Configure it instead of coding it. No code for the people who use it. Security and governance built in. MIT licence, one organisation per installation, no per-user fee.', 'text-lg text-slate-300 max-w-3xl'),
     row('gap-3 flex-wrap items-center', [cta('Try the live sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'Run it on your machine', link: `${DOCS}/operations/miniguide-deployment/`, css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' }), el('Link', { text: 'Read the documentation →', link: DOCS, css: 'text-sm text-slate-300 hover:text-white underline underline-offset-4' })]),
@@ -84,35 +86,35 @@ const homeHero = () => col('w-full px-6 pt-24 pb-20 bg-gradient-to-br from-slate
   ]),
 ], { semantic: 'section' });
 
-const proof = (title, text, link) => col('flex-1 gap-3 rounded-xl border border-slate-200 bg-white p-6 shadow-sm', [h(3, title, 'text-lg font-semibold text-slate-900'), p(text, 'text-slate-600'), ...(link ? [p(link, 'text-sm')] : [])]);
+const proof = (title, text, link) => col('flex-1 gap-3 rounded-xl glass-panel bg-[#1A1D24]/70 border border-white/10 p-6', [h(3, title, 'text-lg font-semibold text-white'), p(text, 'text-slate-400'), ...(link ? [p(link, 'text-sm')] : [])]);
 
 const homeBody = () => [
   section([
-    h(2, 'What it replaces', 'text-3xl font-bold text-slate-900'),
-    p('Most organisations that publish and integrate end up with four things stitched together: a content platform, a page builder, a library for files, and a layer of scripts and connectors to the systems they already own. Each has its own users, its own secrets, its own upgrades.', 'text-slate-700 max-w-3xl'),
-    p('Whoobe is one installation with <strong>one data model, one gateway to your systems, one media library and one editor</strong>, run by the team that owns it.', 'text-slate-700 max-w-3xl'),
-  ], 'bg-white'),
+    h(2, 'What it replaces', 'text-3xl font-bold text-white'),
+    p('Most organisations that publish and integrate end up with four things stitched together: a content platform, a page builder, a library for files, and a layer of scripts and connectors to the systems they already own. Each has its own users, its own secrets, its own upgrades.', 'text-slate-300 max-w-3xl'),
+    p('Whoobe is one installation with <strong>one data model, one gateway to your systems, one media library and one editor</strong>, run by the team that owns it.', 'text-slate-300 max-w-3xl'),
+  ], 'bg-[#0F1115]'),
   section([
-    h(2, 'Three things to check', 'text-3xl font-bold text-slate-900'),
+    h(2, 'Three things to check', 'text-3xl font-bold text-white'),
     col('gap-6 md:flex-row', [
       proof('Configuration, not glue code', 'Point the gateway at an OpenAPI file or a sample request: routes, response shapes and fields appear in the editor, and a block can show the data. The credentials stay on the server.', a('/platform', 'How it works →')),
       proof('No code for the people who use it', 'Editors build pages from blocks, snippets and kits. A data manager adds a field to a class without a deploy. Nobody on the content side asks a developer to move a button or to publish.', a(`${DOCS}/guides/user-manual/`, 'The user manual →')),
       proof('Security you do not have to assemble', 'An append-only audit log, mandatory two-factor authentication by role, single sign-on with OpenID Connect, encrypted credentials, data subject tools and retention, metrics and encrypted backups. In the product, documented, and tested in CI.', a('/security', 'What is in it, and what is not →')),
     ]),
-  ], 'bg-slate-50'),
+  ], 'bg-[#12151B]'),
   section([
-    h(2, 'Where it stands', 'text-3xl font-bold text-slate-900'),
-    p(`Version <strong>0.2.0</strong>, a <code>0.</code> series: behaviour can change between minor releases, and the ${a(`${DOCS}/release-notes-0.2.0/`, 'release notes')} say what. One OpenID Connect provider, no SAML or LDAP, no high availability yet. The limits are on ${a('/security#not-there', 'one page')}, not in the small print.`, 'text-slate-700 max-w-3xl'),
-  ], 'bg-white'),
+    h(2, 'Where it stands', 'text-3xl font-bold text-white'),
+    p(`Version <strong>0.2.0</strong>, a <code>0.</code> series: behaviour can change between minor releases, and the ${a(`${DOCS}/release-notes-0.2.0/`, 'release notes')} say what. One OpenID Connect provider, no SAML or LDAP, no high availability yet. The limits are on ${a('/security#not-there', 'one page')}, not in the small print.`, 'text-slate-300 max-w-3xl'),
+  ], 'bg-[#0F1115]'),
   bandCta('Try it before you read more', 'The sandbox has a demo website, two kits and the editor. It is deleted and rebuilt every three hours.', [cta('Open the sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'Run the whole stack locally', link: 'https://github.com/swina/whoobe_project#try-it', css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
 ];
 
 // ---------------- Platform ----------------
-const block = (title, configure, notWrite, links) => col('gap-3 rounded-xl border border-slate-200 bg-white p-6 shadow-sm', [
-  h(3, title, 'text-xl font-semibold text-slate-900'),
+const block = (title, configure, notWrite, links) => col('gap-3 rounded-xl glass-panel bg-[#1A1D24]/70 border border-white/10 p-6', [
+  h(3, title, 'text-xl font-semibold text-white'),
   col('gap-6 md:flex-row', [
-    col('flex-1 gap-1', [eyebrow('You configure'), p(configure, 'text-slate-700')]),
-    col('flex-1 gap-1', [eyebrow('You do not write', 'text-slate-500'), p(notWrite, 'text-slate-700')]),
+    col('flex-1 gap-1', [eyebrow('You configure'), p(configure, 'text-slate-300')]),
+    col('flex-1 gap-1', [eyebrow('You do not write', 'text-slate-500'), p(notWrite, 'text-slate-300')]),
   ]),
   p(links, 'text-sm'),
 ]);
@@ -123,15 +125,15 @@ const platformBody = () => [
     block('Visual editor', 'Pages from blocks, snippets, kits, themes, templates with header, aside and footer, translations, and the bindings between a block and live data. A page is stored as a validated tree, not as HTML, so the same page can be a site, an app screen or an API response.', 'A page template per channel, or a release to change the text of a button.', `${a(`${DOCS}/guides/user-manual/`, 'User manual →')} · ${a(`${DOCS}/guides/user-manual/snippets-kits/`, 'Kits and snippets →')}`),
     block('Events and forms', 'Subscriptions to changes of objects, files and pages, with signed deliveries, retries and a guard against loops; forms with file uploads. The engine that reacts to an event is yours (Node-RED, n8n, your own service): Whoobe emits, it does not impose one.', 'Polling jobs to find out that something changed.', `${a(`${DOCS}/communication/object-events/`, 'Object events →')} · ${a(`${DOCS}/communication/automations-architecture/`, 'Automations →')}`),
     block('Publishing', 'A static or server-rendered website (Nuxt or Next.js), a documentation site from Markdown, a native mobile app (Capacitor) or the headless API with adapters for React, Vue, Next.js, Nuxt and Svelte.', 'A different pipeline for each surface.', `${a(`${DOCS}/content/publishing/`, 'Publishing →')} · ${a(`${DOCS}/content/headless-sdk/`, 'Headless SDK →')}`),
-  ], 'bg-white'),
+  ], 'bg-[#0F1115]'),
   bandCta('See it working', `The ${'sandbox'} has a demo website, two kits and the editor; <code>./try.sh</code> runs the whole stack on your machine.`, [cta('Open the sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'Read the documentation', link: DOCS, css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
 ];
 
 // ---------------- Security ----------------
-const tr = (q, w, d, head) => col(`w-full gap-4 py-4 border-b border-slate-200 md:flex-row ${head ? 'bg-slate-50 px-3' : 'px-3'}`, [
-  p(q, `md:w-1/4 text-sm ${head ? 'font-semibold text-slate-500 uppercase tracking-wide' : 'font-semibold text-slate-900'}`),
-  p(w, `md:w-1/2 text-sm ${head ? 'font-semibold text-slate-500 uppercase tracking-wide' : 'text-slate-700'}`),
-  p(d, `md:w-1/4 text-sm ${head ? 'font-semibold text-slate-500 uppercase tracking-wide' : ''}`),
+const tr = (q, w, d, head) => col(`w-full gap-4 py-4 border-b border-white/10 md:flex-row ${head ? 'bg-white/5 px-3' : 'px-3'}`, [
+  p(q, `md:w-1/4 text-sm ${head ? 'font-semibold text-slate-400 uppercase tracking-wide' : 'font-semibold text-white'}`),
+  p(w, `md:w-1/2 text-sm ${head ? 'font-semibold text-slate-400 uppercase tracking-wide' : 'text-slate-300'}`),
+  p(d, `md:w-1/4 text-sm ${head ? 'font-semibold text-slate-400 uppercase tracking-wide' : ''}`),
 ]);
 const securityRows = [
   ['Who did what, and from where?', 'An append-only audit log of administrative actions: who, from which address, what, on which target, the fields before and after. Secrets are recorded as “changed”, never as a value. Filters and CSV export. The database refuses to update or truncate it.', a(`${DOCS}/operations/audit-log/`, 'Audit log')],
@@ -146,57 +148,57 @@ const securityRows = [
 ];
 const securityBody = () => [
   section([
-    h(2, 'What is asked, what is in the product', 'text-3xl font-bold text-slate-900'),
-    col('w-full border border-slate-200 rounded-xl overflow-hidden bg-white', [tr('The question', 'In Whoobe', 'Documented', true), ...securityRows.map(([q, w, d]) => tr(q, w, d, false))]),
-  ], 'bg-white'),
+    h(2, 'What is asked, what is in the product', 'text-3xl font-bold text-white'),
+    col('w-full rounded-xl overflow-hidden glass-panel bg-[#1A1D24]/70 border border-white/10', [tr('The question', 'In Whoobe', 'Documented', true), ...securityRows.map(([q, w, d]) => tr(q, w, d, false))]),
+  ], 'bg-[#0F1115]'),
   section([
-    h(2, 'Isolation', 'text-3xl font-bold text-slate-900'),
-    p('One organisation per installation. An agency runs one workspace per client, each with its own database, its own object store and its own secrets; an automated test starts two workspaces and checks that one cannot reach the other.', 'text-slate-700 max-w-3xl'),
-  ], 'bg-slate-50'),
+    h(2, 'Isolation', 'text-3xl font-bold text-white'),
+    p('One organisation per installation. An agency runs one workspace per client, each with its own database, its own object store and its own secrets; an automated test starts two workspaces and checks that one cannot reach the other.', 'text-slate-300 max-w-3xl'),
+  ], 'bg-[#12151B]'),
   section([
-    h(2, 'What is not there (yet)', 'text-3xl font-bold text-slate-900'),
+    h(2, 'What is not there (yet)', 'text-3xl font-bold text-white'),
     col('gap-3 max-w-3xl', [
-      p('<strong>One OpenID Connect provider</strong> at a time. It was tried against Keycloak; Microsoft Entra, Okta and Google follow the same standard and have <strong>not</strong> been tried. SAML and LDAP are not built: a broker in front covers them.', 'text-slate-700'),
-      p('<strong>The audit log records successful actions.</strong> A refused attempt is not in it.', 'text-slate-700'),
-      p('<strong>Two-factor authentication, the password policy and retention are off until you set them.</strong> An upgrade changes nothing by itself.', 'text-slate-700'),
-      p('<strong>No high availability.</strong> One installation, one database; recovery is by backup and restore.', 'text-slate-700'),
-      p('<strong>No third-party certification</strong> (ISO 27001, SOC 2). The tests and the findings are public instead.', 'text-slate-700'),
-      p(`It is a <strong><code>0.</code> series</strong>: behaviour can change between minor releases. The ${a(`${DOCS}/release-notes-0.2.0/`, 'release notes')} list what.`, 'text-slate-700'),
+      p('<strong>One OpenID Connect provider</strong> at a time. It was tried against Keycloak; Microsoft Entra, Okta and Google follow the same standard and have <strong>not</strong> been tried. SAML and LDAP are not built: a broker in front covers them.', 'text-slate-300'),
+      p('<strong>The audit log records successful actions.</strong> A refused attempt is not in it.', 'text-slate-300'),
+      p('<strong>Two-factor authentication, the password policy and retention are off until you set them.</strong> An upgrade changes nothing by itself.', 'text-slate-300'),
+      p('<strong>No high availability.</strong> One installation, one database; recovery is by backup and restore.', 'text-slate-300'),
+      p('<strong>No third-party certification</strong> (ISO 27001, SOC 2). The tests and the findings are public instead.', 'text-slate-300'),
+      p(`It is a <strong><code>0.</code> series</strong>: behaviour can change between minor releases. The ${a(`${DOCS}/release-notes-0.2.0/`, 'release notes')} list what.`, 'text-slate-300'),
     ]),
-  ], 'bg-white', { anchor: 'not-there' }),
+  ], 'bg-[#0F1115]', { anchor: 'not-there' }),
   bandCta('Check it yourself', 'The sandbox is the real product with the risky features switched off, and the code and the findings are public.', [cta('Open the sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'Read the findings', link: `${DOCS}/security/findings/`, css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
 ];
 
 // ---------------- Run it ----------------
 const runBody = () => [
   section([
-    h(2, 'What runs', 'text-3xl font-bold text-slate-900'),
-    p(`Five application services (API, asset service, gateway, dashboard, editor), PostgreSQL 16 and an object store (Garage in the default stack; any S3-compatible store, or a managed one, in production). Docker Compose is the way it is deployed and documented. ${a(`${DOCS}/architecture/architecture-overview/`, 'Architecture →')}`, 'text-slate-700 max-w-3xl'),
-    h(2, 'How it is organised', 'text-3xl font-bold text-slate-900'),
-    p(`<strong>One organisation per installation.</strong> A company with several sites uses one installation and several websites; an agency uses one workspace per client. Roles follow functions (editor, publisher, administrator), not people. ${a(`${DOCS}/operations/creating-workspaces/`, 'Creating workspaces →')}`, 'text-slate-700 max-w-3xl'),
-  ], 'bg-white'),
+    h(2, 'What runs', 'text-3xl font-bold text-white'),
+    p(`Five application services (API, asset service, gateway, dashboard, editor), PostgreSQL 16 and an object store (Garage in the default stack; any S3-compatible store, or a managed one, in production). Docker Compose is the way it is deployed and documented. ${a(`${DOCS}/architecture/architecture-overview/`, 'Architecture →')}`, 'text-slate-300 max-w-3xl'),
+    h(2, 'How it is organised', 'text-3xl font-bold text-white'),
+    p(`<strong>One organisation per installation.</strong> A company with several sites uses one installation and several websites; an agency uses one workspace per client. Roles follow functions (editor, publisher, administrator), not people. ${a(`${DOCS}/operations/creating-workspaces/`, 'Creating workspaces →')}`, 'text-slate-300 max-w-3xl'),
+  ], 'bg-[#0F1115]'),
   section([
-    h(2, 'Day two', 'text-3xl font-bold text-slate-900'),
+    h(2, 'Day two', 'text-3xl font-bold text-white'),
     col('gap-3 max-w-3xl', [
-      p(`<strong>Upgrades:</strong> migrations are additions only, applied when the API starts; the release notes list behaviour changes; take a backup first. ${a(`${DOCS}/operations/upgrade-and-migrations/`, 'Upgrade and migrations →')}`, 'text-slate-700'),
-      p(`<strong>Backups and recovery:</strong> nightly, encrypted, pulled to another machine, with a freshness check. ${a(`${DOCS}/operations/scheduling-backups/`, 'Scheduling backups →')}`, 'text-slate-700'),
-      p(`<strong>Observability:</strong> health, metrics, logs. ${a(`${DOCS}/operations/observability-and-logging/`, 'Observability →')}`, 'text-slate-700'),
-      p(`<strong>What it takes:</strong> the skills and the hours, estimated, by task and by frequency. ${a(`${DOCS}/operations/skills-and-effort/`, 'Skills and effort →')}`, 'text-slate-700'),
-      p('<strong>No call home:</strong> no telemetry, no analytics, no licence check; nothing is sent to the authors.', 'text-slate-700'),
+      p(`<strong>Upgrades:</strong> migrations are additions only, applied when the API starts; the release notes list behaviour changes; take a backup first. ${a(`${DOCS}/operations/upgrade-and-migrations/`, 'Upgrade and migrations →')}`, 'text-slate-300'),
+      p(`<strong>Backups and recovery:</strong> nightly, encrypted, pulled to another machine, with a freshness check. ${a(`${DOCS}/operations/scheduling-backups/`, 'Scheduling backups →')}`, 'text-slate-300'),
+      p(`<strong>Observability:</strong> health, metrics, logs. ${a(`${DOCS}/operations/observability-and-logging/`, 'Observability →')}`, 'text-slate-300'),
+      p(`<strong>What it takes:</strong> the skills and the hours, estimated, by task and by frequency. ${a(`${DOCS}/operations/skills-and-effort/`, 'Skills and effort →')}`, 'text-slate-300'),
+      p('<strong>No call home:</strong> no telemetry, no analytics, no licence check; nothing is sent to the authors.', 'text-slate-300'),
     ]),
-  ], 'bg-slate-50'),
+  ], 'bg-[#12151B]'),
   section([
-    h(2, 'Is it for you', 'text-3xl font-bold text-slate-900'),
+    h(2, 'Is it for you', 'text-3xl font-bold text-white'),
     col('gap-6 md:flex-row', [
-      col('flex-1 gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-6', [h(3, 'For', 'text-lg font-semibold text-emerald-900'), p('An organisation with a technical team or partner that wants to own its web platform: a company with several sites, an agency with a workspace per client, a team whose integrations no ready-made connector covers, an organisation that wants its applications to share one governed gateway to internal systems.', 'text-emerald-950')]),
-      col('flex-1 gap-2 rounded-xl border border-amber-200 bg-amber-50 p-6', [h(3, 'Not for (today)', 'text-lg font-semibold text-amber-900'), p('A team with nobody to run a server; a deployment that needs high availability or a third-party compliance certificate; a business that wants one shared platform for many unrelated companies.', 'text-amber-950')]),
+      col('flex-1 gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6', [h(3, 'For', 'text-lg font-semibold text-emerald-300'), p('An organisation with a technical team or partner that wants to own its web platform: a company with several sites, an agency with a workspace per client, a team whose integrations no ready-made connector covers, an organisation that wants its applications to share one governed gateway to internal systems.', 'text-slate-300')]),
+      col('flex-1 gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-6', [h(3, 'Not for (today)', 'text-lg font-semibold text-amber-300'), p('A team with nobody to run a server; a deployment that needs high availability or a third-party compliance certificate; a business that wants one shared platform for many unrelated companies.', 'text-slate-300')]),
     ]),
-  ], 'bg-white'),
+  ], 'bg-[#0F1115]'),
   bandCta('Start with the sandbox', 'Then run the whole stack on your machine with one command.', [cta('Open the sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'The deployment guide', link: `${DOCS}/operations/miniguide-deployment/`, css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
 ];
 
 // ---------------- Developers ----------------
-const dev = (title, text) => col('flex-1 gap-2 rounded-xl border border-slate-200 bg-white p-6 shadow-sm min-w-[16rem]', [h(3, title, 'text-lg font-semibold text-slate-900'), p(text, 'text-sm text-slate-600')]);
+const dev = (title, text) => col('flex-1 gap-2 rounded-xl glass-panel bg-[#1A1D24]/70 border border-white/10 p-6 min-w-[16rem]', [h(3, title, 'text-lg font-semibold text-white'), p(text, 'text-sm text-slate-400')]);
 const developersBody = () => [
   section([
     row('gap-6 flex-wrap', [
@@ -207,13 +209,14 @@ const developersBody = () => [
       dev('The code', `TypeScript monorepo (Node, Vue 3, Postgres). <code>./try.sh</code> starts everything locally. ${a('https://github.com/swina/whoobe_project/blob/master/docs/development.md', 'Developing Whoobe →')}`),
       dev('How it is built', `With an AI assistant working inside written plans, all public in ${a('https://github.com/swina/whoobe_project/tree/master/docs/plans', 'docs/plans')}, and a test suite that guards the boundaries. ${a('/blog/article/plans-before-code-keeping-an-ai-inside-the-architecture', 'Plans before code →')} · ${a('/blog/article/building-whoobe-with-ai-what-we-measured', 'What we measured →')}`),
     ]),
-  ], 'bg-white'),
+  ], 'bg-[#0F1115]'),
   bandCta('Read it, run it, change it', 'The code is MIT-licensed and public.', [cta('GitHub', 'https://github.com/swina/whoobe_project', 'light'), el('Link', { text: 'Contribute', link: 'https://github.com/swina/whoobe_project/blob/master/CONTRIBUTING.md', css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
 ];
 
 const seo = (title, description) => ({ metaTitle: title, metaDescription: description, canonicalUrl: null, robots: { index: true, follow: true }, ogTitle: title, ogDescription: description, ogImage: null });
 
 const content = {
+  themeName: 'Whoobe Website',
   website: { name: 'whoobe.dev', rootPath: '/whoobe-dev', domains: ['www.whoobe.dev'], defaultLocale: 'en', supportedLocales: ['en'] },
   snippets: [
     { name: 'whoobe.dev header', category: 'navigation', icon: '🧭', node: header(), notes: 'The site header: brand, navigation, the sandbox button. Placed by the default template "Site layout".' },

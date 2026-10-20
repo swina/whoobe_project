@@ -10,10 +10,16 @@ import { listWebsites, createWebsite, updateWebsite } from '../../../packages/co
 import { listWhoobeOneSnippets, createWhoobeOneSnippet, updateWhoobeOneSnippet } from '../../../packages/core/src/db/whoobe-one-snippet-records.ts';
 import { listWebsiteTemplates, createWebsiteTemplate, updateWebsiteTemplate } from '../../../packages/core/src/db/website-templates-records.ts';
 import { listWhoobePages, createWhoobePage, updateWhoobePage } from '../../../packages/core/src/db/whoobe-pages-records.ts';
+import { listThemes } from '../../../packages/core/src/db/themes-records.ts';
 import { closeDb } from '../../../packages/core/src/db/client.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const c = JSON.parse(fs.readFileSync(path.join(here, 'content.json'), 'utf8'));
+
+// the theme: the site uses the one of the website "whoobe website" (dark, Inter and Montserrat, glass panels); it must exist
+const theme = (await listThemes()).find((t) => t.name === c.themeName);
+if (!theme) throw new Error(`theme "${c.themeName}" not found: create it first (Settings > Themes) or change themeName in generate.mjs`);
+console.log(`theme: ${theme.name}`);
 
 // website
 const sites = await listWebsites();
@@ -22,6 +28,7 @@ if (!site) {
   site = await createWebsite({ name: c.website.name, rootPath: c.website.rootPath, domains: c.website.domains, defaultLocale: c.website.defaultLocale, supportedLocales: c.website.supportedLocales, settings: {} });
   console.log(`website created: ${site.name} (${site.rootPath})`);
 } else console.log(`website exists: ${site.name} (${site.rootPath})`);
+if (site.themeId !== theme.id) { await updateWebsite(site.id, { themeId: theme.id }); console.log('website theme set'); }
 
 // snippets
 const existingSnippets = await listWhoobeOneSnippets();
@@ -29,11 +36,11 @@ const snippetId: Record<string, string> = {};
 for (const s of c.snippets) {
   const found = existingSnippets.find((x) => x.name === s.name);
   if (found) {
-    await updateWhoobeOneSnippet(found.id, { name: s.name, category: s.category, icon: s.icon, node: s.node, notes: s.notes });
+    await updateWhoobeOneSnippet(found.id, { name: s.name, category: s.category, icon: s.icon, node: s.node, notes: s.notes, themeId: theme.id });
     snippetId[s.name] = found.id;
     console.log(`snippet updated: ${s.name}`);
   } else {
-    const created = await createWhoobeOneSnippet({ name: s.name, category: s.category, icon: s.icon, node: s.node, notes: s.notes });
+    const created = await createWhoobeOneSnippet({ name: s.name, category: s.category, icon: s.icon, node: s.node, notes: s.notes, themeId: theme.id });
     snippetId[s.name] = created.id;
     console.log(`snippet created: ${s.name}`);
   }
@@ -61,10 +68,10 @@ const pages = await listWhoobePages(site.id);
 for (const p of c.pages) {
   const found = pages.find((x) => x.slug === p.slug);
   if (found) {
-    await updateWhoobePage(found.id, { title: p.title, category: p.category, kind: p.kind, content: p.content, seo: p.seo, published: true });
+    await updateWhoobePage(found.id, { title: p.title, category: p.category, kind: p.kind, content: p.content, seo: p.seo, themeId: theme.id, published: true });
     console.log(`page updated: ${p.slug}`);
   } else {
-    const created = await createWhoobePage({ slug: p.slug, title: p.title, category: p.category, kind: p.kind, content: p.content, seo: p.seo, websiteId: site.id });
+    const created = await createWhoobePage({ slug: p.slug, title: p.title, category: p.category, kind: p.kind, content: p.content, seo: p.seo, themeId: theme.id, websiteId: site.id });
     await updateWhoobePage(created.id, { published: true });
     console.log(`page created: ${p.slug}`);
   }
