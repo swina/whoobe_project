@@ -47,7 +47,7 @@ The record also says that the tag is not exactly the commit that was tested: it 
 
 ## What we do not claim
 
-We do not say that Whoobe is secure. A green run means that these checks passed on this code at this commit. It is not an audit, a penetration test or a certification, and there has not been an outside one. The coverage has holes, and we list them: SQL fuzzing of most endpoints, prompt injection against the AI features, a full Content-Security-Policy for the admin and the editor, a live host with a public certificate. This is one project with one architect, and the numbers go out of date quickly: the exact ones are in each run's report.
+We do not say “our code is secure”. A green run means that these checks passed on this code at this commit. It is not an audit, a penetration test or a certification, and there has not been an outside one. The coverage has holes, and we list them: SQL fuzzing of most endpoints, prompt injection against the AI features, a full Content-Security-Policy for the admin and the editor, a live host with a public certificate. This is one project with one architect, and the numbers go out of date quickly: the exact ones are in each run's report.
 
 What we claim is smaller and can be checked: these controls exist, this is how they were tested, and anyone can read, rerun and challenge the results. We think that is the minimum an open source project should be able to show.
 

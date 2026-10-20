@@ -121,13 +121,13 @@ the headless API with adapters for React, Vue, Next.js, Nuxt and Svelte.
 
 ## 3. Security and governance
 
-The principle (owner's): **open source earns the name by showing its work.** We do not claim that the code is secure and we do not certify it
+The principle (owner's): **open source earns the name by showing its work.** We do not say “our code is secure” and we do not certify it
 ourselves. We say what we tested, against which objective, and publish the results, failures included. Policy and record:
 `docs/release/security/results/`.
 
 **H1:** What is built in, what we tested, and what we did not.
 
-**Lead:** Open source earns the name by showing its work. We do not certify our own code and we do not say that it is secure. Release 0.2, named
+**Lead:** Open source earns the name by showing its work. We do not certify our own code and we do not say “our code is secure”. Release 0.2, named
 *Conduct*, adds the controls a security officer asks for. This page lists them, says what we tested and why, what the tests cannot tell you,
 and where every result is published.
 
@@ -138,7 +138,7 @@ subject requests, monitoring, recovery, supply chain, tests (texts as in the pag
 
 ### What we tested, and with what objective
 
-*We do not say that the code is secure, and we do not certify it ourselves. We say what we set out to check, and how.* A table, objective / how
+*We do not say “our code is secure”, and we do not certify it ourselves. We say what we set out to check, and how.* A table, objective / how
 it is checked: sessions, lockout, password reset, second factor and single sign-on; every route guarded as intended (a checked-in contract, five
 identities, a new route with no classification fails the run); one workspace cannot reach another; visitors cannot read what is not public;
 uploads and outbound requests cannot be abused; stored text and pages do not run injected code (browser tests); no secret in the code or its
