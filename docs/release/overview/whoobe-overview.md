@@ -55,8 +55,8 @@ containers, PostgreSQL and an S3-compatible object store). One installation, cal
 several sites, an agency that runs one workspace per client, a team that needs integrations with internal systems that no off-the-shelf
 connector covers.
 
-**Who it is not for.** A team without anyone to run a server; an organisation that needs single sign-on, an audit trail of every
-administrative action, high availability, or a third-party compliance certificate **today**; a business that wants one shared platform for
+**Who it is not for.** A team without anyone to run a server; an organisation that needs SAML or LDAP login (or several single sign-on providers), an audit log that also records refused attempts,
+high availability, or a third-party compliance certificate **today**; a business that wants one shared platform for
 many unrelated companies. Chapter 4 explains each.
 
 **Licence.** MIT. No fee per user, per site, per page or per API call. You may use, modify and redistribute it, including commercially.
@@ -278,10 +278,10 @@ licence fees and lock-in over the comfort of a vendor SLA and certificates. It i
 
 **The risks you carry.**
 
-1. *Young product.* First release; defects will be found by use. Mitigation: a pilot (chapter 10), version pinning, the published test evidence.
+1. *Young product.* A `0.` series (0.2.0 when this was updated); defects will be found by use. Mitigation: a pilot (chapter 10), version pinning, the published test evidence.
 2. *Operations.* Self-hosting means your team patches, backs up and monitors. If it does not, the risk is yours, not ours.
 3. *Compliance.* No outside certificate; your auditors will review the documentation and the code themselves, and some controls they
-   expect (SAML or LDAP login, a complete audit log) are missing (4.1).
+   expect (SAML or LDAP login, an audit log that also records refused attempts) are missing (4.1).
 4. *Vendor risk.* Whoobe is a young project. *[Team size, funding, roadmap commitments and support terms: to be stated by us.]*
    Mitigation: the code is MIT and the data is in standard stores.
 
@@ -301,7 +301,7 @@ database with encryption, restore it, and remove the workspace. Security scannin
 
 | Need | Today |
 |---|---|
-| Single sign-on | Not available; local accounts. |
+| Single sign-on | One OpenID Connect provider for staff (4.1), tried against Keycloak; SAML and LDAP are not built (a broker in front covers them). |
 | Monitoring and alerting | Your platform's; the services expose container health and logs only. |
 | Encrypted backup of the asset bucket | `backup-workspace-bucket.sh` copies it; the copy is not encrypted by the script. |
 | High availability | One instance per service; restore from backup is the recovery path. |
@@ -397,7 +397,7 @@ changes to check before installing over a development setup.
 | Whoobe is a good fit if ... | Whoobe is a poor fit if ... |
 |---|---|
 | You want to own your data, credentials and servers | Nobody in your organisation or partner network can run a server |
-| You already run containers and PostgreSQL | You need single sign-on or an audit trail **now** |
+| You already run containers and PostgreSQL | You need SAML or LDAP login, or an audit log of refused attempts, **now** |
 | You have several sites, languages or channels from one content model | You need a high-availability setup with an uptime commitment |
 | You integrate with internal or niche systems no connector covers | You need a certificate (SOC 2, ISO 27001) from the vendor |
 | Editors should publish without developer tickets | You need visitor personalisation, A/B testing or analytics in one tool |
