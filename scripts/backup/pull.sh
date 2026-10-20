@@ -17,12 +17,14 @@
 set -euo pipefail
 umask 077
 ENV_SETTINGS="${PULL_ENV_FILE:-/etc/whoobe/pull.env}"
+# shellcheck source=/dev/null
 if [ -r "$ENV_SETTINGS" ]; then set -a; . "$ENV_SETTINGS"; set +a; fi
 : "${PULL_REMOTE:?PULL_REMOTE is required}" "${PULL_REMOTE_DIR:?PULL_REMOTE_DIR is required}" "${PULL_SLUG:?PULL_SLUG is required}"
 LOCAL="${PULL_LOCAL_DIR:-$HOME/whoobe-backups}"; DAYS="${PULL_RETAIN_DAYS:-30}"; MAX_H="${PULL_MAX_HOURS:-26}"
 [[ "$PULL_SLUG" =~ ^[a-z0-9-]+$ ]] || { echo "Error: PULL_SLUG must be lowercase letters, digits and hyphens." >&2; exit 1; }
 [[ "$DAYS" =~ ^[0-9]+$ ]] || { echo "Error: PULL_RETAIN_DAYS must be a number." >&2; exit 1; }
 HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC2206  # PULL_SSH_OPTS holds several options on purpose
 SSH=(ssh -o BatchMode=yes ${PULL_SSH_OPTS:-})
 RS=(rsync -a -e "${SSH[*]}")
 mkdir -p "$LOCAL/db" "$LOCAL/bucket"; chmod 700 "$LOCAL" "$LOCAL/db" "$LOCAL/bucket"

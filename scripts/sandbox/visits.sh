@@ -19,7 +19,7 @@ DAYS="${1:-7}"
 LOG="${LOG:-/var/log/nginx/sandbox-access.log*}"
 SINCE="$(date -u -d "$DAYS days ago" +%F)"
 
-# shellcheck disable=SC2086
+# shellcheck disable=SC2206  # LOG is a glob on purpose
 files=( $LOG )
 [ -e "${files[0]}" ] || { echo "no log found at: $LOG (is the sandbox's vhost on the profile with the visit log? sandbox.md)" >&2; exit 1; }
 

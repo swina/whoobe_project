@@ -22,6 +22,7 @@ SLUG="$1"
 [[ "$SLUG" =~ ^[a-z0-9-]+$ ]] || { echo "Error: slug must be lowercase letters, digits and hyphens." >&2; exit 1; }
 
 ENV_SETTINGS="${BACKUP_ENV_FILE:-/etc/whoobe/backup.env}"
+# shellcheck source=/dev/null
 if [ -r "$ENV_SETTINGS" ]; then set -a; . "$ENV_SETTINGS"; set +a; fi
 BACKUP_DIR="${BACKUP_DIR:-$HOME/backups/nightly}"
 BACKUP_KEEP="${BACKUP_KEEP:-14}"
