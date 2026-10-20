@@ -80,7 +80,7 @@ Needs a host with Docker Compose 2.24 or newer, a DNS name pointing to it, and n
    keeps the generated files from belonging to root, and that user must be in the `docker` group). Then
    `systemctl daemon-reload`, `systemctl start whoobe-sandbox-reset.service` (a first reset, which deletes the sandbox's data)
    and `systemctl enable --now whoobe-sandbox-reset.timer`. Check with `systemctl list-timers 'whoobe*'` and
-   `journalctl -u whoobe-sandbox-reset -n 40`. The service is stopped after 15 minutes and tried again after one: a
+   `journalctl -u whoobe-sandbox-reset -n 40`. The service is stopped after 40 minutes and tried again after one: a
    dependency download that stalls does not leave the sandbox off until the next cycle. `reset.sh` takes a lock (a second
    reset exits at once), stops the `docker compose ... up` of a killed earlier reset, and on a stop signal terminates
    everything it started: a snap-installed Docker client is not stopped with its systemd service and would otherwise stay
@@ -118,7 +118,13 @@ with all its volumes (database and object store), provisions it again with new
 random secrets and the demo account, and waits until `/health` reports the sandbox block. If anything fails the stack is
 removed and the script exits non-zero: the sandbox stays off, it never keeps serving the previous cycle. Expect
 under a minute of downtime (stop, start, migrations), whatever the build costs; the very first start, and a reset after a profile
-change that alters a build argument, still build inside the provisioning. The banner shows the next reset time.
+change that alters a build argument, still build inside the provisioning. Because that second build happens after the workspace was
+removed, the sandbox is **off for the whole of it**: after new code reaches the host, the first reset can leave it off for several
+minutes (on 2026-10-20, on a 4-CPU arm64 host with a load of 8 to 12, the two builds together took more than 15 minutes and the
+retry brought it back). That is why the service waits up to 40 minutes. The banner shows the next reset time.
+
+**After a deploy**, start the reset yourself right away (`systemctl start whoobe-sandbox-reset.service`) instead of waiting for the
+timer, and do it when nobody is expected: the first run after a code change is the slow one, the next ones use the cache.
 
 ## Known limits of this design
 
