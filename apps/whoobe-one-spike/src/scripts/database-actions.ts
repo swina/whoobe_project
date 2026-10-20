@@ -84,6 +84,8 @@ import {
   addTemplateToKit as apiAddTemplateToKit,
   deleteKit as apiDeleteKit,
   duplicateKit as apiDuplicateKit,
+  updateKitTemplate as apiUpdateKitTemplate,
+  deleteKitTemplate as apiDeleteKitTemplate,
 } from '../kits-api'
 
 type EditorStore = ReturnType<typeof useEditorStore>
@@ -791,4 +793,37 @@ export async function deleteKit(id: string): Promise<void> {
 /** A user copy of a kit (shipped kits are read-only); returns the new kit's id. */
 export async function duplicateKit(id: string): Promise<string> {
   return (await apiDuplicateKit(id)).id
+}
+
+/** Opens one template of a kit in the editor (/editor?kitId=&templateId=). The document is a copy: nothing is written until Save,
+ *  and Save writes back into that kit only (saveKitTemplate()). The caller opens a user's kit; a shipped kit is duplicated first. */
+export async function loadKitTemplateForEdit(editor: EditorStore, kitId: string, templateId: string): Promise<boolean> {
+  const kit = await apiGetKit(kitId)
+  const template = kit.templates.find((t) => t.id === templateId)
+  if (!template) return false
+  const root = JSON.parse(JSON.stringify(template.json?.blocks ?? createEmptyDocumentRoot())) as WhoobeElement
+  const page = new Block()
+  page.name = template.name
+  page.category = template.category
+  page.json.blocks = root
+  editor.setPage(page)
+  editor.setDocument(root)
+  editor.setCurrent(null)
+  editor.setKitTemplate({ kitId, templateId, kitName: kit.name })
+  return true
+}
+
+/** Saves the document being edited back into its template of the kit (a plain-JSON snapshot, like savePage()). */
+export async function saveKitTemplate(editor: EditorStore): Promise<void> {
+  const target = editor.kitTemplate
+  if (!target || !editor.document) throw new Error('No kit template is open')
+  await apiUpdateKitTemplate(target.kitId, target.templateId, {
+    name: editor.page?.name || undefined,
+    category: editor.page?.category ?? undefined,
+    blocks: JSON.parse(JSON.stringify(editor.document)),
+  })
+}
+
+export async function removeKitTemplate(kitId: string, templateId: string): Promise<void> {
+  await apiDeleteKitTemplate(kitId, templateId)
 }

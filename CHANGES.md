@@ -1,5 +1,12 @@
 # Release v0.2.0 — 2026-10-19
 
+## Kits: preview of the templates, edit a copy — 2026-10-20
+- Branch: `feat/kit-preview-edit-copy` (on top of `feat/kit-library-page`).
+- Dashboard, Kits page: a **Preview** button per kit opens a full-screen overlay with the editor app's new kit page (`/kit-preview`, in an iframe; closing it refreshes the list). `whoobe-one-spike`: `views/KitPreview.vue` shows the kit's templates as a gallery with live thumbnails (the component the editor's kit gallery uses); per template **Preview** (full screen, device sizes), **Edit a copy** (duplicates the kit, ids kept, then opens the same template in the copy: the original is never changed) and, for the user's own kits, **Edit** (in place) and a remove button.
+- Editor: new session `/editor?kitId=&templateId=` (`loadKitTemplateForEdit()`, `saveKitTemplate()`, `editor.kitTemplate`): the document is a copy, Save writes back into that template of that kit only, and a "back to the kit" button in the top bar returns to `/kit-preview`.
+- core-api: `PUT /whoobe-one/kits/:id/templates/:templateId` (name, category, description, the document) and `DELETE` of one template; both 409 on a shipped kit, 404 on an unknown kit or template, 400 on a bad body.
+- Checked on a throwaway Postgres 16: duplicate keeps the template ids; updating a template of the copy leaves the original as it was; an unknown template gives nothing; removing a template works. `vue-tsc` (dashboard, editor) and `tsc` (core, core-api) pass. **Not tried in a browser**: the overlay, the gallery, Edit a copy, the editor session and Save, the back button; the routes over HTTP.
+
 ## Kits section in the dashboard: manage, export as zip, import — 2026-10-20
 - Branch: `feat/kit-library-page`.
 - New sidebar section **Kits** (`views/KitsView.vue`, `utils/kits-api.ts`): list with search, category and origin filters; shipped (`bundled`/`catalogue`) kits shown with a lock and their version; **Edit** (name, category, description) and **Delete** only for the user's own kits; **Duplicate** for any kit; **Export** (one kit or the selection or all) as a zip with one `<kit>.json` per kit (name, slug, version, description, category, templates: the same shape as a kit file of the distribution); **Import** of a zip or a json (one kit or a list) as the user's own kits. Deleting asks first and offers "Download zip, then delete" (the zip is made before anything is deleted).

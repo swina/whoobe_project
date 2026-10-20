@@ -97,6 +97,42 @@ export async function updateWhoobeOneKitContent(
 }
 
 /** A user copy of any kit: the templates are deep-copied (the kit is a self-contained bundle), the origin is always 'user'. */
+/** Replaces one template of a kit (its name/category/description and/or its document). Null when the kit or the template does not exist.
+ *  The caller refuses a shipped kit (origin other than 'user') first. */
+export async function updateWhoobeOneKitTemplate(
+  kitId: string,
+  templateId: string,
+  input: { name?: string; category?: string; description?: string; blocks?: unknown }
+): Promise<WhoobeOneKitRecord | null> {
+  const db = getDb();
+  const kit = await getWhoobeOneKit(kitId);
+  if (!kit || !kit.templates.some((t) => t?.id === templateId)) return null;
+  const templates = kit.templates.map((t) => {
+    if (t?.id !== templateId) return t;
+    const next = { ...t };
+    if (input.name !== undefined) next.name = input.name;
+    if (input.category !== undefined) next.category = input.category;
+    if (input.description !== undefined) next.description = input.description;
+    if (input.blocks !== undefined) next.json = { ...(t.json ?? {}), blocks: input.blocks };
+    return next;
+  });
+  const [row] = await db.update(whoobeOneKits).set({ templates, updatedAt: new Date() }).where(eq(whoobeOneKits.id, kitId)).returning();
+  return row ?? null;
+}
+
+/** Removes one template from a kit (null when the kit or the template does not exist). The caller refuses a shipped kit first. */
+export async function removeTemplateFromWhoobeOneKit(kitId: string, templateId: string): Promise<WhoobeOneKitRecord | null> {
+  const db = getDb();
+  const kit = await getWhoobeOneKit(kitId);
+  if (!kit || !kit.templates.some((t) => t?.id === templateId)) return null;
+  const [row] = await db
+    .update(whoobeOneKits)
+    .set({ templates: kit.templates.filter((t) => t?.id !== templateId), updatedAt: new Date() })
+    .where(eq(whoobeOneKits.id, kitId))
+    .returning();
+  return row ?? null;
+}
+
 /** Rename / describe / re-categorise a kit. The caller refuses a shipped kit (origin other than 'user') first. */
 export async function updateWhoobeOneKitMeta(
   id: string,

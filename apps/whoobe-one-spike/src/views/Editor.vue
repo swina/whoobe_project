@@ -36,7 +36,7 @@ import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
 import BlockEditor from '../components/BlockEditor.vue'
 import { useEditorStore } from '../store/editor'
-import { loadPage, loadMailTemplate, loadSnippet, loadWebsiteTheme, loadAllThemes, createEmptyMailTemplateRoot, createEmptyDocumentRoot } from '../scripts/database-actions'
+import { loadPage, loadMailTemplate, loadSnippet, loadKitTemplateForEdit, loadWebsiteTheme, loadAllThemes, createEmptyMailTemplateRoot, createEmptyDocumentRoot } from '../scripts/database-actions'
 import { clean, findNodeById } from '../helpers'
 import { getDefaultCoreApiUrl } from '../core-api-url'
 import { fetchAlpinePresets } from '../alpine-presets-api'
@@ -139,6 +139,19 @@ onMounted(async () => {
       editor.setWebsiteId(wsId)
       await loadWebsiteTheme(editor, wsId)
     } else await loadAllThemes(editor)
+    selectRequestedElement()
+    return
+  }
+  // One template of a kit (the dashboard's Kits page, Preview > Edit): a copy of its document, Save writes back into that kit.
+  const kitId = typeof route.query.kitId === 'string' ? route.query.kitId : null
+  const kitTemplateId = typeof route.query.templateId === 'string' ? route.query.templateId : null
+  if (kitId && kitTemplateId) {
+    try {
+      if (!(await loadKitTemplateForEdit(editor, kitId, kitTemplateId))) console.warn('Kit template not found')
+    } catch (e) {
+      console.warn('Failed to load the kit template:', e)
+    }
+    await loadAllThemes(editor)
     selectRequestedElement()
     return
   }

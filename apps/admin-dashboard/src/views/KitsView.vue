@@ -80,6 +80,7 @@
             <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ kit.templates.length }}</td>
             <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ new Date(kit.updatedAt).toLocaleString() }}</td>
             <td class="py-2.5 px-4 whitespace-nowrap">
+              <button class="btn btn-link mr-3" title="Preview the templates; edit a copy" :data-testid="`kit-preview-${kit.id}`" @click="previewing = kit"><Eye class="w-4 h-4" /></button>
               <button v-if="kit.origin === 'user'" class="btn btn-link mr-3" title="Edit name, category, description" :data-testid="`kit-edit-${kit.id}`" @click="startEdit(kit)"><Pencil class="w-4 h-4" /></button>
               <button class="btn btn-link mr-3" title="Duplicate to an editable copy" :data-testid="`kit-duplicate-${kit.id}`" @click="duplicate(kit)"><Copy class="w-4 h-4" /></button>
               <button class="btn btn-link mr-3" title="Download as zip" :data-testid="`kit-export-${kit.id}`" @click="exportZip([kit])"><Download class="w-4 h-4" /></button>
@@ -88,6 +89,18 @@
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- The kit's templates (the editor's own kit page in an iframe): Preview, Edit, Edit a copy. Closing refreshes the list. -->
+    <div v-if="previewing" class="fixed inset-0 z-[10000] bg-slate-950 flex flex-col" data-testid="kit-preview-overlay">
+      <div class="shrink-0 flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-800">
+        <span class="text-sm font-semibold text-slate-100 truncate">{{ previewing.name }}</span>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-500 hidden sm:inline">A shipped kit is never changed: Edit a copy works on a duplicate.</span>
+          <button type="button" class="btn btn-secondary" data-testid="kit-preview-close" @click="closePreview">Close</button>
+        </div>
+      </div>
+      <iframe :src="previewSrc" class="flex-1 min-h-0 w-full border-0 bg-white" :title="`Kit ${previewing.name}`"></iframe>
     </div>
 
     <BaseModal v-if="editing" :open="true" size="md" title="Edit kit" @close="editing = null">
@@ -121,12 +134,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import JSZip from 'jszip'
-import { Library, Lock, Pencil, Copy, Download, Trash } from '@lucide/vue'
+import { Library, Lock, Pencil, Copy, Download, Trash, Eye } from '@lucide/vue'
 import BaseModal from '../components/ui/BaseModal.vue'
 import { useAuthStore } from '../stores/authStore'
 import { useToastStore } from '../stores/toastStore'
 import { fetchKits, createKit, updateKit, duplicateKit, deleteKit, type WhoobeKit } from '../utils/kits-api'
 import { slugify } from '../utils/slugify'
+import { getWhoobeOneSpikeUrl } from '../utils/editor-urls'
 
 const authStore = useAuthStore()
 const toastStore = useToastStore()
@@ -145,6 +159,18 @@ const editing = ref<{ id: string; name: string; category: string; description: s
 const editError = ref('')
 const deleting = ref<WhoobeKit[] | null>(null)
 const deleteError = ref('')
+const previewing = ref<WhoobeKit | null>(null)
+
+const previewSrc = computed(() => {
+  if (!previewing.value) return ''
+  const params = new URLSearchParams({ kitId: previewing.value.id, parentOrigin: window.location.origin })
+  return `${getWhoobeOneSpikeUrl()}/kit-preview?${params.toString()}`
+})
+
+function closePreview() {
+  previewing.value = null
+  refresh()
+}
 
 const baseUrl = () => authStore.config.coreApiUrl
 

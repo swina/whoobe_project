@@ -116,3 +116,27 @@ export async function duplicateKit(id: string): Promise<WhoobeOneKit> {
   const body = await parseJsonOrThrow(res)
   return body.kit
 }
+
+export async function updateKitTemplate(
+  kitId: string,
+  templateId: string,
+  input: { name?: string; category?: string; description?: string; blocks?: unknown }
+): Promise<WhoobeOneKit> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/kits/${kitId}/templates/${templateId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.kit
+}
+
+export async function deleteKitTemplate(kitId: string, templateId: string): Promise<WhoobeOneKit> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/kits/${kitId}/templates/${templateId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.kit
+}

@@ -72,6 +72,8 @@ import {
   addTemplateToWhoobeOneKit,
   duplicateWhoobeOneKit,
   updateWhoobeOneKitMeta,
+  updateWhoobeOneKitTemplate,
+  removeTemplateFromWhoobeOneKit,
   deleteWhoobeOneKit,
   listWhoobePages,
   getWhoobePage,
@@ -2160,6 +2162,67 @@ app.post('/whoobe-one/kits/:id/templates', requireAnyPermission(PERMISSIONS.SNIP
   } catch (error: any) {
     logger.error({ err: error }, 'Add template to whoobe-one kit error');
     res.status(500).json({ error: error.message || 'Failed to add template to kit' });
+  }
+});
+
+// One template of a user's own kit: edited in the editor (its document) or renamed; or removed. A shipped kit is read-only.
+app.put('/whoobe-one/kits/:id/templates/:templateId', requireAnyPermission(PERMISSIONS.SNIPPETS_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, category, description, blocks } = req.body ?? {};
+    if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
+      res.status(400).json({ error: 'name must be a non-empty string' });
+      return;
+    }
+    if (blocks !== undefined && (blocks === null || typeof blocks !== 'object' || Array.isArray(blocks))) {
+      res.status(400).json({ error: 'blocks must be the template document (an object)' });
+      return;
+    }
+    const current = await getWhoobeOneKit(req.params.id);
+    if (!current) {
+      res.status(404).json({ error: 'Kit not found' });
+      return;
+    }
+    if (current.origin !== 'user') {
+      res.status(409).json({ error: 'This kit is read-only: duplicate it, then edit the copy' });
+      return;
+    }
+    const kit = await updateWhoobeOneKitTemplate(req.params.id, req.params.templateId, {
+      name: name === undefined ? undefined : name.trim(),
+      category: typeof category === 'string' ? category : undefined,
+      description: typeof description === 'string' ? description : undefined,
+      blocks,
+    });
+    if (!kit) {
+      res.status(404).json({ error: 'Template not found in this kit' });
+      return;
+    }
+    res.json({ kit });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Update whoobe-one kit template error');
+    res.status(500).json({ error: error.message || 'Failed to update the template' });
+  }
+});
+
+app.delete('/whoobe-one/kits/:id/templates/:templateId', requireAnyPermission(PERMISSIONS.SNIPPETS_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const current = await getWhoobeOneKit(req.params.id);
+    if (!current) {
+      res.status(404).json({ error: 'Kit not found' });
+      return;
+    }
+    if (current.origin !== 'user') {
+      res.status(409).json({ error: 'This kit is read-only: duplicate it, then edit the copy' });
+      return;
+    }
+    const kit = await removeTemplateFromWhoobeOneKit(req.params.id, req.params.templateId);
+    if (!kit) {
+      res.status(404).json({ error: 'Template not found in this kit' });
+      return;
+    }
+    res.json({ kit });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Remove whoobe-one kit template error');
+    res.status(500).json({ error: error.message || 'Failed to remove the template' });
   }
 });
 
