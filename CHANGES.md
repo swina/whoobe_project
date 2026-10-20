@@ -1,5 +1,11 @@
 # Release v0.2.0 — 2026-10-19
 
+## Legacy reference kits removed from the distribution — 2026-10-20
+- Branch: `feat/remove-legacy-kits`.
+- The 7 kit files in `packages/core/seed-data/kits/` (CTA, Carousel, Form, Hero, Landing Pages, Leading, Navigation; 35 templates, 4.4 MB) were made with an editor five years old; the owner decided they leave the distribution, new kits will replace them. `seedWhoobeOneKits()` stays (it seeds whatever is in that folder) and no longer warns when the folder is missing. `tsc` passes.
+- **Existing installations keep the rows already seeded** in `whoobe_one_kits` (nothing deletes them; they cannot be told from kits a user made with the same name). Not done: removing them from the development and public databases.
+- Next, agreed in principle and not started: `origin` (bundled/user) and `version` on kits, bundled kits read-only with "Duplicate to edit" (`forkedFrom`), a kit library page in the dashboard, and later a remote catalogue feeding installations.
+
 ## Docs: "young software" line brought up to date — 2026-10-20
 - Branch: `master`. `architecture/design-decisions/self-hosted-and-mit.md`: the line said the first release is 0.1.0; it now says the first was 0.1.0 (October 2026), the current is 0.2.0 and that a `0.` minor release may change behaviour.
 

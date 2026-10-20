@@ -135,7 +135,7 @@ export async function seedWhoobeOneKits(): Promise<void> {
   try {
     filenames = fs.readdirSync(KITS_SEED_FOLDER).filter((f) => f.endsWith('.json'));
   } catch {
-    console.warn(`seedWhoobeOneKits: seed folder not found (${KITS_SEED_FOLDER}) - skipping.`);
+    // no folder: the distribution ships no kit at the moment (the 5-year-old reference kits were removed, new ones are being made)
     return;
   }
 
