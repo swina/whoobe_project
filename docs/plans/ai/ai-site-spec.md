@@ -25,7 +25,9 @@ One provider-independent description of "a Whoobe site as data", with:
 1. a **schema** (JSON Schema, derived from Zod) a model can be constrained by;
 2. **instructions** for models (Markdown) with rules and real examples, used by the in-product wizard and
    by any outside LLM alike;
-3. a **validator and importer** that turn a file into a website, with errors that name the path.
+3. a **validator and importer** that turn a file into a website, with errors that name the path, reachable
+   **from the dashboard** by the people who use it (editors, designers) and, as a convenience, from the
+   command line for developers and CI.
 
 Not a goal: promising the quality of what a model writes. The validator exists to refuse what is wrong.
 
@@ -60,8 +62,17 @@ own section, rules and tests; `alpine` and `events` (code-like) stay out of the 
 classes plus the existing safe `style` handling. A spec cannot set permissions, users or secrets: those
 fields do not exist in the schema.
 
-**D6. No call to a model in the importer.** `site validate` and `site import` work offline on a file. Calling
-a model stays in the product's wizard (and in the outside tool of the person's choice).
+**D6. No call to a model in the importer.** Validating and importing work on a file or on pasted text, with
+no outside request. Calling a model stays in the product's wizard (and in the outside tool of the person's
+choice). This matters on a LAN with no outbound access: the dashboard page of phase 2 needs nothing but the
+installation itself.
+
+**D8. The dashboard is the primary interface; the command line is optional.** The people who build sites
+are editors and designers, and an installation on a LAN may give them no shell at all (and should not).
+Every capability of the spec (get the schema and the instructions, validate, see what would be created,
+import) is therefore a dashboard function backed by the API route. The CLI is a thin client of the same
+route, for developers and for CI, and nothing is available only there. A feature that exists only on the
+command line is a defect of this plan.
 
 **D7. Permission.** Import needs `websites:create` or `objects:write`, as `from-ai` does today, and is
 audited (`AUDIT.websiteFromAi`, or the import audit entry). A dry run needs the same permission and writes
@@ -105,13 +116,29 @@ Each phase is its own branch, with `CHANGES.md` and tests, and does not depend o
 - Done when: the examples validate; each rule has a failing example; the whoobe.dev site can be described in
   a spec (the content of `scripts/site/whoobe-dev/content.json` is the first real example).
 
-**Phase 2: command line and route.**
-- `whoobe site validate <file>` and `whoobe site import <file> [--dry-run]`. Decision to take: a new bin in
-  `packages/publish` (it already ships `whoobe-publish`) or a new package; default: a subcommand there.
-- `POST /whoobe-one/websites/from-spec` (dry run supported); `from-ai` calls the same expansion.
-- Routes added to the API documentation (the route-drift check must stay green).
-- Done when: an invalid file prints the path of each error and exits non-zero; a valid file imports on an
-  empty database in a test and the result passes the existing portability round-trip test.
+**Phase 2: route and dashboard (command line optional).**
+- `POST /whoobe-one/websites/from-spec` (`?dryRun=1` supported; validation errors returned as a list of
+  `{ path, message }`); `from-ai` calls the same expansion. Routes added to the API documentation (the
+  route-drift check must stay green).
+- **Dashboard page "Import a site from a spec"** (Websites area, same permissions as the import of a
+  website bundle):
+  1. *Get the material*: buttons that copy or download the instructions and the JSON Schema, to take to any
+     model the person uses (a chat in a browser is enough), with a short "how to ask" text.
+  2. *Bring the result*: paste the text or choose a file; nothing leaves the installation.
+  3. *Check*: runs the dry run and shows, in plain words, the errors with the place in the file ("page
+     'Pricing', section 2, the link has no text") or, if valid, what will be created (pages, snippets,
+     theme, layout) and what already exists.
+  4. *Import*: creates the website as a draft; the person is taken to it. Publication stays a separate step
+     with its own permission.
+  The schema is the same Zod module, so the page can also validate in the browser while the person edits
+  the text, with the server check as the authority.
+- Optional, for developers and CI: `whoobe site validate <file>` and `whoobe site import <file> [--dry-run]`,
+  a thin client of the same route (a subcommand of `whoobe-publish`, which already ships a bin). It adds no
+  capability the dashboard lacks.
+- Done when: a person with only a browser can go from a model's output to a draft website without a
+  terminal (a browser test covers it: paste, error shown with its place, fix, check, import); an invalid
+  spec writes nothing; a valid one imports on an empty database in a test and the result passes the existing
+  portability round-trip test; the CLI, if present, gives the same errors and a non-zero exit code.
 
 **Phase 3: instructions and the wizard.**
 - `docs/ai-site-spec/` (rules, examples, a short "how to ask a model" page); `prompts.ts` reads them.
@@ -145,7 +172,8 @@ Bigger surface and the part where a wrong reference hurts most: it needs its own
 
 ## 8. Open questions for the maintainer
 
-1. Name of the command: `whoobe site ...` inside `whoobe-publish`, or a separate `whoobe` bin?
+1. Is the command line worth building at all in phase 2, or only after the dashboard page has been used
+   (it is optional by D8)? If yes: a subcommand of `whoobe-publish` or a separate `whoobe` bin?
 2. Should a spec be able to reference an existing theme/snippet by name, or always carry its own?
 3. Languages: one locale per spec, or several in one file?
 4. Do we publish the instructions under `docs/` (visible on docs.whoobe.dev) from phase 1, or only at phase 3?
