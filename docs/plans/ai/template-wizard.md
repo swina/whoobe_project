@@ -26,7 +26,7 @@ The result is a starting point that a person reads and improves, as with the spe
 
 ```
 New website from a template
-  1 Basics      name, languages (one or two), sector (IT, Food, Consultant, Insurance, Tourism), market context (Tourism > Hotel)
+  1 Basics      name, language (one), sector (IT, Food, Consultant, Insurance, Tourism), market context (Tourism > Hotel)
   2 Look        theme  [Dark] [Light] [Light colours] [Blue navy]  + an accent colour (free input)
                 fonts  [Sans-serif] [Serif]
   3 Pages       Landing page + up to 3 inner pages; for each: title, and its structure
@@ -34,8 +34,10 @@ New website from a template
                     [Hero] [Banner] [CTA] [Box grid 3] [Box grid 6] [Form]   (add, remove, reorder)
                   at any position: "a generated block" or "an existing snippet of my library" (filtered by the same category)
   4 Navigation  header and footer, made from the pages chosen (nothing to type)
-  5 Check       what will be created (pages, blocks, snippets, theme), conflicts with names that exist, name and root path
-  6 Create      a draft website opens in the editor
+  5 Texts       [Placeholder texts]  [Write the texts with AI]   (the second only when an AI provider is configured and the person may use it;
+                with it: a line or two about the business, which the model may use)
+  6 Check       what will be created (pages, blocks, snippets, theme), conflicts with names that exist, name and root path
+  7 Create      a draft website opens in the editor
 ```
 
 Every step has a sensible default, so the shortest path is: name, sector, press *Create*. The sector proposes a structure (a hotel
@@ -83,11 +85,11 @@ preset and fails under WCAG AA, so a preset cannot be added that is unreadable.
 classes), so a page makes no request to a font service: it works on a LAN with no outbound access and sends nothing anywhere. Web fonts can
 be added later as an explicit option.
 
-**D6. Sector and market context decide the words, and the words come from a canned library; a model is optional.**
-- Version 1 ships written copy for each block, in **English and Italian**, for each of the five sectors, and the market context
+**D6. Sector and market context decide the words; the person chooses where the words come from: placeholder texts or the configured AI.**
+- **Placeholder texts.** Version 1 ships written copy for each block, in the language of the site, for each of the five sectors, and the market context
   (for example *Tourism > Hotel*) fills the noun the copy uses ("your hotel", "our rooms"). The copy is plain and generic by design, and the
   window says so: it is there to be replaced.
-- **Optional:** when an AI provider is configured and the person may use it, a button "Write the texts with AI" sends the sector, the context,
+- **Write the texts with AI.** The choice is a step of the wizard, shown only when an AI provider is configured and the person may use it. It sends the sector, the context,
   the site name and a short description, and gets back only the **texts of the slots** (titles, leads, box texts, button labels). The reply is
   validated slot by slot, cleaned like every rich text and cut to the length of the slot; it cannot change structure, classes, links or
   anything else. It uses the existing AI settings and rate limit, is off in the sandbox like the rest of `/ai/`, and a person reads the
@@ -95,13 +97,18 @@ be added later as an explicit option.
 - Sectors are a list the installation can extend later; the five of the first version are IT, Food, Consultant, Insurance, Tourism. The list
   of contexts for each is in the open questions.
 
-**D7. Pages: a landing page and up to three inner pages.** The limit is the generator's, as for the AI wizard. Each page has a title (the
-sector suggests *About*, *Services*, *Contact*...) and its own structure. The first page is the home page (`/`); the others get a slug made
-from the title. With two languages each page is written once per language.
+**D7. Pages: a landing page and up to three inner pages, in one language.** The limit is the generator's, as for the AI wizard. Each page has a
+title (the sector suggests *About*, *Services*, *Contact*...) and its own structure. The first page is the home page (`/`); the others get a slug
+made from the title.
 
-**D8. Header and footer come from the pages, per language.** The header lists the pages in order, the footer repeats them with the name and a
-line. The specification of version 1 shares one layout between the two languages, which makes link texts impossible in two languages: this plan
-therefore extends the spec (version 1.1) so that `layout` can be given **per locale** (the website template model already has a `locale`).
+**D7b. One language in the first version; two later.** Two languages double the copy to write and to check, the header and the footer and the
+choices of the wizard, and the engine supports them already (the specification takes one or two). The wizard asks for **one** language; the
+placeholder texts exist for the languages we write (see the open questions) and the AI writes in any. Two languages are a later phase (phase 4).
+
+**D8. Header and footer come from the pages.** The header lists the pages in order, the footer repeats them with the name and a line. With one
+language the layout of the specification as it is today is enough. When two languages come (phase 4) the spec will be extended (version 1.1) so that
+`layout` can be given **per locale** (the website template model already has a `locale`), because a layout shared by two languages cannot carry
+link texts in both.
 
 **D9. The form block is a template of fields, not an integration.** A contact form with its fields (name, email, message by default; a field is
 a label, a type of text, email, phone or long text, and a required flag) and a submit button. It is created **disconnected**: no target class, no
@@ -122,11 +129,12 @@ whether to remove it, and what the specification window is called, are open ques
 Each phase is its own branch, with `CHANGES.md`, tests and a "done" criterion, and does not depend on the later ones.
 
 **Phase 1: engine (no screens).**
-- Spec version 1.1: `layout` per locale; the `form` kind (D9) with its rules and failing examples; expansion of `form` into a disconnected Form
-  element with its inputs (names, types, required), checked by test to carry no target and no action.
+- Spec: the `form` kind (D9) with its rules and failing examples; expansion of `form` into a disconnected Form element with its inputs (names,
+  types, required), checked by test to carry no target and no action.
 - `packages/core/src/site-wizard/` (pure): the answers schema (`WizardAnswers`, Zod, strict), the block functions, the theme presets, the
-  font choices, the canned copy library (en, it) for the five sectors, and `wizardToSiteSpec(answers) -> SiteSpec`.
-- Done when: every block validates; a **matrix test** expands every combination of sector, theme, font and language (1 and 2) into a spec that
+  font choices, the placeholder copy for the five sectors, and `wizardToSiteSpec(answers) -> SiteSpec`. The copy takes slots by name, so the
+  texts of phase 3 fill the same slots.
+- Done when: every block validates; a **matrix test** expands every combination of sector, theme, font and language into a spec that
   `validateSiteSpec` accepts and `expandSiteSpec` turns into a bundle that imports on an empty database; the contrast test passes for every preset;
   the same answers give the same spec; a page has one `h1`; every image has an alt text; every link has text and a target.
 
@@ -139,12 +147,13 @@ Each phase is its own branch, with `CHANGES.md`, tests and a "done" criterion, a
 - Done when: a browser test goes from the empty form to a draft website with the chosen pages and blocks, with only a browser; the same with a
   library snippet in one position; the form block says it is not connected; the access of the routes is checked by the authorization matrix.
 
-**Phase 3 (optional): the texts with AI.**
-- `POST /ai/generate-wizard-texts` (slots in, texts out; validated, cleaned, length-limited), a button in the wizard, shown only when an AI provider
-  is configured. Tested with a mock provider: a reply that tries to add markup, links, a script or a key that is not a slot is refused or cut.
+**Phase 3: the texts with AI.** (The step *Texts* is in the stepper from phase 2, with the AI choice switched off until this phase lands.)
+- `POST /ai/generate-wizard-texts` (slots in, texts out; validated, cleaned, length-limited), the choice of the step *Texts*, offered only when an
+  AI provider is configured. Tested with a mock provider: a reply that tries to add markup, links, a script or a key that is not a slot is refused or cut.
 - Done when: the structure of the site is identical with and without the texts, and only slot texts differ.
 
-**Phase 4: more.** More blocks and variants, more sectors and contexts, web fonts as an option, kits as a source of blocks (the kit library already
+**Phase 4: two languages, then more.** A second language: the wizard asks for it, pages and texts are written once per language, the spec gets
+`layout` per locale (version 1.1), the matrix test covers it. Then more blocks and variants, more sectors and contexts, web fonts as an option, kits as a source of blocks (the kit library already
 ships and versions collections of templates), a free-text look description with a model.
 
 ## 6. Tests and checks
@@ -154,14 +163,14 @@ ships and versions collections of templates), a free-text look description with 
 - Accessibility basics as tests: contrast of every preset (WCAG AA), one `h1` per page, alt text on images, link text.
 - Security: the answers are untrusted input like a spec (they go through the same schema, so classes, links and text are checked and cleaned); a
   form cannot carry a target; the routes need the permission; a reply of a model (phase 3) cannot change anything but slot texts.
-- Browser: the whole path of phase 2, with and without a library snippet, one and two languages.
+- Browser: the whole path of phase 2, with and without a library snippet; in phase 4 also two languages.
 
 ## 7. Risks and what we do not claim
 
 - **Sameness.** Fixed templates give sites that look alike. That is the price of reliability; the editor is where a site becomes its own.
   We do not claim designs, and we say in the wizard that the result is a starting point.
-- **Canned copy is generic.** It is there to be replaced. Writing it well, in two languages, for five sectors, is real work and its quality is
-  checked by a person before release, not by a test.
+- **Placeholder copy is generic.** It is there to be replaced. Writing it well, for five sectors, is real work and its quality is checked by a
+  person before release, not by a test. A person who wants real words can choose the AI (D6), and the same warning applies to what it writes.
 - **Maintenance of the library.** Every block exists in four themes and two font families; a matrix test and the contrast test keep that honest, but
   adding a block costs more than one function.
 - **Scope.** The list of blocks, sectors and themes will want to grow. Each addition is a phase with tests, not an edit.
@@ -172,9 +181,10 @@ ships and versions collections of templates), a free-text look description with 
 
 1. **Market contexts per sector.** Tourism > Hotel is the example. Propose a short list for each of IT, Food, Consultant, Insurance, Tourism (for
    instance Food: restaurant, bakery, catering; Insurance: agency, broker), or is the context free text that only fills a noun?
-2. **Languages of the canned copy:** English and Italian for the first release, or Italian first?
+2. **Language of the placeholder copy:** the wizard asks for one language. Do we write the placeholder copy in Italian only, in English only, or in
+   both (the person picks one)? The AI texts can use any language.
 3. **The free input of the theme** is an accent colour in this plan. Is that what you meant, or a description of the look (which needs a model)?
 4. **Where it lives:** a button *New from a template* next to *+ New Website*, and the specification window renamed *Advanced > Import from a
    specification*? And what to do with the hidden AI Website Wizard: remove it once this exists?
-5. **Branch of the engine:** merge `feat/ai-site-spec` as it is (the window stays the only way in until the wizard is ready, or is hidden), or hold
+5. **Branch of the engine** (it supports two languages already, the wizard uses one): merge `feat/ai-site-spec` as it is (the window stays the only way in until the wizard is ready, or is hidden), or hold
    the merge until phase 2 of this plan?
