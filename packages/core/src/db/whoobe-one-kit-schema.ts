@@ -1,4 +1,6 @@
-import { pgTable, text, jsonb, uuid, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, text, jsonb, uuid, timestamp, type AnyPgColumn } from 'drizzle-orm/pg-core';
+
+export type KitOrigin = 'bundled' | 'user' | 'catalogue';
 
 /**
  * A named, categorized collection of templates - apps/whoobe-one-spike's
@@ -17,6 +19,11 @@ export const whoobeOneKits = pgTable('whoobe_one_kits', {
   description: text('description'),
   category: text('category').notNull().default(''),
   templates: jsonb('templates').$type<any[]>().notNull(),
+  // 'bundled' (shipped, read-only), 'user' (editable), 'catalogue' (from a remote catalogue, read-only) - migration 0067
+  origin: text('origin').$type<KitOrigin>().notNull().default('user'),
+  version: text('version').notNull().default('1'),
+  slug: text('slug'),
+  forkedFrom: uuid('forked_from').references((): AnyPgColumn => whoobeOneKits.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

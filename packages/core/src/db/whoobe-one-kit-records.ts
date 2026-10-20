@@ -1,6 +1,6 @@
 import { eq, desc } from 'drizzle-orm';
 import { getDb } from './client.js';
-import { whoobeOneKits } from './whoobe-one-kit-schema.js';
+import { whoobeOneKits, type KitOrigin } from './whoobe-one-kit-schema.js';
 
 export interface WhoobeOneKitRecord {
   id: string;
@@ -8,6 +8,10 @@ export interface WhoobeOneKitRecord {
   description: string | null;
   category: string;
   templates: any[];
+  origin: KitOrigin;
+  version: string;
+  slug: string | null;
+  forkedFrom: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,6 +42,10 @@ export async function createWhoobeOneKit(input: {
   description?: string | null;
   category: string;
   templates: any[];
+  origin?: KitOrigin;
+  version?: string;
+  slug?: string | null;
+  forkedFrom?: string | null;
 }): Promise<WhoobeOneKitRecord> {
   const db = getDb();
   const [row] = await db
@@ -47,6 +55,10 @@ export async function createWhoobeOneKit(input: {
       description: input.description ?? null,
       category: input.category,
       templates: input.templates,
+      origin: input.origin ?? 'user',
+      version: input.version ?? '1',
+      slug: input.slug ?? null,
+      forkedFrom: input.forkedFrom ?? null,
     })
     .returning();
   return row;
@@ -67,6 +79,35 @@ export async function addTemplateToWhoobeOneKit(kitId: string, template: any): P
     .where(eq(whoobeOneKits.id, kitId))
     .returning();
   return row ?? null;
+}
+
+export async function getWhoobeOneKitBySlug(slug: string): Promise<WhoobeOneKitRecord | null> {
+  const db = getDb();
+  const [row] = await db.select().from(whoobeOneKits).where(eq(whoobeOneKits.slug, slug)).limit(1);
+  return row ?? null;
+}
+
+/** Replaces what a shipped (bundled/catalogue) kit holds with a newer version of it. Only the seed calls this. */
+export async function updateWhoobeOneKitContent(
+  id: string,
+  input: { name: string; description: string | null; category: string; templates: any[]; version: string }
+): Promise<void> {
+  const db = getDb();
+  await db.update(whoobeOneKits).set({ ...input, updatedAt: new Date() }).where(eq(whoobeOneKits.id, id));
+}
+
+/** A user copy of any kit: the templates are deep-copied (the kit is a self-contained bundle), the origin is always 'user'. */
+export async function duplicateWhoobeOneKit(id: string): Promise<WhoobeOneKitRecord | null> {
+  const source = await getWhoobeOneKit(id);
+  if (!source) return null;
+  return createWhoobeOneKit({
+    name: `${source.name} (copy)`,
+    description: source.description,
+    category: source.category,
+    templates: JSON.parse(JSON.stringify(source.templates)),
+    origin: 'user',
+    forkedFrom: source.id,
+  });
 }
 
 export async function deleteWhoobeOneKit(id: string): Promise<void> {

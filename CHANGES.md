@@ -1,5 +1,13 @@
 # Release v0.2.0 — 2026-10-19
 
+## Kits: origin, version, and Duplicate to edit — 2026-10-20
+- Branch: `feat/kit-origin-and-duplicate` (on top of `feat/remove-legacy-kits`). Plan: `docs/plans/kits/kit-library-plan.md`.
+- Migration `0067_kit_origin` (expand-only): `whoobe_one_kits.origin` (`bundled`/`user`/`catalogue`, default `user`), `version`, `slug` (unique when set), `forked_from`. Every existing row becomes `user`; nothing is deleted.
+- `seedWhoobeOneKits()` identifies a shipped kit by `slug` (the file's own, else its file name), creates it as `bundled`, and replaces its content only when `version` goes up; copies made by people are never touched.
+- core-api: `POST /whoobe-one/kits/:id/duplicate` (a `user` copy named "<name> (copy)", `forkedFrom` set, templates deep-copied); adding a template to, or deleting, a non-`user` kit answers 409.
+- Editor: the Kits panel shows a lock on shipped kits and a Duplicate button (opens the copy); Add to kit lists only the user's own kits.
+- Checked on a throwaway Postgres 16 (all migrations from scratch): seed creates the kit as bundled, a second seed changes nothing, Duplicate gives a user copy with `forkedFrom`, a version 2 file updates the bundled kit and leaves the copy as it was. `tsc` passes in `packages/core` and `apps/core-api`, `vue-tsc` in `whoobe-one-spike`. Not tried: the Kits panel in a browser; the 409 responses over HTTP.
+
 ## Legacy reference kits removed from the distribution — 2026-10-20
 - Branch: `feat/remove-legacy-kits`.
 - The 7 kit files in `packages/core/seed-data/kits/` (CTA, Carousel, Form, Hero, Landing Pages, Leading, Navigation; 35 templates, 4.4 MB) were made with an editor five years old; the owner decided they leave the distribution, new kits will replace them. `seedWhoobeOneKits()` stays (it seeds whatever is in that folder) and no longer warns when the folder is missing. `tsc` passes.

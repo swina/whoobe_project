@@ -83,6 +83,7 @@ import {
   createKit as apiCreateKit,
   addTemplateToKit as apiAddTemplateToKit,
   deleteKit as apiDeleteKit,
+  duplicateKit as apiDuplicateKit,
 } from '../kits-api'
 
 type EditorStore = ReturnType<typeof useEditorStore>
@@ -617,6 +618,8 @@ export interface KitSummary {
   description: string
   category: string
   templateCount: number
+  origin: 'bundled' | 'user' | 'catalogue'
+  version: string
 }
 
 export async function listKits(): Promise<KitSummary[]> {
@@ -627,6 +630,8 @@ export async function listKits(): Promise<KitSummary[]> {
     description: k.description || '',
     category: k.category,
     templateCount: k.templateCount,
+    origin: k.origin,
+    version: k.version,
   }))
 }
 
@@ -781,4 +786,9 @@ export async function addTemplateToKit(
 
 export async function deleteKit(id: string): Promise<void> {
   await apiDeleteKit(id)
+}
+
+/** A user copy of a kit (shipped kits are read-only); returns the new kit's id. */
+export async function duplicateKit(id: string): Promise<string> {
+  return (await apiDuplicateKit(id)).id
 }

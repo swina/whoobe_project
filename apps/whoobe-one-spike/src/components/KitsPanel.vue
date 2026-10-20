@@ -9,6 +9,10 @@
           <ChevronDown v-if="openKitId === kit.id" class="w-3.5 h-3.5 text-gray-400 shrink-0 ml-1" />
           <ChevronRight v-else class="w-3.5 h-3.5 text-gray-400 shrink-0 ml-1" />
         </button>
+        <span v-if="kit.origin !== 'user'" title="Shipped kit: read-only. Duplicate it to edit." class="shrink-0 text-gray-400"><Lock class="w-3 h-3" /></span>
+        <button type="button" title="Duplicate this kit to edit the copy" class="shrink-0 px-1 text-gray-400 hover:text-indigo-600" @click="duplicate(kit.id)">
+          <Copy class="w-3.5 h-3.5" />
+        </button>
         <button type="button" title="Preview kit as a gallery" class="shrink-0 px-1 text-gray-400 hover:text-indigo-600" @click="showGalleryForKitId = kit.id">
           <LayoutGrid class="w-3.5 h-3.5" />
         </button>
@@ -70,13 +74,14 @@
 // Editor() checks that before it does anything else, so a plain window.
 // alert() here is enough to tell the user why nothing happened.
 import { onMounted, ref } from 'vue'
-import { ChevronDown, ChevronRight, Eye, Import, LayoutGrid } from '@lucide/vue'
+import { ChevronDown, ChevronRight, Copy, Eye, Import, LayoutGrid, Lock } from '@lucide/vue'
 import { useEditorStore } from '../store/editor'
 import {
   listKits,
   getKitTemplates,
   getKitTemplateDoc,
   loadKitTemplateIntoEditor,
+  duplicateKit,
   type KitSummary,
   type KitTemplateSummary,
 } from '../scripts/database-actions'
@@ -102,6 +107,16 @@ async function refresh() {
     kits.value = await listKits()
   } finally {
     loading.value = false
+  }
+}
+
+async function duplicate(kitId: string) {
+  try {
+    const newId = await duplicateKit(kitId)
+    await refresh()
+    await toggleKit(newId)
+  } catch (e: any) {
+    window.alert(e?.message || 'The kit could not be duplicated.')
   }
 }
 
