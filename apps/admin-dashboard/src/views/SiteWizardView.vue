@@ -26,7 +26,7 @@
         <section v-if="step === 1" class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-5 space-y-4" data-testid="wizard-basics">
           <h2 class="text-sm font-semibold text-slate-200 light:text-slate-800">What is the site for?</h2>
           <label class="block text-xs text-slate-300 light:text-slate-700">Name of the website
-            <input v-model="name" data-testid="wizard-name" class="field w-full mt-1" :maxlength="options.limits.maxNameLength" placeholder="e.g. Seaview Hotel" />
+            <input v-model="name" data-testid="wizard-site-name" class="field w-full mt-1" :maxlength="options.limits.maxNameLength" placeholder="e.g. Seaview Hotel" />
           </label>
           <div>
             <div class="text-xs text-slate-300 light:text-slate-700 mb-1">Sector</div>
@@ -69,7 +69,7 @@
             <label class="block text-xs text-slate-300 light:text-slate-700">Accent colour <span class="text-slate-500">(optional: buttons and highlights)</span>
               <div class="flex items-center gap-2 mt-1">
                 <input type="color" :value="accentPicker" class="h-9 w-12 rounded border border-slate-700 bg-transparent" @input="accent = ($event.target as HTMLInputElement).value.toUpperCase()" />
-                <input v-model="accent" data-testid="wizard-accent" class="field font-mono w-28" maxlength="7" placeholder="from the theme" />
+                <input v-model="accent" data-testid="wizard-accent" class="field font-mono w-40" maxlength="7" placeholder="from the theme" />
                 <button v-if="accent" class="btn btn-link" @click="accent = ''">Reset</button>
               </div>
             </label>

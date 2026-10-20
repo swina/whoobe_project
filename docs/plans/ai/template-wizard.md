@@ -1,6 +1,6 @@
 # Plan: template wizard, a site from a few choices
 
-Status: **phase 1 done** (engine, 2026-10-20); phases 2 to 4 proposed. It builds on `ai-site-spec.md` (phases 1 and 2 are
+Status: **phases 1 and 2 done** (engine; routes and tab, 2026-10-20); phases 3 and 4 proposed. It builds on `ai-site-spec.md` (phases 1 and 2 are
 done on branch `feat/ai-site-spec`) and replaces that plan's phase 3.
 
 ## 1. Why
@@ -169,6 +169,12 @@ expansion and parsing, and three integration tests import wizard sites on a disp
   with the block names), the check step of the spec import reused. The specification window and the old AI Website Wizard are not touched.
 - Done when: a browser test goes from the empty form to a draft website with the chosen pages and blocks, with only a browser; the same with a
   library snippet in one position; the form block says it is not connected; the access of the routes is checked by the authorization matrix.
+
+**Phase 2 delivered (2026-10-20, branch `feat/ai-site-spec`).** The routes `GET /whoobe-one/site-wizard/options` and `POST /whoobe-one/websites/from-wizard`, and the
+tab **Generate Website Wizard** (Basics, Look, Pages, Texts, Check and create) with a schematic preview of the pages. The browser test goes through every step, uses a library
+snippet in a position, checks that the contact form is stored not connected, and meets the names that exist on a second run. Notes: the Navigation step of the plan is
+part of the Pages step (the header button and the order of the pages), because it has nothing to type; the specification window and the old AI Website Wizard are untouched;
+the step *Texts* shows the AI as not available, to be switched on by phase 3. Per the maintainer's decision the branch is merged after this phase.
 
 **Phase 3: the texts with AI.** (The step *Texts* is in the stepper from phase 2, with the AI choice switched off until this phase lands.)
 - `POST /ai/generate-wizard-texts` (slots in, texts out; validated, cleaned, length-limited), the choice of the step *Texts*, offered only when an

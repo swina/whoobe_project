@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { validateSiteSpec } from '@whoobe-cms/schema';
 import { expandSiteSpec, parseWebsiteBundle, SiteSpecError } from '../portability/index.js';
-import { BLOCK_TYPES, buildSite, COPY, listSlots, paletteFor, PRESET_NAMES, SECTORS, suggestedStructure, WizardError, wizardToSiteSpec, type WizardAnswersInput } from './index.js';
+import { BLOCK_INFO, BLOCK_TYPES, buildSite, COPY, listSlots, paletteFor, PRESET_NAMES, PRESET_LABELS, SECTORS, SECTOR_LABELS, snippetBlockType, suggestedStructure, WIZARD_LIMITS, wizardOptions, WizardError, wizardToSiteSpec, type WizardAnswersInput } from './index.js';
 
 const nodes = (n: any): any[] => [n, ...(n.blocks ?? []).flatMap(nodes)];
 const THEMES: WizardAnswersInput['theme'][] = [...PRESET_NAMES.map((preset) => ({ preset })), { background: '#323932' }, { background: '#F5E6C8' }, { background: '#808080' }];
@@ -260,5 +260,37 @@ describe('the answers', () => {
     expect(buildSite(base({ theme: { preset: 'dark' }, accent: '#101010' })).notes).toHaveLength(1);
     expect(buildSite(base({ theme: { preset: 'dark' }, accent: '#FF6B6B' })).notes).toEqual([]);
     expect(buildSite(base({ theme: { background: '#808080' }, accent: '#808080' })).notes).toHaveLength(1);
+  });
+});
+
+describe('the options of the wizard', () => {
+  it('list every sector with the structure it proposes, every block, every theme and font, and the limits the answers schema enforces', () => {
+    const o = wizardOptions();
+    expect(o.sectors.map((s) => s.id)).toEqual([...SECTORS]);
+    expect(o.blocks.map((b) => b.type)).toEqual([...BLOCK_TYPES]);
+    expect(o.themes.map((x) => x.id)).toEqual([...PRESET_NAMES]);
+    expect(o.fonts.map((f) => f.id)).toEqual(['sans', 'serif']);
+    for (const s of o.sectors) {
+      expect(s.label).toBe(SECTOR_LABELS[s.id as keyof typeof SECTOR_LABELS]);
+      expect(s.suggested.length).toBeLessThanOrEqual(WIZARD_LIMITS.maxPages);
+      // the structure a sector proposes is accepted by the wizard as it is
+      expect(() => wizardToSiteSpec({ name: 'X', sector: s.id, theme: { preset: 'dark' }, pages: s.suggested })).not.toThrow();
+    }
+    for (const b of o.blocks) expect(b.description.length).toBeGreaterThan(10);
+    for (const t of o.themes) expect(t.label).toBe(PRESET_LABELS[t.id]);
+    expect(o.blocks.find((b) => b.type === 'form')!.description).toContain('not connected');
+    expect(Object.keys(BLOCK_INFO)).toEqual([...BLOCK_TYPES]);
+    expect(o.texts).toEqual({ placeholderLanguages: ['en'], ai: { available: false } });
+    // the limits shown are the limits enforced
+    expect(() => wizardToSiteSpec(base({ pages: Array.from({ length: WIZARD_LIMITS.maxPages + 1 }, (_, i) => ({ title: `P${i}`, blocks: [] })) }))).toThrowError(WizardError);
+    expect(() => wizardToSiteSpec(base({ pages: [{ title: 'Home', blocks: Array.from({ length: WIZARD_LIMITS.maxBlocksPerPage + 1 }, () => ({ type: 'hero' as const })) }] }))).toThrowError(WizardError);
+    expect(() => wizardToSiteSpec(base({ name: 'x'.repeat(WIZARD_LIMITS.maxNameLength + 1) }))).toThrowError(WizardError);
+  });
+
+  it('says which block a snippet of the library can stand for, by its category', () => {
+    for (const [category, block] of [['Hero', 'hero'], ['hero', 'hero'], ['call to action', 'cta'], ['Call-To-Action', 'cta'], ['CTA', 'cta'], ['Box grid 3', 'box-grid-3'], ['box_grid_6', 'box-grid-6'], ['Contact form', 'form'], ['banner', 'banner']] as const) {
+      expect(snippetBlockType(category), category).toBe(block);
+    }
+    for (const none of ['navigation', 'footer', '', null, undefined, 'heroes']) expect(snippetBlockType(none as any), String(none)).toBeNull();
   });
 });
