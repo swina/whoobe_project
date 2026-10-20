@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Plan: a site specification any LLM can write — 2026-10-20
+- Branch: `docs/ai-site-spec-plan`. Documentation only, no code. New plan `docs/plans/ai/ai-site-spec.md` (status: proposed): a provider-independent description of a whole site (JSON Schema derived from Zod, instructions for models with real examples, an offline validator and importer) that expands into the existing website bundle (`portability/bundle.ts`) instead of adding a second import path. Four phases, each with its own tests and "done" criterion; data and bindings are left to a later plan. It records what is not claimed (quality of any model, "works with any LLM") until phase 1 is released. Four open questions for the maintainer at the end.
+
 ## Published sites: the covers of the blog — 2026-10-20
 - Branch: `fix/blog-covers-static-assets`. On www.whoobe.dev the blog cards had no cover. Two causes, and a third that the first fix uncovered.
 - **The renderer ignored asset fields.** A cover is an asset field: its value is `{ assetId }`, the id of a file of the library. The editor resolves it, the renderer of the published sites only accepted a string, so the image was dropped (no `<img>` at all). `resolveNodeImage` now resolves `{ assetId }` through `resolveAssetUuid`. New test in `packages/sdk/renderer` (fails without the fix).
