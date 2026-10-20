@@ -71,6 +71,7 @@ import {
   createWhoobeOneKit,
   addTemplateToWhoobeOneKit,
   duplicateWhoobeOneKit,
+  updateWhoobeOneKitMeta,
   deleteWhoobeOneKit,
   listWhoobePages,
   getWhoobePage,
@@ -2159,6 +2160,37 @@ app.post('/whoobe-one/kits/:id/templates', requireAnyPermission(PERMISSIONS.SNIP
   } catch (error: any) {
     logger.error({ err: error }, 'Add template to whoobe-one kit error');
     res.status(500).json({ error: error.message || 'Failed to add template to kit' });
+  }
+});
+
+// Name, description and category of a user's own kit; a shipped kit is read-only (duplicate it first).
+app.patch('/whoobe-one/kits/:id', requireAnyPermission(PERMISSIONS.SNIPPETS_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, description, category } = req.body ?? {};
+    const input: { name?: string; description?: string | null; category?: string } = {};
+    if (name !== undefined) {
+      if (typeof name !== 'string' || !name.trim()) {
+        res.status(400).json({ error: 'name must be a non-empty string' });
+        return;
+      }
+      input.name = name.trim();
+    }
+    if (description !== undefined) input.description = typeof description === 'string' && description.trim() ? description : null;
+    if (category !== undefined) input.category = typeof category === 'string' ? category.trim() : '';
+    const current = await getWhoobeOneKit(req.params.id);
+    if (!current) {
+      res.status(404).json({ error: 'Kit not found' });
+      return;
+    }
+    if (current.origin !== 'user') {
+      res.status(409).json({ error: 'This kit is read-only: duplicate it, then edit the copy' });
+      return;
+    }
+    const kit = await updateWhoobeOneKitMeta(req.params.id, input);
+    res.json({ kit });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Update whoobe-one kit error');
+    res.status(500).json({ error: error.message || 'Failed to update kit' });
   }
 });
 

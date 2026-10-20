@@ -97,6 +97,16 @@ export async function updateWhoobeOneKitContent(
 }
 
 /** A user copy of any kit: the templates are deep-copied (the kit is a self-contained bundle), the origin is always 'user'. */
+/** Rename / describe / re-categorise a kit. The caller refuses a shipped kit (origin other than 'user') first. */
+export async function updateWhoobeOneKitMeta(
+  id: string,
+  input: { name?: string; description?: string | null; category?: string }
+): Promise<WhoobeOneKitRecord | null> {
+  const db = getDb();
+  const [row] = await db.update(whoobeOneKits).set({ ...input, updatedAt: new Date() }).where(eq(whoobeOneKits.id, id)).returning();
+  return row ?? null;
+}
+
 export async function duplicateWhoobeOneKit(id: string): Promise<WhoobeOneKitRecord | null> {
   const source = await getWhoobeOneKit(id);
   if (!source) return null;

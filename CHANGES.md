@@ -1,5 +1,13 @@
 # Release v0.2.0 — 2026-10-19
 
+## Kits section in the dashboard: manage, export as zip, import — 2026-10-20
+- Branch: `feat/kit-library-page`.
+- New sidebar section **Kits** (`views/KitsView.vue`, `utils/kits-api.ts`): list with search, category and origin filters; shipped (`bundled`/`catalogue`) kits shown with a lock and their version; **Edit** (name, category, description) and **Delete** only for the user's own kits; **Duplicate** for any kit; **Export** (one kit or the selection or all) as a zip with one `<kit>.json` per kit (name, slug, version, description, category, templates: the same shape as a kit file of the distribution); **Import** of a zip or a json (one kit or a list) as the user's own kits. Deleting asks first and offers "Download zip, then delete" (the zip is made before anything is deleted).
+- core-api: `PATCH /whoobe-one/kits/:id` (name, description, category; 409 on a shipped kit; 400 on an empty name).
+- Why: the kits of five years ago stay in every database that had them (now `user` kits), and kits would pile up with no way to see or remove them.
+- `vue-tsc` passes, `tsc` in `packages/core` and `apps/core-api`. Not tried in the browser; the PATCH route not called over HTTP.
+- Development database: 7 kits with origin `bundled` appeared next to the 7 old ones when the kit branches were merged while `tsx watch` was running (the seed ran with the new code while the old files were still on disk). They are not removed yet; shipped kits cannot be deleted from the page.
+
 ## Pull of the backups moved after the nightly backup — 2026-10-20
 - Branch: `master`. No file of the repository changed; this records the development server.
 - Found: the first scheduled pull (`30 4`, local time = 01:30 UTC) ran before the backup of the public host (03:03 UTC), so the copy was always one night late. The cron of `develop` is now `0 7` (04:00 UTC); the previous crontab is saved in `~/crontab.bak-20261020` on `develop`.
