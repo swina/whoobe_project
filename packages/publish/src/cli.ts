@@ -1438,6 +1438,66 @@ export async function POST(request: Request) {
 `
 }
 
+const COPY_DAM_ASSETS_SCRIPT = String.raw`// Copies the library files that the static site points at into the output, so that the site serves its own images.
+// Runs after "nuxi generate" (pnpm generate): it reads the pages for addresses under <asset base>/dam-asset/ and downloads each file from
+// the place that serves the library: WHOOBE_ASSET_SOURCE_URL when set (in development the asset service, e.g. http://127.0.0.1:3002),
+// else the API address of .env (behind the gateway or the dashboard's reverse proxy /dam-asset/ is served there). It must be reachable
+// from the build machine. Not needed when the images are mirrored to a CDN (the pages then name the CDN), or when the asset base is
+// the CMS itself (the site then reads the CMS at run time).
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs'
+import { join, dirname } from 'node:path'
+
+const env = {}
+if (existsSync('.env')) {
+  for (const line of readFileSync('.env', 'utf8').split('\n')) {
+    const m = line.match(/^([A-Z0-9_]+)=(.*)$/)
+    if (m) env[m[1]] = m[2].trim()
+  }
+}
+const api = (process.env.NUXT_PUBLIC_CMS_API_URL || env.NUXT_PUBLIC_CMS_API_URL || '').replace(/\/+$/, '')
+const base = (process.env.NUXT_PUBLIC_CMS_ASSET_BASE_URL || env.NUXT_PUBLIC_CMS_ASSET_BASE_URL || api).replace(/\/+$/, '')
+const source = (process.env.WHOOBE_ASSET_SOURCE_URL || api).replace(/\/+$/, '')
+const out = '.output/public'
+if (!api || !existsSync(out)) { console.log('copy-dam-assets: nothing to do (no API address or no output)'); process.exit(0) }
+if (base === api && source === api) { console.log('copy-dam-assets: the asset base is the CMS itself, nothing to copy'); process.exit(0) }
+
+const files = []
+const walk = (dir) => {
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name)
+    if (statSync(full).isDirectory()) walk(full)
+    else if (/\.(html|json|js|css)$/.test(name)) files.push(full)
+  }
+}
+walk(out)
+
+const escape = (v) => v.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')
+const re = new RegExp(escape(base) + '/dam-asset/([^"\'\\s)\\\\<>?#]+)', 'g')
+const keys = new Set()
+for (const f of files) {
+  const text = readFileSync(f, 'utf8')
+  for (const m of text.matchAll(re)) keys.add(m[1])
+}
+
+let copied = 0
+let failed = 0
+for (const key of keys) {
+  try {
+    const res = await fetch(source + '/dam-asset/' + key)
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const target = join(out, 'dam-asset', decodeURIComponent(key))
+    mkdirSync(dirname(target), { recursive: true })
+    writeFileSync(target, Buffer.from(await res.arrayBuffer()))
+    copied++
+  } catch (e) {
+    failed++
+    console.warn('copy-dam-assets: ' + key + ' not copied (' + e.message + ')')
+  }
+}
+console.log('copy-dam-assets: ' + copied + ' file(s) copied to ' + out + '/dam-asset' + (failed ? ', ' + failed + ' failed' : ''))
+if (failed) process.exitCode = 1
+`
+
 /** Same-origin proxy for a list that depends on a selection the visitor makes (a binding with `{selection.x}` in its route parameters, resolved
  *  in the browser, docs/plans/cms/linked-bindings.md). It adds the site key like the submit route and forwards only the binding id and the
  *  parameters; the gateway still checks that the binding exists and which parameter names it allows. */
@@ -1657,6 +1717,8 @@ async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
   }
 
   await writeFile(join(opts.outDir, 'package.json'), nuxtPackageJson(opts))
+  await mkdir(join(opts.outDir, 'scripts'), { recursive: true })
+  await writeFile(join(opts.outDir, 'scripts/copy-dam-assets.mjs'), COPY_DAM_ASSETS_SCRIPT)
   await writeFile(
     join(opts.outDir, 'pnpm-workspace.yaml'),
     scaffoldPnpmWorkspaceYaml(vendoredDependenciesAndOverrides(opts.vendoredPackages).overrides)
@@ -1744,7 +1806,8 @@ function nuxtPackageJson(opts: ScaffoldOptions): string {
     scripts: {
       dev: 'nuxi dev',
       build: 'nuxi build',
-      generate: 'nuxi generate',
+      // the static export, then the library files that its pages name are copied next to it (scripts/copy-dam-assets.mjs)
+      generate: 'nuxi generate && node scripts/copy-dam-assets.mjs',
       preview: 'nuxi preview',
       // Production server (node-server preset, the default for `nuxi build`)
       // - `nuxi preview` is dev-only, never for production.
@@ -1980,7 +2043,7 @@ function nuxtHomePage(opts: ScaffoldOptions): string {
 
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
-import { resolveAssetUuid, targetPageResolver } from '~/composables/useWhoobeApi'
+import { assetUuidResolver, targetPageResolver } from '~/composables/useWhoobeApi'
 ${pwaEnabled ? "import AppShell from '~/components/AppShell.vue'" : ''}
 
 const config = useRuntimeConfig()
@@ -1992,7 +2055,7 @@ const { data } = await useAsyncData('home-page', () =>
     gatewayUrl: config.public.gatewayUrl,
     rootPath: config.public.rootPath,
     siteApiKey: config.cmsSiteApiKey,
-    resolveAssetUuid,
+    resolveAssetUuid: assetUuidResolver(config),
     resolveTargetPage: targetPageResolver(config),
   })
 )
@@ -2038,7 +2101,7 @@ function nuxtLocalePage(): string {
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
 import { ApiClient } from '@whoobe-cms/renderer'
-import { resolveAssetUuid, targetPageResolver } from '~/composables/useWhoobeApi'
+import { assetUuidResolver, targetPageResolver } from '~/composables/useWhoobeApi'
 
 const config = useRuntimeConfig()
 const route = useRoute()
@@ -2073,7 +2136,7 @@ const { data } = await useAsyncData(\`locale-\${locale}\`, async () => {
       gatewayUrl: config.public.gatewayUrl,
       rootPath: config.public.rootPath,
       siteApiKey: config.cmsSiteApiKey,
-      resolveAssetUuid,
+      resolveAssetUuid: assetUuidResolver(config),
       resolveTargetPage: targetPageResolver(config),
     })
     return { kind: 'page' as const, page }
@@ -2112,7 +2175,7 @@ function nuxtCatchAllPage(opts: ScaffoldOptions): string {
 
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
-import { resolveAssetUuid, targetPageResolver } from '~/composables/useWhoobeApi'
+import { assetUuidResolver, targetPageResolver } from '~/composables/useWhoobeApi'
 ${pwaEnabled ? "import AppShell from '~/components/AppShell.vue'" : ''}
 
 const config = useRuntimeConfig()
@@ -2129,7 +2192,7 @@ const { data } = await useAsyncData(\`page-\${path}\`, () =>
     gatewayUrl: config.public.gatewayUrl,
     rootPath: config.public.rootPath,
     siteApiKey: config.cmsSiteApiKey,
-    resolveAssetUuid,
+    resolveAssetUuid: assetUuidResolver(config),
     resolveTargetPage: targetPageResolver(config),
   })
 )
@@ -2173,7 +2236,7 @@ ${appShell}
 
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
-import { resolveAssetUuid, targetPageResolver } from '~/composables/useWhoobeApi'
+import { assetUuidResolver, targetPageResolver } from '~/composables/useWhoobeApi'
 import AppShell from '~/components/AppShell.vue'
 
 const config = useRuntimeConfig()
@@ -2191,7 +2254,7 @@ const { data } = await useAsyncData(\`page-\${locale}-\${path}\`, () =>
     gatewayUrl: config.public.gatewayUrl,
     rootPath: config.public.rootPath,
     siteApiKey: config.cmsSiteApiKey,
-    resolveAssetUuid,
+    resolveAssetUuid: assetUuidResolver(config),
     resolveTargetPage: targetPageResolver(config),
   })
 )
@@ -2340,14 +2403,18 @@ export function useWhoobeApi() {
   }
 }
 
-export async function resolveAssetUuid(uuid: string): Promise<string | null> {
-  const config = useRuntimeConfig()
-  try {
-    const res = await fetch(\`\${config.public.cmsApiUrl}/public/assets/\${uuid}\`)
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.url ?? null
-  } catch { return null }
+// The configuration is passed in (not read with useRuntimeConfig() inside) because the renderer calls these after awaits, where the Nuxt context is gone.
+export function assetUuidResolver(config: { public: { cmsApiUrl: string; cmsAssetBaseUrl?: string } }) {
+  return async (uuid: string): Promise<string | null> => {
+    try {
+      const res = await fetch(\`\${config.public.cmsApiUrl}/public/assets/\${uuid}\`)
+      if (!res.ok) return null
+      const data = await res.json()
+      // the API names the file at its own address: a site with an asset base of its own (a static site that copies its files) names it there
+      const siteBase = \`\${config.public.cmsAssetBaseUrl || config.public.cmsApiUrl}/dam-asset\`
+      return typeof data.url === 'string' ? data.url.replace(/^.*?\\/dam-asset(?=\\/)/, siteBase) : null
+    } catch { return null }
+  }
 }
 
 // a link to a detail page (a blog card to its article) holds the id of the page that has the address pattern: the site's pages are listed once.

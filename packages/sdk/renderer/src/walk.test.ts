@@ -203,6 +203,26 @@ describe('walkTree', () => {
     expect(out.children[2].content).toBe('&lt;b&gt;t&lt;/b&gt;')
   })
 
+  it('resolves an image bound to an asset field ({ assetId }) through resolveAssetUuid', async () => {
+    const api = makeApi({
+      queryObjects: async () => [{ id: 'r1', attributes: { slug: 'a', cover: { assetId: '11111111-2222-3333-4444-555555555555' }, empty: null } }],
+    })
+    const bind = (field: string) => ({ className: 'Blog', target: 'src', resolveMode: 'parent', field, fieldType: 'asset' })
+    const tree = {
+      id: 'root', type: 'container', tag: 'document',
+      dataBinding: { className: 'Blog', target: 'object', resolveMode: 'first', filters: [{ field: 'slug', operator: 'eq', value: '{slug}' }] },
+      blocks: [
+        { id: 'c', type: 'element', tag: 'element', element: 'img', image: { url: 'data:placeholder' }, dataBinding: bind('cover') },
+        { id: 'n', type: 'element', tag: 'element', element: 'img', image: { url: 'data:placeholder' }, dataBinding: bind('empty') },
+      ],
+    }
+    const resolveAssetUuid = vi.fn(async (id: string) => `https://cdn.example.com/${id}.png`)
+    const out = await walkTree(tree, { urlParams: { slug: 'a' } }, { api, resolveAssetUuid })
+    expect(out.children[0].image?.url).toBe('https://cdn.example.com/11111111-2222-3333-4444-555555555555.png')
+    expect(out.children[1].image).toBeNull()
+    expect(resolveAssetUuid).toHaveBeenCalledTimes(1)
+  })
+
   it('leaves a {param} filter literal when urlParams has no matching key', async () => {
     const api = makeApi({
       queryObjects: async (params) => {

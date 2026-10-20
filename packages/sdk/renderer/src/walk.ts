@@ -153,6 +153,9 @@ async function resolveNodeImage(
   if (node.dataBinding?.field && !(node.type === 'container' && node.dataBinding.target === 'list')) {
     const value = await resolveFieldValue(node.dataBinding, scope)
     if (typeof value === 'string') url = resolveImageUrl(value, options.assetBaseUrl, options.keyPrefix, options.cdnMirrors)
+    // an asset field (a cover, a picture) holds `{ assetId }`, the id of an asset of the library: the editor resolves it, so does the site
+    const assetId = value && typeof value === 'object' && typeof (value as { assetId?: unknown }).assetId === 'string' ? (value as { assetId: string }).assetId : null
+    if (!url && assetId && options.resolveAssetUuid) url = await options.resolveAssetUuid(assetId)
   } else if (node.image?.url) {
     url = resolveImageUrl(node.image.url, options.assetBaseUrl, options.keyPrefix, options.cdnMirrors)
     // UUID references need the asset resolver callback
