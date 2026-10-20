@@ -36,7 +36,7 @@ does not need it, or a clear placeholder such as "Opening hours: to be confirmed
 - `slug` starts with `/`, lower case, digits and hyphens only (`/`, `/about`, `/menu/lunch`). Unique per language.
 - `website.otherPaths` lists pages that exist outside this file (for example `/blog`) that links may point to. Use it only when told so.
 
-## The six kinds of element
+## The seven kinds of element
 
 Every element has a `kind`. Nothing else is allowed: any other key is an error.
 
@@ -47,6 +47,7 @@ Every element has a `kind`. Nothing else is allowed: any other key is an error.
 | `text` | `html`, `css` | a paragraph. Inline HTML only: `strong`, `em`, `a`, `code`, `br`, `span`. |
 | `link` | `text`, `href`, `css` | a link or a button (give it classes to look like one). **`text` is required** and must not be empty. |
 | `image` | `alt`, `css` | a placeholder picture; `alt` says what it should show. A person picks the real picture later. |
+| `form` | `fields` (1 to 12: `name`, `label`, `type` = `text`, `email`, `phone` or `textarea`, `required`), `submitLabel`, `css`, `fieldCss`, `labelCss`, `buttonCss` | a contact form as a **template of fields**. It is created disconnected: it sends nowhere until a developer connects it, and there is no key for an address, an action or a recipient. Field `name` is lower case, digits and underscores, unique in the form. |
 | `snippet` | `use` | a copy of a snippet, only directly in `pages[].sections`. |
 
 - **Links.** `href` is a page of this file (`"/pricing"`, optionally with `#anchor`), an anchor (`"#top"`), or an outside address
@@ -56,7 +57,7 @@ Every element has a `kind`. Nothing else is allowed: any other key is an error.
   the site prefer a `link` element.
 - **`css`** is Tailwind utility classes only (`"px-6 py-16 bg-slate-900 text-white md:grid-cols-3"`, `"bg-[#7C3AED]"`). No quotes,
   `<`, backslashes, braces or semicolons. No inline `style`. A page is built mobile first: add `md:` and `lg:` classes for wider screens.
-- Do not add `id`, `type`, `tag`, scripts, event handlers, forms, data bindings, animations or any key not listed. They are not part of version 1.
+- Do not add `id`, `type`, `tag`, scripts, event handlers, data bindings, animations or any key not listed. They are not part of version 1.
 
 ## Limits
 

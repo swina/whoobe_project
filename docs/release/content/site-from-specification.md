@@ -39,8 +39,11 @@ Where: **Settings > Websites > Import from a spec**. You need the permission *we
 | A theme (colours, fonts) of its own, or an existing one by name | Menus |
 | Snippets (header, footer, call to action...) of its own, or existing ones by name | Data classes and lists bound to data (a blog) |
 | Header, footer, side area and 404 around every page | A different header or footer for each language |
-| Pages, each a list of sections made of containers, headings, texts, links and images | Forms, animations, scripts, events |
+| Pages, each a list of sections made of containers, headings, texts, links, images and forms (a template of fields, see below) | Animations, scripts, events |
 | Links between the pages of the site, to anchors and to outside addresses | Images from your asset library (an image is a placeholder you replace in the editor) |
+
+A **form** is created as a template of fields only: it is **not connected** to anything (no data class, no endpoint, no recipient), and the file
+cannot say where it should send. A developer connects it in the editor later.
 
 A page in two languages is written twice: two entries with the same address and a different language, each with real text in that language.
 The header and footer are shared by the two languages, so the instructions ask for words that belong to neither.

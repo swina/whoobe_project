@@ -21,6 +21,7 @@ export const SITE_SPEC_LIMITS = {
   maxDepth: 8,
   maxChildren: 60,
   maxTextLength: 20000,
+  maxFormFields: 12,
 } as const
 
 // ---------------------------------------------------------------------------------------------------------------------------
@@ -38,9 +39,15 @@ export interface SpecHeading { kind: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6; te
 export interface SpecText { kind: 'text'; html: string; css?: string }
 export interface SpecLink { kind: 'link'; text: string; href: string; css?: string }
 export interface SpecImage { kind: 'image'; alt: string; css?: string }
+export interface SpecFormField { name: string; label: string; type: 'text' | 'email' | 'phone' | 'textarea'; required?: boolean }
+/**
+ * A form as a template of fields. It is created **disconnected**: no target class, no endpoint, no address to send to, no notification. A developer
+ * connects it later in the editor. There is deliberately no key here for an action, a target or a recipient, so a specification cannot make a form post anywhere.
+ */
+export interface SpecForm { kind: 'form'; fields: SpecFormField[]; submitLabel: string; css?: string; fieldCss?: string; labelCss?: string; buttonCss?: string }
 /** A copy of a snippet of the file (`snippets[].key`) placed as a section of a page. Only valid directly in `pages[].sections`. */
 export interface SpecSnippetRef { kind: 'snippet'; use: string }
-export type SpecNode = SpecContainer | SpecHeading | SpecText | SpecLink | SpecImage | SpecSnippetRef
+export type SpecNode = SpecContainer | SpecHeading | SpecText | SpecLink | SpecImage | SpecForm | SpecSnippetRef
 
 // ---------------------------------------------------------------------------------------------------------------------------
 // primitives
@@ -73,6 +80,17 @@ export const specNodeSchema: z.ZodType<SpecNode> = z.discriminatedUnion('kind', 
   z.strictObject({ kind: z.literal('text'), html: z.string().min(1, 'a text needs its content').max(SITE_SPEC_LIMITS.maxTextLength).describe('a paragraph; inline formatting only (strong, em, a, code, br), cleaned on import'), css: classes.optional() }),
   z.strictObject({ kind: z.literal('link'), text: plain(200).min(1, 'a link needs visible text').describe('the visible text; a link without text is refused'), href, css: classes.optional() }),
   z.strictObject({ kind: z.literal('image'), alt: plain(300).min(1, 'an image needs an alt text that says what it shows').describe('what the image shows; the picture itself is a placeholder until a person chooses one'), css: classes.optional() }),
+  z.strictObject({
+    kind: z.literal('form'),
+    fields: z.array(z.strictObject({
+      name: z.string().regex(/^[a-z][a-z0-9_]{0,39}$/, 'a field name is lower-case letters, digits and underscores, starting with a letter').describe('the name the value is sent under once a developer connects the form'),
+      label: plain(80).min(1, 'a form field needs a label'),
+      type: z.enum(['text', 'email', 'phone', 'textarea']),
+      required: z.boolean().optional(),
+    })).min(1, 'a form needs at least one field').max(SITE_SPEC_LIMITS.maxFormFields),
+    submitLabel: plain(60).min(1, 'the form needs the text of its button'),
+    css: classes.optional(), fieldCss: classes.optional(), labelCss: classes.optional(), buttonCss: classes.optional(),
+  }).describe('a form as a template of fields; it is created disconnected (it sends nowhere until a developer connects it)'),
   z.strictObject({ kind: z.literal('snippet'), use: key.describe('the key of an entry of "snippets"') }),
 ]) as unknown as z.ZodType<SpecNode>
 
@@ -213,6 +231,14 @@ function checkNode(node: SpecNode, path: Path, spec: SiteSpec, fail: (path: Path
     }
     return
   }
+  if (node.kind === 'form') {
+    const names = new Map<string, number>()
+    node.fields.forEach((f, i) => {
+      if (names.has(f.name)) fail([...path, 'fields', i, 'name'], `the field name "${f.name}" is used twice in this form (also by fields[${names.get(f.name)}])`)
+      else if (f.name) names.set(f.name, i)
+    })
+    return
+  }
   if (node.kind !== 'link') return
   if (!node.text.trim()) fail([...path, 'text'], 'a link needs visible text')
   if (node.href.startsWith('/') && !node.href.startsWith('//')) {
@@ -290,6 +316,7 @@ function prune(input: unknown): SiteSpec | null {
     if (o.kind === 'snippet') return { kind: 'snippet', use: str(o.use) }
     if (o.kind === 'heading') return { kind: 'heading', level: 2, text: str(o.text) }
     if (o.kind === 'image') return { kind: 'image', alt: str(o.alt) }
+    if (o.kind === 'form') return { kind: 'form', submitLabel: str(o.submitLabel), fields: (Array.isArray(o.fields) ? o.fields : []).map((f: unknown) => ({ name: str(obj(f)?.name), label: '', type: 'text' as const })) }
     return { kind: 'text', html: '' }
   }
   const root = obj(input)
@@ -325,7 +352,7 @@ function friendly(issue: { code: string; message: string; path: PropertyKey[] } 
   if (issue.code === 'invalid_type') {
     return /received undefined/.test(issue.message) ? `"${last}" is missing` : `"${last}" has the wrong type: expected ${issue.expected}`
   }
-  if (issue.code === 'invalid_union') return 'not a valid element: "kind" must be one of container, heading, text, link, image, snippet'
+  if (issue.code === 'invalid_union') return 'not a valid element: "kind" must be one of container, heading, text, link, image, form, snippet'
   if (issue.code === 'too_big') return issue.origin === 'array' ? `too many items (at most ${issue.maximum})` : `too long (at most ${issue.maximum} characters)`
   if (issue.code === 'too_small') return issue.origin === 'array' ? `needs at least ${issue.minimum} ${Number(issue.minimum) === 1 ? 'item' : 'items'}` : issue.minimum === 1 ? `"${last}" must not be empty` : `too short (at least ${issue.minimum} characters)`
   return issue.message

@@ -157,6 +157,29 @@ describe('site spec: each rule has a failing example', () => {
     expect(messages(edit((x) => { x.pages[0].sections = sections })).join('\n')).toContain('too large')
   })
 
+  it('accepts a form as a template of fields, and no form can name where to send', () => {
+    const form = (over: Record<string, unknown> = {}) => ({ kind: 'form', fields: [{ name: 'name', label: 'Your name', type: 'text', required: true }, { name: 'email', label: 'Email', type: 'email' }, { name: 'message', label: 'Message', type: 'textarea' }], submitLabel: 'Send', ...over })
+    const put = (f: unknown) => edit((x) => { x.pages[0].sections.push(f) })
+    expect(validateSiteSpec(put(form())).ok).toBe(true)
+    for (const key of ['action', 'target', 'targetClassId', 'endpoint', 'recipient', 'recipientEmail', 'notify', 'formConfig', 'method', 'url', 'redirect']) {
+      expect(messages(put(form({ [key]: 'x' }))).join('\n'), key).toContain(`unknown key "${key}"`)
+    }
+    const field = (over: Record<string, unknown>) => form({ fields: [{ name: 'a', label: 'A', type: 'text', ...over }] })
+    for (const bad of [{ action: '/x' }, { target: 'x' }, { url: 'https://x' }]) expect(messages(put(field(bad))).join('\n')).toContain('unknown key')
+  })
+
+  it('rejects a form with no field, too many, a bad or repeated field name, an empty label or button, a type that does not exist', () => {
+    const put = (f: Record<string, unknown>) => edit((x) => { x.pages[0].sections.push({ kind: 'form', fields: [{ name: 'a', label: 'A', type: 'text' }], submitLabel: 'Send', ...f }) })
+    expect(messages(put({ fields: [] })).join('\n')).toContain('a form needs at least one field')
+    expect(messages(put({ fields: Array.from({ length: SITE_SPEC_LIMITS.maxFormFields + 1 }, (_, i) => ({ name: `f${i}`, label: 'F', type: 'text' })) })).join('\n')).toContain('too many items')
+    expect(messages(put({ fields: [{ name: 'Bad Name', label: 'A', type: 'text' }] })).join('\n')).toContain('a field name is lower-case')
+    expect(messages(put({ fields: [{ name: 'a', label: 'A', type: 'text' }, { name: 'a', label: 'B', type: 'email' }] })).join('\n')).toContain('used twice in this form')
+    expect(messages(put({ fields: [{ name: 'a', label: '', type: 'text' }] })).join('\n')).toContain('a form field needs a label')
+    expect(messages(put({ submitLabel: '' })).join('\n')).toContain('the text of its button')
+    expect(messages(put({ fields: [{ name: 'a', label: 'A', type: 'file' }] })).length).toBeGreaterThan(0)
+    expect(messages(put({ css: 'p-4" onclick="x' })).length).toBeGreaterThan(0)
+  })
+
   it('rejects an element of a kind that does not exist', () => {
     expect(validateSiteSpec(edit((x) => { x.pages[0].sections.push({ kind: 'script', src: 'x' }) })).ok).toBe(false)
   })

@@ -33,5 +33,5 @@ pleasant. A person reads the draft before it goes live. How well a given model w
 model; we do not claim a number.
 
 The specification covers pages, header and footer, theme and snippets. **Not in version 1:** menus, data classes and
-bound lists (a blog), forms, animations, and images from your library (an image is a placeholder you replace in the
-editor).
+bound lists (a blog), animations, and images from your library (an image is a placeholder you replace in the
+editor). A form is only a template of fields: it is created disconnected, and a developer connects it later.

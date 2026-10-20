@@ -3,7 +3,7 @@
 // the import describe the same result. What the person or the model never writes - ids, the document root, the defaults of an editor
 // element, the template that places the header and the footer - is added here.
 import { createHash } from 'node:crypto';
-import { sanitizeRichText, validateSiteSpec, type SiteSpec, type SiteSpecIssue, type SpecNode } from '@whoobe-cms/schema';
+import { sanitizeRichText, validateSiteSpec, type SiteSpec, type SiteSpecIssue, type SpecFormField, type SpecNode } from '@whoobe-cms/schema';
 import type { BundlePage, BundleSnippet, BundleTemplate, BundleTheme, WebsiteBundle } from './bundle.js';
 
 /** What already exists here, for the specs that point to a theme or a snippet by name (the caller reads it from the database). */
@@ -83,6 +83,38 @@ function expandNode(node: SpecNode, ctx: Ctx): Record<string, unknown> {
     }
     case 'image':
       return base(id, { element: 'img', label: 'Image', icon: 'insert_photo', css: { css: node.css ?? 'w-full h-auto', container: '' }, image: { url: placeholder(id), alt: node.alt } });
+    case 'form': {
+      // The Form element of the editor with its own inputs, exactly as the editor builds them (ElementsClass.js Form/inputElement/InputSubmit), created
+      // disconnected: formConfig.enabled is false and there is no target, no redirect, no notification, no action. A developer connects it later.
+      const control = (field: SpecFormField, formId: string, inputId: string): Record<string, unknown> => {
+        const css = { css: node.fieldCss ?? '', container: '' };
+        if (field.type === 'textarea') {
+          return base(ctx.next(), { element: 'textarea', tag: 'input', type: 'textarea', placeholder: '', css, data: { attributes: { name: field.name, id: inputId, placeholder: '', ...(field.required ? { required: true } : {}) } } });
+        }
+        const type = field.type === 'phone' ? 'tel' : field.type;
+        return base(ctx.next(), { element: 'input', tag: 'input', type, placeholder: '', value: '', content: '', icon: 'input', css, data: { attributes: { name: field.name, id: inputId, placeholder: '', required: field.required === true, type } } });
+      };
+      const fields = node.fields.map((field) => {
+        const inputId = `${id}-${field.name}`;
+        return base(ctx.next(), {
+          type: 'container', tag: 'flex', element: 'div', css: { css: '', container: 'flex flex-col gap-1' },
+          blocks: [
+            base(ctx.next(), { element: 'label', icon: 'label', content: field.label, editable: true, css: { css: node.labelCss ?? '', container: '' }, data: { attributes: { for: inputId } } }),
+            control(field, id, inputId),
+          ],
+        });
+      });
+      const submit = base(ctx.next(), {
+        element: 'button', tag: 'submit', type: 'button', value: node.submitLabel, content: node.submitLabel, buttonIcon: '', buttonIconPosition: 'before', buttonIconWidth: 16, buttonIconHeight: 16,
+        editable: true, css: { css: node.buttonCss ?? '', container: '' }, data: { attributes: { type: 'submit' } },
+      });
+      return base(id, {
+        type: 'container', tag: 'form', element: 'form', semantic: 'form', css: { css: '', container: ['flex flex-col gap-4', node.css ?? ''].filter(Boolean).join(' ') },
+        data: { attributes: { name: 'form', id: `form-${id}`, action: '', method: 'post' } },
+        formConfig: { enabled: false, targetClassId: '', successMessage: '', errorMessage: '', successRedirectUrl: '', errorRedirectUrl: '', notify: { enabled: false, mailTemplateId: '', templatePageId: '', recipientEmail: '', subject: '' } },
+        blocks: [...fields, submit],
+      });
+    }
     case 'snippet':
       throw new Error('a snippet reference is expanded by the page, not as an element');
   }

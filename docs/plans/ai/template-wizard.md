@@ -1,6 +1,6 @@
 # Plan: template wizard, a site from a few choices
 
-Status: **proposed** (2026-10-20). Nothing in this plan is implemented. It builds on `ai-site-spec.md` (phases 1 and 2 are
+Status: **phase 1 done** (engine, 2026-10-20); phases 2 to 4 proposed. It builds on `ai-site-spec.md` (phases 1 and 2 are
 done on branch `feat/ai-site-spec`) and replaces that plan's phase 3.
 
 ## 1. Why
@@ -145,6 +145,15 @@ Each phase is its own branch, with `CHANGES.md`, tests and a "done" criterion, a
 - Done when: every block validates; a **matrix test** expands every combination of sector, theme, font and language into a spec that
   `validateSiteSpec` accepts and `expandSiteSpec` turns into a bundle that imports on an empty database; the contrast test passes for every preset;
   the same answers give the same spec; a page has one `h1`; every image has an alt text; every link has text and a target.
+
+**Phase 1 delivered (2026-10-20, branch `feat/ai-site-spec`).** `packages/core/src/site-wizard/` (answers schema, blocks, palettes, copy, slots,
+`wizardToSiteSpec`) and the `form` kind of the specification. The matrix test runs 140 combinations of sector, theme, font and structure through validation,
+expansion and parsing, and three integration tests import wizard sites on a disposable database. What it showed:
+- **Two mistakes of mine, found by the contrast test:** near-black text (`#0B0F14`) falls to 4.38:1 on the middle greys, so pure black is used there; and
+  a mid-green background (`#66804D`) took white text that neither white nor near-black could make readable. Both fixed; the test now covers 2 600+
+  combinations of background and accent.
+- **The text slots keep the structure fixed:** other words for the same keys change only text (tested by emptying every text field and comparing).
+- Not in this phase, as planned: the route, the dashboard tab, the choice of the source of the texts, the AI, a second language.
 
 **Phase 2: route and dashboard.**
 - `GET /whoobe-one/site-wizard/options` (sectors, contexts, blocks, themes, fonts, the snippets of the library by category) and

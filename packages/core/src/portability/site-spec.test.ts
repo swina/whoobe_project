@@ -197,3 +197,47 @@ describe('applySiteSpecChoices (D10: the person decides, nothing existing is tou
     expect(JSON.stringify(s)).toBe(copy);
   });
 });
+
+describe('a form in a specification', () => {
+  const withForm = (over: Record<string, unknown> = {}): any => {
+    const spec = small();
+    (spec.pages[1].sections as any[]).push({ kind: 'form', fields: [{ name: 'name', label: 'Your name', type: 'text', required: true }, { name: 'email', label: 'Email', type: 'email', required: true }, { name: 'phone', label: 'Phone', type: 'phone' }, { name: 'message', label: 'Message', type: 'textarea' }], submitLabel: 'Send', css: 'p-6', fieldCss: 'rounded border p-2', labelCss: 'text-sm', buttonCss: 'px-4 py-2', ...over });
+    return spec;
+  };
+  const formOf = (spec: any) => nodes(expandSiteSpec(spec).bundle.pages[1].content).find((n) => n.element === 'form');
+
+  it('becomes the Form element of the editor with its fields, labels and button', () => {
+    const form = formOf(withForm());
+    expect(form).toMatchObject({ type: 'container', tag: 'form', semantic: 'form' });
+    const inputs = nodes(form).filter((n) => n.element === 'input' || n.element === 'textarea');
+    expect(inputs.map((n) => [n.element, n.data.attributes.name, n.data.attributes.type ?? n.type])).toEqual([['input', 'name', 'text'], ['input', 'email', 'email'], ['input', 'phone', 'tel'], ['textarea', 'message', 'textarea']]);
+    expect(inputs.slice(0, 2).every((n) => n.data.attributes.required === true)).toBe(true);
+    // each label points at its own control
+    const labels = nodes(form).filter((n) => n.element === 'label');
+    expect(labels.map((l) => l.content)).toEqual(['Your name', 'Email', 'Phone', 'Message']);
+    expect(labels.map((l) => l.data.attributes.for)).toEqual(inputs.map((n) => n.data.attributes.id));
+    expect(new Set(inputs.map((n) => n.data.attributes.id)).size).toBe(4);
+    const button = nodes(form).find((n) => n.element === 'button');
+    expect(button).toMatchObject({ tag: 'submit', content: 'Send', data: { attributes: { type: 'submit' } } });
+    expect(form.css.container).toContain('p-6');
+    expect(inputs[0].css.css).toBe('rounded border p-2');
+  });
+
+  it('is created disconnected: no target, no redirect, no notification, no action, nothing that sends', () => {
+    const form = formOf(withForm());
+    expect(form.formConfig).toEqual({ enabled: false, targetClassId: '', successMessage: '', errorMessage: '', successRedirectUrl: '', errorRedirectUrl: '', notify: { enabled: false, mailTemplateId: '', templatePageId: '', recipientEmail: '', subject: '' } });
+    expect(form.data.attributes.action).toBe('');
+    expect(form.formConfig.gatewayBindingId).toBeUndefined();
+    expect(form.formConfig.gatewayEndpointName).toBeUndefined();
+    // and no element of the form carries a link, a target or a data binding
+    const everything = JSON.stringify(nodes(form));
+    expect(everything).not.toMatch(/"(link|dataBinding|gatewayBindingId|targetClassId)":"[^"]/);
+    expect(nodes(form).every((n) => !n.link && n.dataBinding === null)).toBe(true);
+  });
+
+  it('cannot be told where to send, whatever the file says', () => {
+    for (const key of ['action', 'target', 'targetClassId', 'recipientEmail', 'notify', 'formConfig', 'endpoint']) {
+      expect(() => expandSiteSpec(withForm({ [key]: 'x' }))).toThrowError(SiteSpecError);
+    }
+  });
+});

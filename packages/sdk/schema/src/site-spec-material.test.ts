@@ -43,7 +43,7 @@ describe('site spec: instructions and examples', () => {
 
   it('the instructions state the limits and the kinds that the schema has', async () => {
     const { SITE_SPEC_LIMITS } = await import('./site-spec.js')
-    for (const kind of ['container', 'heading', 'text', 'link', 'image', 'snippet']) expect(instructions).toContain(`\`${kind}\``)
+    for (const kind of ['container', 'heading', 'text', 'link', 'image', 'form', 'snippet']) expect(instructions).toContain(`\`${kind}\``)
     expect(instructions).toContain(`At most ${SITE_SPEC_LIMITS.maxPages} pages, ${SITE_SPEC_LIMITS.maxSnippets} snippets, ${SITE_SPEC_LIMITS.maxNodesPerPage} elements per page, ${SITE_SPEC_LIMITS.maxNodesPerSnippet} per snippet, ${SITE_SPEC_LIMITS.maxDepth} levels of nesting, ${SITE_SPEC_LIMITS.maxChildren} children`)
     expect(instructions).toContain(`\`heading.text\` ${300} characters, \`link.text\` ${200}, \`text.html\` ${SITE_SPEC_LIMITS.maxTextLength.toLocaleString('en').replace(',', ' ')}`)
   })

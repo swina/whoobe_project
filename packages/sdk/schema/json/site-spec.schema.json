@@ -416,6 +416,87 @@
           "additionalProperties": false
         },
         {
+          "description": "a form as a template of fields; it is created disconnected (it sends nowhere until a developer connects it)",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "form"
+            },
+            "fields": {
+              "minItems": 1,
+              "maxItems": 12,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "description": "the name the value is sent under once a developer connects the form",
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]{0,39}$"
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "pattern": "^[^<>]*$"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "text",
+                      "email",
+                      "phone",
+                      "textarea"
+                    ]
+                  },
+                  "required": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "label",
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "submitLabel": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60,
+              "pattern": "^[^<>]*$"
+            },
+            "css": {
+              "type": "string",
+              "maxLength": 600,
+              "pattern": "^[^\"'`<\\\\{};]*$"
+            },
+            "fieldCss": {
+              "type": "string",
+              "maxLength": 600,
+              "pattern": "^[^\"'`<\\\\{};]*$"
+            },
+            "labelCss": {
+              "type": "string",
+              "maxLength": 600,
+              "pattern": "^[^\"'`<\\\\{};]*$"
+            },
+            "buttonCss": {
+              "type": "string",
+              "maxLength": 600,
+              "pattern": "^[^\"'`<\\\\{};]*$"
+            }
+          },
+          "required": [
+            "kind",
+            "fields",
+            "submitLabel"
+          ],
+          "additionalProperties": false
+        },
+        {
           "type": "object",
           "properties": {
             "kind": {
