@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Published sites: the generated vhost redirects http to https — 2026-10-20
+- Branch: `fix/publish-http-redirect`. The `nginx.conf` of a generated site answered the same page on port 80 and on 443, so `http://www.whoobe.dev/` served the site without TLS. The port-80 block now keeps only the ACME challenge location and answers everything else with a 301 to `https://$host$request_uri`. The file already needed the certificate (the 443 block names it), so there is no case where the redirect would point at nothing. Existing sites change when their vhost is installed again (`deploy.sh` / `deploy-static.sh`).
+
 ## Published Nuxt sites: links to a detail page, trailing slash, static redirects — 2026-10-20
 - Branch: `fix/publish-nuxt-detail-links`. Found while building the static site of whoobe.dev (website `bcf84c06`, `whoobe-publish --framework vue`, `pnpm generate`).
 - **Detail links were `#`.** A card that links to its detail page (the blog cards: `dynamicLink` to the page `/blog/article/{slug}`) needs the renderer's `resolveTargetPage`, and no generated Nuxt page passed it, so every such link was `#`, and the static crawler found only the articles linked from the text. Now the generated pages pass `targetPageResolver(config)` (new, in `composables/useWhoobeApi.ts`): it lists the website's pages once (`/public/pages?websiteId=`) and answers by id. The configuration is passed in because the renderer calls it after awaits, where `useRuntimeConfig()` has no Nuxt context. With the real hrefs in the HTML the crawler now finds all 9 articles by itself (before: 3).
