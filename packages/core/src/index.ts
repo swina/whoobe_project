@@ -24,5 +24,6 @@ export * from './cms/search-highlight.js';
 export * from './workflow/workflow-engine.js';
 export * from './cms/gateway-binding.js';
 export * from './sandbox.js';
+export * from './community.js';
 export * from './ui/tree-dnd.js';
 export * from './uploads/index.js';
