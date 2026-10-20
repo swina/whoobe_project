@@ -806,6 +806,8 @@ function scaffoldNginxStaticConf(framework: 'next' | 'vue'): string {
 server {
     listen 8080;
     server_name _;
+    # nginx sends /blog to /blog/ (the folder of the page): keep the address relative, the container sits behind the host nginx on another port
+    absolute_redirect off;
     root /usr/share/nginx/html/static;
 
     # SPA fallback — Nuxt/Next pre-rendered pages hydrate from here
@@ -1946,7 +1948,7 @@ function nuxtHomePage(opts: ScaffoldOptions): string {
 
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
-import { resolveAssetUuid } from '~/composables/useWhoobeApi'
+import { resolveAssetUuid, targetPageResolver } from '~/composables/useWhoobeApi'
 ${pwaEnabled ? "import AppShell from '~/components/AppShell.vue'" : ''}
 
 const config = useRuntimeConfig()
@@ -1959,6 +1961,7 @@ const { data } = await useAsyncData('home-page', () =>
     rootPath: config.public.rootPath,
     siteApiKey: config.cmsSiteApiKey,
     resolveAssetUuid,
+    resolveTargetPage: targetPageResolver(config),
   })
 )
 
@@ -2003,7 +2006,7 @@ function nuxtLocalePage(): string {
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
 import { ApiClient } from '@whoobe-cms/renderer'
-import { resolveAssetUuid } from '~/composables/useWhoobeApi'
+import { resolveAssetUuid, targetPageResolver } from '~/composables/useWhoobeApi'
 
 const config = useRuntimeConfig()
 const route = useRoute()
@@ -2039,6 +2042,7 @@ const { data } = await useAsyncData(\`locale-\${locale}\`, async () => {
       rootPath: config.public.rootPath,
       siteApiKey: config.cmsSiteApiKey,
       resolveAssetUuid,
+      resolveTargetPage: targetPageResolver(config),
     })
     return { kind: 'page' as const, page }
   }
@@ -2076,13 +2080,14 @@ function nuxtCatchAllPage(opts: ScaffoldOptions): string {
 
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
-import { resolveAssetUuid } from '~/composables/useWhoobeApi'
+import { resolveAssetUuid, targetPageResolver } from '~/composables/useWhoobeApi'
 ${pwaEnabled ? "import AppShell from '~/components/AppShell.vue'" : ''}
 
 const config = useRuntimeConfig()
 const route = useRoute()
 const slug = (route.params.slug as string[]) || []
-const path = '/' + slug.join('/')
+// a trailing slash (nginx sends /blog to /blog/) is the same page
+const path = '/' + slug.filter(Boolean).join('/')
 
 const { data } = await useAsyncData(\`page-\${path}\`, () =>
   getPageData('${defaultLocale}', path, {
@@ -2093,6 +2098,7 @@ const { data } = await useAsyncData(\`page-\${path}\`, () =>
     rootPath: config.public.rootPath,
     siteApiKey: config.cmsSiteApiKey,
     resolveAssetUuid,
+    resolveTargetPage: targetPageResolver(config),
   })
 )
 
@@ -2135,14 +2141,15 @@ ${appShell}
 
 <script setup lang="ts">
 import { getPageData, WhoobePage } from '@whoobe-cms/nuxt'
-import { resolveAssetUuid } from '~/composables/useWhoobeApi'
+import { resolveAssetUuid, targetPageResolver } from '~/composables/useWhoobeApi'
 import AppShell from '~/components/AppShell.vue'
 
 const config = useRuntimeConfig()
 const route = useRoute()
 const locale = route.params.locale as string
 const slug = (route.params.slug as string[]) || []
-const path = '/' + slug.join('/')
+// a trailing slash (nginx sends /blog to /blog/) is the same page
+const path = '/' + slug.filter(Boolean).join('/')
 
 const { data } = await useAsyncData(\`page-\${locale}-\${path}\`, () =>
   getPageData(locale, path, {
@@ -2153,6 +2160,7 @@ const { data } = await useAsyncData(\`page-\${locale}-\${path}\`, () =>
     rootPath: config.public.rootPath,
     siteApiKey: config.cmsSiteApiKey,
     resolveAssetUuid,
+    resolveTargetPage: targetPageResolver(config),
   })
 )
 
@@ -2308,6 +2316,19 @@ export async function resolveAssetUuid(uuid: string): Promise<string | null> {
     const data = await res.json()
     return data.url ?? null
   } catch { return null }
+}
+
+// a link to a detail page (a blog card to its article) holds the id of the page that has the address pattern: the site's pages are listed once.
+// The configuration is passed in because the renderer calls this after awaits, where useRuntimeConfig() no longer finds the Nuxt context.
+export function targetPageResolver(config: { public: { cmsApiUrl: string; cmsWebsiteId: string } }) {
+  let index: Promise<Map<string, { slug: string; locale: string }>> | null = null
+  return async (id: string): Promise<{ slug: string; locale: string } | null> => {
+    index ??= fetch(config.public.cmsApiUrl + '/public/pages?websiteId=' + encodeURIComponent(config.public.cmsWebsiteId))
+      .then((r) => (r.ok ? r.json() : { pages: [] }))
+      .then((d) => new Map<string, { slug: string; locale: string }>((d.pages ?? []).map((p: any) => [p.id, { slug: p.slug, locale: p.locale }])))
+      .catch(() => { index = null; return new Map() })
+    return (await index).get(id) ?? null
+  }
 }
 `
 }

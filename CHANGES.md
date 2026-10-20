@@ -1,5 +1,13 @@
 # Release v0.2.0 — 2026-10-19
 
+## Published Nuxt sites: links to a detail page, trailing slash, static redirects — 2026-10-20
+- Branch: `fix/publish-nuxt-detail-links`. Found while building the static site of whoobe.dev (website `bcf84c06`, `whoobe-publish --framework vue`, `pnpm generate`).
+- **Detail links were `#`.** A card that links to its detail page (the blog cards: `dynamicLink` to the page `/blog/article/{slug}`) needs the renderer's `resolveTargetPage`, and no generated Nuxt page passed it, so every such link was `#`, and the static crawler found only the articles linked from the text. Now the generated pages pass `targetPageResolver(config)` (new, in `composables/useWhoobeApi.ts`): it lists the website's pages once (`/public/pages?websiteId=`) and answers by id. The configuration is passed in because the renderer calls it after awaits, where `useRuntimeConfig()` has no Nuxt context. With the real hrefs in the HTML the crawler now finds all 9 articles by itself (before: 3).
+- **Trailing slash.** nginx sends `/blog` to `/blog/` (the folder of the page), but the catch-all page took `['blog', '']` as the path `/blog/`, found no page and replaced the page with a 404 after hydration. The path now ignores empty segments. The static container's nginx also gets `absolute_redirect off`, so that redirect stays relative behind the host nginx on another port.
+- `seed.mts` of the site (`scripts/site/whoobe-dev`): after copying the Blog pages, the card's `targetPageId` is pointed at the copy of the page in the new website (it still pointed at the old website's page).
+- Checked in headless Chromium on the static output (served by a plain file server): 9 cards with a real address, a click opens the article, the five pages keep the dark background, no horizontal scroll at 1280 and 390 px, no failed or 4xx request. `tsc` of `packages/publish` passes. The package has no test script, so there is no unit test for the resolver (it is covered by this check).
+- Existing generated sites keep the old behaviour until they are generated again.
+
 ## Dashboard: a Help entry that links to GitHub Discussions (`COMMUNITY_URL`) — 2026-10-20
 - Branch: `feat/dashboard-help-link`, from `master` after the merge of the site, the results policy, the README and the Discussions setup. Implements the "next release" part of `docs/plans/community/github-discussions-plan.md`.
 - `packages/core/src/community.ts` (+ `community.test.ts`, 4 tests): `communityUrl()`: `COMMUNITY_URL` unset gives the project's Discussions, empty gives nothing, an http(s) URL is used, anything else (`javascript:`, `data:`, `ftp:`, a relative or malformed value) gives nothing. core-api adds `community: { url }` to the answer of the public `/health` when there is one (no new route).
