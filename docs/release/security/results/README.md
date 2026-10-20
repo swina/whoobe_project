@@ -1,7 +1,7 @@
 # Security results: always public, failures included
 
-Whoobe is open source, and open source earns the name by **showing its work**. We do not certify our own code and we do not say that it is
-"secure". What we say is what we tested, against which objectives, with which tools, and what the results were. All of it is in this repository
+Whoobe is open source, and open source earns the name by **showing its work**. We do not certify our own code and we do not say
+“our code is secure”. What we say is what we tested, against which objectives, with which tools, and what the results were. All of it is in this repository
 or in the public history of its CI, and it stays there.
 
 ## What we publish, and where

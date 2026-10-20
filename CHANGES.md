@@ -5,6 +5,7 @@
 - `docs/release/security/results/README.md` (new): what is published and where, and six rules (failures are published; a result says what it says and no more; no release without its record; what changed after the test is stated; nothing is tested against production; corrections are public).
 - `docs/release/security/results/v0.2.0.md` (new), written from the public CI history: tag `1e6b7a8`; the full run (static scans, API + browser suites, isolation, DAST, TLS on two nginx images) is run 39271161567 on `c21a633`, **all jobs green**; the tag differs from it by the version number in 23 `package.json`, `CHANGES.md` and `docs/release/README.md` (no code); the two runs of the same day that **failed** first (39262593653 and 39267546033, both in the API + browser job) with what the day's `CHANGES.md` says about them; what the run did not cover; the open items.
 - `docs/release/release-process.md`: a new non-automatic gate "Results published"; `docs/release/security/README.md` links the policy and the record. `check-docs.py` passes.
+- Wording of the policy, at the owner's request: *we do not say “our code is secure”*.
 - Not done: the documentation site is not regenerated for these pages; the reports of the run are still attached to the GitHub Release by hand (the record points to the public runs instead).
 
 ## docs.whoobe.dev regenerated again (13 files changed since the morning) — 2026-10-20
