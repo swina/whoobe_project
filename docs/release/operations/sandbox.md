@@ -91,6 +91,25 @@ Needs a host with Docker Compose 2.24 or newer, a DNS name pointing to it, and n
 
 To stop it: `./scripts/remove-workspace.sh sandbox --yes` (deletes the data, as every reset does).
 
+## Who tried it: the visit log
+
+The sandbox writes its own anonymous visit log, `/var/log/nginx/sandbox-access.log` on a host with nginx (not the host's shared
+`access.log`, where every site is mixed and the host name is missing). `deploy/profiles/sandbox.nginx-http.conf` defines the format
+and `WS_EDGE_LIMITS` in `deploy/profiles/sandbox.env` turns it on for the sandbox's vhosts. What it holds, one line per request:
+time, **the address cut to its network** (IPv4 /24, IPv6 /48: `81.10.20.0`), method, **the path without the query string**, status,
+time taken, referrer, browser. Static files and `/health` are not written. The host's logrotate keeps 14 days (daily, compressed).
+Nobody is identified: tell visitors so on the page that links to the sandbox.
+
+Read it with `scripts/sandbox/visits.sh [days]` (on the host, or `ssh <host> 'cd /opt/whoobe/whoobe_cms && scripts/sandbox/visits.sh 7'`;
+the user needs the `adm` group to read the log): requests, **visitors** (distinct network + browser, robots left out), **logins**
+(successful sign-ins of the demo account), **active** (signed in and changed something), robot requests, where visitors came from
+(referrer hosts) and the most requested pages. The figures are an order of magnitude, not a head count: people behind one address with
+the same browser count once, one person on mobile data who changes network counts more than once.
+
+The first time (a sandbox set up before the visit log existed): the next reset rewrites the profile files and the vhosts together;
+then `sudo nginx -t && sudo systemctl reload nginx` once outside the reset (never during it, see step 3). With the containerised
+proxy instead of host nginx the file is inside that container's `/var/log/nginx`.
+
 ## How the reset works
 
 `scripts/sandbox/reset.sh` first builds the images with the running sandbox's env file (the slow part, minutes when the code
