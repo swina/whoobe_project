@@ -9,6 +9,9 @@ import { fileURLToPath } from 'node:url';
 import Element from '../../../apps/whoobe-one-spike/src/scripts/ElementsClass.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+// Links to a page of this site are stored with the website's CMS rootPath in front, like in every Whoobe website: the editor's site preview
+// resolves them, and whoobe-publish strips the prefix when it builds the site (renderer `stripRootPath`). Links to other sites open in a new tab.
+const ROOT = '/whoobe-dev';
 let n = 0;
 const nextId = () => `wd-${(++n).toString(36).padStart(4, '0')}`;
 
@@ -22,14 +25,18 @@ function el(kind, o = {}) {
   if (o.text !== undefined) node.content = o.text;
   if (o.css) { if (node.type === 'container') node.css.container = `${node.css.container} ${o.css}`.trim(); else node.css.css = o.css; }
   if (o.semantic) node.semantic = o.semantic;
-  if (o.link) node.link = o.link;
+  if (o.link) {
+    const internal = o.link.startsWith('/') && !o.link.startsWith('//');
+    node.link = internal ? (o.link === '/' ? ROOT : ROOT + o.link) : o.link;
+    if (/^https?:/i.test(o.link)) node.linkTarget = '_blank';
+  }
   if (o.anchor) node.anchor = o.anchor;
   if (o.children) node.blocks = o.children;
   return node;
 }
 
 const A = 'text-indigo-600 underline underline-offset-2 hover:text-indigo-500';
-const a = (href, text) => `<a href="${href}" class="${A}">${text}</a>`;
+const a = (href, text) => `<a href="${href}" class="${A}"${/^https?:/i.test(href) ? ' target="_blank" rel="noopener noreferrer"' : ''}>${text}</a>`;
 const DOCS = 'https://docs.whoobe.dev';
 const h = (level, text, css) => el('Heading', { level, text, css });
 const p = (html, css = '') => el('Paragraph', { text: html, css: `text-base leading-relaxed [&_a]:text-[#A78BFA] [&_a]:underline [&_a]:underline-offset-2 [&_a:hover]:text-white [&_strong]:text-white ${css}` });
@@ -86,7 +93,8 @@ const homeHero = () => col('w-full px-6 pt-24 pb-20 bg-gradient-to-br from-[#0F1
   ]),
 ], { semantic: 'section' });
 
-const proof = (title, text, link) => col('flex-1 gap-3 rounded-xl glass-panel bg-[#1A1D24]/70 border border-white/10 p-6', [h(3, title, 'text-lg font-semibold text-white'), p(text, 'text-slate-400'), ...(link ? [p(link, 'text-sm')] : [])]);
+// `to` is [text, href]: a link element, so a link to a page of this site gets the rootPath prefix (an <a> inside a paragraph does not)
+const proof = (title, text, to) => col('flex-1 gap-3 rounded-xl glass-panel bg-[#1A1D24]/70 border border-white/10 p-6', [h(3, title, 'text-lg font-semibold text-white'), p(text, 'text-slate-400'), el('Link', { text: to[0], link: to[1], css: 'text-sm text-[#A78BFA] underline underline-offset-2 hover:text-white' })]);
 
 const homeBody = () => [
   section([
@@ -97,9 +105,9 @@ const homeBody = () => [
   section([
     h(2, 'Three things to check', 'text-3xl font-bold text-white'),
     col('gap-6 md:flex-row', [
-      proof('Configuration, not glue code', 'Point the gateway at an OpenAPI file or a sample request: routes, response shapes and fields appear in the editor, and a block can show the data. The credentials stay on the server.', a('/platform', 'How it works →')),
-      proof('No code for the people who use it', 'Editors build pages from blocks, snippets and kits. A data manager adds a field to a class without a deploy. Nobody on the content side asks a developer to move a button or to publish.', a(`${DOCS}/guides/user-manual/`, 'The user manual →')),
-      proof('Security you do not have to assemble', 'An append-only audit log, mandatory two-factor authentication by role, single sign-on with OpenID Connect, encrypted credentials, data subject tools and retention, metrics and encrypted backups. In the product, documented, and tested in CI.', a('/security', 'What is in it, and what is not →')),
+      proof('Configuration, not glue code', 'Point the gateway at an OpenAPI file or a sample request: routes, response shapes and fields appear in the editor, and a block can show the data. The credentials stay on the server.', ['How it works →', '/platform']),
+      proof('No code for the people who use it', 'Editors build pages from blocks, snippets and kits. A data manager adds a field to a class without a deploy. Nobody on the content side asks a developer to move a button or to publish.', ['The user manual →', `${DOCS}/guides/user-manual/`]),
+      proof('Security you do not have to assemble', 'An append-only audit log, mandatory two-factor authentication by role, single sign-on with OpenID Connect, encrypted credentials, data subject tools and retention, metrics and encrypted backups. In the product, documented, and tested in CI.', ['What is in it, and what is not →', '/security']),
     ]),
   ], 'bg-[#12151B]'),
   section([
