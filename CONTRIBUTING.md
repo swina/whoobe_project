@@ -30,7 +30,7 @@ cd whoobe_project
 pnpm install                  # Node.js 18+ (22 for the images), pnpm 9
 ```
 
-The [README](README.md) describes the ways to run it (the whole stack in Docker, or only PostgreSQL and S3 in Docker with the services run locally).
+[Developing Whoobe](docs/development.md) describes the ways to run it (the whole stack in Docker, or only PostgreSQL and S3 in Docker with the services run locally), the monorepo layout and the configuration; `./try.sh` starts the whole stack in one command.
 Notes that save time:
 
 - The shared packages (`packages/core`, `packages/publish`, `packages/sdk/*`) are consumed from their `dist/` folders: after changing their source, run
