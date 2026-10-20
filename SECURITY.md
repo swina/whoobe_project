@@ -4,7 +4,7 @@ Whoobe is software that stores credentials and sits in front of other systems, s
 
 ## Reporting a vulnerability
 
-**Please do not open a public issue for a security problem.**
+**Please do not open a public issue or discussion for a security problem.** Questions that are not vulnerabilities go to [GitHub Discussions](https://github.com/swina/whoobe_project/discussions).
 
 - Write to **web@moodgiver.com** with the subject `Whoobe security`, or
 - use GitHub's private vulnerability reporting (the repository's **Security** tab, *Report a vulnerability*), if it is enabled on the repository.

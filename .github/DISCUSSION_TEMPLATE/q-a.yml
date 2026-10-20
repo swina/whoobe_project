@@ -1,0 +1,38 @@
+# Form of a new discussion in the "Q&A" category (GitHub reads it by the category's slug). Questions and ideas are asked here, in public.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for asking. Questions are answered here, in public, so that the answer helps the next person.
+        **Do not paste secrets, keys or personal data.** A **vulnerability** is not a question: report it privately, see [SECURITY.md](https://github.com/swina/whoobe_project/blob/master/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The version of Whoobe (the dashboard footer, or `package.json`), or the commit.
+      placeholder: "0.2.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: how
+    attributes:
+      label: How are you running it?
+      options:
+        - "The sandbox (sandbox.whoobe.dev)"
+        - "./try.sh on my machine"
+        - "A workspace with Docker Compose"
+        - "The development stack (dev-cms.sh)"
+        - "Not running it yet, reading the documentation"
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What did you try, and what happened?
+      description: The steps, the message you saw, the page of the documentation you followed.

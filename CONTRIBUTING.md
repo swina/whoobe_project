@@ -8,7 +8,7 @@ its section 3.1.
 
 ## Ways to help
 
-- **Try it and report.** Install a workspace, run a pilot, tell what was hard. A clear bug report is a contribution.
+- **Try it and tell.** Install a workspace, run a pilot, tell what was hard (a Q&A or Show and tell discussion, or an issue for a bug). A clear report is a contribution.
 - **Test what has not been tested:** other identity providers (Entra ID, Cognito, Auth0), the runbooks (restore, upgrade), load, a live TLS host.
 - **Documentation:** corrections, review by a reader who is not the author, translations, unwritten chapters of the user manual.
 - **Integrations:** presets for vendors, mail-provider descriptions, automation engines.
@@ -17,8 +17,9 @@ its section 3.1.
 
 ## Before you start
 
-- **Open an issue first** for anything bigger than a small fix, so the idea can be discussed before you spend the time. Small fixes and documentation
-  corrections can go straight to a pull request.
+- **Ask or propose in [GitHub Discussions](https://github.com/swina/whoobe_project/discussions)** (Q&A for a question, Ideas for a proposal): it is the one public
+  place, there is no form and no private queue. For anything bigger than a small fix, discuss the idea there before you spend the time; an **issue** is for a
+  confirmed bug or a piece of work that was accepted. Small fixes and documentation corrections can go straight to a pull request.
 - **Read the reasons behind the design:** [what Whoobe is](docs/release/overview/what-is-whoobe.md) and the
   [design decisions](docs/release/architecture/design-decisions/README.md). A change that goes against one of them needs a strong argument and a discussion.
 
