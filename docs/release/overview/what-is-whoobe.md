@@ -60,8 +60,8 @@ are listed ([threat model](../security/threat-model.md)), and open findings are 
 a workspace per client, a team whose integrations no off-the-shelf connector covers, an organisation that wants its apps to share one
 governed gateway to internal systems.
 
-**Not for** (today) a team without anyone to run a server; an organisation that needs single sign-on for staff, a full audit trail of
-administrative actions, high availability or a third-party compliance certificate; a business that wants one shared platform for many unrelated
+**Not for** (today) a team without anyone to run a server; an organisation that needs SAML or LDAP login (or several single sign-on providers), an audit log that also records refused attempts,
+high availability or a third-party compliance certificate; a business that wants one shared platform for many unrelated
 companies. [Chapter 4 of the overview](whoobe-overview.md) explains each limit.
 
 ## 6. Where to go next
