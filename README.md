@@ -38,8 +38,8 @@ For the code: [developing Whoobe](docs/development.md) (monorepo layout, local d
 
 Version **0.2.0**. It is a `0.` series: behaviour can change between minor releases, and the [release notes](docs/release/release-notes-0.2.0.md) say what.
 
-## Contributing, security, licence
+## Questions, contributing, security, licence
 
-Contributions of every kind are welcome: [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). Security problems: [SECURITY.md](SECURITY.md).
+**Questions and ideas:** [GitHub Discussions](https://github.com/swina/whoobe_project/discussions) is the one public place (Q&A, Ideas): no form, no private queue. Contributions of every kind are welcome: [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). Security problems, privately and never in a public discussion: [SECURITY.md](SECURITY.md).
 
 Released under the [MIT License](LICENSE.md). Copyright (c) 2026 Antonio Nardone. The licence covers this repository's own code and documentation; the third-party packages it depends on keep their own licenses.

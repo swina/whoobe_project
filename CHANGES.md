@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## README: questions go to GitHub Discussions — 2026-10-20
+- Branch: `feat/readme-try-local`. The closing section of the README now says where questions and ideas go (GitHub Discussions, the one public place, no form and no private queue) and that a security problem goes privately through `SECURITY.md`. See `docs/github-discussions` for the rest of the setup.
+
 ## README rewritten, `./try.sh` to try Whoobe locally with one command — 2026-10-20
 - Branch: `feat/readme-try-local`. The owner found the README weak: too much technical detail that belongs in the documentation, and it did not say that Whoobe can be tried locally in one step. Before promoting the project (Hacker News, Reddit, dev.to, LinkedIn).
 - **`README.md`** (318 lines to 45): what it is in two sentences, links to the live sandbox, the documentation and unifythestack.dev, **Try it** (the sandbox, and `git clone ... && ./try.sh`), what you get, where the documentation is, status (0.2.0, a `0.` series), contributing, security, licence. The README also said the first administrator's password was `admin123`: wrong since the first-run password is generated (and printed once in the core-api log) unless `SEED_ADMIN_PASSWORD` is set; it is no longer stated.
