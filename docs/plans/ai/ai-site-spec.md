@@ -66,6 +66,13 @@ no outside request. Calling a model stays in the product's wizard (and in the ou
 choice). This matters on a LAN with no outbound access: the dashboard page of phase 2 needs nothing but the
 installation itself.
 
+**D9. At most two languages per spec, for now.** A spec describes a site in one language or in two (the
+default and one more). Each page is written once per language (two entries with the same `slug` and
+different `locale`), so a model writes real text in each and nothing is machine-translated behind the scenes.
+The limit keeps the files small enough for a model to produce in one go and the checks simple; it is a
+validator rule, not a limit of the product, and can be raised later without changing the format. The
+product's own translation tool is unaffected.
+
 **D8. The dashboard is the only interface; the command line is deferred.** The people who build sites
 are editors and designers, and an installation on a LAN may give them no shell at all (and should not).
 Every capability of the spec (get the schema and the instructions, validate, see what would be created,
@@ -89,7 +96,7 @@ site.json
   layout?: { header?: key, footer?: key, aside?: key, notFound404?: key }
   pages[]: { slug, title, category?, locale?, sections: (Node | { snippet: key })[] }
   menus[]?: { name, items[] }
-  data?: { classes[], objects[] }                // phase 3
+  data?: { classes[], objects[] }                // phase 4
 ```
 
 `Node` is the existing element shape reduced to what a model needs: `element`, `content` or `blocks`,
@@ -99,6 +106,8 @@ step adds `id`, `type`, `tag` and the document root, so the model does not have 
 Rules that the validator enforces (each one is a test, with a failing example):
 
 - every `snippet` reference, `layout` key and `menu` target exists;
+- at most **two locales** per spec (`supportedLocales` has one or two entries, `defaultLocale` is one of them),
+  and every `locale` of a page is one of them; a page without `locale` is in the default one;
 - slugs are unique per locale and URL-safe; a page has at least one section;
 - a link has text or children, and a target (`href` or a page slug that exists);
 - a button/link text is not empty (the bug found on whoobe.dev on 2026-10-20);
@@ -176,5 +185,4 @@ Bigger surface and the part where a wrong reference hurts most: it needs its own
 ## 8. Open questions for the maintainer
 
 1. Should a spec be able to reference an existing theme/snippet by name, or always carry its own?
-2. Languages: one locale per spec, or several in one file?
-3. Do we publish the instructions under `docs/` (visible on docs.whoobe.dev) as soon as phase 2 is released, or later?
+2. Do we publish the instructions under `docs/` (visible on docs.whoobe.dev) as soon as phase 2 is released, or later?
