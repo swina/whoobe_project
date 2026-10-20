@@ -102,12 +102,11 @@ nothing.
 ```
 site.json
   version: 1
-  website: { name, rootPath?, defaultLocale, supportedLocales, domains? }
+  website: { name, rootPath?, defaultLocale, supportedLocales (1 or 2), description?, otherPaths? }
   theme?: { name, colors[], fonts[] }            // or themeName: reference to an existing theme
   snippets[]: { key, name, category, node }      // `key` is a local handle, used below
   layout?: { header?: key, footer?: key, aside?: key, notFound404?: key }
   pages[]: { slug, title, category?, locale?, sections: (Node | { snippet: key })[] }
-  menus[]?: { name, items[] }
   data?: { classes[], objects[] }                // phase 4
 ```
 
@@ -136,6 +135,23 @@ Each phase is its own branch, with `CHANGES.md` and tests, and does not depend o
   the whoobe.dev site gives a bundle `parseWebsiteBundle` accepts and `importWebsiteBundle` imports in dry run.
 - Done when: the examples validate; each rule has a failing example; the whoobe.dev site can be described in
   a spec (the content of `scripts/site/whoobe-dev/content.json` is the first real example).
+
+**Phase 1 delivered (2026-10-20, branch `feat/ai-site-spec`).** What was built and what it showed:
+- `packages/sdk/schema/src/site-spec.ts` (+ committed `json/site-spec.schema.json`, drift test) and `packages/core/src/portability/site-spec.ts`
+  (`expandSiteSpec`). The first real example is the site whoobe.dev itself, converted from its generator's output
+  (`packages/core/src/portability/fixtures/whoobe-dev.site-spec.json`, 5 pages, header, footer, a reference to the
+  existing "Benefits by role" snippet): it validates, expands, imports on an empty database and every link keeps its text.
+- **The real site failed the first validation:** it links to `/blog`, whose pages live outside the file (they are copies from another
+  website). Instead of loosening the rule, the spec got `website.otherPaths` (pages that exist outside the file that links may
+  name). The blog itself (a list bound to a class, detail pages) stays a phase 4 matter.
+- **The importer dropped references to existing themes:** a theme id that is not in the bundle became `null` on the website, its pages
+  and its snippets. It is now kept when that theme exists here (a dangling id is still dropped).
+- **The importer renamed the site and its root path** (suffix `-xxxxxxxx`), which broke every internal link of a spec (links carry the
+  root path). New option `keepNames`: name and root path as written; a root path already taken is a 409, in a dry run too. Copies of
+  a site keep the suffix.
+- **Not in version 1:** menus (`websitePaths`) and data. Both are out until they have their own section, rules and tests.
+- Tests: 27 in the schema package (each rule has a failing example), 15 unit and 4 integration (disposable database) in core, the
+  integration ones skipped without `PORTABILITY_TEST_DATABASE_URL`. Mutation check: breaking the link text or the sanitiser makes tests fail.
 
 **Phase 2: instructions, route and dashboard.**
 - **The instructions come first, because the page hands them out.** `docs/ai-site-spec/` (the rules, at

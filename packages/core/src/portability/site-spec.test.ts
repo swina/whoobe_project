@@ -1,0 +1,159 @@
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { collectUuids, expandSiteSpec, parseWebsiteBundle, rewriteIds, SiteSpecError, type SiteSpecExisting } from './index.js';
+
+const whoobeDev = JSON.parse(readFileSync(new URL('./fixtures/whoobe-dev.site-spec.json', import.meta.url), 'utf8'));
+const existing: SiteSpecExisting = {
+  themes: { 'Whoobe Website': { id: '11111111-1111-4111-8111-111111111111' } },
+  snippets: { 'Whoobe Website - Benefits by role': { id: '22222222-2222-4222-8222-222222222222', node: { id: 'lib-1', type: 'container', blocks: [{ id: 'lib-2', type: 'element', element: 'p', content: 'Benefits', blocks: [] }] } } },
+};
+
+const small = () => ({
+  version: 1 as const,
+  website: { name: 'Acme Studio', defaultLocale: 'en', supportedLocales: ['en', 'it'], description: 'A studio' },
+  theme: { name: 'Acme', colors: [{ name: 'brand', hex: '#7C3AED' }], fonts: ['Inter'] },
+  snippets: [
+    { key: 'header', name: 'Acme header', category: 'navigation', node: { kind: 'container' as const, direction: 'row' as const, semantic: 'header' as const, children: [{ kind: 'link' as const, text: 'Home', href: '/' }, { kind: 'link' as const, text: 'GitHub', href: 'https://github.com/x' }] } },
+  ],
+  layout: { header: 'header' },
+  pages: [
+    { slug: '/', title: 'Home', sections: [{ kind: 'container' as const, children: [{ kind: 'heading' as const, level: 1 as const, text: 'Hello' }, { kind: 'text' as const, html: 'Hi <strong>you</strong><script>alert(1)</script><img src=x onerror=alert(1)>' }, { kind: 'image' as const, alt: 'A workshop' }, { kind: 'link' as const, text: 'Prices', href: '/pricing#plans' }] }, { kind: 'snippet' as const, use: 'header' }] },
+    { slug: '/pricing', title: 'Pricing', sections: [{ kind: 'text' as const, html: 'Prices' }] },
+    { slug: '/', title: 'Ciao', locale: 'it', sections: [{ kind: 'text' as const, html: 'Ciao' }] },
+  ],
+});
+
+/** Every element of a tree, depth first. */
+const nodes = (n: any): any[] => [n, ...(n.blocks ?? []).flatMap(nodes)];
+
+describe('expandSiteSpec', () => {
+  it('gives a bundle the importer accepts', () => {
+    const { bundle } = expandSiteSpec(small());
+    const parsed = parseWebsiteBundle(JSON.parse(JSON.stringify(bundle)));
+    expect('bundle' in parsed).toBe(true);
+    expect(bundle.version).toBe(2);
+    expect(bundle.website).toMatchObject({ name: 'Acme Studio', rootPath: '/acme-studio', defaultLocale: 'en', supportedLocales: ['en', 'it'], settings: { description: 'A studio' } });
+    expect(bundle.themes).toHaveLength(1);
+    expect(bundle.snippets).toHaveLength(1);
+    expect(bundle.pages).toHaveLength(3);
+    expect(bundle.pages.every((p) => p.published === false && p.kind === 'content')).toBe(true);
+  });
+
+  it('is deterministic: the same spec gives the same bundle', () => {
+    expect(JSON.stringify(expandSiteSpec(small()).bundle)).toBe(JSON.stringify(expandSiteSpec(small()).bundle));
+  });
+
+  it('puts the layout snippet in a default template by an id the importer rewrites', () => {
+    const { bundle } = expandSiteSpec(small());
+    const tpl = bundle.websiteTemplates[0];
+    expect(tpl.isDefault).toBe(true);
+    const ids = [...collectUuids(tpl.layout)];
+    expect(ids).toEqual([bundle.snippets[0].id]);
+    const fresh = '99999999-9999-4999-8999-999999999999';
+    expect(JSON.stringify(rewriteIds(tpl.layout, new Map([[bundle.snippets[0].id, fresh]])))).toContain(fresh);
+  });
+
+  it('links the two languages of a page and keeps the locale', () => {
+    const { bundle } = expandSiteSpec(small());
+    const [home, , ciao] = bundle.pages;
+    expect(home.locale).toBe('en');
+    expect(ciao.locale).toBe('it');
+    expect(home.translationGroupId).toBe(ciao.translationGroupId);
+    expect(bundle.pages[1].translationGroupId).not.toBe(home.translationGroupId);
+  });
+
+  it('writes links the way a Whoobe website stores them', () => {
+    const { bundle } = expandSiteSpec(small());
+    const links = nodes(bundle.snippets[0].node).filter((n) => n.element === 'a');
+    expect(links.map((l) => l.link)).toEqual(['/acme-studio', 'https://github.com/x']);
+    expect(links[0].linkTarget).toBeUndefined();
+    expect(links[1].linkTarget).toBe('_blank');
+    const pageLink = nodes(bundle.pages[0].content).find((n) => n.element === 'a');
+    expect(pageLink.link).toBe('/acme-studio/pricing#plans');
+  });
+
+  it('cleans the formatted text of anything that runs', () => {
+    const { bundle } = expandSiteSpec(small());
+    const text = nodes(bundle.pages[0].content).find((n) => n.element === 'p');
+    expect(text.content).toContain('<strong>you</strong>');
+    expect(text.content).not.toMatch(/script|onerror|alert/);
+  });
+
+  it('gives an image a placeholder, not an address from the file', () => {
+    const { bundle } = expandSiteSpec(small());
+    const img = nodes(bundle.pages[0].content).find((n) => n.element === 'img');
+    expect(img.image.url).toBe(`https://picsum.photos/seed/${img.id}/1200/800`);
+    expect(img.image.alt).toBe('A workshop');
+  });
+
+  it('copies a snippet into a page with new ids and the id of its source', () => {
+    const { bundle } = expandSiteSpec(small());
+    const section = (bundle.pages[0].content as any).blocks[1];
+    expect(section.sourceSnippetId).toBe(bundle.snippets[0].id);
+    const own = new Set(nodes(bundle.snippets[0].node).map((n) => n.id));
+    expect(nodes(section).every((n) => !own.has(n.id))).toBe(true);
+  });
+
+  it('gives every element of the bundle a different id', () => {
+    const { bundle } = expandSiteSpec(small());
+    const all = [...bundle.snippets.map((s) => s.node), ...bundle.pages.map((p) => p.content)].flatMap(nodes).map((n) => n.id);
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it('refuses a file that is not valid, with the places', () => {
+    const bad = small();
+    (bad.pages[0].sections[0] as any).children[3].text = '';
+    try { expandSiteSpec(bad); expect.unreachable(); } catch (e) {
+      expect(e).toBeInstanceOf(SiteSpecError);
+      expect((e as SiteSpecError).issues[0].where).toBe('page "Home", section 1, element 4, "text"');
+    }
+  });
+
+  it('uses a theme and a snippet that exist here, and says which it used', () => {
+    const spec: any = { ...small(), theme: { use: 'Whoobe Website' }, snippets: [...small().snippets, { key: 'benefits', use: 'Whoobe Website - Benefits by role' }] };
+    spec.pages[1].sections.push({ kind: 'snippet', use: 'benefits' });
+    const { bundle, references } = expandSiteSpec(spec, { existing });
+    expect(bundle.themes).toHaveLength(0);
+    expect(bundle.website.themeId).toBe('11111111-1111-4111-8111-111111111111');
+    expect(bundle.snippets).toHaveLength(1);
+    expect(references).toEqual({ themes: ['Whoobe Website'], snippets: ['Whoobe Website - Benefits by role'] });
+    const copy = (bundle.pages[1].content as any).blocks[1];
+    expect(copy.sourceSnippetId).toBe('22222222-2222-4222-8222-222222222222');
+    expect(copy.id).not.toBe('lib-1');
+  });
+
+  it('names a theme or snippet that does not exist here', () => {
+    const spec: any = { ...small(), theme: { use: 'Nope' } };
+    expect(() => expandSiteSpec(spec, { existing })).toThrowError(/no theme named "Nope"/);
+    const spec2: any = { ...small(), snippets: [{ key: 'x', use: 'Nope' }], layout: undefined };
+    spec2.pages = [{ slug: '/', title: 'Home', sections: [{ kind: 'snippet', use: 'x' }] }];
+    expect(() => expandSiteSpec(spec2, { existing })).toThrowError(/no snippet named "Nope"/);
+  });
+});
+
+describe('the specification of the site whoobe.dev', () => {
+  it('is valid and expands to a bundle the importer accepts', () => {
+    const { bundle, references } = expandSiteSpec(whoobeDev, { existing });
+    expect(bundle.pages.map((p) => p.slug)).toEqual(['/', '/platform', '/security', '/run', '/developers']);
+    expect(bundle.snippets.map((s) => s.name)).toEqual(['whoobe.dev header', 'whoobe.dev footer']);
+    expect(references.snippets).toEqual(['Whoobe Website - Benefits by role']);
+    expect('bundle' in parseWebsiteBundle(JSON.parse(JSON.stringify(bundle)))).toBe(true);
+  });
+
+  it('has no link or button without its text (the bug of 2026-10-20) and no link without a target', () => {
+    const { bundle } = expandSiteSpec(whoobeDev, { existing });
+    const all = [...bundle.snippets.map((s) => s.node), ...bundle.pages.map((p) => p.content)].flatMap(nodes);
+    const links = all.filter((n) => n.element === 'a');
+    expect(links.length).toBeGreaterThan(40);
+    expect(links.filter((l) => !String(l.content).trim())).toEqual([]);
+    expect(links.filter((l) => !l.link)).toEqual([]);
+  });
+
+  it('keeps links to the pages of the site under the root path', () => {
+    const { bundle } = expandSiteSpec(whoobeDev, { existing });
+    const links = nodes(bundle.snippets[0].node).filter((n) => n.element === 'a').map((n) => n.link);
+    expect(links).toContain('/whoobe-dev');
+    expect(links).toContain('/whoobe-dev/platform');
+    expect(links).toContain('/whoobe-dev/blog');
+  });
+});

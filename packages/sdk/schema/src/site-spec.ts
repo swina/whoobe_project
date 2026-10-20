@@ -111,6 +111,7 @@ export const siteSpecSchema = z.strictObject({
     defaultLocale: locale,
     supportedLocales: z.array(locale).min(1).max(SITE_SPEC_LIMITS.maxLocales).describe('one or two locales, the default one included'),
     description: plain(400).optional(),
+    otherPaths: z.array(slug).max(20).optional().describe('pages that exist, or will exist, outside this file (for example a blog added later) and that links may point to'),
   }),
   theme: themeSchema.optional(),
   snippets: z.array(snippetSchema).max(SITE_SPEC_LIMITS.maxSnippets).optional(),
@@ -122,7 +123,7 @@ export const siteSpecSchema = z.strictObject({
 
 export type SiteSpec = {
   version: 1
-  website: { name: string; rootPath?: string; defaultLocale: string; supportedLocales: string[]; description?: string }
+  website: { name: string; rootPath?: string; defaultLocale: string; supportedLocales: string[]; description?: string; otherPaths?: string[] }
   theme?: { use?: string; name?: string; colors?: { name: string; hex: string }[]; fonts?: string[] }
   snippets?: { key: string; use?: string; name?: string; category?: string; node?: SpecNode }[]
   layout?: { header?: string; footer?: string; aside?: string; notFound404?: string }
@@ -206,7 +207,7 @@ function checkNode(node: SpecNode, path: Path, spec: SiteSpec, fail: (path: Path
   if (!node.text.trim()) fail([...path, 'text'], 'a link needs visible text')
   if (node.href.startsWith('/') && !node.href.startsWith('//')) {
     const target = node.href.split(/[?#]/)[0] || '/'
-    if (!spec.pages.some((p) => p.slug === target)) fail([...path, 'href'], `the link goes to "${target}", which is not a page of this file`)
+    if (!spec.pages.some((p) => p.slug === target) && !(spec.website.otherPaths ?? []).includes(target)) fail([...path, 'href'], `the link goes to "${target}", which is not a page of this file (a page outside the file is listed in website.otherPaths)`)
   }
 }
 

@@ -38,6 +38,16 @@
           "type": "string",
           "maxLength": 400,
           "pattern": "^[^<>]*$"
+        },
+        "otherPaths": {
+          "description": "pages that exist, or will exist, outside this file (for example a blog added later) and that links may point to",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 120,
+            "pattern": "^\\/$|^\\/[a-z0-9]+(-[a-z0-9]+)*(\\/[a-z0-9]+(-[a-z0-9]+)*)*$"
+          }
         }
       },
       "required": [

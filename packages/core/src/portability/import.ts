@@ -5,7 +5,7 @@ import { createDataClass, deleteDataClass, getDataClassByName } from '../db/data
 import { createDataComponent, deleteDataComponent, getDataComponentByName } from '../db/data-components-records.js';
 import { createDataObject, deleteDataObject, listDataObjects, updateDataObject } from '../db/data-objects-records.js';
 import { emitBulkSummary } from '../db/object-events-records.js';
-import { createTheme, deleteTheme } from '../db/themes-records.js';
+import { createTheme, deleteTheme, getTheme } from '../db/themes-records.js';
 import { createWebsite, deleteWebsite, getWebsiteByRootPath } from '../db/websites-records.js';
 import { createWebsitePath, deleteWebsitePath } from '../db/website-paths-records.js';
 import { createWebsiteTemplate, deleteWebsiteTemplate } from '../db/website-templates-records.js';
@@ -29,6 +29,9 @@ export interface ImportOptions {
   /** A documentation website: the folder its files are stored in here. The caller that stores the files first (the dashboard) asks
    *  for it in a dry run and gives the same answer in the final call. Absent: the folder of the bundle if it is free here, else a free one. */
   docsFolder?: string;
+  /** Use the name and the root path of the bundle as they are, instead of adding a suffix (a copy of an existing site needs the suffix, a site made
+   *  from a specification does not: its links already carry the root path). A root path that is taken is a 409, in a dry run too. */
+  keepNames?: boolean;
 }
 
 export interface ImportReport {
@@ -178,11 +181,19 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
   };
 
   // --- name and root path of the new website ----------------------------------------------------------------
-  const suffix = randomBytes(4).toString('hex');
   const basePath = bundle.website.rootPath || `/${bundle.website.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-  let rootPath = `${basePath}-${suffix}`;
-  for (let n = 0; await getWebsiteByRootPath(rootPath); ) rootPath = `${basePath}-${suffix}-${++n}`;
-  const name = `${bundle.website.name} (import ${suffix})`;
+  let rootPath: string;
+  let name: string;
+  if (options.keepNames) {
+    if (await getWebsiteByRootPath(basePath)) throw new ImportError(`The root path ${basePath} is already used by another website: choose another name or root path`, 409);
+    rootPath = basePath;
+    name = bundle.website.name;
+  } else {
+    const suffix = randomBytes(4).toString('hex');
+    rootPath = `${basePath}-${suffix}`;
+    for (let n = 0; await getWebsiteByRootPath(rootPath); ) rootPath = `${basePath}-${suffix}-${++n}`;
+    name = `${bundle.website.name} (import ${suffix})`;
+  }
 
   const report: ImportReport = { dryRun, website: { id: null, name, rootPath }, counts, classes: classReport, assets: assetPlan, ...(docs ? { docs } : {}), warnings };
   if (dryRun) return report;
@@ -228,6 +239,15 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
     const groups = new Map<string, string>();
     const group = (old: string): string => { let g = groups.get(old); if (!g) groups.set(old, (g = randomUUID())); return g; };
     const fix = <T>(v: T): T => rewriteAssetPaths(rewriteIds(v, idMap), pathMap);
+    // A theme the bundle carries gets a new id (idMap). A theme id that is not in the bundle is kept when that theme exists here: a site made from
+    // a specification points at a theme of the installation by name. Anything else is dropped, as before (a dangling reference would fail the insert).
+    const themeRef = new Map<string, string | null>();
+    const theme = async (old: string | null | undefined): Promise<string | null> => {
+      if (!old) return null;
+      if (idMap.has(old)) return idMap.get(old)!;
+      if (!themeRef.has(old)) themeRef.set(old, (await getTheme(old)) ? old : null);
+      return themeRef.get(old)!;
+    };
 
     for (const t of bundle.themes) {
       const created = await createTheme({ id: themeNewId.get(t)!, name: t.name, colors: t.colors, fonts: t.fonts, styles: t.styles, tailwindClasses: t.tailwindClasses });
@@ -241,7 +261,7 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
       defaultLocale: bundle.website.defaultLocale,
       supportedLocales: bundle.website.supportedLocales,
       settings: docs ? withDocsFolder(fix(bundle.website.settings ?? {}), docs.targetFolder) : fix(bundle.website.settings ?? {}),
-      themeId: bundle.website.themeId ? idMap.get(bundle.website.themeId) ?? null : null,
+      themeId: await theme(bundle.website.themeId),
     });
     undo.push(() => deleteWebsite(website.id));
     report.website.id = website.id;
@@ -274,7 +294,7 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
     for (const s of bundle.snippets) {
       const created = await createWhoobeOneSnippet({
         id: snippetIds.get(s)!, name: s.name, category: s.category, icon: s.icon, node: fix(s.node),
-        themeId: s.themeId ? idMap.get(s.themeId) ?? null : null, notes: s.notes, thumbnail: s.thumbnail, locked: s.locked === true,
+        themeId: await theme(s.themeId), notes: s.notes, thumbnail: s.thumbnail, locked: s.locked === true,
       });
       undo.push(() => deleteWhoobeOneSnippet(created.id));
     }
@@ -299,7 +319,7 @@ export async function importWebsiteBundle(bundle: WebsiteBundle, options: Import
         pimcoreId: null,
         path: p.path,
         websiteId: website.id,
-        themeId: p.themeId ? idMap.get(p.themeId) ?? null : null,
+        themeId: await theme(p.themeId),
       });
       undo.push(() => deleteWhoobePage(created.id));
       if (restorePublication && (p.published || p.workflowState)) await updateWhoobePage(created.id, { published: p.published, workflowState: p.workflowState }, { silent: true });

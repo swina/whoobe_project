@@ -100,6 +100,10 @@ describe('site spec: each rule has a failing example', () => {
   it('rejects a link to a page that is not in the file, keeps the anchor and query of a page that is', () => {
     expect(messages(edit((x) => { x.pages[0].sections[0].children[2].href = '/contact' })).join('\n')).toContain('"/contact", which is not a page')
     expect(validateSiteSpec(edit((x) => { x.pages[0].sections[0].children[2].href = '/pricing#plans' })).ok).toBe(true)
+    // a page that lives outside the file has to be named
+    expect(validateSiteSpec(edit((x) => { x.pages[0].sections[0].children[2].href = '/blog' })).ok).toBe(false)
+    expect(validateSiteSpec(edit((x) => { x.website.otherPaths = ['/blog']; x.pages[0].sections[0].children[2].href = '/blog' })).ok).toBe(true)
+    expect(validateSiteSpec(edit((x) => { x.website.otherPaths = ['/blog']; x.pages[0].sections[0].children[2].href = '/blogs' })).ok).toBe(false)
   })
 
   it('rejects markup in a heading, and classes that could break out of the attribute', () => {
