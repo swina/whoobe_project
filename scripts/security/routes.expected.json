@@ -1455,6 +1455,24 @@
       "mode": "any",
       "audit": "websiteFromAi"
     },
+    "GET /whoobe-one/site-wizard/options": {
+      "access": "permission",
+      "permissions": [
+        "WEBSITES_CREATE",
+        "OBJECTS_WRITE"
+      ],
+      "mode": "any",
+      "note": "the choices of the template wizard and the names and categories of the library's snippets (never their content)"
+    },
+    "POST /whoobe-one/websites/from-wizard": {
+      "access": "permission",
+      "permissions": [
+        "WEBSITES_CREATE",
+        "OBJECTS_WRITE"
+      ],
+      "mode": "any",
+      "audit": "websiteFromWizard"
+    },
     "GET /whoobe-one/site-spec/material": {
       "access": "permission",
       "permissions": [

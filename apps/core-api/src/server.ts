@@ -305,6 +305,10 @@ import {
   importWebsiteBundle,
   importSiteSpec,
   SiteSpecError,
+  buildSite,
+  WizardError,
+  wizardOptions,
+  snippetBlockType,
   parseWebsiteBundle,
   ImportError,
   signUploadTicket,
@@ -6768,6 +6772,13 @@ app.get('/whoobe-one/site-spec/material', requireAnyPermission(PERMISSIONS.WEBSI
   res.json({ version: SITE_SPEC_VERSION, limits: SITE_SPEC_LIMITS, instructions: SITE_SPEC_INSTRUCTIONS, schema: siteSpecJsonSchema(), examples: SITE_SPEC_EXAMPLES });
 });
 
+// the body of a check or an import names the choices about themes and snippets that exist, and may change the name or the root path
+const pickChoices = (v: unknown): Record<string, 'existing' | 'new'> | undefined => {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
+  return Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([, c]) => c === 'existing' || c === 'new')) as Record<string, 'existing' | 'new'>;
+};
+const textOf = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
+
 // Body: `{ spec, choices?, website? }`. `choices` says, for a theme or snippet name the file defines and that already exists here, `existing` (use it) or
 // `new` (create it under a free name; the default: an existing one is never changed). `website` ({ name?, rootPath? }) changes the name or root path
 // before the check. `?dryRun=1` writes nothing and answers with the conflicts, a summary and the importer's report. Pages come in as drafts.
@@ -6782,16 +6793,11 @@ app.post('/whoobe-one/websites/from-spec', requireAnyPermission(PERMISSIONS.WEBS
     res.status(400).json({ error: 'spec (the site specification, a JSON object) is required' });
     return;
   }
-  const pick = (v: unknown): Record<string, 'existing' | 'new'> | undefined => {
-    if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
-    return Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([, c]) => c === 'existing' || c === 'new')) as Record<string, 'existing' | 'new'>;
-  };
-  const text = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
   try {
     const outcome = await importSiteSpec(spec, {
       dryRun: req.query.dryRun === '1' || req.query.dryRun === 'true',
-      choices: { themes: pick(choices?.themes), snippets: pick(choices?.snippets) },
-      website: website && typeof website === 'object' ? { name: text(website.name), rootPath: text(website.rootPath) } : undefined,
+      choices: { themes: pickChoices(choices?.themes), snippets: pickChoices(choices?.snippets) },
+      website: website && typeof website === 'object' ? { name: textOf(website.name), rootPath: textOf(website.rootPath) } : undefined,
     });
     res.status(outcome.dryRun ? 200 : 201).json(outcome);
   } catch (error: any) {
@@ -6805,6 +6811,60 @@ app.post('/whoobe-one/websites/from-spec', requireAnyPermission(PERMISSIONS.WEBS
     }
     logger.error({ err: error }, 'Website from specification error');
     res.status(500).json({ error: 'Failed to create the website from the specification' });
+  }
+});
+
+
+// --- Template wizard (docs/plans/ai/template-wizard.md) ---
+// A site from a few choices: the answers become a site specification (fixed block templates, no model), which goes through the same check and import as a
+// specification written by hand. Nothing here calls a model or any outside service.
+
+app.get('/whoobe-one/site-wizard/options', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (_req: Request, res: Response): Promise<void> => {
+  try {
+    // the snippets of the library, with the block each could stand for (by its category); the content of a snippet is not sent
+    const snippets = (await listWhoobeOneSnippets()).map((s) => ({ name: s.name, category: s.category, block: snippetBlockType(s.category) })).filter((s) => s.block);
+    res.json({ ...wizardOptions(), snippets });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Site wizard options error');
+    res.status(500).json({ error: 'Failed to load the options of the wizard' });
+  }
+});
+
+// Body: `{ answers, choices?, website? }` (the answers are described by `wizardAnswersSchema`). `?dryRun=1` writes nothing and answers with the conflicts, a summary
+// and the importer's report, plus `notes` (what was adjusted to keep the colours readable). Pages come in as drafts. The form block is created disconnected.
+app.post('/whoobe-one/websites/from-wizard', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteFromWizard), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const { answers, choices, website } = req.body ?? {};
+  if (Number(req.headers['content-length'] ?? 0) > 200_000) {
+    res.status(413).json({ error: 'The answers are too large' });
+    return;
+  }
+  if (answers === undefined || answers === null || typeof answers !== 'object' || Array.isArray(answers)) {
+    res.status(400).json({ error: 'answers (an object) is required' });
+    return;
+  }
+  try {
+    const { spec, notes } = buildSite(answers);
+    const outcome = await importSiteSpec(spec, {
+      dryRun: req.query.dryRun === '1' || req.query.dryRun === 'true',
+      choices: { themes: pickChoices(choices?.themes), snippets: pickChoices(choices?.snippets) },
+      website: website && typeof website === 'object' ? { name: textOf(website.name), rootPath: textOf(website.rootPath) } : undefined,
+    });
+    res.status(outcome.dryRun ? 200 : 201).json({ ...outcome, notes });
+  } catch (error: any) {
+    if (error instanceof WizardError) {
+      res.status(400).json({ error: 'The answers are not valid', issues: error.issues.map((i) => ({ path: i.path, where: i.path, message: i.message })) });
+      return;
+    }
+    if (error instanceof SiteSpecError) {
+      res.status(400).json({ error: 'The site could not be made from these answers', issues: error.issues });
+      return;
+    }
+    if (error instanceof ImportError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    logger.error({ err: error }, 'Website from wizard error');
+    res.status(500).json({ error: 'Failed to create the website from the wizard' });
   }
 });
 

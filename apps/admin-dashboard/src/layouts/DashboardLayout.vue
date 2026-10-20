@@ -632,6 +632,7 @@ import {
   KeyRound,
   ListChecks,
   CircleHelp,
+  LayoutTemplate,
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
@@ -659,6 +660,7 @@ import MasterDocsDocTab from '../components/websites/MasterDocsDocTab.vue'
 import OverviewView from '../views/OverviewView.vue'
 import WebsitesView from '../views/WebsitesView.vue'
 import PublishView from '../views/PublishView.vue'
+import SiteWizardView from '../views/SiteWizardView.vue'
 import ObjectsView from '../views/ObjectsView.vue'
 import AssetsView from '../views/AssetsView.vue'
 import DocumentsView from '../views/DocumentsView.vue'
@@ -1047,6 +1049,7 @@ const sectionComponents: Record<SectionKind, any> = {
   overview: OverviewView,
   websites: WebsitesView,
   publish: PublishView,
+  'site-wizard': SiteWizardView,
   objects: ObjectsView,
   assets: AssetsView,
   documents: DocumentsView,
@@ -1071,6 +1074,7 @@ const sectionLabels: Record<SectionKind, string> = {
   overview: 'Overview',
   websites: 'Websites',
   publish: 'Publish',
+  'site-wizard': 'Generate Website Wizard',
   objects: 'Data Objects',
   assets: 'Assets',
   documents: 'Documents',
@@ -1095,6 +1099,7 @@ const sectionIcons: Record<SectionKind, any> = {
   overview: LayoutDashboard,
   websites: Globe,
   publish: Rocket,
+  'site-wizard': LayoutTemplate,
   objects: Database,
   assets: FolderArchive,
   documents: FileText,

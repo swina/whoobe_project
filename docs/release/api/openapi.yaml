@@ -4667,6 +4667,39 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/site-wizard/options:
+    get:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "What the template wizard offers: the limits, the sectors (each with the structure it proposes), the blocks with their descriptions, the colour themes with their palettes, the fonts, the source of the texts, and the snippets of the library that could stand for a block (name, category and block; never their content). Needs `websites:create` or `objects:write`; calls nothing outside."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/websites/from-wizard:
+    post:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Create a website from the answers of the template wizard (name, language, sector, market context, theme or company colour, accent, font, up to four pages each with its blocks, header button). Body `{ answers, choices?, website? }`, with `choices` and `website` as for `from-spec`. The answers become a site specification of fixed block templates (no model is called) that goes through the same check and import: `?dryRun=1` writes nothing and returns the conflicts, a summary, the importer's report and `notes` (what was adjusted to keep the colours readable). Pages are created as drafts; a form block is created **not connected** (no target, no recipient). `400` with `issues` when the answers are not valid, `409` when the root path is taken, `413` above 200 KB."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /whoobe-one/site-spec/material:
     get:
       tags: ["core-api: AI: text, images, translation, whole-website generation"]

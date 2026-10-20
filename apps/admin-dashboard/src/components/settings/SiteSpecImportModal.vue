@@ -68,45 +68,7 @@
       <section v-if="outcome" class="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-4" data-testid="site-spec-summary">
         <h3 class="text-sm font-semibold text-emerald-200">3. The file is valid. This is what will be created</h3>
 
-        <div class="grid gap-3 sm:grid-cols-2">
-          <label class="block text-xs text-slate-300 light:text-slate-700">Website name
-            <input v-model="websiteName" data-testid="site-spec-name" class="field w-full mt-1" @change="recheck()" />
-          </label>
-          <label class="block text-xs text-slate-300 light:text-slate-700">Root path (the address of its preview)
-            <input v-model="websitePath" data-testid="site-spec-rootpath" class="field w-full mt-1 font-mono" @change="recheck()" />
-          </label>
-        </div>
-        <p v-if="outcome.summary.website.rootPathTaken" class="text-xs text-amber-300" data-testid="site-spec-taken">
-          The root path {{ outcome.summary.website.rootPath }} is already used by another website. Change the name or the root path above.
-        </p>
-
-        <div class="text-xs text-slate-300 light:text-slate-700 space-y-1">
-          <div><strong>{{ outcome.summary.pages.length }}</strong> {{ outcome.summary.pages.length === 1 ? 'page' : 'pages' }}
-            <span class="text-slate-500">({{ outcome.summary.website.locales.join(', ') }})</span>:
-            <span v-for="(p, n) in outcome.summary.pages" :key="n" class="inline-block mr-2 font-mono text-slate-400">{{ p.slug }}<span v-if="outcome.summary.website.locales.length > 1" class="text-slate-500"> [{{ p.locale }}]</span></span>
-          </div>
-          <div v-if="outcome.summary.snippets.length"><strong>Snippets:</strong>
-            &nbsp;<span v-for="(s, n) in outcome.summary.snippets" :key="n" class="inline-block mr-2">{{ s.name }}<span class="text-slate-500"> ({{ s.action === 'create' ? 'new' : 'existing' }})</span></span>
-          </div>
-          <div v-if="outcome.summary.theme"><strong>Theme:</strong> {{ outcome.summary.theme.name }} <span class="text-slate-500">({{ outcome.summary.theme.action === 'create' ? 'new' : 'existing' }})</span></div>
-          <div v-if="outcome.summary.layout.length"><strong>Around every page:</strong> {{ outcome.summary.layout.join(', ') }}</div>
-        </div>
-
-        <!-- a name that is already taken here: the person decides, an existing item is never changed -->
-        <div v-if="outcome.conflicts.length" class="space-y-2" data-testid="site-spec-conflicts">
-          <p class="text-xs font-semibold text-amber-200">These names already exist here. Nothing existing is changed or replaced.</p>
-          <div v-for="c in outcome.conflicts" :key="c.kind + c.name" class="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs space-y-1" :data-testid="`site-spec-conflict-${c.kind}`">
-            <div class="text-slate-200 light:text-slate-800">The {{ c.kind }} <strong>"{{ c.name }}"</strong> exists.</div>
-            <label class="flex items-center gap-2"><input type="radio" :name="c.kind + c.name" value="new" :checked="c.choice === 'new'" @change="choose(c, 'new')" />
-              Create a new one{{ c.choice === 'new' && c.createdAs ? `, named "${c.createdAs}"` : '' }}</label>
-            <label class="flex items-center gap-2"><input type="radio" :name="c.kind + c.name" value="existing" :checked="c.choice === 'existing'" @change="choose(c, 'existing')" />
-              Use the existing one</label>
-          </div>
-        </div>
-
-        <ul v-if="outcome.report?.warnings?.length" class="text-xs text-amber-300 list-disc pl-5">
-          <li v-for="(w, n) in outcome.report.warnings" :key="n">{{ w }}</li>
-        </ul>
+        <SiteImportCheck v-model:name="websiteName" v-model:root-path="websitePath" :outcome="outcome" prefix="site-spec" @recheck="recheck()" @choose="choose" />
       </section>
 
       <div v-if="importError" class="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-200" data-testid="site-spec-import-error">{{ importError }}</div>
@@ -123,6 +85,7 @@
 import { computed, ref, watch } from 'vue'
 import { FileJson } from '@lucide/vue'
 import BaseModal from '../ui/BaseModal.vue'
+import SiteImportCheck from '../websites/SiteImportCheck.vue'
 import { useAuthStore } from '../../stores/authStore'
 import { useTabsStore } from '../../stores/tabsStore'
 import { useToastStore } from '../../stores/toastStore'

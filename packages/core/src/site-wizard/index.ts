@@ -5,3 +5,4 @@ export * from './copy.js';
 export * from './text-source.js';
 export * from './themes.js';
 export * from './wizard.js';
+export * from './options.js';

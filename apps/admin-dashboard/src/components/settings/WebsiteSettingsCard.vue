@@ -13,6 +13,7 @@
         <button @click="createNewWebsite" class="btn btn-primary">+ New Website</button>
         <button data-testid="new-docs-site" @click="createNewDocsSite" class="btn btn-soft-primary">+ New Documentation</button>
         <button @click="triggerImport" :disabled="!!busy" class="btn btn-secondary">Import</button>
+        <button data-testid="site-wizard-open" @click="tabsStore.openSection('site-wizard')" class="btn btn-soft-primary flex items-center gap-1.5" title="Make a website from a few choices: pages, blocks, look and sector">Generate Website Wizard</button>
         <button data-testid="site-spec-open" @click="showSpecModal = true" class="btn btn-secondary" title="Create a website from a specification written by a language model">Import from a spec</button>
         <input ref="importFileInput" type="file" accept=".zip,.json" class="hidden" @change="handleImportFile" />
       </div>
