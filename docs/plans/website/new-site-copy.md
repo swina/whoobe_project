@@ -57,9 +57,15 @@ editor, and a block can show the data. The credentials stay on the server.
 **No-code for the people who use it.** Editors build pages from blocks, snippets and kits. A data manager adds a field to a class without a
 deploy. Nobody on the content side asks a developer to move a button or to publish.
 
-**Security you do not have to assemble.** An append-only audit log, mandatory two-factor authentication by role, single sign-on with OpenID
-Connect, encrypted credentials, data subject tools and retention, metrics and encrypted backups. In the product, documented, and tested in CI.
-[What is in it, and what is not](/security)
+**Security controls, and the proof behind them.** An append-only audit log, mandatory two-factor authentication by role, single sign-on with
+OpenID Connect, encrypted credentials, data subject tools and retention, metrics. We do not certify our own code: we say what we tested,
+publish the results, failures included, and list what is not covered. [Controls, tests and limits](/security)
+
+### Open source means showing the work
+
+The code is MIT and public. So are the tests, the findings (open and closed), the results of every release, failures included, and the plans
+that say how it is built, including the use of an AI assistant. We do not ask you to trust a claim: we put what backs it where you can open it.
+Links: the tests, the findings, the results of release 0.2.0, the plans.
 
 ### Where it stands
 
@@ -115,39 +121,57 @@ the headless API with adapters for React, Vue, Next.js, Nuxt and Svelte.
 
 ## 3. Security and governance
 
-**H1:** Security and governance, built in.
+The principle (owner's): **open source earns the name by showing its work.** We do not claim that the code is secure and we do not certify it
+ourselves. We say what we tested, against which objective, and publish the results, failures included. Policy and record:
+`docs/release/security/results/`.
 
-**Lead:** Release 0.2, named *Conduct*, is the one that lets an organisation with a security officer say yes. This page lists what a security
-officer asks, what the product does, where it is documented, and, in its own section, what is not there.
+**H1:** What is built in, what we tested, and what we did not.
 
-### What is asked, what is in the product
+**Lead:** Open source earns the name by showing its work. We do not certify our own code and we do not say that it is secure. Release 0.2, named
+*Conduct*, adds the controls a security officer asks for. This page lists them, says what we tested and why, what the tests cannot tell you,
+and where every result is published.
 
-| The question | In Whoobe | Documented |
-|---|---|---|
-| Who did what, and from where? | An append-only audit log of administrative actions: who, from which address, what, on which target, the fields before and after. Secrets are recorded as "changed", never as a value. Filters and CSV export. The database refuses to update or truncate it. | [Audit log](https://docs.whoobe.dev/operations/audit-log/) |
-| Is a second factor required? | An administrator chooses the roles that must use two-factor authentication. A user of such a role with no second factor is led to enrolment and gets no session until it is done. A password policy applies where a password is set. | [Release notes 0.2.0](https://docs.whoobe.dev/release-notes-0.2.0/) |
-| Can staff sign in with our identity provider? | OpenID Connect single sign-on (authorization code with PKCE), roles taken from a claim at each sign-in, provisioning by a verified e-mail only, a local break-glass for administrators. | [Single sign-on](https://docs.whoobe.dev/operations/single-sign-on/) |
-| Where do the credentials of integrations live? | Encrypted at rest, decrypted only inside the gateway, never sent to a browser. Keys come from the environment; the procedure to rotate each secret is written down (it is manual). | [Encryption](https://docs.whoobe.dev/operations/encryption/) · [Secrets and keys](https://docs.whoobe.dev/operations/secrets-and-keys/) |
-| Can we answer a data subject request? | Find, export and erase what is held about one person by one value (an e-mail), with a dry run first and the action audited without the value. Retention per data class. | [Data subject requests](https://docs.whoobe.dev/operations/data-subject-requests/) |
-| Can we monitor it? | A readiness and a liveness endpoint, Prometheus metrics behind a token, structured logs with a switch for the level. | [Observability](https://docs.whoobe.dev/operations/observability-and-logging/) |
-| Can we recover? | Scheduled encrypted database backups, pulled by another machine (the host holds no credentials for the copy), a freshness check, and a restore rehearsal script. | [Scheduling backups](https://docs.whoobe.dev/operations/scheduling-backups/) · [Backup and recovery](https://docs.whoobe.dev/operations/backup-restore-and-dr/) |
-| Is the supply chain looked at? | Service images signed and published per release, with a source SBOM; the CI runs a dependency audit, a secret scan, static analysis and container scans. | [Supply chain](https://docs.whoobe.dev/security/supply-chain/) |
-| Has it been tested? | Automated API, browser, isolation and DAST suites run in CI on a disposable stack. The findings, open and closed, are published. | [Security test suite](https://docs.whoobe.dev/security/security-test-suite/) · [Findings](https://docs.whoobe.dev/security/findings/) |
+### What is built in
 
-### Isolation
+A table, question / in Whoobe / documented, with nine rows: audit log, second factor, single sign-on, where integration credentials live, data
+subject requests, monitoring, recovery, supply chain, tests (texts as in the page; each links to its document).
 
-One organisation per installation. An agency runs one workspace per client, each with its own database, its own object store and its own secrets;
-an automated test starts two workspaces and checks that one cannot reach the other.
+### What we tested, and with what objective
 
-### <a id="not-there"></a>What is not there (yet)
+*We do not say that the code is secure, and we do not certify it ourselves. We say what we set out to check, and how.* A table, objective / how
+it is checked: sessions, lockout, password reset, second factor and single sign-on; every route guarded as intended (a checked-in contract, five
+identities, a new route with no classification fails the run); one workspace cannot reach another; visitors cannot read what is not public;
+uploads and outbound requests cannot be abused; stored text and pages do not run injected code (browser tests); no secret in the code or its
+history, no known vulnerable dependency or image; the running stack answers safely to a standard scan (OWASP ZAP baseline, the TLS policy of the
+proxy template). Link: the test suite document.
+
+### What the tests do not tell you
+
+A green run means that **these checks passed on this code, at this commit**. It does not mean that there are no vulnerabilities. It is not an
+audit, a penetration test or a certification, and there has not been an outside one: all the work is ours. The coverage has holes, and they are
+listed: SQL fuzzing of most endpoints, the impact of prompt injection on the AI features, a full Content-Security-Policy for the admin and the
+editor, a live host with a public certificate, and load testing (by design).
+
+### Where the results are, and they stay public
+
+Open source earns the name by showing its work. The tests, the findings, the results of every release and the plans are in the repository or in
+its public history. **The failures are published too**: on the day of release 0.2.0, two runs failed before the green one, and both are in the
+record. A table, what / what it is / where: the tests (`scripts/security`), what each suite asserts, every finding open or closed, the status
+summary, the result of each release (`docs/release/security/results/vX.Y.Z.md`), the CI runs, the plans. Closing line: *If a claim on this site
+is not backed by something you can open, tell us.*
+
+### What is not there (yet)
 
 - **One OpenID Connect provider** at a time. It was tried against Keycloak; Microsoft Entra, Okta and Google follow the same standard and have
   **not** been tried. SAML and LDAP are not built: a broker in front covers them.
 - **The audit log records successful actions.** A refused attempt is not in it.
-- **Two-factor authentication, password policy and retention are off until you set them.** An upgrade changes nothing by itself.
+- **Two-factor authentication, the password policy and retention are off until you set them.** An upgrade changes nothing by itself.
 - **No high availability.** One installation, one database; recovery is by backup and restore.
-- **No third-party certification** (ISO 27001, SOC 2). The tests and the findings are public instead.
+- **No third-party certification** (ISO 27001, SOC 2) and no outside penetration test.
 - It is a **`0.` series**: behaviour can change between minor releases. The release notes list what.
+
+Closing band: *Check it yourself.* The sandbox is the real product with the risky features switched off, and the tests and their results are
+public. Buttons: Open the sandbox; Read the results of 0.2.0.
 
 ---
 
@@ -172,7 +196,7 @@ per client. Roles follow functions (editor, publisher, administrator), not peopl
 
 - **Upgrades:** migrations are additions only, applied when the API starts; the release notes list behaviour changes; take a backup first.
   [Upgrade and migrations](https://docs.whoobe.dev/operations/upgrade-and-migrations/)
-- **Backups and recovery:** nightly, encrypted, pulled to another machine, with a freshness check. [Scheduling backups](https://docs.whoobe.dev/operations/scheduling-backups/)
+- **Backups and recovery:** encrypted database backups, restore scripts and a rehearsal; the nightly job pulled by another machine, with a freshness check, comes with the next release (it is in the code after 0.2.0). [Scheduling backups](https://docs.whoobe.dev/operations/scheduling-backups/)
 - **Observability:** health, metrics, logs. [Observability](https://docs.whoobe.dev/operations/observability-and-logging/)
 - **What it takes:** the skills and the hours, estimated, by task and by frequency. [Skills and effort](https://docs.whoobe.dev/operations/skills-and-effort/)
 
@@ -232,10 +256,12 @@ The existing Blog data class and the `/blog` and `/blog/article/{slug}` template
 | Credentials encrypted at rest, only inside the gateway | `docs/release/overview/executive-summary.md`; `operations/encryption.md`; `operations/secrets-and-keys.md` |
 | Data subject requests, dry run, retention off until set | release notes 0.2.0; `operations/data-subject-requests.md` |
 | Readiness, liveness, Prometheus metrics behind a token | release notes 0.2.0; `operations/observability-and-logging.md` |
-| Scheduled encrypted backups, pulled, freshness check, restore rehearsal | `operations/scheduling-backups.md`; `scripts/restore/rehearse.sh` |
+| Encrypted database backups, restore scripts and a rehearsal in 0.2.0; the nightly pulled job with a freshness check is **after** 0.2.0 (next release) | `operations/backup-restore-and-dr.md`; `scripts/restore/rehearse.sh`; `operations/scheduling-backups.md`; `CHANGES.md` |
 | Signed service images and source SBOM per release; CI scans | `docs/release/README.md`; `security/supply-chain.md`; `.github/workflows/release.yml`, `security.yml` |
 | Automated API, browser, isolation and DAST suites in CI; findings published | `security/security-test-suite.md`; `security/findings.md` |
 | Two workspaces cannot reach each other (tested) | `scripts/security/isolation`; `security/security-test-suite.md` |
+| Results of 0.2.0: full run 39271161567 on `c21a633` all green; the tag adds only the version number; two earlier runs of the day failed | `security/results/v0.2.0.md` |
+| Failures are published, nothing is self-certified, results are public | `security/results/README.md` |
 | Every API route documented, a test fails otherwise | `docs/release/api/api-reference.md`; `scripts/security/routes.expected.json` |
 | One organisation per installation; MIT; no per-user fee | `architecture/design-decisions`; `LICENSE.md` |
 | No licence server, no call home, no telemetry | `security/data-protection.md` |

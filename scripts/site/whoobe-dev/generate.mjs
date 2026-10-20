@@ -86,7 +86,7 @@ const homeHero = () => col('w-full px-6 pt-24 pb-20 bg-gradient-to-br from-[#0F1
   col('max-w-4xl mx-auto w-full gap-6', [
     eyebrow('Unify your stack', 'text-cyan-300'),
     h(1, 'A self-hosted platform instead of the glue between your CMS, your data and your systems.', 'text-4xl md:text-5xl font-bold leading-tight'),
-    p('Configure it instead of coding it. No code for the people who use it. Security and governance built in. MIT licence, one organisation per installation, no per-user fee.', 'text-lg text-slate-300 max-w-3xl'),
+    p('Configure it instead of coding it. No code for the people who use it. Security and governance controls built in, with the tests and their results in the open. MIT licence, one organisation per installation, no per-user fee.', 'text-lg text-slate-300 max-w-3xl'),
     row('gap-3 flex-wrap items-center', [cta('Try the live sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'Run it on your machine', link: `${DOCS}/operations/miniguide-deployment/`, css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' }), el('Link', { text: 'Read the documentation →', link: DOCS, css: 'text-sm text-slate-300 hover:text-white underline underline-offset-4' })]),
     p('<code>git clone https://github.com/swina/whoobe_project &amp;&amp; cd whoobe_project &amp;&amp; ./try.sh</code>', 'text-xs text-slate-400 font-mono break-all'),
     p('MIT · self-hosted · version 0.2.0 · no per-user fee', 'text-xs text-slate-500'),
@@ -107,13 +107,23 @@ const homeBody = () => [
     col('gap-6 md:flex-row', [
       proof('Configuration, not glue code', 'Point the gateway at an OpenAPI file or a sample request: routes, response shapes and fields appear in the editor, and a block can show the data. The credentials stay on the server.', ['How it works →', '/platform']),
       proof('No code for the people who use it', 'Editors build pages from blocks, snippets and kits. A data manager adds a field to a class without a deploy. Nobody on the content side asks a developer to move a button or to publish.', ['The user manual →', `${DOCS}/guides/user-manual/`]),
-      proof('Security you do not have to assemble', 'An append-only audit log, mandatory two-factor authentication by role, single sign-on with OpenID Connect, encrypted credentials, data subject tools and retention, metrics and encrypted backups. In the product, documented, and tested in CI.', ['What is in it, and what is not →', '/security']),
+      proof('Security controls, and the proof behind them', 'An append-only audit log, mandatory two-factor authentication by role, single sign-on with OpenID Connect, encrypted credentials, data subject tools and retention, metrics. We do not certify our own code: we say what we tested, publish the results, failures included, and list what is not covered.', ['Controls, tests and limits →', '/security']),
     ]),
   ], 'bg-[#12151B]'),
   section([
+    h(2, 'Open source means showing the work', 'text-3xl font-bold text-white'),
+    p('The code is MIT and public. So are the tests, the findings (open and closed), the results of every release, failures included, and the plans that say how it is built, including the use of an AI assistant. We do not ask you to trust a claim: we put what backs it where you can open it.', 'text-slate-300 max-w-3xl'),
+    row('gap-x-8 gap-y-2 flex-wrap', [
+      el('Link', { text: 'The tests →', link: 'https://github.com/swina/whoobe_project/tree/master/scripts/security', css: 'text-sm text-[#A78BFA] underline underline-offset-2 hover:text-white' }),
+      el('Link', { text: 'The findings →', link: `${DOCS}/security/findings/`, css: 'text-sm text-[#A78BFA] underline underline-offset-2 hover:text-white' }),
+      el('Link', { text: 'Results of release 0.2.0 →', link: 'https://github.com/swina/whoobe_project/blob/master/docs/release/security/results/v0.2.0.md', css: 'text-sm text-[#A78BFA] underline underline-offset-2 hover:text-white' }),
+      el('Link', { text: 'The plans →', link: 'https://github.com/swina/whoobe_project/tree/master/docs/plans', css: 'text-sm text-[#A78BFA] underline underline-offset-2 hover:text-white' }),
+    ]),
+  ], 'bg-[#0F1115]'),
+  section([
     h(2, 'Where it stands', 'text-3xl font-bold text-white'),
     p(`Version <strong>0.2.0</strong>, a <code>0.</code> series: behaviour can change between minor releases, and the ${a(`${DOCS}/release-notes-0.2.0/`, 'release notes')} say what. One OpenID Connect provider, no SAML or LDAP, no high availability yet. The limits are on ${a('/security#not-there', 'one page')}, not in the small print.`, 'text-slate-300 max-w-3xl'),
-  ], 'bg-[#0F1115]'),
+  ], 'bg-[#12151B]'),
   bandCta('Try it before you read more', 'The sandbox has a demo website, two kits and the editor. It is deleted and rebuilt every three hours.', [cta('Open the sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'Run the whole stack locally', link: 'https://github.com/swina/whoobe_project#try-it', css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
 ];
 
@@ -150,18 +160,61 @@ const securityRows = [
   ['Where do the credentials of integrations live?', 'Encrypted at rest, decrypted only inside the gateway, never sent to a browser. Keys come from the environment; the procedure to rotate each secret is written down (it is manual).', `${a(`${DOCS}/operations/encryption/`, 'Encryption')} · ${a(`${DOCS}/operations/secrets-and-keys/`, 'Secrets and keys')}`],
   ['Can we answer a data subject request?', 'Find, export and erase what is held about one person by one value (an e-mail), with a dry run first and the action audited without the value. Retention per data class.', a(`${DOCS}/operations/data-subject-requests/`, 'Data subject requests')],
   ['Can we monitor it?', 'A readiness and a liveness endpoint, Prometheus metrics behind a token, structured logs with a switch for the level.', a(`${DOCS}/operations/observability-and-logging/`, 'Observability')],
-  ['Can we recover?', 'Scheduled encrypted database backups, pulled by another machine (the host holds no credentials for the copy), a freshness check, and a restore rehearsal script.', `${a(`${DOCS}/operations/scheduling-backups/`, 'Scheduling backups')} · ${a(`${DOCS}/operations/backup-restore-and-dr/`, 'Backup and recovery')}`],
+  ['Can we recover?', 'Encrypted database backups and restore scripts, and a rehearsal script that restores a backup into a throwaway stack and checks it. A nightly job pulled by another machine (the host holds no credentials for the copy), with a freshness check, is in the code after 0.2.0 and ships with the next release.', `${a(`${DOCS}/operations/scheduling-backups/`, 'Scheduling backups')} · ${a(`${DOCS}/operations/backup-restore-and-dr/`, 'Backup and recovery')}`],
   ['Is the supply chain looked at?', 'Service images signed and published per release, with a source SBOM; the CI runs a dependency audit, a secret scan, static analysis and container scans.', a(`${DOCS}/security/supply-chain/`, 'Supply chain')],
   ['Has it been tested?', 'Automated API, browser, isolation and DAST suites run in CI on a disposable stack. The findings, open and closed, are published.', `${a(`${DOCS}/security/security-test-suite/`, 'Security test suite')} · ${a(`${DOCS}/security/findings/`, 'Findings')}`],
 ];
+const tests2 = (obj, how, head) => col(`w-full gap-2 py-4 border-b border-white/10 md:flex-row px-3 ${head ? 'bg-white/5' : ''}`, [
+  p(obj, `md:w-1/2 text-sm ${head ? 'font-semibold text-slate-400 uppercase tracking-wide' : 'font-semibold text-white'}`),
+  p(how, `md:w-1/2 text-sm ${head ? 'font-semibold text-slate-400 uppercase tracking-wide' : 'text-slate-300'}`),
+]);
+const testedRows = [
+  ['Sessions, lockout, password reset, the second factor and single sign-on behave as designed', 'API test suites; the OpenID Connect sign-in against a mock and a real Keycloak'],
+  ['Every route is guarded as intended', 'Every route is classified (public, signed in, or by permission) in a checked-in contract, and each guarded route is called as five different identities. A new route with no classification fails the run.'],
+  ['One workspace cannot reach another', 'Two workspaces are started side by side and one tries to reach the other'],
+  ['Visitors cannot read what is not public', 'Tests of drafts, preview tokens, private files and the public search'],
+  ['Uploads and outbound requests cannot be abused', 'Upload tests (type, content, size, tickets) and a guard against requests to internal addresses, tested'],
+  ['Stored text and pages do not run injected code', 'Browser tests that feed hostile markup to the editor, the published pages and the lists of the dashboard'],
+  ['No secret in the code or its history, no known vulnerable dependency or image', 'Secret scan of the tree and of the whole git history, dependency audit, static analysis and container and configuration scans'],
+  ['The running stack answers safely to a standard scan', 'An OWASP ZAP baseline scan of the running stack, and a scan of the proxy template\'s TLS policy'],
+];
+const resultRows = [
+  ['The tests', 'In the repository (<code>scripts/security</code>): anyone can run them against a disposable stack.', a('https://github.com/swina/whoobe_project/tree/master/scripts/security', 'scripts/security')],
+  ['What each suite asserts, and what it does not', 'Written for reviewers, with the plan and a manual checklist.', a(`${DOCS}/security/security-test-suite/`, 'Test suite')],
+  ['Every finding, open or closed', 'A register with severity and state, published when a finding is made, not when it is fixed.', a(`${DOCS}/security/findings/`, 'Findings')],
+  ['Where the work stands, on one page', 'With the open items and what is not covered.', a(`${DOCS}/security/status-summary/`, 'Status summary')],
+  ['The result of each release', 'One record per release: the run, the commit, every job, the runs that failed first, what changed after the test, what was not covered.', a('https://github.com/swina/whoobe_project/blob/master/docs/release/security/results/v0.2.0.md', 'Release 0.2.0')],
+  ['The runs themselves', 'The CI history of the repository is public, with its logs.', a('https://github.com/swina/whoobe_project/actions', 'Actions')],
+  ['How the code is written', 'Written plans and decisions, including the use of an AI assistant.', a('https://github.com/swina/whoobe_project/tree/master/docs/plans', 'docs/plans')],
+];
+const tableOf = (rows, mk, headCells) => col('w-full rounded-xl overflow-hidden glass-panel bg-[#1A1D24]/70 border border-white/10', [mk(...headCells, true), ...rows.map((r) => mk(...r, false))]);
 const securityBody = () => [
   section([
-    h(2, 'What is asked, what is in the product', 'text-3xl font-bold text-white'),
+    h(2, 'What is built in', 'text-3xl font-bold text-white'),
     col('w-full rounded-xl overflow-hidden glass-panel bg-[#1A1D24]/70 border border-white/10', [tr('The question', 'In Whoobe', 'Documented', true), ...securityRows.map(([q, w, d]) => tr(q, w, d, false))]),
   ], 'bg-[#0F1115]'),
   section([
-    h(2, 'Isolation', 'text-3xl font-bold text-white'),
-    p('One organisation per installation. An agency runs one workspace per client, each with its own database, its own object store and its own secrets; an automated test starts two workspaces and checks that one cannot reach the other.', 'text-slate-300 max-w-3xl'),
+    h(2, 'What we tested, and with what objective', 'text-3xl font-bold text-white'),
+    p('We do not say that the code is secure, and we do not certify it ourselves. We say what we set out to check, and how.', 'text-slate-300 max-w-3xl'),
+    tableOf(testedRows, tests2, ['The objective', 'How it is checked']),
+    p(`What each suite asserts, and what it does not: ${a(`${DOCS}/security/security-test-suite/`, 'the test suite document')}.`, 'text-sm text-slate-400'),
+  ], 'bg-[#12151B]'),
+  section([
+    h(2, 'What the tests do not tell you', 'text-3xl font-bold text-white'),
+    col('gap-3 max-w-3xl', [
+      p('A green run means that <strong>these checks passed on this code, at this commit</strong>. It does not mean that there are no vulnerabilities. It is not an audit, a penetration test or a certification, and there has not been an outside one: all the work is ours.', 'text-slate-300'),
+      p('The coverage has holes, and they are listed: SQL fuzzing of most endpoints, the impact of prompt injection on the AI features, a full Content-Security-Policy for the admin and the editor, a live host with a public certificate, and load testing (by design).', 'text-slate-300'),
+    ]),
+  ], 'bg-[#0F1115]'),
+  section([
+    h(2, 'Where the results are, and they stay public', 'text-3xl font-bold text-white'),
+    p('Open source earns the name by showing its work. The tests, the findings, the results of every release and the plans are in the repository or in its public history. <strong>The failures are published too</strong>: on the day of release 0.2.0, two runs failed before the green one, and both are in the record.', 'text-slate-300 max-w-3xl'),
+    tableOf(resultRows.map(([x, y, z]) => [x, y, z.replace('RESULTS_URL', 'https://github.com/swina/whoobe_project/blob/master/docs/release/security/results/v0.2.0.md')]), (x, y, z, head) => row(`w-full gap-4 py-4 border-b border-white/10 flex-col md:flex-row px-3 ${head ? 'bg-white/5' : ''}`.replace('flex-col md:flex-row', 'md:flex-row'), [
+      p(x, `md:w-1/4 text-sm ${head ? 'font-semibold text-slate-400 uppercase tracking-wide' : 'font-semibold text-white'}`),
+      p(y, `md:w-1/2 text-sm ${head ? 'font-semibold text-slate-400 uppercase tracking-wide' : 'text-slate-300'}`),
+      p(z, `md:w-1/4 text-sm ${head ? 'font-semibold text-slate-400 uppercase tracking-wide' : ''}`),
+    ]), ['What', 'What it is', 'Where']),
+    p('If a claim on this site is not backed by something you can open, tell us.', 'text-slate-400'),
   ], 'bg-[#12151B]'),
   section([
     h(2, 'What is not there (yet)', 'text-3xl font-bold text-white'),
@@ -170,11 +223,11 @@ const securityBody = () => [
       p('<strong>The audit log records successful actions.</strong> A refused attempt is not in it.', 'text-slate-300'),
       p('<strong>Two-factor authentication, the password policy and retention are off until you set them.</strong> An upgrade changes nothing by itself.', 'text-slate-300'),
       p('<strong>No high availability.</strong> One installation, one database; recovery is by backup and restore.', 'text-slate-300'),
-      p('<strong>No third-party certification</strong> (ISO 27001, SOC 2). The tests and the findings are public instead.', 'text-slate-300'),
+      p('<strong>No third-party certification</strong> (ISO 27001, SOC 2) and no outside penetration test.', 'text-slate-300'),
       p(`It is a <strong><code>0.</code> series</strong>: behaviour can change between minor releases. The ${a(`${DOCS}/release-notes-0.2.0/`, 'release notes')} list what.`, 'text-slate-300'),
     ]),
   ], 'bg-[#0F1115]', { anchor: 'not-there' }),
-  bandCta('Check it yourself', 'The sandbox is the real product with the risky features switched off, and the code and the findings are public.', [cta('Open the sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'Read the findings', link: `${DOCS}/security/findings/`, css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
+  bandCta('Check it yourself', 'The sandbox is the real product with the risky features switched off, and the tests and their results are public.', [cta('Open the sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'Read the results of 0.2.0', link: 'https://github.com/swina/whoobe_project/blob/master/docs/release/security/results/v0.2.0.md', css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
 ];
 
 // ---------------- Run it ----------------
@@ -189,7 +242,7 @@ const runBody = () => [
     h(2, 'Day two', 'text-3xl font-bold text-white'),
     col('gap-3 max-w-3xl', [
       p(`<strong>Upgrades:</strong> migrations are additions only, applied when the API starts; the release notes list behaviour changes; take a backup first. ${a(`${DOCS}/operations/upgrade-and-migrations/`, 'Upgrade and migrations →')}`, 'text-slate-300'),
-      p(`<strong>Backups and recovery:</strong> nightly, encrypted, pulled to another machine, with a freshness check. ${a(`${DOCS}/operations/scheduling-backups/`, 'Scheduling backups →')}`, 'text-slate-300'),
+      p(`<strong>Backups and recovery:</strong> encrypted database backups, restore scripts and a rehearsal; the nightly job pulled by another machine, with a freshness check, comes with the next release. ${a(`${DOCS}/operations/scheduling-backups/`, 'Scheduling backups →')}`, 'text-slate-300'),
       p(`<strong>Observability:</strong> health, metrics, logs. ${a(`${DOCS}/operations/observability-and-logging/`, 'Observability →')}`, 'text-slate-300'),
       p(`<strong>What it takes:</strong> the skills and the hours, estimated, by task and by frequency. ${a(`${DOCS}/operations/skills-and-effort/`, 'Skills and effort →')}`, 'text-slate-300'),
       p('<strong>No call home:</strong> no telemetry, no analytics, no licence check; nothing is sent to the authors.', 'text-slate-300'),
@@ -234,7 +287,7 @@ const content = {
   pages: [
     { title: 'Home', slug: '/', category: 'Site', kind: 'content', seo: seo('Whoobe: a self-hosted platform instead of the glue', 'Whoobe is a self-hosted platform for content, data and integrations: configuration instead of code, no code for the people who use it, security and governance built in. MIT.'), content: doc([homeHero(), ...homeBody()]) },
     { title: 'Platform', slug: '/platform', category: 'Site', kind: 'content', seo: seo('Platform: configuration instead of glue code | Whoobe', 'What you configure in Whoobe, and what you do not have to write: data model, gateway, editor, events and forms, publishing.'), content: doc([pageHero('Platform', 'What you configure, and what you do not have to write.', 'Five parts, one installation. For each: what you set up, what you no longer write, and where it is documented.'), ...platformBody()]) },
-    { title: 'Security and governance', slug: '/security', category: 'Site', kind: 'content', seo: seo('Security and governance | Whoobe', 'Audit log, mandatory two-factor authentication, single sign-on, encrypted credentials, data subject tools, metrics and backups: what is in Whoobe 0.2, and what is not.'), content: doc([pageHero('Security and governance', 'Security and governance, built in.', 'Release 0.2, named <em>Conduct</em>, is the one that lets an organisation with a security officer say yes. This page lists what a security officer asks, what the product does, where it is documented, and, in its own section, what is not there.'), ...securityBody()]) },
+    { title: 'Security and governance', slug: '/security', category: 'Site', kind: 'content', seo: seo('Security and governance: controls, tests and limits | Whoobe', 'The controls in Whoobe 0.2, what we tested and with what objective, what the tests do not tell you, and where the results are published, failures included.'), content: doc([pageHero('Security and governance', 'What is built in, what we tested, and what we did not.', 'Open source earns the name by showing its work. We do not certify our own code and we do not say that it is secure. Release 0.2, named <em>Conduct</em>, adds the controls a security officer asks for. This page lists them, says what we tested and why, what the tests cannot tell you, and where every result is published.'), ...securityBody()]) },
     { title: 'Run it', slug: '/run', category: 'Site', kind: 'content', seo: seo('Run it: built to be run by a small team | Whoobe', 'What runs, how it is organised, upgrades, backups, observability and who Whoobe is for. Containers, PostgreSQL and an S3-compatible store.'), content: doc([pageHero('Run it', 'Built to be run by a small team.', 'Whoobe is containers, a PostgreSQL database and an S3-compatible object store. No licence server, no per-user fee, no call home.'), ...runBody()]) },
     { title: 'Developers', slug: '/developers', category: 'Site', kind: 'content', seo: seo('Developers | Whoobe', 'Headless adapters, a documented API, signed events, a gateway and the code: MIT-licensed and public.'), content: doc([pageHero('Developers', 'Build on it, or read it.', 'The platform is an API first and an interface second.'), ...developersBody()]) },
   ],
