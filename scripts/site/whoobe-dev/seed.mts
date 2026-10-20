@@ -50,8 +50,8 @@ for (const s of c.snippets) {
 const layout = {
   header: { pageIds: [], snippetIds: [snippetId[c.template.headerSnippet]], className: 'w-full sticky top-0 z-40' },
   footer: { pageIds: [], snippetIds: [snippetId[c.template.footerSnippet]], className: 'w-full' },
-  main: { pageIds: [], className: 'w-full' },
-  body: { pageIds: [], className: 'bg-white text-slate-900 antialiased' },
+  main: { pageIds: [], className: 'w-full bg-[#0F1115]' },
+  body: { pageIds: [], className: 'bg-[#0F1115] text-slate-200 antialiased' },
 };
 const templates = await listWebsiteTemplates(site.id);
 const tpl = templates.find((t) => t.name === c.template.name);
