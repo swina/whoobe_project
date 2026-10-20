@@ -73,6 +73,18 @@ The limit keeps the files small enough for a model to produce in one go and the 
 validator rule, not a limit of the product, and can be raised later without changing the format. The
 product's own translation tool is unaffected.
 
+**D10. Existing theme and snippets: the person chooses, nothing is overwritten.** A spec may carry its own
+theme and snippets or point to ones that already exist by name (`themeName`, or `{ use: "<name>" }` in place
+of a snippet body). When the check finds a name that already exists in the installation, the dashboard asks,
+for each one: *use the existing one* or *create a new one* (given a free name, e.g. "Hero (2)"). The
+default is *create new*; an existing theme or snippet is never changed or replaced by an import. A name the
+spec points to that does not exist is an error shown with its place. The choices are made on the check step
+and the import follows them exactly, so the dry run and the import describe the same result.
+
+**D11. The instructions are published when phase 2 is finished,** not before: the docs site gets
+`docs/ai-site-spec/` once the phase 2 "done" criterion is met (examples tested, dashboard page working in the
+browser test). Until then the files are in the repository only.
+
 **D8. The dashboard is the only interface; the command line is deferred.** The people who build sites
 are editors and designers, and an installation on a LAN may give them no shell at all (and should not).
 Every capability of the spec (get the schema and the instructions, validate, see what would be created,
@@ -142,7 +154,8 @@ Each phase is its own branch, with `CHANGES.md` and tests, and does not depend o
   2. *Bring the result*: paste the text or choose a file; nothing leaves the installation.
   3. *Check*: runs the dry run and shows, in plain words, the errors with the place in the file ("page
      'Pricing', section 2, the link has no text") or, if valid, what will be created (pages, snippets,
-     theme, layout) and what already exists.
+     theme, layout) and what already exists; for every theme or snippet whose name is already taken, the
+     person chooses *use the existing one* or *create a new one* (D10).
   4. *Import*: creates the website as a draft; the person is taken to it. Publication stays a separate step
      with its own permission.
   The schema is the same Zod module, so the page can also validate in the browser while the person edits
@@ -182,7 +195,11 @@ Bigger surface and the part where a wrong reference hurts most: it needs its own
 - Not in scope: a command line (deferred, see D8), calling models from the importer, hosting a model, fine-tuning, a marketplace of specs.
 - Not claimed anywhere (README, site, posts) until phase 1 is released: "works with any LLM".
 
-## 8. Open questions for the maintainer
+## 8. Decisions taken by the maintainer (2026-10-20)
 
-1. Should a spec be able to reference an existing theme/snippet by name, or always carry its own?
-2. Do we publish the instructions under `docs/` (visible on docs.whoobe.dev) as soon as phase 2 is released, or later?
+- Existing theme/snippets: the user chooses, reuse or create new (D10).
+- Languages: two at most for now (D9).
+- Command line: deferred (D8).
+- Instructions published when phase 2 is finished (D11); written in phase 2, not 3.
+
+No open question remains in this plan; the next step is to approve it and start phase 1.
