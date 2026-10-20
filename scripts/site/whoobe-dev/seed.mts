@@ -108,4 +108,26 @@ if (old) {
   }
 } else console.log(`website "${c.copyFromWebsite.name}" not found: the Blog pages were not copied`);
 
+// a card's link to its detail page holds a page id: in the copy it must point at the copy of that page, not at the old website's page
+if (old) {
+  const oldBySlug = new Map((await listWhoobePages(old.id)).map((o) => [o.id, o.slug] as const));
+  const mine = await listWhoobePages(site.id);
+  const mineBySlug = new Map(mine.map((m) => [m.slug, m.id] as const));
+  const retarget = (n: any): boolean => {
+    let changed = false;
+    if (Array.isArray(n)) { for (const x of n) changed = retarget(x) || changed; return changed; }
+    if (!n || typeof n !== 'object') return false;
+    const t = n.dynamicLink?.targetPageId;
+    const slug = t && oldBySlug.get(t);
+    const mineId = slug && mineBySlug.get(slug);
+    if (mineId && mineId !== t) { n.dynamicLink.targetPageId = mineId; changed = true; }
+    for (const v of Object.values(n)) changed = retarget(v) || changed;
+    return changed;
+  };
+  for (const m of mine) {
+    const content = structuredClone(m.content);
+    if (retarget(content)) { await updateWhoobePage(m.id, { content }); console.log(`detail links retargeted: ${m.slug}`); }
+  }
+}
+
 await closeDb();
