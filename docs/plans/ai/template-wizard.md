@@ -174,7 +174,8 @@ expansion and parsing, and three integration tests import wizard sites on a disp
 tab **Generate Website Wizard** (Basics, Look, Pages, Texts, Check and create) with a schematic preview of the pages. The browser test goes through every step, uses a library
 snippet in a position, checks that the contact form is stored not connected, and meets the names that exist on a second run. Notes: the Navigation step of the plan is
 part of the Pages step (the header button and the order of the pages), because it has nothing to type; the specification window and the old AI Website Wizard are untouched;
-the step *Texts* shows the AI as not available, to be switched on by phase 3. Per the maintainer's decision the branch is merged after this phase.
+the step *Texts* shows the AI as not available, to be switched on by phase 3.
+**Found by the maintainer after phase 2, fixed:** the classes of a generated *container* were in `css.container` while the editor's Custom CSS box and controls read and write `css.css`, so they showed nothing and what was typed lost to the generated class; the expansion now follows the editor's own convention (structure in `css.container`, classes in `css.css`), checked on all 140 matrix sites and in the real editor (`site-wizard-editor.spec.ts`). Per the maintainer's decision the branch is merged after this phase.
 
 **Phase 3: the texts with AI.** (The step *Texts* is in the stepper from phase 2, with the AI choice switched off until this phase lands.)
 - `POST /ai/generate-wizard-texts` (slots in, texts out; validated, cleaned, length-limited), the choice of the step *Texts*, offered only when an
