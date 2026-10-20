@@ -219,7 +219,7 @@ describe('a form in a specification', () => {
     expect(new Set(inputs.map((n) => n.data.attributes.id)).size).toBe(4);
     const button = nodes(form).find((n) => n.element === 'button');
     expect(button).toMatchObject({ tag: 'submit', content: 'Send', data: { attributes: { type: 'submit' } } });
-    expect(form.css.container).toContain('p-6');
+    expect(form.css.css).toContain('p-6');
     expect(inputs[0].css.css).toBe('rounded border p-2');
   });
 
@@ -239,5 +239,23 @@ describe('a form in a specification', () => {
     for (const key of ['action', 'target', 'targetClassId', 'recipientEmail', 'notify', 'formConfig', 'endpoint']) {
       expect(() => expandSiteSpec(withForm({ [key]: 'x' }))).toThrowError(SiteSpecError);
     }
+  });
+});
+
+describe('where the classes go, for the editor', () => {
+  it('a container keeps its structure in css.container and the classes of the file in css.css, like an element the editor makes', () => {
+    const spec = small();
+    (spec.pages[0].sections as any[]).push({ kind: 'container', direction: 'row', css: 'gap-6 p-4 bg-[#123456]', children: [{ kind: 'text', html: 'x', css: 'text-sm' }] });
+    const box = nodes(expandSiteSpec(spec).bundle.pages[0].content).find((n) => n.css.css.includes('bg-[#123456]'));
+    expect(box.css).toEqual({ css: 'gap-6 p-4 bg-[#123456]', container: 'flex flex-row' });
+    expect(nodes(expandSiteSpec(spec).bundle.pages[0].content)[0].css.container).toBe('flex flex-col');
+  });
+
+  it('a form and its field wrappers do the same', () => {
+    const spec = small();
+    (spec.pages[1].sections as any[]).push({ kind: 'form', fields: [{ name: 'a', label: 'A', type: 'text' }], submitLabel: 'Send', css: 'p-6' });
+    const form = nodes(expandSiteSpec(spec).bundle.pages[1].content).find((n) => n.element === 'form');
+    expect(form.css).toEqual({ css: 'gap-4 p-6', container: 'flex flex-col' });
+    expect(form.blocks[0].css).toEqual({ css: 'gap-1', container: 'flex flex-col' });
   });
 });

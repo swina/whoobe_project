@@ -89,6 +89,8 @@ describe('wizardToSiteSpec: the matrix', () => {
       const all = [...bundle.snippets.map((s) => s.node), ...bundle.pages.map((p) => p.content)].flatMap(nodes);
       // every page has exactly one heading of the first level
       for (const p of bundle.pages) expect(nodes(p.content).filter((n) => n.element === 'h' && n.level === 1).length, `${label}: h1 of ${p.slug}`).toBe(1);
+      // the classes a person edits are in `css.css` (where the Custom CSS box and the controls of the editor look); `css.container` holds only the structure
+      expect(all.filter((n) => n.type === 'container' && !/^flex( flex-(row|col))?$/.test(n.css.container)).map((n) => n.css.container), `${label}: css.container`).toEqual([]);
       // every image says what it shows, every link has text and a target
       expect(all.filter((n) => n.element === 'img' && !String(n.image?.alt ?? '').trim()), label).toEqual([]);
       expect(all.filter((n) => n.element === 'a' && (!String(n.content).trim() || !n.link)), label).toEqual([]);

@@ -65,7 +65,9 @@ function expandNode(node: SpecNode, ctx: Ctx): Record<string, unknown> {
     case 'container':
       return base(id, {
         type: 'container', tag: 'flex', element: 'div',
-        css: { css: '', container: ['flex', node.direction ? `flex-${node.direction}` : '', node.css ?? ''].filter(Boolean).join(' ') },
+        // like the editor's own Flexbox(): `container` holds the structure (flex, its direction), `css` the classes a person edits (the Custom CSS box and every
+        // control of the Advanced panel read and write `css.css`, and the classes of `container` would win over what they add)
+        css: { css: node.css ?? '', container: ['flex', node.direction ? `flex-${node.direction}` : ''].filter(Boolean).join(' ') },
         ...(node.semantic ? { semantic: node.semantic } : {}),
         ...(node.anchor ? { anchor: node.anchor } : {}),
         blocks: node.children.map((c) => expandNode(c, ctx)),
@@ -97,7 +99,7 @@ function expandNode(node: SpecNode, ctx: Ctx): Record<string, unknown> {
       const fields = node.fields.map((field) => {
         const inputId = `${id}-${field.name}`;
         return base(ctx.next(), {
-          type: 'container', tag: 'flex', element: 'div', css: { css: '', container: 'flex flex-col gap-1' },
+          type: 'container', tag: 'flex', element: 'div', css: { css: 'gap-1', container: 'flex flex-col' },
           blocks: [
             base(ctx.next(), { element: 'label', icon: 'label', content: field.label, editable: true, css: { css: node.labelCss ?? '', container: '' }, data: { attributes: { for: inputId } } }),
             control(field, id, inputId),
@@ -109,7 +111,7 @@ function expandNode(node: SpecNode, ctx: Ctx): Record<string, unknown> {
         editable: true, css: { css: node.buttonCss ?? '', container: '' }, data: { attributes: { type: 'submit' } },
       });
       return base(id, {
-        type: 'container', tag: 'form', element: 'form', semantic: 'form', css: { css: '', container: ['flex flex-col gap-4', node.css ?? ''].filter(Boolean).join(' ') },
+        type: 'container', tag: 'form', element: 'form', semantic: 'form', css: { css: ['gap-4', node.css ?? ''].filter(Boolean).join(' '), container: 'flex flex-col' },
         data: { attributes: { name: 'form', id: `form-${id}`, action: '', method: 'post' } },
         formConfig: { enabled: false, targetClassId: '', successMessage: '', errorMessage: '', successRedirectUrl: '', errorRedirectUrl: '', notify: { enabled: false, mailTemplateId: '', templatePageId: '', recipientEmail: '', subject: '' } },
         blocks: [...fields, submit],
