@@ -1,5 +1,10 @@
 # Release v0.2.0 — 2026-10-19
 
+## Pull of the backups moved after the nightly backup — 2026-10-20
+- Branch: `master`. No file of the repository changed; this records the development server.
+- Found: the first scheduled pull (`30 4`, local time = 01:30 UTC) ran before the backup of the public host (03:03 UTC), so the copy was always one night late. The cron of `develop` is now `0 7` (04:00 UTC); the previous crontab is saved in `~/crontab.bak-20261020` on `develop`.
+- First scheduled runs checked: the public host backup of 2026-10-20 03:03 UTC (dump, bucket copy, marker, `check.sh` ok) and the pull of 01:30 UTC (ssh key restriction works). A backup on demand then a pull and a check were run by hand (`~/whoobe-backup-now.sh`, not in the repository): ok. Not yet seen: the pull at 07:00 local.
+
 ## Docs: "young software" line brought up to date — 2026-10-20
 - Branch: `master`. `architecture/design-decisions/self-hosted-and-mit.md`: the line said the first release is 0.1.0; it now says the first was 0.1.0 (October 2026), the current is 0.2.0 and that a `0.` minor release may change behaviour.
 
