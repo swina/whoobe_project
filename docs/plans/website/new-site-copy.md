@@ -250,7 +250,7 @@ The existing Blog data class and the `/blog` and `/blog/article/{slug}` template
 2. "No call home" (Run it, lead) is backed by `security/data-protection.md` (no telemetry, no analytics, no licence check, nothing sent to the project's authors): keep it.
 3. Whether to name Node-RED and n8n in the events section, or only "your engine".
 4. Keep `unifythestack.dev` as a separate landing or let it redirect to the new site when it is live.
-5. A contact: an address, or only GitHub issues and `SECURITY.md`.
+5. ~~A contact: an address, or only GitHub issues and `SECURITY.md`.~~ **Decided (owner, 2026-10-20): one public channel, GitHub Discussions** (Q&A, Ideas), with no form and no private queue; a vulnerability goes through `SECURITY.md`, privately. The footer, the Developers page and the Security page link to it. Plan: `docs/plans/community/github-discussions-plan.md`.
 
 ## Evidence: where each claim comes from
 

@@ -1,5 +1,10 @@
 # Release v0.2.0 — 2026-10-19
 
+## New site: questions go to GitHub Discussions — 2026-10-20
+- Branch: `feat/blog-conduct`. The owner's decision for questions: **GitHub Discussions as the one public collection point, no forms, no requests to manage**; the dashboard may link to it in the next release.
+- Footer: "Questions and ideas" (Discussions); Developers page: a first button "Ask a question" (Q&A category) on the closing band; Security page: where to ask, and that a vulnerability goes privately through the security policy, never a public discussion. External links open in a new tab; checked in Chromium, no overflow.
+- `docs/plans/website/new-site-copy.md`: open decision 5 (contact) is closed.
+
 ## New site: the snippet "Whoobe Website - Benefits by role" reused on the Home — 2026-10-20
 - Branch: `feat/blog-conduct`. The owner wanted to reuse the library snippet "Whoobe Website - Benefits by role" (seven roles, 83 nodes, written from `docs/release/by-role` when the release was 0.1.0).
 - Its texts were **out of date for 0.2.0** and would have contradicted the Security page, so `scripts/site/whoobe-dev/align-benefits-snippet.mts` (one-off, idempotent, the previous node goes to the snippet's version history) changed: "a young product (0.1.0)" to "a 0.x series"; "no single sign-on for staff" to one OpenID Connect provider (SAML and LDAP need a broker); the operators' "no metrics endpoint" to readiness, liveness and optional Prometheus metrics, with "nothing sends alerts"; the security card's "no audit log" to "the audit log records successful actions only, single sign-on is one provider, no third-party certification"; "headless SDK for React, Vue and Svelte" to React, Next.js, Vue, Nuxt and Svelte (all five exist in `packages/sdk`); the link `/docs` to `https://docs.whoobe.dev/by-role/` in a new tab. Wording from the by-role pages aligned the same day.

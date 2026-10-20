@@ -75,7 +75,7 @@ const footer = () => col('w-full px-6 py-12 bg-[#0B0D11] border-t border-white/1
     row('gap-12 flex-wrap', [
       fcol('Product', [['Platform', '/platform'], ['Security and governance', '/security'], ['Run it', '/run']]),
       fcol('Developers', [['Documentation', DOCS], ['API reference', `${DOCS}/api/api-reference/`], ['GitHub', 'https://github.com/swina/whoobe_project'], ['Plans and decisions', 'https://github.com/swina/whoobe_project/tree/master/docs/plans']]),
-      fcol('Project', [['Blog', '/blog'], ['Release notes', `${DOCS}/release-notes-0.2.0/`], ['Security policy', 'https://github.com/swina/whoobe_project/blob/master/SECURITY.md'], ['Sandbox', 'https://sandbox.whoobe.dev']]),
+      fcol('Project', [['Blog', '/blog'], ['Release notes', `${DOCS}/release-notes-0.2.0/`], ['Questions and ideas', 'https://github.com/swina/whoobe_project/discussions'], ['Security policy', 'https://github.com/swina/whoobe_project/blob/master/SECURITY.md'], ['Sandbox', 'https://sandbox.whoobe.dev']]),
     ]),
   ]),
   p('Released under the MIT License. This site is made with Whoobe.', 'text-xs text-slate-500 max-w-6xl mx-auto w-full pt-8'),
@@ -220,7 +220,7 @@ const securityBody = () => [
       p(y, `md:w-1/2 text-sm ${head ? 'font-semibold text-slate-400 uppercase tracking-wide' : 'text-slate-300'}`),
       p(z, `md:w-1/4 text-sm ${head ? 'font-semibold text-slate-400 uppercase tracking-wide' : ''}`),
     ]), ['What', 'What it is', 'Where']),
-    p('If a claim on this site is not backed by something you can open, tell us.', 'text-slate-400'),
+    p(`If a claim on this site is not backed by something you can open, ask in ${a('https://github.com/swina/whoobe_project/discussions', 'GitHub Discussions')}. A vulnerability goes the other way, privately: see the ${a('https://github.com/swina/whoobe_project/blob/master/SECURITY.md', 'security policy')}, never a public discussion.`, 'text-slate-400'),
   ], 'bg-[#12151B]'),
   section([
     h(2, 'What is not there (yet)', 'text-3xl font-bold text-white'),
@@ -277,7 +277,7 @@ const developersBody = () => [
       dev('How it is built', `With an AI assistant working inside written plans, all public in ${a('https://github.com/swina/whoobe_project/tree/master/docs/plans', 'docs/plans')}, and a test suite that guards the boundaries. ${a('/blog/article/plans-before-code-keeping-an-ai-inside-the-architecture', 'Plans before code →')} · ${a('/blog/article/building-whoobe-with-ai-what-we-measured', 'What we measured →')}`),
     ]),
   ], 'bg-[#0F1115]'),
-  bandCta('Read it, run it, change it', 'The code is MIT-licensed and public.', [cta('GitHub', 'https://github.com/swina/whoobe_project', 'light'), el('Link', { text: 'Contribute', link: 'https://github.com/swina/whoobe_project/blob/master/CONTRIBUTING.md', css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
+  bandCta('Read it, run it, change it', 'The code is MIT-licensed and public. Questions and ideas go to one public place: GitHub Discussions, no forms and no private queue.', [cta('Ask a question', 'https://github.com/swina/whoobe_project/discussions/categories/q-a', 'light'), el('Link', { text: 'GitHub', link: 'https://github.com/swina/whoobe_project', css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' }), el('Link', { text: 'Contribute', link: 'https://github.com/swina/whoobe_project/blob/master/CONTRIBUTING.md', css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
 ];
 
 const seo = (title, description) => ({ metaTitle: title, metaDescription: description, canonicalUrl: null, robots: { index: true, follow: true }, ogTitle: title, ogDescription: description, ogImage: null });
