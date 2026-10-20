@@ -7,7 +7,7 @@ import { getDb, closeDb } from './client.js';
 import { roles, permissions, rolePermissions, users, userRoles } from './auth-schema.js';
 import { ALL_PERMISSION_KEYS, DEFAULT_ROLES, DEFAULT_ROLE_PERMISSIONS } from '../auth/permissions.js';
 import { hashPassword } from '../auth/password.js';
-import { getWhoobeOneKitByName, createWhoobeOneKit } from './whoobe-one-kit-records.js';
+import { getWhoobeOneKitBySlug, createWhoobeOneKit, updateWhoobeOneKitContent } from './whoobe-one-kit-records.js';
 import { listWebsites, createWebsite } from './websites-records.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -135,7 +135,7 @@ export async function seedWhoobeOneKits(): Promise<void> {
   try {
     filenames = fs.readdirSync(KITS_SEED_FOLDER).filter((f) => f.endsWith('.json'));
   } catch {
-    console.warn(`seedWhoobeOneKits: seed folder not found (${KITS_SEED_FOLDER}) - skipping.`);
+    // no folder: the distribution ships no kit at the moment (the 5-year-old reference kits were removed, new ones are being made)
     return;
   }
 
@@ -144,15 +144,29 @@ export async function seedWhoobeOneKits(): Promise<void> {
       const raw = fs.readFileSync(path.join(KITS_SEED_FOLDER, filename), 'utf8');
       const parsed = JSON.parse(raw);
 
-      const existing = await getWhoobeOneKitByName(parsed.name);
-      if (existing) continue;
+      // A shipped kit is identified by its `slug` (the file's own, else the file name), not by its name: the name can be edited
+      // or translated. Origin 'bundled' = read-only for the people using it; a newer `version` replaces its content here, and
+      // only here, so what a user copied from it (origin 'user') is never touched.
+      const slug: string = typeof parsed.slug === 'string' && parsed.slug ? parsed.slug : filename.replace(/\.json$/, '').toLowerCase();
+      const version: string = parsed.version != null ? String(parsed.version) : '1';
+      const category: string = typeof parsed.category === 'string' ? parsed.category : filename.replace(/-UI-Kit\.json$/, '').replace(/-/g, ' ');
 
-      const category = filename.replace(/-UI-Kit\.json$/, '').replace(/-/g, ' ');
+      const existing = await getWhoobeOneKitBySlug(slug);
+      if (existing) {
+        if (existing.origin === 'bundled' && existing.version !== version) {
+          await updateWhoobeOneKitContent(existing.id, { name: parsed.name, description: parsed.description || null, category, templates: parsed.templates ?? [], version });
+          console.log(`Updated kit: ${parsed.name} (${version})`);
+        }
+        continue;
+      }
       await createWhoobeOneKit({
         name: parsed.name,
         description: parsed.description || null,
         category,
         templates: parsed.templates ?? [],
+        origin: 'bundled',
+        version,
+        slug,
       });
       console.log(`Seeded kit: ${parsed.name}`);
     } catch (err) {

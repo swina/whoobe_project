@@ -21,6 +21,10 @@ export interface WhoobeOneKit {
   description: string | null
   category: string
   templates: WhoobeOneKitTemplate[]
+  /** 'bundled' and 'catalogue' kits are read-only: duplicate them to edit */
+  origin: 'bundled' | 'user' | 'catalogue'
+  version: string
+  forkedFrom: string | null
 }
 
 export interface WhoobeOneKitSummary {
@@ -29,6 +33,8 @@ export interface WhoobeOneKitSummary {
   description: string | null
   category: string
   templateCount: number
+  origin: WhoobeOneKit['origin']
+  version: string
 }
 
 import { getDefaultCoreApiUrl } from './core-api-url'
@@ -56,6 +62,8 @@ export async function listKits(): Promise<WhoobeOneKitSummary[]> {
     description: k.description,
     category: k.category,
     templateCount: k.templates?.length ?? 0,
+    origin: k.origin ?? 'user',
+    version: k.version ?? '1',
   }))
 }
 
@@ -98,4 +106,13 @@ export async function deleteKit(id: string): Promise<void> {
     credentials: 'include',
   })
   await parseJsonOrThrow(res)
+}
+
+export async function duplicateKit(id: string): Promise<WhoobeOneKit> {
+  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/kits/${id}/duplicate`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+  const body = await parseJsonOrThrow(res)
+  return body.kit
 }

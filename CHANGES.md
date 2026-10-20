@@ -15,6 +15,20 @@
 - `BlockElementsPalette.vue`: each element chip gets the hover "Insert" button the snippet chips already have (green, bottom right). It adds the element into the selected container, else right after the selected element, else at the document root, and selects it — for when dragging onto a deep structure misbehaves. Dragging still works (the button stops the mousedown so it never starts a drag).
 - `scripts/editor-actions.ts`: `insertTemplateElement()`, built like the drop handler in `BlockEditor.vue` (Flexbox in column direction, image placeholder, cleaned classes) and placed by the same `placeNode()` as `insertSnippetNode()`. `vue-tsc` passes; not yet tried in the browser.
 
+## Kits: origin, version, and Duplicate to edit — 2026-10-20
+- Branch: `feat/kit-origin-and-duplicate` (on top of `feat/remove-legacy-kits`). Plan: `docs/plans/kits/kit-library-plan.md`.
+- Migration `0067_kit_origin` (expand-only): `whoobe_one_kits.origin` (`bundled`/`user`/`catalogue`, default `user`), `version`, `slug` (unique when set), `forked_from`. Every existing row becomes `user`; nothing is deleted.
+- `seedWhoobeOneKits()` identifies a shipped kit by `slug` (the file's own, else its file name), creates it as `bundled`, and replaces its content only when `version` goes up; copies made by people are never touched.
+- core-api: `POST /whoobe-one/kits/:id/duplicate` (a `user` copy named "<name> (copy)", `forkedFrom` set, templates deep-copied); adding a template to, or deleting, a non-`user` kit answers 409.
+- Editor: the Kits panel shows a lock on shipped kits and a Duplicate button (opens the copy); Add to kit lists only the user's own kits.
+- Checked on a throwaway Postgres 16 (all migrations from scratch): seed creates the kit as bundled, a second seed changes nothing, Duplicate gives a user copy with `forkedFrom`, a version 2 file updates the bundled kit and leaves the copy as it was. `tsc` passes in `packages/core` and `apps/core-api`, `vue-tsc` in `whoobe-one-spike`. Not tried: the Kits panel in a browser; the 409 responses over HTTP.
+
+## Legacy reference kits removed from the distribution — 2026-10-20
+- Branch: `feat/remove-legacy-kits`.
+- The 7 kit files in `packages/core/seed-data/kits/` (CTA, Carousel, Form, Hero, Landing Pages, Leading, Navigation; 35 templates, 4.4 MB) were made with an editor five years old; the owner decided they leave the distribution, new kits will replace them. `seedWhoobeOneKits()` stays (it seeds whatever is in that folder) and no longer warns when the folder is missing. `tsc` passes.
+- **Existing installations keep the rows already seeded** in `whoobe_one_kits` (nothing deletes them; they cannot be told from kits a user made with the same name). Not done: removing them from the development and public databases.
+- Next, agreed in principle and not started: `origin` (bundled/user) and `version` on kits, bundled kits read-only with "Duplicate to edit" (`forkedFrom`), a kit library page in the dashboard, and later a remote catalogue feeding installations.
+
 ## Docs: "young software" line brought up to date — 2026-10-20
 - Branch: `master`. `architecture/design-decisions/self-hosted-and-mit.md`: the line said the first release is 0.1.0; it now says the first was 0.1.0 (October 2026), the current is 0.2.0 and that a `0.` minor release may change behaviour.
 

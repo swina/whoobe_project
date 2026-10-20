@@ -120,7 +120,8 @@ const error = ref('')
 const submitting = ref(false)
 
 onMounted(async () => {
-  kits.value = await listKits()
+  // a shipped kit is read-only: templates are added to the user's own kits (or to a copy)
+  kits.value = (await listKits()).filter((k) => k.origin === 'user')
   if (kits.value.length) mode.value = 'existing'
   // Default the template's own metadata to whatever the current document
   // is already named/categorized as, if it has one - saves retyping the

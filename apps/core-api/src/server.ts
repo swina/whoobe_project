@@ -70,6 +70,7 @@ import {
   getWhoobeOneKit,
   createWhoobeOneKit,
   addTemplateToWhoobeOneKit,
+  duplicateWhoobeOneKit,
   deleteWhoobeOneKit,
   listWhoobePages,
   getWhoobePage,
@@ -2144,6 +2145,11 @@ app.post('/whoobe-one/kits/:id/templates', requireAnyPermission(PERMISSIONS.SNIP
       res.status(400).json({ error: 'template is required' });
       return;
     }
+    const current = await getWhoobeOneKit(req.params.id);
+    if (current && current.origin !== 'user') {
+      res.status(409).json({ error: 'This kit is read-only: duplicate it, then add the template to the copy' });
+      return;
+    }
     const kit = await addTemplateToWhoobeOneKit(req.params.id, template);
     if (!kit) {
       res.status(404).json({ error: 'Kit not found' });
@@ -2156,8 +2162,28 @@ app.post('/whoobe-one/kits/:id/templates', requireAnyPermission(PERMISSIONS.SNIP
   }
 });
 
+// A user copy of any kit (a shipped kit is read-only, this is how it is customised); the original is never changed.
+app.post('/whoobe-one/kits/:id/duplicate', requireAnyPermission(PERMISSIONS.SNIPPETS_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const kit = await duplicateWhoobeOneKit(req.params.id);
+    if (!kit) {
+      res.status(404).json({ error: 'Kit not found' });
+      return;
+    }
+    res.status(201).json({ kit });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Duplicate whoobe-one kit error');
+    res.status(500).json({ error: error.message || 'Failed to duplicate kit' });
+  }
+});
+
 app.delete('/whoobe-one/kits/:id', requireAnyPermission(PERMISSIONS.SNIPPETS_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
   try {
+    const current = await getWhoobeOneKit(req.params.id);
+    if (current && current.origin !== 'user') {
+      res.status(409).json({ error: 'This kit is read-only: the distribution would bring it back' });
+      return;
+    }
     await deleteWhoobeOneKit(req.params.id);
     res.json({ success: true });
   } catch (error: any) {
