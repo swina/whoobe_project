@@ -143,8 +143,12 @@ export const DefaultLink: NodeComponent = defineComponent({
   setup(props) {
     return () => {
       const d = props.descriptor
-      if (d.link) return h('a', { href: d.link.href, target: d.link.target, ...elementProps(d) }, props.children)
-      return h('span', elementProps(d), props.children)
+      // a link that is a leaf (an `a` element with its text in `content`, no child) shows that text
+      const own: Record<string, unknown> = elementProps(d)
+      const leaf = !props.children?.length && d.content
+      if (leaf) own.innerHTML = sanitizeRichText(d.content as string)
+      if (d.link) return h('a', { href: d.link.href, target: d.link.target, ...own }, leaf ? undefined : props.children)
+      return h('span', own, leaf ? undefined : props.children)
     }
   },
 })

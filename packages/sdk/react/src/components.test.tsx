@@ -48,6 +48,15 @@ describe('WhoobeNode (SSR)', () => {
     expect(html).toContain('aria-label="Go to slide 2"')
   })
 
+  it('renders an `a` element that has its text in `content` and no child as a link with that text', async () => {
+    const tree = {
+      id: 'root', type: 'container', tag: 'document', element: 'div', css: { css: '', container: '' },
+      blocks: [{ id: 'l1', type: 'element', tag: 'element', element: 'a', content: 'Platform', link: '/platform', css: { css: 'text-sm', container: '' } }],
+    }
+    const html = await renderTree(tree)
+    expect(html).toMatch(/<a href="\/platform"[^>]*>Platform<\/a>/)
+  })
+
   it('renders a Download element as a link to its asset or URL, with the download attribute', async () => {
     const mk = (id: string, image: any, extra: any = {}) => ({ id, type: 'file', tag: 'file', element: 'button', content: 'Get the PDF', image, css: { css: 'btn px-4', container: '' }, ...extra })
     const tree = {
