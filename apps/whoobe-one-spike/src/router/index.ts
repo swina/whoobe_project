@@ -27,6 +27,8 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'Main', component: Main },
     { path: '/editor', name: 'Editor', component: Editor },
+    // A kit's templates as a gallery with Preview / Edit (copy) - opened inside an iframe by the dashboard's Kits page.
+    { path: '/kit-preview', name: 'KitPreview', component: () => import('../views/KitPreview.vue') },
     // Standalone preview view — opened inside an iframe by
     // DocumentPreview.vue for responsive device previews. Reads the
     // serialized document from sessionStorage.

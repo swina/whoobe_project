@@ -12,6 +12,7 @@ This is an internal tool, not a supported feature for third parties: whoever wan
 
 - One shared demo account. Its e-mail and password are public and the banner on every screen shows them (`Demo login: ...`), so a visitor who lands on the login page knows what to type; put them on the page that links to the sandbox too.
 - The editor, the DAM, websites, pages, snippets, themes, the API Gateway towards the allowed hosts.
+- **Demo content**, loaded again at every reset: a website "Northlight (demo)" with three pages (Home, Pricing, About), three snippets (navigation bar, announcement bar, footer) and the two kits that ship with the distribution ("Landing basics" and "Page sections", read-only: Duplicate or Edit a copy to change them). The kits are seeded by the core like on any installation; the website, pages and snippets by `scripts/sandbox/seed-demo.mjs` at the end of `reset.sh` (it runs with the Node of the core-api image, because the host's Node can be too old, and a failure only leaves the sandbox empty). The content is generated with the editor's own Element class by `scripts/sandbox/demo/generate.mjs` (outputs committed: `demo/content.json` and `packages/core/seed-data/kits/*.json`): change the generator, run `node scripts/sandbox/demo/generate.mjs`, commit the outputs.
 - A banner on every screen with the time of the next reset.
 
 ## The profile: every limit is a variable
@@ -42,7 +43,7 @@ in `SANDBOX_ALLOW_HOSTS`, checked before any DNS lookup and on every redirect ho
 normal SSRF checks (no private or loopback addresses). So a visitor can create gateway endpoints and routes, but only towards
 the allowed hosts: Cloudinary, Brevo and CDN mirroring stay off. The path list lives in `packages/core/src/sandbox.ts`.
 Users and roles are read-only for the demo account (it can list them, not create, change or delete them, reset passwords or
-change its own MFA), so visitors cannot lock each other out.
+change its own MFA, or enrol it in two-factor at sign-in), so visitors cannot lock each other out.
 
 ## Procedure
 
@@ -89,6 +90,25 @@ Needs a host with Docker Compose 2.24 or newer, a DNS name pointing to it, and n
    on a public host.
 
 To stop it: `./scripts/remove-workspace.sh sandbox --yes` (deletes the data, as every reset does).
+
+## Who tried it: the visit log
+
+The sandbox writes its own anonymous visit log, `/var/log/nginx/sandbox-access.log` on a host with nginx (not the host's shared
+`access.log`, where every site is mixed and the host name is missing). `deploy/profiles/sandbox.nginx-http.conf` defines the format
+and `WS_EDGE_LIMITS` in `deploy/profiles/sandbox.env` turns it on for the sandbox's vhosts. What it holds, one line per request:
+time, **the address cut to its network** (IPv4 /24, IPv6 /48: `81.10.20.0`), method, **the path without the query string**, status,
+time taken, referrer, browser. Static files and `/health` are not written. The host's logrotate keeps 14 days (daily, compressed).
+Nobody is identified: tell visitors so on the page that links to the sandbox.
+
+Read it with `scripts/sandbox/visits.sh [days]` (on the host, or `ssh <host> 'cd /opt/whoobe/whoobe_cms && scripts/sandbox/visits.sh 7'`;
+the user needs the `adm` group to read the log): requests, **visitors** (distinct network + browser, robots left out), **logins**
+(successful sign-ins of the demo account), **active** (signed in and changed something), robot requests, where visitors came from
+(referrer hosts) and the most requested pages. The figures are an order of magnitude, not a head count: people behind one address with
+the same browser count once, one person on mobile data who changes network counts more than once.
+
+The first time (a sandbox set up before the visit log existed): the next reset rewrites the profile files and the vhosts together;
+then `sudo nginx -t && sudo systemctl reload nginx` once outside the reset (never during it, see step 3). With the containerised
+proxy instead of host nginx the file is inside that container's `/var/log/nginx`.
 
 ## How the reset works
 

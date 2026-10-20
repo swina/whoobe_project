@@ -581,6 +581,7 @@ import {
   FileStack,
   Settings,
   Puzzle,
+  Library,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -649,6 +650,7 @@ import AssetsView from '../views/AssetsView.vue'
 import DocumentsView from '../views/DocumentsView.vue'
 import PagesView from '../views/PagesView.vue'
 import SnippetsView from '../views/SnippetsView.vue'
+import KitsView from '../views/KitsView.vue'
 import ComponentsView from '../views/ComponentsView.vue'
 import MailSettingsView from '../views/MailSettingsView.vue'
 import SettingsView from '../views/SettingsView.vue'
@@ -946,6 +948,7 @@ const allNavItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Websites', section: 'websites', icon: Globe },
   { name: 'Pages', section: 'pages', icon: FileStack },
   { name: 'Snippets', section: 'snippets', icon: Puzzle },
+  { name: 'Kits', section: 'kits', icon: Library },
   { name: 'Themes', section: 'themes', icon: Palette },
   { name: 'Publish', section: 'publish', icon: Rocket },
   { name: 'Assets', section: 'assets', icon: FolderArchive },
@@ -985,6 +988,7 @@ const sectionGroup: Partial<Record<SectionKind, NavGroupId>> = {
   publish: 'content',
   pages: 'content',
   snippets: 'content',
+  kits: 'content',
   themes: 'content',
   assets: 'assets',
   objects: 'data',
@@ -1034,6 +1038,7 @@ const sectionComponents: Record<SectionKind, any> = {
   documents: DocumentsView,
   pages: PagesView,
   snippets: SnippetsView,
+  kits: KitsView,
   components: ComponentsView,
   themes: ThemesView,
   mail: MailSettingsView,
@@ -1057,6 +1062,7 @@ const sectionLabels: Record<SectionKind, string> = {
   documents: 'Documents',
   pages: 'Pages',
   snippets: 'Snippets',
+  kits: 'Kits',
   components: 'Components',
   mail: 'Outgoing Mail',
   themes: 'Themes',
@@ -1080,6 +1086,7 @@ const sectionIcons: Record<SectionKind, any> = {
   documents: FileText,
   pages: FileStack,
   snippets: Puzzle,
+  kits: Library,
   components: Blocks,
   mail: Mail,
   themes: Palette,

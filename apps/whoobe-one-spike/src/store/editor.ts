@@ -124,6 +124,8 @@ export const useEditorStore = defineStore('editor', () => {
   // snippet being edited (null for a brand-new one), `snippetMode` is the
   // mode flag (new or existing).
 const snippetId = ref<string | null>(null)
+// Editing one template of a user's kit (/editor?kitId=&templateId=): Save writes it back into the kit, not a page or a snippet.
+const kitTemplate = ref<{ kitId: string; templateId: string; kitName: string } | null>(null)
 const snippetMode = ref<boolean>(false)
 // The snippet being edited is locked: the editor's autosave does not save it (manual Save does).
 const snippetLocked = ref<boolean>(false)
@@ -213,6 +215,7 @@ const locale = ref<string>('en')
     snippetMode.value = v !== null
     if (v === null) snippetLocked.value = false
   }
+  function setKitTemplate(v: { kitId: string; templateId: string; kitName: string } | null) { kitTemplate.value = v }
   function setSnippetLocked(v: boolean) { snippetLocked.value = v }
   function setSnippetMode(v: boolean) {
     snippetMode.value = v
@@ -243,7 +246,7 @@ const locale = ref<string>('en')
     mode, settings, elements, document, project, selected, page, current,
     component, action, subaction, level, parent, startTime, autosave, stripHtmlComments, alpinePresets,
     exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
-    mailTemplateId, snippetId, snippetMode, snippetLocked, pageThemeId, websiteId, locale, websiteTheme, websiteThemes, templateBody,
+    mailTemplateId, snippetId, kitTemplate, setKitTemplate, snippetMode, snippetLocked, pageThemeId, websiteId, locale, websiteTheme, websiteThemes, templateBody,
     defaultPlaceholderUrl,
     appMode, pwaConfig,
     setMode, setSettings, setElements, setDocument, setProject, setSelected,

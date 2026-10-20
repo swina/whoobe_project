@@ -33,7 +33,8 @@ describe('sandbox mode', () => {
     expect(isSandboxReadOnlyPath('GET', '/auth/users')).toBe(false);
     expect(isSandboxReadOnlyPath('GET', '/auth/roles/abc')).toBe(false);
     for (const [m, p] of [['POST', '/auth/users'], ['PATCH', '/auth/users/1'], ['DELETE', '/auth/users/1'], ['POST', '/auth/users/1/reset-password'],
-      ['POST', '/auth/roles'], ['PATCH', '/auth/roles/1'], ['DELETE', '/auth/roles/1'], ['POST', '/auth/mfa/setup'], ['POST', '/auth/mfa/disable']]) {
+      ['POST', '/auth/roles'], ['PATCH', '/auth/roles/1'], ['DELETE', '/auth/roles/1'], ['POST', '/auth/mfa/setup'], ['POST', '/auth/mfa/disable'],
+      ['POST', '/auth/mfa/enrol/setup'], ['POST', '/auth/mfa/enrol/verify']]) {
       expect(isSandboxReadOnlyPath(m, p), `${m} ${p}`).toBe(true);
     }
     expect(isSandboxReadOnlyPath('POST', '/auth/login')).toBe(false);

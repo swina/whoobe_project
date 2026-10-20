@@ -33,6 +33,8 @@
            app's own Templates gallery would be a redundant second way to
            browse the same content. -->
       <button :class="topbarBtnClass" @click="onSave"><Save class="w-3.5 h-3.5" /> {{ editor.mailTemplateId || editor.snippetMode ? 'Save' : 'Save' }}</button>
+      <!-- Editing a template of a kit: back to the kit's preview (the kit page of this app, shown by the dashboard's Kits page). -->
+      <button v-if="editor.kitTemplate" :class="topbarBtnClass" data-testid="kit-back" :title="`Back to the kit “${editor.kitTemplate.kitName}”`" @click="backToKit"><ArrowLeft class="w-3.5 h-3.5" /> {{ editor.kitTemplate.kitName }}</button>
       <button
         v-if="(editor.page?.id && !editor.mailTemplateId) || (editor.snippetMode && editor.snippetId)"
         :class="topbarBtnClass"
@@ -258,6 +260,7 @@ import {
   LockOpen,
   Languages,
   ListTree,
+  ArrowLeft,
   Package,
   PackagePlus,
   Palette,
@@ -276,6 +279,7 @@ import {
   X,
   Zap,
 } from '@lucide/vue'
+import { useRouter } from 'vue-router'
 import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
 import BlockContainer from './BlockContainer.vue'
@@ -317,7 +321,7 @@ import { useAppModeBreakpoints } from '../composables/useAppModeBreakpoints'
 import { clean, findNodeById, removeNodeById, findParentAndIndex, applyImagePlaceholder, normalizeGeneratedTree } from '../helpers'
 import { editorBus, dialogBus } from '../bus'
 import { exportDocument, importDocument, cloneWithFreshIds, insertGeneratedSnippet } from '../scripts/editor-actions'
-import { savePage, saveMailTemplate, saveSnippet, saveAsNewTemplate, updatePageSlug, notifyParentSnippetSaved } from '../scripts/database-actions'
+import { savePage, saveMailTemplate, saveSnippet, saveKitTemplate, saveAsNewTemplate, updatePageSlug, notifyParentSnippetSaved } from '../scripts/database-actions'
 import { setSnippetLocked } from '../snippets-api'
 import { resolveDocumentData } from '../scripts/data-resolver'
 import { insertFigmaAsPage, insertFigmaAsSnippet } from '../scripts/figma-actions'
@@ -325,6 +329,14 @@ import { insertFigmaAsPage, insertFigmaAsSnippet } from '../scripts/figma-action
 type WhoobeElement = InstanceType<typeof Element>
 
 const editor = useEditorStore()
+const router = useRouter()
+
+function backToKit() {
+  const target = editor.kitTemplate
+  if (!target) return
+  if (!window.confirm('Leave the editor? Unsaved changes to this template are lost.')) return
+  router.push({ path: '/kit-preview', query: { kitId: target.kitId, parentOrigin: editor.parentOrigin ?? undefined } })
+}
 const snippetsStore = useSnippetsStore()
 const message = ref('')
 const topbarBtnClass = 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-violet-400 hover:bg-violet-800 text-white'
@@ -489,6 +501,20 @@ async function onSave(auto: unknown = false) {
   // `auto` is true only for the autosave timer (a click handler passes its event)
   const isAuto = auto === true
   if (!editor.page) return
+
+  // Editing one template of a kit - saves back into that kit (and nowhere else).
+  if (editor.kitTemplate) {
+    saveState.value = 'saving…'
+    try {
+      await saveKitTemplate(editor)
+      saveState.value = 'saved ' + new Date().toLocaleTimeString()
+      flash('Template saved in the kit')
+    } catch (e: any) {
+      saveState.value = ''
+      flash(e?.message || 'Failed to save the template', 'error')
+    }
+    return
+  }
 
   // Editing a whoobe snippet (admin-dashboard's Snippets item) - saves to
   // whoobe_one_snippets, creating on first save.

@@ -92,6 +92,16 @@ for _ in $(seq 1 30); do
         && echo ">>> HTTPS vhosts restored with the existing certificate" \
         || echo ">>> no certificate yet for $HOST: run scripts/enable-tls.sh $SLUG --email <you> once (sandbox.md, step 3)"
     fi
+    # Demo website, pages and snippets (the two demo kits come with the core's own seed). Not fatal: an empty sandbox still works.
+    # Run with the Node of the core-api image (22): the host's Node can be too old (Ubuntu 22.04 ships 12), and nothing is installed on the host.
+    IMAGE="$(docker inspect -f '{{.Config.Image}}' "ws-${SLUG}-core-api-1" 2>/dev/null || true)"
+    if [ -n "$IMAGE" ]; then
+      docker run --rm --network host --entrypoint node -v "$PWD/scripts/sandbox:/s:ro" "$IMAGE" \
+        /s/seed-demo.mjs "http://127.0.0.1:${PORT}" "$DEMO_EMAIL" "$DEMO_PASSWORD" \
+        || echo ">>> (demo content not loaded: the sandbox is up but empty)" >&2
+    else
+      echo ">>> (core-api container not found: demo content not loaded)" >&2
+    fi
     echo ">>> sandbox is up (reset at $RESET_AT)"; exit 0
   fi
   sleep 2

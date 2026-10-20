@@ -73,8 +73,9 @@ export class SandboxDisabledError extends Error {
 export const SANDBOX_READ_ONLY_MESSAGE = 'This is read-only in the public sandbox';
 
 // The shared demo account may look at users and roles but not change them (nor its own sign-in security: a changed
-// password or a new MFA device would lock every other visitor out until the next reset).
-const READ_ONLY_PREFIXES = ['/auth/users', '/auth/roles', '/auth/mfa/setup', '/auth/mfa/verify-setup', '/auth/mfa/disable'];
+// password or a new MFA device would lock every other visitor out until the next reset; enrolling the account at sign-in, which only
+// happens when two-factor is required for its role, is refused for the same reason).
+const READ_ONLY_PREFIXES = ['/auth/users', '/auth/roles', '/auth/mfa/setup', '/auth/mfa/verify-setup', '/auth/mfa/disable', '/auth/mfa/enrol'];
 
 export function isSandboxReadOnlyPath(method: string, path: string): boolean {
   const m = method.toUpperCase();
