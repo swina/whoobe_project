@@ -103,10 +103,11 @@ for _ in $(seq 1 30); do
       echo ">>> (core-api container not found: demo content not loaded)" >&2
     fi
     # Every reset builds the images again: the build cache of the Docker daemon (shared with the other workspaces of the host)
-    # grows by gigabytes a week. Drop what is older than two days; the layers of the last builds stay, so the next build is warm.
-    # Not fatal, and after the sandbox is up, so it can never delay or break a reset.
-    docker builder prune -f --filter until=48h >/dev/null 2>&1 \
-      && echo ">>> old build cache removed" || echo ">>> (build cache not pruned)" >&2
+    # grows by gigabytes a day (20 GB in a day after a cold deploy). An age filter does not help when all of it is recent, so cap
+    # the space: keep at most 8 GB, and always the 4 GB most recently used (the next build stays warm). Docker 29 flags
+    # (`--keep-storage` is gone). Not fatal, and after the sandbox is up, so it can never delay or break a reset.
+    docker builder prune -f --reserved-space 4GB --max-used-space 8GB >/dev/null 2>&1 \
+      && echo ">>> build cache capped at 8 GB" || echo ">>> (build cache not pruned)" >&2
     echo ">>> sandbox is up (reset at $RESET_AT)"; exit 0
   fi
   sleep 2
