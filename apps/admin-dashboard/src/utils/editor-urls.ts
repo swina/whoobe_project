@@ -41,3 +41,11 @@ export function getSitePreviewBaseUrl(): string {
     port: w.port,
   })
 }
+
+/** The preview of a website from the dashboard: its home page, with the pages that are not published yet (the server shows them only to a signed-in
+ *  editor, and the preview marks itself as a draft). Links followed inside keep the draft mode. */
+export function websiteDraftPreviewUrl(website: { rootPath: string | null; defaultLocale: string }): string {
+  const rootPath = website.rootPath || ''
+  const query = `?locale=${encodeURIComponent(website.defaultLocale || 'en')}${rootPath ? `&rootPath=${encodeURIComponent(rootPath)}` : ''}&draft=true`
+  return `${getSitePreviewBaseUrl()}${rootPath}/${query}`
+}

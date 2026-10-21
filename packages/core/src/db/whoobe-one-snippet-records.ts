@@ -13,6 +13,8 @@ export interface WhoobeOneSnippetRecord {
   notes: string | null;
   thumbnail: string | null;
   locked: boolean;
+  wizardBlock: string | null;
+  wizardLabel: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +53,13 @@ export async function createWhoobeOneSnippet(input: {
 export async function setWhoobeOneSnippetLocked(id: string, locked: boolean): Promise<WhoobeOneSnippetRecord | null> {
   const db = getDb();
   const [row] = await db.update(whoobeOneSnippets).set({ locked }).where(eq(whoobeOneSnippets.id, id)).returning();
+  return row ?? null;
+}
+
+/** Sets the block of the Generate Website Wizard that a snippet stands for (null: none) and the name the wizard lists it under (null: the snippet's own). Not a change of content, so `updatedAt` stays. */
+export async function setWhoobeOneSnippetWizardBlock(id: string, wizardBlock: string | null, wizardLabel: string | null = null): Promise<WhoobeOneSnippetRecord | null> {
+  const db = getDb();
+  const [row] = await db.update(whoobeOneSnippets).set({ wizardBlock, wizardLabel: wizardBlock ? wizardLabel : null }).where(eq(whoobeOneSnippets.id, id)).returning();
   return row ?? null;
 }
 

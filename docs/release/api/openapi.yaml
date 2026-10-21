@@ -717,7 +717,7 @@ paths:
   /whoobe-one/snippets:
     get:
       tags: ["core-api: Whoobe One: Snippets"]
-      summary: "List reusable block snippets (whoobe-one-spike editor format)."
+      summary: "List reusable block snippets (whoobe-one-spike editor format). Besides `snippets` the answer has `templateUsage`: snippet id to the website templates (website, template, slots) that place it."
       responses:
         "200":
           description: OK
@@ -907,6 +907,32 @@ paths:
     put:
       tags: ["core-api: Whoobe One: Snippets"]
       summary: "Lock or unlock a snippet (`{ locked }`). A locked snippet is not saved automatically: the editor's autosave skips it and `PATCH /whoobe-one/snippets/:id` with `autosave: true` answers 423. Manual saves are unaffected."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/snippets/{id}/wizard-block:
+    put:
+      tags: ["core-api: Whoobe One: Snippets"]
+      summary: "Set the block of the Generate Website Wizard that a snippet stands for (`{ block, label? }`: `hero`, `banner`, `cta`, `box-grid-3`, `box-grid-6`, `form`, `custom` (a block of its own, `label` required) or `null`; `label` is the name the wizard lists it under, up to 60 characters). The wizard then lists the snippet with its blocks whatever its category."
       parameters:
         - name: id
           in: path
@@ -4627,6 +4653,26 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /ai/generate-wizard-texts:
+    post:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Write the texts of the Generate Website Wizard with the configured AI (`{ answers, description? }`). The model gets the name, sector, context, description and the list of slots of the structure, and its reply is read slot by slot: only texts of real slots come back, cleaned and cut to their length (`{ texts, used, dropped, slots }`). Creates nothing. Needs `objects:write` and an AI provider (Settings > AI); refused in the sandbox; rate limited like the other AI calls."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /ai/generate-website-structure:
     post:
       tags: ["core-api: AI: text, images, translation, whole-website generation"]
@@ -4670,7 +4716,71 @@ paths:
   /whoobe-one/site-wizard/options:
     get:
       tags: ["core-api: AI: text, images, translation, whole-website generation"]
-      summary: "What the template wizard offers: the limits, the sectors (each with the structure it proposes), the blocks with their descriptions, the colour themes with their palettes, the fonts, the source of the texts, and the snippets of the library that could stand for a block (name, category and block; never their content). Needs `websites:create` or `objects:write`; calls nothing outside."
+      summary: "What the template wizard offers: the limits, the sectors (each with the structure it proposes), the blocks with their descriptions, the colour themes with their palettes, the palettes made by a person (with the colours that are hard to read), the fonts, the source of the texts, and the snippets of the library that could stand for a block (name, category and block; never their content). Needs `websites:create` or `objects:write`; calls nothing outside."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/site-wizard/palettes:
+    post:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Create a palette of the wizard (`{ name, colors }`: bg, bgAlt, card, text, muted, border, accent, onAccent as #RRGGBB). Saved even if some colours are hard to read; `warnings` lists them. 409 for a name in use."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/site-wizard/palettes/{id}:
+    put:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Change a palette of the wizard (same body). 404 for an unknown id, 409 for a name in use."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Delete a palette of the wizard. Websites already made from it are not affected."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK

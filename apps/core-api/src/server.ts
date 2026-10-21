@@ -58,8 +58,10 @@ import {
   createWhoobeOneSnippet,
   updateWhoobeOneSnippet,
   setWhoobeOneSnippetLocked,
+  setWhoobeOneSnippetWizardBlock,
   setWhoobeOneSnippetThumbnail,
   findTemplatesUsingSnippet,
+  listSnippetTemplateUsage,
   deleteWhoobeOneSnippet,
   listWhoobeOneTemplates,
   getWhoobeOneTemplate,
@@ -308,7 +310,19 @@ import {
   buildSite,
   WizardError,
   wizardOptions,
-  snippetBlockType,
+  snippetWizardBlock,
+  nodeHasH1,
+  parsePalette,
+  AI_TEXTS_SYSTEM_PROMPT,
+  buildTextsPrompt,
+  cleanAiTexts,
+  SECTOR_LABELS,
+  weakPairs,
+  listWizardPalettes,
+  createWizardPalette,
+  updateWizardPalette,
+  deleteWizardPalette,
+  SNIPPET_BLOCK_TYPES,
   parseWebsiteBundle,
   ImportError,
   signUploadTicket,
@@ -1828,8 +1842,9 @@ app.delete('/snippets/:id', requireAnyPermission(PERMISSIONS.SNIPPETS_DELETE, PE
 // hostname.
 app.get('/whoobe-one/snippets', requireAnyPermission(PERMISSIONS.SNIPPETS_LIST, PERMISSIONS.OBJECTS_READ), async (_req: Request, res: Response): Promise<void> => {
   try {
-    const snippets = await listWhoobeOneSnippets();
-    res.json({ snippets });
+    const [snippets, templateUsage] = await Promise.all([listWhoobeOneSnippets(), listSnippetTemplateUsage()]);
+    // templateUsage: snippet id -> the website templates (and slots) that place it; a snippet that is not there is used by none
+    res.json({ snippets, templateUsage });
   } catch (error: any) {
     logger.error({ err: error }, 'List whoobe-one snippets error');
     res.status(500).json({ error: error.message || 'Failed to list snippets' });
@@ -1972,6 +1987,33 @@ app.put('/whoobe-one/snippets/:id/lock', requireAnyPermission(PERMISSIONS.SNIPPE
   } catch (error: any) {
     logger.error({ err: error }, 'Lock whoobe-one snippet error');
     res.status(500).json({ error: error.message || 'Failed to lock the snippet' });
+  }
+});
+
+app.put('/whoobe-one/snippets/:id/wizard-block', requireAnyPermission(PERMISSIONS.SNIPPETS_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const block = req.body?.block;
+    if (block !== null && !(typeof block === 'string' && (SNIPPET_BLOCK_TYPES as readonly string[]).includes(block))) {
+      res.status(400).json({ error: `block must be null or one of: ${SNIPPET_BLOCK_TYPES.join(', ')}` });
+      return;
+    }
+    // the name the wizard lists it under: plain text, up to 60 characters; a block of its own (custom) needs one
+    const rawLabel = req.body?.label;
+    const label = typeof rawLabel === 'string' ? rawLabel.trim() : '';
+    if (label.length > 60 || /[<>{}\\]/.test(label)) {
+      res.status(400).json({ error: 'label must be plain text of up to 60 characters' });
+      return;
+    }
+    if (block === 'custom' && !label) {
+      res.status(400).json({ error: 'a block of its own needs a name (label)' });
+      return;
+    }
+    const snippet = await setWhoobeOneSnippetWizardBlock(req.params.id, block, label || null);
+    if (!snippet) { res.status(404).json({ error: 'Snippet not found' }); return; }
+    res.json({ snippet });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Set snippet wizard block error');
+    res.status(500).json({ error: error.message || 'Failed to set the wizard block' });
   }
 });
 
@@ -2766,6 +2808,13 @@ async function isEditorRequest(req: Request): Promise<boolean> {
   return !!(await validateSessionToken(req.cookies?.[SESSION_COOKIE_NAME]));
 }
 
+// `?draft=true` on the public page routes also finds the pages that are not published yet, so the dashboard can preview a website
+// before it is published. Only for a valid session (like `editor=true`): the public never sees a draft, and the answer is not cached.
+async function isDraftPreviewRequest(req: Request): Promise<boolean> {
+  if (req.query.draft !== 'true') return false;
+  return !!(await validateSessionToken(req.cookies?.[SESSION_COOKIE_NAME]));
+}
+
 const PUBLISH_DENIED = { error: 'Publishing requires the objects:publish permission' };
 
 app.patch('/whoobe-one/pages/:id', requireAnyPermission(PERMISSIONS.PAGES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
@@ -3260,9 +3309,9 @@ app.patch('/whoobe-one/websites/:id', requireAnyPermission(PERMISSIONS.WEBSITES_
 
 app.delete('/whoobe-one/websites/:id', requireAnyPermission(PERMISSIONS.WEBSITES_DELETE, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteDelete), async (req: Request, res: Response): Promise<void> => {
   try {
-    await deleteWebsite(req.params.id);
+    const { themesDeleted } = await deleteWebsite(req.params.id, { withTheme: true });
     siteRootCache.clear();
-    res.json({ success: true });
+    res.json({ success: true, themesDeleted });
   } catch (error: any) {
     logger.error({ err: error }, 'Delete website error');
     res.status(500).json({ error: error.message || 'Failed to delete website' });
@@ -3785,6 +3834,8 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
     let requestPath = '/' + (req.params[0] ?? '');
     const templatePath = requestPath;
     const locale = req.params.locale;
+    const draft = await isDraftPreviewRequest(req);
+    if (draft) res.setHeader('Cache-Control', 'no-store');
 
     // Strip the rootPath prefix from the request path when present and
     // resolve websiteId from it if not already provided.
@@ -3814,12 +3865,12 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
 
     // Cheapest, most common case first: exact literal match, identical to
     // the old route's only behavior - zero extra query for any static page.
-    let page = await getPublishedWhoobePageBySlug(locale, requestPath, websiteId);
+    let page = await getPublishedWhoobePageBySlug(locale, requestPath, websiteId, draft);
     let params: Record<string, string> = {};
 
     if (!page) {
       // Only fetch+scan dynamic-slug pages when the literal lookup misses.
-      const candidates = await listPublishedWhoobePages(websiteId);
+      const candidates = await listPublishedWhoobePages(websiteId, draft);
       const dynamicCandidates = candidates.filter((p) => p.locale === locale && isDynamicSlug(p.slug));
       const matched = matchPagePath(dynamicCandidates, requestPath);
       if (matched) {
@@ -3836,7 +3887,7 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
           const nfWebsite = await getWebsite(nfWebsiteId);
           const nfTpl = await getDefaultWebsiteTemplate(nfWebsiteId);
           if (nfTpl?.layout?.notFound404) {
-            const modules = await listPublishedModulePages(nfWebsiteId, locale, nfWebsite?.defaultLocale ?? null);
+            const modules = await listPublishedModulePages(nfWebsiteId, locale, nfWebsite?.defaultLocale ?? null, draft);
             const byId = new Map(modules.map((m: any) => [m.id, m]));
             const snippetIds = new Set<string>();
             for (const sid of nfTpl.layout.notFound404.snippetIds ?? []) snippetIds.add(sid);
@@ -3906,7 +3957,7 @@ app.get('/public/pages/:locale/*', async (req: Request, res: Response): Promise<
         const template = await getWebsiteTemplateForPath(layoutWebsiteId, templatePath, locale);
         if (template) {
           const website = await getWebsite(layoutWebsiteId);
-          const modules = await listPublishedModulePages(layoutWebsiteId, locale, website?.defaultLocale ?? null);
+          const modules = await listPublishedModulePages(layoutWebsiteId, locale, website?.defaultLocale ?? null, draft);
           const byId = new Map(modules.map((m) => [m.id, m]));
 const snippetIds = new Set<string>();
           for (const slot of [template.layout.header, template.layout.appHeader, template.layout.aside, template.layout.footer, template.layout.appFooter, template.layout.main, template.layout.notFound404]) {
@@ -3954,6 +4005,7 @@ const snippetIds = new Set<string>();
 
     const cdnMirrors = await resolveContentCdnMirrors(page.content, await cdnProviderOf(page.websiteId));
     const body: Record<string, unknown> = { page, params };
+    if (draft) body.draftPreview = true;
     if (layout) body.layout = layout;
     if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;
     const isEditor = await isEditorRequest(req);
@@ -3980,6 +4032,8 @@ app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => 
     let websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : null;
     let requestPath = '/' + (req.params[0] ?? '');
     const templatePath = requestPath;
+    const draft = await isDraftPreviewRequest(req);
+    if (draft) res.setHeader('Cache-Control', 'no-store');
 
     // Auto-detect rootPath from the first path segment.
     if (!websiteId && requestPath !== '/') {
@@ -3997,16 +4051,16 @@ app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => 
     // Look up the page by slug + websiteId without locale filtering.
     // Try both with and without leading '/' since page slugs may be stored
     // either way (PageCreateForm prefixes, PagePickerDrawer quick-create does not).
-    let page = await getPublishedWhoobePageBySlugAnyLocale(requestPath, websiteId);
+    let page = await getPublishedWhoobePageBySlugAnyLocale(requestPath, websiteId, draft);
     if (!page && requestPath.startsWith('/')) {
-      page = await getPublishedWhoobePageBySlugAnyLocale(requestPath.slice(1), websiteId);
+      page = await getPublishedWhoobePageBySlugAnyLocale(requestPath.slice(1), websiteId, draft);
     }
     let params: Record<string, string> = {};
 
     if (!page) {
       // Dynamic-slug fallback: the literal lookup missed, so scan published
       // pages for a dynamic pattern ({placeholder}) that matches this path.
-      const candidates = await listPublishedWhoobePages(websiteId);
+      const candidates = await listPublishedWhoobePages(websiteId, draft);
       const dynamicCandidates = candidates.filter((p) => isDynamicSlug(p.slug));
       const matched = matchPagePath(dynamicCandidates, requestPath);
       if (matched) {
@@ -4024,7 +4078,7 @@ app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => 
           const nfTpl = await getDefaultWebsiteTemplate(nfWebsiteId);
           if (nfTpl?.layout?.notFound404) {
             const nfLocale = nfWebsite?.defaultLocale ?? 'en';
-            const modules = await listPublishedModulePages(nfWebsiteId, nfLocale, nfWebsite?.defaultLocale ?? null);
+            const modules = await listPublishedModulePages(nfWebsiteId, nfLocale, nfWebsite?.defaultLocale ?? null, draft);
             const byId = new Map(modules.map((m: any) => [m.id, m]));
             const snippetIds = new Set<string>();
             for (const sid of nfTpl.layout.notFound404.snippetIds ?? []) snippetIds.add(sid);
@@ -4086,7 +4140,7 @@ app.get('/public/page/*', async (req: Request, res: Response): Promise<void> => 
         const template = await getWebsiteTemplateForPath(layoutWebsiteId, templatePath, locale);
         if (template) {
           const website = await getWebsite(layoutWebsiteId);
-          const modules = await listPublishedModulePages(layoutWebsiteId, locale, website?.defaultLocale ?? null);
+          const modules = await listPublishedModulePages(layoutWebsiteId, locale, website?.defaultLocale ?? null, draft);
           const byId = new Map(modules.map((m) => [m.id, m]));
 const snippetIds = new Set<string>();
           for (const slot of [template.layout.header, template.layout.appHeader, template.layout.aside, template.layout.footer, template.layout.appFooter, template.layout.main, template.layout.notFound404]) {
@@ -4129,6 +4183,7 @@ const snippetIds = new Set<string>();
 
     const cdnMirrors = await resolveContentCdnMirrors(page.content, await cdnProviderOf(page.websiteId));
     const body: Record<string, unknown> = { page, params };
+    if (draft) body.draftPreview = true;
     if (layout) body.layout = layout;
     if (Object.keys(cdnMirrors).length > 0) body.cdnMirrors = cdnMirrors;
     const isEditor = await isEditorRequest(req);
@@ -6822,18 +6877,133 @@ app.post('/whoobe-one/websites/from-spec', requireAnyPermission(PERMISSIONS.WEBS
 app.get('/whoobe-one/site-wizard/options', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (_req: Request, res: Response): Promise<void> => {
   try {
     // the snippets of the library, with the block each could stand for (by its category); the content of a snippet is not sent
-    const snippets = (await listWhoobeOneSnippets()).map((s) => ({ name: s.name, category: s.category, block: snippetBlockType(s.category) })).filter((s) => s.block);
-    res.json({ ...wizardOptions(), snippets });
+    // (marked as a wizard block, or with a category that names one)
+    const snippets = (await listWhoobeOneSnippets()).map((s) => ({ name: s.name, category: s.category, block: snippetWizardBlock(s), marked: !!s.wizardBlock, label: s.wizardBlock ? (s.wizardLabel || s.name) : s.name })).filter((s) => s.block);
+    // the palettes made by a person, with the colours that are hard to read in them (a warning, not a refusal)
+    const palettes = (await listWizardPalettes()).map((p) => ({ id: p.id, name: p.name, palette: p.colors, warnings: weakPairs(p.colors as any) }));
+    // the texts can be written by the configured model when this person has an AI provider set up, may use it, and this is not the public sandbox
+    const base = wizardOptions();
+    const ai = await getAiSettings((_req as AuthenticatedRequest).user!.id);
+    const aiAvailable = !isSandbox() && !!ai?.apiKey && !!(_req as AuthenticatedRequest).user?.permissions?.includes(PERMISSIONS.OBJECTS_WRITE);
+    res.json({ ...base, texts: { ...base.texts, ai: { available: aiAvailable } }, snippets, palettes });
   } catch (error: any) {
     logger.error({ err: error }, 'Site wizard options error');
     res.status(500).json({ error: 'Failed to load the options of the wizard' });
   }
 });
 
+// The texts of the wizard written by the configured model (docs/plans/ai/template-wizard.md, phase 3). Body: `{ answers, description? }`. The model gets the name, the
+// sector, the context, a short description and the slots (key, what it is, length, placeholder) of THIS structure, and its reply is read slot by slot (cleanAiTexts):
+// only texts of real slots come back, cleaned and cut. Nothing is created here: the dashboard shows the texts and sends them with the answers to create the site.
+app.post('/ai/generate-wizard-texts', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLimit, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const { answers, description } = req.body ?? {};
+  if (answers === null || typeof answers !== 'object' || Array.isArray(answers)) { res.status(400).json({ error: 'answers (an object) is required' }); return; }
+  if (description !== undefined && (typeof description !== 'string' || description.length > 400)) { res.status(400).json({ error: 'description must be text of up to 400 characters' }); return; }
+  const settings = await getAiSettings(req.user!.id);
+  if (!settings || !settings.apiKey) {
+    res.status(400).json({ error: 'AI is not configured. Save the provider, model, and API key in Settings → AI first.' });
+    return;
+  }
+  let slots;
+  try {
+    const palettes = Object.fromEntries((await listWizardPalettes()).map((p) => [p.id, p.colors as any]));
+    slots = buildSite(answers, { palettes }).slots;
+  } catch (error: any) {
+    if (error instanceof WizardError) { res.status(400).json({ error: error.message, issues: error.issues }); return; }
+    logger.error({ err: error }, 'Wizard texts: slots error');
+    res.status(500).json({ error: 'Failed to prepare the texts' });
+    return;
+  }
+  const a = answers as Record<string, unknown>;
+  const brief = { name: String(a.name ?? ''), sector: (SECTOR_LABELS as Record<string, string>)[String(a.sector)] ?? String(a.sector ?? ''), context: typeof a.context === 'string' ? a.context : undefined, description: typeof description === 'string' ? description : undefined };
+  const prompt = buildTextsPrompt(brief, slots);
+  try {
+    let lastError = '';
+    let out: ReturnType<typeof cleanAiTexts> | null = null;
+    let raw = '';
+    for (let attempt = 1; attempt <= 2 && !out; attempt++) {
+      try {
+        const result = await generateAiJson({
+          settings: { provider: settings.provider, model: settings.model, endpoint: settings.endpoint, apiKey: settings.apiKey },
+          systemPrompt: AI_TEXTS_SYSTEM_PROMPT,
+          userPrompt: attempt === 1 ? prompt : `${prompt}\n\nYour previous answer was rejected: ${lastError}\nOutput ONLY the corrected JSON object.`,
+          maxTokens: 4096,
+        });
+        raw = result.rawText;
+        const cleaned = cleanAiTexts(result.json, slots);
+        if (cleaned.used === 0) { lastError = 'it had no text for any slot of the list'; continue; }
+        out = cleaned;
+      } catch (error: any) {
+        lastError = error instanceof AiGenerationError ? error.message.split('\nRaw output:')[0] : (error?.message || 'AI generation failed');
+        if (attempt === 2) throw error;
+      }
+    }
+    if (!out) {
+      await createAiGenerated({ kind: 'wizard-texts', prompt: `${brief.name} / ${brief.sector}`, provider: settings.provider, model: settings.model, rawResponse: raw, status: 'error', error: lastError, createdBy: req.user?.id ?? null });
+      res.status(422).json({ error: `The model did not return usable texts: ${lastError}` });
+      return;
+    }
+    await createAiGenerated({ kind: 'wizard-texts', prompt: `${brief.name} / ${brief.sector}`, provider: settings.provider, model: settings.model, payload: out.texts, rawResponse: raw, status: 'success', createdBy: req.user?.id ?? null });
+    res.json({ texts: out.texts, used: out.used, dropped: out.dropped, slots: slots.length, meta: Object.fromEntries(slots.filter((s) => s.key in out!.texts).map((s) => [s.key, { label: s.label, max: s.max }])) });
+  } catch (error: any) {
+    const message = error instanceof AiGenerationError ? error.message : (error?.message || 'AI generation failed');
+    try { await createAiGenerated({ kind: 'wizard-texts', prompt: `${brief.name} / ${brief.sector}`, status: 'error', error: message, createdBy: req.user?.id ?? null }); } catch (logError) { logger.error({ err: logError }, 'Wizard texts audit log write error'); }
+    res.status(error instanceof AiGenerationError && error.status ? error.status : 500).json({ error: message });
+  }
+});
+
+// Palettes made by a person (the four built-in ones are in the code). `{ name, colors }`: the eight roles as #RRGGBB. A palette with colours that are hard to
+// read is saved all the same and comes back with `warnings`; the wizard says so again when it is used.
+function readPaletteBody(body: any): { ok: true; name: string; colors: Record<string, string> } | { ok: false; error: string; issues?: string[] } {
+  const name = typeof body?.name === 'string' ? body.name.trim() : '';
+  if (!name || name.length > 60 || /[<>{}\\]/.test(name)) return { ok: false, error: 'name is required: plain text of up to 60 characters' };
+  const parsed = parsePalette(body?.colors);
+  if (!parsed.ok) return { ok: false, error: 'colors are not valid', issues: parsed.issues };
+  return { ok: true, name, colors: parsed.palette as unknown as Record<string, string> };
+}
+
+app.post('/whoobe-one/site-wizard/palettes', requireAnyPermission(PERMISSIONS.THEMES_CREATE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  const read = readPaletteBody(req.body);
+  if (!read.ok) { res.status(400).json({ error: read.error, ...(read.issues ? { issues: read.issues } : {}) }); return; }
+  try {
+    const palette = await createWizardPalette({ name: read.name, colors: read.colors });
+    res.status(201).json({ palette, warnings: weakPairs(palette.colors as any) });
+  } catch (error: any) {
+    if (error?.code === '23505' || /wizard_palettes_name_idx/.test(String(error?.message))) { res.status(409).json({ error: `A palette named "${read.name}" already exists` }); return; }
+    logger.error({ err: error }, 'Create wizard palette error');
+    res.status(500).json({ error: 'Failed to create the palette' });
+  }
+});
+
+app.put('/whoobe-one/site-wizard/palettes/:id', requireAnyPermission(PERMISSIONS.THEMES_EDIT, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) { res.status(404).json({ error: 'Palette not found' }); return; }
+  const read = readPaletteBody(req.body);
+  if (!read.ok) { res.status(400).json({ error: read.error, ...(read.issues ? { issues: read.issues } : {}) }); return; }
+  try {
+    const palette = await updateWizardPalette(req.params.id, { name: read.name, colors: read.colors });
+    if (!palette) { res.status(404).json({ error: 'Palette not found' }); return; }
+    res.json({ palette, warnings: weakPairs(palette.colors as any) });
+  } catch (error: any) {
+    if (error?.code === '23505' || /wizard_palettes_name_idx/.test(String(error?.message))) { res.status(409).json({ error: `A palette named "${read.name}" already exists` }); return; }
+    logger.error({ err: error }, 'Update wizard palette error');
+    res.status(500).json({ error: 'Failed to update the palette' });
+  }
+});
+
+app.delete('/whoobe-one/site-wizard/palettes/:id', requireAnyPermission(PERMISSIONS.THEMES_DELETE, PERMISSIONS.OBJECTS_WRITE), async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id) || !(await deleteWizardPalette(req.params.id))) { res.status(404).json({ error: 'Palette not found' }); return; }
+    res.json({ success: true });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Delete wizard palette error');
+    res.status(500).json({ error: 'Failed to delete the palette' });
+  }
+});
+
 // Body: `{ answers, choices?, website? }` (the answers are described by `wizardAnswersSchema`). `?dryRun=1` writes nothing and answers with the conflicts, a summary
 // and the importer's report, plus `notes` (what was adjusted to keep the colours readable). Pages come in as drafts. The form block is created disconnected.
 app.post('/whoobe-one/websites/from-wizard', requireAnyPermission(PERMISSIONS.WEBSITES_CREATE, PERMISSIONS.OBJECTS_WRITE), audited(AUDIT.websiteFromWizard), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const { answers, choices, website } = req.body ?? {};
+  const { answers, choices, website, texts } = req.body ?? {};
   if (Number(req.headers['content-length'] ?? 0) > 200_000) {
     res.status(413).json({ error: 'The answers are too large' });
     return;
@@ -6843,8 +7013,16 @@ app.post('/whoobe-one/websites/from-wizard', requireAnyPermission(PERMISSIONS.WE
     return;
   }
   try {
-    const { spec, notes } = buildSite(answers);
+    // which snippets of the library have an h1 of their own (a block taken from one carries the heading of its page)
+    const snippetHeadings = Object.fromEntries((await listWhoobeOneSnippets()).map((s) => [s.name, nodeHasH1(s.node)]));
+    const palettes = Object.fromEntries((await listWizardPalettes()).map((p) => [p.id, p.colors as any]));
+    // the texts written by the model and read by the person: only text values of a plain object; a slot takes what fits it (TextSource), the rest is ignored
+    const givenTexts = texts && typeof texts === 'object' && !Array.isArray(texts)
+      ? Object.fromEntries(Object.entries(texts as Record<string, unknown>).filter(([, v]) => typeof v === 'string').slice(0, 500)) as Record<string, string>
+      : undefined;
+    const { spec, notes, vars } = buildSite(answers, { snippetHeadings, palettes, ...(givenTexts ? { texts: givenTexts } : {}) });
     const outcome = await importSiteSpec(spec, {
+      vars,   // the placeholders of the library snippets used in the pages ({name}, {context}, {thing}, {sector}) get the words of this site; a specification imported by hand gets none
       dryRun: req.query.dryRun === '1' || req.query.dryRun === 'true',
       choices: { themes: pickChoices(choices?.themes), snippets: pickChoices(choices?.snippets) },
       website: website && typeof website === 'object' ? { name: textOf(website.name), rootPath: textOf(website.rootPath) } : undefined,

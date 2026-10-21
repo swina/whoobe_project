@@ -67,6 +67,8 @@ test('a person with only a browser goes from the answer of a model to a draft we
 
     // ---- import: a draft website, its pages unpublished, links under its root path
     await p.getByTestId('site-spec-import').click()
+    await expect(p.getByTestId('website-created')).toBeVisible({ timeout: 30_000 })
+    await p.getByTestId('website-created-close').click()
     await expect(p.getByTestId('site-spec-modal')).toHaveCount(0, { timeout: 30_000 })
     const sites = (await api.get('/whoobe-one/websites')).json.websites as any[]
     const site = sites.find((w) => w.name === `${brand} Coffee`)
@@ -98,6 +100,8 @@ test('a person with only a browser goes from the answer of a model to a draft we
     const themesBefore = (await api.get('/whoobe-one/themes')).json.themes.length
     const snippetsBefore = (await api.get('/whoobe-one/snippets')).json.snippets.length
     await p.getByTestId('site-spec-import').click()
+    await expect(p.getByTestId('website-created')).toBeVisible({ timeout: 30_000 })
+    await p.getByTestId('website-created-close').click()
     await expect(p.getByTestId('site-spec-modal')).toHaveCount(0, { timeout: 30_000 })
 
     const second = ((await api.get('/whoobe-one/websites')).json.websites as any[]).find((w) => w.rootPath === `/${brand.toLowerCase()}-two`)

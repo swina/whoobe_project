@@ -194,13 +194,15 @@ export async function deleteWhoobePage(id: string): Promise<void> {
 export async function getPublishedWhoobePageBySlug(
   locale: string,
   slug: string,
-  websiteId?: string | null
+  websiteId?: string | null,
+  /** Draft preview for a signed-in editor: unpublished pages are found too. Never set for a request from the public. */
+  includeDrafts = false
 ): Promise<WhoobePageRecord | null> {
   const db = getDb();
   const conditions = [
     eq(whoobePages.locale, locale),
     eq(whoobePages.slug, slug),
-    eq(whoobePages.published, true),
+    ...(includeDrafts ? [] : [eq(whoobePages.published, true)]),
     // Modules fill website-template slots, never routes.
     or(eq(whoobePages.kind, 'content'), eq(whoobePages.kind, 'app')),
   ];
@@ -219,12 +221,14 @@ export async function getPublishedWhoobePageBySlug(
  */
 export async function getPublishedWhoobePageBySlugAnyLocale(
   slug: string,
-  websiteId?: string | null
+  websiteId?: string | null,
+  /** Draft preview for a signed-in editor: unpublished pages are found too. Never set for a request from the public. */
+  includeDrafts = false
 ): Promise<WhoobePageRecord | null> {
   const db = getDb();
   const conditions = [
     eq(whoobePages.slug, slug),
-    eq(whoobePages.published, true),
+    ...(includeDrafts ? [] : [eq(whoobePages.published, true)]),
     or(eq(whoobePages.kind, 'content'), eq(whoobePages.kind, 'app')),
   ];
   if (websiteId) {
@@ -270,9 +274,9 @@ export async function findPublishedWhoobePageConflict(
  * `content`-kind only - modules are excluded (they're not routes and never
  * belong in a sitemap).
  */
-export async function listPublishedWhoobePages(websiteId?: string | null): Promise<WhoobePageRecord[]> {
+export async function listPublishedWhoobePages(websiteId?: string | null, includeDrafts = false): Promise<WhoobePageRecord[]> {
   const db = getDb();
-  const conditions = [eq(whoobePages.published, true), or(eq(whoobePages.kind, 'content'), eq(whoobePages.kind, 'app'))];
+  const conditions = [...(includeDrafts ? [] : [eq(whoobePages.published, true)]), or(eq(whoobePages.kind, 'content'), eq(whoobePages.kind, 'app'))];
   if (websiteId) {
     conditions.push(eq(whoobePages.websiteId, websiteId));
   }
@@ -283,9 +287,9 @@ export async function listPublishedWhoobePages(websiteId?: string | null): Promi
  *  header/aside/footer slots are filled with (website-templates.md Phase 4).
  *  Resolved by locale with a defaultLocale fallback so a missing translation
  *  still renders a slot rather than silently dropping it. */
-export async function listPublishedModulePages(websiteId: string, locale: string, defaultLocale?: string | null): Promise<WhoobePageRecord[]> {
+export async function listPublishedModulePages(websiteId: string, locale: string, defaultLocale?: string | null, includeDrafts = false): Promise<WhoobePageRecord[]> {
   const db = getDb();
-  const conditions = [eq(whoobePages.websiteId, websiteId), eq(whoobePages.published, true), eq(whoobePages.kind, 'module')];
+  const conditions = [eq(whoobePages.websiteId, websiteId), ...(includeDrafts ? [] : [eq(whoobePages.published, true)]), eq(whoobePages.kind, 'module')];
   const rows = await db.select().from(whoobePages).where(and(...conditions)).orderBy(desc(whoobePages.updatedAt));
   const byLocale = new Map<string, WhoobePageRecord[]>();
   for (const row of rows) {

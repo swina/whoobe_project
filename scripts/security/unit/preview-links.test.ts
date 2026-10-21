@@ -1,7 +1,7 @@
 // Which links the editor's page preview rewrites when the editor is mounted under a base path (/whoobe-one/ in the
 // Docker stacks) and which it leaves alone.
 import { describe, it, expect } from 'vitest'
-import { isUnderBase, prefixInternalHref } from '../../../apps/whoobe-one-spike/src/preview-links'
+import { isUnderBase, keepDraftPreview, prefixInternalHref } from '../../../apps/whoobe-one-spike/src/preview-links'
 import { chooseHistoryBase } from '../../../apps/whoobe-one-spike/src/router/history-base'
 
 describe('prefixInternalHref', () => {
@@ -63,5 +63,21 @@ describe('chooseHistoryBase', () => {
   it('is the root when the app is served from the root (local development)', () => {
     expect(chooseHistoryBase('/whoobe-website/blog', '/')).toBe('/')
     expect(chooseHistoryBase('/editor', '/')).toBe('/')
+  })
+})
+
+describe('keepDraftPreview', () => {
+  it('keeps a draft preview a draft preview when an internal link is followed', () => {
+    expect(keepDraftPreview('/site/about', '?locale=en&draft=true')).toBe('/site/about?draft=true')
+    expect(keepDraftPreview('/site/about?x=1#top', '?draft=true')).toBe('/site/about?x=1&draft=true#top')
+    expect(keepDraftPreview('/site/about?draft=true', '?draft=true')).toBe('/site/about?draft=true')
+  })
+
+  it('leaves everything alone outside a draft preview, and the links that leave the site', () => {
+    expect(keepDraftPreview('/site/about', '?locale=en')).toBe('/site/about')
+    expect(keepDraftPreview('https://example.com/x', '?draft=true')).toBe('https://example.com/x')
+    expect(keepDraftPreview('//cdn.example.com/x', '?draft=true')).toBe('//cdn.example.com/x')
+    expect(keepDraftPreview('#top', '?draft=true')).toBe('#top')
+    expect(keepDraftPreview('mailto:a@b.c', '?draft=true')).toBe('mailto:a@b.c')
   })
 })

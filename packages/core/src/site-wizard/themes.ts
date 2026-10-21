@@ -22,7 +22,28 @@ export interface Palette {
 export const PRESET_NAMES = ['dark', 'light', 'light-colors', 'blue-navy'] as const;
 export type PresetName = (typeof PRESET_NAMES)[number];
 
-export type ThemeChoice = { preset: PresetName } | { background: string };
+export type ThemeChoice = { preset: PresetName } | { palette: string } | { background: string };
+
+export const PALETTE_ROLES = ['bg', 'bgAlt', 'card', 'text', 'muted', 'border', 'accent', 'onAccent'] as const;
+
+/** The roles of a palette a person typed in: all eight, each #RRGGBB (upper-cased). Returns the palette, or what is wrong. */
+export function parsePalette(input: unknown): { ok: true; palette: Palette } | { ok: false; issues: string[] } {
+  const issues: string[] = [];
+  const src = input && typeof input === 'object' && !Array.isArray(input) ? (input as Record<string, unknown>) : {};
+  const out: Record<string, string> = {};
+  for (const role of PALETTE_ROLES) {
+    const v = src[role];
+    if (typeof v !== 'string' || !isHex(v)) issues.push(`"${role}" must be a colour written as #RRGGBB`);
+    else out[role] = v.toUpperCase();
+  }
+  for (const k of Object.keys(src)) if (!(PALETTE_ROLES as readonly string[]).includes(k)) issues.push(`"${k}" is not a colour of a palette`);
+  return issues.length ? { ok: false, issues } : { ok: true, palette: out as unknown as Palette };
+}
+
+/** The pairs of a palette that do not reach the contrast they need, in words (empty: all readable). A person's palette is saved either way; this is the warning. */
+export function weakPairs(p: Palette): string[] {
+  return palettePairs(p).filter((x) => contrast(x.fg, x.bg) < x.min).map((x) => `${x.name}: contrast ${contrast(x.fg, x.bg).toFixed(1)}, needs ${x.min}`);
+}
 
 export const PRESETS: Record<PresetName, Palette> = {
   dark: { bg: '#0F1115', bgAlt: '#161A22', card: '#1B2030', text: '#F1F5F9', muted: '#A9B4C6', border: '#2A3142', accent: '#8B5CF6', onAccent: '#0B0F14' },
@@ -65,14 +86,22 @@ export function derivePalette(background: string, accent?: string): DerivedPalet
   return { palette: { bg, bgAlt, card, text, muted, border, accent: visible, onAccent: readableOn(visible) }, notes };
 }
 
-export function paletteFor(theme: ThemeChoice, accent?: string): DerivedPalette {
-  if ('preset' in theme) {
-    const p = PRESETS[theme.preset];
-    if (!accent) return { palette: p, notes: [] };
-    const wanted = accent.toUpperCase();
-    const surfaces = [p.bg, p.bgAlt, p.card];
-    const visible = ensureContrast(wanted, surfaces, 3);
-    return { palette: { ...p, accent: visible, onAccent: readableOn(visible) }, notes: visible !== wanted ? ['The accent colour was lightened or darkened to stay visible on the background.'] : [] };
+export function paletteFor(theme: ThemeChoice, accent?: string, custom: Record<string, Palette> = {}): DerivedPalette {
+  if ('preset' in theme || 'palette' in theme) {
+    const own = 'palette' in theme;
+    const p = 'preset' in theme ? PRESETS[theme.preset] : custom[theme.palette];
+    if (!p) throw new Error('the palette does not exist (any more)');
+    const notes: string[] = [];
+    let palette = p;
+    if (accent) {
+      const wanted = accent.toUpperCase();
+      const visible = ensureContrast(wanted, [p.bg, p.bgAlt, p.card], 3);
+      palette = { ...p, accent: visible, onAccent: readableOn(visible) };
+      if (visible !== wanted) notes.push('The accent colour was lightened or darkened to stay visible on the background.');
+    }
+    // a palette of a person is used as it is; what is hard to read in it is said, not changed
+    if (own) for (const w of weakPairs(palette)) notes.push(`A colour of the palette is hard to read - ${w}.`);
+    return { palette, notes };
   }
   return derivePalette(theme.background, accent);
 }

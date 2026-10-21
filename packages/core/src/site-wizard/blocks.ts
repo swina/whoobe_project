@@ -63,6 +63,8 @@ function grid(ctx: BlockContext, key: 'grid3' | 'grid6'): SpecNode {
 }
 
 export const BLOCKS: Record<string, (ctx: BlockContext) => SpecNode> = {
+  title: (ctx) => titleBand(ctx),
+
   hero(ctx) {
     const h = ctx.copy.hero;
     const title = ctx.landing
@@ -134,10 +136,9 @@ export const BLOCKS: Record<string, (ctx: BlockContext) => SpecNode> = {
   },
 };
 
-/** The title of a page that has no hero: a plain band with the page's h1, so that every page has one heading of the first level. */
+/** The block "Page title": a plain band with the title of the page as its heading (of the first level when no other block has taken it). */
 export function titleBand(ctx: BlockContext): SpecNode {
-  ctx.claimH1();
-  return section(ctx, 'bgAlt', [heading(ctx, 1, ctx.pageTitle, 'text-4xl')], 'py-12');
+  return section(ctx, 'bgAlt', [heading(ctx, ctx.claimH1() ? 1 : 2, ctx.pageTitle, 'text-4xl')], 'py-12');
 }
 
 export interface NavLink { title: string; href: string }

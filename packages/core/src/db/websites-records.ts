@@ -1,8 +1,14 @@
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, ne } from 'drizzle-orm';
 import { getDb } from './client.js';
 import { encryptIntegrationSecret, decryptIntegrationSecret } from './integration-secrets-crypto.js';
 import { deleteMailSettings } from './mail-settings-records.js';
 import { websites } from './websites-schema.js';
+import { themes } from './themes-schema.js';
+import { whoobePages } from './whoobe-pages-schema.js';
+import { whoobeOneSnippets } from './whoobe-one-snippet-schema.js';
+import { listWhoobePages, deleteWhoobePage } from './whoobe-pages-records.js';
+import { listWebsiteTemplates, deleteWebsiteTemplate } from './website-templates-records.js';
+import { listWebsitePaths, deleteWebsitePath } from './website-paths-records.js';
 import { generateSiteApiKey, hashSiteApiKey, siteApiKeyDisplayPrefix, verifySiteApiKeyHash } from './site-key-crypto.js';
 
 export interface WebsiteRecord {
@@ -163,11 +169,37 @@ export async function updateWebsite(
   return row ? toRecord(row) : null;
 }
 
-export async function deleteWebsite(id: string): Promise<void> {
+/** Deletes a website with what belongs to it: its pages (and their search entries), templates and paths, and its theme when no other website uses it.
+ *  Snippets and data objects are shared and stay (a snippet still used by a template of another website cannot be deleted by hand either).
+ *  The theme goes only when asked (`withTheme`: the delete of a website by a person): the undo of a failed import also calls this, and must not
+ *  remove a theme that was there before. Returns the ids of the themes that were deleted. */
+export async function deleteWebsite(id: string, options: { withTheme?: boolean } = {}): Promise<{ themesDeleted: string[] }> {
   const db = getDb();
+  const pages = await listWhoobePages(id);
+  const [site] = await db.select({ themeId: websites.themeId }).from(websites).where(eq(websites.id, id)).limit(1);
+  const candidates = new Set<string>();
+  if (site?.themeId) candidates.add(site.themeId);
+  for (const p of pages) if (p.themeId) candidates.add(p.themeId);
+
+  for (const p of pages) await deleteWhoobePage(p.id);
+  for (const t of await listWebsiteTemplates(id)) await deleteWebsiteTemplate(t.id);
+  for (const m of await listWebsitePaths(id)) await deleteWebsitePath(m.id);
   await db.delete(websites).where(eq(websites.id, id));
   // its own outgoing-mail configuration (and the secrets in it) goes with it
   await deleteMailSettings(id);
+
+  // a theme that no other website uses (as its theme, or on one of its pages) goes too; a snippet that pointed at it forgets it
+  const themesDeleted: string[] = [];
+  for (const themeId of options.withTheme ? candidates : []) {
+    const [otherSite] = await db.select({ id: websites.id }).from(websites).where(and(eq(websites.themeId, themeId), ne(websites.id, id))).limit(1);
+    if (otherSite) continue;
+    const [otherPage] = await db.select({ id: whoobePages.id }).from(whoobePages).where(eq(whoobePages.themeId, themeId)).limit(1);
+    if (otherPage) continue;
+    await db.update(whoobeOneSnippets).set({ themeId: null }).where(eq(whoobeOneSnippets.themeId, themeId));
+    await db.delete(themes).where(eq(themes.id, themeId));
+    themesDeleted.push(themeId);
+  }
+  return { themesDeleted };
 }
 
 /** Generates a fresh site API key, stores only its hash + display prefix,

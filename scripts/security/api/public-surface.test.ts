@@ -66,6 +66,19 @@ describe('drafts are not exposed', () => {
     expect(one.text).not.toContain('DRAFT PAGE')
   })
 
+  it('?draft=true finds an unpublished page only for a signed-in editor, and is not cached', async () => {
+    const q = `/public/page/${draftPageSlug}?websiteId=${websiteId}&draft=true`
+    const anonymous = await anon.get(q)
+    expect([404, 400]).toContain(anonymous.status)
+    expect(anonymous.text).not.toContain('DRAFT PAGE')
+    const editor = await admin.get(q)
+    expect(editor.status).toBe(200)
+    expect(editor.json.page.title).toBe('DRAFT PAGE')
+    expect(editor.json.draftPreview).toBe(true)
+    // without ?draft=true the same editor session still gets nothing: a draft is only shown on request
+    expect([404, 400]).toContain((await admin.get(`/public/page/${draftPageSlug}?websiteId=${websiteId}`)).status)
+  })
+
   it('search does not return drafts or unpublished pages', async () => {
     await admin.post('/whoobe-one/search/reindex')
     const r = await anon.get('/public/search?q=DRAFT')

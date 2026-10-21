@@ -484,6 +484,27 @@
       "when": 1790000800000,
       "tag": "0068_kit_template_ids",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1790000900000,
+      "tag": "0069_snippet_wizard_block",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1790001000000,
+      "tag": "0070_snippet_wizard_label",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1790001100000,
+      "tag": "0071_wizard_palettes",
+      "breakpoints": true
     }
   ]
 }

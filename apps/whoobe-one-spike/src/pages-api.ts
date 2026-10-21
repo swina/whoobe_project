@@ -88,6 +88,8 @@ export async function getPage(id: string): Promise<WhoobeOnePage> {
 }
 
 export interface PublicPageLookup {
+  /** The server answered a draft preview: the page may be unpublished. */
+  draftPreview?: boolean
   page: WhoobeOnePage
   params: Record<string, string>
   /** In editor mode `page.seo` keeps the `{field}` templates; this is the
@@ -106,6 +108,16 @@ export interface PublicPageLookup {
   } | null
 }
 
+/** The page was opened as a draft preview from the dashboard (`?draft=true`): ask the server for the pages that are not published too
+ *  (it only does so for a signed-in editor). */
+export function isDraftPreview(): boolean {
+  return typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('draft') === 'true'
+}
+
+function draftSuffix(hasQuery: boolean): string {
+  return isDraftPreview() ? `${hasQuery ? '&' : '?'}draft=true` : ''
+}
+
 /** Public, unauthenticated lookup by locale + full path (static slug or a
  *  dynamic pattern match) - see docs/plans/website/website-paths.md and
  *  apps/core-api/src/server.ts's `GET /public/pages/:locale/*` route.
@@ -113,7 +125,7 @@ export interface PublicPageLookup {
  *  extracted from a dynamic-pattern match (empty for a static page). */
 export async function getPublicPage(locale: string, path: string, rootPath?: string, editor?: boolean): Promise<PublicPageLookup> {
   const query = rootPath ? `?rootPath=${encodeURIComponent(rootPath)}` : ''
-  const suffix = editor ? `${rootPath ? '&' : '?'}editor=true` : ''
+  const suffix = (editor ? `${rootPath ? '&' : '?'}editor=true` : '') + draftSuffix(!!rootPath || !!editor)
   const res = await fetch(`${getDefaultCoreApiUrl()}/public/pages/${encodeURIComponent(locale)}${path}${query}${suffix}`, { credentials: 'include' })
   return parseJsonOrThrow(res)
 }
@@ -123,7 +135,7 @@ export async function getPublicPage(locale: string, path: string, rootPath?: str
  *  from the first path segment on the server, which returns the page with
  *  its own locale. Matches apps/core-api/src/server.ts's `GET /public/page/*`. */
 export async function getPublicPageByPath(path: string, editor?: boolean): Promise<PublicPageLookup> {
-  const suffix = editor ? (path.includes('?') ? '&' : '?') + 'editor=true' : ''
+  const suffix = (editor ? (path.includes('?') ? '&' : '?') + 'editor=true' : '') + draftSuffix(path.includes('?') || !!editor)
   const res = await fetch(`${getDefaultCoreApiUrl()}/public/page${path}${suffix}`, { credentials: 'include' })
   return parseJsonOrThrow(res)
 }

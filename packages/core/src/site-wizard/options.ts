@@ -1,5 +1,5 @@
 // What the wizard offers a person: the lists of its steps, with their labels. Pure (no database): the route adds the snippets of the library.
-import { BLOCK_TYPES, SECTORS, COPY, type BlockType, type Sector } from './copy.js';
+import { BLOCK_TYPES, SECTORS, SNIPPET_BLOCK_TYPES, COPY, type BlockType, type Sector } from './copy.js';
 import { PRESET_NAMES, PRESETS, type PresetName } from './themes.js';
 import { suggestedStructure } from './wizard.js';
 
@@ -12,6 +12,7 @@ export const BLOCK_INFO: Record<BlockType, { label: string; description: string 
   'box-grid-3': { label: 'Box grid 3', description: 'A heading and three boxes with a title and a text each.' },
   'box-grid-6': { label: 'Box grid 6', description: 'A heading and six boxes, in two rows of three.' },
   form: { label: 'Contact form', description: 'A form with name, email and message. It is not connected: a developer connects it later.' },
+  title: { label: 'Page title', description: 'A plain band with the title of the page, as its heading of the first level. Not needed when a hero carries the heading.' },
 };
 
 export const PRESET_LABELS: Record<PresetName, string> = { dark: 'Dark', light: 'Light', 'light-colors': 'Light colours', 'blue-navy': 'Blue navy' };
@@ -23,6 +24,12 @@ export function snippetBlockType(category: string | null | undefined): BlockType
   const c = (category ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   const aliases: Record<string, BlockType> = { hero: 'hero', banner: 'banner', cta: 'cta', 'call-to-action': 'cta', 'box-grid-3': 'box-grid-3', 'box-grid-6': 'box-grid-6', form: 'form', 'contact-form': 'form' };
   return aliases[c] ?? null;
+}
+
+/** The block a snippet stands for in the wizard: the one it was marked with, else the one its category names, else none. */
+export function snippetWizardBlock(snippet: { category: string | null | undefined; wizardBlock?: string | null }): BlockType | 'custom' | null {
+  const marked = (SNIPPET_BLOCK_TYPES as readonly string[]).includes(snippet.wizardBlock ?? '') ? (snippet.wizardBlock as BlockType | 'custom') : null;
+  return marked ?? snippetBlockType(snippet.category);
 }
 
 export function wizardOptions() {

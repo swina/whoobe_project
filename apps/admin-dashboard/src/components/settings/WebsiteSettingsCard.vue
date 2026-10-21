@@ -1,22 +1,23 @@
 <template>
   <div class="rounded-2xl bg-slate-900/60 light:bg-white/60 border border-slate-800 light:border-slate-200 p-6 space-y-4">
-    <div class="flex items-center justify-between">
-      <div>
-        <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">Websites</h3>
-        <p class="text-xs text-slate-500 mt-1">Manage websites, domains, and supported locales. Each website can have its own set of pages and menus.</p>
-      </div>
-      <div class="flex items-center gap-2">
+    <div>
+      <h3 class="text-sm font-semibold text-slate-200 light:text-slate-800 uppercase tracking-wider text-xs">Websites</h3>
+      <p class="text-xs text-slate-500 mt-1">Manage websites, domains, and supported locales. Each website can have its own set of pages and menus.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
         <!---<button @click="showAiModal = true" class="btn btn-soft-primary flex items-center gap-1.5">
           <Sparkles class="w-3.5 h-3.5" />
           AI Website Wizard
         </button>--->
+        <button type="button" class="btn btn-secondary flex items-center gap-1.5" data-testid="websites-refresh" :disabled="websitesStore.isLoading" @click="websitesStore.refreshWebsites()">
+          <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': websitesStore.isLoading }" /> Refresh
+        </button>
         <button @click="createNewWebsite" class="btn btn-primary">+ New Website</button>
         <button data-testid="new-docs-site" @click="createNewDocsSite" class="btn btn-soft-primary">+ New Documentation</button>
         <button @click="triggerImport" :disabled="!!busy" class="btn btn-secondary">Import</button>
         <button data-testid="site-wizard-open" @click="tabsStore.openSection('site-wizard')" class="btn btn-soft-primary flex items-center gap-1.5" title="Make a website from a few choices: pages, blocks, look and sector">Generate Website Wizard</button>
         <button data-testid="site-spec-open" @click="showSpecModal = true" class="btn btn-secondary" title="Create a website from a specification written by a language model">Import from a spec</button>
         <input ref="importFileInput" type="file" accept=".zip,.json" class="hidden" @change="handleImportFile" />
-      </div>
     </div>
 
     <div v-if="busy" class="text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 rounded-lg px-3 py-2 mb-3 truncate">{{ busy }}</div>
@@ -46,6 +47,7 @@
             <button :data-testid="`docs-export-${website.id}`" @click="exportWebsiteAction(website)" :disabled="!!busy" class="btn btn-link-success" title="Export the documentation (files, images, index) as a .zip">Export</button>
           </template>
           <template v-else>
+            <a :href="websiteDraftPreviewUrl(website)" target="_blank" rel="noopener" :data-testid="`website-preview-${website.id}`" class="text-xs font-semibold text-sky-400 hover:text-sky-300" title="Open the website with its pages that are not published yet (marked as a draft preview)">Preview</a>
             <button @click="openPublish(website)" class="btn btn-link-warning flex items-center gap-1"><Rocket class="w-3 h-3" />Publish</button>
             <button @click="exportWebsiteAction(website)" :disabled="!!busy" class="btn btn-link-success">Export</button>
             <button @click="openPaths(website)" class="btn btn-link">Paths</button>
@@ -64,7 +66,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Sparkles, Rocket } from '@lucide/vue'
+import { Sparkles, Rocket, RefreshCw } from '@lucide/vue'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import { useTabsStore } from '../../stores/tabsStore'
 import { downloadWebsiteZip, openBundleFile, previewBundleImport, importOpenedBundle } from '../../utils/website-bundle'
@@ -78,6 +80,7 @@ import { usePathStore } from '../../stores/menusStore'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import type { WebsiteRecord } from '../../utils/websites-api'
 import { docsPreviewUrl } from '../../utils/docs-sites-api'
+import { websiteDraftPreviewUrl } from '../../utils/editor-urls'
 import AiWebsiteWizardModal from './AiWebsiteWizardModal.vue'
 import SiteSpecImportModal from './SiteSpecImportModal.vue'
 

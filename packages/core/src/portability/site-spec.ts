@@ -4,7 +4,7 @@
 // element, the template that places the header and the footer - is added here.
 import { createHash } from 'node:crypto';
 import { sanitizeRichText, validateSiteSpec, type SiteSpec, type SiteSpecIssue, type SpecFormField, type SpecNode } from '@whoobe-cms/schema';
-import type { BundlePage, BundleSnippet, BundleTemplate, BundleTheme, WebsiteBundle } from './bundle.js';
+import type { BundleMenu, BundlePage, BundleSnippet, BundleTemplate, BundleTheme, WebsiteBundle } from './bundle.js';
 
 /** What already exists here, for the specs that point to a theme or a snippet by name (the caller reads it from the database). */
 export interface SiteSpecExisting {
@@ -22,6 +22,25 @@ export interface ExpandOptions {
   existing?: SiteSpecExisting;
   /** Written into `exportedAt`; the bundle is otherwise independent of the clock. */
   now?: string;
+  /** Words that the copies of library snippets get in place of `{name}`, `{context}`, `{thing}` and `{sector}`. Only the wizard gives them: a specification
+   *  written by hand is left as it is. The snippet in the library is never changed, only the copy that goes into a page. */
+  vars?: Record<string, string>;
+}
+
+const SKIP_KEYS = new Set(['id', 'type', 'tag', 'element', 'icon', 'css', 'style', 'link', 'src', 'href', 'url', 'sourceSnippetId', 'alpine', 'class', 'className']);
+
+/** The text of a copied snippet with its placeholders filled in. Values are plain text (no markup); an unknown placeholder is left as it is. */
+export function fillSnippetPlaceholders<T>(node: T, vars: Record<string, string>): T {
+  const clean = Object.fromEntries(Object.entries(vars).map(([k, v]) => [k, String(v).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim()]));
+  const fill = (s: string): string => s.replace(/\{(name|context|thing|sector)\}/g, (m, k: string) => (k === 'context' ? clean.context ?? clean.thing : clean[k]) ?? m);
+  // what is structure (ids, kinds, classes, styles, links, sources) is left alone; every other text of the content is filled in
+  const walk = (v: unknown): unknown => {
+    if (typeof v === 'string') return fill(v);
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, SKIP_KEYS.has(k) ? x : walk(x)]));
+    return v;
+  };
+  return walk(node) as T;
 }
 
 /** A UUID derived from a label, so that the references inside the bundle (layout -> snippet) survive the id rewrite of the importer. */
@@ -195,13 +214,14 @@ export function expandSiteSpec(input: unknown, options: ExpandOptions = {}): Exp
       blocks: p.sections.map((section) => {
         if (section.kind !== 'snippet') return expandNode(section, ctx);
         const lib = byKey.get(section.use)!;
-        const copy = withFreshIds(lib.node, ctx.next) as Record<string, unknown>;
+        const fresh = withFreshIds(lib.node, ctx.next);
+        const copy = (options.vars ? fillSnippetPlaceholders(fresh, options.vars) : fresh) as Record<string, unknown>;
         copy.sourceSnippetId = lib.id;
         return copy;
       }),
     });
     return {
-      id: null, translationGroupId: uuid(`group:${p.slug}`), locale, slug: p.slug, title: p.title, category: p.category ?? '', kind: 'content',
+      id: uuid(`page:${locale}:${p.slug}`), translationGroupId: uuid(`group:${p.slug}`), locale, slug: p.slug, title: p.title, category: p.category ?? '', kind: 'content',
       published: false, workflowState: null, content: root,
       seo: { metaTitle: p.title, metaDescription: p.description ?? '', canonicalUrl: null, robots: { index: true, follow: true }, ogTitle: p.title, ogDescription: p.description ?? '', ogImage: null },
       sitemap: null, search: null, pimcoreId: null, path: null, themeId,
@@ -222,6 +242,11 @@ export function expandSiteSpec(input: unknown, options: ExpandOptions = {}): Exp
     });
   }
 
+  // the website's path (its menu): the pages of the default language, in the order of the file, linked by id like a path made in the editor
+  const websitePaths: BundleMenu[] = [];
+  const inPath = pages.filter((p) => p.locale === spec.website.defaultLocale);
+  if (inPath.length) websitePaths.push({ id: null, name: 'Main', items: inPath.map((p) => ({ label: p.title, pageId: p.id, path: p.slug })) });
+
   const bundle: WebsiteBundle = {
     version: 2,
     exportedAt: options.now ?? '',
@@ -229,7 +254,7 @@ export function expandSiteSpec(input: unknown, options: ExpandOptions = {}): Exp
       id: null, name: spec.website.name, rootPath, domains: [], defaultLocale: spec.website.defaultLocale, supportedLocales: spec.website.supportedLocales,
       settings: spec.website.description ? { description: spec.website.description } : {}, themeId,
     },
-    themes, pages, websiteTemplates, websitePaths: [], snippets, dataComponents: [], dataClasses: [], dataObjects: [], assets: [],
+    themes, pages, websiteTemplates, websitePaths, snippets, dataComponents: [], dataClasses: [], dataObjects: [], assets: [],
   };
   return { bundle, references: { themes: referencedThemes, snippets: referencedSnippets } };
 }

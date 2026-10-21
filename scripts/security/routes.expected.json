@@ -1446,6 +1446,13 @@
       ],
       "audit": "exempt: AI generation call, changes no configuration"
     },
+    "POST /ai/generate-wizard-texts": {
+      "access": "permission",
+      "permissions": [
+        "OBJECTS_WRITE"
+      ],
+      "audit": "exempt: AI generation call, changes no configuration"
+    },
     "POST /whoobe-one/websites/from-ai": {
       "access": "permission",
       "permissions": [
@@ -1712,6 +1719,46 @@
         "OBJECTS_WRITE"
       ],
       "note": "locks or unlocks a snippet: a locked snippet is not saved automatically",
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
+    },
+    "POST /whoobe-one/site-wizard/palettes": {
+      "access": "permission",
+      "permissions": [
+        "THEMES_CREATE",
+        "OBJECTS_WRITE"
+      ],
+      "note": "creates a palette of the Generate Website Wizard",
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
+    },
+    "PUT /whoobe-one/site-wizard/palettes/:id": {
+      "access": "permission",
+      "permissions": [
+        "THEMES_EDIT",
+        "OBJECTS_WRITE"
+      ],
+      "note": "changes a palette of the Generate Website Wizard",
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
+    },
+    "DELETE /whoobe-one/site-wizard/palettes/:id": {
+      "access": "permission",
+      "permissions": [
+        "THEMES_DELETE",
+        "OBJECTS_WRITE"
+      ],
+      "note": "deletes a palette of the Generate Website Wizard",
+      "mode": "any",
+      "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
+    },
+    "PUT /whoobe-one/snippets/:id/wizard-block": {
+      "access": "permission",
+      "permissions": [
+        "SNIPPETS_EDIT",
+        "OBJECTS_WRITE"
+      ],
+      "note": "sets the block of the Generate Website Wizard that a snippet stands for",
       "mode": "any",
       "audit": "exempt: content editing, covered by version history (audit-log-plan.md section 4)"
     },

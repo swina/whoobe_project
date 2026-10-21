@@ -14,11 +14,16 @@
           placeholder="Search pages by title or slug…"
           class="field w-full"
         />
+        <select v-model="siteFilter" class="field w-full mt-2" data-testid="page-picker-site-filter" aria-label="Filter pages by website">
+          <option :value="props.websiteId">This website</option>
+          <option value="">All websites</option>
+          <option v-for="w in otherWebsites" :key="w.id" :value="w.id">{{ w.name }}</option>
+        </select>
       </div>
 
       <div class="flex-1 overflow-y-auto p-2 space-y-1">
         <div v-if="pagesStore.isLoading" class="text-xs text-slate-500 text-center py-4">Loading pages…</div>
-        <div v-else-if="filteredPages.length === 0" class="text-xs text-slate-500 text-center py-4 italic">No pages found for this website.</div>
+        <div v-else-if="filteredPages.length === 0" class="text-xs text-slate-500 text-center py-4 italic">No pages found{{ siteFilter ? " for this website" : "" }}.</div>
         <div
           v-for="page in filteredPages"
           :key="page.id"
@@ -32,7 +37,7 @@
               <span class="text-xs font-semibold text-slate-200 light:text-slate-800 truncate">{{ page.title }}</span>
               <span :class="['inline-block w-1.5 h-1.5 rounded-full shrink-0', page.published ? 'bg-emerald-400' : 'bg-amber-400']" :title="page.published ? 'Published' : 'Draft'"></span>
             </div>
-            <div class="text-[10px] text-slate-500 font-mono truncate">/{{ page.slug }}</div>
+            <div class="text-[10px] text-slate-500 font-mono truncate">{{ slugText(page.slug) }}<span v-if="siteFilter !== props.websiteId" class="ml-2 text-slate-600">{{ websiteName(page.websiteId) }}</span></div>
           </div>
           <span class="text-[10px] text-slate-600 font-mono shrink-0">{{ page.locale }}</span>
         </div>
@@ -63,6 +68,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { usePagesStore } from '../../stores/pagesStore'
+import { useWebsitesStore } from '../../stores/websitesStore'
 import type { WhoobeOnePage } from '../../utils/pages-api'
 
 const props = defineProps<{
@@ -76,13 +82,21 @@ const emit = defineEmits<{
 }>()
 
 const pagesStore = usePagesStore()
+const websitesStore = useWebsitesStore()
 const search = ref('')
+// the pages of this website by default; '' = every website, or one other website
+const siteFilter = ref(props.websiteId)
 const creating = ref(false)
 const newTitle = ref('')
 const newSlug = ref('')
 
+const otherWebsites = computed(() => websitesStore.websites.filter((w) => w.id !== props.websiteId))
+const websiteName = (id: string | null) => websitesStore.websites.find((w) => w.id === id)?.name ?? ''
+// slugs are stored with their leading slash ("/about"); show exactly one
+const slugText = (slug: string) => '/' + slug.replace(/^\/+/, '')
+
 const filteredPages = computed(() => {
-  let list = pagesStore.pages
+  let list = siteFilter.value ? pagesStore.pages.filter((p) => p.websiteId === siteFilter.value) : pagesStore.pages
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
     list = list.filter((p) => p.title.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q))
@@ -122,5 +136,6 @@ async function createPage() {
 
 onMounted(() => {
   pagesStore.refreshPages()
+  if (websitesStore.websites.length === 0) websitesStore.refreshWebsites()
 })
 </script>

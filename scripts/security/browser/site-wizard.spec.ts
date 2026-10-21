@@ -45,6 +45,19 @@ test('a person with only a browser goes from a few choices to a draft website, w
     await expect(p.getByTestId('wizard-page-title-3')).toHaveValue('Contact')
     await expect(p.getByTestId('wizard-page-3')).toContainText('not connected')          // the contact form says it is not connected
     await expect(p.getByTestId('wizard-preview')).toContainText('Contact form (not connected)')
+    // pages can be folded, moved and looked at one by one in the structure
+    await p.getByTestId('wizard-page-collapse-1').click()
+    await expect(p.getByTestId('wizard-add-block-1')).toHaveCount(0)
+    await p.getByTestId('wizard-page-collapse-1').click()
+    await expect(p.getByTestId('wizard-add-block-1')).toBeVisible()
+    await p.getByTestId('wizard-page-down-1').click()
+    await expect(p.getByTestId('wizard-page-title-2')).toHaveValue('Rooms')              // swapped with "The area", which was below
+    await p.getByTestId('wizard-page-up-2').click()
+    await expect(p.getByTestId('wizard-page-title-1')).toHaveValue('Rooms')
+    await p.getByTestId('wizard-page-focus-3').click()
+    await expect(p.getByTestId('wizard-preview')).toContainText('Contact form (not connected)')
+    await expect(p.getByTestId('wizard-preview')).not.toContainText('Banner')            // only the Contact page is shown
+    await p.getByTestId('wizard-view-all').click()
     await p.getByTestId('wizard-add-block-0').selectOption({ label: `${brand} hero (Hero)` })   // a snippet of the library
     await expect(p.getByTestId('wizard-page-0')).toContainText(`${brand} hero`)
     await expect(p.getByTestId('wizard-page-0')).toContainText('your snippet')
@@ -75,6 +88,10 @@ test('a person with only a browser goes from a few choices to a draft website, w
     expect(((await api.get('/whoobe-one/websites')).json.websites as any[]).some((w) => w.name === `${brand} Hotel`)).toBe(false)
 
     await p.getByTestId('wizard-create').click()
+    // the window that offers Preview (the site with its draft pages) and Manage (its settings)
+    await expect(p.getByTestId('website-created')).toBeVisible({ timeout: 30_000 })
+    expect(await p.getByTestId('website-created-preview').getAttribute('href')).toContain('draft=true')
+    await p.getByTestId('website-created-manage').click()
     await expect(p.getByTestId('site-wizard')).toBeHidden({ timeout: 30_000 })               // the new website opens in a tab of its own (the wizard tab stays, hidden)
     const site = ((await api.get('/whoobe-one/websites')).json.websites as any[]).find((w) => w.name === `${brand} Hotel`)
     expect(site, 'the website exists').toBeTruthy()
@@ -115,6 +132,8 @@ test('a person with only a browser goes from a few choices to a draft website, w
     await expect(p.getByTestId('wizard-create')).toBeEnabled()
     const themesBefore = ((await api.get('/whoobe-one/themes')).json.themes as any[]).length
     await p.getByTestId('wizard-create').click()
+    await expect(p.getByTestId('website-created')).toBeVisible({ timeout: 30_000 })
+    await p.getByTestId('website-created-manage').click()
     await expect(p.getByTestId('site-wizard')).toBeHidden({ timeout: 30_000 })
     const second = ((await api.get('/whoobe-one/websites')).json.websites as any[]).find((w) => w.rootPath === `${root}-two`)
     expect(second, 'the second website exists').toBeTruthy()

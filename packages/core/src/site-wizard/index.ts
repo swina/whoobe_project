@@ -6,3 +6,4 @@ export * from './text-source.js';
 export * from './themes.js';
 export * from './wizard.js';
 export * from './options.js';
+export * from './ai-texts.js';

@@ -5,12 +5,17 @@
         <h2 class="text-xl font-bold text-slate-100 light:text-slate-900">Pages</h2>
         <p class="text-xs text-slate-400 light:text-slate-600">Website pages built with the Whoobe One page composer. Click a row to open it in the editor.</p>
       </div>
-      <button
-        @click="handleCreate"
-        class="btn btn-primary"
-      >
-        + Create Page
-      </button>
+      <div class="flex items-center gap-2">
+        <button type="button" class="btn btn-secondary flex items-center gap-1.5" data-testid="pages-refresh" :disabled="pagesStore.isLoading" @click="pagesStore.reloadPages()">
+          <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': pagesStore.isLoading }" /> Refresh
+        </button>
+        <button
+          @click="handleCreate"
+          class="btn btn-primary"
+        >
+          + Create Page
+        </button>
+      </div>
     </div>
 
     <div class="flex items-center gap-2">
@@ -396,7 +401,7 @@
 <script setup lang="ts">
 import BaseModal from '../components/ui/BaseModal.vue'
 import { ref, computed, watch, onMounted } from 'vue'
-import { FileText, ChevronUp, ChevronDown, Filter, Plus, Trash2, X, Send } from '@lucide/vue'
+import { RefreshCw, FileText, ChevronUp, ChevronDown, Filter, Plus, Trash2, X, Send } from '@lucide/vue'
 import { usePagesStore } from '../stores/pagesStore'
 import { useTabsStore } from '../stores/tabsStore'
 import { useToastStore } from '../stores/toastStore'

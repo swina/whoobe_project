@@ -189,6 +189,11 @@ export interface SnippetTemplateUsage {
  *  ids live in nested jsonb under a handful of slot keys, and the number of
  *  templates is small. */
 export async function findTemplatesUsingSnippet(snippetId: string): Promise<SnippetTemplateUsage[]> {
+  return (await listSnippetTemplateUsage())[snippetId] ?? [];
+}
+
+/** Every snippet that a template places, with where: snippet id -> templates (and slots). One pass over the templates, for the list of snippets. */
+export async function listSnippetTemplateUsage(): Promise<Record<string, SnippetTemplateUsage[]>> {
   const db = getDb();
   const rows = await db
     .select({
@@ -199,15 +204,19 @@ export async function findTemplatesUsingSnippet(snippetId: string): Promise<Snip
       layout: websiteTemplates.layout,
     })
     .from(websiteTemplates)
-    .leftJoin(websites, eq(websites.id, websiteTemplates.websiteId));
+    // a template whose website no longer exists cannot be reached, so it does not hold a snippet
+    .innerJoin(websites, eq(websites.id, websiteTemplates.websiteId));
 
-  const usage: SnippetTemplateUsage[] = [];
+  const usage: Record<string, SnippetTemplateUsage[]> = {};
   for (const row of rows) {
-    const slots = Object.entries(row.layout ?? {})
-      .filter(([, slot]) => Array.isArray((slot as { snippetIds?: unknown } | null)?.snippetIds) && ((slot as { snippetIds: string[] }).snippetIds).includes(snippetId))
-      .map(([key]) => key);
-    if (slots.length) {
-      usage.push({ templateId: row.id, templateName: row.name, websiteId: row.websiteId, websiteName: row.websiteName ?? null, slots });
+    const slotsOf = new Map<string, string[]>();
+    for (const [key, slot] of Object.entries(row.layout ?? {})) {
+      const ids = (slot as { snippetIds?: unknown } | null)?.snippetIds;
+      if (!Array.isArray(ids)) continue;
+      for (const id of ids) if (typeof id === 'string') slotsOf.set(id, [...(slotsOf.get(id) ?? []), key]);
+    }
+    for (const [snippetId, slots] of slotsOf) {
+      (usage[snippetId] ??= []).push({ templateId: row.id, templateName: row.name, websiteId: row.websiteId, websiteName: row.websiteName ?? null, slots });
     }
   }
   return usage;

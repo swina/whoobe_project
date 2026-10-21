@@ -612,6 +612,7 @@ import {
   Blocks,
   Globe,
   Palette,
+  SwatchBook,
   Image,
   Languages,
   Smartphone,
@@ -673,6 +674,7 @@ import SettingsView from '../views/SettingsView.vue'
 import AiView from '../views/AiView.vue'
 import SecurityView from '../views/SecurityView.vue'
 import ThemesView from '../components/themes/ThemesView.vue'
+import PalettesView from '../views/PalettesView.vue'
 import GatewayEndpointsView from '../views/GatewayEndpointsView.vue'
 import GatewayPluginsView from '../views/GatewayPluginsView.vue'
 import AutomationsView from '../views/AutomationsView.vue'
@@ -966,6 +968,7 @@ const allNavItems: { name: string; section: SectionKind; icon: any }[] = [
   { name: 'Snippets', section: 'snippets', icon: Puzzle },
   { name: 'Kits', section: 'kits', icon: Library },
   { name: 'Themes', section: 'themes', icon: Palette },
+  { name: 'Palettes', section: 'palettes', icon: SwatchBook },
   { name: 'Publish', section: 'publish', icon: Rocket },
   { name: 'Assets', section: 'assets', icon: FolderArchive },
   { name: 'Data Objects', section: 'objects', icon: Database },
@@ -1006,6 +1009,7 @@ const sectionGroup: Partial<Record<SectionKind, NavGroupId>> = {
   snippets: 'content',
   kits: 'content',
   themes: 'content',
+  palettes: 'content',
   assets: 'assets',
   objects: 'data',
   components: 'data',
@@ -1058,6 +1062,7 @@ const sectionComponents: Record<SectionKind, any> = {
   kits: KitsView,
   components: ComponentsView,
   themes: ThemesView,
+  palettes: PalettesView,
   mail: MailSettingsView,
   settings: SettingsView,
   ai: AiView,
@@ -1084,6 +1089,7 @@ const sectionLabels: Record<SectionKind, string> = {
   components: 'Components',
   mail: 'Outgoing Mail',
   themes: 'Themes',
+  palettes: 'Palettes',
   gateway: 'Integrations',
   'gateway-plugins': 'Integration Plugins',
   'api-clients': 'API clients',
@@ -1109,6 +1115,7 @@ const sectionIcons: Record<SectionKind, any> = {
   components: Blocks,
   mail: Mail,
   themes: Palette,
+  palettes: SwatchBook,
   gateway: Network,
   'gateway-plugins': Network,
   'api-clients': KeyRound,

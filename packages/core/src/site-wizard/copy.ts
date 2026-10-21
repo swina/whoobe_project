@@ -5,7 +5,9 @@
 export const SECTORS = ['it', 'food', 'consultant', 'insurance', 'tourism'] as const;
 export type Sector = (typeof SECTORS)[number];
 
-export const BLOCK_TYPES = ['hero', 'banner', 'cta', 'box-grid-3', 'box-grid-6', 'form'] as const;
+export const BLOCK_TYPES = ['hero', 'banner', 'cta', 'box-grid-3', 'box-grid-6', 'form', 'title'] as const;
+/** What a snippet of the library can stand for: one of the blocks, or `custom` (a block of its own, with the name its owner gave it). */
+export const SNIPPET_BLOCK_TYPES = [...BLOCK_TYPES, 'custom'] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
 export interface Item { title: string; text: string }

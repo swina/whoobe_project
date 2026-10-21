@@ -31,10 +31,10 @@
       <iframe ref="iframeEl" :src="iframeSrc" class="w-full h-full border-0"></iframe>
     </div>
   </div>
-  <div v-else-if="!page?.published" class="flex flex-col items-center justify-center h-full space-y-3 text-center">
+  <div v-else-if="!page" class="flex flex-col items-center justify-center h-full space-y-3 text-center">
     <Eye class="w-10 h-10 text-slate-600" />
     <p class="text-sm font-semibold text-slate-400">Page Preview</p>
-    <p class="text-xs text-slate-600 mb-3">Publish the page to see the live preview.</p>
+    <p class="text-xs text-slate-600 mb-3">Loading the page…</p>
   </div>
   <div v-else class="flex flex-col items-center justify-center h-full space-y-3 text-center">
     <Eye class="w-10 h-10 text-slate-600" />
@@ -89,7 +89,8 @@ const iframeSrc = computed(() => {
   if (tab?.pagePreviewPath) {
     return `${base}${tab.pagePreviewPath}`
   }
-  if (page.value?.published && page.value.slug && !page.value.slug.includes('{')) {
+  // an unpublished page is shown as a draft preview (the server finds it for a signed-in editor and the preview is marked as a draft)
+  if (page.value && page.value.slug && !page.value.slug.includes('{')) {
     const p = page.value
     const slug = p.slug
     const locale = p.locale || 'en'
@@ -100,7 +101,7 @@ const iframeSrc = computed(() => {
     const rootPath = website?.rootPath || ''
     // Append ?locale and ?rootPath so whoobe-one-spike passes them to the
     // public API, which strips rootPath before looking up the page.
-    const query = `?locale=${encodeURIComponent(locale)}${rootPath ? `&rootPath=${encodeURIComponent(rootPath)}` : ''}`
+    const query = `?locale=${encodeURIComponent(locale)}${rootPath ? `&rootPath=${encodeURIComponent(rootPath)}` : ''}${p.published ? '' : '&draft=true'}`
     return `${base}${rootPath}${slug}${query}`
   }
   return null

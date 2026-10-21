@@ -19,7 +19,7 @@ describe.skipIf(!url)('site specification: expand, import on an installation, ex
     db = await import('../db/client.js');
     await (await import('../db/bootstrap.js')).runMigrations();
     core = {
-      ...(await import('../db/themes-records.js')), ...(await import('../db/websites-records.js')), ...(await import('../db/website-templates-records.js')),
+      ...(await import('../db/themes-records.js')), ...(await import('../db/websites-records.js')), ...(await import('../db/website-templates-records.js')), ...(await import('../db/website-paths-records.js')),
       ...(await import('../db/whoobe-pages-records.js')), ...(await import('../db/whoobe-one-snippet-records.js')), ...(await import('./index.js')),
     };
     sql = (await import('drizzle-orm')).sql;
@@ -40,6 +40,62 @@ describe.skipIf(!url)('site specification: expand, import on an installation, ex
 
   const nodes = (n: any): any[] => [n, ...(n.blocks ?? []).flatMap(nodes)];
   type N = any;
+
+  it('deleting a website deletes its pages, templates and paths, keeps the snippets, and a snippet of another website stays protected', async () => {
+    await wipe();
+    await core.createTheme({ name: 'Whoobe Website', colors: [] });
+    await core.createWhoobeOneSnippet({ name: 'Whoobe Website - Benefits by role', category: 'content', node: { id: 'lib', type: 'container', blocks: [] } });
+    const make = async (name: string) => {
+      const { bundle } = core.expandSiteSpec({ ...whoobeDev, website: { ...whoobeDev.website, name, rootPath: undefined } }, { existing: await existing() });
+      await core.importWebsiteBundle(core.parseWebsiteBundle(JSON.parse(JSON.stringify(bundle))).bundle, { keepNames: true });
+      return (await core.listWebsites()).find((w: any) => w.name === name);
+    };
+    const a = await make('first site');
+    expect((await core.listWebsitePaths(a.id)).length).toBe(1);
+    const tpl = (await core.listWebsiteTemplates(a.id))[0];
+    const snippetId = (tpl.layout as any).header.snippetIds[0];
+
+    const usage = await core.listSnippetTemplateUsage();
+    expect(usage[snippetId].map((u: any) => [u.websiteName, u.templateName])).toEqual([['first site', 'Site layout']]);
+
+    await core.deleteWebsite(a.id);   // no theme asked for: the undo of a failed import calls it like this
+    expect((await core.listThemes()).length).toBe(1);
+    expect((await core.listSnippetTemplateUsage())[snippetId]).toBeUndefined();
+    expect(await core.listWhoobePages(a.id)).toEqual([]);
+    expect(await core.listWebsiteTemplates(a.id)).toEqual([]);
+    expect(await core.listWebsitePaths(a.id)).toEqual([]);
+    expect((await core.listWhoobeOneSnippets()).some((x: any) => x.id === snippetId)).toBe(true);
+    expect(await core.findTemplatesUsingSnippet(snippetId)).toEqual([]);
+
+    // a template of a website that is gone (left by an older version) does not hold a snippet either
+    const b = await make('second site');
+    const bSnippet = ((await core.listWebsiteTemplates(b.id))[0].layout as any).header.snippetIds[0];
+    expect((await core.findTemplatesUsingSnippet(bSnippet)).map((u: any) => u.websiteName)).toEqual(['second site']);
+  });
+
+  it('deleting a website deletes its theme when no other website uses it, and a snippet forgets it', async () => {
+    await wipe();
+    const theme = await core.createTheme({ name: 'Whoobe Website', colors: [] });
+    await core.createWhoobeOneSnippet({ name: 'Whoobe Website - Benefits by role', category: 'content', themeId: theme.id, node: { id: 'lib', type: 'container', blocks: [] } });
+    const make = async (name: string) => {
+      const { bundle } = core.expandSiteSpec({ ...whoobeDev, website: { ...whoobeDev.website, name, rootPath: undefined } }, { existing: await existing() });
+      await core.importWebsiteBundle(core.parseWebsiteBundle(JSON.parse(JSON.stringify(bundle))).bundle, { keepNames: true });
+      return (await core.listWebsites()).find((w: any) => w.name === name);
+    };
+    const a = await make('first site');
+    const b = await make('second site');
+    expect(a.themeId).toBe(theme.id);
+    expect(b.themeId).toBe(theme.id);
+
+    // another website still uses it: it stays
+    expect((await core.deleteWebsite(a.id, { withTheme: true })).themesDeleted).toEqual([]);
+    expect((await core.listThemes()).map((t: any) => t.id)).toEqual([theme.id]);
+
+    // the last one that used it: it goes, and the snippet that pointed at it points at nothing
+    expect((await core.deleteWebsite(b.id, { withTheme: true })).themesDeleted).toEqual([theme.id]);
+    expect(await core.listThemes()).toEqual([]);
+    expect((await core.listWhoobeOneSnippets()).every((x: any) => x.themeId === null)).toBe(true);
+  });
 
   it('imports the site whoobe.dev as drafts with its own name and root path, and its links point at that root path', async () => {
     await wipe();

@@ -4,7 +4,12 @@
     <template v-if="!editing">
       <div class="flex items-center justify-between mb-4 shrink-0">
         <h2 class="text-lg font-bold text-slate-100 light:text-slate-900">Themes</h2>
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn btn-secondary flex items-center gap-1.5" data-testid="themes-refresh" :disabled="loading" @click="load()">
+          <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': loading }" /> Refresh
+        </button>
         <button type="button" class="btn btn-primary" @click="addTheme">+ New Theme</button>
+        </div>
       </div>
 
       <div v-if="loading" class="flex-1 flex items-center justify-center text-xs text-slate-500">Loading themes…</div>
@@ -109,6 +114,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { RefreshCw } from '@lucide/vue'
 import { getDefaultCoreApiUrl } from '../../utils/auth-api'
 import { fetchThemes, createTheme, updateTheme, deleteTheme, type ThemeRecord } from '../../utils/themes-api'
 

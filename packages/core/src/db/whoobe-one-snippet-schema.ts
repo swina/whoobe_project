@@ -29,6 +29,11 @@ export const whoobeOneSnippets = pgTable('whoobe_one_snippets', {
   thumbnail: text('thumbnail'),
   // Locked: never saved automatically (editor autosave skips it; the API refuses a save flagged `autosave`). Manual saves still work.
   locked: boolean('locked').notNull().default(false),
+  // The block of the Generate Website Wizard this snippet stands for (hero, banner, cta, ...): when set, the wizard offers it in its list of blocks
+  // whatever the category. Null: it is offered only when its category is a block name.
+  wizardBlock: text('wizard_block'),
+  // The name the wizard shows for it as a block (null: the name of the snippet). Needed for `custom`, a block of its own.
+  wizardLabel: text('wizard_label'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

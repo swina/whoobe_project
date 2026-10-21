@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { validateSiteSpec } from '@whoobe-cms/schema';
 import { expandSiteSpec, parseWebsiteBundle, SiteSpecError } from '../portability/index.js';
-import { BLOCK_INFO, BLOCK_TYPES, buildSite, COPY, listSlots, paletteFor, PRESET_NAMES, PRESET_LABELS, SECTORS, SECTOR_LABELS, snippetBlockType, suggestedStructure, WIZARD_LIMITS, wizardOptions, WizardError, wizardToSiteSpec, type WizardAnswersInput } from './index.js';
+import { BLOCK_INFO, BLOCK_TYPES, buildSite, COPY, listSlots, paletteFor, PRESET_NAMES, PRESET_LABELS, SECTORS, SECTOR_LABELS, snippetBlockType, snippetWizardBlock, PRESETS, suggestedStructure, WIZARD_LIMITS, wizardOptions, WizardError, wizardToSiteSpec, nodeHasH1, type WizardAnswersInput } from './index.js';
 
 const nodes = (n: any): any[] => [n, ...(n.blocks ?? []).flatMap(nodes)];
 const THEMES: WizardAnswersInput['theme'][] = [...PRESET_NAMES.map((preset) => ({ preset })), { background: '#323932' }, { background: '#F5E6C8' }, { background: '#808080' }];
@@ -71,10 +71,10 @@ describe('wizardToSiteSpec: the structure', () => {
 
 describe('wizardToSiteSpec: the matrix', () => {
   const structures: WizardAnswersInput['pages'][] = [
-    [{ title: 'Home', blocks: [] }],
+    [{ title: 'Home', blocks: [{ type: 'title' }] }],
     [
       { title: 'Home', blocks: BLOCK_TYPES.map((type) => ({ type })) },
-      { title: 'About', blocks: [{ type: 'banner' }, { type: 'box-grid-3' }] },
+      { title: 'About', blocks: [{ type: 'title' }, { type: 'banner' }, { type: 'box-grid-3' }] },
       { title: 'Services', blocks: [{ type: 'hero' }, { type: 'box-grid-6' }, { type: 'cta' }] },
       { title: 'Contact', blocks: [{ type: 'hero' }, { type: 'form' }] },
     ],
@@ -105,9 +105,32 @@ describe('wizardToSiteSpec: the matrix', () => {
 describe('wizardToSiteSpec: pages and blocks', () => {
   const h = (answers: WizardAnswersInput, page: number) => nodes(expanded(answers).pages[page].content).filter((n) => n.element === 'h');
 
-  it('adds the title of the page as its h1 when the structure has no hero', () => {
-    const levels = h(base({ pages: [{ title: 'Home', blocks: [{ type: 'hero' }] }, { title: 'Prices', blocks: [{ type: 'box-grid-3' }] }] }), 1);
+  it('the block "Page title" is the h1 of a page without a hero, and a second heading of the page does not make a second h1', () => {
+    const levels = h(base({ pages: [{ title: 'Home', blocks: [{ type: 'hero' }] }, { title: 'Prices', blocks: [{ type: 'title' }, { type: 'box-grid-3' }] }] }), 1);
     expect(levels.filter((n) => n.level === 1).map((n) => n.content)).toEqual(['Prices']);
+    const both = h(base({ pages: [{ title: 'Home', blocks: [{ type: 'hero' }, { type: 'title' }] }] }), 0);
+    expect(both.filter((n) => n.level === 1)).toHaveLength(1);
+  });
+
+  it('a block taken from a snippet that has an h1 carries the heading of the page, whatever its kind of block', () => {
+    const alone = base({ pages: [{ title: 'Home', blocks: [{ snippet: 'My block', category: 'custom' }] }] });
+    expect(buildSite(alone).notes.some((n) => n.includes('"Home"'))).toBe(true);                                    // nothing is known about the snippet
+    expect(buildSite(alone, { snippetHeadings: { 'My block': true } }).notes.some((n) => n.includes('heading of the first level'))).toBe(false);
+    const answers = base({ pages: [{ title: 'Home', blocks: [{ snippet: 'My block', category: 'custom' }, { type: 'hero' }] }] });
+    const known = buildSite(answers, { snippetHeadings: { 'My block': true } });
+    expect(known.notes.some((n) => n.includes('heading of the first level'))).toBe(false);
+    // the hero after it does not make a second h1
+    const home = known.spec.pages[0].sections;
+    expect(JSON.stringify(home[1])).not.toContain('"level":1');
+    expect(nodeHasH1({ type: 'container', blocks: [{ type: 'container', blocks: [{ type: 'element', element: 'h', level: 1 }] }] })).toBe(true);
+    expect(nodeHasH1({ type: 'container', blocks: [{ type: 'element', element: 'h', level: 2 }] })).toBe(false);
+  });
+
+  it('adds nothing the person did not ask for: a page without a hero or a title has none, and a note says so', () => {
+    const answers = base({ pages: [{ title: 'Home', blocks: [{ type: 'hero' }] }, { title: 'Prices', blocks: [{ type: 'box-grid-3' }] }] });
+    expect(h(answers, 1).filter((n) => n.level === 1)).toEqual([]);
+    expect(buildSite(answers).notes.some((n) => n.includes('"Prices"'))).toBe(true);
+    expect(buildSite(base()).notes.some((n) => n.includes('heading of the first level'))).toBe(false);
   });
 
   it('a second hero on a page does not make a second h1', () => {
@@ -161,9 +184,10 @@ describe('wizardToSiteSpec: pages and blocks', () => {
     const spec = wizardToSiteSpec(answers);
     expect(spec.snippets!.filter((s) => s.use).map((s) => [s.key, s.use])).toEqual([['lib1', 'My hero'], ['lib2', 'My CTA']]);
     expect(spec.pages[0].sections.map((s) => (s.kind === 'snippet' ? `snippet:${s.use}` : s.kind))).toEqual(['snippet:lib1', 'container', 'snippet:lib2']);
-    // no band was added on the page that has a hero snippet, and one was added on the page that has only a CTA
+    // nothing was added to either page; the one that has only a CTA has no heading of the first level, and a note says so
     expect(spec.pages[0].sections).toHaveLength(3);
-    expect(spec.pages[1].sections).toHaveLength(2);
+    expect(spec.pages[1].sections).toHaveLength(1);
+    expect(buildSite(answers).notes.filter((n) => n.includes('heading of the first level')).length).toBe(1);
     const existing = { themes: {}, snippets: { 'My hero': { id: '11111111-1111-4111-8111-111111111111', node: { id: 'h', type: 'container', blocks: [] } }, 'My CTA': { id: '22222222-2222-4222-8222-222222222222', node: { id: 'c', type: 'container', blocks: [] } } } };
     const b = expandSiteSpec(spec, { existing }).bundle;
     expect(nodes(b.pages[0].content).filter((n) => n.sourceSnippetId).map((n) => n.sourceSnippetId)).toEqual(['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222']);
@@ -294,5 +318,28 @@ describe('the options of the wizard', () => {
       expect(snippetBlockType(category), category).toBe(block);
     }
     for (const none of ['navigation', 'footer', '', null, undefined, 'heroes']) expect(snippetBlockType(none as any), String(none)).toBeNull();
+    // a snippet marked as a wizard block is offered whatever its category; an unknown mark is ignored
+    expect(snippetWizardBlock({ category: 'navigation', wizardBlock: 'hero' })).toBe('hero');
+    expect(snippetWizardBlock({ category: 'banner', wizardBlock: 'cta' })).toBe('cta');
+    expect(snippetWizardBlock({ category: 'banner', wizardBlock: null })).toBe('banner');
+    expect(snippetWizardBlock({ category: 'navigation', wizardBlock: 'carousel' })).toBeNull();
+    expect(snippetWizardBlock({ category: 'testimonials', wizardBlock: 'custom' })).toBe('custom');
+  });
+});
+
+describe('wizardToSiteSpec: a palette made by a person', () => {
+  const id = '11111111-1111-4111-8111-111111111111';
+  const mine = { ...PRESETS.light, bg: '#FFF8E7', accent: '#FF69B4', onAccent: '#FFFFFF' };
+
+  it('colours the site with it, as it is, and says what is hard to read', () => {
+    const answers = base({ theme: { palette: id } });
+    const built = buildSite(answers, { palettes: { [id]: mine } });
+    expect(JSON.stringify(built.spec)).toContain('FFF8E7');
+    expect(built.notes.some((n) => n.includes('hard to read'))).toBe(true);
+  });
+
+  it('refuses a palette that does not exist (it may have been deleted) and a theme that is not a uuid', () => {
+    expect(() => buildSite(base({ theme: { palette: id } }))).toThrowError(WizardError);
+    expect(() => buildSite(base({ theme: { palette: 'not-an-id' } as any }))).toThrowError(WizardError);
   });
 });

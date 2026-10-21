@@ -1,6 +1,6 @@
 // The answers of the template wizard, as a strict schema: what the dashboard sends and what `wizardToSiteSpec` reads. Anything not listed is an error.
 import { z } from 'zod';
-import { BLOCK_TYPES, SECTORS } from './copy.js';
+import { BLOCK_TYPES, SECTORS, SNIPPET_BLOCK_TYPES } from './copy.js';
 import { PRESET_NAMES } from './themes.js';
 
 const plain = (max: number) => z.string().trim().min(1, 'must not be empty').max(max).regex(/^[^<>{}\\]*$/, 'plain text only');
@@ -9,7 +9,7 @@ const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'a colour as #RRGGBB');
 /** A position of a page structure: a generated block, or a snippet of the library standing for a block of that category. */
 export const blockChoiceSchema = z.union([
   z.object({ type: z.enum(BLOCK_TYPES) }).strict(),
-  z.object({ snippet: z.string().trim().min(1).max(120), category: z.enum(BLOCK_TYPES) }).strict(),
+  z.object({ snippet: z.string().trim().min(1).max(120), category: z.enum(SNIPPET_BLOCK_TYPES) }).strict(),
 ]);
 
 export const wizardAnswersSchema = z.object({
@@ -19,7 +19,7 @@ export const wizardAnswersSchema = z.object({
   sector: z.enum(SECTORS),
   /** the market context, free text: "hotel", "bakery" */
   context: z.string().max(120).optional(),
-  theme: z.union([z.object({ preset: z.enum(PRESET_NAMES) }).strict(), z.object({ background: hex }).strict()]),
+  theme: z.union([z.object({ preset: z.enum(PRESET_NAMES) }).strict(), z.object({ palette: z.string().uuid() }).strict(), z.object({ background: hex }).strict()]),
   accent: hex.optional(),
   font: z.enum(['sans', 'serif']).default('sans'),
   /** the first page is the landing page; at most three more */

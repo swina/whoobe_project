@@ -2,9 +2,10 @@
 // the same texts) give the same specification. The result goes through the same validation, expansion, check and import as a specification written by a model.
 import { validateSiteSpec, type SiteSpec, type SiteSpecIssue, type SpecNode } from '@whoobe-cms/schema';
 import { wizardAnswersSchema, type WizardAnswers } from './answers.js';
-import { BLOCKS, footerNode, headerNode, titleBand, type BlockContext, type NavLink } from './blocks.js';
+import { BLOCKS, footerNode, headerNode, type BlockContext, type NavLink } from './blocks.js';
 import { COPY, cleanContext, type BlockType } from './copy.js';
-import { paletteFor } from './themes.js';
+import { SECTOR_LABELS } from './options.js';
+import { paletteFor, type Palette } from './themes.js';
 import { TextSource, type Slot } from './text-source.js';
 
 export class WizardError extends Error {
@@ -14,6 +15,18 @@ export class WizardError extends Error {
 export interface WizardOptions {
   /** Other words for the slots (by key): what the AI writes. The structure of the site does not depend on them. */
   texts?: Record<string, string>;
+  /** Library snippets (by name) whose content has a heading of the first level: a position that uses one carries the h1 of its page, whatever its kind of block. */
+  snippetHeadings?: Record<string, boolean>;
+  /** The palettes made by a person, by id: what a theme `{ palette }` of the answers points to. */
+  palettes?: Record<string, Palette>;
+}
+
+/** Does a node of the editor (a snippet's content) hold a heading of the first level? */
+export function nodeHasH1(node: unknown): boolean {
+  if (!node || typeof node !== 'object') return false;
+  const n = node as { element?: unknown; level?: unknown; blocks?: unknown };
+  if (n.element === 'h1' || (n.element === 'h' && n.level === 1)) return true;
+  return Array.isArray(n.blocks) && n.blocks.some(nodeHasH1);
 }
 
 export interface WizardResult {
@@ -22,6 +35,8 @@ export interface WizardResult {
   slots: Slot[];
   /** what was adjusted to keep the result readable, in words */
   notes: string[];
+  /** The words that the placeholders of a library snippet get in this site (`{name}`, `{context}`/`{thing}`, `{sector}`). */
+  vars: { name: string; context: string; thing: string; sector: string };
 }
 
 const slugify = (title: string): string => title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/g, '') || 'page';
@@ -46,7 +61,10 @@ export function buildSite(input: unknown, options: WizardOptions = {}): WizardRe
 
   const copy = COPY[a.sector];
   const vars = { thing: cleanContext(a.context) || copy.thing, name: a.name };
-  const { palette: pal, notes } = paletteFor(a.theme, a.accent);
+  let derived;
+  try { derived = paletteFor(a.theme, a.accent, options.palettes); }
+  catch (e) { throw new WizardError('The palette of the theme does not exist (it may have been deleted): choose another', [{ path: 'theme', message: e instanceof Error ? e.message : 'unknown palette' }]); }
+  const { palette: pal, notes } = derived;
   const text = new TextSource(options.texts);
 
   const slugs = pageSlugs(a.pages.map((p) => p.title));
@@ -73,13 +91,17 @@ export function buildSite(input: unknown, options: WizardOptions = {}): WizardRe
   const pages = a.pages.map((page, pi) => {
     let h1Taken = false;
     const claimH1 = () => (h1Taken ? false : (h1Taken = true));
-    // a snippet standing for a hero is taken to carry the heading of the page
-    const hasHero = page.blocks.some((b) => ('type' in b && b.type === 'hero') || ('snippet' in b && b.category === 'hero'));
+    // nothing is added to a page that the person did not ask for: a page with neither a hero (a snippet standing for one is taken to carry the
+    // heading too) nor a page title simply has no heading of the first level, and the wizard says so
+    const snippetCarriesH1 = (b: { snippet: string; category: string }) => b.category === 'hero' || options.snippetHeadings?.[b.snippet] === true;
+    const hasHeading = page.blocks.some((b) => ('type' in b && (b.type === 'hero' || b.type === 'title')) || ('snippet' in b && snippetCarriesH1(b)));
+    if (!hasHeading) notes.push(`The page "${page.title}" has no hero and no page title, so it has no heading of the first level (bad for search engines): add one of them.`);
     const sections: SpecNode[] = [];
-    if (!hasHero) sections.push(titleBand(ctxFor(`p${pi}.title`, page.title, pi === 0, claimH1)));
+    // a page needs at least one section: an empty one gets the page title
+    if (page.blocks.length === 0) sections.push(BLOCKS.title(ctxFor(`p${pi}.title`, page.title, pi === 0, claimH1)));
     page.blocks.forEach((b, bi) => {
       if ('snippet' in b) {
-        if (b.category === 'hero') claimH1();
+        if (snippetCarriesH1(b)) claimH1();
         sections.push({ kind: 'snippet', use: libKey(b.snippet) });
         return;
       }
@@ -111,7 +133,7 @@ export function buildSite(input: unknown, options: WizardOptions = {}): WizardRe
     const issues = checked.issues as SiteSpecIssue[];
     throw new Error(`The wizard produced an invalid specification (a defect): ${issues.slice(0, 3).map((i) => `${i.where}: ${i.message}`).join('; ')}`);
   }
-  return { spec, slots: text.slots, notes };
+  return { spec, slots: text.slots, notes, vars: { name: a.name, context: vars.thing, thing: vars.thing, sector: SECTOR_LABELS[a.sector] ?? a.sector } };
 }
 
 export const wizardToSiteSpec = (answers: unknown, options: WizardOptions = {}): SiteSpec => buildSite(answers, options).spec;

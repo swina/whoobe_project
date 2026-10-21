@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './authStore'
-import { fetchSnippets, createSnippet, deleteSnippet, setSnippetLocked, type WhoobeSnippet, type WhoobeSnippetInput } from '../utils/snippets-api'
+import { fetchSnippetsWithUsage, createSnippet, deleteSnippet, setSnippetLocked, setSnippetWizardBlock, type WhoobeSnippet, type SnippetTemplateUsage, type WhoobeSnippetInput } from '../utils/snippets-api'
 
 export const useSnippetsStore = defineStore('snippets', () => {
   const snippets = ref<WhoobeSnippet[]>([])
+  /** snippet id -> the website templates that place it (none: not used) */
+  const templateUsage = ref<Record<string, SnippetTemplateUsage[]>>({})
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
@@ -16,7 +18,9 @@ export const useSnippetsStore = defineStore('snippets', () => {
     isLoading.value = true
     error.value = null
     try {
-      snippets.value = await fetchSnippets(getBaseUrl())
+      const loaded = await fetchSnippetsWithUsage(getBaseUrl())
+      snippets.value = loaded.snippets
+      templateUsage.value = loaded.templateUsage
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to load snippets'
     } finally {
@@ -28,6 +32,12 @@ export const useSnippetsStore = defineStore('snippets', () => {
     const updated = await setSnippetLocked(getBaseUrl(), id, locked)
     const i = snippets.value.findIndex((s) => s.id === id)
     if (i >= 0) snippets.value[i] = { ...snippets.value[i], locked: updated.locked === true }
+  }
+
+  async function setWizardBlock(id: string, block: string | null, label: string | null = null) {
+    const updated = await setSnippetWizardBlock(getBaseUrl(), id, block, label)
+    const i = snippets.value.findIndex((s) => s.id === id)
+    if (i >= 0) snippets.value[i] = { ...snippets.value[i], wizardBlock: updated.wizardBlock ?? null, wizardLabel: updated.wizardLabel ?? null }
   }
 
   async function remove(id: string) {
@@ -50,5 +60,5 @@ export const useSnippetsStore = defineStore('snippets', () => {
     return { created, skipped: inputs.length - created - errors.length, errors }
   }
 
-  return { snippets, isLoading, error, refresh, remove, setLocked, importSnippets }
+  return { snippets, templateUsage, isLoading, error, refresh, remove, setLocked, setWizardBlock, importSnippets }
 })

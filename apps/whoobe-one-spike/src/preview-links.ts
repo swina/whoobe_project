@@ -23,18 +23,28 @@ export function isUnderBase(pathname: string, baseUrl: string): boolean {
   return !!base && (pathname === base || pathname.startsWith(`${base}/`))
 }
 
+/** A draft preview (`?draft=true`) stays a draft preview when a link of the page is followed: the next page may not be published either. */
+export function keepDraftPreview(href: string, currentSearch: string): string {
+  if (new URLSearchParams(currentSearch).get('draft') !== 'true') return href
+  if (!href.startsWith('/') || href.startsWith('//')) return href
+  const hash = href.indexOf('#')
+  const main = hash >= 0 ? href.slice(0, hash) : href
+  const frag = hash >= 0 ? href.slice(hash) : ''
+  if (/[?&]draft=true(&|$)/.test(main)) return href
+  return main + (main.includes('?') ? '&' : '?') + 'draft=true' + frag
+}
+
 const EVENTS = ['mouseover', 'focusin', 'click', 'auxclick', 'contextmenu'] as const
 
 /** Rewrites the `href` of the link under the pointer just before the browser uses it (hover shows the real address, a
  *  click, a middle click, ctrl+click and "open in a new tab" all follow it). Returns the function that removes it. */
 export function installPreviewLinkPrefix(baseUrl: string, doc: Document = document): () => void {
-  if (!baseUrl.replace(/\/+$/, '')) return () => {}
   const handler = (e: Event): void => {
-    if (!isUnderBase(doc.location.pathname, baseUrl)) return
     const a = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null
     if (!a) return
     const href = a.getAttribute('href') ?? ''
-    const next = prefixInternalHref(href, baseUrl)
+    const prefixed = isUnderBase(doc.location.pathname, baseUrl) ? prefixInternalHref(href, baseUrl) : href
+    const next = keepDraftPreview(prefixed, doc.location.search)
     if (next !== href) a.setAttribute('href', next)
   }
   for (const t of EVENTS) doc.addEventListener(t, handler, true)

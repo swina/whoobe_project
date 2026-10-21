@@ -178,6 +178,7 @@ the step *Texts* shows the AI as not available, to be switched on by phase 3.
 **Found by the maintainer after phase 2, fixed:** the classes of a generated *container* were in `css.container` while the editor's Custom CSS box and controls read and write `css.css`, so they showed nothing and what was typed lost to the generated class; the expansion now follows the editor's own convention (structure in `css.container`, classes in `css.css`), checked on all 140 matrix sites and in the real editor (`site-wizard-editor.spec.ts`). Per the maintainer's decision the branch is merged after this phase.
 
 **Phase 3: the texts with AI.** (The step *Texts* is in the stepper from phase 2, with the AI choice switched off until this phase lands.)
+- **Done 2026-10-21** (`site-wizard/ai-texts.ts`, `POST /ai/generate-wizard-texts`, step *Texts*; the texts are read and edited by the person before the site is created). Not yet tested end to end with a provider or a mock provider on the route.
 - `POST /ai/generate-wizard-texts` (slots in, texts out; validated, cleaned, length-limited), the choice of the step *Texts*, offered only when an
   AI provider is configured. Tested with a mock provider: a reply that tries to add markup, links, a script or a key that is not a slot is refused or cut.
 - Done when: the structure of the site is identical with and without the texts, and only slot texts differ.

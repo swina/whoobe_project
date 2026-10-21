@@ -15,8 +15,21 @@ export interface WhoobeSnippet {
   thumbnail?: string | null
   /** Locked: never saved automatically (the editor's autosave skips it). */
   locked?: boolean
+  /** The block of the Generate Website Wizard this snippet stands for (null: only offered when its category names a block). */
+  wizardBlock?: string | null
+  /** The name the wizard lists it under (null: the snippet's own name). */
+  wizardLabel?: string | null
   createdAt: string
   updatedAt: string
+}
+
+/** A website template that places a snippet in one of its layout slots (header, footer, ...). */
+export interface SnippetTemplateUsage {
+  templateId: string
+  templateName: string
+  websiteId: string
+  websiteName: string | null
+  slots: string[]
 }
 
 export interface WhoobeSnippetInput {
@@ -47,9 +60,13 @@ async function parseJsonOrThrow(res: Response): Promise<any> {
 }
 
 export async function fetchSnippets(baseUrl: string): Promise<WhoobeSnippet[]> {
+  return (await fetchSnippetsWithUsage(baseUrl)).snippets
+}
+
+export async function fetchSnippetsWithUsage(baseUrl: string): Promise<{ snippets: WhoobeSnippet[]; templateUsage: Record<string, SnippetTemplateUsage[]> }> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/snippets`, { credentials: 'include' })
   const data = await parseJsonOrThrow(res)
-  return data.snippets ?? []
+  return { snippets: data.snippets ?? [], templateUsage: data.templateUsage ?? {} }
 }
 
 export async function createSnippet(baseUrl: string, input: WhoobeSnippetInput): Promise<WhoobeSnippet> {
@@ -87,6 +104,16 @@ export async function deleteSnippet(baseUrl: string, id: string): Promise<void> 
 }
 
 /** Locks or unlocks a snippet: a locked one is not saved automatically. */
+export async function setSnippetWizardBlock(baseUrl: string, id: string, block: string | null, label: string | null = null): Promise<WhoobeSnippet> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/snippets/${id}/wizard-block`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ block, label }),
+    credentials: 'include',
+  })
+  return (await parseJsonOrThrow(res)).snippet
+}
+
 export async function setSnippetLocked(baseUrl: string, id: string, locked: boolean): Promise<WhoobeSnippet> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/snippets/${id}/lock`, {
     method: 'PUT',

@@ -18,7 +18,7 @@ describe.skipIf(!url)('template wizard: the site it composes is imported as a dr
     await (await import('../db/bootstrap.js')).runMigrations();
     core = {
       ...(await import('../db/themes-records.js')), ...(await import('../db/websites-records.js')), ...(await import('../db/website-templates-records.js')),
-      ...(await import('../db/whoobe-pages-records.js')), ...(await import('../db/whoobe-one-snippet-records.js')), ...(await import('../portability/index.js')), ...(await import('./index.js')),
+      ...(await import('../db/whoobe-pages-records.js')), ...(await import('../db/whoobe-one-snippet-records.js')), ...(await import('../portability/index.js')), ...(await import('./index.js')), ...(await import('../db/wizard-palettes-records.js')),
     };
     sql = (await import('drizzle-orm')).sql;
   });
@@ -94,6 +94,34 @@ describe.skipIf(!url)('template wizard: the site it composes is imported as a dr
     expect((await core.listWhoobeOneSnippets()).filter((s: any) => s.name === 'My hero')).toHaveLength(1);
   });
 
+  it('fills the placeholders of a library snippet with the words of the site, in the copy only; a specification imported by hand gets none', async () => {
+    await wipe();
+    const node = { id: 'lib', type: 'container', css: { css: 'p-4 {name}', container: 'flex' }, blocks: [
+      { id: 'lib-h', type: 'element', element: 'h', level: 2, content: 'Welcome to {name}', blocks: [] },
+      { id: 'lib-p', type: 'element', element: 'p', content: 'The best {context} for {thing} in {sector}. {unknown} <b>{name}</b>', blocks: [], link: '/x/{name}' },
+    ] };
+    const sn = await core.createWhoobeOneSnippet({ name: 'Intro', category: 'content', node });
+    const answers = { name: 'Seaview Bay', sector: 'tourism', context: 'hotel', theme: { preset: 'light' }, font: 'sans', pages: [{ title: 'Home', blocks: [{ type: 'hero' }, { snippet: 'Intro', category: 'custom' }] }] };
+    const { spec, vars } = core.buildSite(answers);
+    expect(vars).toEqual({ name: 'Seaview Bay', context: 'hotel', thing: 'hotel', sector: 'Tourism' });
+
+    await core.importSiteSpec(spec, { vars });
+    const page = (await core.listWhoobePages((await core.listWebsites())[0].id))[0];
+    const copy = nodes(page.content).filter((n) => n.sourceSnippetId === sn.id)[0];
+    const texts = nodes(copy).map((n) => n.content).filter(Boolean);
+    expect(texts[0]).toBe('Welcome to Seaview Bay');
+    expect(texts[1]).toBe('The best hotel for hotel in Tourism. {unknown} <b>Seaview Bay</b>');   // an unknown placeholder stays; the markup of the snippet stays
+    expect(copy.css.css).toBe('p-4 {name}');                                                // classes are structure: left alone
+    expect(nodes(copy).find((n) => n.link)!.link).toBe('/x/{name}');                         // so are links
+    expect((await core.getWhoobeOneSnippet(sn.id)).node).toEqual(node);                     // the library is never changed
+
+    // imported by hand (no vars): the copy is the snippet as it is
+    await core.importSiteSpec(spec, { website: { name: 'Seaview Two', rootPath: '/seaview-two' } });
+    const second = (await core.listWebsites()).find((w: any) => w.rootPath === '/seaview-two');
+    const page2 = (await core.listWhoobePages(second.id))[0];
+    expect(nodes(nodes(page2.content).find((n) => n.sourceSnippetId === sn.id)!).map((n) => n.content).filter(Boolean)[0]).toBe('Welcome to {name}');
+  });
+
   it('a company colour that is hard to read still gives a readable site: the palette is stored in the theme', async () => {
     await wipe();
     const spec = core.wizardToSiteSpec({ name: 'Grey', sector: 'consultant', theme: { background: '#808080' }, font: 'sans', pages: [{ title: 'Home', blocks: [{ type: 'hero' }, { type: 'form' }] }] });
@@ -103,5 +131,28 @@ describe.skipIf(!url)('template wizard: the site it composes is imported as a dr
     const hex = Object.fromEntries(theme.colors.map((c: any) => [c.name, c.hex]));
     expect(contrast(hex.text, hex.background)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(hex.accent, hex.background)).toBeGreaterThanOrEqual(3);
+  });
+
+  it('stores palettes made by a person: create, change, a name in use is refused, delete, and a site made from one', async () => {
+    await db.getDb().execute(sql.raw('TRUNCATE TABLE "wizard_palettes"'));
+    await wipe();
+    const colors = { ...core.PRESETS.light, bg: '#FFF8E7' };
+    const mine = await core.createWizardPalette({ name: 'Warm', colors });
+    await expect(core.createWizardPalette({ name: 'warm', colors })).rejects.toBeTruthy();        // names are unique, whatever the case
+    expect((await core.listWizardPalettes()).map((p: any) => p.name)).toEqual(['Warm']);
+
+    const changed = await core.updateWizardPalette(mine.id, { name: 'Warm 2', colors: { ...colors, bg: '#FFF0D0' } });
+    expect(changed.colors.bg).toBe('#FFF0D0');
+    expect(await core.updateWizardPalette('22222222-2222-4222-8222-222222222222', { name: 'x', colors })).toBeNull();
+
+    const palettes = Object.fromEntries((await core.listWizardPalettes()).map((p: any) => [p.id, p.colors]));
+    const spec = core.wizardToSiteSpec({ name: 'Palette Site', sector: 'it', theme: { palette: mine.id }, font: 'sans', pages: core.suggestedStructure('it'), headerButton: false }, { palettes });
+    const done = await core.importSiteSpec(spec, {});
+    const theme = (await core.listThemes()).find((t: any) => t.id === done.website.themeId) ?? (await core.listThemes())[0];
+    expect(JSON.stringify(theme.colors).toUpperCase()).toContain('#FFF0D0');                      // the colours of the palette are those of the site's theme
+
+    expect(await core.deleteWizardPalette(mine.id)).toBe(true);
+    expect(await core.deleteWizardPalette(mine.id)).toBe(false);
+    expect((await core.listWebsites()).length).toBe(1);                                          // the site made from it is not touched
   });
 });

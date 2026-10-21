@@ -57,6 +57,8 @@ export * from './db/website-templates-schema.js';
 export * from './db/website-templates-records.js';
 export * from './db/themes-schema.js';
 export * from './db/themes-records.js';
+export * from './db/wizard-palettes-schema.js';
+export * from './db/wizard-palettes-records.js';
 export * from './db/bundle-records.js';
 export * from './db/mail-settings-schema.js';
 export * from './db/mail-settings-records.js';

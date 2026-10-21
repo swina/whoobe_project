@@ -27,6 +27,9 @@
         >
           Delete Selected ({{ selectedIds.size }})
         </button>
+<button type="button" class="btn btn-secondary flex items-center gap-1.5" data-testid="snippets-refresh" :disabled="snippetsStore.isLoading" @click="snippetsStore.refresh()">
+          <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': snippetsStore.isLoading }" /> Refresh
+        </button>
         <button
           @click="handleImportClick"
           class="btn btn-success"
@@ -73,6 +76,15 @@
         >
           <option value="" class="capitalize">All categories</option>
           <option v-for="cat in categories" :key="cat" :value="cat" class="capitalize">{{ cat }}</option>
+        </select>
+        <select v-model="usageFilter" class="field sm:w-auto" data-testid="snippet-usage-filter" aria-label="Filter by website or template">
+          <option value="">All websites / templates</option>
+          <option value="__unused">Not used in any template</option>
+          <option value="__used">Used in a template</option>
+          <optgroup v-for="site in usageSites" :key="site.id" :label="site.name">
+            <option :value="`site:${site.id}`">{{ site.name }} (all templates)</option>
+            <option v-for="t in site.templates" :key="t.id" :value="`tpl:${t.id}`">{{ site.name }} / {{ t.name }}</option>
+          </optgroup>
         </select>
         <div class="flex items-center gap-1 p-1 rounded-lg bg-slate-950/80 light:bg-slate-100 border border-slate-800 light:border-slate-200 shrink-0">
           <button
@@ -121,6 +133,8 @@
             <th class="py-3 px-4">Preview</th>
             <th class="py-3 px-4">Name</th>
             <th class="py-3 px-4">Category</th>
+            <th class="py-3 px-4" title="Offered in the Generate Website Wizard with its blocks">Wizard block</th>
+            <th class="py-3 px-4">Used in</th>
             <th class="py-3 px-4">Updated</th>
             <th class="py-3 px-4">Actions</th>
           </tr>
@@ -154,6 +168,24 @@
               </span>
             </td>
             <td class="py-2.5 px-4 text-slate-400 light:text-slate-600 capitalize">{{ snippet.category || '—' }}</td>
+            <td class="py-2.5 px-4" @click.stop>
+              <select :value="snippet.wizardBlock ?? ''" class="field !py-1 text-xs" :data-testid="`snippet-wizard-block-${snippet.id}`" aria-label="Block of the Generate Website Wizard"
+                title="Offered in the Generate Website Wizard with its blocks, as this kind of block" @change="onWizardBlockChange(snippet, ($event.target as HTMLSelectElement).value)">
+                <option value="">—</option>
+                <option v-for="b in WIZARD_BLOCKS" :key="b.value" :value="b.value">{{ b.label }}</option>
+              </select>
+              <input v-if="snippet.wizardBlock" :value="snippet.wizardLabel ?? ''" :placeholder="snippet.name" maxlength="60" class="field !py-1 text-xs mt-1"
+                :data-testid="`snippet-wizard-label-${snippet.id}`" aria-label="Name of the block in the wizard" title="The name the wizard lists it under (empty: the name of the snippet)"
+                @change="setWizardBlock(snippet.id, snippet.wizardBlock, ($event.target as HTMLInputElement).value)" />
+            </td>
+            <td class="py-2.5 px-4" :data-testid="`snippet-used-in-${snippet.id}`">
+              <span v-if="usageOf(snippet.id).length === 0" class="text-slate-500">Not used</span>
+              <ul v-else class="space-y-0.5">
+                <li v-for="u in usageOf(snippet.id)" :key="u.templateId" class="text-slate-300 light:text-slate-700">
+                  {{ u.websiteName }} / {{ u.templateName }} <span class="text-slate-500">({{ u.slots.join(', ') }})</span>
+                </li>
+              </ul>
+            </td>
             <td class="py-2.5 px-4 text-slate-400 light:text-slate-600">{{ new Date(snippet.updatedAt).toLocaleString() }}</td>
             <td class="py-2.5 px-4" @click.stop>
               <button @click="openSnippetTab(snippet.id)" class="btn btn-link mr-3" title="Edit snippet">
@@ -212,6 +244,10 @@
             <span class="text-[10px] text-slate-400 light:text-slate-600 ml-2 capitalize">{{ snippet.category }}</span>
           </div>
         </div>
+        <div class="px-3 py-1.5 border-t border-slate-800/60 light:border-slate-200/60 text-[10px] text-slate-400 light:text-slate-600" :data-testid="`snippet-used-in-${snippet.id}`">
+          <template v-if="usageOf(snippet.id).length === 0">Not used in any template</template>
+          <template v-else>Used in: {{ usageOf(snippet.id).map((u) => `${u.websiteName} / ${u.templateName}`).join(', ') }}</template>
+        </div>
         <div class="flex items-center justify-between px-3 py-2 border-t border-slate-800/60 light:border-slate-200/60">
           <span class="text-[10px] text-slate-500 light:text-slate-600">{{ new Date(snippet.updatedAt).toLocaleString() }}</span>
           <div class="flex items-center gap-1" @click.stop>
@@ -264,13 +300,13 @@
 <script setup lang="ts">
 import BaseModal from '../components/ui/BaseModal.vue'
 import { ref, computed, onMounted } from 'vue'
-import { Puzzle, PencilSparkles, Trash, List, LayoutGrid, Send, Info, Lock, LockOpen } from '@lucide/vue'
+import { RefreshCw, Puzzle, PencilSparkles, Trash, List, LayoutGrid, Send, Info, Lock, LockOpen } from '@lucide/vue'
 import { useSnippetsStore } from '../stores/snippetsStore'
 import { useTabsStore } from '../stores/tabsStore'
 import { useToastStore } from '../stores/toastStore'
 import { embedNodeImages } from '../utils/snippet-export'
 import { randomUUID } from '../utils/random-id'
-import type { WhoobeSnippet } from '../utils/snippets-api'
+import type { WhoobeSnippet, SnippetTemplateUsage } from '../utils/snippets-api'
 import BrevoCampaignModal from '../components/settings/BrevoCampaignModal.vue'
 import ThumbnailModal from '../components/common/ThumbnailModal.vue'
 import type { WhoobeSnippetInput } from '../utils/snippets-api'
@@ -282,6 +318,8 @@ const toastStore = useToastStore()
 
 const searchQuery = ref('')
 const categoryFilter = ref('')
+// '' all, '__unused', '__used', 'site:<websiteId>' or 'tpl:<templateId>'
+const usageFilter = ref('')
 const viewMode = ref<'list' | 'grid'>('list')
 const thumbnailModal = ref<{ src: string; title: string } | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -295,11 +333,42 @@ const categories = computed(() => {
   return [...set].sort((a, b) => a.localeCompare(b))
 })
 
+function usageOf(id: string): SnippetTemplateUsage[] {
+  return snippetsStore.templateUsage[id] ?? []
+}
+
+// the websites and templates that place at least one snippet, for the filter
+const usageSites = computed(() => {
+  const sites = new Map<string, { id: string; name: string; templates: Map<string, { id: string; name: string }> }>()
+  for (const list of Object.values(snippetsStore.templateUsage)) {
+    for (const u of list) {
+      const site = sites.get(u.websiteId) ?? { id: u.websiteId, name: u.websiteName ?? 'unknown site', templates: new Map() }
+      site.templates.set(u.templateId, { id: u.templateId, name: u.templateName })
+      sites.set(u.websiteId, site)
+    }
+  }
+  return [...sites.values()]
+    .map((s) => ({ ...s, templates: [...s.templates.values()].sort((a, b) => a.name.localeCompare(b.name)) }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
+
+function matchesUsage(id: string): boolean {
+  const f = usageFilter.value
+  if (!f) return true
+  const used = usageOf(id)
+  if (f === '__unused') return used.length === 0
+  if (f === '__used') return used.length > 0
+  if (f.startsWith('site:')) return used.some((u) => u.websiteId === f.slice(5))
+  if (f.startsWith('tpl:')) return used.some((u) => u.templateId === f.slice(4))
+  return true
+}
+
 const filteredSnippets = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   return snippetsStore.snippets.filter((s) => {
     if (q && !s.name.toLowerCase().includes(q)) return false
     if (categoryFilter.value && s.category !== categoryFilter.value) return false
+    if (!matchesUsage(s.id)) return false
     return true
   })
 })
@@ -331,6 +400,32 @@ function openSnippetTab(id: string) {
 
 function handleCreate() {
   tabsStore.openSnippet(`new:${randomUUID()}`)
+}
+
+const WIZARD_BLOCKS = [
+  { value: 'hero', label: 'Hero' }, { value: 'banner', label: 'Banner' }, { value: 'cta', label: 'Call to action' },
+  { value: 'box-grid-3', label: 'Box grid 3' }, { value: 'box-grid-6', label: 'Box grid 6' }, { value: 'form', label: 'Contact form' },
+  { value: 'custom', label: 'New block (own name)' },
+]
+
+// choosing a kind of block keeps the name already given; a block of its own asks for one (it has no other name than the one the person gives)
+async function onWizardBlockChange(snippet: WhoobeSnippet, block: string) {
+  let label = snippet.wizardLabel ?? ''
+  if (block === 'custom' && !label) {
+    const given = prompt('Name of the new block, as the wizard will list it:', snippet.name)
+    if (!given || !given.trim()) { await snippetsStore.refresh(); return }
+    label = given.trim()
+  }
+  await setWizardBlock(snippet.id, block || null, label)
+}
+
+async function setWizardBlock(id: string, block: string | null, label = '') {
+  try {
+    await snippetsStore.setWizardBlock(id, block, label.trim() || null)
+  } catch (e: any) {
+    alert(e?.message || 'Failed to change the wizard block')
+    await snippetsStore.refresh()
+  }
 }
 
 async function toggleLock(snippet: { id: string; locked?: boolean }) {

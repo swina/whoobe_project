@@ -1,4 +1,8 @@
 <template>
+  <!-- Draft preview from the dashboard: the pages that are not published are shown here, and only here. -->
+  <div v-if="draftMode" class="fixed top-2 right-2 z-[9999] pointer-events-none flex items-center gap-2 rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-lg" data-testid="draft-badge">
+    Draft preview<span v-if="pageUnpublished" class="font-normal normal-case tracking-normal">· this page is not published</span>
+  </div>
   <div v-if="loading" class="p-8 text-center text-gray-400 text-sm">Loading…</div>
   <div v-else-if="error">
     <template v-if="notFoundLayout">
@@ -52,7 +56,7 @@
 // API) renders the header/aside/main/footer shell around the body.
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { getPublicPage, getPublicPageByPath, type PublicPageLookup, type WhoobeOnePage } from '../pages-api'
+import { getPublicPage, getPublicPageByPath, isDraftPreview, type PublicPageLookup, type WhoobeOnePage } from '../pages-api'
 import { resolveDocumentData } from '../scripts/data-resolver'
 import BlockContainerPreview from '../components/preview/BlockContainerPreview.vue'
 import { useThemeStyles } from '../composables/useThemeStyles'
@@ -71,6 +75,8 @@ const error = ref(false)
 const doc = ref<any>(null)
 const layout = ref<any>(null)
 const notFoundLayout = ref<any>(null)
+const draftMode = isDraftPreview()
+const pageUnpublished = ref(false)
 
 /** Extract Alpine.js directives from a slot object for v-bind on wrappers.
  *  Coerces non-string values to empty string to avoid `[object Object]`,
@@ -223,6 +229,7 @@ onMounted(async () => {
     }
 
     const locale = page.locale || 'en'
+    pageUnpublished.value = draftMode && page.published === false
     doc.value = page.content
     layout.value = pageLayout ?? null
     // Load the page's theme before resolving data, so theme styles are

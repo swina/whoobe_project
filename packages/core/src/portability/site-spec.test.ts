@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { applySiteSpecChoices, collectUuids, expandSiteSpec, parseWebsiteBundle, rewriteIds, SiteSpecError, type SiteSpecExisting } from './index.js';
+import { applySiteSpecChoices, collectUuids, expandSiteSpec, fillSnippetPlaceholders, parseWebsiteBundle, rewriteIds, SiteSpecError, type SiteSpecExisting } from './index.js';
 
 const whoobeDev = JSON.parse(readFileSync(new URL('./fixtures/whoobe-dev.site-spec.json', import.meta.url), 'utf8'));
 const existing: SiteSpecExisting = {
@@ -37,6 +37,16 @@ describe('expandSiteSpec', () => {
     expect(bundle.snippets).toHaveLength(1);
     expect(bundle.pages).toHaveLength(3);
     expect(bundle.pages.every((p) => p.published === false && p.kind === 'content')).toBe(true);
+  });
+
+  it('creates the website path (menu) linking the pages of the default language by id', () => {
+    const { bundle } = expandSiteSpec(small());
+    expect(bundle.websitePaths).toHaveLength(1);
+    const items = bundle.websitePaths[0].items as { label: string; pageId: string; path: string }[];
+    const def = bundle.pages.filter((p) => p.locale === bundle.website.defaultLocale);
+    expect(items.map((i) => i.pageId)).toEqual(def.map((p) => p.id));
+    expect(items.map((i) => i.path)).toEqual(def.map((p) => p.slug));
+    expect(def.every((p) => p.id)).toBe(true);
   });
 
   it('is deterministic: the same spec gives the same bundle', () => {
@@ -257,5 +267,23 @@ describe('where the classes go, for the editor', () => {
     const form = nodes(expandSiteSpec(spec).bundle.pages[1].content).find((n) => n.element === 'form');
     expect(form.css).toEqual({ css: 'gap-4 p-6', container: 'flex flex-col' });
     expect(form.blocks[0].css).toEqual({ css: 'gap-1', container: 'flex flex-col' });
+  });
+});
+
+describe('fillSnippetPlaceholders', () => {
+  const vars = { name: 'Acme <b>Ltd', context: 'hotel', thing: 'hotel', sector: 'Tourism' };
+
+  it('fills {name}, {context}, {thing} and {sector} in the texts, with plain text, and leaves an unknown placeholder', () => {
+    const out = fillSnippetPlaceholders({ content: 'Hi {name}, your {context} / {thing} in {sector} {other}', image: { alt: 'View of {name}', src: '/a/{name}.png' } }, vars);
+    expect(out.content).toBe('Hi Acme bLtd, your hotel / hotel in Tourism {other}');   // `<` and `>` of the value are removed
+    expect(out.image.alt).toBe('View of Acme bLtd');
+    expect(out.image.src).toBe('/a/{name}.png');
+  });
+
+  it('leaves ids, kinds, classes, styles and links alone, and does not change its input', () => {
+    const node = { id: '{name}', type: 'element', css: { css: 'w-{name}' }, style: '{name}', link: '/{name}', blocks: [{ content: '{name}' }] };
+    const copy = JSON.stringify(node);
+    expect(fillSnippetPlaceholders(node, vars)).toEqual({ ...node, blocks: [{ content: 'Acme bLtd' }] });
+    expect(JSON.stringify(node)).toBe(copy);
   });
 });

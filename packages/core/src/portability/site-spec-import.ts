@@ -48,6 +48,8 @@ export interface SiteSpecImportOptions {
   choices?: SiteSpecChoices;
   /** Changes made in the check step before anything else, so the links (which carry the root path) follow. */
   website?: { name?: string; rootPath?: string };
+  /** Words for the placeholders in the copies of library snippets (`{name}`, `{context}`, `{thing}`, `{sector}`); only the wizard sets them. */
+  vars?: Record<string, string>;
 }
 
 const freeName = (name: string, taken: Set<string>): string => {
@@ -114,7 +116,7 @@ export async function importSiteSpec(input: unknown, options: SiteSpecImportOpti
 
   const existing = await loadSiteSpecExisting();
   const { spec, conflicts } = applySiteSpecChoices(checked.spec, existing, options.choices);
-  const { bundle } = expandSiteSpec(spec, { existing });
+  const { bundle } = expandSiteSpec(spec, { existing, ...(options.vars ? { vars: options.vars } : {}) });
 
   const rootPath = bundle.website.rootPath;
   if (isReservedRootPath(rootPath)) {

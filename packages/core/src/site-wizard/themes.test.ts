@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { contrast, ensureContrast, hexToRgb, isHex, luminance, mix, readableOn, rgbToHex } from './color.js';
-import { derivePalette, palettePairs, paletteFor, PRESET_NAMES, PRESETS, type Palette } from './themes.js';
+import { derivePalette, palettePairs, paletteFor, parsePalette, weakPairs, PRESET_NAMES, PRESETS, type Palette } from './themes.js';
 
 const failures = (p: Palette): string[] => palettePairs(p).filter((x) => contrast(x.fg, x.bg) < x.min).map((x) => `${x.name}: ${contrast(x.fg, x.bg).toFixed(2)} < ${x.min} (${x.fg} on ${x.bg})`);
 
@@ -95,5 +95,37 @@ describe('a company colour', () => {
     expect(derivePalette('#323932', '#FF6B6B')).toEqual(derivePalette('#323932', '#FF6B6B'));
     expect(() => derivePalette('red')).toThrowError(/#RRGGBB/);
     expect(() => derivePalette('#323932', 'blue')).toThrowError(/#RRGGBB/);
+  });
+});
+
+describe('palettes made by a person', () => {
+  const mine: Palette = { ...PRESETS.light, accent: '#FF69B4', onAccent: '#FFFFFF' };   // white on hot pink: hard to read
+
+  it('reads the eight roles, upper-cases them, and says what is wrong', () => {
+    const ok = parsePalette({ ...PRESETS.light, bg: '#ffffff' });
+    expect(ok.ok && ok.palette.bg).toBe('#FFFFFF');
+    const bad = parsePalette({ bg: 'white', text: '#000', extra: '#FFFFFF' });
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) {
+      expect(bad.issues.some((i) => i.includes('"bg"'))).toBe(true);
+      expect(bad.issues.some((i) => i.includes('"card"'))).toBe(true);        // a missing role
+      expect(bad.issues.some((i) => i.includes('"extra"'))).toBe(true);       // an unknown one
+    }
+    expect(parsePalette(null).ok).toBe(false);
+  });
+
+  it('the built-in presets have no weak pair; a palette of a person is used as it is and the weak pairs are said', () => {
+    for (const name of PRESET_NAMES) expect(weakPairs(PRESETS[name]), name).toEqual([]);
+    expect(weakPairs(mine).length).toBeGreaterThan(0);
+    const out = paletteFor({ palette: 'p1' }, undefined, { p1: mine });
+    expect(out.palette).toEqual(mine);                                           // not changed
+    expect(out.notes.some((n) => n.includes('hard to read'))).toBe(true);
+    expect(paletteFor({ palette: 'p1' }, undefined, { p1: PRESETS.dark }).notes).toEqual([]);
+  });
+
+  it('an accent over a palette of a person is kept visible, and a palette that does not exist is refused', () => {
+    const out = paletteFor({ palette: 'p1' }, '#FFFFFF', { p1: PRESETS.light });
+    expect(contrast(out.palette.accent, PRESETS.light.bg)).toBeGreaterThanOrEqual(3);
+    expect(() => paletteFor({ palette: 'gone' }, undefined, {})).toThrow(/does not exist/);
   });
 });

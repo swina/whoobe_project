@@ -1,5 +1,5 @@
 <template>
-  <BaseModal v-if="isOpen" :open="true" size="lg" @close="emit('close')">
+  <BaseModal v-if="isOpen && !created" :open="true" size="lg" @close="emit('close')">
     <template #header>
       <h2 class="ui-modal-title flex items-center gap-2"><FileJson class="w-4 h-4 text-indigo-400" />Import a site from a specification</h2>
     </template>
@@ -79,6 +79,7 @@
       <button data-testid="site-spec-import" class="btn btn-success" :disabled="!canImport" @click="doImport()">Import as a draft website</button>
     </template>
   </BaseModal>
+  <WebsiteCreatedModal v-if="isOpen && created" :website="created.website" :pages="created.pages" @close="created = null; emit('close')" />
 </template>
 
 <script setup lang="ts">
@@ -86,8 +87,8 @@ import { computed, ref, watch } from 'vue'
 import { FileJson } from '@lucide/vue'
 import BaseModal from '../ui/BaseModal.vue'
 import SiteImportCheck from '../websites/SiteImportCheck.vue'
+import WebsiteCreatedModal from '../websites/WebsiteCreatedModal.vue'
 import { useAuthStore } from '../../stores/authStore'
-import { useTabsStore } from '../../stores/tabsStore'
 import { useToastStore } from '../../stores/toastStore'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import {
@@ -99,7 +100,6 @@ const props = defineProps<{ isOpen: boolean }>()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const authStore = useAuthStore()
-const tabsStore = useTabsStore()
 const toastStore = useToastStore()
 const websitesStore = useWebsitesStore()
 const api = () => authStore.config.coreApiUrl
@@ -202,6 +202,8 @@ function choose(c: SiteSpecConflict, choice: 'existing' | 'new') {
   void recheck()
 }
 
+const created = ref<{ website: { id: string; name: string; rootPath: string }; pages: number } | null>(null)
+
 async function doImport(): Promise<void> {
   const read = readSiteSpecText(text.value)
   if ('error' in read) { problem.value = read.error; return }
@@ -211,8 +213,9 @@ async function doImport(): Promise<void> {
     const result = await submitSiteSpec(api(), { spec: read.spec, choices: choices.value, website: websiteOverride() }, false)
     toastStore.show(`Website "${result.website?.name}" created as a draft with ${result.summary.pages.length} pages`)
     await websitesStore.refreshWebsites()
-    if (result.website) tabsStore.openWebsite(result.website.id)
-    emit('close')
+    // the window of the import gives way to the one that offers Preview and Manage
+    if (result.website) created.value = { website: result.website, pages: result.summary.pages.length }
+    else emit('close')
   } catch (e: any) {
     if (e instanceof SiteSpecInvalid) { issues.value = e.issues; outcome.value = null }
     else importError.value = e?.message || 'The import failed'
