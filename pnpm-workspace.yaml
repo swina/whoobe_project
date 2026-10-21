@@ -30,4 +30,4 @@ overrides:
   underscore: ^1.13.8
   qs: ^6.16.0
   fast-uri: ^3.1.8
-  markdown-it: ^14.3.1
+  markdown-it: ^14.3.3

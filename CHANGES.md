@@ -1,5 +1,9 @@
 # Release v0.2.0 — 2026-10-19
 
+## Dependency: markdown-it 14.3.3 (audit gate of the CI) — 2026-10-21
+- Branch: `master`. The `static scans` job of the CI failed on the push of the wizard merge: `pnpm audit (prod)` reported a NEW high advisory, GHSA-gfr2-rv44-r23c (markdown-it >=14.1.0 <14.3.3: quadratic-time rendering of a multi-line link reference definition), and a low one (GHSA-vfgh-jcmw-g37q, inline HTML). Not from the wizard code: markdown-it reaches the admin only through Tiptap. The override in `package.json` and `pnpm-workspace.yaml` (kept identical) goes from `^14.3.1` to `^14.3.3`; the lockfile changes only that package (14.3.2 -> 14.3.3, a patch release). After it `pnpm audit --prod` has no high or critical finding outside the baseline. Lockfile updated with `--lockfile-only`: `node_modules` of a running dev stack are not touched until the next `pnpm install`.
+- The nightly run of the morning (before the merge) had failed in `route-drift` (a route missing from `routes.expected.json`); with the contract of the branch (262 routes) that test passes locally, to be confirmed by the next run.
+
 ## Docs site: two links of the security results page — 2026-10-21
 - Branch: `master`. `whoobe-publish --kind docs --strict` on the DAM copy (109 pages) failed with 2 broken links in `security/results/README.md`: `../../../plans/` and `../../../../SECURITY.md` resolve in a checkout, not in the published site. Both now point to GitHub (`tree/master/docs/plans`, `blob/master/SECURITY.md`), as done for the other pages. The file must be uploaded to the DAM again for the site to pick it up.
 
