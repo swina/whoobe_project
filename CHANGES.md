@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Docs site: two links of the security results page — 2026-10-21
+- Branch: `master`. `whoobe-publish --kind docs --strict` on the DAM copy (109 pages) failed with 2 broken links in `security/results/README.md`: `../../../plans/` and `../../../../SECURITY.md` resolve in a checkout, not in the published site. Both now point to GitHub (`tree/master/docs/plans`, `blob/master/SECURITY.md`), as done for the other pages. The file must be uploaded to the DAM again for the site to pick it up.
+
 ## Sandbox reset prunes the Docker build cache — 2026-10-21
 - Branch: `master` (after the merge of `feat/ai-site-spec`). The Oracle host had 21.5 GB of build cache (16.5 GB reclaimable) on a 45 GB disk, from the deploys and the 3-hourly sandbox builds. `scripts/sandbox/reset.sh` now runs `docker builder prune -f --filter until=48h` once the sandbox is up (not fatal, after the work, so it cannot delay or break a reset). Documented in `docs/release/operations/sandbox.md`. Reaches the host with the next deploy; the cache already there is cleared by that first reset (or by hand).
 

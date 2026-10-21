@@ -15,7 +15,7 @@ or in the public history of its CI, and it stays there.
 | **The result of the tests of each release**, passes and failures | `results/vX.Y.Z.md` in this folder (the first is [`v0.2.0.md`](v0.2.0.md)) | every release, before it is published |
 | The CI runs themselves | the repository's Actions tab: the runs and their logs are public | every push, nightly and on request |
 | The reports of the run on the release commit | attached to the GitHub Release | every release |
-| How the code is written, including the use of an AI assistant | [`docs/plans`](../../../plans/) (written plans, decisions and what was left out) | with the work |
+| How the code is written, including the use of an AI assistant | [`docs/plans`](https://github.com/swina/whoobe_project/tree/master/docs/plans) (written plans, decisions and what was left out) | with the work |
 
 The raw reports of a local run (`scripts/security/reports/`) are not committed; the record in `results/` and the CI runs it points to are what
 stays.
@@ -31,5 +31,5 @@ stays.
 5. **Nothing is tested against production.** The suites refuse to run against anything but a disposable local stack.
 6. **Corrections are public too.** A record that was wrong is corrected in a new commit that says so, never rewritten silently.
 
-Anyone who finds a problem, or a claim these documents cannot back, can report it: [SECURITY.md](../../../../SECURITY.md) for vulnerabilities,
+Anyone who finds a problem, or a claim these documents cannot back, can report it: [SECURITY.md](https://github.com/swina/whoobe_project/blob/master/SECURITY.md) for vulnerabilities,
 an issue for everything else.
