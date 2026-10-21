@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Sandbox reset prunes the Docker build cache — 2026-10-21
+- Branch: `master` (after the merge of `feat/ai-site-spec`). The Oracle host had 21.5 GB of build cache (16.5 GB reclaimable) on a 45 GB disk, from the deploys and the 3-hourly sandbox builds. `scripts/sandbox/reset.sh` now runs `docker builder prune -f --filter until=48h` once the sandbox is up (not fatal, after the work, so it cannot delay or break a reset). Documented in `docs/release/operations/sandbox.md`. Reaches the host with the next deploy; the cache already there is cleared by that first reset (or by hand).
+
 ## Merge of `feat/ai-site-spec` into `master` — 2026-10-21
 - Branch: `feat/ai-site-spec` merged (fast-forward, 24 commits) into `master`: site specification import, Generate Website Wizard (palettes, texts with AI, draft preview, snippet blocks and placeholders), Palettes section, nginx routes for `site-wizard` and `site-spec`, security and release docs. Not pushed to origin by this step. After the merge the docs site (docs.whoobe.dev) needs regenerating (`site-from-specification`, `website-wizard`, `ai-site-spec`).
 

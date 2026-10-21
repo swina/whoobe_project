@@ -123,6 +123,11 @@ removed, the sandbox is **off for the whole of it**: after new code reaches the 
 minutes (on 2026-10-20, on a 4-CPU arm64 host with a load of 8 to 12, the two builds together took more than 15 minutes and the
 retry brought it back). That is why the service waits up to 40 minutes. The banner shows the next reset time.
 
+**Disk.** Every reset builds again, and the build cache of the Docker daemon grows by gigabytes (on 2026-10-21 the host held 21.5 GB
+of it, 16.5 GB reclaimable, on a 45 GB disk). Once the sandbox is up, `reset.sh` runs `docker builder prune -f --filter until=48h`:
+the layers of the last two days stay (the next build is warm), the older ones go. The daemon is shared with the other workspaces of
+the host, so their cache is pruned too; images, volumes and containers are not touched. A failure of the prune is only reported.
+
 **After a deploy**, start the reset yourself right away (`systemctl start whoobe-sandbox-reset.service`) instead of waiting for the
 timer, and do it when nobody is expected: the first run after a code change is the slow one, the next ones use the cache.
 
