@@ -333,7 +333,7 @@ server {
     }
 
     # /whoobe-one API routes -> core-api (must be before the SPA catch-all)
-    location ~ ^/whoobe-one/(websites|themes|pages|snippets|templates|kits|website-paths|search)(/.*)?$ {
+    location ~ ^/whoobe-one/(websites|themes|pages|snippets|templates|kits|website-paths|search|settings|site-wizard|site-spec)(/.*)?$ {
         proxy_pass http://127.0.0.1:3003;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

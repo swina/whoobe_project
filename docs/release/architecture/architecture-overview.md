@@ -81,7 +81,7 @@ into `deploy/nginx/_locations-<slug>.inc`; re-render with `scripts/render-worksp
 | Path | Upstream | Notes |
 |---|---|---|
 | `/` | admin-dashboard (or a website preview, decided by core-api `GET /site-root`) | previews live at the website's root path |
-| `/whoobe-one/(websites|themes|pages|snippets|templates|kits|website-paths|search|settings)/…` | core-api | editor-side API |
+| `/whoobe-one/(websites|themes|pages|snippets|templates|kits|website-paths|search|settings|site-wizard|site-spec)/…` | core-api | editor-side API |
 | `/whoobe-one/…` (rest) | editor SPA | |
 | `/auth`, `/documents`, `/snippets`, `/data-*`, `/mail-*`, `/public`, `/ai`, `/settings`, `/users`, `/roles`, `/preview`, `/health`, … | core-api | the regular expression is in the template |
 | `/public/upload-data/` | asset-processor | bytes of form uploads, request buffering off (`^~` so the rule above does not take it) |

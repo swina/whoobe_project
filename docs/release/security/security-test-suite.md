@@ -128,7 +128,7 @@ anonymous call to a protected route returns 401; every identity can log in; a us
 `extract-routes.ts` statically parses every `app.<verb>(path, ...)` registration in
 `apps/core-api/src/server.ts` and derives its access level from the middleware chain (`requirePermission(...)`
 -> *permission*, `requireAuth` -> *auth*, none -> *public*). The result is compared with the checked-in contract
-`scripts/security/routes.expected.json` (228 routes today: 186 permission-gated, 8 authenticated, 34 public,
+`scripts/security/routes.expected.json` (262 routes today: 212 permission-gated, 8 authenticated, 42 public,
 each public route with a justification note).
 
 | Test | Fails when |
@@ -176,6 +176,7 @@ Fixtures: a data class with one draft and one published object, a website and an
 | Draft confidentiality | Public list, batch, query and search endpoints return only published objects; draft content never appears. A draft fetched by id returns 404 with a body identical to a non-existent id (no existence oracle). Unpublished pages are neither listed nor served. |
 | Query endpoint robustness | 11 hostile `filters` / `orderBy` / paging payloads (SQL injection strings, `__proto__` and `constructor.prototype` field names, unknown operators, operator objects, non-array filters, negative / 10^12 limits and offsets, object/array class names) never produce a 5xx or database/stack text, and do not pollute `Object.prototype`. Malformed JSON gives a clean 400. Malformed ids never leak SQL text (F-018). |
 | Public website info | No password, secret, hash or API-key fields in public website responses; the public website list exposes exactly `id` and `name`. |
+| Draft preview | `?draft=true` on `GET /public/page/*` finds an unpublished page for a signed-in editor (`draftPreview: true`) and not for an anonymous request (404, no draft text); without the parameter the same session gets nothing. **Written, not yet run on the test stack.** |
 | Preview tokens | Unknown tokens give 404, identical for any guess. A valid token shows only its own object and stops working once revoked. Tokens are at least 32 characters, 20 samples contain no repeats and no common prefix. |
 | Public form submission | Submissions are stored unpublished; protected fields (`published`, `key`, `classId`) cannot be set; unknown fields are stripped; `__proto__` is ignored. Script payloads and 200 KB bodies are handled without a 5xx. |
 | Other unauthenticated routes | `POST /pwa/subscribe` is rate-limited (F-019). The two public settings endpoints return only `{ enabled }`. |
