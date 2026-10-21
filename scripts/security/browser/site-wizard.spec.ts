@@ -72,9 +72,11 @@ test('a person with only a browser goes from a few choices to a draft website, w
     await p.getByTestId('wizard-page-title-1').fill('Rooms')
     await p.getByTestId('wizard-next').click()
 
-    // ---- 4 texts: the placeholders; the AI is not offered yet
+    // ---- 4 texts: the placeholders; the AI is offered only when this person has a provider set up (the test stack may have one: the other suites store a key)
     await expect(p.getByTestId('wizard-texts-placeholder')).toBeChecked()
-    await expect(p.getByTestId('wizard-texts-ai')).toBeDisabled()
+    const aiOffered = (await api.get('/whoobe-one/site-wizard/options')).json.texts.ai.available === true
+    if (aiOffered) await expect(p.getByTestId('wizard-texts-ai')).toBeEnabled()
+    else await expect(p.getByTestId('wizard-texts-ai')).toBeDisabled()
     await p.getByTestId('wizard-next').click()
 
     // ---- 5 check: a summary, nothing written yet
@@ -164,12 +166,13 @@ test('the wizard routes: the options, the answers that are refused, the access, 
   const opts = await api.get('/whoobe-one/site-wizard/options')
   expect(opts.status).toBe(200)
   expect(opts.json.sectors.map((s: any) => s.id)).toEqual(['it', 'food', 'consultant', 'insurance', 'tourism'])
-  expect(opts.json.blocks.map((b: any) => b.type)).toEqual(['hero', 'banner', 'cta', 'box-grid-3', 'box-grid-6', 'form'])
+  expect(opts.json.blocks.map((b: any) => b.type)).toEqual(['hero', 'banner', 'cta', 'box-grid-3', 'box-grid-6', 'form', 'title'])
   expect(opts.json.themes.map((t: any) => t.id)).toEqual(['dark', 'light', 'light-colors', 'blue-navy'])
   expect(opts.json.limits).toMatchObject({ maxPages: 4, maxBlocksPerPage: 10 })
-  expect(opts.json.texts.ai.available).toBe(false)
+  expect(typeof opts.json.texts.ai.available).toBe('boolean')   // true only with an AI key for this person, permission to write, and outside the sandbox
+  expect(Array.isArray(opts.json.palettes)).toBe(true)
   // the snippets are listed by name, category and block, never with their content
-  for (const s of opts.json.snippets) expect(Object.keys(s).sort()).toEqual(['block', 'category', 'name'])
+  for (const s of opts.json.snippets) expect(Object.keys(s).sort()).toEqual(['block', 'category', 'label', 'marked', 'name'])
 
   const good = (over: Record<string, unknown> = {}) => ({ name: `Wz${tag} Api`, sector: 'food', theme: { preset: 'light' }, font: 'serif', pages: [{ title: 'Home', blocks: [{ type: 'hero' }, { type: 'form' }] }], ...over })
   const dry = await api.post('/whoobe-one/websites/from-wizard?dryRun=1', { answers: good() })

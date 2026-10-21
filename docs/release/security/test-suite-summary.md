@@ -15,7 +15,7 @@ nightly, and before every release. They verify controls; they do not prove the a
 ├───────────────────────────────┤ ├───────────────────────────────┤ ├───────────────────────────────┤
 │ 1359 tests · 24 files         │ │ 30 tests · 18 specs           │ │ dependency audit · gitleaks   │
 │                               │ │                               │ │ semgrep · shellcheck · hadolint│
-│ · 900 checks: 214 routes ×    │ │ · XSS in the editor, published│ │ trivy (config + images)       │
+│ · 1101 checks: 262 routes ×    │ │ · XSS in the editor, published│ │ trivy (config + images)       │
 │   5 identities                │ │   pages and admin lists       │ │ testssl.sh (TLS 1.2/1.3)      │
 │ · 182 function-permission     │ │ · file upload in forms        │ │                               │
 │   tests (90 content routes)   │ │ · editor, navigation, UI      │ │ Accepted findings carry a     │
@@ -55,7 +55,7 @@ nightly, and before every release. They verify controls; they do not prove the a
 |---|---|
 | 1359 API tests, 24 files | `vitest run --config scripts/security/vitest.config.ts api` |
 | 182 function-permission tests | `api/granular-permissions.test.ts`: for each of the 90 content routes, a user holding only that function key passes, users holding another action or another area get 403 |
-| 900 authorization checks, 4 route-contract tests | `api/authz-matrix.test.ts`, `api/route-drift.test.ts` against `scripts/security/routes.expected.json` (262 core-api routes) |
+| 1101 authorization checks, 4 route-contract tests | `api/authz-matrix.test.ts`, `api/route-drift.test.ts` against `scripts/security/routes.expected.json` (262 core-api routes) |
 | 276 security unit tests, 22 files | the same command with `unit` |
 | 295 core tests | `pnpm --filter @whoobe-cms/core test` (26 more are integration tests that need a database and are skipped without one) |
 | 59 SDK tests | renderer 46, Vue 7, React 6 |
