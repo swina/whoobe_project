@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Merge of `feat/ai-site-spec` into `master` — 2026-10-21
+- Branch: `feat/ai-site-spec` merged (fast-forward, 24 commits) into `master`: site specification import, Generate Website Wizard (palettes, texts with AI, draft preview, snippet blocks and placeholders), Palettes section, nginx routes for `site-wizard` and `site-spec`, security and release docs. Not pushed to origin by this step. After the merge the docs site (docs.whoobe.dev) needs regenerating (`site-from-specification`, `website-wizard`, `ai-site-spec`).
+
 ## Run on the security test stack before the merge — 2026-10-21
 - Branch: `feat/ai-site-spec`. The throwaway stack (`scripts/security/stack.sh up`, rebuilt from this branch) and the suites: **API 2281 tests pass in 84 files** (the authorization matrix is now **1101 checks** for the 262 routes of the contract, `public-surface` 17 including the draft preview test, `snippet-lock`, `portability`, `route-drift`), **browser 56 pass, 5 skipped** (`site-wizard` with the new steps for folding, moving, focusing a page, the window after the creation and the palettes options; `site-spec-import`; `site-wizard-editor`; `xss-sinks`).
 - Two browser tests of mine were out of date and were fixed: the options list now has the block `title` and the snippets carry `label` and `marked`; and the AI option is offered when the person has an AI key (the test stack has one stored by another suite), so the test follows `texts.ai.available` instead of assuming it is off.
