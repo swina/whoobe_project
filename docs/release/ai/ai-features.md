@@ -19,6 +19,7 @@
 | **Generate an image** | the editor, and *Assets > Generate with AI* in the dashboard | The provider returns an image, which is stored in the media library like any asset |
 | **Translate** | the page and snippet editor, *Translate* | The content is translated into another language as a new, linked translation (same translation group), in batches; **a human reviews it** |
 | **AI Website Wizard** | the website settings in the dashboard | Proposes a website structure (pages and sections) from a description |
+| **Generate Website Wizard: texts with AI** | *Settings > Websites > Generate Website Wizard*, step *Texts* | Writes the texts of the slots of the wizard's structure (titles, leads, box texts, button labels), only when you choose it; the model gets the business name, the sector, the context, an optional description and the list of slots, and can change nothing but those texts (see the [wizard guide](../content/website-wizard.md)) |
 | **Figma import** *(beta)* | the editor | Converts a Figma frame into a page or a snippet, either through the Figma API (token in *Settings > Figma*) or from an exported JSON file |
 
 ## 3. Providers and configuration

@@ -28,15 +28,16 @@ Where: **Settings > Websites > Import from a spec**. You need the permission *we
 6. **Names that already exist.** If the file defines a theme or a snippet whose name is already taken, you choose for each: **create a new
    one** (the default, under a free name such as *Harbour (2)*) or **use the existing one**. An existing theme or snippet is never changed
    or replaced by an import.
-7. **Import.** The website is created as a **draft** (no page is published; publishing needs its own permission) and opens. Read it, change
-   it in the editor, publish it when it is right.
+7. **Import.** The website is created as a **draft** (no page is published; publishing needs its own permission) and a window offers
+   **Preview** (the site with its draft pages, marked as a draft preview, visible only to a signed-in editor) and **Manage** (its settings). Read it, change
+   it in the editor, publish it when it is right. The website also gets a **path** *Main* with its pages (in the default language, in the order of the file).
 
 ## What the specification covers
 
 | Covered | Not in version 1 |
 |---|---|
 | Website name, root path, one or two languages | More than two languages |
-| A theme (colours, fonts) of its own, or an existing one by name | Menus |
+| A theme (colours, fonts) of its own, or an existing one by name | Menus other than the path *Main* (all the pages, in order) |
 | Snippets (header, footer, call to action...) of its own, or existing ones by name | Data classes and lists bound to data (a blog) |
 | Header, footer, side area and 404 around every page | A different header or footer for each language |
 | Pages, each a list of sections made of containers, headings, texts, links, images and forms (a template of fields, see below) | Animations, scripts, events |

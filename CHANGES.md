@@ -1,5 +1,9 @@
 # Release v0.2.0 — 2026-10-19
 
+## Release documentation brought up to date — 2026-10-21
+- Branch: `feat/ai-site-spec`. Checked after the wizard work: the wizard guide, the API reference and OpenAPI were already current; now also `ai/ai-features.md` (texts with AI), `security/data-protection.md` (what the AI texts send), `security/status-summary.md` (draft preview), `architecture/data-and-storage.md` (`wizard_palettes`, `wizard_block`, `wizard_label`), `content/site-from-specification.md` (the path *Main*, the window with Preview and Manage), `content/README.md`. `scripts/release/check-docs.py` passes (262 routes).
+- **Not done, on purpose:** `release-notes-0.2.0.md` says nothing of the specification import and the wizard (they are on this branch, not merged); its text belongs to the release that carries them. `threat-model.md` and `security-test-suite.md` do not yet list the draft preview, the palettes routes or the AI texts route as a surface/test.
+
 ## Palettes: the system palettes are listed for reference — 2026-10-21
 - Branch: `feat/ai-site-spec`. In Palettes (the section and the window of the wizard) the list has two groups: **Yours** (edit, copy, delete) and **Built-in**, the four palettes of the system with their swatches and colour codes, marked *system* and with a *Copy* only (no edit, no delete). `PalettesManager.vue`; the copy buttons keep their test ids. `vue-tsc` passes; not looked at in the browser.
 
