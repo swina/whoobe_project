@@ -9,7 +9,7 @@ Related: `docs/release/security/threat-model.md`, `docs/release/security/finding
 | Statement of the overview | Against the repository |
 |---|---|
 | Access control is "centralised by the API Gateway" | Permissions (`objects:read`, `settings:manage`, ...) are enforced by core-api. The gateway serves public data bindings and form submissions. |
-| "Native architectural logs" | There is an audit log with retention and a per-event catalogue (`docs/release/security/audit-log.md`). |
+| "Native architectural logs" | There is an audit log with retention and a per-event catalogue (`docs/release/operations/audit-log.md`). |
 | A real-time public register of active bugs | `SECURITY.md` promises disclosure **after** the fix is available. `findings.md` lists fixed findings; none is open today. The two statements need one explicit policy (section 1). |
 | RLS makes the CMS "mathematically fault tolerant" | Not as described (section 3). The valuable part of the proposal is the separation of database roles (section 2). |
 | Transactional DDL and zero-downtime updates | Not verified for our drizzle version, and `CREATE INDEX CONCURRENTLY` cannot run in a transaction. What protects an upgrade today is the expand-only rule and the dump taken before it (section 4). |
