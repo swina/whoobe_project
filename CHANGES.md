@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Release 0.3 A7: what the stack calls on the internet (private-network profile, first step) — 2026-10-22
+- Branch: `master`. Docs only. `docs/plans/system/release-0.3-plan.md` (A7): result of reading the source for outbound calls. Server: none at start, only operator-configured providers; no breached-password lookup exists. Browser: the dashboard, the editor, the DAM preview and the published/mail outputs load Google Fonts, Material Icons, Unsplash and picsum.photos, which is a gap for a network with no route out. Not run on a stack without internet; the profile file, the font change and that run are still to do.
+
 ## Release 0.3 A7: workspace label in metrics and logs — 2026-10-22
 - Branch: `master`. `WHOOBE_WORKSPACE` (new, optional; `provision-workspace.sh` writes the slug into `.env.<slug>`, which every service reads through `env_file`): when set, every series of core-api `/metrics` carries `workspace="<name>"` (`apps/core-api/src/metrics.ts`) and every log line of `@whoobe-cms/logger` has a `workspace` field (`packages/logger/src/transports.ts`). Unset: output unchanged. Unit test added (`scripts/security/unit/metrics.test.ts`, 6 tests pass); typecheck of core-api and logger passes. Not tried on two running workspaces scraped by one Prometheus (the "done when" of the plan); asset-processor and gateway have no `/metrics` yet (A4). Docs: `configuration-reference.md`; plan A7 statuses brought up to date (fleet commands acceptance test, this item).
 
