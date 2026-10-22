@@ -5,6 +5,17 @@ import { alpineCollapse } from '@whoobe-cms/renderer'
 import App from './App.vue'
 import router from './router'
 import './style.css'
+// Inter (the editor's own interface font) ships with the app; only the fonts chosen for content come from Google below
+import '@fontsource/inter/latin-300.css'
+import '@fontsource/inter/latin-ext-300.css'
+import '@fontsource/inter/latin-400.css'
+import '@fontsource/inter/latin-ext-400.css'
+import '@fontsource/inter/latin-500.css'
+import '@fontsource/inter/latin-ext-500.css'
+import '@fontsource/inter/latin-600.css'
+import '@fontsource/inter/latin-ext-600.css'
+import '@fontsource/inter/latin-700.css'
+import '@fontsource/inter/latin-ext-700.css'
 import tailwindBrowserUrl from '@tailwindcss/browser?url'
 import SearchElement from './components/SearchElement.vue'
 import { createBrowserLogger } from '@whoobe-cms/logger/browser'
@@ -32,10 +43,6 @@ Alpine.start()
 // the preview tree always see the fonts without a flash-of-unstyled-text
 // delay. Runs before the app mounts so the font stylesheet is loading in
 // parallel while Vue compiles the component tree.
-const uiFontLink = document.createElement('link')
-uiFontLink.rel = 'stylesheet'
-uiFontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap'
-document.head.appendChild(uiFontLink)
 
 // One <link> per family (not one combined request) - see the matching
 // comment in useThemeStyles.ts for why: a single bad family name can 403

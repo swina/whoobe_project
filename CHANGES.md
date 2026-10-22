@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Editor: Inter ships with the app (A7, private network) — 2026-10-22
+- Branch: `master`. `apps/whoobe-one-spike`: `@fontsource/inter` ^5.3.0 added and imported in `main.ts` (latin and latin-ext, weights 300-700) in place of the `<link>` to Google Fonts that `main.ts` created for the interface font. The per-family links for the fonts chosen for content (`VITE_FONT_FAMILIES`, `useThemeStyles.ts`) are unchanged: they come with the uploaded-fonts item. Typecheck and `vite build` pass; the owner looked at the dashboard and the editor in a browser and they looked right (online: this does not show the no-route-out case).
+
 ## Admin dashboard: Inter ships with the app, no Google Fonts (A7, private network) — 2026-10-22
 - Branch: `master`. `apps/admin-dashboard`: `@fontsource/inter` 5.3.0 added (OFL; `package.json`, lockfile: only that package), imported in `main.ts` (latin and latin-ext, weights 300-700); the four `<link>` tags to `fonts.googleapis.com`/`fonts.gstatic.com` removed from `index.html`. The `Material Icons` stylesheet was removed too: nothing in the code uses it (icons are bootstrap-icons and `@lucide/vue`, both bundled). Typecheck passes and `vite build` succeeds; the built `dist` has no reference to a Google host except a placeholder text in the AI settings. **Not looked at in a browser** and not tried with no route out. Still to do: the editor (`whoobe-one-spike`) interface font, and the uploaded-fonts item.
 
