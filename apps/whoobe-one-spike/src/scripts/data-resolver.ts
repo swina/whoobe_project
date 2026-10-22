@@ -1,3 +1,4 @@
+import { runtimeEnv } from '../runtime-env'
 import type { DataBindingFilter, DataBindingOrderBy, ElementDataBinding, GatewayBinding } from './ElementsClass.js'
 import {
   getDataObject,
@@ -353,7 +354,7 @@ function substituteGatewayParams(
 // to leak); otherwise (editor, unsaved) -> the admin-authenticated preview
 // route, same as GatewayBindingPicker.vue's own preview fetch.
 export async function resolveGatewayBinding(gb: GatewayBinding, urlParams?: Record<string, string>): Promise<unknown> {
-  const baseUrl = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:3001'
+  const baseUrl = runtimeEnv('VITE_GATEWAY_URL') || 'http://localhost:3001'
   const base = baseUrl.replace(/\/+$/, '')
 
   // Editor context (endpointName available) → admin-authenticated preview-

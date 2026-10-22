@@ -186,6 +186,7 @@
 </template>
 
 <script setup lang="ts">
+import { runtimeEnv } from '../runtime-env'
 import { ref, computed, watch, onMounted } from 'vue'
 import { Play, Plus, Trash2, Unlink, X } from '@lucide/vue'
 import { flattenSchemaFields, itemFieldsForArrayPath, type FlatSchemaField } from '../utils/gateway-schema-walk'
@@ -338,7 +339,7 @@ const previewError = ref('')
 const previewValue = ref<unknown>(undefined)
 
 function gatewayBaseUrl(): string {
-  if (typeof import.meta !== 'undefined' && import.meta.env.VITE_GATEWAY_URL) return import.meta.env.VITE_GATEWAY_URL
+  if (typeof import.meta !== 'undefined' && runtimeEnv('VITE_GATEWAY_URL')) return runtimeEnv('VITE_GATEWAY_URL')!
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const h = window.location.hostname
     return h === 'localhost' || h === '127.0.0.1' ? `http://${h}:3001` : `${window.location.protocol}//${h}:3001`

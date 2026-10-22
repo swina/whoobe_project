@@ -88,6 +88,7 @@ RUN apk upgrade --no-cache pcre2 tiff libexpat libx11
 USER 101
 COPY --from=build /app/apps/admin-dashboard/dist /usr/share/nginx/html
 COPY nginx/admin-spa.conf /etc/nginx/conf.d/default.conf
+COPY --chmod=755 nginx/render-runtime-config.sh /docker-entrypoint.d/40-whoobe-config.sh
 EXPOSE 8080
 
 # ─── Whoobe One Spike ──────────────────────────────────────────────────────
@@ -100,6 +101,7 @@ COPY --from=build /app/apps/whoobe-one-spike/dist /usr/share/nginx/html
 # rendered at start (envsubst): who may embed the editor in a frame - see nginx/editor-spa.conf.template
 ENV EDITOR_FRAME_ANCESTORS="'self' http://localhost:* http://127.0.0.1:*"
 COPY nginx/editor-spa.conf.template /etc/nginx/templates/default.conf.template
+COPY --chmod=755 nginx/render-runtime-config.sh /docker-entrypoint.d/40-whoobe-config.sh
 EXPOSE 8080
 
 # ─── API Gateway ────────────────────────────────────────────────────────────

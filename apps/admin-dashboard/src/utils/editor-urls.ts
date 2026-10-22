@@ -1,3 +1,4 @@
+import { runtimeEnv } from './runtime-env'
 import { computeSitePreviewBase } from './site-preview-url'
 
 // Returns the URL for whoobe-one-spike. Uses direct port 3006 on localhost
@@ -17,7 +18,7 @@ import { computeSitePreviewBase } from './site-preview-url'
 // the editor under /whoobe-one: set it to the full base URL (no trailing
 // slash), e.g. http://localhost:3106/whoobe-one.
 export function getWhoobeOneSpikeUrl(): string {
-  const override = import.meta.env.VITE_WHOOBE_ONE_URL
+  const override = runtimeEnv('VITE_WHOOBE_ONE_URL')
   if (typeof override === 'string' && override.trim()) return override.trim().replace(/\/+$/, '')
   if (typeof window === 'undefined') return 'http://localhost:3006'
   const hostname = window.location.hostname
@@ -46,7 +47,7 @@ export function getSitePreviewBaseUrl(): string {
   const w = typeof window === 'undefined' ? null : window.location
   if (!w) return 'http://localhost:3006'
   return computeSitePreviewBase({
-    override: import.meta.env.VITE_WHOOBE_ONE_URL,
+    override: runtimeEnv('VITE_WHOOBE_ONE_URL'),
     protocol: w.protocol,
     hostname: w.hostname,
     port: w.port,

@@ -1,3 +1,5 @@
+import { runtimeEnv } from './runtime-env'
+
 // Minimal client for this monorepo's real backend asset library
 // (apps/asset-processor). Defaults to the VITE_ASSET_PROCESSOR_URL env var
 // (set by .env for production, e.g. https://cms.example.com), or
@@ -54,8 +56,8 @@ export interface DamFolderRecord {
 }
 
 export function getDefaultAssetProcessorUrl(): string {
-  if (typeof import.meta !== 'undefined' && import.meta.env.VITE_ASSET_PROCESSOR_URL) {
-    return import.meta.env.VITE_ASSET_PROCESSOR_URL.replace(/\/+$/, '')
+  if (typeof import.meta !== 'undefined' && runtimeEnv('VITE_ASSET_PROCESSOR_URL')) {
+    return runtimeEnv('VITE_ASSET_PROCESSOR_URL')!.replace(/\/+$/, '')
   }
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const hostname = window.location.hostname

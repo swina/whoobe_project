@@ -1,3 +1,4 @@
+import { runtimeEnv } from './runtime-env'
 import type { FolderVisibilityRule, ThumbnailPreset, ExtractedAssetMetadata, SupportedImageFormat, CdnMirrorRecord } from '@whoobe-cms/core'
 
 // Thin HTTP client for the asset-processor DAM endpoints. S3
@@ -110,8 +111,8 @@ export interface DamUploadResult {
 // hostnames (production behind nginx), omit the port — nginx serves
 // everything on 443 and routes /api/v1/* to port 3002 internally.
 export function getDefaultAssetProcessorUrl(): string {
-  if (import.meta.env.VITE_ASSET_PROCESSOR_URL) {
-    return import.meta.env.VITE_ASSET_PROCESSOR_URL.replace(/\/+$/, '')
+  if (runtimeEnv('VITE_ASSET_PROCESSOR_URL')) {
+    return runtimeEnv('VITE_ASSET_PROCESSOR_URL')!.replace(/\/+$/, '')
   }
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const hostname = window.location.hostname

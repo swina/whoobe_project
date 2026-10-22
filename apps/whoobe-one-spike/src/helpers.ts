@@ -7,6 +7,7 @@
 // plain imported functions are the more idiomatic Vue 3 choice and match
 // this monorepo's existing whoobe-studio app's style - not carried forward
 // as a deliberate architecture decision, just the natural fit here.
+import { runtimeEnv } from './runtime-env'
 import type Element from './scripts/ElementsClass.js'
 import type { FieldOption } from './scripts/ElementsClass.js'
 import type { Component } from 'vue'
@@ -14,7 +15,7 @@ import { placeholderImageUrl, parsePlaceholderImages } from '@whoobe-cms/schema'
 import { escapeHtml } from './scripts/field-transforms'
 
 // the placeholder picture of starter and generated elements: a photo from picsum.photos, or a local one on a network with no route out (VITE_PLACEHOLDER_IMAGES=local)
-export const placeholderMode = parsePlaceholderImages(import.meta.env.VITE_PLACEHOLDER_IMAGES)
+export const placeholderMode = parsePlaceholderImages(runtimeEnv('VITE_PLACEHOLDER_IMAGES'))
 
 type WhoobeElement = InstanceType<typeof Element>
 

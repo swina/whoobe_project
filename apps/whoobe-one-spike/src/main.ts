@@ -1,3 +1,4 @@
+import { runtimeEnv } from './runtime-env'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import Alpine from 'alpinejs'
@@ -47,7 +48,7 @@ Alpine.start()
 // One <link> per family (not one combined request) - see the matching
 // comment in useThemeStyles.ts for why: a single bad family name can 403
 // the whole combined request and take every font down with it.
-const fontList = (import.meta.env.VITE_FONT_FAMILIES ?? '').trim()
+const fontList = (runtimeEnv('VITE_FONT_FAMILIES') ?? '').trim()
 if (fontList) {
   for (const f of fontList.split('|')) {
     const fontLink = document.createElement('link')

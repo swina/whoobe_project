@@ -10,11 +10,12 @@
 // ts). This resolves a raw reference to a real, currently-valid URL on
 // demand at render time instead, with a shared in-memory cache so the same
 // reference appearing in multiple nodes/renders isn't re-fetched every time.
+import { runtimeEnv } from './runtime-env'
 import { reactive } from 'vue'
 
 export function getDefaultAssetProcessorUrl(): string {
-  if (typeof import.meta !== 'undefined' && import.meta.env.VITE_ASSET_PROCESSOR_URL) {
-    return import.meta.env.VITE_ASSET_PROCESSOR_URL.replace(/\/+$/, '')
+  if (typeof import.meta !== 'undefined' && runtimeEnv('VITE_ASSET_PROCESSOR_URL')) {
+    return runtimeEnv('VITE_ASSET_PROCESSOR_URL')!.replace(/\/+$/, '')
   }
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const hostname = window.location.hostname

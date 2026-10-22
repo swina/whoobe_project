@@ -117,7 +117,7 @@ Both items serve the two buyers: the agency lives in the first, a VPN/LAN instal
 - *Placeholders.* `picsum.photos` is used as the placeholder image by the editor, the AI prompts and the site spec; offline the placeholders show as broken images.
 - *Install and build, not run time.* The Dockerfile needs the npm registry (pnpm install) and the Debian/Alpine repositories (`apt-get`, `apk upgrade`); the compose files pull `postgres`, `valkey` and `nginx` by name. A private install builds or mirrors the images beforehand; `release.yml` already publishes them to a registry that can be mirrored. TLS: nginx uses certbot only on the public flow; an internal CA needs the certificate files placed by hand.
 - Done after this reading (2026-10-22): `deploy/profiles/private.env` and `docs/release/operations/private-network.md`; the two font items above; the picsum placeholders (`PLACEHOLDER_IMAGES`, `VITE_PLACEHOLDER_IMAGES`: a local grey PNG); the unsplash fallback of the DAM. Not changed: the Office viewer and YouTube (listed in the page).
-- Still to do: the run with no route out (the "done when"), and installing from prebuilt images (the compose files only `build:` the application images and `provision-workspace.sh` runs `up -d --build`).
+- Still to do: the run with no route out (the "done when"), and installing from prebuilt images (first step done 2026-10-22: the dashboard and the editor read their settings at container start; the compose files still only `build:` the application images and `provision-workspace.sh` runs `up -d --build`).
 
 
 ### A8. Deployment profiles and an installation checklist

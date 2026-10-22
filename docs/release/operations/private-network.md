@@ -52,6 +52,9 @@ replace the two files and reload the proxy. The browsers of your users must trus
   cannot yet be used instead. Until that is done, a private installation needs a mirror of the npm registry and of the Debian and Alpine
   package repositories reachable from the build, or a build host that does have access, and the images then have to be moved by hand.
   `postgres`, `valkey` and `nginx` can be loaded with `docker save` / `docker load`.
+  First step done (2026-10-22): the dashboard and the editor no longer need a build per workspace, because they read their addresses, fonts and
+  placeholder mode from the container's environment at start (`/config.js`). Still missing: the `image:` tags, the provisioning and upgrade
+  commands that pull instead of build, and the registry.
 - **The run itself**: a workspace on a host with no route out, started, passing `scripts/workspaces.sh verify` and the API suite.
 
 ## What to check on a first installation

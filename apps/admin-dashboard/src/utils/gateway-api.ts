@@ -1,5 +1,7 @@
+import { runtimeEnv } from './runtime-env'
+
 export function getDefaultGatewayUrl(): string {
-  if (import.meta.env.VITE_GATEWAY_URL) return import.meta.env.VITE_GATEWAY_URL.replace(/\/+$/, '')
+  if (runtimeEnv('VITE_GATEWAY_URL')) return runtimeEnv('VITE_GATEWAY_URL')!.replace(/\/+$/, '')
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const hostname = window.location.hostname
     const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
@@ -11,13 +13,13 @@ export function getDefaultGatewayUrl(): string {
 
 export function getDefaultGatewayUpstreams(): { coreApi: string; assetProcessor: string } {
   return {
-    coreApi: import.meta.env.VITE_GATEWAY_CORE_API_URL || 'http://localhost:3003',
-    assetProcessor: import.meta.env.VITE_GATEWAY_ASSET_PROCESSOR_URL || 'http://localhost:3002',
+    coreApi: runtimeEnv('VITE_GATEWAY_CORE_API_URL') || 'http://localhost:3003',
+    assetProcessor: runtimeEnv('VITE_GATEWAY_ASSET_PROCESSOR_URL') || 'http://localhost:3002',
   }
 }
 
 export function getDefaultGatewayRateLimit(): string {
-  return import.meta.env.VITE_GATEWAY_DEFAULT_RATE_LIMIT_RPS || '10'
+  return runtimeEnv('VITE_GATEWAY_DEFAULT_RATE_LIMIT_RPS') || '10'
 }
 
 let gatewayBaseUrl: string | null = null

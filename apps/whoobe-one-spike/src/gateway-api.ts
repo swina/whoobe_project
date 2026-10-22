@@ -1,6 +1,8 @@
+import { runtimeEnv } from './runtime-env'
+
 export function gatewayBaseUrl(): string {
-  if (typeof import.meta !== 'undefined' && import.meta.env.VITE_GATEWAY_URL) {
-    return import.meta.env.VITE_GATEWAY_URL
+  if (typeof import.meta !== 'undefined' && runtimeEnv('VITE_GATEWAY_URL')) {
+    return runtimeEnv('VITE_GATEWAY_URL')!
   }
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const hostname = window.location.hostname

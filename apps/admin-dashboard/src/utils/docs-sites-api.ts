@@ -1,3 +1,4 @@
+import { runtimeEnv } from './runtime-env'
 import { getDefaultCoreApiUrl } from './auth-api'
 import { computeSitePreviewBase } from './site-preview-url'
 
@@ -115,7 +116,7 @@ export function flattenNavForDisplay(nav: NavNode[]): { depth: number; title: st
 /** Where the documentation site is shown by the editor application: the website's root (preview) path on the editor's origin. */
 export function docsPreviewUrl(rootPath: string): string {
   if (typeof window === 'undefined') return ''
-  const base = computeSitePreviewBase({ override: import.meta.env.VITE_WHOOBE_ONE_URL, protocol: window.location.protocol, hostname: window.location.hostname, port: window.location.port })
+  const base = computeSitePreviewBase({ override: runtimeEnv('VITE_WHOOBE_ONE_URL'), protocol: window.location.protocol, hostname: window.location.hostname, port: window.location.port })
   return `${base}${rootPath}/`
 }
 

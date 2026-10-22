@@ -14,6 +14,12 @@ server {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "geolocation=(), payment=(), usb=()" always;
 
+    # written at container start from the environment (render-runtime-config.sh); never cached
+    location ~ ^(/whoobe-one)?/config\.js$ {
+        alias /tmp/whoobe-config.js;
+        add_header Cache-Control "no-store" always;
+    }
+
     # whoobe-one-spike is built with base /whoobe-one/ (VITE_BASE_URL) so it can sit behind a reverse proxy on a
     # sub-path. Served directly (single container / published port), strip that prefix so its assets and
     # history-mode routes still resolve.

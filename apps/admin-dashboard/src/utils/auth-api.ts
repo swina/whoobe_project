@@ -1,3 +1,5 @@
+import { runtimeEnv } from './runtime-env'
+
 // Thin HTTP client for apps/core-api's auth endpoints. Session state lives
 // entirely in an httpOnly cookie set by the server - this client never
 // touches a token directly, it just always sends `credentials: 'include'`
@@ -45,8 +47,8 @@ export interface MfaVerifySetupResponse {
 // port 3003. For remote hostnames (production behind nginx), omit the port;
 // nginx serves everything on 443 and routes the API paths to port 3003.
 export function getDefaultCoreApiUrl(): string {
-  if (import.meta.env.VITE_CORE_API_URL) {
-    return import.meta.env.VITE_CORE_API_URL.replace(/\/+$/, '')
+  if (runtimeEnv('VITE_CORE_API_URL')) {
+    return runtimeEnv('VITE_CORE_API_URL')!.replace(/\/+$/, '')
   }
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const hostname = window.location.hostname
