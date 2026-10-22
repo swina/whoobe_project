@@ -1,4 +1,15 @@
 <template>
+  <div v-if="loadError" class="fixed inset-0 z-[20000] flex items-center justify-center bg-slate-950 p-6 text-center text-slate-200">
+    <div class="max-w-md space-y-3">
+      <p class="text-lg font-semibold">{{ loadError.signedOut ? 'You are not signed in' : 'The page could not be opened' }}</p>
+      <p class="text-sm text-slate-400">
+        {{ loadError.signedOut
+          ? 'Sign in to the dashboard of this installation in this browser, then reload this page.'
+          : loadError.message }}
+      </p>
+      <button type="button" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white" @click="reload">Reload</button>
+    </div>
+  </div>
   <BlockEditor />
 </template>
 
@@ -30,7 +41,7 @@
 // real caller so far) and `parentOrigin` (marks this as running embedded -
 // see store/editor.ts's own `embedded`/`setEmbedded()` comment for what
 // that actually gates).
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
@@ -100,6 +111,10 @@ async function loadAlpinePresets() {
     // Non-critical: the presets panel simply starts empty.
   }
 }
+
+// A page opened by its link outside the dashboard (no `parentOrigin`) has nobody to explain a refused request: say so on screen.
+const loadError = ref<{ signedOut: boolean; message: string } | null>(null)
+function reload() { window.location.reload() }
 
 onMounted(async () => {
   await fetchDefaultPlaceholder()
@@ -204,6 +219,10 @@ onMounted(async () => {
       await loadPage(editor, pageId)
     } catch (e) {
       console.warn('Failed to load page:', e)
+      if (!parentOrigin) {
+        const message = e instanceof Error ? e.message : String(e)
+        loadError.value = { signedOut: /authentication required|unauthor|not signed in/i.test(message), message }
+      }
     }
     selectRequestedElement()
     return

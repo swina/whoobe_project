@@ -1,5 +1,9 @@
 # Release v0.2.0 — 2026-10-19
 
+## Pages: a link that opens a page in the editor for a colleague on the LAN — 2026-10-22
+- Branch: `master`. Admin dashboard, page tab: a "copy link" button next to "open in a new tab" (`MasterPageTab.vue`, `pageEditorUrl()` in `utils/editor-urls.ts`). The link is `<editor>/editor?pageId=<id>`, built from the address the dashboard was opened on, so it points to the same host (LAN address included). It carries no credential: whoever opens it uses their own session and permissions. On plain http over a LAN address `navigator.clipboard` is not available, so the address is shown in a prompt to copy.
+- Editor (`whoobe-one-spike`, `views/Editor.vue`): opened outside the dashboard, a page that cannot be loaded now says so on screen ("You are not signed in. Sign in to the dashboard ... then reload", or the server's message) instead of a blank editor. Typecheck of both apps passes; not tried in a browser.
+
 ## Release 0.3 A5: build provenance and signed tags in release.yml — 2026-10-22
 - Branch: `master`. `.github/workflows/release.yml`: a first job `tag` fails the run unless the pushed tag is annotated and GitHub reports its signature as verified; the image jobs now need it, have `attestations: write` and attest the pushed digest with `actions/attest-build-provenance@v2` (stored with the image). Docs: `release-process.md` (steps 4 and 6: `git tag -s`, `gh attestation verify`), `security/supply-chain.md` (section 5 and gaps), overview 4.6, plan A5 stated as done. **Not run**: it takes effect at the next tag; the owner must register a signing key on GitHub first, or that release stops at the `tag` job.
 

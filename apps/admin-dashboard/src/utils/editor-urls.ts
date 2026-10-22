@@ -29,6 +29,11 @@ export function getWhoobeOneSpikeUrl(): string {
   return `${window.location.protocol}//${hostname}${port ? `:${port}` : ''}/whoobe-one`
 }
 
+/** The editor opened on one page, standalone (not embedded in the dashboard): `<editor>/editor?pageId=<id>`. It uses the session of whoever opens it. */
+export function pageEditorUrl(pageId: string): string {
+  return `${getWhoobeOneSpikeUrl()}/editor?pageId=${encodeURIComponent(pageId)}`
+}
+
 /** Origin (and path) the pages of a website are previewed under: root path and slug follow it, without
  *  `/whoobe-one/` - see site-preview-url.ts. */
 export function getSitePreviewBaseUrl(): string {

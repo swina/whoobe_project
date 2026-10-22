@@ -45,6 +45,9 @@
       </button>
       
       <a v-if="page" :href="openPreviewUrl" target="_blank" rel="noopener noreferrer" title="Open in a new tab"><ExternalLink class="w-6 h-6 text-violet-700" /></a>
+      <button v-if="page" type="button" :title="editorLinkCopied ? 'Link copied' : 'Copy the link to this page in the editor (opens for a signed-in user of this installation)'" @click="copyEditorLink">
+        <Check v-if="editorLinkCopied" class="w-6 h-6 text-emerald-600" /><Link v-else class="w-6 h-6 text-violet-700" />
+      </button>
     </div>
     </div>
     <div class="flex-1 min-h-0 px-2 pb-2 pt-2">
@@ -97,8 +100,8 @@ import WhoobeOneEmbed from './WhoobeOneEmbed.vue'
 import PageSettingsTab from './PageSettingsTab.vue'
 import PagePreviewTab from './PagePreviewTab.vue'
 import PageCreateForm from './PageCreateForm.vue'
-import { Eye, ExternalLink, LayoutDashboard, Settings, Maximize, Minimize } from '@lucide/vue'
-import { getSitePreviewBaseUrl } from '../../utils/editor-urls'
+import { Eye, ExternalLink, Link, Check, LayoutDashboard, Settings, Maximize, Minimize } from '@lucide/vue'
+import { getSitePreviewBaseUrl, pageEditorUrl } from '../../utils/editor-urls'
 
 const props = defineProps<{
   pageId: string
@@ -150,6 +153,21 @@ const openPreviewUrl = computed(() => {
   const query = `?locale=${encodeURIComponent(locale)}${rootPath ? `&rootPath=${encodeURIComponent(rootPath)}` : ''}`
   return `${getSitePreviewBaseUrl()}${rootPath}${slug}${query}`
 })
+
+// The link opens the editor on this page for anyone who is signed in to this installation (the editor uses the same session). It is built
+// from the address the dashboard was opened on, so a colleague on the LAN gets a link to the same host. `navigator.clipboard` exists only on
+// https and localhost; on plain http over a LAN address the address is shown for copying by hand.
+const editorLinkCopied = ref(false)
+async function copyEditorLink() {
+  const url = pageEditorUrl(props.pageId)
+  try {
+    await navigator.clipboard.writeText(url)
+    editorLinkCopied.value = true
+    setTimeout(() => { editorLinkCopied.value = false }, 2000)
+  } catch {
+    window.prompt('Link to this page in the editor', url)
+  }
+}
 
 async function load() {
   if (isNewPage.value) return
