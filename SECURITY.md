@@ -22,10 +22,10 @@ Do not send real secrets or personal data of other people. If you need to demons
 
 Whoobe is maintained by one person, so the process is best effort:
 
-1. you get an acknowledgement as soon as the report is read;
+1. you get an acknowledgement within 7 days (as soon as the report is read, usually);
 2. the report is reproduced and rated, and you are told what is decided;
 3. a fix is prepared and released, and the release notes say what was fixed and which versions are affected;
-4. the report is disclosed **after** the fix is available, and you are credited if you wish.
+4. the report is disclosed **after** the fix is available, and you are credited if you wish. If no fix has been released 90 days after your report, you may disclose it (a longer time can be agreed with you beforehand); a fix for a High or Critical finding is targeted within 30 days, which is a target, not a promise.
 
 The same applies to what the project finds itself: a High or Critical finding is made public with the release that fixes it ([disclosure policy](docs/release/security/disclosure-policy.md)).
 
