@@ -101,7 +101,8 @@ hostname_looks_public() {
   return 0
 }
 
-if ! $FORCE && ! hostname_looks_public "$HOSTNAME_VAL"; then
+# the guard is about Let's Encrypt reaching this host: with --reuse-cert nobody is asked (a certificate of an internal CA put in deploy/certbot/conf by hand)
+if ! $FORCE && ! $REUSE_CERT && ! hostname_looks_public "$HOSTNAME_VAL"; then
   cat >&2 <<EOF
 Errore: '${HOSTNAME_VAL}' non sembra un hostname pubblico raggiungibile
 (dominio .local/localhost, oppure non risolve via DNS, oppure risolve a

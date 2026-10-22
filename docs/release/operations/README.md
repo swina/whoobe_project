@@ -31,6 +31,7 @@ Running Whoobe: installing a workspace, configuring it, securing it, backing it 
 | [Capacity and scaling](capacity-and-scaling.md) | What one workspace can do; what limits replicas |
 | [Observability and logging](observability-and-logging.md) | What is recorded, what can be monitored, what is not available |
 | [Object storage](storage-backends.md) | S3 stores that work |
+| [Private network](private-network.md) | What the stack needs from the internet, the `private` profile and what is still open for an air-gapped site |
 | [Public sandbox](sandbox.md) | The restricted demo profile, rebuilt every three hours |
 | [Deployment guide (bare metal)](deployment.md), [miniguide](miniguide-deployment.md) | Native-service installs under PM2; **not re-verified**, the container workspace is the tested path |
 

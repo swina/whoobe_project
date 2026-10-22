@@ -6,8 +6,9 @@ This guide covers the day-to-day operation: provisioning a new workspace, verify
 
 
 > **Profiles.** `provision-workspace.sh` accepts `--profile NAME` (appends the profile file in `deploy/profiles/` to the workspace's env
-> file) and `--set KEY=VALUE` (repeatable, applied last). The only profile today is `sandbox`, which turns the workspace into
-> the public demo with limits: see [sandbox.md](sandbox.md).
+> file) and `--set KEY=VALUE` (repeatable, applied last). `sandbox` turns the workspace into
+> the public demo with limits ([sandbox.md](sandbox.md)); `private` prepares one for a network with no route to the internet
+> ([private-network.md](private-network.md)).
 
 ## Many workspaces on one host
 

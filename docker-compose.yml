@@ -151,6 +151,7 @@ services:
       args:
         VITE_BASE_URL: /whoobe-one/
         VITE_ASSET_PROCESSOR_URL: ${VITE_ASSET_PROCESSOR_URL}
+        VITE_PLACEHOLDER_IMAGES: ${VITE_PLACEHOLDER_IMAGES:-}
         VITE_CORE_API_URL: ${VITE_CORE_API_URL}
         VITE_GATEWAY_URL: ${VITE_GATEWAY_URL}
     environment:

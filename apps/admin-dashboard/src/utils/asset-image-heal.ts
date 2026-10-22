@@ -1,6 +1,8 @@
+import { LOCAL_PLACEHOLDER_IMAGE } from '@whoobe-cms/schema'
 import { AssetItem, useDamStore } from '../stores/damStore'
 
-export const FALLBACK_ASSET_IMAGE_URL = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80'
+// What shows when an image cannot be loaded: a flat grey picture carried by the app (it used to be a stock photo from unsplash.com, which a network with no route out cannot reach)
+export const FALLBACK_ASSET_IMAGE_URL = LOCAL_PLACEHOLDER_IMAGE
 
 // Assets uploaded before the DAM backend refactor can have stale/broken
 // cached URLs (old bucket names, placeholder signed URLs, etc). On a load

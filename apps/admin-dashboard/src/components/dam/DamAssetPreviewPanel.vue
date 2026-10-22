@@ -6,7 +6,7 @@
         <!-- Image File Preview -->
         <img
           v-if="PREVIEWABLE_IMAGE_TYPES.includes(asset.fileType)"
-          :src="asset.dataUrl || asset.url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80'"
+          :src="asset.dataUrl || asset.url || FALLBACK_ASSET_IMAGE_URL"
           @error="handleImageError"
           :alt="asset.filename"
           class="max-h-full max-w-full object-contain rounded-lg shadow-lg"
@@ -178,7 +178,7 @@ import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import { ExternalLink, RefreshCw, Link } from '@lucide/vue'
 import { AssetItem, useDamStore } from '../../stores/damStore'
 import { getIconForFileType, PREVIEWABLE_IMAGE_TYPES } from '../../utils/asset-file-icons'
-import { handleAssetImageError } from '../../utils/asset-image-heal'
+import { handleAssetImageError, FALLBACK_ASSET_IMAGE_URL } from '../../utils/asset-image-heal'
 
 const props = defineProps<{
   asset: AssetItem

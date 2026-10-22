@@ -819,7 +819,8 @@ import { playYouTubeVideo } from '../scripts/youtube-player'
 import { useEditorStore } from '../store/editor'
 import { editorBus } from '../bus'
 import { bindingTargetOf } from '../scripts/binding-target'
-import { clean, findParentAndIndex, findAncestorChain, removeNodeById, friendlyElementName, resolveLucideIcon } from '../helpers'
+import { clean, findParentAndIndex, findAncestorChain, removeNodeById, friendlyElementName, resolveLucideIcon, placeholderMode } from '../helpers'
+import { placeholderImageUrl } from '@whoobe-cms/schema'
 import TipTapPanel from './TipTapPanel.vue'
 import MarkdownPanel from './MarkdownPanel.vue'
 import MediaPickerModal from './MediaPickerModal.vue'
@@ -1537,7 +1538,7 @@ function clearFill() {
 // concept in HTML at all.
 function openImagePicker() {
   if (!editor.current) return
-  imageUrlDraft.value = editor.current.image?.url || 'https://picsum.photos/640/420'
+  imageUrlDraft.value = editor.current.image?.url || placeholderImageUrl('whoobe', placeholderMode, 640, 420)
   imageAltDraft.value = editor.current.image?.alt || ''
   showImagePicker.value = true
 }

@@ -47,6 +47,8 @@ import Element from '../scripts/ElementsClass.js'
 import Block from '../scripts/BlocksClass.js'
 import BlockEditor from '../components/BlockEditor.vue'
 import { useEditorStore } from '../store/editor'
+import { placeholderImageUrl } from '@whoobe-cms/schema'
+import { placeholderMode } from '../helpers'
 import { loadPage, loadMailTemplate, loadSnippet, loadKitTemplateForEdit, loadWebsiteTheme, loadAllThemes, createEmptyMailTemplateRoot, createEmptyDocumentRoot } from '../scripts/database-actions'
 import { clean, findNodeById } from '../helpers'
 import { getDefaultCoreApiUrl } from '../core-api-url'
@@ -250,7 +252,7 @@ onMounted(async () => {
   row.blocks.push(heading, paragraph)
 
   const image = new Element().Image()
-  image.image = { url: 'https://picsum.photos/seed/whoobe/320/180' }
+  image.image = { url: placeholderImageUrl('whoobe', placeholderMode, 320, 180) }
   image.css.css = clean('w-80 h-auto rounded shadow')
 
   const button = new Element().Button()

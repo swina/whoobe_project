@@ -73,7 +73,7 @@ export const useEditorStore = defineStore('editor', () => {
   const alpinePresets = ref<AlpinePreset[]>([])
   const exportMode = ref<string>('single')
   const preview = ref<boolean | string>(false)
-  const fonts = ref<string[]>((import.meta.env.VITE_FONT_FAMILIES ?? '').split('|'))
+  const fonts = ref<string[]>((import.meta.env.VITE_FONT_FAMILIES ?? '').split('|').filter(Boolean))
   // Faces of the custom fonts (Settings > Custom fonts) whose file can be read; their families are also in `fonts`, so every font list offers them.
   const customFonts = ref<{ family: string; weight: number; style: string; url: string }[]>([])
   const save = ref<boolean>(true)

@@ -54,6 +54,7 @@ services:
       target: whoobe-one-spike
       args:
         VITE_BASE_URL: /whoobe-one/
+        VITE_PLACEHOLDER_IMAGES: ${VITE_PLACEHOLDER_IMAGES:-}
     container_name: whoobe_one_spike
     ports:
       - "${WS_APP_BIND_ADDRESS:-0.0.0.0}:3006:8080"

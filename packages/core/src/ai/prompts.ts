@@ -1,3 +1,5 @@
+import { placeholderImageUrl, parsePlaceholderImages } from '@whoobe-cms/schema';
+
 // Prompt templates + structural validation for AI generation of Whoobe One
 // page/snippet content (docs/plans/ai/ai-pages-snippets-generator.md).
 // The system prompt teaches the model the Element-tree JSON contract (the
@@ -315,7 +317,7 @@ export function collectNodes(node: Record<string, unknown>): Record<string, unkn
  *  whoobe_ai_generated and on the canvas is always renderable. */
 export function sanitizeGeneratedImages(node: Record<string, any>): void {
   if (node.element === 'img' && node.image?.url) {
-    node.image.url = `https://picsum.photos/seed/${node.id}/1200/800`;
+    node.image.url = placeholderImageUrl(String(node.id), parsePlaceholderImages(typeof process !== 'undefined' ? process.env.PLACEHOLDER_IMAGES : undefined));
   }
   if (Array.isArray(node.blocks)) {
     for (const child of node.blocks) sanitizeGeneratedImages(child);

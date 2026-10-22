@@ -3,7 +3,7 @@
 // the import describe the same result. What the person or the model never writes - ids, the document root, the defaults of an editor
 // element, the template that places the header and the footer - is added here.
 import { createHash } from 'node:crypto';
-import { sanitizeRichText, validateSiteSpec, type SiteSpec, type SiteSpecIssue, type SpecFormField, type SpecNode } from '@whoobe-cms/schema';
+import { placeholderImageUrl, parsePlaceholderImages, sanitizeRichText, validateSiteSpec, type SiteSpec, type SiteSpecIssue, type SpecFormField, type SpecNode } from '@whoobe-cms/schema';
 import type { BundleMenu, BundlePage, BundleSnippet, BundleTemplate, BundleTheme, WebsiteBundle } from './bundle.js';
 
 /** What already exists here, for the specs that point to a theme or a snippet by name (the caller reads it from the database). */
@@ -56,8 +56,8 @@ export function siteSpecRootPath(spec: { website: { name: string; rootPath?: str
 
 const slugOf = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'site';
 
-/** Placeholder picture, the same pattern the in-product generator uses (picsum, seeded by the node id); a person chooses the real one. */
-const placeholder = (id: string): string => `https://picsum.photos/seed/${id}/1200/800`;
+/** Placeholder picture, the same pattern the in-product generator uses (picsum, seeded by the node id; a local one when PLACEHOLDER_IMAGES=local); a person chooses the real one. */
+const placeholder = (id: string): string => placeholderImageUrl(id, parsePlaceholderImages(process.env.PLACEHOLDER_IMAGES));
 
 interface Ctx { rootPath: string; next: () => string }
 

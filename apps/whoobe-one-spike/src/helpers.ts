@@ -10,7 +10,11 @@
 import type Element from './scripts/ElementsClass.js'
 import type { FieldOption } from './scripts/ElementsClass.js'
 import type { Component } from 'vue'
+import { placeholderImageUrl, parsePlaceholderImages } from '@whoobe-cms/schema'
 import { escapeHtml } from './scripts/field-transforms'
+
+// the placeholder picture of starter and generated elements: a photo from picsum.photos, or a local one on a network with no route out (VITE_PLACEHOLDER_IMAGES=local)
+export const placeholderMode = parsePlaceholderImages(import.meta.env.VITE_PLACEHOLDER_IMAGES)
 
 type WhoobeElement = InstanceType<typeof Element>
 
@@ -252,7 +256,7 @@ export function normalizeGeneratedTree(node: any, options?: { replacePlaceholder
   // stored records) never render broken <img>s. Callers with real image
   // URLs (e.g. Figma imports) pass replacePlaceholderImages: false.
   if (replacePlaceholderImages && node.element === 'img' && node.image?.url) {
-    node.image.url = `https://picsum.photos/seed/${node.id}/1200/800`
+    node.image.url = placeholderImageUrl(String(node.id), placeholderMode)
   }
   if (Array.isArray(node.blocks)) {
     for (const child of node.blocks) normalizeGeneratedTree(child, options)

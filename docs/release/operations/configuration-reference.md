@@ -89,6 +89,8 @@ cannot be lost** - see [secrets and keys](secrets-and-keys.md).
 | `OUTBOUND_ALLOW_LOOPBACK` | `safeFetch` | `false` in production | |
 | `OUTBOUND_ALLOW_PRIVATE` | `safeFetch` | `true` | RFC1918/ULA/CGNAT targets; **set `false` on internet-facing installs or where authors are not fully trusted** |
 | `OUTBOUND_ALLOW_HOSTS` | `safeFetch` | unset | host names exempt from every outbound check |
+| `PLACEHOLDER_IMAGES` | core-api | unset (`picsum`) | `local`: generated pages and site specifications get a flat grey picture carried by the code instead of a seeded photo from picsum.photos (no host needed) |
+| `VITE_PLACEHOLDER_IMAGES` | editor (a build argument) | unset (`picsum`) | the same for the starter elements and the generated trees of the editor; read when the image is built |
 | `WS_APP_BIND_ADDRESS` | Compose | `0.0.0.0` (the workspace scripts set `127.0.0.1`) | interface of the application ports |
 | `WS_ADMIN_DASHBOARD_PORT`, `WS_GATEWAY_PORT`, `WS_ASSET_PROCESSOR_PORT`, `WS_CORE_API_PORT`, `WS_WHOOBE_ONE_SPIKE_PORT` | Compose, nginx rendering | 3000, 3001, 3002, 3003, 3006 | host side of each port |
 | `COMMUNITY_URL` | core-api (read by the dashboard through `/health`) | the project's GitHub Discussions | the address of the **Help and questions** entry in the dashboard's sidebar, opened by the person in a new tab (a link only: nothing about the installation or the user is sent). **Set it empty to hide the entry** (and the Docs link beside it), or to your own forum; anything that is not an http(s) URL also hides it |
