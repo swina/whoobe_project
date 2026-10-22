@@ -617,6 +617,7 @@ import {
   Languages,
   Smartphone,
   Upload,
+  Type as FontIcon,
   Table2,
   Plug,
   Mail,
@@ -920,6 +921,7 @@ const settingsSubItems: { key: SettingsSubSection; name: string; icon: any }[] =
   { key: 'classes', name: 'Data Object classes', icon: Database },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'figma', name: 'Figma', icon: Palette },
+  { key: 'fonts', name: 'Custom fonts', icon: FontIcon },
   { key: 'pwa', name: 'Mobile App', icon: Smartphone },
   { key: 'uploads', name: 'Form uploads', icon: Upload },
 ]
@@ -930,6 +932,7 @@ const settingsSubLabels: Record<SettingsSubSection, string> = {
   classes: 'Data Object classes',
   workflows: 'Workflows',
   figma: 'Figma',
+  fonts: 'Custom fonts',
   pwa: 'Mobile App',
   uploads: 'Form uploads',
 }

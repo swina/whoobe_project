@@ -53,6 +53,8 @@
 
         <FigmaSettingsCard v-if="activeSubSection === 'figma'" />
 
+        <FontsSettingsCard v-if="activeSubSection === 'fonts'" />
+
         <PwaSettingsCard v-if="activeSubSection === 'pwa'" />
 
         <UploadSettingsCard v-if="activeSubSection === 'uploads'" />
@@ -137,6 +139,7 @@ import ClassSettingsCard from '../components/objects/ClassSettingsCard.vue'
 import MigrationSourcesCard from '../components/objects/MigrationSourcesCard.vue'
 import WorkflowSettingsCard from '../components/objects/WorkflowSettingsCard.vue'
 import FigmaSettingsCard from '../components/settings/FigmaSettingsCard.vue'
+import FontsSettingsCard from '../components/settings/FontsSettingsCard.vue'
 import PwaSettingsCard from '../components/settings/PwaSettingsCard.vue'
 import UploadSettingsCard from '../components/settings/UploadSettingsCard.vue'
 import { useTabsStore, sectionTabId, type SettingsSubSection } from '../stores/tabsStore'
@@ -151,6 +154,7 @@ import {
   Database,
   Workflow,
   Upload,
+  Type as FontIcon,
   Plug,
   Sparkles,
   Image,
@@ -265,6 +269,7 @@ const subTabs: { key: SettingsSubSection; name: string; icon: any }[] = [
   { key: 'classes', name: 'Classes', icon: Database },
   { key: 'workflows', name: 'Workflows', icon: Workflow },
   { key: 'figma', name: 'Figma', icon: Palette },
+  { key: 'fonts', name: 'Custom fonts', icon: FontIcon },
   { key: 'pwa', name: 'PWA', icon: Smartphone },
   { key: 'uploads', name: 'Form uploads', icon: Upload },
 ]
@@ -306,6 +311,7 @@ const sectionTitles: Record<SettingsSubSection, { title: string; description: st
   classes: { title: 'Data Object Classes', description: 'Define classes and fields, and import them on demand from Pimcore or structured files.' },
   workflows: { title: 'Workflows', description: 'Author publish/review workflows for Data Object classes.' },
   figma: { title: 'Figma Integration', description: 'Figma Personal Access Token configuration for importing designs into the Whoobe One editor.' },
+  fonts: { title: 'Custom fonts', description: 'Fonts of your own, shared by every website of the workspace.' },
   //pwa: { title: 'Mobile App', description: 'Configure Progressive Web App settings, push notification providers, and manifest options per website.' },
   pwa: { title: 'Mobile App', description: 'Publish your website as a mobile app.' },
   uploads: { title: 'Form uploads', description: 'What visitors may send through a form: file types, sizes and where the files go, per website.' },

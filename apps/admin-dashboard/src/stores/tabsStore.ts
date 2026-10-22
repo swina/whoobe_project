@@ -24,7 +24,7 @@ export type WebsiteSubTab = 'settings' | 'paths' | 'templates'
 // A fixed, known-upfront set (docs/plans/UI/settings-ui-plan.md) - unlike
 // objectSubTab's free-form string (which varies per class's locales),
 // this is a real enum, matching AssetSubTab/DocumentSubTab's own pattern.
-export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'workflows' | 'figma' | 'pwa' | 'uploads'
+export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'workflows' | 'figma' | 'fonts' | 'pwa' | 'uploads'
 
 // The Security section: who may sign in and what they may do (Roles/Users/Workspaces, two-factor, sign-in requirements, single sign-on),
 // what is held about people (data subject requests) and what happened (system logs, audit log).
