@@ -1910,6 +1910,10 @@
         "OBJECTS_READ"
       ],
       "mode": "any"
+    },
+    "GET /public/fonts": {
+      "access": "public",
+      "permissions": []
     }
   }
 }

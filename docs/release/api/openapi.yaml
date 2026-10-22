@@ -5063,6 +5063,18 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /public/fonts:
+    get:
+      tags: ["core-api: Custom fonts"]
+      summary: "The custom fonts a published site needs (public woff2 files only), without a session: family, weight, style and the address of the file."
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
   /fonts/{id}:
     delete:
       tags: ["core-api: Custom fonts"]

@@ -400,6 +400,7 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | Method & path | Description |
 | --- | --- |
 | `GET /fonts` | List the custom fonts (woff2 files of the DAM) shared by the websites of the workspace: family, weight, style, the asset, and its address when the file is still public. |
+| `GET /public/fonts` | The custom fonts a published site needs (public woff2 files only), without a session: family, weight, style and the address of the file. |
 | `POST /fonts` | Register a woff2 file of the DAM (public folder) as a face of a font family. |
 | `DELETE /fonts/:id` | Remove a custom font face (the file stays in the DAM). |
 

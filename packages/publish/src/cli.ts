@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { ApiClient } from '@whoobe-cms/renderer'
-import { collectTreeClasses } from '@whoobe-cms/schema'
+import { collectTreeClasses, fontFaceCss } from '@whoobe-cms/schema'
 
 /** The monorepo whose SDK packages are vendored into a generated site. Found from where this generator lives, so the output folder can be
  *  anywhere; the old guess (`<outDir>/../..`, right only for `<repo>/sites/<slug>`) is the fallback. */
@@ -264,6 +264,7 @@ export async function generateNextSite(rawOptions: GenerateOptions): Promise<voi
     const themeCss = themes.map((t) => generateThemeCss(t, t.id === defaultThemeId)).join('\n')
     const themeRawStyles = themes.map((t) => stripThemeBlock(t.styles ?? '')).filter(Boolean).join('\n')
     const fontFamilies = collectFonts(themes, defaultThemeId)
+    const fontFaces = await fetchPublishedFonts(apiUrl)
     const homePaths = computeHomePaths(pages)
     // locales are CMS data: keep plain tags only, everything downstream (code, redirects, <html lang>) relies on it
     website.defaultLocale = safeLocale(website.defaultLocale)
@@ -290,6 +291,7 @@ export async function generateNextSite(rawOptions: GenerateOptions): Promise<voi
       themeCss,
       themeRawStyles,
       fontFamilies,
+      fontFaces,
       pages,
       homePaths,
       singleLocale,
@@ -475,9 +477,73 @@ function fontFamily(f: string): string {
   return f.replace(/\+/g, ' ')
 }
 
+// --- Custom fonts (woff2 files of the DAM, Settings > Custom fonts) ---
+
+/** A face as `GET /public/fonts` lists it; `url` is relative to the server that serves `/dam-asset/`. */
+export interface PublishedFontFace { family: string; weight: number; style: string; url: string }
+/** A face whose file was copied into the site: `file` is its name under `public/fonts/`. */
+export interface SiteFontFace extends PublishedFontFace { file: string }
+
+const MAX_FONT_BYTES = 10 * 1024 * 1024
+
+/** The custom fonts of the workspace. A server without the route, or an unreachable one, gives none: the site is generated as before. */
+export async function fetchPublishedFonts(apiUrl: string): Promise<PublishedFontFace[]> {
+  try {
+    const res = await fetch(`${apiUrl.replace(/\/+$/, '')}/public/fonts`)
+    if (!res.ok) return []
+    const body = await res.json() as { fonts?: unknown }
+    // what the server says goes into CSS and into a download address: take only what has the expected shape (the file is always under /dam-asset/ of the asset server)
+    return (Array.isArray(body.fonts) ? body.fonts : []).filter((f): f is PublishedFontFace => {
+      const c = f as PublishedFontFace | null
+      return !!c && typeof c.family === 'string' && isSafeFontName(c.family) && Number.isInteger(c.weight) && c.weight >= 100 && c.weight <= 900 && c.weight % 100 === 0
+        && typeof c.url === 'string' && /^\/dam-asset\/[A-Za-z0-9._~%/-]+$/.test(c.url) && !c.url.includes('..')
+    })
+  } catch {
+    return []
+  }
+}
+
+/** Copies the font files into `public/fonts/` so the site does not depend on the DAM or on any other host; a file that cannot be read, is too big
+ *  or is not a woff2 is left out with a warning (the page then uses the next font of its stack). */
+export async function installCustomFonts(opts: ScaffoldOptions): Promise<SiteFontFace[]> {
+  const faces = opts.fontFaces ?? []
+  if (!faces.length) return []
+  const base = (opts.assetBaseUrl ?? opts.apiUrl).replace(/\/+$/, '')
+  const dir = join(opts.outDir, 'public/fonts')
+  await mkdir(dir, { recursive: true })
+  const done: SiteFontFace[] = []
+  for (const f of faces) {
+    const file = `${f.family.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'font'}-${f.weight}${f.style === 'italic' ? '-italic' : ''}.woff2`
+    try {
+      const res = await fetch(`${base}${f.url}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const buf = Buffer.from(await res.arrayBuffer())
+      if (buf.length > MAX_FONT_BYTES) throw new Error('larger than 10 MB')
+      if (buf.subarray(0, 4).toString('latin1') !== 'wOF2') throw new Error('not a woff2 file')
+      await writeFile(join(dir, file), buf)
+      done.push({ ...f, file })
+    } catch (err) {
+      console.warn(`Custom font ${f.family} ${f.weight} ${f.style} left out: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+  if (done.length) console.log(`Copied ${done.length} custom font file${done.length === 1 ? '' : 's'} to public/fonts`)
+  return done
+}
+
+/** The `@font-face` rules of the copied fonts; `prefix` is where the site is served from when the CSS is not rewritten by the bundler (Next's basePath). */
+export function customFontsCss(opts: ScaffoldOptions, prefix: string): string {
+  return fontFaceCss((opts.customFonts ?? []).map((f) => ({ family: f.family, weight: f.weight, style: f.style, url: `${prefix}/fonts/${f.file}` })))
+}
+
+/** A theme font that is a custom font has its own @font-face and is not asked of Google (a custom font wins over a Google family of the same name). */
+export function isCustomFamily(opts: ScaffoldOptions, f: string): boolean {
+  const key = fontFamily(f).trim().toLowerCase()
+  return (opts.fontFaces ?? []).some((c) => c.family.trim().toLowerCase() === key)
+}
+
 // --- Scaffolding ---
 
-interface ScaffoldOptions {
+export interface ScaffoldOptions {
   outDir: string
   apiUrl: string
   websiteId: string
@@ -487,6 +553,10 @@ interface ScaffoldOptions {
   /** Raw CSS from theme.styles with @theme/@import stripped, to append after the @theme block. */
   themeRawStyles: string
   fontFamilies: string[]
+  /** The custom fonts of the workspace, as listed by the server (see installCustomFonts). */
+  fontFaces?: PublishedFontFace[]
+  /** Set by the scaffold once their files were copied. */
+  customFonts?: SiteFontFace[]
   pages: Array<{ locale: string; slug: string; title: string }>
   homePaths: Record<string, string>
   revalidate: number
@@ -540,6 +610,7 @@ async function scaffoldNextSite(opts: ScaffoldOptions): Promise<void> {
   for (const d of dirs) {
     await mkdir(join(opts.outDir, d), { recursive: true })
   }
+  opts.customFonts = await installCustomFonts(opts)
 
   // Write files
   await writeFile(join(opts.outDir, 'package.json'), scaffoldPackageJson(opts))
@@ -1019,8 +1090,12 @@ function scaffoldGlobalsCss(opts: ScaffoldOptions): string {
   const themeBlock = themeVars ? `@theme {\n${themeVars}\n}` : ''
 
   const fontCss = opts.fontFamilies.map((f) => `"${fontFamily(f)}"`).join(', ') || 'sans-serif'
+  // Next does not rewrite url() in the CSS: the files are under the site's basePath
+  const faceCss = customFontsCss(opts, opts.basePath && opts.basePath !== '/' ? opts.basePath.replace(/\/+$/, '') : '')
   return [
     '@import "tailwindcss";',
+    '',
+    faceCss,
     '',
     themeBlock,
     '',
@@ -1040,6 +1115,7 @@ function scaffoldGlobalsCss(opts: ScaffoldOptions): string {
 function scaffoldLayout(opts: ScaffoldOptions): string {
   const defaultLocale = (opts.website.defaultLocale as string) ?? 'en'
   const fontLinks = opts.fontFamilies
+    .filter((f) => !isCustomFamily(opts, f))
     .map((f) => `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@300;400;500;600;700&display=swap" />`)
     .join('\n    ')
 
@@ -1633,6 +1709,7 @@ export async function generateNuxtSite(rawOptions: GenerateOptions): Promise<voi
     const themeCss = themes.map((t) => generateThemeCss(t, t.id === defaultThemeId)).join('\n')
     const themeRawStyles = themes.map((t) => stripThemeBlock(t.styles ?? '')).filter(Boolean).join('\n')
     const fontFamilies = collectFonts(themes, defaultThemeId)
+    const fontFaces = await fetchPublishedFonts(apiUrl)
     const homePaths = computeHomePaths(pages)
     website.defaultLocale = safeLocale(website.defaultLocale)
     website.supportedLocales = ((website.supportedLocales as string[] | undefined) ?? [website.defaultLocale as string]).filter((l) => LOCALE_RE.test(l))
@@ -1660,6 +1737,7 @@ export async function generateNuxtSite(rawOptions: GenerateOptions): Promise<voi
       themeCss,
       themeRawStyles,
       fontFamilies,
+      fontFaces,
       pages,
       homePaths,
       singleLocale,
@@ -1715,6 +1793,7 @@ async function scaffoldNuxtSite(opts: ScaffoldOptions): Promise<void> {
   for (const d of dirs) {
     await mkdir(join(opts.outDir, d), { recursive: true })
   }
+  opts.customFonts = await installCustomFonts(opts)
 
   await writeFile(join(opts.outDir, 'package.json'), nuxtPackageJson(opts))
   await mkdir(join(opts.outDir, 'scripts'), { recursive: true })
@@ -1901,7 +1980,7 @@ export default defineNuxtConfig({
     ${opts.basePath && opts.basePath !== '/' ? `baseURL: '${opts.basePath.replace(/\/+$/, '')}/',` : ''}
     head: {
       link: ${JSON.stringify([
-        ...opts.fontFamilies.map((f) => ({
+        ...opts.fontFamilies.filter((f) => !isCustomFamily(opts, f)).map((f) => ({
           rel: 'stylesheet',
           href: `https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@300;400;500;600;700&display=swap`,
         })),
@@ -2001,6 +2080,9 @@ function nuxtGlobalsCss(opts: ScaffoldOptions): string {
 
   return [
     '@import "tailwindcss";',
+    '',
+    // Vite rewrites an absolute url() of the public directory with the app's baseURL
+    customFontsCss(opts, ''),
     '',
     themeBlock,
     '',

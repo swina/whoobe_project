@@ -4402,6 +4402,22 @@ app.get('/public/snippets/:id', async (req: Request, res: Response): Promise<voi
 });
 
 // GET /public/assets/:uuid — resolve a DAM asset UUID to its public URL.
+// The custom fonts a published site needs (the site generators copy the files): only faces whose file is public and still a woff2.
+// Nothing here is secret: the files are public assets, and a face is listed only when it is.
+app.get('/public/fonts', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const faces: { family: string; weight: number; style: string; url: string }[] = [];
+    for (const f of await listCustomFonts()) {
+      const asset = await getAssetByPath(f.assetPath);
+      if (asset && asset.isPublic && asset.fileType === 'WOFF2') faces.push({ family: f.family, weight: f.weight, style: f.style, url: `/dam-asset/${asset.s3Key}` });
+    }
+    res.json({ fonts: faces });
+  } catch (error) {
+    logger.error({ err: error }, 'Public fonts list error');
+    res.status(500).json({ error: 'Failed to list the fonts' });
+  }
+});
+
 // Used by the headless SDK's resolvers when images are stored as UUIDs.
 app.get('/public/assets/:uuid', async (req: Request, res: Response): Promise<void> => {
   try {
