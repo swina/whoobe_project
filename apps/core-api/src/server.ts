@@ -210,6 +210,7 @@ import {
   renderStaticHtml,
   collectMailFonts,
   buildMailDocument,
+  resolveMailFontFaces,
   resolveMailImageUrls,
   resolveMailImageDataUris,
   htmlToPlainText,
@@ -434,7 +435,8 @@ function escapeXml(s: string): string {
 async function renderElementTreeForEmail(content: unknown, embedImages: boolean): Promise<{ html: string; text: string }> {
   const imageUrls = embedImages ? await resolveMailImageDataUris(content) : await resolveMailImageUrls(content);
   const bodyHtml = renderStaticHtml(content, imageUrls);
-  const html = buildMailDocument({ bodyHtml, fonts: collectMailFonts(content) });
+  const fonts = collectMailFonts(content);
+  const html = buildMailDocument({ bodyHtml, fonts, fontFaces: await resolveMailFontFaces(fonts) });
   return { html, text: htmlToPlainText(html) };
 }
 
@@ -6024,9 +6026,11 @@ app.post('/public/forms/:classId/submit', async (req: Request, res: Response): P
             logger.warn({ classId: dataClass.id }, 'Form notify skipped: recipient is not a single address, or over the hourly limit');
           } else if (page) {
             const imageUrls = await resolveMailImageUrls(page.content);
+            const pageFonts = collectMailFonts(page.content);
             const html = buildMailDocument({
               bodyHtml: renderMailTemplate(page.content, submitted, imageUrls),
-              fonts: collectMailFonts(page.content),
+              fonts: pageFonts,
+              fontFaces: await resolveMailFontFaces(pageFonts),
             });
             await sendMail({
               to: notify.recipientEmail,

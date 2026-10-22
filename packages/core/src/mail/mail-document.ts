@@ -12,6 +12,8 @@
 //     clients that support web fonts (Apple Mail, iOS Mail) then load the
 //     exact face the admin picked.
 
+import { fontFaceCss, type FontFace } from '@whoobe-cms/schema';
+
 /** A `font-family` value with a web-safe fallback for a Google Font family
  *  name stored in the editor's `font` field ("Open+Sans" → the quoted
  *  name plus a sans/serif fallback). */
@@ -26,8 +28,11 @@ export function fontFamilyStack(font: string): string {
 /** Wraps an email body fragment in a standalone HTML document with a
  *  `<head>` that loads the given Google Fonts (only for clients that
  *  support web fonts; the fallback stacks above cover the rest). */
-export function buildMailDocument(input: { bodyHtml: string; fonts?: string[] }): string {
-  const families = (input.fonts ?? []).filter(Boolean)
+export function buildMailDocument(input: { bodyHtml: string; fonts?: string[]; fontFaces?: FontFace[] }): string {
+  // a custom font has its own @font-face below and is not asked of Google
+  const custom = new Set((input.fontFaces ?? []).map((f) => f.family.trim().toLowerCase()));
+  const families = (input.fonts ?? []).filter((f) => f && !custom.has(f.replaceAll('+', ' ').trim().toLowerCase()));
+  const faceCss = fontFaceCss(input.fontFaces ?? []);
   // One <link> per family, not one combined request - a single bad/unknown
   // family name can make Google Fonts reject the whole css2 request,
   // taking every family down with it (found live in the editor's font
@@ -42,7 +47,7 @@ export function buildMailDocument(input: { bodyHtml: string; fonts?: string[] })
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">${fontLinks}
+  <meta name="viewport" content="width=device-width, initial-scale=1">${fontLinks}${faceCss ? `\n  <style>${faceCss}</style>` : ''}
   <meta name="color-scheme" content="light">
   <meta name="supported-color-schemes" content="light">
 </head>

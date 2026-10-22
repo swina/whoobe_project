@@ -95,6 +95,7 @@ export * from './mail/token-substitution.js';
 export * from './mail/tailwind-inline.js';
 export * from './mail/mail-document.js';
 export * from './mail/mail-image-urls.js';
+export * from './mail/mail-fonts.js';
 export * from './dam/resolve-content-image-refs.js';
 export * from './mail/html-to-text.js';
 export * from './db/form-uploads-schema.js';

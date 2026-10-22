@@ -9,6 +9,7 @@ import type { MailTemplateRecord } from '../db/mail-templates-records.js';
 import { renderTemplateContent, collectMailFonts } from './render-mail-template.js';
 import { substituteTokensPlain } from './token-substitution.js';
 import { buildMailDocument } from './mail-document.js';
+import { resolveMailFontFaces } from './mail-fonts.js';
 import { resolveMailImageUrls } from './mail-image-urls.js';
 
 export interface SendMailInput {
@@ -180,7 +181,8 @@ export async function sendMailFromTemplate(input: {
     // that support web fonts (Apple Mail) render the exact face the admin
     // picked; the font-family fallback stacks cover the rest.
     const bodyHtml = renderTemplateContent(template.content, context, imageUrls);
-    html = buildMailDocument({ bodyHtml, fonts: collectMailFonts(template.content) });
+    const fonts = collectMailFonts(template.content);
+    html = buildMailDocument({ bodyHtml, fonts, fontFaces: await resolveMailFontFaces(fonts) });
     if (template.body) text = substituteTokensPlain(template.body, context);
   } else {
     // Text bodies go out as text/plain - values must not be HTML-escaped
