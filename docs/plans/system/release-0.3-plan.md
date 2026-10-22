@@ -160,7 +160,7 @@ Done when (for its own plan): a threat model exists before the first line of cod
 
 OAuth2 authorization-code connectors (Google, HubSpot): refresh tokens with the existing encryption, one connector end to end first. SCIM provisioning (it is not in the 0.2 "not to be built" list, but the OIDC plan names it as not built): only if a buyer asks. The translation of the manual. A third-party audit or certification is **not an engineering item**: it needs a budget and a decision of the owner.
 
-## 5.1 Services: installation, training, support
+## 5.1 Services: installation and training (support deferred)
 
 The services are the owner's; this section says what the product must give them, and what is left for the owner to write.
 
@@ -168,7 +168,7 @@ The services are the owner's; this section says what the product must give them,
 |---|---|---|
 | **Installation** | The profiles and the checklist with its acceptance report (A8), the fleet commands (A7), restore and upgrade runbooks that were rehearsed (A6) | The scope of an installation, what the customer must have ready, what is billed |
 | **Training** | The manual and the role guides (Block B), the sandbox, the example sites | The courses, the languages, who trains |
-| **Support** | Logs with a correlation id and the metrics (A3, A4), so a problem can be described and found; public issues for defects of the product | The terms: what is covered, response times, who answers, for how long. Row "Support" of chapter 4.6 of the overview still says "to be stated by us" and is updated when these are decided; the plan does not invent them |
+| **Support** | *Deferred by the owner (2026-10-22): no support offer for now, to be decided later.* Meanwhile: logs with a correlation id and the metrics (A3, A4), so a problem can be described and found; public issues for defects of the product | Nothing for now. When it is decided: what is covered, response times, who answers, for how long. Row "Support" of chapter 4.6 of the overview still says "to be stated by us" and is updated when these are decided; the plan does not invent them |
 
 Defects found during an installation go to the public tracker and are fixed in the product, not in the customer's copy: a customer-specific patch is the way a second product starts.
 
@@ -197,7 +197,7 @@ No new required service (Redis stays optional), no new required variable, no cha
 3. **Hash chain over the audit log.** Yes, if it has value. The value: an auditor of the enterprise, or the agency's client, can check that rows were not altered or removed after the fact, which the database rule alone does not show. It does not prevent a person with database access from rewriting the chain and the tail; the documentation says so, and the export to a sink the operator controls is what covers that case. If a review finds the value smaller than the cost (3-4 days), the item is dropped and only the export stays.
 4. **Per-class permissions.** An ad hoc release of their own, not in 0.3.
 5. **One at a time.** Level 1 items ship one by one, each with its CHANGES entry.
-6. **The business model.** One codebase under the MIT licence; the owner sells installation support and training, nothing else. No edition, no paid modules (section 0.1).
+6. **The business model.** One codebase under the MIT licence; the owner sells installation and training, nothing else; support is deferred. No edition, no paid modules (section 0.1).
 
 ## 9. Not in this plan
 
