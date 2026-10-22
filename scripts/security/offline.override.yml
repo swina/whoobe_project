@@ -1,0 +1,5 @@
+# Makes the stack's network internal: no route to the internet, public names do not resolve (docs/release/operations/private-network.md).
+# Published ports do not work on such a network: internal-bridge.sh puts a forwarder on it.
+networks:
+  default:
+    internal: true
