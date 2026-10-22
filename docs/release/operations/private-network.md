@@ -2,7 +2,7 @@
 
 For a VPN, a LAN or an air-gapped site: the workspace must work although nothing can reach the internet. This page says what the stack
 asks of the internet, what the `private` profile changes, and what is **not** solved yet. It was written from reading the code and from
-the pieces tried one by one; **a stack with no route out has not been run end to end**, so the last section is the list of what to check.
+the pieces tried one by one. **Tried on 2026-10-22** on a throwaway workspace (provisioned with `--profile private`, then removed): the profile values reach `.env.<slug>`, the five images build from the working tree and the seven containers are healthy (`workspaces.sh status`); the built dashboard has no reference to Google Fonts, unsplash or picsum and carries Inter; the editor keeps only the code paths for fonts a theme names and for the picsum default; a woff2 uploaded to the DAM is checked, registered, listed, and copied by the site generator's font step (the copy is byte-identical). **A stack with no route out has not been run**, so the last section is the list of what to check.
 
 ## What the stack asks of the internet
 

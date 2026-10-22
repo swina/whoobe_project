@@ -7004,7 +7004,7 @@ app.post('/whoobe-one/site-wizard/palettes', requireAnyPermission(PERMISSIONS.TH
     const palette = await createWizardPalette({ name: read.name, colors: read.colors });
     res.status(201).json({ palette, warnings: weakPairs(palette.colors as any) });
   } catch (error: any) {
-    if (error?.code === '23505' || /wizard_palettes_name_idx/.test(String(error?.message))) { res.status(409).json({ error: `A palette named "${read.name}" already exists` }); return; }
+    if ((error?.code ?? error?.cause?.code) === '23505') { res.status(409).json({ error: `A palette named "${read.name}" already exists` }); return; }
     logger.error({ err: error }, 'Create wizard palette error');
     res.status(500).json({ error: 'Failed to create the palette' });
   }
@@ -7019,7 +7019,7 @@ app.put('/whoobe-one/site-wizard/palettes/:id', requireAnyPermission(PERMISSIONS
     if (!palette) { res.status(404).json({ error: 'Palette not found' }); return; }
     res.json({ palette, warnings: weakPairs(palette.colors as any) });
   } catch (error: any) {
-    if (error?.code === '23505' || /wizard_palettes_name_idx/.test(String(error?.message))) { res.status(409).json({ error: `A palette named "${read.name}" already exists` }); return; }
+    if ((error?.code ?? error?.cause?.code) === '23505') { res.status(409).json({ error: `A palette named "${read.name}" already exists` }); return; }
     logger.error({ err: error }, 'Update wizard palette error');
     res.status(500).json({ error: 'Failed to update the palette' });
   }
@@ -7062,7 +7062,7 @@ app.post('/fonts', requirePermission(PERMISSIONS.SETTINGS_MANAGE), audited(AUDIT
     const font = await createCustomFont(read.font);
     res.status(201).json({ font });
   } catch (error: any) {
-    if (error?.code === '23505' || /custom_fonts_face_idx/.test(String(error?.message))) { res.status(409).json({ error: `${read.font.family} already has a ${read.font.style} face of weight ${read.font.weight}` }); return; }
+    if ((error?.code ?? error?.cause?.code) === '23505') { res.status(409).json({ error: `${read.font.family} already has a ${read.font.style} face of weight ${read.font.weight}` }); return; }
     logger.error({ err: error }, 'Create font error');
     res.status(500).json({ error: 'Failed to register the font' });
   }
