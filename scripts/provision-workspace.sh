@@ -6,6 +6,10 @@
 #   --profile NAME  Append deploy/profiles/NAME.env to the workspace's env file (and install deploy/profiles/NAME.nginx-http.conf
 #                   if there is one). Profile "sandbox" turns the workspace into the public sandbox
 #                   (docs/release/operations/sandbox.md): limits, disabled features, hardened containers.
+#   --image-version V  Run released images instead of building them: V is a version (0.3.0 or v0.3.0). The images are
+#                   <prefix>-<service>:V (core-api, asset-processor, gateway, admin-dashboard, whoobe-one-spike) and are
+#                   pulled when missing (or already loaded with docker load), nothing is built. Needs --image-prefix.
+#   --image-prefix P   Where they are, e.g. ghcr.io/<owner>/whoobe or registry.internal/whoobe (the name before "-core-api").
 #   --set KEY=VALUE Set or override one value in the env file after the profile (repeatable), e.g. --set ASSET_MAX_COUNT=100
 #   <slug>      Short identifier, lowercase letters/digits/hyphens only
 #               (e.g. "client-a"). Used for the compose project name,
@@ -58,7 +62,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
 usage() {
-  echo "Usage: $0 <slug> <hostname> <index> [--seed-email EMAIL] [--seed-password PASS] [--scheme http|https] [--profile NAME] [--set KEY=VALUE ...]" >&2
+  echo "Usage: $0 <slug> <hostname> <index> [--seed-email EMAIL] [--seed-password PASS] [--scheme http|https] [--profile NAME] [--image-version V --image-prefix P] [--set KEY=VALUE ...]" >&2
   exit 1
 }
 
@@ -72,6 +76,8 @@ SEED_EMAIL="admin@example.com"
 SCHEME=""
 SEED_PASSWORD="$(openssl rand -hex 12)"
 PROFILE=""
+IMAGE_VERSION=""
+IMAGE_PREFIX=""
 SETS=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -79,6 +85,8 @@ while [ $# -gt 0 ]; do
     --seed-password) SEED_PASSWORD="$2"; shift 2 ;;
     --scheme) SCHEME="$2"; shift 2 ;;
     --profile) PROFILE="$2"; shift 2 ;;
+    --image-version) IMAGE_VERSION="${2#v}"; shift 2 ;;
+    --image-prefix) IMAGE_PREFIX="$2"; shift 2 ;;
     --set) SETS+=("$2"); shift 2 ;;
     *) echo "Unknown argument: $1" >&2; usage ;;
   esac
@@ -87,6 +95,9 @@ done
 [[ "$SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "Error: slug must be lowercase letters/digits/hyphens only (got: $SLUG)" >&2; exit 1; }
 [[ -z "$SCHEME" || "$SCHEME" =~ ^https?$ ]] || { echo "Error: --scheme must be http or https (got: $SCHEME)" >&2; exit 1; }
 [[ -z "$PROFILE" || ( "$PROFILE" =~ ^[a-z0-9-]+$ && -f "deploy/profiles/${PROFILE}.env" ) ]] || { echo "Error: unknown profile '$PROFILE' (no deploy/profiles/${PROFILE}.env)" >&2; exit 1; }
+[[ -z "$IMAGE_VERSION" || "$IMAGE_VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { echo "Error: --image-version must be a version or tag such as 0.3.0 (got: $IMAGE_VERSION)" >&2; exit 1; }
+[[ -z "$IMAGE_PREFIX" || "$IMAGE_PREFIX" =~ ^[a-z0-9][a-z0-9._:/-]*$ ]] || { echo "Error: --image-prefix must be a lower case image path such as ghcr.io/owner/whoobe (got: $IMAGE_PREFIX)" >&2; exit 1; }
+{ [ -z "$IMAGE_VERSION" ] && [ -z "$IMAGE_PREFIX" ]; } || { [ -n "$IMAGE_VERSION" ] && [ -n "$IMAGE_PREFIX" ]; } || { echo "Error: --image-version and --image-prefix go together" >&2; exit 1; }
 SET_RE='^[A-Z][A-Z0-9_]*=[^|&\\$[:cntrl:]]*$'   # the value goes through sed and a compose env file: no | & \ $ or control characters
 for kv in "${SETS[@]:-}"; do
   [ -z "$kv" ] || [[ "$kv" =~ $SET_RE ]] || { echo "Error: --set wants KEY=VALUE (upper case key; no | & \\ \$ or control characters in the value); got: $kv" >&2; exit 1; }
@@ -199,6 +210,11 @@ set_env "WS_ASSET_PROCESSOR_PORT" "${P_ASSET}"
 set_env "WS_CORE_API_PORT" "${P_CORE}"
 set_env "WS_WHOOBE_ONE_SPIKE_PORT" "${P_WHOOBE_ONE}"
 
+if [ -n "$IMAGE_VERSION" ]; then
+  set_env "WHOOBE_IMAGE_PREFIX" "${IMAGE_PREFIX}"
+  set_env "WHOOBE_VERSION" "${IMAGE_VERSION}"
+fi
+
 # Profile and --set values go last, so they win over everything above.
 if [ -n "$PROFILE" ]; then
   echo ">>> Applying profile '${PROFILE}' (deploy/profiles/${PROFILE}.env) ..."
@@ -213,7 +229,16 @@ done
 get_env() { grep -E "^$1=" "$ENV_FILE" | head -n1 | cut -d= -f2-; }
 
 echo ">>> Bringing up ws-${SLUG} ..."
-docker compose -p "ws-${SLUG}" --env-file "$ENV_FILE" up -d --build
+if [ -n "$IMAGE_VERSION" ]; then
+  echo ">>> Using released images ${IMAGE_PREFIX}-*:${IMAGE_VERSION} (pulled when missing, nothing built here; the garage image is built or loaded once, see docs/release/operations/private-network.md) ..."
+  # the Garage image is not a release image: build it here when the host does not have it (it needs only the two base images; on a host with no access, docker load it)
+  if [[ "$(get_env COMPOSE_PROFILES)" == *local-s3* ]] && ! docker image inspect whoobe-garage:v2.4.1 >/dev/null 2>&1; then
+    docker compose -p "ws-${SLUG}" --env-file "$ENV_FILE" build garage
+  fi
+  docker compose -p "ws-${SLUG}" --env-file "$ENV_FILE" up -d --no-build
+else
+  docker compose -p "ws-${SLUG}" --env-file "$ENV_FILE" up -d --build
+fi
 
 # Garage (the S3 store of the stack) creates its own key and bucket on first start; wait until it reports healthy.
 echo ">>> Waiting for the S3 store (bucket whoobe-cms-${SLUG}) ..."

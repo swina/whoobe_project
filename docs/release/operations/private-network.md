@@ -47,14 +47,7 @@ replace the two files and reload the proxy. The browsers of your users must trus
 
 ## Not solved yet
 
-- **Installing without the internet.** The compose files have no `image:` for core-api, asset-processor, gateway, the dashboard and the editor,
-  only `build:`, and `provision-workspace.sh` runs `up -d --build`. The released images (built from a tag by `release.yml`, signed and attested)
-  cannot yet be used instead. Until that is done, a private installation needs a mirror of the npm registry and of the Debian and Alpine
-  package repositories reachable from the build, or a build host that does have access, and the images then have to be moved by hand.
-  `postgres`, `valkey` and `nginx` can be loaded with `docker save` / `docker load`.
-  First step done (2026-10-22): the dashboard and the editor no longer need a build per workspace, because they read their addresses, fonts and
-  placeholder mode from the container's environment at start (`/config.js`). Still missing: the `image:` tags, the provisioning and upgrade
-  commands that pull instead of build, and the registry.
+- **Installing without the internet.** Released images can be used instead of a build (2026-10-22): `provision-workspace.sh <slug> <host> <index> --profile private --image-prefix registry.internal/whoobe --image-version 0.3.0` starts the five application images as `<prefix>-core-api:0.3.0`, `-asset-processor`, `-gateway`, `-admin-dashboard` and `-whoobe-one-spike`, pulled when missing (or already loaded with `docker load`), and builds nothing. `workspaces.sh upgrade v0.3.1` moves such a workspace to the next version the same way. The dashboard and the editor take their addresses, fonts and placeholder mode from the environment at start, so one image serves every workspace. What a private host still needs: the images and `postgres`, `valkey` and `nginx` moved in with `docker save` / `docker load` or a registry mirror, and the Garage image (`docker build ./docker/garage` on a host with access, then save/load; the script builds it when it is missing, which needs the `dxflrs/garage` and `alpine` base images). Not done: the release workflow publishing the two new images has not run yet, and `provision-workspace.sh` was tried with images built locally and tagged by hand, not with ones pulled from a registry.
 - **The run itself**: a workspace on a host with no route out, started, passing `scripts/workspaces.sh verify` and the API suite.
 
 ## What to check on a first installation

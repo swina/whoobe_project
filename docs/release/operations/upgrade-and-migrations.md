@@ -7,12 +7,12 @@ numbering and support policy: [release process](../release-process.md). **Status
 
 | Layer | How it changes | Who applies it |
 |---|---|---|
-| Application code and images | new git tag; `docker compose up -d --build` rebuilds the five images | operator |
+| Application code and images | new git tag; `docker compose up -d --build` rebuilds the five images. A workspace provisioned with `--image-version` runs the released images instead: `scripts/workspaces.sh upgrade <tag>` sets `WHOOBE_VERSION` in its env file and starts with `--no-build` (the images are pulled when missing) | operator |
 | Database schema | SQL files in `packages/core/drizzle/`, listed in `meta/_journal.json`; applied **automatically by core-api when it starts** (drizzle `migrate`, in journal order, each once) | core-api |
 | Data backfills | idempotent code at start (for example encryption of an old plaintext secret) | core-api |
 | Configuration | new or changed environment variables, new defaults | operator, from the release notes and `.env.example` |
 | Edge configuration | the nginx routing template (`deploy/nginx/_locations.conf.template`) | operator: `scripts/render-workspace-nginx.sh <slug>` per workspace |
-| Browser builds | `VITE_*` values are baked into the images | rebuild |
+| Browser settings | the dashboard and the editor read `VITE_*` (API addresses, fonts, placeholder mode) from the container's environment at start (`/config.js`); a value baked in at build time is only the fallback | restart the container |
 
 ## 2. Migration policy
 

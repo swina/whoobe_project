@@ -8,7 +8,9 @@
 #   verify                   like status, but the exit status is not zero when a workspace is not running and healthy
 #   backup                   scripts/backup/nightly.sh for each workspace (encrypted database dump + env file + bucket copy)
 #   upgrade <tag> [options]  back up each workspace, check out <tag> ONCE (all workspaces of a host share this tree), rebuild
-#                            and restart each one, wait for it to be healthy
+#                            and restart each one, wait for it to be healthy. A workspace that runs released images
+#                            (WHOOBE_VERSION in its env file, set by provision-workspace.sh --image-version) is moved to
+#                            the images of <tag> (pulled when missing, nothing built)
 #       --canary <slug>      only that workspace; run it again without --canary for the others after you have looked
 #       --no-backup          skip the backup (a workspace is never upgraded when its backup was asked for and failed)
 #       --yes                do not ask for confirmation
@@ -195,7 +197,12 @@ cmd_upgrade() {
   local waited
   for s in "${ready[@]}"; do
     echo ">>> upgrade $s"
-    if ! docker compose -p "ws-$s" --env-file ".env.$s" up -d --build >"/tmp/workspaces-upgrade-$s.log" 2>&1; then
+    local mode=--build
+    if [ -n "$(env_get "$s" WHOOBE_VERSION)" ]; then
+      mode=--no-build
+      sed -i "s|^WHOOBE_VERSION=.*|WHOOBE_VERSION=${tag#v}|" ".env.$s"
+    fi
+    if ! docker compose -p "ws-$s" --env-file ".env.$s" up -d $mode >"/tmp/workspaces-upgrade-$s.log" 2>&1; then
       tail -n 8 "/tmp/workspaces-upgrade-$s.log"
       log_action upgrade "$s" failed "docker compose up failed ($from -> $tag); output in /tmp/workspaces-upgrade-$s.log"; fail "$s"; continue
     fi

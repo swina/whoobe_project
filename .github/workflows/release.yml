@@ -1,8 +1,9 @@
 # Release from a tag vX.Y.Z (docs/release/release-process.md, steps 5 to 7): service images for amd64 and arm64 on ghcr.io,
 # signed with cosign (keyless) and with a build provenance attestation, and a DRAFT GitHub Release with the notes, openapi.yaml and the source SBOM. The draft is
 # published by hand after review. The tag must be annotated and signed (verified by GitHub), or nothing is built. The gates (scripts/release.sh check) are run before tagging, not here.
-# The admin-dashboard and whoobe-one-spike images are NOT published: they bake VITE_* URLs at build time, so each
-# installation builds them (docs/release/operations/upgrade-and-migrations.md, section 1).
+# The admin-dashboard and whoobe-one-spike images are published too: they read their addresses, fonts and placeholder mode
+# from the container's environment at start (/config.js), so one image serves any workspace. The editor is built with
+# base /whoobe-one/, as docker-compose.yml does.
 name: release
 
 on:
@@ -42,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [core-api, asset-processor, gateway, publisher]
+        service: [core-api, asset-processor, gateway, publisher, admin-dashboard, whoobe-one-spike]
     steps:
       - uses: actions/checkout@v7
       - name: Version and image name
@@ -68,6 +69,7 @@ jobs:
           context: .
           target: ${{ matrix.service }}
           platforms: linux/amd64,linux/arm64
+          build-args: ${{ matrix.service == 'whoobe-one-spike' && 'VITE_BASE_URL=/whoobe-one/' || '' }}
           push: true
           tags: |
             ${{ steps.v.outputs.image }}:${{ steps.v.outputs.version }}

@@ -88,9 +88,11 @@ services:
     restart: unless-stopped
 
   core-api:
+    # `image:` names the build below; with released images (WHOOBE_IMAGE_PREFIX + WHOOBE_VERSION in the env file) `up --no-build` pulls them instead
     build:
       context: .
       target: core-api
+    image: ${WHOOBE_IMAGE_PREFIX:-whoobe}-core-api:${WHOOBE_VERSION:-local}
     ports:
       - "${WS_APP_BIND_ADDRESS:-0.0.0.0}:${WS_CORE_API_PORT:-3003}:3003"
     env_file: ${ENV_FILE:-.env}
@@ -110,6 +112,7 @@ services:
     build:
       context: .
       target: asset-processor
+    image: ${WHOOBE_IMAGE_PREFIX:-whoobe}-asset-processor:${WHOOBE_VERSION:-local}
     ports:
       - "${WS_APP_BIND_ADDRESS:-0.0.0.0}:${WS_ASSET_PROCESSOR_PORT:-3002}:3002"
     env_file: ${ENV_FILE:-.env}
@@ -140,6 +143,7 @@ services:
         VITE_GATEWAY_URL: ${VITE_GATEWAY_URL}
         VITE_FONT_FAMILIES: ${VITE_FONT_FAMILIES}
         VITE_WHOOBE_ONE_URL: ${VITE_WHOOBE_ONE_URL:-}
+    image: ${WHOOBE_IMAGE_PREFIX:-whoobe}-admin-dashboard:${WHOOBE_VERSION:-local}
     environment:
       # read at start into /config.js (nginx/render-runtime-config.sh): the same image serves any workspace
       VITE_ASSET_PROCESSOR_URL: ${VITE_ASSET_PROCESSOR_URL:-}
@@ -161,6 +165,7 @@ services:
         VITE_PLACEHOLDER_IMAGES: ${VITE_PLACEHOLDER_IMAGES:-}
         VITE_CORE_API_URL: ${VITE_CORE_API_URL}
         VITE_GATEWAY_URL: ${VITE_GATEWAY_URL}
+    image: ${WHOOBE_IMAGE_PREFIX:-whoobe}-whoobe-one-spike:${WHOOBE_VERSION:-local}
     environment:
       # read at start into /config.js (nginx/render-runtime-config.sh): the same image serves any workspace
       VITE_ASSET_PROCESSOR_URL: ${VITE_ASSET_PROCESSOR_URL:-}
@@ -178,6 +183,7 @@ services:
     build:
       context: .
       target: gateway
+    image: ${WHOOBE_IMAGE_PREFIX:-whoobe}-gateway:${WHOOBE_VERSION:-local}
     ports:
       - "${WS_APP_BIND_ADDRESS:-0.0.0.0}:${WS_GATEWAY_PORT:-3001}:3001"
     env_file: ${ENV_FILE:-.env}
