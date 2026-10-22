@@ -68,14 +68,15 @@ The non-automatic gates are printed as a reminder every time; they are the relea
 4. **Commit and tag**, by hand, as the script prints:
    `git commit -m "Release vX.Y.Z"`, `git tag -s vX.Y.Z -m "Whoobe vX.Y.Z"` (signed: a GPG or SSH key registered on GitHub as a *signing key*; `git config gpg.format ssh` and `user.signingkey` for an SSH key). `release.yml` refuses a lightweight or unverified tag before building anything, `git push origin <branch> --follow-tags`.
 5. **SBOM**: `scripts/release/sbom.sh --images` (CycloneDX for the source tree and the service images, written to `.release/sbom/`); attach to the GitHub Release.
-6. **Publish images** (`release.yml`, on the tag): `core-api`, `asset-processor`, `gateway` and `publisher` are built for amd64 and
+6. **Publish images** (`release.yml`, on the tag): `core-api`, `asset-processor`, `gateway`, `publisher`, `admin-dashboard` and `whoobe-one-spike` are built for amd64 and
    arm64, pushed to `ghcr.io/<owner>/whoobe-<service>:X.Y.Z` (plus `X.Y`), signed by digest with cosign (keyless), given a SLSA build provenance attestation (stored with the image; check with (GitHub CLI 2.49 or later)
    `gh attestation verify oci://ghcr.io/<owner>/whoobe-<service>@<digest> -R <owner>/<repo>`), and the
-   digests are written into the release notes. `admin-dashboard` and `whoobe-one-spike` are **not** published: they bake
-   `VITE_*` URLs at build time, so every installation builds them. The job stops if the tag differs from `package.json`.
+   digests are written into the release notes. `admin-dashboard` and `whoobe-one-spike` read their addresses, fonts and
+   placeholder mode from the container's environment at start (`/config.js`), so one image serves every workspace. The job stops if the tag differs from `package.json`.
 7. **Publish the release**: `release.yml` creates a **draft** GitHub Release with the release notes file of the version (`release-notes-<version>.md` in `docs/release/`, or a
    one-line note if the file is missing), the image digests, `openapi.yaml` and the source SBOM. Add the image SBOMs
-   (step 5) and the CI security reports by hand, then publish the draft after review.
+   (step 5) and the CI security reports by hand, then publish the draft after review. Read the reports first: one that describes a High or Critical
+   finding that is not fixed yet is not attached ([disclosure policy](security/disclosure-policy.md)).
 
 ## 6. Patches and security updates
 
@@ -84,6 +85,7 @@ The non-automatic gates are printed as a reminder every time; they are the relea
   found by the security suites, a regression.
 - For a security fix, the release notes say what was fixed and which versions are affected; supported versions get the
   patch at the same time.
+- **When a finding becomes public** follows the [disclosure policy](security/disclosure-policy.md): a High or Critical finding found by the project is entered in the register, and its test joins the public suite, with the release that fixes it; the release notes get a *Security* section.
 
 ## 7. The documentation as a release artifact
 

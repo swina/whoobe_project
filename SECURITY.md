@@ -27,6 +27,8 @@ Whoobe is maintained by one person, so the process is best effort:
 3. a fix is prepared and released, and the release notes say what was fixed and which versions are affected;
 4. the report is disclosed **after** the fix is available, and you are credited if you wish.
 
+The same applies to what the project finds itself: a High or Critical finding is made public with the release that fixes it ([disclosure policy](docs/release/security/disclosure-policy.md)).
+
 There is no bug bounty.
 
 ## Supported versions

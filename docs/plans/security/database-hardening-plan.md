@@ -15,7 +15,7 @@ Related: `docs/release/security/threat-model.md`, `docs/release/security/finding
 | Transactional DDL and zero-downtime updates | Not verified for our drizzle version, and `CREATE INDEX CONCURRENTLY` cannot run in a transaction. What protects an upgrade today is the expand-only rule and the dump taken before it (section 4). |
 | A compliance ceiling (SOC 2, ISO 27001) | Correct and consistent with what the product says: no third-party certificate. A commercial decision, not part of this plan. |
 
-## 1. Disclosure policy (1 day, no code)
+## 1. Disclosure policy (1 day, no code) - written 2026-10-22: [disclosure-policy.md](../../release/security/disclosure-policy.md)
 
 The "vulnerability window" is real: a test that describes an open defect is already public in the repository, and `known()` keeps CI green while it is open.
 
