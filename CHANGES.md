@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Plan 0.3 A7: font items (interface fonts bundled, uploaded fonts) — 2026-10-22
+- Branch: `master`. Docs only. `release-0.3-plan.md`: two items added to A7 by decision of the owner: interface fonts and icons served by the dashboard always (1 day) and font upload through the DAM with `@font-face` in the editor, the publish and mobile-app CLIs and the mail document, the file travelling with the published site (3-4 days; websites made locally have already been published). Level 1 total 41-57 days. Nothing built yet.
+
 ## Release 0.3 A7: what the stack calls on the internet (private-network profile, first step) — 2026-10-22
 - Branch: `master`. Docs only. `docs/plans/system/release-0.3-plan.md` (A7): result of reading the source for outbound calls. Server: none at start, only operator-configured providers; no breached-password lookup exists. Browser: the dashboard, the editor, the DAM preview and the published/mail outputs load Google Fonts, Material Icons, Unsplash and picsum.photos, which is a gap for a network with no route out. Not run on a stack without internet; the profile file, the font change and that run are still to do.
 
