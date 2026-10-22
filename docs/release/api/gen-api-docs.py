@@ -312,6 +312,11 @@ CORE_API_SECTIONS = [
   ("PUT", "/figma/settings", "Update the Figma access token."),
   ("POST", "/figma/import", "Import a Figma file/frame, converting it into a page's node tree."),
 ]),
+("Custom fonts", [
+  ("GET", "/fonts", "List the custom fonts (woff2 files of the DAM) shared by the websites of the workspace: family, weight, style, the asset, and its address when the file is still public."),
+  ("POST", "/fonts", "Register a woff2 file of the DAM (public folder) as a face of a font family."),
+  ("DELETE", "/fonts/:id", "Remove a custom font face (the file stays in the DAM)."),
+]),
 ("Search (admin)", [
   ("GET", "/whoobe-one/search", "Admin search over the same index as `/public/search`, but session-gated and including drafts and non-indexable pages."),
   ("POST", "/whoobe-one/search/reindex", "Rebuild the whole search index from the source tables (heals drift; indexing hooks are best-effort)."),

@@ -5031,6 +5031,57 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /fonts:
+    get:
+      tags: ["core-api: Custom fonts"]
+      summary: "List the custom fonts (woff2 files of the DAM) shared by the websites of the workspace: family, weight, style, the asset, and its address when the file is still public."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: ["core-api: Custom fonts"]
+      summary: "Register a woff2 file of the DAM (public folder) as a face of a font family."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: See docs/release/api/api-reference.md and the route handler for the exact shape.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /fonts/{id}:
+    delete:
+      tags: ["core-api: Custom fonts"]
+      summary: "Remove a custom font face (the file stays in the DAM)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /whoobe-one/search:
     get:
       tags: ["core-api: Search (admin)"]

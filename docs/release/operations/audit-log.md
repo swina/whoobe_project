@@ -32,6 +32,7 @@ changed nothing (deleting something that is not there, a dry run of an import) l
 | Single sign-on | `user.sso_provision`, `user.sso_link`, `user.sso_roles` (actor "Single sign-on") |
 | Personal data | `data_subject.search`, `data_subject.export`, `data_subject.erase` (a fingerprint of the identifier and the counts, **never the identifier**), `data_class.retention_update`, `retention.purge` (the classes and the counts) |
 | Publication | `website.publish` (a site generation was queued: framework, slug, domain; whether a site key was given, never the key), `website.publish_cancel` |
+| Fonts | `font.create`, `font.delete` (family, weight, style and the path of the woff2 file) |
 | Integrations | `migration_source.create`, `.update`, `.delete`, `.import_classes`, `.import_objects`, `.import_documents`, `.promote_documents`, `.extract_components`; `object_event_subscription.create`, `.update`, `.delete` |
 | The log itself | `audit.purge` (written by the retention job with the number of rows removed) |
 

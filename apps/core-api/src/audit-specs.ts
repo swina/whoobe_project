@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { redactForAudit, REDACTED } from '@whoobe-cms/core/server';
 import {
-  getFigmaSettings, getSecuritySettings, getOwnCdnMirror, publicCdnMirror, getOidcSettings, publicOidcSettings, getMailSettingsFor, getMigrationSource, getObjectEventSubscription, getRole, getUserWithRoles, getWebsite, getWebsitePath,
+  getFigmaSettings, getCustomFont, getSecuritySettings, getOwnCdnMirror, publicCdnMirror, getOidcSettings, publicOidcSettings, getMailSettingsFor, getMigrationSource, getObjectEventSubscription, getRole, getUserWithRoles, getWebsite, getWebsitePath,
   listWebsites, pickAllowed, publicMailSettings,
-  type RoleWithPermissions, type SecuritySettings, type UserWithRoles, type WebsiteRecord,
+  type CustomFontRecord, type RoleWithPermissions, type SecuritySettings, type UserWithRoles, type WebsiteRecord,
 } from '@whoobe-cms/core/server';
 import type { AuditSpec } from './audit.js';
 
@@ -16,6 +16,9 @@ type P = { params: Record<string, string>; body?: any; query?: any };
 // a key the safety net of the audit log would hide is a credential here too
 const looksSecret = (k: string): boolean => (redactForAudit({ [k]: 'x' }) as Record<string, unknown>)[k] === REDACTED;
 const fp = (v: unknown): string => `sha:${createHash('sha256').update(JSON.stringify(v ?? null)).digest('hex').slice(0, 12)}`;
+
+const fontFields = ['family', 'weight', 'style', 'assetPath'] as const;
+const fontLabel = (f?: CustomFontRecord | null) => (f ? `${f.family} ${f.weight}${f.style === 'italic' ? ' italic' : ''}` : undefined);
 
 // ── users and roles ────────────────────────────────────────────────────────
 const userFields = ['email', 'displayName', 'isActive', 'roleNames'] as const;
@@ -192,5 +195,8 @@ export const AUDIT: Readonly<Record<string, AuditSpec<any>>> = {
   subscriptionCreate: { action: 'object_event_subscription.create', kind: 'create', targetType: 'object_event_subscription', snapshot: subSnapshot, fromResponse: (b) => b?.subscription, targetLabel: (s: any) => s?.name } satisfies AuditSpec<any>,
   subscriptionUpdate: { action: 'object_event_subscription.update', kind: 'update', targetType: 'object_event_subscription', snapshot: subSnapshot, loadBefore: loadSub, fromResponse: (b) => b?.subscription, targetLabel: (s: any) => s?.name } satisfies AuditSpec<any>,
   subscriptionDelete: { action: 'object_event_subscription.delete', kind: 'delete', targetType: 'object_event_subscription', snapshot: subSnapshot, loadBefore: loadSub, targetLabel: (s: any) => s?.name } satisfies AuditSpec<any>,
+  // ── custom fonts (woff2 files of the DAM registered for the websites of the workspace)
+  fontCreate: { action: 'font.create', kind: 'create', targetType: 'font', snapshot: (f: CustomFontRecord) => pickAllowed(f as unknown as Record<string, unknown>, fontFields), fromResponse: (b) => b?.font, targetLabel: fontLabel } satisfies AuditSpec<CustomFontRecord>,
+  fontDelete: { action: 'font.delete', kind: 'delete', targetType: 'font', snapshot: (f: CustomFontRecord) => pickAllowed(f as unknown as Record<string, unknown>, fontFields), loadBefore: (req: P) => getCustomFont(req.params.id), targetLabel: fontLabel } satisfies AuditSpec<CustomFontRecord>,
 };
 

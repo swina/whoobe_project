@@ -319,6 +319,11 @@ import {
   SECTOR_LABELS,
   weakPairs,
   listWizardPalettes,
+  listCustomFonts,
+  getCustomFont,
+  createCustomFont,
+  deleteCustomFont,
+  readCustomFontBody,
   createWizardPalette,
   updateWizardPalette,
   deleteWizardPalette,
@@ -7007,6 +7012,49 @@ app.delete('/whoobe-one/site-wizard/palettes/:id', requireAnyPermission(PERMISSI
   } catch (error: any) {
     logger.error({ err: error }, 'Delete wizard palette error');
     res.status(500).json({ error: 'Failed to delete the palette' });
+  }
+});
+
+// Custom fonts: woff2 files of the DAM (a public folder) registered with a family, weight and style, shared by the websites of the workspace.
+// The list is for everyone signed in (the editor needs it); `url` is relative to the origin that serves `/dam-asset/`, `available` is false when the asset
+// was deleted or made private since, so a page does not link a file nobody can read.
+app.get('/fonts', requireAuth, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const fonts = await Promise.all((await listCustomFonts()).map(async (f) => {
+      const asset = await getAssetByPath(f.assetPath);
+      const available = !!asset && asset.isPublic && asset.fileType === 'WOFF2';
+      return { ...f, available, url: available ? `/dam-asset/${asset!.s3Key}` : null };
+    }));
+    res.json({ fonts });
+  } catch (error) {
+    logger.error({ err: error }, 'Fonts list error');
+    res.status(500).json({ error: 'Failed to list the fonts' });
+  }
+});
+
+app.post('/fonts', requirePermission(PERMISSIONS.SETTINGS_MANAGE), audited(AUDIT.fontCreate), async (req: Request, res: Response): Promise<void> => {
+  const read = readCustomFontBody(req.body);
+  if (!read.ok) { res.status(400).json({ error: read.error }); return; }
+  try {
+    const asset = await getAssetByPath(read.font.assetPath);
+    if (!asset || asset.fileType !== 'WOFF2') { res.status(400).json({ error: 'assetPath must be a woff2 file of the DAM' }); return; }
+    if (!asset.isPublic) { res.status(400).json({ error: 'The font file must be in a public folder: a published website cannot read a private file' }); return; }
+    const font = await createCustomFont(read.font);
+    res.status(201).json({ font });
+  } catch (error: any) {
+    if (error?.code === '23505' || /custom_fonts_face_idx/.test(String(error?.message))) { res.status(409).json({ error: `${read.font.family} already has a ${read.font.style} face of weight ${read.font.weight}` }); return; }
+    logger.error({ err: error }, 'Create font error');
+    res.status(500).json({ error: 'Failed to register the font' });
+  }
+});
+
+app.delete('/fonts/:id', requirePermission(PERMISSIONS.SETTINGS_MANAGE), audited(AUDIT.fontDelete), async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id) || !(await deleteCustomFont(req.params.id))) { res.status(404).json({ error: 'Font not found' }); return; }
+    res.json({ success: true });
+  } catch (error) {
+    logger.error({ err: error }, 'Delete font error');
+    res.status(500).json({ error: 'Failed to remove the font' });
   }
 });
 

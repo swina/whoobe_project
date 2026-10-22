@@ -1884,6 +1884,32 @@
         "OBJECT_EVENTS_MANAGE"
       ],
       "audit": "exempt: retries a delivery, not a configuration change"
+    },
+    "GET /fonts": {
+      "access": "auth",
+      "permissions": []
+    },
+    "POST /fonts": {
+      "access": "permission",
+      "permissions": [
+        "SETTINGS_MANAGE"
+      ],
+      "audit": "fontCreate"
+    },
+    "DELETE /fonts/:id": {
+      "access": "permission",
+      "permissions": [
+        "SETTINGS_MANAGE"
+      ],
+      "audit": "fontDelete"
+    },
+    "GET /whoobe-one/editor-base": {
+      "access": "permission",
+      "permissions": [
+        "PAGES_LIST",
+        "OBJECTS_READ"
+      ],
+      "mode": "any"
     }
   }
 }

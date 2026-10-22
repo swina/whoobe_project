@@ -395,6 +395,14 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 | `PUT /figma/settings` | Update the Figma access token. |
 | `POST /figma/import` | Import a Figma file/frame, converting it into a page's node tree. |
 
+### Custom fonts
+
+| Method & path | Description |
+| --- | --- |
+| `GET /fonts` | List the custom fonts (woff2 files of the DAM) shared by the websites of the workspace: family, weight, style, the asset, and its address when the file is still public. |
+| `POST /fonts` | Register a woff2 file of the DAM (public folder) as a face of a font family. |
+| `DELETE /fonts/:id` | Remove a custom font face (the file stays in the DAM). |
+
 ### Search (admin)
 
 | Method & path | Description |

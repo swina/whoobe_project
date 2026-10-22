@@ -27,3 +27,4 @@ export * from './sandbox.js';
 export * from './community.js';
 export * from './ui/tree-dnd.js';
 export * from './uploads/index.js';
+export * from './fonts/custom-fonts.js';

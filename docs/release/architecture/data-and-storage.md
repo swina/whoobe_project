@@ -23,7 +23,7 @@ The schema is defined in `packages/core/src/db/*-schema.ts` and created by 53 SQ
 |---|---|
 | Accounts and access | `users`, `sessions`, `roles`, `permissions`, `role_permissions`, `user_roles` |
 | Websites and pages | `websites`, `website_templates`, `website_paths` (the menus; renamed from `menus` in migration 0017), `whoobe_pages`, `whoobe_pages_staging`, `whoobe_one_templates`, `themes`, `content_versions` |
-| Reusable authoring | `whoobe_one_snippets` (with a `locked` flag, and the block of the Generate Website Wizard it stands for, `wizard_block`, with its name `wizard_label`), `wizard_palettes` (the palettes of the wizard made by a person: name and eight colours), `whoobe_one_kits`, `cms_snippets`, `cms_documents`, `data_components` |
+| Reusable authoring | `whoobe_one_snippets` (with a `locked` flag, and the block of the Generate Website Wizard it stands for, `wizard_block`, with its name `wizard_label`), `custom_fonts` (the woff2 files of the DAM registered as faces of a font family, one row per weight and style, shared by the websites of the workspace), `wizard_palettes` (the palettes of the wizard made by a person: name and eight colours), `whoobe_one_kits`, `cms_snippets`, `cms_documents`, `data_components` |
 | Structured data | `data_classes`, `data_objects`, `data_object_preview_tokens`, `class_workflow_definitions`, `workflow_transition_log`, `search_documents` |
 | Assets | `assets`, `folders` |
 | Forms and mail | `form_uploads`, `mail_settings`, `mail_templates`, `mail_log`, `pwa_subscriptions` |
