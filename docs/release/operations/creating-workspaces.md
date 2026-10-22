@@ -9,6 +9,12 @@ This guide covers the day-to-day operation: provisioning a new workspace, verify
 > file) and `--set KEY=VALUE` (repeatable, applied last). The only profile today is `sandbox`, which turns the workspace into
 > the public demo with limits: see [sandbox.md](sandbox.md).
 
+## Many workspaces on one host
+
+`./scripts/workspaces.sh list|status|verify|backup|upgrade` act on every workspace of the host, or on the slugs you name
+(see [upgrade](upgrade-and-migrations.md), section 3). `verify` exits non-zero when a workspace has a container that is not
+running or not healthy, or whose core-api `/health` does not answer, so it can run from cron.
+
 ## What a workspace gets (current deploy settings)
 
 - **Object storage: Garage** (S3-compatible, `docker/garage`) inside the workspace's own Compose project. It creates its own access key and bucket on first start; nothing to set up by hand. Production-grade alternatives (AWS S3, OCI, an enterprise S3) are a configuration change: see [Using an external S3](#using-an-external-s3-instead-of-garage) and `docs/release/operations/storage-backends.md`. Self-hosting MinIO is discouraged.

@@ -70,7 +70,23 @@ Before: read the release notes of every version you skip ("Behaviour changes to 
 8. **Record** the new tag and the date next to the workspace's backup.
 
 For a fleet of workspaces: do one canary, wait a day, then the rest; they are independent stacks, so a failed upgrade
-affects one customer.
+affects one customer. `scripts/workspaces.sh` does steps 1, 3 and 5 for every workspace of the host (or the ones you name)
+and records each action:
+
+```bash
+./scripts/workspaces.sh status                       # containers and /health of every workspace
+./scripts/workspaces.sh upgrade v0.3.0 --canary client-a
+# ... a day later, after looking at client-a:
+./scripts/workspaces.sh upgrade v0.3.0
+```
+
+All the workspaces of a host are built from **one** checkout of the repository, so the script checks the tag out once;
+a workspace that has not been rebuilt yet keeps running its old containers until its turn. A workspace whose backup
+fails is not upgraded; one that fails does not stop the others, and the exit status is 1 with the slugs listed. Steps 2
+(rehearsal), 4 (configuration), 6 (edge) and 7 (manual checks) stay yours. Each action is a JSON line in
+`$HOME/.whoobe/fleet-actions.log` (`WHOOBE_FLEET_LOG` to change it): time, user (and `SUDO_USER`), command, workspace, result.
+The script was exercised against stand-ins for Docker and curl; run it on three throwaway workspaces before the first
+real fleet upgrade.
 
 ## 4. Rollback
 
