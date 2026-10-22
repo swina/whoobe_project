@@ -74,6 +74,8 @@ export const useEditorStore = defineStore('editor', () => {
   const exportMode = ref<string>('single')
   const preview = ref<boolean | string>(false)
   const fonts = ref<string[]>((import.meta.env.VITE_FONT_FAMILIES ?? '').split('|'))
+  // Faces of the custom fonts (Settings > Custom fonts) whose file can be read; their families are also in `fonts`, so every font list offers them.
+  const customFonts = ref<{ family: string; weight: number; style: string; url: string }[]>([])
   const save = ref<boolean>(true)
   const article = ref<any>(null)
   const customizeTab = ref<any>(null)
@@ -197,6 +199,13 @@ const locale = ref<string>('en')
     stripHtmlComments.value = v
   }
   function setAlpinePresets(v: AlpinePreset[]) { alpinePresets.value = v }
+  function setCustomFonts(v: { family: string; weight: number; style: string; url: string }[]) {
+    customFonts.value = v
+    for (const f of v) {
+      const key = f.family.trim().replace(/\s+/g, '+')
+      if (!fonts.value.includes(key)) fonts.value.push(key)
+    }
+  }
   function setExportMode(v: string) { exportMode.value = v }
   function setPreview(v: boolean | string) { preview.value = v }
   function setSave(v: boolean) { save.value = v }
@@ -245,7 +254,7 @@ const locale = ref<string>('en')
   return {
     mode, settings, elements, document, project, selected, page, current,
     component, action, subaction, level, parent, startTime, autosave, stripHtmlComments, alpinePresets,
-    exportMode, preview, fonts, save, article, customizeTab, embedded, parentOrigin,
+    exportMode, preview, fonts, customFonts, setCustomFonts, save, article, customizeTab, embedded, parentOrigin,
     mailTemplateId, snippetId, kitTemplate, setKitTemplate, snippetMode, snippetLocked, pageThemeId, websiteId, locale, websiteTheme, websiteThemes, templateBody,
     defaultPlaceholderUrl,
     appMode, pwaConfig,

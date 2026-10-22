@@ -1,9 +1,15 @@
 import { watch } from 'vue'
 import { useEditorStore } from '../store/editor'
+import { fontFaceCss } from '@whoobe-cms/core'
+import { fetchCustomFonts, fontKey } from '../custom-fonts-api'
 
 const THEME_STYLE_ID = 'whoobe-theme-styles'
 const CUSTOM_STYLE_ID = 'whoobe-custom-styles'
 const TAILWIND_CLASSES_ID = 'whoobe-tailwind-classes'
+const CUSTOM_FONTS_ID = 'whoobe-custom-fonts'
+
+// The custom fonts are read once per page load, by whichever view uses the theme first; a failure (signed out, no route to the server) leaves the list empty.
+let customFontsLoad: Promise<void> | null = null
 
 /**
  * Keeps the theme's custom CSS the LAST stylesheet of the head. Rules of equal specificity (`body { background: black }`
@@ -38,6 +44,8 @@ function keepCustomStylesLast() {
 export function useThemeStyles(getDoc: () => any) {
   const editor = useEditorStore()
   let fontLinks: HTMLLinkElement[] = []
+
+  customFontsLoad ??= fetchCustomFonts().then((faces) => editor.setCustomFonts(faces)).catch(() => {})
 
   function update() {
     const doc = getDoc()
@@ -85,13 +93,25 @@ export function useThemeStyles(getDoc: () => any) {
     // Isolating requests means one bad name only loses that one font.
     for (const link of fontLinks) link.remove()
     fontLinks = []
+    // A custom font has its own @font-face (below) and is not asked of Google, even when a Google family has the same name.
+    const customKeys = new Set(editor.customFonts.map((c) => fontKey(c.family)))
     for (const f of fontList) {
+      if (customKeys.has(f)) continue
       const link = document.createElement('link')
       link.rel = 'stylesheet'
       link.href = `https://fonts.googleapis.com/css2?family=${f}&display=swap`
       document.head.appendChild(link)
       fontLinks.push(link)
     }
+
+    // --- Custom fonts: every face, so a font used by an element renders whether or not the theme lists it ---
+    const faceCss = fontFaceCss(editor.customFonts)
+    const faceEl = document.getElementById(CUSTOM_FONTS_ID)
+    if (faceCss) {
+      const el = (faceEl as HTMLStyleElement | null) ?? Object.assign(document.createElement('style'), { id: CUSTOM_FONTS_ID })
+      el.textContent = faceCss
+      if (!faceEl) document.head.appendChild(el)
+    } else if (faceEl) faceEl.remove()
 
     // --- Custom styles: inject raw CSS from the active theme ---
     const customExisting = document.getElementById(CUSTOM_STYLE_ID)
@@ -133,6 +153,7 @@ export function useThemeStyles(getDoc: () => any) {
     { deep: true }
   )
   watch(() => getDoc(), update, { immediate: true })
+  watch(() => editor.customFonts, update, { deep: true })
   watch(
     () => editor.websiteTheme,
     update,

@@ -12,7 +12,7 @@
 // reference appearing in multiple nodes/renders isn't re-fetched every time.
 import { reactive } from 'vue'
 
-function getDefaultAssetProcessorUrl(): string {
+export function getDefaultAssetProcessorUrl(): string {
   if (typeof import.meta !== 'undefined' && import.meta.env.VITE_ASSET_PROCESSOR_URL) {
     return import.meta.env.VITE_ASSET_PROCESSOR_URL.replace(/\/+$/, '')
   }
