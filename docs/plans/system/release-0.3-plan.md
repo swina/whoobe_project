@@ -1,8 +1,8 @@
-# Release 0.3: what is left of "what Whoobe does not do" for an enterprise buyer
+# Release 0.3: what is left of "what Whoobe does not do" for those who run it for others
 
 *Date: 2026-10-22. Status: **proposal, decisions of the owner recorded in section 8, nothing built.** The statements about the code were checked in the repository on this date (listed in section 1); the day estimates are ours and were not measured. They assume one developer and no product decision pending.*
 
-Release 0.2 closed most of chapter 4.1, 4.5 and 4.6 of the [overview](../../release/overview/whoobe-overview.md): audit log, OIDC login, mandatory 2FA for chosen roles, a password policy, data subject tooling, readiness and metrics, more events, the release pipeline, the upgrade test and the restore rehearsal. See [release-0.2-plan.md](release-0.2-plan.md). This plan is about what is still missing when a buyer's IT, security and procurement teams read chapter 4 and decide.
+Release 0.2 closed most of chapter 4.1, 4.5 and 4.6 of the [overview](../../release/overview/whoobe-overview.md): audit log, OIDC login, mandatory 2FA for chosen roles, a password policy, data subject tooling, readiness and metrics, more events, the release pipeline, the upgrade test and the restore rehearsal. See [release-0.2-plan.md](release-0.2-plan.md). This plan is about what is still missing when an agency or an operations team, and their security and procurement people, read chapter 4 and decide.
 
 ## 0. Name and objective
 
@@ -10,7 +10,9 @@ Working name: **Operate**. Whoobe can be run by someone else's operations team, 
 
 It serves the verbs of the 0.2 plan: **validate** (rehearsed operations, load), **govern** (audit, sessions, identity), and it adds nothing to **orchestrate**.
 
-## 0.1 The two buyers (decided 2026-10-22)
+## 0.1 The two buyers and one model (decided 2026-10-22)
+
+**One codebase, MIT, no editions and no paid modules.** What the owner sells is **installation support and training**, not software. So there is no "enterprise edition": every item here ships in the same code, off or equal to today's behaviour by default (section 7). What differs is the **deployment profile** (A8) and the **services** around it (section 5.1).
 
 1. **An agency** running several projects for different clients: one workspace per client, run by the agency's people, many workspaces on a few hosts.
 2. **An enterprise** that wants its own stack and governs it: one workspace (or a few: production, staging), run by its own operations team.
@@ -107,7 +109,16 @@ Both items serve the two buyers: the agency lives in the first, a VPN/LAN instal
 | **Workspace label in metrics and logs** | A `workspace` label on `/metrics` and in log lines, from one variable, so one Prometheus or one log store serves many workspaces. | Two workspaces on one scrape show separate series | 1 |
 | **Private-network profile** | A `deploy/profiles/private.env` and a page: TLS from an internal CA instead of ACME, images from a private registry or a mirror, no outbound call needed to start (AI, mail provider, CDN and breached-password lookup off), `OUTBOUND_ALLOW_PRIVATE` as the operator chooses. First step is a check of what the stack calls on the internet at start and at run time. | A stack with no route to the internet starts, passes the health checks and the API suite | 4-6 |
 
-Level 1 total: **32-46 days**.
+### A8. Deployment profiles and an installation checklist
+
+The owner sells installation: a repeatable install is margin, and an install that cannot be restored is a liability.
+
+| Item | Design | Done when | Days |
+|---|---|---|---|
+| **Profiles `enterprise` and `private`** | `deploy/profiles/enterprise.env` (replicas, managed database, metrics on, retention set, mandatory 2FA for the administrator roles, OIDC) and `private.env` (A7), next to the existing `sandbox.env`. Each is only a set of values and a compose overlay: no code path depends on the profile name. | `provision-workspace.sh --profile enterprise` and `--profile private` create a workspace that starts and passes the suites | 2-3 |
+| **Installation checklist and acceptance test** | One page per profile that an installer follows and signs: prerequisites, keys generated and backed up, TLS, backup and a **restore on a spare machine**, monitoring wired, first administrator, SSO. A script runs the checks that can be automated (`scripts/workspaces.sh verify`, A7) and prints a report to hand to the customer. | A fresh host reaches "accepted" following the page only, timed | 3 |
+
+Level 1 total: **37-52 days**.
 
 ## 4. Block B: Level 2, asked often
 
@@ -118,12 +129,13 @@ Level 1 total: **32-46 days**.
 | **More than one OIDC provider; back-channel logout** | Providers become a list, each with its own claim mapping; the back-channel logout token ends the sessions of that identity. | A test with two mock providers; a logout token ends a session | 5 |
 | **CSRF token** | A double-submit token on state-changing routes for cookie sessions; API clients and bearer calls are exempt. | The authorization matrix and the browser suite pass; a request without the token is refused | 3 |
 | **Breached-password check** | k-anonymity range lookup, off by default because it is an outbound call (goes through the outbound guard). | A known-breached password is refused when the setting is on | 2 |
+| **User manual and role guides** | Finish the chapters listed but not written; one short guide per role (editor, publisher, administrator, operator) that can be used as training material. English first; translation is the trainer's, from the same source. | The manual has no listed-but-empty chapter; a new editor completes the guide's tasks on the sandbox | 8-12 |
 | **Per-class permissions** | **Out of this release** (decision 4): an ad hoc release with a plan of its own, because it touches every data route and the route contract. | A separate plan | 10-15 |
 | **Content-Security-Policy** | Report-only first, then enforced; the editor loads the Tailwind browser build, so check whether a strict policy needs a compile step before promising. | Report-only for a release with a collector; no violation on the browser suite | 5-8 |
 | **Upload antivirus** | A `clamd` sidecar behind a compose profile and a setting; off by default. | An EICAR file is refused in the API suite | 3-4 |
 | **Request register and consent records** | A register of data subject requests with a deadline, an owner and a state; consent records for forms. Matching stays by the whole value. | The register shows open and late requests | 4-5 |
 
-Level 2 total: **29-43 days** without per-class permissions.
+Level 2 total: **37-55 days** without per-class permissions.
 
 ## 5. Block C: conditional
 
@@ -146,21 +158,33 @@ Done when (for its own plan): a threat model exists before the first line of cod
 
 ### C2. The rest
 
-OAuth2 authorization-code connectors (Google, HubSpot): refresh tokens with the existing encryption, one connector end to end first. SCIM provisioning (it is not in the 0.2 "not to be built" list, but the OIDC plan names it as not built): only if a buyer asks. The rest of the user manual and its translation. A third-party audit or certification, a commercial support statement and a service level are **not engineering items**: they need a budget and a decision of the owner.
+OAuth2 authorization-code connectors (Google, HubSpot): refresh tokens with the existing encryption, one connector end to end first. SCIM provisioning (it is not in the 0.2 "not to be built" list, but the OIDC plan names it as not built): only if a buyer asks. The translation of the manual. A third-party audit or certification is **not an engineering item**: it needs a budget and a decision of the owner.
+
+## 5.1 Services: installation, training, support
+
+The services are the owner's; this section says what the product must give them, and what is left for the owner to write.
+
+| Service | What the product provides | What the owner writes |
+|---|---|---|
+| **Installation** | The profiles and the checklist with its acceptance report (A8), the fleet commands (A7), restore and upgrade runbooks that were rehearsed (A6) | The scope of an installation, what the customer must have ready, what is billed |
+| **Training** | The manual and the role guides (Block B), the sandbox, the example sites | The courses, the languages, who trains |
+| **Support** | Logs with a correlation id and the metrics (A3, A4), so a problem can be described and found; public issues for defects of the product | The terms: what is covered, response times, who answers, for how long. Row "Support" of chapter 4.6 of the overview still says "to be stated by us" and is updated when these are decided; the plan does not invent them |
+
+Defects found during an installation go to the public tracker and are fixed in the product, not in the customer's copy: a customer-specific patch is the way a second product starts.
 
 ## 6. Order of work
 
 Each item is its own change, with its own CHANGES entry (decision 5).
 
 1. A5 (provenance, signed tags): small, no decision needed.
-2. A7 fleet commands and the workspace label: they make everything after it cheaper to roll out and to check on the agency's many workspaces.
+2. A7 fleet commands and the workspace label, then A8 (profiles and the checklist, which use them): they make everything after it cheaper to roll out and to check on the agency's many workspaces.
 3. A3 failed attempts, Gateway administration and the correlation id; then the hash chain.
 4. A1 challenges and counters out of memory, then the migration lock; the multi-replica test comes with them, not after.
 5. A4 metrics and readiness of the two other services; alert rules.
 6. A1 shared limiters and the Redis backend; A2 the managed-database variant, the reference page and the Helm chart.
 7. A7 private-network profile: start with the check of what the stack calls on the internet.
-8. A6 rehearsals on the reference host, once the above is on `master`.
-9. Block B as demand and time allow.
+8. A6 rehearsals on the reference host, once the above is on `master`; the checklist of A8 is timed on them.
+9. Block B as demand and time allow; the manual and role guides first, since training depends on them.
 
 ## 7. What does not change for the person who runs one replica
 
@@ -173,7 +197,8 @@ No new required service (Redis stays optional), no new required variable, no cha
 3. **Hash chain over the audit log.** Yes, if it has value. The value: an auditor of the enterprise, or the agency's client, can check that rows were not altered or removed after the fact, which the database rule alone does not show. It does not prevent a person with database access from rewriting the chain and the tail; the documentation says so, and the export to a sink the operator controls is what covers that case. If a review finds the value smaller than the cost (3-4 days), the item is dropped and only the export stays.
 4. **Per-class permissions.** An ad hoc release of their own, not in 0.3.
 5. **One at a time.** Level 1 items ship one by one, each with its CHANGES entry.
+6. **The business model.** One codebase under the MIT licence; the owner sells installation support and training, nothing else. No edition, no paid modules (section 0.1).
 
 ## 9. Not in this plan
 
-Native SAML or LDAP; several tenants in one installation; storage that cannot be altered; an operator for Kubernetes; a flow runner; a hosted service; changing the data model of classes. The documentation says so in chapter 4 and should keep saying it.
+Native SAML or LDAP; several tenants in one installation; storage that cannot be altered; an operator for Kubernetes; a flow runner; a hosted service; an enterprise edition, paid modules or a second code line; changing the data model of classes. The documentation says so in chapter 4 and should keep saying it.
