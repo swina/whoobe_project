@@ -64,3 +64,25 @@ export function guessFontFace(fileName: string): GuessedFace {
   const family = base.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[-_]+/g, ' ').replace(/[^A-Za-z0-9 ]/g, '').replace(/\s+/g, ' ').trim().slice(0, 64);
   return { family, weight, style };
 }
+
+/** A face as `GET /public/fonts` lists it; `url` is relative to the server that serves `/dam-asset/`. */
+export interface PublishedFontFace { family: string; weight: number; style: string; url: string }
+
+/**
+ * What a site generator takes from the answer of `GET /public/fonts`: only faces of the expected shape (a family the registry would accept, a weight of
+ * 100..900 in hundreds, an address that is `/dam-asset/...` with no `..`), so what the server says can neither redirect the download nor break out of the CSS.
+ */
+export function readPublishedFontFaces(body: unknown): PublishedFontFace[] {
+  const list = (body as { fonts?: unknown } | null)?.fonts;
+  if (!Array.isArray(list)) return [];
+  return list.filter((f): f is PublishedFontFace => {
+    const c = f as PublishedFontFace | null;
+    return !!c && typeof c.family === 'string' && FAMILY_RE.test(c.family) && Number.isInteger(c.weight) && c.weight >= 100 && c.weight <= 900 && c.weight % 100 === 0
+      && typeof c.url === 'string' && /^\/dam-asset\/[A-Za-z0-9._~%/-]+$/.test(c.url) && !c.url.includes('..');
+  });
+}
+
+/** The name a face's file gets in a generated site: `acme-sans-700-italic.woff2`. */
+export function fontFileName(f: { family: string; weight: number; style: string }): string {
+  return `${f.family.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'font'}-${f.weight}${f.style === 'italic' ? '-italic' : ''}.woff2`;
+}

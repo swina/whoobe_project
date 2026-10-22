@@ -548,6 +548,9 @@ importers:
       '@whoobe-cms/renderer':
         specifier: workspace:*
         version: link:../sdk/renderer
+      '@whoobe-cms/schema':
+        specifier: workspace:^
+        version: link:../sdk/schema
       commander:
         specifier: ^12.0.0
         version: 12.1.0

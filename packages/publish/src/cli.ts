@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { ApiClient } from '@whoobe-cms/renderer'
-import { collectTreeClasses, fontFaceCss } from '@whoobe-cms/schema'
+import { collectTreeClasses, fontFaceCss, readPublishedFontFaces, fontFileName, type PublishedFontFace } from '@whoobe-cms/schema'
 
 /** The monorepo whose SDK packages are vendored into a generated site. Found from where this generator lives, so the output folder can be
  *  anywhere; the old guess (`<outDir>/../..`, right only for `<repo>/sites/<slug>`) is the fallback. */
@@ -479,8 +479,6 @@ function fontFamily(f: string): string {
 
 // --- Custom fonts (woff2 files of the DAM, Settings > Custom fonts) ---
 
-/** A face as `GET /public/fonts` lists it; `url` is relative to the server that serves `/dam-asset/`. */
-export interface PublishedFontFace { family: string; weight: number; style: string; url: string }
 /** A face whose file was copied into the site: `file` is its name under `public/fonts/`. */
 export interface SiteFontFace extends PublishedFontFace { file: string }
 
@@ -491,13 +489,7 @@ export async function fetchPublishedFonts(apiUrl: string): Promise<PublishedFont
   try {
     const res = await fetch(`${apiUrl.replace(/\/+$/, '')}/public/fonts`)
     if (!res.ok) return []
-    const body = await res.json() as { fonts?: unknown }
-    // what the server says goes into CSS and into a download address: take only what has the expected shape (the file is always under /dam-asset/ of the asset server)
-    return (Array.isArray(body.fonts) ? body.fonts : []).filter((f): f is PublishedFontFace => {
-      const c = f as PublishedFontFace | null
-      return !!c && typeof c.family === 'string' && isSafeFontName(c.family) && Number.isInteger(c.weight) && c.weight >= 100 && c.weight <= 900 && c.weight % 100 === 0
-        && typeof c.url === 'string' && /^\/dam-asset\/[A-Za-z0-9._~%/-]+$/.test(c.url) && !c.url.includes('..')
-    })
+    return readPublishedFontFaces(await res.json())
   } catch {
     return []
   }
@@ -513,7 +505,7 @@ export async function installCustomFonts(opts: ScaffoldOptions): Promise<SiteFon
   await mkdir(dir, { recursive: true })
   const done: SiteFontFace[] = []
   for (const f of faces) {
-    const file = `${f.family.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'font'}-${f.weight}${f.style === 'italic' ? '-italic' : ''}.woff2`
+    const file = fontFileName(f)
     try {
       const res = await fetch(`${base}${f.url}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)

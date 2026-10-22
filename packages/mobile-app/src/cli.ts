@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import { ApiClient } from '@whoobe-cms/renderer'
+import { fontFaceCss, readPublishedFontFaces, fontFileName, type PublishedFontFace } from '@whoobe-cms/schema'
 
 export interface GenerateOptions {
   apiUrl: string
@@ -36,6 +37,12 @@ export interface ScaffoldOptions {
   supportedLocales: string[]
   themeCss: string
   fontFamilies: string[]
+  /** The custom fonts of the workspace as the server lists them (copied into the app by scaffoldMobileApp). */
+  fontFaces?: PublishedFontFace[]
+  /** Where the files of the DAM are served from. */
+  assetBaseUrl?: string
+  /** Set by the scaffold once the files were copied: the app carries its fonts, which also work offline. */
+  customFonts?: (PublishedFontFace & { file: string })[]
   pwaConfig?: Record<string, unknown>
   appPageSlugs: string[]
   staticMode: boolean
@@ -306,6 +313,7 @@ export async function generateMobileApp(options: GenerateOptions): Promise<void>
     ? `${themeImports ? themeImports + '\n\n' : ''}@theme {\n${colorVars}\n}\n\n${themeStylesWithoutImports}`
     : ''
   const fontFamilies = defaultTheme?.fonts ?? []
+  const fontFaces = await fetchPublishedFonts(apiUrl)
 
   console.log('Generating mobile app project...')
   const gatewayUrl = options.gatewayUrl ?? ''
@@ -323,6 +331,8 @@ export async function generateMobileApp(options: GenerateOptions): Promise<void>
     supportedLocales,
     themeCss,
     fontFamilies,
+    fontFaces,
+    assetBaseUrl: assetProcessorUrl,
     pwaConfig,
     appPageSlugs,
     staticMode,
@@ -372,11 +382,48 @@ async function copyAlpineCollapse(outDir: string): Promise<void> {
   }
 }
 
+/** The custom fonts of the workspace (`GET /public/fonts`); a server without the route, or unreachable, gives none. */
+export async function fetchPublishedFonts(apiUrl: string): Promise<PublishedFontFace[]> {
+  try {
+    const res = await fetch(`${apiUrl.replace(/\/+$/, '')}/public/fonts`)
+    return res.ok ? readPublishedFontFaces(await res.json()) : []
+  } catch {
+    return []
+  }
+}
+
+const MAX_FONT_BYTES = 10 * 1024 * 1024
+
+/** Copies the font files into `public/fonts/`; one that cannot be read, is over 10 MB or is not a woff2 is left out with a warning. */
+export async function installCustomFonts(opts: ScaffoldOptions): Promise<(PublishedFontFace & { file: string })[]> {
+  const faces = opts.fontFaces ?? []
+  if (!faces.length) return []
+  const base = (opts.assetBaseUrl ?? opts.apiUrl).replace(/\/+$/, '')
+  await mkdir(join(opts.outDir, 'public', 'fonts'), { recursive: true })
+  const done: (PublishedFontFace & { file: string })[] = []
+  for (const f of faces) {
+    const file = fontFileName(f)
+    try {
+      const res = await fetch(`${base}${f.url}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const buf = Buffer.from(await res.arrayBuffer())
+      if (buf.length > MAX_FONT_BYTES) throw new Error('larger than 10 MB')
+      if (buf.subarray(0, 4).toString('latin1') !== 'wOF2') throw new Error('not a woff2 file')
+      await writeFile(join(opts.outDir, 'public', 'fonts', file), buf)
+      done.push({ ...f, file })
+    } catch (err) {
+      console.warn(`  ⚠ Custom font ${f.family} ${f.weight} ${f.style} left out: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+  return done
+}
+
 async function scaffoldMobileApp(opts: ScaffoldOptions): Promise<void> {
   const dirs = ['src/views', 'src/router', 'src/composables', 'src/assets', 'src/components', 'src/scripts', 'public']
   for (const d of dirs) {
     await mkdir(join(opts.outDir, d), { recursive: true })
   }
+  opts.customFonts = await installCustomFonts(opts)
 
   await writeFile(join(opts.outDir, 'package.json'), pkgJson(opts))
   await writeFile(join(opts.outDir, 'vite.config.ts'), viteConfig())
@@ -526,7 +573,9 @@ function themeStyleTags(themeCss: string): string {
 }
 
 function indexHtml(opts: ScaffoldOptions): string {
+  const customKeys = new Set((opts.fontFaces ?? []).map((c) => c.family.trim().toLowerCase()))
   const fontLinks = opts.fontFamilies
+    .filter((f) => !customKeys.has(f.replace(/\+/g, ' ').trim().toLowerCase()))
     .map((f) => `<link href="https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@300;400;500;600;700&display=swap" rel="stylesheet">`)
     .join('\n    ')
   return `<!DOCTYPE html>
@@ -807,7 +856,9 @@ function mainCss(opts: ScaffoldOptions): string {
   // wrapped an @import (which CSS requires to precede every other
   // statement) inside a second, redundant @theme{} block, producing
   // invalid nested CSS.
-  return `/* Tailwind v4 browser runtime is loaded via <script> in index.html */
+  // Vite rewrites an absolute url() of the public directory (the app is served from a relative base inside Capacitor)
+  const faceCss = fontFaceCss((opts.customFonts ?? []).map((f) => ({ family: f.family, weight: f.weight, style: f.style, url: `/fonts/${f.file}` })))
+  return `${faceCss ? faceCss + '\n\n' : ''}/* Tailwind v4 browser runtime is loaded via <script> in index.html */
 /* Theme variables (colors, fonts, custom theme CSS) are inlined via index.html's <style id="theme-styles"> */
 
 /* Defaults only. They sit in the lowest layer ("defaults", declared first in index.html): a theme's body rule is usually

@@ -1,6 +1,6 @@
 // Custom fonts (docs/plans/system/release-0.3-plan.md, A7): what a person may register and the CSS written for it.
 import { describe, it, expect } from 'vitest'
-import { readCustomFontBody, fontFaceCss, guessFontFace } from '../../../packages/core/src/fonts/custom-fonts'
+import { readCustomFontBody, fontFaceCss, guessFontFace, readPublishedFontFaces, fontFileName } from '../../../packages/core/src/fonts/custom-fonts'
 
 describe('readCustomFontBody', () => {
   it('takes a family, a weight, a style and the asset; weight and style default', () => {
@@ -55,5 +55,22 @@ describe('guessFontFace', () => {
     expect(guessFontFace('Acme-Condensed.woff2').family).toBe('Acme Condensed')
     const g = guessFontFace('we!rd--na$me-Bold.woff2')
     expect(readCustomFontBody({ ...g, assetPath: 'a' }).ok).toBe(true)
+  })
+})
+
+describe('readPublishedFontFaces and fontFileName (what the site generators take from the server)', () => {
+  it('keeps only faces of the expected shape', () => {
+    const ok = { family: 'Acme Sans', weight: 400, style: 'normal', url: '/dam-asset/a/b.woff2' }
+    const bad = [
+      { ...ok, url: 'https://evil.example/x' }, { ...ok, url: '//evil.example/x' }, { ...ok, url: '/dam-asset/../x' }, { ...ok, url: '/dam-asset/x y' },
+      { ...ok, family: 'a"}b' }, { ...ok, weight: 450 }, { ...ok, weight: 1e21 }, { ...ok, weight: '400' }, null, 'x', 5,
+    ]
+    expect(readPublishedFontFaces({ fonts: [ok, ...bad] })).toEqual([ok])
+    expect(readPublishedFontFaces(null)).toEqual([])
+    expect(readPublishedFontFaces({ fonts: 'x' })).toEqual([])
+  })
+  it('names a file from its face', () => {
+    expect(fontFileName({ family: 'Acme Sans', weight: 700, style: 'italic' })).toBe('acme-sans-700-italic.woff2')
+    expect(fontFileName({ family: 'Acme', weight: 400, style: 'normal' })).toBe('acme-400.woff2')
   })
 })
