@@ -69,7 +69,7 @@ The non-automatic gates are printed as a reminder every time; they are the relea
    `git commit -m "Release vX.Y.Z"`, `git tag -s vX.Y.Z -m "Whoobe vX.Y.Z"` (signed: a GPG or SSH key registered on GitHub as a *signing key*; `git config gpg.format ssh` and `user.signingkey` for an SSH key). `release.yml` refuses a lightweight or unverified tag before building anything, `git push origin <branch> --follow-tags`.
 5. **SBOM**: `scripts/release/sbom.sh --images` (CycloneDX for the source tree and the service images, written to `.release/sbom/`); attach to the GitHub Release.
 6. **Publish images** (`release.yml`, on the tag): `core-api`, `asset-processor`, `gateway` and `publisher` are built for amd64 and
-   arm64, pushed to `ghcr.io/<owner>/whoobe-<service>:X.Y.Z` (plus `X.Y`), signed by digest with cosign (keyless), given a SLSA build provenance attestation (stored with the image; check with
+   arm64, pushed to `ghcr.io/<owner>/whoobe-<service>:X.Y.Z` (plus `X.Y`), signed by digest with cosign (keyless), given a SLSA build provenance attestation (stored with the image; check with (GitHub CLI 2.49 or later)
    `gh attestation verify oci://ghcr.io/<owner>/whoobe-<service>@<digest> -R <owner>/<repo>`), and the
    digests are written into the release notes. `admin-dashboard` and `whoobe-one-spike` are **not** published: they bake
    `VITE_*` URLs at build time, so every installation builds them. The job stops if the tag differs from `package.json`.
