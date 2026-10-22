@@ -6,6 +6,7 @@
       </div>
       <div class="text-5xl font-bold text-slate-200 light:text-slate-400 tracking-tight font-mono">whoobe</div>
       <div class="text-slate-400">Unified Architecture</div>
+      <div class="lg:max-w-1/3 text-4xl text-center font-bold text-sky-300 light:text-slate-400 tracking-tight font-mono">One platform instead of the glue between your CMS, your data and your systems.</div>
     </div>
     <!-- Header Banner -->
     <!--<div class="flex flex-col md:flex-row md:items-center justify-between p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 light:from-white light:via-indigo-50 light:to-white border border-slate-800 light:border-slate-200 shadow-xl relative overflow-hidden">
