@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Release 0.3 A5: build provenance and signed tags in release.yml — 2026-10-22
+- Branch: `master`. `.github/workflows/release.yml`: a first job `tag` fails the run unless the pushed tag is annotated and GitHub reports its signature as verified; the image jobs now need it, have `attestations: write` and attest the pushed digest with `actions/attest-build-provenance@v2` (stored with the image). Docs: `release-process.md` (steps 4 and 6: `git tag -s`, `gh attestation verify`), `security/supply-chain.md` (section 5 and gaps), overview 4.6, plan A5 stated as done. **Not run**: it takes effect at the next tag; the owner must register a signing key on GitHub first, or that release stops at the `tag` job.
+
 ## Plan 0.3: support is deferred — 2026-10-22
 - Branch: `master`. `docs/plans/system/release-0.3-plan.md` (5.1, decision 6): the owner defers any support offer; installation and training remain the only services. The "Support" row of chapter 4.6 of the overview stays as it is. Docs only.
 

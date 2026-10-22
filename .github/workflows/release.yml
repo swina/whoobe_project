@@ -1,6 +1,6 @@
 # Release from a tag vX.Y.Z (docs/release/release-process.md, steps 5 to 7): service images for amd64 and arm64 on ghcr.io,
-# signed with cosign (keyless), and a DRAFT GitHub Release with the notes, openapi.yaml and the source SBOM. The draft is
-# published by hand after review. The gates (scripts/release.sh check) are run before tagging, not here.
+# signed with cosign (keyless) and with a build provenance attestation, and a DRAFT GitHub Release with the notes, openapi.yaml and the source SBOM. The draft is
+# published by hand after review. The tag must be annotated and signed (verified by GitHub), or nothing is built. The gates (scripts/release.sh check) are run before tagging, not here.
 # The admin-dashboard and whoobe-one-spike images are NOT published: they bake VITE_* URLs at build time, so each
 # installation builds them (docs/release/operations/upgrade-and-migrations.md, section 1).
 name: release
@@ -13,14 +13,32 @@ permissions:
   contents: read
 
 jobs:
+  tag:
+    name: signed tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: The tag is annotated and its signature is verified by GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ref="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$GITHUB_REF_NAME")"
+          [ "$(echo "$ref" | jq -r .object.type)" = tag ] || { echo "$GITHUB_REF_NAME is a lightweight tag: use git tag -s (docs/release/release-process.md, step 4)" >&2; exit 1; }
+          v="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$(echo "$ref" | jq -r .object.sha)" --jq .verification)"
+          [ "$(echo "$v" | jq -r .verified)" = true ] || { echo "signature of $GITHUB_REF_NAME not verified: $(echo "$v" | jq -r .reason)" >&2; exit 1; }
+
   images:
     name: image ${{ matrix.service }}
+    needs: tag
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
       contents: read
       packages: write
-      id-token: write   # cosign keyless
+      id-token: write       # cosign keyless and build provenance
+      attestations: write   # build provenance
     strategy:
       fail-fast: false
       matrix:
@@ -63,6 +81,12 @@ jobs:
       - uses: sigstore/cosign-installer@v3
       - name: Sign the image by digest
         run: cosign sign --yes "${{ steps.v.outputs.image }}@${{ steps.push.outputs.digest }}"
+      - name: Build provenance (SLSA), stored with the image
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ steps.v.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
       - name: Record the digest
         run: echo "${{ matrix.service }} ${{ steps.v.outputs.image }}@${{ steps.push.outputs.digest }}" > digest-${{ matrix.service }}.txt
       - uses: actions/upload-artifact@v7

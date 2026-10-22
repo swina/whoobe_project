@@ -83,7 +83,7 @@ Follows the six steps already written in `capacity-and-scaling.md` section 4, in
 | OpenTelemetry tracing, off by default, for core-api and gateway, using the correlation id. | A trace of a page publish shows the services it crossed | 4-5 |
 | A log retention policy: what is kept, where, for how long, and the setting for it. | Documented; `LOG_RETENTION_DAYS` applied to the files Whoobe writes itself | 1-2 |
 
-### A5. Supply chain
+### A5. Supply chain (implemented 2026-10-22, untested until the next tag)
 
 | Item | Done when | Days |
 |---|---|---|
