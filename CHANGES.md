@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Docs: custom fonts in the settings guide, plan status — 2026-10-22
+- Branch: `master`. Docs only. `settings/settings-guide.md`: the "Custom fonts" row (what to upload, where the files go, which outputs use them and how, the licence note) and the permission (`settings:manage`; the list is readable by anyone signed in). `release-0.3-plan.md` (A7, uploaded fonts): what was built and, stated apart, what was not tried.
+
 ## Email: custom fonts as @font-face (A7, uploaded fonts, seventh piece) — 2026-10-22
 - Branch: `master`. `buildMailDocument` takes `fontFaces`: an `@font-face` per face in a `<style>` of the head, and no Google `<link>` for a family that has a face. `resolveMailFontFaces` (`packages/core/src/mail/mail-fonts.ts`) finds the custom fonts a template uses and gives each file the same public address an email image gets (`resolveImageRef`: needs a public origin, `S3_PUBLIC_BASE_URL`; without one there is no face and the mail is as before). The three places that build a mail document use it: `sendMailFromTemplate` (`mailer.ts`), the three render-for-email endpoints (`renderElementTreeForEmail`) and the form notification in core-api. Only Apple Mail and iOS Mail load web fonts; the other clients take the fallback stack, as already documented in `mail-document.ts`. Tests: `mail-fonts.test.ts` (3) pass; typecheck of core and core-api passes; not run on a real send.
 

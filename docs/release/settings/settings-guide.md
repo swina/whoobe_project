@@ -11,6 +11,7 @@ Where to change what, in the dashboard. Each card is protected by the permission
 | **Classes** | *Classes*: define Data Classes and their fields, view and list layouts ([data model](../data/data-model.md)); *Pimcore*: sources for importing classes, objects and documents from a Pimcore installation (credentials stored encrypted); *File*: placeholder for CSV, JSON and XLSX import, not implemented |
 | **Workflows** | The workflow of a Data Class: places, transitions, who may trigger them, whether a transition publishes ([data model](../data/data-model.md), section 5) |
 | **Figma** | The Figma access token used by the Figma import *(beta)*; the token is stored encrypted |
+| **Custom fonts** | Your own fonts (`.woff2`), shared by every website of the workspace. Choose all the files of a family together: the family, weight and style are guessed from the file names and can be corrected before you add them. The files are kept in the DAM folder `/public/fonts` (they must be public: a published site cannot read a private file) and are listed in the editor's font lists. A published site, a mobile app and a form-notification email use them: the site and the app **carry a copy of the files**, so they work without Google Fonts or the DAM; an email links the public address of the file, and only mail clients that load web fonts (Apple Mail, iOS Mail) show it. Only upload fonts you hold a web licence for. |
 | **PWA** | Per website: the app settings, the **push notification provider** (self-hosted with automatically generated VAPID keys, or a provider such as OneSignal) and a **preview of the generated mobile app** |
 | **Form uploads** | Per website: whether forms accept files, which types (only those whose content can be verified), the maximum size and number of files, and the default private folder in the library |
 
@@ -53,7 +54,7 @@ workspaces get their own generated `.env` file ([creating workspaces](../operati
 | Area | Permission |
 |---|---|
 | General (placeholder, autosave, comments, logging) | `objects:write` |
-| Form uploads, AI, Figma, mail | `settings:manage` |
+| Form uploads, AI, Figma, custom fonts, mail | `settings:manage` (anyone signed in can see the list of fonts, the editor needs it) |
 | DAM rules, PWA | the asset-processor and website routes behind them; the exact permission of each route is in the [API reference](../api/api-reference.md) |
 | Users and roles | `users:manage` |
 | Workflows | `workflows:manage` |
