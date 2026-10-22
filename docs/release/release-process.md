@@ -71,7 +71,7 @@ The non-automatic gates are printed as a reminder every time; they are the relea
 6. **Publish images** (`release.yml`, on the tag): `core-api`, `asset-processor`, `gateway`, `publisher`, `admin-dashboard` and `whoobe-one-spike` are built for amd64 and
    arm64, pushed to `ghcr.io/<owner>/whoobe-<service>:X.Y.Z` (plus `X.Y`), signed by digest with cosign (keyless), given a SLSA build provenance attestation (stored with the image; check with (GitHub CLI 2.49 or later)
    `gh attestation verify oci://ghcr.io/<owner>/whoobe-<service>@<digest> -R <owner>/<repo>`), and the
-   digests are written into the release notes. `admin-dashboard` and `whoobe-one-spike` read their addresses, fonts and
+   digests are written into the release notes. Verify a signature with `cosign verify --certificate-identity-regexp '^https://github.com/<owner>/<repo>/\.github/workflows/release\.yml@refs/tags/vX\.Y\.Z$' --certificate-oidc-issuer https://token.actions.githubusercontent.com ghcr.io/<owner>/whoobe-<service>@<digest>` (tried on 2026-10-23 with a trial tag, all six images). `admin-dashboard` and `whoobe-one-spike` read their addresses, fonts and
    placeholder mode from the container's environment at start (`/config.js`), so one image serves every workspace. The job stops if the tag differs from `package.json`.
 7. **Publish the release**: `release.yml` creates a **draft** GitHub Release with the release notes file of the version (`release-notes-<version>.md` in `docs/release/`, or a
    one-line note if the file is missing), the image digests, `openapi.yaml` and the source SBOM. Add the image SBOMs
