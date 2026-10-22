@@ -60,6 +60,16 @@ does not make the earlier days public retroactively. Findings already in the reg
    release notes, tag.
 4. Delete CI artifacts that described it, if any (above).
 
+The commit that fixes a High or Critical finding is public the moment it reaches `master`, whatever its title says: anyone reading the diff (a fork that
+syncs, a watcher) can see what it closes. So the advisory is published, the fork merged, the tag pushed and the images released **in one sitting**, with the
+release notes already written; the fix is never pushed on its own days before the release.
+
+## Contributions from outside
+
+A pull request from a fork that fixes a High or Critical defect in public would disclose it. When one arrives, or a contributor mentions a security
+problem in an issue or a pull request, the answer is the one of `SECURITY.md`: ask to report it privately (the Security tab, *Report a vulnerability*,
+or the email), close or convert the public thread without repeating the details, and handle it as any other report. The contributor is credited if they wish.
+
 ## Not covered
 
 A vulnerability in a dependency that has a public advisory is not secret: it follows the normal process (`pnpm audit`, the supply-chain page).
