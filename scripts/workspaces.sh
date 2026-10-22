@@ -197,13 +197,16 @@ cmd_upgrade() {
   local waited
   for s in "${ready[@]}"; do
     echo ">>> upgrade $s"
-    local mode=--build
-    if [ -n "$(env_get "$s" WHOOBE_VERSION)" ]; then
+    local mode=--build prev_version
+    prev_version="$(env_get "$s" WHOOBE_VERSION)"
+    if [ -n "$prev_version" ]; then
       mode=--no-build
       sed -i "s|^WHOOBE_VERSION=.*|WHOOBE_VERSION=${tag#v}|" ".env.$s"
     fi
     if ! docker compose -p "ws-$s" --env-file ".env.$s" up -d $mode >"/tmp/workspaces-upgrade-$s.log" 2>&1; then
       tail -n 8 "/tmp/workspaces-upgrade-$s.log"
+      # the env file must keep naming the version that is running, or the next restart asks for images that are not there
+      [ -n "$prev_version" ] && sed -i "s|^WHOOBE_VERSION=.*|WHOOBE_VERSION=${prev_version}|" ".env.$s"
       log_action upgrade "$s" failed "docker compose up failed ($from -> $tag); output in /tmp/workspaces-upgrade-$s.log"; fail "$s"; continue
     fi
     waited=0
