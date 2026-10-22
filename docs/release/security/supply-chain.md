@@ -68,9 +68,9 @@ licences (and a privacy consideration, see [data protection](data-protection.md)
 | Claim | Today |
 |---|---|
 | The tag is the reviewed source | git tag; **tags and commits are not GPG/Sigstore-signed** |
-| The images match the tag | images are **built and pushed by hand** to `ghcr.io`; the release workflow (`release.yml`) that builds them from the tag is not written yet |
-| The images are signed | **no** (no cosign signature, no SLSA provenance attestation) |
-| Images pinned by digest in the release notes | planned (the release process records digests); not automated |
+| The images match the tag | images are built from the tag by `release.yml` (amd64 and arm64) and pushed to `ghcr.io` |
+| The images are signed | **yes**, by digest with cosign (keyless, GitHub OIDC); **no** SLSA provenance attestation |
+| Images pinned by digest in the release notes | the digests are appended to the draft release notes by `release.yml` |
 | Reproducible builds | the inputs are pinned (lockfile, digests) but a bit-for-bit reproduction has not been checked |
 
 Until `release.yml` exists, a consumer who needs assurance should build from the tag themselves
@@ -87,6 +87,5 @@ Until `release.yml` exists, a consumer who needs assurance should build from the
 
 ## 7. Gaps (candidates for the next releases)
 
-Automated release workflow with image build from the tag, digests and provenance (SLSA) and cosign signatures; SBOM
-attached automatically; a licence report with an allow-list policy; signed commits/tags; a dependency-review check on
+A provenance attestation (SLSA) for the images; a licence report with an allow-list policy; signed commits/tags; a dependency-review check on
 pull requests; scanning of the generated sites' dependencies.

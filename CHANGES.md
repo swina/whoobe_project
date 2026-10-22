@@ -1,5 +1,9 @@
 # Release v0.2.0 — 2026-10-19
 
+## Docs: statements on metrics, health, image signing and password/MFA brought in line with the code — 2026-10-22
+- Branch: `master`. Checked the stale claims of `overview/whoobe-overview.md` and `security/supply-chain.md` against the code: core-api has `GET /metrics` (`apps/core-api/src/server.ts`, off unless `METRICS_TOKEN`), `/health` answers 503 when the database is down and `/health/live` is the liveness probe, `.github/workflows/release.yml` builds the images from a tag and signs them with cosign (keyless) and attaches the source SBOM (no SLSA attestation), the password policy has an optional three-of-four classes rule (`packages/core/src/auth/password-policy.ts`) and MFA can be required for chosen roles (`requireMfaRoleIds`).
+- `overview/whoobe-overview.md` (section 4.1 two-factor and password rows, 4.2 metrics row, 4.6 images row) and `security/supply-chain.md` (section 5 rows, section 7 gaps) rewritten accordingly. The release notes of 0.1.0 and 0.1.1 are historical and left as they are. Docs only, no code changed.
+
 ## Sandbox reset: the build cache is capped by space, not by age — 2026-10-22
 - Branch: `master`. The prune added on 2026-10-21 (`--filter until=48h`) ran at every reset ("old build cache removed" in the journal) and freed nothing: a day after the manual prune the host again had 20.7 GB of build cache (15.7 GB reclaimable), all of it younger than 48 h (a cold deploy build plus a build every 3 h). `reset.sh` now runs `docker builder prune -f --reserved-space 4GB --max-used-space 8GB` (Docker 29 flags, `--keep-storage` is gone): at most 8 GB, the 4 GB most recently used always kept. Still not fatal and after the sandbox is up. `docs/release/operations/sandbox.md` says why. Reaches the host with the next deploy.
 
