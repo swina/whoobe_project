@@ -60,12 +60,13 @@ all_workspaces() {
   done
 }
 
-# containers <slug>: "running total notHealthy"
+# containers <slug>: "running total notHealthy". A container that ran once and exited with code 0 (garage-perms) is done, not down.
 containers() {
-  local out total=0 running=0 bad=0 state health
-  out="$(docker compose -p "ws-$1" --env-file ".env.$1" ps -a --format '{{.State}}|{{.Health}}' 2>/dev/null)" || { echo "? ? ?"; return 1; }
-  while IFS='|' read -r state health; do
+  local out total=0 running=0 bad=0 state health code
+  out="$(docker compose -p "ws-$1" --env-file ".env.$1" ps -a --format '{{.State}}|{{.Health}}|{{.ExitCode}}' 2>/dev/null)" || { echo "? ? ?"; return 1; }
+  while IFS='|' read -r state health code; do
     [ -n "$state" ] || continue
+    [ "$state" = exited ] && [ "$code" = 0 ] && continue
     total=$((total + 1))
     [ "$state" = running ] && running=$((running + 1))
     case "$health" in unhealthy|starting) bad=$((bad + 1)) ;; esac
