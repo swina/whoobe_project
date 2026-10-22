@@ -1,5 +1,9 @@
 # Release v0.2.0 — 2026-10-19
 
+## Browser check of the dashboard and the editor on an isolated workspace — 2026-10-22
+- Branch: `master`. Throwaway workspace `img-t4` (released-style images, `--profile private`, internal network + `internal-bridge.sh`, through the shared nginx proxy), removed afterwards. Chromium via the project's Playwright: all requests of a session (login, five dashboard routes, the editor) went to `localhost`; no failed request, no page error; the editor showed the local grey placeholder; a woff2 uploaded and registered through the API became an `@font-face` in the editor and loaded from `/dam-asset/`. `GET /fonts` through the proxy answers 401 from core-api (the nginx fix works).
+- **Found, not fixed:** behind the workspace nginx, opening or refreshing a dashboard route whose name is also a core-api prefix (`/settings`, `/pages`, `/documents`) reaches core-api (`Cannot GET /settings`, 404/401 JSON) instead of the dashboard: the regex location for core-api routes takes it before the SPA. In-app navigation works (no request is made). Needs a rule for browser navigations to those exact paths (`Sec-Fetch-Dest: document` is not enough alone: OIDC login, previews and published docs sites are navigations to core-api too). Recorded in `operations/private-network.md`.
+
 ## Plan: database hardening and disclosure policy — 2026-10-22
 - Branch: `master`. New `docs/plans/security/database-hardening-plan.md`: the overview `Security-Analysis-Overview.md` read against the code. What it gets wrong about the current state (gateway and RBAC, the audit log, `SECURITY.md` disclosure after the fix), a disclosure policy for High and Critical findings, separate database roles (migration, gateway, asset-processor; today each workspace user is the superuser of its own cluster), why row-level security waits, and a check of how migrations are applied. A proposal; nothing is built.
 
