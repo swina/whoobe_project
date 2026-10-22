@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Plan 0.3 A7: what the DAM does with a font file today — 2026-10-22
+- Branch: `master`. Docs only. Read in `apps/asset-processor/src/server.ts` and `packages/core/src` (nothing run): the DAM upload accepts any extension (a `.woff2` is accepted), without a content check and with the browser-sent type; no font type is known to `getFileTypeFromFilename`; `/dam-asset/*` allows any origin for public assets (CORS), which fonts need; a private-folder asset needs a session. Recorded in the uploaded-fonts row of `release-0.3-plan.md`.
+
 ## Editor: Inter ships with the app (A7, private network) — 2026-10-22
 - Branch: `master`. `apps/whoobe-one-spike`: `@fontsource/inter` ^5.3.0 added and imported in `main.ts` (latin and latin-ext, weights 300-700) in place of the `<link>` to Google Fonts that `main.ts` created for the interface font. The per-family links for the fonts chosen for content (`VITE_FONT_FAMILIES`, `useThemeStyles.ts`) are unchanged: they come with the uploaded-fonts item. Typecheck and `vite build` pass; the owner looked at the dashboard and the editor in a browser and they looked right (online: this does not show the no-route-out case).
 
