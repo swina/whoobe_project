@@ -23,6 +23,7 @@ export function getFileTypeFromFilename(filename: string): FileTypeInfo {
     case 'json': return { fileType: 'JSON', mimeType: 'application/json' };
     case 'md':
     case 'markdown': return { fileType: 'MD', mimeType: 'text/markdown' };
+    case 'woff2': return { fileType: 'WOFF2', mimeType: 'font/woff2' };
     case 'yml':
     case 'yaml': return { fileType: 'YAML', mimeType: 'application/yaml' };
     default: return { fileType: ext.toUpperCase() || 'FILE', mimeType: 'application/octet-stream' };

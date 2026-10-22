@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## DAM: woff2 fonts have their own type and are checked on upload (A7, uploaded fonts, first piece) — 2026-10-22
+- Branch: `master`. `getFileTypeFromFilename` knows `woff2` (`WOFF2`, `font/woff2`); `/api/v1/dam/upload` (asset-processor) refuses a file named `.woff2` whose first bytes are not `wOF2` (415, "The file is not a woff2 font") and stores a font with `font/woff2` instead of the type the browser sent. `isWoff2` is in `uploads/sniff.ts` but not in the list of the website-visitor upload check, so visitors still cannot upload fonts. Other extensions behave as before. Unit test `scripts/security/unit/font-upload.test.ts` (3 tests) passes with `form-uploads.test.ts` (58 in all); typecheck of core and asset-processor passes. **Not tried with a real upload** to a running DAM; the registry of custom fonts and the `@font-face` outputs are still to do.
+
 ## Plan 0.3 A7: what the DAM does with a font file today — 2026-10-22
 - Branch: `master`. Docs only. Read in `apps/asset-processor/src/server.ts` and `packages/core/src` (nothing run): the DAM upload accepts any extension (a `.woff2` is accepted), without a content check and with the browser-sent type; no font type is known to `getFileTypeFromFilename`; `/dam-asset/*` allows any origin for public assets (CORS), which fonts need; a private-folder asset needs a session. Recorded in the uploaded-fonts row of `release-0.3-plan.md`.
 

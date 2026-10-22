@@ -60,3 +60,6 @@ export function contentMatchesExtension(extension: string, head: Head): boolean 
   const check = CHECKS[extension.toLowerCase()];
   return check ? check(head) : false;
 }
+
+/** A web font file: woff2 starts with the signature `wOF2`. Not part of CHECKS: a website's visitors may not upload fonts, only people of the DAM. */
+export const isWoff2 = (head: Head): boolean => ascii(head, 0, 'wOF2');

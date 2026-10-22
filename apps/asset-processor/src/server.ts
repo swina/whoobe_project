@@ -20,6 +20,7 @@ import {
   assetMaxCount,
   normalizeUploadLimits,
   contentMatchesExtension,
+  isWoff2,
   SNIFF_BYTES,
   storedFileName,
   isPrivateFolder,
@@ -500,6 +501,14 @@ app.post('/api/v1/dam/upload', serviceTokenAuth, upload.single('file'), async (r
       return;
     }
 
+    // A web font is stored with its own type whatever the browser said, and only if it is one (an upload named .woff2 that
+    // is something else would be served to every page that links it)
+    const isFont = getFileTypeFromFilename(req.file.originalname).fileType === 'WOFF2';
+    if (isFont && !isWoff2(req.file.buffer.subarray(0, SNIFF_BYTES))) {
+      res.status(415).json({ error: 'The file is not a woff2 font' });
+      return;
+    }
+
     if (await assetQuotaExceeded(pimcorePath)) {
       res.status(409).json({ error: `Asset limit reached (${assetMaxCount()})` });
       return;
@@ -519,11 +528,11 @@ app.post('/api/v1/dam/upload', serviceTokenAuth, upload.single('file'), async (r
       }
     }
 
-    const { fileType } = getFileTypeFromFilename(req.file.originalname);
+    const { fileType, mimeType: typeByName } = getFileTypeFromFilename(req.file.originalname);
     const response = await finalizeAssetUpload(provider, {
       pimcorePath,
       buffer: req.file.buffer,
-      mimeType: req.file.mimetype || 'application/octet-stream',
+      mimeType: isFont ? typeByName : req.file.mimetype || 'application/octet-stream',
       isPublic,
       filename: req.file.originalname,
       folderPath: deriveFolderPath(pimcorePath),
