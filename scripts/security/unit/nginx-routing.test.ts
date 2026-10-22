@@ -45,6 +45,18 @@ for (const file of ['deploy/nginx/_locations.conf.template']) {
       expect(prefixes.filter((p) => !top.has(p) && !own[p])).toEqual([])
     })
 
+    // /documents, /pages and /settings are both dashboard pages and core-api routes. Opening or refreshing the address (Sec-Fetch-Dest
+    // document) must show the dashboard ("Cannot GET /settings" otherwise); the dashboard's own calls still go to core-api.
+    it('shows the dashboard for a browser navigation to the names it shares with core-api', () => {
+      const start = text.indexOf('location ~ ^/(documents|pages|settings)/?$ {')
+      expect(start).toBeGreaterThan(-1)
+      const block = text.slice(start, text.indexOf('\n}\n', start))
+      expect(block).toMatch(/\$http_sec_fetch_dest = document/)
+      expect(block).toMatch(/error_page 418 = @whoobe_dashboard/)
+      expect(block).toMatch(/proxy_pass http:\/\/127\.0\.0\.1:__CORE_API_PORT__;/)
+      expect(start).toBeLessThan(text.search(/location ~ \^\/\(auth\|/))
+    })
+
     it('does not send /metrics to core-api: it is for the service network only', () => {
       const top = [...text.matchAll(/location ~ \^\/\(([^)]*)\)\(\/\.\*\)\?\$ \{/g)].flatMap((x) => x[1].split('|'))
       expect(top).not.toContain('metrics')
