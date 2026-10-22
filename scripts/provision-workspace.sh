@@ -148,6 +148,7 @@ S3_SECRET="$(openssl rand -hex 32)"
 
 set_env "ENV_FILE" "${ENV_FILE}"
 set_env "WHOOBE_HOSTNAME" "${HOSTNAME_ARG}"
+set_env "WHOOBE_WORKSPACE" "${SLUG}"
 set_env "POSTGRES_USER" "whoobe_${DB_SAFE_SLUG}"
 set_env "POSTGRES_PASSWORD" "${DB_PASSWORD}"
 set_env "POSTGRES_DB" "whoobe_${DB_SAFE_SLUG}"

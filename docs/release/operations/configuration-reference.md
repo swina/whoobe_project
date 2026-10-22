@@ -144,6 +144,7 @@ cannot be lost** - see [secrets and keys](secrets-and-keys.md).
 | `OIDC_ALLOW_HTTP` | `false` | core-api: accept an `http://` address for the single sign-on provider in production (a provider on a network you trust); outside production http is always accepted. See [single sign-on](single-sign-on.md) |
 | `OIDC_START_RATE_LIMIT_PER_MINUTE` | `30` | core-api: how many times one client address may start a single sign-on per minute; `0` = off |
 | `METRICS_TOKEN` | unset | core-api: bearer token for `GET /metrics`; unset = the endpoint answers 404 (off). See [observability](observability-and-logging.md) |
+| `WHOOBE_WORKSPACE` | unset (`provision-workspace.sh` sets it to the slug) | Name of the workspace. When set, every `/metrics` series of core-api carries `workspace="<name>"` and every log line has a `workspace` field, so one Prometheus or one log store can serve many workspaces. See [observability](observability-and-logging.md) |
 | `AUDIT_RETENTION_DAYS` | `365` | core-api: days to keep rows of the [audit log](audit-log.md); older rows are deleted at start and then daily; `0` keeps everything |
 
 ## 9. Browser builds (Vite, baked at image build time)

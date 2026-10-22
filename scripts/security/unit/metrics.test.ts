@@ -15,6 +15,16 @@ describe('http metrics', () => {
     expect(text).toContain('whoobe_http_request_duration_seconds_bucket{route="/auth/users/:id",le="+Inf"} 2')
     expect(text).toContain('whoobe_http_request_duration_seconds_count{route="/auth/users/:id"} 2')
   })
+  it('adds the workspace label to every series when one is named', () => {
+    const m = createHttpMetrics('acme')
+    m.observe('GET', '/health', 200, 0.01)
+    const text = m.render([{ name: 'g', help: 'h', samples: [{ labels: { status: 'ok' }, value: 1 }, { value: 2 }] }])
+    expect(text).toContain('whoobe_http_requests_total{workspace="acme",method="GET",route="/health",status="2xx"} 1')
+    expect(text).toContain('whoobe_http_request_duration_seconds_count{workspace="acme",route="/health"} 1')
+    expect(text).toContain('g{workspace="acme",status="ok"} 1')
+    expect(text).toContain('g{workspace="acme"} 2')
+    expect(createHttpMetrics('').render([])).not.toContain('workspace=')
+  })
   it('bounds the number of route series', () => {
     const m = createHttpMetrics()
     for (let i = 0; i < 700; i++) m.observe('GET', `/r${i}`, 200, 0.01)

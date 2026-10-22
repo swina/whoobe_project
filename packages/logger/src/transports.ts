@@ -1,5 +1,6 @@
 import { mkdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { hostname } from 'node:os'
 import pino from 'pino'
 import roll, { type RollStream } from 'pino-roll'
 import type { LoggerConfig, LogLevel } from './types.js'
@@ -80,6 +81,8 @@ export async function initLogger(appName: string, config: LoggerConfig = {}): Pr
   pinoInstance = pino(
     {
       name: appName,
+      // WHOOBE_WORKSPACE (set by provision-workspace.sh) tells the lines of many workspaces apart in one log store
+      ...(process.env.WHOOBE_WORKSPACE ? { base: { pid: process.pid, hostname: hostname(), workspace: process.env.WHOOBE_WORKSPACE } } : {}),
       level,
       redact,
       timestamp: pino.stdTimeFunctions.isoTime,

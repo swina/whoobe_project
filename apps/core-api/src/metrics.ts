@@ -21,7 +21,9 @@ export interface HttpMetrics {
   render(gauges: Gauge[]): string;
 }
 
-export function createHttpMetrics(): HttpMetrics {
+export function createHttpMetrics(workspace: string | undefined = process.env.WHOOBE_WORKSPACE): HttpMetrics {
+  // One Prometheus can scrape many workspaces: when WHOOBE_WORKSPACE is set, every series carries it.
+  const L = (l: Record<string, string>): string => labels(workspace ? { workspace, ...l } : l);
   const requests = new Map<string, number>();                       // method|route|class -> count
   const durations = new Map<string, { buckets: number[]; sum: number; count: number }>();   // route -> histogram
   const routes = new Set<string>();
@@ -60,18 +62,18 @@ export function createHttpMetrics(): HttpMetrics {
     out.push('# HELP whoobe_http_requests_total HTTP requests answered, by method, matched route and status class.', '# TYPE whoobe_http_requests_total counter');
     for (const [key, n] of [...requests].sort()) {
       const [method, route, statusClass] = key.split('|');
-      out.push(`whoobe_http_requests_total${labels({ method, route, status: statusClass })} ${n}`);
+      out.push(`whoobe_http_requests_total${L({ method, route, status: statusClass })} ${n}`);
     }
     out.push('# HELP whoobe_http_request_duration_seconds Time to answer, by matched route.', '# TYPE whoobe_http_request_duration_seconds histogram');
     for (const [route, h] of [...durations].sort()) {
-      BUCKETS.forEach((b, i) => out.push(`whoobe_http_request_duration_seconds_bucket${labels({ route, le: String(b) })} ${h.buckets[i]}`));
-      out.push(`whoobe_http_request_duration_seconds_bucket${labels({ route, le: '+Inf' })} ${h.count}`);
-      out.push(`whoobe_http_request_duration_seconds_sum${labels({ route })} ${h.sum}`);
-      out.push(`whoobe_http_request_duration_seconds_count${labels({ route })} ${h.count}`);
+      BUCKETS.forEach((b, i) => out.push(`whoobe_http_request_duration_seconds_bucket${L({ route, le: String(b) })} ${h.buckets[i]}`));
+      out.push(`whoobe_http_request_duration_seconds_bucket${L({ route, le: '+Inf' })} ${h.count}`);
+      out.push(`whoobe_http_request_duration_seconds_sum${L({ route })} ${h.sum}`);
+      out.push(`whoobe_http_request_duration_seconds_count${L({ route })} ${h.count}`);
     }
     for (const g of gauges) {
       out.push(`# HELP ${g.name} ${g.help}`, `# TYPE ${g.name} gauge`);
-      for (const s of g.samples) out.push(`${g.name}${labels(s.labels ?? {})} ${s.value}`);
+      for (const s of g.samples) out.push(`${g.name}${L(s.labels ?? {})} ${s.value}`);
     }
     return out.join('\n') + '\n';
   }
