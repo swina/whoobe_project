@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Plan: database hardening and disclosure policy — 2026-10-22
+- Branch: `master`. New `docs/plans/security/database-hardening-plan.md`: the overview `Security-Analysis-Overview.md` read against the code. What it gets wrong about the current state (gateway and RBAC, the audit log, `SECURITY.md` disclosure after the fix), a disclosure policy for High and Critical findings, separate database roles (migration, gateway, asset-processor; today each workspace user is the superuser of its own cluster), why row-level security waits, and a check of how migrations are applied. A proposal; nothing is built.
+
 ## API suite and `workspaces.sh verify` on a network with no route out; nginx did not route `/fonts` and `/whoobe-one/editor-base` — 2026-10-22
 - Branch: `master`. **Bug found by the suite (`unit/nginx-routing.test.ts`) and fixed:** `deploy/nginx/_locations.conf.template` did not send `/fonts` (the new custom-font routes) nor `/whoobe-one/editor-base` to core-api, so behind the reverse proxy of a workspace they would have answered with the dashboard's HTML (my own tests of the font routes had gone straight to the core-api port). Both prefixes are in the regexes now. A workspace provisioned before this needs `scripts/render-workspace-nginx.sh <slug>` and an nginx reload.
 - Test rig: `scripts/security/offline.override.yml` (network `internal: true`), `stack.sh` takes `SEC_COMPOSE_FILE`, `scripts/security/internal-bridge.sh up|down` (one forwarding container on the stack's network and the default bridge, publishes the host ports; the stack's containers stay isolated). Used with the second throwaway stack (`SEC_STACK=b`, the first one was not touched) and a throwaway workspace `img-t3`, both removed.
