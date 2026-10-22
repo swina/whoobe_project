@@ -1249,6 +1249,19 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /whoobe-one/editor-base:
+    get:
+      tags: ["core-api: Whoobe One: Pages"]
+      summary: "Address other people reach the editor at (from ADMIN_PUBLIC_URL or WHOOBE_HOSTNAME), or null when it is localhost."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /whoobe-one/pages:
     get:
       tags: ["core-api: Whoobe One: Pages"]

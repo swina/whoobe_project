@@ -20,7 +20,7 @@ when a variable read by the services or listed in `.env.example` is missing from
 | `PORT` | asset-processor, core-api | 3002 / 3003 | listening port inside the container (do not change in Compose) |
 | `GATEWAY_PORT` | gateway | 3001 | same, for the gateway |
 | `CORS_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS` | all backends | unset | extra hosts / exact origins allowed to send credentialed requests |
-| `ADMIN_PUBLIC_URL` | core-api | `http://$WHOOBE_HOSTNAME:3000` | link in password-reset e-mails |
+| `ADMIN_PUBLIC_URL` | core-api | `http://$WHOOBE_HOSTNAME:3000` | link in password-reset e-mails, and the "copy editor link" of a page when the dashboard is open on localhost |
 | `TRUST_PROXY` | all backends | unset | reverse-proxy hops (`1`), `loopback` or CIDR list, so that `req.ip` is the client; **required behind nginx**, otherwise limiters and the login lockout see the proxy |
 | `COOKIE_SECURE` | core-api | automatic (HTTPS or `X-Forwarded-Proto: https`) | `true` forces the `Secure` flag on the session cookie |
 

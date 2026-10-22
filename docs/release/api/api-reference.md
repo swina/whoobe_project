@@ -102,6 +102,7 @@ The main backend API: authentication, the PIM/MDM data model (Classes, Component
 
 | Method & path | Description |
 | --- | --- |
+| `GET /whoobe-one/editor-base` | Address other people reach the editor at (from ADMIN_PUBLIC_URL or WHOOBE_HOSTNAME), or null when it is localhost. |
 | `GET /whoobe-one/pages` | List real site pages, optionally filtered by websiteId. |
 | `GET /whoobe-one/pages/staged` | List Pimcore-migration staged pages awaiting review/promotion. |
 | `GET /whoobe-one/pages/staged/:id` | Get one staged page. |

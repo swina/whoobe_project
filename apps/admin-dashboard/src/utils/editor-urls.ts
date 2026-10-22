@@ -30,8 +30,14 @@ export function getWhoobeOneSpikeUrl(): string {
 }
 
 /** The editor opened on one page, standalone (not embedded in the dashboard): `<editor>/editor?pageId=<id>`. It uses the session of whoever opens it. */
-export function pageEditorUrl(pageId: string): string {
-  return `${getWhoobeOneSpikeUrl()}/editor?pageId=${encodeURIComponent(pageId)}`
+export function pageEditorUrl(pageId: string, base: string = getWhoobeOneSpikeUrl()): string {
+  return `${base}/editor?pageId=${encodeURIComponent(pageId)}`
+}
+
+/** True when the dashboard is open on an address only this machine can reach: a link built from it is useless to anyone else. */
+export function isLocalOrigin(): boolean {
+  if (typeof window === 'undefined') return false
+  return ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
 }
 
 /** Origin (and path) the pages of a website are previewed under: root path and slug follow it, without

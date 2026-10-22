@@ -86,6 +86,13 @@ export async function fetchPages(baseUrl: string, websiteId?: string): Promise<W
   return body.pages
 }
 
+/** Where other people reach the editor (`.../whoobe-one`), or null when the installation only knows localhost. */
+export async function fetchEditorBase(baseUrl = ''): Promise<string | null> {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/editor-base`, { credentials: 'include' })
+  const body = await parseJsonOrThrow(res)
+  return typeof body.base === 'string' && body.base ? body.base : null
+}
+
 export async function fetchPageById(baseUrl: string, id: string): Promise<WhoobeOnePage> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/whoobe-one/pages/${id}`, { credentials: 'include' })
   const body = await parseJsonOrThrow(res)

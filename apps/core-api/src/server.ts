@@ -2341,6 +2341,16 @@ app.delete('/whoobe-one/kits/:id', requireAnyPermission(PERMISSIONS.SNIPPETS_DEL
 // cms/whoobe-one-editor-integration-plan.md §4. Distinct from the
 // `/whoobe-one/templates` routes above: templates stay a reusable
 // starting-point library, pages are the CMS's actual content.
+// The address other people reach the editor at, for the "copy editor link" of a page: the dashboard may be open on localhost, which nobody else can
+// reach. Same source as the links in e-mails (ADMIN_PUBLIC_URL, else http://<WHOOBE_HOSTNAME>:3000); `null` when that is localhost too, so the
+// dashboard says what to set instead of handing out a link that works for nobody else.
+app.get('/whoobe-one/editor-base', requireAnyPermission(PERMISSIONS.PAGES_LIST, PERMISSIONS.OBJECTS_READ), (_req: Request, res: Response): void => {
+  const base = (process.env.ADMIN_PUBLIC_URL || `http://${process.env.WHOOBE_HOSTNAME || 'localhost'}:3000`).replace(/\/+$/, '');
+  let local = true;
+  try { local = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(base).hostname); } catch { /* unusable value: no link */ }
+  res.json({ base: local ? null : `${base}/whoobe-one` });
+});
+
 app.get('/whoobe-one/pages', requireAnyPermission(PERMISSIONS.PAGES_LIST, PERMISSIONS.OBJECTS_READ), async (req: Request, res: Response): Promise<void> => {
   try {
     const websiteId = typeof req.query.websiteId === 'string' ? req.query.websiteId : undefined;

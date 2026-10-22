@@ -101,7 +101,8 @@ import PageSettingsTab from './PageSettingsTab.vue'
 import PagePreviewTab from './PagePreviewTab.vue'
 import PageCreateForm from './PageCreateForm.vue'
 import { Eye, ExternalLink, Link, Check, LayoutDashboard, Settings, Maximize, Minimize } from '@lucide/vue'
-import { getSitePreviewBaseUrl, pageEditorUrl } from '../../utils/editor-urls'
+import { fetchEditorBase } from '../../utils/pages-api'
+import { getSitePreviewBaseUrl, pageEditorUrl, isLocalOrigin } from '../../utils/editor-urls'
 
 const props = defineProps<{
   pageId: string
@@ -159,7 +160,17 @@ const openPreviewUrl = computed(() => {
 // https and localhost; on plain http over a LAN address the address is shown for copying by hand.
 const editorLinkCopied = ref(false)
 async function copyEditorLink() {
-  const url = pageEditorUrl(props.pageId)
+  let url = pageEditorUrl(props.pageId)
+  if (isLocalOrigin()) {
+    // Open on localhost: the address others can use comes from the server (ADMIN_PUBLIC_URL / WHOOBE_HOSTNAME).
+    let base: string | null = null
+    try { base = await fetchEditorBase() } catch { /* handled below */ }
+    if (!base) {
+      window.alert('The dashboard is open on localhost, which nobody else can reach. Open it through this machine\'s network address (for example http://192.168.1.20:3000), or set ADMIN_PUBLIC_URL (and WHOOBE_HOSTNAME) of the installation to that address and restart core-api.')
+      return
+    }
+    url = pageEditorUrl(props.pageId, base)
+  }
   try {
     await navigator.clipboard.writeText(url)
     editorLinkCopied.value = true
