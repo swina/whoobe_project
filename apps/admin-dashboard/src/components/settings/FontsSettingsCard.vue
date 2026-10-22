@@ -8,30 +8,33 @@
       </p>
     </div>
 
-    <form class="grid grid-cols-6 gap-3 items-end" @submit.prevent="add">
-      <label class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
-        Family
-        <input v-model="form.family" placeholder="e.g. Acme Sans" maxlength="64" data-testid="font-family" :class="field" />
-      </label>
+    <form class="space-y-3" @submit.prevent="add">
       <label class="flex flex-col gap-1 text-xs text-slate-400">
-        Weight
-        <select v-model.number="form.weight" data-testid="font-weight" :class="field">
-          <option v-for="w in weights" :key="w" :value="w">{{ w }}</option>
-        </select>
+        Files (.woff2): choose all the files of a family together
+        <input type="file" accept=".woff2,font/woff2" multiple data-testid="font-file" class="text-xs text-slate-300" @change="onFiles" />
       </label>
-      <label class="flex flex-col gap-1 text-xs text-slate-400">
-        Style
-        <select v-model="form.style" data-testid="font-style" :class="field">
-          <option value="normal">normal</option>
-          <option value="italic">italic</option>
-        </select>
-      </label>
-      <label class="flex flex-col gap-1 text-xs text-slate-400 col-span-2">
-        File (.woff2)
-        <input type="file" accept=".woff2,font/woff2" data-testid="font-file" class="text-xs text-slate-300" @change="onFile" />
-      </label>
-      <div class="col-span-6 flex items-center gap-3">
-        <button type="submit" :disabled="busy || !file || !form.family.trim()" class="btn btn-primary" data-testid="font-add">{{ busy ? 'Uploading...' : 'Add font' }}</button>
+
+      <template v-if="rows.length">
+        <label class="flex flex-col gap-1 text-xs text-slate-400 max-w-xs">
+          Family
+          <input v-model="family" placeholder="e.g. Acme Sans" maxlength="64" data-testid="font-family" :class="field" @input="familyTouched = true" />
+        </label>
+        <table class="text-xs text-slate-300 w-full" data-testid="font-rows">
+          <thead><tr class="text-left text-slate-500"><th class="py-1 pr-3 font-normal">File</th><th class="pr-3 font-normal">Weight</th><th class="pr-3 font-normal">Style</th><th></th></tr></thead>
+          <tbody>
+            <tr v-for="(r, i) in rows" :key="r.file.name + i">
+              <td class="py-1 pr-3 font-mono truncate max-w-[16rem]">{{ r.file.name }}</td>
+              <td class="pr-3"><select v-model.number="r.weight" data-testid="font-weight" :class="field"><option v-for="w in weights" :key="w" :value="w">{{ w }}</option></select></td>
+              <td class="pr-3"><select v-model="r.style" data-testid="font-style" :class="field"><option value="normal">normal</option><option value="italic">italic</option></select></td>
+              <td class="text-rose-400">{{ r.error }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="text-[10px] text-slate-500">Family, weight and style are guessed from the file names: check them before adding.</p>
+      </template>
+
+      <div class="flex items-center gap-3">
+        <button type="submit" :disabled="busy || !rows.length || !family.trim()" class="btn btn-primary" data-testid="font-add">{{ busy ? 'Uploading...' : rows.length > 1 ? `Add ${rows.length} fonts` : 'Add font' }}</button>
         <span v-if="error" class="text-xs text-rose-400" data-testid="font-error">{{ error }}</span>
       </div>
     </form>
@@ -53,8 +56,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { fontFaceCss } from '@whoobe-cms/core'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { fontFaceCss, guessFontFace } from '@whoobe-cms/core'
 import { useAuthStore } from '../../stores/authStore'
 import { useDamStore } from '../../stores/damStore'
 import { createFont, deleteFont, fetchFonts, type CustomFont } from '../../utils/fonts-api'
@@ -70,8 +73,10 @@ const fonts = ref<CustomFont[]>([])
 const loading = ref(true)
 const busy = ref(false)
 const error = ref('')
-const file = ref<File | null>(null)
-const form = reactive<{ family: string; weight: number; style: 'normal' | 'italic' }>({ family: '', weight: 400, style: 'normal' })
+interface Row { file: File; weight: number; style: 'normal' | 'italic'; error: string }
+const rows = ref<Row[]>([])
+const family = ref('')
+const familyTouched = ref(false)
 
 // The list shows each font in its own face: the rules are written into a <style> of this page, with the files read from the DAM server.
 const styleEl = document.createElement('style')
@@ -92,30 +97,46 @@ async function load() {
 }
 onMounted(load)
 
-function onFile(e: Event) {
-  const f = (e.target as HTMLInputElement).files?.[0] ?? null
+function onFiles(e: Event) {
+  const input = e.target as HTMLInputElement
+  const picked = Array.from(input.files ?? [])
   error.value = ''
-  if (f && !/\.woff2$/i.test(f.name)) { error.value = 'Only woff2 files are accepted'; file.value = null; return }
-  file.value = f
+  const good = picked.filter((f) => /\.woff2$/i.test(f.name))
+  if (good.length < picked.length) error.value = `Only woff2 files are accepted (skipped: ${picked.filter((f) => !good.includes(f)).map((f) => f.name).join(', ')})`
+  rows.value = good.map((file) => {
+    const g = guessFontFace(file.name)
+    return { file, weight: g.weight, style: g.style, error: '' }
+  })
+  if (good.length && !familyTouched.value) family.value = guessFontFace(good[0].name).family
 }
 
 async function add() {
-  if (!file.value) return
+  if (!rows.value.length) return
   busy.value = true
   error.value = ''
-  try {
-    const asset = await damStore.uploadAsset(file.value, FONT_FOLDER, true)
-    await createFont(authStore.config.coreApiUrl, { family: form.family.trim(), weight: form.weight, style: form.style, assetPath: asset.pimcorePath })
-    form.family = ''
-    file.value = null
+  const failed: Row[] = []
+  for (const r of rows.value) {
+    r.error = ''
+    try {
+      const asset = await damStore.uploadAsset(r.file, FONT_FOLDER, true)
+      await createFont(authStore.config.coreApiUrl, { family: family.value.trim(), weight: r.weight, style: r.style, assetPath: asset.pimcorePath })
+    } catch (e: any) {
+      r.error = e?.message || 'Failed'
+      failed.push(r)
+    }
+  }
+  // what was added leaves the form; what failed stays, with its reason
+  rows.value = failed
+  if (!failed.length) {
+    family.value = ''
+    familyTouched.value = false
     const input = document.querySelector<HTMLInputElement>('[data-testid="font-file"]')
     if (input) input.value = ''
-    await load()
-  } catch (e: any) {
-    error.value = e?.message || 'Failed to add the font'
-  } finally {
-    busy.value = false
+  } else {
+    error.value = `${failed.length} of the files were not added`
   }
+  busy.value = false
+  await load()
 }
 
 async function remove(f: CustomFont) {
