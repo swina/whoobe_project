@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Admin dashboard: Inter ships with the app, no Google Fonts (A7, private network) — 2026-10-22
+- Branch: `master`. `apps/admin-dashboard`: `@fontsource/inter` 5.3.0 added (OFL; `package.json`, lockfile: only that package), imported in `main.ts` (latin and latin-ext, weights 300-700); the four `<link>` tags to `fonts.googleapis.com`/`fonts.gstatic.com` removed from `index.html`. The `Material Icons` stylesheet was removed too: nothing in the code uses it (icons are bootstrap-icons and `@lucide/vue`, both bundled). Typecheck passes and `vite build` succeeds; the built `dist` has no reference to a Google host except a placeholder text in the AI settings. **Not looked at in a browser** and not tried with no route out. Still to do: the editor (`whoobe-one-spike`) interface font, and the uploaded-fonts item.
+
 ## Plan 0.3 A7: font items (interface fonts bundled, uploaded fonts) — 2026-10-22
 - Branch: `master`. Docs only. `release-0.3-plan.md`: two items added to A7 by decision of the owner: interface fonts and icons served by the dashboard always (1 day) and font upload through the DAM with `@font-face` in the editor, the publish and mobile-app CLIs and the mail document, the file travelling with the published site (3-4 days; websites made locally have already been published). Level 1 total 41-57 days. Nothing built yet.
 

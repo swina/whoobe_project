@@ -11,6 +11,7 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
     "@iconify/vue": "^4.1.2",
     "@lucide/vue": "^1.1.0",
     "@tiptap/extension-image": "^2.11.5",

@@ -39,7 +39,7 @@
  * migration-tool path above which lives outside this tree).
  */
 
-/* The font of the whole dashboard is --ui-font (styles/ui.css): Inter, loaded in index.html, then the system's. It used to be set here
+/* The font of the whole dashboard is --ui-font (styles/ui.css): Inter, bundled (main.ts), then the system's. It used to be set here
    (Roboto first, which most machines do not have) and overridden by `font-mono` on <body>, so the app was monospaced and only some
    windows - the ones that did not inherit from <body> - were not. Code, identifiers and paths keep a monospace face (`font-mono`). */
 
