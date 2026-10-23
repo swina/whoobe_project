@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Docs: the release table of `docs/release/README.md` brought up to date — 2026-10-23
+- Branch: `master`. Two rows: F-055 to F-058 were marked open and are fixed (2026-10-09, status summary); the DAST/checklist row now says the DAST ran on the 0.3 candidate and the manual checklist was not repeated for the features since 0.2.0. Docs only.
+
 ## Fresh install test and security status summary for 0.3.0 — 2026-10-23
 - Branch: `master`. **Fresh install** (gate of `release-process.md`): a new clone of the public repository (commit `69cad60`-era `master`, `v0.2.0-145`), `./scripts/provision-workspace.sh cln-t8 localhost 18 --seed-email ... --seed-password ...` with no profile and no prebuilt images: built the five images from source and started the workspace in **5 min 28 s** (empty build cache for the clone's layers, network available); `workspaces.sh status`/`verify`: 7/7 containers, health ok; login 200, dashboard 200, editor 200. Workspace, volumes and clone removed afterwards. Seen: a seed password with `!` is refused by the script (the allowed characters are in its message). Not done: a restore on a spare machine, TLS, SSO (the checklist of the future `enterprise` profile).
 - `docs/release/security/status-summary.md`: state date 2026-10-23; counts from the CI run 39934951757 (commit `f515ea1`): **92 API test files, 2337 passed, 0 failed, 2 skipped**; isolation 14/14; F-050 residual (26 in `gosu`); two new rows in the open items (the 0.3 features without browser tests or a repeated manual checklist, and the disclosure policy). The browser test count and the other sections were not recounted.

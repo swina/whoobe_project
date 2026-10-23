@@ -94,8 +94,8 @@ route documented, no broken link or quoted repository path, every environment va
 |---|---|---|
 | Alignment line (the release this documentation matches) | set by `scripts/release.sh prepare` | release manager |
 | Technical set for architects, DevOps and security (`architecture/`, `operations/`, `security/`) | **written 2026-10-09 from the code**; statements that depend on running systems (TLS on a live host, upgrade, restore, load, multi-replica) are marked as untested | review by someone other than the author; rehearse the runbooks once ([backup](operations/backup-restore-and-dr.md), [upgrade](operations/upgrade-and-migrations.md)) |
-| Findings found by the review: F-055 to F-058 | recorded in [`security/findings.md`](security/findings.md), **open** | fix before or accept explicitly in the release notes |
-| Security status summary, DAST, manual security checklist | summary updated 2026-10-09; **DAST and the manual checklist not repeated** for the features of 2026-10-08/09 | run on the release commit (release gate) |
+| Findings found by the review: F-055 to F-058 | recorded in [`security/findings.md`](security/findings.md); **fixed 2026-10-09** (see the status summary, section 3) | none |
+| Security status summary, DAST, manual security checklist | summary updated 2026-10-23; DAST run on the release candidate (run 39934951757, all jobs green); the **manual checklist was not repeated** for the features added since 0.2.0 (see the status summary, section 3) | run the checklist on the release commit, or accept in the release notes |
 | SBOM | `scripts/release/sbom.sh` works (CycloneDX, 669 components in the source tree); not attached automatically | attach to the GitHub Release; automate in `release.yml` |
 | Image digests, signatures, provenance | published by `release.yml` on a tag: amd64 and arm64 images on ghcr.io, signed by digest, with a source SBOM on the draft GitHub Release (v0.1.1, v0.2.0) | [release process](release-process.md) section 7 |
 | Bare-metal guides (`operations/deployment.md`, `miniguide-deployment.md`) | flagged as not re-verified; the container workspace is the tested path | rewrite or retire |
