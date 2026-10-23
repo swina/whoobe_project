@@ -1379,11 +1379,13 @@ async function mayServeDamKey(req: Request, res: Response, s3Key: string): Promi
 // Stored content types that a browser would execute if opened from our origin.
 const ACTIVE_CONTENT_TYPE = /^(text\/(html|xml|javascript)|application\/(xhtml\+xml|xml|(x-)?javascript|ecmascript|x-shockwave-flash|x-httpd[\w-]*)|[^;]*html)/i;
 
-function hardenAssetResponse(res: Response, storedType: string | undefined): string {
+function hardenAssetResponse(res: Response, storedType: string | undefined, s3Key = ''): string {
   // Whatever was uploaded must never run script with this origin's privileges: sandbox without
   // allow-scripts neutralises SVG/HTML opened directly (images in <img> are unaffected).
   res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox");
-  const type = storedType || 'application/octet-stream';
+  let type = storedType || 'application/octet-stream';
+  // files stored before their type was known (an mp3 as octet-stream) get the type of their extension, or a browser opens them as a download or a broken video
+  if (type === 'application/octet-stream') type = getFileTypeFromFilename(s3Key).mimeType;
   if (ACTIVE_CONTENT_TYPE.test(type)) {
     res.setHeader('Content-Disposition', 'attachment');
     return 'application/octet-stream';
@@ -1400,7 +1402,7 @@ app.get('/dam-asset/*', async (req: Request, res: Response): Promise<void> => {
     const command = new GetObjectCommand({ Bucket: damBaseConfig.bucket, Key: s3Key, Range: range });
     const response = await s3ClientForProxy.send(command);
     if (response.Body) {
-      res.setHeader('Content-Type', hardenAssetResponse(res, response.ContentType));
+      res.setHeader('Content-Type', hardenAssetResponse(res, response.ContentType, s3Key));
       res.setHeader('Cache-Control', res.locals.damPrivate ? 'private, no-store' : 'public, max-age=31536000, immutable');
       res.setHeader('Accept-Ranges', 'bytes');
       if (response.ContentLength != null) res.setHeader('Content-Length', String(response.ContentLength));

@@ -223,6 +223,7 @@
               <option value="IMAGE">Images (PNG, JPG, WEBP, SVG)</option>
               <option value="VIDEO">Videos (MP4)</option>
               <option value="DOCUMENT">Documents (PDF)</option>
+              <option value="AUDIO">Audio (MP3, WAV, M4A)</option>
               <option value="ARCHIVE">Archives (ZIP)</option>
             </select>
           </div>
@@ -252,7 +253,7 @@
         </div>
 
         <div class="text-[11px] text-slate-400 light:text-slate-600 font-mono">
-          Showing <strong class="text-indigo-300 font-bold">{{ unifiedItems.length }}</strong> of {{ damStore.currentAssets.length + damStore.currentSubfolders.length }} items
+          Showing <strong class="text-indigo-300 font-bold">{{ unifiedItems.length }}</strong> of {{ filterType !== 'ALL' ? damStore.assets.length : damStore.currentAssets.length + damStore.currentSubfolders.length }} items
         </div>
       </div>
 
@@ -1295,7 +1296,8 @@ const hasActiveFilters = computed(() => {
 })
 
 const filteredAndSortedAssets = computed(() => {
-  let list = damStore.currentAssets
+  // a type filter looks in every folder (the matches can be anywhere), otherwise only the one that is open
+  let list = filterType.value !== 'ALL' ? damStore.assets : damStore.currentAssets
 
   // 1. Text Search Filter across filename, pimcorePath, fileType, and s3Key
   if (searchQuery.value.trim()) {
@@ -1317,6 +1319,8 @@ const filteredAndSortedAssets = computed(() => {
       list = list.filter((a) => a.fileType === 'MP4')
     } else if (filterType.value === 'DOCUMENT') {
       list = list.filter((a) => a.fileType === 'PDF')
+    } else if (filterType.value === 'AUDIO') {
+      list = list.filter((a) => ['MP3', 'WAV', 'M4A'].includes(a.fileType))
     } else if (filterType.value === 'ARCHIVE') {
       list = list.filter((a) => a.fileType === 'ZIP')
     } else {
@@ -1416,7 +1420,7 @@ interface UnifiedItem {
 }
 
 const unifiedItems = computed<UnifiedItem[]>(() => {
-  const folders: UnifiedItem[] = damStore.currentSubfolders.map((f) => ({
+  const folders: UnifiedItem[] = (filterType.value !== 'ALL' ? [] : damStore.currentSubfolders).map((f) => ({
     kind: 'folder',
     id: `folder:${f.path}`,
     filename: f.name,

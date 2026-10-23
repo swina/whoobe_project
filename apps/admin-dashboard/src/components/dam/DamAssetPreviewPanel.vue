@@ -22,6 +22,16 @@
           Your browser does not support HTML5 video preview.
         </video>
 
+        <!-- Audio File Preview -->
+        <audio
+          v-else-if="AUDIO_TYPES.includes(asset.fileType)"
+          controls
+          :src="asset.url"
+          class="w-full max-w-md"
+        >
+          Your browser does not support HTML5 audio preview.
+        </audio>
+
         <!-- PDF Preview: streamed through the asset-processor proxy and
              re-typed to application/pdf, so inline rendering works even
              when the stored object's content-type is octet-stream. -->
@@ -194,6 +204,7 @@ const emit = defineEmits<{
 
 const damStore = useDamStore()
 
+const AUDIO_TYPES = ['MP3', 'WAV', 'M4A']
 const OFFICE_TYPES = ['DOC', 'DOCX', 'XLS', 'XLSX', 'PPT', 'PPTX']
 
 const isPdf = computed(() => props.asset.fileType === 'PDF')
@@ -233,7 +244,7 @@ const officeViewerUrl = computed(() => {
 })
 
 function proxyUrl(): string {
-  return `${damStore.config.assetProcessorUrl}/dam-asset/${props.asset.s3Key}`
+  return `${damStore.config.assetProcessorUrl}/dam-asset/${props.asset.s3Key.split('/').map(encodeURIComponent).join('/')}`
 }
 
 function releaseBlobUrl() {
@@ -252,7 +263,8 @@ async function loadInlinePreview() {
 
   previewBusy.value = true
   try {
-    const res = await fetch(proxyUrl())
+    // credentials: a private asset is served only with the session cookie, which a cross-origin fetch leaves out by default (answer: 404)
+    const res = await fetch(proxyUrl(), { credentials: 'include' })
     if (!res.ok) throw new Error(`Fetch failed with status ${res.status}`)
     if (isPdf.value) {
       const blob = await res.blob()

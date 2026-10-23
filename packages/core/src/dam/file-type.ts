@@ -20,6 +20,9 @@ export function getFileTypeFromFilename(filename: string): FileTypeInfo {
     case 'pdf': return { fileType: 'PDF', mimeType: 'application/pdf' };
     case 'zip': return { fileType: 'ZIP', mimeType: 'application/zip' };
     case 'mp4': return { fileType: 'MP4', mimeType: 'video/mp4' };
+    case 'mp3': return { fileType: 'MP3', mimeType: 'audio/mpeg' };
+    case 'wav': return { fileType: 'WAV', mimeType: 'audio/wav' };
+    case 'm4a': return { fileType: 'M4A', mimeType: 'audio/mp4' };
     case 'json': return { fileType: 'JSON', mimeType: 'application/json' };
     case 'md':
     case 'markdown': return { fileType: 'MD', mimeType: 'text/markdown' };
