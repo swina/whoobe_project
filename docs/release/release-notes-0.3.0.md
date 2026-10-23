@@ -60,7 +60,7 @@ a minor release may change behaviour: read **Behaviour changes** before upgradin
 | nginx routes `/fonts`, `/whoobe-one/editor-base`, and a browser navigation to `/settings`, `/pages`, `/documents` reaches the dashboard | a refresh of these pages no longer shows `Cannot GET` | on a workspace provisioned earlier, run `scripts/render-workspace-nginx.sh <slug>` and reload nginx |
 | `POST /fonts` and wizard palette create/update answer 409 (not 500) on a duplicate | | nothing |
 
-**No migrations** since 0.2.0 (checked on the diff of `v0.2.0..master`); the upgrade needs no database step.
+**Six migrations (0067 to 0072)**, applied by core-api at the first start; back up first (`scripts/workspaces.sh upgrade` does). Five are additions (new columns on kits and snippets, tables `wizard_palettes` and `custom_fonts`); **`0068` rewrites data**: in each kit, template ids that are not a string or repeat an earlier one are replaced by `tpl-<8 hex>` (the old editor wrote the number 0 for several templates); kits whose ids are fine are not touched. Upgrade test from v0.2.0 on 2026-10-23: 67 migrations at the start, 73 after, data written by 0.2.0 intact, login works (CI run 39937017622).
 
 ## Not in this release yet
 
