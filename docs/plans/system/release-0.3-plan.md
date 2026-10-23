@@ -209,6 +209,7 @@ No new required service (Redis stays optional), no new required variable, no cha
 4. **Per-class permissions.** An ad hoc release of their own, not in 0.3.
 5. **One at a time.** Level 1 items ship one by one, each with its CHANGES entry.
 6. **The business model.** One codebase under the MIT licence; the owner sells installation and training, nothing else; support is deferred. No edition, no paid modules (section 0.1).
+7. **Scope cut (2026-10-23).** 0.3.0 is released with what is built (A5, A7 and the site-generation work since 0.2.0; see `release-notes-0.3.0.md`). The Level 1 items not built (A1 replicas, A2 managed database and Helm, A3 failed attempts and hash chain, A4 metrics of the two services and tracing, A6 rehearsals on the reference host, A8 `enterprise` profile and checklist) move to a **0.4** plan, in this order: A3, A1, A4, A2, A6, A8.
 
 ## 9. Not in this plan
 

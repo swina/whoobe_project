@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Plan 0.3: scope cut, the unbuilt Level 1 items move to 0.4 — 2026-10-23
+- Branch: `master`. Decision 7 of `docs/plans/system/release-0.3-plan.md` (owner, 2026-10-23): 0.3.0 is released with what is built; A1, A2, A3, A4, A6 and A8 move to 0.4 (order A3, A1, A4, A2, A6, A8). Docs only.
+
 ## Release notes 0.3.0, draft — 2026-10-23
 - Branch: `master`. New `docs/release/release-notes-0.3.0.md`, written from `CHANGES.md` for `v0.2.0..master` (137 commits, no migrations). Marked DRAFT: lists what is built and, apart, the Level 1 items of the plan that are not (replicas, Helm, hash chain, metrics of the two services, rehearsals, `enterprise` profile). Docs only.
 
