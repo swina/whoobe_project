@@ -188,13 +188,14 @@ cmd_upgrade() {
   done
   if [ "${#ready[@]}" -eq 0 ]; then echo "Nothing to upgrade."; finish; fi
 
+  local prev_ref; prev_ref="$(git symbolic-ref -q --short HEAD || git rev-parse HEAD)"
   echo ">>> git checkout $tag"
   if ! git checkout -q "$tag"; then
     for s in "${ready[@]}"; do log_action upgrade "$s" failed "git checkout $tag failed"; fail "$s"; done
     finish
   fi
 
-  local waited
+  local waited failed_before="${#FAILED[@]}"
   for s in "${ready[@]}"; do
     echo ">>> upgrade $s"
     local mode=--build prev_version
@@ -217,7 +218,11 @@ cmd_upgrade() {
     if healthy "$s"; then echo "    $s healthy after ${waited}s"; log_action upgrade "$s" ok "$from -> $tag"
     else echo "!!! $s not healthy after ${TIMEOUT}s"; log_action upgrade "$s" failed "not healthy after ${TIMEOUT}s ($from -> $tag)"; fail "$s"; fi
   done
-  [ -n "$canary" ] && echo && echo "Canary done. Look at $canary, then run the upgrade again without --canary for the others (it will upgrade $canary again, which is harmless)."
+  # nothing runs the new tag: leave the tree where it was, so a rebuild or a later upgrade starts from what is running
+  if [ "$(( ${#FAILED[@]} - failed_before ))" -ge "${#ready[@]}" ]; then
+    echo ">>> every upgrade failed: tree back on $prev_ref"; git checkout -q "$prev_ref" || echo "warning: could not check out $prev_ref" >&2
+  fi
+  [ -n "$canary" ] && [ "${#FAILED[@]}" -eq 0 ] && echo && echo "Canary done. Look at $canary, then run the upgrade again without --canary for the others (it will upgrade $canary again, which is harmless)."
   finish
 }
 
