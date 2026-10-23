@@ -1,5 +1,11 @@
 # Release v0.2.0 — 2026-10-19
 
+## Data Objects: the Export menu opened under the list — 2026-10-23
+- Branch: `master`. `ObjectsView.vue`: the Export dropdown had `z-10`, the same as the sticky header of the list/table (which comes later in the page and so covered it); it now has `z-1000`, like the Columns menu. Not checked in a browser.
+
+## `xlsx` removed: no Excel/ODS import, no XLSX export — 2026-10-23
+- Branch: `master`. The library `xlsx` 0.18.5 (two high advisories, no fix on npm) is out of `apps/admin-dashboard`. **Correction to F-003:** it was not write-only; `utils/class-from-file.ts` also used it to read the file chosen in *Class from file*. Now: the export menu of Data Objects offers CSV and JSON (XLSX button and `exportRowsAsXlsx` removed); the wizard accepts `.json`, `.csv`, `.tsv` (no `.xlsx`, `.xls`, `.ods`). CSV/TSV are read by a small RFC 4180 parser in `class-from-file.ts` (`parseDelimited`, `rowsFromDelimited`; no dependency): quoted cells with delimiters, quotes and line breaks, BOM, delimiter guessed from the first line (`,` `;` tab), empty cell = null, plain numbers become numbers, `true`/`false` booleans. Baseline entries and `.trivyignore` lines for `xlsx` removed; docs of the security set updated. Typecheck of the dashboard passes; `pnpm audit --prod` leaves only the accepted `braces` (high) and moderate/low ones. **Not tried:** the parser against real files and in the browser (no test added yet), the dashboard image build.
+
 ## Dependency: dompurify ^3.4.17 (audit gate) — 2026-10-23
 - Branch: `master`. New advisories on `dompurify` 3.4.16 (critical, high, low; reached through `mermaid`) cleared with an override `dompurify: ^3.4.17` in `package.json` and `pnpm-workspace.yaml` (kept identical, as for the others) and a refreshed `pnpm-lock.yaml`. `pnpm audit --prod` still reports `xlsx` 0.18.5 (two high, no fix on npm, accepted in F-003) and `braces` 3.0.3 (high, GHSA-vfj7-8cjw-p6xm, through `tw-to-css` > `tailwindcss` 3.3.2, no patched version listed), so the `--audit-level high` gate of the static scan still fails: decision pending. Not built or run after the lockfile change.
 

@@ -4,8 +4,8 @@
 
     <div class="space-y-4">
       <div>
-        <input type="file" accept=".json,.csv,.tsv,.xlsx,.xls,.ods" class="text-xs text-slate-400" data-testid="class-file-input" @change="onFile" />
-        <p class="text-xs text-slate-500 mt-1">JSON (an array of objects), CSV or Excel. The first row holds the column names. The columns become the fields of the class; you can also import the rows as objects.</p>
+        <input type="file" accept=".json,.csv,.tsv" class="text-xs text-slate-400" data-testid="class-file-input" @change="onFile" />
+        <p class="text-xs text-slate-500 mt-1">JSON (an array of objects), CSV or TSV. The first row holds the column names. The columns become the fields of the class; you can also import the rows as objects.</p>
         <p v-if="error" class="text-xs text-rose-400 mt-1" data-testid="class-file-error">{{ error }}</p>
       </div>
 

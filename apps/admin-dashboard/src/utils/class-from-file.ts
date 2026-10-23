@@ -1,13 +1,12 @@
-// "+ From file" in ClassSettingsCard.vue: read a JSON, CSV or Excel file and propose the fields of a Data Class from its columns (the keys
+// "+ From file" in ClassSettingsCard.vue: read a JSON, CSV or TSV file and propose the fields of a Data Class from its columns (the keys
 // of the records for JSON). Only the structure is used: the type of each column is guessed from its values and can be changed in the
 // wizard before the class is created. The rows can then be imported as Data Objects (`attributesOfRow`), as drafts.
-import * as XLSX from 'xlsx'
 import type { ClassFieldDefinition } from '@whoobe-cms/core'
 
 export type Row = Record<string, unknown>
 
 export interface ParsedFile {
-  /** Sheets of a workbook, or the arrays of a JSON object; one entry for CSV and a plain JSON array. */
+  /** The arrays of a JSON object; one entry for CSV/TSV and a plain JSON array. */
   tables: { name: string; rows: Row[] }[]
 }
 
@@ -64,15 +63,52 @@ export async function parseFile(file: File): Promise<ParsedFile> {
     if (!tables.length) throw new Error('Expected a JSON array of objects (or an object holding such arrays).')
     return { tables }
   }
-  if (ext === 'csv' || ext === 'tsv' || ext === 'txt' || ext === 'xlsx' || ext === 'xls' || ext === 'ods') {
-    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true })
-    const tables = wb.SheetNames
-      .map((name) => ({ name, rows: XLSX.utils.sheet_to_json<Row>(wb.Sheets[name], { defval: null, raw: true }) }))
-      .filter((t) => t.rows.length)
-    if (!tables.length) throw new Error('No rows found: the first row must hold the column names, with data below it.')
-    return { tables }
+  if (ext === 'csv' || ext === 'tsv' || ext === 'txt') {
+    const rows = rowsFromDelimited(await file.text(), ext === 'tsv' ? '\t' : undefined)
+    if (!rows.length) throw new Error('No rows found: the first row must hold the column names, with data below it.')
+    return { tables: [{ name: 'data', rows }] }
   }
-  throw new Error('Use a .json, .csv or Excel (.xlsx, .xls) file.')
+  throw new Error('Use a .json, .csv or .tsv file.')
+}
+
+/** Cells of a delimited text (RFC 4180 quoting). The delimiter is guessed from the first line when not given. */
+export function parseDelimited(input: string, delimiter?: string): string[][] {
+  const text = input.replace(/^\uFEFF/, '')
+  const first = text.split(/\r?\n/, 1)[0]
+  const d = delimiter ?? ([',', ';', '\t'].map((c) => [c, first.split(c).length] as const).sort((a, b) => b[1] - a[1])[0][0])
+  const out: string[][] = []
+  let row: string[] = [], cell = '', quoted = false
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (quoted) {
+      if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++ } else quoted = false } else cell += c
+    } else if (c === '"' && cell === '') quoted = true
+    else if (c === d) { row.push(cell); cell = '' }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++
+      row.push(cell); cell = ''
+      if (row.some((x) => x !== '')) out.push(row)
+      row = []
+    } else cell += c
+  }
+  row.push(cell)
+  if (row.some((x) => x !== '')) out.push(row)
+  return out
+}
+
+/** Records of a delimited text: the first line names the columns; empty cells are null, plain numbers numbers, true/false booleans. */
+export function rowsFromDelimited(input: string, delimiter?: string): Row[] {
+  const [head, ...body] = parseDelimited(input, delimiter)
+  if (!head) return []
+  const names = head.map((h, i) => h.trim() || `column_${i + 1}`)
+  return body.map((cells) => {
+    const r: Row = {}
+    names.forEach((n, i) => {
+      const v = cells[i] ?? ''
+      r[n] = v === '' ? null : /^-?(0|[1-9]\d*)(\.\d+)?$/.test(v) ? Number(v) : /^(true|false)$/i.test(v) ? v.toLowerCase() === 'true' : v
+    })
+    return r
+  })
 }
 
 export interface ProposedField {

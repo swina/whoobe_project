@@ -36,7 +36,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | 3.10 | AI | provider keys never returned, per-user throttling; **prompt-injection impact not tested** |
 | 3.11 | Publishing, generator, operator scripts | done (`publish`, unit) - generation and parsing only, **no `next build`/`nuxt build` of the output** |
 | 3.12 | Secrets, config, infrastructure | secrets (gitleaks), Docker, compose exposure, SPA nginx headers done; TLS template (`pnpm security:tls`, F-049) and container images (`pnpm security:images`, F-050) scanned; **a live certificate/hostname has not been tested** |
-| 3.13 | Dependencies | `pnpm audit` in the static scan, two accepted advisories (`xlsx`, `braces`) with review dates |
+| 3.13 | Dependencies | `pnpm audit` in the static scan, one accepted advisory (`braces`) with a review date (`xlsx` removed 2026-10-23) |
 | 3.14 | Errors / logging | done (generic 5xx, SQL text hidden, log hygiene reviewed by hand) |
 | 3.15 | Rate limits | login, MFA, forgot-password, forms, public search/query, AI, pwa subscribe done; **no load testing by design** |
 | 7.1 | Periodic runs / CI | `.github/workflows/security.yml` (static on every PR/push/nightly; stack + API + browser suites on push to master/nightly/manual; ZAP monthly/manual) and `.github/dependabot.yml`; written and linted (`actionlint`) first GitHub run 2026-10-05 needed four small fixes (Dockerfile build order, testssl work dir, compose test `.env`, libpcre2 CVE) and is **green** (run 37286029925, DAST skipped by design) |
@@ -46,7 +46,7 @@ F-039 code injection into generated sites, F-045 stored XSS through rich text (f
 | Item | Why it is open | Needs |
 |---|---|---|
 | **F-001** secrets of an old env file of a test site: purged from the new repository's history (2026-10-06); the old values still exist in the old repository and its backups, but no running instance uses them (the test instance was reinstalled with newly generated secrets on 2026-10-07) | nothing to rotate on a running system | none |
-| **F-003** `xlsx` (2 high advisories, write-only use, no npm fix) and `@tiptap/core` (major upgrade) | accepted / deferred, baselined until 2027-01-31 | decision: move to the SheetJS tarball or replace; plan the tiptap 3 upgrade |
+| **F-003** `@tiptap/core` (major upgrade, moderate). `xlsx` (2 high advisories, no npm fix) was **removed 2026-10-23**: the library read the files chosen in the *Class from file* wizard (the entry said write-only), so Excel/ODS import and XLSX export are gone; CSV, TSV and JSON remain | deferred (tiptap) / fixed (xlsx) | plan the tiptap 3 upgrade |
 | **F-008** residual `v-html` sinks (editor tables, form-result messages, Studio, generated sites) | sanitised in code but not covered by a browser test | extend `browser/xss-sinks.spec.ts`; run the generated sites through a build and the same payloads |
 | **F-014** full CSP for the admin/editor SPAs (nginx) | postponed on purpose (clickjacking and baseline headers are done, F-047): more valuable the more people of different trust levels use the editor (not the supported model: one organisation per instance); a too strict policy breaks the editor | design with a report-only phase if the editor is opened to less trusted users |
 | **F-055** AI provider keys, Figma token and push-provider key were clear text | **fixed 2026-10-09**: `INTEGRATION_SECRETS_ENCRYPTION_KEY`, startup backfill; operators of existing installations must set the key | set the key and restart |
@@ -104,7 +104,7 @@ The manual checklist has **not** been repeated for these features.
 5. **Development setup**: recreating `whoobe_postgres` / the S3 store publishes them on loopback only; add
    `WS_DATA_BIND_ADDRESS=0.0.0.0` to `.env` if a client on another machine needs them (F-043).
 6. **Run the manual checklist** (`manual-test-checklist.md`) on the throwaway stack once, and report any KO.
-7. Decide: the `xlsx` replacement and when to start the CSP work (the F-024 flag is decided: on by default).
+7. Decide: when to start the CSP work (the F-024 flag is decided: on by default).
 8. **Object storage**: decided - Garage is the default for local/LAN (automatic bucket and key), production uses a cloud or enterprise S3 through configuration, MinIO was removed from the stack (F-048/F-050, `docs/release/operations/storage-backends.md`). Remaining for you: copy existing MinIO data to the new store when switching a server (see the doc) and rebuild with `docker compose up -d --build`.
 
 ## 5. Behaviour changes introduced by the fixes (check these when something "stops working")

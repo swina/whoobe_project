@@ -2,18 +2,6 @@
   "_comment": "Accepted/triaged static findings. A run fails only on findings NOT listed here, or on entries whose `review` date has passed. Keep reasons honest; remove an entry when the cause is fixed.",
   "audit": [
     {
-      "id": "GHSA-4r6h-8v6p-xvw6",
-      "module": "xlsx",
-      "reason": "F-003: only used to WRITE an export in the admin; no fix published on npm",
-      "review": "2027-01-31"
-    },
-    {
-      "id": "GHSA-5pgg-2g8v-p4x9",
-      "module": "xlsx",
-      "reason": "F-003: only used to WRITE an export in the admin; no fix published on npm",
-      "review": "2027-01-31"
-    },
-    {
       "id": "GHSA-vfj7-8cjw-p6xm",
       "module": "braces",
       "reason": "no patched version published; reached only through tw-to-css > tailwindcss 3.3.2 (build-time glob handling, patterns come from our own config, never from user input)",

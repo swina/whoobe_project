@@ -134,11 +134,9 @@
             Export ▾
           </button>
           <div v-if="isExportMenuOpen"
-            class="absolute right-0 mt-1 w-32 rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-xl z-10 overflow-hidden">
+            class="absolute right-0 mt-1 w-32 rounded-lg bg-slate-900 light:bg-white border border-slate-800 light:border-slate-200 shadow-xl z-1000 overflow-hidden">
             <button @click="handleExport('csv')"
               class="block w-full text-left px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-slate-800 light:bg-slate-100">CSV</button>
-            <button @click="handleExport('xlsx')"
-              class="block w-full text-left px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-slate-800 light:bg-slate-100">XLSX</button>
             <button @click="handleExport('json')"
               class="block w-full text-left px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-slate-800 light:bg-slate-100">JSON</button>
           </div>
@@ -437,7 +435,7 @@ import type { DataObject } from '../utils/data-objects-api'
 import { fetchDataObjects, deleteDataObject as apiDeleteDataObject, updateDataObject as apiUpdateDataObject, batchActionDataObjects, batchResolveAssets } from '../utils/data-objects-api'
 import type { DataObjectQueryFilter } from '../utils/data-objects-api'
 import EmptyClassModal from '../components/objects/EmptyClassModal.vue'
-import { exportRowsAsCsv, exportRowsAsJson, exportRowsAsXlsx } from '../utils/data-export'
+import { exportRowsAsCsv, exportRowsAsJson } from '../utils/data-export'
 import { useRelationOptions } from '../composables/useRelationOptions'
 import { loadObjectListPresets, upsertObjectListPreset, deleteObjectListPreset, setDefaultPreset, getDefaultPreset, type ObjectListPreset } from '../utils/object-list-presets'
 import { SYSTEM_LIST_COLUMNS, type ListColumnOption } from '../utils/list-columns'
@@ -1403,13 +1401,12 @@ function flattenRecordForExport(record: ObjectRecord): Record<string, unknown> {
   return row
 }
 
-function handleExport(format: 'csv' | 'xlsx' | 'json') {
+function handleExport(format: 'csv' | 'json') {
   isExportMenuOpen.value = false
   const rows = sortedRecords.value.map(flattenRecordForExport)
   if (rows.length === 0) { toastStore.show('Nothing to export'); return }
   const filenameBase = `data-objects-${new Date().toISOString().slice(0, 10)}`
   if (format === 'csv') exportRowsAsCsv(rows, filenameBase)
-  else if (format === 'xlsx') exportRowsAsXlsx(rows, filenameBase)
   else exportRowsAsJson(rows, filenameBase)
 }
 </script>
