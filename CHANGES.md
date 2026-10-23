@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Third-party licences: OFL-1.1 reviewed (Inter), notices regenerated — 2026-10-23
+- Branch: `master`. `scripts/release/third-party-notices.py`: `OFL-1.1` added to `REVIEWED` with the reason (the Inter typeface from `@fontsource/inter`, bundled unmodified as woff2; a free licence allowing redistribution and commercial use). `THIRD_PARTY_NOTICES.md` regenerated (609 packages, after the removal of `xlsx`); `--check` passes.
+
 ## Data Objects: the Export menu opened under the list — 2026-10-23
 - Branch: `master`. `ObjectsView.vue`: the Export dropdown had `z-10`, the same as the sticky header of the list/table (which comes later in the page and so covered it); it now has `z-1000`, like the Columns menu. Not checked in a browser.
 

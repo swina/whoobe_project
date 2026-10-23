@@ -21,6 +21,8 @@ ALLOWED = {'MIT', 'ISC', 'Apache-2.0', 'BSD-3-Clause', 'BSD-2-Clause', 'BSD', 'U
 # licence field missing in package.json: the packages' own licence file says MIT (checked 2026-10-13)
 OVERRIDES = {'khroma': 'MIT', 'thirty-two': 'MIT'}
 REVIEWED = {
+    'OFL-1.1': '`@fontsource/inter`: the Inter typeface (SIL Open Font License 1.1) bundled as woff2 files for the dashboard and the editor, unmodified; '
+               'a free licence that allows redistribution and commercial use. The font files are not sold on their own and keep their licence text.',
     'LGPL-3.0-or-later': 'libvips binaries shipped by `sharp` (image processing in asset-processor). LGPL: used as a separate dynamically linked library, '
                          'not modified; the licence text and the source location (https://github.com/lovell/sharp-libvips) are given here.',
 }

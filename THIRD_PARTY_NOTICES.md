@@ -4,7 +4,7 @@ Whoobe is released under the MIT licence ([LICENSE.md](LICENSE.md)). It includes
 licence. This file is **generated** from the production dependencies of every workspace by `scripts/release/third-party-notices.py`; do not edit it by hand.
 The human-readable thanks are in [docs/release/credits.md](docs/release/credits.md).
 
-**617 packages** under 15 licence identifiers.
+**609 packages** under 16 licence identifiers.
 
 ## Summary by licence
 
@@ -12,12 +12,13 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 |---|---|
 | MIT | 475 |
 | ISC | 56 |
-| Apache-2.0 | 51 |
+| Apache-2.0 | 42 |
 | BSD-3-Clause | 12 |
 | BSD-2-Clause | 10 |
 | LGPL-3.0-or-later | 2 |
 | BSD | 2 |
 | Unlicense | 2 |
+| OFL-1.1 | 1 |
 | CC0-1.0 | 1 |
 | Python-2.0 | 1 |
 | (MPL-2.0 OR Apache-2.0) | 1 |
@@ -28,6 +29,7 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 
 ## Licences that need attention
 
+- **OFL-1.1** (@fontsource/inter 5.3.0): `@fontsource/inter`: the Inter typeface (SIL Open Font License 1.1) bundled as woff2 files for the dashboard and the editor, unmodified; a free licence that allows redistribution and commercial use. The font files are not sold on their own and keep their licence text.
 - **LGPL-3.0-or-later** (@img/sharp-libvips-linux-x64 1.3.4, @img/sharp-libvips-linuxmusl-x64 1.3.4): libvips binaries shipped by `sharp` (image processing in asset-processor). LGPL: used as a separate dynamically linked library, not modified; the licence text and the source location (https://github.com/lovell/sharp-libvips) are given here.
 - **Licence field missing in the package metadata**: khroma, thirty-two (their licence files say MIT).
 
@@ -67,6 +69,7 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | @braintree/sanitize-url | 7.1.2 | MIT | Copyright (c) 2017 Braintree |
 | @chevrotain/types | 11.1.2 | Apache-2.0 | Shahar Soel |
 | @esbuild/linux-x64 | 0.25.12 | MIT |  |
+| @fontsource/inter | 5.3.0 | OFL-1.1 | copyright statement(s).; Copyright Holder. This restriction only applies to the primary font name as |
 | @google/generative-ai | 0.24.1 | Apache-2.0 |  |
 | @highlightjs/cdn-assets | 11.12.0 | BSD-3-Clause | Copyright (c) 2006, Ivan Sagalaev. |
 | @humanwhocodes/momoa | 2.0.4 | Apache-2.0 | Nicholas C. Zakas |
@@ -198,7 +201,6 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | @vue/shared | 3.1.5 | MIT | Copyright (c) 2018-present, Yuxi (Evan) You |
 | @vue/shared | 3.5.43 | MIT | Copyright (c) 2018-present, Yuxi (Evan) You |
 | accepts | 1.3.8 | MIT | Copyright (c) 2014 Jonathan Ong <me@jongleberry.com>; Copyright (c) 2015 Douglas Christopher Wilson <doug@somethingdoug.com> |
-| adler-32 | 1.3.1 | Apache-2.0 | Copyright (C) 2014-present   SheetJS LLC |
 | ajv | 8.20.0 | MIT | Copyright (c) 2015-2021 Evgeny Poberezkin |
 | ajv-draft-04 | 1.0.0 | MIT | Copyright (c) 2021 Evgeny Poberezkin |
 | alpinejs | 3.16.1 | MIT | Caleb Porzio |
@@ -228,11 +230,9 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | call-bound | 1.0.4 | MIT | Copyright (c) 2024 Jordan Harband |
 | camelcase | 5.3.1 | MIT | Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com) |
 | camelcase-css | 2.0.1 | MIT | Copyright (c) Steven Vachon <contact@svachon.com> (svachon.com) |
-| cfb | 1.2.2 | Apache-2.0 | Copyright (C) 2013-present   SheetJS LLC |
 | chokidar | 3.6.0 | MIT | Copyright (c) 2012-2019 Paul Miller (https://paulmillr.com), Elan Shanker |
 | cliui | 6.0.0 | ISC | Copyright (c) 2015, Contributors |
 | cluster-key-slot | 1.1.1 | Apache-2.0 | Copyright (c) 2018 Mike Diarmid (Salakar) <mike.diarmid@gmail.com> |
-| codepage | 1.15.0 | Apache-2.0 | Copyright (C) 2013-present   SheetJS LLC |
 | color-convert | 2.0.1 | MIT | Copyright (c) 2011-2016 Heather Arthur <fayearthur@gmail.com> |
 | color-name | 1.1.4 | MIT | Copyright (c) 2015 Dmitry Ivanov |
 | colorette | 2.0.20 | MIT | Copyright © Jorge Bucaran <<https://jorgebucaran.com>> |
@@ -251,7 +251,6 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | core-util-is | 1.0.3 | MIT | Copyright Node.js contributors. All rights reserved. |
 | cose-base | 1.0.3 | MIT | Copyright (c) 2019 - present, iVis@Bilkent. |
 | cose-base | 2.2.0 | MIT | Copyright (c) 2019 - present, iVis@Bilkent. |
-| crc-32 | 1.2.2 | Apache-2.0 | Copyright (C) 2014-present   SheetJS LLC |
 | crelt | 1.0.7 | MIT | Copyright (C) 2020 by Marijn Haverbeke <marijn@haverbeke.berlin> |
 | crossvent | 1.5.5 | MIT | Copyright © 2014 Nicolas Bevacqua |
 | cssesc | 3.0.0 | MIT | Copyright Mathias Bynens <https://mathiasbynens.be/> |
@@ -315,7 +314,7 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | dom-serializer | 3.1.1 | MIT | Copyright © 2022 The Cheerio contributors |
 | domelementtype | 3.0.0 | BSD-2-Clause | Copyright (c) Felix Böhm |
 | domhandler | 6.0.1 | BSD-2-Clause | Copyright (c) Felix Böhm |
-| dompurify | 3.4.16 | (MPL-2.0 OR Apache-2.0) | Dr.-Ing. Mario Heiderich, Cure53 |
+| dompurify | 3.4.17 | (MPL-2.0 OR Apache-2.0) | Dr.-Ing. Mario Heiderich, Cure53 |
 | domutils | 4.0.2 | BSD-2-Clause | Copyright (c) Felix Böhm |
 | dragula | 3.7.3 | MIT | Copyright © 2015-2016 Nicolas Bevacqua |
 | drizzle-orm | 0.45.3 | Apache-2.0 | Drizzle Team |
@@ -359,7 +358,6 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | finalhandler | 1.3.2 | MIT | Copyright (c) 2014-2022 Douglas Christopher Wilson <doug@somethingdoug.com> |
 | find-up | 4.1.0 | MIT | Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com) |
 | forwarded | 0.2.0 | MIT | Copyright (c) 2014-2017 Douglas Christopher Wilson |
-| frac | 1.1.2 | Apache-2.0 | Copyright (C) 2012-present   SheetJS |
 | fresh | 0.5.2 | MIT | Copyright (c) 2012 TJ Holowaychuk <tj@vision-media.ca>; Copyright (c) 2016-2017 Douglas Christopher Wilson <doug@somethingdoug.com> |
 | function-bind | 1.1.2 | MIT | Copyright (c) 2013 Raynos. |
 | generate-function | 2.3.1 | MIT | Copyright (c) 2014 Mathias Buus |
@@ -429,7 +427,7 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | lucide-react | 0.400.0 | ISC | Eric Fennis |
 | luxon | 3.7.2 | MIT | Copyright 2019 JS Foundation and other contributors |
 | magic-string | 0.30.21 | MIT | Copyright 2018 Rich Harris |
-| markdown-it | 14.3.2 | MIT | Copyright (c) 2014 Vitaly Puzrin, Alex Kocharin. |
+| markdown-it | 14.3.3 | MIT | Copyright (c) 2014 Vitaly Puzrin, Alex Kocharin. |
 | marked | 14.1.4 | MIT | Copyright (c) 2018+, MarkedJS (https://github.com/markedjs/); Copyright (c) 2011-2018, Christopher Jeffrey (https://github.com/chjj/) |
 | marked | 16.4.2 | MIT | Copyright (c) 2018+, MarkedJS (https://github.com/markedjs/); Copyright (c) 2011-2018, Christopher Jeffrey (https://github.com/chjj/) |
 | math-intrinsics | 1.1.0 | MIT | Copyright (c) 2024 ECMAScript Shims |
@@ -587,7 +585,6 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | speakingurl | 14.0.1 | BSD | Copyright (c) 2013-2017 Sascha Droste <pid@posteo.net> |
 | split2 | 4.2.0 | ISC | Copyright (c) 2014-2018, Matteo Collina <hello@matteocollina.com> |
 | sql-escaper | 1.5.1 | MIT | Copyright (c) 2026 Weslley Araújo, Andrey Sidorov, Douglas Wilson, and contributors. |
-| ssf | 0.11.2 | Apache-2.0 | Copyright (C) 2013-present   SheetJS LLC |
 | standard-as-callback | 2.1.0 | MIT | Copyright (c) 2018 Zihua Li; Copyright (c) 2013-2017 Petka Antonov |
 | standardwebhooks | 1.0.0 | MIT | Standard Webhooks |
 | static-eval | 2.1.1 | MIT | Copyright (c) 2013 James Halliday |
@@ -635,8 +632,6 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | vue-router | 4.6.4 | MIT | Copyright (c) 2019-present Eduardo San Martin Morote |
 | w3c-keyname | 2.2.8 | MIT | Copyright (C) 2016 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
 | which-module | 2.0.1 | ISC | Copyright (c) 2016, Contributors |
-| wmf | 1.0.2 | Apache-2.0 | Copyright (C) 2020-present   SheetJS LLC |
-| word | 0.3.0 | Apache-2.0 | Copyright (C) 2020-present   SheetJS LLC |
 | workbox-core | 7.4.1 | MIT | Copyright 2018 Google LLC |
 | workbox-precaching | 7.4.1 | MIT | Copyright 2018 Google LLC |
 | workbox-routing | 7.4.1 | MIT | Copyright 2018 Google LLC |
@@ -644,7 +639,6 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | wrap-ansi | 6.2.0 | MIT | Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com) |
 | wrappy | 1.0.2 | ISC | Copyright (c) Isaac Z. Schlueter and Contributors |
 | ws | 8.21.3 | MIT | Copyright (c) 2011 Einar Otto Stangvik <einaros@gmail.com>; Copyright (c) 2013 Arnout Kazemier and contributors |
-| xlsx | 0.18.5 | Apache-2.0 | Copyright (C) 2012-present   SheetJS LLC |
 | xstate | 5.32.5 | MIT | Copyright (c) 2015 David Khourshid |
 | xtend | 4.0.2 | MIT | Copyright (c) 2012-2014 Raynos. |
 | y18n | 4.0.3 | ISC | Copyright (c) 2015, Contributors |
@@ -2072,6 +2066,106 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+### OFL-1.1
+
+Text of `@fontsource/inter`:
+
+```text
+Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter) Inter-Italic[opsz,wght].ttf: Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+This license is copied below, and is also available with a FAQ at:
+http://scripts.sil.org/OFL
+
+
+-----------------------------------------------------------
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+-----------------------------------------------------------
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font creation
+efforts of academic and linguistic communities, and to provide a free and
+open framework in which fonts may be shared and improved in partnership
+with others.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The
+fonts, including any derivative works, can be bundled, embedded,
+redistributed and/or sold with any software provided that any reserved
+names are not used by derivative works. The fonts and derivatives,
+however, cannot be released under any other type of license. The
+requirement for fonts to remain under this license does not apply
+to any document created using the fonts or their derivatives.
+
+DEFINITIONS
+"Font Software" refers to the set of files released by the Copyright
+Holder(s) under this license and clearly marked as such. This may
+include source files, build scripts and documentation.
+
+"Reserved Font Name" refers to any names specified as such after the
+copyright statement(s).
+
+"Original Version" refers to the collection of Font Software components as
+distributed by the Copyright Holder(s).
+
+"Modified Version" refers to any derivative made by adding to, deleting,
+or substituting -- in part or in whole -- any of the components of the
+Original Version, by changing formats or by porting the Font Software to a
+new environment.
+
+"Author" refers to any designer, engineer, programmer, technical
+writer or other person who contributed to the Font Software.
+
+PERMISSION & CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed, modify,
+redistribute, and sell modified and unmodified copies of the Font
+Software, subject to the following conditions:
+
+1) Neither the Font Software nor any of its individual components,
+in Original or Modified Versions, may be sold by itself.
+
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy
+contains the above copyright notice and this license. These can be
+included either as stand-alone text files, human-readable headers or
+in the appropriate machine-readable metadata fields within text or
+binary files as long as those fields can be easily viewed by the user.
+
+3) No Modified Version of the Font Software may use the Reserved Font
+Name(s) unless explicit written permission is granted by the corresponding
+Copyright Holder. This restriction only applies to the primary font name as
+presented to the users.
+
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+Software shall not be used to promote, endorse or advertise any
+Modified Version, except to acknowledge the contribution(s) of the
+Copyright Holder(s) and the Author(s) or with their explicit written
+permission.
+
+5) The Font Software, modified or unmodified, in part or in whole,
+must be distributed entirely under this license, and must not be
+distributed under any other license. The requirement for fonts to
+remain under this license does not apply to any document created
+using the Font Software.
+
+TERMINATION
+This license becomes null and void if any of the above conditions are
+not met.
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+OTHER DEALINGS IN THE FONT SOFTWARE.
 ```
 
 ### Python-2.0
