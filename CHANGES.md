@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Dependency: dompurify ^3.4.17 (audit gate) — 2026-10-23
+- Branch: `master`. New advisories on `dompurify` 3.4.16 (critical, high, low; reached through `mermaid`) cleared with an override `dompurify: ^3.4.17` in `package.json` and `pnpm-workspace.yaml` (kept identical, as for the others) and a refreshed `pnpm-lock.yaml`. `pnpm audit --prod` still reports `xlsx` 0.18.5 (two high, no fix on npm, accepted in F-003) and `braces` 3.0.3 (high, GHSA-vfj7-8cjw-p6xm, through `tw-to-css` > `tailwindcss` 3.3.2, no patched version listed), so the `--audit-level high` gate of the static scan still fails: decision pending. Not built or run after the lockfile change.
+
 ## Plan 0.3: scope cut, the unbuilt Level 1 items move to 0.4 — 2026-10-23
 - Branch: `master`. Decision 7 of `docs/plans/system/release-0.3-plan.md` (owner, 2026-10-23): 0.3.0 is released with what is built; A1, A2, A3, A4, A6 and A8 move to 0.4 (order A3, A1, A4, A2, A6, A8). Docs only.
 
