@@ -1,7 +1,7 @@
 # Release v0.2.0 — 2026-10-19
 
 ## `workspaces.sh upgrade`: tree restored when every upgrade fails; "Canary done" only on success — 2026-10-23
-- Branch: `master`. `scripts/workspaces.sh`: if no workspace came up on the new tag, the tree is checked out again on the ref it was on (branch or commit) instead of staying on the failed tag; the closing "Canary done" line is printed only when nothing failed. Syntax checked (`bash -n`); not re-run against a throwaway clone.
+- Branch: `master`. `scripts/workspaces.sh`: if `docker compose up` failed for every workspace, the tree is checked out again on the ref it was on (branch or commit) instead of staying on the failed tag (an unhealthy workspace keeps the new tag: it is running it); the closing "Canary done" line is printed only when nothing failed. Tried in a throwaway clone with a stubbed `docker`: up fails (tree back, env kept), up ok but unhealthy (tree stays on the tag), healthy ("Canary done" printed).
 
 ## Disclosure policy: the fix and the tag go out together; pull requests from outside — 2026-10-23
 - Branch: `master`. `docs/release/security/disclosure-policy.md`: the commit that fixes a High or Critical finding is public as soon as it reaches `master` whatever its title, so advisory, merge, tag and images go out in one sitting with the release notes ready; and a public pull request or issue that touches such a problem is answered with a request to report it privately (`SECURITY.md`), with no details repeated.

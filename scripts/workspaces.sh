@@ -195,7 +195,7 @@ cmd_upgrade() {
     finish
   fi
 
-  local waited failed_before="${#FAILED[@]}"
+  local waited up_failed=0
   for s in "${ready[@]}"; do
     echo ">>> upgrade $s"
     local mode=--build prev_version
@@ -208,7 +208,7 @@ cmd_upgrade() {
       tail -n 8 "/tmp/workspaces-upgrade-$s.log"
       # the env file must keep naming the version that is running, or the next restart asks for images that are not there
       [ -n "$prev_version" ] && sed -i "s|^WHOOBE_VERSION=.*|WHOOBE_VERSION=${prev_version}|" ".env.$s"
-      log_action upgrade "$s" failed "docker compose up failed ($from -> $tag); output in /tmp/workspaces-upgrade-$s.log"; fail "$s"; continue
+      log_action upgrade "$s" failed "docker compose up failed ($from -> $tag); output in /tmp/workspaces-upgrade-$s.log"; fail "$s"; up_failed=$((up_failed + 1)); continue
     fi
     waited=0
     until healthy "$s"; do
@@ -218,9 +218,9 @@ cmd_upgrade() {
     if healthy "$s"; then echo "    $s healthy after ${waited}s"; log_action upgrade "$s" ok "$from -> $tag"
     else echo "!!! $s not healthy after ${TIMEOUT}s"; log_action upgrade "$s" failed "not healthy after ${TIMEOUT}s ($from -> $tag)"; fail "$s"; fi
   done
-  # nothing runs the new tag: leave the tree where it was, so a rebuild or a later upgrade starts from what is running
-  if [ "$(( ${#FAILED[@]} - failed_before ))" -ge "${#ready[@]}" ]; then
-    echo ">>> every upgrade failed: tree back on $prev_ref"; git checkout -q "$prev_ref" || echo "warning: could not check out $prev_ref" >&2
+  # no workspace was recreated on the new tag: leave the tree where it was, so a rebuild or a later upgrade starts from what is running
+  if [ "$up_failed" -ge "${#ready[@]}" ]; then
+    echo ">>> no workspace was recreated: tree back on $prev_ref"; git checkout -q "$prev_ref" || echo "warning: could not check out $prev_ref" >&2
   fi
   [ -n "$canary" ] && [ "${#FAILED[@]}" -eq 0 ] && echo && echo "Canary done. Look at $canary, then run the upgrade again without --canary for the others (it will upgrade $canary again, which is harmless)."
   finish
