@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Base images are pinned by digest (reproducible builds, no silent upstream change); Dependabot proposes updates.
-FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS base
+FROM node:22-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d AS base
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 
@@ -32,7 +32,7 @@ RUN pnpm build
 # ─── Runtime base ───────────────────────────────────────────────────────────
 # No pnpm/corepack and no npm in what runs in production: they are only needed to build, and their
 # bundled dependencies (tar, minimatch, brace-expansion, pnpm itself) are most of the image CVEs.
-FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS runtime
+FROM node:22-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d AS runtime
 # hadolint ignore=DL3059
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /root/.cache
 # the pinned bookworm digest lags behind Debian's security updates: libpcre2 10.42-1+deb12u1 (CVE-2026-103111, fixed in

@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Base image: node 22.23.4 (digest bump) — 2026-10-23
+- Branch: `master`. `Dockerfile` (stages `base` and `runtime`): `node:22-bookworm-slim` moves from the digest `43ac6c60…` (Node v22.23.3, built 2026-09-23) to `de170b39…` (Node **v22.23.4**, built 2026-10-21), the release that carries the Node.js security fix of 2026-10-22 pointed out by the owner. I did not look at the Node advisory itself (the CVE ids and severity are not recorded here); the evidence is the version numbers read from the two images. The trivy image scan on 2026-10-23 reported 0 fixable HIGH/CRITICAL for the five images on the old base, so the scan database may not have listed it yet. CI workflow steps use `node-version: 22` (latest 22.x). The release candidate must be tested again on the new base (next security run).
+
 ## Release notes 0.3.0: behaviour changes listed — 2026-10-23
 - Branch: `master`. `release-notes-0.3.0.md`: rows added for the removal of Excel import and XLSX export, kit origins, the bundled fonts, the new optional variables (from the diff of `.env.example` and `configuration-reference.md` since `v0.2.0`) and the Assets changes. All automatic gates of `release.sh check` pass on `88ce892` (security run 39938797570 with DAST). Docs only.
 
