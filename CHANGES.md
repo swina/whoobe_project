@@ -1,5 +1,8 @@
 # Release v0.2.0 — 2026-10-19
 
+## Release notes 0.3.0: behaviour changes listed — 2026-10-23
+- Branch: `master`. `release-notes-0.3.0.md`: rows added for the removal of Excel import and XLSX export, kit origins, the bundled fonts, the new optional variables (from the diff of `.env.example` and `configuration-reference.md` since `v0.2.0`) and the Assets changes. All automatic gates of `release.sh check` pass on `88ce892` (security run 39938797570 with DAST). Docs only.
+
 ## Docs: the release table of `docs/release/README.md` brought up to date — 2026-10-23
 - Branch: `master`. Two rows: F-055 to F-058 were marked open and are fixed (2026-10-09, status summary); the DAST/checklist row now says the DAST ran on the 0.3 candidate and the manual checklist was not repeated for the features since 0.2.0. Docs only.
 
