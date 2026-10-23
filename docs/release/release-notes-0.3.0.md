@@ -47,7 +47,7 @@ Base image: Node.js 22.23.4.
 **Security policy**
 - **Disclosure policy**: a High or Critical finding found by the project is private until the release that fixes it, then public in the register
   (new column *Public from*); the private place is a draft security advisory with its temporary private fork; acknowledgement in 7 days, target 30
-  days to fix High/Critical and 90 days Medium. [Policy](security/disclosure-policy.md), [`SECURITY.md`](../../SECURITY.md).
+  days to fix High/Critical and 90 days Medium. [Policy](security/disclosure-policy.md), [`SECURITY.md`](https://github.com/swina/whoobe_project/blob/master/SECURITY.md).
 - Security results stay public with a release gate; markdown-it 14.3.3 and libx11 updated in the images.
 
 ## Behaviour changes to check before you upgrade
