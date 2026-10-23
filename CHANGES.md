@@ -1,5 +1,8 @@
 # Release v0.3.0 — 2026-10-23
 
+## Image SBOMs, signatures and reports attached to the draft release v0.3.0 — 2026-10-23
+- Branch: `master`. CycloneDX SBOMs of the six released image digests (`trivy image --image-src remote`, 71 to 1478 components each) attached to the draft release together with `security-reports-v0.3.0.zip` (static, ZAP summary, API and isolation, testssl of run 39943598701, read first: no open High/Critical). `cosign verify` (identity `release.yml@refs/tags/v0.3.0`) and `cosign verify-attestation` (SLSA provenance v1) pass for all six digests. The draft is **not published**. `scripts/release/sbom.sh --images` still scans the old local names `whoobe-sectest-*`: not fixed, the SBOMs above were made from the registry. Counts and the semgrep warnings added to `results/v0.3.0.md`.
+
 ## Security results for v0.3.0 recorded — 2026-10-23
 - Branch: `master` (after the tag `v0.3.0`, which is on `7642173`). `docs/release/security/results/v0.3.0.md`: the runs, the failed ones of the day, what the record does not cover. Docs only; the tag is not moved.
 
