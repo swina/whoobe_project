@@ -1,10 +1,10 @@
-# Whoobe 0.3.0 - release notes (DRAFT)
+# Whoobe 0.3.0 - release notes
 
-Release 0.3.0, working name **Operate**: Whoobe for those who run it for others (an agency with many client workspaces) and for an organisation on a
-private network. Draft written from `CHANGES.md` on **2026-10-23**; it describes what is on `master` since `v0.2.0` and **must be edited when the
-release content is frozen** (the plan, `docs/plans/system/release-0.3-plan.md`, still lists Level 1 items that are not built: see **Not in this
-release yet**). The procedure that turns this into a release is in [`release-process.md`](release-process.md). Because the version starts with `0.`,
-a minor release may change behaviour: read **Behaviour changes** before upgrading.
+Release 0.3.0, named **Operate**: Whoobe for those who run it for others (an agency with many client workspaces) and for an organisation on a
+private network. Written from `CHANGES.md` on **2026-10-23**; the procedure that turns this into a release is in [`release-process.md`](release-process.md).
+The plan is `docs/plans/system/release-0.3-plan.md`; on 2026-10-23 its scope was cut (decision 7): what is below is built, the rest moves to 0.4
+(**Not in this release yet**). Because the version starts with `0.`, a minor release may change behaviour: read **Behaviour changes** before upgrading.
+Base image: Node.js 22.23.4.
 
 ## What is in it
 
@@ -66,6 +66,15 @@ a minor release may change behaviour: read **Behaviour changes** before upgradin
 | In *Assets*, a **type filter** looks in the whole library and hides folders; audio files (`mp3`, `wav`, `m4a`) have their own type and player; files already stored as `application/octet-stream` are served with the type of their extension | an mp3 uploaded before opens in an audio player | nothing |
 
 **Six migrations (0067 to 0072)**, applied by core-api at the first start; back up first (`scripts/workspaces.sh upgrade` does). Five are additions (new columns on kits and snippets, tables `wizard_palettes` and `custom_fonts`); **`0068` rewrites data**: in each kit, template ids that are not a string or repeat an earlier one are replaced by `tpl-<8 hex>` (the old editor wrote the number 0 for several templates); kits whose ids are fine are not touched. Upgrade test from v0.2.0 on 2026-10-23: 67 migrations at the start, 73 after, data written by 0.2.0 intact, login works (CI run 39937017622).
+
+## Known limits of this release
+
+- The *Assets* changes (the type filter across folders, audio types and player, the PDF preview sending the session) were **not checked in a browser** before
+  the release; the PDF preview 404 reported by the owner has a probable cause (the session cookie missing on a cross-origin fetch) that was not reproduced.
+- The Generate Website Wizard has never been run with a real AI provider; the manual security checklist was not repeated for the features added since 0.2.0
+  (see the status summary).
+- `postgres:16-alpine` carries 26 HIGH/CRITICAL reports, all in its `gosu` helper (Go stdlib, runs once at start); reported, not gating. A derived image
+  without it is planned for 0.4.
 
 ## Not in this release yet
 

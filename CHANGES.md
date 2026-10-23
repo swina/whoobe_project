@@ -1,3 +1,8 @@
+# Release v0.3.0 — 2026-10-23
+
+## [Release v0.3.0] — 2026-10-23
+- Branch: `master`. Version 0.3.0 set in 21 package.json files (one product version, see docs/release/release-process.md); `docs/release/README.md` aligned to this release.
+
 # Release v0.2.0 — 2026-10-19
 
 ## Base image: node 22.23.4 (digest bump) — 2026-10-23
