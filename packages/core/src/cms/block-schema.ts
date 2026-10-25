@@ -50,8 +50,8 @@ export const WhoobeBlockNodeSchema: z.ZodType<WhoobeBlockNode> = z.lazy(() =>
     type: WhoobeBlockTypeSchema,
     name: z.string(),
     tag: z.string().optional(),
-    style: z.record(z.string()).optional(),
-    props: z.record(z.any()).optional(),
+    style: z.record(z.string(), z.string()).optional(),
+    props: z.record(z.string(), z.any()).optional(),
     content: z.string().optional(),
     children: z.array(WhoobeBlockNodeSchema).optional(),
     dataBinding: WhoobeDataBindingSchema.optional(),
@@ -59,7 +59,7 @@ export const WhoobeBlockNodeSchema: z.ZodType<WhoobeBlockNode> = z.lazy(() =>
       endpointName: z.string(),
       routePath: z.string(),
       fieldPath: z.string(),
-      params: z.record(z.string()).optional().nullable(),
+      params: z.record(z.string(), z.string()).optional().nullable(),
     }).optional(),
   })
 );
@@ -70,7 +70,7 @@ export const WhoobeDocumentLayoutSchema = z.object({
   slug: z.string(),
   locale: z.string().default('en'),
   rootBlock: WhoobeBlockNodeSchema,
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });

@@ -16,7 +16,7 @@ import { z, ZodSchema } from 'zod';
  * Product's real `content` field allows `ProductBanner`, `ProductTabs`,
  * `ProductVariants`, ... all mixed in one list, confirmed against real
  * migrated data), each with its own field list. When both are absent,
- * `fieldcollections` falls back to `z.record(z.unknown())` per item.
+ * `fieldcollections` falls back to `z.record(z.string(), z.unknown())` per item.
  */
 export interface ClassFieldDefinition {
   name: string;
@@ -185,7 +185,7 @@ function compileFieldSchema(field: ClassFieldDefinition): ZodSchema {
       // A JSON object (or array) typed into a textarea. Bare scalars are
       // rejected on purpose - this is the "Object (JSON)" type, not "any
       // JSON value".
-      fieldSchema = z.union([z.record(z.unknown()), z.array(z.unknown())]);
+      fieldSchema = z.union([z.record(z.string(), z.unknown()), z.array(z.unknown())]);
       break;
     case 'manyToOneRelation':
       // Pimcore's own manyToOneRelation can point at either a Data Object
@@ -235,7 +235,7 @@ function compileFieldSchema(field: ClassFieldDefinition): ZodSchema {
         // simplification, kept as a fallback for when full multi-type
         // info isn't available (e.g. a hand-authored class with no
         // migrated `collectionTypes`).
-        fieldSchema = z.array(field.collectionFields ? compileFieldsShape(field.collectionFields) : z.record(z.unknown()));
+        fieldSchema = z.array(field.collectionFields ? compileFieldsShape(field.collectionFields) : z.record(z.string(), z.unknown()));
       }
       break;
     default:

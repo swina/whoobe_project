@@ -157,7 +157,7 @@ export const gatewayBindingSchema: z.ZodType<GatewayBinding> = z.object({
   endpointName: z.string().optional(),
   routePath: z.string().optional(),
   fieldPath: z.string(),
-  params: z.record(z.string()).nullable().optional(),
+  params: z.record(z.string(), z.string()).nullable().optional(),
   filters: z.array(dataBindingFilterSchema).nullable().optional(),
   transform: fieldTransformSchema,
   bindingId: z.string().optional(),
@@ -259,7 +259,7 @@ export const whoobeElementSchema: z.ZodType<WhoobeElementNode> = z.lazy(() =>
       style: z.string().nullable().optional(),
       font: z.string().nullable().optional(),
       image: elementImageSchema.optional(),
-      data: z.record(z.unknown()).optional(),
+      data: z.record(z.string(), z.unknown()).optional(),
       dataBinding: dataBindingSchema.nullable().optional(),
       dynamicLink: dynamicLinkSchema.nullable().optional(),
       gatewayBinding: gatewayBindingSchema.nullable().optional(),
@@ -274,7 +274,7 @@ export const whoobeElementSchema: z.ZodType<WhoobeElementNode> = z.lazy(() =>
       gsap: elementGsapSchema.optional(),
       // a malformed selection is dropped instead of making the whole page invalid: a published page must keep rendering
       selection: elementSelectionSchema.nullable().optional().catch(undefined) as unknown as z.ZodType<ElementSelection | null | undefined>,
-      alpine: z.record(z.unknown()).optional(),
+      alpine: z.record(z.string(), z.unknown()).optional(),
       theme: z.object({
         colors: z.array(z.object({ name: z.string(), hex: z.string() })),
         fonts: z.array(z.string()),

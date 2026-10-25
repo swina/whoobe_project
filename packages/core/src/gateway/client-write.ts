@@ -32,7 +32,7 @@ export function validateClientWrite(
   if (!isPlainObject(body.attributes)) return { ok: false, error: 'attributes must be an object' };
   if (mode === 'update' && !Object.keys(body.attributes).length) return { ok: false, error: 'attributes is empty: nothing to change' };
 
-  const base = compileDynamicSchema({ id: '', name: className, fields: [...fields] }) as unknown as z.AnyZodObject;
+  const base = compileDynamicSchema({ id: '', name: className, fields: [...fields] }) as unknown as z.ZodObject;
   const schema = mode === 'update' ? base.partial().strict() : base.strict();
   const parsed = schema.safeParse(body.attributes);
   if (!parsed.success) return { ok: false, error: firstIssues(parsed.error) };

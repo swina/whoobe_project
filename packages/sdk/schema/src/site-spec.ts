@@ -344,7 +344,7 @@ function prune(input: unknown): SiteSpec | null {
 function friendly(issue: { code: string; message: string; path: PropertyKey[] } & Record<string, any>): string {
   const last = String(issue.path[issue.path.length - 1] ?? '')
   // a message written in this file (a regex or a minimum with its own words) is already for a person; only Zod's defaults are rewritten
-  if (!/^(Too small|Too big|Invalid input|Invalid option|Invalid string|Unrecognized key)/.test(issue.message) && issue.code !== 'invalid_type' && issue.code !== 'unrecognized_keys') return issue.message
+  if (!/^(Too small|Too big|Invalid input|Invalid option|Invalid discriminator|Invalid string|Unrecognized key)/.test(issue.message) && issue.code !== 'invalid_type' && issue.code !== 'unrecognized_keys') return issue.message
   if (issue.code === 'unrecognized_keys') {
     const keys = issue.keys as string[]
     return `unknown ${keys.length > 1 ? 'keys' : 'key'} ${keys.map((k) => `"${k}"`).join(', ')}: not part of the specification`

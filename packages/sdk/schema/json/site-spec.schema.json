@@ -25,14 +25,14 @@
           "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
         },
         "supportedLocales": {
-          "description": "one or two locales, the default one included",
           "minItems": 1,
           "maxItems": 2,
           "type": "array",
           "items": {
             "type": "string",
             "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
-          }
+          },
+          "description": "one or two locales, the default one included"
         },
         "description": {
           "type": "string",
@@ -225,7 +225,7 @@
   "additionalProperties": false,
   "$defs": {
     "__schema0": {
-      "anyOf": [
+      "oneOf": [
         {
           "type": "object",
           "properties": {
@@ -340,10 +340,10 @@
               "const": "text"
             },
             "html": {
-              "description": "a paragraph; inline formatting only (strong, em, a, code, br), cleaned on import",
               "type": "string",
               "minLength": 1,
-              "maxLength": 20000
+              "maxLength": 20000,
+              "description": "a paragraph; inline formatting only (strong, em, a, code, br), cleaned on import"
             },
             "css": {
               "type": "string",
@@ -365,11 +365,11 @@
               "const": "link"
             },
             "text": {
-              "description": "the visible text; a link without text is refused",
               "type": "string",
               "minLength": 1,
               "maxLength": 200,
-              "pattern": "^[^<>]*$"
+              "pattern": "^[^<>]*$",
+              "description": "the visible text; a link without text is refused"
             },
             "href": {
               "type": "string",
@@ -397,11 +397,11 @@
               "const": "image"
             },
             "alt": {
-              "description": "what the image shows; the picture itself is a placeholder until a person chooses one",
               "type": "string",
               "minLength": 1,
               "maxLength": 300,
-              "pattern": "^[^<>]*$"
+              "pattern": "^[^<>]*$",
+              "description": "what the image shows; the picture itself is a placeholder until a person chooses one"
             },
             "css": {
               "type": "string",
@@ -416,7 +416,6 @@
           "additionalProperties": false
         },
         {
-          "description": "a form as a template of fields; it is created disconnected (it sends nowhere until a developer connects it)",
           "type": "object",
           "properties": {
             "kind": {
@@ -431,9 +430,9 @@
                 "type": "object",
                 "properties": {
                   "name": {
-                    "description": "the name the value is sent under once a developer connects the form",
                     "type": "string",
-                    "pattern": "^[a-z][a-z0-9_]{0,39}$"
+                    "pattern": "^[a-z][a-z0-9_]{0,39}$",
+                    "description": "the name the value is sent under once a developer connects the form"
                   },
                   "label": {
                     "type": "string",
@@ -494,7 +493,8 @@
             "fields",
             "submitLabel"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "description": "a form as a template of fields; it is created disconnected (it sends nowhere until a developer connects it)"
         },
         {
           "type": "object",
@@ -504,9 +504,9 @@
               "const": "snippet"
             },
             "use": {
-              "description": "the key of an entry of \"snippets\"",
               "type": "string",
-              "pattern": "^[a-z][a-z0-9-]{0,39}$"
+              "pattern": "^[a-z][a-z0-9-]{0,39}$",
+              "description": "the key of an entry of \"snippets\""
             }
           },
           "required": [

@@ -32,3 +32,10 @@ overrides:
   fast-uri: ^3.1.8
   markdown-it: ^14.3.3
   dompurify: ^3.4.17
+  proxy-addr: ^2.0.8
+  source-map-js: ^1.2.2
+  prosemirror-view: ^1.42.3
+  vue: ^3.5.42
+  "@vue/server-renderer": ^3.5.42
+  body-parser: ^1.20.9
+  undici: ^6.29.1
