@@ -1,4 +1,6 @@
 # Release v0.3.0 — 2026-10-23
+## Docs: release section shows 0.3.0; findings register records the fixes of 2026-10-25 — 2026-10-25
+- Branch: `master`. `docs/release/README.md`: the "New in 0.2.0" paragraph is now "New in 0.3.0" with links to all release notes, and the table lists the notes of 0.3.0, 0.2.0, 0.1.1 and 0.1.0 (it listed only 0.1.0); the main `README.md` now points here for the current release. `security/findings.md`: F-003 records zod 4.6.7, multer 2.5.0, body-parser and undici overrides; F-050 records `brotli-libs` in the SPA images. Links checked to exist; the docs site (docs.whoobe.dev) not regenerated yet. Docs only.
 ## README: no version number in Status — 2026-10-25
 - Branch: `master`. The *Status* section of `README.md` still said version 0.2.0; it no longer names a version and points to `docs/release/README.md` (current release and release notes), so it needs no update at each release (owner's change). Docs only.
 ## Images: brotli-libs upgraded in the two nginx images (CVE-2026-111497) — 2026-10-25
