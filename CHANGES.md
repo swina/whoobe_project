@@ -1,4 +1,6 @@
 # Release v0.3.0 — 2026-10-23
+## README: no version number in Status — 2026-10-25
+- Branch: `master`. The *Status* section of `README.md` still said version 0.2.0; it no longer names a version and points to `docs/release/README.md` (current release and release notes), so it needs no update at each release (owner's change). Docs only.
 ## Images: brotli-libs upgraded in the two nginx images (CVE-2026-111497) — 2026-10-25
 - Branch: `fix/advisories-2026-10-25`. The manual `security` run 40216804994 on this branch passed the static scans, the API and browser suites, isolation and TLS, but failed at *Container images*: `whoobe-admin-dashboard` and `whoobe-whoobe-one-spike` carry `brotli-libs` 1.2.0-r1 (HIGH CVE-2026-111497, fixed in 1.2.1-r0) from the pinned `nginx-unprivileged:alpine` base. `Dockerfile`: `brotli-libs` added to the `apk upgrade` of both stages, like pcre2, tiff, libexpat and libx11. Checked on the pinned base that the upgrade gives 1.2.1-r0; the images themselves were not rebuilt here, the next CI run checks them. `postgres:16-alpine` still reports the 26 known `gosu` findings (advisory, not gating).
 ## Dependencies: four new high advisories (zod 4, body-parser, multer, undici) — 2026-10-25

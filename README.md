@@ -36,7 +36,7 @@ For the code: [developing Whoobe](docs/development.md) (monorepo layout, local d
 
 ## Status
 
-Version **0.2.0**. It is a `0.` series: behaviour can change between minor releases, and the [release notes](docs/release/release-notes-0.2.0.md) say what.
+Whoobe is in the `0.` series: behaviour can change between minor releases. The [release section](docs/release/README.md) lists the current release and links the release notes, which say what changed.
 
 ## Questions, contributing, security, licence
 
