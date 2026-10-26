@@ -57,8 +57,10 @@ export async function runJob(job: ClaimedJob, core: Core, cfg: RunConfig): Promi
     pending += text; tail = (tail + text).slice(-2000);
   };
 
-  // a minimal environment: the generator needs PATH (pnpm) and HOME, nothing of the runner's own configuration
+  // a minimal environment: the generator needs PATH and HOME, and in the image the folder of the SDK packed at build time
+  // (the image has no pnpm, F-063); nothing of the runner's own configuration
   const env: Record<string, string> = { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '/tmp', NODE_ENV: 'production', CI: 'true' };
+  if (process.env.WHOOBE_SDK_TARBALL_DIR) env.WHOOBE_SDK_TARBALL_DIR = process.env.WHOOBE_SDK_TARBALL_DIR;
   if (job.siteKey) env.WHOOBE_SITE_API_KEY = job.siteKey;
   const child = spawn(process.execPath, [cfg.bin ?? DEFAULT_BIN, ...generatorArgs(job, releaseDir)], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   child.stdout.on('data', take); child.stderr.on('data', take);

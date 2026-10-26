@@ -106,6 +106,17 @@ describe('runJob', () => {
     expect(out.log).not.toContain('sitekey-abcdef123456')
     expect(out.log).toContain('key: ***')
   })
+  it('the folder of the prepacked SDK reaches the generator (the image has no pnpm, F-063); other runner variables do not', async () => {
+    const bin = fake(`console.log('sdk:', process.env.WHOOBE_SDK_TARBALL_DIR, 'token:', process.env.PUBLISH_RUNNER_TOKEN ?? 'none')`)
+    const { c, out } = core()
+    const before = { sdk: process.env.WHOOBE_SDK_TARBALL_DIR, tok: process.env.PUBLISH_RUNNER_TOKEN }
+    process.env.WHOOBE_SDK_TARBALL_DIR = '/opt/whoobe-sdk'; process.env.PUBLISH_RUNNER_TOKEN = 'runner-secret'
+    try { await runJob(job, c, { root, timeoutMs: 20000, secrets: [], bin }) } finally {
+      if (before.sdk === undefined) delete process.env.WHOOBE_SDK_TARBALL_DIR; else process.env.WHOOBE_SDK_TARBALL_DIR = before.sdk
+      if (before.tok === undefined) delete process.env.PUBLISH_RUNNER_TOKEN; else process.env.PUBLISH_RUNNER_TOKEN = before.tok
+    }
+    expect(out.log).toContain('sdk: /opt/whoobe-sdk token: none')
+  })
   it('failure: the live release is untouched and the half-written one is removed', async () => {
     const live = releaseDirFor(root, 's', '00000000-0000-4000-8000-000000000009'); mkdirSync(live, { recursive: true }); await switchCurrent(live)
     const bin = fake(`console.error('boom'); process.exit(3)`)
