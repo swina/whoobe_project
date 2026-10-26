@@ -127,12 +127,21 @@ CMD ["node", "apps/gateway/dist/server.js"]
 # host with Docker alone - see CHANGES.md.
 
 # ─── Publisher (runs the site generator for the dashboard's Publish tab) ────
-# Unlike the services above it needs pnpm and the whole workspace: the generator packs the SDK packages (`pnpm pack`) into the
-# site. It holds no database or object-store credentials: it talks to core-api over HTTP with PUBLISH_RUNNER_TOKEN.
+# The generator vendors the SDK packages into each site as tarballs. They are packed here, when the image is built
+# (WHOOBE_SDK_TARBALL_DIR), so the image runs like the services above: runtime base without pnpm, corepack or npm, production
+# dependencies only (F-063: the old image shipped the whole build tree, 171 fixable HIGH/CRITICAL). It holds no database or
+# object-store credentials: it talks to core-api over HTTP with PUBLISH_RUNNER_TOKEN.
 # Not part of the public sandbox profile (docs/plans/website/publish-from-dashboard.md).
-FROM base AS publisher
-COPY --from=build --chown=node:node /app /app
+FROM build AS sdk-tarballs
+# hadolint ignore=DL3059
+RUN mkdir -p /sdk-tarballs && for p in schema renderer react next vue nuxt; do \
+      pnpm --dir "packages/sdk/$p" pack --pack-destination /sdk-tarballs || exit 1; done
+
+FROM runtime AS publisher
+COPY --from=prod --chown=node:node /app /app
+COPY --from=sdk-tarballs /sdk-tarballs /opt/whoobe-sdk
+# hadolint ignore=DL3059
 RUN mkdir -p /publish && chown node:node /publish
-ENV NODE_ENV=production PUBLISH_ROOT=/publish
+ENV NODE_ENV=production PUBLISH_ROOT=/publish WHOOBE_SDK_TARBALL_DIR=/opt/whoobe-sdk
 USER 1000:1000
 CMD ["node", "apps/publisher/dist/server.js"]

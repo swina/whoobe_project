@@ -1,4 +1,4 @@
-import { mkdir, writeFile, readFile, readdir, rm } from 'node:fs/promises'
+import { mkdir, writeFile, readFile, readdir, rm, copyFile } from 'node:fs/promises'
 import { join, relative, resolve, dirname } from 'node:path'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -124,6 +124,11 @@ const SDK_PACKAGES_BY_FRAMEWORK: Record<'next' | 'vue', string[]> = {
  *  requirement like "@whoobe-cms/renderer@0.1.0" would still try to
  *  resolve from the public npm registry (where these packages don't
  *  exist) rather than reuse the local tarball - also verified live. */
+/** The file name `pnpm pack` gives a package: `@whoobe-cms/schema` 0.3.1 -> `whoobe-cms-schema-0.3.1.tgz`. Exported for tests. */
+export function tarballName(name: string, version: string): string {
+  return `${name.replace(/^@/, '').replace('/', '-')}-${version}.tgz`
+}
+
 async function packSdkDependencies(outDir: string, framework: 'next' | 'vue', monorepoRoot: string): Promise<VendoredSdkPackage[]> {
   // Absolute: `pnpm pack --pack-destination` (run with cwd set to each SDK
   // package's own directory, below) resolves a relative destination against
@@ -135,12 +140,20 @@ async function packSdkDependencies(outDir: string, framework: 'next' | 'vue', mo
   const sdkDir = resolve(join(monorepoRoot, 'packages', 'sdk'))
   const packages = SDK_PACKAGES_BY_FRAMEWORK[framework]
   const result: VendoredSdkPackage[] = []
+  // The publisher image packs the SDK when it is built and has no pnpm: it names the folder of those tarballs here
+  const prepacked = process.env.WHOOBE_SDK_TARBALL_DIR
   for (const pkg of packages) {
     const pkgDir = join(sdkDir, pkg)
-    const output = execFileSync('pnpm', ['pack', '--pack-destination', vendorDir], { cwd: pkgDir, encoding: 'utf-8' })
-    const tarballPath = output.trim().split('\n').pop()!.trim()
-    const pkgJson = JSON.parse(await readFile(join(pkgDir, 'package.json'), 'utf-8')) as { name: string }
-    result.push({ name: pkgJson.name, relPath: `vendor/${tarballPath.split('/').pop()}` })
+    const pkgJson = JSON.parse(await readFile(join(pkgDir, 'package.json'), 'utf-8')) as { name: string; version: string }
+    let fileName: string
+    if (prepacked) {
+      fileName = tarballName(pkgJson.name, pkgJson.version)
+      await copyFile(join(prepacked, fileName), join(vendorDir, fileName))
+    } else {
+      const output = execFileSync('pnpm', ['pack', '--pack-destination', vendorDir], { cwd: pkgDir, encoding: 'utf-8' })
+      fileName = output.trim().split('\n').pop()!.trim().split('/').pop()!
+    }
+    result.push({ name: pkgJson.name, relPath: `vendor/${fileName}` })
   }
   return result
 }
