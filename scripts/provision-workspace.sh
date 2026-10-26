@@ -268,7 +268,15 @@ else
 fi
 
 if [ -n "$PROFILE" ] && [ -f "deploy/profiles/${PROFILE}.nginx-http.conf" ]; then
-  cp "deploy/profiles/${PROFILE}.nginx-http.conf" "deploy/nginx/00-${PROFILE}-zones.conf"
+  # SANDBOX_UNTRACKED_IPS (space or comma separated addresses or CIDR ranges) fills the geo list of the sandbox's visit log
+  UNTRACKED=""
+  for a in ${SANDBOX_UNTRACKED_IPS//,/ }; do
+    [[ "$a" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?$|^[0-9a-fA-F:]*:[0-9a-fA-F:]*(/[0-9]{1,3})?$ ]] \
+      || { echo "WARN: SANDBOX_UNTRACKED_IPS: not an address or CIDR range, left out: $a" >&2; continue; }
+    UNTRACKED+="    $a 1;\\n"
+  done
+  sed "s|^    # @SANDBOX_UNTRACKED_IPS@$|${UNTRACKED:-    # (no SANDBOX_UNTRACKED_IPS)}|" \
+    "deploy/profiles/${PROFILE}.nginx-http.conf" > "deploy/nginx/00-${PROFILE}-zones.conf"
 fi
 
 echo ">>> Rendering deploy/nginx/_locations-${SLUG}.inc ..."

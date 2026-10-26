@@ -100,6 +100,12 @@ time, **the address cut to its network** (IPv4 /24, IPv6 /48: `81.10.20.0`), met
 time taken, referrer, browser. Static files and `/health` are not written. The host's logrotate keeps 14 days (daily, compressed).
 Nobody is identified: tell visitors so on the page that links to the sandbox.
 
+To leave your own visits out (or a monitor's), put the addresses in `SANDBOX_UNTRACKED_IPS` in `/etc/whoobe-sandbox.env`, space or
+comma separated, CIDR ranges allowed (`203.0.113.7, 2001:db8::/48`). The next reset writes them into the `geo` list of
+`deploy/nginx/00-sandbox-zones.conf` (an entry that is not an address is left out with a warning); then `sudo nginx -t && sudo systemctl
+reload nginx` once outside the reset. Requests from those addresses still reach the sandbox; only the log skips them. Lines written
+before stay in the log until logrotate drops them (14 days).
+
 Read it with `scripts/sandbox/visits.sh [days]` (on the host, or `ssh <host> 'cd /opt/whoobe/whoobe_cms && scripts/sandbox/visits.sh 7'`;
 the user needs the `adm` group to read the log): requests, **visitors** (distinct network + browser, robots left out), **logins**
 (successful sign-ins of the demo account), **active** (signed in and changed something), robot requests, where visitors came from
