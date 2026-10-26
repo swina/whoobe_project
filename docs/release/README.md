@@ -19,6 +19,7 @@ roles; different companies or legal entities get separate workspaces. Whoobe is 
 | If you want to... | Read |
 |---|---|
 | understand what Whoobe is and why a platform like it | [What Whoobe is](overview/what-is-whoobe.md) (one page) |
+| see what it can do for you, with everyday examples | [What you can do with Whoobe](overview/what-you-can-do.md) |
 | judge fit, cost and limits | [Full overview](overview/whoobe-overview.md) |
 | understand how it is built and why | [Architecture overview](architecture/architecture-overview.md), [design decisions](architecture/design-decisions/README.md) |
 | read what is written for **your role** | [Documentation by role](by-role/README.md): CEO, IT manager, operators, security and compliance, marketing, data owners, developers |
@@ -45,7 +46,7 @@ The detailed documentation is organised by what Whoobe does. Each pillar has an 
 
 | Section | What is in it |
 |---|---|
-| [`overview/`](https://github.com/swina/whoobe_project/tree/master/docs/release/overview) | [What Whoobe is](overview/what-is-whoobe.md), the [full overview](overview/whoobe-overview.md) (what it does and does not do, costs, fit, by role), the dated [executive summary](overview/executive-summary.md) |
+| [`overview/`](https://github.com/swina/whoobe_project/tree/master/docs/release/overview) | [What Whoobe is](overview/what-is-whoobe.md), [what you can do with it](overview/what-you-can-do.md), the [full overview](overview/whoobe-overview.md) (what it does and does not do, costs, fit, by role), the dated [executive summary](overview/executive-summary.md) |
 | [`architecture/`](https://github.com/swina/whoobe_project/tree/master/docs/release/architecture) | [Architecture overview](architecture/architecture-overview.md), [data and storage](architecture/data-and-storage.md), [authentication and authorization](architecture/authentication-and-authorization.md), and the [design decisions](architecture/design-decisions/README.md) |
 | [`by-role/`](by-role/README.md) | Reading paths for CEO, IT manager, operators, security and compliance, marketing, data owners, developers |
 | [`api/`](https://github.com/swina/whoobe_project/tree/master/docs/release/api) | [API reference](api/api-reference.md) and [`openapi.yaml`](https://github.com/swina/whoobe_project/blob/master/docs/release/api/openapi.yaml), both generated from one route table by [`gen-api-docs.py`](https://github.com/swina/whoobe_project/blob/master/docs/release/api/gen-api-docs.py) |
