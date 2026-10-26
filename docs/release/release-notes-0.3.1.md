@@ -9,6 +9,10 @@ Advisories published by others in third-party packages, found by the nightly `se
 by the image scan; none was found by the project, so all are public ([disclosure policy](security/disclosure-policy.md)). **Affected: every release
 from 0.1.0 to 0.3.0** (the same versions are in the lockfile of each tag).
 
+**No 0.2.1.** The support policy ([release process](release-process.md), section 2) gives security fixes to the latest two minor lines; for this
+patch the owner decided (2026-10-26) not to release a 0.2.1: 0.2.0 is one week old and the upgrade from it to 0.3.x has six migrations, tested from
+0.2.0 on 2026-10-23. **On 0.2.x, upgrade to 0.3.1.**
+
 | Package | Was | Now | Advisory | Where |
 |---|---|---|---|---|
 | `zod` | 3.25.76 | 4.6.7 | GHSA-mrhx-c7xc-m3w5 (high): memory exhaustion when an array schema without a length limit validates a large array | core, schema SDK (validation of Data Objects written through the gateway, site specifications, page content) |
