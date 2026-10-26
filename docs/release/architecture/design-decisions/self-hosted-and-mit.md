@@ -15,7 +15,7 @@ the keys, and there is no fee per user, per site, per page or per API call.
 - **You operate it.** Installation, TLS, backups, upgrades and monitoring are yours (the scripts and runbooks help; see [operations](../../operations/README.md)).
 - **No vendor SLA, no vendor-held certification.** Compliance evidence is the documentation and tests in this folder, reviewed by you, not a
   third-party certificate.
-- **Young software.** The first release was 0.1.0 (October 2026) and the current one is 0.2.0; while the version starts with `0.`, a minor release may change behaviour (read the release notes before you upgrade). The [overview](../../overview/whoobe-overview.md) lists what has and has not been tested.
+- **Young software.** The first release was 0.1.0 (October 2026); the [release section](../../README.md) names the current one; while the version starts with `0.`, a minor release may change behaviour (read the release notes before you upgrade). The [overview](../../overview/whoobe-overview.md) lists what has and has not been tested.
 
 ## When to revisit
 If a managed offering is ever added, it would be a separate decision with its own operations and responsibilities.

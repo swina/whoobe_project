@@ -67,9 +67,9 @@ licences (and a privacy consideration, see [data protection](data-protection.md)
 
 | Claim | Today |
 |---|---|
-| The tag is the reviewed source | git tag, annotated and signed; `release.yml` stops if GitHub does not verify the signature (**from the first release made with this workflow**; v0.1.0 to v0.2.0 tags are not signed; commits are not signed) |
+| The tag is the reviewed source | git tag, annotated and signed; `release.yml` stops if GitHub does not verify the signature (**from v0.3.0**; v0.1.0 to v0.2.0 tags are not signed; commits are not signed) |
 | The images match the tag | images are built from the tag by `release.yml` (amd64 and arm64) and pushed to `ghcr.io` |
-| The images are signed | **yes**, by digest with cosign (keyless, GitHub OIDC), plus a SLSA build provenance attestation (`actions/attest-build-provenance`, from the first release made with this workflow) |
+| The images are signed | **yes**, by digest with cosign (keyless, GitHub OIDC), plus a SLSA build provenance attestation (`actions/attest-build-provenance`, from v0.3.0) |
 | Images pinned by digest in the release notes | the digests are appended to the draft release notes by `release.yml` |
 | Reproducible builds | the inputs are pinned (lockfile, digests) but a bit-for-bit reproduction has not been checked |
 

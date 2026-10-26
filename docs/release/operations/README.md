@@ -11,7 +11,7 @@ Running Whoobe: installing a workspace, configuring it, securing it, backing it 
 4. **Protect.** [Encryption](encryption.md) and encrypted backups; [backup, restore and DR](backup-restore-and-dr.md), [scheduling backups](scheduling-backups.md); rehearse the restore once.
 5. **Watch.** [Observability and logging](observability-and-logging.md).
 6. **Size and scale.** [Capacity and scaling](capacity-and-scaling.md).
-7. **Keep it current.** [Upgrade and migrations](upgrade-and-migrations.md) and the [release process](../release-process.md); read the [release notes](../release-notes-0.1.0.md) before installing over a development setup.
+7. **Keep it current.** [Upgrade and migrations](upgrade-and-migrations.md) and the [release process](../release-process.md); read the release notes of the version (linked from the [release section](../README.md)) before you upgrade.
 
 ## All documents
 

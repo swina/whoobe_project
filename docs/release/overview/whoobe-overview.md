@@ -1,7 +1,7 @@
 # Whoobe: what it is, what it is not, and whether it fits you
 
 *A presentation for IT managers, CEOs, marketing managers and security officers. Written for release 0.1.0, the first release,
-on 2026-10-11. Every statement about the product is taken from the code and from the technical documentation in this folder; where
+on 2026-10-11, and brought up to date for release 0.3.1 on 2026-10-26. Every statement about the product is taken from the code and from the technical documentation in this folder; where
 something has not been tested, it says so.*
 
 *Short on time? [What Whoobe is](what-is-whoobe.md) is the one-page picture, and [documentation by role](../by-role/README.md) lists what to read for your role.*
@@ -12,8 +12,8 @@ something has not been tested, it says so.*
 
 I will start with what I would want to read if I were in your seat.
 
-Whoobe is young. This is release 0.1.0, the first release, and it has been installed from scratch on one reference machine, not
-on a hundred. We have put a great deal of effort into testing it (you will find the numbers in chapter 8), and we have fixed what the
+Whoobe is young. The first release, 0.1.0, came out in mid-October 2026; the current one is 0.3.1. It has been installed from scratch on
+one reference machine and upgraded there release after release, not on a hundred. We have put a great deal of effort into testing it (you will find the numbers in chapter 8), and we have fixed what the
 tests and our own reviews found. But "we tested it" is not "it
 has been in production for five years", and I would rather tell you that on the first page than have you find out in month three.
 
@@ -76,7 +76,7 @@ many unrelated companies. Chapter 4 explains each.
 
 ## 3. What Whoobe does
 
-Only what exists in release 0.1.0. Items marked *(beta)* work but have had less use.
+Only what exists in the current release (0.3.1). Items marked *(beta)* work but have had less use.
 
 ### 3.1 Authoring
 
@@ -204,11 +204,11 @@ it does not, we say that too.
 
 | Fact | What it means for you |
 |---|---|
-| **First release (0.1.0)** | Installed from scratch on one reference machine (an arm64 virtual machine). That install found and fixed real defects. Expect more in the first months. While the version starts with 0, a minor release may change behaviour; the release notes tell you what. |
-| **Upgrades are untested** | A script (`scripts/upgrade/upgrade-test.sh`) upgrades a stack from v0.1.0 to the current tree and checks the migrations, the data and a login; a workflow runs it on a release tag or by hand (passed on GitHub on 2026-10-18). The rest of the upgrade and rollback procedures (images on a real host, nginx) is written, not rehearsed. |
+| **A young 0.x series (0.1.0 in mid-October 2026, 0.3.1 now)** | Installed from scratch on one reference machine (an arm64 virtual machine) and upgraded there in place with each release since. The first install found and fixed real defects. Expect more in the first months. While the version starts with 0, a minor release may change behaviour; the release notes tell you what. |
+| **Upgrades are tested by script, rollback is not** | A script (`scripts/upgrade/upgrade-test.sh`) upgrades a stack from an earlier release tag to the current tree and checks the migrations, the data and a login; a workflow runs it on every release tag (v0.3.0 to v0.3.1 passed on 2026-10-26; v0.2.0 to 0.3.x on 2026-10-23). The reference host has been upgraded in place with each release. A rollback to an earlier release is written, not rehearsed. |
 | **Restore has not been rehearsed** | The database and bucket backups are scripted (the database dump encrypted, the bucket copy not) and `scripts/restore/rehearse.sh` restores a throwaway workspace from them (passed 2026-10-18, small data, one machine). A restore of your own data on a spare machine is still yours to run before you rely on it. |
-| **Images are signed and carry a provenance attestation from the next release; commits are not signed** | `release.yml` builds the amd64 and arm64 images from a tag, pushes them to `ghcr.io`, signs them by digest with cosign (keyless) and attaches a source software bill of materials to a draft GitHub Release. From the first release made after 2026-10-22 the images also carry a SLSA build provenance attestation and the tag must be signed and verified by GitHub; releases up to 0.2.0 have neither, and commits are not signed. |
-| **Some checks must be repeated on the release commit** | The dynamic security scan and the manual security checklist were last run before the final features were added. The release process requires a new run. |
+| **Images are signed and carry a provenance attestation; commits are not signed** | `release.yml` builds the amd64 and arm64 images from a tag, pushes them to `ghcr.io`, signs them by digest with cosign (keyless), attaches a SLSA build provenance attestation and a source software bill of materials to a draft GitHub Release, and stops if GitHub does not verify the signature of the tag. This holds from 0.3.0; releases up to 0.2.0 have neither signed tags nor provenance, and commits are not signed. The record of each release ([`security/results`](../security/results/README.md)) says how the published images were checked. |
+| **The manual checklist lags behind** | The automated suites and the dynamic scan run on each release candidate (0.3.1: all green, failures before it published). The manual security checklist was not repeated for the features added since 0.2.0. |
 | **Documentation is English only,** and the user manual is partial (several chapters are listed but not written). | Training material for editors in other languages is yours to produce. |
 | **Support** | Security fixes are made for the latest two minor versions. *[Commercial support, response times and who answers the phone: to be stated by us before you sign anything.]* |
 
@@ -341,7 +341,7 @@ answer. It touches the editor, the gateway, the engine and the page, and it take
 
 - Sessions with opaque tokens stored as hashes; lockout and throttling on login, second factor, and password reset; passwords hashed;
   optional TOTP with encrypted secrets.
-- Permission checks on every administrative route, kept in a contract file that tests compare with the code (214 routes); an isolation
+- Permission checks on every administrative route, kept in a contract file that tests compare with the code (267 routes); an isolation
   suite on two stacks checks that one workspace's credentials and data do not work in another.
 - Third-party credentials (gateway, AI, mail, Figma, push) encrypted at rest with keys you hold; a server-side request forgery guard on
   every outbound call; rich text filtered on output; uploaded files checked by content; active content served as a download.
@@ -351,14 +351,14 @@ answer. It touches the editor, the gateway, the engine and the page, and it take
 
 **The evidence, and its limits.**
 
-- 59 security findings were recorded by our own tests and reviews; all those rated High are fixed. Some lower-severity items are open or
+- 63 security findings were recorded by our own tests and reviews; all those rated High are fixed. Some lower-severity items are open or
   accepted with a review date; they are listed in the status summary (for example residual unsanitised display paths covered by tests only
-  in part, the postponed Content-Security-Policy, two accepted dependency advisories).
-- Automated suites: about 1,170 API tests, 270 unit tests, 14 isolation tests on two stacks, 30 browser tests, static analysis and
+  in part, the postponed Content-Security-Policy, an accepted dependency advisory, the build tools in the publisher image).
+- Automated suites: 2,337 API and unit tests, 14 isolation tests on two stacks, 56 browser tests (release 0.3.1), static analysis and
   dependency, secret and container scans, and an OWASP ZAP active scan, run on a disposable stack. This is **our** evidence. Nobody
   outside the team has audited it.
 - Not covered: load tested only for four endpoints on a development machine; no SQL fuzzing of every endpoint; the generated Next/Nuxt sites are generated and parsed but not built in the tests;
-  TLS has been tested on the rendered template, not yet on a live public hostname; the dynamic scan and manual checklist need to be repeated on the release commit.
+  TLS has been tested on the rendered template, not yet on a live public hostname; the manual checklist was not repeated for the features added since 0.2.0.
 
 **Known gaps for your risk assessment** (all in chapter 4): SSO with one OpenID Connect provider only (no SAML or LDAP, no single
 logout), a second factor that is mandatory only for the roles an administrator chooses, an audit log of successful actions only, no per-website roles, no full Content-Security-Policy on the admin applications, no malware scanning, no register of data-subject requests (the erasure itself is provided), no third-party certification, in-memory throttling per process.
@@ -377,18 +377,19 @@ data retention; keep the engine of any automation behind HTTPS with a secret on 
 
 | What | State |
 |---|---|
-| Fresh installation | Done on one arm64 host (Ubuntu 22.04, nginx on the host, Let's Encrypt), following the written procedure; it found and fixed three defects in the TLS scripts |
-| Automated tests | API about 1,170, unit about 270, isolation 14, browser 30, run in CI; plus the tests of the packages |
-| Security review | 59 findings recorded; High all fixed; remaining items listed |
-| Dynamic scan (OWASP ZAP) | Active scan of 154 routes with an admin session found nothing above informational, before the last features; to be repeated |
-| Upgrade (database step), restore (throwaway workspace) | Tested by script, small data (2026-10-18) |
+| Fresh installation | Done on one arm64 host (Ubuntu 22.04, nginx on the host, Let's Encrypt), following the written procedure; it found and fixed three defects in the TLS scripts. The same host has been upgraded in place with each release since |
+| Automated tests | API and unit 2,337, isolation 14, browser 56, run in CI on the 0.3.1 release candidate; plus the tests of the packages |
+| Security review | 63 findings recorded; High all fixed; remaining items listed |
+| Dynamic scan (OWASP ZAP) | Active scan of the running stack with an admin session, passed on the 0.3.1 release candidate |
+| Upgrade from the previous release, restore (throwaway workspace) | Upgrade tested by script on every release tag; restore tested by script, small data (2026-10-18) |
 | Load (four endpoints, development machine) | Measured once, 2026-10-18 |
 | Rollback, multi-replica, restore on a real host, uploads under load | **Not tested** |
+| Results of each release, the failed runs included | Published in [`security/results`](../security/results/README.md), with the reports attached to the GitHub Release |
 | External audit or certification | **None** |
 | Documentation | Technical set (architecture, operations, security) written from the code; user manual partial; checked automatically for broken links, non-existent paths and undocumented settings |
 
-Everything here is in the [release documentation](../README.md), including the [release notes](../release-notes-0.1.0.md) with the behaviour
-changes to check before installing over a development setup.
+Everything here is in the [release documentation](../README.md), including the release notes of each version with the behaviour
+changes to check before you upgrade.
 
 ---
 
@@ -402,7 +403,7 @@ changes to check before installing over a development setup.
 | You integrate with internal or niche systems no connector covers | You need a certificate (SOC 2, ISO 27001) from the vendor |
 | Editors should publish without developer tickets | You need visitor personalisation, A/B testing or analytics in one tool |
 | Licence cost and lock-in weigh on your decision | You want one platform for many unrelated customers |
-| You can start with a pilot and grow | You cannot accept a first release in production yet |
+| You can start with a pilot and grow | You cannot accept a young 0.x release in production yet |
 
 ---
 
@@ -427,7 +428,7 @@ is something we would advise you to solve outside Whoobe.
 
 | Topic | Document |
 |---|---|
-| What is in release 0.1.0, and what changes for existing installations | [Release notes](../release-notes-0.1.0.md) |
+| What is in the current release, and what changes for existing installations | [Release section](../README.md), which links the release notes of each version |
 | Components, routing, trust boundaries, deployment model | [Architecture overview](../architecture/architecture-overview.md) |
 | Identities, sessions, permissions, public surface | [Authentication and authorization](../architecture/authentication-and-authorization.md) |
 | Where data lives, retention | [Data and storage](../architecture/data-and-storage.md) |

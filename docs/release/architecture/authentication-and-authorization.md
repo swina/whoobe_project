@@ -168,8 +168,8 @@ suite logs in as a user with each seeded role and checks what it can and cannot 
 
 ### Enforcement and proof
 
-Every route of core-api is declared in `scripts/security/routes.expected.json`: **214 routes - 172 need a permission, 8
-need only a login, 34 are public** (a permission key, or one of two keys for the 90 content routes). The `authz-matrix` suite calls every route as five identities (anonymous, no
+Every route of core-api is declared in `scripts/security/routes.expected.json`: **267 routes - 215 need a permission, 9
+need only a login, 43 are public** (a permission key, or one of two keys for the 106 content routes; counted 2026-10-26). The `authz-matrix` suite calls every route as five identities (anonymous, no
 permission, read, write, admin) and compares the answer with the contract; the `route-drift` suite fails when a route
 exists in the code and not in the contract (or the reverse). asset-processor and gateway routes are guarded in code
 (`requireAuth`, `requirePermission`, `serviceTokenAuth`, site-key middleware) and covered by their own suites
