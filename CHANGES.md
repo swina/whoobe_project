@@ -1,3 +1,6 @@
+## Security results for v0.3.2 — 2026-10-27
+- Branch: `master`. New `docs/release/security/results/v0.3.2.md`: the full run on the release candidate `9fa13d4` (40400621940, DAST included, all jobs green: API 2341 passed / 2 skipped, browser 56 / 5 skipped, isolation 14; own images including the `publisher` 0 fixable HIGH/CRITICAL), the runs on the tag (security push, upgrade from v0.3.1, release), no failed runs since 0.3.1, the check of the six published images (cosign signature and SLSA provenance verified by digest, `trivy image` 0 on all six amd64 and on the publisher arm64) and what was not covered; it says it was written after publication. A fifth semgrep warning (`direct-response-write`, the audit log CSV export) is named. `results/README.md` points to it; the 0.3.2 line of `status-summary.md` names the run and the record. Docs only.
+
 # Release v0.3.2 — 2026-10-27
 
 ## [Release v0.3.2] — 2026-10-27
