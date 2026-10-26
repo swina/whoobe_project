@@ -1,6 +1,6 @@
 # Whoobe in front of an existing backend: routes from OpenAPI, a spec per client, events from the Gateway, a `gateway` profile
 
-Status: **proposal, 2026-10-26, not decided.** Not before the launch; candidate for the 0.4/0.5 plan. Follows
+Status: **proposal, 2026-10-26, not decided** (section 4.5 and phase 6 on rewriting the existing API added the same day). Not before the launch; candidate for the 0.4/0.5 plan. Follows
 [client-access-hub.md](client-access-hub.md) (a workspace with no websites used as a hub), which assumed the data lives in Data Objects.
 
 ## 1. The idea
@@ -76,6 +76,26 @@ it, move one class of data at a time into Data Objects behind the same client ro
   from `/config.js`, not removed (switching the profile off brings them back, nothing is lost).
 - Same images, same release. The profile is added to the isolation and API suites (a workspace with the profile must still pass them).
 
+### 4.5 Rewriting the existing API behind the Gateway
+When the organisation has to rewrite its API, Whoobe does not write the new code (except in the case below), but it lets the rewrite happen
+**one operation at a time** while the clients keep the same contract: they only know the Gateway's routes, keys and scopes, never the backend.
+The new API does not reimplement client authentication, scopes, limits or upstream credentials: it receives calls already checked.
+
+- **Cut-over per operation**: each route chooses its upstream (legacy or new), switched and switched back from the dashboard, with the change
+  in the audit log.
+- **Shadow traffic**: the legacy upstream answers the client; a copy of the request goes to the new one and the Gateway compares the two
+  answers (status, shape against the spec, chosen fields), without returning the new one. Reads only, or writes to a test upstream: duplicated
+  writes to two real systems are a hazard. The comparison is logged without bodies by default (personal data, see `redact.ts`).
+- **Canary**: a share of the calls, or named clients, go to the new upstream.
+- **Data Objects behind a legacy route**: for the parts whose data *can* be rebuilt (migration-tool with its MySQL adapter, or *Class from
+  file* with CSV/JSON), a Gateway route keeps the legacy path and JSON shape and is served by Data Objects (a mapping: fields, names, filters,
+  pagination) instead of an upstream. Then the CRUD needs no new code and the client does not notice. Today the client routes have Whoobe's
+  own shape (`/data/:className`), so the mapping is the missing piece.
+- **The contract as a test**: response validation in `report` mode (4.1) shows where the new API breaks the spec; samples of real requests and
+  answers (the `schema-inferrer` already reads live responses), with personal data removed, become test cases for the new implementation.
+- **Side effects become events**: cron jobs, triggers and mails inside the legacy code can move to Gateway or Data Object events delivered to
+  the operator's engine (4.3), so the new API stays smaller.
+
 ## 5. Phases
 
 | Phase | Content | Size |
@@ -85,6 +105,7 @@ it, move one class of data at a time into Data Objects behind the same client ro
 | 3 | Events from Gateway calls; inbound webhook | M |
 | 4 | `gateway` profile, dashboard sections by flag, suites | S/M |
 | 5 | Documentation: a guide "Whoobe in front of an existing API" (import, scopes, validation, events, moving a class into Data Objects later) | S |
+| 6 | Rewrite support: upstream per route with switch-back, canary, shadow traffic with comparison, Data Objects behind a legacy route (mapping), samples as tests | L |
 
 Phases 1 and 2 are useful inside Whoobe too (any upstream with a spec), so they are worth doing even if the profile is never used.
 
@@ -95,10 +116,12 @@ Phases 1 and 2 are useful inside Whoobe too (any upstream with a spec), so they 
 3. Whether the profile keeps the asset-processor.
 4. Default validation mode for a new endpoint imported from a spec (`enforce` is safer, `report` is easier to adopt).
 5. Whether events may carry bodies at all, or only identifiers (privacy by default).
-6. Positioning: one line in the launch posts ("you can also put the Gateway in front of the API you already have") to see whether people ask,
+6. Shadow traffic: which fields are compared, where the differences are kept, whether writes may be shadowed to a test upstream.
+7. The mapping of a legacy route onto Data Objects: declarative (fields, filters, pagination) only, or a plugin for the cases it cannot express.
+8. Positioning: one line in the launch posts ("you can also put the Gateway in front of the API you already have") to see whether people ask,
    before building phases 3 and 4.
 
 ## 7. Not in scope
 
-An automation engine (runs, retries of flows, editor); a full API-management suite (developer portal with self sign-up, monetisation,
+Generating the code of the new API; continuous two-way synchronisation of data between the legacy system and Data Objects; An automation engine (runs, retries of flows, editor); a full API-management suite (developer portal with self sign-up, monetisation,
 GraphQL federation); rewriting responses between versions of a spec.
