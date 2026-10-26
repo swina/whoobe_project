@@ -96,6 +96,77 @@ The new API does not reimplement client authentication, scopes, limits or upstre
 - **Side effects become events**: cron jobs, triggers and mails inside the legacy code can move to Gateway or Data Object events delivered to
   the operator's engine (4.3), so the new API stays smaller.
 
+### 4.6 An example: a distributor's order API
+
+*Hypothetical, to make the steps concrete. What exists today and what is proposed is marked on each step.*
+
+**Where they start.** A distributor of spare parts has a REST API written in 2014 (PHP) over a MySQL schema of 140 tables nobody dares to
+change. Three consumers use it: the e-commerce site, a mobile app for the sales agents, and a reseller's system that reads the catalogue every
+night. One shared API key, embedded in the app. No OpenAPI document. Inside the PHP code:
+
+| Operation | Logic in the legacy code |
+|---|---|
+| `GET /api/v1/products`, `GET /api/v1/products/{code}` | catalogue from 6 tables, images as file paths on the server |
+| `GET /api/v1/customers/{id}/prices` | price list per customer group, discounts computed in PHP |
+| `POST /api/v1/orders` | checks the stock, writes the order, decrements the stock, sends a confirmation mail |
+| `GET /api/v1/orders/{id}`, `PUT /api/v1/orders/{id}/status` | order and its state |
+| (cron, 02:00) | exports the day's orders to the ERP as a CSV file |
+
+**What they need to change.** The commercial department wants promotions by period and by product line (a change of the pricing logic); the
+reseller needs its own limited access; the catalogue should be edited by people, with real images, instead of by SQL. Rewriting everything at
+once is not an option: orders and stock are the business.
+
+**Step 0 - Whoobe in front, nothing changes behind** (exists today, except validation and the spec per client).
+- An OpenAPI document is written for the six operations (by hand, or from samples: the `schema-inferrer` reads live responses), imported:
+  one Gateway route per operation on an endpoint `orders-legacy`, whose credential is the old shared key, now known only to the Gateway.
+- One API client per consumer: the agents' app (catalogue, prices, orders), the site (the same), the reseller (`GET /products*` only, a
+  limit per minute). Each consumer changes its base URL once; the old key is withdrawn from the app.
+- Validation in `report` (4.1) for two weeks: it shows, for example, that the app sends quantities as strings. Fixed in the app, or accepted
+  in the spec, before anything is rewritten.
+- The reseller gets its own `/client/openapi.json` (4.2) with only the catalogue.
+
+**Step 1 - the catalogue moves into Data Objects** (import exists; the legacy-shaped route is the mapping of 4.5, to build).
+- A Data Class `Product` (code, name, line, group prices reference, attributes) filled by the migration-tool's MySQL adapter from the six
+  tables; images uploaded to the DAM and mirrored to the CDN. From now on the catalogue is edited in the dashboard, and the website builder
+  uses the same objects.
+- `GET /api/v1/products` and `/{code}` keep their path and JSON shape, served by the mapping onto `Product` instead of PHP. First as
+  **shadow** (PHP still answers, the Gateway compares), then **canary** (the reseller first, the least critical), then cut over. The PHP
+  catalogue code and its six tables become read-only, then retired.
+- Until the cut-over the two copies must not drift: the import runs again, or catalogue edits stay in the legacy system until that day.
+  No two-way sync (out of scope).
+
+**Step 2 - the new pricing logic** (Whoobe does not host it; proposed: upstream per route, shadow, canary).
+- The rules are business logic, so they live in a **new small service** the distributor writes (any language), `pricing-service`, reading the
+  promotions from a Data Class `Promotion` that the commercial department edits in the dashboard, and the groups from the legacy database.
+- `GET /api/v1/customers/{id}/prices` gets a second upstream: shadow for a month (the Gateway reports every price that differs: the
+  expected differences are the promotions, any other is a bug), then canary to five agents, then everyone. Switching back is one click.
+- Small adaptations that are not business logic (rename a field, drop an internal one) can be a request/response plugin of the route (the
+  plugin chain exists today) rather than code in the service.
+
+**Step 3 - side effects out of the PHP code** (proposed: events from Gateway calls, 4.3).
+- `POST /api/v1/orders` becomes an event route: each successful call emits `order.created` (identifiers only by default) to the engine the
+  distributor runs (n8n, Activepieces, a script). The engine sends the confirmation mail and pushes the order to the ERP when it happens,
+  instead of the 02:00 CSV.
+- The mail is switched off in PHP **in the same release** in which the engine starts sending it (otherwise two mails), and the CSV export
+  stays until the ERP push has run cleanly for a while.
+
+**Step 4 - what stays** (a decision, not a technical limit).
+- Orders and stock stay in the legacy system for now: they need transactions across tables (check, write, decrement), which is not what Data
+  Objects are for. When they are rewritten, it is a new service behind the same two routes, with shadow on `GET` and a dated cut-over for
+  `POST` (no shadow of writes on the real system).
+
+**End state.**
+
+| Route | Served by | Changed for the clients |
+|---|---|---|
+| `GET /api/v1/products`, `/{code}` | Data Objects (mapping) | nothing |
+| `GET /api/v1/customers/{id}/prices` | `pricing-service` | the promotions appear |
+| `POST /api/v1/orders` | legacy PHP + event to the engine | the mail comes from the engine |
+| `GET /api/v1/orders/{id}`, `PUT .../status` | legacy PHP | nothing |
+
+The three consumers changed one base URL and one key each. The distributor wrote one service (pricing) and removed three parts of the PHP
+code (catalogue, mail, CSV cron). Everything else moved by configuration.
+
 ## 5. Phases
 
 | Phase | Content | Size |
