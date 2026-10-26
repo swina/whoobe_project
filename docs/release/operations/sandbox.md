@@ -103,7 +103,9 @@ Nobody is identified: tell visitors so on the page that links to the sandbox.
 To leave your own visits out (or a monitor's), put the addresses in `SANDBOX_UNTRACKED_IPS` in `/etc/whoobe-sandbox.env`, space or
 comma separated, CIDR ranges allowed (`203.0.113.7, 2001:db8::/48`). The next reset writes them into the `geo` list of
 `deploy/nginx/00-sandbox-zones.conf` (an entry that is not an address is left out with a warning); then `sudo nginx -t && sudo systemctl
-reload nginx` once outside the reset. Requests from those addresses still reach the sandbox; only the log skips them. Lines written
+reload nginx` once outside the reset. Requests from those addresses still reach the sandbox; only the log skips them. Requests from
+ClaudeBot are not written either (they were about half of the log: `robots.txt` and the sitemap); other robots are written and
+counted apart by `visits.sh`. Lines written
 before stay in the log until logrotate drops them (14 days).
 
 Read it with `scripts/sandbox/visits.sh [days]` (on the host, or `ssh <host> 'cd /opt/whoobe/whoobe_cms && scripts/sandbox/visits.sh 7'`;
