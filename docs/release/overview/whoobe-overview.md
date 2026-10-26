@@ -341,7 +341,7 @@ answer. It touches the editor, the gateway, the engine and the page, and it take
 
 - Sessions with opaque tokens stored as hashes; lockout and throttling on login, second factor, and password reset; passwords hashed;
   optional TOTP with encrypted secrets.
-- Permission checks on every administrative route, kept in a contract file that tests compare with the code (267 routes); an isolation
+- Permission checks on every administrative route, kept in a contract file that tests compare with the code (270 routes); an isolation
   suite on two stacks checks that one workspace's credentials and data do not work in another.
 - Third-party credentials (gateway, AI, mail, Figma, push) encrypted at rest with keys you hold; a server-side request forgery guard on
   every outbound call; rich text filtered on output; uploaded files checked by content; active content served as a download.

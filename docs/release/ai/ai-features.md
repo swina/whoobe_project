@@ -45,20 +45,33 @@ and access follow the person. A `custom` endpoint lets you point at a model you 
 | Outbound calls | go through the SSRF guard, which refuses loopback, link-local and metadata addresses |
 | The public sandbox | AI is switched off |
 
-## 5. Data protection
+## 5. Tokens and usage per person
+
+Every AI answer carries what the request consumed (`usage`: provider calls, tokens in and out, summed over retries and translation batches), and the
+dashboard and the editor show it in a small notice to the person who asked; nothing is stored for that. A provider that does not report tokens shows
+the number of calls.
+
+An administrator can also **record** the usage of each person (*Security > AI Usage*, off by default): one row per request with the function, provider,
+model, tokens and date, **never the prompt or the answer**, deleted after 90 days by default, plus monthly totals. The report of every person needs
+the `ai_usage:read` permission (`admin` only); opening one person's requests is written to the audit log; every person sees what is recorded about
+them under *Mine*. A record per person is personal data about staff: inform them before turning it on, and check whether your country needs an
+agreement for a tool that can monitor workers ([data protection](../security/data-protection.md), section 2). The same card sets how long the AI
+history (`whoobe_ai_generated`, which keeps prompts and answers) is kept.
+
+## 6. Data protection
 
 When someone uses a function, **the prompt and the content they chose to send leave your installation for the provider they configured** (for
 translation, the text of the page). Nothing else is sent. Whether that is acceptable depends on the provider's terms: choose one that suits
 your data, use a self-hosted `custom` endpoint, or do not configure a key. See [data protection](../security/data-protection.md), section 4.
 
-## 6. What AI does not do
+## 7. What AI does not do
 
 - It does not publish, delete or change anything without a person saving it.
 - It does not read your data objects, assets or integrations on its own: it receives only what the person sends in the prompt or the selected content.
 - Translations and generated text are not proofread; a human must review them.
-- There is no cost control per provider beyond the rate limit: spending is governed by your account at the provider.
+- There is no cost control per provider beyond the rate limit and the usage report (section 5, tokens, not money): spending is governed by your account at the provider.
 - Figma import is in beta: complex frames need clean-up in the editor.
 
-## 7. Related
+## 8. Related
 
 [Content pillar](../content/README.md), [secrets and keys](../operations/secrets-and-keys.md), [API reference](../api/api-reference.md) (`/ai/*`).

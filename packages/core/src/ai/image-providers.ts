@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { createSafeFetchAdapter, safeFetch } from '../http/safe-fetch.js';
 import { OPENROUTER_DEFAULT_ENDPOINT } from './providers.js';
+import { reportAiUsage } from './usage.js';
 
 export type ImageAiProvider = 'openai' | 'openrouter' | 'google' | 'custom';
 
@@ -92,6 +93,7 @@ async function generateGoogleImage(input: AiImageGenerateInput): Promise<AiImage
     }
 
     const body: any = await response.json();
+    reportAiUsage(settings.provider, model, body?.usageMetadata?.promptTokenCount, body?.usageMetadata?.candidatesTokenCount);
     const candidates = body?.candidates ?? [];
     const images = candidates
       .flatMap((c: any) => c?.content?.parts ?? [])
@@ -130,6 +132,10 @@ export async function generateImage(input: AiImageGenerateInput): Promise<AiImag
         style: isDallE ? (style ?? 'vivid') as any : undefined,
         response_format: 'url',
       });
+
+      // gpt-image models report tokens; dall-e reports none and counts as a call
+      const usage = (response as any).usage;
+      reportAiUsage(settings.provider, settings.model, usage?.input_tokens, usage?.output_tokens);
 
       if (!response.data) {
         throw new AiImageGenerationError('No image data returned from provider', 500);

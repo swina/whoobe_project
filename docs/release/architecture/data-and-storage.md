@@ -28,7 +28,7 @@ The schema is defined in `packages/core/src/db/*-schema.ts` and created by 53 SQ
 | Assets | `assets`, `folders` |
 | Forms and mail | `form_uploads`, `mail_settings`, `mail_templates`, `mail_log`, `pwa_subscriptions` |
 | Gateway | `gateway_endpoints`, `gateway_routes`, `gateway_schemas`, `gateway_bindings` |
-| Settings and integrations | `ai_settings`, `ai_image_settings`, `ai_translate_settings`, `figma_settings`, `migration_sources`, `whoobe_ai_generated` |
+| Settings and integrations | `ai_settings`, `ai_image_settings`, `ai_translate_settings`, `figma_settings`, `migration_sources`, `whoobe_ai_generated`, `ai_usage`, `ai_usage_monthly` |
 
 Per-website settings (themes catalog, upload limits `settings.uploads`, documentation-site settings, domains) are JSON in
 `websites.settings`.

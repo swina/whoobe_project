@@ -9,6 +9,7 @@ import { mailLog } from './mail-log-schema.js';
 import { users } from './auth-schema.js';
 import { getAssetsByIds } from './asset-records.js';
 import { getSecuritySettings } from './security-settings-records.js';
+import { purgeAiUsageBefore } from './ai-usage-records.js';
 
 // Everything held about one person, found, exported and erased by one identifier (docs/plans/system/data-subject-plan.md).
 
@@ -210,16 +211,16 @@ export async function eraseDataSubject(identifier: string, opts: SubjectOptions 
 // ── retention ───────────────────────────────────────────────────────────────
 
 export interface RetentionClassResult { classId: string; className: string; days: number; deleted: number; failed: number }
-export interface RetentionResult { classes: RetentionClassResult[]; mailDeleted: number }
+export interface RetentionResult { classes: RetentionClassResult[]; mailDeleted: number; aiUsageDeleted: number; aiGeneratedDeleted: number }
 
 const RETENTION_BATCH = 200;
 const RETENTION_MAX_BATCHES = 100;   // a backlog is worked off over several runs, never in one endless one
 
-/** Deletes the objects older than their class's `retention_days` (by creation, whatever their status; files first) and the mail log rows older
- *  than `mail_log_retention_days`. Classes and settings without a number are left alone. */
+/** Deletes the objects older than their class's `retention_days` (by creation, whatever their status; files first), the mail log rows older
+ *  than `mail_log_retention_days` and the AI usage and AI generation rows older than their own periods. Classes and settings without a number are left alone. */
 export async function purgeExpiredData(deps: EraseDeps, now: Date = new Date()): Promise<RetentionResult> {
   const db = getDb();
-  const out: RetentionResult = { classes: [], mailDeleted: 0 };
+  const out: RetentionResult = { classes: [], mailDeleted: 0, aiUsageDeleted: 0, aiGeneratedDeleted: 0 };
   const classes = await db.select({ id: dataClasses.id, name: dataClasses.name, days: dataClasses.retentionDays }).from(dataClasses).where(isNotNull(dataClasses.retentionDays));
   for (const c of classes) {
     const cutoff = new Date(now.getTime() - c.days! * 86_400_000);
@@ -235,12 +236,22 @@ export async function purgeExpiredData(deps: EraseDeps, now: Date = new Date()):
     if (r.deleted || r.failed) out.classes.push(r);
   }
 
-  const { mailLogRetentionDays } = await getSecuritySettings();
+  const { mailLogRetentionDays, aiUsageRetentionDays, aiGeneratedRetentionDays } = await getSecuritySettings();
   if (mailLogRetentionDays) {
     const cutoff = new Date(now.getTime() - mailLogRetentionDays * 86_400_000);
     for (let i = 0; i < RETENTION_MAX_BATCHES; i++) {
       const gone = await db.execute(sql`DELETE FROM mail_log WHERE id IN (SELECT id FROM mail_log WHERE sent_at < ${cutoff.toISOString()} LIMIT ${RETENTION_BATCH}) RETURNING id`);
       out.mailDeleted += gone.rows.length;
+      if (gone.rows.length < RETENTION_BATCH) break;
+    }
+  }
+  // AI usage rows (counts only; the monthly totals stay) and the recorded AI generations (prompts and answers)
+  if (aiUsageRetentionDays) out.aiUsageDeleted = await purgeAiUsageBefore(new Date(now.getTime() - aiUsageRetentionDays * 86_400_000));
+  if (aiGeneratedRetentionDays) {
+    const cutoff = new Date(now.getTime() - aiGeneratedRetentionDays * 86_400_000);
+    for (let i = 0; i < RETENTION_MAX_BATCHES; i++) {
+      const gone = await db.execute(sql`DELETE FROM whoobe_ai_generated WHERE id IN (SELECT id FROM whoobe_ai_generated WHERE created_at < ${cutoff.toISOString()} LIMIT ${RETENTION_BATCH}) RETURNING id`);
+      out.aiGeneratedDeleted += gone.rows.length;
       if (gone.rows.length < RETENTION_BATCH) break;
     }
   }

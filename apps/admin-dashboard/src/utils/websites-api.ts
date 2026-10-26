@@ -1,4 +1,5 @@
 import { getDefaultCoreApiUrl } from './auth-api'
+import { aiFetch } from './ai-usage-api'
 
 export interface WebsiteRecord {
   id: string
@@ -110,7 +111,7 @@ export interface AiWebsiteStructure {
 }
 
 export async function generateAiWebsiteStructure(baseUrl: string, prompt: string): Promise<AiWebsiteStructure> {
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/ai/generate-website-structure`, {
+  const res = await aiFetch(`${normalizeBaseUrl(baseUrl)}/ai/generate-website-structure`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt }),

@@ -1439,6 +1439,25 @@
         "OBJECTS_READ"
       ]
     },
+    "GET /ai/usage": {
+      "access": "permission",
+      "permissions": [
+        "AI_USAGE_READ"
+      ],
+      "note": "token usage per user, function, model and day (counts only); with userId the person's requests, written to the audit log as ai_usage.read_user"
+    },
+    "GET /ai/usage/monthly": {
+      "access": "permission",
+      "permissions": [
+        "AI_USAGE_READ"
+      ],
+      "note": "monthly token totals per user, function and model"
+    },
+    "GET /ai/usage/me": {
+      "access": "auth",
+      "permissions": [],
+      "note": "the token usage recorded about the signed-in person (right of access)"
+    },
     "POST /ai/generate-website-structure": {
       "access": "permission",
       "permissions": [

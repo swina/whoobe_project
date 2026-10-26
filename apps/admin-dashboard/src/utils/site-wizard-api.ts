@@ -1,6 +1,7 @@
 // Client of the template wizard routes (docs/plans/ai/template-wizard.md): the choices it offers, and the check / creation of a site from the answers.
 import { getDefaultCoreApiUrl } from './auth-api'
 import { SiteSpecInvalid, type SiteSpecChoices, type SiteSpecOutcome } from './site-spec-api'
+import { aiFetch } from './ai-usage-api'
 
 export type BlockType = 'hero' | 'banner' | 'cta' | 'box-grid-3' | 'box-grid-6' | 'form' | 'title'
 /** What a library snippet can stand for: a block, or `custom` (a block of its own, named by whoever marked the snippet) */
@@ -94,7 +95,7 @@ export interface AiTexts { texts: Record<string, string>; used: number; dropped:
 
 /** Asks the configured model for the texts of the slots of this structure. Creates nothing: the person reads the texts, then they travel with the answers. */
 export async function generateWizardTexts(baseUrl: string, body: { answers: WizardAnswers; description?: string }): Promise<AiTexts> {
-  const res = await fetch(`${base(baseUrl)}/ai/generate-wizard-texts`, {
+  const res = await aiFetch(`${base(baseUrl)}/ai/generate-wizard-texts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

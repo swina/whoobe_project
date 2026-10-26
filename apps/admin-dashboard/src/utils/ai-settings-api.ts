@@ -1,4 +1,5 @@
 import { getDefaultCoreApiUrl } from './auth-api'
+import { aiFetch } from './ai-usage-api'
 
 // GET never returns the real API key - hasApiKey tells the settings form
 // whether one is already configured, so it can show "leave blank to keep
@@ -129,7 +130,7 @@ export async function generateAiImage(
   prompt: string,
   options?: { n?: number; size?: string; quality?: string; style?: string; folderPath?: string }
 ): Promise<{ images: AiGeneratedImage[] }> {
-  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/ai/generate-image`, {
+  const res = await aiFetch(`${normalizeBaseUrl(baseUrl)}/ai/generate-image`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt, ...options }),

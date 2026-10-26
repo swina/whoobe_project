@@ -140,6 +140,7 @@ The other routes stay on the broad keys, on purpose: they are workspace-level or
 | `workflows:manage` | 2 |
 | `object_events:manage` | 8 (subscriptions that send object events to a service, their delivery log; `admin` only, refused in the sandbox) |
 | `audit:read` | 1 (read the [audit log](../operations/audit-log.md); `admin` only; separate from `users:manage` so that an auditor cannot change users) |
+| `ai_usage:read` | 2 (the AI token usage of every person and the monthly totals; `admin` only; each person reads their own with a login) |
 
 asset-processor additionally checks `assets:upload` and `assets:delete`, and the gateway admin routes `gateway:manage`.
 
@@ -168,8 +169,8 @@ suite logs in as a user with each seeded role and checks what it can and cannot 
 
 ### Enforcement and proof
 
-Every route of core-api is declared in `scripts/security/routes.expected.json`: **267 routes - 215 need a permission, 9
-need only a login, 43 are public** (a permission key, or one of two keys for the 106 content routes; counted 2026-10-26). The `authz-matrix` suite calls every route as five identities (anonymous, no
+Every route of core-api is declared in `scripts/security/routes.expected.json`: **270 routes - 217 need a permission, 10
+need only a login, 43 are public** (a permission key, or one of two keys for the 106 content routes; counted 2026-10-27). The `authz-matrix` suite calls every route as five identities (anonymous, no
 permission, read, write, admin) and compares the answer with the contract; the `route-drift` suite fails when a route
 exists in the code and not in the contract (or the reverse). asset-processor and gateway routes are guarded in code
 (`requireAuth`, `requirePermission`, `serviceTokenAuth`, site-key middleware) and covered by their own suites
