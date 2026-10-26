@@ -27,6 +27,12 @@ export interface DocsGenerateOptions {
   copyAssets?: boolean
   /** Fail when a document has a broken link. */
   strict?: boolean
+  /** Badge shown after the site title ("v0.3.1"), e.g. the release the documents describe. */
+  versionLabel?: string
+  /** Where the badge links to (the release page); without it the badge is plain text. */
+  versionUrl?: string
+  /** Source repository, linked from the header. */
+  repoUrl?: string
   fetchImpl?: typeof fetch
   log?: (message: string) => void
 }
@@ -97,6 +103,7 @@ export function rewritePageHtml(html: string, base: string, assetUrl: (damPath: 
 
 export function pageHtml(p: {
   site: string; page: PageData | null; html: string; nav: NavNode[]; base: string; siteUrl?: string; accent?: string; hasCode: boolean; hasMermaid?: boolean; notFound?: boolean
+  version?: string; versionUrl?: string; repoUrl?: string
 }): string {
   const { page, base } = p
   const title = p.notFound ? 'Page not found' : (page as PageData).title
@@ -115,6 +122,12 @@ export function pageHtml(p: {
   const body = p.notFound
     ? `<h1>Page not found</h1><p>The page you are looking for does not exist. <a href="${esc(base)}">Go to the start page</a> or use the search.</p>`
     : `<div class="doc-content">${p.html}</div>`
+  const badge = p.version
+    ? (p.versionUrl ? `<a class="ver" href="${esc(p.versionUrl)}" title="Release notes">${esc(p.version)}</a>` : `<span class="ver">${esc(p.version)}</span>`)
+    : ''
+  const repo = p.repoUrl
+    ? `<a class="repo" href="${esc(p.repoUrl)}" rel="noopener" title="Source code" aria-label="Source code${/^https:\/\/github\.com\//.test(p.repoUrl) ? ' on GitHub' : ''}"><svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>`
+    : ''
   const accent = p.accent ? `<style>:root:root{--accent:${esc(p.accent)}}</style>` : ''
   return `<!doctype html>
 <html lang="en">
@@ -131,12 +144,12 @@ ${accent}
 <body data-base="${esc(base)}" data-code="${p.hasCode ? '1' : '0'}" data-mermaid="${p.hasMermaid ? '1' : '0'}">
 <header class="top">
   <button id="menu" type="button" aria-label="Menu" aria-controls="nav">☰</button>
-  <a class="brand" href="${esc(base)}">${esc(p.site)}</a>
+  <a class="brand" href="${esc(base)}">${esc(p.site)}</a>${badge}
   <div class="search">
     <input id="q" type="search" placeholder="Search the documentation…  (Ctrl K)" aria-label="Search the documentation" autocomplete="off">
     <div id="results" role="listbox" hidden></div>
   </div>
-  <button id="theme" type="button" aria-label="Switch between light and dark theme" title="Switch between light and dark theme"></button>
+  ${repo}<button id="theme" type="button" aria-label="Switch between light and dark theme" title="Switch between light and dark theme"></button>
 </header>
 <div class="shell">
   <aside id="nav" aria-label="Documentation index">${navHtml(p.nav, page?.route ?? '', base)}</aside>
@@ -159,6 +172,8 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 system-ui,-app
 a{color:var(--accent)}
 .top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:1rem;height:3.5rem;padding:0 1rem;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
 .brand{font-weight:700;color:var(--fg);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ver{flex:none;margin-left:-.5rem;padding:.05rem .45rem;border:1px solid var(--line);border-radius:999px;background:var(--soft);color:var(--muted);font-size:.72rem;font-weight:600;line-height:1.5;text-decoration:none;white-space:nowrap}a.ver:hover{border-color:var(--accent);color:var(--accent)}
+.repo{flex:none;display:flex;align-items:center;justify-content:center;width:2.1rem;height:2.1rem;margin-right:-.5rem;border-radius:.5rem;color:var(--muted)}.repo:hover{color:var(--fg);background:var(--soft)}
 #theme{flex:none;width:2.1rem;height:2.1rem;border:1px solid var(--line);border-radius:.5rem;background:var(--soft);color:var(--fg);font-size:1rem;line-height:1;cursor:pointer}#theme:hover{border-color:var(--accent)}
 #menu{display:none;background:none;border:0;font-size:1.3rem;color:var(--fg);cursor:pointer}
 .search{margin-left:auto;position:relative;width:100%;max-width:24rem}
@@ -208,6 +223,7 @@ pre:hover .copy,.copy:focus{opacity:1}
 .prevnext{display:flex;justify-content:space-between;gap:1rem;margin-top:3rem;padding-top:1rem;border-top:1px solid var(--line);font-size:.9rem}
 .updated{margin-top:1rem;font-size:.75rem;color:var(--muted)}
 @media (max-width:1100px){#toc{display:none}}
+@media (max-width:480px){.ver{display:none}.top{gap:.6rem}.brand{flex:none}}
 @media (max-width:768px){#menu{display:block}#nav{display:none;position:fixed;inset:3.5rem 0 0 0;width:auto;max-height:none;background:var(--bg);padding:1rem;z-index:10}body.menu-open #nav{display:block}.shell{gap:0}}
 @media print{.top,#nav,#toc,.prevnext,.copy{display:none}.shell{display:block}}
 `
@@ -366,6 +382,9 @@ function assertOptions(o: DocsGenerateOptions): void {
   url('apiUrl', o.apiUrl)
   if (o.assetBaseUrl) url('assetBaseUrl', o.assetBaseUrl)
   if (o.siteUrl) url('siteUrl', o.siteUrl)
+  if (o.versionUrl) url('versionUrl', o.versionUrl)
+  if (o.repoUrl) url('repoUrl', o.repoUrl)
+  if (o.versionLabel !== undefined && !/^[\w.+\- ]{1,24}$/.test(o.versionLabel)) throw new Error('Invalid versionLabel: 1 to 24 letters, digits, spaces or . _ + -')
   if (!UUID_RE.test(o.websiteId)) throw new Error('Invalid websiteId: expected a UUID')
   if (o.basePath && !BASE_PATH_RE.test(o.basePath)) throw new Error('Invalid basePath: expected a path such as /docs (letters, digits, . _ ~ - /)')
 }
@@ -381,6 +400,7 @@ export async function generateDocsSite(raw: DocsGenerateOptions): Promise<{ page
   const base = normalizeBase(raw.basePath)
   const warnings: string[] = []
   const id = encodeURIComponent(raw.websiteId)
+  const head = { version: raw.versionLabel, versionUrl: raw.versionUrl, repoUrl: raw.repoUrl }
 
   const getJson = async (path: string): Promise<any> => {
     const res = await doFetch(`${api}${path}`)
@@ -476,9 +496,9 @@ export async function generateDocsSite(raw: DocsGenerateOptions): Promise<{ page
   for (const r of rendered) {
     const hasCode = /<code class="language-(?!mermaid")/.test(r.html)
     const hasMermaid = /<code class="language-mermaid"/.test(r.html)
-    await put(`${routeDir(r.route)}index.html`, pageHtml({ site, page: r.page, html: r.html, nav: navBody.nav, base, siteUrl: raw.siteUrl, hasCode, hasMermaid }))
+    await put(`${routeDir(r.route)}index.html`, pageHtml({ site, page: r.page, html: r.html, nav: navBody.nav, base, siteUrl: raw.siteUrl, hasCode, hasMermaid, ...head }))
   }
-  await put('404.html', pageHtml({ site, page: null, html: '', nav: navBody.nav, base, hasCode: false, notFound: true }))
+  await put('404.html', pageHtml({ site, page: null, html: '', nav: navBody.nav, base, hasCode: false, notFound: true, ...head }))
   await put('assets/docs.css', DOCS_CSS)
   await put('assets/docs.js', DOCS_JS)
   await put('assets/search-index.json', searchJson)

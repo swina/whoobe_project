@@ -1,3 +1,11 @@
+## Docs sites: version badge and repository link in the header — 2026-10-26
+- `packages/publish/src/docs-site.ts`: new options `versionLabel` (badge after the site title), `versionUrl` (the badge becomes a link) and `repoUrl` (repository icon link before the theme button); URLs validated like the others (http(s), no quotes or angle brackets), label 1 to 24 safe characters; badge hidden below 480px so the title is not cut on a phone.
+- `packages/publish/bin/whoobe-publish.js`: `--version-label`, `--version-url`, `--repo-url` for `--kind docs`.
+- `scripts/security/unit/docs-site.test.ts`: badge and link only when given, escaped; invalid label and URLs refused.
+- `docs/release/content/documentation-sites.md`: the three options.
+- docs.whoobe.dev regenerated with `--version-label v0.3.1`, the badge linking to the v0.3.1 GitHub release and `--repo-url https://github.com/swina/whoobe_project`.
+- Branch: master
+
 ## Docs: the overview no longer speaks as release 0.1.0 — 2026-10-26
 - Branch: `master`. Reported by the owner on docs.whoobe.dev ("This is release 0.1.0, the first release"). `overview/whoobe-overview.md` brought up to date for 0.3.1: the author's word and the header (0.1.0 in mid-October, 0.3.1 now, the reference host upgraded in place with each release), chapter 3 ("what exists in the current release"), 4.6 (upgrade tested by script on every tag, rollback not; signed tags and provenance from 0.3.0; the manual checklist not repeated since 0.2.0 instead of "to be repeated on the release commit"), 7.4 and chapter 8 (63 findings; 2,337 API and unit, 14 isolation, 56 browser tests on the 0.3.1 candidate; ZAP passed; 267 routes in the permission contract; link to `security/results`), chapter 9 and the appendix (release section instead of the 0.1.0 notes). Same kind of fix in `security/supply-chain.md` ("from v0.3.0"), `design-decisions/self-hosted-and-mit.md` (no fixed "current" version), `operations/README.md` (release notes of the version) and `authentication-and-authorization.md` (contract: 267 routes, 215 permission, 9 login, 43 public, 106 with two keys; was 214). Docs only.
 

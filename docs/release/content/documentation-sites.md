@@ -130,6 +130,8 @@ The output folder is plain HTML you copy to any web server (`rsync -a --delete .
 Only **public** documents are published, read from the public API, so a private file cannot end in the output. Broken links
 are listed; `--strict` makes them an error (useful in a CI job). Running it again replaces the pages and removes the ones that
 no longer exist. `--base-path` is the path the site is served under (`/` for a domain of its own); the links already contain it.
+`--version-label v1.2.0` adds a small badge after the site title (`--version-url` makes it a link, to the release notes for
+example) and `--repo-url` adds a link to the source repository in the header; on a phone the badge is hidden.
 
 ## Export and import (backup, move, copy)
 

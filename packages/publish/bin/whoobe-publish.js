@@ -15,6 +15,9 @@ program
   .option('--site-url <url>', 'docs: public address of the site (https://docs.example.com), for the sitemap and canonical links')
   .option('--no-copy-assets', 'docs: link to the files in the CMS instead of copying them into the output')
   .option('--strict', 'docs: fail when a document has a broken link')
+  .option('--version-label <text>', 'docs: badge after the site title, e.g. v0.3.1')
+  .option('--version-url <url>', 'docs: where the version badge links to (the release notes)')
+  .option('--repo-url <url>', 'docs: source repository, linked from the header')
   .option('--revalidate <seconds>', 'ISR revalidate time in seconds', '60')
   .option('--domain <domain>', 'Custom domain for the published site')
   .option('--asset-base-url <url>', 'Public base URL for DAM assets (e.g. https://media.example.com). Defaults to the API URL host.')
@@ -27,7 +30,7 @@ program.parse()
 
 const opts = program.opts()
 if (opts.kind === 'docs') {
-  generateDocsSite({ apiUrl: opts.apiUrl, websiteId: opts.websiteId, outDir: opts.outDir, basePath: opts.basePath, siteUrl: opts.siteUrl, assetBaseUrl: opts.assetBaseUrl, copyAssets: opts.copyAssets, strict: !!opts.strict })
+  generateDocsSite({ apiUrl: opts.apiUrl, websiteId: opts.websiteId, outDir: opts.outDir, basePath: opts.basePath, siteUrl: opts.siteUrl, assetBaseUrl: opts.assetBaseUrl, copyAssets: opts.copyAssets, strict: !!opts.strict, versionLabel: opts.versionLabel, versionUrl: opts.versionUrl, repoUrl: opts.repoUrl })
     .catch((err) => { console.error('Publish failed:', err instanceof Error ? err.message : err); process.exit(1) })
 } else {
 if (opts.framework !== 'vue' && opts.framework !== 'next') { console.error(`Unknown framework "${opts.framework}": use next or vue (Svelte has an SDK adapter but no site generator).`); process.exit(2) }
