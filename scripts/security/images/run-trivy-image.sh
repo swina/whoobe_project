@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Scan the built stack images with `trivy image` (OS packages + app dependencies), HIGH/CRITICAL, fixed-only.
-# Usage: run-trivy-image.sh [image ...]   (default: the throwaway-stack images, Garage and postgres)
+# Usage: run-trivy-image.sh [image ...]   (default: the throwaway-stack images, Garage, postgres and the publisher)
 set -u
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 REPORTS="${SECURITY_REPORTS:-$ROOT/scripts/security/reports/$(date +%F)}"
@@ -12,6 +12,11 @@ if [ ${#IMAGES[@]} -eq 0 ]; then
   while IFS= read -r img; do IMAGES+=("$img"); done < <(cd "$ROOT" && docker compose -p whoobe-sectest config --images 2>/dev/null | sort -u)
   [ ${#IMAGES[@]} -gt 0 ] || IMAGES=(whoobe-core-api:local whoobe-gateway:local whoobe-asset-processor:local whoobe-admin-dashboard:local whoobe-whoobe-one-spike:local postgres:16-alpine)
   case " ${IMAGES[*]} " in *" whoobe-garage:v2.4.1 "*) ;; *) IMAGES+=(whoobe-garage:v2.4.1) ;; esac
+  # the publisher is a released image but no service of the stack's compose file (F-063: left out of every scan until 0.3.1):
+  # build it from the same Dockerfile when it is not there
+  PUB="${WHOOBE_IMAGE_PREFIX:-whoobe}-publisher:${WHOOBE_VERSION:-local}"
+  docker image inspect "$PUB" >/dev/null 2>&1 || docker build -q --target publisher -t "$PUB" "$ROOT" >/dev/null || echo "build error: $PUB"
+  IMAGES+=("$PUB")
 fi
 # Third-party images whose findings sit in the vendor's own pinned dependencies (postgres' gosu):
 # reported, not gating. We cannot patch them without forking (F-050).
