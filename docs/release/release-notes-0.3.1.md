@@ -20,8 +20,10 @@ patch the owner decided (2026-10-26) not to release a 0.2.1: 0.2.0 is one week o
 | `multer` | 2.4.0 | 2.5.0 | GHSA-q7qp-rjg7-q26m (high): denial of service via a pending file filter after the request is torn down | asset-processor uploads |
 | `undici` | 6.28.1 | 6.29.1 | GHSA-xjj6-f33q-929c (high): denial of service via too many content encodings | gateway (OpenAPI parser) |
 | `brotli-libs` | 1.2.0-r1 | 1.2.1-r0 | CVE-2026-111497 (high) | the `admin-dashboard` and `whoobe-one-spike` images (nginx alpine base) |
+| `curl`, `libcurl` | 8.22.0-r0 | 8.23.0-r0 | CVE-2026-92392 (high) | the same two images |
 
-The register entries are F-003 (dependencies) and F-050 (images) in [`security/findings.md`](security/findings.md). `postgres:16-alpine` still carries
+The two nginx images now upgrade **every** Alpine package at build time instead of a list of named ones (the list grew by one package each
+time the pinned base fell behind). The register entries are F-003 (dependencies) and F-050 (images) in [`security/findings.md`](security/findings.md). `postgres:16-alpine` still carries
 the 26 reports of its `gosu` helper (advisory, see 0.3.0).
 
 ## Behaviour changes to check before you upgrade
