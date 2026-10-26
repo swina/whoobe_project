@@ -1,5 +1,7 @@
 # For the IT manager and architect
 
+In one page, with examples: [what you can do with Whoobe](../overview/what-you-can-do.md).
+
 ## What you will run
 Five application containers (core API, asset processor, gateway, admin dashboard, editor), PostgreSQL 16 and an S3-compatible store; nginx is the
 only public listener. One installation is one **workspace** for **one organisation**; you may run many on a host.
