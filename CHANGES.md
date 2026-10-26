@@ -1,3 +1,8 @@
+# Release v0.3.2 — 2026-10-27
+
+## [Release v0.3.2] — 2026-10-27
+- Branch: `master`. Version 0.3.2 set in 21 package.json files (one product version, see docs/release/release-process.md); `docs/release/README.md` aligned to this release.
+
 ## Release notes 0.3.2 and documentation for the publisher change — 2026-10-27
 - Branch: `master`. `docs/release/release-notes-0.3.2.md` (F-063: what was in the 0.3.1 publisher image, what changed, behaviour changes, known limits); `docs/release/README.md` links it; `security/status-summary.md` (release candidate 0.3.2 line, F-063 fixed in the count); `security/findings.md` F-063 mentions the job runner fix and its test; `operations/configuration-reference.md` documents `WHOOBE_SDK_TARBALL_DIR`.
 
