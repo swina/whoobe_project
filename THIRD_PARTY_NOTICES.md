@@ -220,7 +220,7 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | batch-cluster | 17.3.1 | MIT | Copyright (c) 2017-2025 Matthew McEachen |
 | binary-extensions | 2.3.0 | MIT | Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com); Copyright (c) Paul Miller (https://paulmillr.com) |
 | birpc | 2.9.0 | MIT | Copyright (c) 2021 Anthony Fu <https://github.com/antfu> |
-| body-parser | 1.20.6 | MIT | Copyright (c) 2014 Jonathan Ong <me@jongleberry.com>; Copyright (c) 2014-2015 Douglas Christopher Wilson <doug@somethingdoug.com> |
+| body-parser | 1.20.9 | MIT | Copyright (c) 2014 Jonathan Ong <me@jongleberry.com>; Copyright (c) 2014-2015 Douglas Christopher Wilson <doug@somethingdoug.com> |
 | bootstrap-icons | 1.13.1 | MIT | Copyright (c) 2019-2024 The Bootstrap Authors |
 | bowser | 2.14.1 | MIT | Copyright 2015, Dustin Diaz (the "Original Author") |
 | braces | 3.0.3 | MIT | Copyright (c) 2014-present, Jon Schlinkert. |
@@ -446,7 +446,7 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | mitt | 3.0.1 | MIT | Copyright (c) 2021 Jason Miller |
 | ms | 2.0.0 | MIT | Copyright (c) 2016 Zeit, Inc. |
 | ms | 2.1.3 | MIT | Copyright (c) 2020 Vercel, Inc. |
-| multer | 2.4.0 | MIT | Copyright (c) 2014 Hage Yaapa <[http://www.hacksparrow.com](http://www.hacksparrow.com)> |
+| multer | 2.5.0 | MIT | Copyright (c) 2014 Hage Yaapa <[http://www.hacksparrow.com](http://www.hacksparrow.com)> |
 | mysql2 | 3.23.2 | MIT | Copyright (c) 2016 Andrey Sidorov (sidorares@yandex.ru) and contributors |
 | mz | 2.7.0 | MIT | Copyright (c) 2014-2016 Jonathan Ong me@jongleberry.com and Contributors |
 | named-placeholders | 1.1.6 | MIT | Copyright (c) 2014 Andrey Sidorov |
@@ -620,7 +620,7 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | typescript | 5.9.3 | Apache-2.0 | Microsoft Corp. |
 | uc.micro | 2.1.0 | MIT | Copyright Mathias Bynens <https://mathiasbynens.be/> |
 | underscore | 1.13.8 | MIT | Copyright (c) 2009-2022 Jeremy Ashkenas, Julian Gonggrijp, and DocumentCloud and Investigative Reporters & Editors |
-| undici | 6.28.1 | MIT | Copyright (c) Matteo Collina and Undici contributors |
+| undici | 6.29.1 | MIT | Copyright (c) Matteo Collina and Undici contributors |
 | undici-types | 6.21.0 | MIT | Copyright (c) Matteo Collina and Undici contributors |
 | unpipe | 1.0.0 | MIT | Copyright (c) 2015 Douglas Christopher Wilson <doug@somethingdoug.com> |
 | util-deprecate | 1.0.2 | MIT | Copyright (c) 2014 Nathan Rajlich <nathan@tootallnate.net> |
@@ -645,7 +645,7 @@ The human-readable thanks are in [docs/release/credits.md](docs/release/credits.
 | yaml | 2.9.0 | ISC | Copyright Eemeli Aro <eemeli@gmail.com> |
 | yargs | 15.4.1 | MIT | Copyright 2010 James Halliday (mail@substack.net); Modified work Copyright 2014 Contributors (ben@npmjs.com) |
 | yargs-parser | 18.1.3 | ISC | Copyright (c) 2016, Contributors |
-| zod | 3.25.76 | MIT | Copyright (c) 2025 Colin McDonnell |
+| zod | 4.6.7 | MIT | Copyright (c) 2025 Colin McDonnell |
 
 ## Licence texts
 

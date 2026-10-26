@@ -1,6 +1,6 @@
 # Security status - single summary
 
-State at **2026-10-23**, release candidate 0.3.0 (see `git log` for the exact commit; the sections not touched on this date still describe 2026-10-19, release 0.2.0). Source of detail:
+State at **2026-10-23**, release candidate 0.3.0 (see `git log` for the exact commit; the sections not touched on this date still describe 2026-10-19, release 0.2.0). **2026-10-26, release candidate 0.3.1**: only dependency and image updates (four high advisories in `zod`, `body-parser`, `multer`, `undici`, and `brotli-libs` in the two nginx images; F-003, F-050); the suites passed on the fix (run 40218614564, DAST included); the counts below were not recounted. Source of detail:
 `findings.md` (register F-001 ... F-059), `security-testing-plan.md` (plan), `manual-test-checklist.md`
 (browser/terminal checks), `../../security/security-test-suite.md` (description of the automated suites, written
 for reviewers), `scripts/security/README.md` (how to run).

@@ -1,4 +1,5 @@
-# Release v0.3.0 — 2026-10-23
+## Release notes 0.3.1 written; CHANGES.md entries moved above the v0.3.0 marker — 2026-10-26
+- Branch: `master`. New `docs/release/release-notes-0.3.1.md` (security table of the four dependency advisories and brotli-libs, affected 0.1.0 to 0.3.0; behaviour changes: Zod 4 messages, `oneOf` in the site-spec JSON Schema, the sandbox visit log; no migration); linked from `docs/release/README.md`. `THIRD_PARTY_NOTICES.md` regenerated (only the versions of zod, multer, body-parser, undici change; licences the same); `security/status-summary.md` gets a line for the 0.3.1 candidate. The entries of 2026-10-25/26 had been written under the `# Release v0.3.0` marker; moved above it, where `release.sh prepare` takes the entries of the next release from. Docs only.
 ## Sandbox: ClaudeBot left out of the visit log — 2026-10-26
 - Branch: `master`. Request of the owner. On the host, 101 of the 211 lines of the visit log were ClaudeBot (`robots.txt`, `sitemap.xml`); `visits.sh` already counted them as robots, not visitors, but they filled the log. `sandbox.nginx-http.conf`: a map on the user agent (`~*claudebot`) and `$sandbox_loggable` is 0 when the address or the agent is untracked. Checked in `nginx:1.18-alpine` (the host's version): `nginx -t` passes; ClaudeBot and an excluded address not written, Firefox and Googlebot from another network written, `.js` not. `sandbox.md` updated. On the host: copy the file, then the next reset and a reload, as for the entry below.
 ## Sandbox: addresses left out of the visit log (`SANDBOX_UNTRACKED_IPS`) — 2026-10-26
@@ -16,6 +17,7 @@
 - `multer` `^2.5.0` (direct dependency of the asset-processor); overrides `body-parser: ^1.20.9` and `undici: ^6.29.1`. `pnpm-workspace.yaml` had drifted from `package.json` (missing `proxy-addr`, `source-map-js`, `prosemirror-view`, `vue`, `@vue/server-renderer` since `e340817`): the two lists are identical again.
 - Checked: `pnpm security:static` PASS; `pnpm build` 20/20 and `pnpm typecheck` 19/19; unit tests of `@whoobe-cms/schema` (149), renderer (131), core (482 passed, 143 skipped: need a database) and `scripts/security/unit` (604 passed, run without the stack setup). **Not run:** the API and browser suites on a stack, the Docker image builds, a manual try of the site wizard / spec import / Data Object writes through the gateway on a running stack (Zod 4 messages of the dynamic class schema may read differently).
 
+# Release v0.3.0 — 2026-10-23
 ## Release notes 0.3.0: link to SECURITY.md made absolute — 2026-10-23
 - Branch: `master`. `docs/release/release-notes-0.3.0.md` linked `../../SECURITY.md`, outside the docs set, so `whoobe-publish --kind docs --strict` failed with 1 broken link; it now points to the file on GitHub, like the other pages. Docs only.
 
