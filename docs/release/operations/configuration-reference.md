@@ -130,6 +130,7 @@ cannot be lost** - see [secrets and keys](secrets-and-keys.md).
 |---|---|---|---|---|
 | `PUBLISH_RUNNER_TOKEN` | core-api **and** publisher (same value) | unset: the runner routes answer 503, the publisher does not start | **yes** | shared secret the publisher uses to claim jobs from core-api (`openssl rand -hex 32`); Compose requires it for the publisher |
 | `PUBLISH_ROOT` | publisher | `./published` (`/publish` in Compose) | | where each run writes `<slug>/releases/<job id>` and the `<slug>/current` link |
+| `WHOOBE_SDK_TARBALL_DIR` | publisher (passed on to the generator) | unset: the generator packs the SDK with `pnpm pack`; `/opt/whoobe-sdk` in the image | | folder of the SDK packages packed when the image was built (the image has no pnpm, F-063); leave the image's value |
 | `PUBLISH_RUNNER_NAME` | publisher | `publisher@<host name>` | | name the runner shows in the job log |
 | `PUBLISH_POLL_MS` | publisher | 3000 | | how often the runner asks core-api for a queued job |
 | `PUBLISH_JOB_TIMEOUT_MS` | publisher | 900000 (15 minutes) | | a job running longer is stopped and marked failed |

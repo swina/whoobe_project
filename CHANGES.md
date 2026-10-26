@@ -1,3 +1,6 @@
+## Release notes 0.3.2 and documentation for the publisher change — 2026-10-27
+- Branch: `master`. `docs/release/release-notes-0.3.2.md` (F-063: what was in the 0.3.1 publisher image, what changed, behaviour changes, known limits); `docs/release/README.md` links it; `security/status-summary.md` (release candidate 0.3.2 line, F-063 fixed in the count); `security/findings.md` F-063 mentions the job runner fix and its test; `operations/configuration-reference.md` documents `WHOOBE_SDK_TARBALL_DIR`.
+
 ## Publisher: the job runner passes the prepacked SDK folder to the generator (F-063) — 2026-10-26
 - Branch: `master`. `apps/publisher/src/run.ts` starts the generator with a minimal environment (PATH, HOME) and left out `WHOOBE_SDK_TARBALL_DIR`: in the slimmed image (no pnpm) a publish started from the dashboard would have failed, while the generator run by hand worked. The variable is now passed when set; nothing else of the runner's environment (token, core URL) reaches the generator.
 - `scripts/security/unit/publish-runner.test.ts`: the folder reaches the generator, `PUBLISH_RUNNER_TOKEN` does not.
