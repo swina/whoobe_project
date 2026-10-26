@@ -4,7 +4,7 @@ The documentation in this folder describes the product **as it is delivered and 
 checked against the code at the time of the last reorganisation (see [Status](#status)); the design history of the
 project stays in [`../plans`](https://github.com/swina/whoobe_project/tree/master/docs/plans) and is deliberately not part of a release.
 
-**Aligned to release:** v0.3.0 (2026-10-23) - see [`release-process.md`](release-process.md)
+**Aligned to release:** v0.3.1 (2026-10-26) - see [`release-process.md`](release-process.md)
 **0.3.1** is a patch of 0.3.0 with security updates ([release notes](release-notes-0.3.1.md)). New in **0.3.0**, *Operate* (see the [release notes](release-notes-0.3.0.md)): fleet commands over many workspaces, install from released
 images, the `private` profile for a network with no route to the internet, custom fonts, a site specification any LLM can write, the Generate
 Website Wizard, Kits, and the disclosure policy. Earlier releases: [0.2.0](release-notes-0.2.0.md) (*Conduct*: audit log, two-factor

@@ -1,3 +1,8 @@
+# Release v0.3.1 — 2026-10-26
+
+## [Release v0.3.1] — 2026-10-26
+- Branch: `master`. Version 0.3.1 set in 21 package.json files (one product version, see docs/release/release-process.md); `docs/release/README.md` aligned to this release.
+
 ## Images: the two nginx images upgrade every Alpine package (curl CVE-2026-92392) — 2026-10-26
 - Branch: `master`. The `security` run with DAST on `99c5041` (40295025888, release candidate 0.3.1) passed static scans, API and browser suites, DAST, isolation and TLS, and failed at *Container images*: `admin-dashboard` and `whoobe-one-spike` carry `curl`/`libcurl` 8.22.0-r0 (HIGH CVE-2026-92392, fixed in 8.23.0-r0). Third time in a few weeks that the pinned `nginx-unprivileged:alpine` falls behind (pcre2, tiff, libexpat, libx11, brotli-libs, curl): `Dockerfile` now runs `apk upgrade --no-cache` of every package in both stages instead of a list. Tried on the pinned base: 20 packages upgraded, among them curl 8.23.0-r0 and the earlier ones, nginx stays 1.31.6; hadolint clean. Trade-off: the two images depend on the build date, not only on the digest; the image scan of each release checks them. The upgrade test from v0.3.0 (run 40295030726) passed. Release notes 0.3.1 and F-050 updated. Images not rebuilt here: the next CI run checks them.
 ## Release notes 0.3.1 written; CHANGES.md entries moved above the v0.3.0 marker — 2026-10-26
