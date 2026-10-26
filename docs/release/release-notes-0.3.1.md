@@ -40,6 +40,7 @@ because the fixes are inside them.
 ## Known limits
 
 The limits of [0.3.0](release-notes-0.3.0.md#known-limits-of-this-release) still hold. For this release: the API and browser suites, isolation, TLS and
-DAST passed on the release candidate `99365c4` (run 40297447238; the image scan of every own image PASS), and the upgrade test from
+DAST passed on the release candidate `99365c4` (run 40297447238; the image scan PASS for five of the six own images: the `publisher` image is not in that scan, and the published 0.3.1 publisher has 171 fixable
+HIGH/CRITICAL, mostly in build tools; F-063, found after the tag, fixed in a later patch), and the upgrade test from
 v0.3.0 passed on `99c5041` (run 40295030726; only the Dockerfile of the two nginx images changed after it); a manual try of the site wizard, the spec import and gateway writes with Zod 4 on a running stack
 was not done.

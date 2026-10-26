@@ -12,7 +12,7 @@ or in the public history of its CI, and it stays there.
 | What each suite asserts, and what it does not | [`security-test-suite.md`](../security-test-suite.md), [`security-testing-plan.md`](../security-testing-plan.md), [`manual-test-checklist.md`](../manual-test-checklist.md) | updated with the suites |
 | Every finding, open or closed, with its severity | [`findings.md`](../findings.md) (register `F-0xx`) | when it is found, not when it is fixed |
 | The state of the security work on one page, with the open items and what is **not** covered | [`status-summary.md`](../status-summary.md) | every release |
-| **The result of the tests of each release**, passes and failures | `results/vX.Y.Z.md` in this folder (the first is [`v0.2.0.md`](v0.2.0.md); latest [`v0.3.0.md`](v0.3.0.md)) | every release, before it is published |
+| **The result of the tests of each release**, passes and failures | `results/vX.Y.Z.md` in this folder (the first is [`v0.2.0.md`](v0.2.0.md); latest [`v0.3.1.md`](v0.3.1.md)) | every release, before it is published |
 | The CI runs themselves | the repository's Actions tab: the runs and their logs are public | every push, nightly and on request |
 | The reports of the run on the release commit | attached to the GitHub Release | every release |
 | How the code is written, including the use of an AI assistant | [`docs/plans`](https://github.com/swina/whoobe_project/tree/master/docs/plans) (written plans, decisions and what was left out) | with the work |
