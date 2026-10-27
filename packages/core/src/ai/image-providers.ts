@@ -133,9 +133,9 @@ export async function generateImage(input: AiImageGenerateInput): Promise<AiImag
         response_format: 'url',
       });
 
-      // gpt-image models report tokens; dall-e reports none and counts as a call
+      // gpt-image models report input/output_tokens, OpenRouter prompt/completion_tokens; dall-e reports none and counts as a call
       const usage = (response as any).usage;
-      reportAiUsage(settings.provider, settings.model, usage?.input_tokens, usage?.output_tokens);
+      reportAiUsage(settings.provider, settings.model, usage?.input_tokens ?? usage?.prompt_tokens, usage?.output_tokens ?? usage?.completion_tokens);
 
       if (!response.data) {
         throw new AiImageGenerationError('No image data returned from provider', 500);
