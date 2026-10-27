@@ -21,6 +21,7 @@
         :field="field"
         :model-value="modelValue[field.name]"
         :input-classes="viewConfig?.inputClasses"
+        :slug-source="field.fieldType === 'urlSlug' ? slugSource : undefined"
         @update:model-value="(value) => updateField(field.name, value)"
       />
     </div>
@@ -33,6 +34,7 @@
       :field="field"
       :model-value="modelValue[field.name]"
         :input-classes="viewConfig?.inputClasses"
+        :slug-source="field.fieldType === 'urlSlug' ? slugSource : undefined"
       @update:model-value="(value) => updateField(field.name, value)"
     />
   </div>
@@ -62,6 +64,7 @@ import type { ClassFieldDefinition, ClassViewConfig } from '@whoobe-cms/core'
 import DataObjectFieldControl from './DataObjectFieldControl.vue'
 import { resolveCustomClasses } from '../../utils/custom-classes'
 import { useComponentsStore } from '../../stores/componentsStore'
+import { objectTitle } from '../../utils/object-title'
 
 const props = defineProps<{
   fields: ClassFieldDefinition[]
@@ -72,6 +75,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: Record<string, unknown>]
 }>()
+
+// What a slug field's Generate button slugifies when the slug is empty: the object's title, never another slug.
+const slugSource = computed(() => objectTitle(props.fields.filter((f) => f.fieldType !== 'urlSlug'), props.modelValue))
 
 const componentsStore = useComponentsStore()
 

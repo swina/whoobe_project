@@ -38,11 +38,9 @@
       :style="controls.textarea.style"
     />
     <!-- urlSlug: a trailing "Generate" button slugifies whatever's already
-         typed here into a friendly URL slug - docs/plans/UI/editing-
-         object-class.md has no concept of a per-class "title source field"
-         to auto-derive from, so (same as Pages > Slug's own Generate
-         button when its Title is empty) this cleans up the field's own
-         current text rather than pulling from a sibling field. -->
+         typed here into a friendly URL slug; when the field is empty it
+         slugifies the object's title (slugSource, from DataObjectForm),
+         so a new object gets a slug in one click. -->
     <div v-else-if="field.fieldType === 'urlSlug'" :class="['flex gap-2', fieldLayout.class]" :style="fieldLayout.style">
       <input
         :value="(modelValue as string) ?? ''"
@@ -53,9 +51,9 @@
       />
       <button
         type="button"
-        title="Generate a friendly slug from this text"
+        title="Generate a friendly slug from this text, or from the title when empty"
         class="btn btn-secondary shrink-0 light:hover:bg-slate-200 flex items-center gap-1.5"
-        @click="emitUpdate(slugify((modelValue as string) ?? ''))"
+        @click="emitUpdate(slugify(((modelValue as string) ?? '').trim() || (slugSource ?? '')))"
       >
         <Wand2 class="w-3.5 h-3.5" /> Generate
       </button>
@@ -311,6 +309,8 @@ const props = defineProps<{
   modelValue: unknown
   // The class's own look per control type (viewConfig.inputClasses); absent = the built-in classes.
   inputClasses?: InputClassesConfig
+  // urlSlug only: the object's title, slugified by Generate when the field is empty.
+  slugSource?: string | null
 }>()
 
 // field.className (docs/plans/UI/editing-object-class.md) - appended
