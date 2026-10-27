@@ -5,7 +5,7 @@ checked against the code at the time of the last reorganisation (see [Status](#s
 project stays in [`../plans`](https://github.com/swina/whoobe_project/tree/master/docs/plans) and is deliberately not part of a release.
 
 **Aligned to release:** v0.3.2 (2026-10-27) - see [`release-process.md`](release-process.md)
-**0.3.2** is a patch of 0.3.0 that removes the build tools from the `publisher` image ([release notes](release-notes-0.3.2.md)); **0.3.1** brought security updates ([release notes](release-notes-0.3.1.md)). New in **0.3.0**, *Operate* (see the [release notes](release-notes-0.3.0.md)): fleet commands over many workspaces, install from released
+**0.3.3** shows the tokens of every AI answer and can record them per person, off by default, with a retention period for the AI history ([release notes](release-notes-0.3.3.md)); **0.3.2** is a patch of 0.3.0 that removes the build tools from the `publisher` image ([release notes](release-notes-0.3.2.md)); **0.3.1** brought security updates ([release notes](release-notes-0.3.1.md)). New in **0.3.0**, *Operate* (see the [release notes](release-notes-0.3.0.md)): fleet commands over many workspaces, install from released
 images, the `private` profile for a network with no route to the internet, custom fonts, a site specification any LLM can write, the Generate
 Website Wizard, Kits, and the disclosure policy. Earlier releases: [0.2.0](release-notes-0.2.0.md) (*Conduct*: audit log, two-factor
 authentication, single sign-on, object events), [0.1.1](release-notes-0.1.1.md), [0.1.0](release-notes-0.1.0.md).
@@ -54,7 +54,7 @@ The detailed documentation is organised by what Whoobe does. Each pillar has an 
 | [`credits.md`](credits.md) | Thanks to the open-source projects Whoobe is built with and works with; the legal record is [`THIRD_PARTY_NOTICES.md`](https://github.com/swina/whoobe_project/blob/master/THIRD_PARTY_NOTICES.md) |
 | [`community/`](community/why-sponsor-and-contribute.md) | Why sponsor and why contribute to open-source projects, and how to help Whoobe; [how Whoobe evolves](community/project-evolution.md): what comes next, what is built only when funded, and the rule that the code stays MIT |
 | [`release-process.md`](release-process.md) | How a release is made: versions, support policy, release gates, procedure |
-| [`release-notes-0.3.2.md`](release-notes-0.3.2.md), [`0.3.1`](release-notes-0.3.1.md), [`0.3.0`](release-notes-0.3.0.md), [`0.2.0`](release-notes-0.2.0.md), [`0.1.1`](release-notes-0.1.1.md), [`0.1.0`](release-notes-0.1.0.md) | What each release contains, behaviour changes to check before upgrading, known limits |
+| [`release-notes-0.3.3.md`](release-notes-0.3.3.md), [`0.3.2`](release-notes-0.3.2.md), [`0.3.1`](release-notes-0.3.1.md), [`0.3.0`](release-notes-0.3.0.md), [`0.2.0`](release-notes-0.2.0.md), [`0.1.1`](release-notes-0.1.1.md), [`0.1.0`](release-notes-0.1.0.md) | What each release contains, behaviour changes to check before upgrading, known limits |
 
 **Reading paths.** *Architect*: architecture overview, data and storage, authentication, capacity. *DevOps*: creating workspaces, configuration
 reference, secrets and keys, backup/DR, upgrade, observability. *Security / compliance*: threat model, status summary and findings, data
