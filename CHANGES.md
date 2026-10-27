@@ -1,3 +1,8 @@
+# Release v0.3.3 — 2026-10-27
+
+## [Release v0.3.3] — 2026-10-27
+- Branch: `master`. Version 0.3.3 set in 21 package.json files (one product version, see docs/release/release-process.md); `docs/release/README.md` aligned to this release.
+
 ## Release notes 0.3.3 — 2026-10-27
 - Branch: `master`. `docs/release/release-notes-0.3.3.md`: AI usage (tokens in every answer, recording per person off by default, the report tab, `ai_usage:read`), F-064 and the retention of the AI history (empty keeps, as before), the slug *Generate* fix, the *How Whoobe evolves* page; behaviour changes (migration 0073, the `usage` field, the new permission and routes, no new environment variable) and known limits. `docs/release/README.md` links them; `security/status-summary.md` has the 0.3.3 candidate line and F-064 "fixed for 0.3.3". Docs only.
 
