@@ -18,6 +18,7 @@ it. It is a poor bet if you need a vendor SLA, certificates or single sign-on to
 | Why is it built this way? | [Design decisions](../architecture/design-decisions/README.md): self-hosted and MIT, one workspace per organisation, no engine of our own |
 | What can our other systems and apps do with it? | The [Client Hub](../communication/api-clients.md): apps and back-ends use the same integrations and data, without holding third-party secrets |
 | Should we support the project? | [Why sponsor and contribute](../community/why-sponsor-and-contribute.md) |
+| Where is the project going, and what is built only if someone funds it? | [How Whoobe evolves](../community/project-evolution.md) |
 
 ## Reading path (about an hour)
 1. [What Whoobe is](../overview/what-is-whoobe.md) (10 minutes).

@@ -114,8 +114,8 @@ About **31-43 days** in all; an organisation usually needs a subset (for example
    throwaway cluster. Host names, addresses, keys and the sponsor's own configuration stay with the installation.
 6. **Credit**, if the sponsor wants it: in the release notes and on the community page.
 
-`community/why-sponsor-and-contribute.md` (3.2 and 3.3) already says that the licence does not change and that a funded feature is agreed
-with the author directly; it should link this section once the decisions below are taken.
+The public side of this section, for whoever evaluates Whoobe, is `docs/release/community/project-evolution.md`, linked from the
+repository README and from `community/why-sponsor-and-contribute.md`; it is updated when a decision here changes.
 
 ## 6. Decisions of the owner (2026-10-27)
 
